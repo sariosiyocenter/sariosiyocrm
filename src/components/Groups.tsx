@@ -1,11 +1,13 @@
 import React, { useState } from 'react';
 import { Search, Plus, FileSpreadsheet, Monitor, MoreVertical, X } from 'lucide-react';
 import { useCRM } from '../context/CRMContext';
+import { useNavigate } from 'react-router-dom';
 
 const timeSlots = ["08:00 - 09:30", "09:30 - 11:00", "11:00 - 12:30", "14:00 - 15:30", "15:30 - 17:00", "17:00 - 18:30", "19:00 - 20:30"];
 
-export default function Groups({ onNavigate }: { onNavigate: (page: string, id: number | null) => void }) {
+export default function Groups() {
     const { groups, teachers, courses, rooms, addGroup } = useCRM();
+    const navigate = useNavigate();
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [newGroup, setNewGroup] = useState({
         name: '',
@@ -74,7 +76,7 @@ export default function Groups({ onNavigate }: { onNavigate: (page: string, id: 
                     </thead>
                     <tbody className="bg-white">
                         {groups.map((group, idx) => (
-                            <tr key={group.id} className="hover:bg-slate-50 transition-colors cursor-pointer group" onClick={() => onNavigate("Guruhlar", group.id)}>
+                            <tr key={group.id} className="hover:bg-slate-50 transition-colors cursor-pointer group" onClick={() => navigate(`/groups/${group.id}`)}>
                                 <td className="p-4 border-b border-slate-100 text-sm font-medium text-slate-600">{idx + 1}.</td>
                                 <td className="p-4 border-b border-slate-100 text-sm font-bold text-slate-800">{group.name}</td>
                                 <td className="p-4 border-b border-slate-100 text-sm font-bold text-slate-800 uppercase">{group.courseId}</td>

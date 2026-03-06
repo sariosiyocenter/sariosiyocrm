@@ -1,9 +1,11 @@
 import React, { useState } from 'react';
 import { MessageSquare, Plus, Search, MoreVertical, X } from 'lucide-react';
 import { useCRM } from '../context/CRMContext';
+import { useNavigate } from 'react-router-dom';
 
-export default function Teachers({ onNavigate }: { onNavigate: (page: string, id: number | null) => void }) {
+export default function Teachers() {
     const { teachers, addTeacher } = useCRM();
+    const navigate = useNavigate();
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [newTeacher, setNewTeacher] = useState({ name: '', phone: '', salary: 0, sharePercentage: 0, birthDate: '', hiredDate: '' });
 
@@ -60,7 +62,7 @@ export default function Teachers({ onNavigate }: { onNavigate: (page: string, id
                     </thead>
                     <tbody className="bg-white">
                         {teachers.map((teacher, idx) => (
-                            <tr key={teacher.id} className="hover:bg-slate-50 transition-colors cursor-pointer group" onClick={() => onNavigate("O'qituvchilar", teacher.id)}>
+                            <tr key={teacher.id} className="hover:bg-slate-50 transition-colors cursor-pointer group" onClick={() => navigate(`/teachers/${teacher.id}`)}>
                                 <td className="p-4 border-b border-slate-100 text-sm text-slate-600 font-medium">{idx + 1}.</td>
                                 <td className="p-4 border-b border-slate-100">
                                     <div className="flex items-center gap-3">

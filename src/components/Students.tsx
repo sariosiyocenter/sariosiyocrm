@@ -1,9 +1,11 @@
 import React, { useState } from 'react';
 import { Search, Plus, FileSpreadsheet, MessageSquare, MoreVertical, X } from 'lucide-react';
 import { useCRM } from '../context/CRMContext';
+import { useNavigate } from 'react-router-dom';
 
-export default function Students({ onNavigate }: { onNavigate: (page: string, id: number | null) => void }) {
+export default function Students() {
     const { students, groups, teachers, addStudent } = useCRM();
+    const navigate = useNavigate();
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [newStudent, setNewStudent] = useState({ name: '', phone: '', address: '', birthDate: '' });
 
@@ -92,7 +94,7 @@ export default function Students({ onNavigate }: { onNavigate: (page: string, id
                                 <td className="p-4 border-b border-slate-100">
                                     <div
                                         className="flex items-center gap-3 cursor-pointer group/name"
-                                        onClick={() => onNavigate("O'quvchi profili", student.id)}
+                                        onClick={() => navigate(`/students/${student.id}`)}
                                     >
                                         <div className="w-8 h-8 rounded-full bg-indigo-50 flex items-center justify-center border border-indigo-100 overflow-hidden text-indigo-500 group-hover/name:border-indigo-500 transition-all font-bold text-xs uppercase">
                                             {student.name.charAt(0)}

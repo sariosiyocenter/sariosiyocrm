@@ -6,23 +6,21 @@ import {
     Plus, Edit2, MessageSquare, Trash2
 } from 'lucide-react';
 import { useCRM } from '../context/CRMContext';
+import { useParams, useNavigate } from 'react-router-dom';
 
-interface StudentDetailsProps {
-    id: number;
-    onBack: () => void;
-}
-
-export default function StudentDetails({ id, onBack }: StudentDetailsProps) {
+export default function StudentDetails() {
+    const { id } = useParams<{ id: string }>();
+    const navigate = useNavigate();
     const { students, groups, teachers, payments } = useCRM();
     const [activeTab, setActiveTab] = useState('umumiy');
 
-    const student = students.find(s => s.id === id);
+    const student = students.find(s => s.id === Number(id));
 
     if (!student) {
         return (
             <div className="flex flex-col items-center justify-center py-20 bg-white rounded-3xl border border-slate-200">
                 <p className="text-slate-400 font-bold italic">O'quvchi topilmadi</p>
-                <button onClick={onBack} className="mt-4 text-indigo-500 font-bold hover:underline">Orqaga qaytish</button>
+                <button onClick={() => navigate('/students')} className="mt-4 text-indigo-500 font-bold hover:underline">Orqaga qaytish</button>
             </div>
         );
     }
@@ -38,7 +36,7 @@ export default function StudentDetails({ id, onBack }: StudentDetailsProps) {
         <div className="flex flex-col gap-6">
             <div className="flex items-center justify-between">
                 <button
-                    onClick={onBack}
+                    onClick={() => navigate(-1)}
                     className="flex items-center gap-2 text-slate-500 hover:text-indigo-600 transition-colors font-medium"
                 >
                     <ArrowLeft className="w-5 h-5" />

@@ -3,7 +3,8 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { Routes, Route, useNavigate, Navigate } from 'react-router-dom';
 import Layout from './components/Layout';
 import Dashboard from './components/Dashboard';
 import Teachers from './components/Teachers';
@@ -18,54 +19,20 @@ import Reports from './components/Reports';
 import StudentDetails from './components/StudentDetails';
 
 export default function App() {
-  const [currentPage, setCurrentPage] = useState('Bosh sahifa');
-  const [currentViewId, setCurrentViewId] = useState<number | null>(null);
   const [isLoggedIn, setIsLoggedIn] = useState(() => localStorage.getItem('is_logged_in') === 'true');
-
-  const navigate = (page: string, id: number | null = null) => {
-    setCurrentPage(page);
-    setCurrentViewId(id);
-  };
+  const navigate = useNavigate();
 
   const handleLogin = (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoggedIn(true);
     localStorage.setItem('is_logged_in', 'true');
+    navigate('/');
   };
 
   const handleLogout = () => {
     setIsLoggedIn(false);
     localStorage.removeItem('is_logged_in');
-  };
-
-  const renderPage = () => {
-    if (currentPage === "Lidlar") {
-      return <Leads />;
-    }
-    if (currentPage === "O'qituvchilar") {
-      if (currentViewId) return <TeacherDetails id={currentViewId} onBack={() => navigate("O'qituvchilar")} />;
-      return <Teachers onNavigate={navigate} />;
-    }
-    if (currentPage === "Guruhlar") {
-      if (currentViewId) return <GroupDetails id={currentViewId} onBack={() => navigate("Guruhlar")} />;
-      return <Groups onNavigate={navigate} />;
-    }
-    if (currentPage === "O'quvchilar") {
-      return <Students onNavigate={navigate} />;
-    }
-    if (currentPage === "O'quvchi profili" && currentViewId) {
-      return <StudentDetails id={currentViewId} onBack={() => navigate("O'quvchilar")} />;
-    }
-    if (currentPage === "Sozlamalar") {
-      return <Settings />;
-    }
-    if (currentPage === "Moliya") {
-      return <Finance />;
-    }
-    if (currentPage === "Hisobotlar") {
-      return <Reports />;
-    }
-    return <Dashboard />;
+    navigate('/');
   };
 
   if (!isLoggedIn) {
@@ -112,8 +79,21 @@ export default function App() {
   }
 
   return (
-    <Layout currentPage={currentPage} onNavigate={(page) => navigate(page, null)} onLogout={handleLogout}>
-      {renderPage()}
+    <Layout onLogout={handleLogout}>
+      <Routes>
+        <Route path="/" element={<Dashboard />} />
+        <Route path="/leads" element={<Leads />} />
+        <Route path="/teachers" element={<Teachers />} />
+        <Route path="/teachers/:id" element={<TeacherDetails />} />
+        <Route path="/groups" element={<Groups />} />
+        <Route path="/groups/:id" element={<GroupDetails />} />
+        <Route path="/students" element={<Students />} />
+        <Route path="/students/:id" element={<StudentDetails />} />
+        <Route path="/settings" element={<Settings />} />
+        <Route path="/finance" element={<Finance />} />
+        <Route path="/reports" element={<Reports />} />
+        <Route path="*" element={<Navigate to="/" replace />} />
+      </Routes>
     </Layout>
   );
 }

@@ -1,17 +1,20 @@
 import React from 'react';
 import { Calendar, Phone, MapPin, Layers, Users, BookOpen, ArrowLeft } from 'lucide-react';
 import { useCRM } from '../context/CRMContext';
+import { useParams, useNavigate } from 'react-router-dom';
 
-export default function TeacherDetails({ id, onBack }: { id: number, onBack: () => void }) {
+export default function TeacherDetails() {
+    const { id } = useParams<{ id: string }>();
+    const navigate = useNavigate();
     const { teachers, groups, students } = useCRM();
 
-    const teacher = teachers.find(t => t.id === id);
+    const teacher = teachers.find(t => t.id === Number(id));
 
     if (!teacher) {
         return (
             <div className="flex flex-col items-center justify-center py-20 bg-white rounded-3xl border border-slate-200">
                 <p className="text-slate-400 font-bold italic">O'qituvchi topilmadi</p>
-                <button onClick={onBack} className="mt-4 text-indigo-500 font-bold hover:underline">Orqaga qaytish</button>
+                <button onClick={() => navigate('/teachers')} className="mt-4 text-indigo-500 font-bold hover:underline">Orqaga qaytish</button>
             </div>
         );
     }
@@ -30,7 +33,7 @@ export default function TeacherDetails({ id, onBack }: { id: number, onBack: () 
         <div className="max-w-[1600px] mx-auto">
             {/* Back button and title */}
             <div className="flex items-center gap-4 mb-6">
-                <button onClick={onBack} className="p-2 hover:bg-slate-200 rounded-lg text-slate-600 transition-colors">
+                <button onClick={() => navigate(-1)} className="p-2 hover:bg-slate-200 rounded-lg text-slate-600 transition-colors">
                     <ArrowLeft className="w-5 h-5" />
                 </button>
                 <h1 className="text-2xl font-bold text-slate-800">{teacher.name}</h1>
@@ -96,7 +99,7 @@ export default function TeacherDetails({ id, onBack }: { id: number, onBack: () 
                                 {teacherGroups.map(group => {
                                     const groupStudents = students.filter(s => s.groups.includes(group.id));
                                     return (
-                                        <div key={group.id} className="border border-slate-100 bg-slate-50/50 rounded-2xl p-6 hover:border-[#5C67F2] hover:bg-white hover:shadow-xl hover:shadow-indigo-50 transition-all cursor-pointer group relative overflow-hidden">
+                                        <div key={group.id} onClick={() => navigate(`/groups/${group.id}`)} className="border border-slate-100 bg-slate-50/50 rounded-2xl p-6 hover:border-[#5C67F2] hover:bg-white hover:shadow-xl hover:shadow-indigo-50 transition-all cursor-pointer group relative overflow-hidden">
                                             <div className="absolute top-0 right-0 w-24 h-24 bg-indigo-500/5 -mr-8 -mt-8 rounded-full"></div>
                                             <div className="flex items-start justify-between mb-4 relative z-10">
                                                 <h3 className="text-xl font-black text-slate-800 group-hover:text-[#5C67F2] transition-colors tracking-tight">{group.name}</h3>

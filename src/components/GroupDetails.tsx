@@ -6,20 +6,23 @@ import {
     FileSpreadsheet, Lock, ArrowLeft
 } from 'lucide-react';
 import { useCRM } from '../context/CRMContext';
+import { useParams, useNavigate } from 'react-router-dom';
 
-export default function GroupDetails({ id, onBack }: { id: number, onBack: () => void }) {
+export default function GroupDetails() {
+    const { id } = useParams<{ id: string }>();
+    const navigate = useNavigate();
     const { groups, teachers, students } = useCRM();
     const dates = ['03', '05', '07', '10', '12', '14', '17', '19', '21', '24'];
 
-    const group = groups.find(g => g.id === id);
+    const group = groups.find(g => g.id === Number(id));
     const teacher = teachers.find(t => t?.id === group?.teacherId);
-    const groupStudents = students.filter(s => s.groups.includes(id));
+    const groupStudents = students.filter(s => s.groups.includes(Number(id)));
 
     if (!group) {
         return (
             <div className="flex flex-col items-center justify-center py-20 bg-white rounded-3xl border border-slate-200">
                 <p className="text-slate-400 font-bold italic">Guruh topilmadi</p>
-                <button onClick={onBack} className="mt-4 text-indigo-500 font-bold hover:underline">Orqaga qaytish</button>
+                <button onClick={() => navigate('/groups')} className="mt-4 text-indigo-500 font-bold hover:underline">Orqaga qaytish</button>
             </div>
         );
     }
@@ -28,7 +31,7 @@ export default function GroupDetails({ id, onBack }: { id: number, onBack: () =>
         <div className="max-w-[1600px] mx-auto pb-10">
             {/* Title block */}
             <div className="flex items-center gap-4 mb-6">
-                <button onClick={onBack} className="p-2 hover:bg-slate-200 rounded-lg text-slate-600 transition-colors">
+                <button onClick={() => navigate(-1)} className="p-2 hover:bg-slate-200 rounded-lg text-slate-600 transition-colors">
                     <ArrowLeft className="w-5 h-5" />
                 </button>
                 <div className="flex items-center gap-3">

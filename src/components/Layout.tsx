@@ -1,16 +1,17 @@
 import React from 'react';
 import { Search, Bell, User, Home, ClipboardList, Presentation, Layers, Users, Settings, Activity, FileText, ChevronDown, ChevronRight, LogOut } from 'lucide-react';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { useCRM } from '../context/CRMContext';
 
 interface LayoutProps {
   children: React.ReactNode;
-  currentPage: string;
-  onNavigate: (page: string) => void;
   onLogout: () => void;
 }
 
-export default function Layout({ children, currentPage, onNavigate, onLogout }: LayoutProps) {
+export default function Layout({ children, onLogout }: LayoutProps) {
   const { settings } = useCRM();
+  const location = useLocation();
+  const navigate = useNavigate();
   const [isBranchOpen, setIsBranchOpen] = React.useState(false);
   const [currentBranch, setCurrentBranch] = React.useState(`${settings.orgName} Filliali`);
   const [isProfileOpen, setIsProfileOpen] = React.useState(false);
@@ -92,7 +93,7 @@ export default function Layout({ children, currentPage, onNavigate, onLogout }: 
                   <p className="text-sm font-bold text-slate-700 truncate">admin@sariosiyo.uz</p>
                 </div>
                 <button
-                  onClick={() => onNavigate('Sozlamalar')}
+                  onClick={() => navigate('/settings')}
                   className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-slate-600 hover:bg-slate-50 hover:text-[#5C67F2] rounded-xl transition-all"
                 >
                   <Settings className="w-4 h-4" />
@@ -113,14 +114,14 @@ export default function Layout({ children, currentPage, onNavigate, onLogout }: 
 
       {/* Navbar */}
       <nav className="bg-white border-b border-slate-200 px-6 py-2 flex items-center gap-2 overflow-x-auto shadow-sm relative z-10">
-        <NavItem icon={<Home className="w-[18px] h-[18px]" />} label="Bosh sahifa" active={currentPage === 'Bosh sahifa'} onNavigate={onNavigate} />
-        <NavItem icon={<ClipboardList className="w-[18px] h-[18px]" />} label="Lidlar" active={currentPage === 'Lidlar'} onNavigate={onNavigate} />
-        <NavItem icon={<Presentation className="w-[18px] h-[18px]" />} label="O'qituvchilar" active={currentPage === "O'qituvchilar"} onNavigate={onNavigate} />
-        <NavItem icon={<Layers className="w-[18px] h-[18px]" />} label="Guruhlar" active={currentPage === 'Guruhlar'} onNavigate={onNavigate} />
-        <NavItem icon={<Users className="w-[18px] h-[18px]" />} label="O'quvchilar" active={currentPage === "O'quvchilar"} onNavigate={onNavigate} />
-        <NavItem icon={<Settings className="w-[18px] h-[18px]" />} label="Sozlamalar" hasDropdown active={currentPage === 'Sozlamalar'} onNavigate={onNavigate} />
-        <NavItem icon={<Activity className="w-[18px] h-[18px]" />} label="Moliya" active={currentPage === 'Moliya'} onNavigate={onNavigate} />
-        <NavItem icon={<FileText className="w-[18px] h-[18px]" />} label="Hisobotlar" hasDropdown active={currentPage === 'Hisobotlar'} onNavigate={onNavigate} />
+        <NavItem icon={<Home className="w-[18px] h-[18px]" />} label="Bosh sahifa" path="/" currentPath={location.pathname} />
+        <NavItem icon={<ClipboardList className="w-[18px] h-[18px]" />} label="Lidlar" path="/leads" currentPath={location.pathname} />
+        <NavItem icon={<Presentation className="w-[18px] h-[18px]" />} label="O'qituvchilar" path="/teachers" currentPath={location.pathname} />
+        <NavItem icon={<Layers className="w-[18px] h-[18px]" />} label="Guruhlar" path="/groups" currentPath={location.pathname} />
+        <NavItem icon={<Users className="w-[18px] h-[18px]" />} label="O'quvchilar" path="/students" currentPath={location.pathname} />
+        <NavItem icon={<Settings className="w-[18px] h-[18px]" />} label="Sozlamalar" hasDropdown path="/settings" currentPath={location.pathname} />
+        <NavItem icon={<Activity className="w-[18px] h-[18px]" />} label="Moliya" path="/finance" currentPath={location.pathname} />
+        <NavItem icon={<FileText className="w-[18px] h-[18px]" />} label="Hisobotlar" hasDropdown path="/reports" currentPath={location.pathname} />
       </nav>
 
       {/* Main Content */}
@@ -131,41 +132,44 @@ export default function Layout({ children, currentPage, onNavigate, onLogout }: 
   );
 }
 
-function NavItem({ icon, label, active, hasDropdown, onNavigate }: { icon: React.ReactNode, label: string, active?: boolean, hasDropdown?: boolean, onNavigate: (page: string) => void }) {
+function NavItem({ icon, label, path, currentPath, hasDropdown }: { icon: React.ReactNode, label: string, path: string, currentPath: string, hasDropdown?: boolean }) {
+  const navigate = useNavigate();
+  const isActive = currentPath === path || (path !== '/' && currentPath.startsWith(path));
+
   return (
     <div className="relative group">
       <button
-        onClick={() => onNavigate(label)}
-        className={`flex items-center gap-2 px-4 py-2.5 rounded-lg text-[14px] font-semibold transition-all whitespace-nowrap ${active
+        onClick={() => navigate(path)}
+        className={`flex items-center gap-2 px-4 py-2.5 rounded-lg text-[14px] font-semibold transition-all whitespace-nowrap ${isActive
           ? 'bg-[#5C67F2] text-white shadow-lg shadow-indigo-200/50'
           : 'text-slate-500 hover:bg-slate-50 hover:text-slate-800'
           }`}
       >
         {icon}
         <span>{label}</span>
-        {hasDropdown && <ChevronDown className={`w-4 h-4 ml-1 transition-transform group-hover:rotate-180 ${active ? 'text-indigo-200' : 'text-slate-400'}`} />}
+        {hasDropdown && <ChevronDown className={`w-4 h-4 ml-1 transition-transform group-hover:rotate-180 ${isActive ? 'text-indigo-200' : 'text-slate-400'}`} />}
       </button>
 
       {hasDropdown && (
         <div className="absolute top-full left-0 mt-1 w-72 bg-white border border-slate-200 rounded-2xl shadow-2xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-50 p-2 transform origin-top scale-95 group-hover:scale-100 duration-200 text-slate-800">
           {label === "Sozlamalar" ? (
             <div className="flex flex-col">
-              <DropdownItem label="SMS Sozlamalari" onClick={() => onNavigate('Sozlamalar')} />
-              <DropdownItem label="Chek Sozlamalari" onClick={() => onNavigate('Sozlamalar')} />
-              <DropdownItem label="Ofis" hasSub onClick={() => onNavigate('Sozlamalar')} />
-              <DropdownItem label="CEO" hasSub onClick={() => onNavigate('Sozlamalar')} />
+              <DropdownItem label="SMS Sozlamalari" onClick={() => navigate('/settings')} />
+              <DropdownItem label="Chek Sozlamalari" onClick={() => navigate('/settings')} />
+              <DropdownItem label="Ofis" hasSub onClick={() => navigate('/settings')} />
+              <DropdownItem label="CEO" hasSub onClick={() => navigate('/settings')} />
             </div>
           ) : (
             <div className="flex flex-col">
-              <DropdownItem label="To'lovlar hisoboti" onClick={() => onNavigate('Hisobotlar')} />
-              <DropdownItem label="O'quvchilar to'lovi" onClick={() => onNavigate('Hisobotlar')} />
-              <DropdownItem label="Ketgan o'quvchilar hisoboti" onClick={() => onNavigate('Hisobotlar')} />
-              <DropdownItem label="Xodimlar Davomati Hisoboti" onClick={() => onNavigate('Hisobotlar')} />
-              <DropdownItem label="O'quvchilar Bonuslari" onClick={() => onNavigate('Hisobotlar')} />
-              <DropdownItem label="Lidlar Hisoboti" onClick={() => onNavigate('Hisobotlar')} />
-              <DropdownItem label="O'quvchilar Hisoboti" onClick={() => onNavigate('Hisobotlar')} />
-              <DropdownItem label="Bitiruvchilar" onClick={() => onNavigate('Hisobotlar')} />
-              <DropdownItem label="Markaz Faoliyati Statistikasi" onClick={() => onNavigate('Hisobotlar')} />
+              <DropdownItem label="To'lovlar hisoboti" onClick={() => navigate('/reports')} />
+              <DropdownItem label="O'quvchilar to'lovi" onClick={() => navigate('/reports')} />
+              <DropdownItem label="Ketgan o'quvchilar hisoboti" onClick={() => navigate('/reports')} />
+              <DropdownItem label="Xodimlar Davomati Hisoboti" onClick={() => navigate('/reports')} />
+              <DropdownItem label="O'quvchilar Bonuslari" onClick={() => navigate('/reports')} />
+              <DropdownItem label="Lidlar Hisoboti" onClick={() => navigate('/reports')} />
+              <DropdownItem label="O'quvchilar Hisoboti" onClick={() => navigate('/reports')} />
+              <DropdownItem label="Bitiruvchilar" onClick={() => navigate('/reports')} />
+              <DropdownItem label="Markaz Faoliyati Statistikasi" onClick={() => navigate('/reports')} />
             </div>
           )}
         </div>
