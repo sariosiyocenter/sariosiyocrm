@@ -30,7 +30,7 @@ export default function StudentDetails() {
         return { ...g, teacherName: teacher?.name || 'Noma\'ulum' };
     });
 
-    const studentPayments = payments.filter(p => p.studentId === id).reverse();
+    const studentPayments = payments.filter(p => p.studentId === Number(id)).reverse();
 
     return (
         <div className="flex flex-col gap-6">
@@ -126,7 +126,7 @@ export default function StudentDetails() {
                                                             <p className="text-[10px] text-slate-400 font-medium">{p.date}</p>
                                                         </div>
                                                     </div>
-                                                    <span className="text-[10px] font-bold text-emerald-600 uppercase bg-emerald-100 px-2 py-1 rounded-md">{p.method}</span>
+                                                    <span className="text-[10px] font-bold text-emerald-600 uppercase bg-emerald-100 px-2 py-1 rounded-md">{p.type}</span>
                                                 </div>
                                             ))}
                                             {studentPayments.length === 0 && <p className="text-sm text-slate-400 italic">To'lovlar tarixi mavjud emas</p>}
@@ -157,7 +157,7 @@ export default function StudentDetails() {
                                                         </div>
                                                     </div>
                                                     <div className="flex items-center gap-3">
-                                                        <span className="text-[11px] font-bold text-indigo-500 bg-indigo-50 px-3 py-1 rounded-full uppercase tracking-wider">{p.method}</span>
+                                                        <span className="text-[11px] font-bold text-indigo-500 bg-indigo-50 px-3 py-1 rounded-full uppercase tracking-wider">{p.type}</span>
                                                     </div>
                                                 </div>
                                             ))}

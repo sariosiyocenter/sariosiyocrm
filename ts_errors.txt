@@ -1,0 +1,16 @@
+src/components/Finance.tsx(42,20): error TS2345: Argument of type '{ studentId: number; amount: number; method: string; comment: string; }' is not assignable to parameter of type 'Omit<Payment, "id">'.
+  Type '{ studentId: number; amount: number; method: string; comment: string; }' is missing the following properties from type 'Omit<Payment, "id">': type, date, description
+src/components/Finance.tsx(138,137): error TS2339: Property 'method' does not exist on type 'Payment'.
+src/components/Finance.tsx(221,67): error TS2769: No overload matches this call.
+  The last overload gave the following error.
+    Object literal may only specify known properties, and 'className' does not exist in type 'Partial<unknown> & Attributes'.
+src/components/Groups.tsx(28,21): error TS2345: Argument of type '{ name: string; teacherId: number; courseId: string; schedule: string; days: string; }' is not assignable to parameter of type 'SetStateAction<{ name: string; teacherId: number; courseId: string; schedule: string; days: string; room: string; }>'.
+  Property 'room' is missing in type '{ name: string; teacherId: number; courseId: string; schedule: string; days: string; }' but required in type '{ name: string; teacherId: number; courseId: string; schedule: string; days: string; room: string; }'.
+src/components/Leads.tsx(25,13): error TS2345: Argument of type '{ status: "Yangi"; course: string; name: string; phone: string; source: string; }' is not assignable to parameter of type 'Omit<Lead, "id">'.
+  Property 'createdAt' is missing in type '{ status: "Yangi"; course: string; name: string; phone: string; source: string; }' but required in type 'Omit<Lead, "id">'.
+src/components/Reports.tsx(56,210): error TS2339: Property 'method' does not exist on type 'Payment'.
+src/components/Reports.tsx(58,120): error TS2339: Property 'comment' does not exist on type 'Payment'.
+src/components/StudentDetails.tsx(33,50): error TS2367: This comparison appears to be unintentional because the types 'number' and 'string' have no overlap.
+src/components/StudentDetails.tsx(129,159): error TS2339: Property 'method' does not exist on type 'Payment'.
+src/components/StudentDetails.tsx(160,177): error TS2339: Property 'method' does not exist on type 'Payment'.
+src/components/TeacherDetails.tsx(22,46): error TS2367: This comparison appears to be unintentional because the types 'number' and 'string' have no overlap.

@@ -1,0 +1,110 @@
+// This is your Prisma schema file
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model Student {
+  id         Int       @id @default(autoincrement())
+  name       String
+  phone      String
+  birthDate  String
+  address    String
+  status     String    @default("Faol")
+  joinedDate String
+  balance    Float     @default(0)
+  photo      String?
+  comment    String?
+  rating     Float?
+  
+  // Relations
+  groups     Group[]   @relation("StudentGroups")
+  payments   Payment[]
+}
+
+model Teacher {
+  id              Int       @id @default(autoincrement())
+  name            String
+  phone           String
+  salary          Float
+  sharePercentage Float
+  lessonFee       Float     @default(0)
+  birthDate       String
+  hiredDate       String
+  photo           String?
+  status          String    @default("Faol")
+
+  groups          Group[]
+}
+
+model Group {
+  id         Int       @id @default(autoincrement())
+  name       String
+  teacherId  Int
+  teacher    Teacher   @relation(fields: [teacherId], references: [id])
+  courseId   String
+  course     Course    @relation(fields: [courseId], references: [id])
+  schedule   String
+  days       String
+  room       String?
+  
+  students   Student[] @relation("StudentGroups")
+}
+
+model Lead {
+  id        Int      @id @default(autoincrement())
+  name      String
+  phone     String
+  course    String
+  source    String
+  status    String   @default("Yangi")
+  createdAt DateTime @default(now())
+}
+
+model Payment {
+  id          Int      @id @default(autoincrement())
+  studentId   Int
+  student     Student  @relation(fields: [studentId], references: [id])
+  amount      Float
+  type        String
+  date        String
+  description String
+}
+
+model Course {
+  id    String  @id
+  name  String
+  price Float
+  
+  groups Group[]
+}
+
+model Room {
+  id       String @id
+  name     String
+  capacity Int
+}
+
+model School {
+  id      String @id
+  name    String
+  address String
+}
+
+model Setting {
+  id                               String   @id @default("default")
+  orgName                          String   @default("SARIOSIYO")
+  logo                             String?
+  paymentMethods                   String   // Store as JSON string or comma-separated
+  isCheckEnabled                   Boolean  @default(true)
+  isCommentRequired                Boolean  @default(false)
+  isTeacherSalaryHidden            Boolean  @default(false)
+  isSplitPaymentDisabled           Boolean  @default(false)
+  isTeacherAttendanceSalaryEnabled Boolean  @default(true)
+  isTeacherAddingStudentsDisabled  Boolean  @default(false)
+  calendarInterval                 Int      @default(30)
+}

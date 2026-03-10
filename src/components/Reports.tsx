@@ -53,9 +53,9 @@ export default function Reports() {
                                     <tr key={p.id} className="hover:bg-slate-50 transition-colors">
                                         <td className="p-4 border-b border-slate-100 text-sm font-bold text-slate-700">{student?.name || 'Noma\'lum'}</td>
                                         <td className="p-4 border-b border-slate-100 text-sm font-black text-emerald-600">{p.amount.toLocaleString()} UZS</td>
-                                        <td className="p-4 border-b border-slate-100 text-sm font-medium"><span className="px-2 py-1 bg-indigo-50 text-indigo-500 rounded-md text-[10px] uppercase font-bold">{p.method}</span></td>
+                                        <td className="p-4 border-b border-slate-100 text-sm font-medium"><span className="px-2 py-1 bg-indigo-50 text-indigo-500 rounded-md text-[10px] uppercase font-bold">{p.type}</span></td>
                                         <td className="p-4 border-b border-slate-100 text-sm text-slate-500">{p.date}</td>
-                                        <td className="p-4 border-b border-slate-100 text-sm text-slate-400 italic">{p.comment || '-'}</td>
+                                        <td className="p-4 border-b border-slate-100 text-sm text-slate-400 italic">{p.description || '-'}</td>
                                     </tr>
                                 );
                             })}

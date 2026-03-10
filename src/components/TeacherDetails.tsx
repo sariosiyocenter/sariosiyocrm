@@ -19,7 +19,7 @@ export default function TeacherDetails() {
         );
     }
 
-    const teacherGroups = groups.filter(g => g.teacherId === id);
+    const teacherGroups = groups.filter(g => g.teacherId === Number(id));
     const totalStudents = students.filter(s => g => teacherGroups.some(tg => tg.id === g)).length; // Simplified for now
     // A better way to count unique students in teacher's groups:
     const teacherStudentIds = new Set();

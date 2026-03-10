@@ -22,7 +22,7 @@ export default function Leads() {
 
   const handleAddLead = (e: React.FormEvent) => {
     e.preventDefault();
-    addLead({ ...newLead, status: 'Yangi', course: newLead.course || (courses.length > 0 ? courses[0].name : '') });
+    addLead({ ...newLead, status: 'Yangi', course: newLead.course || (courses.length > 0 ? courses[0].name : ''), createdAt: new Date().toISOString() });
     setIsModalOpen(false);
     setNewLead({ name: '', phone: '', course: '', source: 'Instagram' });
   };

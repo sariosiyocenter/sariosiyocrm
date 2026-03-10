@@ -25,7 +25,7 @@ export default function Groups() {
             studentIds: []
         });
         setIsModalOpen(false);
-        setNewGroup({ name: '', teacherId: 0, courseId: '', schedule: '', days: 'Juft kunlar' });
+        setNewGroup({ name: '', teacherId: 0, courseId: '', schedule: '', days: 'Juft kunlar', room: '' });
     };
 
     const getTeacherName = (id: number) => teachers.find(t => t.id === id)?.name || 'Noma\'ulum';

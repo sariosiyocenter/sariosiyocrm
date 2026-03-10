@@ -2,183 +2,190 @@ import React, { createContext, useContext, useState, useEffect } from 'react';
 import { Student, Teacher, Group, Lead, Payment, CRMState, Course, Room, School } from '../types';
 
 interface CRMContextType extends CRMState {
-    addStudent: (student: Omit<Student, 'id'>) => void;
-    updateStudent: (id: number, student: Partial<Student>) => void;
-    deleteStudent: (id: number) => void;
-    addTeacher: (teacher: Omit<Teacher, 'id'>) => void;
-    updateTeacher: (id: number, teacher: Partial<Teacher>) => void;
-    addGroup: (group: Omit<Group, 'id'>) => void;
-    updateLead: (id: number, status: Lead['status']) => void;
-    addPayment: (payment: Omit<Payment, 'id'>) => void;
-    addLead: (lead: Omit<Lead, 'id'>) => void;
-    updateSettings: (settings: Partial<CRMState['settings']>) => void;
-    addCourse: (course: Course) => void;
-    deleteCourse: (id: string) => void;
-    addRoom: (room: Room) => void;
-    deleteRoom: (id: string) => void;
-    addSchool: (school: School) => void;
-    deleteSchool: (id: string) => void;
+    loading: boolean;
+    error: string | null;
+    addStudent: (student: Omit<Student, 'id'>) => Promise<void>;
+    updateStudent: (id: number, student: Partial<Student>) => Promise<void>;
+    deleteStudent: (id: number) => Promise<void>;
+    addTeacher: (teacher: Omit<Teacher, 'id'>) => Promise<void>;
+    updateTeacher: (id: number, teacher: Partial<Teacher>) => Promise<void>;
+    deleteTeacher: (id: number) => Promise<void>;
+    addGroup: (group: Omit<Group, 'id'>) => Promise<void>;
+    updateGroup: (id: number, group: Partial<Group>) => Promise<void>;
+    addLead: (lead: Omit<Lead, 'id'>) => Promise<void>;
+    updateLead: (id: number, status: Lead['status']) => Promise<void>;
+    addPayment: (payment: Omit<Payment, 'id'>) => Promise<void>;
+    updateSettings: (settings: Partial<CRMState['settings']>) => Promise<void>;
+    addCourse: (course: Course) => Promise<void>;
+    deleteCourse: (id: string) => Promise<void>;
+    addRoom: (room: Room) => Promise<void>;
+    deleteRoom: (id: string) => Promise<void>;
+    addSchool: (school: School) => Promise<void>;
+    deleteSchool: (id: string) => Promise<void>;
 }
 
 const CRMContext = createContext<CRMContextType | undefined>(undefined);
 
-const INITIAL_DATA: CRMState = {
-    students: [
-        { id: 1, name: "Sarvarjon", phone: "+998770023656", birthDate: "2010-05-15", address: "Sariosiyo", status: 'Faol', joinedDate: "2024-01-10", balance: -400000, groups: [1], rating: 52.5 }
-    ],
-    teachers: [
-        { id: 1, name: "Malika Tursunova", phone: "+998998557896", salary: 5600000, sharePercentage: 0, lessonFee: 0, birthDate: "1997-01-05", hiredDate: "2025-12-13", status: 'Faol' }
-    ],
-    groups: [
-        { id: 1, name: "Kimyo A1", teacherId: 1, courseId: "kimyo", schedule: "19:00 - 20:00", days: "Juft kunlar", studentIds: [1], room: "1-xona" }
-    ],
-    leads: [
-        { id: 1, name: "Davronbek", phone: "+998901234567", course: "Ingliz tili", source: "Telegram", status: 'Yangi', createdAt: new Date().toISOString() },
-        { id: 2, name: "Zuhra", phone: "+998931112233", course: "Matematika", source: "Instagram", status: 'O\'ylayapti', createdAt: new Date().toISOString() }
-    ],
-    payments: [
-        { id: 1, studentId: 1, amount: 200000, type: 'Naqd', date: "2024-03-01", description: "Fevral oyi uchun" }
-    ],
-    courses: [
-        { id: 'kimyo', name: 'Kimyo', price: 400000 },
-        { id: 'matematika', name: 'Matematika', price: 450000 }
-    ],
-    rooms: [
-        { id: '1-xona', name: '1-xona', capacity: 15 },
-        { id: '2-xona', name: '2-xona', capacity: 20 }
-    ],
-    schools: [
-        { id: 'maktab-1', name: '1-maktab', address: 'Sariosiyo tumani' }
-    ],
-    settings: {
-        orgName: "SARIOSIYO",
-        paymentMethods: ["Naqd", "Karta", "Peyme", "Klik"],
-        isCheckEnabled: true,
-        isCommentRequired: false,
-        isTeacherSalaryHidden: false,
-        isSplitPaymentDisabled: false,
-        isTeacherAttendanceSalaryEnabled: true,
-        isTeacherAddingStudentsDisabled: false,
-        calendarInterval: 30
-    }
-};
+const API_BASE = '/api';
 
 export const CRMProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-    const [state, setState] = useState<CRMState>(() => {
-        const saved = localStorage.getItem('crm_data');
-        if (saved) {
-            const data = JSON.parse(saved);
-            return {
-                ...INITIAL_DATA,
-                ...data,
-                settings: { ...INITIAL_DATA.settings, ...data.settings }
-            };
+    const [state, setState] = useState<CRMState>({
+        students: [], teachers: [], groups: [], leads: [], payments: [], courses: [], rooms: [], schools: [],
+        settings: {
+            orgName: "SARIOSIYO", paymentMethods: ["Naqd", "Karta"], isCheckEnabled: true,
+            isCommentRequired: false, isTeacherSalaryHidden: false, isSplitPaymentDisabled: false,
+            isTeacherAttendanceSalaryEnabled: true, isTeacherAddingStudentsDisabled: false, calendarInterval: 30
         }
-        return INITIAL_DATA;
     });
 
-    useEffect(() => {
-        localStorage.setItem('crm_data', JSON.stringify(state));
-    }, [state]);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState<string | null>(null);
 
-    const addStudent = (student: Omit<Student, 'id'>) => {
-        const newStudent = { ...student, id: Date.now() };
+    const fetchData = async () => {
+        try {
+            setLoading(true);
+            const endpoints = ['students', 'teachers', 'groups', 'leads', 'payments', 'courses', 'rooms', 'schools', 'settings'];
+            const responses = await Promise.all(endpoints.map(ep => fetch(`${API_BASE}/${ep}`).then(res => res.json())));
+
+            setState({
+                students: responses[0],
+                teachers: responses[1],
+                groups: responses[2],
+                leads: responses[3],
+                payments: responses[4],
+                courses: responses[5],
+                rooms: responses[6],
+                schools: responses[7],
+                settings: responses[8]
+            });
+            setError(null);
+        } catch (err: any) {
+            console.error("Failed to load CRM data", err);
+            setError(err.message || "Xatolik yuz berdi");
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    useEffect(() => {
+        fetchData();
+    }, []);
+
+    // Helper for POST/PUT requests
+    const apiCall = async (endpoint: string, method: string, data?: any) => {
+        const res = await fetch(`${API_BASE}/${endpoint}`, {
+            method,
+            headers: data ? { 'Content-Type': 'application/json' } : undefined,
+            body: data ? JSON.stringify(data) : undefined,
+        });
+        if (!res.ok) throw new Error(`API Error: ${res.statusText}`);
+        return method !== 'DELETE' ? await res.json() : null;
+    };
+
+    const addStudent = async (student: Omit<Student, 'id'>) => {
+        const newStudent = await apiCall('students', 'POST', student);
         setState(prev => ({ ...prev, students: [...prev.students, newStudent] }));
     };
 
-    const updateStudent = (id: number, student: Partial<Student>) => {
-        setState(prev => ({
-            ...prev,
-            students: prev.students.map(s => s.id === id ? { ...s, ...student } : s)
-        }));
+    const updateStudent = async (id: number, student: Partial<Student>) => {
+        const updated = await apiCall(`students/${id}`, 'PUT', student);
+        setState(prev => ({ ...prev, students: prev.students.map(s => s.id === id ? updated : s) }));
     };
 
-    const deleteStudent = (id: number) => {
-        setState(prev => ({
-            ...prev,
-            students: prev.students.filter(s => s.id !== id)
-        }));
+    const deleteStudent = async (id: number) => {
+        await apiCall(`students/${id}`, 'DELETE');
+        setState(prev => ({ ...prev, students: prev.students.filter(s => s.id !== id) }));
     };
 
-    const addTeacher = (teacher: Omit<Teacher, 'id'>) => {
-        const newTeacher = { ...teacher, id: Date.now() };
+    const addTeacher = async (teacher: Omit<Teacher, 'id'>) => {
+        const newTeacher = await apiCall('teachers', 'POST', teacher);
         setState(prev => ({ ...prev, teachers: [...prev.teachers, newTeacher] }));
     };
 
-    const updateTeacher = (id: number, teacher: Partial<Teacher>) => {
-        setState(prev => ({
-            ...prev,
-            teachers: prev.teachers.map(t => t.id === id ? { ...t, ...teacher } : t)
-        }));
+    const updateTeacher = async (id: number, teacher: Partial<Teacher>) => {
+        const updated = await apiCall(`teachers/${id}`, 'PUT', teacher);
+        setState(prev => ({ ...prev, teachers: prev.teachers.map(t => t.id === id ? updated : t) }));
     };
 
-    const addGroup = (group: Omit<Group, 'id'>) => {
-        setState(prev => ({ ...prev, groups: [...prev.groups, { ...group, id: Date.now() }] }));
+    const deleteTeacher = async (id: number) => {
+        await apiCall(`teachers/${id}`, 'DELETE');
+        setState(prev => ({ ...prev, teachers: prev.teachers.filter(t => t.id !== id) }));
+    }
+
+    const addGroup = async (group: Omit<Group, 'id'>) => {
+        const newGroup = await apiCall('groups', 'POST', group);
+        setState(prev => ({ ...prev, groups: [...prev.groups, newGroup] }));
     };
 
-    const updateLead = (id: number, status: Lead['status']) => {
-        setState(prev => ({
-            ...prev,
-            leads: prev.leads.map(l => l.id === id ? { ...l, status } : l)
-        }));
-    };
+    const updateGroup = async (id: number, group: Partial<Group>) => {
+        const updated = await apiCall(`groups/${id}`, 'PUT', group);
+        setState(prev => ({ ...prev, groups: prev.groups.map(g => g.id === id ? updated : g) }));
+    }
 
-    const addLead = (lead: Omit<Lead, 'id'>) => {
-        const newLead = { ...lead, id: Date.now(), createdAt: new Date().toISOString() };
+    const addLead = async (lead: Omit<Lead, 'id'>) => {
+        const newLead = await apiCall('leads', 'POST', lead);
         setState(prev => ({ ...prev, leads: [...prev.leads, newLead] }));
     };
 
-    const addPayment = (payment: Omit<Payment, 'id'>) => {
-        const newPayment = { ...payment, id: Date.now() };
+    const updateLead = async (id: number, status: Lead['status']) => {
+        // Only update status
+        const updated = await apiCall(`leads/${id}`, 'PUT', { status });
+        setState(prev => ({ ...prev, leads: prev.leads.map(l => l.id === id ? updated : l) }));
+    };
+
+    const addPayment = async (payment: Omit<Payment, 'id'>) => {
+        const newPayment = await apiCall('payments', 'POST', payment);
+        // Payment endpoint also updates student balance, let's refresh students or just update locally
         setState(prev => {
             const updatedStudents = prev.students.map(s =>
                 s.id === payment.studentId ? { ...s, balance: (s.balance || 0) + payment.amount } : s
             );
-            return {
-                ...prev,
-                payments: [...prev.payments, newPayment],
-                students: updatedStudents
-            };
+            return { ...prev, payments: [...prev.payments, newPayment], students: updatedStudents };
         });
     };
 
-    const updateSettings = (newSettings: Partial<CRMState['settings']>) => {
-        setState(prev => ({
-            ...prev,
-            settings: { ...prev.settings, ...newSettings }
-        }));
+    const updateSettings = async (newSettings: Partial<CRMState['settings']>) => {
+        const updated = await apiCall('settings', 'PUT', newSettings);
+        setState(prev => ({ ...prev, settings: updated }));
     };
 
-    const addCourse = (course: Course) => {
-        setState(prev => ({ ...prev, courses: [...prev.courses, course] }));
+    const addCourse = async (course: Course) => {
+        const newCourse = await apiCall('courses', 'POST', course);
+        setState(prev => ({ ...prev, courses: [...prev.courses, newCourse] }));
     };
 
-    const deleteCourse = (id: string) => {
+    const deleteCourse = async (id: string) => {
+        await apiCall(`courses/${id}`, 'DELETE');
         setState(prev => ({ ...prev, courses: prev.courses.filter(c => c.id !== id) }));
     };
 
-    const addRoom = (room: Room) => {
-        setState(prev => ({ ...prev, rooms: [...prev.rooms, room] }));
+    const addRoom = async (room: Room) => {
+        const newRoom = await apiCall('rooms', 'POST', room);
+        setState(prev => ({ ...prev, rooms: [...prev.rooms, newRoom] }));
     };
 
-    const deleteRoom = (id: string) => {
+    const deleteRoom = async (id: string) => {
+        await apiCall(`rooms/${id}`, 'DELETE');
         setState(prev => ({ ...prev, rooms: prev.rooms.filter(r => r.id !== id) }));
     };
 
-    const addSchool = (school: School) => {
-        setState(prev => ({ ...prev, schools: [...prev.schools, school] }));
+    const addSchool = async (school: School) => {
+        const newSchool = await apiCall('schools', 'POST', school);
+        setState(prev => ({ ...prev, schools: [...prev.schools, newSchool] }));
     };
 
-    const deleteSchool = (id: string) => {
+    const deleteSchool = async (id: string) => {
+        await apiCall(`schools/${id}`, 'DELETE');
         setState(prev => ({ ...prev, schools: prev.schools.filter(s => s.id !== id) }));
     };
 
     return (
         <CRMContext.Provider value={{
             ...state,
+            loading, error,
             addStudent, updateStudent, deleteStudent,
-            addTeacher, updateTeacher,
-            addGroup,
+            addTeacher, updateTeacher, deleteTeacher,
+            addGroup, updateGroup,
             updateLead, addLead,
             addPayment,
             updateSettings,

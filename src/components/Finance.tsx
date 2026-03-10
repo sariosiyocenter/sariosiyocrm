@@ -6,11 +6,12 @@ import {
     Filter, FileText, Users, Target, Zap, Plus, X
 } from 'lucide-react';
 import { useCRM } from '../context/CRMContext';
+import { Payment } from '../types';
 
 export default function Finance() {
     const { students, payments, addPayment } = useCRM();
     const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
-    const [newPayment, setNewPayment] = useState({ studentId: 0, amount: 0, method: 'Naqd', comment: '' });
+    const [newPayment, setNewPayment] = useState<Omit<Payment, 'id'>>({ studentId: 0, amount: 0, type: 'Naqd', description: '', date: new Date().toISOString().split('T')[0] });
 
     const totalRevenue = payments.reduce((sum, p) => sum + p.amount, 0);
     const totalExpenditure = 0; // Will be implemented with a separate 'Expenses' model if needed
@@ -41,7 +42,7 @@ export default function Finance() {
         e.preventDefault();
         addPayment(newPayment);
         setIsPaymentModalOpen(false);
-        setNewPayment({ studentId: 0, amount: 0, method: 'Naqd', comment: '' });
+        setNewPayment({ studentId: 0, amount: 0, type: 'Naqd', description: '', date: new Date().toISOString().split('T')[0] });
     };
 
     return (
@@ -135,7 +136,7 @@ export default function Finance() {
                                             </div>
                                             <div className="text-right">
                                                 <p className="text-sm font-black text-emerald-600">+{payment.amount.toLocaleString()} UZS</p>
-                                                <p className="text-[10px] text-slate-400 font-bold uppercase tracking-tighter">{payment.method}</p>
+                                                <p className="text-[10px] text-slate-400 font-bold uppercase tracking-tighter">{payment.type}</p>
                                             </div>
                                         </div>
                                     );
@@ -196,8 +197,8 @@ export default function Finance() {
                                 <div className="flex gap-2">
                                     {['Naqd', 'Plastik', 'Click', 'Payme'].map(method => (
                                         <button key={method} type="button"
-                                            onClick={() => setNewPayment({ ...newPayment, method: method as any })}
-                                            className={`flex-1 py-2 rounded-xl text-xs font-bold border transition-all ${newPayment.method === method ? 'bg-indigo-500 text-white border-indigo-500 shadow-md shadow-indigo-100' : 'bg-slate-50 text-slate-400 border-slate-200 hover:border-indigo-200'}`}>
+                                            onClick={() => setNewPayment({ ...newPayment, type: method as any })}
+                                            className={`flex-1 py-2 rounded-xl text-xs font-bold border transition-all ${newPayment.type === method ? 'bg-indigo-500 text-white border-indigo-500 shadow-md shadow-indigo-100' : 'bg-slate-50 text-slate-400 border-slate-200 hover:border-indigo-200'}`}>
                                             {method}
                                         </button>
                                     ))}
@@ -218,7 +219,7 @@ function PlanCard({ label, value, color, icon }: { label: string, value: string,
     return (
         <div className={`${color} p-4 rounded-xl text-white shadow-lg shadow-indigo-200/20 group hover:scale-[1.02] transition-transform cursor-pointer relative overflow-hidden`}>
             <div className="absolute -right-2 -bottom-2 opacity-10 group-hover:scale-150 transition-transform">
-                {React.cloneElement(icon as React.ReactElement, { className: 'w-16 h-16' })}
+                {React.cloneElement(icon as React.ReactElement<{ className?: string }>, { className: 'w-16 h-16' })}
             </div>
             <div className="flex items-center justify-between mb-1.5">
                 <span className="text-[10px] font-bold uppercase tracking-wider opacity-80">{label}</span>
