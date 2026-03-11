@@ -88,13 +88,10 @@ export interface CRMState {
     settings: {
         orgName: string;
         logo?: string;
-        paymentMethods: string[];
-        isCheckEnabled: boolean;
-        isCommentRequired: boolean;
-        isTeacherSalaryHidden: boolean;
-        isSplitPaymentDisabled: boolean;
-        isTeacherAttendanceSalaryEnabled: boolean;
-        isTeacherAddingStudentsDisabled: boolean;
-        calendarInterval: number;
+        adminPhone?: string;
+        address?: string;
+        telegram?: string;
+        instagram?: string;
+        workingHours?: string;
     };
 }

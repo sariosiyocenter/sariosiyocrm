@@ -228,21 +228,20 @@ app.get('/api/settings', async (req, res) => {
   let settings = await prisma.setting.findUnique({ where: { id: "default" } });
   if (!settings) {
     settings = await prisma.setting.create({
-      data: { paymentMethods: "Naqd,Karta,Peyme,Klik" }
+      data: { orgName: "SARIOSIYO" }
     });
   }
-  res.json({ ...settings, paymentMethods: settings.paymentMethods.split(',') });
+  res.json(settings);
 });
 
 app.put('/api/settings', async (req, res) => {
   const data = { ...req.body };
-  if (data.paymentMethods) data.paymentMethods = data.paymentMethods.join(',');
   const settings = await prisma.setting.upsert({
     where: { id: "default" },
     update: data,
     create: { ...data, id: "default" }
   });
-  res.json({ ...settings, paymentMethods: settings.paymentMethods.split(',') });
+  res.json(settings);
 });
 
 // Serve static React files

@@ -44,9 +44,12 @@ export const CRMProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     const [state, setState] = useState<CRMState>({
         students: [], teachers: [], groups: [], leads: [], payments: [], courses: [], rooms: [], schools: [],
         settings: {
-            orgName: "SARIOSIYO", paymentMethods: ["Naqd", "Karta"], isCheckEnabled: true,
-            isCommentRequired: false, isTeacherSalaryHidden: false, isSplitPaymentDisabled: false,
-            isTeacherAttendanceSalaryEnabled: true, isTeacherAddingStudentsDisabled: false, calendarInterval: 30
+            orgName: "SARIOSIYO",
+            adminPhone: "",
+            address: "",
+            telegram: "",
+            instagram: "",
+            workingHours: ""
         }
     });
 
@@ -151,9 +154,12 @@ export const CRMProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         setState({
             students: [], teachers: [], groups: [], leads: [], payments: [], courses: [], rooms: [], schools: [],
             settings: {
-                orgName: "SARIOSIYO", paymentMethods: ["Naqd", "Karta"], isCheckEnabled: true,
-                isCommentRequired: false, isTeacherSalaryHidden: false, isSplitPaymentDisabled: false,
-                isTeacherAttendanceSalaryEnabled: true, isTeacherAddingStudentsDisabled: false, calendarInterval: 30
+                orgName: "SARIOSIYO",
+                adminPhone: "",
+                address: "",
+                telegram: "",
+                instagram: "",
+                workingHours: ""
             }
         });
     };

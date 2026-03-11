@@ -9,14 +9,24 @@ interface LayoutProps {
 }
 
 export default function Layout({ children, onLogout }: LayoutProps) {
-  const { settings, user } = useCRM();
+  const { settings, user, schools } = useCRM();
   const location = useLocation();
   const navigate = useNavigate();
   const [isBranchOpen, setIsBranchOpen] = React.useState(false);
-  const [currentBranch, setCurrentBranch] = React.useState(`${settings.orgName} Filliali`);
+
+  const branches = schools.length > 0
+    ? schools.map(s => s.name)
+    : [`${settings.orgName} Filliali`];
+
+  const [currentBranch, setCurrentBranch] = React.useState(branches[0]);
   const [isProfileOpen, setIsProfileOpen] = React.useState(false);
 
-  const branches = [`${settings.orgName} Filliali`, "Toshkent Filliali", "Samarqand Filliali", "Buxoro Filliali"];
+  // Update currentBranch if branches change and current is not in list
+  React.useEffect(() => {
+    if (!branches.includes(currentBranch)) {
+      setCurrentBranch(branches[0]);
+    }
+  }, [branches]);
 
   return (
     <div className="min-h-screen bg-[#F5F7FA] flex flex-col font-sans text-slate-800">

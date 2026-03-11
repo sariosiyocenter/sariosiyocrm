@@ -96,17 +96,14 @@ model School {
 }
 
 model Setting {
-  id                               String   @id @default("default")
-  orgName                          String   @default("SARIOSIYO")
-  logo                             String?
-  paymentMethods                   String   // Store as JSON string or comma-separated
-  isCheckEnabled                   Boolean  @default(true)
-  isCommentRequired                Boolean  @default(false)
-  isTeacherSalaryHidden            Boolean  @default(false)
-  isSplitPaymentDisabled           Boolean  @default(false)
-  isTeacherAttendanceSalaryEnabled Boolean  @default(true)
-  isTeacherAddingStudentsDisabled  Boolean  @default(false)
-  calendarInterval                 Int      @default(30)
+  id               String   @id @default("default")
+  orgName          String   @default("SARIOSIYO")
+  logo             String?
+  adminPhone       String?
+  address          String?
+  telegram         String?
+  instagram        String?
+  workingHours     String?
 }
 
 model User {
