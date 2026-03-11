@@ -61,19 +61,6 @@ app.get('/api/auth/me', authenticate, async (req, res) => {
   res.json({ id: user.id, email: user.email, name: user.name, role: user.role });
 });
 
-// Create first admin if none exists (Temporary for setup)
-app.post('/api/setup/admin', async (req, res) => {
-  const { email, password, name } = req.body;
-  const count = await prisma.user.count();
-  if (count > 0) return res.status(400).json({ error: 'Ular mavjud' });
-
-  const hashedPassword = await bcrypt.hash(password, 10);
-  const user = await prisma.user.create({
-    data: { email, password: hashedPassword, name, role: 'ADMIN' }
-  });
-  res.json({ success: true, user: { email: user.email, name: user.name } });
-});
-
 // --- User Management (Admin only) ---
 app.get('/api/users', authenticate, async (req, res) => {
   if (req.user.role !== 'ADMIN') return res.status(403).json({ error: 'Ruhsat yo' });

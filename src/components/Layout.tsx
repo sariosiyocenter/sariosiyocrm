@@ -9,7 +9,7 @@ interface LayoutProps {
 }
 
 export default function Layout({ children, onLogout }: LayoutProps) {
-  const { settings } = useCRM();
+  const { settings, user } = useCRM();
   const location = useLocation();
   const navigate = useNavigate();
   const [isBranchOpen, setIsBranchOpen] = React.useState(false);
@@ -89,8 +89,9 @@ export default function Layout({ children, onLogout }: LayoutProps) {
             {isProfileOpen && (
               <div className="absolute top-full right-0 mt-2 w-48 bg-white border border-slate-200 rounded-2xl shadow-2xl z-50 p-2 transform origin-top-right">
                 <div className="px-4 py-2 border-b border-slate-100 mb-1">
-                  <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">Administrator</p>
-                  <p className="text-sm font-bold text-slate-700 truncate">admin@sariosiyo.uz</p>
+                  <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">{user?.role || 'Foydalanuvchi'}</p>
+                  <p className="text-sm font-bold text-slate-700 truncate">{user?.name || user?.email}</p>
+                  <p className="text-[10px] text-slate-400 truncate opacity-70">{user?.email}</p>
                 </div>
                 <button
                   onClick={() => navigate('/settings')}
@@ -134,6 +135,7 @@ export default function Layout({ children, onLogout }: LayoutProps) {
 
 function NavItem({ icon, label, path, currentPath, hasDropdown }: { icon: React.ReactNode, label: string, path: string, currentPath: string, hasDropdown?: boolean }) {
   const navigate = useNavigate();
+  const { user } = useCRM();
   const isActive = currentPath === path || (path !== '/' && currentPath.startsWith(path));
 
   return (
@@ -157,7 +159,7 @@ function NavItem({ icon, label, path, currentPath, hasDropdown }: { icon: React.
               <DropdownItem label="SMS Sozlamalari" onClick={() => navigate('/settings')} />
               <DropdownItem label="Chek Sozlamalari" onClick={() => navigate('/settings')} />
               <DropdownItem label="Ofis" hasSub onClick={() => navigate('/settings')} />
-              <DropdownItem label="CEO" hasSub onClick={() => navigate('/settings')} />
+              {user?.role === 'ADMIN' && <DropdownItem label="CEO" hasSub onClick={() => navigate('/settings')} />}
             </div>
           ) : (
             <div className="flex flex-col">

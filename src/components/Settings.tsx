@@ -20,7 +20,7 @@ export default function Settings() {
 
     const menuItems = [
         { id: 'ofis', label: 'Ofis', icon: <Building2 className="w-4 h-4" />, hasSub: true, subItems: ['Kurslar', 'Xonalar', 'Dam olish kunlari', 'Maktablar'] },
-        { id: 'ceo', label: 'CEO', icon: <User className="w-4 h-4" />, hasSub: true, subItems: ['Umumiy sozlamalar', 'Xodimlar'] },
+        ...(currentUser?.role === 'ADMIN' ? [{ id: 'ceo', label: 'CEO', icon: <User className="w-4 h-4" />, hasSub: true, subItems: ['Umumiy sozlamalar', 'Xodimlar'] }] : []),
         { id: 'sms', label: 'SMS Sozlamalari', icon: <MessageSquare className="w-4 h-4" /> },
         { id: 'chek', label: 'Chek Sozlamalari', icon: <CreditCard className="w-4 h-4" /> },
     ];
@@ -139,6 +139,8 @@ export default function Settings() {
     };
 
     const renderContent = () => {
+        if (activeTab === 'ceo' && currentUser?.role !== 'ADMIN') return null;
+
         if (activeTab === 'ofis' || activeTab === 'ceo') {
             if (activeSubTab === 'Umumiy sozlamalar') {
                 return (
