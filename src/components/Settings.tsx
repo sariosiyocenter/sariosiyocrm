@@ -15,6 +15,8 @@ export default function Settings() {
     const [isEditingName, setIsEditingName] = useState(false);
     const [isAddModalOpen, setIsAddModalOpen] = useState(false);
     const [newItem, setNewItem] = useState<any>({});
+    const [users, setUsers] = useState<any[]>([]);
+    const { user: currentUser, token } = useCRM();
 
     const menuItems = [
         { id: 'ofis', label: 'Ofis', icon: <Building2 className="w-4 h-4" />, hasSub: true, subItems: ['Kurslar', 'Xonalar', 'Dam olish kunlari', 'Maktablar'] },
@@ -22,6 +24,23 @@ export default function Settings() {
         { id: 'sms', label: 'SMS Sozlamalari', icon: <MessageSquare className="w-4 h-4" /> },
         { id: 'chek', label: 'Chek Sozlamalari', icon: <CreditCard className="w-4 h-4" /> },
     ];
+
+    const fetchUsers = async () => {
+        try {
+            const res = await fetch('/api/users', {
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            if (res.ok) setUsers(await res.json());
+        } catch (err) {
+            console.error("Failed to fetch users", err);
+        }
+    };
+
+    React.useEffect(() => {
+        if (activeSubTab === 'Xodimlar' && currentUser?.role === 'ADMIN') {
+            fetchUsers();
+        }
+    }, [activeSubTab, currentUser]);
 
     const handleUpdateOrgName = () => {
         updateSettings({ orgName });
@@ -35,15 +54,28 @@ export default function Settings() {
         updateSettings({ paymentMethods: newMethods });
     };
 
-    const handleAdd = (e: React.FormEvent) => {
+    const handleAdd = async (e: React.FormEvent) => {
         e.preventDefault();
-        const id = newItem.name.toLowerCase().replace(/\s+/g, '-');
         if (activeSubTab === 'Kurslar') {
+            const id = newItem.name.toLowerCase().replace(/\s+/g, '-');
             addCourse({ ...newItem, id, price: Number(newItem.price) });
         } else if (activeSubTab === 'Xonalar') {
+            const id = newItem.name.toLowerCase().replace(/\s+/g, '-');
             addRoom({ ...newItem, id, capacity: Number(newItem.capacity) });
         } else if (activeSubTab === 'Maktablar') {
+            const id = newItem.name.toLowerCase().replace(/\s+/g, '-');
             addSchool({ ...newItem, id });
+        } else if (activeSubTab === 'Xodimlar') {
+            try {
+                const res = await fetch('/api/users', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+                    body: JSON.stringify(newItem)
+                });
+                if (res.ok) fetchUsers();
+            } catch (err) {
+                console.error("Failed to add user", err);
+            }
         }
         setIsAddModalOpen(false);
         setNewItem({});
@@ -52,8 +84,9 @@ export default function Settings() {
     const renderList = () => {
         let items: any[] = [];
         if (activeSubTab === 'Kurslar') items = courses || [];
-        if (activeSubTab === 'Xonalar') items = rooms || [];
-        if (activeSubTab === 'Maktablar') items = schools || [];
+        else if (activeSubTab === 'Xonalar') items = rooms || [];
+        else if (activeSubTab === 'Maktablar') items = schools || [];
+        else if (activeSubTab === 'Xodimlar') items = users || [];
 
         if (items.length === 0) {
             return (
@@ -75,23 +108,28 @@ export default function Settings() {
                     <div key={item.id} className="bg-slate-50 border border-slate-100 p-6 rounded-[2rem] flex flex-col gap-4 group hover:bg-white hover:border-indigo-200 transition-all hover:shadow-lg">
                         <div className="flex items-center justify-between">
                             <div className="w-12 h-12 bg-white rounded-2xl flex items-center justify-center text-indigo-500 shadow-sm">
-                                {activeSubTab === 'Kurslar' ? <Layout className="w-6 h-6" /> : activeSubTab === 'Xonalar' ? <Building2 className="w-6 h-6" /> : <Building2 className="w-6 h-6" />}
+                                {activeSubTab === 'Kurslar' ? <Layout className="w-6 h-6" /> : activeSubTab === 'Xodimlar' ? <User className="w-6 h-6" /> : <Building2 className="w-6 h-6" />}
                             </div>
-                            <button
-                                onClick={() => {
-                                    if (activeSubTab === 'Kurslar') deleteCourse(item.id);
-                                    if (activeSubTab === 'Xonalar') deleteRoom(item.id);
-                                    if (activeSubTab === 'Maktablar') deleteSchool(item.id);
-                                }}
-                                className="p-2 text-slate-300 hover:text-red-500 hover:bg-red-50 rounded-xl transition-all"
-                            >
-                                <Trash2 className="w-5 h-5" />
-                            </button>
+                            {activeSubTab !== 'Xodimlar' && (
+                                <button
+                                    onClick={() => {
+                                        if (activeSubTab === 'Kurslar') deleteCourse(item.id);
+                                        if (activeSubTab === 'Xonalar') deleteRoom(item.id);
+                                        if (activeSubTab === 'Maktablar') deleteSchool(item.id);
+                                    }}
+                                    className="p-2 text-slate-300 hover:text-red-500 hover:bg-red-50 rounded-xl transition-all"
+                                >
+                                    <Trash2 className="w-5 h-5" />
+                                </button>
+                            )}
                         </div>
                         <div>
                             <h4 className="text-lg font-black text-slate-800 uppercase tracking-tight">{item.name}</h4>
                             <p className="text-xs font-bold text-slate-400 mt-1 uppercase tracking-widest">
-                                {activeSubTab === 'Kurslar' ? `${item.price.toLocaleString()} UZS` : activeSubTab === 'Xonalar' ? `${item.capacity} kishilik` : item.address}
+                                {activeSubTab === 'Kurslar' ? `${item.price.toLocaleString()} UZS` :
+                                    activeSubTab === 'Xonalar' ? `${item.capacity} kishilik` :
+                                        activeSubTab === 'Xodimlar' ? `${item.role} | ${item.email}` :
+                                            item.address}
                             </p>
                         </div>
                     </div>
@@ -373,6 +411,30 @@ export default function Settings() {
                                     <input required type="text" className="w-full px-6 py-4 bg-slate-50 border-2 border-slate-100 rounded-2xl outline-none focus:border-indigo-500 focus:bg-white transition-all font-bold text-slate-700"
                                         value={newItem.address || ''} onChange={e => setNewItem({ ...newItem, address: e.target.value })} />
                                 </div>
+                            )}
+
+                            {activeSubTab === 'Xodimlar' && (
+                                <>
+                                    <div>
+                                        <label className="block text-[11px] font-black text-slate-400 uppercase tracking-[0.2em] mb-3">Email</label>
+                                        <input required type="email" className="w-full px-6 py-4 bg-slate-50 border-2 border-slate-100 rounded-2xl outline-none focus:border-indigo-500 focus:bg-white transition-all font-bold text-slate-700"
+                                            value={newItem.email || ''} onChange={e => setNewItem({ ...newItem, email: e.target.value })} />
+                                    </div>
+                                    <div>
+                                        <label className="block text-[11px] font-black text-slate-400 uppercase tracking-[0.2em] mb-3">Parol</label>
+                                        <input required type="password" placeholder="Kamida 6 belgi" className="w-full px-6 py-4 bg-slate-50 border-2 border-slate-100 rounded-2xl outline-none focus:border-indigo-500 focus:bg-white transition-all font-bold text-slate-700"
+                                            value={newItem.password || ''} onChange={e => setNewItem({ ...newItem, password: e.target.value })} />
+                                    </div>
+                                    <div>
+                                        <label className="block text-[11px] font-black text-slate-400 uppercase tracking-[0.2em] mb-3">Lavozimi</label>
+                                        <select required className="w-full px-6 py-4 bg-slate-50 border-2 border-slate-100 rounded-2xl outline-none focus:border-indigo-500 focus:bg-white transition-all font-bold text-slate-700"
+                                            value={newItem.role || 'RECEPTIONIST'} onChange={e => setNewItem({ ...newItem, role: e.target.value })}>
+                                            <option value="RECEPTIONIST">Receptionist</option>
+                                            <option value="TEACHER">O'qituvchi</option>
+                                            <option value="ADMIN">Administrator</option>
+                                        </select>
+                                    </div>
+                                </>
                             )}
 
                             <button type="submit" className="w-full py-5 bg-[#5C67F2] text-white rounded-[1.5rem] font-black shadow-xl shadow-indigo-100 hover:bg-indigo-600 transition-all mt-4 uppercase tracking-widest text-sm flex items-center justify-center gap-3">

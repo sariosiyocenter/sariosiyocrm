@@ -1,9 +1,21 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { Student, Teacher, Group, Lead, Payment, CRMState, Course, Room, School } from '../types';
+import { Student, Teacher, Group, Lead, Payment, CRMState, Course, Room, School, UserRole } from '../types';
+
+interface AuthenticatedUser {
+    id: number;
+    email: string;
+    name: string;
+    role: UserRole;
+}
 
 interface CRMContextType extends CRMState {
     loading: boolean;
     error: string | null;
+    user: AuthenticatedUser | null;
+    token: string | null;
+    login: (email: string, password: string) => Promise<void>;
+    logout: () => void;
+    checkAuth: () => Promise<void>;
     addStudent: (student: Omit<Student, 'id'>) => Promise<void>;
     updateStudent: (id: number, student: Partial<Student>) => Promise<void>;
     deleteStudent: (id: number) => Promise<void>;
@@ -40,12 +52,27 @@ export const CRMProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
+    const [user, setUser] = useState<AuthenticatedUser | null>(null);
+    const [token, setToken] = useState<string | null>(localStorage.getItem('token'));
 
-    const fetchData = async () => {
+    const fetchData = async (authToken?: string) => {
+        const currentToken = authToken || token;
+        if (!currentToken) return;
+
         try {
             setLoading(true);
             const endpoints = ['students', 'teachers', 'groups', 'leads', 'payments', 'courses', 'rooms', 'schools', 'settings'];
-            const responses = await Promise.all(endpoints.map(ep => fetch(`${API_BASE}/${ep}`).then(res => res.json())));
+            const responses = await Promise.all(endpoints.map(ep =>
+                fetch(`${API_BASE}/${ep}`, {
+                    headers: { 'Authorization': `Bearer ${currentToken}` }
+                }).then(res => {
+                    if (res.status === 401 || res.status === 403) {
+                        logout();
+                        throw new Error("Sessiya muddati tugadi");
+                    }
+                    return res.json();
+                })
+            ));
 
             setState({
                 students: responses[0],
@@ -67,15 +94,79 @@ export const CRMProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         }
     };
 
+    const checkAuth = async () => {
+        if (!token) {
+            setLoading(false);
+            return;
+        }
+        try {
+            setLoading(true);
+            const res = await fetch(`${API_BASE}/auth/me`, {
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            if (res.ok) {
+                const userData = await res.json();
+                setUser(userData);
+                await fetchData(token);
+            } else {
+                logout();
+            }
+        } catch (err) {
+            console.error("Auth check failed", err);
+            logout();
+        } finally {
+            setLoading(false);
+        }
+    };
+
     useEffect(() => {
-        fetchData();
+        checkAuth();
     }, []);
+
+    const login = async (email: string, password: string) => {
+        try {
+            setError(null);
+            const res = await fetch(`${API_BASE}/auth/login`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ email, password })
+            });
+            const data = await res.json();
+            if (!res.ok) throw new Error(data.error || "Login xatosi");
+
+            setToken(data.token);
+            setUser(data.user);
+            localStorage.setItem('token', data.token);
+            await fetchData(data.token);
+        } catch (err: any) {
+            setError(err.message);
+            throw err;
+        }
+    };
+
+    const logout = () => {
+        setToken(null);
+        setUser(null);
+        localStorage.removeItem('token');
+        setState({
+            students: [], teachers: [], groups: [], leads: [], payments: [], courses: [], rooms: [], schools: [],
+            settings: {
+                orgName: "SARIOSIYO", paymentMethods: ["Naqd", "Karta"], isCheckEnabled: true,
+                isCommentRequired: false, isTeacherSalaryHidden: false, isSplitPaymentDisabled: false,
+                isTeacherAttendanceSalaryEnabled: true, isTeacherAddingStudentsDisabled: false, calendarInterval: 30
+            }
+        });
+    };
 
     // Helper for POST/PUT requests
     const apiCall = async (endpoint: string, method: string, data?: any) => {
+        if (!token) throw new Error("Avtorizatsiya kerak");
         const res = await fetch(`${API_BASE}/${endpoint}`, {
             method,
-            headers: data ? { 'Content-Type': 'application/json' } : undefined,
+            headers: {
+                ...(data ? { 'Content-Type': 'application/json' } : {}),
+                'Authorization': `Bearer ${token}`
+            },
             body: data ? JSON.stringify(data) : undefined,
         });
         if (!res.ok) throw new Error(`API Error: ${res.statusText}`);
@@ -182,7 +273,8 @@ export const CRMProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     return (
         <CRMContext.Provider value={{
             ...state,
-            loading, error,
+            loading, error, user, token,
+            login, logout, checkAuth,
             addStudent, updateStudent, deleteStudent,
             addTeacher, updateTeacher, deleteTeacher,
             addGroup, updateGroup,

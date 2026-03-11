@@ -2,6 +2,11 @@ import express from 'express';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
 import { PrismaClient } from '@prisma/client';
+import bcrypt from 'bcryptjs';
+import jwt from 'jsonwebtoken';
+import dotenv from 'dotenv';
+
+dotenv.config();
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -9,8 +14,23 @@ const __dirname = dirname(__filename);
 const prisma = new PrismaClient();
 const app = express();
 const PORT = process.env.PORT || 3000;
+const JWT_SECRET = process.env.JWT_SECRET || 'your_fallback_secret';
 
 app.use(express.json());
+
+// Middleware to authenticate JWT
+const authenticate = (req, res, next) => {
+  const authHeader = req.headers['authorization'];
+  const token = authHeader && authHeader.split(' ')[1];
+
+  if (!token) return res.status(401).json({ error: 'Token required' });
+
+  jwt.verify(token, JWT_SECRET, (err, user) => {
+    if (err) return res.status(403).json({ error: 'Invalid token' });
+    req.user = user;
+    next();
+  });
+};
 
 // Basic API to verify backend status
 app.get('/api/status', async (req, res) => {
@@ -20,6 +40,55 @@ app.get('/api/status', async (req, res) => {
   } catch (error) {
     res.status(500).json({ status: 'error', database: 'disconnected', error: error.message });
   }
+});
+
+// --- Auth Routes ---
+app.post('/api/auth/login', async (req, res) => {
+  const { email, password } = req.body;
+  const user = await prisma.user.findUnique({ where: { email } });
+
+  if (!user || !(await bcrypt.compare(password, user.password))) {
+    return res.status(401).json({ error: 'Email yoki parol xato' });
+  }
+
+  const token = jwt.sign({ id: user.id, email: user.email, role: user.role }, JWT_SECRET, { expiresIn: '24h' });
+  res.json({ token, user: { id: user.id, email: user.email, name: user.name, role: user.role } });
+});
+
+app.get('/api/auth/me', authenticate, async (req, res) => {
+  const user = await prisma.user.findUnique({ where: { id: req.user.id } });
+  if (!user) return res.status(404).json({ error: 'Foydalanuvchi topilmadi' });
+  res.json({ id: user.id, email: user.email, name: user.name, role: user.role });
+});
+
+// Create first admin if none exists (Temporary for setup)
+app.post('/api/setup/admin', async (req, res) => {
+  const { email, password, name } = req.body;
+  const count = await prisma.user.count();
+  if (count > 0) return res.status(400).json({ error: 'Ular mavjud' });
+
+  const hashedPassword = await bcrypt.hash(password, 10);
+  const user = await prisma.user.create({
+    data: { email, password: hashedPassword, name, role: 'ADMIN' }
+  });
+  res.json({ success: true, user: { email: user.email, name: user.name } });
+});
+
+// --- User Management (Admin only) ---
+app.get('/api/users', authenticate, async (req, res) => {
+  if (req.user.role !== 'ADMIN') return res.status(403).json({ error: 'Ruhsat yo' });
+  const users = await prisma.user.findMany({ select: { id: true, email: true, name: true, role: true, createdAt: true } });
+  res.json(users);
+});
+
+app.post('/api/users', authenticate, async (req, res) => {
+  if (req.user.role !== 'ADMIN') return res.status(403).json({ error: 'Ruhsat yo' });
+  const { email, password, name, role } = req.body;
+  const hashedPassword = await bcrypt.hash(password, 10);
+  const user = await prisma.user.create({
+    data: { email, password: hashedPassword, name, role }
+  });
+  res.json({ id: user.id, email: user.email, name: user.name, role: user.role });
 });
 
 // --- API Routes ---

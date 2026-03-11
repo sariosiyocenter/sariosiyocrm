@@ -108,3 +108,18 @@ model Setting {
   isTeacherAddingStudentsDisabled  Boolean  @default(false)
   calendarInterval                 Int      @default(30)
 }
+
+model User {
+  id        Int      @id @default(autoincrement())
+  email     String   @unique
+  password  String   // Hashed
+  name      String
+  role      UserRole @default(RECEPTIONIST)
+  createdAt DateTime @default(now())
+}
+
+enum UserRole {
+  ADMIN
+  TEACHER
+  RECEPTIONIST
+}
