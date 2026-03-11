@@ -377,7 +377,9 @@ export default function Settings() {
                     <div className="bg-white rounded-[2.5rem] w-full max-w-lg shadow-2xl border border-slate-100 overflow-hidden">
                         <div className="p-8 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
                             <div>
-                                <h2 className="text-2xl font-black text-slate-800 uppercase tracking-tight">Yangi {activeSubTab.slice(0, -2)} qo'shish</h2>
+                                <h2 className="text-2xl font-black text-slate-800 uppercase tracking-tight">
+                                    Yangi {activeSubTab === 'Xodimlar' ? 'Xodim' : activeSubTab === 'Maktablar' ? 'Maktab' : activeSubTab.slice(0, -2)} qo'shish
+                                </h2>
                                 <p className="text-xs font-bold text-slate-400 mt-1 uppercase tracking-widest">{activeTab} bo'limi</p>
                             </div>
                             <button onClick={() => setIsAddModalOpen(false)} className="p-3 hover:bg-slate-200 rounded-2xl transition-colors">
@@ -385,11 +387,13 @@ export default function Settings() {
                             </button>
                         </div>
                         <form onSubmit={handleAdd} className="p-8 space-y-6">
-                            <div>
-                                <label className="block text-[11px] font-black text-slate-400 uppercase tracking-[0.2em] mb-3">Nomi</label>
-                                <input required type="text" className="w-full px-6 py-4 bg-slate-50 border-2 border-slate-100 rounded-2xl outline-none focus:border-indigo-500 focus:bg-white transition-all font-bold text-slate-700"
-                                    value={newItem.name || ''} onChange={e => setNewItem({ ...newItem, name: e.target.value })} />
-                            </div>
+                            {activeSubTab !== 'Xodimlar' && (
+                                <div>
+                                    <label className="block text-[11px] font-black text-slate-400 uppercase tracking-[0.2em] mb-3">Nomi</label>
+                                    <input required type="text" className="w-full px-6 py-4 bg-slate-50 border-2 border-slate-100 rounded-2xl outline-none focus:border-indigo-500 focus:bg-white transition-all font-bold text-slate-700"
+                                        value={newItem.name || ''} onChange={e => setNewItem({ ...newItem, name: e.target.value })} />
+                                </div>
+                            )}
 
                             {activeSubTab === 'Kurslar' && (
                                 <div>
@@ -418,23 +422,33 @@ export default function Settings() {
                             {activeSubTab === 'Xodimlar' && (
                                 <>
                                     <div>
-                                        <label className="block text-[11px] font-black text-slate-400 uppercase tracking-[0.2em] mb-3">Email</label>
-                                        <input required type="email" className="w-full px-6 py-4 bg-slate-50 border-2 border-slate-100 rounded-2xl outline-none focus:border-indigo-500 focus:bg-white transition-all font-bold text-slate-700"
-                                            value={newItem.email || ''} onChange={e => setNewItem({ ...newItem, email: e.target.value })} />
+                                        <label className="block text-[11px] font-black text-slate-400 uppercase tracking-[0.2em] mb-3">Ismi (F.I.SH)</label>
+                                        <input required type="text" placeholder="Ism Familiya" className="w-full px-6 py-4 bg-slate-50 border-2 border-slate-100 rounded-2xl outline-none focus:border-indigo-500 focus:bg-white transition-all font-bold text-slate-700"
+                                            value={newItem.name || ''} onChange={e => setNewItem({ ...newItem, name: e.target.value })} />
                                     </div>
                                     <div>
-                                        <label className="block text-[11px] font-black text-slate-400 uppercase tracking-[0.2em] mb-3">Parol</label>
-                                        <input required type="password" placeholder="Kamida 6 belgi" className="w-full px-6 py-4 bg-slate-50 border-2 border-slate-100 rounded-2xl outline-none focus:border-indigo-500 focus:bg-white transition-all font-bold text-slate-700"
-                                            value={newItem.password || ''} onChange={e => setNewItem({ ...newItem, password: e.target.value })} />
-                                    </div>
-                                    <div>
-                                        <label className="block text-[11px] font-black text-slate-400 uppercase tracking-[0.2em] mb-3">Lavozimi</label>
+                                        <label className="block text-[11px] font-black text-slate-400 uppercase tracking-[0.2em] mb-3">Vazifasi</label>
                                         <select required className="w-full px-6 py-4 bg-slate-50 border-2 border-slate-100 rounded-2xl outline-none focus:border-indigo-500 focus:bg-white transition-all font-bold text-slate-700"
                                             value={newItem.role || 'RECEPTIONIST'} onChange={e => setNewItem({ ...newItem, role: e.target.value })}>
                                             <option value="RECEPTIONIST">Receptionist</option>
                                             <option value="TEACHER">O'qituvchi</option>
                                             <option value="ADMIN">Administrator</option>
                                         </select>
+                                    </div>
+                                    <div>
+                                        <label className="block text-[11px] font-black text-slate-400 uppercase tracking-[0.2em] mb-3">Login</label>
+                                        <input required type="text" placeholder="pochta@misol.uz yoki login" className="w-full px-6 py-4 bg-slate-50 border-2 border-slate-100 rounded-2xl outline-none focus:border-indigo-500 focus:bg-white transition-all font-bold text-slate-700"
+                                            value={newItem.email || ''} onChange={e => setNewItem({ ...newItem, email: e.target.value })} />
+                                    </div>
+                                    <div>
+                                        <label className="block text-[11px] font-black text-slate-400 uppercase tracking-[0.2em] mb-3">Paroli</label>
+                                        <input required type="password" placeholder="Kamida 6 belgi" className="w-full px-6 py-4 bg-slate-50 border-2 border-slate-100 rounded-2xl outline-none focus:border-indigo-500 focus:bg-white transition-all font-bold text-slate-700"
+                                            value={newItem.password || ''} onChange={e => setNewItem({ ...newItem, password: e.target.value })} />
+                                    </div>
+                                    <div>
+                                        <label className="block text-[11px] font-black text-slate-400 uppercase tracking-[0.2em] mb-3">Telefon raqami</label>
+                                        <input type="text" placeholder="+998 90 123 45 67" className="w-full px-6 py-4 bg-slate-50 border-2 border-slate-100 rounded-2xl outline-none focus:border-indigo-500 focus:bg-white transition-all font-bold text-slate-700"
+                                            value={newItem.phone || ''} onChange={e => setNewItem({ ...newItem, phone: e.target.value })} />
                                     </div>
                                 </>
                             )}

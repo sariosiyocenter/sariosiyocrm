@@ -114,6 +114,7 @@ model User {
   email     String   @unique
   password  String   // Hashed
   name      String
+  phone     String?
   role      UserRole @default(RECEPTIONIST)
   createdAt DateTime @default(now())
 }
