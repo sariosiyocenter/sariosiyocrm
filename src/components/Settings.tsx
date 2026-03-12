@@ -1,14 +1,14 @@
 import React, { useState } from 'react';
 import {
     Building2, Image as ImageIcon, Plus,
-    ChevronRight, MessageSquare,
+    ChevronRight, ChevronDown, MessageSquare,
     CreditCard, Layout, User, ShieldCheck, Clock, Edit2, Settings as SettingsIcon,
     Trash2, Save, X
 } from 'lucide-react';
 import { useCRM } from '../context/CRMContext';
 
 export default function Settings() {
-    const { settings, updateSettings, courses, rooms, schools, addCourse, deleteCourse, addRoom, deleteRoom, addSchool, deleteSchool } = useCRM();
+    const { settings, updateSettings, courses, rooms, schools, addCourse, deleteCourse, addRoom, deleteRoom, addSchool, deleteSchool, selectedSchoolId } = useCRM();
     const [activeTab, setActiveTab] = useState('ofis');
     const [activeSubTab, setActiveSubTab] = useState('Kurslar');
     const [settingsForm, setSettingsForm] = useState(settings);
@@ -23,8 +23,9 @@ export default function Settings() {
     }, [settings]);
 
     const menuItems = [
-        { id: 'ofis', label: 'Ofis', icon: <Building2 className="w-4 h-4" />, hasSub: true, subItems: ['Kurslar', 'Xonalar', 'Filiallar'] },
-        ...(currentUser?.role === 'ADMIN' ? [{ id: 'ceo', label: 'CEO', icon: <User className="w-4 h-4" />, hasSub: true, subItems: ['Umumiy sozlamalar', 'Xodimlar'] }] : []),
+        { id: 'ofis', label: 'Ofis', icon: <Building2 className="w-4 h-4" />, hasSub: true, subItems: ['Kurslar', 'Xonalar'] },
+        { id: 'staff', label: 'Xodimlar', icon: <User className="w-4 h-4" />, hasSub: false },
+        ...(currentUser?.role === 'ADMIN' ? [{ id: 'ceo', label: 'CEO', icon: <ShieldCheck className="w-4 h-4" />, hasSub: true, subItems: ['Umumiy sozlamalar', 'Filiallar'] }] : []),
     ];
 
     const fetchUsers = async () => {
@@ -39,10 +40,10 @@ export default function Settings() {
     };
 
     React.useEffect(() => {
-        if (activeSubTab === 'Xodimlar' && currentUser?.role === 'ADMIN') {
+        if ((activeTab === 'staff' || activeSubTab === 'Xodimlar') && (currentUser?.role === 'ADMIN' || currentUser?.role === 'MANAGER')) {
             fetchUsers();
         }
-    }, [activeSubTab, currentUser]);
+    }, [activeTab, activeSubTab, currentUser]);
 
     const handleSaveSettings = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -54,31 +55,47 @@ export default function Settings() {
         }
     };
 
-    const handleAdd = async (e: React.FormEvent) => {
-        e.preventDefault();
-        if (activeSubTab === 'Kurslar') {
-            const id = newItem.name.toLowerCase().replace(/\s+/g, '-');
-            addCourse({ ...newItem, id, price: Number(newItem.price) });
-        } else if (activeSubTab === 'Xonalar') {
-            const id = newItem.name.toLowerCase().replace(/\s+/g, '-');
-            addRoom({ ...newItem, id, capacity: Number(newItem.capacity) });
-        } else if (activeSubTab === 'Filiallar') {
-            const id = newItem.name.toLowerCase().replace(/\s+/g, '-');
-            addSchool({ ...newItem, id });
-        } else if (activeSubTab === 'Xodimlar') {
-            try {
+    const handleAddItem = async () => {
+        if (!newItem.name && activeTab !== 'staff' && activeSubTab !== 'Xodimlar') return;
+
+        try {
+            if (activeSubTab === 'Umumiy sozlamalar') {
+                await updateSettings(newItem);
+            } else if (activeSubTab === 'Kurslar') {
+                await addCourse({ ...newItem, price: Number(newItem.price) });
+            } else if (activeSubTab === 'Xonalar') {
+                await addRoom({ ...newItem, capacity: Number(newItem.capacity) });
+            } else if (activeSubTab === 'Filiallar') {
+                await addSchool(newItem);
+            } else if (activeTab === 'staff' || activeSubTab === 'Xodimlar') {
+                const userToAdd = {
+                    email: newItem.email,
+                    password: newItem.password || 'admin123',
+                    name: newItem.name,
+                    phone: newItem.phone,
+                    role: newItem.role || 'RECEPTIONIST',
+                    schoolId: currentUser?.role === 'MANAGER' ? currentUser.schoolId : selectedSchoolId
+                };
                 const res = await fetch('/api/users', {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-                    body: JSON.stringify(newItem)
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}`
+                    },
+                    body: JSON.stringify(userToAdd)
                 });
                 if (res.ok) fetchUsers();
-            } catch (err) {
-                console.error("Failed to add user", err);
             }
+            setIsAddModalOpen(false);
+            setNewItem({});
+        } catch (err) {
+            console.error("Failed to add item", err);
         }
-        setIsAddModalOpen(false);
-        setNewItem({});
+    };
+
+    const handleAdd = (e: React.FormEvent) => {
+        e.preventDefault();
+        handleAddItem();
     };
 
     const renderList = () => {
@@ -86,7 +103,7 @@ export default function Settings() {
         if (activeSubTab === 'Kurslar') items = courses || [];
         else if (activeSubTab === 'Xonalar') items = rooms || [];
         else if (activeSubTab === 'Filiallar') items = schools || [];
-        else if (activeSubTab === 'Xodimlar') items = users || [];
+        else if (activeTab === 'staff') items = users || [];
 
         if (items.length === 0) {
             return (
@@ -108,9 +125,9 @@ export default function Settings() {
                     <div key={item.id} className="bg-slate-50 border border-slate-100 p-6 rounded-[2rem] flex flex-col gap-4 group hover:bg-white hover:border-indigo-200 transition-all hover:shadow-lg">
                         <div className="flex items-center justify-between">
                             <div className="w-12 h-12 bg-white rounded-2xl flex items-center justify-center text-indigo-500 shadow-sm">
-                                {activeSubTab === 'Kurslar' ? <Layout className="w-6 h-6" /> : activeSubTab === 'Xodimlar' ? <User className="w-6 h-6" /> : <Building2 className="w-6 h-6" />}
+                                {activeSubTab === 'Kurslar' ? <Layout className="w-6 h-6" /> : (activeTab === 'staff' || activeSubTab === 'Xodimlar') ? <User className="w-6 h-6" /> : <Building2 className="w-6 h-6" />}
                             </div>
-                            {activeSubTab !== 'Xodimlar' && (
+                            {activeTab !== 'staff' && activeSubTab !== 'Xodimlar' && (
                                 <button
                                     onClick={() => {
                                         if (activeSubTab === 'Kurslar') deleteCourse(item.id);
@@ -128,7 +145,7 @@ export default function Settings() {
                             <p className="text-xs font-bold text-slate-400 mt-1 uppercase tracking-widest">
                                 {activeSubTab === 'Kurslar' ? `${item.price.toLocaleString()} UZS` :
                                     activeSubTab === 'Xonalar' ? `${item.capacity} kishilik` :
-                                        activeSubTab === 'Xodimlar' ? `${item.role} | ${item.email}` :
+                                        (activeTab === 'staff' || activeSubTab === 'Xodimlar') ? `${item.role} | ${item.email}` :
                                             item.address}
                             </p>
                         </div>
@@ -141,7 +158,7 @@ export default function Settings() {
     const renderContent = () => {
         if (activeTab === 'ceo' && currentUser?.role !== 'ADMIN') return null;
 
-        if (activeTab === 'ofis' || activeTab === 'ceo') {
+        if (activeTab === 'ofis' || activeTab === 'ceo' || activeTab === 'staff') {
             if (activeSubTab === 'Umumiy sozlamalar') {
                 return (
                     <form onSubmit={handleSaveSettings} className="flex flex-col gap-6">
@@ -256,25 +273,27 @@ export default function Settings() {
                                             </div>
                                             <span className="text-[14px]">{item.label}</span>
                                         </div>
-                                        {item.hasSub && <ChevronRight className={`w-4 h-4 transition-transform ${activeTab === item.id ? 'rotate-90' : ''}`} />}
+                                        {item.hasSub && <ChevronDown className={`w-4 h-4 transition-transform ${activeTab === item.id ? 'rotate-180' : ''}`} />}
                                     </button>
 
-                                    {item.hasSub && activeTab === item.id && (
-                                        <div className="flex flex-col ml-12 mt-2 mb-3 space-y-1">
-                                            {item.subItems?.map(subItem => (
-                                                <button
-                                                    key={subItem}
-                                                    onClick={(e) => {
-                                                        e.stopPropagation();
-                                                        setActiveSubTab(subItem);
-                                                    }}
-                                                    className={`py-2 text-left text-[13px] font-bold transition-colors ${activeSubTab === subItem ? 'text-[#5C67F2]' : 'text-slate-400 hover:text-slate-600'}`}
-                                                >
-                                                    {subItem}
-                                                </button>
-                                            ))}
-                                        </div>
-                                    )}
+                                    {
+                                        item.hasSub && activeTab === item.id && (
+                                            <div className="flex flex-col ml-12 mt-2 mb-3 space-y-1">
+                                                {item.subItems?.map(subItem => (
+                                                    <button
+                                                        key={subItem}
+                                                        onClick={(e) => {
+                                                            e.stopPropagation();
+                                                            setActiveSubTab(subItem);
+                                                        }}
+                                                        className={`py-2 text-left text-[13px] font-bold transition-colors ${activeSubTab === subItem ? 'text-[#5C67F2]' : 'text-slate-400 hover:text-slate-600'}`}
+                                                    >
+                                                        {subItem}
+                                                    </button>
+                                                ))}
+                                            </div>
+                                        )
+                                    }
                                 </div>
                             ))}
                         </div>
@@ -288,96 +307,99 @@ export default function Settings() {
             </div>
 
             {/* Global Add Modal */}
-            {isAddModalOpen && (
-                <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-[9999] flex items-center justify-center p-4">
-                    <div className="bg-white rounded-[2.5rem] w-full max-w-lg shadow-2xl border border-slate-100 overflow-hidden">
-                        <div className="p-8 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
-                            <div>
-                                <h2 className="text-2xl font-black text-slate-800 uppercase tracking-tight">
-                                    Yangi {activeSubTab === 'Xodimlar' ? 'Xodim' : activeSubTab === 'Filiallar' ? 'Filial' : activeSubTab.slice(0, -2)} qo'shish
-                                </h2>
-                                <p className="text-xs font-bold text-slate-400 mt-1 uppercase tracking-widest">{activeTab} bo'limi</p>
+            {
+                isAddModalOpen && (
+                    <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-[9999] flex items-center justify-center p-4">
+                        <div className="bg-white rounded-[2.5rem] w-full max-w-lg shadow-2xl border border-slate-100 overflow-hidden">
+                            <div className="p-8 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
+                                <div>
+                                    <h2 className="text-2xl font-black text-slate-800 uppercase tracking-tight">
+                                        Yangi {activeTab === 'staff' ? 'Xodim' : activeSubTab === 'Filiallar' ? 'Filial' : activeSubTab.slice(0, -2)} qo'shish
+                                    </h2>
+                                    <p className="text-xs font-bold text-slate-400 mt-1 uppercase tracking-widest">{activeTab === 'staff' ? 'Xodimlar' : activeTab} bo'limi</p>
+                                </div>
+                                <button onClick={() => setIsAddModalOpen(false)} className="p-3 hover:bg-slate-200 rounded-2xl transition-colors">
+                                    <X className="w-6 h-6 text-slate-400" />
+                                </button>
                             </div>
-                            <button onClick={() => setIsAddModalOpen(false)} className="p-3 hover:bg-slate-200 rounded-2xl transition-colors">
-                                <X className="w-6 h-6 text-slate-400" />
-                            </button>
-                        </div>
-                        <form onSubmit={handleAdd} className="p-8 space-y-6">
-                            {activeSubTab !== 'Xodimlar' && (
-                                <div>
-                                    <label className="block text-[11px] font-black text-slate-400 uppercase tracking-[0.2em] mb-3">Nomi</label>
-                                    <input required type="text" className="w-full px-6 py-4 bg-slate-50 border-2 border-slate-100 rounded-2xl outline-none focus:border-indigo-500 focus:bg-white transition-all font-bold text-slate-700"
-                                        value={newItem.name || ''} onChange={e => setNewItem({ ...newItem, name: e.target.value })} />
-                                </div>
-                            )}
-
-                            {activeSubTab === 'Kurslar' && (
-                                <div>
-                                    <label className="block text-[11px] font-black text-slate-400 uppercase tracking-[0.2em] mb-3">Narxi (UZS)</label>
-                                    <input required type="number" className="w-full px-6 py-4 bg-slate-50 border-2 border-slate-100 rounded-2xl outline-none focus:border-indigo-500 focus:bg-white transition-all font-bold text-slate-700"
-                                        value={newItem.price || ''} onChange={e => setNewItem({ ...newItem, price: e.target.value })} />
-                                </div>
-                            )}
-
-                            {activeSubTab === 'Xonalar' && (
-                                <div>
-                                    <label className="block text-[11px] font-black text-slate-400 uppercase tracking-[0.2em] mb-3">Sig'imi (Kishi)</label>
-                                    <input required type="number" className="w-full px-6 py-4 bg-slate-50 border-2 border-slate-100 rounded-2xl outline-none focus:border-indigo-500 focus:bg-white transition-all font-bold text-slate-700"
-                                        value={newItem.capacity || ''} onChange={e => setNewItem({ ...newItem, capacity: e.target.value })} />
-                                </div>
-                            )}
-
-                            {activeSubTab === 'Filiallar' && (
-                                <div>
-                                    <label className="block text-[11px] font-black text-slate-400 uppercase tracking-[0.2em] mb-3">Filial Manzili</label>
-                                    <input required type="text" className="w-full px-6 py-4 bg-slate-50 border-2 border-slate-100 rounded-2xl outline-none focus:border-indigo-500 focus:bg-white transition-all font-bold text-slate-700"
-                                        value={newItem.address || ''} onChange={e => setNewItem({ ...newItem, address: e.target.value })} />
-                                </div>
-                            )}
-
-                            {activeSubTab === 'Xodimlar' && (
-                                <>
+                            <form onSubmit={handleAdd} className="p-8 space-y-6">
+                                {activeTab !== 'staff' && (
                                     <div>
-                                        <label className="block text-[11px] font-black text-slate-400 uppercase tracking-[0.2em] mb-3">Ismi (F.I.SH)</label>
-                                        <input required type="text" placeholder="Ism Familiya" className="w-full px-6 py-4 bg-slate-50 border-2 border-slate-100 rounded-2xl outline-none focus:border-indigo-500 focus:bg-white transition-all font-bold text-slate-700"
+                                        <label className="block text-[11px] font-black text-slate-400 uppercase tracking-[0.2em] mb-3">Nomi</label>
+                                        <input required type="text" className="w-full px-6 py-4 bg-slate-50 border-2 border-slate-100 rounded-2xl outline-none focus:border-indigo-500 focus:bg-white transition-all font-bold text-slate-700"
                                             value={newItem.name || ''} onChange={e => setNewItem({ ...newItem, name: e.target.value })} />
                                     </div>
-                                    <div>
-                                        <label className="block text-[11px] font-black text-slate-400 uppercase tracking-[0.2em] mb-3">Vazifasi</label>
-                                        <select required className="w-full px-6 py-4 bg-slate-50 border-2 border-slate-100 rounded-2xl outline-none focus:border-indigo-500 focus:bg-white transition-all font-bold text-slate-700"
-                                            value={newItem.role || 'RECEPTIONIST'} onChange={e => setNewItem({ ...newItem, role: e.target.value })}>
-                                            <option value="RECEPTIONIST">Receptionist</option>
-                                            <option value="TEACHER">O'qituvchi</option>
-                                            <option value="ADMIN">Administrator</option>
-                                        </select>
-                                    </div>
-                                    <div>
-                                        <label className="block text-[11px] font-black text-slate-400 uppercase tracking-[0.2em] mb-3">Login</label>
-                                        <input required type="text" placeholder="pochta@misol.uz yoki login" className="w-full px-6 py-4 bg-slate-50 border-2 border-slate-100 rounded-2xl outline-none focus:border-indigo-500 focus:bg-white transition-all font-bold text-slate-700"
-                                            value={newItem.email || ''} onChange={e => setNewItem({ ...newItem, email: e.target.value })} />
-                                    </div>
-                                    <div>
-                                        <label className="block text-[11px] font-black text-slate-400 uppercase tracking-[0.2em] mb-3">Paroli</label>
-                                        <input required type="password" placeholder="Kamida 6 belgi" className="w-full px-6 py-4 bg-slate-50 border-2 border-slate-100 rounded-2xl outline-none focus:border-indigo-500 focus:bg-white transition-all font-bold text-slate-700"
-                                            value={newItem.password || ''} onChange={e => setNewItem({ ...newItem, password: e.target.value })} />
-                                    </div>
-                                    <div>
-                                        <label className="block text-[11px] font-black text-slate-400 uppercase tracking-[0.2em] mb-3">Telefon raqami</label>
-                                        <input type="text" placeholder="+998 90 123 45 67" className="w-full px-6 py-4 bg-slate-50 border-2 border-slate-100 rounded-2xl outline-none focus:border-indigo-500 focus:bg-white transition-all font-bold text-slate-700"
-                                            value={newItem.phone || ''} onChange={e => setNewItem({ ...newItem, phone: e.target.value })} />
-                                    </div>
-                                </>
-                            )}
+                                )}
 
-                            <button type="submit" className="w-full py-5 bg-[#5C67F2] text-white rounded-[1.5rem] font-black shadow-xl shadow-indigo-100 hover:bg-indigo-600 transition-all mt-4 uppercase tracking-widest text-sm flex items-center justify-center gap-3">
-                                <Plus className="w-5 h-5" />
-                                SAQLASH
-                            </button>
-                        </form>
+                                {activeSubTab === 'Kurslar' && (
+                                    <div>
+                                        <label className="block text-[11px] font-black text-slate-400 uppercase tracking-[0.2em] mb-3">Narxi (UZS)</label>
+                                        <input required type="number" className="w-full px-6 py-4 bg-slate-50 border-2 border-slate-100 rounded-2xl outline-none focus:border-indigo-500 focus:bg-white transition-all font-bold text-slate-700"
+                                            value={newItem.price || ''} onChange={e => setNewItem({ ...newItem, price: e.target.value })} />
+                                    </div>
+                                )}
+
+                                {activeSubTab === 'Xonalar' && (
+                                    <div>
+                                        <label className="block text-[11px] font-black text-slate-400 uppercase tracking-[0.2em] mb-3">Sig'imi (Kishi)</label>
+                                        <input required type="number" className="w-full px-6 py-4 bg-slate-50 border-2 border-slate-100 rounded-2xl outline-none focus:border-indigo-500 focus:bg-white transition-all font-bold text-slate-700"
+                                            value={newItem.capacity || ''} onChange={e => setNewItem({ ...newItem, capacity: e.target.value })} />
+                                    </div>
+                                )}
+
+                                {activeSubTab === 'Filiallar' && (
+                                    <div>
+                                        <label className="block text-[11px] font-black text-slate-400 uppercase tracking-[0.2em] mb-3">Filial Manzili</label>
+                                        <input required type="text" className="w-full px-6 py-4 bg-slate-50 border-2 border-slate-100 rounded-2xl outline-none focus:border-indigo-500 focus:bg-white transition-all font-bold text-slate-700"
+                                            value={newItem.address || ''} onChange={e => setNewItem({ ...newItem, address: e.target.value })} />
+                                    </div>
+                                )}
+
+                                {activeTab === 'staff' && (
+                                    <>
+                                        <div>
+                                            <label className="block text-[11px] font-black text-slate-400 uppercase tracking-[0.2em] mb-3">Ismi (F.I.SH)</label>
+                                            <input required type="text" placeholder="Ism Familiya" className="w-full px-6 py-4 bg-slate-50 border-2 border-slate-100 rounded-2xl outline-none focus:border-indigo-500 focus:bg-white transition-all font-bold text-slate-700"
+                                                value={newItem.name || ''} onChange={e => setNewItem({ ...newItem, name: e.target.value })} />
+                                        </div>
+                                        <div>
+                                            <label className="block text-[11px] font-black text-slate-400 uppercase tracking-[0.2em] mb-3">Vazifasi</label>
+                                            <select required className="w-full px-6 py-4 bg-slate-50 border-2 border-slate-100 rounded-2xl outline-none focus:border-indigo-500 focus:bg-white transition-all font-bold text-slate-700"
+                                                value={newItem.role || 'RECEPTIONIST'} onChange={e => setNewItem({ ...newItem, role: e.target.value })}>
+                                                <option value="RECEPTIONIST">Receptionist</option>
+                                                <option value="TEACHER">O'qituvchi</option>
+                                                {currentUser?.role === 'ADMIN' && <option value="MANAGER">Menejer</option>}
+                                                {currentUser?.role === 'ADMIN' && <option value="ADMIN">Administrator</option>}
+                                            </select>
+                                        </div>
+                                        <div>
+                                            <label className="block text-[11px] font-black text-slate-400 uppercase tracking-[0.2em] mb-3">Login</label>
+                                            <input required type="text" placeholder="pochta@misol.uz yoki login" className="w-full px-6 py-4 bg-slate-50 border-2 border-slate-100 rounded-2xl outline-none focus:border-indigo-500 focus:bg-white transition-all font-bold text-slate-700"
+                                                value={newItem.email || ''} onChange={e => setNewItem({ ...newItem, email: e.target.value })} />
+                                        </div>
+                                        <div>
+                                            <label className="block text-[11px] font-black text-slate-400 uppercase tracking-[0.2em] mb-3">Paroli</label>
+                                            <input required type="password" placeholder="Kamida 6 belgi" className="w-full px-6 py-4 bg-slate-50 border-2 border-slate-100 rounded-2xl outline-none focus:border-indigo-500 focus:bg-white transition-all font-bold text-slate-700"
+                                                value={newItem.password || ''} onChange={e => setNewItem({ ...newItem, password: e.target.value })} />
+                                        </div>
+                                        <div>
+                                            <label className="block text-[11px] font-black text-slate-400 uppercase tracking-[0.2em] mb-3">Telefon raqami</label>
+                                            <input type="text" placeholder="+998 90 123 45 67" className="w-full px-6 py-4 bg-slate-50 border-2 border-slate-100 rounded-2xl outline-none focus:border-indigo-500 focus:bg-white transition-all font-bold text-slate-700"
+                                                value={newItem.phone || ''} onChange={e => setNewItem({ ...newItem, phone: e.target.value })} />
+                                        </div>
+                                    </>
+                                )}
+
+                                <button type="submit" className="w-full py-5 bg-[#5C67F2] text-white rounded-[1.5rem] font-black shadow-xl shadow-indigo-100 hover:bg-indigo-600 transition-all mt-4 uppercase tracking-widest text-sm flex items-center justify-center gap-3">
+                                    <Plus className="w-5 h-5" />
+                                    SAQLASH
+                                </button>
+                            </form>
+                        </div>
                     </div>
-                </div>
-            )}
-        </div>
+                )
+            }
+        </div >
     );
 }
 

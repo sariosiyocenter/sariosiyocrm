@@ -1,4 +1,4 @@
-export type UserRole = 'ADMIN' | 'TEACHER' | 'RECEPTIONIST';
+export type UserRole = 'ADMIN' | 'MANAGER' | 'TEACHER' | 'RECEPTIONIST';
 
 export interface Student {
     id: number;
@@ -6,6 +6,7 @@ export interface Student {
     phone: string;
     birthDate: string;
     address: string;
+    location?: string;
     status: 'Faol' | 'Arxiv' | 'Sinov';
     joinedDate: string;
     balance: number;
@@ -13,6 +14,7 @@ export interface Student {
     groups: number[]; // Array of Group IDs
     comment?: string;
     rating?: number;
+    schoolId: number;
 }
 
 export interface Teacher {
@@ -26,17 +28,19 @@ export interface Teacher {
     hiredDate: string;
     photo?: string;
     status: 'Faol' | 'Arxiv';
+    schoolId: number;
 }
 
 export interface Group {
     id: number;
     name: string;
     teacherId: number;
-    courseId: string;
+    courseId: number;
     schedule: string; // e.g., "19:00 - 20:00"
     days: string; // e.g., "Juft kunlar"
     studentIds: number[];
-    room?: string;
+    room?: number;
+    schoolId: number;
 }
 
 export interface Lead {
@@ -47,6 +51,7 @@ export interface Lead {
     source: string;
     status: 'Yangi' | 'Bog\'lanilmadi' | 'O\'ylayapti' | 'Kelishdi' | 'To\'lov qildi';
     createdAt: string;
+    schoolId: number;
 }
 
 export interface Payment {
@@ -56,24 +61,46 @@ export interface Payment {
     type: 'Naqd' | 'Karta' | 'Peyme' | 'Klik';
     date: string;
     description: string;
+    schoolId: number;
 }
 
 export interface Course {
-    id: string;
+    id: number;
     name: string;
     price: number;
+    schoolId: number;
 }
 
 export interface Room {
-    id: string;
+    id: number;
     name: string;
     capacity: number;
+    schoolId: number;
 }
 
 export interface School {
-    id: string;
+    id: number;
     name: string;
     address: string;
+}
+
+export interface Attendance {
+    id: number;
+    studentId: number;
+    groupId: number;
+    date: string;
+    status: 'Keldi' | 'Kelmapdi' | 'Sababli';
+    schoolId: number;
+}
+
+export interface Score {
+    id: number;
+    studentId: number;
+    groupId: number;
+    date: string;
+    value: number;
+    comment: string;
+    schoolId: number;
 }
 
 export interface CRMState {
@@ -85,7 +112,12 @@ export interface CRMState {
     courses: Course[];
     rooms: Room[];
     schools: School[];
+    attendances: Attendance[];
+    scores: Score[];
+    selectedSchoolId: number | null;
     settings: {
+        id: number;
+        schoolId: number;
         orgName: string;
         logo?: string;
         adminPhone?: string;

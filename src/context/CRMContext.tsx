@@ -1,11 +1,12 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { Student, Teacher, Group, Lead, Payment, CRMState, Course, Room, School, UserRole } from '../types';
+import { Student, Teacher, Group, Lead, Payment, CRMState, Course, Room, School, UserRole, Attendance, Score } from '../types';
 
 interface AuthenticatedUser {
     id: number;
     email: string;
     name: string;
     role: UserRole;
+    schoolId: number | null;
 }
 
 interface CRMContextType extends CRMState {
@@ -16,24 +17,28 @@ interface CRMContextType extends CRMState {
     login: (email: string, password: string) => Promise<void>;
     logout: () => void;
     checkAuth: () => Promise<void>;
-    addStudent: (student: Omit<Student, 'id'>) => Promise<void>;
+    setSelectedSchoolId: (id: number) => void;
+    addStudent: (student: Omit<Student, 'id' | 'schoolId'>) => Promise<void>;
     updateStudent: (id: number, student: Partial<Student>) => Promise<void>;
     deleteStudent: (id: number) => Promise<void>;
-    addTeacher: (teacher: Omit<Teacher, 'id'>) => Promise<void>;
+    addTeacher: (teacher: Omit<Teacher, 'id' | 'schoolId'>) => Promise<void>;
     updateTeacher: (id: number, teacher: Partial<Teacher>) => Promise<void>;
     deleteTeacher: (id: number) => Promise<void>;
-    addGroup: (group: Omit<Group, 'id'>) => Promise<void>;
+    addGroup: (group: Omit<Group, 'id' | 'schoolId'>) => Promise<void>;
     updateGroup: (id: number, group: Partial<Group>) => Promise<void>;
-    addLead: (lead: Omit<Lead, 'id'>) => Promise<void>;
+    deleteGroup: (id: number) => Promise<void>;
+    addLead: (lead: Omit<Lead, 'id' | 'schoolId'>) => Promise<void>;
     updateLead: (id: number, status: Lead['status']) => Promise<void>;
-    addPayment: (payment: Omit<Payment, 'id'>) => Promise<void>;
+    addPayment: (payment: Omit<Payment, 'id' | 'schoolId'>) => Promise<void>;
     updateSettings: (settings: Partial<CRMState['settings']>) => Promise<void>;
-    addCourse: (course: Course) => Promise<void>;
-    deleteCourse: (id: string) => Promise<void>;
-    addRoom: (room: Room) => Promise<void>;
-    deleteRoom: (id: string) => Promise<void>;
-    addSchool: (school: School) => Promise<void>;
-    deleteSchool: (id: string) => Promise<void>;
+    addCourse: (course: Omit<Course, 'id' | 'schoolId'>) => Promise<void>;
+    deleteCourse: (id: number) => Promise<void>;
+    addRoom: (room: Omit<Room, 'id' | 'schoolId'>) => Promise<void>;
+    deleteRoom: (id: number) => Promise<void>;
+    addSchool: (school: Omit<School, 'id'>) => Promise<void>;
+    deleteSchool: (id: number) => Promise<void>;
+    addAttendance: (attendance: Omit<Attendance, 'id' | 'schoolId'>) => Promise<void>;
+    addScore: (score: Omit<Score, 'id' | 'schoolId'>) => Promise<void>;
 }
 
 const CRMContext = createContext<CRMContextType | undefined>(undefined);
@@ -43,7 +48,11 @@ const API_BASE = '/api';
 export const CRMProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
     const [state, setState] = useState<CRMState>({
         students: [], teachers: [], groups: [], leads: [], payments: [], courses: [], rooms: [], schools: [],
+        attendances: [], scores: [],
+        selectedSchoolId: null,
         settings: {
+            id: 0,
+            schoolId: 0,
             orgName: "SARIOSIYO",
             adminPhone: "",
             address: "",
@@ -58,36 +67,71 @@ export const CRMProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     const [user, setUser] = useState<AuthenticatedUser | null>(null);
     const [token, setToken] = useState<string | null>(localStorage.getItem('token'));
 
-    const fetchData = async (authToken?: string) => {
-        const currentToken = authToken || token;
+    const setSelectedSchoolId = (id: number) => {
+        setState(prev => ({ ...prev, selectedSchoolId: id }));
+    };
+
+    const fetchData = async (overrideToken?: string, overrideSchoolId?: number) => {
+        const currentToken = overrideToken || token;
+        const currentSchoolId = overrideSchoolId !== undefined ? overrideSchoolId : state.selectedSchoolId;
+
         if (!currentToken) return;
 
         try {
             setLoading(true);
-            const endpoints = ['students', 'teachers', 'groups', 'leads', 'payments', 'courses', 'rooms', 'schools', 'settings'];
-            const responses = await Promise.all(endpoints.map(ep =>
-                fetch(`${API_BASE}/${ep}`, {
-                    headers: { 'Authorization': `Bearer ${currentToken}` }
-                }).then(res => {
-                    if (res.status === 401 || res.status === 403) {
-                        logout();
-                        throw new Error("Sessiya muddati tugadi");
-                    }
-                    return res.json();
-                })
-            ));
 
-            setState({
-                students: responses[0],
-                teachers: responses[1],
-                groups: responses[2],
-                leads: responses[3],
-                payments: responses[4],
-                courses: responses[5],
-                rooms: responses[6],
-                schools: responses[7],
-                settings: responses[8]
+            // First fetch schools as they are global-ish (available to all admins/users)
+            const schoolsRes = await fetch(`${API_BASE}/schools`, {
+                headers: { 'Authorization': `Bearer ${currentToken}` }
             });
+            let schools = await schoolsRes.json();
+
+            // Role based filtering for schools
+            if (user?.role === 'MANAGER' && user.schoolId) {
+                schools = schools.filter((s: School) => s.id === user.schoolId);
+            }
+
+            // If no school selected, but we have schools, pick the first one (or the user's default)
+            let schoolIdToUse = currentSchoolId;
+            if (schoolIdToUse === null && schools.length > 0) {
+                schoolIdToUse = user?.role === 'MANAGER' ? user.schoolId : (user?.schoolId || schools[0].id);
+                setSelectedSchoolId(schoolIdToUse as number);
+            }
+
+            if (schoolIdToUse !== null) {
+                const endpoints = ['students', 'teachers', 'groups', 'leads', 'payments', 'courses', 'rooms', 'settings', 'attendances', 'scores'];
+                const responses = await Promise.all(endpoints.map(ep =>
+                    fetch(`${API_BASE}/${ep}?schoolId=${schoolIdToUse}`, {
+                        headers: { 'Authorization': `Bearer ${currentToken}` }
+                    }).then(res => {
+                        if (res.status === 401 || res.status === 403) {
+                            logout();
+                            throw new Error("Sessiya muddati tugadi");
+                        }
+                        if (!res.ok) throw new Error(`Fetch error: ${res.statusText}`);
+                        return res.json();
+                    })
+                ));
+
+                setState(prev => ({
+                    ...prev,
+                    schools,
+                    students: responses[0],
+                    teachers: responses[1],
+                    groups: responses[2],
+                    leads: responses[3],
+                    payments: responses[4],
+                    courses: responses[5],
+                    rooms: responses[6],
+                    settings: responses[7],
+                    attendances: responses[8],
+                    scores: responses[9],
+                    selectedSchoolId: schoolIdToUse
+                }));
+            } else {
+                setState(prev => ({ ...prev, schools }));
+            }
+
             setError(null);
         } catch (err: any) {
             console.error("Failed to load CRM data", err);
@@ -110,7 +154,7 @@ export const CRMProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             if (res.ok) {
                 const userData = await res.json();
                 setUser(userData);
-                await fetchData(token);
+                await fetchData(token, userData.schoolId || undefined);
             } else {
                 logout();
             }
@@ -126,6 +170,13 @@ export const CRMProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         checkAuth();
     }, []);
 
+    // Re-fetch when selectedSchoolId changes manually
+    useEffect(() => {
+        if (state.selectedSchoolId !== null && user) {
+            fetchData();
+        }
+    }, [state.selectedSchoolId]);
+
     const login = async (email: string, password: string) => {
         try {
             setError(null);
@@ -140,7 +191,7 @@ export const CRMProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             setToken(data.token);
             setUser(data.user);
             localStorage.setItem('token', data.token);
-            await fetchData(data.token);
+            await fetchData(data.token, data.user.schoolId || undefined);
         } catch (err: any) {
             setError(err.message);
             throw err;
@@ -153,7 +204,11 @@ export const CRMProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         localStorage.removeItem('token');
         setState({
             students: [], teachers: [], groups: [], leads: [], payments: [], courses: [], rooms: [], schools: [],
+            attendances: [], scores: [],
+            selectedSchoolId: null,
             settings: {
+                id: 0,
+                schoolId: 0,
                 orgName: "SARIOSIYO",
                 adminPhone: "",
                 address: "",
@@ -167,19 +222,26 @@ export const CRMProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     // Helper for POST/PUT requests
     const apiCall = async (endpoint: string, method: string, data?: any) => {
         if (!token) throw new Error("Avtorizatsiya kerak");
+
+        // Automatically inject schoolId into request if not present, EXCEPT for schools themselves
+        const dataWithSchoolId = (data && !endpoint.startsWith('schools')) ? {
+            schoolId: state.selectedSchoolId,
+            ...data
+        } : data;
+
         const res = await fetch(`${API_BASE}/${endpoint}`, {
             method,
             headers: {
-                ...(data ? { 'Content-Type': 'application/json' } : {}),
+                ...(dataWithSchoolId ? { 'Content-Type': 'application/json' } : {}),
                 'Authorization': `Bearer ${token}`
             },
-            body: data ? JSON.stringify(data) : undefined,
+            body: dataWithSchoolId ? JSON.stringify(dataWithSchoolId) : undefined,
         });
         if (!res.ok) throw new Error(`API Error: ${res.statusText}`);
         return method !== 'DELETE' ? await res.json() : null;
     };
 
-    const addStudent = async (student: Omit<Student, 'id'>) => {
+    const addStudent = async (student: Omit<Student, 'id' | 'schoolId'>) => {
         const newStudent = await apiCall('students', 'POST', student);
         setState(prev => ({ ...prev, students: [...prev.students, newStudent] }));
     };
@@ -194,7 +256,7 @@ export const CRMProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         setState(prev => ({ ...prev, students: prev.students.filter(s => s.id !== id) }));
     };
 
-    const addTeacher = async (teacher: Omit<Teacher, 'id'>) => {
+    const addTeacher = async (teacher: Omit<Teacher, 'id' | 'schoolId'>) => {
         const newTeacher = await apiCall('teachers', 'POST', teacher);
         setState(prev => ({ ...prev, teachers: [...prev.teachers, newTeacher] }));
     };
@@ -209,7 +271,7 @@ export const CRMProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         setState(prev => ({ ...prev, teachers: prev.teachers.filter(t => t.id !== id) }));
     }
 
-    const addGroup = async (group: Omit<Group, 'id'>) => {
+    const addGroup = async (group: Omit<Group, 'id' | 'schoolId'>) => {
         const newGroup = await apiCall('groups', 'POST', group);
         setState(prev => ({ ...prev, groups: [...prev.groups, newGroup] }));
     };
@@ -219,7 +281,12 @@ export const CRMProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         setState(prev => ({ ...prev, groups: prev.groups.map(g => g.id === id ? updated : g) }));
     }
 
-    const addLead = async (lead: Omit<Lead, 'id'>) => {
+    const deleteGroup = async (id: number) => {
+        await apiCall(`groups/${id}`, 'DELETE');
+        setState(prev => ({ ...prev, groups: prev.groups.filter(g => g.id !== id) }));
+    };
+
+    const addLead = async (lead: Omit<Lead, 'id' | 'schoolId'>) => {
         const newLead = await apiCall('leads', 'POST', lead);
         setState(prev => ({ ...prev, leads: [...prev.leads, newLead] }));
     };
@@ -230,9 +297,8 @@ export const CRMProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         setState(prev => ({ ...prev, leads: prev.leads.map(l => l.id === id ? updated : l) }));
     };
 
-    const addPayment = async (payment: Omit<Payment, 'id'>) => {
+    const addPayment = async (payment: Omit<Payment, 'id' | 'schoolId'>) => {
         const newPayment = await apiCall('payments', 'POST', payment);
-        // Payment endpoint also updates student balance, let's refresh students or just update locally
         setState(prev => {
             const updatedStudents = prev.students.map(s =>
                 s.id === payment.studentId ? { ...s, balance: (s.balance || 0) + payment.amount } : s
@@ -246,50 +312,61 @@ export const CRMProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         setState(prev => ({ ...prev, settings: updated }));
     };
 
-    const addCourse = async (course: Course) => {
+    const addCourse = async (course: Omit<Course, 'id' | 'schoolId'>) => {
         const newCourse = await apiCall('courses', 'POST', course);
         setState(prev => ({ ...prev, courses: [...prev.courses, newCourse] }));
     };
 
-    const deleteCourse = async (id: string) => {
+    const deleteCourse = async (id: number) => {
         await apiCall(`courses/${id}`, 'DELETE');
         setState(prev => ({ ...prev, courses: prev.courses.filter(c => c.id !== id) }));
     };
 
-    const addRoom = async (room: Room) => {
+    const addRoom = async (room: Omit<Room, 'id' | 'schoolId'>) => {
         const newRoom = await apiCall('rooms', 'POST', room);
         setState(prev => ({ ...prev, rooms: [...prev.rooms, newRoom] }));
     };
 
-    const deleteRoom = async (id: string) => {
+    const deleteRoom = async (id: number) => {
         await apiCall(`rooms/${id}`, 'DELETE');
         setState(prev => ({ ...prev, rooms: prev.rooms.filter(r => r.id !== id) }));
     };
 
-    const addSchool = async (school: School) => {
+    const addSchool = async (school: Omit<School, 'id'>) => {
         const newSchool = await apiCall('schools', 'POST', school);
         setState(prev => ({ ...prev, schools: [...prev.schools, newSchool] }));
     };
 
-    const deleteSchool = async (id: string) => {
+    const deleteSchool = async (id: number) => {
         await apiCall(`schools/${id}`, 'DELETE');
         setState(prev => ({ ...prev, schools: prev.schools.filter(s => s.id !== id) }));
+    };
+
+    const addAttendance = async (attendance: Omit<Attendance, 'id' | 'schoolId'>) => {
+        const newAttendance = await apiCall('attendances', 'POST', attendance);
+        setState(prev => ({ ...prev, attendances: [...prev.attendances, newAttendance] }));
+    };
+
+    const addScore = async (score: Omit<Score, 'id' | 'schoolId'>) => {
+        const newScore = await apiCall('scores', 'POST', score);
+        setState(prev => ({ ...prev, scores: [...prev.scores, newScore] }));
     };
 
     return (
         <CRMContext.Provider value={{
             ...state,
             loading, error, user, token,
-            login, logout, checkAuth,
+            login, logout, checkAuth, setSelectedSchoolId,
             addStudent, updateStudent, deleteStudent,
             addTeacher, updateTeacher, deleteTeacher,
-            addGroup, updateGroup,
+            addGroup, updateGroup, deleteGroup,
             updateLead, addLead,
             addPayment,
             updateSettings,
             addCourse, deleteCourse,
             addRoom, deleteRoom,
-            addSchool, deleteSchool
+            addSchool, deleteSchool,
+            addAttendance, addScore
         }}>
             {children}
         </CRMContext.Provider>

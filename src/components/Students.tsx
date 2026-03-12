@@ -1,13 +1,15 @@
 import React, { useState } from 'react';
-import { Search, Plus, FileSpreadsheet, MessageSquare, MoreVertical, X } from 'lucide-react';
+import { Search, Plus, FileSpreadsheet, MessageSquare, MoreVertical, X, Check, Map, Camera } from 'lucide-react';
 import { useCRM } from '../context/CRMContext';
 import { useNavigate } from 'react-router-dom';
+import PhotoCapture from './PhotoCapture';
 
 export default function Students() {
     const { students, groups, teachers, addStudent } = useCRM();
     const navigate = useNavigate();
     const [isModalOpen, setIsModalOpen] = useState(false);
-    const [newStudent, setNewStudent] = useState({ name: '', phone: '', address: '', birthDate: '' });
+    const [isPhotoModalOpen, setIsPhotoModalOpen] = useState(false);
+    const [newStudent, setNewStudent] = useState({ name: '', phone: '', address: '', birthDate: '', location: '', photo: '' });
 
     const handleAddStudent = (e: React.FormEvent) => {
         e.preventDefault();
@@ -19,7 +21,7 @@ export default function Students() {
             groups: []
         });
         setIsModalOpen(false);
-        setNewStudent({ name: '', phone: '', address: '', birthDate: '' });
+        setNewStudent({ name: '', phone: '', address: '', birthDate: '', location: '', photo: '' });
     };
 
     const getStudentGroups = (studentGroupIds: number[]) => {
@@ -167,12 +169,47 @@ export default function Students() {
                                 <input type="text" className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-2xl outline-none focus:ring-2 focus:ring-indigo-500 transition-all"
                                     value={newStudent.address} onChange={e => setNewStudent({ ...newStudent, address: e.target.value })} />
                             </div>
+                            <div>
+                                <label className="block text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-2">Lokatsiya (Google Map/Text)</label>
+                                <div className="relative">
+                                    <input type="text" className="w-full px-4 py-3 pl-10 bg-slate-50 border border-slate-200 rounded-2xl outline-none focus:ring-2 focus:ring-indigo-500 transition-all font-medium text-sm"
+                                        placeholder="Lokatsiya..." value={newStudent.location} onChange={e => setNewStudent({ ...newStudent, location: e.target.value })} />
+                                    <Map className="absolute left-3 top-3 w-4 h-4 text-slate-400" />
+                                </div>
+                            </div>
+                            <div>
+                                <label className="block text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-2">O'quvchi rasmi</label>
+                                <button
+                                    type="button"
+                                    onClick={() => setIsPhotoModalOpen(true)}
+                                    className={`w-full h-[46px] border-2 border-dashed rounded-2xl flex items-center justify-center gap-2 transition-all ${newStudent.photo ? 'border-green-200 bg-green-50 text-green-600' : 'border-slate-200 bg-slate-50 text-slate-400 hover:border-indigo-200 hover:text-indigo-500'}`}
+                                >
+                                    {newStudent.photo ? (
+                                        <>
+                                            <Check className="w-4 h-4" />
+                                            <span className="text-xs font-bold uppercase">Rasm olindi</span>
+                                        </>
+                                    ) : (
+                                        <>
+                                            <Camera className="w-4 h-4" />
+                                            <span className="text-xs font-bold uppercase">Rasmga olish</span>
+                                        </>
+                                    )}
+                                </button>
+                            </div>
                             <button type="submit" className="col-span-2 py-4 bg-[#5C67F2] text-white rounded-2xl font-bold shadow-xl shadow-indigo-100 hover:bg-indigo-600 transition-all mt-4 uppercase tracking-widest text-sm">
                                 SAQLASH
                             </button>
                         </form>
                     </div>
                 </div>
+            )}
+
+            {isPhotoModalOpen && (
+                <PhotoCapture
+                    onCapture={(photo) => setNewStudent({ ...newStudent, photo })}
+                    onClose={() => setIsPhotoModalOpen(false)}
+                />
             )}
         </div>
     );

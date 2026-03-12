@@ -18,14 +18,22 @@ export default function Groups() {
         room: ''
     });
 
-    const handleAddGroup = (e: React.FormEvent) => {
+    const handleAddGroup = async (e: React.FormEvent) => {
         e.preventDefault();
-        addGroup({
-            ...newGroup,
-            studentIds: []
-        });
-        setIsModalOpen(false);
-        setNewGroup({ name: '', teacherId: 0, courseId: '', schedule: '', days: 'Juft kunlar', room: '' });
+        try {
+            await addGroup({
+                ...newGroup,
+                teacherId: Number(newGroup.teacherId),
+                courseId: Number(newGroup.courseId),
+                room: newGroup.room ? Number(newGroup.room) : undefined,
+                studentIds: []
+            });
+            setIsModalOpen(false);
+            setNewGroup({ name: '', teacherId: 0, courseId: '', schedule: timeSlots[0], days: 'Juft kunlar', room: '' });
+        } catch (err) {
+            console.error(err);
+            alert("Guruh qo'shishda xatolik yuz berdi");
+        }
     };
 
     const getTeacherName = (id: number) => teachers.find(t => t.id === id)?.name || 'Noma\'ulum';

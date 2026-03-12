@@ -9,24 +9,14 @@ interface LayoutProps {
 }
 
 export default function Layout({ children, onLogout }: LayoutProps) {
-  const { settings, user, schools } = useCRM();
+  const { settings, user, schools, selectedSchoolId, setSelectedSchoolId } = useCRM();
   const location = useLocation();
   const navigate = useNavigate();
   const [isBranchOpen, setIsBranchOpen] = React.useState(false);
-
-  const branches = schools.length > 0
-    ? schools.map(s => s.name)
-    : [`${settings.orgName} Filliali`];
-
-  const [currentBranch, setCurrentBranch] = React.useState(branches[0]);
   const [isProfileOpen, setIsProfileOpen] = React.useState(false);
 
-  // Update currentBranch if branches change and current is not in list
-  React.useEffect(() => {
-    if (!branches.includes(currentBranch)) {
-      setCurrentBranch(branches[0]);
-    }
-  }, [branches]);
+  const currentSchool = schools.find(s => s.id === selectedSchoolId) || schools[0];
+  const branchLabel = currentSchool ? currentSchool.name : `${settings.orgName} Filliali`;
 
   return (
     <div className="min-h-screen bg-[#F5F7FA] flex flex-col font-sans text-slate-800">
@@ -58,25 +48,25 @@ export default function Layout({ children, onLogout }: LayoutProps) {
           </button>
           <div className="relative">
             <div
-              className="flex items-center gap-2 cursor-pointer hover:bg-slate-50 p-2 rounded-md transition-colors"
-              onClick={() => setIsBranchOpen(!isBranchOpen)}
+              className={`flex items-center gap-2 p-2 rounded-md transition-colors ${user?.role === 'ADMIN' ? 'cursor-pointer hover:bg-slate-50' : ''}`}
+              onClick={() => user?.role === 'ADMIN' && setIsBranchOpen(!isBranchOpen)}
             >
-              <span className="text-sm font-medium text-slate-600">{currentBranch}</span>
-              <ChevronDown className={`w-4 h-4 text-slate-400 transition-transform ${isBranchOpen ? 'rotate-180' : ''}`} />
+              <span className="text-sm font-medium text-slate-600">{branchLabel}</span>
+              {user?.role === 'ADMIN' && <ChevronDown className={`w-4 h-4 text-slate-400 transition-transform ${isBranchOpen ? 'rotate-180' : ''}`} />}
             </div>
 
             {isBranchOpen && (
               <div className="absolute top-full right-0 mt-1 w-48 bg-white border border-slate-200 rounded-xl shadow-xl z-50 p-1">
-                {branches.map(branch => (
+                {schools.map(school => (
                   <button
-                    key={branch}
+                    key={school.id}
                     onClick={() => {
-                      setCurrentBranch(branch);
+                      setSelectedSchoolId(school.id);
                       setIsBranchOpen(false);
                     }}
-                    className="w-full text-left px-4 py-2 text-sm text-slate-600 hover:bg-slate-50 hover:text-indigo-600 rounded-lg transition-colors capitalize"
+                    className={`w-full text-left px-4 py-2 text-sm rounded-lg transition-colors capitalize ${selectedSchoolId === school.id ? 'bg-indigo-50 text-indigo-600 font-bold' : 'text-slate-600 hover:bg-slate-50 hover:text-indigo-600'}`}
                   >
-                    {branch}
+                    {school.name}
                   </button>
                 ))}
               </div>
@@ -127,12 +117,20 @@ export default function Layout({ children, onLogout }: LayoutProps) {
       <nav className="bg-white border-b border-slate-200 px-6 py-2 flex items-center gap-2 overflow-x-auto shadow-sm relative z-10">
         <NavItem icon={<Home className="w-[18px] h-[18px]" />} label="Bosh sahifa" path="/" currentPath={location.pathname} />
         <NavItem icon={<ClipboardList className="w-[18px] h-[18px]" />} label="Lidlar" path="/leads" currentPath={location.pathname} />
-        <NavItem icon={<Presentation className="w-[18px] h-[18px]" />} label="O'qituvchilar" path="/teachers" currentPath={location.pathname} />
+        {(user?.role === 'ADMIN' || user?.role === 'MANAGER') && (
+          <NavItem icon={<Presentation className="w-[18px] h-[18px]" />} label="O'qituvchilar" path="/teachers" currentPath={location.pathname} />
+        )}
         <NavItem icon={<Layers className="w-[18px] h-[18px]" />} label="Guruhlar" path="/groups" currentPath={location.pathname} />
         <NavItem icon={<Users className="w-[18px] h-[18px]" />} label="O'quvchilar" path="/students" currentPath={location.pathname} />
-        <NavItem icon={<Settings className="w-[18px] h-[18px]" />} label="Sozlamalar" hasDropdown path="/settings" currentPath={location.pathname} />
-        <NavItem icon={<Activity className="w-[18px] h-[18px]" />} label="Moliya" path="/finance" currentPath={location.pathname} />
-        <NavItem icon={<FileText className="w-[18px] h-[18px]" />} label="Hisobotlar" hasDropdown path="/reports" currentPath={location.pathname} />
+        {(user?.role === 'ADMIN' || user?.role === 'MANAGER') && (
+          <NavItem icon={<Settings className="w-[18px] h-[18px]" />} label="Sozlamalar" hasDropdown path="/settings" currentPath={location.pathname} />
+        )}
+        {(user?.role === 'ADMIN' || user?.role === 'MANAGER') && (
+          <NavItem icon={<Activity className="w-[18px] h-[18px]" />} label="Moliya" path="/finance" currentPath={location.pathname} />
+        )}
+        {user?.role === 'ADMIN' && (
+          <NavItem icon={<FileText className="w-[18px] h-[18px]" />} label="Hisobotlar" hasDropdown path="/reports" currentPath={location.pathname} />
+        )}
       </nav>
 
       {/* Main Content */}

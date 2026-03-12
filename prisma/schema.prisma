@@ -6,6 +6,7 @@ generator client {
 
 datasource db {
   provider = "postgresql"
+  url      = env("DATABASE_URL")
 }
 
 model Student {
@@ -14,6 +15,7 @@ model Student {
   phone      String
   birthDate  String
   address    String
+  location   String?
   status     String    @default("Faol")
   joinedDate String
   balance    Float     @default(0)
@@ -22,8 +24,12 @@ model Student {
   rating     Float?
   
   // Relations
+  schoolId   Int
+  school     School    @relation(fields: [schoolId], references: [id])
   groups     Group[]   @relation("StudentGroups")
   payments   Payment[]
+  attendances Attendance[]
+  scores      Score[]
 }
 
 model Teacher {
@@ -38,6 +44,8 @@ model Teacher {
   photo           String?
   status          String    @default("Faol")
 
+  schoolId        Int
+  school          School    @relation(fields: [schoolId], references: [id])
   groups          Group[]
 }
 
@@ -46,13 +54,18 @@ model Group {
   name       String
   teacherId  Int
   teacher    Teacher   @relation(fields: [teacherId], references: [id])
-  courseId   String
+  courseId   Int
   course     Course    @relation(fields: [courseId], references: [id])
   schedule   String
   days       String
-  room       String?
+  room       Int?
+  roomRel    Room?     @relation(fields: [room], references: [id])
   
+  schoolId   Int
+  school     School    @relation(fields: [schoolId], references: [id])
   students   Student[] @relation("StudentGroups")
+  attendances Attendance[]
+  scores      Score[]
 }
 
 model Lead {
@@ -63,6 +76,9 @@ model Lead {
   source    String
   status    String   @default("Yangi")
   createdAt DateTime @default(now())
+
+  schoolId  Int
+  school    School   @relation(fields: [schoolId], references: [id])
 }
 
 model Payment {
@@ -73,30 +89,80 @@ model Payment {
   type        String
   date        String
   description String
+
+  schoolId    Int
+  school      School   @relation(fields: [schoolId], references: [id])
 }
 
 model Course {
-  id    String  @id
+  id    Int    @id @default(autoincrement())
   name  String
   price Float
   
-  groups Group[]
+  schoolId Int
+  school   School @relation(fields: [schoolId], references: [id])
+  groups   Group[]
 }
 
 model Room {
-  id       String @id
+  id       Int    @id @default(autoincrement())
   name     String
   capacity Int
+
+  schoolId Int
+  school   School  @relation(fields: [schoolId], references: [id])
+  groups   Group[]
 }
 
 model School {
-  id      String @id
+  id      Int    @id @default(autoincrement())
   name    String
-  address String
+  address String?
+
+  students Student[]
+  teachers Teacher[]
+  groups   Group[]
+  leads    Lead[]
+  payments Payment[]
+  courses  Course[]
+  rooms    Room[]
+  users    User[]
+  settings Setting[]
+  attendances Attendance[]
+  scores      Score[]
+}
+
+model Attendance {
+  id        Int      @id @default(autoincrement())
+  studentId Int
+  student   Student  @relation(fields: [studentId], references: [id])
+  groupId   Int
+  group     Group    @relation(fields: [groupId], references: [id])
+  date      String
+  status    String   // Keldi, Kelmapdi, Sababli
+  
+  schoolId  Int
+  school    School   @relation(fields: [schoolId], references: [id])
+}
+
+model Score {
+  id        Int      @id @default(autoincrement())
+  studentId Int
+  student   Student  @relation(fields: [studentId], references: [id])
+  groupId   Int
+  group     Group    @relation(fields: [groupId], references: [id])
+  date      String
+  value     Float
+  comment   String?
+  
+  schoolId  Int
+  school    School   @relation(fields: [schoolId], references: [id])
 }
 
 model Setting {
-  id               String   @id @default("default")
+  id               Int      @id @default(autoincrement())
+  schoolId         Int      @unique
+  school           School   @relation(fields: [schoolId], references: [id])
   orgName          String   @default("SARIOSIYO")
   logo             String?
   adminPhone       String?
@@ -114,10 +180,14 @@ model User {
   phone     String?
   role      UserRole @default(RECEPTIONIST)
   createdAt DateTime @default(now())
+
+  schoolId  Int?
+  school    School?  @relation(fields: [schoolId], references: [id])
 }
 
 enum UserRole {
   ADMIN
+  MANAGER
   TEACHER
   RECEPTIONIST
 }

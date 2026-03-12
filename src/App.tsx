@@ -105,20 +105,24 @@ export default function App() {
     );
   }
 
+  const role = user?.role;
+  const isAdminOrManager = role === 'ADMIN' || role === 'MANAGER';
+  const isAdmin = role === 'ADMIN';
+
   return (
     <Layout onLogout={logout}>
       <Routes>
         <Route path="/" element={<Dashboard />} />
         <Route path="/leads" element={<Leads />} />
-        <Route path="/teachers" element={<Teachers />} />
-        <Route path="/teachers/:id" element={<TeacherDetails />} />
+        <Route path="/teachers" element={isAdminOrManager ? <Teachers /> : <Navigate to="/" replace />} />
+        <Route path="/teachers/:id" element={isAdminOrManager ? <TeacherDetails /> : <Navigate to="/" replace />} />
         <Route path="/groups" element={<Groups />} />
         <Route path="/groups/:id" element={<GroupDetails />} />
         <Route path="/students" element={<Students />} />
         <Route path="/students/:id" element={<StudentDetails />} />
-        <Route path="/settings" element={<Settings />} />
-        <Route path="/finance" element={<Finance />} />
-        <Route path="/reports" element={<Reports />} />
+        <Route path="/settings" element={isAdminOrManager ? <Settings /> : <Navigate to="/" replace />} />
+        <Route path="/finance" element={isAdminOrManager ? <Finance /> : <Navigate to="/" replace />} />
+        <Route path="/reports" element={isAdmin ? <Reports /> : <Navigate to="/" replace />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </Layout>
