@@ -1,0 +1,53 @@
+name: Deploy to VPS
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build frontend
+        run: npm run build
+
+      - name: Copy files to VPS
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.VPS_IP }}
+          username: root
+          password: ${{ secrets.VPS_PASSWORD }}
+          source: "dist/,server.js,package.json,package-lock.json,prisma/"
+          target: "/var/www/sariosiyocrm"
+          
+      - name: Complete deployment on VPS
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.VPS_IP }}
+          username: root
+          password: ${{ secrets.VPS_PASSWORD }}
+          script: |
+            cd /var/www/sariosiyocrm
+            # Faqat production uchun zarur bo'lgan kutubxonalarni o'rnatish (joyni tejash uchun)
+            npm ci --omit=dev --no-audit --no-fund
+            # Prisma bazasini yangilash
+            npx prisma generate
+            # Backend'ni PM2 orqali ishga tushirish yoki qayta ishga tushirish
+            pm2 restart sariosiyo-api || pm2 start server.js --name sariosiyo-api
+            pm2 save
+            # Keshni tozalash (diskda joy tejash uchun)
+            npm cache clean --force
