@@ -41,10 +41,10 @@ export default function App() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-[#F5F7FA] flex items-center justify-center p-4">
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="flex flex-col items-center gap-4">
-          <div className="w-12 h-12 border-4 border-indigo-500 border-t-transparent rounded-full animate-spin"></div>
-          <p className="text-slate-500 font-bold uppercase tracking-widest text-xs">Yuklamoqda...</p>
+          <div className="w-10 h-10 border-3 border-indigo-600 border-t-transparent rounded-full animate-spin"></div>
+          <p className="text-[14px] text-gray-500 font-medium">Yuklanmoqda...</p>
         </div>
       </div>
     );
@@ -52,54 +52,63 @@ export default function App() {
 
   if (!user) {
     return (
-      <div className="min-h-screen bg-[#F5F7FA] flex items-center justify-center p-4">
-        <div className="bg-white rounded-[2rem] w-full max-w-md p-10 shadow-2xl border border-slate-100">
-          <div className="flex flex-col items-center gap-6 mb-10">
-            <div className="w-20 h-20 bg-slate-900 rounded-[1.5rem] flex items-center justify-center text-white font-bold overflow-hidden shadow-xl">
-              <img src="https://api.dicebear.com/7.x/shapes/svg?seed=SARIOSIYO&backgroundColor=000000" alt="Logo" className="w-full h-full object-cover" />
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
+        <div className="w-full max-w-[400px]">
+          {/* Logo */}
+          <div className="text-center mb-8">
+            <div className="inline-flex items-center justify-center w-14 h-14 bg-indigo-600 rounded-xl mb-4 shadow-lg shadow-indigo-600/20">
+              <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <rect x="3" y="3" width="7" height="7" rx="1"/>
+                <rect x="14" y="3" width="7" height="7" rx="1"/>
+                <rect x="3" y="14" width="7" height="7" rx="1"/>
+                <rect x="14" y="14" width="7" height="7" rx="1"/>
+              </svg>
             </div>
-            <div className="text-center">
-              <h1 className="text-3xl font-black text-slate-800 tracking-tight mb-2">SARIOSIYO CRM</h1>
-              <p className="text-slate-500 font-medium text-sm">Tizimga xush kelibsiz!</p>
-            </div>
+            <h1 className="text-2xl font-bold text-gray-900">Sariosiyo CRM</h1>
+            <p className="text-[14px] text-gray-500 mt-1">Tizimga kirish</p>
           </div>
 
-          <form onSubmit={handleLogin} className="space-y-5">
-            {authError && (
-              <div className="bg-red-50 text-red-500 p-4 rounded-xl text-sm font-bold border border-red-100">
-                {authError}
+          {/* Login Card */}
+          <div className="bg-white rounded-xl shadow-xl shadow-gray-200/50 border border-gray-100 p-8">
+            <form onSubmit={handleLogin} className="space-y-5">
+              {authError && (
+                <div className="bg-red-50 text-red-600 px-4 py-3 rounded-lg text-[13px] font-medium border border-red-100">
+                  {authError}
+                </div>
+              )}
+              <div>
+                <label className="block text-[13px] font-medium text-gray-700 mb-1.5">Email</label>
+                <input
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder="admin@example.com"
+                  required
+                  className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-lg text-[14px] text-gray-900 outline-none focus:bg-white focus:border-indigo-600 focus:ring-4 focus:ring-indigo-600/10 transition-all placeholder:text-gray-400"
+                />
               </div>
-            )}
-            <div>
-              <label className="block text-[11px] font-bold text-slate-400 uppercase tracking-widest mb-2 px-1">Login (Email)</label>
-              <input
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder="admin@example.com"
-                required
-                className="w-full px-5 py-4 bg-slate-50 border border-slate-200 rounded-2xl outline-none focus:ring-2 focus:ring-[#5C67F2] focus:bg-white transition-all text-sm font-semibold text-slate-700"
-              />
-            </div>
-            <div>
-              <label className="block text-[11px] font-bold text-slate-400 uppercase tracking-widest mb-2 px-1">Parol</label>
-              <input
-                type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                placeholder="********"
-                required
-                className="w-full px-5 py-4 bg-slate-50 border border-slate-200 rounded-2xl outline-none focus:ring-2 focus:ring-[#5C67F2] focus:bg-white transition-all text-sm font-semibold text-slate-700"
-              />
-            </div>
-            <button
-              type="submit"
-              disabled={loginLoading}
-              className="w-full py-4 bg-[#5C67F2] text-white rounded-2xl font-bold shadow-xl shadow-indigo-100 hover:bg-indigo-600 transition-all mt-4 uppercase tracking-widest text-sm disabled:opacity-50"
-            >
-              {loginLoading ? 'KIRISH...' : 'KIRISH'}
-            </button>
-          </form>
+              <div>
+                <label className="block text-[13px] font-medium text-gray-700 mb-1.5">Parol</label>
+                <input
+                  type="password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  placeholder="••••••••"
+                  required
+                  className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-lg text-[14px] text-gray-900 outline-none focus:bg-white focus:border-indigo-600 focus:ring-4 focus:ring-indigo-600/10 transition-all placeholder:text-gray-400"
+                />
+              </div>
+              <button
+                type="submit"
+                disabled={loginLoading}
+                className="w-full py-3 bg-indigo-600 text-white rounded-lg text-[14px] font-semibold hover:bg-indigo-700 active:scale-[0.99] transition-all disabled:opacity-50 mt-2 shadow-md shadow-indigo-600/20"
+              >
+                {loginLoading ? 'Yuklanmoqda...' : 'Kirish'}
+              </button>
+            </form>
+          </div>
+
+          <p className="text-center text-[13px] text-gray-400 mt-8">© 2026 Sariosiyo CRM</p>
         </div>
       </div>
     );

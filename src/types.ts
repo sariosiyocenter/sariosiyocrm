@@ -24,6 +24,7 @@ export interface Teacher {
     salary: number;
     sharePercentage: number;
     lessonFee: number;
+    salaryType: 'FIXED' | 'KPI' | 'FIXED_KPI';
     birthDate: string;
     hiredDate: string;
     photo?: string;
@@ -89,7 +90,7 @@ export interface Attendance {
     studentId: number;
     groupId: number;
     date: string;
-    status: 'Keldi' | 'Kelmapdi' | 'Sababli';
+    status: 'Keldi' | 'Kelmapdi' | 'Sababli' | 'Dars bo\'lmadi';
     schoolId: number;
 }
 
@@ -100,6 +101,14 @@ export interface Score {
     date: string;
     value: number;
     comment: string;
+    schoolId: number;
+}
+
+export interface TeacherAttendance {
+    id: number;
+    teacherId: number;
+    date: string;
+    status: 'Keldi' | 'Kelmapdi' | 'Sababli' | 'Dars bo\'lmadi';
     schoolId: number;
 }
 
@@ -114,6 +123,7 @@ export interface CRMState {
     schools: School[];
     attendances: Attendance[];
     scores: Score[];
+    teacherAttendances: TeacherAttendance[];
     selectedSchoolId: number | null;
     settings: {
         id: number;

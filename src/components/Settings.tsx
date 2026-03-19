@@ -1,9 +1,6 @@
 import React, { useState } from 'react';
 import {
-    Building2, Image as ImageIcon, Plus,
-    ChevronRight, ChevronDown, MessageSquare,
-    CreditCard, Layout, User, ShieldCheck, Clock, Edit2, Settings as SettingsIcon,
-    Trash2, Save, X
+    Building2, Plus, ChevronDown, User, ShieldCheck, Trash2, Save, X, Layout, MapPin
 } from 'lucide-react';
 import { useCRM } from '../context/CRMContext';
 
@@ -14,9 +11,18 @@ export default function Settings() {
     const [settingsForm, setSettingsForm] = useState(settings);
     const [isSaving, setIsSaving] = useState(false);
     const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+    const [isEditModalOpen, setIsEditModalOpen] = useState(false);
     const [newItem, setNewItem] = useState<any>({});
+    const [editingItem, setEditingItem] = useState<any>(null);
     const [users, setUsers] = useState<any[]>([]);
     const { user: currentUser, token } = useCRM();
+
+    const subTabLabels: Record<string, string> = {
+        'Kurslar': 'Kurslar Ro\'yxati',
+        'Xonalar': 'Dars Xonalari',
+        'Umumiy sozlamalar': 'Tizim Ma\'lumotlari',
+        'Filiallar': 'O\'quv Markazi Filiallari'
+    };
 
     React.useEffect(() => {
         setSettingsForm(settings);
@@ -36,6 +42,7 @@ export default function Settings() {
             if (res.ok) setUsers(await res.json());
         } catch (err) {
             console.error("Failed to fetch users", err);
+            alert("Xodimlarni yuklashda xatolik yuz berdi!"); // Added alert here
         }
     };
 
@@ -107,12 +114,12 @@ export default function Settings() {
 
         if (items.length === 0) {
             return (
-                <div className="flex-1 flex flex-col items-center justify-center p-20 text-center">
-                    <div className="w-32 h-32 bg-indigo-50 rounded-[3rem] flex items-center justify-center mb-8 animate-pulse">
-                        <Building2 className="w-12 h-12 text-indigo-400" />
+                <div className="flex-1 flex flex-col items-center justify-center p-16 text-center">
+                    <div className="w-20 h-20 bg-gray-50 rounded-full flex items-center justify-center mb-6">
+                        <Building2 className="w-10 h-10 text-gray-300" />
                     </div>
-                    <h4 className="text-2xl font-black text-slate-800 mb-4 tracking-tight">Ma'lumotlar topilmadi</h4>
-                    <p className="text-slate-500 max-w-md font-medium leading-relaxed">
+                    <h4 className="text-xl font-bold text-gray-900 mb-2">Ma'lumotlar topilmadi</h4>
+                    <p className="text-sm font-medium text-gray-500 max-w-sm">
                         Ushbu bo'lim hozircha bo'sh. "Yangi qo'shish" tugmasi orqali ma'lumotlarni kiritishingiz mumkin.
                     </p>
                 </div>
@@ -120,32 +127,51 @@ export default function Settings() {
         }
 
         return (
-            <div className="p-8 grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
-                {items.map(item => (
-                    <div key={item.id} className="bg-slate-50 border border-slate-100 p-6 rounded-[2rem] flex flex-col gap-4 group hover:bg-white hover:border-indigo-200 transition-all hover:shadow-lg">
+            <div className="p-8 grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-8">
+                {items.map((item, idx) => (
+                    <div key={item.id} 
+                        onClick={() => {
+                            if (activeTab === 'staff') {
+                                setEditingItem(item);
+                                setIsEditModalOpen(true);
+                            }
+                        }}
+                        className={`bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700 p-6 rounded-[2rem] flex flex-col gap-5 group hover:border-sky-300 dark:hover:border-sky-600 transition-all shadow-xl shadow-gray-200/10 dark:shadow-none hover:shadow-2xl relative overflow-hidden animate-in zoom-in-95 duration-300 ${activeTab === 'staff' ? 'cursor-pointer' : ''}`}
+                        style={{ animationDelay: `${idx * 40}ms` }}
+                    >
+                        <div className="absolute top-0 right-0 w-32 h-32 bg-sky-500/[0.03] rounded-bl-full -z-10 transition-transform group-hover:scale-110"></div>
                         <div className="flex items-center justify-between">
-                            <div className="w-12 h-12 bg-white rounded-2xl flex items-center justify-center text-indigo-500 shadow-sm">
-                                {activeSubTab === 'Kurslar' ? <Layout className="w-6 h-6" /> : (activeTab === 'staff' || activeSubTab === 'Xodimlar') ? <User className="w-6 h-6" /> : <Building2 className="w-6 h-6" />}
+                            <div className="w-12 h-12 bg-sky-50 dark:bg-sky-900/30 border border-sky-100 dark:border-sky-800/50 rounded-2xl flex items-center justify-center text-sky-600 dark:text-sky-400 group-hover:bg-sky-600 group-hover:text-white transition-all shadow-inner">
+                                {activeSubTab === 'Kurslar' ? <Layout className="w-5 h-5" /> : (activeTab === 'staff' || activeSubTab === 'Xodimlar') ? <User className="w-5 h-5" /> : <Building2 className="w-5 h-5" />}
                             </div>
-                            {activeTab !== 'staff' && activeSubTab !== 'Xodimlar' && (
+                            {((activeTab !== 'staff' && activeSubTab !== 'Xodimlar') || (activeTab === 'staff' && currentUser?.role === 'ADMIN')) && (
                                 <button
-                                    onClick={() => {
+                                    onClick={(e) => {
+                                        e.stopPropagation();
                                         if (activeSubTab === 'Kurslar') deleteCourse(item.id);
-                                        if (activeSubTab === 'Xonalar') deleteRoom(item.id);
-                                        if (activeSubTab === 'Filiallar') deleteSchool(item.id);
+                                        else if (activeSubTab === 'Xonalar') deleteRoom(item.id);
+                                        else if (activeSubTab === 'Filiallar') deleteSchool(item.id);
+                                        else if (activeTab === 'staff') {
+                                            if (window.confirm("Haqiqatan ham bu xodimni o'chirmoqchimisiz?")) {
+                                                fetch(`/api/users/${item.id}`, {
+                                                    method: 'DELETE',
+                                                    headers: { 'Authorization': `Bearer ${token}` }
+                                                }).then(res => { if (res.ok) fetchUsers(); });
+                                            }
+                                        }
                                     }}
-                                    className="p-2 text-slate-300 hover:text-red-500 hover:bg-red-50 rounded-xl transition-all"
+                                    className="p-3 text-gray-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-900/30 rounded-xl transition-all opacity-0 group-hover:opacity-100 border border-transparent hover:border-rose-100 dark:hover:border-rose-800/50 shadow-sm"
                                 >
-                                    <Trash2 className="w-5 h-5" />
+                                    <Trash2 size={18} />
                                 </button>
                             )}
                         </div>
-                        <div>
-                            <h4 className="text-lg font-black text-slate-800 uppercase tracking-tight">{item.name}</h4>
-                            <p className="text-xs font-bold text-slate-400 mt-1 uppercase tracking-widest">
+                        <div className="space-y-1">
+                            <h4 className="text-base font-extrabold text-gray-900 dark:text-white uppercase tracking-tight group-hover:text-sky-600 transition-colors">{item.name}</h4>
+                            <p className="text-[10px] font-extrabold text-gray-400 dark:text-gray-500 uppercase tracking-widest leading-loose">
                                 {activeSubTab === 'Kurslar' ? `${item.price.toLocaleString()} UZS` :
                                     activeSubTab === 'Xonalar' ? `${item.capacity} kishilik` :
-                                        (activeTab === 'staff' || activeSubTab === 'Xodimlar') ? `${item.role} | ${item.email}` :
+                                        (activeTab === 'staff' || activeSubTab === 'Xodimlar') ? `${item.role} • ${item.email}` :
                                             item.address}
                             </p>
                         </div>
@@ -161,45 +187,48 @@ export default function Settings() {
         if (activeTab === 'ofis' || activeTab === 'ceo' || activeTab === 'staff') {
             if (activeSubTab === 'Umumiy sozlamalar') {
                 return (
-                    <form onSubmit={handleSaveSettings} className="flex flex-col gap-6">
-                        <div className="bg-white p-8 rounded-[2.5rem] border border-slate-200 shadow-xl shadow-slate-200/40">
-                            <h3 className="text-xl font-black text-slate-800 tracking-tight mb-8">Asosiy Tashkilot Ma'lumotlari</h3>
+                    <form onSubmit={handleSaveSettings} className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
+                        <div className="bg-white dark:bg-gray-800 p-10 rounded-[2.5rem] border border-gray-100 dark:border-gray-700 shadow-xl shadow-gray-200/10 dark:shadow-none">
+                            <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-8 uppercase tracking-tight flex items-center gap-3">
+                                <Building2 className="text-sky-500" />
+                                Asosiy Ma'lumotlar
+                            </h3>
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                                <div>
-                                    <label className="block text-[11px] font-black text-slate-400 uppercase tracking-[0.2em] mb-3">Tashkilot Nomi</label>
-                                    <input required type="text" className="w-full px-5 py-3 bg-slate-50 border-2 border-slate-100 rounded-2xl outline-none focus:border-[#5C67F2] focus:bg-white transition-all font-bold text-slate-700"
+                                <div className="space-y-3">
+                                    <label className="text-[10px] font-extrabold text-gray-400 dark:text-gray-500 uppercase tracking-widest ml-1">Tashkilot Nomi <span className="text-rose-500">*</span></label>
+                                    <input required type="text" className="w-full px-6 py-4 bg-gray-50 dark:bg-gray-900 border border-gray-100 dark:border-gray-700 rounded-[1.25rem] text-xs font-bold uppercase tracking-widest focus:bg-white dark:focus:bg-gray-800 focus:border-sky-500 dark:focus:border-sky-500 focus:ring-4 focus:ring-sky-500/10 outline-none transition-all text-gray-900 dark:text-white shadow-inner"
                                         value={settingsForm.orgName} onChange={e => setSettingsForm({ ...settingsForm, orgName: e.target.value })} />
                                 </div>
-                                <div>
-                                    <label className="block text-[11px] font-black text-slate-400 uppercase tracking-[0.2em] mb-3">Asosiy Manzil</label>
-                                    <input type="text" placeholder="Shahar, Ko'cha, Uy" className="w-full px-5 py-3 bg-slate-50 border-2 border-slate-100 rounded-2xl outline-none focus:border-[#5C67F2] focus:bg-white transition-all font-bold text-slate-700"
+                                <div className="space-y-3">
+                                    <label className="text-[10px] font-extrabold text-gray-400 dark:text-gray-500 uppercase tracking-widest ml-1">Asosiy Manzil</label>
+                                    <input type="text" placeholder="Shahar, Ko'cha, Uy" className="w-full px-6 py-4 bg-gray-50 dark:bg-gray-900 border border-gray-100 dark:border-gray-700 rounded-[1.25rem] text-xs font-bold uppercase tracking-widest focus:bg-white dark:focus:bg-gray-800 focus:border-sky-500 dark:focus:border-sky-500 focus:ring-4 focus:ring-sky-500/10 outline-none transition-all text-gray-900 dark:text-white shadow-inner"
                                         value={settingsForm.address || ''} onChange={e => setSettingsForm({ ...settingsForm, address: e.target.value })} />
                                 </div>
-                                <div>
-                                    <label className="block text-[11px] font-black text-slate-400 uppercase tracking-[0.2em] mb-3">Sms va Ogohlantirishlar uchun: Admin Telefon Raqami</label>
-                                    <input required type="text" placeholder="+998 90 123 45 67" className="w-full px-5 py-3 bg-slate-50 border-2 border-slate-100 rounded-2xl outline-none focus:border-[#5C67F2] focus:bg-white transition-all font-bold text-slate-700"
+                                <div className="space-y-3">
+                                    <label className="text-[10px] font-extrabold text-gray-400 dark:text-gray-500 uppercase tracking-widest ml-1">Admin Telefon Raqami <span className="text-rose-500">*</span></label>
+                                    <input required type="text" placeholder="+998 90 123 45 67" className="w-full px-6 py-4 bg-gray-50 dark:bg-gray-900 border border-gray-100 dark:border-gray-700 rounded-[1.25rem] text-xs font-bold uppercase tracking-widest focus:bg-white dark:focus:bg-gray-800 focus:border-sky-500 dark:focus:border-sky-500 focus:ring-4 focus:ring-sky-500/10 outline-none transition-all text-gray-900 dark:text-white shadow-inner"
                                         value={settingsForm.adminPhone || ''} onChange={e => setSettingsForm({ ...settingsForm, adminPhone: e.target.value })} />
                                 </div>
-                                <div>
-                                    <label className="block text-[11px] font-black text-slate-400 uppercase tracking-[0.2em] mb-3">Ish Vaqti</label>
-                                    <input type="text" placeholder="Du-Shanba 09:00 - 18:00" className="w-full px-5 py-3 bg-slate-50 border-2 border-slate-100 rounded-2xl outline-none focus:border-[#5C67F2] focus:bg-white transition-all font-bold text-slate-700"
+                                <div className="space-y-3">
+                                    <label className="text-[10px] font-extrabold text-gray-400 dark:text-gray-500 uppercase tracking-widest ml-1">Ish Vaqti</label>
+                                    <input type="text" placeholder="Du-Shanba 09:00 - 18:00" className="w-full px-6 py-4 bg-gray-50 dark:bg-gray-900 border border-gray-100 dark:border-gray-700 rounded-[1.25rem] text-xs font-bold uppercase tracking-widest focus:bg-white dark:focus:bg-gray-800 focus:border-sky-500 dark:focus:border-sky-500 focus:ring-4 focus:ring-sky-500/10 outline-none transition-all text-gray-900 dark:text-white shadow-inner"
                                         value={settingsForm.workingHours || ''} onChange={e => setSettingsForm({ ...settingsForm, workingHours: e.target.value })} />
                                 </div>
-                                <div>
-                                    <label className="block text-[11px] font-black text-slate-400 uppercase tracking-[0.2em] mb-3">Telegram Manzili</label>
-                                    <input type="text" placeholder="https://t.me/username" className="w-full px-5 py-3 bg-slate-50 border-2 border-slate-100 rounded-2xl outline-none focus:border-[#5C67F2] focus:bg-white transition-all font-bold text-slate-700"
+                                <div className="space-y-3">
+                                    <label className="text-[10px] font-extrabold text-gray-400 dark:text-gray-500 uppercase tracking-widest ml-1">Telegram Manzili</label>
+                                    <input type="text" placeholder="https://t.me/username" className="w-full px-6 py-4 bg-gray-50 dark:bg-gray-900 border border-gray-100 dark:border-gray-700 rounded-[1.25rem] text-xs font-bold uppercase tracking-widest focus:bg-white dark:focus:bg-gray-800 focus:border-sky-500 dark:focus:border-sky-500 focus:ring-4 focus:ring-sky-500/10 outline-none transition-all text-gray-900 dark:text-white shadow-inner"
                                         value={settingsForm.telegram || ''} onChange={e => setSettingsForm({ ...settingsForm, telegram: e.target.value })} />
                                 </div>
-                                <div>
-                                    <label className="block text-[11px] font-black text-slate-400 uppercase tracking-[0.2em] mb-3">Instagram Manzili</label>
-                                    <input type="text" placeholder="https://instagram.com/username" className="w-full px-5 py-3 bg-slate-50 border-2 border-slate-100 rounded-2xl outline-none focus:border-[#5C67F2] focus:bg-white transition-all font-bold text-slate-700"
+                                <div className="space-y-3">
+                                    <label className="text-[10px] font-extrabold text-gray-400 dark:text-gray-500 uppercase tracking-widest ml-1">Instagram Manzili</label>
+                                    <input type="text" placeholder="https://instagram.com/username" className="w-full px-6 py-4 bg-gray-50 dark:bg-gray-900 border border-gray-100 dark:border-gray-700 rounded-[1.25rem] text-xs font-bold uppercase tracking-widest focus:bg-white dark:focus:bg-gray-800 focus:border-sky-500 dark:focus:border-sky-500 focus:ring-4 focus:ring-sky-500/10 outline-none transition-all text-gray-900 dark:text-white shadow-inner"
                                         value={settingsForm.instagram || ''} onChange={e => setSettingsForm({ ...settingsForm, instagram: e.target.value })} />
                                 </div>
                             </div>
-                            <div className="mt-8 flex justify-end">
-                                <button type="submit" disabled={isSaving} className="bg-[#5C67F2] hover:bg-indigo-600 disabled:opacity-70 text-white px-8 py-3.5 rounded-2xl font-black shadow-xl shadow-indigo-100 transition-all uppercase tracking-widest text-sm flex items-center gap-3">
-                                    {isSaving ? 'SAQLANMOQDA...' : 'SAQLASH'}
-                                    <Save className="w-5 h-5" />
+                            <div className="mt-12 flex justify-end">
+                                <button type="submit" disabled={isSaving} className="bg-sky-600 dark:bg-sky-500 hover:bg-sky-500 dark:hover:bg-sky-400 disabled:opacity-70 text-white px-10 py-4 rounded-[1.25rem] font-bold uppercase tracking-widest shadow-xl shadow-sky-500/20 active:scale-95 transition-all text-[10px] flex items-center gap-3">
+                                    {isSaving ? 'Saqlanmoqda...' : 'Saqlash'}
+                                    <Save size={18} />
                                 </button>
                             </div>
                         </div>
@@ -208,17 +237,17 @@ export default function Settings() {
             }
 
             return (
-                <div className="bg-white rounded-[2.5rem] border border-slate-200 shadow-xl overflow-hidden min-h-[600px] flex flex-col">
-                    <div className="px-10 py-8 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
+                <div className="bg-white dark:bg-gray-800 rounded-[2.5rem] shadow-xl shadow-gray-200/10 dark:shadow-none border border-gray-100 dark:border-gray-700 overflow-hidden min-h-[550px] flex flex-col animate-in fade-in slide-in-from-bottom-4 duration-500">
+                    <div className="px-10 py-8 border-b border-gray-50 dark:border-gray-700 bg-gray-50/50 dark:bg-gray-900/50 flex flex-col sm:flex-row sm:items-center justify-between gap-6">
                         <div>
-                            <h3 className="text-xl font-black text-slate-800 uppercase tracking-tight">{activeSubTab}</h3>
-                            <p className="text-xs font-bold text-slate-400 mt-1 uppercase tracking-widest">{activeTab} bo'limi</p>
+                            <h3 className="text-xl font-extrabold text-gray-900 dark:text-white uppercase tracking-tight">{subTabLabels[activeSubTab] || (activeTab === 'staff' ? 'Xodimlar Boshqaruvi' : activeTab)}</h3>
+                            <p className="text-[10px] font-bold text-gray-400 dark:text-gray-500 mt-2 uppercase tracking-widest">Markazdagi barcha {activeSubTab || (activeTab === 'staff' ? 'xodimlar' : 'ma\'lumotlar')} ro'yxati</p>
                         </div>
                         <button onClick={() => {
                             setNewItem({});
                             setIsAddModalOpen(true);
-                        }} className="flex items-center gap-2 bg-[#5C67F2] text-white px-6 py-2.5 rounded-xl font-bold text-sm shadow-lg shadow-indigo-100 hover:bg-indigo-600 transition-all active:scale-95">
-                            <Plus className="w-4 h-4" />
+                        }} className="flex items-center gap-3 bg-sky-600 dark:bg-sky-500 text-white px-8 py-3.5 rounded-[1.25rem] font-bold text-[10px] uppercase tracking-widest shadow-xl shadow-sky-500/20 hover:bg-sky-500 transition-all active:scale-95 whitespace-nowrap">
+                            <Plus size={18} />
                             Yangi qo'shish
                         </button>
                     </div>
@@ -234,172 +263,266 @@ export default function Settings() {
     };
 
     return (
-        <div className="flex flex-col gap-6 max-w-[1600px] mx-auto">
-            <div className="flex items-center justify-between pb-2 border-b border-slate-200">
-                <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 bg-indigo-50 rounded-xl flex items-center justify-center text-indigo-600">
-                        <SettingsIcon className="w-6 h-6" />
-                    </div>
-                    <div>
-                        <h1 className="text-2xl font-black text-slate-800 tracking-tight">Tizim Sozlamalari</h1>
-                        <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">Markazni boshqarish va xususiylashtirish</p>
-                    </div>
+        <div className="space-y-8 py-4 animate-in fade-in duration-700">
+            <div className="flex items-center justify-between">
+                <div>
+                    <h1 className="text-3xl font-extrabold text-gray-900 dark:text-white uppercase tracking-tight">Tizim Sozlamalari</h1>
+                    <p className="text-[10px] font-bold text-gray-400 dark:text-gray-500 mt-2 uppercase tracking-widest">Markaz qoidalari, filiallar va xodimlar ma'lumotlari</p>
                 </div>
             </div>
 
-            <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+            <div className="grid grid-cols-1 lg:grid-cols-4 gap-8 items-start">
                 {/* Left Sidebar Menu */}
-                <div className="lg:col-span-3 flex flex-col gap-6">
-                    <div className="bg-white rounded-[2rem] border border-slate-200 shadow-xl shadow-slate-200/50 p-4 h-fit sticky top-24">
-                        <div className="flex flex-col gap-1.5">
-                            {menuItems.map(item => (
-                                <div key={item.id} className="flex flex-col">
-                                    <button
-                                        onClick={() => {
-                                            setActiveTab(item.id);
-                                            if (item.hasSub && item.subItems) {
-                                                setActiveSubTab(item.subItems[0]);
-                                            } else {
-                                                setActiveSubTab('');
-                                            }
-                                        }}
-                                        className={`flex items-center justify-between px-5 py-4 rounded-2xl font-bold transition-all group ${activeTab === item.id
-                                            ? 'bg-[#5C67F2] text-white shadow-lg shadow-indigo-200'
-                                            : 'text-slate-500 hover:bg-slate-50 hover:text-slate-800'}`}
-                                    >
-                                        <div className="flex items-center gap-3">
-                                            <div className={`${activeTab === item.id ? 'text-white' : 'text-slate-400 group-hover:text-indigo-500'} transition-colors`}>
-                                                {item.icon}
-                                            </div>
-                                            <span className="text-[14px]">{item.label}</span>
+                <div className="lg:col-span-1 border border-gray-100 dark:border-gray-700 bg-white dark:bg-gray-800 rounded-[2.5rem] overflow-hidden shadow-xl shadow-gray-200/10 dark:shadow-none">
+                    <div className="flex flex-col">
+                        {menuItems.map(item => (
+                            <div key={item.id} className="flex flex-col">
+                                <button
+                                    onClick={() => {
+                                        setActiveTab(item.id);
+                                        if (item.hasSub && item.subItems) {
+                                            setActiveSubTab(item.subItems[0]);
+                                        } else {
+                                            setActiveSubTab('');
+                                        }
+                                    }}
+                                    className={`flex items-center justify-between px-8 py-6 transition-all group border-l-4 ${activeTab === item.id
+                                        ? 'bg-sky-50 dark:bg-sky-900/10 border-sky-600'
+                                        : 'bg-white dark:bg-gray-800 border-transparent hover:bg-gray-50 dark:hover:bg-gray-700/50 border-b border-gray-50 dark:border-gray-700'}`}
+                                >
+                                    <div className="flex items-center gap-4">
+                                        <div className={`${activeTab === item.id ? 'text-sky-600' : 'text-gray-400 group-hover:text-sky-500'} transition-colors w-10 h-10 rounded-xl flex items-center justify-center bg-gray-50 dark:bg-gray-900 border border-gray-100 dark:border-gray-700 shadow-sm group-hover:scale-110 duration-300`}>
+                                            {item.icon}
                                         </div>
-                                        {item.hasSub && <ChevronDown className={`w-4 h-4 transition-transform ${activeTab === item.id ? 'rotate-180' : ''}`} />}
-                                    </button>
+                                        <span className={`text-[11px] font-extrabold uppercase tracking-widest transition-colors ${activeTab === item.id ? 'text-sky-700 dark:text-sky-400' : 'text-gray-500 group-hover:text-gray-900 dark:group-hover:text-white'}`}>{item.label}</span>
+                                    </div>
+                                    {item.hasSub && <ChevronDown size={18} className={`transition-all duration-300 ${activeTab === item.id ? 'rotate-180 text-sky-600' : 'text-gray-300 group-hover:text-gray-500'}`} />}
+                                </button>
 
-                                    {
-                                        item.hasSub && activeTab === item.id && (
-                                            <div className="flex flex-col ml-12 mt-2 mb-3 space-y-1">
-                                                {item.subItems?.map(subItem => (
-                                                    <button
-                                                        key={subItem}
-                                                        onClick={(e) => {
-                                                            e.stopPropagation();
-                                                            setActiveSubTab(subItem);
-                                                        }}
-                                                        className={`py-2 text-left text-[13px] font-bold transition-colors ${activeSubTab === subItem ? 'text-[#5C67F2]' : 'text-slate-400 hover:text-slate-600'}`}
-                                                    >
-                                                        {subItem}
-                                                    </button>
-                                                ))}
-                                            </div>
-                                        )
-                                    }
-                                </div>
-                            ))}
-                        </div>
+                                {
+                                    item.hasSub && activeTab === item.id && (
+                                        <div className="flex flex-col pl-[72px] pb-5 pt-1 space-y-1 bg-sky-50/30 dark:bg-sky-900/5 border-b border-gray-50 dark:border-gray-700">
+                                            {item.subItems?.map(subItem => (
+                                                <button
+                                                    key={subItem}
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        setActiveSubTab(subItem);
+                                                    }}
+                                                    className={`py-3 text-left text-[10px] font-bold uppercase tracking-widest transition-all ${activeSubTab === subItem ? 'text-sky-700 dark:text-sky-400 border-l-2 border-sky-600 pl-4 -ml-2' : 'text-gray-400 hover:text-gray-900 dark:hover:text-white pl-4'}`}
+                                                >
+                                                    {subItem}
+                                                </button>
+                                            ))}
+                                        </div>
+                                    )
+                                }
+                            </div>
+                        ))}
                     </div>
                 </div>
 
                 {/* Main Content Area */}
-                <div className="lg:col-span-9">
+                <div className="lg:col-span-3">
                     {renderContent()}
                 </div>
             </div>
 
             {/* Global Add Modal */}
-            {
-                isAddModalOpen && (
-                    <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-[9999] flex items-center justify-center p-4">
-                        <div className="bg-white rounded-[2.5rem] w-full max-w-lg shadow-2xl border border-slate-100 overflow-hidden">
-                            <div className="p-8 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
-                                <div>
-                                    <h2 className="text-2xl font-black text-slate-800 uppercase tracking-tight">
-                                        Yangi {activeTab === 'staff' ? 'Xodim' : activeSubTab === 'Filiallar' ? 'Filial' : activeSubTab.slice(0, -2)} qo'shish
-                                    </h2>
-                                    <p className="text-xs font-bold text-slate-400 mt-1 uppercase tracking-widest">{activeTab === 'staff' ? 'Xodimlar' : activeTab} bo'limi</p>
-                                </div>
-                                <button onClick={() => setIsAddModalOpen(false)} className="p-3 hover:bg-slate-200 rounded-2xl transition-colors">
-                                    <X className="w-6 h-6 text-slate-400" />
-                                </button>
+            {isAddModalOpen && (
+                <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-gray-900/60 backdrop-blur-md animate-in fade-in duration-300" onClick={() => setIsAddModalOpen(false)}>
+                    <div className="bg-white dark:bg-gray-800 w-full max-w-lg rounded-[2.5rem] shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200 border border-gray-100 dark:border-gray-700" onClick={e => e.stopPropagation()}>
+                        <div className="px-10 py-8 flex items-center justify-between border-b border-gray-50 dark:border-gray-700 bg-gray-50/50 dark:bg-gray-900/50">
+                            <div>
+                                <h2 className="text-2xl font-bold text-gray-900 dark:text-white uppercase tracking-tight">
+                                    Yangi {activeTab === 'staff' ? 'Xodim' : activeSubTab === 'Filiallar' ? 'Filial' : activeSubTab.length > 0 ? activeSubTab.slice(0, -2) : 'Ma\'lumot'} qo'shish
+                                </h2>
+                                <p className="text-[10px] font-bold text-gray-400 dark:text-gray-500 mt-1.5 uppercase tracking-widest">Tizimga yangi ma'lumot kiritish</p>
                             </div>
-                            <form onSubmit={handleAdd} className="p-8 space-y-6">
-                                {activeTab !== 'staff' && (
-                                    <div>
-                                        <label className="block text-[11px] font-black text-slate-400 uppercase tracking-[0.2em] mb-3">Nomi</label>
-                                        <input required type="text" className="w-full px-6 py-4 bg-slate-50 border-2 border-slate-100 rounded-2xl outline-none focus:border-indigo-500 focus:bg-white transition-all font-bold text-slate-700"
-                                            value={newItem.name || ''} onChange={e => setNewItem({ ...newItem, name: e.target.value })} />
-                                    </div>
-                                )}
+                            <button onClick={() => setIsAddModalOpen(false)} className="w-12 h-12 flex items-center justify-center hover:bg-white dark:hover:bg-gray-700 rounded-2xl text-gray-400 hover:text-gray-900 dark:hover:text-white transition-all shadow-sm border border-transparent hover:border-gray-100 dark:hover:border-gray-600">
+                                <X size={24} />
+                            </button>
+                        </div>
+                        <form onSubmit={handleAdd} className="p-10 space-y-8">
+                            {activeTab !== 'staff' && (
+                                <div className="space-y-3">
+                                    <label className="text-[10px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-widest ml-1">Nomi <span className="text-rose-500">*</span></label>
+                                    <input required type="text" className="w-full px-6 py-4 bg-gray-50 dark:bg-gray-900 border border-gray-100 dark:border-gray-700 rounded-[1.25rem] text-xs font-bold uppercase tracking-widest focus:bg-white dark:focus:bg-gray-800 focus:border-sky-500 dark:focus:border-sky-500 focus:ring-4 focus:ring-sky-500/10 outline-none transition-all text-gray-900 dark:text-white shadow-inner"
+                                        value={newItem.name || ''} onChange={e => setNewItem({ ...newItem, name: e.target.value })} />
+                                </div>
+                            )}
 
-                                {activeSubTab === 'Kurslar' && (
-                                    <div>
-                                        <label className="block text-[11px] font-black text-slate-400 uppercase tracking-[0.2em] mb-3">Narxi (UZS)</label>
-                                        <input required type="number" className="w-full px-6 py-4 bg-slate-50 border-2 border-slate-100 rounded-2xl outline-none focus:border-indigo-500 focus:bg-white transition-all font-bold text-slate-700"
-                                            value={newItem.price || ''} onChange={e => setNewItem({ ...newItem, price: e.target.value })} />
-                                    </div>
-                                )}
+                            {activeSubTab === 'Kurslar' && (
+                                <div className="space-y-3">
+                                    <label className="text-[10px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-widest ml-1">Narxi (UZS) <span className="text-rose-500">*</span></label>
+                                    <input required type="number" className="w-full px-6 py-4 bg-gray-50 dark:bg-gray-900 border border-gray-100 dark:border-gray-700 rounded-[1.25rem] text-xs font-bold uppercase tracking-widest focus:bg-white dark:focus:bg-gray-800 focus:border-sky-500 dark:focus:border-sky-500 focus:ring-4 focus:ring-sky-500/10 outline-none transition-all text-gray-900 dark:text-white shadow-inner"
+                                        value={newItem.price || ''} onChange={e => setNewItem({ ...newItem, price: e.target.value })} />
+                                </div>
+                            )}
 
-                                {activeSubTab === 'Xonalar' && (
-                                    <div>
-                                        <label className="block text-[11px] font-black text-slate-400 uppercase tracking-[0.2em] mb-3">Sig'imi (Kishi)</label>
-                                        <input required type="number" className="w-full px-6 py-4 bg-slate-50 border-2 border-slate-100 rounded-2xl outline-none focus:border-indigo-500 focus:bg-white transition-all font-bold text-slate-700"
-                                            value={newItem.capacity || ''} onChange={e => setNewItem({ ...newItem, capacity: e.target.value })} />
-                                    </div>
-                                )}
+                            {activeSubTab === 'Xonalar' && (
+                                <div className="space-y-3">
+                                    <label className="text-[10px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-widest ml-1">Sig'imi (Kishi) <span className="text-rose-500">*</span></label>
+                                    <input required type="number" className="w-full px-6 py-4 bg-gray-50 dark:bg-gray-900 border border-gray-100 dark:border-gray-700 rounded-[1.25rem] text-xs font-bold uppercase tracking-widest focus:bg-white dark:focus:bg-gray-800 focus:border-sky-500 dark:focus:border-sky-500 focus:ring-4 focus:ring-sky-500/10 outline-none transition-all text-gray-900 dark:text-white shadow-inner"
+                                        value={newItem.capacity || ''} onChange={e => setNewItem({ ...newItem, capacity: e.target.value })} />
+                                </div>
+                            )}
 
-                                {activeSubTab === 'Filiallar' && (
-                                    <div>
-                                        <label className="block text-[11px] font-black text-slate-400 uppercase tracking-[0.2em] mb-3">Filial Manzili</label>
-                                        <input required type="text" className="w-full px-6 py-4 bg-slate-50 border-2 border-slate-100 rounded-2xl outline-none focus:border-indigo-500 focus:bg-white transition-all font-bold text-slate-700"
+                            {activeSubTab === 'Filiallar' && (
+                                <div className="space-y-3">
+                                    <label className="text-[10px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-widest ml-1">Filial Manzili <span className="text-rose-500">*</span></label>
+                                    <div className="relative">
+                                        <MapPin className="absolute left-6 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                                        <input required type="text" className="w-full pl-12 pr-6 py-4 bg-gray-50 dark:bg-gray-900 border border-gray-100 dark:border-gray-700 rounded-[1.25rem] text-xs font-bold uppercase tracking-widest focus:bg-white dark:focus:bg-gray-800 focus:border-sky-500 dark:focus:border-sky-500 focus:ring-4 focus:ring-sky-500/10 outline-none transition-all text-gray-900 dark:text-white shadow-inner"
                                             value={newItem.address || ''} onChange={e => setNewItem({ ...newItem, address: e.target.value })} />
                                     </div>
-                                )}
+                                </div>
+                            )}
 
-                                {activeTab === 'staff' && (
-                                    <>
-                                        <div>
-                                            <label className="block text-[11px] font-black text-slate-400 uppercase tracking-[0.2em] mb-3">Ismi (F.I.SH)</label>
-                                            <input required type="text" placeholder="Ism Familiya" className="w-full px-6 py-4 bg-slate-50 border-2 border-slate-100 rounded-2xl outline-none focus:border-indigo-500 focus:bg-white transition-all font-bold text-slate-700"
-                                                value={newItem.name || ''} onChange={e => setNewItem({ ...newItem, name: e.target.value })} />
+                            {activeTab === 'staff' && (
+                                <>
+                                    <div className="space-y-3">
+                                        <label className="text-[10px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-widest ml-1">Ismi (F.I.SH) <span className="text-rose-500">*</span></label>
+                                        <input required type="text" placeholder="Ism Familiya" className="w-full px-6 py-4 bg-gray-50 dark:bg-gray-900 border border-gray-100 dark:border-gray-700 rounded-[1.25rem] text-xs font-bold uppercase tracking-widest focus:bg-white dark:focus:bg-gray-800 focus:border-sky-500 dark:focus:border-sky-500 focus:ring-4 focus:ring-sky-500/10 outline-none transition-all text-gray-900 dark:text-white shadow-inner"
+                                            value={newItem.name || ''} onChange={e => setNewItem({ ...newItem, name: e.target.value })} />
+                                    </div>
+                                    <div className="grid grid-cols-2 gap-8">
+                                        <div className="space-y-3">
+                                            <label className="text-[10px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-widest ml-1">Vazifasi <span className="text-rose-500">*</span></label>
+                                            <div className="relative">
+                                                <select required className="w-full px-6 py-4 bg-gray-50 dark:bg-gray-900 border border-gray-100 dark:border-gray-700 rounded-[1.25rem] text-xs font-bold uppercase tracking-widest focus:bg-white dark:focus:bg-gray-800 focus:border-sky-500 dark:focus:border-sky-500 focus:ring-4 focus:ring-sky-500/10 outline-none appearance-none cursor-pointer text-gray-900 dark:text-white shadow-inner"
+                                                    value={newItem.role || 'RECEPTIONIST'} onChange={e => setNewItem({ ...newItem, role: e.target.value })}>
+                                                    <option value="RECEPTIONIST">Receptionist</option>
+                                                    <option value="TEACHER">O'qituvchi</option>
+                                                    {currentUser?.role === 'ADMIN' && <option value="MANAGER">Menejer</option>}
+                                                    {currentUser?.role === 'ADMIN' && <option value="ADMIN">Administrator</option>}
+                                                </select>
+                                                <ChevronDown size={18} className="absolute right-6 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
+                                            </div>
                                         </div>
-                                        <div>
-                                            <label className="block text-[11px] font-black text-slate-400 uppercase tracking-[0.2em] mb-3">Vazifasi</label>
-                                            <select required className="w-full px-6 py-4 bg-slate-50 border-2 border-slate-100 rounded-2xl outline-none focus:border-indigo-500 focus:bg-white transition-all font-bold text-slate-700"
-                                                value={newItem.role || 'RECEPTIONIST'} onChange={e => setNewItem({ ...newItem, role: e.target.value })}>
-                                                <option value="RECEPTIONIST">Receptionist</option>
-                                                <option value="TEACHER">O'qituvchi</option>
-                                                {currentUser?.role === 'ADMIN' && <option value="MANAGER">Menejer</option>}
-                                                {currentUser?.role === 'ADMIN' && <option value="ADMIN">Administrator</option>}
-                                            </select>
-                                        </div>
-                                        <div>
-                                            <label className="block text-[11px] font-black text-slate-400 uppercase tracking-[0.2em] mb-3">Login</label>
-                                            <input required type="text" placeholder="pochta@misol.uz yoki login" className="w-full px-6 py-4 bg-slate-50 border-2 border-slate-100 rounded-2xl outline-none focus:border-indigo-500 focus:bg-white transition-all font-bold text-slate-700"
-                                                value={newItem.email || ''} onChange={e => setNewItem({ ...newItem, email: e.target.value })} />
-                                        </div>
-                                        <div>
-                                            <label className="block text-[11px] font-black text-slate-400 uppercase tracking-[0.2em] mb-3">Paroli</label>
-                                            <input required type="password" placeholder="Kamida 6 belgi" className="w-full px-6 py-4 bg-slate-50 border-2 border-slate-100 rounded-2xl outline-none focus:border-indigo-500 focus:bg-white transition-all font-bold text-slate-700"
-                                                value={newItem.password || ''} onChange={e => setNewItem({ ...newItem, password: e.target.value })} />
-                                        </div>
-                                        <div>
-                                            <label className="block text-[11px] font-black text-slate-400 uppercase tracking-[0.2em] mb-3">Telefon raqami</label>
-                                            <input type="text" placeholder="+998 90 123 45 67" className="w-full px-6 py-4 bg-slate-50 border-2 border-slate-100 rounded-2xl outline-none focus:border-indigo-500 focus:bg-white transition-all font-bold text-slate-700"
+                                        <div className="space-y-3">
+                                            <label className="text-[10px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-widest ml-1">Telefon raqami</label>
+                                            <input type="text" placeholder="+998 90 123 45 67" className="w-full px-6 py-4 bg-gray-50 dark:bg-gray-900 border border-gray-100 dark:border-gray-700 rounded-[1.25rem] text-xs font-bold uppercase tracking-widest focus:bg-white dark:focus:bg-gray-800 focus:border-sky-500 dark:focus:border-sky-500 focus:ring-4 focus:ring-sky-500/10 outline-none transition-all text-gray-900 dark:text-white shadow-inner"
                                                 value={newItem.phone || ''} onChange={e => setNewItem({ ...newItem, phone: e.target.value })} />
                                         </div>
-                                    </>
-                                )}
+                                    </div>
+                                    <div className="grid grid-cols-2 gap-8">
+                                        <div className="space-y-3">
+                                            <label className="text-[10px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-widest ml-1">Login <span className="text-rose-500">*</span></label>
+                                            <input required type="text" placeholder="pochta@misol.uz" className="w-full px-6 py-4 bg-gray-50 dark:bg-gray-900 border border-gray-100 dark:border-gray-700 rounded-[1.25rem] text-xs font-bold uppercase tracking-widest focus:bg-white dark:focus:bg-gray-800 focus:border-sky-500 dark:focus:border-sky-500 focus:ring-4 focus:ring-sky-500/10 outline-none transition-all text-gray-900 dark:text-white lowercase shadow-inner"
+                                                value={newItem.email || ''} onChange={e => setNewItem({ ...newItem, email: e.target.value })} />
+                                        </div>
+                                        <div className="space-y-3">
+                                            <label className="text-[10px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-widest ml-1">Parol <span className="text-rose-500">*</span></label>
+                                            <input required type="password" placeholder="Kamida 6 belgi" className="w-full px-6 py-4 bg-gray-50 dark:bg-gray-900 border border-gray-100 dark:border-gray-700 rounded-[1.25rem] text-xs font-bold uppercase tracking-widest focus:bg-white dark:focus:bg-gray-800 focus:border-sky-500 dark:focus:border-sky-500 focus:ring-4 focus:ring-sky-500/10 outline-none transition-all text-gray-900 dark:text-white shadow-inner"
+                                                value={newItem.password || ''} onChange={e => setNewItem({ ...newItem, password: e.target.value })} />
+                                        </div>
+                                    </div>
+                                </>
+                            )}
 
-                                <button type="submit" className="w-full py-5 bg-[#5C67F2] text-white rounded-[1.5rem] font-black shadow-xl shadow-indigo-100 hover:bg-indigo-600 transition-all mt-4 uppercase tracking-widest text-sm flex items-center justify-center gap-3">
-                                    <Plus className="w-5 h-5" />
-                                    SAQLASH
+                            <div className="pt-10 mt-6 border-t border-dashed border-gray-100 dark:border-gray-700 flex justify-end gap-5">
+                                <button type="button" onClick={() => setIsAddModalOpen(false)} className="px-8 py-4 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-gray-500 dark:text-gray-400 rounded-2xl text-[10px] font-bold uppercase tracking-widest hover:bg-gray-50 dark:hover:bg-gray-700 transition-all">
+                                    Bekor Qilish
                                 </button>
-                            </form>
-                        </div>
+                                <button type="submit" className="px-10 py-4 bg-sky-600 dark:bg-sky-500 text-white rounded-2xl text-[10px] font-bold uppercase tracking-widest hover:bg-sky-500 dark:hover:bg-sky-400 active:scale-[0.98] transition-all shadow-xl shadow-sky-500/20 flex flex-row items-center gap-3">
+                                    Saqlash
+                                    <Save size={18} />
+                                </button>
+                            </div>
+                        </form>
                     </div>
-                )
-            }
-        </div >
+                </div>
+            )}
+
+            {/* Global Edit Modal (Staff Only for now) */}
+            {isEditModalOpen && editingItem && (
+                <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-gray-900/60 backdrop-blur-md animate-in fade-in duration-300" onClick={() => setIsEditModalOpen(false)}>
+                    <div className="bg-white dark:bg-gray-800 w-full max-w-lg rounded-[2.5rem] shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200 border border-gray-100 dark:border-gray-700" onClick={e => e.stopPropagation()}>
+                        <div className="px-10 py-8 flex items-center justify-between border-b border-gray-100 dark:border-gray-700 bg-gray-50/50 dark:bg-gray-900/50">
+                            <div>
+                                <h2 className="text-2xl font-bold text-gray-900 dark:text-white uppercase tracking-tight">Xodimni Tahrirlash</h2>
+                                <p className="text-[10px] font-bold text-gray-400 dark:text-gray-500 mt-1.5 uppercase tracking-widest">Ma'lumotlarni yangilash</p>
+                            </div>
+                            <button onClick={() => setIsEditModalOpen(false)} className="w-12 h-12 flex items-center justify-center hover:bg-white dark:hover:bg-gray-700 rounded-2xl text-gray-400 hover:text-gray-900 dark:hover:text-white transition-all shadow-sm border border-transparent hover:border-gray-100 dark:hover:border-gray-600">
+                                <X size={24} />
+                            </button>
+                        </div>
+                        <form onSubmit={async (e) => {
+                            e.preventDefault();
+                            try {
+                                const res = await fetch(`/api/users/${editingItem.id}`, {
+                                    method: 'PUT',
+                                    headers: {
+                                        'Content-Type': 'application/json',
+                                        'Authorization': `Bearer ${token}`
+                                    },
+                                    body: JSON.stringify(editingItem)
+                                });
+                                if (res.ok) {
+                                    alert("Muvaffaqiyatli saqlandi!");
+                                    fetchUsers();
+                                    setIsEditModalOpen(false);
+                                } else {
+                                    const errData = await res.json();
+                                    alert(`Xatolik: ${errData.error || res.statusText}`);
+                                }
+                            } catch (err) {
+                                console.error("Edit failed", err);
+                                alert("Tahrirlashda xatolik yuz berdi!");
+                            }
+                        }} className="p-10 space-y-8">
+                            <div className="space-y-3">
+                                <label className="text-[10px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-widest ml-1">Ismi (F.I.SH) <span className="text-rose-500">*</span></label>
+                                <input required type="text" className="w-full px-6 py-4 bg-gray-50 dark:bg-gray-900 border border-gray-100 dark:border-gray-700 rounded-[1.25rem] text-xs font-bold uppercase tracking-widest focus:bg-white dark:focus:bg-gray-800 focus:border-sky-500 dark:focus:border-sky-500 focus:ring-4 focus:ring-sky-500/10 outline-none transition-all text-gray-900 dark:text-white shadow-inner"
+                                    value={editingItem.name || ''} onChange={e => setEditingItem({ ...editingItem, name: e.target.value })} />
+                            </div>
+                            <div className="grid grid-cols-2 gap-8">
+                                <div className="space-y-3">
+                                    <label className="text-[10px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-widest ml-1">Vazifasi <span className="text-rose-500">*</span></label>
+                                    <div className="relative">
+                                        <select required className="w-full px-6 py-4 bg-gray-50 dark:bg-gray-900 border border-gray-100 dark:border-gray-700 rounded-[1.25rem] text-xs font-bold uppercase tracking-widest focus:bg-white dark:focus:bg-gray-800 focus:border-sky-500 dark:focus:border-sky-500 focus:ring-4 focus:ring-sky-500/10 outline-none appearance-none cursor-pointer text-gray-900 dark:text-white shadow-inner"
+                                            value={editingItem.role || 'RECEPTIONIST'} onChange={e => setEditingItem({ ...editingItem, role: e.target.value })}>
+                                            <option value="RECEPTIONIST">Receptionist</option>
+                                            <option value="TEACHER">O'qituvchi</option>
+                                            <option value="MANAGER">Menejer</option>
+                                            <option value="ADMIN">Administrator</option>
+                                        </select>
+                                        <ChevronDown size={18} className="absolute right-6 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
+                                    </div>
+                                </div>
+                                <div className="space-y-3">
+                                    <label className="text-[10px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-widest ml-1">Telefon raqami</label>
+                                    <input type="text" placeholder="+998 90 123 45 67" className="w-full px-6 py-4 bg-gray-50 dark:bg-gray-900 border border-gray-100 dark:border-gray-700 rounded-[1.25rem] text-xs font-bold uppercase tracking-widest focus:bg-white dark:focus:bg-gray-800 focus:border-sky-500 dark:focus:border-sky-500 focus:ring-4 focus:ring-sky-500/10 outline-none transition-all text-gray-900 dark:text-white shadow-inner"
+                                        value={editingItem.phone || ''} onChange={e => setEditingItem({ ...editingItem, phone: e.target.value })} />
+                                </div>
+                            </div>
+                            <div className="grid grid-cols-2 gap-8">
+                                <div className="space-y-3">
+                                    <label className="text-[10px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-widest ml-1">Login <span className="text-rose-500">*</span></label>
+                                    <input required type="text" className="w-full px-6 py-4 bg-gray-50 dark:bg-gray-900 border border-gray-100 dark:border-gray-700 rounded-[1.25rem] text-xs font-bold uppercase tracking-widest focus:bg-white dark:focus:bg-gray-800 focus:border-sky-500 dark:focus:border-sky-500 focus:ring-4 focus:ring-sky-500/10 outline-none transition-all text-gray-900 dark:text-white shadow-inner"
+                                        value={editingItem.email || ''} onChange={e => setEditingItem({ ...editingItem, email: e.target.value })} />
+                                </div>
+                                <div className="space-y-3">
+                                    <label className="text-[10px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-widest ml-1">Yangi Parol (Ixtiyoriy)</label>
+                                    <input type="password" placeholder="O'zgartirish uchun yozing" className="w-full px-6 py-4 bg-gray-50 dark:bg-gray-900 border border-gray-100 dark:border-gray-700 rounded-[1.25rem] text-xs font-bold uppercase tracking-widest focus:bg-white dark:focus:bg-gray-800 focus:border-sky-500 dark:focus:border-sky-500 focus:ring-4 focus:ring-sky-500/10 outline-none transition-all text-gray-900 dark:text-white shadow-inner"
+                                        value={editingItem.password || ''} onChange={e => setEditingItem({ ...editingItem, password: e.target.value })} />
+                                </div>
+                            </div>
+
+                            <div className="pt-10 mt-6 border-t border-dashed border-gray-100 dark:border-gray-700 flex justify-end gap-5">
+                                <button type="button" onClick={() => setIsEditModalOpen(false)} className="px-8 py-4 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-gray-500 dark:text-gray-400 rounded-2xl text-[10px] font-bold uppercase tracking-widest hover:bg-gray-50 dark:hover:bg-gray-700 transition-all">
+                                    Bekor Qilish
+                                </button>
+                                <button type="submit" className="px-10 py-4 bg-sky-600 dark:bg-sky-500 text-white rounded-2xl text-[10px] font-bold uppercase tracking-widest hover:bg-sky-500 dark:hover:bg-sky-400 active:scale-[0.98] transition-all shadow-xl shadow-sky-500/20 flex flex-row items-center gap-3">
+                                    Saqlash
+                                    <Save size={18} />
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            )}
+        </div>
     );
 }
-

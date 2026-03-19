@@ -1,15 +1,20 @@
+import './env.js';
 import express from 'express';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
 import { PrismaClient } from '@prisma/client';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
-import dotenv from 'dotenv';
-
-dotenv.config();
+import bot, { startBot, notifyAdmins } from './src/bot/bot.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
+
+if (process.env.TELEGRAM_BOT_TOKEN) {
+  startBot();
+} else {
+  console.warn('TELEGRAM_BOT_TOKEN mavjud emas. Bot ishga tushmadi.');
+}
 
 const prisma = new PrismaClient();
 const app = express();
@@ -143,6 +148,34 @@ app.post('/api/users', authenticate, async (req, res, next) => {
   } catch (error) { next(error); }
 });
 
+app.put('/api/users/:id', authenticate, async (req, res, next) => {
+  try {
+    console.log(`PUT /api/users/${req.params.id} request from role: ${req.user.role}`);
+    if (req.user.role !== 'ADMIN') return res.status(403).json({ error: 'Faqat ADMIN tahrirlay oladi' });
+    const { id } = req.params;
+    const { email, name, phone, role, password } = req.body;
+    const data = { email, name, phone, role };
+    if (password) {
+      data.password = await bcrypt.hash(password, 10);
+    }
+
+    const user = await prisma.user.update({
+      where: { id: parseInt(id) },
+      data
+    });
+    res.json(user);
+  } catch (error) { next(error); }
+});
+
+app.delete('/api/users/:id', authenticate, async (req, res, next) => {
+  try {
+    if (req.user.role !== 'ADMIN') return res.status(403).json({ error: 'Faqat ADMIN o\'chira oladi' });
+    const { id } = req.params;
+    await prisma.user.delete({ where: { id: parseInt(id) } });
+    res.json({ success: true });
+  } catch (error) { next(error); }
+});
+
 // Endpoint to sync missing teacher profiles (one-time fix or utility)
 app.post('/api/admin/sync-teachers', authenticate, async (req, res, next) => {
   try {
@@ -215,17 +248,45 @@ app.post('/api/students', authenticate, async (req, res, next) => {
 app.put('/api/students/:id', authenticate, async (req, res, next) => {
   try {
     const { id } = req.params;
+    const studentId = parseInt(id);
+    
+    if (isNaN(studentId)) {
+      return res.status(400).json({ error: 'Valid student ID talab qilinadi' });
+    }
+
     const { groups, schoolId, ...data } = req.body;
-    await prisma.student.update({ where: { id: parseInt(id) }, data });
+    console.log(`Updating student ${studentId}:`, data);
+
+    await prisma.student.update({
+      where: { id: studentId },
+      data
+    });
+
     if (groups) {
+      console.log(`Setting groups for student ${studentId}:`, groups);
       await prisma.student.update({
-        where: { id: parseInt(id) },
-        data: { groups: { set: groups.map(gId => ({ id: gId })) } }
+        where: { id: studentId },
+        data: {
+          groups: {
+            set: groups.map(gId => ({ id: parseInt(gId) }))
+          }
+        }
       });
     }
-    const updatedStudent = await prisma.student.findUnique({ where: { id: parseInt(id) }, include: { groups: { select: { id: true } } } });
-    res.json({ ...updatedStudent, groups: updatedStudent.groups.map(g => g.id) });
-  } catch (error) { next(error); }
+
+    const updatedStudent = await prisma.student.findUnique({
+      where: { id: studentId },
+      include: { groups: { select: { id: true } } }
+    });
+
+    res.json({
+      ...updatedStudent,
+      groups: updatedStudent.groups.map(g => g.id)
+    });
+  } catch (error) {
+    console.error(`Error updating student ${req.params.id}:`, error);
+    next(error);
+  }
 });
 app.delete('/api/students/:id', authenticate, async (req, res, next) => {
   try {
@@ -251,6 +312,7 @@ app.post('/api/teachers', authenticate, async (req, res, next) => {
     if (data.salary) data.salary = parseFloat(data.salary);
     if (data.sharePercentage) data.sharePercentage = parseFloat(data.sharePercentage);
     if (data.lessonFee) data.lessonFee = parseFloat(data.lessonFee);
+    if (!data.salaryType) data.salaryType = 'FIXED';
     const teacher = await prisma.teacher.create({ data: { ...data, schoolId: parseInt(schoolId) } });
     res.json(teacher);
   } catch (error) { next(error); }
@@ -277,60 +339,145 @@ app.get('/api/groups', authenticate, async (req, res, next) => {
     if (!schoolId) return res.status(400).json({ error: 'schoolId required' });
     const groups = await prisma.group.findMany({
       where: { schoolId: parseInt(schoolId) },
-      include: { students: { select: { id: true } } }
+      include: { 
+        students: { select: { id: true } },
+        course: { select: { name: true } }
+      }
     });
-    res.json(groups.map(g => ({ ...g, studentIds: g.students.map(s => s.id) })));
+    res.json(groups.map(g => ({ 
+      ...g, 
+      studentIds: g.students.map(s => s.id),
+      courseName: g.course?.name
+    })));
   } catch (error) { next(error); }
 });
 app.post('/api/groups', authenticate, async (req, res, next) => {
+  console.log('--- [POST /api/groups] Request received ---');
   try {
-    const { studentIds, schoolId, ...data } = req.body;
-    if (!schoolId) return res.status(400).json({ error: 'schoolId required' });
+    let { studentIds, schoolId, courseName, name, teacherId, courseId, schedule, days, room } = req.body;
+    console.log('Payload:', { studentIds, schoolId, courseName, name, teacherId, courseId, schedule, days, room });
+
+    const sId = parseInt(schoolId);
+    if (!sId) {
+      console.log('Error: schoolId missing');
+      return res.status(400).json({ error: 'schoolId required' });
+    }
     
-    // Defensive parsing for numeric fields
-    if (data.teacherId) data.teacherId = parseInt(data.teacherId);
-    if (data.courseId) data.courseId = parseInt(data.courseId);
-    if (data.room !== undefined && data.room !== null && data.room !== '') {
-      data.room = parseInt(data.room);
-    } else {
-      delete data.room; // Prisma might fail on empty string
+    // Resolve courseId
+    if (!courseId && courseName) {
+      console.log('Resolving courseName:', courseName);
+      let course = await prisma.course.findFirst({
+        where: { name: courseName, schoolId: sId }
+      });
+      if (!course) {
+        console.log('Creating new course:', courseName);
+        course = await prisma.course.create({
+          data: { name: courseName, price: 0, schoolId: sId }
+        });
+      }
+      courseId = course.id;
     }
 
-    const group = await prisma.group.create({ data: { ...data, schoolId: parseInt(schoolId) } });
+    if (!courseId) {
+      console.log('Error: courseId missing');
+      return res.status(400).json({ error: 'Kurs tanlanishi yoki nomi kiritilishi shart' });
+    }
+
+    const prismaData = {
+      name: name || 'Nomsiz guruh',
+      teacherId: parseInt(teacherId),
+      courseId: parseInt(courseId),
+      schedule: schedule || '',
+      days: days || 'TOQ',
+      schoolId: sId
+    };
+
+    if (room !== undefined && room !== null && room !== '') {
+      prismaData.room = parseInt(room);
+    }
+
+    console.log('Prisma create data:', prismaData);
+
+    const group = await prisma.group.create({ data: prismaData });
+    console.log('Success: Group created with ID:', group.id);
+    
     if (studentIds && studentIds.length > 0) {
+      console.log('Connecting students:', studentIds);
       await prisma.group.update({
         where: { id: group.id },
         data: { students: { connect: studentIds.map(id => ({ id })) } }
       });
     }
-    const updatedGroup = await prisma.group.findUnique({ where: { id: group.id }, include: { students: { select: { id: true } } } });
-    res.json({ ...updatedGroup, studentIds: updatedGroup.students.map(s => s.id) });
-  } catch (error) { next(error); }
+
+    const updatedGroup = await prisma.group.findUnique({ 
+      where: { id: group.id }, 
+      include: { 
+        students: { select: { id: true } },
+        course: { select: { name: true } }
+      } 
+    });
+
+    console.log('Returning group data');
+    res.json({ 
+      ...updatedGroup, 
+      studentIds: updatedGroup.students.map(s => s.id),
+      courseName: updatedGroup.course?.name
+    });
+  } catch (error) {
+    console.error('CRITICAL ERROR in [POST /api/groups]:', error);
+    res.status(500).json({ error: error.message || 'Internal Server Error' });
+  }
 });
 app.put('/api/groups/:id', authenticate, async (req, res, next) => {
   try {
     const { id } = req.params;
-    const { studentIds, ...data } = req.body;
-
-    // Defensive parsing for numeric fields
-    if (data.teacherId) data.teacherId = parseInt(data.teacherId);
-    if (data.courseId) data.courseId = parseInt(data.courseId);
-    if (data.room !== undefined && data.room !== null && data.room !== '') {
-      data.room = parseInt(data.room);
-    } else if (data.hasOwnProperty('room')) {
-      data.room = null;
+    let { studentIds, schoolId, name, teacherId, courseId, schedule, days, room } = req.body;
+    
+    // Prepare data for Prisma - ONLY include fields that are in the schema
+    const prismaData = {};
+    if (name !== undefined) prismaData.name = name;
+    if (teacherId !== undefined) prismaData.teacherId = parseInt(teacherId);
+    if (courseId !== undefined) prismaData.courseId = parseInt(courseId);
+    if (schedule !== undefined) prismaData.schedule = schedule;
+    if (days !== undefined) prismaData.days = days;
+    
+    if (room !== undefined) {
+      prismaData.room = (room === null || room === '') ? null : parseInt(room);
     }
 
-    await prisma.group.update({ where: { id: parseInt(id) }, data });
+    const group = await prisma.group.update({
+      where: { id: parseInt(id) },
+      data: prismaData
+    });
+
     if (studentIds) {
       await prisma.group.update({
-        where: { id: parseInt(id) },
-        data: { students: { set: studentIds.map(sId => ({ id: sId })) } }
+        where: { id: group.id },
+        data: { 
+          students: { 
+            set: studentIds.map(sid => ({ id: sid })) 
+          } 
+        }
       });
     }
-    const updatedGroup = await prisma.group.findUnique({ where: { id: parseInt(id) }, include: { students: { select: { id: true } } } });
-    res.json({ ...updatedGroup, studentIds: updatedGroup.students.map(s => s.id) });
-  } catch (error) { next(error); }
+
+    const updatedGroup = await prisma.group.findUnique({
+      where: { id: group.id },
+      include: { 
+        students: { select: { id: true } },
+        course: { select: { name: true } }
+      }
+    });
+
+    res.json({
+      ...updatedGroup,
+      studentIds: updatedGroup.students.map(s => s.id),
+      courseName: updatedGroup.course?.name
+    });
+  } catch (error) {
+    console.error('Error updating group:', error);
+    next(error);
+  }
 });
 
 // Leads
@@ -348,6 +495,10 @@ app.post('/api/leads', authenticate, async (req, res, next) => {
     if (!schoolId) return res.status(400).json({ error: 'schoolId required' });
     if (data.createdAt) data.createdAt = new Date(data.createdAt);
     const lead = await prisma.lead.create({ data: { ...data, schoolId: parseInt(schoolId) } });
+    
+    // Telegram Notification
+    notifyAdmins(`🆕 Yangi lid: ${lead.name}\n📞 ${lead.phone}\n📚 Kurs: ${lead.course}`, parseInt(schoolId));
+
     res.json({ ...lead, createdAt: lead.createdAt.toISOString() });
   } catch (error) { next(error); }
 });
@@ -372,6 +523,8 @@ app.get('/api/payments', authenticate, async (req, res, next) => {
 });
 app.post('/api/payments', authenticate, async (req, res, next) => {
   try {
+    const { schoolId, ...data } = req.body;
+    if (!schoolId) return res.status(400).json({ error: 'schoolId required' });
     if (data.amount) data.amount = parseFloat(data.amount);
     if (data.studentId) data.studentId = parseInt(data.studentId);
     const payment = await prisma.payment.create({ data: { ...data, schoolId: parseInt(schoolId) } });
@@ -505,6 +658,94 @@ app.post('/api/attendances', authenticate, async (req, res, next) => {
     const { schoolId, ...data } = req.body;
     if (!schoolId) return res.status(400).json({ error: 'schoolId required' });
     const attendance = await prisma.attendance.create({ data: { ...data, schoolId: parseInt(schoolId) } });
+    
+    // Telegram Notification for Student/Parent
+    try {
+      const student = await prisma.student.findUnique({ where: { id: parseInt(data.studentId) } });
+      if (student && student.telegramId) {
+        const icon = attendance.status === 'Keldi' ? '✅' : (attendance.status === 'Kelmapdi' ? '❌' : '⚠️');
+        bot.telegram.sendMessage(student.telegramId, 
+          `${icon} Davomat xabarnomasi:\n\n` +
+          `👤 O'quvchi: ${student.name}\n` +
+          `📌 Holat: ${attendance.status}\n` +
+          `📅 Sana: ${attendance.date}`
+        ).catch(e => console.error('Telegram error:', e));
+      }
+    } catch (e) { console.error('Notification error:', e); }
+
+    res.json(attendance);
+  } catch (error) { next(error); }
+});
+
+// Batch attendance — mark all students at once for a group/date
+app.post('/api/attendances/batch', authenticate, async (req, res, next) => {
+  try {
+    const { schoolId, groupId, date, records } = req.body;
+    if (!schoolId || !groupId || !date || !records) return res.status(400).json({ error: 'Missing fields' });
+    
+    const results = [];
+    for (const record of records) {
+      const existing = await prisma.attendance.findFirst({
+        where: { studentId: record.studentId, groupId: parseInt(groupId), date, schoolId: parseInt(schoolId) }
+      });
+      if (existing) {
+        const updated = await prisma.attendance.update({
+          where: { id: existing.id },
+          data: { status: record.status }
+        });
+        results.push(updated);
+      } else {
+        const created = await prisma.attendance.create({
+          data: { studentId: record.studentId, groupId: parseInt(groupId), date, status: record.status, schoolId: parseInt(schoolId) }
+        });
+        results.push(created);
+      }
+    }
+    res.json(results);
+  } catch (error) { next(error); }
+});
+
+app.delete('/api/attendances/batch', authenticate, async (req, res, next) => {
+  try {
+    const { schoolId, groupId, date } = req.query;
+    if (!schoolId || !groupId || !date) return res.status(400).json({ error: 'Missing parameters' });
+    
+    await prisma.attendance.deleteMany({
+      where: {
+        groupId: parseInt(groupId),
+        date: date,
+        schoolId: parseInt(schoolId)
+      }
+    });
+    res.json({ success: true });
+  } catch (error) { next(error); }
+});
+
+// Teacher Attendances
+app.get('/api/teacher-attendances', authenticate, async (req, res, next) => {
+  try {
+    const { schoolId, teacherId } = req.query;
+    if (!schoolId) return res.status(400).json({ error: 'schoolId required' });
+    let where = { schoolId: parseInt(schoolId) };
+    if (teacherId) where.teacherId = parseInt(teacherId);
+    const attendances = await prisma.teacherAttendance.findMany({ where });
+    res.json(attendances);
+  } catch (error) { next(error); }
+});
+
+app.post('/api/teacher-attendances', authenticate, async (req, res, next) => {
+  try {
+    const { schoolId, ...data } = req.body;
+    if (!schoolId) return res.status(400).json({ error: 'schoolId required' });
+    // Upsert: if already exists for this teacher+date, update
+    const existing = await prisma.teacherAttendance.findFirst({
+      where: { teacherId: data.teacherId, date: data.date, schoolId: parseInt(schoolId) }
+    });
+    if (existing) {
+      const updated = await prisma.teacherAttendance.update({ where: { id: existing.id }, data: { status: data.status } });
+      return res.json(updated);
+    }
+    const attendance = await prisma.teacherAttendance.create({ data: { ...data, schoolId: parseInt(schoolId) } });
     res.json(attendance);
   } catch (error) { next(error); }
 });

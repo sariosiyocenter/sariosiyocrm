@@ -1,9 +1,7 @@
 import React, { useState } from 'react';
 import {
     TrendingUp, TrendingDown, DollarSign, Wallet,
-    BarChart3, PieChart, CreditCard, ArrowUpRight,
-    ArrowDownRight, Calendar, ChevronDown, Download,
-    Filter, FileText, Users, Target, Zap, Plus, X
+    ArrowUpRight, Download, Plus, X, ListChecks
 } from 'lucide-react';
 import { useCRM } from '../context/CRMContext';
 import { Payment } from '../types';
@@ -20,10 +18,10 @@ export default function Finance() {
     const activeBalance = students.filter(s => s.balance > 0).reduce((sum, s) => sum + s.balance, 0);
 
     const stats = [
-        { label: 'Tushumlar', value: `${totalRevenue.toLocaleString()} UZS`, icon: <DollarSign className="w-5 h-5 text-amber-500" />, bgColor: 'bg-amber-50' },
-        { label: 'Chiqimlar', value: `${totalExpenditure.toLocaleString()} UZS`, icon: <TrendingDown className="w-5 h-5 text-red-500" />, bgColor: 'bg-red-50' },
-        { label: 'Foyda', value: `${profit.toLocaleString()} UZS`, icon: <TrendingUp className="w-5 h-5 text-green-500" />, bgColor: 'bg-green-50' },
-        { label: 'O\'quvchilar balansi', value: `${activeBalance.toLocaleString()} UZS`, icon: <Wallet className="w-5 h-5 text-indigo-500" />, bgColor: 'bg-indigo-50' },
+        { label: 'Tushumlar', value: totalRevenue, icon: <DollarSign size={20} />, color: 'emerald', trend: '+12.5%' },
+        { label: 'Chiqimlar', value: totalExpenditure, icon: <TrendingDown size={20} />, color: 'rose', trend: '0%' },
+        { label: 'Foyda', value: profit, icon: <TrendingUp size={20} />, color: 'sky', trend: '+8.2%' },
+        { label: "O'quvchilar balansi", value: activeBalance, icon: <Wallet size={20} />, color: 'amber', trend: '+1.4%' },
     ];
 
     const reports = [
@@ -46,97 +44,135 @@ export default function Finance() {
     };
 
     return (
-        <div className="flex flex-col gap-6">
+        <div className="space-y-8 pb-12 animate-in fade-in duration-700">
             <div className="flex items-center justify-between">
-                <h1 className="text-2xl font-bold text-slate-800">Moliya boshqaruvi</h1>
-                <div className="flex items-center gap-3">
-                    <button onClick={() => setIsPaymentModalOpen(true)} className="flex items-center gap-2 px-6 py-2.5 bg-[#5C67F2] text-white rounded-lg text-sm font-bold hover:bg-indigo-600 transition-colors shadow-lg shadow-indigo-100 uppercase tracking-wider">
-                        <Plus className="w-4 h-4" />
-                        To'lov qabul qilish
+                <div>
+                    <h1 className="text-3xl font-extrabold text-gray-900 dark:text-white uppercase tracking-tight">Moliya</h1>
+                    <p className="text-[10px] font-bold text-gray-400 dark:text-gray-500 mt-2 uppercase tracking-widest">Kirim-chiqimlar va moliyaviy hisobotlar</p>
+                </div>
+            </div>
+
+            {/* Header Actions */}
+            <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6 bg-white dark:bg-gray-800 p-6 rounded-[2rem] border border-gray-100 dark:border-gray-700 shadow-xl shadow-sky-500/5 transition-all">
+                <div className="flex items-center gap-4">
+                    <button 
+                        onClick={() => setIsPaymentModalOpen(true)} 
+                        className="px-8 py-3.5 bg-sky-600 dark:bg-sky-500 text-white rounded-[1.25rem] text-[10px] font-bold uppercase tracking-widest hover:bg-sky-500 dark:hover:bg-sky-400 active:scale-[0.98] transition-all shadow-xl shadow-sky-500/20 flex items-center gap-3 group"
+                    >
+                        <Plus size={20} className="group-hover:rotate-90 transition-transform" />
+                        To'lov Qilish
+                    </button>
+                    <button className="flex items-center gap-3 px-6 py-3.5 bg-gray-50 dark:bg-gray-900/50 text-gray-500 dark:text-gray-400 rounded-[1.25rem] text-[10px] font-bold uppercase tracking-widest hover:bg-gray-100 dark:hover:bg-gray-700 border border-gray-100 dark:border-gray-700 transition-all group">
+                        <Download size={18} className="group-hover:text-sky-500 transition-colors" />
+                        Eksport
                     </button>
                 </div>
             </div>
 
             {/* Grid Stats */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                {stats.map((stat, idx) => (
-                    <div key={idx} className="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm hover:shadow-md transition-all flex items-center justify-between group">
-                        <div className="flex flex-col gap-1">
-                            <span className="text-sm font-medium text-slate-400">{stat.label}</span>
-                            <span className="text-xl font-bold text-slate-800 tracking-tight">{stat.value}</span>
+            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-8">
+                {stats.map((stat, idx) => {
+                    const colorVariants: Record<string, string> = {
+                        emerald: 'from-emerald-500/20 to-emerald-600/5 text-emerald-600 dark:text-emerald-400 border-emerald-100 dark:border-emerald-800/50 ring-emerald-500/10 shadow-emerald-500/5',
+                        rose: 'from-rose-500/20 to-rose-600/5 text-rose-600 dark:text-rose-400 border-rose-100 dark:border-rose-800/50 ring-rose-500/10 shadow-rose-500/5',
+                        sky: 'from-sky-500/20 to-sky-600/5 text-sky-600 dark:text-sky-400 border-sky-100 dark:border-sky-800/50 ring-sky-500/10 shadow-sky-500/5',
+                        amber: 'from-amber-500/20 to-amber-600/5 text-amber-600 dark:text-amber-400 border-amber-100 dark:border-amber-800/50 ring-amber-500/10 shadow-amber-500/5'
+                    };
+                    const variant = colorVariants[stat.color] || colorVariants['sky'];
+
+                    return (
+                        <div key={idx} 
+                            className="bg-white dark:bg-gray-800 p-8 rounded-[2.5rem] border border-gray-100 dark:border-gray-700 shadow-xl shadow-gray-200/20 dark:shadow-none hover:shadow-2xl transition-all group relative overflow-hidden animate-in zoom-in-95 duration-500"
+                            style={{ animationDelay: `${idx * 50}ms` }}
+                        >
+                            <div className="relative z-10 flex items-start justify-between">
+                                <div>
+                                    <p className="text-[10px] font-extrabold text-gray-400 dark:text-gray-500 uppercase tracking-widest mb-3">{stat.label}</p>
+                                    <h4 className="text-3xl font-extrabold text-gray-900 dark:text-white tracking-tight tabular-nums">{stat.value.toLocaleString()}</h4>
+                                    <p className="text-[10px] font-extrabold text-gray-400 dark:text-gray-500 mt-1 uppercase tracking-widest opacity-60">O'zbek so'mi</p>
+                                </div>
+                                <div className={`w-14 h-14 rounded-2xl flex items-center justify-center border bg-gradient-to-br ring-4 transition-transform group-hover:scale-110 duration-500 ${variant}`}>
+                                    {stat.icon}
+                                </div>
+                            </div>
+                            <div className="mt-8 flex items-center gap-3 relative z-10">
+                                <span className={`text-[10px] font-extrabold px-3 py-1.5 rounded-xl uppercase tracking-widest shadow-inner ${stat.trend.startsWith('+') ? 'text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-900/40' : 'text-gray-500 dark:text-gray-400 bg-gray-50 dark:bg-gray-900'}`}>
+                                    {stat.trend}
+                                </span>
+                                <span className="text-[10px] font-bold text-gray-400 dark:text-gray-600 uppercase tracking-widest">Nisbatida</span>
+                            </div>
                         </div>
-                        <div className={`w-12 h-12 ${stat.bgColor} rounded-xl flex items-center justify-center transition-transform group-hover:scale-110`}>
-                            {stat.icon}
-                        </div>
-                    </div>
-                ))}
+                    );
+                })}
             </div>
 
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
                 {/* Main Dashboard Section */}
-                <div className="lg:col-span-2 flex flex-col gap-6">
-                    <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
-                        <div className="flex items-center justify-between mb-8">
-                            <h3 className="font-bold text-slate-800 text-lg uppercase tracking-wider">Plan ko'rsatkichlari</h3>
+                <div className="lg:col-span-2 space-y-8">
+                    {/* Big Overview Box */}
+                    <div className="bg-white dark:bg-gray-800 p-8 rounded-[2.5rem] border border-gray-100 dark:border-gray-700 shadow-xl shadow-gray-200/10 dark:shadow-none relative overflow-hidden">
+                        <div className="absolute top-0 right-0 w-64 h-64 bg-sky-500/[0.02] rounded-full -mr-32 -mt-32" />
+                        <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-8 uppercase tracking-tight flex items-center gap-3">
+                            <TrendingUp className="text-sky-500" />
+                            Moliyaviy Ko'rsatkichlar
+                        </h3>
+                        <div className="bg-gray-50 dark:bg-gray-900 rounded-[2rem] p-8 border border-gray-100 dark:border-gray-800 mb-8 flex flex-col items-center sm:items-start text-center sm:text-left shadow-inner">
+                            <div className="flex flex-col md:flex-row md:items-center justify-between gap-8 w-full">
+                                <div className="flex-1">
+                                    <p className="text-[10px] font-extrabold text-gray-400 dark:text-gray-500 uppercase tracking-widest mb-3">Jami Tushum</p>
+                                    <p className="text-4xl font-extrabold text-gray-900 dark:text-white tracking-tight tabular-nums">{totalRevenue.toLocaleString()} <span className="text-xs text-gray-400 dark:text-gray-500 font-bold ml-1 uppercase">UZS</span></p>
+                                </div>
+                                <div className="hidden md:block h-16 w-px bg-gray-200 dark:bg-gray-700 shrink-0 opacity-50"></div>
+                                <div className="flex-1 text-right">
+                                    <p className="text-[10px] font-extrabold text-gray-400 dark:text-gray-500 uppercase tracking-widest mb-3">Faol Qarzdorlik</p>
+                                    <p className="text-4xl font-extrabold text-rose-500 dark:text-rose-400 tracking-tight tabular-nums">{activeDebt.toLocaleString()} <span className="text-xs text-rose-300 dark:text-rose-600 font-bold ml-1 uppercase">UZS</span></p>
+                                </div>
+                            </div>
                         </div>
 
-                        <div className="bg-slate-50 rounded-2xl p-6 border border-slate-100 mb-6">
-                            <div className="flex items-center justify-between mb-4">
-                                <div className="flex flex-col">
-                                    <div className="flex items-center gap-1 text-slate-500 text-sm font-medium">
-                                        <span>Erishilgan summa</span>
-                                    </div>
-                                    <span className="text-2xl font-black text-slate-800 tracking-tight">{totalRevenue.toLocaleString()} so'm</span>
-                                </div>
-                                <div className="flex flex-col items-end">
-                                    <div className="flex items-center gap-1 text-slate-500 text-sm font-medium">
-                                        <span>Faol qarzdorlik</span>
-                                    </div>
-                                    <span className="text-2xl font-black text-amber-600 tracking-tight">{activeDebt.toLocaleString()} so'm</span>
-                                </div>
-                            </div>
-
-                            <div className="w-full h-3 bg-slate-200 rounded-full overflow-hidden mb-6 flex">
-                                <div className="h-full bg-indigo-500 transition-all duration-1000" style={{ width: totalRevenue > 0 ? '100%' : '0%' }}></div>
-                            </div>
-
-                            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-                                <PlanCard label="Jami tushum" value={`${totalRevenue.toLocaleString()} so'm`} color="bg-[#5C67F2]" icon={<DollarSign className="w-4 h-4" />} />
-                                <PlanCard label="Qarzdorlik" value={`${activeDebt.toLocaleString()} so'm`} color="bg-[#F59E0B]" icon={<TrendingDown className="w-4 h-4" />} />
-                                <PlanCard label="Balans" value={`${activeBalance.toLocaleString()} so'm`} color="bg-[#10B981]" icon={<Wallet className="w-4 h-4" />} />
-                                <PlanCard label="Chiqimlar" value="0 so'm" color="bg-[#EF4444]" icon={<TrendingDown className="w-4 h-4" />} />
-                            </div>
+                        <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
+                            <MiniStat label="Jami tushum" value={totalRevenue.toLocaleString()} color="text-gray-900 dark:text-white" icon={<DollarSign size={16} />} />
+                            <MiniStat label="Qarzdorlik" value={activeDebt.toLocaleString()} color="text-rose-600 dark:text-rose-400" icon={<TrendingDown size={16} />} />
+                            <MiniStat label="Balans" value={activeBalance.toLocaleString()} color="text-emerald-600 dark:text-emerald-400" icon={<Wallet size={16} />} />
+                            <MiniStat label="Chiqimlar" value="0" color="text-gray-400 dark:text-gray-500" icon={<TrendingDown size={16} />} />
                         </div>
                     </div>
 
-                    <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm min-h-[300px]">
-                        <h3 className="font-bold text-slate-800 mb-6 uppercase tracking-widest text-sm flex items-center gap-2">
-                            <CreditCard className="w-4 h-4 text-indigo-500" />
-                            Oxirgi to'lovlar
+                    {/* Recent Payments List */}
+                    <div className="bg-white dark:bg-gray-800 p-8 rounded-[2.5rem] border border-gray-100 dark:border-gray-700 shadow-xl shadow-gray-200/10 dark:shadow-none min-h-[450px]">
+                        <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-8 uppercase tracking-tight flex items-center gap-3">
+                            <ListChecks className="text-sky-500" />
+                            Oxirgi To'lovlar
                         </h3>
                         {payments.length === 0 ? (
-                            <div className="flex flex-col items-center justify-center py-12 text-center">
-                                <img src="https://api.dicebear.com/7.x/shapes/svg?seed=empty-chart&backgroundColor=ffffff" alt="No data" className="w-32 h-32 opacity-30 mb-4" />
-                                <p className="text-slate-400 font-medium italic">Hozircha to'lovlar yo'q</p>
+                            <div className="flex flex-col items-center justify-center py-24 text-center border-2 border-dashed border-gray-100 dark:border-gray-800 rounded-[2rem] bg-gray-50/50 dark:bg-gray-900/30">
+                                <Wallet className="w-16 h-16 text-gray-200 dark:text-gray-700 mx-auto mb-4 opacity-50" />
+                                <p className="text-[10px] font-extrabold text-gray-400 dark:text-gray-500 uppercase tracking-widest">Hozircha to'lovlar kiritilmagan</p>
                             </div>
                         ) : (
-                            <div className="space-y-3">
-                                {payments.slice(-5).reverse().map(payment => {
+                            <div className="space-y-4">
+                                {payments.slice(-8).reverse().map((payment, pIdx) => {
                                     const student = students.find(s => s.id === payment.studentId);
                                     return (
-                                        <div key={payment.id} className="flex items-center justify-between p-4 bg-slate-50 rounded-xl border border-slate-100 hover:border-indigo-100 transition-colors">
-                                            <div className="flex items-center gap-3">
-                                                <div className="w-10 h-10 rounded-full bg-white flex items-center justify-center border border-slate-200 text-indigo-500 font-bold">
-                                                    {student?.name.charAt(0) || '?'}
+                                        <div key={payment.id} 
+                                            className="flex items-center justify-between p-5 rounded-[1.75rem] bg-gray-50/30 dark:bg-gray-900/40 hover:bg-white dark:hover:bg-gray-800 transition-all border border-transparent hover:border-gray-100 dark:hover:border-gray-700 hover:shadow-xl hover:shadow-sky-500/5 group animate-in slide-in-from-left-2 duration-300"
+                                            style={{ animationDelay: `${pIdx * 40}ms` }}
+                                        >
+                                            <div className="flex items-center gap-5">
+                                                <div className="w-12 h-12 rounded-2xl bg-sky-50 dark:bg-sky-900/30 border border-sky-100 dark:border-sky-800/50 flex items-center justify-center text-sky-600 dark:text-sky-400 font-bold text-sm shadow-inner shrink-0 group-hover:scale-110 transition-transform">
+                                                    {student?.name.charAt(0).toUpperCase() || '?'}
                                                 </div>
-                                                <div>
-                                                    <p className="text-sm font-bold text-slate-700">{student?.name || 'Noma\'lum'}</p>
-                                                    <p className="text-[11px] text-slate-400 font-medium">{payment.date}</p>
+                                                <div className="min-w-0 space-y-1">
+                                                    <p className="text-sm font-bold text-gray-900 dark:text-white truncate uppercase tracking-tight group-hover:text-sky-600 transition-colors">{student?.name || 'Noma\'lum o\'quvchi'}</p>
+                                                    <div className="flex items-center gap-3">
+                                                        <span className="text-[10px] font-bold text-gray-400 dark:text-gray-600 uppercase tracking-widest tabular-nums">{payment.date}</span>
+                                                        <span className="w-1 h-1 rounded-full bg-gray-300 dark:bg-gray-700 px-0.5"></span>
+                                                        <span className="text-[10px] font-extrabold text-sky-600 dark:text-sky-400 uppercase tracking-widest">{payment.type}</span>
+                                                    </div>
                                                 </div>
                                             </div>
-                                            <div className="text-right">
-                                                <p className="text-sm font-black text-emerald-600">+{payment.amount.toLocaleString()} UZS</p>
-                                                <p className="text-[10px] text-slate-400 font-bold uppercase tracking-tighter">{payment.type}</p>
+                                            <div className="text-right shrink-0">
+                                                <p className="text-sm font-extrabold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-900/30 px-4 py-2 rounded-xl border border-emerald-100 dark:border-emerald-800/50 tabular-nums shadow-sm group-hover:shadow-lg transition-all group-hover:-translate-y-0.5">+{payment.amount.toLocaleString()} UZS</p>
                                             </div>
                                         </div>
                                     );
@@ -146,67 +182,80 @@ export default function Finance() {
                     </div>
                 </div>
 
-                {/* Reports Navigation Sidebar */}
-                <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden h-fit sticky top-24">
-                    <div className="p-5 border-b border-slate-100 bg-slate-50/50">
-                        <h3 className="font-bold text-slate-800 text-sm uppercase tracking-widest flex items-center gap-2">
-                            <FileText className="w-4 h-4 text-indigo-500" />
-                            Moliya Hisobotlari
+                {/* Reports Sidebar */}
+                <div className="bg-white dark:bg-gray-800 rounded-[2.5rem] border border-gray-100 dark:border-gray-700 shadow-xl shadow-gray-200/10 dark:shadow-none h-fit sticky top-24 overflow-hidden">
+                    <div className="px-8 py-6 border-b border-gray-50 dark:border-gray-700 bg-gray-50/50 dark:bg-gray-900/50">
+                        <h3 className="text-sm font-extrabold text-gray-900 dark:text-white flex items-center gap-3 uppercase tracking-widest">
+                            <ListChecks size={20} className="text-sky-500" />
+                            Hisobotlar
                         </h3>
                     </div>
-                    <div className="flex flex-col py-2">
+                    <div className="flex flex-col py-4">
                         {reports.map((report, idx) => (
                             <button
                                 key={idx}
-                                className="px-6 py-3.5 text-left text-[14px] font-medium text-slate-500 hover:text-indigo-600 hover:bg-indigo-50/50 transition-all border-l-4 border-transparent hover:border-indigo-500 flex items-center justify-between group"
+                                className="px-8 py-4 text-left text-[11px] font-bold text-gray-500 dark:text-gray-400 hover:text-sky-600 dark:hover:text-white hover:bg-sky-50 dark:hover:bg-sky-900/30 transition-all flex items-center justify-between group uppercase tracking-widest"
                             >
                                 {report}
-                                <div className="w-1.5 h-1.5 rounded-full bg-slate-300 group-hover:bg-indigo-400"></div>
+                                <ArrowUpRight className="w-4 h-4 text-gray-300 dark:text-gray-600 group-hover:text-sky-500 dark:group-hover:text-sky-400 transition-all transform group-hover:translate-x-1 group-hover:-translate-y-1" />
                             </button>
                         ))}
                     </div>
                 </div>
             </div>
 
-            {/* Payment Modal */}
+            {/* Modal */}
             {isPaymentModalOpen && (
-                <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-                    <div className="bg-white rounded-3xl w-full max-w-md shadow-2xl border border-slate-100 overflow-hidden">
-                        <div className="p-6 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
-                            <h2 className="text-xl font-bold text-slate-800">To'lov qabul qilish</h2>
-                            <button onClick={() => setIsPaymentModalOpen(false)} className="p-2 hover:bg-slate-200 rounded-full transition-colors">
-                                <X className="w-5 h-5 text-slate-400" />
+                <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-gray-900/60 backdrop-blur-md animate-in fade-in duration-300" onClick={() => setIsPaymentModalOpen(false)}>
+                    <div className="bg-white dark:bg-gray-800 w-full max-w-lg rounded-[2.5rem] shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200 border border-gray-100 dark:border-gray-700" onClick={e => e.stopPropagation()}>
+                        <div className="px-10 py-8 flex items-center justify-between border-b border-gray-50 dark:border-gray-700 bg-gray-50/50 dark:bg-gray-900/50">
+                            <div>
+                                <h2 className="text-2xl font-bold text-gray-900 dark:text-white uppercase tracking-tight">To'lov Qabul Qilish</h2>
+                                <p className="text-[10px] font-bold text-gray-400 dark:text-gray-500 mt-1.5 uppercase tracking-widest">O'quvchidan to'lov kiritish</p>
+                            </div>
+                            <button onClick={() => setIsPaymentModalOpen(false)} className="w-12 h-12 flex items-center justify-center hover:bg-white dark:hover:bg-gray-700 rounded-2xl text-gray-400 hover:text-gray-900 dark:hover:text-white transition-all shadow-sm border border-transparent hover:border-gray-100 dark:hover:border-gray-600">
+                                <X size={24} />
                             </button>
                         </div>
-                        <form onSubmit={handleAddPayment} className="p-8 space-y-6">
-                            <div>
-                                <label className="block text-[11px] font-bold text-slate-400 uppercase mb-2">O'quvchini tanlang</label>
-                                <select required className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-2xl outline-none focus:ring-2 focus:ring-indigo-500"
-                                    value={newPayment.studentId} onChange={e => setNewPayment({ ...newPayment, studentId: Number(e.target.value) })}>
-                                    <option value="">Tanlang</option>
-                                    {students.map(s => <option key={s.id} value={s.id}>{s.name} ({s.balance.toLocaleString()} UZS)</option>)}
-                                </select>
-                            </div>
-                            <div>
-                                <label className="block text-[11px] font-bold text-slate-400 uppercase mb-2">Summa</label>
-                                <input required type="number" className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-2xl outline-none focus:ring-2 focus:ring-indigo-500 font-bold text-indigo-600"
-                                    value={newPayment.amount} onChange={e => setNewPayment({ ...newPayment, amount: Number(e.target.value) })} placeholder="0 UZS" />
-                            </div>
-                            <div>
-                                <label className="block text-[11px] font-bold text-slate-400 uppercase mb-2">To'lov turi</label>
-                                <div className="flex gap-2">
-                                    {['Naqd', 'Plastik', 'Click', 'Payme'].map(method => (
-                                        <button key={method} type="button"
-                                            onClick={() => setNewPayment({ ...newPayment, type: method as any })}
-                                            className={`flex-1 py-2 rounded-xl text-xs font-bold border transition-all ${newPayment.type === method ? 'bg-indigo-500 text-white border-indigo-500 shadow-md shadow-indigo-100' : 'bg-slate-50 text-slate-400 border-slate-200 hover:border-indigo-200'}`}>
-                                            {method}
-                                        </button>
-                                    ))}
+                        <form onSubmit={handleAddPayment} className="p-10 space-y-8">
+                            <div className="space-y-3">
+                                <label className="text-[10px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-widest ml-1">O'quvchi <span className="text-rose-500">*</span></label>
+                                <div className="relative">
+                                    <select required className="w-full px-6 py-4 bg-gray-50 dark:bg-gray-900 border border-gray-100 dark:border-gray-700 rounded-[1.25rem] text-xs font-bold uppercase tracking-widest focus:bg-white dark:focus:bg-gray-800 focus:border-sky-500 dark:focus:border-sky-500 focus:ring-4 focus:ring-sky-500/10 outline-none appearance-none transition-all cursor-pointer text-gray-900 dark:text-white shadow-inner"
+                                        value={newPayment.studentId} onChange={e => setNewPayment({ ...newPayment, studentId: Number(e.target.value) })}>
+                                        <option value="" disabled>Ro'yxatdan tanlang...</option>
+                                        {students.map(s => <option key={s.id} value={s.id}>{s.name} (Balans: {s.balance.toLocaleString()} UZS)</option>)}
+                                    </select>
+                                    <ArrowUpRight size={18} className="absolute right-6 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none rotate-90" />
                                 </div>
                             </div>
-                            <button type="submit" className="w-full py-4 bg-[#5C67F2] text-white rounded-2xl font-bold shadow-xl shadow-indigo-100 hover:bg-indigo-600 transition-all mt-4 uppercase tracking-widest text-sm">
-                                TO'LOVNI TASDIQLASH
-                            </button>
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-8">
+                                <div className="space-y-3">
+                                    <label className="text-[10px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-widest ml-1">Summa (UZS) <span className="text-rose-500">*</span></label>
+                                    <input required type="number" className="w-full px-6 py-4 bg-gray-50 dark:bg-gray-900 border border-gray-100 dark:border-gray-700 rounded-[1.25rem] text-xs font-bold uppercase tracking-widest focus:bg-white dark:focus:bg-gray-800 focus:border-sky-500 dark:focus:border-sky-500 focus:ring-4 focus:ring-sky-500/10 outline-none transition-all text-gray-900 dark:text-white shadow-inner"
+                                        value={newPayment.amount || ''} onChange={e => setNewPayment({ ...newPayment, amount: Number(e.target.value) })} placeholder="0" />
+                                </div>
+                                <div className="space-y-3">
+                                    <label className="text-[10px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-widest ml-1">To'lov Turi <span className="text-rose-500">*</span></label>
+                                    <div className="relative">
+                                        <select required className="w-full px-6 py-4 bg-gray-50 dark:bg-gray-900 border border-gray-100 dark:border-gray-700 rounded-[1.25rem] text-xs font-bold uppercase tracking-widest focus:bg-white dark:focus:bg-gray-800 focus:border-sky-500 dark:focus:border-sky-500 focus:ring-4 focus:ring-sky-500/10 outline-none appearance-none transition-all cursor-pointer text-gray-900 dark:text-white shadow-inner"
+                                            value={newPayment.type} onChange={e => setNewPayment({ ...newPayment, type: e.target.value as any })}>
+                                            {['Naqd', 'Plastik', 'Click', 'Payme'].map(method => (
+                                                <option key={method} value={method}>{method}</option>
+                                            ))}
+                                        </select>
+                                        <ArrowUpRight size={18} className="absolute right-6 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none rotate-90" />
+                                    </div>
+                                </div>
+                            </div>
+                            <div className="pt-10 flex items-center justify-end gap-5 mt-6 border-t border-dashed border-gray-100 dark:border-gray-700">
+                                <button type="button" onClick={() => setIsPaymentModalOpen(false)} className="px-8 py-4 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-gray-500 dark:text-gray-400 rounded-2xl text-[10px] font-bold uppercase tracking-widest hover:bg-gray-50 dark:hover:bg-gray-700 transition-all">
+                                    Bekor Qilish
+                                </button>
+                                <button type="submit" className="px-10 py-4 bg-sky-600 dark:bg-sky-500 text-white rounded-2xl text-[10px] font-bold uppercase tracking-widest hover:bg-sky-500 dark:hover:bg-sky-400 active:scale-[0.98] transition-all shadow-xl shadow-sky-500/20">
+                                    Saqlash
+                                </button>
+                            </div>
                         </form>
                     </div>
                 </div>
@@ -215,17 +264,19 @@ export default function Finance() {
     );
 }
 
-function PlanCard({ label, value, color, icon }: { label: string, value: string, color: string, icon: React.ReactNode }) {
+function MiniStat({ label, value, color, icon }: { label: string, value: string, color: string, icon: React.ReactNode }) {
     return (
-        <div className={`${color} p-4 rounded-xl text-white shadow-lg shadow-indigo-200/20 group hover:scale-[1.02] transition-transform cursor-pointer relative overflow-hidden`}>
-            <div className="absolute -right-2 -bottom-2 opacity-10 group-hover:scale-150 transition-transform">
-                {React.cloneElement(icon as React.ReactElement<{ className?: string }>, { className: 'w-16 h-16' })}
+        <div className="p-5 rounded-2xl border border-gray-50 dark:border-gray-800 bg-white dark:bg-gray-900/40 hover:bg-gray-50 dark:hover:bg-gray-800 transition-all flex flex-col gap-3 shadow-sm hover:shadow-lg group/mini">
+            <div className="flex items-center gap-3">
+                <div className={`w-10 h-10 rounded-xl flex items-center justify-center bg-gray-50 dark:bg-gray-900 border border-gray-100 dark:border-gray-800 group-hover/mini:scale-110 transition-transform ${color}`}>
+                    {icon}
+                </div>
+                <span className="text-[10px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-widest">{label}</span>
             </div>
-            <div className="flex items-center justify-between mb-1.5">
-                <span className="text-[10px] font-bold uppercase tracking-wider opacity-80">{label}</span>
-                {icon}
+            <div className="space-y-1">
+                <p className={`text-sm font-extrabold tabular-nums tracking-tight ${color}`}>{value}</p>
+                <p className="text-[9px] text-gray-400 dark:text-gray-500 font-extrabold uppercase tracking-widest opacity-60">UZS</p>
             </div>
-            <div className="text-[15px] font-black tracking-tight whitespace-nowrap overflow-hidden text-ellipsis">{value}</div>
         </div>
     );
 }

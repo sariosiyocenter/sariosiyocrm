@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { Student, Teacher, Group, Lead, Payment, CRMState, Course, Room, School, UserRole, Attendance, Score } from '../types';
+import { Student, Teacher, Group, Lead, Payment, CRMState, Course, Room, School, UserRole, Attendance, Score, TeacherAttendance } from '../types';
 
 interface AuthenticatedUser {
     id: number;
@@ -14,6 +14,8 @@ interface CRMContextType extends CRMState {
     error: string | null;
     user: AuthenticatedUser | null;
     token: string | null;
+    darkMode: boolean;
+    toggleDarkMode: () => void;
     login: (email: string, password: string) => Promise<void>;
     logout: () => void;
     checkAuth: () => Promise<void>;
@@ -21,6 +23,7 @@ interface CRMContextType extends CRMState {
     addStudent: (student: Omit<Student, 'id' | 'schoolId'>) => Promise<void>;
     updateStudent: (id: number, student: Partial<Student>) => Promise<void>;
     deleteStudent: (id: number) => Promise<void>;
+    addStudentToGroup: (groupId: number, studentId: number) => Promise<void>;
     addTeacher: (teacher: Omit<Teacher, 'id' | 'schoolId'>) => Promise<void>;
     updateTeacher: (id: number, teacher: Partial<Teacher>) => Promise<void>;
     deleteTeacher: (id: number) => Promise<void>;
@@ -38,7 +41,11 @@ interface CRMContextType extends CRMState {
     addSchool: (school: Omit<School, 'id'>) => Promise<void>;
     deleteSchool: (id: number) => Promise<void>;
     addAttendance: (attendance: Omit<Attendance, 'id' | 'schoolId'>) => Promise<void>;
+    addBatchAttendance: (groupId: number, date: string, records: { studentId: number; status: string }[]) => Promise<void>;
     addScore: (score: Omit<Score, 'id' | 'schoolId'>) => Promise<void>;
+    addTeacherAttendance: (attendance: Omit<TeacherAttendance, 'id' | 'schoolId'>) => Promise<void>;
+    notification: { message: string, type: 'success' | 'error' | 'info' } | null;
+    showNotification: (message: string, type: 'success' | 'error' | 'info') => void;
 }
 
 const CRMContext = createContext<CRMContextType | undefined>(undefined);
@@ -48,7 +55,7 @@ const API_BASE = '/api';
 export const CRMProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
     const [state, setState] = useState<CRMState>({
         students: [], teachers: [], groups: [], leads: [], payments: [], courses: [], rooms: [], schools: [],
-        attendances: [], scores: [],
+        attendances: [], scores: [], teacherAttendances: [],
         selectedSchoolId: null,
         settings: {
             id: 0,
@@ -66,6 +73,27 @@ export const CRMProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     const [error, setError] = useState<string | null>(null);
     const [user, setUser] = useState<AuthenticatedUser | null>(null);
     const [token, setToken] = useState<string | null>(localStorage.getItem('token'));
+    const [darkMode, setDarkMode] = useState<boolean>(() => {
+        const saved = localStorage.getItem('darkMode');
+        return saved ? JSON.parse(saved) : false;
+    });
+    const [notification, setNotification] = useState<{ message: string, type: 'success' | 'error' | 'info' } | null>(null);
+
+    const showNotification = (message: string, type: 'success' | 'error' | 'info' = 'info') => {
+        setNotification({ message, type });
+        setTimeout(() => setNotification(null), 4000);
+    };
+
+    useEffect(() => {
+        if (darkMode) {
+            document.documentElement.classList.add('dark');
+        } else {
+            document.documentElement.classList.remove('dark');
+        }
+        localStorage.setItem('darkMode', JSON.stringify(darkMode));
+    }, [darkMode]);
+
+    const toggleDarkMode = () => setDarkMode(prev => !prev);
 
     const setSelectedSchoolId = (id: number) => {
         setState(prev => ({ ...prev, selectedSchoolId: id }));
@@ -80,18 +108,15 @@ export const CRMProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         try {
             setLoading(true);
 
-            // First fetch schools as they are global-ish (available to all admins/users)
             const schoolsRes = await fetch(`${API_BASE}/schools`, {
                 headers: { 'Authorization': `Bearer ${currentToken}` }
             });
             let schools = await schoolsRes.json();
 
-            // Role based filtering for schools
             if (user?.role === 'MANAGER' && user.schoolId) {
                 schools = schools.filter((s: School) => s.id === user.schoolId);
             }
 
-            // If no school selected, but we have schools, pick the first one (or the user's default)
             let schoolIdToUse = currentSchoolId;
             if (schoolIdToUse === null && schools.length > 0) {
                 schoolIdToUse = user?.role === 'MANAGER' ? user.schoolId : (user?.schoolId || schools[0].id);
@@ -99,7 +124,7 @@ export const CRMProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             }
 
             if (schoolIdToUse !== null) {
-                const endpoints = ['students', 'teachers', 'groups', 'leads', 'payments', 'courses', 'rooms', 'settings', 'attendances', 'scores'];
+                const endpoints = ['students', 'teachers', 'groups', 'leads', 'payments', 'courses', 'rooms', 'settings', 'attendances', 'scores', 'teacher-attendances'];
                 const responses = await Promise.all(endpoints.map(ep =>
                     fetch(`${API_BASE}/${ep}?schoolId=${schoolIdToUse}`, {
                         headers: { 'Authorization': `Bearer ${currentToken}` }
@@ -126,6 +151,7 @@ export const CRMProvider: React.FC<{ children: React.ReactNode }> = ({ children 
                     settings: responses[7],
                     attendances: responses[8],
                     scores: responses[9],
+                    teacherAttendances: responses[10],
                     selectedSchoolId: schoolIdToUse
                 }));
             } else {
@@ -170,7 +196,6 @@ export const CRMProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         checkAuth();
     }, []);
 
-    // Re-fetch when selectedSchoolId changes manually
     useEffect(() => {
         if (state.selectedSchoolId !== null && user) {
             fetchData();
@@ -204,7 +229,7 @@ export const CRMProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         localStorage.removeItem('token');
         setState({
             students: [], teachers: [], groups: [], leads: [], payments: [], courses: [], rooms: [], schools: [],
-            attendances: [], scores: [],
+            attendances: [], scores: [], teacherAttendances: [],
             selectedSchoolId: null,
             settings: {
                 id: 0,
@@ -219,11 +244,9 @@ export const CRMProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         });
     };
 
-    // Helper for POST/PUT requests
     const apiCall = async (endpoint: string, method: string, data?: any) => {
         if (!token) throw new Error("Avtorizatsiya kerak");
 
-        // Automatically inject schoolId into request if not present, EXCEPT for schools themselves
         const dataWithSchoolId = (data && !endpoint.startsWith('schools')) ? {
             schoolId: state.selectedSchoolId,
             ...data
@@ -242,18 +265,66 @@ export const CRMProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     };
 
     const addStudent = async (student: Omit<Student, 'id' | 'schoolId'>) => {
-        const newStudent = await apiCall('students', 'POST', student);
-        setState(prev => ({ ...prev, students: [...prev.students, newStudent] }));
+        try {
+            const newStudent = await apiCall('students', 'POST', student);
+            setState(prev => ({ ...prev, students: [...prev.students, newStudent] }));
+            showNotification("Yangi o'quvchi muvaffaqiyatli qo'shildi", "success");
+        } catch (err: any) {
+            showNotification("O'quvchini qo'shishda xatolik: " + err.message, "error");
+            throw err;
+        }
     };
 
     const updateStudent = async (id: number, student: Partial<Student>) => {
-        const updated = await apiCall(`students/${id}`, 'PUT', student);
-        setState(prev => ({ ...prev, students: prev.students.map(s => s.id === id ? updated : s) }));
+        try {
+            const updated = await apiCall(`students/${id}`, 'PUT', student);
+            setState(prev => ({ ...prev, students: prev.students.map(s => s.id === id ? updated : s) }));
+            showNotification("O'quvchi ma'lumotlari yangilandi", "success");
+        } catch (err: any) {
+            showNotification("O'quvchini yangilashda xatolik: " + err.message, "error");
+            throw err;
+        }
     };
 
     const deleteStudent = async (id: number) => {
-        await apiCall(`students/${id}`, 'DELETE');
-        setState(prev => ({ ...prev, students: prev.students.filter(s => s.id !== id) }));
+        try {
+            await apiCall(`students/${id}`, 'DELETE');
+            setState(prev => ({ ...prev, students: prev.students.filter(s => s.id !== id) }));
+            showNotification("O'quvchi o'chirildi", "success");
+        } catch (err: any) {
+            showNotification("O'quvchini o'chirishda xatolik: " + err.message, "error");
+            throw err;
+        }
+    };
+
+    const addStudentToGroup = async (groupId: number, studentId: number) => {
+        try {
+            const group = state.groups.find(g => g.id === groupId);
+            const student = state.students.find(s => s.id === studentId);
+            
+            if (!group || !student) return;
+            if (group.studentIds.includes(studentId)) {
+                showNotification("O'quvchi allaqachon guruhda", "info");
+                return;
+            }
+
+            // Only send the necessary fields to update the many-to-many relationship
+            // Sending the whole object might fail if it contains relational fields (like 'students' or 'groups')
+            const [groupRes, studentRes] = await Promise.all([
+                apiCall(`groups/${groupId}`, 'PUT', { studentIds: [...group.studentIds, studentId] }),
+                apiCall(`students/${studentId}`, 'PUT', { groups: [...(student.groups || []), groupId] })
+            ]);
+
+            setState(prev => ({
+                ...prev,
+                groups: prev.groups.map(g => g.id === groupId ? groupRes : g),
+                students: prev.students.map(s => s.id === studentId ? studentRes : s)
+            }));
+            
+            showNotification("O'quvchi guruhga biriktirildi", "success");
+        } catch (err: any) {
+            showNotification("Xatolik: " + err.message, "error");
+        }
     };
 
     const addTeacher = async (teacher: Omit<Teacher, 'id' | 'schoolId'>) => {
@@ -272,13 +343,25 @@ export const CRMProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
 
     const addGroup = async (group: Omit<Group, 'id' | 'schoolId'>) => {
-        const newGroup = await apiCall('groups', 'POST', group);
-        setState(prev => ({ ...prev, groups: [...prev.groups, newGroup] }));
+        try {
+            const newGroup = await apiCall('groups', 'POST', group);
+            setState(prev => ({ ...prev, groups: [...prev.groups, newGroup] }));
+            showNotification("Yangi guruh muvaffaqiyatli ochildi", "success");
+        } catch (err: any) {
+            showNotification("Guruh ochishda xatolik: " + err.message, "error");
+            throw err;
+        }
     };
 
     const updateGroup = async (id: number, group: Partial<Group>) => {
-        const updated = await apiCall(`groups/${id}`, 'PUT', group);
-        setState(prev => ({ ...prev, groups: prev.groups.map(g => g.id === id ? updated : g) }));
+        try {
+            const updated = await apiCall(`groups/${id}`, 'PUT', group);
+            setState(prev => ({ ...prev, groups: prev.groups.map(g => g.id === id ? updated : g) }));
+            showNotification("Guruh ma'lumotlari yangilandi", "success");
+        } catch (err: any) {
+            showNotification("Guruhni yangilashda xatolik: " + err.message, "error");
+            throw err;
+        }
     }
 
     const deleteGroup = async (id: number) => {
@@ -292,7 +375,6 @@ export const CRMProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     };
 
     const updateLead = async (id: number, status: Lead['status']) => {
-        // Only update status
         const updated = await apiCall(`leads/${id}`, 'PUT', { status });
         setState(prev => ({ ...prev, leads: prev.leads.map(l => l.id === id ? updated : l) }));
     };
@@ -343,8 +425,79 @@ export const CRMProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     };
 
     const addAttendance = async (attendance: Omit<Attendance, 'id' | 'schoolId'>) => {
-        const newAttendance = await apiCall('attendances', 'POST', attendance);
-        setState(prev => ({ ...prev, attendances: [...prev.attendances, newAttendance] }));
+        // Optimistic update
+        const tempId = -Math.floor(Math.random() * 1000000);
+        const optimisticAttendance = { ...attendance, id: tempId, schoolId: state.schoolId || 0 } as Attendance;
+        
+        setState(prev => {
+            const filtered = prev.attendances.filter(a => !(a.studentId === attendance.studentId && a.date === attendance.date && a.groupId === attendance.groupId));
+            return { ...prev, attendances: [...filtered, optimisticAttendance] };
+        });
+
+        try {
+            const newAttendance = await apiCall('attendances', 'POST', attendance);
+            setState(prev => {
+                const filtered = prev.attendances.filter(a => a.id !== tempId);
+                return { ...prev, attendances: [...filtered, newAttendance] };
+            });
+        } catch (err) {
+            // Rollback on error
+            setState(prev => ({ ...prev, attendances: prev.attendances.filter(a => a.id !== tempId) }));
+            showNotification("Davomatni saqlashda xatolik yuz berdi", "error");
+        }
+    };
+
+    const addBatchAttendance = async (groupId: number, date: string, records: { studentId: number; status: string }[]) => {
+        // Optimistic update
+        const tempIds = records.map(() => -Math.floor(Math.random() * 1000000));
+        const optimisticRecords = records.map((r, i) => ({ ...r, id: tempIds[i], groupId, date, schoolId: state.schoolId || 0 } as Attendance));
+
+        setState(prev => {
+            const studentIds = new Set(records.map(r => r.studentId));
+            const filtered = prev.attendances.filter(a => !(a.date === date && a.groupId === groupId && studentIds.has(a.studentId)));
+            return { ...prev, attendances: [...filtered, ...optimisticRecords] };
+        });
+
+        try {
+            const results = await apiCall('attendances/batch', 'POST', { groupId, date, records });
+            setState(prev => {
+                const tempIdSet = new Set(tempIds);
+                const resultStudentIds = new Set(results.map((r: any) => r.studentId));
+                // Remove optimistic ones AND any existing records for these students on this date
+                const filtered = prev.attendances.filter(a => 
+                    !tempIdSet.has(a.id) && 
+                    !(a.date === date && a.groupId === groupId && resultStudentIds.has(a.studentId))
+                );
+                return { ...prev, attendances: [...filtered, ...results] };
+            });
+        } catch (err) {
+            // Rollback
+            setState(prev => {
+                const tempIdSet = new Set(tempIds);
+                return { ...prev, attendances: prev.attendances.filter(a => !tempIdSet.has(a.id)) };
+            });
+            showNotification("Guruh davomatini saqlashda xatolik yuz berdi", "error");
+        }
+    };
+
+    const deleteBatchAttendance = async (groupId: number, date: string) => {
+        // Optimistic update
+        const studentIds = new Set(state.students.filter(s => s.groupId === groupId).map(s => s.id));
+        const deletedRecords = state.attendances.filter(a => a.date === date && a.groupId === groupId);
+
+        setState(prev => ({
+            ...prev,
+            attendances: prev.attendances.filter(a => !(a.date === date && a.groupId === groupId))
+        }));
+
+        try {
+            await apiCall(`attendances/batch?groupId=${groupId}&date=${date}`, 'DELETE');
+            showNotification("Davomat tozalandi", "info");
+        } catch (err) {
+            // Rollback
+            setState(prev => ({ ...prev, attendances: [...prev.attendances, ...deletedRecords] }));
+            showNotification("Xatolik: Davomatni tozalab bo'lmadi", "error");
+        }
     };
 
     const addScore = async (score: Omit<Score, 'id' | 'schoolId'>) => {
@@ -352,12 +505,20 @@ export const CRMProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         setState(prev => ({ ...prev, scores: [...prev.scores, newScore] }));
     };
 
+    const addTeacherAttendance = async (attendance: Omit<TeacherAttendance, 'id' | 'schoolId'>) => {
+        const result = await apiCall('teacher-attendances', 'POST', attendance);
+        setState(prev => {
+            const filtered = prev.teacherAttendances.filter(a => a.id !== result.id);
+            return { ...prev, teacherAttendances: [...filtered, result] };
+        });
+    };
+
     return (
         <CRMContext.Provider value={{
             ...state,
             loading, error, user, token,
             login, logout, checkAuth, setSelectedSchoolId,
-            addStudent, updateStudent, deleteStudent,
+            addStudent, updateStudent, deleteStudent, addStudentToGroup,
             addTeacher, updateTeacher, deleteTeacher,
             addGroup, updateGroup, deleteGroup,
             updateLead, addLead,
@@ -366,7 +527,10 @@ export const CRMProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             addCourse, deleteCourse,
             addRoom, deleteRoom,
             addSchool, deleteSchool,
-            addAttendance, addScore
+            addAttendance, addBatchAttendance, deleteBatchAttendance, addScore,
+            addTeacherAttendance,
+            darkMode, toggleDarkMode,
+            notification, showNotification
         }}>
             {children}
         </CRMContext.Provider>

@@ -20,8 +20,8 @@ model Student {
   joinedDate String
   balance    Float     @default(0)
   photo      String?
-  comment    String?
   rating     Float?
+  telegramId String?   @unique
   
   // Relations
   schoolId   Int
@@ -39,14 +39,28 @@ model Teacher {
   salary          Float
   sharePercentage Float
   lessonFee       Float     @default(0)
+  salaryType      String    @default("FIXED") // FIXED, KPI, FIXED_KPI
   birthDate       String
   hiredDate       String
   photo           String?
   status          String    @default("Faol")
+  telegramId      String?   @unique
 
   schoolId        Int
   school          School    @relation(fields: [schoolId], references: [id])
   groups          Group[]
+  teacherAttendances TeacherAttendance[]
+}
+
+model TeacherAttendance {
+  id        Int      @id @default(autoincrement())
+  teacherId Int
+  teacher   Teacher  @relation(fields: [teacherId], references: [id])
+  date      String
+  status    String   // Keldi, Kelmapdi, Sababli
+  
+  schoolId  Int
+  school    School   @relation(fields: [schoolId], references: [id])
 }
 
 model Group {
@@ -130,6 +144,7 @@ model School {
   settings Setting[]
   attendances Attendance[]
   scores      Score[]
+  teacherAttendances TeacherAttendance[]
 }
 
 model Attendance {
@@ -180,6 +195,7 @@ model User {
   phone     String?
   role      UserRole @default(RECEPTIONIST)
   createdAt DateTime @default(now())
+  telegramId String?   @unique
 
   schoolId  Int?
   school    School?  @relation(fields: [schoolId], references: [id])
