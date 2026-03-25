@@ -4,6 +4,11 @@ import { PrismaClient } from '@prisma/client';
 const prisma = new PrismaClient();
 const bot = new Telegraf(process.env.TELEGRAM_BOT_TOKEN);
 
+// Error handling for the bot
+bot.catch((err, ctx) => {
+  console.error(`Telegram Bot xatosi (${ctx.updateType}):`, err);
+});
+
 // In-memory state tracking
 const adminStates = {};
 const teacherStates = {};
