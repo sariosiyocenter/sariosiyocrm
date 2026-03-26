@@ -1,4 +1,4 @@
-export type UserRole = 'ADMIN' | 'MANAGER' | 'TEACHER' | 'RECEPTIONIST';
+export type UserRole = 'ADMIN' | 'MANAGER' | 'TEACHER' | 'RECEPTIONIST' | 'DRIVER';
 
 export interface Student {
     id: number;
@@ -7,14 +7,33 @@ export interface Student {
     birthDate: string;
     address: string;
     location?: string;
-    status: 'Faol' | 'Arxiv' | 'Sinov';
+    status: 'Faol' | 'Arxiv' | 'Sinov' | 'Bitiruvchi';
     joinedDate: string;
     balance: number;
     photo?: string;
     groups: number[]; // Array of Group IDs
     comment?: string;
     rating?: number;
+    fatherName?: string;
+    fatherPhone?: string;
+    motherName?: string;
+    motherPhone?: string;
     schoolId: number;
+    statusChangedAt?: string;
+    leaveReason?: string;
+    transportId?: number | null;
+    studentSchool?: string;
+}
+
+export interface User {
+    id: number;
+    email: string;
+    name: string;
+    phone?: string;
+    role: UserRole;
+    schoolId: number | null;
+    createdAt: string;
+    driverRoutes?: Route[];
 }
 
 export interface Teacher {
@@ -63,6 +82,52 @@ export interface Payment {
     date: string;
     description: string;
     schoolId: number;
+}
+
+export interface Expense {
+    id: number;
+    amount: number;
+    category: string; // Ish haqi, Ijara, Kommunal, Marketing, Boshqa
+    date: string;
+    description: string;
+    schoolId: number;
+}
+export interface Transport {
+    id: number;
+    name: string;
+    model?: string;
+    number?: string;
+    capacity: number;
+    driverName?: string;
+    driverPhone?: string;
+    status: 'Faol' | 'Ta\'mirda' | 'Arxiv';
+    driverId?: number | null;
+    driver?: User;
+    schoolId: number;
+}
+
+export interface DeliveryLog {
+    id: number;
+    transportId: number;
+    studentId: number;
+    date: string;
+    status: 'Olib ketildi' | 'Uyiga yetkazildi' | 'Kelmadi';
+    schoolId: number;
+}
+
+export interface Route {
+    id: number;
+    name: string;
+    startTime?: string;
+    transportId?: number | null;
+    transport?: Transport;
+    driverId?: number | null;
+    driver?: User;
+    days: 'TOQ' | 'JUFT' | 'HAR_KUNI';
+    studentIds: number[];
+    schoolId: number;
+    createdAt: string;
+    updatedAt: string;
 }
 
 export interface Course {
@@ -124,6 +189,11 @@ export interface CRMState {
     attendances: Attendance[];
     scores: Score[];
     teacherAttendances: TeacherAttendance[];
+    expenses: Expense[];
+    transports: Transport[];
+    deliveryLogs: DeliveryLog[];
+    routes: Route[];
+    users: User[];
     selectedSchoolId: number | null;
     settings: {
         id: number;

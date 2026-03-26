@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import {
     ArrowLeft, Phone, Calendar, MapPin, BookOpen, CreditCard,
-    Clock, CheckCircle, XCircle, Plus, Award, ClipboardCheck, Users, Layers, ChevronRight, TrendingUp, Save, Edit
+    Clock, CheckCircle, XCircle, Plus, Award, ClipboardCheck, Users, Layers, ChevronRight, TrendingUp, Save, Edit, Bus
 } from 'lucide-react';
 import { useCRM } from '../context/CRMContext';
 import { useParams, useNavigate } from 'react-router-dom';
@@ -10,7 +10,7 @@ import MapPicker from './MapPicker';
 export default function StudentDetails() {
     const { id } = useParams<{ id: string }>();
     const navigate = useNavigate();
-    const { students, groups, teachers, courses, payments, attendances, scores, addPayment, addAttendance, addScore, updateStudent, addStudentToGroup } = useCRM();
+    const { students, groups, teachers, courses, payments, attendances, scores, transports, addPayment, addAttendance, addScore, updateStudent, addStudentToGroup } = useCRM();
     const [activeTab, setActiveTab] = useState('umumiy');
     const [showPaymentModal, setShowPaymentModal] = useState(false);
     const [showGroupModal, setShowGroupModal] = useState(false);
@@ -25,7 +25,13 @@ export default function StudentDetails() {
         phone: '',
         birthDate: '',
         address: '',
-        location: ''
+        location: '',
+        fatherName: '',
+        fatherPhone: '',
+        motherName: '',
+        motherPhone: '',
+        transportId: '' as string | number,
+        studentSchool: ''
     });
 
     const student = students.find(s => s.id === Number(id));
@@ -65,7 +71,13 @@ export default function StudentDetails() {
             phone: student.phone,
             birthDate: student.birthDate,
             address: student.address,
-            location: student.location || ''
+            location: student.location || '',
+            fatherName: student.fatherName || '',
+            fatherPhone: student.fatherPhone || '',
+            motherName: student.motherName || '',
+            motherPhone: student.motherPhone || '',
+            transportId: student.transportId || '',
+            studentSchool: student.studentSchool || ''
         });
         setIsEditing(true);
     };
@@ -73,7 +85,10 @@ export default function StudentDetails() {
     const handleSaveEdit = async () => {
         try {
             setIsSaving(true);
-            await updateStudent(student.id, editForm);
+            await updateStudent(student.id, {
+                ...editForm,
+                transportId: editForm.transportId ? Number(editForm.transportId) : null
+            });
             setIsEditing(false);
         } catch (err) {
             console.error("Update failed", err);
@@ -129,6 +144,19 @@ export default function StudentDetails() {
                                             <option value="Arxiv">Arxiv</option>
                                         </select>
                                     </div>
+                                    <div className="space-y-1">
+                                        <label className="text-[10px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-widest pl-1">Transport</label>
+                                        <select 
+                                            value={editForm.transportId}
+                                            onChange={e => setEditForm({...editForm, transportId: e.target.value})}
+                                            className="w-full px-4 py-2 bg-gray-50 dark:bg-gray-900 border border-gray-100 dark:border-gray-700 rounded-xl text-sm font-bold outline-none focus:border-sky-500 text-center transition-all appearance-none cursor-pointer"
+                                        >
+                                            <option value="">Transport yo'q</option>
+                                            {transports.map(t => (
+                                                <option key={t.id} value={t.id}>{t.name} ({t.number})</option>
+                                            ))}
+                                        </select>
+                                    </div>
                                 </div>
                             ) : (
                                 <>
@@ -156,7 +184,7 @@ export default function StudentDetails() {
                                 </div>
                             </div>
                         </div>
-                        <div className="border-t border-dashed border-gray-100 dark:border-gray-700 px-6 py-6 space-y-5 transition-colors">
+                        <div className="border-t border-dashed border-gray-100 dark:border-gray-700 px-6 pt-8 pb-12 space-y-7 transition-colors">
                             {isEditing ? (
                                 <div className="space-y-6">
                                     <div className="space-y-2">
@@ -187,6 +215,56 @@ export default function StudentDetails() {
                                         />
                                     </div>
                                     <div className="space-y-2">
+                                        <label className="text-[10px] font-bold text-gray-400 uppercase ml-1">Maktab</label>
+                                        <input 
+                                            type="text" 
+                                            value={editForm.studentSchool}
+                                            onChange={e => setEditForm({...editForm, studentSchool: e.target.value})}
+                                            className="w-full px-4 py-2 bg-gray-50 dark:bg-gray-900 border border-gray-100 dark:border-gray-700 rounded-xl text-xs font-bold outline-none focus:border-sky-500"
+                                            placeholder="Masalan: 45-maktab"
+                                        />
+                                    </div>
+                                    <div className="grid grid-cols-2 gap-4">
+                                        <div className="space-y-2">
+                                            <label className="text-[10px] font-bold text-gray-400 uppercase ml-1">Otasi ismi</label>
+                                            <input 
+                                                type="text" 
+                                                value={editForm.fatherName}
+                                                onChange={e => setEditForm({...editForm, fatherName: e.target.value})}
+                                                className="w-full px-4 py-2 bg-gray-50 dark:bg-gray-900 border border-gray-100 dark:border-gray-700 rounded-xl text-xs font-bold outline-none focus:border-sky-500"
+                                            />
+                                        </div>
+                                        <div className="space-y-2">
+                                            <label className="text-[10px] font-bold text-gray-400 uppercase ml-1">Otasi tel</label>
+                                            <input 
+                                                type="tel" 
+                                                value={editForm.fatherPhone}
+                                                onChange={e => setEditForm({...editForm, fatherPhone: e.target.value})}
+                                                className="w-full px-4 py-2 bg-gray-50 dark:bg-gray-900 border border-gray-100 dark:border-gray-700 rounded-xl text-xs font-bold outline-none focus:border-sky-500"
+                                            />
+                                        </div>
+                                    </div>
+                                    <div className="grid grid-cols-2 gap-4">
+                                        <div className="space-y-2">
+                                            <label className="text-[10px] font-bold text-gray-400 uppercase ml-1">Onasi ismi</label>
+                                            <input 
+                                                type="text" 
+                                                value={editForm.motherName}
+                                                onChange={e => setEditForm({...editForm, motherName: e.target.value})}
+                                                className="w-full px-4 py-2 bg-gray-50 dark:bg-gray-900 border border-gray-100 dark:border-gray-700 rounded-xl text-xs font-bold outline-none focus:border-sky-500"
+                                            />
+                                        </div>
+                                        <div className="space-y-2">
+                                            <label className="text-[10px] font-bold text-gray-400 uppercase ml-1">Onasi tel</label>
+                                            <input 
+                                                type="tel" 
+                                                value={editForm.motherPhone}
+                                                onChange={e => setEditForm({...editForm, motherPhone: e.target.value})}
+                                                className="w-full px-4 py-2 bg-gray-50 dark:bg-gray-900 border border-gray-100 dark:border-gray-700 rounded-xl text-xs font-bold outline-none focus:border-sky-500"
+                                            />
+                                        </div>
+                                    </div>
+                                    <div className="space-y-2">
                                         <label className="text-[10px] font-bold text-gray-400 uppercase ml-1">Lokatsiya</label>
                                         <button 
                                             onClick={() => setIsMapOpen(true)}
@@ -211,15 +289,27 @@ export default function StudentDetails() {
                                 </div>
                             ) : (
                                 <>
+                                    <div className="flex items-center gap-2 mb-4 px-1">
+                                        <div className="w-1.5 h-1.5 rounded-full bg-sky-500" />
+                                        <h3 className="text-[10px] font-black text-sky-600 uppercase tracking-widest">Ma'lumotlar</h3>
+                                    </div>
                                     <InfoRow icon={<Phone className="w-3.5 h-3.5" />} label="Telefon" value={student.phone} />
+                                    <InfoRow 
+                                        icon={<Bus className="w-3.5 h-3.5" />} 
+                                        label="Transport" 
+                                        value={transports.find(t => t.id === student.transportId)?.name || "Transport yo'q"} 
+                                    />
                                     <InfoRow icon={<Calendar className="w-3.5 h-3.5" />} label="Tug'ilgan kun" value={student.birthDate} />
+                                    <InfoRow icon={<Users className="w-3.5 h-3.5" />} label="Otasi" value={student.fatherName ? `${student.fatherName} (${student.fatherPhone || ''})` : "-"} />
+                                    <InfoRow icon={<Users className="w-3.5 h-3.5" />} label="Onasi" value={student.motherName ? `${student.motherName} (${student.motherPhone || ''})` : "-"} />
+                                    <InfoRow icon={<BookOpen className="w-3.5 h-3.5" />} label="Maktab" value={student.studentSchool || "-"} />
                                     <InfoRow icon={<MapPin className="w-3.5 h-3.5" />} label="Manzil" value={student.address} />
                                     {student.location && (
                                         <button 
                                             onClick={handleOpenMap}
-                                            className="w-full mt-2 flex items-center justify-center gap-2 px-4 py-3 bg-sky-50 dark:bg-sky-900/30 text-sky-600 dark:text-sky-400 border border-sky-100 dark:border-sky-800 text-[10px] font-bold uppercase tracking-widest rounded-2xl hover:bg-sky-600 hover:text-white transition-all shadow-sm"
+                                            className="w-full mt-4 flex items-center justify-center gap-3 px-4 py-4 bg-sky-50 dark:bg-sky-900/30 text-sky-600 dark:text-sky-400 border border-sky-100 dark:border-sky-800 text-[10px] font-black uppercase tracking-[0.1em] rounded-2xl hover:bg-sky-600 hover:text-white transition-all shadow-lg shadow-sky-500/10 active:scale-95"
                                         >
-                                            <MapPin size={14} />
+                                            <MapPin size={16} />
                                             Kartada ko'rish
                                         </button>
                                     )}

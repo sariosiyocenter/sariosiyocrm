@@ -8,6 +8,16 @@ import { useCRM } from '../context/CRMContext';
 
 import RoomSchedule from './RoomSchedule';
 
+import PaymentsReport from './reports/PaymentsReport';
+import StudentsPaymentReport from './reports/StudentsPaymentReport';
+import LeftStudentsReport from './reports/LeftStudentsReport';
+import StaffAttendanceReport from './reports/StaffAttendanceReport';
+import StudentBonusReport from './reports/StudentBonusReport';
+import LeadsReport from './reports/LeadsReport';
+import StudentsGeneralReport from './reports/StudentsGeneralReport';
+import GraduatesReport from './reports/GraduatesReport';
+import CenterStatsReport from './reports/CenterStatsReport';
+
 const REPORT_TYPES = [
     { id: 'payments', label: "To'lovlar hisoboti", icon: <CreditCard className="w-5 h-5 text-indigo-500" /> },
     { id: 'students_payment', label: "O'quvchilar to'lovi", icon: <Users className="w-5 h-5 text-emerald-500" /> },
@@ -31,112 +41,27 @@ export default function Reports() {
     });
     const [endDate, setEndDate] = useState(() => new Date().toISOString().split('T')[0]);
 
-    const filteredPayments = payments.filter(p => {
-        return p.date >= startDate && p.date <= endDate;
-    });
-
     const renderReportContent = () => {
-        if (activeReport === 'room_occupancy') {
-            return <div className="p-8"><RoomSchedule /></div>;
-        }
-
-        if (activeReport === 'payments') {
-            return (
-                <div className="overflow-x-auto">
-                    <table className="w-full text-left border-collapse">
-                        <thead>
-                            <tr className="bg-gray-50 dark:bg-gray-900 border-b border-gray-100 dark:border-gray-700">
-                                <th className="p-6 text-[10px] font-extrabold text-gray-400 dark:text-gray-500 uppercase tracking-widest leading-loose">O'quvchi</th>
-                                <th className="p-6 text-[10px] font-extrabold text-gray-400 dark:text-gray-500 uppercase tracking-widest leading-loose text-right">Summa</th>
-                                <th className="p-6 text-[10px] font-extrabold text-gray-400 dark:text-gray-500 uppercase tracking-widest leading-loose text-center">Turi</th>
-                                <th className="p-6 text-[10px] font-extrabold text-gray-400 dark:text-gray-500 uppercase tracking-widest leading-loose">Sana</th>
-                                <th className="p-6 text-[10px] font-extrabold text-gray-400 dark:text-gray-500 uppercase tracking-widest leading-loose">Izoh</th>
-                            </tr>
-                        </thead>
-                        <tbody className="divide-y divide-gray-50 dark:divide-gray-700/50">
-                            {filteredPayments.map(p => {
-                                const student = students.find(s => s.id === p.studentId);
-                                return (
-                                    <tr key={p.id} className="hover:bg-gray-50/50 dark:hover:bg-gray-700/10 transition-colors group">
-                                        <td className="p-6 text-sm font-extrabold text-gray-900 dark:text-white uppercase tracking-tight group-hover:text-sky-600 transition-colors">{student?.name || 'Noma\'lum'}</td>
-                                        <td className="p-6 text-sm font-extrabold text-emerald-600 dark:text-emerald-400 text-right">+{p.amount.toLocaleString()} UZS</td>
-                                        <td className="p-6 text-center">
-                                            <span className="px-4 py-1.5 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-xl text-[10px] font-extrabold uppercase tracking-widest border border-gray-200 dark:border-gray-600 shadow-sm">{p.type}</span>
-                                        </td>
-                                        <td className="p-6 text-[10px] font-extrabold text-gray-400 dark:text-gray-500 uppercase tracking-widest">{p.date}</td>
-                                        <td className="p-6 text-[10px] font-extrabold text-gray-400 dark:text-gray-500 uppercase tracking-widest whitespace-nowrap">{p.description || '-'}</td>
-                                    </tr>
-                                );
-                            })}
-                            {filteredPayments.length === 0 && (
-                                <tr>
-                                    <td colSpan={5} className="p-16 text-center">
-                                        <div className="flex flex-col items-center justify-center p-12 border-2 border-dashed border-gray-100 dark:border-gray-700 rounded-[2.5rem] bg-gray-50/30 dark:bg-gray-900/10">
-                                            <FileText className="w-12 h-12 text-gray-200 dark:text-gray-700 mb-4" />
-                                            <p className="text-[10px] font-extrabold text-gray-400 dark:text-gray-500 uppercase tracking-widest">Hech qanday ma'lumot topilmadi</p>
-                                        </div>
-                                    </td>
-                                </tr>
-                            )}
-                        </tbody>
-                    </table>
+        switch (activeReport) {
+            case 'room_occupancy': return <div className="p-8"><RoomSchedule /></div>;
+            case 'payments': return <PaymentsReport startDate={startDate} endDate={endDate} />;
+            case 'students_payment': return <StudentsPaymentReport startDate={startDate} endDate={endDate} />;
+            case 'left_students': return <LeftStudentsReport />;
+            case 'staff_attendance': return <StaffAttendanceReport />;
+            case 'bonuses': return <StudentBonusReport />;
+            case 'leads': return <LeadsReport />;
+            case 'students_general': return <StudentsGeneralReport />;
+            case 'graduates': return <GraduatesReport />;
+            case 'stats': return <CenterStatsReport />;
+            default: return (
+                <div className="flex-1 flex flex-col items-center justify-center p-20 text-center opacity-60">
+                    <div className="w-24 h-24 bg-gray-50 dark:bg-gray-900 border border-gray-100 dark:border-gray-700 rounded-[2.5rem] flex items-center justify-center text-gray-300 dark:text-gray-700 mb-8">
+                        <FileText size={40} />
+                    </div>
+                    <p className="text-[10px] font-extrabold text-gray-400 dark:text-gray-500 uppercase tracking-widest">Davom etish uchun yuqoridagi filtrlardan bittasini tanlang</p>
                 </div>
             );
         }
-
-        if (activeReport === 'students_payment') {
-            return (
-                <div className="overflow-x-auto">
-                    <table className="w-full text-left border-collapse">
-                        <thead>
-                            <tr className="bg-gray-50 dark:bg-gray-900 border-b border-gray-100 dark:border-gray-700">
-                                <th className="p-6 text-[10px] font-extrabold text-gray-400 dark:text-gray-500 uppercase tracking-widest leading-loose">Ism familiya</th>
-                                <th className="p-6 text-[10px] font-extrabold text-gray-400 dark:text-gray-500 uppercase tracking-widest leading-loose text-right">Balans (UZS)</th>
-                                <th className="p-6 text-[10px] font-extrabold text-gray-400 dark:text-gray-500 uppercase tracking-widest leading-loose text-center">Status</th>
-                                <th className="p-6 text-[10px] font-extrabold text-gray-400 dark:text-gray-500 uppercase tracking-widest leading-loose text-right">Qarzdorlik</th>
-                            </tr>
-                        </thead>
-                        <tbody className="divide-y divide-gray-50 dark:divide-gray-700/50">
-                            {students.map(s => (
-                                <tr key={s.id} className="hover:bg-gray-50/50 dark:hover:bg-gray-700/10 transition-colors group">
-                                    <td className="p-6 text-sm font-extrabold text-gray-900 dark:text-white uppercase tracking-tight group-hover:text-sky-600 transition-colors">{s.name}</td>
-                                    <td className={`p-6 text-sm font-extrabold text-right ${s.balance < 0 ? 'text-rose-600' : 'text-gray-900 dark:text-white'}`}>
-                                        {s.balance.toLocaleString()}
-                                    </td>
-                                    <td className="p-6 text-center">
-                                        <span className={`px-4 py-1.5 rounded-xl text-[10px] font-extrabold uppercase tracking-widest border transition-all shadow-sm ${s.status === 'Faol' ? 'bg-emerald-50 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400 border-emerald-100 dark:border-emerald-800/50' : 'bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400 border-gray-200 dark:border-gray-600'}`}>
-                                            {s.status}
-                                        </span>
-                                    </td>
-                                    <td className="p-6 text-sm font-extrabold text-rose-600 dark:text-rose-400 text-right">
-                                        {s.balance < 0 ? Math.abs(s.balance).toLocaleString() : '-'}
-                                    </td>
-                                </tr>
-                            ))}
-                            {students.length === 0 && (
-                                <tr>
-                                    <td colSpan={4} className="p-16 text-center uppercase tracking-widest text-[10px] font-extrabold text-gray-400 dark:text-gray-500">Hech qanday ma'lumot topilmadi.</td>
-                                </tr>
-                            )}
-                        </tbody>
-                    </table>
-                </div>
-            );
-        }
-
-        return (
-            <div className="flex-1 flex flex-col items-center justify-center p-20 text-center bg-gray-50/30 dark:bg-gray-900/10">
-                <div className="w-24 h-24 bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700 rounded-[2rem] flex items-center justify-center text-gray-300 dark:text-gray-600 mb-8 shadow-xl shadow-gray-200/20">
-                    <FileText className="w-10 h-10" />
-                </div>
-                <h3 className="text-[10px] font-extrabold text-gray-500 dark:text-gray-400 uppercase tracking-[0.2em]">Ushbu hisobot turi tez orada ishga tushadi</h3>
-                <div className="mt-8 flex gap-3">
-                    <div className="w-1.5 h-1.5 rounded-full bg-sky-500 animate-bounce duration-1000"></div>
-                    <div className="w-1.5 h-1.5 rounded-full bg-sky-500 animate-bounce duration-1000 delay-150"></div>
-                    <div className="w-1.5 h-1.5 rounded-full bg-sky-500 animate-bounce duration-1000 delay-300"></div>
-                </div>
-            </div>
-        );
     };
 
     return (

@@ -18,6 +18,7 @@ import Finance from './components/Finance';
 import Settings from './components/Settings';
 import Reports from './components/Reports';
 import StudentDetails from './components/StudentDetails';
+import Logistics from './components/Logistics';
 
 export default function App() {
   const { user, login, logout, loading, error: authError } = useCRM();
@@ -131,6 +132,7 @@ export default function App() {
         <Route path="/students/:id" element={<StudentDetails />} />
         <Route path="/settings" element={isAdminOrManager ? <Settings /> : <Navigate to="/" replace />} />
         <Route path="/finance" element={isAdminOrManager ? <Finance /> : <Navigate to="/" replace />} />
+        <Route path="/logistics" element={isAdminOrManager ? <Logistics /> : <Navigate to="/" replace />} />
         <Route path="/reports" element={isAdmin ? <Reports /> : <Navigate to="/" replace />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>

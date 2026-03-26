@@ -22,7 +22,22 @@ model Student {
   photo      String?
   rating     Float?
   telegramId String?   @unique
+  fatherName  String?
+  fatherPhone String?
+  motherName  String?
+  motherPhone String?
   
+  // New fields for reports
+  statusChangedAt DateTime? @default(now())
+  leaveReason     String?
+
+  // Transport Relation
+  transportId Int?
+  transport   Transport? @relation(fields: [transportId], references: [id])
+  
+  // Student's actual school (maktab)
+  studentSchool String?
+
   // Relations
   schoolId   Int
   school     School    @relation(fields: [schoolId], references: [id])
@@ -30,6 +45,51 @@ model Student {
   payments   Payment[]
   attendances Attendance[]
   scores      Score[]
+  deliveryLogs DeliveryLog[]
+}
+
+model Transport {
+  id          Int      @id @default(autoincrement())
+  name        String   // e.g., "Avtobus #1"
+  model       String?  // e.g., "Mercedes Sprinter"
+  number      String?  // Plate number
+  capacity    Int
+  driverName  String?
+  driverPhone String?
+  status      String   @default("Faol") // Faol, Ta'mirda, Arxiv
+  
+  driverId    Int?     @unique
+  driver      User?    @relation("DriverTransport", fields: [driverId], references: [id])
+  
+  schoolId    Int
+  school      School   @relation(fields: [schoolId], references: [id])
+  students    Student[]
+  deliveryLogs DeliveryLog[]
+  routes      Route[]
+}
+
+model DeliveryLog {
+  id          Int      @id @default(autoincrement())
+  transportId Int
+  transport   Transport @relation(fields: [transportId], references: [id])
+  studentId   Int
+  student     Student   @relation(fields: [studentId], references: [id])
+  date        String
+  status      String    // Olib ketildi, Uyiga yetkazildi, Kelmadi
+  
+  schoolId    Int
+  school      School    @relation(fields: [schoolId], references: [id])
+}
+
+model Expense {
+  id          Int      @id @default(autoincrement())
+  amount      Float
+  category    String   // Ish haqi, Ijara, Kommunal, Marketing, Boshqa
+  date        String
+  description String?
+  
+  schoolId    Int
+  school      School   @relation(fields: [schoolId], references: [id])
 }
 
 model Teacher {
@@ -145,6 +205,10 @@ model School {
   attendances Attendance[]
   scores      Score[]
   teacherAttendances TeacherAttendance[]
+  expenses    Expense[]
+  transports  Transport[]
+  deliveryLogs DeliveryLog[]
+  routes      Route[]
 }
 
 model Attendance {
@@ -199,6 +263,9 @@ model User {
 
   schoolId  Int?
   school    School?  @relation(fields: [schoolId], references: [id])
+  
+  driverTransport Transport? @relation("DriverTransport")
+  driverRoutes    Route[]    @relation("DriverRoutes")
 }
 
 enum UserRole {
@@ -206,4 +273,21 @@ enum UserRole {
   MANAGER
   TEACHER
   RECEPTIONIST
+  DRIVER
+}
+
+model Route {
+  id          Int      @id @default(autoincrement())
+  name        String
+  startTime   String?   // e.g., "08:00"
+  transportId Int?
+  transport   Transport? @relation(fields: [transportId], references: [id])
+  driverId    Int?
+  driver      User?    @relation("DriverRoutes", fields: [driverId], references: [id])
+  days        String   // TOQ, JUFT, HAR_KUNI
+  studentIds  Int[]    // Ordered students
+  schoolId    Int
+  school      School   @relation(fields: [schoolId], references: [id])
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 }

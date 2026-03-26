@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { Student, Teacher, Group, Lead, Payment, CRMState, Course, Room, School, UserRole, Attendance, Score, TeacherAttendance } from '../types';
+import { Student, Teacher, Group, Lead, Payment, CRMState, Course, Room, School, UserRole, Attendance, Score, TeacherAttendance, Expense, Transport, DeliveryLog, Route } from '../types';
 
 interface AuthenticatedUser {
     id: number;
@@ -44,6 +44,14 @@ interface CRMContextType extends CRMState {
     addBatchAttendance: (groupId: number, date: string, records: { studentId: number; status: string }[]) => Promise<void>;
     addScore: (score: Omit<Score, 'id' | 'schoolId'>) => Promise<void>;
     addTeacherAttendance: (attendance: Omit<TeacherAttendance, 'id' | 'schoolId'>) => Promise<void>;
+    addExpense: (expense: Omit<Expense, 'id' | 'schoolId'>) => Promise<void>;
+    deleteExpense: (id: number) => Promise<void>;
+    addTransport: (transport: Omit<Transport, 'id' | 'schoolId'>) => Promise<void>;
+    updateTransport: (id: number, transport: Partial<Transport>) => Promise<void>;
+    deleteTransport: (id: number) => Promise<void>;
+    addRoute: (route: Omit<Route, 'id' | 'schoolId' | 'createdAt' | 'updatedAt'>) => Promise<void>;
+    updateRoute: (id: number, route: Partial<Route>) => Promise<void>;
+    deleteRoute: (id: number) => Promise<void>;
     notification: { message: string, type: 'success' | 'error' | 'info' } | null;
     showNotification: (message: string, type: 'success' | 'error' | 'info') => void;
 }
@@ -55,7 +63,8 @@ const API_BASE = '/api';
 export const CRMProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
     const [state, setState] = useState<CRMState>({
         students: [], teachers: [], groups: [], leads: [], payments: [], courses: [], rooms: [], schools: [],
-        attendances: [], scores: [], teacherAttendances: [],
+        attendances: [], scores: [], teacherAttendances: [], expenses: [],
+        transports: [], deliveryLogs: [], routes: [], users: [],
         selectedSchoolId: null,
         settings: {
             id: 0,
@@ -124,7 +133,7 @@ export const CRMProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             }
 
             if (schoolIdToUse !== null) {
-                const endpoints = ['students', 'teachers', 'groups', 'leads', 'payments', 'courses', 'rooms', 'settings', 'attendances', 'scores', 'teacher-attendances'];
+                const endpoints = ['students', 'teachers', 'groups', 'leads', 'payments', 'courses', 'rooms', 'settings', 'attendances', 'scores', 'teacher-attendances', 'expenses', 'transports', 'routes', 'users'];
                 const responses = await Promise.all(endpoints.map(ep =>
                     fetch(`${API_BASE}/${ep}?schoolId=${schoolIdToUse}`, {
                         headers: { 'Authorization': `Bearer ${currentToken}` }
@@ -152,6 +161,11 @@ export const CRMProvider: React.FC<{ children: React.ReactNode }> = ({ children 
                     attendances: responses[8],
                     scores: responses[9],
                     teacherAttendances: responses[10],
+                    expenses: responses[11],
+                    transports: responses[12],
+                    routes: responses[13],
+                    users: responses[14],
+                    deliveryLogs: [], // Fetched per date in Delivery view
                     selectedSchoolId: schoolIdToUse
                 }));
             } else {
@@ -229,7 +243,8 @@ export const CRMProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         localStorage.removeItem('token');
         setState({
             students: [], teachers: [], groups: [], leads: [], payments: [], courses: [], rooms: [], schools: [],
-            attendances: [], scores: [], teacherAttendances: [],
+            attendances: [], scores: [], teacherAttendances: [], expenses: [],
+            transports: [], deliveryLogs: [], routes: [], users: [],
             selectedSchoolId: null,
             settings: {
                 id: 0,
@@ -513,6 +528,71 @@ export const CRMProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         });
     };
 
+    const addExpense = async (expense: Omit<Expense, 'id' | 'schoolId'>) => {
+        const result = await apiCall('expenses', 'POST', expense);
+        setState(prev => ({ ...prev, expenses: [...prev.expenses, result] }));
+        showNotification("Xarajat saqlandi", "success");
+    };
+
+    const deleteExpense = async (id: number) => {
+        await apiCall(`expenses/${id}`, 'DELETE');
+        setState(prev => ({ ...prev, expenses: prev.expenses.filter(e => e.id !== id) }));
+        showNotification("Xarajat o'chirildi", "info");
+    };
+    
+    const addTransport = async (transport: Omit<Transport, 'id' | 'schoolId'>) => {
+        const trans = await apiCall('transports', 'POST', transport);
+        setState(prev => ({ ...prev, transports: [...prev.transports, trans] }));
+        showNotification("Transport qo'shildi", "success");
+    };
+
+    const updateTransport = async (id: number, transport: Partial<Transport>) => {
+        const updated = await apiCall(`transports/${id}`, 'PUT', transport);
+        setState(prev => ({ ...prev, transports: prev.transports.map(t => t.id === id ? updated : t) }));
+        showNotification("Transport yangilandi", "success");
+    };
+
+    const deleteTransport = async (id: number) => {
+        await apiCall(`transports/${id}`, 'DELETE');
+        setState(prev => ({ ...prev, transports: prev.transports.filter(t => t.id !== id) }));
+        showNotification("Transport o'chirildi", "info");
+    };
+
+    const addDeliveryLog = async (log: Omit<DeliveryLog, 'id' | 'schoolId'>) => {
+        const result = await apiCall('delivery-logs', 'POST', log);
+        setState(prev => {
+            const filtered = prev.deliveryLogs.filter(l => !(l.studentId === result.studentId && l.date === result.date));
+            return { ...prev, deliveryLogs: [...filtered, result] };
+        });
+    };
+
+    const fetchDeliveryLogs = async (date: string) => {
+        if (!token || !state.selectedSchoolId) return [];
+        const logs = await fetch(`${API_BASE}/delivery-logs?schoolId=${state.selectedSchoolId}&date=${date}`, {
+            headers: { 'Authorization': `Bearer ${token}` }
+        }).then(res => res.json());
+        setState(prev => ({ ...prev, deliveryLogs: logs }));
+        return logs;
+    };
+
+    const addRoute = async (route: Omit<Route, 'id' | 'schoolId' | 'createdAt' | 'updatedAt'>) => {
+        const newRoute = await apiCall('routes', 'POST', route);
+        setState(prev => ({ ...prev, routes: [...prev.routes, newRoute] }));
+        showNotification("Yangi marshrut qo'shildi", "success");
+    };
+
+    const updateRoute = async (id: number, route: Partial<Route>) => {
+        const updated = await apiCall(`routes/${id}`, 'PUT', route);
+        setState(prev => ({ ...prev, routes: prev.routes.map(r => r.id === id ? updated : r) }));
+        showNotification("Marshrut yangilandi", "success");
+    };
+
+    const deleteRoute = async (id: number) => {
+        await apiCall(`routes/${id}`, 'DELETE');
+        setState(prev => ({ ...prev, routes: prev.routes.filter(r => r.id !== id) }));
+        showNotification("Marshrut o'chirildi", "info");
+    };
+
     return (
         <CRMContext.Provider value={{
             ...state,
@@ -529,6 +609,10 @@ export const CRMProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             addSchool, deleteSchool,
             addAttendance, addBatchAttendance, deleteBatchAttendance, addScore,
             addTeacherAttendance,
+            addExpense, deleteExpense,
+            addTransport, updateTransport, deleteTransport,
+            addRoute, updateRoute, deleteRoute,
+            addDeliveryLog, fetchDeliveryLogs,
             darkMode, toggleDarkMode,
             notification, showNotification
         }}>

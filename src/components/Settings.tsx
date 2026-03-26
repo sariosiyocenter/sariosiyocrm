@@ -91,12 +91,19 @@ export default function Settings() {
                     },
                     body: JSON.stringify(userToAdd)
                 });
-                if (res.ok) fetchUsers();
+                if (res.ok) {
+                    alert("Xodim muvaffaqiyatli qo'shildi!");
+                    fetchUsers();
+                } else {
+                    const errData = await res.json();
+                    alert(`Xatolik: ${errData.error || res.statusText}`);
+                }
             }
             setIsAddModalOpen(false);
             setNewItem({});
-        } catch (err) {
+        } catch (err: any) {
             console.error("Failed to add item", err);
+            alert("Ma'lumot qo'shishda xatolik yuz berdi: " + err.message);
         }
     };
 
@@ -171,7 +178,7 @@ export default function Settings() {
                             <p className="text-[10px] font-extrabold text-gray-400 dark:text-gray-500 uppercase tracking-widest leading-loose">
                                 {activeSubTab === 'Kurslar' ? `${item.price.toLocaleString()} UZS` :
                                     activeSubTab === 'Xonalar' ? `${item.capacity} kishilik` :
-                                        (activeTab === 'staff' || activeSubTab === 'Xodimlar') ? `${item.role} • ${item.email}` :
+                                        (activeTab === 'staff' || activeSubTab === 'Xodimlar') ? `${item.role === 'ADMIN' ? 'Admin' : item.role === 'MANAGER' ? 'Menejer' : item.role === 'TEACHER' ? 'O\'qituvchi' : item.role === 'DRIVER' ? 'Haydovchi' : 'Receptionist'} • ${item.email}` :
                                             item.address}
                             </p>
                         </div>
@@ -394,6 +401,7 @@ export default function Settings() {
                                                     value={newItem.role || 'RECEPTIONIST'} onChange={e => setNewItem({ ...newItem, role: e.target.value })}>
                                                     <option value="RECEPTIONIST">Receptionist</option>
                                                     <option value="TEACHER">O'qituvchi</option>
+                                                    <option value="DRIVER">Haydovchi</option>
                                                     {currentUser?.role === 'ADMIN' && <option value="MANAGER">Menejer</option>}
                                                     {currentUser?.role === 'ADMIN' && <option value="ADMIN">Administrator</option>}
                                                 </select>
@@ -485,6 +493,7 @@ export default function Settings() {
                                             value={editingItem.role || 'RECEPTIONIST'} onChange={e => setEditingItem({ ...editingItem, role: e.target.value })}>
                                             <option value="RECEPTIONIST">Receptionist</option>
                                             <option value="TEACHER">O'qituvchi</option>
+                                            <option value="DRIVER">Haydovchi</option>
                                             <option value="MANAGER">Menejer</option>
                                             <option value="ADMIN">Administrator</option>
                                         </select>

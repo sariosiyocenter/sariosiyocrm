@@ -96,13 +96,6 @@ export default function Teachers() {
                         >
                             <Filter size={20} />
                         </button>
-                        <button 
-                            onClick={() => setIsModalOpen(true)}
-                            className="h-14 px-8 bg-gray-900 dark:bg-white text-white dark:text-gray-900 rounded-2xl font-extrabold text-[10px] uppercase tracking-widest hover:scale-105 active:scale-95 transition-all shadow-lg flex items-center gap-3"
-                        >
-                            <Plus size={18} />
-                            Yangi Qo'shish
-                        </button>
                     </div>
                 </div>
 

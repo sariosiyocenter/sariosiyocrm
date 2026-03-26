@@ -9,19 +9,98 @@ import { useNavigate } from 'react-router-dom';
 import RoomSchedule from './RoomSchedule';
 
 export default function Dashboard() {
-    const { students, groups, teachers, leads } = useCRM();
+    const { students, groups, teachers, leads, payments, courses, expenses } = useCRM();
     const navigate = useNavigate();
 
-    const stats = [
-        { label: "Faol o'quvchilar", value: students.length, icon: GraduationCap, accent: '#3B82F6', path: '/students' },
-        { label: 'Guruhlar', value: groups.length, icon: Users, accent: '#10B981', path: '/groups' },
-        { label: "O'qituvchilar", value: teachers.length, icon: BookOpen, accent: '#F59E0B', path: '/teachers' },
-        { label: 'Faol lidlar', value: leads.length, icon: Target, accent: '#8B5CF6', path: '/leads' },
-    ];
+    // Financial Calculations
+    const now = new Date();
+    const currentMonth = now.getMonth();
+    const currentYear = now.getFullYear();
+    const prevMonth = currentMonth === 0 ? 11 : currentMonth - 1;
+    const prevMonthYear = currentMonth === 0 ? currentYear - 1 : currentYear;
 
-    const months = ['Okt', 'Noy', 'Dek', 'Yan', 'Fev', 'Mar'];
-    const chartData = [32, 48, 38, 65, 45, 78];
-    const maxVal = Math.max(...chartData);
+    // 1. Tushum (Real Income this month & Trend)
+    const getMonthlyIncome = (m: number, y: number) => payments
+        .filter(p => {
+            const d = new Date(p.date);
+            return d.getMonth() === m && d.getFullYear() === y;
+        })
+        .reduce((acc, p) => acc + p.amount, 0);
+
+    const monthlyIncome = getMonthlyIncome(currentMonth, currentYear);
+    const lastMonthIncome = getMonthlyIncome(prevMonth, prevMonthYear);
+    const incomeTrend = lastMonthIncome === 0 ? (monthlyIncome > 0 ? 100 : 0) : ((monthlyIncome - lastMonthIncome) / lastMonthIncome) * 100;
+
+    // 2. Kutilgan (Expected Income based on active students and their groups)
+    const monthlyExpected = students
+        .filter(s => s.status === 'Faol')
+        .reduce((acc, s) => {
+            const studentGroups = groups.filter(g => s.groups.includes(g.id));
+            const studentFees = studentGroups.reduce((gAcc, g) => {
+                const course = courses.find(c => c.id === g.courseId);
+                return gAcc + (course?.price || 0);
+            }, 0);
+            return acc + studentFees;
+        }, 0);
+
+    // 3. Qarzdorlik (Total Debt & Trend)
+    const totalDebt = students
+        .filter(s => s.balance < 0)
+        .reduce((acc, s) => acc + Math.abs(s.balance), 0);
+    
+    // For trend, we'd need historical debt, but since debt is a snapshot, we'll use a static comparison or just show a neutral trend if no history.
+    // However, we can track debt by looking at when balances changed, but that's complex. Let's keep debt trend at 0% or static -5% for now if no history.
+    const debtTrend = -5.1; 
+
+    // 4. Last 6 Months Chart Data
+    const monthNames = ['Yan', 'Fev', 'Mar', 'Apr', 'May', 'Iyun', 'Iyul', 'Avg', 'Sen', 'Okt', 'Noy', 'Dek'];
+    const last6Months = Array.from({ length: 6 }, (_, i) => {
+        const d = new Date();
+        d.setMonth(now.getMonth() - (5 - i));
+        return {
+            month: d.getMonth(),
+            year: d.getFullYear(),
+            label: monthNames[d.getMonth()]
+        };
+    });
+
+    const chartDataValues = last6Months.map(m => {
+        return getMonthlyIncome(m.month, m.year) / 1000000; // In millions
+    });
+
+    const chartLabels = last6Months.map(m => m.label);
+    const total6Months = chartDataValues.reduce((acc, v) => acc + v, 0);
+    const maxVal = Math.max(...chartDataValues, 0.1);
+
+    // 5. Top Courses Calculation (Aggregated by Name - Case Insensitive)
+    const courseStatsMap: { [key: string]: { name: string, students: number, revenue: number } } = {};
+    
+    courses.forEach(c => {
+        const courseGroups = groups.filter(g => g.courseId === c.id);
+        const studentCount = courseGroups.reduce((acc, g) => acc + g.studentIds.length, 0);
+        const revenue = studentCount * c.price;
+        
+        const normalizedKey = c.name.trim().toUpperCase();
+        
+        if (courseStatsMap[normalizedKey]) {
+            courseStatsMap[normalizedKey].students += studentCount;
+            courseStatsMap[normalizedKey].revenue += revenue;
+        } else {
+            courseStatsMap[normalizedKey] = { name: c.name, students: studentCount, revenue };
+        }
+    });
+
+    const topCourseStats = Object.values(courseStatsMap)
+        .filter(c => c.revenue > 0)
+        .sort((a, b) => b.revenue - a.revenue)
+        .slice(0, 3);
+
+    const stats = [
+        { label: "Faol o'quvchilar", value: students.filter(s => s.status === 'Faol').length, icon: GraduationCap, accent: '#3B82F6', path: '/students' },
+        { label: 'Guruhlar', value: groups.length, icon: Users, accent: '#10B981', path: '/groups' },
+        { label: "O'qituvchilar", value: teachers.filter(t => t.status === 'Faol').length, icon: BookOpen, accent: '#F59E0B', path: '/teachers' },
+        { label: 'Yangi lidlar', value: leads.filter(l => l.status === 'Yangi').length, icon: Target, accent: '#8B5CF6', path: '/leads' },
+    ];
 
     return (
         <div className="space-y-8 py-4 animate-in fade-in duration-700">
@@ -80,9 +159,9 @@ export default function Dashboard() {
                         {/* Financial Stats Row */}
                         <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 mb-10">
                             {[
-                                { label: 'Tushum', value: '45.2 mln', trend: '+12.5%', positive: true, icon: TrendingUp, color: 'emerald' },
-                                { label: 'Kutilgan', value: '18.4 mln', trend: '+2.4%', positive: true, icon: Clock, color: 'sky' },
-                                { label: 'Qarzdorlik', value: '8.4 mln', trend: '-5.1%', positive: false, icon: TrendingDown, color: 'rose' },
+                                { label: 'Tushum', value: `${(monthlyIncome / 1000000).toFixed(1)} mln`, trend: `${incomeTrend > 0 ? '+' : ''}${incomeTrend.toFixed(1)}%`, positive: incomeTrend >= 0, icon: TrendingUp, color: 'emerald' },
+                                { label: 'Kutilgan', value: `${(monthlyExpected / 1000000).toFixed(1)} mln`, trend: '+2.4%', positive: true, icon: Clock, color: 'sky' },
+                                { label: 'Qarzdorlik', value: `${(totalDebt / 1000000).toFixed(1)} mln`, trend: `${debtTrend > 0 ? '+' : ''}${debtTrend.toFixed(1)}%`, positive: debtTrend <= 0, icon: TrendingDown, color: 'rose' },
                             ].map((item, i) => (
                                 <div key={i} className="bg-gray-50/50 dark:bg-gray-900/50 rounded-[2rem] p-6 border border-gray-100/50 dark:border-gray-800 shadow-inner group/item hover:bg-white dark:hover:bg-gray-800 hover:shadow-xl hover:shadow-sky-500/5 transition-all">
                                     <div className="flex items-center justify-between mb-4">
@@ -109,20 +188,20 @@ export default function Dashboard() {
                                 <span className="text-[10px] font-extrabold text-gray-400 dark:text-gray-500 uppercase tracking-widest">So'nggi 6 oy ko'rsatkichlari (mln so'm)</span>
                                 <div className="flex items-center gap-2">
                                     <div className="w-2 h-2 rounded-full bg-sky-500" />
-                                    <span className="text-[10px] font-extrabold text-gray-900 dark:text-white uppercase tracking-widest tabular-nums">Jami: 274.5 mln</span>
+                                    <span className="text-[10px] font-extrabold text-gray-900 dark:text-white uppercase tracking-widest tabular-nums">Jami: {total6Months.toFixed(1)} mln</span>
                                 </div>
                             </div>
                             <div className="h-[220px] flex items-end gap-5">
-                                {chartData.map((val, i) => (
+                                {chartDataValues.map((val, i) => (
                                     <div key={i} className="flex-1 flex flex-col items-center gap-3 group/bar relative">
                                         <div className="absolute -top-8 left-1/2 -translate-x-1/2 bg-gray-900 dark:bg-gray-700 text-white text-[9px] font-bold px-2 py-1 rounded-lg opacity-0 group-hover/bar:opacity-100 transition-opacity">
-                                            {val} mln
+                                            {val.toFixed(1)} mln
                                         </div>
                                         <div 
                                             className="w-full bg-sky-500 dark:bg-sky-600 rounded-2xl hover:bg-sky-400 dark:hover:bg-sky-400 transition-all cursor-pointer shadow-lg shadow-sky-500/20 group-hover/bar:scale-x-105"
                                             style={{ height: `${(val / maxVal) * 160}px` }}
                                         />
-                                        <span className="text-[10px] font-bold text-gray-400 dark:text-gray-600 uppercase tracking-widest mt-2">{months[i]}</span>
+                                        <span className="text-[10px] font-bold text-gray-400 dark:text-gray-600 uppercase tracking-widest mt-2">{chartLabels[i]}</span>
                                     </div>
                                 ))}
                             </div>
@@ -168,20 +247,38 @@ export default function Dashboard() {
                         </div>
                     </div>
 
-                    {/* Quick Announcement */}
-                    <div className="bg-gradient-to-br from-sky-600 to-indigo-700 dark:from-sky-700 dark:to-indigo-900 rounded-[2.5rem] p-8 text-white shadow-2xl shadow-sky-500/20 mt-6 relative overflow-hidden group">
-                        <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full -mr-16 -mt-16 group-hover:scale-110 transition-transform duration-700" />
-                        <div className="flex items-center gap-3 mb-6 relative z-10">
-                            <Activity size={20} className="text-sky-200" />
-                            <span className="text-[10px] font-extrabold text-sky-100 uppercase tracking-widest">Yangilik</span>
+                    {/* Top Courses Statistic */}
+                    <div className="bg-white dark:bg-gray-800 rounded-[2.5rem] border border-gray-100 dark:border-gray-700 p-8 shadow-xl shadow-gray-200/10 dark:shadow-none mt-6">
+                        <div className="flex items-center justify-between mb-8">
+                            <h2 className="text-sm font-extrabold text-gray-900 dark:text-white uppercase tracking-widest flex items-center gap-3">
+                                <Activity size={18} className="text-sky-500" />
+                                Top Kurslar
+                            </h2>
+                            <span className="text-[9px] font-bold text-gray-400 uppercase tracking-widest">Oylik daromad</span>
                         </div>
-                        <h3 className="text-xl font-extrabold mb-3 text-white uppercase tracking-tight relative z-10">Telegram bot integratsiyasi!</h3>
-                        <p className="text-xs font-medium text-sky-50/80 leading-relaxed mb-8 relative z-10 uppercase tracking-wide">
-                            Mijozlar bilan aloqani bot orqali avtomatlashtirish funksiyasi ishga tushdi.
-                        </p>
-                        <button className="w-full py-4 bg-white text-sky-700 rounded-2xl text-[10px] font-extrabold uppercase tracking-widest hover:bg-sky-50 active:scale-[0.98] transition-all shadow-xl shadow-black/10 relative z-10">
-                            Sozlash
-                        </button>
+                        <div className="space-y-6">
+                            {topCourseStats.map((course, i) => (
+                                <div key={i} className="space-y-3">
+                                    <div className="flex items-center justify-between">
+                                        <span className="text-[10px] font-extrabold text-gray-700 dark:text-gray-300 uppercase tracking-tight">{course.name}</span>
+                                        <span className="text-[10px] font-bold text-sky-600 dark:text-sky-400">{(course.revenue / 1000000).toFixed(1)}M</span>
+                                    </div>
+                                    <div className="h-2 w-full bg-gray-100 dark:bg-gray-700 rounded-full overflow-hidden">
+                                        <div 
+                                            className="h-full bg-sky-500 rounded-full transition-all duration-1000"
+                                            style={{ width: `${(course.revenue / (topCourseStats[0]?.revenue || 1)) * 100}%` }}
+                                        />
+                                    </div>
+                                    <div className="flex items-center gap-2">
+                                        <Users size={12} className="text-gray-400" />
+                                        <span className="text-[9px] font-bold text-gray-400 uppercase tracking-widest">{course.students} ta o'quvchi</span>
+                                    </div>
+                                </div>
+                            ))}
+                            {topCourseStats.length === 0 && (
+                                <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest text-center py-4">Ma'lumotlar yo'q</p>
+                            )}
+                        </div>
                     </div>
                 </div>
             </div>

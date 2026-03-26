@@ -31,6 +31,11 @@ const getAdminMenu = () => Markup.keyboard([
     ['📧 Ommaviy xabar', '⚙️ Sozlamalar']
 ]).resize();
 
+const getDriverMenu = () => Markup.keyboard([
+    ['📍 O\'quvchilar lokatsiyasi', '🚍 Mening Transportim'],
+    ['👤 Profil']
+]).resize();
+
 const getGuestMenu = () => Markup.keyboard([
     ['ℹ️ Markaz haqida', '📍 Geolokatsiya'],
     ['📝 Sinov darsiga yozilish', '📞 Kontaktlar']
@@ -46,7 +51,10 @@ const findUser = async (tid) => {
     if (teacher) return { type: 'teacher', data: teacher };
 
     const user = await prisma.user.findUnique({ where: { telegramId: tidStr } });
-    if (user) return { type: 'admin', data: user };
+    if (user) {
+        if (user.role === 'DRIVER') return { type: 'driver', data: user };
+        return { type: 'admin', data: user };
+    }
 
     return null;
 };
@@ -58,6 +66,7 @@ bot.start(async (ctx) => {
         if (user.type === 'student') menu = getStudentMenu();
         else if (user.type === 'teacher') menu = getTeacherMenu();
         else if (user.type === 'admin') menu = getAdminMenu();
+        else if (user.type === 'driver') menu = getDriverMenu();
 
         return ctx.reply(`Xush kelibsiz, ${user.data.name}!`, menu);
     }
@@ -110,7 +119,8 @@ bot.on('contact', async (ctx) => {
     });
     if (user) {
         await prisma.user.update({ where: { id: user.id }, data: { telegramId: tid } });
-        return ctx.reply(`Siz xodim sifatida ro'yxatdan o'tdingiz: ${user.name}`, getAdminMenu());
+        const menu = user.role === 'DRIVER' ? getDriverMenu() : getAdminMenu();
+        return ctx.reply(`Siz xodim sifatida ro'yxatdan o'tdingiz: ${user.name}`, menu);
     }
 
     ctx.reply("Kechirasiz, ushbu raqam tizimda topilmadi. Ma'lumot olish uchun mehmon menyusidan foydalaning.", getGuestMenu());
@@ -216,7 +226,7 @@ bot.hears('👤 Profil', async (ctx) => {
     msg += `🆔 ID: ${user.data.id}\n`;
     msg += `NAME: ${user.data.name}\n`;
     msg += `📞 TEL: ${user.data.phone}\n`;
-    msg += `🎭 ROL: ${user.type === 'admin' ? 'Xodim' : (user.type === 'teacher' ? 'O\'qituvchi' : 'O\'quvchi')}\n`;
+    msg += `🎭 ROL: ${user.type === 'admin' ? 'Xodim' : (user.type === 'teacher' ? 'O\'qituvchi' : (user.type === 'driver' ? 'Haydovchi' : 'O\'quvchi'))}\n`;
 
     ctx.reply(msg);
 });
@@ -387,6 +397,86 @@ bot.action('save_attendance', async (ctx) => {
         ctx.reply("Davomatni saqlashda xatolik yuz berdi.");
     }
     ctx.answerCbQuery();
+});
+
+// Driver Handlers
+bot.hears('📍 O\'quvchilar lokatsiyasi', async (ctx) => {
+    const user = await findUser(ctx.from.id);
+    if (!user || user.type !== 'driver') return;
+
+    const transport = await prisma.transport.findFirst({
+        where: { driverId: user.data.id },
+        include: { 
+            students: {
+                include: { groups: true }
+            }
+        }
+    });
+
+    if (!transport) return ctx.reply("Sizga hali hech qanday transport biriktirilmagan.");
+    if (transport.students.length === 0) return ctx.reply("Sizning transportingizda hali o'quvchilar yo'q.");
+
+    // Determine today's day type (odd/even)
+    const today = new Date();
+    const dayNum = today.getDate();
+    const isOdd = dayNum % 2 !== 0;
+    const dayType = isOdd ? 'TOQ' : 'JUFT';
+    
+    const months = ['Yanvar','Fevral','Mart','Aprel','May','Iyun','Iyul','Avgust','Sentabr','Oktabr','Noyabr','Dekabr'];
+    const dateLabel = `${dayNum}-${months[today.getMonth()]}`;
+
+    // Filter students by today's schedule
+    const todayStudents = transport.students.filter(s => {
+        if (!s.groups || s.groups.length === 0) return true; // no group → always show
+        return s.groups.some(g => {
+            const d = (g.days || '').trim().toUpperCase();
+            return d === 'HAR KUNI' || d === dayType;
+        });
+    });
+
+    if (todayStudents.length === 0) {
+        return ctx.reply(
+            `🗓 Bugun: ${dateLabel}, ${dayType} kun\n\n` +
+            `✅ Bugun ushbu transportda olib boriladigan o'quvchi yo'q.`
+        );
+    }
+
+    let msg = `🗓 Bugun: ${dateLabel}, ${dayType} kun\n`;
+    msg += `🚍 ${transport.name} — ${todayStudents.length} ta o'quvchi:\n\n`;
+
+    todayStudents.forEach((s, idx) => {
+        msg += `${idx + 1}. 👤 ${s.name}\n`;
+        msg += `   🏫 ${s.studentSchool || 'Maktab noma\'lum'}\n`;
+        msg += `   🏠 ${s.address || 'Manzil kiritilmagan'}\n`;
+        if (s.location || s.address) {
+            const loc = encodeURIComponent((s.location || s.address).trim());
+            msg += `   🗺 https://yandex.uz/maps/?text=${loc}\n`;
+        }
+        msg += `   📞 ${s.phone}\n\n`;
+    });
+
+    ctx.reply(msg, { disable_web_page_preview: true });
+});
+
+
+bot.hears('🚍 Mening Transportim', async (ctx) => {
+    const user = await findUser(ctx.from.id);
+    if (!user || user.type !== 'driver') return;
+
+    const transport = await prisma.transport.findFirst({
+        where: { driverId: user.data.id }
+    });
+
+    if (!transport) return ctx.reply("Sizga hech qanday transport biriktirilmagan.");
+
+    let msg = `🚍 Mening Transportim:\n\n`;
+    msg += `📄 Nomi: ${transport.name}\n`;
+    msg += `🚙 Model: ${transport.model || 'Noma\'lum'}\n`;
+    msg += `🔢 Raqami: ${transport.number || 'Noma\'lum'}\n`;
+    msg += `👥 Sig'im: ${transport.capacity} kishi\n`;
+    msg += `✅ Holati: ${transport.status}\n`;
+
+    ctx.reply(msg);
 });
 
 // Admin Handlers

@@ -7,13 +7,18 @@ import MapPicker from './MapPicker';
 import { MapPin } from 'lucide-react';
 
 export default function Students() {
-    const { students, groups, teachers, addStudent } = useCRM();
+    const { students, groups, teachers, transports, addStudent } = useCRM();
     const navigate = useNavigate();
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [isAdding, setIsAdding] = useState(false);
     const [isPhotoModalOpen, setIsPhotoModalOpen] = useState(false);
     const [isMapOpen, setIsMapOpen] = useState(false);
-    const [newStudent, setNewStudent] = useState({ name: '', phone: '', address: '', birthDate: '', location: '', photo: '' });
+    const [newStudent, setNewStudent] = useState({ 
+        name: '', phone: '', address: '', birthDate: '', location: '', photo: '', 
+        fatherName: '', fatherPhone: '', motherName: '', motherPhone: '',
+        transportId: '' as string | number,
+        studentSchool: ''
+    });
     const [search, setSearch] = useState('');
     const [showFilters, setShowFilters] = useState(false);
     const [filters, setFilters] = useState({
@@ -32,10 +37,17 @@ export default function Students() {
                 status: 'Faol',
                 joinedDate: new Date().toISOString().split('T')[0],
                 balance: 0,
-                groups: []
+                groups: [],
+                transportId: newStudent.transportId ? Number(newStudent.transportId) : null,
+                studentSchool: newStudent.studentSchool
             });
             setIsModalOpen(false);
-            setNewStudent({ name: '', phone: '', address: '', birthDate: '', location: '', photo: '' });
+            setNewStudent({ 
+                name: '', phone: '', address: '', birthDate: '', location: '', photo: '', 
+                fatherName: '', fatherPhone: '', motherName: '', motherPhone: '',
+                transportId: '',
+                studentSchool: ''
+            });
         } catch (err) {
             console.error("Add student failed", err);
         } finally {
@@ -282,7 +294,7 @@ export default function Students() {
             {/* Form Modal */}
             {isModalOpen && (
                 <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-gray-900/60 backdrop-blur-md animate-in fade-in duration-300" onClick={() => setIsModalOpen(false)}>
-                    <div className="bg-white dark:bg-gray-800 w-full max-w-lg rounded-[2.5rem] shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200 border border-gray-100 dark:border-gray-700" onClick={e => e.stopPropagation()}>
+                    <div className="bg-white dark:bg-gray-800 w-full max-w-lg rounded-[2.5rem] shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200 border border-gray-100 dark:border-gray-700 max-h-[90vh] flex flex-col" onClick={e => e.stopPropagation()}>
                         <div className="px-10 py-8 flex items-center justify-between border-b border-gray-50 dark:border-gray-700 bg-gray-50/50 dark:bg-gray-900/50">
                             <div>
                                 <h2 className="text-2xl font-bold text-gray-900 dark:text-white uppercase tracking-tight">Yangi O'quvchi</h2>
@@ -292,64 +304,140 @@ export default function Students() {
                                 <X size={24} />
                             </button>
                         </div>
-                        <form onSubmit={handleAddStudent} className="p-10 space-y-8">
-                            <div className="space-y-3">
-                                <label className="text-[10px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-widest ml-1">Ism Familiya <span className="text-rose-500">*</span></label>
-                                <input required type="text" placeholder="Masalan: Jamshid Karimov" className="w-full px-6 py-4 bg-gray-50 dark:bg-gray-900 border border-gray-100 dark:border-gray-700 rounded-[1.25rem] text-xs font-bold uppercase tracking-widest focus:bg-white dark:focus:bg-gray-800 focus:border-sky-500 dark:focus:border-sky-500 focus:ring-4 focus:ring-sky-500/10 outline-none transition-all text-gray-900 dark:text-white placeholder:text-gray-400/60 shadow-inner"
-                                    value={newStudent.name} onChange={e => setNewStudent({ ...newStudent, name: e.target.value })} />
-                            </div>
-                            
-                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-8">
-                                <div className="space-y-3">
-                                    <label className="text-[10px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-widest ml-1">Telefon Raqami <span className="text-rose-500">*</span></label>
-                                    <input required type="tel" placeholder="+998" className="w-full px-6 py-4 bg-gray-50 dark:bg-gray-900 border border-gray-100 dark:border-gray-700 rounded-[1.25rem] text-xs font-bold uppercase tracking-widest focus:bg-white dark:focus:bg-gray-800 focus:border-sky-500 dark:focus:border-sky-500 focus:ring-4 focus:ring-sky-500/10 outline-none transition-all text-gray-900 dark:text-white placeholder:text-gray-400/60 shadow-inner"
-                                        value={newStudent.phone} onChange={e => setNewStudent({ ...newStudent, phone: e.target.value })} />
+                        <form onSubmit={handleAddStudent} className="p-10 space-y-8 overflow-y-auto custom-scrollbar flex-1">
+                            <div className="space-y-8 pb-12">
+                                {/* Section: Basic Info */}
+                                <div className="space-y-4">
+                                    <h3 className="text-[10px] font-black text-sky-600 uppercase tracking-[0.2em] flex items-center gap-2 px-1">
+                                        <div className="w-1.5 h-1.5 rounded-full bg-sky-500" />
+                                        Asosiy Ma'lumotlar
+                                    </h3>
+                                    <div className="grid grid-cols-1 gap-5">
+                                        <div className="space-y-2">
+                                            <label className="text-[10px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-widest ml-1">To'liq Ism <span className="text-rose-500">*</span></label>
+                                            <div className="relative group">
+                                                <input required type="text" placeholder="Ism Familiya" className="w-full pl-6 pr-6 py-4 bg-gray-50/50 dark:bg-gray-900/50 border border-gray-100 dark:border-gray-700 rounded-2xl text-[11px] font-bold uppercase tracking-widest focus:bg-white dark:focus:bg-gray-800 focus:border-sky-500 dark:focus:border-sky-500 focus:ring-4 focus:ring-sky-500/10 outline-none transition-all text-gray-900 dark:text-white placeholder:text-gray-400/60"
+                                                    value={newStudent.name} onChange={e => setNewStudent({ ...newStudent, name: e.target.value })} />
+                                            </div>
+                                        </div>
+                                        <div className="grid grid-cols-2 gap-4">
+                                            <div className="space-y-2">
+                                                <label className="text-[10px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-widest ml-1">Telefon <span className="text-rose-500">*</span></label>
+                                                <input required type="tel" placeholder="+998" className="w-full px-5 py-4 bg-gray-50/50 dark:bg-gray-900/50 border border-gray-100 dark:border-gray-700 rounded-2xl text-[11px] font-bold uppercase tracking-widest focus:bg-white dark:focus:bg-gray-800 focus:border-sky-500 dark:focus:border-sky-500 outline-none transition-all shadow-sm"
+                                                    value={newStudent.phone} onChange={e => setNewStudent({ ...newStudent, phone: e.target.value })} />
+                                            </div>
+                                            <div className="space-y-2">
+                                                <label className="text-[10px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-widest ml-1">Tug'ilgan Sana</label>
+                                                <input type="date" className="w-full px-5 py-4 bg-gray-50/50 dark:bg-gray-900/50 border border-gray-100 dark:border-gray-700 rounded-2xl text-[11px] font-bold uppercase tracking-widest focus:bg-white dark:focus:bg-gray-800 focus:border-sky-500 underline-none transition-all shadow-sm"
+                                                    value={newStudent.birthDate} onChange={e => setNewStudent({ ...newStudent, birthDate: e.target.value })} />
+                                            </div>
+                                        </div>
+                                        <div className="space-y-2">
+                                            <label className="text-[10px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-widest ml-1">Maktab / Bog'cha</label>
+                                            <input type="text" placeholder="Masalan: 45-maktab" className="w-full px-6 py-4 bg-gray-50/50 dark:bg-gray-900/50 border border-gray-100 dark:border-gray-700 rounded-2xl text-[11px] font-bold uppercase tracking-widest focus:bg-white dark:focus:bg-gray-800 focus:border-sky-500 outline-none transition-all shadow-sm"
+                                                value={newStudent.studentSchool} onChange={e => setNewStudent({ ...newStudent, studentSchool: e.target.value })} />
+                                        </div>
+                                    </div>
                                 </div>
-                                <div className="space-y-3">
-                                    <label className="text-[10px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-widest ml-1">Tug'ilgan Sanasi</label>
-                                    <input type="date" className="w-full px-6 py-4 bg-gray-50 dark:bg-gray-900 border border-gray-100 dark:border-gray-700 rounded-[1.25rem] text-xs font-bold uppercase tracking-widest focus:bg-white dark:focus:bg-gray-800 focus:border-sky-500 dark:focus:border-sky-500 focus:ring-4 focus:ring-sky-500/10 outline-none transition-all text-gray-900 dark:text-white shadow-inner"
-                                        value={newStudent.birthDate} onChange={e => setNewStudent({ ...newStudent, birthDate: e.target.value })} />
+
+                                {/* Section: Parents */}
+                                <div className="space-y-4">
+                                    <h3 className="text-[10px] font-black text-emerald-600 uppercase tracking-[0.2em] flex items-center gap-2 px-1">
+                                        <div className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+                                        Ota-ona Ma'lumotlari
+                                    </h3>
+                                    <div className="grid grid-cols-1 gap-5">
+                                        <div className="grid grid-cols-2 gap-4">
+                                            <div className="space-y-2">
+                                                <label className="text-[10px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-widest ml-1">Otasining ismi</label>
+                                                <input type="text" placeholder="FISH" className="w-full px-5 py-3.5 bg-gray-50/50 dark:bg-gray-900/50 border border-gray-100 dark:border-gray-700 rounded-2xl text-[11px] font-bold uppercase tracking-widest focus:bg-white dark:focus:bg-gray-800 focus:border-emerald-500 outline-none transition-all shadow-sm"
+                                                    value={newStudent.fatherName} onChange={e => setNewStudent({ ...newStudent, fatherName: e.target.value })} />
+                                            </div>
+                                            <div className="space-y-2">
+                                                <label className="text-[10px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-widest ml-1">Telefoni</label>
+                                                <input type="tel" placeholder="+998" className="w-full px-5 py-3.5 bg-gray-50/50 dark:bg-gray-900/50 border border-gray-100 dark:border-gray-700 rounded-2xl text-[11px] font-bold uppercase tracking-widest focus:bg-white dark:focus:bg-gray-800 focus:border-emerald-500 outline-none transition-all shadow-sm"
+                                                    value={newStudent.fatherPhone} onChange={e => setNewStudent({ ...newStudent, fatherPhone: e.target.value })} />
+                                            </div>
+                                        </div>
+                                        <div className="grid grid-cols-2 gap-4">
+                                            <div className="space-y-2">
+                                                <label className="text-[10px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-widest ml-1">Onasining ismi</label>
+                                                <input type="text" placeholder="FISH" className="w-full px-5 py-3.5 bg-gray-50/50 dark:bg-gray-900/50 border border-gray-100 dark:border-gray-700 rounded-2xl text-[11px] font-bold uppercase tracking-widest focus:bg-white dark:focus:bg-gray-800 focus:border-emerald-500 outline-none transition-all shadow-sm"
+                                                    value={newStudent.motherName} onChange={e => setNewStudent({ ...newStudent, motherName: e.target.value })} />
+                                            </div>
+                                            <div className="space-y-2">
+                                                <label className="text-[10px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-widest ml-1">Telefoni</label>
+                                                <input type="tel" placeholder="+998" className="w-full px-5 py-3.5 bg-gray-50/50 dark:bg-gray-900/50 border border-gray-100 dark:border-gray-700 rounded-2xl text-[11px] font-bold uppercase tracking-widest focus:bg-white dark:focus:bg-gray-800 focus:border-emerald-500 outline-none transition-all shadow-sm"
+                                                    value={newStudent.motherPhone} onChange={e => setNewStudent({ ...newStudent, motherPhone: e.target.value })} />
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* Section: Logistics */}
+                                <div className="space-y-4">
+                                    <h3 className="text-[10px] font-black text-amber-600 uppercase tracking-[0.2em] flex items-center gap-2 px-1">
+                                        <div className="w-1.5 h-1.5 rounded-full bg-amber-500" />
+                                        Logistika va Manzil
+                                    </h3>
+                                    <div className="grid grid-cols-1 gap-5">
+                                        <div className="space-y-2">
+                                            <label className="text-[10px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-widest ml-1">Transport Xizmati</label>
+                                            <div className="relative">
+                                                <select 
+                                                    className="w-full px-6 py-4 bg-gray-50/50 dark:bg-gray-900/50 border border-gray-100 dark:border-gray-700 rounded-2xl text-[11px] font-bold uppercase tracking-widest focus:bg-white dark:focus:bg-gray-800 focus:border-amber-500 outline-none transition-all appearance-none cursor-pointer shadow-sm"
+                                                    value={newStudent.transportId}
+                                                    onChange={e => setNewStudent({...newStudent, transportId: e.target.value})}
+                                                >
+                                                    <option value="">Transport kerak emas</option>
+                                                    {transports.map(t => (
+                                                        <option key={t.id} value={t.id}>{t.name} ({t.number})</option>
+                                                    ))}
+                                                </select>
+                                                <div className="absolute right-5 top-1/2 -translate-y-1/2 pointer-events-none text-gray-400">
+                                                    <Plus size={16} />
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div className="space-y-2">
+                                            <label className="text-[10px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-widest ml-1">Yashash Manzili</label>
+                                            <div className="flex flex-col gap-3">
+                                                <input type="text" placeholder="Tuman, ko'cha, uy raqami" className="w-full px-6 py-4 bg-gray-50/50 dark:bg-gray-900/50 border border-gray-100 dark:border-gray-700 rounded-2xl text-[11px] font-bold uppercase tracking-widest focus:bg-white dark:focus:bg-gray-800 focus:border-amber-500 outline-none transition-all shadow-sm"
+                                                    value={newStudent.address} onChange={e => setNewStudent({ ...newStudent, address: e.target.value })} />
+                                                <button 
+                                                    type="button"
+                                                    onClick={() => setIsMapOpen(true)}
+                                                    className={`w-full py-4 rounded-2xl border flex items-center justify-center gap-3 text-[10px] font-bold uppercase tracking-widest transition-all ${newStudent.location ? 'bg-amber-50 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400 border-amber-200 shadow-lg shadow-amber-500/10' : 'bg-white dark:bg-gray-800 text-gray-500 dark:text-gray-400 border-gray-100 hover:bg-gray-50 shadow-sm'}`}
+                                                >
+                                                    <MapPin size={18} />
+                                                    {newStudent.location ? 'Kartada belgilandi' : 'Kartadan tanlash'}
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
 
-                            <div className="space-y-3">
-                                <label className="text-[10px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-widest ml-1">Yashash Manzili</label>
-                                <div className="flex flex-col sm:flex-row gap-4">
-                                    <input type="text" placeholder="Tuman, ko'cha, uy raqami" className="flex-1 px-6 py-4 bg-gray-50 dark:bg-gray-900 border border-gray-100 dark:border-gray-700 rounded-[1.25rem] text-xs font-bold uppercase tracking-widest focus:bg-white dark:focus:bg-gray-800 focus:border-sky-500 dark:focus:border-sky-500 focus:ring-4 focus:ring-sky-500/10 outline-none transition-all text-gray-900 dark:text-white placeholder:text-gray-400/60 shadow-inner"
-                                        value={newStudent.address} onChange={e => setNewStudent({ ...newStudent, address: e.target.value })} />
-                                    <button 
-                                        type="button"
-                                        onClick={() => setIsMapOpen(true)}
-                                        className={`px-6 py-4 rounded-[1.25rem] border border-gray-100 dark:border-gray-700 text-[10px] font-bold uppercase tracking-widest transition-all flex items-center justify-center gap-2 shrink-0 ${newStudent.location ? 'bg-sky-50 dark:bg-sky-900/30 text-sky-600 dark:text-sky-400 border-sky-200 dark:border-sky-800' : 'bg-white dark:bg-gray-800 text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700'}`}
-                                    >
-                                        <MapPin size={18} />
-                                        {newStudent.location ? 'Kartada belgilandi' : 'Kartadan tanlash'}
-                                    </button>
-                                </div>
-                                {newStudent.location && (
-                                    <p className="text-[9px] font-bold text-sky-600 dark:text-sky-400 uppercase tracking-widest ml-1 animate-in fade-in slide-in-from-left-2">Lokatsiya: {newStudent.location}</p>
-                                )}
-                            </div>
-
-                            <div className="pt-10 flex flex-col sm:flex-row items-center justify-between gap-6 mt-6 border-t border-dashed border-gray-100 dark:border-gray-700">
+                            {/* Sticky-like Footer with extra padding */}
+                            <div className="pt-8 pb-10 flex flex-col sm:flex-row items-center justify-between gap-6 border-t border-dashed border-gray-100 dark:border-gray-700">
                                 <button
                                     type="button"
                                     onClick={() => setIsPhotoModalOpen(true)}
-                                    className={`w-full sm:w-auto px-6 py-4 border rounded-2xl flex items-center justify-center gap-3 transition-all text-[10px] font-bold uppercase tracking-widest ${newStudent.photo ? 'bg-emerald-50 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 border-emerald-200 dark:border-emerald-800 shadow-lg shadow-emerald-500/10' : 'bg-white dark:bg-gray-800 text-gray-500 dark:text-gray-400 border-gray-100 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700 shadow-sm'}`}
+                                    className={`px-8 py-4 border rounded-[1.25rem] flex items-center justify-center gap-3 transition-all text-[10px] font-black uppercase tracking-widest shrink-0 ${newStudent.photo ? 'bg-emerald-50 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 border-emerald-200' : 'bg-white dark:bg-gray-800 text-gray-500 border-gray-100 dark:border-gray-700 hover:bg-gray-50 shadow-sm'}`}
                                 >
-                                    <Camera size={20} className={newStudent.photo ? 'animate-pulse' : ''} />
-                                    {newStudent.photo ? "Rasm Saqlandi" : 'Rasmga Olish'}
+                                    <Camera size={20} />
+                                    {newStudent.photo ? "Rasm Yuklandi" : 'Rasmga Olish'}
                                 </button>
-                                <div className="flex items-center gap-5 w-full sm:w-auto">
-                                    <button type="button" onClick={() => setIsModalOpen(false)} className="flex-1 sm:flex-none px-8 py-4 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-gray-500 dark:text-gray-400 rounded-2xl text-[10px] font-bold uppercase tracking-widest hover:bg-gray-50 dark:hover:bg-gray-700 transition-all">
+                                <div className="flex items-center gap-4 w-full sm:w-auto">
+                                    <button type="button" onClick={() => setIsModalOpen(false)} className="flex-1 sm:flex-none px-8 py-4 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-gray-500 dark:text-gray-400 rounded-[1.25rem] text-[10px] font-black uppercase tracking-widest hover:bg-gray-50 transition-all">
                                         Bekor Qilish
                                     </button>
                                     <button 
                                         type="submit" 
                                         disabled={isAdding}
-                                        className="flex-1 sm:flex-none px-10 py-4 bg-sky-600 dark:bg-sky-500 text-white rounded-2xl text-[10px] font-bold uppercase tracking-widest hover:bg-sky-500 dark:hover:bg-sky-400 active:scale-[0.98] transition-all shadow-xl shadow-sky-500/20 disabled:opacity-50 disabled:active:scale-100"
+                                        className="flex-1 sm:flex-none px-12 py-4 bg-sky-600 dark:bg-sky-500 text-white rounded-[1.25rem] text-[10px] font-black uppercase tracking-widest hover:bg-sky-500 active:scale-95 transition-all shadow-xl shadow-sky-500/30 disabled:opacity-50"
                                     >
-                                        {isAdding ? "Saqlanmoqda..." : "Saqlash"}
+                                        {isAdding ? "Saqlash..." : "Saqlash"}
                                     </button>
                                 </div>
                             </div>

@@ -6,17 +6,20 @@ import { PrismaClient } from '@prisma/client';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import bot, { startBot, notifyAdmins } from './src/bot/bot.js';
+// import { scheduleAttendanceNotifications } from './src/utils/scheduler.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
 dotenv.config({ path: join(__dirname, '.env') });
 
+/*
 if (process.env.TELEGRAM_BOT_TOKEN) {
   startBot();
 } else {
   console.warn('TELEGRAM_BOT_TOKEN mavjud emas. Bot ishga tushmadi.');
 }
+*/
 
 const prisma = new PrismaClient();
 const app = express();
@@ -616,45 +619,6 @@ app.delete('/api/transports/:id', authenticate, async (req, res, next) => {
   } catch (error) { next(error); }
 });
 
-// Delivery Logs
-app.get('/api/delivery-logs', authenticate, async (req, res, next) => {
-  try {
-    const { schoolId, date } = req.query;
-    if (!schoolId) return res.status(400).json({ error: 'schoolId required' });
-    let where = { schoolId: parseInt(schoolId) };
-    if (date) where.date = date;
-    const logs = await prisma.deliveryLog.findMany({ where });
-    res.json(logs);
-  } catch (error) { next(error); }
-});
-
-app.post('/api/delivery-logs', authenticate, async (req, res, next) => {
-  try {
-    const { schoolId, ...data } = req.body;
-    if (!schoolId) return res.status(400).json({ error: 'schoolId required' });
-    if (data.transportId) data.transportId = parseInt(data.transportId);
-    if (data.studentId) data.studentId = parseInt(data.studentId);
-    
-    // Upsert logic for delivery logs
-    const existing = await prisma.deliveryLog.findFirst({
-      where: { studentId: data.studentId, date: data.date, schoolId: parseInt(schoolId) }
-    });
-
-    if (existing) {
-      const updated = await prisma.deliveryLog.update({
-        where: { id: existing.id },
-        data: { status: data.status, transportId: data.transportId }
-      });
-      return res.json(updated);
-    }
-
-    const log = await prisma.deliveryLog.create({
-      data: { ...data, schoolId: parseInt(schoolId) }
-    });
-    res.json(log);
-  } catch (error) { next(error); }
-});
-
 // Specific Types API
 app.get('/api/courses', authenticate, async (req, res, next) => {
   try {
@@ -685,6 +649,7 @@ app.get('/api/rooms', authenticate, async (req, res, next) => {
     res.json(await prisma.room.findMany({ where: { schoolId: parseInt(schoolId) } }));
   } catch (error) { next(error); }
 });
+
 app.post('/api/rooms', authenticate, async (req, res, next) => {
   try {
     const { schoolId, ...data } = req.body;
@@ -693,6 +658,7 @@ app.post('/api/rooms', authenticate, async (req, res, next) => {
     res.json(await prisma.room.create({ data: { ...data, schoolId: parseInt(schoolId) } }));
   } catch (error) { next(error); }
 });
+
 app.delete('/api/rooms/:id', authenticate, async (req, res, next) => {
   try {
     await prisma.room.delete({ where: { id: parseInt(req.params.id) } });
@@ -702,14 +668,17 @@ app.delete('/api/rooms/:id', authenticate, async (req, res, next) => {
 
 app.get('/api/schools', async (req, res, next) => {
   try {
-    res.json(await prisma.school.findMany());
+    const schools = await prisma.school.findMany();
+    res.json(schools);
   } catch (error) { next(error); }
 });
+
 app.post('/api/schools', async (req, res, next) => {
   try {
     res.json(await prisma.school.create({ data: req.body }));
   } catch (error) { next(error); }
 });
+
 app.delete('/api/schools/:id', async (req, res, next) => {
   try {
     await prisma.school.delete({ where: { id: parseInt(req.params.id) } });
@@ -771,14 +740,13 @@ app.get('/api/attendances', authenticate, async (req, res, next) => {
     res.json(attendances);
   } catch (error) { next(error); }
 });
-
 app.post('/api/attendances', authenticate, async (req, res, next) => {
   try {
     const { schoolId, ...data } = req.body;
     if (!schoolId) return res.status(400).json({ error: 'schoolId required' });
     const attendance = await prisma.attendance.create({ data: { ...data, schoolId: parseInt(schoolId) } });
     
-    // Telegram Notification for Student/Parent
+    // Telegram Notification
     try {
       const student = await prisma.student.findUnique({ where: { id: parseInt(data.studentId) } });
       if (student && student.telegramId) {
@@ -790,7 +758,9 @@ app.post('/api/attendances', authenticate, async (req, res, next) => {
           `📅 Sana: ${attendance.date}`
         ).catch(e => console.error('Telegram error:', e));
       }
-    } catch (e) { console.error('Notification error:', e); }
+    } catch (e) {
+      console.error('Notification error:', e);
+    }
 
     res.json(attendance);
   } catch (error) { next(error); }
@@ -894,12 +864,15 @@ app.post('/api/scores', authenticate, async (req, res, next) => {
 });
 
 
-// ========== TRANSPORT ROUTES ==========
+// ========== TRANSPORT ROUTES (UPDATED) ==========
 app.get('/api/transports', authenticate, async (req, res, next) => {
   try {
     const { schoolId } = req.query;
     if (!schoolId) return res.status(400).json({ error: 'schoolId required' });
-    const transports = await prisma.transport.findMany({ where: { schoolId: parseInt(schoolId) } });
+    const transports = await prisma.transport.findMany({ 
+      where: { schoolId: parseInt(schoolId) },
+      include: { driver: true }
+    });
     res.json(transports);
   } catch (error) { next(error); }
 });
@@ -908,7 +881,11 @@ app.post('/api/transports', authenticate, async (req, res, next) => {
     const { schoolId, ...data } = req.body;
     if (!schoolId) return res.status(400).json({ error: 'schoolId required' });
     if (data.capacity) data.capacity = parseInt(data.capacity);
-    const transport = await prisma.transport.create({ data: { ...data, schoolId: parseInt(schoolId) } });
+    if (data.driverId) data.driverId = parseInt(data.driverId);
+    const transport = await prisma.transport.create({ 
+      data: { ...data, schoolId: parseInt(schoolId) },
+      include: { driver: true }
+    });
     res.json(transport);
   } catch (error) { next(error); }
 });
@@ -917,8 +894,13 @@ app.put('/api/transports/:id', authenticate, async (req, res, next) => {
     const { id } = req.params;
     const data = { ...req.body };
     if (data.capacity) data.capacity = parseInt(data.capacity);
+    if (data.driverId !== undefined) data.driverId = data.driverId ? parseInt(data.driverId) : null;
     delete data.schoolId;
-    const transport = await prisma.transport.update({ where: { id: parseInt(id) }, data });
+    const transport = await prisma.transport.update({ 
+      where: { id: parseInt(id) }, 
+      data,
+      include: { driver: true }
+    });
     res.json(transport);
   } catch (error) { next(error); }
 });
@@ -937,6 +919,60 @@ app.put('/api/students/:id/transport', authenticate, async (req, res, next) => {
     const { transportId } = req.body;
     const student = await prisma.student.update({ where: { id: studentId }, data: { transportId: transportId ? parseInt(transportId) : null } });
     res.json(student);
+  } catch (error) { next(error); }
+});
+
+// ========== MARSHRUT ROUTES (LOGISTICS) ==========
+app.get('/api/routes', authenticate, async (req, res, next) => {
+  try {
+    const { schoolId } = req.query;
+    if (!schoolId) return res.status(400).json({ error: 'schoolId required' });
+    const routes = await prisma.route.findMany({ 
+      where: { schoolId: parseInt(schoolId) },
+      include: {
+        transport: true,
+        driver: { select: { id: true, name: true, phone: true } }
+      }
+    });
+    res.json(routes);
+  } catch (error) { next(error); }
+});
+
+app.post('/api/routes', authenticate, async (req, res, next) => {
+  try {
+    const { schoolId, ...data } = req.body;
+    if (!schoolId) return res.status(400).json({ error: 'schoolId required' });
+    const route = await prisma.route.create({ 
+      data: { ...data, schoolId: parseInt(schoolId) },
+      include: {
+        transport: true,
+        driver: { select: { id: true, name: true, phone: true } }
+      }
+    });
+    res.json(route);
+  } catch (error) { next(error); }
+});
+
+app.put('/api/routes/:id', authenticate, async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const { schoolId, ...data } = req.body;
+    const route = await prisma.route.update({ 
+      where: { id: parseInt(id) }, 
+      data,
+      include: {
+        transport: true,
+        driver: { select: { id: true, name: true, phone: true } }
+      }
+    });
+    res.json(route);
+  } catch (error) { next(error); }
+});
+
+app.delete('/api/routes/:id', authenticate, async (req, res, next) => {
+  try {
+    await prisma.route.delete({ where: { id: parseInt(req.params.id) } });
+    res.json({ success: true });
   } catch (error) { next(error); }
 });
 
@@ -966,9 +1002,9 @@ app.post('/api/delivery-logs', authenticate, async (req, res, next) => {
     res.json(log);
   } catch (error) { next(error); }
 });
+
 // Serve static React files
 app.use(express.static(join(__dirname, 'dist')));
-
 
 // Handle React Router SPA fallback
 app.get('*', (req, res) => {
