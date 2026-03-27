@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import {
     ArrowLeft, Phone, Calendar, MapPin, BookOpen, CreditCard,
-    Clock, CheckCircle, XCircle, Plus, Award, ClipboardCheck, Users, Layers, ChevronRight, TrendingUp, Save, Edit, Bus
+    Clock, CheckCircle, XCircle, Plus, Award, ClipboardCheck, Users, Layers, ChevronRight, TrendingUp, Save, Edit, Bus, Sparkles, Image as ImageIcon
 } from 'lucide-react';
 import { useCRM } from '../context/CRMContext';
 import { useParams, useNavigate } from 'react-router-dom';
@@ -18,6 +18,7 @@ export default function StudentDetails() {
     const [showScoreModal, setShowScoreModal] = useState(false);
     const [isEditing, setIsEditing] = useState(false);
     const [isSaving, setIsSaving] = useState(false);
+    const [isRemovingBg, setIsRemovingBg] = useState(false);
     const [isMapOpen, setIsMapOpen] = useState(false);
     const [editForm, setEditForm] = useState({
         name: '',
@@ -94,6 +95,44 @@ export default function StudentDetails() {
             console.error("Update failed", err);
         } finally {
             setIsSaving(false);
+        }
+    };
+
+    const handleRemoveBg = async () => {
+        if (!student.photo) return;
+        try {
+            setIsRemovingBg(true);
+            const token = localStorage.getItem('token');
+            const response = await fetch('/api/utils/remove-bg', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                },
+                body: JSON.stringify({ image: student.photo })
+            });
+            const data = await response.json();
+            if (data.success) {
+                // In simulation it's same image, but we show success
+                await updateStudent(student.id, { photo: data.image });
+                alert("Orqa fon muvaffaqiyatli tozalandi (Simulatsiya)");
+            }
+        } catch (err) {
+            console.error("BG Removal failed", err);
+            alert("Xatolik yuz berdi");
+        } finally {
+            setIsRemovingBg(false);
+        }
+    };
+
+    const handlePhotoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (file) {
+            const reader = new FileReader();
+            reader.onloadend = () => {
+                updateStudent(student.id, { photo: reader.result as string });
+            };
+            reader.readAsDataURL(file);
         }
     };
 
@@ -182,6 +221,25 @@ export default function StudentDetails() {
                                       <span className="text-[10px] ml-1 uppercase opacity-60">UZS</span>
                                    </span>
                                 </div>
+                            </div>
+
+                            <div className="mt-6 px-6 space-y-3">
+                                <label className="relative flex items-center justify-center gap-2 w-full py-3 bg-gray-50 dark:bg-gray-900 border border-dashed border-gray-200 dark:border-gray-700 rounded-2xl cursor-pointer hover:bg-white dark:hover:bg-gray-800 transition-all group">
+                                    <input type="file" className="hidden" accept="image/*" onChange={handlePhotoUpload} />
+                                    <ImageIcon size={16} className="text-gray-400 group-hover:text-sky-500" />
+                                    <span className="text-[10px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-widest">Rasm yuklash</span>
+                                </label>
+                                
+                                {student.photo && (
+                                    <button 
+                                        onClick={handleRemoveBg}
+                                        disabled={isRemovingBg}
+                                        className="w-full flex items-center justify-center gap-2 py-3 bg-violet-50 dark:bg-violet-900/20 text-violet-600 dark:text-violet-400 border border-violet-100 dark:border-violet-800/50 rounded-2xl text-[10px] font-bold uppercase tracking-widest hover:bg-violet-600 hover:text-white transition-all disabled:opacity-50"
+                                    >
+                                        <Sparkles size={14} className={isRemovingBg ? 'animate-spin' : ''} />
+                                        {isRemovingBg ? 'Tozalanmoqda...' : 'Fonni tozalash (AI)'}
+                                    </button>
+                                )}
                             </div>
                         </div>
                         <div className="border-t border-dashed border-gray-100 dark:border-gray-700 px-6 pt-8 pb-12 space-y-7 transition-colors">

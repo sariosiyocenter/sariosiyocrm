@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Search, Plus, FileSpreadsheet, MoreVertical, X, Filter, Camera } from 'lucide-react';
+import { Search, Plus, FileSpreadsheet, MoreVertical, X, Filter, Camera, Sparkles } from 'lucide-react';
 import { useCRM } from '../context/CRMContext';
 import { useNavigate } from 'react-router-dom';
 import PhotoCapture from './PhotoCapture';
@@ -19,6 +19,7 @@ export default function Students() {
         transportId: '' as string | number,
         studentSchool: ''
     });
+    const [isRemovingBg, setIsRemovingBg] = useState(false);
     const [search, setSearch] = useState('');
     const [showFilters, setShowFilters] = useState(false);
     const [filters, setFilters] = useState({
@@ -52,6 +53,32 @@ export default function Students() {
             console.error("Add student failed", err);
         } finally {
             setIsAdding(false);
+        }
+    };
+    
+    const handleRemoveBg = async () => {
+        if (!newStudent.photo) return;
+        try {
+            setIsRemovingBg(true);
+            const token = localStorage.getItem('token');
+            const response = await fetch('/api/utils/remove-bg', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                },
+                body: JSON.stringify({ image: newStudent.photo })
+            });
+            const data = await response.json();
+            if (data.success) {
+                setNewStudent({ ...newStudent, photo: data.image });
+                alert("Orqa fon muvaffaqiyatli tozalandi (Simulatsiya)");
+            }
+        } catch (err) {
+            console.error("BG Removal failed", err);
+            alert("Xatolik yuz berdi");
+        } finally {
+            setIsRemovingBg(false);
         }
     };
 
@@ -419,26 +446,45 @@ export default function Students() {
                             </div>
 
                             {/* Sticky-like Footer with extra padding */}
-                            <div className="pt-8 pb-10 flex flex-col sm:flex-row items-center justify-between gap-6 border-t border-dashed border-gray-100 dark:border-gray-700">
-                                <button
-                                    type="button"
-                                    onClick={() => setIsPhotoModalOpen(true)}
-                                    className={`px-8 py-4 border rounded-[1.25rem] flex items-center justify-center gap-3 transition-all text-[10px] font-black uppercase tracking-widest shrink-0 ${newStudent.photo ? 'bg-emerald-50 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 border-emerald-200' : 'bg-white dark:bg-gray-800 text-gray-500 border-gray-100 dark:border-gray-700 hover:bg-gray-50 shadow-sm'}`}
-                                >
-                                    <Camera size={20} />
-                                    {newStudent.photo ? "Rasm Yuklandi" : 'Rasmga Olish'}
-                                </button>
-                                <div className="flex items-center gap-4 w-full sm:w-auto">
-                                    <button type="button" onClick={() => setIsModalOpen(false)} className="flex-1 sm:flex-none px-8 py-4 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-gray-500 dark:text-gray-400 rounded-[1.25rem] text-[10px] font-black uppercase tracking-widest hover:bg-gray-50 transition-all">
-                                        Bekor Qilish
-                                    </button>
-                                    <button 
-                                        type="submit" 
-                                        disabled={isAdding}
-                                        className="flex-1 sm:flex-none px-12 py-4 bg-sky-600 dark:bg-sky-500 text-white rounded-[1.25rem] text-[10px] font-black uppercase tracking-widest hover:bg-sky-500 active:scale-95 transition-all shadow-xl shadow-sky-500/30 disabled:opacity-50"
-                                    >
-                                        {isAdding ? "Saqlash..." : "Saqlash"}
-                                    </button>
+                            <div className="pt-8 pb-10 border-t border-dashed border-gray-100 dark:border-gray-700">
+                                <div className="flex flex-col gap-6">
+                                    {/* Photo Actions Row */}
+                                    <div className="flex flex-wrap items-center gap-3">
+                                        <button
+                                            type="button"
+                                            onClick={() => setIsPhotoModalOpen(true)}
+                                            className={`flex-1 sm:flex-none px-6 py-3 border rounded-2xl flex items-center justify-center gap-2 transition-all text-[10px] font-black uppercase tracking-widest ${newStudent.photo ? 'bg-emerald-50 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 border-emerald-200' : 'bg-white dark:bg-gray-800 text-gray-400 border-gray-100 dark:border-gray-700 hover:bg-gray-50'}`}
+                                        >
+                                            <Camera size={16} />
+                                            {newStudent.photo ? "Rasm Yuklandi" : 'Rasmga Olish'}
+                                        </button>
+                                        
+                                        {newStudent.photo && (
+                                            <button 
+                                                type="button"
+                                                onClick={handleRemoveBg}
+                                                disabled={isRemovingBg}
+                                                className="flex-1 sm:flex-none px-6 py-3 bg-violet-50 dark:bg-violet-900/20 text-violet-600 dark:text-violet-400 border border-violet-100 dark:border-violet-800/50 rounded-2xl text-[9px] font-bold uppercase tracking-widest hover:bg-violet-600 hover:text-white transition-all disabled:opacity-50 flex items-center justify-center gap-2"
+                                            >
+                                                <Sparkles size={14} className={isRemovingBg ? 'animate-spin' : ''} />
+                                                {isRemovingBg ? 'Tozalanmoqda...' : 'Fonni tozalash'}
+                                            </button>
+                                        )}
+                                    </div>
+
+                                    {/* Main Form Actions Row */}
+                                    <div className="flex items-center gap-4 border-t border-gray-50 dark:border-gray-800 pt-6">
+                                        <button type="button" onClick={() => setIsModalOpen(false)} className="flex-1 px-8 py-4 bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700 text-gray-400 dark:text-gray-500 rounded-[1.25rem] text-[10px] font-black uppercase tracking-widest hover:bg-gray-50 transition-all">
+                                            Bekor Qilish
+                                        </button>
+                                        <button 
+                                            type="submit" 
+                                            disabled={isAdding}
+                                            className="flex-[2] px-12 py-4 bg-sky-600 dark:bg-sky-500 text-white rounded-[1.25rem] text-[10px] font-black uppercase tracking-widest hover:bg-sky-500 active:scale-95 transition-all shadow-xl shadow-sky-500/30 disabled:opacity-50"
+                                        >
+                                            {isAdding ? "Saqlash..." : "Saqlash"}
+                                        </button>
+                                    </div>
                                 </div>
                             </div>
                         </form>

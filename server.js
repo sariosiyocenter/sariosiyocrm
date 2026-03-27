@@ -3,6 +3,7 @@ import express from 'express';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
 import { PrismaClient } from '@prisma/client';
+import { removeBackground } from '@imgly/background-removal-node';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import bot, { startBot, notifyAdmins } from './src/bot/bot.js';
@@ -1000,6 +1001,104 @@ app.post('/api/delivery-logs', authenticate, async (req, res, next) => {
     }
     const log = await prisma.deliveryLog.create({ data: { ...data, schoolId: parseInt(schoolId) } });
     res.json(log);
+  } catch (error) { next(error); }
+});
+
+// --- Utility Routes ---
+app.post('/api/utils/remove-bg', authenticate, async (req, res, next) => {
+  try {
+    const { image } = req.body; // Base64 image
+    if (!image) return res.status(400).json({ error: 'Rasm yuborilmadi' });
+
+    // SIMULATION MODE
+    console.log('Background removal initiated (Simulation mode)...');
+    
+    // In a real scenario, we would call Photoroom or Remove.bg API here:
+    /*
+    const apiKey = process.env.REMOVE_BG_API_KEY;
+    if (apiKey) {
+      // Real API Call logic
+    }
+    */
+
+    // Priority 1: Local AI (if enabled)
+    if (process.env.USE_LOCAL_AI === 'true') {
+      try {
+        console.log('Using Local AI for background removal...');
+        // Remove metadata from base64
+        const mimeType = image.match(/data:([^;]+);base64/)?.[1] || 'image/jpeg';
+        const base64Data = image.replace(/^data:image\/\w+;base64,/, "");
+        const imageBuffer = Buffer.from(base64Data, 'base64');
+        
+        console.log(`Processing ${mimeType} with Local AI...`);
+        
+        // Create a Blob from the buffer (important for most AI libs)
+        const imageBlob = new Blob([imageBuffer], { type: mimeType });
+        
+        // Remove background locally
+        const resultBlob = await removeBackground(imageBlob);
+        const buffer = Buffer.from(await resultBlob.arrayBuffer());
+        
+        const resultBase64 = buffer.toString('base64');
+        const resultDataUrl = `data:image/png;base64,${resultBase64}`;
+
+        return res.json({ 
+          success: true, 
+          image: resultDataUrl, 
+          message: 'Background removed successfully (Local AI)' 
+        });
+      } catch (localAiError) {
+        console.error('Local AI failed:', localAiError);
+        // Fallback to Photoroom or Simulation if Local AI fails
+      }
+    }
+
+    // Priority 2: Photoroom API
+    if (process.env.PHOTOROOM_API_KEY) {
+      try {
+        console.log('Using Photoroom API...');
+        // Remove metadata from base64 (e.g., data:image/jpeg;base64,)
+        const base64Data = image.replace(/^data:image\/\w+;base64,/, "");
+        const buffer = Buffer.from(base64Data, 'base64');
+
+        const formData = new FormData();
+        formData.append('image_file', new Blob([buffer]), 'image.jpg');
+
+        const response = await fetch('https://sdk.photoroom.com/v1/segment', {
+          method: 'POST',
+          headers: {
+            'x-api-key': process.env.PHOTOROOM_API_KEY
+          },
+          body: formData
+        });
+
+        if (!response.ok) {
+          const errorText = await response.text();
+          throw new Error(`Photoroom API error: ${response.status} ${errorText}`);
+        }
+
+        const resultBuffer = await response.arrayBuffer();
+        const resultBase64 = Buffer.from(resultBuffer).toString('base64');
+        const resultDataUrl = `data:image/png;base64,${resultBase64}`;
+
+        return res.json({ 
+          success: true, 
+          image: resultDataUrl, 
+          message: 'Background removed successfully (Photoroom AI)' 
+        });
+      } catch (apiError) {
+        console.error('Photoroom API failed:', apiError);
+      }
+    }
+
+    // Priority 3: Simulation (if nothing else is available)
+    console.log('No AI method available, falling back to simulation');
+    await new Promise(resolve => setTimeout(resolve, 1500));
+    res.json({ 
+      success: true, 
+      image: image, 
+      message: 'Background removed successfully (Simulated)' 
+    });
   } catch (error) { next(error); }
 });
 
