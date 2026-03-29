@@ -1,10 +1,9 @@
 import React, { useState } from 'react';
-import { Search, Plus, FileSpreadsheet, MoreVertical, X, Filter, Camera, Sparkles } from 'lucide-react';
+import { Search, Plus, FileSpreadsheet, MoreVertical, X, Filter, Camera, Sparkles, Image as ImageIcon, MapPin } from 'lucide-react';
 import { useCRM } from '../context/CRMContext';
 import { useNavigate } from 'react-router-dom';
 import PhotoCapture from './PhotoCapture';
 import MapPicker from './MapPicker';
-import { MapPin } from 'lucide-react';
 
 export default function Students() {
     const { students, groups, teachers, transports, addStudent } = useCRM();
@@ -72,7 +71,8 @@ export default function Students() {
             const data = await response.json();
             if (data.success) {
                 setNewStudent({ ...newStudent, photo: data.image });
-                alert("Orqa fon muvaffaqiyatli tozalandi (Simulatsiya)");
+            } else {
+                alert("Xatolik: " + data.error);
             }
         } catch (err) {
             console.error("BG Removal failed", err);
@@ -443,48 +443,75 @@ export default function Students() {
                                         </div>
                                     </div>
                                 </div>
-                            </div>
 
-                            {/* Sticky-like Footer with extra padding */}
-                            <div className="pt-8 pb-10 border-t border-dashed border-gray-100 dark:border-gray-700">
-                                <div className="flex flex-col gap-6">
-                                    {/* Photo Actions Row */}
-                                    <div className="flex flex-wrap items-center gap-3">
-                                        <button
-                                            type="button"
-                                            onClick={() => setIsPhotoModalOpen(true)}
-                                            className={`flex-1 sm:flex-none px-6 py-3 border rounded-2xl flex items-center justify-center gap-2 transition-all text-[10px] font-black uppercase tracking-widest ${newStudent.photo ? 'bg-emerald-50 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 border-emerald-200' : 'bg-white dark:bg-gray-800 text-gray-400 border-gray-100 dark:border-gray-700 hover:bg-gray-50'}`}
-                                        >
-                                            <Camera size={16} />
-                                            {newStudent.photo ? "Rasm Yuklandi" : 'Rasmga Olish'}
-                                        </button>
+                                <h3 className="text-[10px] font-black text-violet-600 uppercase tracking-[0.2em] flex items-center gap-2 px-1">
+                                    <div className="w-1.5 h-1.5 rounded-full bg-violet-500" />
+                                    O'quvchi Rasmi
+                                </h3>
+                                <div className="grid grid-cols-1 gap-5">
+                                    <div className="flex flex-col items-center gap-4">
+                                        <div className="w-32 h-32 rounded-[2rem] bg-gray-50 dark:bg-gray-900 border-2 border-dashed border-gray-200 dark:border-gray-700 flex items-center justify-center overflow-hidden shadow-inner group">
+                                            {newStudent.photo ? (
+                                                <img src={newStudent.photo} alt="Preview" className="w-full h-full object-cover" />
+                                            ) : (
+                                                <ImageIcon size={32} className="text-gray-300 dark:text-gray-600 group-hover:scale-110 transition-transform" />
+                                            )}
+                                        </div>
                                         
+                                        <div className="grid grid-cols-2 gap-3 w-full">
+                                            <label className="relative flex items-center justify-center gap-2 py-3.5 bg-gray-50 dark:bg-gray-900 border border-gray-100 dark:border-gray-700 rounded-2xl cursor-pointer hover:bg-white dark:hover:bg-gray-800 transition-all shadow-sm">
+                                                <input type="file" className="hidden" accept="image/*" 
+                                                    onChange={(e) => {
+                                                        const file = e.target.files?.[0];
+                                                        if (file) {
+                                                            const reader = new FileReader();
+                                                            reader.onloadend = () => setNewStudent({ ...newStudent, photo: reader.result as string });
+                                                            reader.readAsDataURL(file);
+                                                        }
+                                                    }} 
+                                                />
+                                                <ImageIcon size={16} className="text-sky-500" />
+                                                <span className="text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-widest">Yuklash</span>
+                                            </label>
+                                            
+                                            <button 
+                                                type="button"
+                                                onClick={() => setIsPhotoModalOpen(true)}
+                                                className="flex items-center justify-center gap-2 py-3.5 bg-gray-50 dark:bg-gray-900 border border-gray-100 dark:border-gray-700 rounded-2xl hover:bg-white dark:hover:bg-gray-800 transition-all shadow-sm"
+                                            >
+                                                <Camera size={16} className="text-emerald-500" />
+                                                <span className="text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-widest">Rasmga olish</span>
+                                            </button>
+                                        </div>
+
                                         {newStudent.photo && (
                                             <button 
                                                 type="button"
                                                 onClick={handleRemoveBg}
                                                 disabled={isRemovingBg}
-                                                className="flex-1 sm:flex-none px-6 py-3 bg-violet-50 dark:bg-violet-900/20 text-violet-600 dark:text-violet-400 border border-violet-100 dark:border-violet-800/50 rounded-2xl text-[9px] font-bold uppercase tracking-widest hover:bg-violet-600 hover:text-white transition-all disabled:opacity-50 flex items-center justify-center gap-2"
+                                                className="w-full flex items-center justify-center gap-2 py-3.5 bg-violet-50 dark:bg-violet-900/20 text-violet-600 dark:text-violet-400 border border-violet-100 dark:border-violet-800/50 rounded-2xl text-[10px] font-extrabold uppercase tracking-widest hover:bg-violet-600 hover:text-white transition-all disabled:opacity-50 shadow-sm"
                                             >
                                                 <Sparkles size={14} className={isRemovingBg ? 'animate-spin' : ''} />
-                                                {isRemovingBg ? 'Tozalanmoqda...' : 'Fonni tozalash'}
+                                                {isRemovingBg ? 'Tozalanmoqda...' : 'Fonni tozalash (AI)'}
                                             </button>
                                         )}
                                     </div>
+                                </div>
+                            </div>
 
-                                    {/* Main Form Actions Row */}
-                                    <div className="flex items-center gap-4 border-t border-gray-50 dark:border-gray-800 pt-6">
-                                        <button type="button" onClick={() => setIsModalOpen(false)} className="flex-1 px-8 py-4 bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700 text-gray-400 dark:text-gray-500 rounded-[1.25rem] text-[10px] font-black uppercase tracking-widest hover:bg-gray-50 transition-all">
-                                            Bekor Qilish
-                                        </button>
-                                        <button 
-                                            type="submit" 
-                                            disabled={isAdding}
-                                            className="flex-[2] px-12 py-4 bg-sky-600 dark:bg-sky-500 text-white rounded-[1.25rem] text-[10px] font-black uppercase tracking-widest hover:bg-sky-500 active:scale-95 transition-all shadow-xl shadow-sky-500/30 disabled:opacity-50"
-                                        >
-                                            {isAdding ? "Saqlash..." : "Saqlash"}
-                                        </button>
-                                    </div>
+                            {/* Sticky-like Footer with extra padding */}
+                            <div className="pt-8 pb-10 border-t border-dashed border-gray-100 dark:border-gray-700">
+                                <div className="flex items-center gap-4">
+                                    <button type="button" onClick={() => setIsModalOpen(false)} className="flex-1 px-8 py-4 bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700 text-gray-400 dark:text-gray-500 rounded-[1.25rem] text-[10px] font-black uppercase tracking-widest hover:bg-gray-50 transition-all">
+                                        Bekor Qilish
+                                    </button>
+                                    <button 
+                                        type="submit" 
+                                        disabled={isAdding}
+                                        className="flex-[2] px-12 py-4 bg-sky-600 dark:bg-sky-500 text-white rounded-[1.25rem] text-[10px] font-black uppercase tracking-widest hover:bg-sky-500 active:scale-95 transition-all shadow-xl shadow-sky-500/30 disabled:opacity-50"
+                                    >
+                                        {isAdding ? "Saqlash..." : "Saqlash"}
+                                    </button>
                                 </div>
                             </div>
                         </form>

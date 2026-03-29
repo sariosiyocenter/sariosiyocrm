@@ -9,7 +9,7 @@ const timeToMinutes = (time: string) => {
 
 export default function RoomSchedule() {
     const { groups, rooms } = useCRM();
-    const [selectedDayType, setSelectedDayType] = useState<'TOQ' | 'JUFT' | 'HAR_KUNI'>('TOQ');
+    const [selectedDayType, setSelectedDayType] = useState<'TOQ' | 'JUFT'>('TOQ');
 
     // 30-daqiqalik slotlar: 08:00 → 22:00
     const timeSlots: string[] = [];
@@ -24,11 +24,7 @@ export default function RoomSchedule() {
             
             const groupDays = g.days?.toUpperCase() || '';
             const isGroupHarKuni = groupDays.includes('HAR') || groupDays.includes('EVERY');
-            const isRoomHarKuni = selectedDayType === 'HAR_KUNI';
-
-            const dayMatch = isRoomHarKuni 
-                ? isGroupHarKuni 
-                : (groupDays.includes(selectedDayType) || isGroupHarKuni);
+            const dayMatch = groupDays.includes(selectedDayType) || isGroupHarKuni;
 
             if (!dayMatch) return false;
             
@@ -91,8 +87,7 @@ export default function RoomSchedule() {
                 <div className="flex bg-gray-50 dark:bg-gray-900 p-1.5 rounded-2xl border border-gray-100 dark:border-gray-800">
                     {[
                         { id: 'TOQ', label: 'Toq kunlar' },
-                        { id: 'JUFT', label: 'Juft kunlar' },
-                        { id: 'HAR_KUNI', label: 'Har kuni' }
+                        { id: 'JUFT', label: 'Juft kunlar' }
                     ].map((type) => (
                         <button
                             key={type.id}

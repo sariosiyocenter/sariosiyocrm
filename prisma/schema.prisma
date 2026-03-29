@@ -209,6 +209,23 @@ model School {
   transports  Transport[]
   deliveryLogs DeliveryLog[]
   routes      Route[]
+  smsLogs     SmsLog[]
+}
+
+model SmsLog {
+  id        Int      @id @default(autoincrement())
+  toPhone   String
+  toName    String?
+  message   String
+  status    String   @default("PENDING") // SENT, FAILED, PENDING
+  type      String   // ATTENDANCE, PAYMENT, PAYMENT_CONFIRM, SCORE, BIRTHDAY
+  studentId Int?
+  eskizId   String?
+  errorMsg  String?
+  sentAt    DateTime @default(now())
+
+  schoolId  Int
+  school    School   @relation(fields: [schoolId], references: [id])
 }
 
 model Attendance {

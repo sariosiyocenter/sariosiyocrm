@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { 
   Users, GraduationCap, Target, Settings, 
   LayoutDashboard, Wallet, Search, Bell, Sun, Moon, LogOut, X, ChevronRight, User, MapPin, 
-  CheckCircle2, AlertCircle, Info, Menu, BarChart3, Bus, Truck, Navigation
+  CheckCircle2, AlertCircle, Info, Menu, BarChart3, Bus, Truck, Navigation, MessageSquare
 } from 'lucide-react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useCRM } from '../context/CRMContext';
@@ -29,6 +29,7 @@ export default function Layout({ children, onLogout }: LayoutProps) {
     { label: 'Moliya', icon: Wallet, path: '/finance' },
     { label: 'Logistika', icon: Navigation, path: '/logistics' },
     { label: 'Hisobotlar', icon: BarChart3, path: '/reports' },
+    { label: 'SMS', icon: MessageSquare, path: '/sms-history' },
     { label: 'Sozlamalar', icon: Settings, path: '/settings' },
   ];
 

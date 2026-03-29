@@ -3,7 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { useCRM } from '../context/CRMContext';
 import {
     Users, Calendar, Clock, BookOpen, Plus, TrendingUp,
-    CheckCircle, XCircle, ArrowLeft, Save, Search, ClipboardCheck, ChevronRight, Presentation, Award, Check
+    CheckCircle, XCircle, ArrowLeft, Save, Search, ClipboardCheck, ChevronRight, Presentation, Award, Check, Sparkles
 } from 'lucide-react';
 import AttendanceMatrix from './AttendanceMatrix';
 import GroupAttendanceCalendar from './GroupAttendanceCalendar';
@@ -46,8 +46,33 @@ export default function GroupDetails() {
         }));
         if (records.length === 0) return;
         await addBatchAttendance(group.id, selectedDate, records);
-        alert("Davomat saqlandi");
+        showNotification("Davomat saqlandi", "success");
         setBatchAttendance({});
+    };
+
+    const handleSendAttendanceSms = async () => {
+        if (!window.confirm("Kelmagan o'quvchilar ota-onalariga SMS yuborilsinmi?")) return;
+        
+        try {
+            const token = localStorage.getItem('token');
+            const response = await fetch('/api/sms/attendance', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                },
+                body: JSON.stringify({ groupId: group.id, date: selectedDate })
+            });
+            const data = await response.json();
+            if (data.success) {
+                showNotification(`SMS yuborish boshlandi: ${data.count} ta xabar`, "success");
+            } else {
+                showNotification("Xatolik: " + data.error, "error");
+            }
+        } catch (err) {
+            console.error("SMS sending failed", err);
+            showNotification("SMS yuborishda xatolik yuz berdi", "error");
+        }
     };
 
     const handleAddScore = async () => {
@@ -426,10 +451,20 @@ export default function GroupDetails() {
                                         </button>
                                     </div>
 
-                                    <button onClick={handleSaveAttendance} 
-                                        className={`w-full sm:w-auto px-10 py-3.5 bg-sky-600 dark:bg-sky-500 text-white rounded-[1.25rem] text-[10px] font-bold uppercase tracking-widest shadow-xl shadow-sky-500/20 hover:bg-sky-500 dark:hover:bg-sky-400 active:scale-95 transition-all ${!isDayValid(group.days, selectedDate) ? 'opacity-50' : ''}`}>
-                                        Saqlash
-                                    </button>
+                                    <div className="flex items-center gap-3 w-full sm:w-auto">
+                                        <button 
+                                            onClick={handleSendAttendanceSms}
+                                            className="px-6 py-3.5 bg-amber-50 dark:bg-amber-900/20 text-amber-600 dark:text-amber-400 border border-amber-100 dark:border-amber-800/50 rounded-[1.25rem] text-[10px] font-bold uppercase tracking-widest hover:bg-amber-600 hover:text-white transition-all flex items-center gap-2 group"
+                                            title="Kelmaganlarga SMS yuborish"
+                                        >
+                                            <Sparkles size={16} className="group-hover:animate-pulse" />
+                                            SMS
+                                        </button>
+                                        <button onClick={handleSaveAttendance} 
+                                            className={`flex-1 sm:flex-none px-10 py-3.5 bg-sky-600 dark:bg-sky-500 text-white rounded-[1.25rem] text-[10px] font-bold uppercase tracking-widest shadow-xl shadow-sky-500/20 hover:bg-sky-500 dark:hover:bg-sky-400 active:scale-95 transition-all ${!isDayValid(group.days, selectedDate) ? 'opacity-50' : ''}`}>
+                                            Saqlash
+                                        </button>
+                                    </div>
                                 </div>
                             </div>
 

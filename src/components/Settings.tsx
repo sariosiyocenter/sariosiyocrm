@@ -1,10 +1,12 @@
 import React, { useState } from 'react';
 import {
-    Building2, Plus, ChevronDown, User, ShieldCheck, Trash2, Save, X, Layout, MapPin
+    Building2, Plus, ChevronDown, User, ShieldCheck, Trash2, Save, X, Layout, MapPin, Mail
 } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import { useCRM } from '../context/CRMContext';
 
 export default function Settings() {
+    const navigate = useNavigate();
     const { settings, updateSettings, courses, rooms, schools, addCourse, deleteCourse, addRoom, deleteRoom, addSchool, deleteSchool, selectedSchoolId } = useCRM();
     const [activeTab, setActiveTab] = useState('ofis');
     const [activeSubTab, setActiveSubTab] = useState('Kurslar');
@@ -20,7 +22,6 @@ export default function Settings() {
     const subTabLabels: Record<string, string> = {
         'Kurslar': 'Kurslar Ro\'yxati',
         'Xonalar': 'Dars Xonalari',
-        'Umumiy sozlamalar': 'Tizim Ma\'lumotlari',
         'Filiallar': 'O\'quv Markazi Filiallari'
     };
 
@@ -31,7 +32,7 @@ export default function Settings() {
     const menuItems = [
         { id: 'ofis', label: 'Ofis', icon: <Building2 className="w-4 h-4" />, hasSub: true, subItems: ['Kurslar', 'Xonalar'] },
         { id: 'staff', label: 'Xodimlar', icon: <User className="w-4 h-4" />, hasSub: false },
-        ...(currentUser?.role === 'ADMIN' ? [{ id: 'ceo', label: 'CEO', icon: <ShieldCheck className="w-4 h-4" />, hasSub: true, subItems: ['Umumiy sozlamalar', 'Filiallar'] }] : []),
+        ...(currentUser?.role === 'ADMIN' ? [{ id: 'ceo', label: 'CEO', icon: <ShieldCheck className="w-4 h-4" />, hasSub: true, subItems: ['Filiallar'] }] : []),
     ];
 
     const fetchUsers = async () => {
@@ -66,9 +67,7 @@ export default function Settings() {
         if (!newItem.name && activeTab !== 'staff' && activeSubTab !== 'Xodimlar') return;
 
         try {
-            if (activeSubTab === 'Umumiy sozlamalar') {
-                await updateSettings(newItem);
-            } else if (activeSubTab === 'Kurslar') {
+            if (activeSubTab === 'Kurslar') {
                 await addCourse({ ...newItem, price: Number(newItem.price) });
             } else if (activeSubTab === 'Xonalar') {
                 await addRoom({ ...newItem, capacity: Number(newItem.capacity) });
@@ -192,56 +191,6 @@ export default function Settings() {
         if (activeTab === 'ceo' && currentUser?.role !== 'ADMIN') return null;
 
         if (activeTab === 'ofis' || activeTab === 'ceo' || activeTab === 'staff') {
-            if (activeSubTab === 'Umumiy sozlamalar') {
-                return (
-                    <form onSubmit={handleSaveSettings} className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
-                        <div className="bg-white dark:bg-gray-800 p-10 rounded-[2.5rem] border border-gray-100 dark:border-gray-700 shadow-xl shadow-gray-200/10 dark:shadow-none">
-                            <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-8 uppercase tracking-tight flex items-center gap-3">
-                                <Building2 className="text-sky-500" />
-                                Asosiy Ma'lumotlar
-                            </h3>
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                                <div className="space-y-3">
-                                    <label className="text-[10px] font-extrabold text-gray-400 dark:text-gray-500 uppercase tracking-widest ml-1">Tashkilot Nomi <span className="text-rose-500">*</span></label>
-                                    <input required type="text" className="w-full px-6 py-4 bg-gray-50 dark:bg-gray-900 border border-gray-100 dark:border-gray-700 rounded-[1.25rem] text-xs font-bold uppercase tracking-widest focus:bg-white dark:focus:bg-gray-800 focus:border-sky-500 dark:focus:border-sky-500 focus:ring-4 focus:ring-sky-500/10 outline-none transition-all text-gray-900 dark:text-white shadow-inner"
-                                        value={settingsForm.orgName} onChange={e => setSettingsForm({ ...settingsForm, orgName: e.target.value })} />
-                                </div>
-                                <div className="space-y-3">
-                                    <label className="text-[10px] font-extrabold text-gray-400 dark:text-gray-500 uppercase tracking-widest ml-1">Asosiy Manzil</label>
-                                    <input type="text" placeholder="Shahar, Ko'cha, Uy" className="w-full px-6 py-4 bg-gray-50 dark:bg-gray-900 border border-gray-100 dark:border-gray-700 rounded-[1.25rem] text-xs font-bold uppercase tracking-widest focus:bg-white dark:focus:bg-gray-800 focus:border-sky-500 dark:focus:border-sky-500 focus:ring-4 focus:ring-sky-500/10 outline-none transition-all text-gray-900 dark:text-white shadow-inner"
-                                        value={settingsForm.address || ''} onChange={e => setSettingsForm({ ...settingsForm, address: e.target.value })} />
-                                </div>
-                                <div className="space-y-3">
-                                    <label className="text-[10px] font-extrabold text-gray-400 dark:text-gray-500 uppercase tracking-widest ml-1">Admin Telefon Raqami <span className="text-rose-500">*</span></label>
-                                    <input required type="text" placeholder="+998 90 123 45 67" className="w-full px-6 py-4 bg-gray-50 dark:bg-gray-900 border border-gray-100 dark:border-gray-700 rounded-[1.25rem] text-xs font-bold uppercase tracking-widest focus:bg-white dark:focus:bg-gray-800 focus:border-sky-500 dark:focus:border-sky-500 focus:ring-4 focus:ring-sky-500/10 outline-none transition-all text-gray-900 dark:text-white shadow-inner"
-                                        value={settingsForm.adminPhone || ''} onChange={e => setSettingsForm({ ...settingsForm, adminPhone: e.target.value })} />
-                                </div>
-                                <div className="space-y-3">
-                                    <label className="text-[10px] font-extrabold text-gray-400 dark:text-gray-500 uppercase tracking-widest ml-1">Ish Vaqti</label>
-                                    <input type="text" placeholder="Du-Shanba 09:00 - 18:00" className="w-full px-6 py-4 bg-gray-50 dark:bg-gray-900 border border-gray-100 dark:border-gray-700 rounded-[1.25rem] text-xs font-bold uppercase tracking-widest focus:bg-white dark:focus:bg-gray-800 focus:border-sky-500 dark:focus:border-sky-500 focus:ring-4 focus:ring-sky-500/10 outline-none transition-all text-gray-900 dark:text-white shadow-inner"
-                                        value={settingsForm.workingHours || ''} onChange={e => setSettingsForm({ ...settingsForm, workingHours: e.target.value })} />
-                                </div>
-                                <div className="space-y-3">
-                                    <label className="text-[10px] font-extrabold text-gray-400 dark:text-gray-500 uppercase tracking-widest ml-1">Telegram Manzili</label>
-                                    <input type="text" placeholder="https://t.me/username" className="w-full px-6 py-4 bg-gray-50 dark:bg-gray-900 border border-gray-100 dark:border-gray-700 rounded-[1.25rem] text-xs font-bold uppercase tracking-widest focus:bg-white dark:focus:bg-gray-800 focus:border-sky-500 dark:focus:border-sky-500 focus:ring-4 focus:ring-sky-500/10 outline-none transition-all text-gray-900 dark:text-white shadow-inner"
-                                        value={settingsForm.telegram || ''} onChange={e => setSettingsForm({ ...settingsForm, telegram: e.target.value })} />
-                                </div>
-                                <div className="space-y-3">
-                                    <label className="text-[10px] font-extrabold text-gray-400 dark:text-gray-500 uppercase tracking-widest ml-1">Instagram Manzili</label>
-                                    <input type="text" placeholder="https://instagram.com/username" className="w-full px-6 py-4 bg-gray-50 dark:bg-gray-900 border border-gray-100 dark:border-gray-700 rounded-[1.25rem] text-xs font-bold uppercase tracking-widest focus:bg-white dark:focus:bg-gray-800 focus:border-sky-500 dark:focus:border-sky-500 focus:ring-4 focus:ring-sky-500/10 outline-none transition-all text-gray-900 dark:text-white shadow-inner"
-                                        value={settingsForm.instagram || ''} onChange={e => setSettingsForm({ ...settingsForm, instagram: e.target.value })} />
-                                </div>
-                            </div>
-                            <div className="mt-12 flex justify-end">
-                                <button type="submit" disabled={isSaving} className="bg-sky-600 dark:bg-sky-500 hover:bg-sky-500 dark:hover:bg-sky-400 disabled:opacity-70 text-white px-10 py-4 rounded-[1.25rem] font-bold uppercase tracking-widest shadow-xl shadow-sky-500/20 active:scale-95 transition-all text-[10px] flex items-center gap-3">
-                                    {isSaving ? 'Saqlanmoqda...' : 'Saqlash'}
-                                    <Save size={18} />
-                                </button>
-                            </div>
-                        </div>
-                    </form>
-                );
-            }
 
             return (
                 <div className="bg-white dark:bg-gray-800 rounded-[2.5rem] shadow-xl shadow-gray-200/10 dark:shadow-none border border-gray-100 dark:border-gray-700 overflow-hidden min-h-[550px] flex flex-col animate-in fade-in slide-in-from-bottom-4 duration-500">

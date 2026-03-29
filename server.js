@@ -3,10 +3,9 @@ import express from 'express';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
 import { PrismaClient } from '@prisma/client';
-import { removeBackground } from '@imgly/background-removal-node';
-import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import bot, { startBot, notifyAdmins } from './src/bot/bot.js';
+import bcrypt from 'bcryptjs';
 // import { scheduleAttendanceNotifications } from './src/utils/scheduler.js';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -27,7 +26,8 @@ const app = express();
 const PORT = process.env.PORT || 3000;
 const JWT_SECRET = process.env.JWT_SECRET || 'your_fallback_secret';
 
-app.use(express.json());
+app.use(express.json({ limit: '3mb' }));
+app.use(express.urlencoded({ limit: '3mb', extended: true }));
 
 // Middleware to authenticate JWT
 const authenticate = (req, res, next) => {
@@ -1010,97 +1010,279 @@ app.post('/api/utils/remove-bg', authenticate, async (req, res, next) => {
     const { image } = req.body; // Base64 image
     if (!image) return res.status(400).json({ error: 'Rasm yuborilmadi' });
 
-    // SIMULATION MODE
-    console.log('Background removal initiated (Simulation mode)...');
+    const falKey = process.env.FAL_KEY;
+    if (!falKey) {
+      return res.status(500).json({ error: 'FAL_KEY sozlanmagan' });
+    }
+
+    console.log('Sending image to fal.ai for background removal...');
     
-    // In a real scenario, we would call Photoroom or Remove.bg API here:
-    /*
-    const apiKey = process.env.REMOVE_BG_API_KEY;
-    if (apiKey) {
-      // Real API Call logic
-    }
-    */
+    // Model: bria/background-removal is very good
+    const response = await fetch('https://fal.run/fal-ai/bria/background-removal', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Key ${falKey}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        image_url: image // fal.ai supports base64 data URLs
+      })
+    });
 
-    // Priority 1: Local AI (if enabled)
-    if (process.env.USE_LOCAL_AI === 'true') {
-      try {
-        console.log('Using Local AI for background removal...');
-        // Remove metadata from base64
-        const mimeType = image.match(/data:([^;]+);base64/)?.[1] || 'image/jpeg';
-        const base64Data = image.replace(/^data:image\/\w+;base64,/, "");
-        const imageBuffer = Buffer.from(base64Data, 'base64');
-        
-        console.log(`Processing ${mimeType} with Local AI...`);
-        
-        // Create a Blob from the buffer (important for most AI libs)
-        const imageBlob = new Blob([imageBuffer], { type: mimeType });
-        
-        // Remove background locally
-        const resultBlob = await removeBackground(imageBlob);
-        const buffer = Buffer.from(await resultBlob.arrayBuffer());
-        
-        const resultBase64 = buffer.toString('base64');
-        const resultDataUrl = `data:image/png;base64,${resultBase64}`;
-
-        return res.json({ 
-          success: true, 
-          image: resultDataUrl, 
-          message: 'Background removed successfully (Local AI)' 
-        });
-      } catch (localAiError) {
-        console.error('Local AI failed:', localAiError);
-        // Fallback to Photoroom or Simulation if Local AI fails
-      }
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error('fal.ai error:', errorText);
+      throw new Error(`fal.ai API error: ${response.status}`);
     }
 
-    // Priority 2: Photoroom API
-    if (process.env.PHOTOROOM_API_KEY) {
-      try {
-        console.log('Using Photoroom API...');
-        // Remove metadata from base64 (e.g., data:image/jpeg;base64,)
-        const base64Data = image.replace(/^data:image\/\w+;base64,/, "");
-        const buffer = Buffer.from(base64Data, 'base64');
+    const data = await response.json();
+    // fal.ai usually returns { image: { url: "data:..." } } for this model
+    const resultUrl = data.image?.url || data.image_url;
 
-        const formData = new FormData();
-        formData.append('image_file', new Blob([buffer]), 'image.jpg');
-
-        const response = await fetch('https://sdk.photoroom.com/v1/segment', {
-          method: 'POST',
-          headers: {
-            'x-api-key': process.env.PHOTOROOM_API_KEY
-          },
-          body: formData
-        });
-
-        if (!response.ok) {
-          const errorText = await response.text();
-          throw new Error(`Photoroom API error: ${response.status} ${errorText}`);
-        }
-
-        const resultBuffer = await response.arrayBuffer();
-        const resultBase64 = Buffer.from(resultBuffer).toString('base64');
-        const resultDataUrl = `data:image/png;base64,${resultBase64}`;
-
-        return res.json({ 
-          success: true, 
-          image: resultDataUrl, 
-          message: 'Background removed successfully (Photoroom AI)' 
-        });
-      } catch (apiError) {
-        console.error('Photoroom API failed:', apiError);
-      }
+    if (!resultUrl) {
+      throw new Error('fal.ai did not return an image URL');
     }
 
-    // Priority 3: Simulation (if nothing else is available)
-    console.log('No AI method available, falling back to simulation');
-    await new Promise(resolve => setTimeout(resolve, 1500));
     res.json({ 
       success: true, 
-      image: image, 
-      message: 'Background removed successfully (Simulated)' 
+      image: resultUrl, 
+      message: 'Background removed successfully (fal.ai)' 
     });
   } catch (error) { next(error); }
 });
+
+// ==================== ESKIZ SMS INTEGRATION ====================
+
+let eskizToken = null;
+let eskizTokenExpiry = null;
+
+async function getEskizToken() {
+  if (eskizToken && eskizTokenExpiry && Date.now() < eskizTokenExpiry) {
+    return eskizToken;
+  }
+  const email = process.env.ESKIZ_EMAIL;
+  const password = process.env.ESKIZ_PASSWORD;
+  if (!email || !password) throw new Error('ESKIZ_EMAIL yoki ESKIZ_PASSWORD .env da yo\'q');
+
+  console.log(`[Eskiz] Token olishga urinish: ${email}`);
+
+  let lastError = null;
+  const endpoints = [
+    'https://notify.eskiz.uz/api/auth/login',
+    'https://portal.eskiz.uz/api/auth/login'
+  ];
+
+  for (const url of endpoints) {
+    try {
+      console.log(`[Eskiz] Endpointga urinish: ${url}`);
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 10000); // 10s timeout
+
+      const params = new URLSearchParams();
+      params.append('email', email);
+      params.append('password', password);
+
+      const res = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: params,
+        signal: controller.signal
+      });
+      clearTimeout(timeout);
+      
+      const data = await res.json();
+      if (data.data?.token) {
+        eskizToken = data.data.token;
+        eskizTokenExpiry = Date.now() + 23 * 60 * 60 * 1000;
+        console.log(`[Eskiz] Token muvaffaqiyatli olindi (Source: ${url})`);
+        return eskizToken;
+      }
+      console.warn(`[Eskiz] ${url} muvaffaqiyatsiz:`, JSON.stringify(data));
+      lastError = data.message || JSON.stringify(data);
+    } catch (err) {
+      console.error(`[Eskiz] ${url} xatosi: ${err.name === 'AbortError' ? 'Timeout' : err.message}`);
+      lastError = err.name === 'AbortError' ? 'Ulanishda kutish vaqti tugadi (Timeout)' : err.message;
+    }
+  }
+
+  throw new Error('Eskiz token olish barcha endpointlarda muvaffaqiyatsiz tugadi: ' + lastError);
+}
+
+// Ota-ona raqamini aniqlash yordamchisi
+function resolveRecipientPhone(student) {
+  return student.fatherPhone || student.motherPhone || student.phone;
+}
+
+// Bitta raqamga SMS yuborish
+async function sendSms(phone, message, type, studentId, schoolId) {
+  const from = process.env.ESKIZ_FROM || '4546';
+  try {
+    const token = await getEskizToken();
+    const cleanPhone = phone.replace(/\D/g, ''); // Faqat raqamlar
+    
+    const params = new URLSearchParams();
+    params.append('mobile_phone', cleanPhone);
+    params.append('message', message);
+    params.append('from', from);
+    params.append('callback_url', '');
+
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 12000); // 12s timeout
+
+    const res = await fetch('https://notify.eskiz.uz/api/message/sms/send', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/x-www-form-urlencoded'
+      },
+      body: params,
+      signal: controller.signal
+    });
+    clearTimeout(timeout);
+    const data = await res.json();
+    const success = data.status === 'wait' || data.status === 'success' || res.ok;
+
+    await prisma.smsLog.create({
+      data: {
+        toPhone: phone,
+        message,
+        status: success ? 'SENT' : 'FAILED',
+        type,
+        studentId: studentId || null,
+        eskizId: data.id ? String(data.id) : null,
+        errorMsg: success ? null : JSON.stringify(data),
+        schoolId
+      }
+    });
+    return { success, data };
+  } catch (err) {
+    console.error('[Eskiz] SMS yuborishda xato:', err.message);
+    try {
+      await prisma.smsLog.create({
+        data: {
+          toPhone: phone, message, status: 'FAILED', type,
+          studentId: studentId || null, errorMsg: err.message, schoolId
+        }
+      });
+    } catch (_) {}
+    return { success: false, error: err.message };
+  }
+}
+
+// API: Bitta SMS yuborish (qo'lda)
+app.post('/api/sms/send', authenticate, async (req, res, next) => {
+  try {
+    let { phone, message, type, studentId } = req.body;
+    if (!message) return res.status(400).json({ error: 'Xabar matni kerak' });
+    
+    if (phone === 'AUTO_RESOLVE' && studentId) {
+      const student = await prisma.student.findUnique({ where: { id: Number(studentId) } });
+      if (student) {
+        phone = resolveRecipientPhone(student);
+      }
+    }
+
+    if (!phone || phone === 'AUTO_RESOLVE') return res.status(400).json({ error: 'Telefon raqamini aniqlab bo\'lmadi' });
+    
+    const result = await sendSms(phone, message, type || 'MANUAL', studentId ? Number(studentId) : null, req.user.schoolId);
+    res.json(result);
+  } catch (err) { next(err); }
+});
+
+// API: Davomatga kelmagan o'quvchilarga SMS yuborish
+app.post('/api/sms/attendance', authenticate, async (req, res, next) => {
+  try {
+    const { date, groupId } = req.body;
+    if (!date || !groupId) return res.status(400).json({ error: 'date va groupId kerak' });
+
+    // Kelmagan o'quvchilarni toping
+    const absences = await prisma.attendance.findMany({
+      where: {
+        groupId: Number(groupId),
+        date,
+        status: 'Kelmadi',
+        schoolId: req.user.schoolId
+      },
+      include: { student: true, group: true }
+    });
+
+    if (absences.length === 0) return res.json({ sent: 0, message: 'Kelmaganlar topilmadi' });
+
+    const results = [];
+    for (const absence of absences) {
+      const student = absence.student;
+      const phone = resolveRecipientPhone(student);
+      if (!phone) { results.push({ name: student.name, status: 'raqam yo\'q' }); continue; }
+
+      const msg = `Sariosiyo o'quv markazi: farzandingiz ${student.name} bugun ${date} kuni darsga kelmadi.`;
+      const r = await sendSms(phone, msg, 'ATTENDANCE', student.id, req.user.schoolId);
+      results.push({ name: student.name, phone, ...r });
+    }
+    res.json({ sent: results.filter(r => r.success).length, total: results.length, results });
+  } catch (err) { next(err); }
+});
+
+// API: SMS loglari
+app.get('/api/sms/logs', authenticate, async (req, res, next) => {
+  try {
+    const logs = await prisma.smsLog.findMany({
+      where: { schoolId: req.user.schoolId },
+      orderBy: { sentAt: 'desc' },
+      take: 100
+    });
+    res.json(logs);
+  } catch (err) { next(err); }
+});
+
+app.get('/api/sms/check-status/:id', authenticate, async (req, res, next) => {
+  try {
+    const logId = parseInt(req.params.id);
+    const log = await prisma.smsLog.findUnique({ where: { id: logId } });
+    
+    if (!log || !log.eskizId) {
+      return res.status(404).json({ error: 'Log topilmadi yoki Eskiz ID mavjud emas' });
+    }
+
+    const token = await getEskizToken();
+    const statusRes = await fetch(`https://notify.eskiz.uz/api/message/sms/get-status/${log.eskizId}`, {
+      headers: { 'Authorization': `Bearer ${token}` }
+    });
+    
+    const statusData = await statusRes.json();
+    const eskizStatus = statusData.data?.status || statusData.status; // Eskiz status key structure
+    
+    let newStatus = log.status;
+    if (['DELIVRD', 'TRANSMTD', 'SENT'].includes(eskizStatus)) {
+        newStatus = 'SENT';
+    } else if (['REJECTD', 'EXPIRED', 'FAILED', 'error'].includes(eskizStatus)) {
+        newStatus = 'FAILED';
+    }
+
+    const updatedLog = await prisma.smsLog.update({
+      where: { id: logId },
+      data: { 
+        status: newStatus,
+        errorMsg: JSON.stringify(statusData)
+      }
+    });
+
+    res.json(updatedLog);
+  } catch (err) { next(err); }
+});
+
+// API: Eskiz token tekshirish (test)
+app.get('/api/sms/test-connection', authenticate, async (req, res, next) => {
+  try {
+    const token = await getEskizToken();
+    res.setHeader('Cache-Control', 'no-store');
+    res.json({ success: true, message: 'Eskiz API muvaffaqiyatli bog\'landi', token });
+  } catch (err) {
+    res.setHeader('Cache-Control', 'no-store');
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// ==================== END ESKIZ SMS ====================
 
 // Serve static React files
 app.use(express.static(join(__dirname, 'dist')));

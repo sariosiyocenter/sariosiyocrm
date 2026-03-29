@@ -4,6 +4,7 @@ import {
     CreditCard, BarChart3, GraduationCap,
     Target, ChevronRight, Calendar, Search
 } from 'lucide-react';
+import { useLocation } from 'react-router-dom';
 import { useCRM } from '../context/CRMContext';
 
 import RoomSchedule from './RoomSchedule';
@@ -40,6 +41,13 @@ export default function Reports() {
         return d.toISOString().split('T')[0];
     });
     const [endDate, setEndDate] = useState(() => new Date().toISOString().split('T')[0]);
+    const location = useLocation();
+
+    React.useEffect(() => {
+        if (location.state && (location.state as any).activeReport) {
+            setActiveReport((location.state as any).activeReport);
+        }
+    }, [location]);
 
     const renderReportContent = () => {
         switch (activeReport) {

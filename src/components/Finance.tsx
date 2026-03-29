@@ -3,11 +3,13 @@ import {
     TrendingUp, TrendingDown, DollarSign, Wallet,
     ArrowUpRight, Download, Plus, X, ListChecks, Trash2
 } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import { useCRM } from '../context/CRMContext';
 import { Payment, Expense } from '../types';
 
 export default function Finance() {
     const { students, payments, expenses, addPayment, addExpense, deleteExpense } = useCRM();
+    const navigate = useNavigate();
     const [activeTab, setActiveTab] = useState<'payments' | 'expenses'>('payments');
     const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
     const [isExpenseModalOpen, setIsExpenseModalOpen] = useState(false);
@@ -32,15 +34,15 @@ export default function Finance() {
     ];
 
     const reports = [
-        "To'lovlar hisoboti",
-        "O'quvchilar to'lovi",
-        "Ketgan o'quvchilar hisoboti",
-        "Xodimlar Davomati Hisoboti",
-        "O'quvchilar Bonuslari",
-        "Lidlar Hisoboti",
-        "O'quvchilar Hisoboti",
-        "Bitiruvchilar",
-        "Markaz Faoliyati Statistikasi"
+        { id: 'payments', label: "To'lovlar hisoboti" },
+        { id: 'students_payment', label: "O'quvchilar to'lovi" },
+        { id: 'left_students', label: "Ketgan o'quvchilar hisoboti" },
+        { id: 'staff_attendance', label: "Xodimlar Davomati Hisoboti" },
+        { id: 'bonuses', label: "O'quvchilar Bonuslari" },
+        { id: 'leads', label: "Lidlar Hisoboti" },
+        { id: 'students_general', label: "O'quvchilar Hisoboti" },
+        { id: 'graduates', label: "Bitiruvchilar" },
+        { id: 'stats', label: "Markaz Faoliyati Statistikasi" }
     ];
 
     return (
@@ -142,8 +144,12 @@ export default function Finance() {
                     </div>
                     <div className="flex flex-col py-4">
                         {reports.map((r, i) => (
-                            <button key={i} className="px-8 py-4 text-left text-[10px] font-bold text-gray-500 hover:text-sky-600 hover:bg-sky-50 transition-all flex items-center justify-between group uppercase tracking-widest">
-                                {r} <ArrowUpRight size={14} className="opacity-0 group-hover:opacity-100 transition-all"/>
+                            <button 
+                                key={i} 
+                                onClick={() => navigate('/reports', { state: { activeReport: r.id } })}
+                                className="px-8 py-4 text-left text-[10px] font-bold text-gray-500 hover:text-sky-600 hover:bg-sky-50 transition-all flex items-center justify-between group uppercase tracking-widest"
+                            >
+                                {r.label} <ArrowUpRight size={14} className="opacity-0 group-hover:opacity-100 transition-all"/>
                             </button>
                         ))}
                     </div>
