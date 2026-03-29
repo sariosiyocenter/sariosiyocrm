@@ -1008,16 +1008,19 @@ app.post('/api/delivery-logs', authenticate, async (req, res, next) => {
 app.post('/api/utils/remove-bg', authenticate, async (req, res, next) => {
   try {
     const { image } = req.body; // Base64 image
-    if (!image) return res.status(400).json({ error: 'Rasm yuborilmadi' });
+    if (!image) {
+      console.warn('Remove BG: No image provided');
+      return res.status(400).json({ error: 'Rasm yuborilmadi' });
+    }
 
     const falKey = process.env.FAL_KEY;
     if (!falKey) {
+      console.error('Remove BG: FAL_KEY missing in process.env');
       return res.status(500).json({ error: 'FAL_KEY sozlanmagan' });
     }
 
-    console.log('Sending image to fal.ai for background removal...');
+    console.log(`Sending image to fal.ai (Size: ${image.length} chars)...`);
     
-    // Model: bria/background-removal is very good
     const response = await fetch('https://fal.run/fal-ai/bria/background-removal', {
       method: 'POST',
       headers: {
@@ -1025,30 +1028,34 @@ app.post('/api/utils/remove-bg', authenticate, async (req, res, next) => {
         'Content-Type': 'application/json'
       },
       body: JSON.stringify({
-        image_url: image // fal.ai supports base64 data URLs
+        image_url: image
       })
     });
 
     if (!response.ok) {
       const errorText = await response.text();
-      console.error('fal.ai error:', errorText);
-      throw new Error(`fal.ai API error: ${response.status}`);
+      console.error(`fal.ai API error (${response.status}):`, errorText);
+      return res.status(response.status).json({ success: false, error: `AI xizmati xatosi: ${response.status}`, details: errorText });
     }
 
     const data = await response.json();
-    // fal.ai usually returns { image: { url: "data:..." } } for this model
     const resultUrl = data.image?.url || data.image_url;
 
     if (!resultUrl) {
-      throw new Error('fal.ai did not return an image URL');
+      console.error('fal.ai response missing image URL:', data);
+      return res.status(500).json({ success: false, error: 'AI natijani qaytarmadi' });
     }
 
+    console.log('Background removed successfully via fal.ai');
     res.json({ 
       success: true, 
       image: resultUrl, 
       message: 'Background removed successfully (fal.ai)' 
     });
-  } catch (error) { next(error); }
+  } catch (error) { 
+    console.error('Background removal critical error:', error);
+    res.status(500).json({ success: false, error: error.message || 'Serverda ichki xatolik' });
+  }
 });
 
 // ==================== ESKIZ SMS INTEGRATION ====================
