@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useState, useEffect } from 'react';
+import React from 'react';
 import { Routes, Route, useNavigate, Navigate } from 'react-router-dom';
 import { useCRM } from './context/CRMContext';
 import Layout from './components/Layout';
@@ -20,32 +20,24 @@ import Reports from './components/Reports';
 import StudentDetails from './components/StudentDetails';
 import Logistics from './components/Logistics';
 import SmsHistory from './components/SmsHistory';
+import Login from './components/Login';
+import LandingPage from './components/LandingPage';
+import ExamsList from './components/ExamsList';
+import ExamBuilder from './components/ExamBuilder';
+import ExamDetail from './components/ExamDetail';
+import Scanner from './components/Scanner';
+import QuestionsList from './components/QuestionsList';
+import QuestionEditor from './components/QuestionEditor';
+import ExamResults from './components/ExamResults';
 
 export default function App() {
-  const { user, login, logout, loading, error: authError } = useCRM();
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [loginLoading, setLoginLoading] = useState(false);
-  const navigate = useNavigate();
-
-  const handleLogin = async (e: React.FormEvent) => {
-    e.preventDefault();
-    try {
-      setLoginLoading(true);
-      await login(email, password);
-      navigate('/');
-    } catch (err) {
-      // Error is handled in context
-    } finally {
-      setLoginLoading(false);
-    }
-  };
+  const { user, logout, loading } = useCRM();
 
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="flex flex-col items-center gap-4">
-          <div className="w-10 h-10 border-3 border-indigo-600 border-t-transparent rounded-full animate-spin"></div>
+          <div className="w-10 h-10 border-3 border-[#1b6b6b] border-t-transparent rounded-full animate-spin"></div>
           <p className="text-[14px] text-gray-500 font-medium">Yuklanmoqda...</p>
         </div>
       </div>
@@ -54,65 +46,11 @@ export default function App() {
 
   if (!user) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
-        <div className="w-full max-w-[400px]">
-          {/* Logo */}
-          <div className="text-center mb-8">
-            <div className="inline-flex items-center justify-center w-14 h-14 bg-indigo-600 rounded-xl mb-4 shadow-lg shadow-indigo-600/20">
-              <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <rect x="3" y="3" width="7" height="7" rx="1"/>
-                <rect x="14" y="3" width="7" height="7" rx="1"/>
-                <rect x="3" y="14" width="7" height="7" rx="1"/>
-                <rect x="14" y="14" width="7" height="7" rx="1"/>
-              </svg>
-            </div>
-            <h1 className="text-2xl font-bold text-gray-900">Sariosiyo CRM</h1>
-            <p className="text-[14px] text-gray-500 mt-1">Tizimga kirish</p>
-          </div>
-
-          {/* Login Card */}
-          <div className="bg-white rounded-xl shadow-xl shadow-gray-200/50 border border-gray-100 p-8">
-            <form onSubmit={handleLogin} className="space-y-5">
-              {authError && (
-                <div className="bg-red-50 text-red-600 px-4 py-3 rounded-lg text-[13px] font-medium border border-red-100">
-                  {authError}
-                </div>
-              )}
-              <div>
-                <label className="block text-[13px] font-medium text-gray-700 mb-1.5">Email</label>
-                <input
-                  type="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  placeholder="admin@example.com"
-                  required
-                  className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-lg text-[14px] text-gray-900 outline-none focus:bg-white focus:border-indigo-600 focus:ring-4 focus:ring-indigo-600/10 transition-all placeholder:text-gray-400"
-                />
-              </div>
-              <div>
-                <label className="block text-[13px] font-medium text-gray-700 mb-1.5">Parol</label>
-                <input
-                  type="password"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  placeholder="••••••••"
-                  required
-                  className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-lg text-[14px] text-gray-900 outline-none focus:bg-white focus:border-indigo-600 focus:ring-4 focus:ring-indigo-600/10 transition-all placeholder:text-gray-400"
-                />
-              </div>
-              <button
-                type="submit"
-                disabled={loginLoading}
-                className="w-full py-3 bg-indigo-600 text-white rounded-lg text-[14px] font-semibold hover:bg-indigo-700 active:scale-[0.99] transition-all disabled:opacity-50 mt-2 shadow-md shadow-indigo-600/20"
-              >
-                {loginLoading ? 'Yuklanmoqda...' : 'Kirish'}
-              </button>
-            </form>
-          </div>
-
-          <p className="text-center text-[13px] text-gray-400 mt-8">© 2026 Sariosiyo CRM</p>
-        </div>
-      </div>
+      <Routes>
+        <Route path="/" element={<LandingPage />} />
+        <Route path="/login" element={<Login />} />
+        <Route path="*" element={<Navigate to="/" replace />} />
+      </Routes>
     );
   }
 
@@ -136,6 +74,14 @@ export default function App() {
         <Route path="/logistics" element={isAdminOrManager ? <Logistics /> : <Navigate to="/" replace />} />
         <Route path="/sms-history" element={isAdminOrManager ? <SmsHistory /> : <Navigate to="/" replace />} />
         <Route path="/reports" element={isAdmin ? <Reports /> : <Navigate to="/" replace />} />
+        <Route path="/exams" element={isAdminOrManager ? <ExamsList /> : <Navigate to="/" replace />} />
+        <Route path="/exams/new" element={isAdminOrManager ? <ExamBuilder /> : <Navigate to="/" replace />} />
+        <Route path="/exams/:id" element={isAdminOrManager ? <ExamDetail /> : <Navigate to="/" replace />} />
+        <Route path="/scanner" element={isAdminOrManager ? <Scanner /> : <Navigate to="/" replace />} />
+        <Route path="/questions" element={isAdminOrManager ? <QuestionsList /> : <Navigate to="/" replace />} />
+        <Route path="/questions/new" element={isAdminOrManager ? <QuestionEditor /> : <Navigate to="/" replace />} />
+        <Route path="/questions/:id/edit" element={isAdminOrManager ? <QuestionEditor /> : <Navigate to="/" replace />} />
+        <Route path="/exam-results" element={isAdminOrManager ? <ExamResults /> : <Navigate to="/" replace />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </Layout>

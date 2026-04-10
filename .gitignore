@@ -8,3 +8,19 @@ coverage/
 !.env.example
 
 /src/generated/prisma
+
+# Build/Tool Outputs
+ts_errors.txt
+tsc_output.txt
+tsc_output_temp.txt
+tsc_output_utf8.txt
+test_ssr.tsx
+/test-*.js
+/check_*.mjs
+/find-*.js
+/list-*.js
+/fix-*.js
+/reset-*.js
+/seed.js
+/test-*.js
+/users_full.json

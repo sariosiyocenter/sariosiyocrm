@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { 
   Users, GraduationCap, Target, Settings, 
   LayoutDashboard, Wallet, Search, Bell, Sun, Moon, LogOut, X, ChevronRight, User, MapPin, 
-  CheckCircle2, AlertCircle, Info, Menu, BarChart3, Bus, Truck, Navigation, MessageSquare
+  CheckCircle2, AlertCircle, Info, Menu, BarChart3, Bus, Truck, Navigation, MessageSquare, FileText, BookOpen, ScanLine
 } from 'lucide-react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useCRM } from '../context/CRMContext';
@@ -28,6 +28,9 @@ export default function Layout({ children, onLogout }: LayoutProps) {
     { label: "O'quvchilar", icon: User, path: '/students' },
     { label: 'Moliya', icon: Wallet, path: '/finance' },
     { label: 'Logistika', icon: Navigation, path: '/logistics' },
+    { label: 'Imtihonlar', icon: FileText, path: '/exams' },
+    { label: 'Savollar Banki', icon: BookOpen, path: '/questions' },
+    { label: 'OMR Scanner', icon: ScanLine, path: '/scanner' },
     { label: 'Hisobotlar', icon: BarChart3, path: '/reports' },
     { label: 'SMS', icon: MessageSquare, path: '/sms-history' },
     { label: 'Sozlamalar', icon: Settings, path: '/settings' },
@@ -70,42 +73,40 @@ export default function Layout({ children, onLogout }: LayoutProps) {
               <Menu size={22} />
             </button>
             <Link to="/" className="flex items-center gap-3 group">
-              <div className="w-10 h-10 rounded-2xl bg-sky-600 flex items-center justify-center shadow-lg shadow-sky-500/30 group-hover:scale-105 transition-transform">
-                <LayoutDashboard size={20} className="text-white" />
-              </div>
+              <img src="/logo.png" alt="Logo" className="w-12 h-12 object-contain group-hover:scale-105 transition-transform" />
               <div className="flex flex-col">
                 <span className="text-sm font-extrabold text-gray-900 dark:text-white uppercase tracking-tight leading-none">Sariosiyo</span>
-                <span className="text-[10px] font-bold text-sky-600 dark:text-sky-400 uppercase tracking-widest mt-1">CRM System</span>
+                <span className="text-[10px] font-bold text-[#1b6b6b] dark:text-[#1b6b6b] uppercase tracking-widest mt-1">CRM System</span>
               </div>
             </Link>
 
             {/* Branch Selector */}
             <div className="hidden lg:flex items-center ml-4 pl-6 border-l border-gray-100 dark:border-gray-700">
               <div className="relative group">
-                <MapPin className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-sky-500" />
+                <MapPin className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-[#1b6b6b]" />
                 <select 
                   value={selectedSchoolId || ''} 
                   onChange={(e) => setSelectedSchoolId(Number(e.target.value))}
-                  className="pl-11 pr-10 py-2.5 bg-gray-50 dark:bg-gray-900/50 border border-gray-100 dark:border-gray-700 rounded-2xl text-[10px] font-extrabold uppercase tracking-widest text-gray-900 dark:text-white outline-none focus:ring-4 focus:ring-sky-500/10 transition-all cursor-pointer appearance-none min-w-[180px]"
+                  className="pl-11 pr-10 py-2.5 bg-gray-50 dark:bg-gray-900/50 border border-gray-100 dark:border-gray-700 rounded-2xl text-[10px] font-extrabold uppercase tracking-widest text-gray-900 dark:text-white outline-none focus:ring-4 focus:ring-[#1b6b6b]/10 transition-all cursor-pointer appearance-none min-w-[180px]"
                 >
                   <option value="" disabled>Filialni tanlang</option>
                   {schools.map(school => (
                     <option key={school.id} value={school.id}>{school.name}</option>
                   ))}
                 </select>
-                <ChevronRight size={14} className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 rotate-90 group-hover:text-sky-500 transition-colors pointer-events-none" />
+                <ChevronRight size={14} className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 rotate-90 group-hover:text-[#1b6b6b] transition-colors pointer-events-none" />
               </div>
             </div>
           </div>
 
           <div className="hidden md:flex items-center flex-1 max-w-xl mx-8 relative group">
-            <Search className="absolute left-5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 group-focus-within:text-sky-500 transition-colors" />
+            <Search className="absolute left-5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 group-focus-within:text-[#1b6b6b] transition-colors" />
             <input 
               type="text" 
               placeholder="Qidirish..." 
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full bg-gray-50 dark:bg-gray-900/50 border border-gray-100 dark:border-gray-700 focus:border-sky-500 focus:ring-4 focus:ring-sky-500/10 rounded-2xl pl-12 pr-6 py-2.5 text-[10px] font-extrabold uppercase tracking-widest text-gray-900 dark:text-white placeholder:text-gray-400/60 outline-none transition-all shadow-inner"
+              className="w-full bg-gray-50 dark:bg-gray-900/50 border border-gray-100 dark:border-gray-700 focus:border-[#1b6b6b] focus:ring-4 focus:ring-[#1b6b6b]/10 rounded-2xl pl-12 pr-6 py-2.5 text-[10px] font-extrabold uppercase tracking-widest text-gray-900 dark:text-white placeholder:text-gray-400/60 outline-none transition-all shadow-inner"
             />
             {results && (
               <div className="absolute top-full left-0 right-0 mt-4 bg-white dark:bg-gray-800 rounded-[2.5rem] shadow-2xl border border-gray-100 dark:border-gray-700 overflow-hidden max-h-[80vh] overflow-y-auto animate-in slide-in-from-top-4 duration-300 ring-4 ring-black/5">
@@ -120,10 +121,10 @@ export default function Layout({ children, onLogout }: LayoutProps) {
                        <div className="px-8 py-5">
                          <div className="text-[10px] font-extrabold text-gray-400 dark:text-gray-500 uppercase tracking-widest mb-4 ml-2">O'quvchilar</div>
                          {results.students.map(s => (
-                           <div key={s.id} onClick={() => handleResultClick(`/students/${s.id}`)} className="flex items-center gap-4 p-4 hover:bg-sky-50 dark:hover:bg-sky-900/30 rounded-[1.5rem] cursor-pointer transition-all group">
-                             <div className="w-10 h-10 rounded-xl bg-sky-100 dark:bg-sky-900/50 text-sky-600 dark:text-sky-400 flex items-center justify-center font-extrabold text-xs shrink-0 shadow-inner group-hover:scale-110 duration-300">{s.name.charAt(0)}</div>
+                           <div key={s.id} onClick={() => handleResultClick(`/students/${s.id}`)} className="flex items-center gap-4 p-4 hover:bg-[#1b6b6b]/5 dark:hover:bg-[#1b6b6b]/20 rounded-[1.5rem] cursor-pointer transition-all group">
+                             <div className="w-10 h-10 rounded-xl bg-sky-100 dark:bg-sky-900/50 text-[#1b6b6b] dark:text-[#1b6b6b] flex items-center justify-center font-extrabold text-xs shrink-0 shadow-inner group-hover:scale-110 duration-300">{s.name.charAt(0)}</div>
                              <div>
-                               <p className="text-sm font-extrabold text-gray-900 dark:text-white group-hover:text-sky-600 dark:group-hover:text-sky-400 uppercase tracking-tight">{s.name}</p>
+                               <p className="text-sm font-extrabold text-gray-900 dark:text-white group-hover:text-[#1b6b6b] dark:group-hover:text-[#1b6b6b] uppercase tracking-tight">{s.name}</p>
                                <p className="text-[10px] font-bold text-gray-400 dark:text-gray-500 uppercase mt-0.5">{s.phone}</p>
                              </div>
                            </div>
@@ -184,7 +185,7 @@ export default function Layout({ children, onLogout }: LayoutProps) {
             <button onClick={toggleDarkMode} className="w-12 h-12 flex items-center justify-center text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-2xl transition-all">
               {darkMode ? <Sun size={20} /> : <Moon size={20} />}
             </button>
-            <div className="w-12 h-12 rounded-2xl bg-sky-50 dark:bg-sky-900/30 border border-sky-100 dark:border-sky-800 flex items-center justify-center text-sky-600 dark:text-sky-400 font-bold shadow-inner">
+            <div className="w-12 h-12 rounded-2xl bg-[#1b6b6b]/5 dark:bg-[#1b6b6b]/20 border border-sky-100 dark:border-sky-800 flex items-center justify-center text-[#1b6b6b] dark:text-[#1b6b6b] font-bold shadow-inner">
                 {user?.name?.charAt(0) || 'A'}
             </div>
             <button onClick={onLogout} className="w-12 h-12 flex items-center justify-center text-gray-400 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-900/20 rounded-2xl transition-all">
@@ -204,7 +205,7 @@ export default function Layout({ children, onLogout }: LayoutProps) {
                 onClick={() => navigate(item.path)}
                 className={`flex items-center gap-3 px-6 py-3.5 rounded-2xl text-[11px] font-extrabold uppercase tracking-widest transition-all whitespace-nowrap
                   ${isActive 
-                    ? 'bg-sky-600 text-white shadow-xl shadow-sky-500/30' 
+                    ? 'bg-[#1b6b6b] text-white shadow-xl shadow-[#1b6b6b]/30' 
                     : 'text-gray-400 dark:text-gray-500 hover:text-gray-900 dark:hover:text-white hover:bg-gray-50 dark:hover:bg-gray-700/50'
                   }
                 `}
@@ -261,7 +262,7 @@ export default function Layout({ children, onLogout }: LayoutProps) {
                        onClick={() => { navigate(item.path); setMobileMenuOpen(false); }}
                        className={`w-full flex items-center gap-4 px-6 py-4 rounded-2xl text-[12px] font-extrabold uppercase tracking-widest transition-all
                          ${isActive 
-                           ? 'bg-sky-50 text-sky-600 dark:bg-sky-900/30' 
+                           ? 'bg-[#1b6b6b]/5 text-[#1b6b6b] dark:bg-[#1b6b6b]/20' 
                            : 'text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700/50'
                          }
                        `}

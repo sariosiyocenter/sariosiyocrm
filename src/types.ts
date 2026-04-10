@@ -206,4 +206,73 @@ export interface CRMState {
         instagram?: string;
         workingHours?: string;
     };
+    questions: Question[];
+    exams: Exam[];
+    examResults: ExamResult[];
+}
+
+export interface Question {
+    id: number;
+    text: string;
+    imageUrl?: string;
+    optionA: string;
+    optionB: string;
+    optionC: string;
+    optionD: string;
+    correctAnswer: 'A' | 'B' | 'C' | 'D';
+    difficulty: number;
+    subject: string;
+    topic: string;
+    schoolId: number;
+}
+
+export interface TopicRule {
+    topic: string;
+    count: number;
+}
+
+export interface ExamBlock {
+    id: string;
+    subject: string;
+    topicRules: TopicRule[];
+    pointsPerQuestion: number;
+}
+
+export interface Variant {
+    id: string;
+    variantCode: string;
+    questions: {
+        questionId: number;
+        order: number;
+        shuffledOptions: {
+            A: string;
+            B: string;
+            C: string;
+            D: string;
+        };
+        correctOption: 'A' | 'B' | 'C' | 'D';
+    }[];
+}
+
+export interface Exam {
+    id: number;
+    name: string;
+    date: string;
+    duration: number;
+    schoolId: number;
+    status: 'Yaqinlashmoqda' | 'Tugallangan' | 'Qoralama';
+    blocks: ExamBlock[];
+    totalQuestions: number;
+    maxScore: number;
+    variants?: Variant[];
+}
+
+export interface ExamResult {
+    id: number;
+    studentId: number;
+    examId: number;
+    score: number;
+    percentage: number;
+    scannedAt: string;
+    schoolId: number;
 }
