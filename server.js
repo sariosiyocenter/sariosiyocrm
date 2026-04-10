@@ -520,6 +520,20 @@ app.post('/api/leads', authenticate, async (req, res, next) => {
     res.json({ ...lead, createdAt: lead.createdAt.toISOString() });
   } catch (error) { next(error); }
 });
+// Public endpoint for landing page form submissions (no auth required)
+app.post('/api/public/leads', async (req, res, next) => {
+  try {
+    const { name, phone, course } = req.body;
+    if (!name || !phone) return res.status(400).json({ error: 'Ism va telefon majburiy' });
+    const schoolId = 1; // default school
+    const lead = await prisma.lead.create({
+      data: { name, phone, course: course || 'Aniqlanmagan', source: 'Landing Page', status: 'Yangi', schoolId }
+    });
+    notifyAdmins(`🌐 Landing Page dan yangi ariza:\n👤 ${lead.name}\n📞 ${lead.phone}\n📚 Kurs: ${lead.course}`, schoolId);
+    res.json({ success: true, id: lead.id });
+  } catch (error) { next(error); }
+});
+
 app.put('/api/leads/:id', authenticate, async (req, res, next) => {
   try {
     const { id } = req.params;
