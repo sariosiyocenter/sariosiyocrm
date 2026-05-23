@@ -13,6 +13,13 @@ const __dirname = dirname(__filename);
 
 dotenv.config({ path: join(__dirname, '.env') });
 
+import { createClient } from '@supabase/supabase-js';
+
+const supabaseAdmin = createClient(
+  process.env.SUPABASE_URL || '',
+  process.env.SUPABASE_SERVICE_ROLE_KEY || ''
+);
+
 /*
 if (process.env.TELEGRAM_BOT_TOKEN) {
   startBot();
@@ -1562,22 +1569,29 @@ app.delete('/api/exam-results/:id', authenticate, async (req, res, next) => {
   } catch (err) { next(err); }
 });
 
-// Upload endpoint for question images
+// Upload endpoint — Supabase Storage
 app.post('/api/upload', authenticate, async (req, res, next) => {
   try {
     const { data, filename } = req.body; // data: base64 string, filename: original name
     if (!data || !filename) return res.status(400).json({ error: 'data va filename required' });
 
-    const { writeFile, mkdir } = await import('fs/promises');
-    const uploadDir = join(__dirname, 'public', 'uploads');
-    await mkdir(uploadDir, { recursive: true });
-
     const ext = filename.split('.').pop() || 'jpg';
     const uniqueName = `q_${Date.now()}_${Math.random().toString(36).slice(2)}.${ext}`;
-    const base64Data = data.replace(/^data:image\/\w+;base64,/, '');
-    await writeFile(join(uploadDir, uniqueName), Buffer.from(base64Data, 'base64'));
+    const base64Data = data.replace(/^data:image\/[\w+]+;base64,/, '');
+    const buffer = Buffer.from(base64Data, 'base64');
+    const mimeType = `image/${ext === 'jpg' ? 'jpeg' : ext}`;
 
-    res.json({ url: `/uploads/${uniqueName}` });
+    const { error: uploadError } = await supabaseAdmin.storage
+      .from('uploads')
+      .upload(uniqueName, buffer, { contentType: mimeType, upsert: true });
+
+    if (uploadError) throw uploadError;
+
+    const { data: publicData } = supabaseAdmin.storage
+      .from('uploads')
+      .getPublicUrl(uniqueName);
+
+    res.json({ url: publicData.publicUrl });
   } catch (err) { next(err); }
 });
 
