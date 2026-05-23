@@ -271,8 +271,11 @@ export interface ExamResult {
     id: number;
     studentId: number;
     examId: number;
+    variantCode?: string;
+    answers?: Record<number, 'A' | 'B' | 'C' | 'D' | null>;
     score: number;
     percentage: number;
+    blockScores?: { subject: string; earned: number; max: number }[];
     scannedAt: string;
     schoolId: number;
 }

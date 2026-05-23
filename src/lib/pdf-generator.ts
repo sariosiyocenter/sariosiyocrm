@@ -370,16 +370,24 @@ const renderOMRPage = async (doc: jsPDF, exam: Exam, student?: Student, variantC
     const ansY = gridY;
     const ansX = 15;
     const ansW = 90;
+    // Determine question count and subject label dynamically from exam
+    const questionCount = exam.totalQuestions > 0 ? exam.totalQuestions : 30;
+    const subjectLabel = exam.blocks && exam.blocks.length === 1
+        ? (exam.blocks[0].subject || 'FANLAR').toUpperCase()
+        : 'FANLAR';
+
     doc.setFillColor(mainColor[0], mainColor[1], mainColor[2]);
     doc.rect(ansX, ansY - 5, ansW, 5, 'F');
     doc.setTextColor(255);
-    doc.text("MATEMATIKA", ansX + ansW/2, ansY - 1.5, { align: 'center' });
+    doc.text(subjectLabel, ansX + ansW/2, ansY - 1.5, { align: 'center' });
     doc.setDrawColor(mainColor[0], mainColor[1], mainColor[2]);
-    doc.rect(ansX, ansY, ansW, 105);
+    // Height: 2 columns of ceil(questionCount/2) rows, 6.5mm row height + 10mm padding
+    const rowsPerCol = Math.ceil(questionCount / 2);
+    doc.rect(ansX, ansY, ansW, rowsPerCol * 6.5 + 10);
 
-    for (let i = 0; i < 30; i++) {
-        const col = Math.floor(i / 15);
-        const row = i % 15;
+    for (let i = 0; i < questionCount; i++) {
+        const col = Math.floor(i / rowsPerCol);
+        const row = i % rowsPerCol;
         const x = ansX + 5 + (col * 42);
         const y = ansY + 5 + (row * 6.5);
         doc.setFontSize(7);
@@ -410,44 +418,57 @@ export async function generateOMRSheet(exam: Exam, student?: Student, variant?: 
 }
 
 /**
- * Generates bulk OMR sheets with optimized data preparation
+ * Prepares student data in batches to avoid memory spikes with large groups
  */
-export async function generateBulkOMRSheets(exam: Exam, students: Student[]) {
+async function prepareBatched(
+    students: Student[],
+    exam: Exam,
+    batchSize: number,
+    onProgress?: (current: number, total: number) => void
+) {
+    const results: { student: Student; variantCode: string; qrUrl: string; photoData?: string }[] = [];
+    for (let i = 0; i < students.length; i += batchSize) {
+        const batch = students.slice(i, i + batchSize);
+        const batchResults = await Promise.all(batch.map(async (student, batchIdx) => {
+            const globalIdx = i + batchIdx;
+            const variantCode = exam.variants ? exam.variants[globalIdx % exam.variants.length].variantCode : '';
+            const qrUrl = await QRCode.toDataURL(JSON.stringify({
+                e: exam.id, s: student.id, v: variantCode
+            }), { margin: 1 });
+            let photoData: string | undefined;
+            if (student.photo) {
+                try { photoData = await getAsDataURL(student.photo); } catch { /* skip */ }
+            }
+            return { student, variantCode, qrUrl, photoData };
+        }));
+        results.push(...batchResults);
+        onProgress?.(Math.min(i + batchSize, students.length), students.length);
+    }
+    return results;
+}
+
+/**
+ * Generates bulk OMR sheets with batched data preparation and progress reporting
+ */
+export async function generateBulkOMRSheets(
+    exam: Exam,
+    students: Student[],
+    onProgress?: (current: number, total: number) => void
+) {
     try {
         console.log(`Starting bulk generation for ${students.length} students...`);
-        
-        // 1. Pre-fetch common assets and student data in parallel
-        const prepPromises = students.map(async (student, index) => {
-            const variantCode = exam.variants ? exam.variants[index % exam.variants.length].variantCode : '';
-            const qrUrl = await QRCode.toDataURL(JSON.stringify({ 
-                e: exam.id, 
-                s: student.id, 
-                v: variantCode 
-            }), { margin: 1 });
-            
-            let photoData;
-            if (student.photo) {
-                try {
-                    photoData = await getAsDataURL(student.photo);
-                } catch (e) {
-                    console.warn(`Could not load photo for student ${student.id}`);
-                }
-            }
-            
-            return { student, variantCode, qrUrl, photoData };
-        });
-        
-        const preparedList = await Promise.all(prepPromises);
+
+        const preparedList = await prepareBatched(students, exam, 10, onProgress);
         console.log("Data preparation complete. Rendering PDF...");
 
         const doc = new jsPDF({ orientation: 'p', unit: 'mm', format: 'a4' });
-        
+
         for (let i = 0; i < preparedList.length; i++) {
             const { student, variantCode, qrUrl, photoData } = preparedList[i];
             if (i !== 0) doc.addPage();
             await renderOMRPage(doc, exam, student, variantCode, { qrUrl, photoData });
         }
-        
+
         previewPdf(doc, `bulk-omr-${exam.name}.pdf`);
     } catch (err) {
         console.error("Bulk OMR generation failed:", err);

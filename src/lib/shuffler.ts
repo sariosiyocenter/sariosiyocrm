@@ -97,5 +97,14 @@ export function generateVariants(
         });
     }
 
+    // Warn if any question appears in more than one variant
+    const allIds = variants.flatMap(v => v.questions.map(q => q.questionId));
+    const duplicates = allIds.filter((id, i) => allIds.indexOf(id) !== i);
+    if (duplicates.length > 0) {
+        console.warn(`[Shuffler] ${duplicates.length} ta savol bir nechta variantda takrorlandi. Bank shu qadar kichik.`);
+        // Attach warning so callers can surface it to the user
+        (variants as any)._duplicateCount = duplicates.length;
+    }
+
     return variants;
 }

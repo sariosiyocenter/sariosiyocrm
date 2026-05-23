@@ -24,3 +24,5 @@ test_ssr.tsx
 /seed.js
 /test-*.js
 /users_full.json
+
+.vercel

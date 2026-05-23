@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { ArrowLeft, Layers, Calendar, Clock, Hash, Calculator, Plus, Eye, Download, FileText, CheckCircle2, AlertCircle, FileDown, Users, Printer } from 'lucide-react';
 import { useCRM } from '../context/CRMContext';
@@ -7,13 +7,28 @@ import { generateQuestionPaper, generateOMRSheet, generateBulkOMRSheets } from '
 export default function ExamDetail() {
     const { id } = useParams();
     const navigate = useNavigate();
-    const { exams, groups, students, generateExamVariants, questions } = useCRM();
+    const { exams, groups, students, generateExamVariants, questions, token, selectedSchoolId, showNotification } = useCRM();
 
     const exam = exams.find(e => e.id === Number(id));
     const [isGenerating, setIsGenerating] = useState(false);
-    const [isBulkGenerating, setIsBulkGenerating] = useState(false);
+    const [bulkProgress, setBulkProgress] = useState<{ current: number; total: number } | null>(null);
     const [variantCount, setVariantCount] = useState(4);
     const [selectedGroups, setSelectedGroups] = useState<number[]>([]);
+
+    // Load persisted group assignments on mount
+    useEffect(() => {
+        if (!exam || !token) return;
+        fetch(`/api/exams/${exam.id}/assignments`, {
+            headers: { 'Authorization': `Bearer ${token}` }
+        })
+            .then(r => r.ok ? r.json() : [])
+            .then((assignments: { groupId: number }[]) => {
+                if (assignments.length > 0) {
+                    setSelectedGroups(assignments.map(a => a.groupId));
+                }
+            })
+            .catch(() => { /* ignore if not yet in DB */ });
+    }, [exam?.id, token]);
 
     if (!exam) {
         return (
@@ -31,65 +46,96 @@ export default function ExamDetail() {
         setIsGenerating(false);
     };
 
-    const toggleGroup = (groupId: number) => {
-        setSelectedGroups(prev => 
-            prev.includes(groupId) ? prev.filter(id => id !== groupId) : [...prev, groupId]
-        );
+    // Show duplicate warning after variants are generated
+    useEffect(() => {
+        if (!exam?.variants) return;
+        const dupCount = (exam.variants as any)._duplicateCount;
+        if (dupCount) {
+            showNotification(`Ogohlantirish: ${dupCount} ta savol bir nechta variantda takrorlandi. Savollar banki kichik.`, "info");
+        }
+    }, [exam?.variants]);
+
+    const toggleGroup = async (groupId: number) => {
+        const isSelected = selectedGroups.includes(groupId);
+        setSelectedGroups(prev => isSelected ? prev.filter(id => id !== groupId) : [...prev, groupId]);
+
+        if (!exam || !token || !selectedSchoolId) return;
+        try {
+            if (isSelected) {
+                await fetch(`/api/exams/${exam.id}/assignments/${groupId}`, {
+                    method: 'DELETE', headers: { 'Authorization': `Bearer ${token}` }
+                });
+            } else {
+                await fetch(`/api/exams/${exam.id}/assignments`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+                    body: JSON.stringify({ groupIds: [groupId], schoolId: selectedSchoolId })
+                });
+            }
+        } catch { /* silent — local state already updated */ }
     };
 
     const handleBulkOMR = async () => {
-        console.log("Bulk OMR clicked. SelectedGroups:", selectedGroups);
         if (selectedGroups.length === 0) {
-            alert("Iltimos, avval guruhlarni tanlang!");
+            showNotification("Iltimos, avval guruhlarni tanlang!", "info");
             return;
         }
 
         if (!exam.variants || exam.variants.length === 0) {
-            if (confirm("Variantlar hali yaratilmagan. OMR varaqlari variant kodisiz yaratiladi. Davom etishni xohlaysizmi?")) {
-                // Continue without variants
-            } else {
-                return;
-            }
+            if (!confirm("Variantlar hali yaratilmagan. OMR varaqlari variant kodisiz yaratiladi. Davom etishni xohlaysizmi?")) return;
         }
 
-        setIsBulkGenerating(true);
-        try {
-            console.log("Filtering students... Total students in state:", students.length);
-            
-            // Robust filtering: check both directions (Student -> Groups and Group -> StudentIds)
-            const studentsInSelectedGroups = students.filter(s => {
-                const isInSelectedGroup = s.groups && s.groups.some(gid => selectedGroups.includes(gid));
-                const isInGroupViaStudentIds = selectedGroups.some(gid => {
-                    const group = groups.find(g => g.id === gid);
-                    return group && group.studentIds && group.studentIds.includes(s.id);
-                });
-                
-                const match = isInSelectedGroup || isInGroupViaStudentIds;
-                if (match) console.log(`Matched student: ${s.name} (ID: ${s.id})`);
-                return match;
+        const studentsInSelectedGroups = students.filter(s => {
+            const inGroupsByStudent = s.groups && s.groups.some(gid => selectedGroups.includes(gid));
+            const inGroupsByIds = selectedGroups.some(gid => {
+                const group = groups.find(g => g.id === gid);
+                return group && group.studentIds && group.studentIds.includes(s.id);
             });
+            return inGroupsByStudent || inGroupsByIds;
+        });
 
-            console.log("Students found for bulk print:", studentsInSelectedGroups.length);
+        if (studentsInSelectedGroups.length === 0) {
+            showNotification("Tanlangan guruhlarda o'quvchilar topilmadi!", "info");
+            return;
+        }
 
-            if (studentsInSelectedGroups.length === 0) {
-                alert("Tanlangan guruhlarda o'quvchilar topilmadi yoki guruhlar bo'sh!");
-                setIsBulkGenerating(false);
-                return;
-            }
-
-            console.log("Starting PDF generation for", studentsInSelectedGroups.length, "students...");
-            await generateBulkOMRSheets(exam, studentsInSelectedGroups);
-            console.log("PDF generation requested.");
+        setBulkProgress({ current: 0, total: studentsInSelectedGroups.length });
+        try {
+            await generateBulkOMRSheets(exam, studentsInSelectedGroups, (current, total) => {
+                setBulkProgress({ current, total });
+            });
         } catch (error) {
-            console.error("Bulk OMR Error:", error);
-            alert("PDF generatsiya qilishda xatolik yuz berdi: " + (error as Error).message);
+            showNotification("PDF generatsiya qilishda xatolik: " + (error as Error).message, "error");
         } finally {
-            setIsBulkGenerating(false);
+            setBulkProgress(null);
         }
     };
 
     return (
         <div className="space-y-8 pb-20 animate-in fade-in duration-700 max-w-7xl mx-auto">
+
+            {/* Bulk PDF Progress Overlay */}
+            {bulkProgress && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
+                    <div className="bg-white dark:bg-gray-800 rounded-3xl shadow-2xl p-10 w-full max-w-sm text-center space-y-6">
+                        <div className="w-16 h-16 bg-teal-50 dark:bg-teal-900/30 rounded-2xl flex items-center justify-center mx-auto">
+                            <Printer className="w-8 h-8 text-teal-600 animate-pulse" />
+                        </div>
+                        <div>
+                            <p className="text-sm font-black text-gray-900 dark:text-white uppercase tracking-widest">OMR Varaqalari Tayyorlanmoqda</p>
+                            <p className="text-[10px] text-gray-400 mt-1">{bulkProgress.current} / {bulkProgress.total} o'quvchi</p>
+                        </div>
+                        <div className="w-full bg-gray-100 dark:bg-gray-700 rounded-full h-3">
+                            <div
+                                className="bg-teal-500 h-3 rounded-full transition-all duration-300"
+                                style={{ width: `${Math.round((bulkProgress.current / bulkProgress.total) * 100)}%` }}
+                            />
+                        </div>
+                        <p className="text-2xl font-black text-teal-600">{Math.round((bulkProgress.current / bulkProgress.total) * 100)}%</p>
+                    </div>
+                </div>
+            )}
+
             {/* Header */}
             <div className="flex items-center justify-between">
                 <div className="flex items-center gap-6">
@@ -164,13 +210,13 @@ export default function ExamDetail() {
                             )}
                         </div>
 
-                        <button 
+                        <button
                             onClick={handleBulkOMR}
-                            disabled={isBulkGenerating}
+                            disabled={!!bulkProgress}
                             className="w-full py-4 bg-slate-900 text-white rounded-2xl text-[10px] font-black uppercase tracking-[0.15em] hover:bg-slate-800 transition-all shadow-lg flex items-center justify-center gap-3 active:scale-95 disabled:opacity-50"
                         >
                             <FileText size={16} className="text-teal-400" />
-                            {isBulkGenerating ? 'TAYYORLANMOQDA...' : 'OMMAVIY CHOP ETISH'}
+                            {bulkProgress ? 'TAYYORLANMOQDA...' : 'OMMAVIY CHOP ETISH'}
                         </button>
                     </div>
 

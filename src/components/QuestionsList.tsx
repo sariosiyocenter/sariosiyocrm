@@ -1,13 +1,72 @@
 import React, { useState, useMemo } from 'react';
-import { Search, Plus, Filter, FileUp, Download, Eye, Edit, Trash2, X, AlertCircle } from 'lucide-react';
+import { Search, Plus, Filter, FileUp, Download, Eye, Edit, Trash2, X, AlertCircle, CheckCircle, XCircle } from 'lucide-react';
 import { useCRM } from '../context/CRMContext';
 import { useNavigate } from 'react-router-dom';
 import * as XLSX from 'xlsx';
 
+// Map common column name variants to canonical field names
+const COL_MAP: Record<string, string> = {
+    question: 'text', savol: 'text', text: 'text',
+    optiona: 'optionA', a: 'optionA',
+    optionb: 'optionB', b: 'optionB',
+    optionc: 'optionC', c: 'optionC',
+    optiond: 'optionD', d: 'optionD',
+    correctanswer: 'correctAnswer', togri: 'correctAnswer', answer: 'correctAnswer', javob: 'correctAnswer',
+    subject: 'subject', fan: 'subject',
+    topic: 'topic', mavzu: 'topic',
+    difficulty: 'difficulty', qiyinlik: 'difficulty', daraja: 'difficulty',
+};
+
+interface ImportRow {
+    text: string; optionA: string; optionB: string; optionC: string; optionD: string;
+    correctAnswer: string; difficulty: number; subject: string; topic: string;
+}
+interface ImportError { row: number; field: string; message: string; }
+
+function normalizeRow(raw: any): { data: ImportRow | null; errors: ImportError[]; rowNum: number } {
+    const mapped: any = {};
+    for (const key of Object.keys(raw)) {
+        const norm = key.toLowerCase().replace(/\s+/g, '');
+        const canonical = COL_MAP[norm];
+        if (canonical) mapped[canonical] = raw[key];
+    }
+
+    const errors: ImportError[] = [];
+    const rowNum = 0;
+    if (!mapped.text) errors.push({ row: rowNum, field: 'text', message: 'Savol matni bo\'sh' });
+    if (!mapped.optionA) errors.push({ row: rowNum, field: 'optionA', message: 'A varianti bo\'sh' });
+    if (!mapped.optionB) errors.push({ row: rowNum, field: 'optionB', message: 'B varianti bo\'sh' });
+    if (!mapped.optionC) errors.push({ row: rowNum, field: 'optionC', message: 'C varianti bo\'sh' });
+    if (!mapped.optionD) errors.push({ row: rowNum, field: 'optionD', message: 'D varianti bo\'sh' });
+    if (!mapped.correctAnswer) errors.push({ row: rowNum, field: 'correctAnswer', message: 'To\'g\'ri javob ko\'rsatilmagan' });
+    else if (!['A', 'B', 'C', 'D'].includes(String(mapped.correctAnswer).toUpperCase())) {
+        errors.push({ row: rowNum, field: 'correctAnswer', message: `To\'g\'ri javob A/B/C/D bo\'lishi kerak (${mapped.correctAnswer} berilgan)` });
+    }
+    if (!mapped.subject) errors.push({ row: rowNum, field: 'subject', message: 'Fan nomi bo\'sh' });
+
+    if (errors.length > 0) return { data: null, errors, rowNum };
+
+    return {
+        data: {
+            text: String(mapped.text),
+            optionA: String(mapped.optionA),
+            optionB: String(mapped.optionB),
+            optionC: String(mapped.optionC),
+            optionD: String(mapped.optionD),
+            correctAnswer: String(mapped.correctAnswer).toUpperCase() as any,
+            difficulty: Number(mapped.difficulty) || 1,
+            subject: String(mapped.subject),
+            topic: String(mapped.topic || ''),
+        },
+        errors: [],
+        rowNum,
+    };
+}
+
 export default function QuestionsList() {
-    const { questions, deleteQuestion, addQuestion } = useCRM();
+    const { questions, deleteQuestion, showNotification, token, selectedSchoolId } = useCRM();
     const navigate = useNavigate();
-    
+
     const [search, setSearch] = useState('');
     const [showFilters, setShowFilters] = useState(false);
     const [filters, setFilters] = useState({
@@ -17,6 +76,11 @@ export default function QuestionsList() {
     });
 
     const [isImporting, setIsImporting] = useState(false);
+    const [importPreview, setImportPreview] = useState<{
+        valid: ImportRow[];
+        errors: (ImportError & { row: number })[];
+        total: number;
+    } | null>(null);
 
     // Get unique subjects and topics for filters
     const subjects = useMemo(() => Array.from(new Set(questions.map(q => q.subject).filter(Boolean))), [questions]);
@@ -40,7 +104,6 @@ export default function QuestionsList() {
         const file = e.target.files?.[0];
         if (!file) return;
 
-        setIsImporting(true);
         const reader = new FileReader();
         reader.onload = (evt) => {
             try {
@@ -48,32 +111,51 @@ export default function QuestionsList() {
                 const wb = XLSX.read(bstr, { type: 'binary' });
                 const wsname = wb.SheetNames[0];
                 const ws = wb.Sheets[wsname];
-                const data = XLSX.utils.sheet_to_json(ws);
+                const rawData: any[] = XLSX.utils.sheet_to_json(ws);
 
-                // Expected columns: question, optionA, optionB, optionC, optionD, correctAnswer, difficulty, subject, topic
-                data.forEach((row: any) => {
-                    addQuestion({
-                        text: row.question || row.text || '',
-                        optionA: String(row.optionA || ''),
-                        optionB: String(row.optionB || ''),
-                        optionC: String(row.optionC || ''),
-                        optionD: String(row.optionD || ''),
-                        correctAnswer: (row.correctAnswer || 'A') as any,
-                        difficulty: Number(row.difficulty || 1),
-                        subject: row.subject || '',
-                        topic: row.topic || ''
-                    });
+                const valid: ImportRow[] = [];
+                const errors: (ImportError & { row: number })[] = [];
+
+                rawData.forEach((row, idx) => {
+                    const result = normalizeRow(row);
+                    if (result.data) {
+                        valid.push(result.data);
+                    } else {
+                        result.errors.forEach(err => errors.push({ ...err, row: idx + 2 })); // +2: header + 0-index
+                    }
                 });
-                alert(`${data.length} ta savol muvaffaqiyatli import qilindi!`);
+
+                setImportPreview({ valid, errors, total: rawData.length });
             } catch (err) {
                 console.error("Import failed", err);
-                alert("Import paytida xatolik yuz berdi. Iltimos Excel formatini tekshiring.");
+                showNotification("Excel faylni o'qishda xatolik. Fayl formatini tekshiring.", "error");
             } finally {
-                setIsImporting(false);
                 e.target.value = '';
             }
         };
         reader.readAsBinaryString(file);
+    };
+
+    const confirmImport = async () => {
+        if (!importPreview || importPreview.valid.length === 0) return;
+        setIsImporting(true);
+        try {
+            const res = await fetch('/api/questions/bulk', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+                body: JSON.stringify({ questions: importPreview.valid, schoolId: selectedSchoolId })
+            });
+            if (!res.ok) throw new Error(await res.text());
+            const result = await res.json();
+            showNotification(`${result.count} ta savol muvaffaqiyatli import qilindi!`, "success");
+            setImportPreview(null);
+            // Reload questions from backend
+            window.location.reload();
+        } catch (err: any) {
+            showNotification("Import xatoligi: " + err.message, "error");
+        } finally {
+            setIsImporting(false);
+        }
     };
 
     const stripHtml = (html: string) => {
@@ -84,6 +166,66 @@ export default function QuestionsList() {
 
     return (
         <div className="space-y-8 pb-12 animate-in fade-in duration-700">
+
+            {/* Import Preview Modal */}
+            {importPreview && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
+                    <div className="bg-white dark:bg-gray-800 rounded-3xl shadow-2xl w-full max-w-lg p-8 space-y-6">
+                        <div className="flex items-start justify-between">
+                            <div>
+                                <h2 className="text-lg font-black text-gray-900 dark:text-white">Excel Import Tekshiruvi</h2>
+                                <p className="text-[10px] text-gray-400 uppercase tracking-widest mt-1">Jami {importPreview.total} ta qator topildi</p>
+                            </div>
+                            <button onClick={() => setImportPreview(null)} className="p-2 text-gray-400 hover:text-gray-600">
+                                <X size={20} />
+                            </button>
+                        </div>
+
+                        <div className="flex gap-4">
+                            <div className="flex-1 bg-emerald-50 dark:bg-emerald-900/20 rounded-2xl p-4 border border-emerald-100 dark:border-emerald-800 flex items-center gap-3">
+                                <CheckCircle className="w-6 h-6 text-emerald-500 shrink-0" />
+                                <div>
+                                    <p className="text-xl font-black text-emerald-600">{importPreview.valid.length}</p>
+                                    <p className="text-[9px] font-bold text-emerald-500 uppercase tracking-widest">To'g'ri savollar</p>
+                                </div>
+                            </div>
+                            <div className="flex-1 bg-rose-50 dark:bg-rose-900/20 rounded-2xl p-4 border border-rose-100 dark:border-rose-800 flex items-center gap-3">
+                                <XCircle className="w-6 h-6 text-rose-500 shrink-0" />
+                                <div>
+                                    <p className="text-xl font-black text-rose-600">{importPreview.errors.length}</p>
+                                    <p className="text-[9px] font-bold text-rose-500 uppercase tracking-widest">Xatoliklar</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        {importPreview.errors.length > 0 && (
+                            <div className="bg-rose-50 dark:bg-rose-900/10 rounded-2xl p-4 max-h-40 overflow-y-auto border border-rose-100 dark:border-rose-800 space-y-1">
+                                {importPreview.errors.map((err, i) => (
+                                    <p key={i} className="text-[10px] text-rose-600">
+                                        <span className="font-black">Qator {err.row}:</span> {err.message}
+                                    </p>
+                                ))}
+                            </div>
+                        )}
+
+                        <div className="flex gap-3">
+                            <button
+                                onClick={() => setImportPreview(null)}
+                                className="flex-1 py-3 rounded-2xl border border-gray-200 dark:border-gray-700 text-[10px] font-black uppercase tracking-widest text-gray-500 hover:bg-gray-50"
+                            >
+                                Bekor qilish
+                            </button>
+                            <button
+                                onClick={confirmImport}
+                                disabled={isImporting || importPreview.valid.length === 0}
+                                className="flex-1 py-3 rounded-2xl bg-teal-600 text-white text-[10px] font-black uppercase tracking-widest hover:bg-teal-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                            >
+                                {isImporting ? 'Yuklanmoqda...' : `${importPreview.valid.length} tasini Import qilish`}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
             <div className="flex items-center justify-between">
                 <div>
                     <h1 className="text-3xl font-extrabold text-gray-900 dark:text-white uppercase tracking-tight">Savollar Banki</h1>

@@ -5,8 +5,9 @@ generator client {
 }
 
 datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
 }
 
 model Student {
@@ -26,7 +27,7 @@ model Student {
   fatherPhone String?
   motherName  String?
   motherPhone String?
-  
+
   // New fields for reports
   statusChangedAt DateTime? @default(now())
   leaveReason     String?
@@ -34,7 +35,7 @@ model Student {
   // Transport Relation
   transportId Int?
   transport   Transport? @relation(fields: [transportId], references: [id])
-  
+
   // Student's actual school (maktab)
   studentSchool String?
 
@@ -46,6 +47,7 @@ model Student {
   attendances Attendance[]
   scores      Score[]
   deliveryLogs DeliveryLog[]
+  examResults ExamResult[]
 }
 
 model Transport {
@@ -134,12 +136,13 @@ model Group {
   days       String
   room       Int?
   roomRel    Room?     @relation(fields: [room], references: [id])
-  
+
   schoolId   Int
   school     School    @relation(fields: [schoolId], references: [id])
   students   Student[] @relation("StudentGroups")
   attendances Attendance[]
   scores      Score[]
+  examAssignments ExamAssignment[]
 }
 
 model Lead {
@@ -210,6 +213,10 @@ model School {
   deliveryLogs DeliveryLog[]
   routes      Route[]
   smsLogs     SmsLog[]
+  questions   Question[]
+  exams       Exam[]
+  examResults ExamResult[]
+  examAssignments ExamAssignment[]
 }
 
 model SmsLog {
@@ -307,4 +314,75 @@ model Route {
   school      School   @relation(fields: [schoolId], references: [id])
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
+}
+
+model Question {
+  id            Int      @id @default(autoincrement())
+  text          String
+  imageUrl      String?
+  optionA       String
+  optionB       String
+  optionC       String
+  optionD       String
+  correctAnswer String   // 'A' | 'B' | 'C' | 'D'
+  difficulty    Int      @default(1)
+  subject       String
+  topic         String
+
+  schoolId      Int
+  school        School   @relation(fields: [schoolId], references: [id])
+
+  @@index([schoolId, subject, topic])
+}
+
+model Exam {
+  id             Int      @id @default(autoincrement())
+  name           String
+  date           String
+  duration       Int
+  status         String   @default("Yaqinlashmoqda")
+  blocks         Json     // ExamBlock[] — always read as whole, no per-field queries needed
+  totalQuestions Int      @default(0)
+  maxScore       Float    @default(0)
+  variants       Json?    // Variant[] — generated and stored here
+  createdAt      DateTime @default(now())
+
+  schoolId       Int
+  school         School   @relation(fields: [schoolId], references: [id])
+  results        ExamResult[]
+  assignments    ExamAssignment[]
+
+  @@index([schoolId])
+}
+
+model ExamAssignment {
+  id       Int   @id @default(autoincrement())
+  examId   Int
+  exam     Exam  @relation(fields: [examId], references: [id], onDelete: Cascade)
+  groupId  Int
+  group    Group @relation(fields: [groupId], references: [id])
+  schoolId Int
+  school   School @relation(fields: [schoolId], references: [id])
+
+  @@unique([examId, groupId])
+}
+
+model ExamResult {
+  id          Int      @id @default(autoincrement())
+  studentId   Int
+  student     Student  @relation(fields: [studentId], references: [id])
+  examId      Int
+  exam        Exam     @relation(fields: [examId], references: [id], onDelete: Cascade)
+  variantCode String?
+  answers     Json?    // Record<number, 'A'|'B'|'C'|'D'|null>
+  score       Float    @default(0)
+  percentage  Float    @default(0)
+  blockScores Json?    // {subject: string, earned: number, max: number}[]
+  scannedAt   DateTime @default(now())
+
+  schoolId    Int
+  school      School   @relation(fields: [schoolId], references: [id])
+
+  @@unique([studentId, examId])
+  @@index([examId, schoolId])
 }

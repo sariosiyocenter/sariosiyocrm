@@ -60,7 +60,7 @@ interface CRMContextType extends CRMState {
     addQuestion: (question: Omit<Question, 'id' | 'schoolId'>) => Promise<void>;
     updateQuestion: (id: number, question: Partial<Question>) => Promise<void>;
     deleteQuestion: (id: number) => Promise<void>;
-    addExamResult: (result: Omit<ExamResult, 'id' | 'schoolId'>) => Promise<void>;
+    addExamResult: (result: Omit<ExamResult, 'id' | 'schoolId'>) => Promise<ExamResult>;
     notification: { message: string, type: 'success' | 'error' | 'info' } | null;
     showNotification: (message: string, type: 'success' | 'error' | 'info') => void;
 }
@@ -143,7 +143,7 @@ export const CRMProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             }
 
             if (schoolIdToUse !== null) {
-                const endpoints = ['students', 'teachers', 'groups', 'leads', 'payments', 'courses', 'rooms', 'settings', 'attendances', 'scores', 'teacher-attendances', 'expenses', 'transports', 'routes', 'users'];
+                const endpoints = ['students', 'teachers', 'groups', 'leads', 'payments', 'courses', 'rooms', 'settings', 'attendances', 'scores', 'teacher-attendances', 'expenses', 'transports', 'routes', 'users', 'questions', 'exams', 'exam-results'];
                 const responses = await Promise.all(endpoints.map(ep =>
                     fetch(`${API_BASE}/${ep}?schoolId=${schoolIdToUse}`, {
                         headers: { 'Authorization': `Bearer ${currentToken}` }
@@ -175,6 +175,9 @@ export const CRMProvider: React.FC<{ children: React.ReactNode }> = ({ children 
                     transports: responses[12],
                     routes: responses[13],
                     users: responses[14],
+                    questions: responses[15] || [],
+                    exams: responses[16] || [],
+                    examResults: responses[17] || [],
                     deliveryLogs: [], // Fetched per date in Delivery view
                     selectedSchoolId: schoolIdToUse
                 }));
@@ -628,20 +631,36 @@ export const CRMProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     };
 
     const addExam = async (exam: Omit<Exam, 'id' | 'schoolId'>) => {
-        // mock it locally for now since backend might not exist
-        const newExam = { ...exam, id: Math.floor(Math.random() * 1000000), schoolId: state.selectedSchoolId || 0 } as Exam;
-        setState(prev => ({ ...prev, exams: [...prev.exams, newExam] }));
-        showNotification("Yangi imtihon qo'shildi", "success");
+        try {
+            const newExam = await apiCall('exams', 'POST', exam);
+            setState(prev => ({ ...prev, exams: [...prev.exams, newExam] }));
+            showNotification("Yangi imtihon qo'shildi", "success");
+        } catch (err: any) {
+            showNotification("Imtihon qo'shishda xatolik: " + err.message, "error");
+            throw err;
+        }
     };
 
     const updateExam = async (id: number, exam: Partial<Exam>) => {
-        setState(prev => ({ ...prev, exams: prev.exams.map(e => e.id === id ? { ...e, ...exam } : e) }));
-        showNotification("Imtihon yangilandi", "success");
+        try {
+            const updated = await apiCall(`exams/${id}`, 'PUT', exam);
+            setState(prev => ({ ...prev, exams: prev.exams.map(e => e.id === id ? updated : e) }));
+            showNotification("Imtihon yangilandi", "success");
+        } catch (err: any) {
+            showNotification("Imtihon yangilashda xatolik: " + err.message, "error");
+            throw err;
+        }
     };
 
     const deleteExam = async (id: number) => {
-        setState(prev => ({ ...prev, exams: prev.exams.filter(e => e.id !== id) }));
-        showNotification("Imtihon o'chirildi", "info");
+        try {
+            await apiCall(`exams/${id}`, 'DELETE');
+            setState(prev => ({ ...prev, exams: prev.exams.filter(e => e.id !== id) }));
+            showNotification("Imtihon o'chirildi", "info");
+        } catch (err: any) {
+            showNotification("Imtihon o'chirishda xatolik: " + err.message, "error");
+            throw err;
+        }
     };
 
     const generateExamVariants = async (examId: number, count: number) => {
@@ -650,9 +669,11 @@ export const CRMProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
         try {
             const variants = generateVariants(exam, state.questions, count);
+            // Save variants to backend so they persist
+            const updated = await apiCall(`exams/${examId}`, 'PUT', { variants });
             setState(prev => ({
                 ...prev,
-                exams: prev.exams.map(e => e.id === examId ? { ...e, variants } : e)
+                exams: prev.exams.map(e => e.id === examId ? updated : e)
             }));
             showNotification(`${count} ta variant muvaffaqiyatli yaratildi`, "success");
         } catch (err) {
@@ -662,25 +683,53 @@ export const CRMProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     };
 
     const addQuestion = async (question: Omit<Question, 'id' | 'schoolId'>) => {
-        const newQuestion = { ...question, id: Math.floor(Math.random() * 1000000), schoolId: state.selectedSchoolId || 0 } as Question;
-        setState(prev => ({ ...prev, questions: [...prev.questions, newQuestion] }));
-        showNotification("Yangi savol qo'shildi", "success");
+        try {
+            const newQuestion = await apiCall('questions', 'POST', question);
+            setState(prev => ({ ...prev, questions: [...prev.questions, newQuestion] }));
+            showNotification("Yangi savol qo'shildi", "success");
+        } catch (err: any) {
+            showNotification("Savol qo'shishda xatolik: " + err.message, "error");
+            throw err;
+        }
     };
 
     const updateQuestion = async (id: number, question: Partial<Question>) => {
-        setState(prev => ({ ...prev, questions: prev.questions.map(q => q.id === id ? { ...q, ...question } : q) }));
-        showNotification("Savol yangilandi", "success");
+        try {
+            const updated = await apiCall(`questions/${id}`, 'PUT', question);
+            setState(prev => ({ ...prev, questions: prev.questions.map(q => q.id === id ? updated : q) }));
+            showNotification("Savol yangilandi", "success");
+        } catch (err: any) {
+            showNotification("Savol yangilashda xatolik: " + err.message, "error");
+            throw err;
+        }
     };
 
     const deleteQuestion = async (id: number) => {
-        setState(prev => ({ ...prev, questions: prev.questions.filter(q => q.id !== id) }));
-        showNotification("Savol o'chirildi", "info");
+        try {
+            await apiCall(`questions/${id}`, 'DELETE');
+            setState(prev => ({ ...prev, questions: prev.questions.filter(q => q.id !== id) }));
+            showNotification("Savol o'chirildi", "info");
+        } catch (err: any) {
+            showNotification("Savol o'chirishda xatolik: " + err.message, "error");
+            throw err;
+        }
     };
 
     const addExamResult = async (result: Omit<ExamResult, 'id' | 'schoolId'>) => {
-        const newRes = { ...result, id: Math.floor(Math.random() * 1000000), schoolId: state.selectedSchoolId || 0 } as ExamResult;
-        setState(prev => ({ ...prev, examResults: [...prev.examResults, newRes] }));
-        showNotification("Natija saqlandi", "success");
+        try {
+            const saved = await apiCall('exam-results', 'POST', result);
+            setState(prev => ({
+                ...prev,
+                examResults: prev.examResults.some(r => r.studentId === saved.studentId && r.examId === saved.examId)
+                    ? prev.examResults.map(r => r.studentId === saved.studentId && r.examId === saved.examId ? saved : r)
+                    : [...prev.examResults, saved]
+            }));
+            showNotification("Natija saqlandi", "success");
+            return saved;
+        } catch (err: any) {
+            showNotification("Natija saqlashda xatolik: " + err.message, "error");
+            throw err;
+        }
     };
 
     return (

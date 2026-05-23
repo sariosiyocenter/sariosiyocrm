@@ -53,6 +53,38 @@ app.get('/api/status', async (req, res) => {
   }
 });
 
+// --- Telegram Bot Webhook & Setup ---
+app.post('/api/telegram-webhook', async (req, res) => {
+  try {
+    if (process.env.TELEGRAM_BOT_TOKEN) {
+      await bot.handleUpdate(req.body, res);
+    } else {
+      res.status(500).json({ error: 'Telegram Bot Token not configured' });
+    }
+  } catch (error) {
+    console.error('Telegram Webhook error:', error);
+    if (!res.headersSent) {
+      res.sendStatus(500);
+    }
+  }
+});
+
+app.get('/api/telegram-setup', async (req, res) => {
+  try {
+    if (!process.env.TELEGRAM_BOT_TOKEN) {
+      return res.status(400).json({ success: false, error: 'TELEGRAM_BOT_TOKEN missing in environment variables' });
+    }
+    const host = req.headers.host;
+    const protocol = req.headers['x-forwarded-proto'] || 'https';
+    const webhookUrl = `${protocol}://${host}/api/telegram-webhook`;
+    
+    await bot.telegram.setWebhook(webhookUrl);
+    res.json({ success: true, message: `Telegram Webhook set to: ${webhookUrl}` });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
 // --- Auth Routes ---
 app.post('/api/auth/login', async (req, res, next) => {
   try {
@@ -1305,7 +1337,254 @@ app.get('/api/sms/test-connection', authenticate, async (req, res, next) => {
 
 // ==================== END ESKIZ SMS ====================
 
+// ==================== EXAM MODULE ====================
+
+// --- Questions ---
+app.get('/api/questions', authenticate, async (req, res, next) => {
+  try {
+    const schoolId = parseInt(req.query.schoolId);
+    if (!schoolId) return res.status(400).json({ error: 'schoolId required' });
+    const where = { schoolId };
+    if (req.query.subject) where.subject = req.query.subject;
+    if (req.query.topic) where.topic = req.query.topic;
+    const questions = await prisma.question.findMany({ where, orderBy: { id: 'asc' } });
+    res.json(questions);
+  } catch (err) { next(err); }
+});
+
+app.post('/api/questions', authenticate, async (req, res, next) => {
+  try {
+    const { text, imageUrl, optionA, optionB, optionC, optionD, correctAnswer, difficulty, subject, topic, schoolId } = req.body;
+    if (!text || !optionA || !optionB || !optionC || !optionD || !correctAnswer || !subject || !topic || !schoolId) {
+      return res.status(400).json({ error: 'Barcha maydonlar to\'ldirilishi shart' });
+    }
+    const question = await prisma.question.create({
+      data: { text, imageUrl: imageUrl || null, optionA, optionB, optionC, optionD, correctAnswer, difficulty: difficulty || 1, subject, topic, schoolId: parseInt(schoolId) }
+    });
+    res.status(201).json(question);
+  } catch (err) { next(err); }
+});
+
+app.post('/api/questions/bulk', authenticate, async (req, res, next) => {
+  try {
+    const { questions, schoolId } = req.body;
+    if (!Array.isArray(questions) || !schoolId) return res.status(400).json({ error: 'questions array va schoolId required' });
+    const data = questions.map(q => ({
+      text: q.text, imageUrl: q.imageUrl || null,
+      optionA: q.optionA, optionB: q.optionB, optionC: q.optionC, optionD: q.optionD,
+      correctAnswer: q.correctAnswer, difficulty: q.difficulty || 1,
+      subject: q.subject, topic: q.topic, schoolId: parseInt(schoolId)
+    }));
+    const result = await prisma.question.createMany({ data, skipDuplicates: false });
+    res.status(201).json({ count: result.count });
+  } catch (err) { next(err); }
+});
+
+app.put('/api/questions/:id', authenticate, async (req, res, next) => {
+  try {
+    const id = parseInt(req.params.id);
+    const { text, imageUrl, optionA, optionB, optionC, optionD, correctAnswer, difficulty, subject, topic } = req.body;
+    const question = await prisma.question.update({
+      where: { id },
+      data: { text, imageUrl: imageUrl || null, optionA, optionB, optionC, optionD, correctAnswer, difficulty, subject, topic }
+    });
+    res.json(question);
+  } catch (err) { next(err); }
+});
+
+app.delete('/api/questions/:id', authenticate, async (req, res, next) => {
+  try {
+    await prisma.question.delete({ where: { id: parseInt(req.params.id) } });
+    res.json({ success: true });
+  } catch (err) { next(err); }
+});
+
+// --- Exams ---
+app.get('/api/exams', authenticate, async (req, res, next) => {
+  try {
+    const schoolId = parseInt(req.query.schoolId);
+    if (!schoolId) return res.status(400).json({ error: 'schoolId required' });
+    const exams = await prisma.exam.findMany({
+      where: { schoolId },
+      include: { _count: { select: { results: true, assignments: true } } },
+      orderBy: { createdAt: 'desc' }
+    });
+    res.json(exams);
+  } catch (err) { next(err); }
+});
+
+app.post('/api/exams', authenticate, async (req, res, next) => {
+  try {
+    const { name, date, duration, status, blocks, totalQuestions, maxScore, schoolId } = req.body;
+    if (!name || !date || !duration || !blocks || !schoolId) return res.status(400).json({ error: 'Majburiy maydonlar to\'ldirilmadi' });
+    const exam = await prisma.exam.create({
+      data: { name, date, duration: parseInt(duration), status: status || 'Yaqinlashmoqda', blocks, totalQuestions: parseInt(totalQuestions) || 0, maxScore: parseFloat(maxScore) || 0, schoolId: parseInt(schoolId) }
+    });
+    res.status(201).json(exam);
+  } catch (err) { next(err); }
+});
+
+app.put('/api/exams/:id', authenticate, async (req, res, next) => {
+  try {
+    const id = parseInt(req.params.id);
+    const { name, date, duration, status, blocks, totalQuestions, maxScore, variants } = req.body;
+    const data = {};
+    if (name !== undefined) data.name = name;
+    if (date !== undefined) data.date = date;
+    if (duration !== undefined) data.duration = parseInt(duration);
+    if (status !== undefined) data.status = status;
+    if (blocks !== undefined) data.blocks = blocks;
+    if (totalQuestions !== undefined) data.totalQuestions = parseInt(totalQuestions);
+    if (maxScore !== undefined) data.maxScore = parseFloat(maxScore);
+    if (variants !== undefined) data.variants = variants;
+    const exam = await prisma.exam.update({ where: { id }, data });
+    res.json(exam);
+  } catch (err) { next(err); }
+});
+
+app.delete('/api/exams/:id', authenticate, async (req, res, next) => {
+  try {
+    await prisma.exam.delete({ where: { id: parseInt(req.params.id) } });
+    res.json({ success: true });
+  } catch (err) { next(err); }
+});
+
+// --- Exam Assignments ---
+app.get('/api/exams/:id/assignments', authenticate, async (req, res, next) => {
+  try {
+    const examId = parseInt(req.params.id);
+    const assignments = await prisma.examAssignment.findMany({
+      where: { examId },
+      include: { group: { select: { id: true, name: true } } }
+    });
+    res.json(assignments);
+  } catch (err) { next(err); }
+});
+
+app.post('/api/exams/:id/assignments', authenticate, async (req, res, next) => {
+  try {
+    const examId = parseInt(req.params.id);
+    const { groupIds, schoolId } = req.body;
+    if (!Array.isArray(groupIds) || !schoolId) return res.status(400).json({ error: 'groupIds va schoolId required' });
+    // Upsert each assignment
+    const results = await Promise.all(
+      groupIds.map(groupId =>
+        prisma.examAssignment.upsert({
+          where: { examId_groupId: { examId, groupId: parseInt(groupId) } },
+          create: { examId, groupId: parseInt(groupId), schoolId: parseInt(schoolId) },
+          update: {}
+        })
+      )
+    );
+    res.status(201).json(results);
+  } catch (err) { next(err); }
+});
+
+app.delete('/api/exams/:id/assignments/:groupId', authenticate, async (req, res, next) => {
+  try {
+    const examId = parseInt(req.params.id);
+    const groupId = parseInt(req.params.groupId);
+    await prisma.examAssignment.deleteMany({ where: { examId, groupId } });
+    res.json({ success: true });
+  } catch (err) { next(err); }
+});
+
+// --- Exam Results ---
+app.get('/api/exam-results', authenticate, async (req, res, next) => {
+  try {
+    const where = {};
+    if (req.query.examId) where.examId = parseInt(req.query.examId);
+    if (req.query.studentId) where.studentId = parseInt(req.query.studentId);
+    if (req.query.schoolId) where.schoolId = parseInt(req.query.schoolId);
+    const results = await prisma.examResult.findMany({
+      where,
+      include: { student: { select: { id: true, name: true, photo: true } }, exam: { select: { id: true, name: true, maxScore: true } } },
+      orderBy: { scannedAt: 'desc' }
+    });
+    res.json(results);
+  } catch (err) { next(err); }
+});
+
+app.post('/api/exam-results', authenticate, async (req, res, next) => {
+  try {
+    const { studentId, examId, variantCode, answers, schoolId } = req.body;
+    if (!studentId || !examId || !schoolId) return res.status(400).json({ error: 'studentId, examId, schoolId required' });
+
+    // Fetch exam to calculate score server-side
+    const exam = await prisma.exam.findUnique({ where: { id: parseInt(examId) } });
+    if (!exam) return res.status(404).json({ error: 'Imtihon topilmadi' });
+
+    let score = 0;
+    let blockScores = [];
+
+    if (answers && exam.variants && variantCode) {
+      const variant = exam.variants.find(v => v.variantCode === variantCode);
+      if (variant) {
+        // Calculate per-block scores
+        const blockMap = {};
+        exam.blocks.forEach(block => {
+          blockMap[block.subject.toLowerCase()] = { subject: block.subject, earned: 0, max: 0, pointsPerQ: block.pointsPerQuestion || 1 };
+        });
+
+        variant.questions.forEach((vq, idx) => {
+          const studentAnswer = answers[idx + 1] || answers[idx];
+          const subjectKey = (vq.subject || '').toLowerCase();
+          const block = blockMap[subjectKey] || Object.values(blockMap)[0];
+          if (block) {
+            block.max += block.pointsPerQ;
+            if (studentAnswer === vq.correctOption) {
+              block.earned += block.pointsPerQ;
+              score += block.pointsPerQ;
+            }
+          }
+        });
+
+        blockScores = Object.values(blockMap);
+      }
+    }
+
+    const percentage = exam.maxScore > 0 ? Math.round((score / exam.maxScore) * 100) : 0;
+
+    const result = await prisma.examResult.upsert({
+      where: { studentId_examId: { studentId: parseInt(studentId), examId: parseInt(examId) } },
+      create: { studentId: parseInt(studentId), examId: parseInt(examId), variantCode, answers: answers || {}, score, percentage, blockScores, schoolId: parseInt(schoolId) },
+      update: { variantCode, answers: answers || {}, score, percentage, blockScores, scannedAt: new Date() },
+      include: { student: { select: { id: true, name: true, photo: true } }, exam: { select: { id: true, name: true, maxScore: true } } }
+    });
+    res.status(201).json(result);
+  } catch (err) { next(err); }
+});
+
+app.delete('/api/exam-results/:id', authenticate, async (req, res, next) => {
+  try {
+    await prisma.examResult.delete({ where: { id: parseInt(req.params.id) } });
+    res.json({ success: true });
+  } catch (err) { next(err); }
+});
+
+// Upload endpoint for question images
+app.post('/api/upload', authenticate, async (req, res, next) => {
+  try {
+    const { data, filename } = req.body; // data: base64 string, filename: original name
+    if (!data || !filename) return res.status(400).json({ error: 'data va filename required' });
+
+    const { writeFile, mkdir } = await import('fs/promises');
+    const uploadDir = join(__dirname, 'public', 'uploads');
+    await mkdir(uploadDir, { recursive: true });
+
+    const ext = filename.split('.').pop() || 'jpg';
+    const uniqueName = `q_${Date.now()}_${Math.random().toString(36).slice(2)}.${ext}`;
+    const base64Data = data.replace(/^data:image\/\w+;base64,/, '');
+    await writeFile(join(uploadDir, uniqueName), Buffer.from(base64Data, 'base64'));
+
+    res.json({ url: `/uploads/${uniqueName}` });
+  } catch (err) { next(err); }
+});
+
+// ==================== END EXAM MODULE ====================
+
 // Serve static React files
+app.use('/uploads', express.static(join(__dirname, 'public', 'uploads')));
 app.use(express.static(join(__dirname, 'dist')));
 
 // Handle React Router SPA fallback
@@ -1325,3 +1604,5 @@ process.on('uncaughtException', (err) => {
 app.listen(PORT, () => {
   console.log(`Server is running on port ${PORT}`);
 });
+
+export default app;
