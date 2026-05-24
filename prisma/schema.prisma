@@ -191,10 +191,22 @@ model Room {
   groups   Group[]
 }
 
+model Organization {
+  id        Int      @id @default(autoincrement())
+  name      String
+  address   String?
+  phone     String?
+  createdAt DateTime @default(now())
+  schools   School[]
+}
+
 model School {
   id      Int    @id @default(autoincrement())
   name    String
   address String?
+
+  organizationId Int?
+  organization   Organization? @relation(fields: [organizationId], references: [id])
 
   students Student[]
   teachers Teacher[]

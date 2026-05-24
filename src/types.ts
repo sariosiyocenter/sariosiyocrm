@@ -144,10 +144,24 @@ export interface Room {
     schoolId: number;
 }
 
+export interface Organization {
+    id: number;
+    name: string;
+    address?: string;
+    phone?: string;
+    createdAt: string;
+    schoolCount?: number;
+    studentCount?: number;
+    teacherCount?: number;
+    revenue?: number;
+    userCount?: number;
+}
+
 export interface School {
     id: number;
     name: string;
     address: string;
+    organizationId?: number | null;
 }
 
 export interface Attendance {

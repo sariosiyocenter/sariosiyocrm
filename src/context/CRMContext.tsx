@@ -128,91 +128,70 @@ export const CRMProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         try {
             setLoading(true);
 
-            const schoolsRes = await fetch(`${API_BASE}/schools`, {
-                headers: { 'Authorization': `Bearer ${currentToken}` }
-            });
-            let schools = await schoolsRes.json();
-
+            // SUPERADMIN — data organizations sahifasida o'zi yuklanadi
             if (activeRole === 'SUPERADMIN') {
-                setState(prev => ({
-                    ...prev,
-                    schools,
-                    students: [],
-                    teachers: [],
-                    groups: [],
-                    leads: [],
-                    payments: [],
-                    courses: [],
-                    rooms: [],
-                    attendances: [],
-                    scores: [],
-                    teacherAttendances: [],
-                    expenses: [],
-                    transports: [],
-                    routes: [],
-                    users: [],
-                    questions: [],
-                    exams: [],
-                    examResults: [],
-                    selectedSchoolId: null
-                }));
                 setError(null);
                 setLoading(false);
                 return;
             }
 
-            if (user?.role === 'MANAGER' && user.schoolId) {
-                schools = schools.filter((s: School) => s.id === user.schoolId);
-            }
-
+            // Maktab ID ni aniqlash
             let schoolIdToUse = currentSchoolId;
-            if (schoolIdToUse === null && schools.length > 0) {
-                schoolIdToUse = user?.role === 'MANAGER' ? user.schoolId : (user?.schoolId || schools[0].id);
-                setSelectedSchoolId(schoolIdToUse as number);
+            if (schoolIdToUse === null) {
+                schoolIdToUse = overrideSchoolId ?? null;
+            }
+            if (schoolIdToUse === null) {
+                // Birinchi urinishda schoolId topish uchun schools ro'yxatini olamiz
+                const schoolsRes = await fetch(`${API_BASE}/schools`, {
+                    headers: { 'Authorization': `Bearer ${currentToken}` }
+                });
+                if (schoolsRes.status === 401 || schoolsRes.status === 403) { logout(); return; }
+                let schools: School[] = await schoolsRes.json();
+                if (activeRole === 'MANAGER') {
+                    schools = schools.filter(s => s.id === (overrideSchoolId ?? state.selectedSchoolId));
+                }
+                schoolIdToUse = schools[0]?.id ?? null;
+                if (schoolIdToUse) setSelectedSchoolId(schoolIdToUse);
             }
 
-            if (schoolIdToUse !== null) {
-                const endpoints = ['students', 'teachers', 'groups', 'leads', 'payments', 'courses', 'rooms', 'settings', 'attendances', 'scores', 'teacher-attendances', 'expenses', 'transports', 'routes', 'users', 'questions', 'exams', 'exam-results'];
-                const responses = await Promise.all(endpoints.map(ep =>
-                    fetch(`${API_BASE}/${ep}?schoolId=${schoolIdToUse}`, {
-                        headers: { 'Authorization': `Bearer ${currentToken}` }
-                    }).then(res => {
-                        if (res.status === 401 || res.status === 403) {
-                            logout();
-                            throw new Error("Sessiya muddati tugadi");
-                        }
-                        if (!res.ok) throw new Error(`Fetch error: ${res.statusText}`);
-                        return res.json();
-                    })
-                ));
-
-                setState(prev => ({
-                    ...prev,
-                    schools,
-                    students: responses[0],
-                    teachers: responses[1],
-                    groups: responses[2],
-                    leads: responses[3],
-                    payments: responses[4],
-                    courses: responses[5],
-                    rooms: responses[6],
-                    settings: responses[7],
-                    attendances: responses[8],
-                    scores: responses[9],
-                    teacherAttendances: responses[10],
-                    expenses: responses[11],
-                    transports: responses[12],
-                    routes: responses[13],
-                    users: responses[14],
-                    questions: responses[15] || [],
-                    exams: responses[16] || [],
-                    examResults: responses[17] || [],
-                    deliveryLogs: [], // Fetched per date in Delivery view
-                    selectedSchoolId: schoolIdToUse
-                }));
-            } else {
-                setState(prev => ({ ...prev, schools }));
+            if (schoolIdToUse === null) {
+                setLoading(false);
+                return;
             }
+
+            // 19 request → 1 request: /api/init
+            const res = await fetch(`${API_BASE}/init?schoolId=${schoolIdToUse}`, {
+                headers: { 'Authorization': `Bearer ${currentToken}` }
+            });
+            if (res.status === 401 || res.status === 403) { logout(); return; }
+            if (!res.ok) throw new Error(`Init fetch error: ${res.statusText}`);
+
+            const data = await res.json();
+
+            setState(prev => ({
+                ...prev,
+                schools:            data.schools        || [],
+                students:           data.students       || [],
+                teachers:           data.teachers       || [],
+                groups:             data.groups         || [],
+                leads:              data.leads          || [],
+                payments:           data.payments       || [],
+                courses:            data.courses        || [],
+                rooms:              data.rooms          || [],
+                settings:           data.settings       || prev.settings,
+                attendances:        data.attendances    || [],
+                scores:             data.scores         || [],
+                teacherAttendances: data.teacherAttendances || [],
+                expenses:           data.expenses       || [],
+                transports:         data.transports     || [],
+                routes:             data.routes         || [],
+                users:              data.users          || [],
+                questions:          data.questions      || [],
+                exams:              data.exams          || [],
+                examResults:        data.examResults    || [],
+                deliveryLogs:       [],
+                selectedSchoolId:   schoolIdToUse
+            }));
 
             setError(null);
         } catch (err: any) {
@@ -223,12 +202,12 @@ export const CRMProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         }
     };
 
-    // JWT payload ni client-da decode qilish (verification emas, faqat rol olish uchun)
-    const decodeTokenRole = (t: string): string | null => {
+    // JWT payload ni client-da decode qilish (verification emas, optimizatsiya uchun)
+    const decodeToken = (t: string): { role?: string; schoolId?: number } | null => {
         try {
-            const payload = t.split('.')[1];
-            const decoded = JSON.parse(atob(payload.replace(/-/g, '+').replace(/_/g, '/')));
-            return decoded?.role || null;
+            if (t.startsWith('mock_token_')) return null;
+            const decoded = JSON.parse(atob(t.split('.')[1].replace(/-/g, '+').replace(/_/g, '/')));
+            return decoded || null;
         } catch {
             return null;
         }
@@ -242,15 +221,17 @@ export const CRMProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         try {
             setLoading(true);
 
-            // JWT dan rolni oldindan o'qib, parallel so'rovlar boshlash
-            const predictedRole = decodeTokenRole(token);
+            // JWT dan rolni oldindan o'qib, parallel optimizatsiya
+            const decoded = decodeToken(token);
+            const predictedRole = decoded?.role;
+            const predictedSchoolId = decoded?.schoolId;
             const headers = { 'Authorization': `Bearer ${token}` };
 
             const authPromise = fetch(`${API_BASE}/auth/me`, { headers });
 
-            // SUPERADMIN uchun schools ni ham parallel boshlash
-            const schoolsPromise = predictedRole === 'SUPERADMIN'
-                ? fetch(`${API_BASE}/schools`, { headers })
+            // SUPERADMIN emas + schoolId JWT da bor → /api/init ni parallel boshlash
+            const initPromise = (predictedRole && predictedRole !== 'SUPERADMIN' && predictedSchoolId)
+                ? fetch(`${API_BASE}/init?schoolId=${predictedSchoolId}`, { headers })
                 : null;
 
             const res = await authPromise;
@@ -258,17 +239,43 @@ export const CRMProvider: React.FC<{ children: React.ReactNode }> = ({ children 
                 const userData = await res.json();
                 setUser(userData);
 
-                if (userData.role === 'SUPERADMIN' && schoolsPromise) {
-                    const schoolsRes = await schoolsPromise;
-                    const schools = schoolsRes.ok ? await schoolsRes.json() : [];
-                    setState(prev => ({
-                        ...prev, schools,
-                        students: [], teachers: [], groups: [], leads: [], payments: [],
-                        courses: [], rooms: [], attendances: [], scores: [],
-                        teacherAttendances: [], expenses: [], transports: [], routes: [],
-                        users: [], questions: [], exams: [], examResults: [],
-                        selectedSchoolId: null
-                    }));
+                if (userData.role === 'SUPERADMIN') {
+                    // SUPERADMIN — data organizations sahifasida yuklanadi, bu yerda hech narsa kerak emas
+                    setLoading(false);
+                    return;
+                } else if (initPromise) {
+                    // Init response allaqachon yuborilgan, faqat kutamiz
+                    const initRes = await initPromise;
+                    if (initRes.status === 401 || initRes.status === 403) { logout(); return; }
+                    if (initRes.ok) {
+                        const data = await initRes.json();
+                        setState(prev => ({
+                            ...prev,
+                            schools:            data.schools        || [],
+                            students:           data.students       || [],
+                            teachers:           data.teachers       || [],
+                            groups:             data.groups         || [],
+                            leads:              data.leads          || [],
+                            payments:           data.payments       || [],
+                            courses:            data.courses        || [],
+                            rooms:              data.rooms          || [],
+                            settings:           data.settings       || prev.settings,
+                            attendances:        data.attendances    || [],
+                            scores:             data.scores         || [],
+                            teacherAttendances: data.teacherAttendances || [],
+                            expenses:           data.expenses       || [],
+                            transports:         data.transports     || [],
+                            routes:             data.routes         || [],
+                            users:              data.users          || [],
+                            questions:          data.questions      || [],
+                            exams:              data.exams          || [],
+                            examResults:        data.examResults    || [],
+                            deliveryLogs:       [],
+                            selectedSchoolId:   userData.schoolId
+                        }));
+                    } else {
+                        await fetchData(token, userData.schoolId || undefined, userData.role);
+                    }
                 } else {
                     await fetchData(token, userData.schoolId || undefined, userData.role);
                 }

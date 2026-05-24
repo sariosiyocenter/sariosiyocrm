@@ -34,6 +34,7 @@ const QuestionsList   = lazy(() => import('./components/QuestionsList'));
 const QuestionEditor  = lazy(() => import('./components/QuestionEditor'));
 const ExamResults     = lazy(() => import('./components/ExamResults'));
 const SuperAdmin      = lazy(() => import('./components/SuperAdmin'));
+const OrgDetail       = lazy(() => import('./components/OrgDetail'));
 
 function PageLoader() {
   return (
@@ -77,6 +78,7 @@ export default function App() {
           <Routes>
             <Route path="/"           element={<SuperAdmin />} />
             <Route path="/superadmin" element={<SuperAdmin />} />
+            <Route path="/org/:id"    element={<OrgDetail />} />
             <Route path="*"           element={<Navigate to="/" replace />} />
           </Routes>
         ) : (

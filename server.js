@@ -740,6 +740,170 @@ app.delete('/api/rooms/:id', authenticate, async (req, res, next) => {
   } catch (error) { next(error); }
 });
 
+// ===================== ORGANIZATION ENDPOINTS =====================
+
+app.get('/api/organizations', authenticate, async (req, res, next) => {
+  try {
+    if (req.user.role !== 'SUPERADMIN') return res.status(403).json({ error: 'Ruxsat yoq' });
+    const orgs = await prisma.organization.findMany({ orderBy: { createdAt: 'desc' } });
+
+    // Aggregate stats per org via grouped queries (4 queries total regardless of org count)
+    const [studentGroups, teacherGroups, revenueGroups, userGroups, schoolGroups] = await Promise.all([
+      prisma.student.groupBy({ by: ['schoolId'], _count: { id: true } }),
+      prisma.teacher.groupBy({ by: ['schoolId'], _count: { id: true } }),
+      prisma.payment.groupBy({ by: ['schoolId'], _sum: { amount: true } }),
+      prisma.user.groupBy({ by: ['schoolId'], _count: { id: true } }),
+      prisma.school.findMany({ select: { id: true, organizationId: true } }),
+    ]);
+
+    const toSchoolMap = (arr, key, val) => Object.fromEntries(arr.map(r => [r.schoolId, r[key]?.[val] || 0]));
+    const studentsBySchool = toSchoolMap(studentGroups, '_count', 'id');
+    const teachersBySchool = toSchoolMap(teacherGroups, '_count', 'id');
+    const revenuesBySchool = toSchoolMap(revenueGroups, '_sum', 'amount');
+    const usersBySchool    = toSchoolMap(userGroups,    '_count', 'id');
+
+    const enriched = orgs.map(org => {
+      const orgSchools = schoolGroups.filter(s => s.organizationId === org.id);
+      const schoolCount   = orgSchools.length;
+      const studentCount  = orgSchools.reduce((a, s) => a + (studentsBySchool[s.id] || 0), 0);
+      const teacherCount  = orgSchools.reduce((a, s) => a + (teachersBySchool[s.id] || 0), 0);
+      const revenue       = orgSchools.reduce((a, s) => a + (revenuesBySchool[s.id] || 0), 0);
+      const userCount     = orgSchools.reduce((a, s) => a + (usersBySchool[s.id] || 0), 0);
+      return { ...org, schoolCount, studentCount, teacherCount, revenue, userCount };
+    });
+
+    res.json(enriched);
+  } catch (error) { next(error); }
+});
+
+app.get('/api/organizations/:id', authenticate, async (req, res, next) => {
+  try {
+    if (req.user.role !== 'SUPERADMIN') return res.status(403).json({ error: 'Ruxsat yoq' });
+    const orgId = parseInt(req.params.id);
+    const org = await prisma.organization.findUnique({ where: { id: orgId } });
+    if (!org) return res.status(404).json({ error: 'Tashkilot topilmadi' });
+
+    const schools = await prisma.school.findMany({ where: { organizationId: orgId } });
+
+    const [studentGroups, teacherGroups, revenueGroups, userGroups] = await Promise.all([
+      prisma.student.groupBy({ by: ['schoolId'], where: { schoolId: { in: schools.map(s => s.id) } }, _count: { id: true } }),
+      prisma.teacher.groupBy({ by: ['schoolId'], where: { schoolId: { in: schools.map(s => s.id) } }, _count: { id: true } }),
+      prisma.payment.groupBy({ by: ['schoolId'], where: { schoolId: { in: schools.map(s => s.id) } }, _sum: { amount: true } }),
+      prisma.user.groupBy({ by: ['schoolId'], where: { schoolId: { in: schools.map(s => s.id) } }, _count: { id: true } }),
+    ]);
+
+    const toMap = (arr, key, val) => Object.fromEntries(arr.map(r => [r.schoolId, r[key]?.[val] || 0]));
+    const students = toMap(studentGroups, '_count', 'id');
+    const teachers = toMap(teacherGroups, '_count', 'id');
+    const revenues = toMap(revenueGroups, '_sum', 'amount');
+    const users    = toMap(userGroups,    '_count', 'id');
+
+    const enrichedSchools = schools.map(s => ({
+      ...s,
+      studentCount: students[s.id] || 0,
+      teacherCount: teachers[s.id] || 0,
+      revenue:      revenues[s.id] || 0,
+      userCount:    users[s.id]    || 0,
+    }));
+
+    res.json({ ...org, schools: enrichedSchools });
+  } catch (error) { next(error); }
+});
+
+app.post('/api/organizations', authenticate, async (req, res, next) => {
+  try {
+    if (req.user.role !== 'SUPERADMIN') return res.status(403).json({ error: 'Ruxsat yoq' });
+    const { name, address, phone } = req.body;
+    if (!name) return res.status(400).json({ error: 'Tashkilot nomi kiritilishi shart' });
+    const org = await prisma.organization.create({ data: { name, address, phone } });
+    res.json(org);
+  } catch (error) { next(error); }
+});
+
+app.delete('/api/organizations/:id', authenticate, async (req, res, next) => {
+  try {
+    if (req.user.role !== 'SUPERADMIN') return res.status(403).json({ error: 'Ruxsat yoq' });
+    const orgId = parseInt(req.params.id);
+    const schools = await prisma.school.findMany({ where: { organizationId: orgId }, select: { id: true } });
+    const schoolIds = schools.map(s => s.id);
+
+    if (schoolIds.length > 0) {
+      await prisma.$transaction([
+        prisma.examResult.deleteMany({ where: { schoolId: { in: schoolIds } } }),
+        prisma.examAssignment.deleteMany({ where: { schoolId: { in: schoolIds } } }),
+        prisma.exam.deleteMany({ where: { schoolId: { in: schoolIds } } }),
+        prisma.question.deleteMany({ where: { schoolId: { in: schoolIds } } }),
+        prisma.attendance.deleteMany({ where: { schoolId: { in: schoolIds } } }),
+        prisma.score.deleteMany({ where: { schoolId: { in: schoolIds } } }),
+        prisma.teacherAttendance.deleteMany({ where: { schoolId: { in: schoolIds } } }),
+        prisma.deliveryLog.deleteMany({ where: { schoolId: { in: schoolIds } } }),
+        prisma.route.deleteMany({ where: { schoolId: { in: schoolIds } } }),
+        prisma.transport.deleteMany({ where: { schoolId: { in: schoolIds } } }),
+        prisma.smsLog.deleteMany({ where: { schoolId: { in: schoolIds } } }),
+        prisma.payment.deleteMany({ where: { schoolId: { in: schoolIds } } }),
+        prisma.lead.deleteMany({ where: { schoolId: { in: schoolIds } } }),
+        prisma.expense.deleteMany({ where: { schoolId: { in: schoolIds } } }),
+        prisma.student.deleteMany({ where: { schoolId: { in: schoolIds } } }),
+        prisma.group.deleteMany({ where: { schoolId: { in: schoolIds } } }),
+        prisma.teacher.deleteMany({ where: { schoolId: { in: schoolIds } } }),
+        prisma.course.deleteMany({ where: { schoolId: { in: schoolIds } } }),
+        prisma.room.deleteMany({ where: { schoolId: { in: schoolIds } } }),
+        prisma.setting.deleteMany({ where: { schoolId: { in: schoolIds } } }),
+        prisma.user.deleteMany({ where: { schoolId: { in: schoolIds } } }),
+        prisma.school.deleteMany({ where: { id: { in: schoolIds } } }),
+      ]);
+    }
+
+    await prisma.organization.delete({ where: { id: orgId } });
+    res.json({ success: true });
+  } catch (error) { next(error); }
+});
+
+// ===================== INIT (single bulk-load endpoint) =====================
+// Replaces 19 separate API calls with 1 — critical for Vercel cold-start perf
+
+app.get('/api/init', authenticate, async (req, res, next) => {
+  try {
+    const schoolId = parseInt(req.query.schoolId);
+    if (isNaN(schoolId)) return res.status(400).json({ error: 'schoolId required' });
+
+    // All queries run in parallel — only 1 DB round-trip overhead
+    const [
+      students, teachers, groups, leads, payments, courses, rooms,
+      settings, attendances, scores, teacherAttendances, expenses,
+      transports, routes, users, questions, exams, examResults, schools
+    ] = await Promise.all([
+      prisma.student.findMany({ where: { schoolId } }),
+      prisma.teacher.findMany({ where: { schoolId } }),
+      prisma.group.findMany({ where: { schoolId } }),
+      prisma.lead.findMany({ where: { schoolId } }),
+      prisma.payment.findMany({ where: { schoolId } }),
+      prisma.course.findMany({ where: { schoolId } }),
+      prisma.room.findMany({ where: { schoolId } }),
+      prisma.setting.findFirst({ where: { schoolId } }),
+      prisma.attendance.findMany({ where: { schoolId } }),
+      prisma.score.findMany({ where: { schoolId } }),
+      prisma.teacherAttendance.findMany({ where: { schoolId } }),
+      prisma.expense.findMany({ where: { schoolId } }),
+      prisma.transport.findMany({ where: { schoolId } }),
+      prisma.route.findMany({ where: { schoolId } }),
+      prisma.user.findMany({ where: { schoolId } }),
+      prisma.question.findMany({ where: { schoolId } }),
+      prisma.exam.findMany({ where: { schoolId } }),
+      prisma.examResult.findMany({ where: { schoolId } }),
+      prisma.school.findMany(),
+    ]);
+
+    res.json({
+      students, teachers, groups, leads, payments, courses, rooms,
+      settings, attendances, scores, teacherAttendances, expenses,
+      transports, routes, users, questions, exams, examResults, schools
+    });
+  } catch (error) { next(error); }
+});
+
+// ===================== SCHOOL / BRANCH ENDPOINTS =====================
+
 app.get('/api/schools', authenticate, async (req, res, next) => {
   try {
     const schools = await prisma.school.findMany();
@@ -774,8 +938,12 @@ app.get('/api/schools', authenticate, async (req, res, next) => {
 
 app.post('/api/schools', authenticate, async (req, res, next) => {
   try {
-    if (req.user.role !== 'SUPERADMIN') return res.status(403).json({ error: 'Faqat Super Admin maktab yarata oladi' });
-    res.json(await prisma.school.create({ data: req.body }));
+    if (req.user.role !== 'SUPERADMIN') return res.status(403).json({ error: 'Faqat Super Admin filial yarata oladi' });
+    const { name, address, organizationId } = req.body;
+    if (!name) return res.status(400).json({ error: 'Filial nomi kiritilishi shart' });
+    const data = { name, address };
+    if (organizationId) data.organizationId = parseInt(organizationId);
+    res.json(await prisma.school.create({ data }));
   } catch (error) { next(error); }
 });
 
