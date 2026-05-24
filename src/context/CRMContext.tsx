@@ -79,7 +79,7 @@ export const CRMProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         settings: {
             id: 0,
             schoolId: 0,
-            orgName: "SARIOSIYO",
+            orgName: "QUANTUM EDU",
             adminPhone: "",
             address: "",
             telegram: "",
@@ -118,9 +118,10 @@ export const CRMProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         setState(prev => ({ ...prev, selectedSchoolId: id }));
     };
 
-    const fetchData = async (overrideToken?: string, overrideSchoolId?: number) => {
+    const fetchData = async (overrideToken?: string, overrideSchoolId?: number, roleOverride?: UserRole) => {
         const currentToken = overrideToken || token;
         const currentSchoolId = overrideSchoolId !== undefined ? overrideSchoolId : state.selectedSchoolId;
+        const activeRole = roleOverride || user?.role;
 
         if (!currentToken) return;
 
@@ -131,6 +132,34 @@ export const CRMProvider: React.FC<{ children: React.ReactNode }> = ({ children 
                 headers: { 'Authorization': `Bearer ${currentToken}` }
             });
             let schools = await schoolsRes.json();
+
+            if (activeRole === 'SUPERADMIN') {
+                setState(prev => ({
+                    ...prev,
+                    schools,
+                    students: [],
+                    teachers: [],
+                    groups: [],
+                    leads: [],
+                    payments: [],
+                    courses: [],
+                    rooms: [],
+                    attendances: [],
+                    scores: [],
+                    teacherAttendances: [],
+                    expenses: [],
+                    transports: [],
+                    routes: [],
+                    users: [],
+                    questions: [],
+                    exams: [],
+                    examResults: [],
+                    selectedSchoolId: null
+                }));
+                setError(null);
+                setLoading(false);
+                return;
+            }
 
             if (user?.role === 'MANAGER' && user.schoolId) {
                 schools = schools.filter((s: School) => s.id === user.schoolId);
@@ -194,6 +223,17 @@ export const CRMProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         }
     };
 
+    // JWT payload ni client-da decode qilish (verification emas, faqat rol olish uchun)
+    const decodeTokenRole = (t: string): string | null => {
+        try {
+            const payload = t.split('.')[1];
+            const decoded = JSON.parse(atob(payload.replace(/-/g, '+').replace(/_/g, '/')));
+            return decoded?.role || null;
+        } catch {
+            return null;
+        }
+    };
+
     const checkAuth = async () => {
         if (!token) {
             setLoading(false);
@@ -201,13 +241,37 @@ export const CRMProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         }
         try {
             setLoading(true);
-            const res = await fetch(`${API_BASE}/auth/me`, {
-                headers: { 'Authorization': `Bearer ${token}` }
-            });
+
+            // JWT dan rolni oldindan o'qib, parallel so'rovlar boshlash
+            const predictedRole = decodeTokenRole(token);
+            const headers = { 'Authorization': `Bearer ${token}` };
+
+            const authPromise = fetch(`${API_BASE}/auth/me`, { headers });
+
+            // SUPERADMIN uchun schools ni ham parallel boshlash
+            const schoolsPromise = predictedRole === 'SUPERADMIN'
+                ? fetch(`${API_BASE}/schools`, { headers })
+                : null;
+
+            const res = await authPromise;
             if (res.ok) {
                 const userData = await res.json();
                 setUser(userData);
-                await fetchData(token, userData.schoolId || undefined);
+
+                if (userData.role === 'SUPERADMIN' && schoolsPromise) {
+                    const schoolsRes = await schoolsPromise;
+                    const schools = schoolsRes.ok ? await schoolsRes.json() : [];
+                    setState(prev => ({
+                        ...prev, schools,
+                        students: [], teachers: [], groups: [], leads: [], payments: [],
+                        courses: [], rooms: [], attendances: [], scores: [],
+                        teacherAttendances: [], expenses: [], transports: [], routes: [],
+                        users: [], questions: [], exams: [], examResults: [],
+                        selectedSchoolId: null
+                    }));
+                } else {
+                    await fetchData(token, userData.schoolId || undefined, userData.role);
+                }
             } else {
                 if (token.startsWith('mock_token_')) {
                     setUser({ id: 1, name: "Admin (Mock)", email: "admin@sariosiyo.uz", role: "ADMIN", schoolId: 1 });
@@ -233,7 +297,7 @@ export const CRMProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
     useEffect(() => {
         if (state.selectedSchoolId !== null && user) {
-            fetchData();
+            fetchData(undefined, undefined, user.role);
         }
     }, [state.selectedSchoolId]);
 
@@ -251,7 +315,7 @@ export const CRMProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             setToken(data.token);
             setUser(data.user);
             localStorage.setItem('token', data.token);
-            await fetchData(data.token, data.user.schoolId || undefined);
+            await fetchData(data.token, data.user.schoolId || undefined, data.user.role);
         } catch (err: any) {
             if (err.message.includes('Unexpected end of JSON input') || err.message.includes('Failed to fetch')) {
                 const mockToken = "mock_token_" + Date.now();
@@ -286,7 +350,7 @@ export const CRMProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             settings: {
                 id: 0,
                 schoolId: 0,
-                orgName: "SARIOSIYO",
+                orgName: "QUANTUM EDU",
                 adminPhone: "",
                 address: "",
                 telegram: "",

@@ -4,6 +4,7 @@ import { useCRM } from '../context/CRMContext';
 import { useNavigate } from 'react-router-dom';
 import PhotoCapture from './PhotoCapture';
 import MapPicker from './MapPicker';
+import { compressImage } from '../lib/image';
 
 export default function Students() {
     const { students, groups, teachers, transports, addStudent } = useCRM();
@@ -465,7 +466,10 @@ export default function Students() {
                                                         const file = e.target.files?.[0];
                                                         if (file) {
                                                             const reader = new FileReader();
-                                                            reader.onloadend = () => setNewStudent({ ...newStudent, photo: reader.result as string });
+                                                            reader.onloadend = async () => {
+                                                                const compressed = await compressImage(reader.result as string);
+                                                                setNewStudent({ ...newStudent, photo: compressed });
+                                                            };
                                                             reader.readAsDataURL(file);
                                                         }
                                                     }} 
@@ -521,7 +525,10 @@ export default function Students() {
 
             {isPhotoModalOpen && (
                 <PhotoCapture
-                    onCapture={(photo) => setNewStudent({ ...newStudent, photo })}
+                    onCapture={async (photo) => {
+                        const compressed = await compressImage(photo);
+                        setNewStudent({ ...newStudent, photo: compressed });
+                    }}
                     onClose={() => setIsPhotoModalOpen(false)}
                 />
             )}

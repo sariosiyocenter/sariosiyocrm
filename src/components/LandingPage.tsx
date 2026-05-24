@@ -234,67 +234,61 @@ function lighten(hex: string): string {
 // ─── DATA ─────────────────────────────────────────────────────────────────────
 
 const NAV_LINKS = [
-  { label: 'Biz haqimizda', href: '#about' },
-  { label: 'Kurslar', href: '#courses' },
-  { label: 'Ustozlar', href: '#teachers' },
-  { label: 'Natijalar', href: '#results' },
-  { label: 'Filiallar', href: '#branches' },
+  { label: 'Platforma haqida', href: '#about' },
+  { label: 'Imkoniyatlar', href: '#courses' },
+  { label: 'Mijozlarimiz', href: '#teachers' },
+  { label: 'Hamkorlar', href: '#branches' },
   { label: 'Aloqa', href: '#contact' },
 ];
 
 const STATS = [
-  { value: '3,200+', label: "O'quvchilar", icon: Users },
-  { value: '280+', label: 'Davlat granti', icon: Trophy },
-  { value: '8', label: 'Yil tajriba', icon: Clock },
-  { value: '94%', label: 'Muvaffaqiyat', icon: TrendingUp },
+  { value: '150+', label: "Hamkor Markazlar", icon: Building2 },
+  { value: '50k+', label: "Faol O'quvchilar", icon: Users },
+  { value: '99.9%', label: 'Server Barqarorligi', icon: Zap },
+  { value: '2.5x', label: "Daromad O'sishi", icon: TrendingUp },
 ];
 
 const WHY_US = [
-  { icon: Smartphone, title: 'Raqamli Nazorat', desc: "Farzandingiz darsga kelmasa, SMS bildirishnoma darhol yuboriladi. O'z CRM tizimimiz." },
-  { icon: ShieldCheck, title: 'Xavfsiz Transport', desc: "Darsdan so'ng markazimiz marshrutkalari o'quvchilarni xavfsiz uyiga yetkazadi." },
-  { icon: Target, title: 'Kafolatlangan Tizim', desc: "DTM va IELTS uchun ishlangan metodologiya. Natija ko'rinmasa — pul qaytariladi." },
-  { icon: BarChart3, title: 'Haftalik Hisobot', desc: "Har hafta bolangizning rivojlanishi bo'yicha batafsil hisobot WhatsApp ga yuboriladi." },
-  { icon: Award, title: 'Tajribali Ustozlar', desc: "O'rtacha 8+ yillik tajribaga ega, sertifikatlangan pedagog-ustozlar jamoasi." },
-  { icon: Zap, title: 'Intensiv Darslar', desc: "Haftada 3 marta, 1.5–2 soatlik intensiv format. Qisqa vaqtda maksimal natija." },
+  { icon: Smartphone, title: 'Avtomatlashtirilgan SMS', desc: "O'quvchi darsga kelmaganda yoki to'lov qilganda ota-onaga tizimdan moderatsiyasiz avtomat SMS ketadi." },
+  { icon: ShieldCheck, title: 'Smart Logistika (Transport)', desc: "Avtobuslar va marshrutlar nazorati, haydovchilar ish jadvali va o'quvchilarni uyma-uy yetkazish logistikasi." },
+  { icon: Target, title: 'Lidlar va Sotuv Voronkasi', desc: "Instagram va ijtimoiy tarmoqlardan arizalarni avtomat API orqali qabul qilish hamda statuslar bo'yicha boshqarish." },
+  { icon: BarChart3, title: 'Tahliliy Diagrammalar', desc: "Markazning so'nggi 30 kunlik moliyaviy aylanmasi, daromadlar va xarajatlarning shaffof hisoboti." },
+  { icon: Award, title: 'Imtihonlar & OMR Scanner', desc: "Tizimda test va savollar bankini yaratish, maxsus OMR javoblar varaqasini mobil kamera orqali scan qilib natijalarni avto-hisoblash." },
+  { icon: Zap, title: 'Ustozlar KPI & Ish Haqi', desc: "Ustozlar maoshlarini dars soati, foiz yoki fiks stavkalar asosida tizimda avtomatik hisoblash modulu." },
 ];
 
 const COURSES = [
-  { icon: Calculator, name: 'Matematika', level: 'Barcha bosqich', badge: 'DTM' },
-  { icon: Globe, name: 'Ingliz tili (IELTS)', level: 'Beginner → Advanced', badge: 'IELTS' },
-  { icon: Atom, name: 'Fizika', level: "O'rta va yuqori", badge: 'DTM' },
-  { icon: FlaskConical, name: 'Kimyo', level: "O'rta va yuqori", badge: 'DTM' },
-  { icon: Microscope, name: 'Biologiya', level: "O'rta va yuqori", badge: 'DTM' },
-  { icon: BookOpen, name: "Ona tili & Adabiyot", level: 'Barcha bosqich', badge: 'DTM' },
-  { icon: Languages, name: 'Rus tili', level: 'Beginner → B2', badge: 'CEFR' },
-  { icon: GraduationCap, name: 'Tarix', level: "O'rta va yuqori", badge: 'DTM' },
+  { icon: Calculator, name: 'Moliya & Buxgalteriya', level: 'Daromad va xarajatlar', badge: 'Moliya' },
+  { icon: Globe, name: 'SMS Avtomatlashtirish', level: 'Eskiz SMS xizmati', badge: 'Integratsiya' },
+  { icon: Atom, name: 'Avtobuslar (Logistika)', level: 'Marshrutlar va haydovchilar', badge: 'Logistika' },
+  { icon: FlaskConical, name: 'Davomat & Davralar', level: 'Oson va tezkor belgilash', badge: 'Monitoring' },
+  { icon: Microscope, name: 'OMR Test Scanner', level: 'Kamera orqali test tekshirish', badge: 'Imtihon' },
+  { icon: BookOpen, name: "Lidlar Boshqaruvi", level: 'Mijozlar voronkasi', badge: 'CRM' },
+  { icon: Languages, name: 'Klasslar & Xonalar', level: 'Dars jadvallari va xonalar', badge: 'Sozlamalar' },
+  { icon: GraduationCap, name: 'Ustozlar & KPI', level: 'Maosh hisobi va kadrlar', badge: 'Kadrlar' },
 ];
 
 const TEACHERS = [
-  { name: "Sardor Mirzayev", subject: "IELTS INSTRUCTOR", score: "8.0", exp: "5 yil", students: "1,000+", img: "https://images.unsplash.com/photo-1560250097-0b93528c311a?auto=format&fit=crop&w=400&q=80" },
-  { name: "Malika Rahimova", subject: "KIMYO & BIOLOGIYA", score: "100%", exp: "7 yil", students: "800+", img: "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&w=400&q=80" },
-  { name: "Jasur Aliyev", subject: "MATEMATIKA DTM", score: "SENIOR", exp: "10 yil", students: "3,500+", img: "https://images.unsplash.com/photo-1519085360753-af0119f7cbe7?auto=format&fit=crop&w=400&q=80" },
-  { name: "Aziza Karimova", subject: "ONA TILI", score: "EXPERT", exp: "8 yil", students: "2,000+", img: "https://images.unsplash.com/photo-1580894732444-8ecded790047?auto=format&fit=crop&w=400&q=80" },
-  { name: "Bobur Toshmatov", subject: "FIZIKA DTM", score: "98%", exp: "6 yil", students: "1,200+", img: "https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?auto=format&fit=crop&w=400&q=80" },
+  { name: "Sardor Mirzayev", subject: "SARIOSIYO MARKAZI ASOSCHISI", score: "Mijoz", exp: "8 yil", students: "1,800+", img: "https://images.unsplash.com/photo-1560250097-0b93528c311a?auto=format&fit=crop&w=400&q=80" },
+  { name: "Malika Rahimova", subject: "EVEREST SCHOOL DIREKTORI", score: "Mijoz", exp: "5 yil", students: "1,200+", img: "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&w=400&q=80" },
+  { name: "Jasur Aliyev", subject: "LIDER ACADEMY ASOSCHISI", score: "Mijoz", exp: "10 yil", students: "3,500+", img: "https://images.unsplash.com/photo-1519085360753-af0119f7cbe7?auto=format&fit=crop&w=400&q=80" },
 ];
 
 const RESULTS = [
-  { name: "Soliha R.", course: "IELTS Intensive", badge: "8.0 Band", sub: "C1 darajasi", img: "https://images.unsplash.com/photo-1544717302-de2939b7ef71?auto=format&fit=crop&w=300&q=80" },
-  { name: "Javohir T.", course: "DTM Matematika", badge: "100%", sub: "Davlat granti", img: "https://images.unsplash.com/photo-1519085360753-af0119f7cbe7?auto=format&fit=crop&w=300&q=80" },
-  { name: "Madina R.", course: "Ona tili, Tarix", badge: "189 ball", sub: "Grant, 2024", img: "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&w=300&q=80" },
-  { name: "Rustam Q.", course: "IELTS", badge: "7.5 Band", sub: "B2 darajasi", img: "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=300&q=80" },
-  { name: "Nilufar A.", course: "Kimyo, Biologiya", badge: "185 ball", sub: "Tibbiyot fakulteti", img: "https://images.unsplash.com/photo-1580894732444-8ecded790047?auto=format&fit=crop&w=300&q=80" },
+  { name: "Sariosiyo Markazi", course: "1,800+ faol o'quvchi", badge: "2.5x O'sish", sub: "Logistika va SMS tizimi joriy etildi", img: "https://images.unsplash.com/photo-1544717302-de2939b7ef71?auto=format&fit=crop&w=300&q=80" },
+  { name: "Everest Center", course: "1,200+ faol o'quvchi", badge: "+40% Daromad", sub: "OMR Test Scanner tizimi joriy etildi", img: "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&w=300&q=80" },
 ];
 
 const BRANCHES = [
-  { name: "Sariosiyo Markaziy filiali", address: "Sariosiyo tumani, Markaziy ko'cha 45", phone: "+998 90 123 45 67", hours: "08:00 – 20:00", students: "1,800+", mapUrl: "https://maps.google.com/?q=Sariosiyo" },
-  { name: "Sariosiyo Shimoliy filiali", address: "Sariosiyo tumani, Mustaqillik ko'chasi 12", phone: "+998 90 765 43 21", hours: "08:00 – 20:00", students: "1,400+", mapUrl: "https://maps.google.com/?q=Sariosiyo" },
+  { name: "Sariosiyo Markazi", address: "Sariosiyo tumani, Markaziy ko'cha 45", phone: "+998 90 123 45 67", hours: "SaaS CRM Tizimi faol", students: "1,800+", mapUrl: "https://maps.google.com/?q=Sariosiyo" },
+  { name: "Everest School", address: "Denov shahri, Mustaqillik ko'chasi 12", phone: "+998 90 765 43 21", hours: "SaaS CRM Tizimi faol", students: "1,200+", mapUrl: "https://maps.google.com/?q=Denov" },
 ];
 
 const FAQS = [
-  { q: "Darslar qancha vaqt davom etadi?", a: "Haftada 3 kun, har bir dars 1.5–2 soat. Kurslar o'rtacha 6–8 moduldan iborat bo'lib, jami 3–4 oy davom etadi." },
-  { q: "Ingliz tilini umuman bilmasam IELTS olishim mumkinmi?", a: "Albatta. Noldan boshlash uchun 'General English' kursimiz bor. 3–4 oy ichida baza mustahkamlangach, IELTS Intensive kursiga o'tiladi." },
-  { q: "Transport xizmati qanday ishlaydi?", a: "Darsdan so'ng markazimizning marshrutkalari o'quvchilarni xavfsiz uyiga yetkazadi. Narxi oylik to'lovga kiritilgan yoki alohida kelishiladi." },
-  { q: "Ota-ona nazorati qanday amalga oshiriladi?", a: "O'z CRM tizimimiz orqali: farzandingiz darsga kelmasa darhol SMS yuboriladi. Haftalik rivojlanish hisoboti WhatsApp ga keladi." },
+  { q: "Tizimni o'quv markazimizga qanday ulaymiz?", a: "Mutaxassislarimiz bilan bog'lanasiz va biz 1 kun ichida markazingiz uchun alohida tashkilot (maktab) yaratib, ma'lumotlarni o'tkazishga yordam beramiz." },
+  { q: "SaaS nima va u bizga qanday foyda beradi?", a: "SaaS (Software as a Service) - bu dasturni sotib olmasdan, oylik/yillik obuna evaziga bulutli tizimdan foydalanish. Serverlar, yangilanishlar va texnik yordam bepul taqdim etiladi." },
+  { q: "Bizning ma'lumotlarimiz xavfsizligi kafolatlanadimi?", a: "Albatta. Barcha ma'lumotlar shifrlangan holda xavfsiz Supabase bulutli ma'lumotlar omborida saqlanadi va kunlik zaxira nusxalari (backup) olinadi." },
+  { q: "SMS to'lovlari qanday amalga oshiriladi?", a: "Eskiz.uz platformasidan shaxsiy login/parol orqali token olasiz. SMS xarajatlari bevosita Eskiz balansingizdan chegiriladi, biz qo'shimcha haq olmaymiz." },
 ];
 
 const wiv = {
@@ -352,8 +346,8 @@ export default function LandingPage() {
               <GraduationCap className="w-5 h-5 text-white" />
             </div>
             <div>
-              <div className="text-lg font-black tracking-tight leading-none" style={{ color: '#0F2554' }}>SARIOSIYO</div>
-              <div className="text-[10px] font-bold tracking-widest uppercase" style={{ color: '#C9922A' }}>O'quv Markazi</div>
+              <div className="text-lg font-black tracking-tight leading-none" style={{ color: '#0F2554' }}>QUANTUM</div>
+              <div className="text-[10px] font-bold tracking-widest uppercase" style={{ color: '#C9922A' }}>EDU</div>
             </div>
           </a>
 
@@ -426,24 +420,22 @@ export default function LandingPage() {
               style={{ background: 'rgba(15,37,84,0.06)', borderColor: 'rgba(15,37,84,0.15)' }}>
               <Sparkles className="w-4 h-4" style={{ color: '#C9922A' }} />
               <span className="text-xs font-bold tracking-widest uppercase" style={{ color: '#0F2554' }}>
-                Sariosiyodagi ilk o'quv ekotizimi
+                O'quv markazlari uchun SaaS platformasi
               </span>
             </motion.div>
 
             <motion.h1 initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.7, delay: 0.15 }}
               className="text-4xl sm:text-5xl md:text-6xl font-black tracking-tight leading-[1.06] mb-6"
               style={{ color: '#0F2554' }}>
-              Oddiy Bolalar<br />
-              Qanday Qilib{' '}
-              <span style={{ color: '#C9922A' }}>Davlat Grantiga</span>
-              <br />Kiryapti?
+              O'quv Markazini<br />
+              Zamonaviy Tizim<br />
+              Orqali <span style={{ color: '#C9922A' }}>Boshqaring</span>
             </motion.h1>
 
             <motion.p initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.7, delay: 0.3 }}
               className="text-lg md:text-xl font-medium leading-relaxed max-w-xl mb-10"
               style={{ color: '#475569' }}>
-              Kafolatlanmagan bilimlardan voz keching. Bizda barchasi aniq: DTM va IELTS uchun
-              ishlangan tizim, haftalik nazorat va qat'iy tartib.
+              O'quvchilar nazorati, moliya, to'lovlar, avto-SMS xabarnomalar va OMR imtihon tizimi - barchasi yagona bulutli CRM platformada.
             </motion.p>
 
             <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.7, delay: 0.45 }}
@@ -451,13 +443,13 @@ export default function LandingPage() {
               <a href="#contact"
                 className="group inline-flex items-center justify-center gap-2 px-8 py-4 text-white font-black rounded-2xl transition-all hover:scale-105 text-lg shadow-lg shadow-navy/20"
                 style={{ background: '#0F2554' }}>
-                Qabulga Yozilish
+                Tizimni Sinab Ko'rish
                 <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
               </a>
-              <a href="#results"
+              <a href="#courses"
                 className="inline-flex items-center justify-center gap-2 px-8 py-4 font-bold rounded-2xl transition-all border text-lg hover:bg-white"
                 style={{ color: '#0F2554', borderColor: 'rgba(15,37,84,0.2)' }}>
-                Natijalarni Ko'rish
+                Imkoniyatlar
               </a>
             </motion.div>
           </div>
@@ -500,21 +492,19 @@ export default function LandingPage() {
             <motion.h2 {...wiv} transition={{ duration: 0.55, ease: 'easeOut', delay: 0.06 }}
               className="text-4xl md:text-5xl font-black tracking-tight leading-tight mb-6" style={{ color: '#0F2554' }}>
               Biz shunchaki<br />
-              <span style={{ color: '#C9922A' }}>o'quv markaz</span><br />
+              <span style={{ color: '#C9922A' }}>CRM dastur</span><br />
               emasmiz.
             </motion.h2>
             <motion.p {...wiv} transition={{ duration: 0.55, ease: 'easeOut', delay: 0.1 }}
               className="text-lg leading-relaxed mb-5" style={{ color: '#475569' }}>
-              Sariosiyo O'quv Markazi 2016 yildan beri mintaqada ta'lim sifatini yangi darajaga ko'tarib kelmoqda.
-              Bizning maqsadimiz — har bir o'quvchining potensialini to'liq ochib berish.
+              Quantum Edu platformasi o'quv markazlari va maktablar boshqaruv tizimini yangi bosqichga olib chiqadi. Bizning maqsadimiz - ta'lim muassasalarini raqamlashtirish.
             </motion.p>
             <motion.p {...wiv} transition={{ duration: 0.55, ease: 'easeOut', delay: 0.14 }}
               className="text-lg leading-relaxed mb-8" style={{ color: '#475569' }}>
-              Zamonaviy raqamli CRM tizimimiz, tajribali ustozlar jamoasi va individual yondashuv orqali
-              minglab talabalarimiz DTM va xalqaro imtihonlarda yuqori natijalar ko'rsatdi.
+              Bulutli texnologiyalarimiz, avtomatlashtirilgan logistika va innovatsion OMR test tekshirish modullari yordamida markazingiz daromadi va tartib-intizomini oshiring.
             </motion.p>
             <motion.div {...wiv} transition={{ duration: 0.55, ease: 'easeOut', delay: 0.18 }} className="flex flex-wrap gap-3">
-              {['DTM mutaxassisligi', 'IELTS tayyorlash', 'Raqamli nazorat', 'Individual yondashuv'].map(tag => (
+              {['Moliya & Kassa', 'Avto-SMS bildirishnoma', 'OMR Scanner', 'Transport & Logistika'].map(tag => (
                 <span key={tag}
                   className="px-4 py-2 rounded-full border text-sm font-semibold"
                   style={{ borderColor: 'rgba(15,37,84,0.15)', color: '#0F2554', background: 'rgba(15,37,84,0.04)' }}>
@@ -936,19 +926,11 @@ export default function LandingPage() {
                 <span className="w-2 h-2 rounded-full animate-pulse" style={{ background: '#C9922A' }} />
                 <span className="text-xs font-bold tracking-widest uppercase" style={{ color: '#C9922A' }}>Bog'lanish</span>
               </motion.div>
-              <motion.h2 {...wiv} transition={{ duration: 0.55, ease: 'easeOut', delay: 0.08 }}
-                className="text-4xl md:text-5xl font-black tracking-tight mb-6" style={{ color: '#0F2554' }}>
-                Bugun qadamingizni<br /><span style={{ color: '#C9922A' }}>qo'ying.</span>
-              </motion.h2>
-              <motion.p {...wiv} transition={{ duration: 0.55, ease: 'easeOut', delay: 0.14 }}
-                className="text-lg leading-relaxed mb-10" style={{ color: '#475569' }}>
-                Bepul maslahat uchun ariza qoldiring. Mutaxassislarimiz 24 soat ichida siz bilan bog'lanadi.
-              </motion.p>
-              <motion.div {...wiv} transition={{ duration: 0.55, ease: 'easeOut', delay: 0.2 }} className="space-y-4">
+               <motion.div {...wiv} transition={{ duration: 0.55, ease: 'easeOut', delay: 0.2 }} className="space-y-4">
                 {[
                   { icon: Phone, label: 'Telefon', value: '+998 90 123 45 67', href: 'tel:+998901234567' },
-                  { icon: Instagram, label: 'Instagram', value: '@sariosiyo_markaz', href: 'https://instagram.com' },
-                  { icon: MapPin, label: 'Manzil', value: "Sariosiyo tumani, Markaziy ko'cha 45", href: null },
+                  { icon: Instagram, label: 'Instagram', value: '@quantum_edu', href: 'https://instagram.com' },
+                  { icon: MapPin, label: 'Manzil', value: "Toshkent shahar, Chilonzor tumani", href: null },
                 ].map((row, i) => (
                   <div key={i}
                     className={`flex items-center gap-4 p-4 rounded-xl border transition-all ${row.href ? 'cursor-pointer hover:bg-gray-50 hover:shadow-sm' : ''}`}
@@ -1008,13 +990,13 @@ export default function LandingPage() {
                     </div>
                   ))}
                   <div>
-                    <label className="block text-xs font-bold mb-2 uppercase tracking-wider" style={{ color: '#94A3B8' }}>Qiziqayotgan kurs</label>
+                    <label className="block text-xs font-bold mb-2 uppercase tracking-wider" style={{ color: '#94A3B8' }}>Qiziqayotgan modul</label>
                     <select
                       value={form.course}
                       onChange={e => setForm({ ...form, course: e.target.value })}
                       className="w-full px-4 py-3.5 rounded-xl border outline-none transition-all text-sm"
                       style={{ background: '#FFFFFF', borderColor: 'rgba(15,37,84,0.15)', color: form.course ? '#0F2554' : '#94A3B8' }}>
-                      <option value="">Kursni tanlang (ixtiyoriy)</option>
+                      <option value="">Modulni tanlang (ixtiyoriy)</option>
                       {COURSES.map(c => <option key={c.name} value={c.name}>{c.name}</option>)}
                     </select>
                   </div>
@@ -1049,8 +1031,8 @@ export default function LandingPage() {
                 <GraduationCap className="w-4 h-4 text-white" />
               </div>
               <div>
-                <div className="text-sm font-black" style={{ color: '#0F2554' }}>SARIOSIYO</div>
-                <div className="text-[9px] font-bold tracking-widest uppercase" style={{ color: '#C9922A' }}>O'quv Markazi</div>
+                <div className="text-sm font-black" style={{ color: '#0F2554' }}>QUANTUM</div>
+                <div className="text-[9px] font-bold tracking-widest uppercase" style={{ color: '#C9922A' }}>EDU</div>
               </div>
             </a>
             <nav className="flex flex-wrap justify-center gap-x-6 gap-y-2">
@@ -1058,7 +1040,7 @@ export default function LandingPage() {
                 <a key={l.href} href={l.href} className="text-xs transition-colors hover:opacity-70" style={{ color: '#94A3B8' }}>{l.label}</a>
               ))}
             </nav>
-            <p className="text-xs" style={{ color: '#CBD5E1' }}>© {new Date().getFullYear()} Sariosiyo O'quv Markazi</p>
+            <p className="text-xs" style={{ color: '#CBD5E1' }}>© {new Date().getFullYear()} Quantum Edu</p>
           </div>
         </div>
       </footer>

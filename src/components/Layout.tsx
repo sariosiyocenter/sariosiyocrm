@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { 
   Users, GraduationCap, Target, Settings, 
   LayoutDashboard, Wallet, Search, Bell, Sun, Moon, LogOut, X, ChevronRight, User, MapPin, 
-  CheckCircle2, AlertCircle, Info, Menu, BarChart3, Bus, Truck, Navigation, MessageSquare, FileText, BookOpen, ScanLine
+  CheckCircle2, AlertCircle, Info, Menu, BarChart3, Bus, Truck, Navigation, MessageSquare, FileText, BookOpen, ScanLine, Shield
 } from 'lucide-react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useCRM } from '../context/CRMContext';
@@ -20,7 +20,7 @@ export default function Layout({ children, onLogout }: LayoutProps) {
   const [searchQuery, setSearchQuery] = useState('');
   const [showNotifications, setShowNotifications] = useState(false);
 
-  const navItems = [
+  const baseItems = [
     { label: 'Dashboard', icon: LayoutDashboard, path: '/' },
     { label: 'Lidlar', icon: Target, path: '/leads' },
     { label: 'Ustozlar', icon: GraduationCap, path: '/teachers' },
@@ -35,6 +35,10 @@ export default function Layout({ children, onLogout }: LayoutProps) {
     { label: 'SMS', icon: MessageSquare, path: '/sms-history' },
     { label: 'Sozlamalar', icon: Settings, path: '/settings' },
   ];
+
+  const navItems = user?.role === 'SUPERADMIN' 
+    ? [{ label: 'Super Admin', icon: Shield, path: '/superadmin' }]
+    : baseItems;
 
   const currentPath = location.pathname;
 
@@ -75,40 +79,43 @@ export default function Layout({ children, onLogout }: LayoutProps) {
             <Link to="/" className="flex items-center gap-3 group">
               <img src="/logo.png" alt="Logo" className="w-12 h-12 object-contain group-hover:scale-105 transition-transform" />
               <div className="flex flex-col">
-                <span className="text-sm font-extrabold text-gray-900 dark:text-white uppercase tracking-tight leading-none">Sariosiyo</span>
+                <span className="text-sm font-extrabold text-gray-900 dark:text-white uppercase tracking-tight leading-none">Quantum Edu</span>
                 <span className="text-[10px] font-bold text-[#1b6b6b] dark:text-[#1b6b6b] uppercase tracking-widest mt-1">CRM System</span>
               </div>
             </Link>
 
             {/* Branch Selector */}
-            <div className="hidden lg:flex items-center ml-4 pl-6 border-l border-gray-100 dark:border-gray-700">
-              <div className="relative group">
-                <MapPin className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-[#1b6b6b]" />
-                <select 
-                  value={selectedSchoolId || ''} 
-                  onChange={(e) => setSelectedSchoolId(Number(e.target.value))}
-                  className="pl-11 pr-10 py-2.5 bg-gray-50 dark:bg-gray-900/50 border border-gray-100 dark:border-gray-700 rounded-2xl text-[10px] font-extrabold uppercase tracking-widest text-gray-900 dark:text-white outline-none focus:ring-4 focus:ring-[#1b6b6b]/10 transition-all cursor-pointer appearance-none min-w-[180px]"
-                >
-                  <option value="" disabled>Filialni tanlang</option>
-                  {schools.map(school => (
-                    <option key={school.id} value={school.id}>{school.name}</option>
-                  ))}
-                </select>
-                <ChevronRight size={14} className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 rotate-90 group-hover:text-[#1b6b6b] transition-colors pointer-events-none" />
+            {user?.role !== 'SUPERADMIN' && (
+              <div className="hidden lg:flex items-center ml-4 pl-6 border-l border-gray-100 dark:border-gray-700">
+                <div className="relative group">
+                  <MapPin className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-[#1b6b6b]" />
+                  <select 
+                    value={selectedSchoolId || ''} 
+                    onChange={(e) => setSelectedSchoolId(Number(e.target.value))}
+                    className="pl-11 pr-10 py-2.5 bg-gray-50 dark:bg-gray-900/50 border border-gray-100 dark:border-gray-700 rounded-2xl text-[10px] font-extrabold uppercase tracking-widest text-gray-900 dark:text-white outline-none focus:ring-4 focus:ring-[#1b6b6b]/10 transition-all cursor-pointer appearance-none min-w-[180px]"
+                  >
+                    <option value="" disabled>Filialni tanlang</option>
+                    {schools.map(school => (
+                      <option key={school.id} value={school.id}>{school.name}</option>
+                    ))}
+                  </select>
+                  <ChevronRight size={14} className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 rotate-90 group-hover:text-[#1b6b6b] transition-colors pointer-events-none" />
+                </div>
               </div>
-            </div>
+            )}
           </div>
 
-          <div className="hidden md:flex items-center flex-1 max-w-xl mx-8 relative group">
-            <Search className="absolute left-5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 group-focus-within:text-[#1b6b6b] transition-colors" />
-            <input 
-              type="text" 
-              placeholder="Qidirish..." 
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full bg-gray-50 dark:bg-gray-900/50 border border-gray-100 dark:border-gray-700 focus:border-[#1b6b6b] focus:ring-4 focus:ring-[#1b6b6b]/10 rounded-2xl pl-12 pr-6 py-2.5 text-[10px] font-extrabold uppercase tracking-widest text-gray-900 dark:text-white placeholder:text-gray-400/60 outline-none transition-all shadow-inner"
-            />
-            {results && (
+          {user?.role !== 'SUPERADMIN' && (
+            <div className="hidden md:flex items-center flex-1 max-w-xl mx-8 relative group">
+              <Search className="absolute left-5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 group-focus-within:text-[#1b6b6b] transition-colors" />
+              <input 
+                type="text" 
+                placeholder="Qidirish..." 
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-full bg-gray-50 dark:bg-gray-900/50 border border-gray-100 dark:border-gray-700 focus:border-[#1b6b6b] focus:ring-4 focus:ring-[#1b6b6b]/10 rounded-2xl pl-12 pr-6 py-2.5 text-[10px] font-extrabold uppercase tracking-widest text-gray-900 dark:text-white placeholder:text-gray-400/60 outline-none transition-all shadow-inner"
+              />
+              {results && (
               <div className="absolute top-full left-0 right-0 mt-4 bg-white dark:bg-gray-800 rounded-[2.5rem] shadow-2xl border border-gray-100 dark:border-gray-700 overflow-hidden max-h-[80vh] overflow-y-auto animate-in slide-in-from-top-4 duration-300 ring-4 ring-black/5">
                 {Object.values(results).every(arr => arr.length === 0) ? (
                   <div className="p-12 text-center flex flex-col items-center justify-center">
@@ -180,6 +187,7 @@ export default function Layout({ children, onLogout }: LayoutProps) {
               </div>
             )}
           </div>
+        )}
 
           <div className="flex items-center gap-4">
             <button onClick={toggleDarkMode} className="w-12 h-12 flex items-center justify-center text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-2xl transition-all">

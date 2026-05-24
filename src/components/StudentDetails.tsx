@@ -7,6 +7,7 @@ import { useCRM } from '../context/CRMContext';
 import { useParams, useNavigate } from 'react-router-dom';
 import MapPicker from './MapPicker';
 import PhotoCapture from './PhotoCapture';
+import { compressImage } from '../lib/image';
 
 export default function StudentDetails() {
     const { id } = useParams<{ id: string }>();
@@ -24,8 +25,9 @@ export default function StudentDetails() {
     const [showSmsModal, setShowSmsModal] = useState(false);
     const [smsData, setSmsData] = useState({ phone: '', type: '' });
 
-    const handlePhotoCapture = (base64: string) => {
-        updateStudent(student!.id, { photo: base64 });
+    const handlePhotoCapture = async (base64: string) => {
+        const compressed = await compressImage(base64);
+        updateStudent(student!.id, { photo: compressed });
     };
     const [isMapOpen, setIsMapOpen] = useState(false);
     const [editForm, setEditForm] = useState({
@@ -139,8 +141,9 @@ export default function StudentDetails() {
         const file = e.target.files?.[0];
         if (file) {
             const reader = new FileReader();
-            reader.onloadend = () => {
-                updateStudent(student.id, { photo: reader.result as string });
+            reader.onloadend = async () => {
+                const compressed = await compressImage(reader.result as string);
+                updateStudent(student.id, { photo: compressed });
             };
             reader.readAsDataURL(file);
         }

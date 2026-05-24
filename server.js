@@ -98,6 +98,22 @@ app.post('/api/auth/login', async (req, res, next) => {
     const { email, password } = req.body;
     if (!email || !password) return res.status(400).json({ error: 'Email va parol kiritilishi shart' });
 
+    // ── SUPERADMIN: .env dan tekshiriladi, DB ga murojaat qilinmaydi ──
+    const saEmail = process.env.SUPERADMIN_EMAIL;
+    const saPass  = process.env.SUPERADMIN_PASSWORD;
+    if (saEmail && saPass && email === saEmail && password === saPass) {
+      const token = jwt.sign(
+        { id: 0, email: saEmail, role: 'SUPERADMIN', schoolId: null },
+        JWT_SECRET,
+        { expiresIn: '24h' }
+      );
+      return res.json({
+        token,
+        user: { id: 0, email: saEmail, name: 'Super Admin', role: 'SUPERADMIN', schoolId: null }
+      });
+    }
+
+    // ── Oddiy foydalanuvchilar ──
     const user = await prisma.user.findUnique({ where: { email } });
     if (!user || !(await bcrypt.compare(password, user.password))) {
       return res.status(401).json({ error: 'Email yoki parol xato' });
@@ -110,6 +126,10 @@ app.post('/api/auth/login', async (req, res, next) => {
 
 app.get('/api/auth/me', authenticate, async (req, res, next) => {
   try {
+    // SUPERADMIN DB da saqlanmaydi
+    if (req.user.role === 'SUPERADMIN') {
+      return res.json({ id: 0, email: req.user.email, name: 'Super Admin', role: 'SUPERADMIN', schoolId: null });
+    }
     const user = await prisma.user.findUnique({ where: { id: req.user.id } });
     if (!user) return res.status(404).json({ error: 'Foydalanuvchi topilmadi' });
     res.json({ id: user.id, email: user.email, name: user.name, role: user.role, schoolId: user.schoolId });
@@ -141,7 +161,7 @@ app.get('/api/users', authenticate, async (req, res, next) => {
 
 app.post('/api/users', authenticate, async (req, res, next) => {
   try {
-    if (req.user.role !== 'ADMIN' && req.user.role !== 'MANAGER') return res.status(403).json({ error: 'Ruhsat yo' });
+    if (req.user.role !== 'ADMIN' && req.user.role !== 'MANAGER' && req.user.role !== 'SUPERADMIN') return res.status(403).json({ error: 'Ruhsat yo' });
 
     const { email, password, name, phone, role, schoolId } = req.body;
 
@@ -720,25 +740,69 @@ app.delete('/api/rooms/:id', authenticate, async (req, res, next) => {
   } catch (error) { next(error); }
 });
 
-app.get('/api/schools', async (req, res, next) => {
+app.get('/api/schools', authenticate, async (req, res, next) => {
   try {
     const schools = await prisma.school.findMany();
+
+    if (req.user && req.user.role === 'SUPERADMIN') {
+      // 4 ta grouped query — N ta maktab bo'lsa ham faqat 4 ta DB murojaat
+      const [studentGroups, teacherGroups, revenueGroups, userGroups] = await Promise.all([
+        prisma.student.groupBy({ by: ['schoolId'], _count: { id: true } }),
+        prisma.teacher.groupBy({ by: ['schoolId'], _count: { id: true } }),
+        prisma.payment.groupBy({ by: ['schoolId'], _sum: { amount: true } }),
+        prisma.user.groupBy({ by: ['schoolId'], _count: { id: true } }),
+      ]);
+
+      const toMap = (arr, key, val) => Object.fromEntries(arr.map(r => [r.schoolId, r[key]?.[val] || 0]));
+      const students = toMap(studentGroups, '_count', 'id');
+      const teachers = toMap(teacherGroups, '_count', 'id');
+      const revenues = toMap(revenueGroups, '_sum', 'amount');
+      const users    = toMap(userGroups,    '_count', 'id');
+
+      return res.json(schools.map(s => ({
+        ...s,
+        studentCount: students[s.id] || 0,
+        teacherCount: teachers[s.id] || 0,
+        revenue:      revenues[s.id] || 0,
+        userCount:    users[s.id]    || 0,
+      })));
+    }
+
     res.json(schools);
   } catch (error) { next(error); }
 });
 
-app.post('/api/schools', async (req, res, next) => {
+app.post('/api/schools', authenticate, async (req, res, next) => {
   try {
+    if (req.user.role !== 'SUPERADMIN') return res.status(403).json({ error: 'Faqat Super Admin maktab yarata oladi' });
     res.json(await prisma.school.create({ data: req.body }));
   } catch (error) { next(error); }
 });
 
-app.delete('/api/schools/:id', async (req, res, next) => {
+app.delete('/api/schools/:id', authenticate, async (req, res, next) => {
   try {
-    await prisma.school.delete({ where: { id: parseInt(req.params.id) } });
+    if (req.user.role !== 'SUPERADMIN') return res.status(403).json({ error: 'Faqat Super Admin maktab o\'chira oladi' });
+    const schoolId = parseInt(req.params.id);
+    if (isNaN(schoolId)) return res.status(400).json({ error: 'Noto\'g\'ri ID' });
+
+    // Cascade delete related records to avoid database foreign key violations
+    await prisma.$transaction([
+      prisma.student.deleteMany({ where: { schoolId } }),
+      prisma.teacher.deleteMany({ where: { schoolId } }),
+      prisma.group.deleteMany({ where: { schoolId } }),
+      prisma.lead.deleteMany({ where: { schoolId } }),
+      prisma.payment.deleteMany({ where: { schoolId } }),
+      prisma.course.deleteMany({ where: { schoolId } }),
+      prisma.room.deleteMany({ where: { schoolId } }),
+      prisma.setting.deleteMany({ where: { schoolId } }),
+      prisma.user.deleteMany({ where: { schoolId } }),
+      prisma.school.delete({ where: { id: schoolId } })
+    ]);
+
     res.json({ success: true });
   } catch (error) { next(error); }
 });
+
 
 // Global Error Handler
 app.use((err, req, res, next) => {
@@ -759,7 +823,7 @@ app.get('/api/settings', authenticate, async (req, res, next) => {
     let settings = await prisma.setting.findUnique({ where: { schoolId: parseInt(schoolId) } });
     if (!settings) {
       settings = await prisma.setting.create({
-        data: { schoolId: parseInt(schoolId), orgName: "SARIOSIYO" }
+        data: { schoolId: parseInt(schoolId), orgName: "QUANTUM EDU" }
       });
     }
     res.json(settings);
