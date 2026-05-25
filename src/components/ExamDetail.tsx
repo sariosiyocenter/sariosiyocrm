@@ -34,7 +34,7 @@ export default function ExamDetail() {
         return (
             <div className="flex flex-col items-center justify-center p-20 text-center">
                 <AlertCircle className="w-16 h-16 text-gray-300 mb-4" />
-                <h2 className="text-xl font-black text-gray-900 dark:text-white uppercase tracking-tight">Imtihon topilmadi</h2>
+                <h2 className="text-xl font-black text-white uppercase tracking-tight">Imtihon topilmadi</h2>
                 <button onClick={() => navigate('/exams')} className="mt-4 text-teal-600 font-bold uppercase tracking-widest text-[10px]">Orqaga qaytish</button>
             </div>
         );
@@ -117,15 +117,15 @@ export default function ExamDetail() {
             {/* Bulk PDF Progress Overlay */}
             {bulkProgress && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
-                    <div className="bg-white dark:bg-gray-800 rounded-3xl shadow-2xl p-10 w-full max-w-sm text-center space-y-6">
-                        <div className="w-16 h-16 bg-teal-50 dark:bg-teal-900/30 rounded-2xl flex items-center justify-center mx-auto">
+                    <div className="bg-[#1a2332] rounded-3xl shadow-2xl p-10 w-full max-w-sm text-center space-y-6">
+                        <div className="w-16 h-16 bg-teal-500/10 rounded-2xl flex items-center justify-center mx-auto">
                             <Printer className="w-8 h-8 text-teal-600 animate-pulse" />
                         </div>
                         <div>
-                            <p className="text-sm font-black text-gray-900 dark:text-white uppercase tracking-widest">OMR Varaqalari Tayyorlanmoqda</p>
+                            <p className="text-sm font-black text-white uppercase tracking-widest">OMR Varaqalari Tayyorlanmoqda</p>
                             <p className="text-[10px] text-gray-400 mt-1">{bulkProgress.current} / {bulkProgress.total} o'quvchi</p>
                         </div>
-                        <div className="w-full bg-gray-100 dark:bg-gray-700 rounded-full h-3">
+                        <div className="w-full bg-white/10 rounded-full h-3">
                             <div
                                 className="bg-teal-500 h-3 rounded-full transition-all duration-300"
                                 style={{ width: `${Math.round((bulkProgress.current / bulkProgress.total) * 100)}%` }}
@@ -141,27 +141,27 @@ export default function ExamDetail() {
                 <div className="flex items-center gap-6">
                     <button 
                         onClick={() => navigate('/exams')}
-                        className="w-14 h-14 bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700 rounded-2xl flex items-center justify-center text-gray-500 hover:text-gray-900 dark:hover:text-white hover:bg-gray-50 dark:hover:bg-gray-700 transition-all shadow-sm group"
+                        className="w-14 h-14 bg-[#141c27] border border-white/5 rounded-2xl flex items-center justify-center text-[#4a5568] hover:text-white hover:bg-white/5 transition-all shadow-sm group"
                     >
                         <ArrowLeft size={24} />
                     </button>
                     <div>
-                        <h1 className="text-3xl font-extrabold text-gray-900 dark:text-white uppercase tracking-tight">{exam.name}</h1>
-                        <p className="text-[10px] font-bold text-gray-400 dark:text-gray-500 mt-2 uppercase tracking-widest">Imtihon tafsilotlari va javob varaqalari</p>
+                        <h1 className="text-3xl font-extrabold text-white uppercase tracking-tight">{exam.name}</h1>
+                        <p className="text-[10px] font-bold text-[#4a5568] mt-2 uppercase tracking-widest">Imtihon tafsilotlari va javob varaqalari</p>
                     </div>
                 </div>
 
                 <div className="flex items-center gap-3">
                     <button 
                         onClick={() => generateOMRSheet(exam)}
-                        className="px-6 py-3 bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700 rounded-xl text-[10px] font-black uppercase tracking-widest text-gray-500 hover:text-teal-600 transition-all shadow-sm flex items-center gap-2"
+                        className="px-6 py-3 bg-[#141c27] border border-white/5 rounded-xl text-[10px] font-black uppercase tracking-widest text-[#4a5568] hover:text-teal-500 transition-all shadow-sm flex items-center gap-2"
                     >
                         <FileText size={14} /> JAVOB VARAQASI (SHABLON)
                     </button>
                     <span className={`px-4 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest border ${
-                        exam.status === 'Tugallangan' ? 'bg-emerald-50 text-emerald-600 border-emerald-100' : 
-                        exam.status === 'Yaqinlashmoqda' ? 'bg-sky-50 text-sky-600 border-sky-100' :
-                        'bg-gray-50 text-gray-500 border-gray-100'
+                        exam.status === 'Tugallangan' ? 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20' :
+                        exam.status === 'Yaqinlashmoqda' ? 'bg-sky-500/10 text-sky-500 border-sky-500/20' :
+                        'bg-white/5 text-[#4a5568] border-white/5'
                     }`}>
                         {exam.status}
                     </span>
@@ -172,8 +172,8 @@ export default function ExamDetail() {
                 {/* Left: Info & Group Selection */}
                 <div className="lg:col-span-1 space-y-8">
                     {/* Bulk OMR Section */}
-                    <div className="bg-white dark:bg-gray-800 rounded-[2.5rem] border border-gray-100 dark:border-gray-700 shadow-xl p-8">
-                        <h3 className="text-xs font-black text-gray-900 dark:text-white uppercase tracking-[0.2em] mb-6 flex items-center gap-2">
+                    <div className="bg-[#141c27] rounded-[2.5rem] border border-white/5 shadow-xl p-8">
+                        <h3 className="text-xs font-black text-white uppercase tracking-[0.2em] mb-6 flex items-center gap-2">
                             <Users className="text-teal-600 w-4 h-4" />
                             Guruhlar Tanlovi
                         </h3>
@@ -184,9 +184,9 @@ export default function ExamDetail() {
                             ) : (
                                 groups.map(group => (
                                     <label key={group.id} className={`flex items-center gap-3 p-3 rounded-2xl border transition-all cursor-pointer ${
-                                        selectedGroups.includes(group.id) 
-                                        ? 'bg-teal-50 dark:bg-teal-900/20 border-teal-200 dark:border-teal-800' 
-                                        : 'bg-gray-50 dark:bg-gray-900/50 border-gray-100 dark:border-gray-700'
+                                        selectedGroups.includes(group.id)
+                                        ? 'bg-teal-500/10 border-teal-500/30'
+                                        : 'bg-white/5 border-white/5'
                                     }`}>
                                         <input 
                                             type="checkbox" 
@@ -195,14 +195,14 @@ export default function ExamDetail() {
                                             onChange={() => toggleGroup(group.id)}
                                         />
                                         <div className={`w-5 h-5 rounded-lg border-2 flex items-center justify-center transition-all ${
-                                            selectedGroups.includes(group.id) 
-                                            ? 'bg-teal-600 border-teal-600 text-white' 
-                                            : 'border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800'
+                                            selectedGroups.includes(group.id)
+                                            ? 'bg-teal-600 border-teal-600 text-white'
+                                            : 'border-white/20 bg-white/5'
                                         }`}>
                                             {selectedGroups.includes(group.id) && <CheckCircle2 size={12} />}
                                         </div>
                                         <div className="flex-1">
-                                            <p className="text-[10px] font-black text-gray-900 dark:text-white uppercase tracking-widest">{group.name}</p>
+                                            <p className="text-[10px] font-black text-white uppercase tracking-widest">{group.name}</p>
                                             <p className="text-[9px] font-bold text-gray-400 uppercase">{group.studentIds.length} o'quvchi</p>
                                         </div>
                                     </label>
@@ -220,8 +220,8 @@ export default function ExamDetail() {
                         </button>
                     </div>
 
-                    <div className="bg-white dark:bg-gray-800 rounded-[2.5rem] border border-gray-100 dark:border-gray-700 shadow-xl shadow-teal-500/5 p-8">
-                        <h3 className="text-xs font-black text-gray-900 dark:text-white uppercase tracking-[0.2em] mb-6 flex items-center gap-2">
+                    <div className="bg-[#141c27] rounded-[2.5rem] border border-white/5 shadow-xl shadow-teal-500/5 p-8">
+                        <h3 className="text-xs font-black text-white uppercase tracking-[0.2em] mb-6 flex items-center gap-2">
                             <Layers className="text-teal-600 w-4 h-4" />
                             Blueprint Qoidalari
                         </h3>
@@ -231,17 +231,17 @@ export default function ExamDetail() {
                                 return (
                                     <div key={idx} className="space-y-3">
                                         <div className="flex items-center justify-between px-2">
-                                            <p className="text-[10px] font-black text-gray-900 dark:text-white uppercase tracking-widest">{block.subject}</p>
-                                            <span className="text-[9px] font-bold text-teal-600 bg-teal-50 dark:bg-teal-900/30 px-2 py-0.5 rounded-lg border border-teal-100 dark:border-teal-800">{block.pointsPerQuestion} ball/savol</span>
+                                            <p className="text-[10px] font-black text-white uppercase tracking-widest">{block.subject}</p>
+                                            <span className="text-[9px] font-bold text-teal-400 bg-teal-500/10 px-2 py-0.5 rounded-lg border border-teal-500/20">{block.pointsPerQuestion} ball/savol</span>
                                         </div>
-                                        <div className="p-4 bg-gray-50 dark:bg-gray-900/50 rounded-2xl border border-gray-100 dark:border-gray-700 space-y-2">
+                                        <div className="p-4 bg-white/[0.03] rounded-2xl border border-white/5 space-y-2">
                                             {block.topicRules.map((rule, rIdx) => (
                                                 <div key={rIdx} className="flex justify-between items-center text-[10px] font-bold text-gray-500">
                                                     <span>{rule.topic}</span>
-                                                    <span className="text-gray-900 dark:text-white">{rule.count} ta</span>
+                                                    <span className="text-white">{rule.count} ta</span>
                                                 </div>
                                             ))}
-                                            <div className="pt-2 mt-2 border-t border-dashed border-gray-200 dark:border-gray-700 flex justify-between items-center text-[11px] font-black text-gray-900 dark:text-white uppercase">
+                                            <div className="pt-2 mt-2 border-t border-dashed border-white/5 flex justify-between items-center text-[11px] font-black text-white uppercase">
                                                 <span>Jami {block.subject}</span>
                                                 <span>{blockQCount} ta</span>
                                             </div>
@@ -256,7 +256,7 @@ export default function ExamDetail() {
                 {/* Right: Variants */}
                 <div className="lg:col-span-2 space-y-6">
                     <div className="flex items-center justify-between mb-4">
-                        <h2 className="text-xl font-black text-gray-900 dark:text-white uppercase tracking-tight flex items-center gap-3">
+                        <h2 className="text-xl font-black text-white uppercase tracking-tight flex items-center gap-3">
                             <FileText className="text-teal-600" />
                             Variantlar
                         </h2>
@@ -264,7 +264,7 @@ export default function ExamDetail() {
                         {!exam.variants && (
                             <div className="flex items-center gap-3">
                                 <select 
-                                    className="px-4 py-2.5 bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700 rounded-xl text-[10px] font-bold uppercase tracking-widest outline-none focus:border-teal-500"
+                                    className="px-4 py-2.5 bg-white/5 border border-white/5 rounded-xl text-[10px] font-bold uppercase tracking-widest outline-none focus:border-teal-500"
                                     value={variantCount}
                                     onChange={e => setVariantCount(Number(e.target.value))}
                                 >
@@ -275,7 +275,7 @@ export default function ExamDetail() {
                                 <button 
                                     onClick={handleGenerate}
                                     disabled={isGenerating}
-                                    className="px-6 py-3 bg-teal-600 dark:bg-teal-500 text-white rounded-xl text-[10px] font-extrabold uppercase tracking-widest hover:bg-teal-500 transition-all shadow-lg flex items-center gap-2 disabled:opacity-50"
+                                    className="px-6 py-3 bg-teal-600 text-white rounded-xl text-[10px] font-extrabold uppercase tracking-widest hover:bg-teal-500 transition-all shadow-lg flex items-center gap-2 disabled:opacity-50"
                                 >
                                     {isGenerating ? 'Yaratilmoqda...' : 'Variantlarni Yaratish'}
                                 </button>
@@ -285,21 +285,21 @@ export default function ExamDetail() {
 
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                         {exam.variants?.map((variant) => (
-                            <div key={variant.id} className="bg-white dark:bg-gray-800 rounded-[2rem] border border-gray-100 dark:border-gray-700 p-6 shadow-sm hover:border-teal-200 dark:hover:border-teal-800 transition-all group">
+                            <div key={variant.id} className="bg-[#141c27] rounded-[2rem] border border-white/5 p-6 shadow-sm hover:border-teal-500/30 transition-all group">
                                 <div className="flex items-center justify-between mb-6">
                                     <div className="flex items-center gap-3">
-                                        <div className="w-10 h-10 bg-teal-50 dark:bg-teal-900/30 rounded-xl flex items-center justify-center text-teal-600 font-black text-xs">
+                                        <div className="w-10 h-10 bg-teal-500/10 rounded-xl flex items-center justify-center text-teal-400 font-black text-xs">
                                             {variant.variantCode}
                                         </div>
                                         <div>
-                                            <p className="text-[10px] font-black text-gray-900 dark:text-white uppercase tracking-widest">Variant #{variant.variantCode}</p>
+                                            <p className="text-[10px] font-black text-white uppercase tracking-widest">Variant #{variant.variantCode}</p>
                                             <p className="text-[9px] font-bold text-gray-400 uppercase tracking-widest">{variant.questions.length} ta savol</p>
                                         </div>
                                     </div>
                                 </div>
 
                                 <div className="space-y-3 mb-6">
-                                    <div className="h-1 bg-gray-50 dark:bg-gray-900 rounded-full overflow-hidden">
+                                    <div className="h-1 bg-white/5 rounded-full overflow-hidden">
                                         <div className="h-full bg-teal-500" style={{ width: '100%' }}></div>
                                     </div>
                                     <div className="flex justify-between text-[9px] font-black text-gray-400 uppercase tracking-widest">
@@ -321,7 +321,7 @@ export default function ExamDetail() {
                     </div>
 
                     {!exam.variants && (
-                        <div className="p-20 border-2 border-dashed border-gray-100 dark:border-gray-700 rounded-[2.5rem] flex flex-col items-center justify-center text-center text-gray-400">
+                        <div className="p-20 border-2 border-dashed border-white/5 rounded-[2.5rem] flex flex-col items-center justify-center text-center text-[#4a5568]">
                             <FileText className="w-16 h-16 text-gray-200 mb-6" />
                             <h4 className="text-[10px] font-black uppercase tracking-widest">Hozircha variantlar yo'q</h4>
                             <p className="text-[9px] font-bold mt-2 max-w-[300px] uppercase">Variantlarni yaratish uchun yuqoridagi tugmani bosing.</p>

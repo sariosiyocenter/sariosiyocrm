@@ -49,8 +49,8 @@ export default function Finance() {
         <div className="space-y-8 pb-12 animate-in fade-in duration-700">
             <div className="flex items-center justify-between">
                 <div>
-                    <h1 className="text-3xl font-extrabold text-gray-900 dark:text-white uppercase tracking-tight">Moliya</h1>
-                    <p className="text-[10px] font-bold text-gray-400 dark:text-gray-500 mt-2 uppercase tracking-widest">Kirim-chiqimlar va moliyaviy hisobotlar</p>
+                    <h1 className="text-3xl font-extrabold text-white uppercase tracking-tight">Moliya</h1>
+                    <p className="text-[10px] font-bold text-[#4a5568] mt-2 uppercase tracking-widest">Kirim-chiqimlar va moliyaviy hisobotlar</p>
                 </div>
             </div>
 
@@ -64,12 +64,12 @@ export default function Finance() {
                         amber: 'from-amber-500/20 to-amber-600/5 text-amber-600 dark:text-amber-400 border-amber-100 dark:border-amber-800/50 ring-amber-500/10 shadow-amber-500/5'
                     };
                     return (
-                        <div key={idx} className="bg-white dark:bg-gray-800 p-8 rounded-[2.5rem] border border-gray-100 dark:border-gray-700 shadow-xl transition-all group relative overflow-hidden animate-in zoom-in-95 duration-500" style={{ animationDelay: `${idx * 50}ms` }}>
+                        <div key={idx} className="bg-[#141c27] p-8 rounded-[2.5rem] border border-white/5 shadow-xl transition-all group relative overflow-hidden animate-in zoom-in-95 duration-500" style={{ animationDelay: `${idx * 50}ms` }}>
                             <div className="relative z-10 flex items-start justify-between">
                                 <div>
-                                    <p className="text-[10px] font-extrabold text-gray-400 dark:text-gray-500 uppercase tracking-widest mb-3">{stat.label}</p>
-                                    <h4 className="text-3xl font-extrabold text-gray-900 dark:text-white tracking-tight tabular-nums">{stat.value.toLocaleString()}</h4>
-                                    <p className="text-[10px] font-extrabold text-gray-400 dark:text-gray-500 mt-1 uppercase tracking-widest opacity-60">UZS</p>
+                                    <p className="text-[10px] font-extrabold text-[#4a5568] uppercase tracking-widest mb-3">{stat.label}</p>
+                                    <h4 className="text-3xl font-extrabold text-white tracking-tight tabular-nums">{stat.value.toLocaleString()}</h4>
+                                    <p className="text-[10px] font-extrabold text-[#4a5568] mt-1 uppercase tracking-widest opacity-60">UZS</p>
                                 </div>
                                 <div className={`w-14 h-14 rounded-2xl flex items-center justify-center border bg-gradient-to-br ring-4 transition-transform group-hover:scale-110 duration-500 ${colorVariants[stat.color]}`}>
                                     {stat.icon}
@@ -83,14 +83,14 @@ export default function Finance() {
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
                 <div className="lg:col-span-2 space-y-8">
                     {/* Simplified Tabs */}
-                    <div className="flex items-center gap-4 bg-white dark:bg-gray-800 p-2 rounded-2xl border border-gray-100 dark:border-gray-700 w-fit">
+                    <div className="flex items-center gap-4 bg-[#141c27] p-2 rounded-2xl border border-white/5 w-fit">
                         <button onClick={() => setActiveTab('payments')} className={`px-6 py-2.5 rounded-xl text-[10px] font-bold uppercase tracking-widest transition-all ${activeTab === 'payments' ? 'bg-sky-600 text-white shadow-lg' : 'text-gray-400 hover:bg-gray-50'}`}>To'lovlar</button>
                         <button onClick={() => setActiveTab('expenses')} className={`px-6 py-2.5 rounded-xl text-[10px] font-bold uppercase tracking-widest transition-all ${activeTab === 'expenses' ? 'bg-rose-600 text-white shadow-lg' : 'text-gray-400 hover:bg-gray-50'}`}>Xarajatlar</button>
                     </div>
 
-                    <div className="bg-white dark:bg-gray-800 p-8 rounded-[2.5rem] border border-gray-100 dark:border-gray-700 shadow-xl min-h-[500px]">
+                    <div className="bg-[#141c27] p-8 rounded-[2.5rem] border border-white/5 shadow-xl min-h-[500px]">
                         <div className="flex items-center justify-between mb-8">
-                            <h3 className="text-lg font-bold text-gray-900 dark:text-white uppercase tracking-tight flex items-center gap-3">
+                            <h3 className="text-lg font-bold text-white uppercase tracking-tight flex items-center gap-3">
                                 {activeTab === 'payments' ? <Wallet className="text-sky-500" /> : <TrendingDown className="text-rose-500" />}
                                 {activeTab === 'payments' ? 'Tahrirlangan To\'lovlar' : 'Amalga oshirilgan Xarajatlar'}
                             </h3>
@@ -103,11 +103,11 @@ export default function Finance() {
                             <div className="space-y-4">
                                 {payments.length === 0 ? <p className="text-center py-20 text-gray-400 text-xs font-bold uppercase tracking-widest">To'lovlar mavjud emas</p> : 
                                 payments.slice(-10).reverse().map(p => (
-                                    <div key={p.id} className="flex items-center justify-between p-5 rounded-2xl bg-gray-50/50 dark:bg-gray-900/40 border border-transparent hover:border-sky-100 transition-all group">
+                                    <div key={p.id} className="flex items-center justify-between p-5 rounded-2xl bg-white/[0.03] border border-transparent hover:border-sky-100 transition-all group">
                                         <div className="flex items-center gap-4">
                                             <div className="w-10 h-10 rounded-xl bg-sky-100 text-sky-600 flex items-center justify-center font-bold text-xs">{students.find(s => s.id === p.studentId)?.name.charAt(0) || '?'}</div>
                                             <div>
-                                                <p className="text-sm font-bold text-gray-900 dark:text-white uppercase">{students.find(s => s.id === p.studentId)?.name || 'Noma\'lum'}</p>
+                                                <p className="text-sm font-bold text-white uppercase">{students.find(s => s.id === p.studentId)?.name || 'Noma\'lum'}</p>
                                                 <p className="text-[9px] text-gray-400 font-bold uppercase tracking-widest">{p.date} • {p.type}</p>
                                             </div>
                                         </div>
@@ -119,11 +119,11 @@ export default function Finance() {
                             <div className="space-y-4">
                                 {expenses.length === 0 ? <p className="text-center py-20 text-gray-400 text-xs font-bold uppercase tracking-widest">Xarajatlar mavjud emas</p> : 
                                 expenses.slice(-10).reverse().map(e => (
-                                    <div key={e.id} className="flex items-center justify-between p-5 rounded-2xl bg-gray-50/50 dark:bg-gray-900/40 border border-transparent hover:border-rose-100 transition-all group">
+                                    <div key={e.id} className="flex items-center justify-between p-5 rounded-2xl bg-white/[0.03] border border-transparent hover:border-rose-100 transition-all group">
                                         <div className="flex items-center gap-4">
                                             <div className="w-10 h-10 rounded-xl bg-rose-100 text-rose-600 flex items-center justify-center font-bold text-xs"><TrendingDown size={18}/></div>
                                             <div>
-                                                <p className="text-sm font-bold text-gray-900 dark:text-white uppercase">{e.category}</p>
+                                                <p className="text-sm font-bold text-white uppercase">{e.category}</p>
                                                 <p className="text-[9px] text-gray-400 font-bold uppercase tracking-widest">{e.date} • {e.description || 'Izohsiz'}</p>
                                             </div>
                                         </div>
@@ -138,9 +138,9 @@ export default function Finance() {
                     </div>
                 </div>
 
-                <div className="bg-white dark:bg-gray-800 rounded-[2.5rem] border border-gray-100 dark:border-gray-700 shadow-xl overflow-hidden h-fit">
-                    <div className="px-8 py-6 border-b border-gray-50 dark:border-gray-700 bg-gray-50/50">
-                        <h3 className="text-[10px] font-extrabold text-gray-900 dark:text-white uppercase tracking-widest">Hisobotlar</h3>
+                <div className="bg-[#141c27] rounded-[2.5rem] border border-white/5 shadow-xl overflow-hidden h-fit">
+                    <div className="px-8 py-6 border-b border-white/5 bg-white/[0.03]">
+                        <h3 className="text-[10px] font-extrabold text-white uppercase tracking-widest">Hisobotlar</h3>
                     </div>
                     <div className="flex flex-col py-4">
                         {reports.map((r, i) => (
@@ -159,19 +159,19 @@ export default function Finance() {
             {/* Modal Components Reuse existing styles */}
             {(isPaymentModalOpen || isExpenseModalOpen) && (
                 <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-gray-900/60 backdrop-blur-md">
-                    <div className="bg-white dark:bg-gray-800 w-full max-w-lg rounded-[2.5rem] shadow-2xl overflow-hidden border border-gray-100 p-10">
+                    <div className="bg-[#1a2332] w-full max-w-lg rounded-[2.5rem] shadow-2xl overflow-hidden border border-white/5 p-10">
                         <div className="flex items-center justify-between mb-8">
                             <h2 className="text-2xl font-bold uppercase tracking-tight">{isPaymentModalOpen ? 'To\'lov' : 'Xarajat'} Qo'shish</h2>
                             <button onClick={() => { setIsPaymentModalOpen(false); setIsExpenseModalOpen(false); }} className="text-gray-400"><X size={24}/></button>
                         </div>
                         {isPaymentModalOpen ? (
                             <form className="space-y-6" onSubmit={(e) => { e.preventDefault(); addPayment(newPayment); setIsPaymentModalOpen(false); }}>
-                                <select required className="w-full p-4 bg-gray-50 border border-gray-100 rounded-2xl text-[10px] uppercase font-bold tracking-widest" value={newPayment.studentId} onChange={(e) => setNewPayment({...newPayment, studentId: Number(e.target.value)})}>
+                                <select required className="w-full p-4 bg-white/5 border border-white/10 rounded-2xl text-[10px] uppercase font-bold tracking-widest text-white" value={newPayment.studentId} onChange={(e) => setNewPayment({...newPayment, studentId: Number(e.target.value)})}>
                                     <option value={0} disabled>O'quvchini tanlang</option>
                                     {students.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
                                 </select>
-                                <input type="number" required placeholder="Summa (UZS)" className="w-full p-4 bg-gray-50 border border-gray-100 rounded-2xl text-[10px] uppercase font-bold tracking-widest" value={newPayment.amount || ''} onChange={(e) => setNewPayment({...newPayment, amount: Number(e.target.value)})}/>
-                                <select className="w-full p-4 bg-gray-50 border border-gray-100 rounded-2xl text-[10px] uppercase font-bold tracking-widest" value={newPayment.type} onChange={(e) => setNewPayment({...newPayment, type: e.target.value as any})}>
+                                <input type="number" required placeholder="Summa (UZS)" className="w-full p-4 bg-white/5 border border-white/10 rounded-2xl text-[10px] uppercase font-bold tracking-widest text-white" value={newPayment.amount || ''} onChange={(e) => setNewPayment({...newPayment, amount: Number(e.target.value)})}/>
+                                <select className="w-full p-4 bg-white/5 border border-white/10 rounded-2xl text-[10px] uppercase font-bold tracking-widest text-white" value={newPayment.type} onChange={(e) => setNewPayment({...newPayment, type: e.target.value as any})}>
                                     <option value="Naqd">Naqd</option>
                                     <option value="Karta">Karta</option>
                                 </select>
@@ -179,15 +179,15 @@ export default function Finance() {
                             </form>
                         ) : (
                             <form className="space-y-6" onSubmit={(e) => { e.preventDefault(); addExpense(newExpense); setIsExpenseModalOpen(false); }}>
-                                <select required className="w-full p-4 bg-gray-50 border border-gray-100 rounded-2xl text-[10px] uppercase font-bold tracking-widest" value={newExpense.category} onChange={(e) => setNewExpense({...newExpense, category: e.target.value})}>
+                                <select required className="w-full p-4 bg-white/5 border border-white/10 rounded-2xl text-[10px] uppercase font-bold tracking-widest text-white" value={newExpense.category} onChange={(e) => setNewExpense({...newExpense, category: e.target.value})}>
                                     <option value="Ish haqi">Ish haqi</option>
                                     <option value="Ijara">Ijara</option>
                                     <option value="Kommunal">Kommunal</option>
                                     <option value="Marketing">Marketing</option>
                                     <option value="Boshqa">Boshqa</option>
                                 </select>
-                                <input type="number" required placeholder="Summa (UZS)" className="w-full p-4 bg-gray-50 border border-gray-100 rounded-2xl text-[10px] uppercase font-bold tracking-widest" value={newExpense.amount || ''} onChange={(e) => setNewExpense({...newExpense, amount: Number(e.target.value)})}/>
-                                <input type="text" placeholder="Izoh (Description)" className="w-full p-4 bg-gray-50 border border-gray-100 rounded-2xl text-[10px] uppercase font-bold tracking-widest" value={newExpense.description} onChange={(e) => setNewExpense({...newExpense, description: e.target.value})}/>
+                                <input type="number" required placeholder="Summa (UZS)" className="w-full p-4 bg-white/5 border border-white/10 rounded-2xl text-[10px] uppercase font-bold tracking-widest text-white" value={newExpense.amount || ''} onChange={(e) => setNewExpense({...newExpense, amount: Number(e.target.value)})}/>
+                                <input type="text" placeholder="Izoh (Description)" className="w-full p-4 bg-white/5 border border-white/10 rounded-2xl text-[10px] uppercase font-bold tracking-widest text-white" value={newExpense.description} onChange={(e) => setNewExpense({...newExpense, description: e.target.value})}/>
                                 <button type="submit" className="w-full py-4 bg-rose-600 text-white rounded-2xl text-[10px] uppercase font-extrabold tracking-widest shadow-xl shadow-rose-500/20">Saqlash</button>
                             </form>
                         )}

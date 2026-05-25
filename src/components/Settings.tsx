@@ -142,7 +142,7 @@ export default function Settings() {
                                 setIsEditModalOpen(true);
                             }
                         }}
-                        className={`bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700 p-6 rounded-[2rem] flex flex-col gap-5 group hover:border-sky-300 dark:hover:border-sky-600 transition-all shadow-xl shadow-gray-200/10 dark:shadow-none hover:shadow-2xl relative overflow-hidden animate-in zoom-in-95 duration-300 ${activeTab === 'staff' ? 'cursor-pointer' : ''}`}
+                        className={`bg-[#141c27] border border-white/5 p-6 rounded-[2rem] flex flex-col gap-5 group hover:border-sky-300 dark:hover:border-sky-600 transition-all shadow-xl shadow-black/20 hover:shadow-2xl relative overflow-hidden animate-in zoom-in-95 duration-300 ${activeTab === 'staff' ? 'cursor-pointer' : ''}`}
                         style={{ animationDelay: `${idx * 40}ms` }}
                     >
                         <div className="absolute top-0 right-0 w-32 h-32 bg-sky-500/[0.03] rounded-bl-full -z-10 transition-transform group-hover:scale-110"></div>
@@ -173,8 +173,8 @@ export default function Settings() {
                             )}
                         </div>
                         <div className="space-y-1">
-                            <h4 className="text-base font-extrabold text-gray-900 dark:text-white uppercase tracking-tight group-hover:text-sky-600 transition-colors">{item.name}</h4>
-                            <p className="text-[10px] font-extrabold text-gray-400 dark:text-gray-500 uppercase tracking-widest leading-loose">
+                            <h4 className="text-base font-extrabold text-white uppercase tracking-tight group-hover:text-sky-600 transition-colors">{item.name}</h4>
+                            <p className="text-[10px] font-extrabold text-[#4a5568] uppercase tracking-widest leading-loose">
                                 {activeSubTab === 'Kurslar' ? `${item.price.toLocaleString()} UZS` :
                                     activeSubTab === 'Xonalar' ? `${item.capacity} kishilik` :
                                         (activeTab === 'staff' || activeSubTab === 'Xodimlar') ? `${item.role === 'ADMIN' ? 'Admin' : item.role === 'MANAGER' ? 'Menejer' : item.role === 'TEACHER' ? 'O\'qituvchi' : item.role === 'DRIVER' ? 'Haydovchi' : 'Receptionist'} • ${item.email}` :
@@ -193,11 +193,11 @@ export default function Settings() {
         if (activeTab === 'ofis' || activeTab === 'ceo' || activeTab === 'staff') {
 
             return (
-                <div className="bg-white dark:bg-gray-800 rounded-[2.5rem] shadow-xl shadow-gray-200/10 dark:shadow-none border border-gray-100 dark:border-gray-700 overflow-hidden min-h-[550px] flex flex-col animate-in fade-in slide-in-from-bottom-4 duration-500">
-                    <div className="px-10 py-8 border-b border-gray-50 dark:border-gray-700 bg-gray-50/50 dark:bg-gray-900/50 flex flex-col sm:flex-row sm:items-center justify-between gap-6">
+                <div className="bg-[#141c27] rounded-[2.5rem] shadow-xl shadow-black/20 border border-white/5 overflow-hidden min-h-[550px] flex flex-col animate-in fade-in slide-in-from-bottom-4 duration-500">
+                    <div className="px-10 py-8 border-b border-white/5 bg-white/[0.03] flex flex-col sm:flex-row sm:items-center justify-between gap-6">
                         <div>
-                            <h3 className="text-xl font-extrabold text-gray-900 dark:text-white uppercase tracking-tight">{subTabLabels[activeSubTab] || (activeTab === 'staff' ? 'Xodimlar Boshqaruvi' : activeTab)}</h3>
-                            <p className="text-[10px] font-bold text-gray-400 dark:text-gray-500 mt-2 uppercase tracking-widest">Markazdagi barcha {activeSubTab || (activeTab === 'staff' ? 'xodimlar' : 'ma\'lumotlar')} ro'yxati</p>
+                            <h3 className="text-xl font-extrabold text-white uppercase tracking-tight">{subTabLabels[activeSubTab] || (activeTab === 'staff' ? 'Xodimlar Boshqaruvi' : activeTab)}</h3>
+                            <p className="text-[10px] font-bold text-[#4a5568] mt-2 uppercase tracking-widest">Markazdagi barcha {activeSubTab || (activeTab === 'staff' ? 'xodimlar' : 'ma\'lumotlar')} ro'yxati</p>
                         </div>
                         <button onClick={() => {
                             setNewItem({});
@@ -222,14 +222,14 @@ export default function Settings() {
         <div className="space-y-8 py-4 animate-in fade-in duration-700">
             <div className="flex items-center justify-between">
                 <div>
-                    <h1 className="text-3xl font-extrabold text-gray-900 dark:text-white uppercase tracking-tight">Tizim Sozlamalari</h1>
-                    <p className="text-[10px] font-bold text-gray-400 dark:text-gray-500 mt-2 uppercase tracking-widest">Markaz qoidalari, filiallar va xodimlar ma'lumotlari</p>
+                    <h1 className="text-3xl font-extrabold text-white uppercase tracking-tight">Tizim Sozlamalari</h1>
+                    <p className="text-[10px] font-bold text-[#4a5568] mt-2 uppercase tracking-widest">Markaz qoidalari, filiallar va xodimlar ma'lumotlari</p>
                 </div>
             </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-4 gap-8 items-start">
                 {/* Left Sidebar Menu */}
-                <div className="lg:col-span-1 border border-gray-100 dark:border-gray-700 bg-white dark:bg-gray-800 rounded-[2.5rem] overflow-hidden shadow-xl shadow-gray-200/10 dark:shadow-none">
+                <div className="lg:col-span-1 border border-white/5 bg-[#141c27] rounded-[2.5rem] overflow-hidden shadow-xl shadow-black/20">
                     <div className="flex flex-col">
                         {menuItems.map(item => (
                             <div key={item.id} className="flex flex-col">
@@ -244,20 +244,20 @@ export default function Settings() {
                                     }}
                                     className={`flex items-center justify-between px-8 py-6 transition-all group border-l-4 ${activeTab === item.id
                                         ? 'bg-sky-50 dark:bg-sky-900/10 border-sky-600'
-                                        : 'bg-white dark:bg-gray-800 border-transparent hover:bg-gray-50 dark:hover:bg-gray-700/50 border-b border-gray-50 dark:border-gray-700'}`}
+                                        : 'bg-[#141c27] border-transparent hover:bg-white/5 border-b border-white/5'}`}
                                 >
                                     <div className="flex items-center gap-4">
-                                        <div className={`${activeTab === item.id ? 'text-sky-600' : 'text-gray-400 group-hover:text-sky-500'} transition-colors w-10 h-10 rounded-xl flex items-center justify-center bg-gray-50 dark:bg-gray-900 border border-gray-100 dark:border-gray-700 shadow-sm group-hover:scale-110 duration-300`}>
+                                        <div className={`${activeTab === item.id ? 'text-sky-600' : 'text-gray-400 group-hover:text-sky-500'} transition-colors w-10 h-10 rounded-xl flex items-center justify-center bg-white/5 border border-white/10 shadow-sm group-hover:scale-110 duration-300`}>
                                             {item.icon}
                                         </div>
-                                        <span className={`text-[11px] font-extrabold uppercase tracking-widest transition-colors ${activeTab === item.id ? 'text-sky-700 dark:text-sky-400' : 'text-gray-500 group-hover:text-gray-900 dark:group-hover:text-white'}`}>{item.label}</span>
+                                        <span className={`text-[11px] font-extrabold uppercase tracking-widest transition-colors ${activeTab === item.id ? 'text-sky-700 dark:text-sky-400' : 'text-[#4a5568] group-hover:text-white'}`}>{item.label}</span>
                                     </div>
                                     {item.hasSub && <ChevronDown size={18} className={`transition-all duration-300 ${activeTab === item.id ? 'rotate-180 text-sky-600' : 'text-gray-300 group-hover:text-gray-500'}`} />}
                                 </button>
 
                                 {
                                     item.hasSub && activeTab === item.id && (
-                                        <div className="flex flex-col pl-[72px] pb-5 pt-1 space-y-1 bg-sky-50/30 dark:bg-sky-900/5 border-b border-gray-50 dark:border-gray-700">
+                                        <div className="flex flex-col pl-[72px] pb-5 pt-1 space-y-1 bg-sky-50/30 dark:bg-sky-900/5 border-b border-white/5">
                                             {item.subItems?.map(subItem => (
                                                 <button
                                                     key={subItem}
@@ -265,7 +265,7 @@ export default function Settings() {
                                                         e.stopPropagation();
                                                         setActiveSubTab(subItem);
                                                     }}
-                                                    className={`py-3 text-left text-[10px] font-bold uppercase tracking-widest transition-all ${activeSubTab === subItem ? 'text-sky-700 dark:text-sky-400 border-l-2 border-sky-600 pl-4 -ml-2' : 'text-gray-400 hover:text-gray-900 dark:hover:text-white pl-4'}`}
+                                                    className={`py-3 text-left text-[10px] font-bold uppercase tracking-widest transition-all ${activeSubTab === subItem ? 'text-sky-700 dark:text-sky-400 border-l-2 border-sky-600 pl-4 -ml-2' : 'text-[#4a5568] hover:text-white pl-4'}`}
                                                 >
                                                     {subItem}
                                                 </button>
@@ -287,49 +287,49 @@ export default function Settings() {
             {/* Global Add Modal */}
             {isAddModalOpen && (
                 <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-gray-900/60 backdrop-blur-md animate-in fade-in duration-300" onClick={() => setIsAddModalOpen(false)}>
-                    <div className="bg-white dark:bg-gray-800 w-full max-w-lg rounded-[2.5rem] shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200 border border-gray-100 dark:border-gray-700" onClick={e => e.stopPropagation()}>
-                        <div className="px-10 py-8 flex items-center justify-between border-b border-gray-50 dark:border-gray-700 bg-gray-50/50 dark:bg-gray-900/50">
+                    <div className="bg-[#1a2332] w-full max-w-lg rounded-[2.5rem] shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200 border border-white/5" onClick={e => e.stopPropagation()}>
+                        <div className="px-10 py-8 flex items-center justify-between border-b border-white/5 bg-white/[0.03]">
                             <div>
-                                <h2 className="text-2xl font-bold text-gray-900 dark:text-white uppercase tracking-tight">
+                                <h2 className="text-2xl font-bold text-white uppercase tracking-tight">
                                     Yangi {activeTab === 'staff' ? 'Xodim' : activeSubTab === 'Filiallar' ? 'Filial' : activeSubTab.length > 0 ? activeSubTab.slice(0, -2) : 'Ma\'lumot'} qo'shish
                                 </h2>
-                                <p className="text-[10px] font-bold text-gray-400 dark:text-gray-500 mt-1.5 uppercase tracking-widest">Tizimga yangi ma'lumot kiritish</p>
+                                <p className="text-[10px] font-bold text-[#4a5568] mt-1.5 uppercase tracking-widest">Tizimga yangi ma'lumot kiritish</p>
                             </div>
-                            <button onClick={() => setIsAddModalOpen(false)} className="w-12 h-12 flex items-center justify-center hover:bg-white dark:hover:bg-gray-700 rounded-2xl text-gray-400 hover:text-gray-900 dark:hover:text-white transition-all shadow-sm border border-transparent hover:border-gray-100 dark:hover:border-gray-600">
+                            <button onClick={() => setIsAddModalOpen(false)} className="w-12 h-12 flex items-center justify-center hover:bg-white/5 rounded-2xl text-gray-400 hover:text-white transition-all shadow-sm border border-transparent hover:border-white/10">
                                 <X size={24} />
                             </button>
                         </div>
                         <form onSubmit={handleAdd} className="p-10 space-y-8">
                             {activeTab !== 'staff' && (
                                 <div className="space-y-3">
-                                    <label className="text-[10px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-widest ml-1">Nomi <span className="text-rose-500">*</span></label>
-                                    <input required type="text" className="w-full px-6 py-4 bg-gray-50 dark:bg-gray-900 border border-gray-100 dark:border-gray-700 rounded-[1.25rem] text-xs font-bold uppercase tracking-widest focus:bg-white dark:focus:bg-gray-800 focus:border-sky-500 dark:focus:border-sky-500 focus:ring-4 focus:ring-sky-500/10 outline-none transition-all text-gray-900 dark:text-white shadow-inner"
+                                    <label className="text-[10px] font-bold text-[#4a5568] uppercase tracking-widest ml-1">Nomi <span className="text-rose-500">*</span></label>
+                                    <input required type="text" className="w-full px-6 py-4 bg-white/5 border border-white/10 rounded-[1.25rem] text-xs font-bold uppercase tracking-widest focus:border-sky-500 focus:ring-4 focus:ring-sky-500/10 outline-none transition-all text-white shadow-inner"
                                         value={newItem.name || ''} onChange={e => setNewItem({ ...newItem, name: e.target.value })} />
                                 </div>
                             )}
 
                             {activeSubTab === 'Kurslar' && (
                                 <div className="space-y-3">
-                                    <label className="text-[10px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-widest ml-1">Narxi (UZS) <span className="text-rose-500">*</span></label>
-                                    <input required type="number" className="w-full px-6 py-4 bg-gray-50 dark:bg-gray-900 border border-gray-100 dark:border-gray-700 rounded-[1.25rem] text-xs font-bold uppercase tracking-widest focus:bg-white dark:focus:bg-gray-800 focus:border-sky-500 dark:focus:border-sky-500 focus:ring-4 focus:ring-sky-500/10 outline-none transition-all text-gray-900 dark:text-white shadow-inner"
+                                    <label className="text-[10px] font-bold text-[#4a5568] uppercase tracking-widest ml-1">Narxi (UZS) <span className="text-rose-500">*</span></label>
+                                    <input required type="number" className="w-full px-6 py-4 bg-white/5 border border-white/10 rounded-[1.25rem] text-xs font-bold uppercase tracking-widest focus:border-sky-500 focus:ring-4 focus:ring-sky-500/10 outline-none transition-all text-white shadow-inner"
                                         value={newItem.price || ''} onChange={e => setNewItem({ ...newItem, price: e.target.value })} />
                                 </div>
                             )}
 
                             {activeSubTab === 'Xonalar' && (
                                 <div className="space-y-3">
-                                    <label className="text-[10px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-widest ml-1">Sig'imi (Kishi) <span className="text-rose-500">*</span></label>
-                                    <input required type="number" className="w-full px-6 py-4 bg-gray-50 dark:bg-gray-900 border border-gray-100 dark:border-gray-700 rounded-[1.25rem] text-xs font-bold uppercase tracking-widest focus:bg-white dark:focus:bg-gray-800 focus:border-sky-500 dark:focus:border-sky-500 focus:ring-4 focus:ring-sky-500/10 outline-none transition-all text-gray-900 dark:text-white shadow-inner"
+                                    <label className="text-[10px] font-bold text-[#4a5568] uppercase tracking-widest ml-1">Sig'imi (Kishi) <span className="text-rose-500">*</span></label>
+                                    <input required type="number" className="w-full px-6 py-4 bg-white/5 border border-white/10 rounded-[1.25rem] text-xs font-bold uppercase tracking-widest focus:border-sky-500 focus:ring-4 focus:ring-sky-500/10 outline-none transition-all text-white shadow-inner"
                                         value={newItem.capacity || ''} onChange={e => setNewItem({ ...newItem, capacity: e.target.value })} />
                                 </div>
                             )}
 
                             {activeSubTab === 'Filiallar' && (
                                 <div className="space-y-3">
-                                    <label className="text-[10px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-widest ml-1">Filial Manzili <span className="text-rose-500">*</span></label>
+                                    <label className="text-[10px] font-bold text-[#4a5568] uppercase tracking-widest ml-1">Filial Manzili <span className="text-rose-500">*</span></label>
                                     <div className="relative">
                                         <MapPin className="absolute left-6 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-                                        <input required type="text" className="w-full pl-12 pr-6 py-4 bg-gray-50 dark:bg-gray-900 border border-gray-100 dark:border-gray-700 rounded-[1.25rem] text-xs font-bold uppercase tracking-widest focus:bg-white dark:focus:bg-gray-800 focus:border-sky-500 dark:focus:border-sky-500 focus:ring-4 focus:ring-sky-500/10 outline-none transition-all text-gray-900 dark:text-white shadow-inner"
+                                        <input required type="text" className="w-full pl-12 pr-6 py-4 bg-white/5 border border-white/10 rounded-[1.25rem] text-xs font-bold uppercase tracking-widest focus:border-sky-500 focus:ring-4 focus:ring-sky-500/10 outline-none transition-all text-white shadow-inner"
                                             value={newItem.address || ''} onChange={e => setNewItem({ ...newItem, address: e.target.value })} />
                                     </div>
                                 </div>
@@ -338,15 +338,15 @@ export default function Settings() {
                             {activeTab === 'staff' && (
                                 <>
                                     <div className="space-y-3">
-                                        <label className="text-[10px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-widest ml-1">Ismi (F.I.SH) <span className="text-rose-500">*</span></label>
-                                        <input required type="text" placeholder="Ism Familiya" className="w-full px-6 py-4 bg-gray-50 dark:bg-gray-900 border border-gray-100 dark:border-gray-700 rounded-[1.25rem] text-xs font-bold uppercase tracking-widest focus:bg-white dark:focus:bg-gray-800 focus:border-sky-500 dark:focus:border-sky-500 focus:ring-4 focus:ring-sky-500/10 outline-none transition-all text-gray-900 dark:text-white shadow-inner"
+                                        <label className="text-[10px] font-bold text-[#4a5568] uppercase tracking-widest ml-1">Ismi (F.I.SH) <span className="text-rose-500">*</span></label>
+                                        <input required type="text" placeholder="Ism Familiya" className="w-full px-6 py-4 bg-white/5 border border-white/10 rounded-[1.25rem] text-xs font-bold uppercase tracking-widest focus:border-sky-500 focus:ring-4 focus:ring-sky-500/10 outline-none transition-all text-white shadow-inner"
                                             value={newItem.name || ''} onChange={e => setNewItem({ ...newItem, name: e.target.value })} />
                                     </div>
                                     <div className="grid grid-cols-2 gap-8">
                                         <div className="space-y-3">
-                                            <label className="text-[10px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-widest ml-1">Vazifasi <span className="text-rose-500">*</span></label>
+                                            <label className="text-[10px] font-bold text-[#4a5568] uppercase tracking-widest ml-1">Vazifasi <span className="text-rose-500">*</span></label>
                                             <div className="relative">
-                                                <select required className="w-full px-6 py-4 bg-gray-50 dark:bg-gray-900 border border-gray-100 dark:border-gray-700 rounded-[1.25rem] text-xs font-bold uppercase tracking-widest focus:bg-white dark:focus:bg-gray-800 focus:border-sky-500 dark:focus:border-sky-500 focus:ring-4 focus:ring-sky-500/10 outline-none appearance-none cursor-pointer text-gray-900 dark:text-white shadow-inner"
+                                                <select required className="w-full px-6 py-4 bg-white/5 border border-white/10 rounded-[1.25rem] text-xs font-bold uppercase tracking-widest focus:border-sky-500 focus:ring-4 focus:ring-sky-500/10 outline-none appearance-none cursor-pointer text-white shadow-inner"
                                                     value={newItem.role || 'RECEPTIONIST'} onChange={e => setNewItem({ ...newItem, role: e.target.value })}>
                                                     <option value="RECEPTIONIST">Receptionist</option>
                                                     <option value="TEACHER">O'qituvchi</option>
@@ -358,28 +358,28 @@ export default function Settings() {
                                             </div>
                                         </div>
                                         <div className="space-y-3">
-                                            <label className="text-[10px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-widest ml-1">Telefon raqami</label>
-                                            <input type="text" placeholder="+998 90 123 45 67" className="w-full px-6 py-4 bg-gray-50 dark:bg-gray-900 border border-gray-100 dark:border-gray-700 rounded-[1.25rem] text-xs font-bold uppercase tracking-widest focus:bg-white dark:focus:bg-gray-800 focus:border-sky-500 dark:focus:border-sky-500 focus:ring-4 focus:ring-sky-500/10 outline-none transition-all text-gray-900 dark:text-white shadow-inner"
+                                            <label className="text-[10px] font-bold text-[#4a5568] uppercase tracking-widest ml-1">Telefon raqami</label>
+                                            <input type="text" placeholder="+998 90 123 45 67" className="w-full px-6 py-4 bg-white/5 border border-white/10 rounded-[1.25rem] text-xs font-bold uppercase tracking-widest focus:border-sky-500 focus:ring-4 focus:ring-sky-500/10 outline-none transition-all text-white shadow-inner"
                                                 value={newItem.phone || ''} onChange={e => setNewItem({ ...newItem, phone: e.target.value })} />
                                         </div>
                                     </div>
                                     <div className="grid grid-cols-2 gap-8">
                                         <div className="space-y-3">
-                                            <label className="text-[10px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-widest ml-1">Login <span className="text-rose-500">*</span></label>
-                                            <input required type="text" placeholder="pochta@misol.uz" className="w-full px-6 py-4 bg-gray-50 dark:bg-gray-900 border border-gray-100 dark:border-gray-700 rounded-[1.25rem] text-xs font-bold uppercase tracking-widest focus:bg-white dark:focus:bg-gray-800 focus:border-sky-500 dark:focus:border-sky-500 focus:ring-4 focus:ring-sky-500/10 outline-none transition-all text-gray-900 dark:text-white lowercase shadow-inner"
+                                            <label className="text-[10px] font-bold text-[#4a5568] uppercase tracking-widest ml-1">Login <span className="text-rose-500">*</span></label>
+                                            <input required type="text" placeholder="pochta@misol.uz" className="w-full px-6 py-4 bg-white/5 border border-white/10 rounded-[1.25rem] text-xs font-bold uppercase tracking-widest focus:border-sky-500 focus:ring-4 focus:ring-sky-500/10 outline-none transition-all text-white lowercase shadow-inner"
                                                 value={newItem.email || ''} onChange={e => setNewItem({ ...newItem, email: e.target.value })} />
                                         </div>
                                         <div className="space-y-3">
-                                            <label className="text-[10px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-widest ml-1">Parol <span className="text-rose-500">*</span></label>
-                                            <input required type="password" placeholder="Kamida 6 belgi" className="w-full px-6 py-4 bg-gray-50 dark:bg-gray-900 border border-gray-100 dark:border-gray-700 rounded-[1.25rem] text-xs font-bold uppercase tracking-widest focus:bg-white dark:focus:bg-gray-800 focus:border-sky-500 dark:focus:border-sky-500 focus:ring-4 focus:ring-sky-500/10 outline-none transition-all text-gray-900 dark:text-white shadow-inner"
+                                            <label className="text-[10px] font-bold text-[#4a5568] uppercase tracking-widest ml-1">Parol <span className="text-rose-500">*</span></label>
+                                            <input required type="password" placeholder="Kamida 6 belgi" className="w-full px-6 py-4 bg-white/5 border border-white/10 rounded-[1.25rem] text-xs font-bold uppercase tracking-widest focus:border-sky-500 focus:ring-4 focus:ring-sky-500/10 outline-none transition-all text-white shadow-inner"
                                                 value={newItem.password || ''} onChange={e => setNewItem({ ...newItem, password: e.target.value })} />
                                         </div>
                                     </div>
                                 </>
                             )}
 
-                            <div className="pt-10 mt-6 border-t border-dashed border-gray-100 dark:border-gray-700 flex justify-end gap-5">
-                                <button type="button" onClick={() => setIsAddModalOpen(false)} className="px-8 py-4 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-gray-500 dark:text-gray-400 rounded-2xl text-[10px] font-bold uppercase tracking-widest hover:bg-gray-50 dark:hover:bg-gray-700 transition-all">
+                            <div className="pt-10 mt-6 border-t border-dashed border-white/10 flex justify-end gap-5">
+                                <button type="button" onClick={() => setIsAddModalOpen(false)} className="px-8 py-4 bg-white/5 border border-white/10 text-[#4a5568] rounded-2xl text-[10px] font-bold uppercase tracking-widest hover:bg-white/5 transition-all">
                                     Bekor Qilish
                                 </button>
                                 <button type="submit" className="px-10 py-4 bg-sky-600 dark:bg-sky-500 text-white rounded-2xl text-[10px] font-bold uppercase tracking-widest hover:bg-sky-500 dark:hover:bg-sky-400 active:scale-[0.98] transition-all shadow-xl shadow-sky-500/20 flex flex-row items-center gap-3">
@@ -395,13 +395,13 @@ export default function Settings() {
             {/* Global Edit Modal (Staff Only for now) */}
             {isEditModalOpen && editingItem && (
                 <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-gray-900/60 backdrop-blur-md animate-in fade-in duration-300" onClick={() => setIsEditModalOpen(false)}>
-                    <div className="bg-white dark:bg-gray-800 w-full max-w-lg rounded-[2.5rem] shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200 border border-gray-100 dark:border-gray-700" onClick={e => e.stopPropagation()}>
-                        <div className="px-10 py-8 flex items-center justify-between border-b border-gray-100 dark:border-gray-700 bg-gray-50/50 dark:bg-gray-900/50">
+                    <div className="bg-[#1a2332] w-full max-w-lg rounded-[2.5rem] shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200 border border-white/5" onClick={e => e.stopPropagation()}>
+                        <div className="px-10 py-8 flex items-center justify-between border-b border-white/5 bg-white/[0.03]">
                             <div>
-                                <h2 className="text-2xl font-bold text-gray-900 dark:text-white uppercase tracking-tight">Xodimni Tahrirlash</h2>
-                                <p className="text-[10px] font-bold text-gray-400 dark:text-gray-500 mt-1.5 uppercase tracking-widest">Ma'lumotlarni yangilash</p>
+                                <h2 className="text-2xl font-bold text-white uppercase tracking-tight">Xodimni Tahrirlash</h2>
+                                <p className="text-[10px] font-bold text-[#4a5568] mt-1.5 uppercase tracking-widest">Ma'lumotlarni yangilash</p>
                             </div>
-                            <button onClick={() => setIsEditModalOpen(false)} className="w-12 h-12 flex items-center justify-center hover:bg-white dark:hover:bg-gray-700 rounded-2xl text-gray-400 hover:text-gray-900 dark:hover:text-white transition-all shadow-sm border border-transparent hover:border-gray-100 dark:hover:border-gray-600">
+                            <button onClick={() => setIsEditModalOpen(false)} className="w-12 h-12 flex items-center justify-center hover:bg-white/5 rounded-2xl text-gray-400 hover:text-white transition-all shadow-sm border border-transparent hover:border-white/10">
                                 <X size={24} />
                             </button>
                         </div>
@@ -430,15 +430,15 @@ export default function Settings() {
                             }
                         }} className="p-10 space-y-8">
                             <div className="space-y-3">
-                                <label className="text-[10px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-widest ml-1">Ismi (F.I.SH) <span className="text-rose-500">*</span></label>
-                                <input required type="text" className="w-full px-6 py-4 bg-gray-50 dark:bg-gray-900 border border-gray-100 dark:border-gray-700 rounded-[1.25rem] text-xs font-bold uppercase tracking-widest focus:bg-white dark:focus:bg-gray-800 focus:border-sky-500 dark:focus:border-sky-500 focus:ring-4 focus:ring-sky-500/10 outline-none transition-all text-gray-900 dark:text-white shadow-inner"
+                                <label className="text-[10px] font-bold text-[#4a5568] uppercase tracking-widest ml-1">Ismi (F.I.SH) <span className="text-rose-500">*</span></label>
+                                <input required type="text" className="w-full px-6 py-4 bg-white/5 border border-white/10 rounded-[1.25rem] text-xs font-bold uppercase tracking-widest focus:border-sky-500 focus:ring-4 focus:ring-sky-500/10 outline-none transition-all text-white shadow-inner"
                                     value={editingItem.name || ''} onChange={e => setEditingItem({ ...editingItem, name: e.target.value })} />
                             </div>
                             <div className="grid grid-cols-2 gap-8">
                                 <div className="space-y-3">
-                                    <label className="text-[10px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-widest ml-1">Vazifasi <span className="text-rose-500">*</span></label>
+                                    <label className="text-[10px] font-bold text-[#4a5568] uppercase tracking-widest ml-1">Vazifasi <span className="text-rose-500">*</span></label>
                                     <div className="relative">
-                                        <select required className="w-full px-6 py-4 bg-gray-50 dark:bg-gray-900 border border-gray-100 dark:border-gray-700 rounded-[1.25rem] text-xs font-bold uppercase tracking-widest focus:bg-white dark:focus:bg-gray-800 focus:border-sky-500 dark:focus:border-sky-500 focus:ring-4 focus:ring-sky-500/10 outline-none appearance-none cursor-pointer text-gray-900 dark:text-white shadow-inner"
+                                        <select required className="w-full px-6 py-4 bg-white/5 border border-white/10 rounded-[1.25rem] text-xs font-bold uppercase tracking-widest focus:border-sky-500 focus:ring-4 focus:ring-sky-500/10 outline-none appearance-none cursor-pointer text-white shadow-inner"
                                             value={editingItem.role || 'RECEPTIONIST'} onChange={e => setEditingItem({ ...editingItem, role: e.target.value })}>
                                             <option value="RECEPTIONIST">Receptionist</option>
                                             <option value="TEACHER">O'qituvchi</option>
@@ -450,26 +450,26 @@ export default function Settings() {
                                     </div>
                                 </div>
                                 <div className="space-y-3">
-                                    <label className="text-[10px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-widest ml-1">Telefon raqami</label>
-                                    <input type="text" placeholder="+998 90 123 45 67" className="w-full px-6 py-4 bg-gray-50 dark:bg-gray-900 border border-gray-100 dark:border-gray-700 rounded-[1.25rem] text-xs font-bold uppercase tracking-widest focus:bg-white dark:focus:bg-gray-800 focus:border-sky-500 dark:focus:border-sky-500 focus:ring-4 focus:ring-sky-500/10 outline-none transition-all text-gray-900 dark:text-white shadow-inner"
+                                    <label className="text-[10px] font-bold text-[#4a5568] uppercase tracking-widest ml-1">Telefon raqami</label>
+                                    <input type="text" placeholder="+998 90 123 45 67" className="w-full px-6 py-4 bg-white/5 border border-white/10 rounded-[1.25rem] text-xs font-bold uppercase tracking-widest focus:border-sky-500 focus:ring-4 focus:ring-sky-500/10 outline-none transition-all text-white shadow-inner"
                                         value={editingItem.phone || ''} onChange={e => setEditingItem({ ...editingItem, phone: e.target.value })} />
                                 </div>
                             </div>
                             <div className="grid grid-cols-2 gap-8">
                                 <div className="space-y-3">
-                                    <label className="text-[10px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-widest ml-1">Login <span className="text-rose-500">*</span></label>
-                                    <input required type="text" className="w-full px-6 py-4 bg-gray-50 dark:bg-gray-900 border border-gray-100 dark:border-gray-700 rounded-[1.25rem] text-xs font-bold uppercase tracking-widest focus:bg-white dark:focus:bg-gray-800 focus:border-sky-500 dark:focus:border-sky-500 focus:ring-4 focus:ring-sky-500/10 outline-none transition-all text-gray-900 dark:text-white shadow-inner"
+                                    <label className="text-[10px] font-bold text-[#4a5568] uppercase tracking-widest ml-1">Login <span className="text-rose-500">*</span></label>
+                                    <input required type="text" className="w-full px-6 py-4 bg-white/5 border border-white/10 rounded-[1.25rem] text-xs font-bold uppercase tracking-widest focus:border-sky-500 focus:ring-4 focus:ring-sky-500/10 outline-none transition-all text-white shadow-inner"
                                         value={editingItem.email || ''} onChange={e => setEditingItem({ ...editingItem, email: e.target.value })} />
                                 </div>
                                 <div className="space-y-3">
-                                    <label className="text-[10px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-widest ml-1">Yangi Parol (Ixtiyoriy)</label>
-                                    <input type="password" placeholder="O'zgartirish uchun yozing" className="w-full px-6 py-4 bg-gray-50 dark:bg-gray-900 border border-gray-100 dark:border-gray-700 rounded-[1.25rem] text-xs font-bold uppercase tracking-widest focus:bg-white dark:focus:bg-gray-800 focus:border-sky-500 dark:focus:border-sky-500 focus:ring-4 focus:ring-sky-500/10 outline-none transition-all text-gray-900 dark:text-white shadow-inner"
+                                    <label className="text-[10px] font-bold text-[#4a5568] uppercase tracking-widest ml-1">Yangi Parol (Ixtiyoriy)</label>
+                                    <input type="password" placeholder="O'zgartirish uchun yozing" className="w-full px-6 py-4 bg-white/5 border border-white/10 rounded-[1.25rem] text-xs font-bold uppercase tracking-widest focus:border-sky-500 focus:ring-4 focus:ring-sky-500/10 outline-none transition-all text-white shadow-inner"
                                         value={editingItem.password || ''} onChange={e => setEditingItem({ ...editingItem, password: e.target.value })} />
                                 </div>
                             </div>
 
-                            <div className="pt-10 mt-6 border-t border-dashed border-gray-100 dark:border-gray-700 flex justify-end gap-5">
-                                <button type="button" onClick={() => setIsEditModalOpen(false)} className="px-8 py-4 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-gray-500 dark:text-gray-400 rounded-2xl text-[10px] font-bold uppercase tracking-widest hover:bg-gray-50 dark:hover:bg-gray-700 transition-all">
+                            <div className="pt-10 mt-6 border-t border-dashed border-white/10 flex justify-end gap-5">
+                                <button type="button" onClick={() => setIsEditModalOpen(false)} className="px-8 py-4 bg-white/5 border border-white/10 text-[#4a5568] rounded-2xl text-[10px] font-bold uppercase tracking-widest hover:bg-white/5 transition-all">
                                     Bekor Qilish
                                 </button>
                                 <button type="submit" className="px-10 py-4 bg-sky-600 dark:bg-sky-500 text-white rounded-2xl text-[10px] font-bold uppercase tracking-widest hover:bg-sky-500 dark:hover:bg-sky-400 active:scale-[0.98] transition-all shadow-xl shadow-sky-500/20 flex flex-row items-center gap-3">

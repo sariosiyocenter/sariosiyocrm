@@ -24,13 +24,13 @@ export default function ExamsList() {
         <div className="space-y-8 pb-12 animate-in fade-in duration-700">
             <div className="flex items-center justify-between">
                 <div>
-                    <h1 className="text-3xl font-extrabold text-gray-900 dark:text-white uppercase tracking-tight">Imtihonlar</h1>
+                    <h1 className="text-3xl font-extrabold text-white uppercase tracking-tight">Imtihonlar</h1>
                     <p className="text-[10px] font-bold text-gray-400 dark:text-gray-500 mt-2 uppercase tracking-widest">Markazdagi jami imtihonlar ro'yxati</p>
                 </div>
             </div>
 
             {/* Header Actions */}
-            <div className="bg-white dark:bg-gray-800 rounded-[2.5rem] border border-gray-100 dark:border-gray-700 shadow-xl shadow-teal-500/5 overflow-hidden transition-all">
+            <div className="bg-[#141c27] rounded-[2.5rem] border border-white/5 shadow-xl overflow-hidden transition-all">
                 <div className="p-8 flex flex-col lg:flex-row lg:items-center justify-between gap-6">
                     <div className="flex items-center gap-5">
                         <button 
@@ -50,7 +50,7 @@ export default function ExamsList() {
                                 placeholder="Nomi bo'yicha qidirish..."
                                 value={search}
                                 onChange={(e) => setSearch(e.target.value)}
-                                className="w-full pl-12 pr-6 py-4 bg-gray-50/50 dark:bg-gray-900/50 border border-gray-100 dark:border-gray-700 rounded-[1.25rem] text-[10px] font-extrabold uppercase tracking-widest outline-none focus:bg-white dark:focus:bg-gray-800 focus:border-teal-500 focus:ring-4 focus:ring-teal-500/10 transition-all placeholder:text-gray-400/60 dark:text-white text-gray-900 shadow-inner"
+                                className="w-full pl-12 pr-6 py-4 bg-gray-50/50 dark:bg-gray-900/50 border border-white/5 rounded-[1.25rem] text-[10px] font-extrabold uppercase tracking-widest outline-none focus:bg-white dark:focus:bg-gray-800 focus:border-teal-500 focus:ring-4 focus:ring-teal-500/10 transition-all placeholder:text-gray-400/60 dark:text-white text-gray-900 shadow-inner"
                             />
                         </div>
                     </div>
@@ -58,11 +58,11 @@ export default function ExamsList() {
             </div>
 
             {/* Data Grid / Table */}
-            <div className="bg-white dark:bg-gray-800 rounded-[2.5rem] border border-gray-100 dark:border-gray-700 shadow-xl shadow-teal-500/5 overflow-hidden transition-all">
+            <div className="bg-[#141c27] rounded-[2.5rem] border border-white/5 shadow-xl overflow-hidden transition-all">
                 <div className="overflow-x-auto custom-scrollbar">
                     <table className="w-full text-left border-collapse min-w-[900px]">
                         <thead>
-                            <tr className="bg-gray-50/50 dark:bg-gray-900/50 border-b border-gray-100 dark:border-gray-700">
+                            <tr className="bg-gray-50/50 dark:bg-gray-900/50 border-b border-white/5">
                                 <th className="p-6 text-[10px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-widest text-center w-20">ID</th>
                                 <th className="p-6 text-[10px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-widest">Imtihon Nomi & Fanlar</th>
                                 <th className="p-6 text-[10px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-widest text-center">Sana & Vaqt</th>
@@ -84,7 +84,7 @@ export default function ExamsList() {
                                                 <BookOpen size={20} />
                                             </div>
                                             <div className="space-y-1">
-                                                <p className="text-sm font-bold text-gray-900 dark:text-white uppercase tracking-tight group-hover:text-teal-600 transition-colors">{exam.name}</p>
+                                                <p className="text-sm font-bold text-white uppercase tracking-tight group-hover:text-teal-600 transition-colors">{exam.name}</p>
                                                 <div className="flex items-center gap-2">
                                                     <span className="text-[10px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-widest">To'plam:</span>
                                                     <span className="text-[10px] font-extrabold text-gray-500 dark:text-gray-400 tracking-tight">
@@ -96,7 +96,7 @@ export default function ExamsList() {
                                     </td>
                                     <td className="p-6 text-center">
                                         <div className="flex flex-col items-center gap-1">
-                                            <span className="text-[10px] font-bold text-gray-900 dark:text-white bg-gray-50 dark:bg-gray-900 px-3 py-1.5 rounded-xl border border-gray-100 flex items-center gap-2">
+                                            <span className="text-[10px] font-bold text-white bg-gray-50 dark:bg-gray-900 px-3 py-1.5 rounded-xl border border-gray-100 flex items-center gap-2">
                                                 <Calendar size={12} className="text-gray-400" /> {exam.date}
                                             </span>
                                             <span className="text-[9px] font-bold text-gray-500 flex items-center gap-1">

@@ -94,7 +94,7 @@ export const CRMProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     const [token, setToken] = useState<string | null>(localStorage.getItem('token'));
     const [darkMode, setDarkMode] = useState<boolean>(() => {
         const saved = localStorage.getItem('darkMode');
-        return saved ? JSON.parse(saved) : false;
+        return saved ? JSON.parse(saved) : true;
     });
     const [notification, setNotification] = useState<{ message: string, type: 'success' | 'error' | 'info' } | null>(null);
 

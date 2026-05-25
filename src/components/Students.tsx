@@ -97,7 +97,7 @@ export default function Students() {
                (s.phone || '').toLowerCase().includes(lowerSearch);
         
         const matchesStatus = !filters.status || s.status === filters.status;
-        const matchesGroup = !filters.groupId || s.groups.includes(Number(filters.groupId));
+        const matchesGroup = !filters.groupId || (s.groups || []).includes(Number(filters.groupId));
         const matchesRating = !filters.rating || s.rating === Number(filters.rating);
         const matchesLocation = !filters.location || s.location === filters.location;
         
@@ -121,13 +121,13 @@ export default function Students() {
         <div className="space-y-8 pb-12 animate-in fade-in duration-700">
             <div className="flex items-center justify-between">
                 <div>
-                    <h1 className="text-3xl font-extrabold text-gray-900 dark:text-white uppercase tracking-tight">O'quvchilar</h1>
-                    <p className="text-[10px] font-bold text-gray-400 dark:text-gray-500 mt-2 uppercase tracking-widest">Markazdagi jami o'quvchilar ro'yxati</p>
+                    <h1 className="text-3xl font-extrabold text-white uppercase tracking-tight">O'quvchilar</h1>
+                    <p className="text-[10px] font-bold text-[#4a5568] mt-2 uppercase tracking-widest">Markazdagi jami o'quvchilar ro'yxati</p>
                 </div>
             </div>
 
             {/* Header Actions */}
-            <div className="bg-white dark:bg-gray-800 rounded-[2.5rem] border border-gray-100 dark:border-gray-700 shadow-xl shadow-gray-200/10 dark:shadow-none overflow-hidden transition-all">
+            <div className="bg-[#141c27] rounded-[2.5rem] border border-white/5 shadow-xl shadow-black/20 overflow-hidden transition-all">
                 <div className="p-8 flex flex-col lg:flex-row lg:items-center justify-between gap-6">
                     <div className="flex items-center gap-5">
                         <button 
@@ -140,9 +140,9 @@ export default function Students() {
                         <button 
                             onClick={() => setShowFilters(!showFilters)}
                             className={`flex items-center gap-3 px-8 py-4 rounded-[1.25rem] text-[10px] font-extrabold uppercase tracking-widest transition-all group shadow-sm border ${
-                                showFilters 
-                                ? 'bg-sky-50 dark:bg-sky-900/30 text-sky-600 dark:text-sky-400 border-sky-100 dark:border-sky-800' 
-                                : 'bg-gray-50 dark:bg-gray-900/50 text-gray-500 dark:text-gray-400 border-gray-100 dark:border-gray-700 hover:bg-gray-100 dark:hover:bg-gray-700'
+                                showFilters
+                                ? 'bg-sky-50 dark:bg-sky-900/30 text-sky-600 dark:text-sky-400 border-sky-100 dark:border-sky-800'
+                                : 'bg-white/5 text-[#4a5568] border-white/5 hover:bg-white/5'
                             }`}
                         >
                             <Filter size={18} className={showFilters ? 'text-sky-500' : 'group-hover:text-sky-500 transition-colors'} />
@@ -158,20 +158,20 @@ export default function Students() {
                                 placeholder="Ism yoki telefon raqami..."
                                 value={search}
                                 onChange={(e) => setSearch(e.target.value)}
-                                className="w-full pl-12 pr-6 py-4 bg-gray-50/50 dark:bg-gray-900/50 border border-gray-100 dark:border-gray-700 rounded-[1.25rem] text-[10px] font-extrabold uppercase tracking-widest outline-none focus:bg-white dark:focus:bg-gray-800 focus:border-sky-500 dark:focus:border-sky-500 focus:ring-4 focus:ring-sky-500/10 transition-all placeholder:text-gray-400/60 dark:text-white text-gray-900 shadow-inner"
+                                className="w-full pl-12 pr-6 py-4 bg-white/5 border border-white/10 rounded-[1.25rem] text-[10px] font-extrabold uppercase tracking-widest outline-none focus:border-sky-500 focus:ring-4 focus:ring-sky-500/10 transition-all placeholder:text-[#4a5568] text-white shadow-inner"
                             />
                         </div>
                     </div>
                 </div>
 
                 {showFilters && (
-                    <div className="px-8 pb-8 pt-2 border-t border-gray-50 dark:border-gray-700/50 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-6 animate-in slide-in-from-top-4 duration-500">
+                    <div className="px-8 pb-8 pt-2 border-t border-white/5 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-6 animate-in slide-in-from-top-4 duration-500">
                         <div className="space-y-3">
-                            <label className="text-[9px] font-extrabold text-gray-400 dark:text-gray-500 uppercase tracking-widest ml-1">Holati</label>
+                            <label className="text-[9px] font-extrabold text-[#4a5568] uppercase tracking-widest ml-1">Holati</label>
                             <select 
                                 value={filters.status}
                                 onChange={e => setFilters({...filters, status: e.target.value})}
-                                className="w-full px-5 py-3.5 bg-gray-50 dark:bg-gray-900/50 border border-gray-100 dark:border-gray-700 rounded-2xl text-[10px] font-bold uppercase tracking-widest outline-none focus:border-sky-500 transition-all dark:text-white appearance-none cursor-pointer"
+                                className="w-full px-5 py-3.5 bg-white/5 border border-white/10 rounded-2xl text-[10px] font-bold uppercase tracking-widest outline-none focus:border-sky-500 transition-all text-white appearance-none cursor-pointer"
                             >
                                 <option value="">Barchasi</option>
                                 <option value="Faol">Faol</option>
@@ -180,22 +180,22 @@ export default function Students() {
                             </select>
                         </div>
                         <div className="space-y-3">
-                            <label className="text-[9px] font-extrabold text-gray-400 dark:text-gray-500 uppercase tracking-widest ml-1">Guruh</label>
+                            <label className="text-[9px] font-extrabold text-[#4a5568] uppercase tracking-widest ml-1">Guruh</label>
                             <select 
                                 value={filters.groupId}
                                 onChange={e => setFilters({...filters, groupId: e.target.value})}
-                                className="w-full px-5 py-3.5 bg-gray-50 dark:bg-gray-900/50 border border-gray-100 dark:border-gray-700 rounded-2xl text-[10px] font-bold uppercase tracking-widest outline-none focus:border-sky-500 transition-all dark:text-white appearance-none cursor-pointer"
+                                className="w-full px-5 py-3.5 bg-white/5 border border-white/10 rounded-2xl text-[10px] font-bold uppercase tracking-widest outline-none focus:border-sky-500 transition-all text-white appearance-none cursor-pointer"
                             >
                                 <option value="">Barchasi</option>
                                 {groups.map(g => <option key={g.id} value={g.id}>{g.name}</option>)}
                             </select>
                         </div>
                         <div className="space-y-3">
-                            <label className="text-[9px] font-extrabold text-gray-400 dark:text-gray-500 uppercase tracking-widest ml-1">Balans</label>
+                            <label className="text-[9px] font-extrabold text-[#4a5568] uppercase tracking-widest ml-1">Balans</label>
                             <select 
                                 value={filters.balanceStatus}
                                 onChange={e => setFilters({...filters, balanceStatus: e.target.value})}
-                                className="w-full px-5 py-3.5 bg-gray-50 dark:bg-gray-900/50 border border-gray-100 dark:border-gray-700 rounded-2xl text-[10px] font-bold uppercase tracking-widest outline-none focus:border-sky-500 transition-all dark:text-white appearance-none cursor-pointer"
+                                className="w-full px-5 py-3.5 bg-white/5 border border-white/10 rounded-2xl text-[10px] font-bold uppercase tracking-widest outline-none focus:border-sky-500 transition-all text-white appearance-none cursor-pointer"
                             >
                                 <option value="">Barchasi</option>
                                 <option value="debt">Qarzdorlar</option>
@@ -203,22 +203,22 @@ export default function Students() {
                             </select>
                         </div>
                         <div className="space-y-3">
-                            <label className="text-[9px] font-extrabold text-gray-400 dark:text-gray-500 uppercase tracking-widest ml-1">Reyting</label>
+                            <label className="text-[9px] font-extrabold text-[#4a5568] uppercase tracking-widest ml-1">Reyting</label>
                             <select 
                                 value={filters.rating}
                                 onChange={e => setFilters({...filters, rating: e.target.value})}
-                                className="w-full px-5 py-3.5 bg-gray-50 dark:bg-gray-900/50 border border-gray-100 dark:border-gray-700 rounded-2xl text-[10px] font-bold uppercase tracking-widest outline-none focus:border-sky-500 transition-all dark:text-white appearance-none cursor-pointer"
+                                className="w-full px-5 py-3.5 bg-white/5 border border-white/10 rounded-2xl text-[10px] font-bold uppercase tracking-widest outline-none focus:border-sky-500 transition-all text-white appearance-none cursor-pointer"
                             >
                                 <option value="">Barchasi</option>
                                 {[1,2,3,4,5].map(r => <option key={r} value={r}>{r} yulduz</option>)}
                             </select>
                         </div>
                         <div className="space-y-3">
-                            <label className="text-[9px] font-extrabold text-gray-400 dark:text-gray-500 uppercase tracking-widest ml-1">Manzil</label>
+                            <label className="text-[9px] font-extrabold text-[#4a5568] uppercase tracking-widest ml-1">Manzil</label>
                             <select 
                                 value={filters.location}
                                 onChange={e => setFilters({...filters, location: e.target.value})}
-                                className="w-full px-5 py-3.5 bg-gray-50 dark:bg-gray-900/50 border border-gray-100 dark:border-gray-700 rounded-2xl text-[10px] font-bold uppercase tracking-widest outline-none focus:border-sky-500 transition-all dark:text-white appearance-none cursor-pointer"
+                                className="w-full px-5 py-3.5 bg-white/5 border border-white/10 rounded-2xl text-[10px] font-bold uppercase tracking-widest outline-none focus:border-sky-500 transition-all text-white appearance-none cursor-pointer"
                             >
                                 <option value="">Barchasi</option>
                                 {Array.from(new Set(students.map(s => s.location).filter(Boolean))).map(loc => (
@@ -239,25 +239,25 @@ export default function Students() {
                 )}
             </div>
 
-            <div className="bg-white dark:bg-gray-800 rounded-[2.5rem] border border-gray-100 dark:border-gray-700 shadow-xl shadow-sky-500/5 overflow-hidden transition-all">
+            <div className="bg-[#141c27] rounded-[2.5rem] border border-white/5 shadow-xl shadow-sky-500/5 overflow-hidden transition-all">
                 <div className="overflow-x-auto custom-scrollbar">
                     <table className="w-full text-left border-collapse min-w-[900px]">
                         <thead>
-                            <tr className="bg-gray-50/50 dark:bg-gray-900/50 border-b border-gray-100 dark:border-gray-700">
-                                <th className="p-6 text-[10px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-widest text-center">ID</th>
-                                <th className="p-6 text-[10px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-widest">O'quvchi</th>
-                                <th className="p-6 text-[10px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-widest text-center">Telefon</th>
-                                <th className="p-6 text-[10px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-widest">Guruhlar</th>
-                                <th className="p-6 text-[10px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-widest text-right">Moliyaviy Holat</th>
+                            <tr className="bg-white/5 border-b border-white/5">
+                                <th className="p-6 text-[10px] font-bold text-[#4a5568] uppercase tracking-widest text-center">ID</th>
+                                <th className="p-6 text-[10px] font-bold text-[#4a5568] uppercase tracking-widest">O'quvchi</th>
+                                <th className="p-6 text-[10px] font-bold text-[#4a5568] uppercase tracking-widest text-center">Telefon</th>
+                                <th className="p-6 text-[10px] font-bold text-[#4a5568] uppercase tracking-widest">Guruhlar</th>
+                                <th className="p-6 text-[10px] font-bold text-[#4a5568] uppercase tracking-widest text-right">Moliyaviy Holat</th>
                                 <th className="p-6 w-12 text-center"></th>
                             </tr>
                         </thead>
-                        <tbody className="divide-y divide-gray-50 dark:divide-gray-700/50">
+                        <tbody className="divide-y divide-white/5">
                             {filteredStudents.map((student, idx) => (
                                 <tr key={student.id} className="hover:bg-gray-50/80 dark:hover:bg-sky-900/10 transition-all cursor-pointer group animate-in slide-in-from-left-2 duration-300" 
                                     style={{ animationDelay: `${idx * 30}ms` }}
                                     onClick={() => navigate(`/students/${student.id}`)}>
-                                    <td className="p-6 text-[10px] font-extrabold text-gray-400 dark:text-gray-600 text-center tabular-nums">#{student.id}</td>
+                                    <td className="p-6 text-[10px] font-extrabold text-[#4a5568] text-center tabular-nums">#{student.id}</td>
                                     <td className="p-6">
                                         <div className="flex items-center gap-4">
                                             <div className="w-12 h-12 rounded-2xl bg-sky-50 dark:bg-sky-900/30 border border-sky-100 dark:border-sky-800/50 flex items-center justify-center text-sky-600 dark:text-sky-400 font-bold text-sm shadow-inner overflow-hidden shrink-0 group-hover:scale-110 transition-transform">
@@ -266,16 +266,16 @@ export default function Students() {
                                                 ) : student.name.charAt(0).toUpperCase()}
                                             </div>
                                             <div className="space-y-1">
-                                                <p className="text-sm font-bold text-gray-900 dark:text-white uppercase tracking-tight group-hover:text-sky-600 dark:group-hover:text-sky-400 transition-colors">{student.name}</p>
+                                                <p className="text-sm font-bold text-white uppercase tracking-tight group-hover:text-sky-600 dark:group-hover:text-sky-400 transition-colors">{student.name}</p>
                                                 <div className="flex items-center gap-2">
-                                                    <span className="text-[10px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-widest">A'zo:</span>
-                                                    <span className="text-[10px] font-extrabold text-gray-500 dark:text-gray-400 tracking-tight">{student.joinedDate}</span>
+                                                    <span className="text-[10px] font-bold text-[#4a5568] uppercase tracking-widest">A'zo:</span>
+                                                    <span className="text-[10px] font-extrabold text-[#4a5568] tracking-tight">{student.joinedDate}</span>
                                                 </div>
                                             </div>
                                         </div>
                                     </td>
                                     <td className="p-6 text-center">
-                                        <span className="text-[10px] font-bold text-gray-900 dark:text-white bg-gray-50 dark:bg-gray-900/50 px-3 py-1.5 rounded-xl border border-gray-100 dark:border-gray-700 group-hover:border-sky-300 transition-colors tabular-nums">
+                                        <span className="text-[10px] font-bold text-white bg-white/5 px-3 py-1.5 rounded-xl border border-white/5 group-hover:border-sky-300 transition-colors tabular-nums">
                                             {student.phone}
                                         </span>
                                     </td>
@@ -286,21 +286,21 @@ export default function Students() {
                                                     {g.name}
                                                 </span>
                                             ))}
-                                            {student.groups.length === 0 && <span className="text-[10px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-widest italic opacity-60">Guruhsiz</span>}
+                                            {student.groups.length === 0 && <span className="text-[10px] font-bold text-[#4a5568] uppercase tracking-widest italic opacity-60">Guruhsiz</span>}
                                         </div>
                                     </td>
                                     <td className="p-6 text-right">
                                         <div className="flex flex-col items-end gap-2 text-right">
-                                            <span className={`px-2.5 py-1 rounded-xl text-[9px] font-extrabold border uppercase tracking-widest shadow-sm ${student.status === 'Faol' ? 'bg-emerald-50 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 border-emerald-100 dark:border-emerald-800/50' : 'text-gray-500 dark:text-gray-400 bg-gray-50 dark:bg-gray-900 border-gray-100 dark:border-gray-700'}`}>
+                                            <span className={`px-2.5 py-1 rounded-xl text-[9px] font-extrabold border uppercase tracking-widest shadow-sm ${student.status === 'Faol' ? 'bg-emerald-50 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 border-emerald-100 dark:border-emerald-800/50' : 'text-[#4a5568] bg-white/5 border-white/5'}`}>
                                                 {student.status}
                                             </span>
-                                            <span className={`text-sm font-extrabold tabular-nums tracking-tight ${student.balance >= 0 ? 'text-gray-900 dark:text-white' : 'text-rose-600 dark:text-rose-400'}`}>
+                                            <span className={`text-sm font-extrabold tabular-nums tracking-tight ${student.balance >= 0 ? 'text-white' : 'text-rose-600 dark:text-rose-400'}`}>
                                                 {student.balance.toLocaleString()} UZS
                                             </span>
                                         </div>
                                     </td>
                                     <td className="p-6 text-center">
-                                        <div className="w-10 h-10 flex items-center justify-center rounded-xl text-gray-300 dark:text-gray-600 group-hover:text-white group-hover:bg-sky-600 group-hover:border-sky-600 transition-all border border-transparent shadow-sm">
+                                        <div className="w-10 h-10 flex items-center justify-center rounded-xl text-gray-600 group-hover:text-white group-hover:bg-sky-600 group-hover:border-sky-600 transition-all border border-transparent shadow-sm">
                                             <MoreVertical size={20} />
                                         </div>
                                     </td>
@@ -309,8 +309,8 @@ export default function Students() {
                             {filteredStudents.length === 0 && (
                                 <tr>
                                     <td colSpan={6} className="p-24 text-center">
-                                        <Search className="w-16 h-16 text-gray-200 dark:text-gray-700 mx-auto mb-4" />
-                                        <p className="text-[10px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-widest">Hech qanday o'quvchi topilmadi</p>
+                                        <Search className="w-16 h-16 text-gray-700 mx-auto mb-4" />
+                                        <p className="text-[10px] font-bold text-[#4a5568] uppercase tracking-widest">Hech qanday o'quvchi topilmadi</p>
                                     </td>
                                 </tr>
                             )}
@@ -322,13 +322,13 @@ export default function Students() {
             {/* Form Modal */}
             {isModalOpen && (
                 <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-gray-900/60 backdrop-blur-md animate-in fade-in duration-300" onClick={() => setIsModalOpen(false)}>
-                    <div className="bg-white dark:bg-gray-800 w-full max-w-lg rounded-[2.5rem] shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200 border border-gray-100 dark:border-gray-700 max-h-[90vh] flex flex-col" onClick={e => e.stopPropagation()}>
-                        <div className="px-10 py-8 flex items-center justify-between border-b border-gray-50 dark:border-gray-700 bg-gray-50/50 dark:bg-gray-900/50">
+                    <div className="bg-[#1a2332] w-full max-w-lg rounded-[2.5rem] shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200 border border-white/5 max-h-[90vh] flex flex-col" onClick={e => e.stopPropagation()}>
+                        <div className="px-10 py-8 flex items-center justify-between border-b border-white/5 bg-white/[0.03]">
                             <div>
-                                <h2 className="text-2xl font-bold text-gray-900 dark:text-white uppercase tracking-tight">Yangi O'quvchi</h2>
-                                <p className="text-[10px] font-bold text-gray-400 dark:text-gray-500 mt-1.5 uppercase tracking-widest">O'quvchi haqida birlamchi ma'lumotlar</p>
+                                <h2 className="text-2xl font-bold text-white uppercase tracking-tight">Yangi O'quvchi</h2>
+                                <p className="text-[10px] font-bold text-[#4a5568] mt-1.5 uppercase tracking-widest">O'quvchi haqida birlamchi ma'lumotlar</p>
                             </div>
-                            <button onClick={() => setIsModalOpen(false)} className="w-12 h-12 flex items-center justify-center hover:bg-white dark:hover:bg-gray-700 rounded-2xl text-gray-400 hover:text-gray-900 dark:hover:text-white transition-all shadow-sm border border-transparent hover:border-gray-100 dark:hover:border-gray-600">
+                            <button onClick={() => setIsModalOpen(false)} className="w-12 h-12 flex items-center justify-center hover:bg-white/5 rounded-2xl text-gray-400 hover:text-white transition-all shadow-sm border border-transparent hover:border-white/10">
                                 <X size={24} />
                             </button>
                         </div>
@@ -342,27 +342,27 @@ export default function Students() {
                                     </h3>
                                     <div className="grid grid-cols-1 gap-5">
                                         <div className="space-y-2">
-                                            <label className="text-[10px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-widest ml-1">To'liq Ism <span className="text-rose-500">*</span></label>
+                                            <label className="text-[10px] font-bold text-[#4a5568] uppercase tracking-widest ml-1">To'liq Ism <span className="text-rose-500">*</span></label>
                                             <div className="relative group">
-                                                <input required type="text" placeholder="Ism Familiya" className="w-full pl-6 pr-6 py-4 bg-gray-50/50 dark:bg-gray-900/50 border border-gray-100 dark:border-gray-700 rounded-2xl text-[11px] font-bold uppercase tracking-widest focus:bg-white dark:focus:bg-gray-800 focus:border-sky-500 dark:focus:border-sky-500 focus:ring-4 focus:ring-sky-500/10 outline-none transition-all text-gray-900 dark:text-white placeholder:text-gray-400/60"
+                                                <input required type="text" placeholder="Ism Familiya" className="w-full pl-6 pr-6 py-4 bg-white/5 border border-white/10 rounded-2xl text-[11px] font-bold uppercase tracking-widest focus:border-sky-500 focus:ring-4 focus:ring-sky-500/10 outline-none transition-all text-white placeholder:text-[#4a5568]"
                                                     value={newStudent.name} onChange={e => setNewStudent({ ...newStudent, name: e.target.value })} />
                                             </div>
                                         </div>
                                         <div className="grid grid-cols-2 gap-4">
                                             <div className="space-y-2">
-                                                <label className="text-[10px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-widest ml-1">Telefon <span className="text-rose-500">*</span></label>
-                                                <input required type="tel" placeholder="+998" className="w-full px-5 py-4 bg-gray-50/50 dark:bg-gray-900/50 border border-gray-100 dark:border-gray-700 rounded-2xl text-[11px] font-bold uppercase tracking-widest focus:bg-white dark:focus:bg-gray-800 focus:border-sky-500 dark:focus:border-sky-500 outline-none transition-all shadow-sm"
+                                                <label className="text-[10px] font-bold text-[#4a5568] uppercase tracking-widest ml-1">Telefon <span className="text-rose-500">*</span></label>
+                                                <input required type="tel" placeholder="+998" className="w-full px-5 py-4 bg-white/5 border border-white/10 rounded-2xl text-[11px] font-bold uppercase tracking-widest focus:border-sky-500 outline-none transition-all shadow-sm text-white"
                                                     value={newStudent.phone} onChange={e => setNewStudent({ ...newStudent, phone: e.target.value })} />
                                             </div>
                                             <div className="space-y-2">
-                                                <label className="text-[10px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-widest ml-1">Tug'ilgan Sana</label>
-                                                <input type="date" className="w-full px-5 py-4 bg-gray-50/50 dark:bg-gray-900/50 border border-gray-100 dark:border-gray-700 rounded-2xl text-[11px] font-bold uppercase tracking-widest focus:bg-white dark:focus:bg-gray-800 focus:border-sky-500 underline-none transition-all shadow-sm"
+                                                <label className="text-[10px] font-bold text-[#4a5568] uppercase tracking-widest ml-1">Tug'ilgan Sana</label>
+                                                <input type="date" className="w-full px-5 py-4 bg-white/5 border border-white/10 rounded-2xl text-[11px] font-bold uppercase tracking-widest focus:border-sky-500 underline-none transition-all shadow-sm text-white"
                                                     value={newStudent.birthDate} onChange={e => setNewStudent({ ...newStudent, birthDate: e.target.value })} />
                                             </div>
                                         </div>
                                         <div className="space-y-2">
-                                            <label className="text-[10px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-widest ml-1">Maktab / Bog'cha</label>
-                                            <input type="text" placeholder="Masalan: 45-maktab" className="w-full px-6 py-4 bg-gray-50/50 dark:bg-gray-900/50 border border-gray-100 dark:border-gray-700 rounded-2xl text-[11px] font-bold uppercase tracking-widest focus:bg-white dark:focus:bg-gray-800 focus:border-sky-500 outline-none transition-all shadow-sm"
+                                            <label className="text-[10px] font-bold text-[#4a5568] uppercase tracking-widest ml-1">Maktab / Bog'cha</label>
+                                            <input type="text" placeholder="Masalan: 45-maktab" className="w-full px-6 py-4 bg-white/5 border border-white/10 rounded-2xl text-[11px] font-bold uppercase tracking-widest focus:border-sky-500 outline-none transition-all shadow-sm text-white placeholder:text-[#4a5568]"
                                                 value={newStudent.studentSchool} onChange={e => setNewStudent({ ...newStudent, studentSchool: e.target.value })} />
                                         </div>
                                     </div>
@@ -377,25 +377,25 @@ export default function Students() {
                                     <div className="grid grid-cols-1 gap-5">
                                         <div className="grid grid-cols-2 gap-4">
                                             <div className="space-y-2">
-                                                <label className="text-[10px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-widest ml-1">Otasining ismi</label>
-                                                <input type="text" placeholder="FISH" className="w-full px-5 py-3.5 bg-gray-50/50 dark:bg-gray-900/50 border border-gray-100 dark:border-gray-700 rounded-2xl text-[11px] font-bold uppercase tracking-widest focus:bg-white dark:focus:bg-gray-800 focus:border-emerald-500 outline-none transition-all shadow-sm"
+                                                <label className="text-[10px] font-bold text-[#4a5568] uppercase tracking-widest ml-1">Otasining ismi</label>
+                                                <input type="text" placeholder="FISH" className="w-full px-5 py-3.5 bg-white/5 border border-white/10 rounded-2xl text-[11px] font-bold uppercase tracking-widest focus:border-emerald-500 outline-none transition-all shadow-sm text-white"
                                                     value={newStudent.fatherName} onChange={e => setNewStudent({ ...newStudent, fatherName: e.target.value })} />
                                             </div>
                                             <div className="space-y-2">
-                                                <label className="text-[10px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-widest ml-1">Telefoni</label>
-                                                <input type="tel" placeholder="+998" className="w-full px-5 py-3.5 bg-gray-50/50 dark:bg-gray-900/50 border border-gray-100 dark:border-gray-700 rounded-2xl text-[11px] font-bold uppercase tracking-widest focus:bg-white dark:focus:bg-gray-800 focus:border-emerald-500 outline-none transition-all shadow-sm"
+                                                <label className="text-[10px] font-bold text-[#4a5568] uppercase tracking-widest ml-1">Telefoni</label>
+                                                <input type="tel" placeholder="+998" className="w-full px-5 py-3.5 bg-white/5 border border-white/10 rounded-2xl text-[11px] font-bold uppercase tracking-widest focus:border-emerald-500 outline-none transition-all shadow-sm text-white"
                                                     value={newStudent.fatherPhone} onChange={e => setNewStudent({ ...newStudent, fatherPhone: e.target.value })} />
                                             </div>
                                         </div>
                                         <div className="grid grid-cols-2 gap-4">
                                             <div className="space-y-2">
-                                                <label className="text-[10px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-widest ml-1">Onasining ismi</label>
-                                                <input type="text" placeholder="FISH" className="w-full px-5 py-3.5 bg-gray-50/50 dark:bg-gray-900/50 border border-gray-100 dark:border-gray-700 rounded-2xl text-[11px] font-bold uppercase tracking-widest focus:bg-white dark:focus:bg-gray-800 focus:border-emerald-500 outline-none transition-all shadow-sm"
+                                                <label className="text-[10px] font-bold text-[#4a5568] uppercase tracking-widest ml-1">Onasining ismi</label>
+                                                <input type="text" placeholder="FISH" className="w-full px-5 py-3.5 bg-white/5 border border-white/10 rounded-2xl text-[11px] font-bold uppercase tracking-widest focus:border-emerald-500 outline-none transition-all shadow-sm text-white"
                                                     value={newStudent.motherName} onChange={e => setNewStudent({ ...newStudent, motherName: e.target.value })} />
                                             </div>
                                             <div className="space-y-2">
-                                                <label className="text-[10px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-widest ml-1">Telefoni</label>
-                                                <input type="tel" placeholder="+998" className="w-full px-5 py-3.5 bg-gray-50/50 dark:bg-gray-900/50 border border-gray-100 dark:border-gray-700 rounded-2xl text-[11px] font-bold uppercase tracking-widest focus:bg-white dark:focus:bg-gray-800 focus:border-emerald-500 outline-none transition-all shadow-sm"
+                                                <label className="text-[10px] font-bold text-[#4a5568] uppercase tracking-widest ml-1">Telefoni</label>
+                                                <input type="tel" placeholder="+998" className="w-full px-5 py-3.5 bg-white/5 border border-white/10 rounded-2xl text-[11px] font-bold uppercase tracking-widest focus:border-emerald-500 outline-none transition-all shadow-sm text-white"
                                                     value={newStudent.motherPhone} onChange={e => setNewStudent({ ...newStudent, motherPhone: e.target.value })} />
                                             </div>
                                         </div>
@@ -410,10 +410,10 @@ export default function Students() {
                                     </h3>
                                     <div className="grid grid-cols-1 gap-5">
                                         <div className="space-y-2">
-                                            <label className="text-[10px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-widest ml-1">Transport Xizmati</label>
+                                            <label className="text-[10px] font-bold text-[#4a5568] uppercase tracking-widest ml-1">Transport Xizmati</label>
                                             <div className="relative">
                                                 <select 
-                                                    className="w-full px-6 py-4 bg-gray-50/50 dark:bg-gray-900/50 border border-gray-100 dark:border-gray-700 rounded-2xl text-[11px] font-bold uppercase tracking-widest focus:bg-white dark:focus:bg-gray-800 focus:border-amber-500 outline-none transition-all appearance-none cursor-pointer shadow-sm"
+                                                    className="w-full px-6 py-4 bg-white/5 border border-white/10 rounded-2xl text-[11px] font-bold uppercase tracking-widest focus:border-amber-500 outline-none transition-all appearance-none cursor-pointer shadow-sm text-white"
                                                     value={newStudent.transportId}
                                                     onChange={e => setNewStudent({...newStudent, transportId: e.target.value})}
                                                 >
@@ -428,14 +428,14 @@ export default function Students() {
                                             </div>
                                         </div>
                                         <div className="space-y-2">
-                                            <label className="text-[10px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-widest ml-1">Yashash Manzili</label>
+                                            <label className="text-[10px] font-bold text-[#4a5568] uppercase tracking-widest ml-1">Yashash Manzili</label>
                                             <div className="flex flex-col gap-3">
-                                                <input type="text" placeholder="Tuman, ko'cha, uy raqami" className="w-full px-6 py-4 bg-gray-50/50 dark:bg-gray-900/50 border border-gray-100 dark:border-gray-700 rounded-2xl text-[11px] font-bold uppercase tracking-widest focus:bg-white dark:focus:bg-gray-800 focus:border-amber-500 outline-none transition-all shadow-sm"
+                                                <input type="text" placeholder="Tuman, ko'cha, uy raqami" className="w-full px-6 py-4 bg-white/5 border border-white/10 rounded-2xl text-[11px] font-bold uppercase tracking-widest focus:border-amber-500 outline-none transition-all shadow-sm text-white placeholder:text-[#4a5568]"
                                                     value={newStudent.address} onChange={e => setNewStudent({ ...newStudent, address: e.target.value })} />
                                                 <button 
                                                     type="button"
                                                     onClick={() => setIsMapOpen(true)}
-                                                    className={`w-full py-4 rounded-2xl border flex items-center justify-center gap-3 text-[10px] font-bold uppercase tracking-widest transition-all ${newStudent.location ? 'bg-amber-50 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400 border-amber-200 shadow-lg shadow-amber-500/10' : 'bg-white dark:bg-gray-800 text-gray-500 dark:text-gray-400 border-gray-100 hover:bg-gray-50 shadow-sm'}`}
+                                                    className={`w-full py-4 rounded-2xl border flex items-center justify-center gap-3 text-[10px] font-bold uppercase tracking-widest transition-all ${newStudent.location ? 'bg-amber-50 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400 border-amber-200 shadow-lg shadow-amber-500/10' : 'bg-white/5 text-[#4a5568] border-white/5 hover:bg-white/5 shadow-sm'}`}
                                                 >
                                                     <MapPin size={18} />
                                                     {newStudent.location ? 'Kartada belgilandi' : 'Kartadan tanlash'}
@@ -451,16 +451,16 @@ export default function Students() {
                                 </h3>
                                 <div className="grid grid-cols-1 gap-5">
                                     <div className="flex flex-col items-center gap-4">
-                                        <div className="w-32 h-32 rounded-[2rem] bg-gray-50 dark:bg-gray-900 border-2 border-dashed border-gray-200 dark:border-gray-700 flex items-center justify-center overflow-hidden shadow-inner group">
+                                        <div className="w-32 h-32 rounded-[2rem] bg-white/5 border-2 border-dashed border-white/10 flex items-center justify-center overflow-hidden shadow-inner group">
                                             {newStudent.photo ? (
                                                 <img src={newStudent.photo} alt="Preview" className="w-full h-full object-cover" />
                                             ) : (
-                                                <ImageIcon size={32} className="text-gray-300 dark:text-gray-600 group-hover:scale-110 transition-transform" />
+                                                <ImageIcon size={32} className="text-gray-600 group-hover:scale-110 transition-transform" />
                                             )}
                                         </div>
                                         
                                         <div className="grid grid-cols-2 gap-3 w-full">
-                                            <label className="relative flex items-center justify-center gap-2 py-3.5 bg-gray-50 dark:bg-gray-900 border border-gray-100 dark:border-gray-700 rounded-2xl cursor-pointer hover:bg-white dark:hover:bg-gray-800 transition-all shadow-sm">
+                                            <label className="relative flex items-center justify-center gap-2 py-3.5 bg-white/5 border border-white/10 rounded-2xl cursor-pointer hover:bg-white/5 transition-all shadow-sm">
                                                 <input type="file" className="hidden" accept="image/*" 
                                                     onChange={(e) => {
                                                         const file = e.target.files?.[0];
@@ -475,16 +475,16 @@ export default function Students() {
                                                     }} 
                                                 />
                                                 <ImageIcon size={16} className="text-sky-500" />
-                                                <span className="text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-widest">Yuklash</span>
+                                                <span className="text-[10px] font-bold text-[#4a5568] uppercase tracking-widest">Yuklash</span>
                                             </label>
                                             
-                                            <button 
+                                            <button
                                                 type="button"
                                                 onClick={() => setIsPhotoModalOpen(true)}
-                                                className="flex items-center justify-center gap-2 py-3.5 bg-gray-50 dark:bg-gray-900 border border-gray-100 dark:border-gray-700 rounded-2xl hover:bg-white dark:hover:bg-gray-800 transition-all shadow-sm"
+                                                className="flex items-center justify-center gap-2 py-3.5 bg-white/5 border border-white/10 rounded-2xl hover:bg-white/5 transition-all shadow-sm"
                                             >
                                                 <Camera size={16} className="text-emerald-500" />
-                                                <span className="text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-widest">Rasmga olish</span>
+                                                <span className="text-[10px] font-bold text-[#4a5568] uppercase tracking-widest">Rasmga olish</span>
                                             </button>
                                         </div>
 
@@ -504,9 +504,9 @@ export default function Students() {
                             </div>
 
                             {/* Sticky-like Footer with extra padding */}
-                            <div className="pt-8 pb-10 border-t border-dashed border-gray-100 dark:border-gray-700">
+                            <div className="pt-8 pb-10 border-t border-dashed border-white/10">
                                 <div className="flex items-center gap-4">
-                                    <button type="button" onClick={() => setIsModalOpen(false)} className="flex-1 px-8 py-4 bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700 text-gray-400 dark:text-gray-500 rounded-[1.25rem] text-[10px] font-black uppercase tracking-widest hover:bg-gray-50 transition-all">
+                                    <button type="button" onClick={() => setIsModalOpen(false)} className="flex-1 px-8 py-4 bg-white/5 border border-white/10 text-[#4a5568] rounded-[1.25rem] text-[10px] font-black uppercase tracking-widest hover:bg-white/5 transition-all">
                                         Bekor Qilish
                                     </button>
                                     <button 

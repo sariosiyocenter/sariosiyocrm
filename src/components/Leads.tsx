@@ -67,22 +67,22 @@ export default function Leads() {
           </div>
       </div>
 
-      <div className="bg-white dark:bg-gray-800 rounded-[2.5rem] border border-gray-100 dark:border-gray-700 shadow-xl shadow-gray-200/10 dark:shadow-none overflow-hidden transition-all">
+      <div className="bg-gray-800/60 rounded-[2.5rem] border border-gray-700/50 shadow-xl overflow-hidden transition-all">
         <div className="p-8 flex flex-col lg:flex-row lg:items-center justify-between gap-6">
           <div className="flex items-center gap-5">
-            <button 
-              className="px-10 py-4 bg-sky-600 dark:bg-sky-500 text-white rounded-[1.25rem] text-[10px] font-extrabold uppercase tracking-widest hover:bg-sky-500 dark:hover:bg-sky-400 active:scale-[0.98] transition-all shadow-xl shadow-sky-500/30 flex items-center gap-3 group"
+            <button
+              className="px-10 py-4 bg-sky-600 text-white rounded-[1.25rem] text-[10px] font-extrabold uppercase tracking-widest hover:bg-sky-500 active:scale-[0.98] transition-all shadow-xl shadow-sky-500/30 flex items-center gap-3 group"
               onClick={() => setIsModalOpen(true)}
             >
               <Plus size={20} className="group-hover:rotate-90 transition-transform" />
               Yangi Lid
             </button>
-            <button 
+            <button
               onClick={() => setShowFilters(!showFilters)}
-              className={`flex items-center gap-3 px-8 py-4 rounded-[1.25rem] text-[10px] font-extrabold uppercase tracking-widest transition-all group shadow-sm border ${
-                showFilters 
-                ? 'bg-sky-50 dark:bg-sky-900/30 text-sky-600 dark:text-sky-400 border-sky-100 dark:border-sky-800' 
-                : 'bg-gray-50 dark:bg-gray-900/50 text-gray-500 dark:text-gray-400 border-gray-100 dark:border-gray-700 hover:bg-gray-100 dark:hover:bg-gray-700'
+              className={`flex items-center gap-3 px-8 py-4 rounded-[1.25rem] text-[10px] font-extrabold uppercase tracking-widest transition-all group border ${
+                showFilters
+                ? 'bg-sky-900/30 text-sky-400 border-sky-800'
+                : 'bg-gray-900/50 text-gray-400 border-gray-700 hover:bg-gray-700/50'
               }`}
             >
               <Filter size={18} className={showFilters ? 'text-sky-500' : 'group-hover:text-sky-500 transition-colors'} />
@@ -98,31 +98,32 @@ export default function Leads() {
                 placeholder="Ism yoki telefon orqali qidirish..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full pl-12 pr-6 py-4 bg-gray-50/50 dark:bg-gray-900/50 border border-gray-100 dark:border-gray-700 rounded-[1.25rem] text-[10px] font-extrabold uppercase tracking-widest outline-none focus:bg-white dark:focus:bg-gray-800 focus:border-sky-500 dark:focus:border-sky-500 focus:ring-4 focus:ring-sky-500/10 transition-all placeholder:text-gray-400/60 dark:text-white text-gray-900 shadow-inner"
+
+                className="w-full pl-12 pr-6 py-4 bg-gray-900/50 border border-gray-700 rounded-[1.25rem] text-[10px] font-extrabold uppercase tracking-widest outline-none focus:bg-gray-800 focus:border-sky-500 focus:ring-4 focus:ring-sky-500/10 transition-all placeholder:text-gray-600 text-white shadow-inner"
               />
             </div>
           </div>
         </div>
 
         {showFilters && (
-          <div className="px-8 pb-8 pt-2 border-t border-gray-50 dark:border-gray-700/50 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 animate-in slide-in-from-top-4 duration-500">
+          <div className="px-8 pb-8 pt-2 border-t border-gray-700/50 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 animate-in slide-in-from-top-4 duration-500">
             <div className="space-y-3">
-              <label className="text-[9px] font-extrabold text-gray-400 dark:text-gray-500 uppercase tracking-widest ml-1">Kurs bo'yicha</label>
+              <label className="text-[9px] font-extrabold text-gray-500 uppercase tracking-widest ml-1">Kurs bo'yicha</label>
               <select 
                 value={filters.course}
                 onChange={e => setFilters({...filters, course: e.target.value})}
-                className="w-full px-5 py-3.5 bg-gray-50 dark:bg-gray-900/50 border border-gray-100 dark:border-gray-700 rounded-2xl text-[10px] font-bold uppercase tracking-widest outline-none focus:border-violet-500 transition-all dark:text-white appearance-none cursor-pointer"
+                className="w-full px-5 py-3.5 bg-gray-900/50 border border-gray-700 rounded-2xl text-[10px] font-bold uppercase tracking-widest outline-none focus:border-sky-500 transition-all text-white appearance-none cursor-pointer"
               >
                 <option value="">Barchasi</option>
                 {courses.map(c => <option key={c.id} value={c.name}>{c.name}</option>)}
               </select>
             </div>
             <div className="space-y-3">
-              <label className="text-[9px] font-extrabold text-gray-400 dark:text-gray-500 uppercase tracking-widest ml-1">Manba bo'yicha</label>
+              <label className="text-[9px] font-extrabold text-gray-500 uppercase tracking-widest ml-1">Manba bo'yicha</label>
               <select 
                 value={filters.source}
                 onChange={e => setFilters({...filters, source: e.target.value})}
-                className="w-full px-5 py-3.5 bg-gray-50 dark:bg-gray-900/50 border border-gray-100 dark:border-gray-700 rounded-2xl text-[10px] font-bold uppercase tracking-widest outline-none focus:border-violet-500 transition-all dark:text-white appearance-none cursor-pointer"
+                className="w-full px-5 py-3.5 bg-gray-900/50 border border-gray-700 rounded-2xl text-[10px] font-bold uppercase tracking-widest outline-none focus:border-sky-500 transition-all text-white appearance-none cursor-pointer"
               >
                 <option value="">Barchasi</option>
                 <option value="Instagram">Instagram</option>
@@ -132,11 +133,11 @@ export default function Leads() {
               </select>
             </div>
             <div className="space-y-3">
-              <label className="text-[9px] font-extrabold text-gray-400 dark:text-gray-500 uppercase tracking-widest ml-1">Vaqt bo'yicha</label>
+              <label className="text-[9px] font-extrabold text-gray-500 uppercase tracking-widest ml-1">Vaqt bo'yicha</label>
               <select 
                 value={filters.dateRange}
                 onChange={e => setFilters({...filters, dateRange: e.target.value})}
-                className="w-full px-5 py-3.5 bg-gray-50 dark:bg-gray-900/50 border border-gray-100 dark:border-gray-700 rounded-2xl text-[10px] font-bold uppercase tracking-widest outline-none focus:border-violet-500 transition-all dark:text-white appearance-none cursor-pointer"
+                className="w-full px-5 py-3.5 bg-gray-900/50 border border-gray-700 rounded-2xl text-[10px] font-bold uppercase tracking-widest outline-none focus:border-sky-500 transition-all text-white appearance-none cursor-pointer"
               >
                 <option value="all">Barcha vaqt</option>
                 <option value="today">Bugun</option>
@@ -161,26 +162,26 @@ export default function Leads() {
         <div className="flex gap-8 h-full min-w-max pb-4">
           {STAGES.map((stage, idx) => (
             <div key={stage.id} 
-              className="w-[340px] flex flex-col bg-gray-50/30 dark:bg-gray-900/20 border border-gray-100/50 dark:border-gray-800/30 rounded-[2.5rem] p-6 h-full shadow-inner animate-in slide-in-from-right-4 duration-500"
+              className="w-[340px] flex flex-col bg-gray-800/40 border border-gray-700/40 rounded-[2.5rem] p-6 h-full shadow-inner animate-in slide-in-from-right-4 duration-500"
               style={{ animationDelay: `${idx * 100}ms` }}
             >
               <div className="flex items-center justify-between mb-8 px-2">
                 <div className="flex items-center gap-4">
                   <div className={`w-3.5 h-3.5 rounded-full ${stage.color} shadow-lg shadow-${stage.color.split('-')[1]}-500/20 ring-4 ring-${stage.color.split('-')[1]}-500/10`} />
-                  <h3 className="font-extrabold text-gray-900 dark:text-gray-100 text-xs uppercase tracking-widest">{stage.name}</h3>
-                  <span className="bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700 text-gray-500 dark:text-gray-400 text-[10px] font-extrabold px-3 py-1 rounded-xl shadow-sm tabular-nums">
+                  <h3 className="font-extrabold text-gray-100 text-xs uppercase tracking-widest">{stage.name}</h3>
+                  <span className="bg-gray-700/50 border border-gray-600/50 text-gray-400 text-[10px] font-extrabold px-3 py-1 rounded-xl tabular-nums">
                     {getLeadsByStatus(stage.name).length}
                   </span>
                 </div>
-                <button className="w-10 h-10 flex items-center justify-center hover:bg-white dark:hover:bg-gray-800 rounded-xl text-gray-300 dark:text-gray-600 hover:text-gray-900 dark:hover:text-white transition-all shadow-sm border border-transparent hover:border-gray-100">
+                <button className="w-10 h-10 flex items-center justify-center hover:bg-gray-700/50 rounded-xl text-gray-600 hover:text-white transition-all border border-transparent hover:border-gray-600">
                   <MoreHorizontal size={20} />
                 </button>
               </div>
 
               <div className="flex flex-col gap-5 overflow-y-auto min-h-[150px] custom-scrollbar pr-2 flex-1 pb-4">
                 {getLeadsByStatus(stage.name).map((lead, lIdx) => (
-                  <div key={lead.id} 
-                    className="bg-white dark:bg-gray-800 p-6 rounded-[1.75rem] border border-gray-100 dark:border-gray-700 shadow-sm hover:shadow-xl hover:shadow-sky-500/10 hover:border-sky-300 dark:hover:border-sky-600 transition-all group/card cursor-pointer animate-in fade-in slide-in-from-top-2 duration-300"
+                  <div key={lead.id}
+                    className="bg-gray-800 p-6 rounded-[1.75rem] border border-gray-700 shadow-sm hover:shadow-xl hover:shadow-sky-500/10 hover:border-sky-600 transition-all group/card cursor-pointer animate-in fade-in slide-in-from-top-2 duration-300"
                     style={{ animationDelay: `${lIdx * 50}ms` }}
                   >
                     <div className="flex items-center justify-between mb-4">
@@ -188,19 +189,19 @@ export default function Leads() {
                         {lead.course}
                       </span>
                     </div>
-                    <h4 className="font-bold text-gray-900 dark:text-white text-sm mb-4 group-hover/card:text-sky-600 dark:group-hover/card:text-sky-400 transition-colors line-clamp-1 uppercase tracking-tight">{lead.name}</h4>
-                    
-                    <div className="space-y-3 text-[10px] text-gray-400 dark:text-gray-500 font-bold uppercase tracking-widest">
-                      <div className="flex items-center gap-3 bg-gray-50 dark:bg-gray-900/50 p-3 rounded-2xl border border-gray-100/50 dark:border-gray-700/50">
+                    <h4 className="font-bold text-white text-sm mb-4 group-hover/card:text-sky-400 transition-colors line-clamp-1 uppercase tracking-tight">{lead.name}</h4>
+
+                    <div className="space-y-3 text-[10px] text-gray-500 font-bold uppercase tracking-widest">
+                      <div className="flex items-center gap-3 bg-gray-900/50 p-3 rounded-2xl border border-gray-700/50">
                         <Phone size={14} className="text-sky-500" />
-                        <span className="tabular-nums text-gray-900 dark:text-white">{lead.phone}</span>
+                        <span className="tabular-nums text-white">{lead.phone}</span>
                       </div>
-                      
-                      <div className="flex items-center justify-between pt-4 border-t border-dashed border-gray-100 dark:border-gray-700 mt-2">
-                         <span className="flex items-center gap-2 bg-sky-50/50 dark:bg-sky-900/30 px-3 py-1.5 rounded-xl border border-sky-100/50 dark:border-sky-800 text-sky-600 dark:text-sky-400">
+
+                      <div className="flex items-center justify-between pt-4 border-t border-dashed border-gray-700 mt-2">
+                         <span className="flex items-center gap-2 bg-sky-900/30 px-3 py-1.5 rounded-xl border border-sky-800 text-sky-400">
                             {lead.source}
                          </span>
-                         <span className="flex items-center gap-2 text-gray-400 dark:text-gray-600">
+                         <span className="flex items-center gap-2 text-gray-600">
                             <Calendar size={12} />
                             {new Date(lead.createdAt).toLocaleDateString()}
                          </span>
@@ -211,7 +212,7 @@ export default function Leads() {
 
                 <button
                   onClick={() => setIsModalOpen(true)}
-                  className="flex items-center justify-center gap-3 py-5 bg-white dark:bg-gray-800 border border-dashed border-gray-200 dark:border-gray-700 rounded-[1.75rem] text-gray-400 dark:text-gray-600 hover:text-sky-500 dark:hover:text-sky-400 hover:border-sky-400 dark:hover:border-sky-500 hover:bg-sky-50/30 dark:hover:bg-sky-900/10 transition-all text-[10px] font-bold uppercase tracking-widest mt-2 shadow-sm"
+                  className="flex items-center justify-center gap-3 py-5 bg-gray-800/50 border border-dashed border-gray-700 rounded-[1.75rem] text-gray-500 hover:text-sky-400 hover:border-sky-500 hover:bg-sky-900/10 transition-all text-[10px] font-bold uppercase tracking-widest mt-2"
                 >
                   <Plus size={20} />
                   Lid Qo'shish
@@ -224,44 +225,44 @@ export default function Leads() {
 
       {isModalOpen && (
         <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-gray-900/60 backdrop-blur-md animate-in fade-in duration-300" onClick={() => setIsModalOpen(false)}>
-          <div className="bg-white dark:bg-gray-800 w-full max-w-md rounded-[2.5rem] shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200 border border-gray-100 dark:border-gray-700" onClick={e => e.stopPropagation()}>
-            <div className="px-10 py-8 flex items-center justify-between border-b border-gray-50 dark:border-gray-700 bg-gray-50/50 dark:bg-gray-900/50">
+          <div className="bg-[#1a2332] w-full max-w-md rounded-[2.5rem] shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200 border border-white/10" onClick={e => e.stopPropagation()}>
+            <div className="px-10 py-8 flex items-center justify-between border-b border-white/5 bg-white/5">
               <div>
-                <h2 className="text-2xl font-bold text-gray-900 dark:text-white uppercase tracking-tight">Yangi Lid</h2>
-                <p className="text-[10px] font-bold text-gray-400 dark:text-gray-500 mt-1.5 uppercase tracking-widest">Yangi potensial mijoz ma'lumotlari</p>
+                <h2 className="text-2xl font-bold text-white uppercase tracking-tight">Yangi Lid</h2>
+                <p className="text-[10px] font-bold text-[#4a5568] mt-1.5 uppercase tracking-widest">Yangi potensial mijoz ma'lumotlari</p>
               </div>
-              <button onClick={() => setIsModalOpen(false)} className="w-12 h-12 flex items-center justify-center hover:bg-white dark:hover:bg-gray-700 rounded-2xl text-gray-400 hover:text-gray-900 dark:hover:text-white transition-all shadow-sm border border-transparent hover:border-gray-100 dark:hover:border-gray-600">
+              <button onClick={() => setIsModalOpen(false)} className="w-12 h-12 flex items-center justify-center hover:bg-white/10 rounded-2xl text-[#4a5568] hover:text-white transition-all">
                 <X size={24} />
               </button>
             </div>
             <form onSubmit={handleAddLead} className="p-10 space-y-8">
               <div className="space-y-3">
-                <label className="text-[10px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-widest ml-1">Ism Familiya <span className="text-rose-500">*</span></label>
-                <input required type="text" placeholder="Masalan: Anvarov Sanjar" className="w-full px-6 py-4 bg-gray-50 dark:bg-gray-900 border border-gray-100 dark:border-gray-700 rounded-[1.25rem] text-xs font-bold uppercase tracking-widest focus:bg-white dark:focus:bg-gray-800 focus:border-sky-500 dark:focus:border-sky-500 focus:ring-4 focus:ring-sky-500/10 outline-none transition-all placeholder:text-gray-400/60 dark:text-white text-gray-900 shadow-inner"
+                <label className="text-[10px] font-bold text-[#4a5568] uppercase tracking-widest ml-1">Ism Familiya <span className="text-rose-500">*</span></label>
+                <input required type="text" placeholder="Masalan: Anvarov Sanjar" className="w-full px-6 py-4 bg-white/5 border border-white/10 rounded-[1.25rem] text-xs font-bold uppercase tracking-widest focus:border-sky-500 focus:ring-4 focus:ring-sky-500/10 outline-none transition-all placeholder:text-[#4a5568] text-white"
                   value={newLead.name} onChange={e => setNewLead({ ...newLead, name: e.target.value })} />
               </div>
               <div className="space-y-3">
-                <label className="text-[10px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-widest ml-1">Telefon Raqami <span className="text-rose-500">*</span></label>
-                <input required type="text" placeholder="+998" className="w-full px-6 py-4 bg-gray-50 dark:bg-gray-900 border border-gray-100 dark:border-gray-700 rounded-[1.25rem] text-xs font-bold uppercase tracking-widest focus:bg-white dark:focus:bg-gray-800 focus:border-sky-500 dark:focus:border-sky-500 focus:ring-4 focus:ring-sky-500/10 outline-none transition-all placeholder:text-gray-400/60 dark:text-white text-gray-900 shadow-inner"
+                <label className="text-[10px] font-bold text-[#4a5568] uppercase tracking-widest ml-1">Telefon Raqami <span className="text-rose-500">*</span></label>
+                <input required type="text" placeholder="+998" className="w-full px-6 py-4 bg-white/5 border border-white/10 rounded-[1.25rem] text-xs font-bold uppercase tracking-widest focus:border-sky-500 focus:ring-4 focus:ring-sky-500/10 outline-none transition-all placeholder:text-[#4a5568] text-white"
                   value={newLead.phone} onChange={e => setNewLead({ ...newLead, phone: e.target.value })} />
               </div>
               <div className="space-y-3">
-                <label className="text-[10px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-widest ml-1">Kurs <span className="text-rose-500">*</span></label>
+                <label className="text-[10px] font-bold text-[#4a5568] uppercase tracking-widest ml-1">Kurs <span className="text-rose-500">*</span></label>
                 <div className="relative">
-                  <select required className="w-full px-6 py-4 bg-gray-50 dark:bg-gray-900 border border-gray-100 dark:border-gray-700 rounded-[1.25rem] text-xs font-bold uppercase tracking-widest focus:bg-white dark:focus:bg-gray-800 focus:border-sky-500 dark:focus:border-sky-500 focus:ring-4 focus:ring-sky-500/10 outline-none appearance-none transition-all cursor-pointer text-gray-900 dark:text-white shadow-inner"
+                  <select required className="w-full px-6 py-4 bg-white/5 border border-white/10 rounded-[1.25rem] text-xs font-bold uppercase tracking-widest focus:border-sky-500 focus:ring-4 focus:ring-sky-500/10 outline-none appearance-none transition-all cursor-pointer text-white"
                     value={newLead.course} onChange={e => setNewLead({ ...newLead, course: e.target.value })}>
-                    <option value="" disabled>Tanlang</option>
-                    {courses.map(c => <option key={c.id} value={c.name}>{c.name}</option>)}
+                    <option value="" disabled className="bg-[#1a2332]">Tanlang</option>
+                    {courses.map(c => <option key={c.id} value={c.name} className="bg-[#1a2332]">{c.name}</option>)}
                   </select>
-                  <ArrowRight size={18} className="absolute right-6 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none rotate-90" />
+                  <ArrowRight size={18} className="absolute right-6 top-1/2 -translate-y-1/2 text-[#4a5568] pointer-events-none rotate-90" />
                 </div>
               </div>
-              
-              <div className="pt-10 flex items-center justify-end gap-5 mt-6 border-t border-dashed border-gray-100 dark:border-gray-700">
-                <button type="button" onClick={() => setIsModalOpen(false)} className="px-8 py-4 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-gray-500 dark:text-gray-400 rounded-2xl text-[10px] font-bold uppercase tracking-widest hover:bg-gray-50 dark:hover:bg-gray-700 transition-all">
+
+              <div className="pt-10 flex items-center justify-end gap-5 mt-6 border-t border-dashed border-white/10">
+                <button type="button" onClick={() => setIsModalOpen(false)} className="px-8 py-4 bg-white/5 border border-white/10 text-[#8b9ab2] rounded-2xl text-[10px] font-bold uppercase tracking-widest hover:bg-white/10 transition-all">
                   Bekor Qilish
                 </button>
-                <button type="submit" className="px-10 py-4 bg-sky-600 dark:bg-sky-500 text-white rounded-2xl text-[10px] font-bold uppercase tracking-widest hover:bg-sky-500 dark:hover:bg-sky-400 active:scale-[0.98] transition-all shadow-xl shadow-sky-500/20">
+                <button type="submit" className="px-10 py-4 bg-sky-600 text-white rounded-2xl text-[10px] font-bold uppercase tracking-widest hover:bg-sky-500 active:scale-[0.98] transition-all shadow-xl shadow-sky-500/20">
                   Saqlash
                 </button>
               </div>
