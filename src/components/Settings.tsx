@@ -133,11 +133,11 @@ export default function Settings() {
                 { id: 'transport' as SectionId, label: 'Transport', icon: <Bus size={14} />, count: transports?.length },
             ]
         },
-        ...(isAdmin ? [{
-            id: 'ceo', label: 'CEO', icon: <ShieldCheck size={16} />,
+        ...(isAdminOrManager ? [{
+            id: 'ceo', label: 'Boshqaruv', icon: <ShieldCheck size={16} />,
             items: [
                 { id: 'filiallar' as SectionId, label: 'Filiallar', icon: <Building2 size={14} />, count: schools?.length },
-                { id: 'ruxsatlar' as SectionId, label: 'Ruxsatlar', icon: <Shield size={14} /> },
+                ...(isAdmin ? [{ id: 'ruxsatlar' as SectionId, label: 'Ruxsatlar', icon: <Shield size={14} /> }] : []),
             ]
         }] : []),
     ];

@@ -1,4 +1,4 @@
-import dotenv from 'dotenv';
+import 'dotenv/config';
 import express from 'express';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
@@ -11,8 +11,6 @@ import bcrypt from 'bcryptjs';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
-dotenv.config({ path: join(__dirname, '.env') });
-
 import { createClient } from '@supabase/supabase-js';
 
 const supabaseAdmin = createClient(
@@ -20,13 +18,11 @@ const supabaseAdmin = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY || ''
 );
 
-/*
 if (process.env.TELEGRAM_BOT_TOKEN) {
   startBot();
 } else {
   console.warn('TELEGRAM_BOT_TOKEN mavjud emas. Bot ishga tushmadi.');
 }
-*/
 
 const prisma = new PrismaClient();
 const app = express();
@@ -114,9 +110,28 @@ app.post('/api/auth/login', async (req, res, next) => {
     }
 
     // ── Oddiy foydalanuvchilar ──
-    const user = await prisma.user.findUnique({ where: { email } });
+    const user = await prisma.user.findUnique({
+      where: { email },
+      include: {
+        school: {
+          include: {
+            organization: true
+          }
+        }
+      }
+    });
     if (!user || !(await bcrypt.compare(password, user.password))) {
       return res.status(401).json({ error: 'Email yoki parol xato' });
+    }
+
+    if (user.school && user.school.organization) {
+      const org = user.school.organization;
+      if (org.status === 'Muzlatilgan') {
+        return res.status(403).json({ error: 'Tashkilotingiz obunasi muzlatilgan. Administrator bilan bog\'laning.' });
+      }
+      if (org.expiresAt && new Date(org.expiresAt) < new Date()) {
+        return res.status(403).json({ error: 'Tashkilotingiz obuna muddati tugagan. Iltimos, to\'lov qiling.' });
+      }
     }
 
     const token = jwt.sign({ id: user.id, email: user.email, role: user.role, schoolId: user.schoolId }, JWT_SECRET, { expiresIn: '24h' });
@@ -310,6 +325,73 @@ app.post('/api/students', authenticate, async (req, res, next) => {
     res.json({ ...updatedStudent, groups: updatedStudent.groups.map(g => g.id) });
   } catch (error) { next(error); }
 });
+
+app.post('/api/students/import', authenticate, async (req, res, next) => {
+  try {
+    const { students, schoolId } = req.body;
+    if (!schoolId) return res.status(400).json({ error: 'schoolId required' });
+    if (!Array.isArray(students)) return res.status(400).json({ error: 'students array required' });
+
+    const sId = parseInt(schoolId);
+    const today = new Date().toISOString().split('T')[0];
+
+    const results = [];
+    let skippedCount = 0;
+
+    for (const item of students) {
+      if (!item.name || !item.phone) {
+        skippedCount++;
+        continue;
+      }
+
+      const name = String(item.name).trim();
+      const phone = String(item.phone).trim();
+
+      // Check if already exists in this school
+      const existing = await prisma.student.findFirst({
+        where: {
+          name,
+          phone,
+          schoolId: sId
+        }
+      });
+
+      if (existing) {
+        skippedCount++;
+        continue;
+      }
+
+      const data = {
+        name,
+        phone,
+        birthDate: item.birthDate ? String(item.birthDate).trim() : "",
+        address: item.address ? String(item.address).trim() : "",
+        location: item.location ? String(item.location).trim() : null,
+        status: item.status ? String(item.status).trim() : "Faol",
+        joinedDate: item.joinedDate ? String(item.joinedDate).trim() : today,
+        balance: item.balance ? parseFloat(item.balance) : 0,
+        fatherName: item.fatherName ? String(item.fatherName).trim() : null,
+        fatherPhone: item.fatherPhone ? String(item.fatherPhone).trim() : null,
+        motherName: item.motherName ? String(item.motherName).trim() : null,
+        motherPhone: item.motherPhone ? String(item.motherPhone).trim() : null,
+        studentSchool: item.studentSchool ? String(item.studentSchool).trim() : null,
+        schoolId: sId
+      };
+
+      const created = await prisma.student.create({
+        data,
+        include: { groups: { select: { id: true } } }
+      });
+      results.push({ ...created, groups: created.groups.map(g => g.id) });
+    }
+
+    res.json({ success: true, count: results.length, skippedCount, students: results });
+  } catch (error) {
+    console.error('Import error:', error);
+    res.status(500).json({ error: error.message || 'Import qilishda xatolik yuz berdi' });
+  }
+});
+
 app.put('/api/students/:id', authenticate, async (req, res, next) => {
   try {
     const { id } = req.params;
@@ -859,6 +941,214 @@ app.delete('/api/organizations/:id', authenticate, async (req, res, next) => {
   } catch (error) { next(error); }
 });
 
+// --- Organization Subscription Settings ---
+app.put('/api/organizations/:id/subscription', authenticate, async (req, res, next) => {
+  try {
+    if (req.user.role !== 'SUPERADMIN') return res.status(403).json({ error: 'Ruxsat yoq' });
+    const orgId = parseInt(req.params.id);
+    const { status, expiresAt, maxSchools } = req.body;
+    
+    const updated = await prisma.organization.update({
+      where: { id: orgId },
+      data: {
+        status,
+        expiresAt: expiresAt ? new Date(expiresAt) : null,
+        maxSchools: maxSchools ? parseInt(maxSchools) : undefined
+      }
+    });
+    res.json(updated);
+  } catch (error) { next(error); }
+});
+
+// --- SaaS Leads ---
+app.get('/api/saas-leads', authenticate, async (req, res, next) => {
+  try {
+    if (req.user.role !== 'SUPERADMIN' && req.user.role !== 'SELLER') {
+      return res.status(403).json({ error: 'Ruxsat yoq' });
+    }
+    
+    let where = {};
+    if (req.user.role === 'SELLER') {
+      where = { sellerId: req.user.id };
+    }
+    
+    const leads = await prisma.saaSLead.findMany({
+      where,
+      include: {
+        seller: {
+          select: { id: true, name: true, email: true }
+        }
+      },
+      orderBy: { createdAt: 'desc' }
+    });
+    res.json(leads);
+  } catch (error) { next(error); }
+});
+
+app.post('/api/saas-leads', authenticate, async (req, res, next) => {
+  try {
+    if (req.user.role !== 'SUPERADMIN' && req.user.role !== 'SELLER') {
+      return res.status(403).json({ error: 'Ruxsat yoq' });
+    }
+    
+    const { name, phone, centerName, status, notes, sellerId } = req.body;
+    if (!name || !phone) return res.status(400).json({ error: 'Name and Phone required' });
+    
+    const data = {
+      name,
+      phone,
+      centerName,
+      status: status || 'Yangi',
+      notes,
+      sellerId: req.user.role === 'SELLER' ? req.user.id : (sellerId ? parseInt(sellerId) : null)
+    };
+    
+    const lead = await prisma.saaSLead.create({
+      data,
+      include: {
+        seller: {
+          select: { id: true, name: true }
+        }
+      }
+    });
+    res.status(201).json(lead);
+  } catch (error) { next(error); }
+});
+
+app.put('/api/saas-leads/:id', authenticate, async (req, res, next) => {
+  try {
+    if (req.user.role !== 'SUPERADMIN' && req.user.role !== 'SELLER') {
+      return res.status(403).json({ error: 'Ruxsat yoq' });
+    }
+    
+    const leadId = parseInt(req.params.id);
+    const { name, phone, centerName, status, notes, sellerId } = req.body;
+    
+    const lead = await prisma.saaSLead.findUnique({ where: { id: leadId } });
+    if (!lead) return res.status(404).json({ error: 'Lead topilmadi' });
+    
+    if (req.user.role === 'SELLER' && lead.sellerId !== req.user.id) {
+      return res.status(403).json({ error: 'Faqat o\'zingizga biriktirilgan lidlarni tahrirlashingiz mumkin' });
+    }
+    
+    const data = {};
+    if (name !== undefined) data.name = name;
+    if (phone !== undefined) data.phone = phone;
+    if (centerName !== undefined) data.centerName = centerName;
+    if (status !== undefined) data.status = status;
+    if (notes !== undefined) data.notes = notes;
+    if (sellerId !== undefined && req.user.role === 'SUPERADMIN') {
+      data.sellerId = sellerId ? parseInt(sellerId) : null;
+    }
+    
+    const updated = await prisma.saaSLead.update({
+      where: { id: leadId },
+      data,
+      include: {
+        seller: {
+          select: { id: true, name: true }
+        }
+      }
+    });
+    res.json(updated);
+  } catch (error) { next(error); }
+});
+
+app.delete('/api/saas-leads/:id', authenticate, async (req, res, next) => {
+  try {
+    if (req.user.role !== 'SUPERADMIN' && req.user.role !== 'SELLER') {
+      return res.status(403).json({ error: 'Ruxsat yoq' });
+    }
+    const leadId = parseInt(req.params.id);
+    const lead = await prisma.saaSLead.findUnique({ where: { id: leadId } });
+    if (!lead) return res.status(404).json({ error: 'Lead topilmadi' });
+    
+    if (req.user.role === 'SELLER' && lead.sellerId !== req.user.id) {
+      return res.status(403).json({ error: 'Faqat o\'zingizga biriktirilgan lidlarni o\'chirishingiz mumkin' });
+    }
+    
+    await prisma.saaSLead.delete({ where: { id: leadId } });
+    res.json({ success: true });
+  } catch (error) { next(error); }
+});
+
+// --- Sellers/Sales Agents Management (Superadmin only) ---
+app.get('/api/sellers', authenticate, async (req, res, next) => {
+  try {
+    if (req.user.role !== 'SUPERADMIN') return res.status(403).json({ error: 'Ruxsat yoq' });
+    
+    const sellers = await prisma.user.findMany({
+      where: { role: 'SELLER' },
+      select: {
+        id: true,
+        email: true,
+        name: true,
+        phone: true,
+        createdAt: true,
+        sellerLeads: {
+          select: {
+            id: true,
+            status: true
+          }
+        }
+      }
+    });
+    
+    const enrichedSellers = sellers.map(s => {
+      const totalLeads = s.sellerLeads.length;
+      const convertedLeads = s.sellerLeads.filter(l => l.status === 'Sotildi').length;
+      const conversionRate = totalLeads > 0 ? Math.round((convertedLeads / totalLeads) * 100) : 0;
+      return {
+        id: s.id,
+        email: s.email,
+        name: s.name,
+        phone: s.phone,
+        createdAt: s.createdAt,
+        totalLeads,
+        convertedLeads,
+        conversionRate
+      };
+    });
+    
+    res.json(enrichedSellers);
+  } catch (error) { next(error); }
+});
+
+app.post('/api/sellers', authenticate, async (req, res, next) => {
+  try {
+    if (req.user.role !== 'SUPERADMIN') return res.status(403).json({ error: 'Ruxsat yoq' });
+    const { email, password, name, phone } = req.body;
+    if (!email || !password || !name) {
+      return res.status(400).json({ error: 'Email, name and password required' });
+    }
+    
+    const existing = await prisma.user.findUnique({ where: { email } });
+    if (existing) return res.status(400).json({ error: 'Ushbu email bilan foydalanuvchi allaqachon mavjud' });
+    
+    const hashedPassword = await bcrypt.hash(password, 10);
+    const seller = await prisma.user.create({
+      data: {
+        email,
+        password: hashedPassword,
+        name,
+        phone,
+        role: 'SELLER',
+        schoolId: null
+      },
+      select: {
+        id: true,
+        email: true,
+        name: true,
+        phone: true,
+        role: true,
+        createdAt: true
+      }
+    });
+    res.status(201).json(seller);
+  } catch (error) { next(error); }
+});
+
+
 // ===================== INIT (single bulk-load endpoint) =====================
 // Replaces 19 separate API calls with 1 — critical for Vercel cold-start perf
 
@@ -866,6 +1156,18 @@ app.get('/api/init', authenticate, async (req, res, next) => {
   try {
     const schoolId = parseInt(req.query.schoolId);
     if (isNaN(schoolId)) return res.status(400).json({ error: 'schoolId required' });
+
+    let schoolsWhere = {};
+    if (req.user.role !== 'SUPERADMIN' && req.user.role !== 'SELLER') {
+      const userSchool = await prisma.school.findUnique({
+        where: { id: req.user.schoolId || schoolId }
+      });
+      if (userSchool && userSchool.organizationId) {
+        schoolsWhere = { organizationId: userSchool.organizationId };
+      } else {
+        schoolsWhere = { id: req.user.schoolId || schoolId };
+      }
+    }
 
     // All queries run in parallel — only 1 DB round-trip overhead
     const [
@@ -891,7 +1193,7 @@ app.get('/api/init', authenticate, async (req, res, next) => {
       prisma.question.findMany({ where: { schoolId } }),
       prisma.exam.findMany({ where: { schoolId } }),
       prisma.examResult.findMany({ where: { schoolId } }),
-      prisma.school.findMany(),
+      prisma.school.findMany({ where: schoolsWhere }),
     ]);
 
     res.json({
@@ -906,9 +1208,8 @@ app.get('/api/init', authenticate, async (req, res, next) => {
 
 app.get('/api/schools', authenticate, async (req, res, next) => {
   try {
-    const schools = await prisma.school.findMany();
-
     if (req.user && req.user.role === 'SUPERADMIN') {
+      const schools = await prisma.school.findMany();
       // 4 ta grouped query — N ta maktab bo'lsa ham faqat 4 ta DB murojaat
       const [studentGroups, teacherGroups, revenueGroups, userGroups] = await Promise.all([
         prisma.student.groupBy({ by: ['schoolId'], _count: { id: true } }),
@@ -932,26 +1233,97 @@ app.get('/api/schools', authenticate, async (req, res, next) => {
       })));
     }
 
+    let schoolsWhere = {};
+    if (req.user.schoolId) {
+      const userSchool = await prisma.school.findUnique({
+        where: { id: req.user.schoolId }
+      });
+      if (userSchool && userSchool.organizationId) {
+        schoolsWhere = { organizationId: userSchool.organizationId };
+      } else {
+        schoolsWhere = { id: req.user.schoolId };
+      }
+    } else {
+      schoolsWhere = { id: -1 };
+    }
+
+    const schools = await prisma.school.findMany({ where: schoolsWhere });
     res.json(schools);
   } catch (error) { next(error); }
 });
 
 app.post('/api/schools', authenticate, async (req, res, next) => {
   try {
-    if (req.user.role !== 'SUPERADMIN') return res.status(403).json({ error: 'Faqat Super Admin filial yarata oladi' });
-    const { name, address, organizationId } = req.body;
+    const isSuper = req.user.role === 'SUPERADMIN';
+    const isAdmin = req.user.role === 'ADMIN';
+
+    if (!isSuper && !isAdmin) {
+      return res.status(403).json({ error: 'Faqat Super Admin yoki Tashkilot Admini filial yarata oladi' });
+    }
+
+    const { name, address } = req.body;
     if (!name) return res.status(400).json({ error: 'Filial nomi kiritilishi shart' });
+
+    let orgId = null;
+
+    if (isSuper) {
+      if (req.body.organizationId) {
+        orgId = parseInt(req.body.organizationId);
+      }
+    } else {
+      // Admin o'z schoolId orqali organizationId ni topadi.
+      // Agar organizationId yo'q bo'lsa ham, filial yaratishga ruxsat beriladi.
+      if (req.user.schoolId) {
+        const adminSchool = await prisma.school.findUnique({
+          where: { id: req.user.schoolId }
+        });
+        if (adminSchool?.organizationId) {
+          orgId = adminSchool.organizationId;
+        }
+      }
+    }
+
+    if (orgId) {
+      const org = await prisma.organization.findUnique({
+        where: { id: orgId },
+        include: { _count: { select: { schools: true } } }
+      });
+      if (org && org._count.schools >= (org.maxSchools || 10)) {
+        return res.status(400).json({
+          error: `Filiallar soni limitga yetdi (${org.maxSchools || 10} ta).`
+        });
+      }
+    }
+
     const data = { name, address };
-    if (organizationId) data.organizationId = parseInt(organizationId);
+    if (orgId) data.organizationId = orgId;
+
     res.json(await prisma.school.create({ data }));
   } catch (error) { next(error); }
 });
 
 app.delete('/api/schools/:id', authenticate, async (req, res, next) => {
   try {
-    if (req.user.role !== 'SUPERADMIN') return res.status(403).json({ error: 'Faqat Super Admin maktab o\'chira oladi' });
+    const isSuper = req.user.role === 'SUPERADMIN';
+    const isAdmin = req.user.role === 'ADMIN';
+
+    if (!isSuper && !isAdmin) {
+      return res.status(403).json({ error: 'Ruxsat yo\'q' });
+    }
+
     const schoolId = parseInt(req.params.id);
     if (isNaN(schoolId)) return res.status(400).json({ error: 'Noto\'g\'ri ID' });
+
+    if (isAdmin) {
+      if (schoolId === req.user.schoolId) {
+        return res.status(400).json({ error: 'O\'zingiz faoliyat yuritayotgan filialni o\'chira olmaysiz' });
+      }
+      const targetSchool = await prisma.school.findUnique({ where: { id: schoolId } });
+      const adminSchool = await prisma.school.findUnique({ where: { id: req.user.schoolId } });
+      if (!targetSchool || !adminSchool || targetSchool.organizationId !== adminSchool.organizationId) {
+        return res.status(403).json({ error: 'Faqat o\'zingizning tashkilotingizga tegishli filialni o\'chira olasiz' });
+      }
+    }
 
     // Cascade delete related records to avoid database foreign key violations
     await prisma.$transaction([
@@ -1059,21 +1431,50 @@ app.post('/api/attendances/batch', authenticate, async (req, res, next) => {
     if (!schoolId || !groupId || !date || !records) return res.status(400).json({ error: 'Missing fields' });
     
     const results = [];
+    const group = await prisma.group.findUnique({ where: { id: parseInt(groupId) } });
+
     for (const record of records) {
       const existing = await prisma.attendance.findFirst({
         where: { studentId: record.studentId, groupId: parseInt(groupId), date, schoolId: parseInt(schoolId) }
       });
+      let updatedOrCreated;
+      let shouldNotify = false;
+
       if (existing) {
-        const updated = await prisma.attendance.update({
-          where: { id: existing.id },
-          data: { status: record.status }
-        });
-        results.push(updated);
+        if (existing.status !== record.status) {
+          updatedOrCreated = await prisma.attendance.update({
+            where: { id: existing.id },
+            data: { status: record.status }
+          });
+          shouldNotify = true;
+        } else {
+          updatedOrCreated = existing;
+        }
       } else {
-        const created = await prisma.attendance.create({
+        updatedOrCreated = await prisma.attendance.create({
           data: { studentId: record.studentId, groupId: parseInt(groupId), date, status: record.status, schoolId: parseInt(schoolId) }
         });
-        results.push(created);
+        shouldNotify = true;
+      }
+      results.push(updatedOrCreated);
+
+      // Telegram notification for batch attendance
+      if (shouldNotify) {
+        try {
+          const student = await prisma.student.findUnique({ where: { id: record.studentId } });
+          if (student && student.telegramId) {
+            const icon = record.status === 'Keldi' ? '✅' : (record.status === 'Kelmapdi' ? '❌' : '⚠️');
+            bot.telegram.sendMessage(student.telegramId, 
+              `${icon} Davomat xabarnomasi:\n\n` +
+              `👤 O'quvchi: ${student.name}\n` +
+              `📌 Holat: ${record.status}\n` +
+              `📅 Sana: ${date}\n` +
+              `📚 Guruh: ${group ? group.name : ''}`
+            ).catch(e => console.error('[Telegram Batch Notify] Error sending message:', e));
+          }
+        } catch (e) {
+          console.error('[Telegram Batch Notify] Error:', e);
+        }
       }
     }
     res.json(results);
@@ -1298,14 +1699,155 @@ app.post('/api/utils/remove-bg', authenticate, async (req, res, next) => {
       return res.status(400).json({ error: 'Rasm yuborilmadi' });
     }
 
+    console.log(`[Remove BG] Processing image of size ${image.length} chars...`);
+
+    // --- METHOD 1: Free Keyless Hugging Face BRIA RMBG-1.4 Gradio Queue API ---
+    try {
+      console.log('[Remove BG] Attempting free keyless HuggingFace BRIA RMBG-1.4 Space...');
+      
+      // Parse base64 string into a buffer
+      const base64Data = image.replace(/^data:image\/[\w+]+;base64,/, '');
+      const buffer = Buffer.from(base64Data, 'base64');
+      
+      // 1. Upload to HuggingFace Space /upload
+      const blob = new Blob([buffer], { type: 'image/png' });
+      const form = new FormData();
+      form.append('files', blob, 'input.png');
+
+      const uploadResponse = await fetch('https://briaai-bria-rmbg-1-4.hf.space/upload', {
+        method: 'POST',
+        body: form
+      });
+
+      if (!uploadResponse.ok) {
+        throw new Error(`HF Space upload returned status ${uploadResponse.status}`);
+      }
+
+      const uploadJson = await uploadResponse.json();
+      const tempFilePath = uploadJson[0];
+      if (!tempFilePath) {
+        throw new Error('HF Space upload returned empty path');
+      }
+
+      console.log(`[Remove BG] Uploaded to HF successfully. Temp path: ${tempFilePath}`);
+
+      // 2. Join queue
+      const sessionHash = Math.random().toString(36).substring(2);
+      const joinResponse = await fetch('https://briaai-bria-rmbg-1-4.hf.space/queue/join', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          data: [
+            {
+              path: tempFilePath,
+              orig_name: "input.png"
+            }
+          ],
+          fn_index: 0,
+          session_hash: sessionHash
+        })
+      });
+
+      if (joinResponse.ok) {
+        const joinJson = await joinResponse.json();
+        const eventId = joinJson.event_id;
+
+        if (eventId) {
+          console.log(`[Remove BG] Joined queue, event: ${eventId}. Waiting for results via SSE...`);
+          
+          // Fetch the stream
+          const streamResponse = await fetch(`https://briaai-bria-rmbg-1-4.hf.space/queue/data?session_hash=${sessionHash}`);
+          if (streamResponse.ok) {
+            const reader = streamResponse.body.getReader();
+            const decoder = new TextDecoder();
+            let done = false;
+            let textBuffer = '';
+            
+            // Timeout after 15 seconds to prevent hanging
+            const timeoutPromise = new Promise((_, reject) => 
+              setTimeout(() => reject(new Error('HuggingFace queue timeout')), 15000)
+            );
+
+            const streamPromise = (async () => {
+              while (!done) {
+                const { value, done: readerDone } = await reader.read();
+                done = readerDone;
+                if (value) {
+                  const chunk = decoder.decode(value, { stream: !done });
+                  textBuffer += chunk;
+                  if (chunk.includes('process_completed')) {
+                    break;
+                  }
+                }
+              }
+            })();
+
+            await Promise.race([streamPromise, timeoutPromise]);
+
+            // Parse response buffer
+            const lines = textBuffer.split('\n');
+            let successResult = null;
+
+            for (const line of lines) {
+              if (line.startsWith('data: ')) {
+                try {
+                  const parsed = JSON.parse(line.substring(6));
+                  if (parsed.msg === 'process_completed' && parsed.success && parsed.output) {
+                    successResult = parsed.output;
+                    break;
+                  }
+                } catch (e) {}
+              }
+            }
+
+            if (successResult && successResult.data && successResult.data[0]) {
+              const outputItem = successResult.data[0];
+              let resultBase64 = null;
+
+              if (typeof outputItem === 'string' && outputItem.startsWith('data:')) {
+                resultBase64 = outputItem;
+              } else if (outputItem.data && typeof outputItem.data === 'string' && outputItem.data.startsWith('data:')) {
+                resultBase64 = outputItem.data;
+              } else {
+                const filePath = outputItem.path || outputItem.name;
+                if (filePath) {
+                  const fileUrl = `https://briaai-bria-rmbg-1-4.hf.space/file=${filePath}`;
+                  console.log(`[Remove BG] Downloading processed image from ${fileUrl}...`);
+                  const fileRes = await fetch(fileUrl);
+                  if (fileRes.ok) {
+                    const arrayBuffer = await fileRes.arrayBuffer();
+                    const contentType = fileRes.headers.get('content-type') || 'image/png';
+                    const base64Str = Buffer.from(arrayBuffer).toString('base64');
+                    resultBase64 = `data:${contentType};base64,${base64Str}`;
+                  }
+                }
+              }
+
+              if (resultBase64) {
+                console.log('[Remove BG] Successfully processed background removal via free HuggingFace Space!');
+                return res.json({
+                  success: true,
+                  image: resultBase64,
+                  message: 'Background removed successfully (HuggingFace free)'
+                });
+              }
+            }
+          }
+        }
+      }
+      console.warn('[Remove BG] Free HuggingFace Space failed or returned unsuccessful status. Falling back to fal.ai...');
+    } catch (hfError) {
+      console.error('[Remove BG] HuggingFace processing error:', hfError);
+    }
+
+    // --- METHOD 2: Fallback to fal.ai (requires positive account balance) ---
+    console.log('[Remove BG] Attempting fallback to fal.ai...');
     const falKey = process.env.FAL_KEY;
     if (!falKey) {
       console.error('Remove BG: FAL_KEY missing in process.env');
-      return res.status(500).json({ error: 'FAL_KEY sozlanmagan' });
+      return res.status(500).json({ error: 'FAL_KEY sozlanmagan va tekin xizmat ishlamadi' });
     }
 
-    console.log(`Sending image to fal.ai (Size: ${image.length} chars)...`);
-    
     const response = await fetch('https://fal.run/fal-ai/bria/background-removal', {
       method: 'POST',
       headers: {
@@ -1331,11 +1873,28 @@ app.post('/api/utils/remove-bg', authenticate, async (req, res, next) => {
       return res.status(500).json({ success: false, error: 'AI natijani qaytarmadi' });
     }
 
-    console.log('Background removed successfully via fal.ai');
+    // Fetch fal.ai image and convert to base64 so it is stored directly as base64 in the database
+    console.log(`[Remove BG] Fetching result from fal.ai URL: ${resultUrl}...`);
+    const falImageRes = await fetch(resultUrl);
+    if (falImageRes.ok) {
+      const arrayBuffer = await falImageRes.arrayBuffer();
+      const contentType = falImageRes.headers.get('content-type') || 'image/png';
+      const base64Str = Buffer.from(arrayBuffer).toString('base64');
+      const base64Result = `data:${contentType};base64,${base64Str}`;
+      
+      console.log('Background removed successfully via fal.ai and converted to base64');
+      return res.json({ 
+        success: true, 
+        image: base64Result, 
+        message: 'Background removed successfully (fal.ai)' 
+      });
+    }
+
+    // If conversion failed, return the URL as is
     res.json({ 
       success: true, 
       image: resultUrl, 
-      message: 'Background removed successfully (fal.ai)' 
+      message: 'Background removed successfully (fal.ai URL)' 
     });
   } catch (error) { 
     console.error('Background removal critical error:', error);
@@ -1467,17 +2026,29 @@ app.post('/api/sms/send', authenticate, async (req, res, next) => {
     let { phone, message, type, studentId } = req.body;
     if (!message) return res.status(400).json({ error: 'Xabar matni kerak' });
     
-    if (phone === 'AUTO_RESOLVE' && studentId) {
-      const student = await prisma.student.findUnique({ where: { id: Number(studentId) } });
-      if (student) {
-        phone = resolveRecipientPhone(student);
-      }
+    let student = null;
+    if (studentId) {
+      student = await prisma.student.findUnique({ where: { id: Number(studentId) } });
+    }
+
+    if (phone === 'AUTO_RESOLVE' && student) {
+      phone = resolveRecipientPhone(student);
     }
 
     if (!phone || phone === 'AUTO_RESOLVE') return res.status(400).json({ error: 'Telefon raqamini aniqlab bo\'lmadi' });
     
+    let telegramSent = false;
+    if (student && student.telegramId) {
+      try {
+        await bot.telegram.sendMessage(student.telegramId, message);
+        telegramSent = true;
+      } catch (tgErr) {
+        console.error('[Telegram Manual Send] Error sending to student:', tgErr.message);
+      }
+    }
+
     const result = await sendSms(phone, message, type || 'MANUAL', studentId ? Number(studentId) : null, req.user.schoolId);
-    res.json(result);
+    res.json({ ...result, telegramSent });
   } catch (err) { next(err); }
 });
 
@@ -1487,18 +2058,18 @@ app.post('/api/sms/attendance', authenticate, async (req, res, next) => {
     const { date, groupId } = req.body;
     if (!date || !groupId) return res.status(400).json({ error: 'date va groupId kerak' });
 
-    // Kelmagan o'quvchilarni toping
+    // Kelmagan o'quvchilarni toping (Student classroom attendance status is 'Kelmapdi')
     const absences = await prisma.attendance.findMany({
       where: {
         groupId: Number(groupId),
         date,
-        status: 'Kelmadi',
+        status: 'Kelmapdi',
         schoolId: req.user.schoolId
       },
       include: { student: true, group: true }
     });
 
-    if (absences.length === 0) return res.json({ sent: 0, message: 'Kelmaganlar topilmadi' });
+    if (absences.length === 0) return res.json({ success: true, count: 0, sent: 0, message: 'Kelmaganlar topilmadi' });
 
     const results = [];
     for (const absence of absences) {
@@ -1510,7 +2081,8 @@ app.post('/api/sms/attendance', authenticate, async (req, res, next) => {
       const r = await sendSms(phone, msg, 'ATTENDANCE', student.id, req.user.schoolId);
       results.push({ name: student.name, phone, ...r });
     }
-    res.json({ sent: results.filter(r => r.success).length, total: results.length, results });
+    const sentCount = results.filter(r => r.success).length;
+    res.json({ success: true, count: sentCount, sent: sentCount, total: results.length, results });
   } catch (err) { next(err); }
 });
 
