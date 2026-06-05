@@ -130,15 +130,15 @@ export default function ExamResults() {
             {/* Header */}
             <div className="flex items-start justify-between flex-wrap gap-4">
                 <div>
-                    <h1 className="text-3xl font-extrabold text-white uppercase tracking-tight">Imtihon Natijalari</h1>
-                    <p className="text-[10px] font-bold text-[#4a5568] mt-2 uppercase tracking-widest">Statistika va tahlil</p>
+                    <h1 className="text-3xl font-extrabold text-gray-900 dark:text-white uppercase tracking-tight">Imtihon Natijalari</h1>
+                    <p className="text-[10px] font-bold text-gray-400 dark:text-gray-500 mt-2 uppercase tracking-widest">Statistika va tahlil</p>
                 </div>
 
                 <div className="flex items-center gap-3 flex-wrap">
                     <select
                         value={selectedExamId || ''}
                         onChange={e => { setSelectedExamId(Number(e.target.value) || null); setExpandedRow(null); }}
-                        className="px-4 py-3 bg-white/5 border border-white/5 rounded-xl text-[10px] font-bold uppercase tracking-widest outline-none focus:border-teal-500 text-white"
+                        className="px-4 py-3 bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700 rounded-xl text-[10px] font-bold uppercase tracking-widest outline-none focus:border-teal-500 dark:text-white"
                     >
                         <option value="">Imtihon tanlang</option>
                         {exams.map(e => <option key={e.id} value={e.id}>{e.name}</option>)}
@@ -147,7 +147,7 @@ export default function ExamResults() {
                     <select
                         value={selectedGroupId}
                         onChange={e => setSelectedGroupId(e.target.value ? Number(e.target.value) : '')}
-                        className="px-4 py-3 bg-white/5 border border-white/5 rounded-xl text-[10px] font-bold uppercase tracking-widest outline-none focus:border-teal-500 text-white"
+                        className="px-4 py-3 bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700 rounded-xl text-[10px] font-bold uppercase tracking-widest outline-none focus:border-teal-500 dark:text-white"
                     >
                         <option value="">Barcha guruhlar</option>
                         {groups.map(g => <option key={g.id} value={g.id}>{g.name}</option>)}
@@ -164,11 +164,11 @@ export default function ExamResults() {
             </div>
 
             {!selectedExamId ? (
-                <div className="bg-[#141c27] rounded-2xl p-16 border border-white/5 text-center">
+                <div className="bg-white dark:bg-gray-800 rounded-2xl p-16 border border-gray-100 dark:border-gray-700 text-center">
                     <p className="text-gray-400 text-[10px] font-black uppercase tracking-widest">Yuqoridan imtihon tanlang</p>
                 </div>
             ) : filteredResults.length === 0 ? (
-                <div className="bg-[#141c27] rounded-2xl p-16 border border-white/5 text-center">
+                <div className="bg-white dark:bg-gray-800 rounded-2xl p-16 border border-gray-100 dark:border-gray-700 text-center">
                     <p className="text-gray-400 text-[10px] font-black uppercase tracking-widest">Hali natijalar kiritilmagan</p>
                 </div>
             ) : (
@@ -187,7 +187,7 @@ export default function ExamResults() {
                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                         {/* Score distribution */}
                         {scoreDistribution.length > 0 && (
-                            <div className="bg-[#141c27] rounded-2xl border border-white/5 p-6 shadow-sm">
+                            <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 p-6 shadow-sm">
                                 <h3 className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-6">Ball Taqsimoti</h3>
                                 <BarChart data={scoreDistribution} height={160} unit=" kishi" />
                             </div>
@@ -195,7 +195,7 @@ export default function ExamResults() {
 
                         {/* Subject performance */}
                         {subjectPerformance.length > 0 && (
-                            <div className="bg-[#141c27] rounded-2xl border border-white/5 p-6 shadow-sm">
+                            <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 p-6 shadow-sm">
                                 <h3 className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-6">Fan Bo'yicha Ko'rsatkichlar</h3>
                                 <BarChart data={subjectPerformance} horizontal unit="%" />
                             </div>
@@ -203,11 +203,11 @@ export default function ExamResults() {
                     </div>
 
                     {/* Results table */}
-                    <div className="bg-[#141c27] rounded-2xl border border-white/5 shadow-sm overflow-hidden">
+                    <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 shadow-sm overflow-hidden">
                         <div className="overflow-x-auto">
                             <table className="w-full text-left border-collapse min-w-[700px]">
                                 <thead>
-                                    <tr className="bg-white/[0.03] border-b border-white/5">
+                                    <tr className="bg-gray-50 dark:bg-gray-900/50 border-b border-gray-100 dark:border-gray-700">
                                         <th className="p-5 text-[10px] font-black text-gray-400 uppercase tracking-widest cursor-pointer hover:text-gray-600" onClick={() => toggleSort('name')}>
                                             Ism <SortIcon col="name" />
                                         </th>
@@ -223,7 +223,7 @@ export default function ExamResults() {
                                         <th className="p-5 w-10" />
                                     </tr>
                                 </thead>
-                                <tbody className="divide-y divide-white/5">
+                                <tbody className="divide-y divide-gray-50 dark:divide-gray-700/50">
                                     {filteredResults.map(result => {
                                         const student = students.find(s => s.id === result.studentId);
                                         const group = groups.find(g =>
@@ -235,34 +235,34 @@ export default function ExamResults() {
                                         return (
                                             <React.Fragment key={result.id}>
                                                 <tr
-                                                    className="hover:bg-white/[0.02] cursor-pointer transition-all"
+                                                    className="hover:bg-gray-50/80 dark:hover:bg-teal-900/5 cursor-pointer transition-all"
                                                     onClick={() => setExpandedRow(isExpanded ? null : result.id)}
                                                 >
                                                     <td className="p-5">
                                                         <div className="flex items-center gap-3">
-                                                            <div className="w-8 h-8 rounded-xl bg-teal-500/10 flex items-center justify-center text-teal-400 font-black text-xs">
+                                                            <div className="w-8 h-8 rounded-xl bg-teal-50 dark:bg-teal-900/30 flex items-center justify-center text-teal-600 font-black text-xs">
                                                                 {student?.name?.[0] || '?'}
                                                             </div>
-                                                            <span className="text-sm font-bold text-white">{student?.name || `ID: ${result.studentId}`}</span>
+                                                            <span className="text-sm font-bold text-gray-900 dark:text-white">{student?.name || `ID: ${result.studentId}`}</span>
                                                         </div>
                                                     </td>
-                                                    <td className="p-5 text-[10px] font-bold text-[#4a5568] uppercase tracking-widest">
+                                                    <td className="p-5 text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-widest">
                                                         {group?.name || '-'}
                                                     </td>
                                                     <td className="p-5 text-center">
-                                                        <span className="px-3 py-1 bg-white/10 rounded-lg text-[10px] font-black text-white/70">
+                                                        <span className="px-3 py-1 bg-gray-100 dark:bg-gray-700 rounded-lg text-[10px] font-black text-gray-600 dark:text-gray-300">
                                                             {result.variantCode || '-'}
                                                         </span>
                                                     </td>
                                                     <td className="p-5 text-center">
-                                                        <span className="text-lg font-black text-white">{result.score}</span>
+                                                        <span className="text-lg font-black text-gray-900 dark:text-white">{result.score}</span>
                                                         <span className="text-[10px] text-gray-400 ml-1">/ {exam?.maxScore}</span>
                                                     </td>
                                                     <td className="p-5 text-center">
                                                         <span className={`px-3 py-1 rounded-xl text-[10px] font-black ${
-                                                            result.percentage >= 80 ? 'bg-emerald-500/10 text-emerald-500' :
-                                                            result.percentage >= 50 ? 'bg-amber-500/10 text-amber-500' :
-                                                            'bg-rose-500/10 text-rose-500'
+                                                            result.percentage >= 80 ? 'bg-emerald-50 text-emerald-600' :
+                                                            result.percentage >= 50 ? 'bg-amber-50 text-amber-600' :
+                                                            'bg-rose-50 text-rose-600'
                                                         }`}>
                                                             {result.percentage}%
                                                         </span>
@@ -278,18 +278,18 @@ export default function ExamResults() {
                                                 {isExpanded && result.blockScores && (
                                                     <tr>
                                                         <td colSpan={7} className="px-5 pb-4">
-                                                            <div className="bg-white/[0.03] rounded-2xl p-5 space-y-3">
+                                                            <div className="bg-gray-50 dark:bg-gray-900/50 rounded-2xl p-5 space-y-3">
                                                                 <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-3">Fan Bo'yicha Natijalar</p>
                                                                 {(result.blockScores as { subject: string; earned: number; max: number }[]).map((bs, i) => (
                                                                     <div key={i} className="flex items-center gap-4">
-                                                                        <span className="text-[10px] font-black text-white/70 uppercase tracking-widest w-28 shrink-0">{bs.subject}</span>
-                                                                        <div className="flex-1 h-5 bg-white/10 rounded-full overflow-hidden">
+                                                                        <span className="text-[10px] font-black text-gray-600 dark:text-gray-300 uppercase tracking-widest w-28 shrink-0">{bs.subject}</span>
+                                                                        <div className="flex-1 h-5 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
                                                                             <div
                                                                                 className={`h-full rounded-full transition-all ${bs.max > 0 && bs.earned / bs.max >= 0.5 ? 'bg-teal-500' : 'bg-rose-400'}`}
                                                                                 style={{ width: `${bs.max > 0 ? (bs.earned / bs.max) * 100 : 0}%` }}
                                                                             />
                                                                         </div>
-                                                                        <span className="text-[10px] font-black text-white/70 w-16 text-right">
+                                                                        <span className="text-[10px] font-black text-gray-600 dark:text-gray-300 w-16 text-right">
                                                                             {bs.earned}/{bs.max}
                                                                         </span>
                                                                     </div>

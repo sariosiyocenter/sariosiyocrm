@@ -49,11 +49,11 @@ export default function StudentDetails() {
 
     if (!student) {
         return (
-            <div className="flex flex-col items-center justify-center py-24 bg-[#141c27] rounded-3xl border border-white/5 shadow-sm transition-colors">
-                <div className="w-20 h-20 bg-white/5 rounded-full flex items-center justify-center mb-4 border border-white/5">
+            <div className="flex flex-col items-center justify-center py-24 bg-white dark:bg-gray-800 rounded-3xl border border-gray-100 dark:border-gray-700 shadow-sm transition-colors">
+                <div className="w-20 h-20 bg-gray-50 dark:bg-gray-700 rounded-full flex items-center justify-center mb-4 border border-gray-100 dark:border-gray-600">
                     <Users className="w-8 h-8 text-gray-300 dark:text-gray-500" />
                 </div>
-                <p className="text-[#4a5568] font-bold uppercase tracking-widest text-xs">O'quvchi topilmadi</p>
+                <p className="text-gray-400 dark:text-gray-500 font-bold uppercase tracking-widest text-xs">O'quvchi topilmadi</p>
                 <button onClick={() => navigate('/students')} className="mt-6 text-sky-600 dark:text-sky-400 font-bold uppercase tracking-widest text-[10px] hover:underline px-6 py-2 bg-sky-50 dark:bg-sky-900/30 rounded-xl transition-all">Orqaga qaytish</button>
             </div>
         );
@@ -192,7 +192,7 @@ export default function StudentDetails() {
 
     return (
         <div className="max-w-[1400px] mx-auto space-y-8">
-            <button onClick={() => navigate(-1)} className="flex items-center gap-2 text-[#4a5568] hover:text-sky-600 dark:hover:text-sky-400 transition-colors text-xs font-bold uppercase tracking-widest">
+            <button onClick={() => navigate(-1)} className="flex items-center gap-2 text-gray-400 dark:text-gray-500 hover:text-sky-600 dark:hover:text-sky-400 transition-colors text-xs font-bold uppercase tracking-widest">
                 <ArrowLeft className="w-4 h-4" />
                 Orqaga
             </button>
@@ -200,9 +200,9 @@ export default function StudentDetails() {
             <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
                 {/* Profile Card */}
                 <div className="lg:col-span-1 border-r border-gray-100 dark:border-gray-800 pr-0 lg:pr-8">
-                    <div className="bg-[#141c27] rounded-3xl border border-white/5 shadow-sm overflow-hidden transition-colors">
+                    <div className="bg-white dark:bg-gray-800 rounded-3xl border border-gray-100 dark:border-gray-700 shadow-sm overflow-hidden transition-colors">
                         <div className="bg-gradient-to-br from-sky-500 to-sky-600 h-24 relative">
-                            <div className="absolute -bottom-10 left-1/2 -translate-x-1/2 w-24 h-24 rounded-3xl border-4 border-white/10 overflow-hidden shadow-xl bg-[#141c27] flex items-center justify-center text-sky-600 dark:text-sky-400 font-bold text-3xl transition-colors">
+                            <div className="absolute -bottom-10 left-1/2 -translate-x-1/2 w-24 h-24 rounded-3xl border-4 border-white dark:border-gray-800 overflow-hidden shadow-xl bg-white dark:bg-gray-800 flex items-center justify-center text-sky-600 dark:text-sky-400 font-bold text-3xl transition-colors">
                                 {student.photo ? (
                                     <img src={student.photo} alt={student.name} className="w-full h-full object-cover" />
                                 ) : (
@@ -214,19 +214,19 @@ export default function StudentDetails() {
                             {isEditing ? (
                                 <div className="space-y-4">
                                     <div className="space-y-1">
-                                        <label className="text-[10px] font-bold text-[#4a5568] uppercase tracking-widest pl-1">Ism Familiya</label>
+                                        <label className="text-[10px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-widest pl-1">Ism Familiya</label>
                                         <input 
                                             value={editForm.name}
                                             onChange={e => setEditForm({...editForm, name: e.target.value})}
-                                            className="w-full px-4 py-2 bg-white/5 border border-white/5 rounded-xl text-sm font-bold text-center outline-none focus:border-sky-500"
+                                            className="w-full px-4 py-2 bg-gray-50 dark:bg-gray-900 border border-gray-100 dark:border-gray-700 rounded-xl text-sm font-bold text-center outline-none focus:border-sky-500"
                                         />
                                     </div>
                                     <div className="space-y-1">
-                                        <label className="text-[10px] font-bold text-[#4a5568] uppercase tracking-widest pl-1">Holati</label>
+                                        <label className="text-[10px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-widest pl-1">Holati</label>
                                         <select 
                                             value={editForm.status}
                                             onChange={e => setEditForm({...editForm, status: e.target.value as any})}
-                                            className="w-full px-4 py-2 bg-white/5 border border-white/5 rounded-xl text-sm font-bold outline-none focus:border-sky-500 text-center"
+                                            className="w-full px-4 py-2 bg-gray-50 dark:bg-gray-900 border border-gray-100 dark:border-gray-700 rounded-xl text-sm font-bold outline-none focus:border-sky-500 text-center"
                                         >
                                             <option value="Faol">Faol</option>
                                             <option value="Sinov">Sinov</option>
@@ -234,11 +234,11 @@ export default function StudentDetails() {
                                         </select>
                                     </div>
                                     <div className="space-y-1">
-                                        <label className="text-[10px] font-bold text-[#4a5568] uppercase tracking-widest pl-1">Transport</label>
+                                        <label className="text-[10px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-widest pl-1">Transport</label>
                                         <select 
                                             value={editForm.transportId}
                                             onChange={e => setEditForm({...editForm, transportId: e.target.value})}
-                                            className="w-full px-4 py-2 bg-white/5 border border-white/5 rounded-xl text-sm font-bold outline-none focus:border-sky-500 text-center transition-all appearance-none cursor-pointer"
+                                            className="w-full px-4 py-2 bg-gray-50 dark:bg-gray-900 border border-gray-100 dark:border-gray-700 rounded-xl text-sm font-bold outline-none focus:border-sky-500 text-center transition-all appearance-none cursor-pointer"
                                         >
                                             <option value="">Transport yo'q</option>
                                             {transports.map(t => (
@@ -250,12 +250,12 @@ export default function StudentDetails() {
                             ) : (
                                 <>
                                     <div className="flex items-center justify-center gap-2">
-                                        <h2 className="text-xl font-bold text-white leading-tight">{student.name}</h2>
+                                        <h2 className="text-xl font-bold text-gray-900 dark:text-white leading-tight">{student.name}</h2>
                                         <button onClick={handleStartEdit} className="p-1.5 text-gray-300 hover:text-sky-500 transition-colors">
                                             <Edit size={14} />
                                         </button>
                                     </div>
-                                    <p className="text-[10px] text-[#4a5568] font-bold uppercase tracking-widest mt-1">ID: #{student.id}</p>
+                                    <p className="text-[10px] text-gray-400 dark:text-gray-500 font-bold uppercase tracking-widest mt-1">ID: #{student.id}</p>
                                     <div className="mt-4 flex flex-col items-center gap-3">
                                         <span className={`px-4 py-1 rounded-full text-[9px] font-bold uppercase tracking-widest ${student.status === 'Faol' ? 'bg-emerald-50 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 border border-emerald-100 dark:border-emerald-800/50' : 'bg-rose-50 dark:bg-rose-900/30 text-rose-600 dark:text-rose-400 border border-rose-100/50 dark:border-rose-800/50'}`}>
                                             {student.status}
@@ -265,7 +265,7 @@ export default function StudentDetails() {
                             )}
                             <div className="mt-4 flex flex-col items-center gap-3">
                                 <div className={`px-5 py-3 rounded-2xl w-full flex flex-col items-center border border-transparent transition-colors ${student.balance >= 0 ? 'bg-sky-50 dark:bg-sky-900/20 text-sky-600 dark:text-sky-400 border-sky-100/50 dark:border-sky-800/30' : 'bg-rose-50 dark:bg-rose-900/20 text-rose-600 dark:text-rose-400 border-rose-100/50 dark:border-rose-800/30'}`}>
-                                   <span className="text-[9px] font-bold text-[#4a5568] uppercase tracking-widest mb-1 leading-none">Balans</span>
+                                   <span className="text-[9px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-widest mb-1 leading-none">Balans</span>
                                    <span className="text-lg font-bold tabular-nums">
                                       {student.balance.toLocaleString()} 
                                       <span className="text-[10px] ml-1 uppercase opacity-60">UZS</span>
@@ -275,18 +275,18 @@ export default function StudentDetails() {
 
                              <div className="mt-6 px-6 space-y-3">
                                 <div className="grid grid-cols-2 gap-3">
-                                    <label className="relative flex items-center justify-center gap-2 py-3 bg-white/5 border border-dashed border-gray-200 dark:border-gray-700 rounded-2xl cursor-pointer hover:bg-white/5 transition-all group">
+                                    <label className="relative flex items-center justify-center gap-2 py-3 bg-gray-50 dark:bg-gray-900 border border-dashed border-gray-200 dark:border-gray-700 rounded-2xl cursor-pointer hover:bg-white dark:hover:bg-gray-800 transition-all group">
                                         <input type="file" className="hidden" accept="image/*" onChange={handlePhotoUpload} />
                                         <ImageIcon size={16} className="text-gray-400 group-hover:text-sky-500" />
-                                        <span className="text-[10px] font-bold text-[#4a5568] uppercase tracking-widest">Yuklash</span>
+                                        <span className="text-[10px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-widest">Yuklash</span>
                                     </label>
                                     
                                     <button 
                                         onClick={() => setIsPhotoModalOpen(true)}
-                                        className="flex items-center justify-center gap-2 py-3 bg-white/5 border border-dashed border-gray-200 dark:border-gray-700 rounded-2xl hover:bg-white/5 transition-all group"
+                                        className="flex items-center justify-center gap-2 py-3 bg-gray-50 dark:bg-gray-900 border border-dashed border-gray-200 dark:border-gray-700 rounded-2xl hover:bg-white dark:hover:bg-gray-800 transition-all group"
                                     >
                                         <Camera size={16} className="text-gray-400 group-hover:text-emerald-500" />
-                                        <span className="text-[10px] font-bold text-[#4a5568] uppercase tracking-widest">Rasmga olish</span>
+                                        <span className="text-[10px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-widest">Rasmga olish</span>
                                     </button>
                                 </div>
                                 
@@ -310,7 +310,7 @@ export default function StudentDetails() {
                                 />
                             )}
                         </div>
-                        <div className="border-t border-dashed border-white/5 px-6 pt-8 pb-12 space-y-7 transition-colors">
+                        <div className="border-t border-dashed border-gray-100 dark:border-gray-700 px-6 pt-8 pb-12 space-y-7 transition-colors">
                             {isEditing ? (
                                 <div className="space-y-6">
                                     <div className="space-y-2">
@@ -319,7 +319,7 @@ export default function StudentDetails() {
                                             type="tel" 
                                             value={editForm.phone}
                                             onChange={e => setEditForm({...editForm, phone: e.target.value})}
-                                            className="w-full px-4 py-2 bg-white/5 border border-white/5 rounded-xl text-xs font-bold outline-none focus:border-sky-500"
+                                            className="w-full px-4 py-2 bg-gray-50 dark:bg-gray-900 border border-gray-100 dark:border-gray-700 rounded-xl text-xs font-bold outline-none focus:border-sky-500"
                                         />
                                     </div>
                                     <div className="space-y-2">
@@ -328,7 +328,7 @@ export default function StudentDetails() {
                                             type="date" 
                                             value={editForm.birthDate}
                                             onChange={e => setEditForm({...editForm, birthDate: e.target.value})}
-                                            className="w-full px-4 py-2 bg-white/5 border border-white/5 rounded-xl text-xs font-bold outline-none focus:border-sky-500 text-gray-600"
+                                            className="w-full px-4 py-2 bg-gray-50 dark:bg-gray-900 border border-gray-100 dark:border-gray-700 rounded-xl text-xs font-bold outline-none focus:border-sky-500 text-gray-600"
                                         />
                                     </div>
                                     <div className="space-y-2">
@@ -337,7 +337,7 @@ export default function StudentDetails() {
                                             type="text" 
                                             value={editForm.address}
                                             onChange={e => setEditForm({...editForm, address: e.target.value})}
-                                            className="w-full px-4 py-2 bg-white/5 border border-white/5 rounded-xl text-xs font-bold outline-none focus:border-sky-500"
+                                            className="w-full px-4 py-2 bg-gray-50 dark:bg-gray-900 border border-gray-100 dark:border-gray-700 rounded-xl text-xs font-bold outline-none focus:border-sky-500"
                                         />
                                     </div>
                                     <div className="space-y-2">
@@ -346,7 +346,7 @@ export default function StudentDetails() {
                                             type="text" 
                                             value={editForm.studentSchool}
                                             onChange={e => setEditForm({...editForm, studentSchool: e.target.value})}
-                                            className="w-full px-4 py-2 bg-white/5 border border-white/5 rounded-xl text-xs font-bold outline-none focus:border-sky-500"
+                                            className="w-full px-4 py-2 bg-gray-50 dark:bg-gray-900 border border-gray-100 dark:border-gray-700 rounded-xl text-xs font-bold outline-none focus:border-sky-500"
                                             placeholder="Masalan: 45-maktab"
                                         />
                                     </div>
@@ -357,7 +357,7 @@ export default function StudentDetails() {
                                                 type="text" 
                                                 value={editForm.fatherName}
                                                 onChange={e => setEditForm({...editForm, fatherName: e.target.value})}
-                                                className="w-full px-4 py-2 bg-white/5 border border-white/5 rounded-xl text-xs font-bold outline-none focus:border-sky-500"
+                                                className="w-full px-4 py-2 bg-gray-50 dark:bg-gray-900 border border-gray-100 dark:border-gray-700 rounded-xl text-xs font-bold outline-none focus:border-sky-500"
                                             />
                                         </div>
                                         <div className="space-y-2">
@@ -366,7 +366,7 @@ export default function StudentDetails() {
                                                 type="tel" 
                                                 value={editForm.fatherPhone}
                                                 onChange={e => setEditForm({...editForm, fatherPhone: e.target.value})}
-                                                className="w-full px-4 py-2 bg-white/5 border border-white/5 rounded-xl text-xs font-bold outline-none focus:border-sky-500"
+                                                className="w-full px-4 py-2 bg-gray-50 dark:bg-gray-900 border border-gray-100 dark:border-gray-700 rounded-xl text-xs font-bold outline-none focus:border-sky-500"
                                             />
                                         </div>
                                     </div>
@@ -377,7 +377,7 @@ export default function StudentDetails() {
                                                 type="text" 
                                                 value={editForm.motherName}
                                                 onChange={e => setEditForm({...editForm, motherName: e.target.value})}
-                                                className="w-full px-4 py-2 bg-white/5 border border-white/5 rounded-xl text-xs font-bold outline-none focus:border-sky-500"
+                                                className="w-full px-4 py-2 bg-gray-50 dark:bg-gray-900 border border-gray-100 dark:border-gray-700 rounded-xl text-xs font-bold outline-none focus:border-sky-500"
                                             />
                                         </div>
                                         <div className="space-y-2">
@@ -386,7 +386,7 @@ export default function StudentDetails() {
                                                 type="tel" 
                                                 value={editForm.motherPhone}
                                                 onChange={e => setEditForm({...editForm, motherPhone: e.target.value})}
-                                                className="w-full px-4 py-2 bg-white/5 border border-white/5 rounded-xl text-xs font-bold outline-none focus:border-sky-500"
+                                                className="w-full px-4 py-2 bg-gray-50 dark:bg-gray-900 border border-gray-100 dark:border-gray-700 rounded-xl text-xs font-bold outline-none focus:border-sky-500"
                                             />
                                         </div>
                                     </div>
@@ -496,8 +496,8 @@ export default function StudentDetails() {
                         />
                     </div>
 
-                    <div className="bg-[#141c27] rounded-3xl border border-white/5 shadow-sm overflow-hidden min-h-[600px] transition-colors">
-                        <div className="flex border-b border-white/5 px-6 overflow-x-auto scrollbar-hide bg-white/[0.03]">
+                    <div className="bg-white dark:bg-gray-800 rounded-3xl border border-gray-100 dark:border-gray-700 shadow-sm overflow-hidden min-h-[600px] transition-colors">
+                        <div className="flex border-b border-gray-100 dark:border-gray-700 px-6 overflow-x-auto scrollbar-hide bg-gray-50/30 dark:bg-gray-900/30">
                             <TabButton label="Umumiy" icon={<Layers className="w-4 h-4" />} active={activeTab === 'umumiy'} onClick={() => setActiveTab('umumiy')} />
                             <TabButton label="Guruhlar" icon={<Users className="w-4 h-4" />} active={activeTab === 'guruhlar'} onClick={() => setActiveTab('guruhlar')} />
                             <TabButton label="To'lovlar" icon={<CreditCard className="w-4 h-4" />} active={activeTab === 'tolovlar'} onClick={() => setActiveTab('tolovlar')} />
@@ -511,26 +511,26 @@ export default function StudentDetails() {
                                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
                                         <div className="space-y-5">
                                             <div className="flex items-center justify-between">
-                                                <h4 className="text-sm font-bold text-[#4a5568] uppercase tracking-widest">Faol Guruhlar</h4>
+                                                <h4 className="text-sm font-bold text-gray-400 dark:text-gray-500 uppercase tracking-widest">Faol Guruhlar</h4>
                                             </div>
                                             <div className="space-y-3">
                                                 {studentGroups.length === 0 ? (
                                                     <div className="py-12 text-center border-2 border-dashed border-gray-200 dark:border-gray-700 rounded-2xl bg-gray-50/50 dark:bg-gray-900/20">
                                                         <BookOpen className="w-10 h-10 text-gray-300 dark:text-gray-600 mx-auto mb-3" />
-                                                        <p className="text-xs font-bold text-[#4a5568] uppercase tracking-widest">Guruhlarga biriktirilmagan</p>
+                                                        <p className="text-xs font-bold text-gray-400 dark:text-gray-500 uppercase tracking-widest">Guruhlarga biriktirilmagan</p>
                                                     </div>
                                                 ) : (
                                                     studentGroups.map(group => (
                                                         <div key={group.id} onClick={() => navigate(`/groups/${group.id}`)} 
-                                                            className="group bg-[#141c27] border border-white/5 rounded-2xl p-4 transition-all cursor-pointer hover:border-sky-300 dark:hover:border-sky-500/50 hover:shadow-lg hover:shadow-sky-500/5 hover:scale-[1.01] active:scale-[0.99]">
+                                                            className="group bg-white dark:bg-gray-800/50 border border-gray-100 dark:border-gray-700/50 rounded-2xl p-4 transition-all cursor-pointer hover:border-sky-300 dark:hover:border-sky-500/50 hover:shadow-lg hover:shadow-sky-500/5 hover:scale-[1.01] active:scale-[0.99]">
                                                             <div className="flex items-center justify-between">
                                                                 <div className="flex items-center gap-4">
                                                                     <div className="w-11 h-11 bg-sky-50 dark:bg-sky-900/30 border border-sky-100 dark:border-sky-800/50 rounded-xl flex items-center justify-center text-sky-600 dark:text-sky-400 group-hover:bg-sky-600 dark:group-hover:bg-sky-500 group-hover:text-white transition-all shrink-0 shadow-sm shadow-sky-500/10">
                                                                         <BookOpen size={20} />
                                                                     </div>
                                                                     <div>
-                                                                        <h5 className="text-sm font-bold text-white group-hover:text-sky-600 dark:group-hover:text-sky-400 transition-colors uppercase tracking-tight">{group.name}</h5>
-                                                                        <p className="text-[10px] font-bold text-[#4a5568] uppercase tracking-widest mt-1">{group.courseName} &bull; {group.teacherName}</p>
+                                                                        <h5 className="text-sm font-bold text-gray-900 dark:text-white group-hover:text-sky-600 dark:group-hover:text-sky-400 transition-colors uppercase tracking-tight">{group.name}</h5>
+                                                                        <p className="text-[10px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-widest mt-1">{group.courseName} &bull; {group.teacherName}</p>
                                                                     </div>
                                                                 </div>
                                                                 <ChevronRight size={18} className="text-gray-300 dark:text-gray-600 group-hover:text-sky-600 dark:group-hover:text-sky-400 transition-colors" />
@@ -543,27 +543,27 @@ export default function StudentDetails() {
 
                                          <div className="space-y-5">
                                             <div className="flex items-center justify-between">
-                                                <h4 className="text-sm font-bold text-[#4a5568] uppercase tracking-widest">Oxirgi To'lovlar</h4>
+                                                <h4 className="text-sm font-bold text-gray-400 dark:text-gray-500 uppercase tracking-widest">Oxirgi To'lovlar</h4>
                                             </div>
                                             <div className="space-y-3">
                                                 {studentPayments.slice(0, 4).map(p => (
-                                                    <div key={p.id} className="flex items-center justify-between p-4 bg-[#141c27] border border-white/5 rounded-2xl hover:border-emerald-200 dark:hover:border-emerald-500/50 transition-all hover:shadow-lg hover:shadow-emerald-500/5">
+                                                    <div key={p.id} className="flex items-center justify-between p-4 bg-white dark:bg-gray-800/50 border border-gray-100 dark:border-gray-700/50 rounded-2xl hover:border-emerald-200 dark:hover:border-emerald-500/50 transition-all hover:shadow-lg hover:shadow-emerald-500/5">
                                                         <div className="flex items-center gap-4">
                                                             <div className="w-11 h-11 rounded-xl bg-emerald-50 dark:bg-emerald-900/30 border border-emerald-100 dark:border-emerald-800/50 flex items-center justify-center text-emerald-600 dark:text-emerald-400 shrink-0 shadow-sm shadow-emerald-500/10">
                                                                 <CreditCard size={18} />
                                                             </div>
                                                             <div>
-                                                                <p className="text-sm font-bold text-white">+{p.amount.toLocaleString()} <span className="text-[10px] text-[#4a5568]">UZS</span></p>
-                                                                <p className="text-[10px] font-bold text-[#4a5568] uppercase tracking-widest mt-1">{p.date}</p>
+                                                                <p className="text-sm font-bold text-gray-900 dark:text-white">+{p.amount.toLocaleString()} <span className="text-[10px] text-gray-400 dark:text-gray-500">UZS</span></p>
+                                                                <p className="text-[10px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-widest mt-1">{p.date}</p>
                                                             </div>
                                                         </div>
-                                                        <span className="text-[10px] font-bold text-gray-600 dark:text-gray-400 bg-white/5 px-3 py-1.5 rounded-lg shrink-0 border border-white/5 uppercase tracking-widest">{p.type}</span>
+                                                        <span className="text-[10px] font-bold text-gray-600 dark:text-gray-400 bg-gray-50 dark:bg-gray-700 px-3 py-1.5 rounded-lg shrink-0 border border-gray-100 dark:border-gray-600 uppercase tracking-widest">{p.type}</span>
                                                     </div>
                                                 ))}
                                                 {studentPayments.length === 0 && (
                                                     <div className="py-12 text-center border-2 border-dashed border-gray-200 dark:border-gray-700 rounded-2xl bg-gray-50/50 dark:bg-gray-900/20">
                                                         <CreditCard className="w-10 h-10 text-gray-300 dark:text-gray-600 mx-auto mb-3" />
-                                                        <p className="text-xs font-bold text-[#4a5568] uppercase tracking-widest">To'lovlar tarixi yo'q</p>
+                                                        <p className="text-xs font-bold text-gray-400 dark:text-gray-500 uppercase tracking-widest">To'lovlar tarixi yo'q</p>
                                                     </div>
                                                 )}
                                             </div>
@@ -574,8 +574,8 @@ export default function StudentDetails() {
 
                             {activeTab === 'tolovlar' && (
                                 <div className="space-y-6 animate-in fade-in duration-500">
-                                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-5 bg-white/[0.03] border border-gray-200/50 dark:border-gray-700/50 rounded-2xl">
-                                        <h4 className="text-sm font-bold text-[#4a5568] uppercase tracking-widest">Tranzaksiyalar Tarixi</h4>
+                                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-5 bg-gray-50/50 dark:bg-gray-900/40 border border-gray-200/50 dark:border-gray-700/50 rounded-2xl">
+                                        <h4 className="text-sm font-bold text-gray-400 dark:text-gray-500 uppercase tracking-widest">Tranzaksiyalar Tarixi</h4>
                                         <button onClick={() => setShowPaymentModal(true)}
                                             className="px-6 py-2.5 bg-sky-600 text-white rounded-xl text-xs font-bold uppercase tracking-widest hover:bg-sky-500 active:scale-95 transition-all shadow-lg shadow-sky-500/20 text-center">
                                             To'lov Qo'shish
@@ -583,23 +583,23 @@ export default function StudentDetails() {
                                     </div>
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                         {studentPayments.map(p => (
-                                            <div key={p.id} className="flex items-center justify-between p-4 bg-[#141c27] border border-white/5 rounded-2xl hover:shadow-lg hover:shadow-emerald-500/5 hover:border-emerald-200 dark:hover:border-emerald-500/30 transition-all">
+                                            <div key={p.id} className="flex items-center justify-between p-4 bg-white dark:bg-gray-800/50 border border-gray-100 dark:border-gray-700/50 rounded-2xl hover:shadow-lg hover:shadow-emerald-500/5 hover:border-emerald-200 dark:hover:border-emerald-500/30 transition-all">
                                                 <div className="flex items-center gap-4">
                                                     <div className="w-11 h-11 rounded-xl bg-emerald-50 dark:bg-emerald-900/30 border border-emerald-100 dark:border-emerald-800/50 flex items-center justify-center text-emerald-600 dark:text-emerald-400 shrink-0 shadow-sm shadow-emerald-500/10">
                                                         <CreditCard size={18} />
                                                     </div>
                                                     <div>
-                                                        <p className="text-sm font-bold text-white">{p.amount.toLocaleString()} <span className="text-[10px] text-[#4a5568]">UZS</span></p>
-                                                        <p className="text-[10px] font-bold text-[#4a5568] uppercase tracking-widest mt-1">{p.date}</p>
+                                                        <p className="text-sm font-bold text-gray-900 dark:text-white">{p.amount.toLocaleString()} <span className="text-[10px] text-gray-400 dark:text-gray-500">UZS</span></p>
+                                                        <p className="text-[10px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-widest mt-1">{p.date}</p>
                                                     </div>
                                                 </div>
-                                                <span className="text-[10px] font-bold text-gray-600 dark:text-gray-400 bg-white/5 px-3 py-1.5 rounded-lg border border-white/5 uppercase tracking-widest">{p.type}</span>
+                                                <span className="text-[10px] font-bold text-gray-600 dark:text-gray-400 bg-gray-50 dark:bg-gray-700 px-3 py-1.5 rounded-lg border border-gray-100 dark:border-gray-600 uppercase tracking-widest">{p.type}</span>
                                             </div>
                                         ))}
                                     </div>
                                     {studentPayments.length === 0 && (
                                         <div className="py-20 text-center border-2 border-dashed border-gray-200 dark:border-gray-700 rounded-3xl bg-gray-50/50 dark:bg-gray-900/20">
-                                            <p className="text-xs font-bold text-[#4a5568] uppercase tracking-widest">To'lovlar topilmadi.</p>
+                                            <p className="text-xs font-bold text-gray-400 dark:text-gray-500 uppercase tracking-widest">To'lovlar topilmadi.</p>
                                         </div>
                                     )}
                                 </div>
@@ -607,8 +607,8 @@ export default function StudentDetails() {
 
                             {activeTab === 'guruhlar' && (
                                 <div className="space-y-6 animate-in fade-in duration-500">
-                                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-5 bg-white/[0.03] border border-gray-200/50 dark:border-gray-700/50 rounded-2xl">
-                                        <h4 className="text-sm font-bold text-[#4a5568] uppercase tracking-widest">O'quvchi Guruhlari</h4>
+                                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-5 bg-gray-50/50 dark:bg-gray-900/40 border border-gray-200/50 dark:border-gray-700/50 rounded-2xl">
+                                        <h4 className="text-sm font-bold text-gray-400 dark:text-gray-500 uppercase tracking-widest">O'quvchi Guruhlari</h4>
                                         <button onClick={() => setShowGroupModal(true)}
                                             className="px-6 py-2.5 bg-sky-600 text-white rounded-xl text-xs font-bold uppercase tracking-widest hover:bg-sky-500 active:scale-95 transition-all shadow-lg shadow-sky-500/20 text-center">
                                             Guruhga Qo'shish
@@ -617,23 +617,23 @@ export default function StudentDetails() {
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                                         {studentGroups.map(group => (
                                             <div key={group.id} onClick={() => navigate(`/groups/${group.id}`)} 
-                                                className="bg-[#141c27] border border-white/5 p-6 rounded-3xl hover:border-sky-300 dark:hover:border-sky-500 transition-all cursor-pointer group shadow-sm hover:shadow-xl hover:shadow-sky-500/5 hover:scale-[1.02] active:scale-[0.98]">
+                                                className="bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700 p-6 rounded-3xl hover:border-sky-300 dark:hover:border-sky-500 transition-all cursor-pointer group shadow-sm hover:shadow-xl hover:shadow-sky-500/5 hover:scale-[1.02] active:scale-[0.98]">
                                                 <div className="flex items-start justify-between mb-5">
                                                     <div>
-                                                        <h5 className="text-lg font-bold text-white group-hover:text-sky-600 dark:group-hover:text-sky-400 transition-colors uppercase tracking-tight">{group.name}</h5>
-                                                        <p className="text-[10px] font-bold text-[#4a5568] uppercase tracking-widest mt-1">{group.courseName}</p>
+                                                        <h5 className="text-lg font-bold text-gray-900 dark:text-white group-hover:text-sky-600 dark:group-hover:text-sky-400 transition-colors uppercase tracking-tight">{group.name}</h5>
+                                                        <p className="text-[10px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-widest mt-1">{group.courseName}</p>
                                                     </div>
                                                     <div className="w-12 h-12 bg-sky-50 dark:bg-sky-900/30 border border-sky-100 dark:border-sky-800/50 rounded-2xl flex items-center justify-center text-sky-600 dark:text-sky-400 shrink-0 group-hover:bg-sky-600 dark:group-hover:bg-sky-500 group-hover:text-white transition-all shadow-sm shadow-sky-500/10">
                                                         <BookOpen size={24} />
                                                     </div>
                                                 </div>
-                                                <div className="space-y-3 pt-5 border-t border-dashed border-white/5">
+                                                <div className="space-y-3 pt-5 border-t border-dashed border-gray-100 dark:border-gray-700">
                                                     <div className="flex items-center gap-3 text-gray-600 dark:text-gray-400 text-xs font-bold">
-                                                        <Users size={16} className="text-[#4a5568]" />
+                                                        <Users size={16} className="text-gray-400 dark:text-gray-500" />
                                                         {group.teacherName}
                                                     </div>
                                                     <div className="flex items-center gap-3 text-gray-600 dark:text-gray-400 text-xs font-bold">
-                                                        <Calendar size={16} className="text-[#4a5568]" />
+                                                        <Calendar size={16} className="text-gray-400 dark:text-gray-500" />
                                                         <span className="uppercase tracking-widest">{group.days}</span> &bull; {group.startTime}
                                                     </div>
                                                 </div>
@@ -642,7 +642,7 @@ export default function StudentDetails() {
                                     </div>
                                     {studentGroups.length === 0 && (
                                         <div className="py-20 text-center border-2 border-dashed border-gray-200 dark:border-gray-700 rounded-3xl bg-gray-50/50 dark:bg-gray-900/20">
-                                            <p className="text-xs font-bold text-[#4a5568] uppercase tracking-widest">Guruh ma'lumotlari yo'q.</p>
+                                            <p className="text-xs font-bold text-gray-400 dark:text-gray-500 uppercase tracking-widest">Guruh ma'lumotlari yo'q.</p>
                                         </div>
                                     )}
                                 </div>
@@ -650,8 +650,8 @@ export default function StudentDetails() {
 
                             {activeTab === 'yoqlama' && (
                                 <div className="space-y-6 animate-in fade-in duration-500">
-                                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-5 bg-white/[0.03] border border-gray-200/50 dark:border-gray-700/50 rounded-2xl">
-                                        <h4 className="text-sm font-bold text-[#4a5568] uppercase tracking-widest">Davomat Kalendari</h4>
+                                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-5 bg-gray-50/50 dark:bg-gray-900/40 border border-gray-200/50 dark:border-gray-700/50 rounded-2xl">
+                                        <h4 className="text-sm font-bold text-gray-400 dark:text-gray-500 uppercase tracking-widest">Davomat Kalendari</h4>
                                         <div className="flex items-center gap-2">
                                             <div className="flex items-center gap-1.5 mr-4">
                                                 <div className="w-2.5 h-2.5 rounded-full bg-emerald-500" />
@@ -668,7 +668,7 @@ export default function StudentDetails() {
                                         </div>
                                     </div>
 
-                                    <div className="bg-white/[0.03] border border-white/5 rounded-[2.5rem] p-8 transition-colors shadow-sm">
+                                    <div className="bg-white dark:bg-gray-900/40 border border-gray-100 dark:border-gray-800 rounded-[2.5rem] p-8 transition-colors shadow-sm">
                                         <div className="grid grid-cols-7 gap-3">
                                             {['Du', 'Se', 'Ch', 'Pa', 'Ju', 'Sh', 'Ya'].map(day => (
                                                 <div key={day} className="text-center text-[10px] font-extrabold text-gray-300 dark:text-gray-600 uppercase tracking-widest pb-4">{day}</div>
@@ -696,7 +696,7 @@ export default function StudentDetails() {
                                                         return dw !== 0;
                                                     });
 
-                                                    let bgColor = 'bg-white/5';
+                                                    let bgColor = 'bg-gray-50 dark:bg-gray-800/50';
                                                     let textColor = 'text-gray-400 dark:text-gray-600';
                                                     
                                                     if (att) {
@@ -727,21 +727,21 @@ export default function StudentDetails() {
                                     </div>
 
                                     <div className="space-y-4">
-                                        <h4 className="text-sm font-bold text-[#4a5568] uppercase tracking-widest ml-1">Batafsil Tarix</h4>
-                                        <div className="bg-white/[0.03] border border-white/5 rounded-3xl overflow-hidden shadow-sm">
+                                        <h4 className="text-sm font-bold text-gray-400 dark:text-gray-500 uppercase tracking-widest ml-1">Batafsil Tarix</h4>
+                                        <div className="bg-white dark:bg-gray-900/40 border border-gray-100 dark:border-gray-800 rounded-3xl overflow-hidden shadow-sm">
                                             <table className="w-full text-left border-collapse">
                                                 <thead>
-                                                    <tr className="bg-white/[0.03] border-b border-white/5">
-                                                        <th className="p-5 text-[10px] font-bold text-[#4a5568] uppercase tracking-widest">Sana & Guruh</th>
-                                                        <th className="p-5 text-center text-[10px] font-bold text-[#4a5568] uppercase tracking-widest">Holati</th>
+                                                    <tr className="bg-gray-50/50 dark:bg-gray-800/50 border-b border-gray-100 dark:border-gray-800">
+                                                        <th className="p-5 text-[10px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-widest">Sana & Guruh</th>
+                                                        <th className="p-5 text-center text-[10px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-widest">Holati</th>
                                                     </tr>
                                                 </thead>
-                                                <tbody className="divide-y divide-white/5">
+                                                <tbody className="divide-y divide-gray-100 dark:divide-gray-800">
                                                     {studentAttendances.map(a => (
-                                                        <tr key={a.id} className="hover:bg-white/[0.02] transition-colors">
+                                                        <tr key={a.id} className="hover:bg-gray-50/30 dark:hover:bg-gray-800/30 transition-colors">
                                                             <td className="p-5">
-                                                                <p className="text-sm font-bold text-white">{a.date}</p>
-                                                                <p className="text-[10px] font-bold text-[#4a5568] uppercase tracking-widest mt-1">{groups.find(g => g.id === a.groupId)?.name || '-'}</p>
+                                                                <p className="text-sm font-bold text-gray-900 dark:text-white">{a.date}</p>
+                                                                <p className="text-[10px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-widest mt-1">{groups.find(g => g.id === a.groupId)?.name || '-'}</p>
                                                             </td>
                                                             <td className="p-5 text-center">
                                                                 <span className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[10px] font-bold uppercase tracking-widest border transition-colors ${a.status === 'Keldi' ? 'bg-emerald-50 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 border-emerald-100 dark:border-emerald-800/50' : a.status === 'Kelmapdi' ? 'bg-rose-50 dark:bg-rose-900/30 text-rose-600 dark:text-rose-400 border-rose-100 dark:border-rose-800/50' : 'bg-sky-50 dark:bg-sky-900/30 text-sky-600 dark:text-sky-400 border-sky-100 dark:border-sky-800/50'}`}>
@@ -760,8 +760,8 @@ export default function StudentDetails() {
 
                             {activeTab === 'ballar' && (
                                 <div className="space-y-6 animate-in fade-in duration-500">
-                                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-5 bg-white/[0.03] border border-gray-200/50 dark:border-gray-700/50 rounded-2xl">
-                                        <h4 className="text-sm font-bold text-[#4a5568] uppercase tracking-widest">Reyting va Natijalar</h4>
+                                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-5 bg-gray-50/50 dark:bg-gray-900/40 border border-gray-200/50 dark:border-gray-700/50 rounded-2xl">
+                                        <h4 className="text-sm font-bold text-gray-400 dark:text-gray-500 uppercase tracking-widest">Reyting va Natijalar</h4>
                                         <button onClick={() => setShowScoreModal(true)}
                                             className="px-6 py-2.5 bg-sky-600 text-white rounded-xl text-xs font-bold uppercase tracking-widest hover:bg-sky-500 active:scale-95 transition-all shadow-lg shadow-sky-500/20 text-center">
                                             Ball Qo'shish
@@ -769,20 +769,20 @@ export default function StudentDetails() {
                                     </div>
                                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
                                         {studentScores.map(s => (
-                                            <div key={s.id} className="bg-[#141c27] border border-white/5 p-5 rounded-3xl hover:border-amber-300 dark:hover:border-amber-500 transition-all shadow-sm group hover:shadow-xl hover:shadow-amber-500/5 hover:scale-[1.02] active:scale-[0.98]">
+                                            <div key={s.id} className="bg-white dark:bg-gray-800/50 border border-gray-100 dark:border-gray-700 p-5 rounded-3xl hover:border-amber-300 dark:hover:border-amber-500 transition-all shadow-sm group hover:shadow-xl hover:shadow-amber-500/5 hover:scale-[1.02] active:scale-[0.98]">
                                                 <div className="flex items-start gap-4">
                                                     <div className="w-12 h-12 bg-amber-50 dark:bg-amber-900/30 border border-amber-100 dark:border-amber-800/50 rounded-2xl flex items-center justify-center text-amber-600 dark:text-amber-400 font-bold text-lg shadow-sm shrink-0 group-hover:bg-amber-600 dark:group-hover:bg-amber-500 group-hover:text-white transition-all shadow-amber-500/10">
                                                         {s.value}
                                                     </div>
                                                     <div className="min-w-0">
-                                                        <p className="text-[10px] font-bold text-[#4a5568] uppercase tracking-widest mb-1 leading-none">{groups.find(g => g.id === s.groupId)?.name || '-'}</p>
-                                                        <p className="text-sm font-bold text-white uppercase tracking-tight">{s.value} BALL</p>
-                                                        <p className="text-[10px] font-bold text-[#4a5568] mt-2 flex items-center gap-2">
+                                                        <p className="text-[10px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-widest mb-1 leading-none">{groups.find(g => g.id === s.groupId)?.name || '-'}</p>
+                                                        <p className="text-sm font-bold text-gray-900 dark:text-white uppercase tracking-tight">{s.value} BALL</p>
+                                                        <p className="text-[10px] font-bold text-gray-400 dark:text-gray-500 mt-2 flex items-center gap-2">
                                                             <Calendar size={12} />
                                                             {s.date}
                                                         </p>
                                                         {s.comment && (
-                                                            <p className="text-[10px] text-gray-500 dark:text-gray-400 mt-2 bg-white/5 px-2 py-1 rounded-lg border border-white/5 italic">"{s.comment}"</p>
+                                                            <p className="text-[10px] text-gray-500 dark:text-gray-400 mt-2 bg-gray-50 dark:bg-gray-700/50 px-2 py-1 rounded-lg border border-gray-100 dark:border-gray-600/50 italic">"{s.comment}"</p>
                                                         )}
                                                     </div>
                                                 </div>
@@ -791,7 +791,7 @@ export default function StudentDetails() {
                                     </div>
                                     {studentScores.length === 0 && (
                                         <div className="py-20 text-center border-2 border-dashed border-gray-200 dark:border-gray-700 rounded-3xl bg-gray-50/50 dark:bg-gray-900/20">
-                                            <p className="text-xs font-bold text-[#4a5568] uppercase tracking-widest">Ballar topilmadi.</p>
+                                            <p className="text-xs font-bold text-gray-400 dark:text-gray-500 uppercase tracking-widest">Ballar topilmadi.</p>
                                         </div>
                                     )}
                                 </div>
@@ -843,18 +843,18 @@ export default function StudentDetails() {
 
 function StatCardV3({ label, value, subValue, icon }: any) {
     return (
-        <div className="bg-[#141c27] border border-white/5 p-6 rounded-3xl shadow-sm transition-colors hover:shadow-xl hover:shadow-black/20 group">
+        <div className="bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700 p-6 rounded-3xl shadow-sm transition-colors hover:shadow-xl hover:shadow-gray-500/5 group">
             <div className="flex items-start justify-between">
                 <div>
-                    <p className="text-[10px] font-bold text-[#4a5568] uppercase tracking-widest mb-2 leading-none">{label}</p>
+                    <p className="text-[10px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-widest mb-2 leading-none">{label}</p>
                     <h5 className="text-2xl font-bold dark:text-white tabular-nums tracking-tight">{value}</h5>
                 </div>
-                <div className="w-12 h-12 rounded-2xl bg-white/5 flex items-center justify-center group-hover:scale-110 transition-transform duration-300 shadow-sm border border-white/5 shadow-black/10">
+                <div className="w-12 h-12 rounded-2xl bg-gray-50 dark:bg-gray-700 flex items-center justify-center group-hover:scale-110 transition-transform duration-300 shadow-sm border border-gray-100 dark:border-gray-600 shadow-gray-500/10">
                     {icon}
                 </div>
             </div>
-            <div className="pt-4 mt-5 border-t border-dashed border-white/5">
-                <p className="text-[10px] font-bold text-[#4a5568] flex items-center gap-1.5 uppercase tracking-widest">
+            <div className="pt-4 mt-5 border-t border-dashed border-gray-100 dark:border-gray-700">
+                <p className="text-[10px] font-bold text-gray-400 dark:text-gray-500 flex items-center gap-1.5 uppercase tracking-widest">
                     <TrendingUp size={14} className="text-sky-500" />
                     {subValue}
                 </p>
@@ -899,32 +899,32 @@ function PaymentAddModal({ studentId, onClose, onAdd }: { studentId: number; onC
 
     return (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-gray-900/60 backdrop-blur-sm animate-in fade-in duration-300" onClick={onClose}>
-            <div className="bg-[#1a2332] w-full max-w-sm rounded-3xl shadow-2xl overflow-hidden animate-in zoom-in-95 duration-300 border border-white/5" onClick={e => e.stopPropagation()}>
-                <div className="p-6 flex items-center justify-between border-b border-white/5 bg-white/[0.03]">
+            <div className="bg-white dark:bg-gray-800 w-full max-w-sm rounded-3xl shadow-2xl overflow-hidden animate-in zoom-in-95 duration-300 border border-gray-100 dark:border-gray-700" onClick={e => e.stopPropagation()}>
+                <div className="p-6 flex items-center justify-between border-b border-gray-100 dark:border-gray-700 bg-gray-50/50 dark:bg-gray-900/50">
                     <div>
-                        <h3 className="text-lg font-bold text-white uppercase tracking-tight">To'lov Qo'shish</h3>
-                        <p className="text-[10px] font-bold text-[#4a5568] uppercase tracking-widest mt-0.5">Yangi tranzaksiya kiritish</p>
+                        <h3 className="text-lg font-bold text-gray-900 dark:text-white uppercase tracking-tight">To'lov Qo'shish</h3>
+                        <p className="text-[10px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-widest mt-0.5">Yangi tranzaksiya kiritish</p>
                     </div>
-                    <button onClick={onClose} className="w-9 h-9 flex items-center justify-center hover:bg-white/5 rounded-xl text-gray-400 hover:text-gray-900 dark:hover:text-white transition-all shadow-sm border border-transparent hover:border-gray-200 dark:hover:border-gray-600"><XCircle size={20} /></button>
+                    <button onClick={onClose} className="w-9 h-9 flex items-center justify-center hover:bg-white dark:hover:bg-gray-700 rounded-xl text-gray-400 hover:text-gray-900 dark:hover:text-white transition-all shadow-sm border border-transparent hover:border-gray-200 dark:hover:border-gray-600"><XCircle size={20} /></button>
                 </div>
                 <form onSubmit={handleSubmit} className="p-6 space-y-6">
                     <div className="space-y-2">
-                        <label className="text-[10px] font-bold text-[#4a5568] uppercase tracking-widest ml-1">SUMMA (UZS)</label>
+                        <label className="text-[10px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-widest ml-1">SUMMA (UZS)</label>
                         <input type="number" value={amount} onChange={e => setAmount(e.target.value)} required placeholder="500,000" 
-                            className="w-full px-5 py-3.5 bg-white/5 rounded-2xl text-sm font-bold border border-white/5 focus:border-sky-500 dark:focus:border-sky-500/50 focus:ring-4 focus:ring-sky-500/10 transition-all outline-none text-white placeholder:text-gray-300 dark:placeholder:text-gray-600" />
+                            className="w-full px-5 py-3.5 bg-gray-50 dark:bg-gray-900/50 rounded-2xl text-sm font-bold border border-gray-100 dark:border-gray-700 focus:bg-white dark:focus:bg-gray-900 focus:border-sky-500 dark:focus:border-sky-500/50 focus:ring-4 focus:ring-sky-500/10 transition-all outline-none text-gray-900 dark:text-white placeholder:text-gray-300 dark:placeholder:text-gray-600" />
                     </div>
                     <div className="space-y-3">
-                        <label className="text-[10px] font-bold text-[#4a5568] uppercase tracking-widest ml-1">TO'LOV USULI</label>
+                        <label className="text-[10px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-widest ml-1">TO'LOV USULI</label>
                         <div className="grid grid-cols-2 gap-3">
                             {['Naqd', 'Karta', 'Payme', 'Klik'].map(t => (
                                 <button key={t} type="button" onClick={() => setType(t)}
-                                    className={`py-3 rounded-2xl text-xs font-bold uppercase tracking-widest transition-all border ${type === t ? 'bg-sky-600 border-sky-600 text-white shadow-lg shadow-sky-500/20 scale-105' : 'bg-[#141c27] border-white/5 text-[#4a5568] hover:bg-white/5'}`}>
+                                    className={`py-3 rounded-2xl text-xs font-bold uppercase tracking-widest transition-all border ${type === t ? 'bg-sky-600 border-sky-600 text-white shadow-lg shadow-sky-500/20 scale-105' : 'bg-white dark:bg-gray-800 border-gray-100 dark:border-gray-700 text-gray-400 dark:text-gray-500 hover:bg-gray-50 dark:hover:bg-gray-700/50'}`}>
                                     {t}
                                 </button>
                             ))}
                         </div>
                     </div>
-                    <div className="pt-2 border-t border-dashed border-white/5">
+                    <div className="pt-2 border-t border-dashed border-gray-100 dark:border-gray-700">
                         <button type="submit" className="w-full py-4 bg-sky-600 text-white rounded-2xl font-bold text-xs uppercase tracking-widest hover:bg-sky-500 active:scale-[0.98] transition-all flex items-center justify-center gap-2 shadow-xl shadow-sky-500/20">
                             <Save size={18} />
                             Saqlash
@@ -940,29 +940,29 @@ function GroupAddModal({ studentId, currentGroups, availableGroups, onClose, onA
     const options = availableGroups.filter((g: any) => !currentGroups.includes(g.id));
     return (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-gray-900/60 backdrop-blur-sm animate-in fade-in duration-300" onClick={onClose}>
-            <div className="bg-[#1a2332] w-full max-w-sm rounded-3xl shadow-2xl overflow-hidden animate-in zoom-in-95 duration-300 border border-white/5" onClick={e => e.stopPropagation()}>
-                <div className="p-6 flex items-center justify-between border-b border-white/5 bg-white/[0.03]">
+            <div className="bg-white dark:bg-gray-800 w-full max-w-sm rounded-3xl shadow-2xl overflow-hidden animate-in zoom-in-95 duration-300 border border-gray-100 dark:border-gray-700" onClick={e => e.stopPropagation()}>
+                <div className="p-6 flex items-center justify-between border-b border-gray-100 dark:border-gray-700 bg-gray-50/50 dark:bg-gray-900/50">
                     <div>
-                        <h3 className="text-lg font-bold text-white uppercase tracking-tight">Guruhga Qo'shish</h3>
-                        <p className="text-[10px] font-bold text-[#4a5568] uppercase tracking-widest mt-0.5">Yangi kurs tanlash</p>
+                        <h3 className="text-lg font-bold text-gray-900 dark:text-white uppercase tracking-tight">Guruhga Qo'shish</h3>
+                        <p className="text-[10px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-widest mt-0.5">Yangi kurs tanlash</p>
                     </div>
-                    <button onClick={onClose} className="w-9 h-9 flex items-center justify-center hover:bg-white/5 rounded-xl text-gray-400 hover:text-gray-900 dark:hover:text-white transition-all shadow-sm border border-transparent hover:border-gray-200 dark:hover:border-gray-600"><XCircle size={20} /></button>
+                    <button onClick={onClose} className="w-9 h-9 flex items-center justify-center hover:bg-white dark:hover:bg-gray-700 rounded-xl text-gray-400 hover:text-gray-900 dark:hover:text-white transition-all shadow-sm border border-transparent hover:border-gray-200 dark:hover:border-gray-600"><XCircle size={20} /></button>
                 </div>
                 <div className="p-4 max-h-[400px] overflow-y-auto space-y-3 custom-scrollbar">
                     {options.length === 0 ? (
                         <div className="py-12 text-center">
                             <Plus className="w-10 h-10 text-gray-200 dark:text-gray-700 mx-auto mb-3 rotate-45" />
-                            <p className="text-xs font-bold text-[#4a5568] uppercase tracking-widest">Barcha guruhlarga a'zo</p>
+                            <p className="text-xs font-bold text-gray-400 dark:text-gray-500 uppercase tracking-widest">Barcha guruhlarga a'zo</p>
                         </div>
                     ) : (
                         options.map((g: any) => (
                             <button key={g.id} onClick={() => { onAdd(g.id); onClose(); }}
-                                className="w-full flex items-center justify-between p-4 bg-white/[0.03] border border-white/5 hover:border-sky-300 dark:hover:border-sky-500/50 rounded-2xl transition-all group shadow-sm hover:shadow-xl hover:shadow-sky-500/5 hover:scale-[1.02]">
+                                className="w-full flex items-center justify-between p-4 bg-white dark:bg-gray-900/30 border border-gray-100 dark:border-gray-700 hover:border-sky-300 dark:hover:border-sky-500/50 rounded-2xl transition-all group shadow-sm hover:shadow-xl hover:shadow-sky-500/5 hover:scale-[1.02]">
                                 <div className="text-left">
-                                    <p className="text-sm font-bold text-white group-hover:text-sky-600 dark:group-hover:text-sky-400 transition-colors uppercase tracking-tight">{g.name}</p>
-                                    <p className="text-[9px] font-bold text-[#4a5568] mt-1 uppercase tracking-widest">{g.days} • {g.startTime}</p>
+                                    <p className="text-sm font-bold text-gray-900 dark:text-white group-hover:text-sky-600 dark:group-hover:text-sky-400 transition-colors uppercase tracking-tight">{g.name}</p>
+                                    <p className="text-[9px] font-bold text-gray-400 dark:text-gray-500 mt-1 uppercase tracking-widest">{g.days} • {g.startTime}</p>
                                 </div>
-                                <div className="w-9 h-9 rounded-xl flex items-center justify-center bg-white/5 text-[#4a5568] group-hover:text-white group-hover:bg-sky-600 transition-all shadow-sm">
+                                <div className="w-9 h-9 rounded-xl flex items-center justify-center bg-gray-50 dark:bg-gray-800 text-gray-400 dark:text-gray-500 group-hover:text-white group-hover:bg-sky-600 transition-all shadow-sm">
                                     <Plus size={18} className="group-hover:rotate-90 transition-transform" />
                                 </div>
                             </button>
@@ -987,35 +987,35 @@ function AttendanceAddModal({ studentId, studentGroups, onClose, onAdd }: any) {
 
     return (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-gray-900/60 backdrop-blur-sm animate-in fade-in duration-300" onClick={onClose}>
-            <div className="bg-[#1a2332] w-full max-w-sm rounded-3xl shadow-2xl overflow-hidden animate-in zoom-in-95 duration-300 border border-white/5" onClick={e => e.stopPropagation()}>
-                <div className="p-6 flex items-center justify-between border-b border-white/5 bg-white/[0.03]">
+            <div className="bg-white dark:bg-gray-800 w-full max-w-sm rounded-3xl shadow-2xl overflow-hidden animate-in zoom-in-95 duration-300 border border-gray-100 dark:border-gray-700" onClick={e => e.stopPropagation()}>
+                <div className="p-6 flex items-center justify-between border-b border-gray-100 dark:border-gray-700 bg-gray-50/50 dark:bg-gray-900/50">
                     <div>
-                        <h3 className="text-lg font-bold text-white uppercase tracking-tight">Yo'qlama</h3>
-                        <p className="text-[10px] font-bold text-[#4a5568] uppercase tracking-widest mt-0.5">Davomat qilish</p>
+                        <h3 className="text-lg font-bold text-gray-900 dark:text-white uppercase tracking-tight">Yo'qlama</h3>
+                        <p className="text-[10px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-widest mt-0.5">Davomat qilish</p>
                     </div>
-                    <button onClick={onClose} className="w-9 h-9 flex items-center justify-center hover:bg-white/5 rounded-xl text-gray-400 hover:text-gray-900 dark:hover:text-white transition-all shadow-sm border border-transparent hover:border-gray-200 dark:hover:border-gray-600"><XCircle size={20} /></button>
+                    <button onClick={onClose} className="w-9 h-9 flex items-center justify-center hover:bg-white dark:hover:bg-gray-700 rounded-xl text-gray-400 hover:text-gray-900 dark:hover:text-white transition-all shadow-sm border border-transparent hover:border-gray-200 dark:hover:border-gray-600"><XCircle size={20} /></button>
                 </div>
                 <form onSubmit={handleSubmit} className="p-6 space-y-6">
                     <div className="space-y-2">
-                        <label className="text-[10px] font-bold text-[#4a5568] uppercase tracking-widest ml-1">GURUHNI TANLANG</label>
+                        <label className="text-[10px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-widest ml-1">GURUHNI TANLANG</label>
                         <select value={groupId} onChange={e => setGroupId(e.target.value)} required 
-                            className="w-full px-5 py-3.5 bg-white/5 rounded-2xl text-sm font-bold border border-white/5 focus:border-sky-500 dark:focus:border-sky-500/50 focus:ring-4 focus:ring-sky-500/10 transition-all outline-none text-white cursor-pointer hover:border-gray-300 dark:hover:border-gray-600">
+                            className="w-full px-5 py-3.5 bg-gray-50 dark:bg-gray-900/50 rounded-2xl text-sm font-bold border border-gray-100 dark:border-gray-700 focus:bg-white dark:focus:bg-gray-900 focus:border-sky-500 dark:focus:border-sky-500/50 focus:ring-4 focus:ring-sky-500/10 transition-all outline-none text-gray-900 dark:text-white cursor-pointer hover:border-gray-300 dark:hover:border-gray-600">
                             <option value="" disabled className="dark:bg-gray-800">Tanlang...</option>
                             {studentGroups.map((g: any) => <option key={g.id} value={g.id} className="dark:bg-gray-800">{g.name}</option>)}
                         </select>
                     </div>
                     <div className="space-y-3">
-                        <label className="text-[10px] font-bold text-[#4a5568] uppercase tracking-widest ml-1">HOLATI</label>
+                        <label className="text-[10px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-widest ml-1">HOLATI</label>
                         <div className="grid grid-cols-3 gap-2">
                             {['Keldi', 'Kelmapdi', 'Sababli'].map(s => (
                                 <button key={s} type="button" onClick={() => setStatus(s)}
-                                    className={`py-3 rounded-2xl text-[10px] font-bold uppercase tracking-widest transition-all border ${status === s ? 'bg-sky-600 border-sky-600 text-white shadow-lg shadow-sky-500/20 scale-105' : 'bg-[#141c27] border-white/5 text-[#4a5568] hover:bg-white/5'}`}>
+                                    className={`py-3 rounded-2xl text-[10px] font-bold uppercase tracking-widest transition-all border ${status === s ? 'bg-sky-600 border-sky-600 text-white shadow-lg shadow-sky-500/20 scale-105' : 'bg-white dark:bg-gray-800 border-gray-100 dark:border-gray-700 text-gray-400 dark:text-gray-500 hover:bg-gray-50 dark:hover:bg-gray-700/50'}`}>
                                     {s}
                                 </button>
                             ))}
                         </div>
                     </div>
-                    <div className="pt-2 border-t border-dashed border-white/5">
+                    <div className="pt-2 border-t border-dashed border-gray-100 dark:border-gray-700">
                         <button type="submit" className="w-full py-4 bg-sky-600 text-white rounded-2xl font-bold text-xs uppercase tracking-widest hover:bg-sky-500 active:scale-[0.98] transition-all flex items-center justify-center gap-2 shadow-xl shadow-sky-500/20">
                             <Save size={18} />
                             Saqlash
@@ -1041,34 +1041,34 @@ function ScoreAddModal({ studentId, studentGroups, onClose, onAdd }: any) {
 
     return (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-gray-900/60 backdrop-blur-sm animate-in fade-in duration-300" onClick={onClose}>
-            <div className="bg-[#1a2332] w-full max-w-sm rounded-3xl shadow-2xl overflow-hidden animate-in zoom-in-95 duration-300 border border-white/5" onClick={e => e.stopPropagation()}>
-                <div className="p-6 flex items-center justify-between border-b border-white/5 bg-white/[0.03]">
+            <div className="bg-white dark:bg-gray-800 w-full max-w-sm rounded-3xl shadow-2xl overflow-hidden animate-in zoom-in-95 duration-300 border border-gray-100 dark:border-gray-700" onClick={e => e.stopPropagation()}>
+                <div className="p-6 flex items-center justify-between border-b border-gray-100 dark:border-gray-700 bg-gray-50/50 dark:bg-gray-900/50">
                     <div>
-                        <h3 className="text-lg font-bold text-white uppercase tracking-tight">Ball Qo'shish</h3>
-                        <p className="text-[10px] font-bold text-[#4a5568] uppercase tracking-widest mt-0.5">Natijani kiritish</p>
+                        <h3 className="text-lg font-bold text-gray-900 dark:text-white uppercase tracking-tight">Ball Qo'shish</h3>
+                        <p className="text-[10px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-widest mt-0.5">Natijani kiritish</p>
                     </div>
-                    <button onClick={onClose} className="w-9 h-9 flex items-center justify-center hover:bg-white/5 rounded-xl text-gray-400 hover:text-gray-900 dark:hover:text-white transition-all shadow-sm border border-transparent hover:border-gray-200 dark:hover:border-gray-600"><XCircle size={20} /></button>
+                    <button onClick={onClose} className="w-9 h-9 flex items-center justify-center hover:bg-white dark:hover:bg-gray-700 rounded-xl text-gray-400 hover:text-gray-900 dark:hover:text-white transition-all shadow-sm border border-transparent hover:border-gray-200 dark:hover:border-gray-600"><XCircle size={20} /></button>
                 </div>
                 <form onSubmit={handleSubmit} className="p-6 space-y-5">
                     <div className="space-y-2">
-                        <label className="text-[10px] font-bold text-[#4a5568] uppercase tracking-widest ml-1">GURUHNI TANLANG</label>
+                        <label className="text-[10px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-widest ml-1">GURUHNI TANLANG</label>
                         <select value={groupId} onChange={e => setGroupId(e.target.value)} required 
-                            className="w-full px-5 py-3.5 bg-white/5 rounded-2xl text-sm font-bold border border-white/5 focus:border-sky-500 dark:focus:border-sky-500/50 focus:ring-4 focus:ring-sky-500/10 transition-all outline-none text-white cursor-pointer select-none">
+                            className="w-full px-5 py-3.5 bg-gray-50 dark:bg-gray-900/50 rounded-2xl text-sm font-bold border border-gray-100 dark:border-gray-700 focus:bg-white dark:focus:bg-gray-900 focus:border-sky-500 dark:focus:border-sky-500/50 focus:ring-4 focus:ring-sky-500/10 transition-all outline-none text-gray-900 dark:text-white cursor-pointer select-none">
                             <option value="" disabled className="dark:bg-gray-800">Tanlang...</option>
                             {studentGroups.map((g: any) => <option key={g.id} value={g.id} className="dark:bg-gray-800">{g.name}</option>)}
                         </select>
                     </div>
                     <div className="space-y-2">
-                        <label className="text-[10px] font-bold text-[#4a5568] uppercase tracking-widest ml-1">BALL (0-100)</label>
+                        <label className="text-[10px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-widest ml-1">BALL (0-100)</label>
                         <input type="number" value={value} onChange={e => setValue(e.target.value)} required placeholder="85" 
-                             className="w-full px-5 py-3.5 bg-white/5 rounded-2xl text-sm font-bold border border-white/5 focus:border-sky-500 dark:focus:border-sky-500/50 focus:ring-4 focus:ring-sky-500/10 transition-all outline-none text-white placeholder:text-gray-300 dark:placeholder:text-gray-600" />
+                             className="w-full px-5 py-3.5 bg-gray-50 dark:bg-gray-900/50 rounded-2xl text-sm font-bold border border-gray-100 dark:border-gray-700 focus:bg-white dark:focus:bg-gray-900 focus:border-sky-500 dark:focus:border-sky-500/50 focus:ring-4 focus:ring-sky-500/10 transition-all outline-none text-gray-900 dark:text-white placeholder:text-gray-300 dark:placeholder:text-gray-600" />
                     </div>
                     <div className="space-y-2">
-                        <label className="text-[10px] font-bold text-[#4a5568] uppercase tracking-widest ml-1">IZOH (IXTIYORIY)</label>
+                        <label className="text-[10px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-widest ml-1">IZOH (IXTIYORIY)</label>
                         <input type="text" value={comment} onChange={e => setComment(e.target.value)} placeholder="Imtihon natijasi..." 
-                             className="w-full px-5 py-3.5 bg-white/5 rounded-2xl text-sm font-bold border border-white/5 focus:border-sky-500 dark:focus:border-sky-500/50 focus:ring-4 focus:ring-sky-500/10 transition-all outline-none text-white placeholder:text-gray-300 dark:placeholder:text-gray-600" />
+                             className="w-full px-5 py-3.5 bg-gray-50 dark:bg-gray-900/50 rounded-2xl text-sm font-bold border border-gray-100 dark:border-gray-700 focus:bg-white dark:focus:bg-gray-900 focus:border-sky-500 dark:focus:border-sky-500/50 focus:ring-4 focus:ring-sky-500/10 transition-all outline-none text-gray-900 dark:text-white placeholder:text-gray-300 dark:placeholder:text-gray-600" />
                     </div>
-                    <div className="pt-2 border-t border-dashed border-white/5">
+                    <div className="pt-2 border-t border-dashed border-gray-100 dark:border-gray-700">
                         <button type="submit" className="w-full py-4 bg-sky-600 text-white rounded-2xl font-bold text-xs uppercase tracking-widest hover:bg-sky-500 active:scale-[0.98] transition-all flex items-center justify-center gap-2 shadow-xl shadow-sky-500/20">
                             <Save size={18} />
                             Saqlash
@@ -1104,18 +1104,18 @@ function SmsSendModal({ phone, studentName, onClose, onConfirm }: { phone: strin
 
     return (
         <div className="fixed inset-0 z-[110] flex items-center justify-center p-4 bg-gray-900/60 backdrop-blur-sm animate-in fade-in duration-300" onClick={onClose}>
-            <div className="bg-[#1a2332] w-full max-w-md rounded-3xl shadow-2xl overflow-hidden animate-in zoom-in-95 duration-300 border border-white/5" onClick={e => e.stopPropagation()}>
-                <div className="p-6 flex items-center justify-between border-b border-white/5 bg-white/[0.03]">
+            <div className="bg-white dark:bg-gray-800 w-full max-w-md rounded-3xl shadow-2xl overflow-hidden animate-in zoom-in-95 duration-300 border border-gray-100 dark:border-gray-700" onClick={e => e.stopPropagation()}>
+                <div className="p-6 flex items-center justify-between border-b border-gray-100 dark:border-gray-700 bg-gray-50/50 dark:bg-gray-900/50">
                     <div>
-                        <h3 className="text-lg font-bold text-white uppercase tracking-tight text-sky-600">SMS Yuborish</h3>
-                        <p className="text-[10px] font-bold text-[#4a5568] uppercase tracking-widest mt-0.5">Qabul qiluvchi: {phone}</p>
+                        <h3 className="text-lg font-bold text-gray-900 dark:text-white uppercase tracking-tight text-sky-600">SMS Yuborish</h3>
+                        <p className="text-[10px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-widest mt-0.5">Qabul qiluvchi: {phone}</p>
                     </div>
-                    <button onClick={onClose} className="w-9 h-9 flex items-center justify-center hover:bg-white/5 rounded-xl text-gray-400 hover:text-gray-900 dark:hover:text-white transition-all shadow-sm border border-transparent hover:border-gray-200 dark:hover:border-gray-600"><XCircle size={20} /></button>
+                    <button onClick={onClose} className="w-9 h-9 flex items-center justify-center hover:bg-white dark:hover:bg-gray-700 rounded-xl text-gray-400 hover:text-gray-900 dark:hover:text-white transition-all shadow-sm border border-transparent hover:border-gray-200 dark:hover:border-gray-600"><XCircle size={20} /></button>
                 </div>
                 <form onSubmit={handleSubmit} className="p-6 space-y-5">
                     
                     <div className="space-y-2">
-                        <label className="text-[10px] font-bold text-[#4a5568] uppercase tracking-widest ml-1">TAYYOR SHABLONLAR (ESKIZ TASDIQLAGAN)</label>
+                        <label className="text-[10px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-widest ml-1">TAYYOR SHABLONLAR (ESKIZ TASDIQLAGAN)</label>
                         <div className="flex flex-wrap gap-2">
                             {templates.map((tpl, idx) => (
                                 <button
@@ -1130,7 +1130,7 @@ function SmsSendModal({ phone, studentName, onClose, onConfirm }: { phone: strin
                             <button
                                 type="button"
                                 onClick={() => setMessage(defaultPrefix)}
-                                className="px-3 py-1.5 text-xs font-bold text-gray-600 bg-white/5 border border-white/5 rounded-lg hover:bg-white/5 transition-colors uppercase tracking-widest"
+                                className="px-3 py-1.5 text-xs font-bold text-gray-600 bg-gray-50 dark:bg-gray-700/50 border border-gray-200 dark:border-gray-600 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors uppercase tracking-widest"
                             >
                                 Tozalash
                             </button>
@@ -1138,17 +1138,17 @@ function SmsSendModal({ phone, studentName, onClose, onConfirm }: { phone: strin
                     </div>
 
                     <div className="space-y-2">
-                        <label className="text-[10px] font-bold text-[#4a5568] uppercase tracking-widest ml-1">XABAR MATNI (O'ZGARUVCHILARNI TO'LDIRING)</label>
+                        <label className="text-[10px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-widest ml-1">XABAR MATNI (O'ZGARUVCHILARNI TO'LDIRING)</label>
                         <textarea 
                             value={message} 
                             onChange={e => setMessage(e.target.value)} 
                             required 
                             rows={5}
                             autoFocus
-                            className="w-full px-5 py-4 bg-white/5 rounded-2xl text-sm font-medium border border-white/5 focus:border-sky-500 dark:focus:border-sky-500/50 focus:ring-4 focus:ring-sky-500/10 transition-all outline-none text-white placeholder:text-gray-300 dark:placeholder:text-gray-600 resize-none leading-relaxed" 
+                            className="w-full px-5 py-4 bg-gray-50 dark:bg-gray-900/50 rounded-2xl text-sm font-medium border border-gray-100 dark:border-gray-700 focus:bg-white dark:focus:bg-gray-900 focus:border-sky-500 dark:focus:border-sky-500/50 focus:ring-4 focus:ring-sky-500/10 transition-all outline-none text-gray-900 dark:text-white placeholder:text-gray-300 dark:placeholder:text-gray-600 resize-none leading-relaxed" 
                         />
                     </div>
-                    <div className="pt-2 border-t border-dashed border-white/5">
+                    <div className="pt-2 border-t border-dashed border-gray-100 dark:border-gray-700">
                         <button type="submit" className="w-full py-4 bg-emerald-600 text-white rounded-2xl font-bold text-xs uppercase tracking-widest hover:bg-emerald-500 active:scale-[0.98] transition-all flex items-center justify-center gap-2 shadow-xl shadow-emerald-500/20">
                             <Send size={18} />
                             Jo'natish (Moderatsiyasiz)
@@ -1163,12 +1163,12 @@ function SmsSendModal({ phone, studentName, onClose, onConfirm }: { phone: strin
 function InfoRow({ icon, label, value }: { icon: React.ReactNode; label: string; value: string }) {
     return (
         <div className="flex items-center gap-4 group">
-            <div className="w-11 h-11 bg-white/5 border border-white/5 rounded-2xl flex items-center justify-center text-[#4a5568] shrink-0 group-hover:bg-sky-50 dark:group-hover:bg-sky-900/30 group-hover:text-sky-600 dark:group-hover:text-sky-400 transition-all shadow-sm">
+            <div className="w-11 h-11 bg-gray-50 dark:bg-gray-700/50 border border-gray-100 dark:border-gray-700 rounded-2xl flex items-center justify-center text-gray-400 dark:text-gray-500 shrink-0 group-hover:bg-sky-50 dark:group-hover:bg-sky-900/30 group-hover:text-sky-600 dark:group-hover:text-sky-400 transition-all shadow-sm">
                 {icon}
             </div>
             <div className="min-w-0">
-                <p className="text-[9px] font-bold text-[#4a5568] uppercase tracking-widest mb-1">{label}</p>
-                <p className="text-sm font-bold text-white truncate uppercase tracking-tight">{value || "-"}</p>
+                <p className="text-[9px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-widest mb-1">{label}</p>
+                <p className="text-sm font-bold text-gray-900 dark:text-white truncate uppercase tracking-tight">{value || "-"}</p>
             </div>
         </div>
     );
@@ -1176,7 +1176,7 @@ function InfoRow({ icon, label, value }: { icon: React.ReactNode; label: string;
 
 function TabButton({ label, icon, active, onClick }: any) {
     return (
-        <button onClick={onClick} className={`px-6 py-5 text-[10px] font-bold uppercase tracking-widest flex items-center gap-2.5 transition-all relative whitespace-nowrap ${active ? 'text-sky-600 dark:text-sky-400 scale-105 bg-[#141c27] shadow-[0_-4px_20px_-10px_rgba(14,165,233,0.3)]' : 'text-[#4a5568] hover:text-gray-600 hover:bg-white/5'}`}>
+        <button onClick={onClick} className={`px-6 py-5 text-[10px] font-bold uppercase tracking-widest flex items-center gap-2.5 transition-all relative whitespace-nowrap ${active ? 'text-sky-600 dark:text-sky-400 scale-105 bg-white dark:bg-gray-800 shadow-[0_-4px_20px_-10px_rgba(14,165,233,0.3)]' : 'text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-100/50 dark:hover:bg-gray-800/50'}`}>
             <span className={`transition-transform duration-300 ${active ? 'scale-110' : 'group-hover:scale-110'}`}>{icon}</span>
             {label}
             {active && <div className="absolute bottom-0 left-0 right-0 h-1 bg-sky-500 dark:bg-sky-400 rounded-t-full shadow-[0_-2px_8px_rgba(14,165,233,0.5)]" />}

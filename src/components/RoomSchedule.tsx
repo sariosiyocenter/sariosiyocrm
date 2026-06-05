@@ -73,18 +73,18 @@ export default function RoomSchedule() {
 
     return (
         <div className="space-y-6">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-[#141c27] p-6 rounded-[2rem] border border-white/5 shadow-sm">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white dark:bg-gray-800 p-6 rounded-[2rem] border border-gray-100 dark:border-gray-700 shadow-sm">
                 <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-xl bg-sky-900/30 flex items-center justify-center text-sky-400">
+                    <div className="w-10 h-10 rounded-xl bg-sky-50 dark:bg-sky-900/30 flex items-center justify-center text-sky-600 dark:text-sky-400">
                         <Calendar size={20} />
                     </div>
                     <div>
-                        <h3 className="text-sm font-extrabold text-white uppercase tracking-tight">Xonalar Bandligi</h3>
-                        <p className="text-[10px] font-bold text-[#4a5568] uppercase tracking-widest">Kunlik darslar jadvali</p>
+                        <h3 className="text-sm font-extrabold text-gray-900 dark:text-white uppercase tracking-tight">Xonalar Bandligi</h3>
+                        <p className="text-[10px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-widest">Kunlik darslar jadvali</p>
                     </div>
                 </div>
 
-                <div className="flex bg-black/20 p-1.5 rounded-2xl border border-white/5">
+                <div className="flex bg-gray-50 dark:bg-gray-900 p-1.5 rounded-2xl border border-gray-100 dark:border-gray-800">
                     {[
                         { id: 'TOQ', label: 'Toq kunlar' },
                         { id: 'JUFT', label: 'Juft kunlar' }
@@ -94,8 +94,8 @@ export default function RoomSchedule() {
                             onClick={() => setSelectedDayType(type.id as any)}
                             className={`px-6 py-2.5 rounded-[1.125rem] text-[10px] font-extrabold uppercase tracking-widest transition-all ${
                                 selectedDayType === type.id
-                                    ? 'bg-[#1a2332] text-sky-400 shadow-sm ring-1 ring-white/10'
-                                    : 'text-[#4a5568] hover:text-gray-300'
+                                    ? 'bg-white dark:bg-gray-800 text-sky-600 dark:text-sky-400 shadow-sm ring-1 ring-black/5 dark:ring-white/5'
+                                    : 'text-gray-400 hover:text-gray-600 dark:hover:text-gray-200'
                             }`}
                         >
                             {type.label}
@@ -104,34 +104,34 @@ export default function RoomSchedule() {
                 </div>
             </div>
 
-            <div className="bg-[#141c27] rounded-[2.5rem] border border-white/5 shadow-xl overflow-hidden">
+            <div className="bg-white dark:bg-gray-800 rounded-[2.5rem] border border-gray-100 dark:border-gray-700 shadow-xl shadow-sky-500/5 overflow-hidden">
                 <div className="overflow-x-auto custom-scrollbar">
                     <table className="w-full border-collapse">
                         <thead>
-                            <tr className="bg-white/[0.03] border-b border-white/5">
-                                <th className="sticky left-0 z-20 bg-[#0f1923] p-6 min-w-[200px] text-[10px] font-bold text-[#4a5568] uppercase tracking-widest text-left border-r border-white/5">
+                            <tr className="bg-gray-50/50 dark:bg-gray-900/50 border-b border-gray-100 dark:border-gray-700">
+                                <th className="sticky left-0 z-20 bg-gray-50 dark:bg-gray-900 p-6 min-w-[200px] text-[10px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-widest text-left border-r border-gray-100 dark:border-gray-700">
                                     Xona nomi
                                 </th>
                                 {timeSlots.map(time => (
-                                    <th key={time} className="p-4 min-w-[100px] text-[9px] font-bold text-[#4a5568] uppercase tracking-widest text-center border-r border-white/5 italic">
+                                    <th key={time} className="p-4 min-w-[100px] text-[9px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-widest text-center border-r border-gray-100 dark:border-gray-700/50 italic opacity-60">
                                         {time}
                                     </th>
                                 ))}
                             </tr>
                         </thead>
-                        <tbody className="divide-y divide-white/5">
+                        <tbody className="divide-y divide-gray-50 dark:divide-gray-700/50">
                             {rooms.map(room => {
                                 const cells = buildRowCells(room.id);
                                 return (
-                                    <tr key={room.id} className="group hover:bg-white/[0.02] transition-colors">
-                                        <td className="sticky left-0 z-20 bg-[#141c27] p-6 border-r border-white/5 group-hover:bg-white/[0.02] transition-colors">
+                                    <tr key={room.id} className="group hover:bg-gray-50/30 dark:hover:bg-sky-900/5 transition-colors">
+                                        <td className="sticky left-0 z-20 bg-white dark:bg-gray-800 p-6 border-r border-gray-100 dark:border-gray-700 group-hover:bg-gray-50 dark:group-hover:bg-gray-900/50 transition-colors">
                                             <div className="flex items-center gap-3">
-                                                <div className="w-10 h-10 rounded-xl bg-white/5 border border-white/5 flex items-center justify-center text-[#4a5568] group-hover:text-sky-500 transition-colors">
+                                                <div className="w-10 h-10 rounded-xl bg-gray-50 dark:bg-gray-900 border border-gray-100 dark:border-gray-800 flex items-center justify-center text-gray-400 group-hover:text-sky-500 transition-colors shadow-inner">
                                                     <MapPin size={18} />
                                                 </div>
                                                 <div>
-                                                    <p className="text-sm font-extrabold text-white uppercase tracking-tight">{room.name}</p>
-                                                    <p className="text-[9px] font-bold text-[#4a5568] uppercase tracking-widest">{room.capacity} kishilik</p>
+                                                    <p className="text-sm font-extrabold text-gray-900 dark:text-white uppercase tracking-tight">{room.name}</p>
+                                                    <p className="text-[9px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-widest">{room.capacity} kishilik</p>
                                                 </div>
                                             </div>
                                         </td>
@@ -142,14 +142,14 @@ export default function RoomSchedule() {
                                                 <td
                                                     key={time}
                                                     colSpan={colspan}
-                                                    className={`p-1 border-r border-white/[0.04] min-h-[80px] align-top`}
+                                                    className={`p-1 border-r border-gray-100/50 dark:border-gray-700/30 min-h-[80px] align-top`}
                                                     style={{ minWidth: `${colspan * 100}px` }}
                                                 >
                                                     {group ? (
                                                         <div className={`h-full min-h-[60px] p-3 rounded-2xl flex flex-col justify-center animate-in zoom-in-95 duration-500 shadow-sm border ${
                                                             isGroupHarKuni
-                                                                ? 'bg-amber-900/30 text-amber-400 border-amber-800/50'
-                                                                : 'bg-sky-900/30 text-sky-400 border-sky-800/50'
+                                                                ? 'bg-amber-50 dark:bg-amber-900/20 text-amber-600 dark:text-amber-400 border-amber-100 dark:border-amber-800'
+                                                                : 'bg-sky-50 dark:bg-sky-900/30 text-sky-600 dark:text-sky-400 border-sky-100 dark:border-sky-800'
                                                         }`}>
                                                         <p className="text-[10px] font-extrabold uppercase tracking-tight leading-tight mb-1 truncate">{group.name}</p>
                                                         <div className="flex items-center gap-1 opacity-70">
@@ -159,7 +159,7 @@ export default function RoomSchedule() {
                                                     </div>
                                                 ) : (
                                                     <div className="h-full flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity">
-                                                        <span className="text-[8px] font-bold text-[#1e2d3d] uppercase tracking-widest">Bo'sh</span>
+                                                        <span className="text-[8px] font-bold text-gray-300 dark:text-gray-600 uppercase tracking-widest">Bo'sh</span>
                                                     </div>
                                                 )}
                                             </td>
@@ -171,7 +171,7 @@ export default function RoomSchedule() {
                             {rooms.length === 0 && (
                                 <tr>
                                     <td colSpan={timeSlots.length + 1} className="p-20 text-center">
-                                        <p className="text-[10px] font-bold text-[#4a5568] uppercase tracking-widest">Xonalar mavjud emas</p>
+                                        <p className="text-[10px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-widest">Xonalar mavjud emas</p>
                                     </td>
                                 </tr>
                             )}

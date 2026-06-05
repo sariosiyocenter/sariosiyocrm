@@ -35,6 +35,7 @@ const QuestionEditor  = lazy(() => import('./components/QuestionEditor'));
 const ExamResults     = lazy(() => import('./components/ExamResults'));
 const SuperAdmin      = lazy(() => import('./components/SuperAdmin'));
 const OrgDetail       = lazy(() => import('./components/OrgDetail'));
+const HRManagement    = lazy(() => import('./components/HRManagement'));
 
 function PageLoader() {
   return (
@@ -68,17 +69,18 @@ export default function App() {
 
   const role = user?.role;
   const isSuperAdmin = role === 'SUPERADMIN';
+  const isSaaSUser = role === 'SUPERADMIN' || role === 'SELLER';
   const isAdminOrManager = role === 'ADMIN' || role === 'MANAGER';
   const isAdmin = role === 'ADMIN';
 
   return (
     <Layout onLogout={logout}>
       <Suspense fallback={<PageLoader />}>
-        {isSuperAdmin ? (
+        {isSaaSUser ? (
           <Routes>
             <Route path="/"           element={<SuperAdmin />} />
             <Route path="/superadmin" element={<SuperAdmin />} />
-            <Route path="/org/:id"    element={<OrgDetail />} />
+            {isSuperAdmin && <Route path="/org/:id"    element={<OrgDetail />} />}
             <Route path="*"           element={<Navigate to="/" replace />} />
           </Routes>
         ) : (
@@ -91,16 +93,16 @@ export default function App() {
             <Route path="/groups/:id"           element={<GroupDetails />} />
             <Route path="/students"             element={<Students />} />
             <Route path="/students/:id"         element={<StudentDetails />} />
+            <Route path="/hr"                   element={isAdminOrManager ? <HRManagement /> : <Navigate to="/" replace />} />
             <Route path="/settings"             element={isAdminOrManager ? <Settings />   : <Navigate to="/" replace />} />
             <Route path="/finance"              element={isAdminOrManager ? <Finance />    : <Navigate to="/" replace />} />
             <Route path="/logistics"            element={isAdminOrManager ? <Logistics />  : <Navigate to="/" replace />} />
-            <Route path="/sms-history"          element={isAdminOrManager ? <SmsHistory /> : <Navigate to="/" replace />} />
             <Route path="/reports"              element={isAdmin           ? <Reports />    : <Navigate to="/" replace />} />
             <Route path="/exams"                element={isAdminOrManager ? <ExamsList />   : <Navigate to="/" replace />} />
             <Route path="/exams/new"            element={isAdminOrManager ? <ExamBuilder /> : <Navigate to="/" replace />} />
             <Route path="/exams/:id"            element={isAdminOrManager ? <ExamDetail />  : <Navigate to="/" replace />} />
-            <Route path="/scanner"              element={isAdminOrManager ? <Scanner />      : <Navigate to="/" replace />} />
-            <Route path="/questions"            element={isAdminOrManager ? <QuestionsList />  : <Navigate to="/" replace />} />
+            <Route path="/scanner"              element={<Navigate to="/exams" replace />} />
+            <Route path="/questions"            element={<Navigate to="/exams" replace />} />
             <Route path="/questions/new"        element={isAdminOrManager ? <QuestionEditor /> : <Navigate to="/" replace />} />
             <Route path="/questions/:id/edit"   element={isAdminOrManager ? <QuestionEditor /> : <Navigate to="/" replace />} />
             <Route path="/exam-results"         element={isAdminOrManager ? <ExamResults />    : <Navigate to="/" replace />} />

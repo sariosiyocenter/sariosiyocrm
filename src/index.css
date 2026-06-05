@@ -1,73 +1,46 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,300;14..32,400;14..32,500;14..32,600;14..32,700;14..32,800&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
 
 @import "tailwindcss";
+
+@theme {
+  --color-odoo: #714B67;
+  --color-odoo-dark: #5A3C52;
+  --color-odoo-light: #F2EEF1;
+}
 
 @variant dark (&:is(.dark, .dark *));
 
 * {
   font-family: 'Inter', system-ui, -apple-system, sans-serif;
-  box-sizing: border-box;
+}
+
+button, 
+a,
+[role="button"],
+.cursor-pointer,
+select,
+summary,
+input[type="submit"],
+input[type="button"],
+input[type="reset"],
+label[for] {
+  cursor: pointer;
 }
 
 body {
-  margin: 0;
+  background-color: #F0F1F3;
+  color: #212529;
   -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
 }
 
-/* ─── Scrollbar ─── */
-::-webkit-scrollbar { width: 4px; height: 4px; }
+.dark body,
+body.dark {
+  background-color: #1a1a2e;
+  color: #e0e0e0;
+}
+
+/* Scrollbar */
+::-webkit-scrollbar { width: 6px; height: 6px; }
 ::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 4px; }
-::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.2); }
-
-/* ─── Card base for dark design ─── */
-.q-card {
-  background: #141c27;
-  border: 1px solid rgba(255,255,255,0.06);
-  border-radius: 14px;
-}
-
-/* ─── Status badges ─── */
-.badge-faol    { background: rgba(34,197,94,0.12);  color: #4ade80; border: 1px solid rgba(34,197,94,0.2);  }
-.badge-arxiv   { background: rgba(100,116,139,0.12);color: #94a3b8; border: 1px solid rgba(100,116,139,0.2);}
-.badge-sinov   { background: rgba(234,179,8,0.12);  color: #facc15; border: 1px solid rgba(234,179,8,0.2);  }
-.badge-qarzdor { background: rgba(239,68,68,0.12);  color: #f87171; border: 1px solid rgba(239,68,68,0.2);  }
-
-/* ─── Progress bar ─── */
-.progress-track {
-  background: rgba(255,255,255,0.06);
-  border-radius: 999px;
-  overflow: hidden;
-  height: 4px;
-}
-.progress-fill-green  { background: linear-gradient(90deg,#22c55e,#4ade80); }
-.progress-fill-yellow { background: linear-gradient(90deg,#eab308,#facc15); }
-.progress-fill-red    { background: linear-gradient(90deg,#ef4444,#f87171); }
-.progress-fill-blue   { background: linear-gradient(90deg,#0ea5e9,#38bdf8); }
-
-/* ─── Sparkline mini-chart container ─── */
-.sparkline-wrap {
-  height: 36px;
-  display: flex;
-  align-items: flex-end;
-  gap: 2px;
-  margin-top: 12px;
-}
-.sparkline-bar {
-  flex: 1;
-  border-radius: 2px;
-  min-height: 4px;
-  transition: height 0.4s ease;
-}
-
-/* ─── Animations ─── */
-@keyframes fadeUp {
-  from { opacity:0; transform:translateY(12px); }
-  to   { opacity:1; transform:translateY(0); }
-}
-.animate-fade-up { animation: fadeUp 0.45s ease both; }
-
-/* ─── Hide scrollbar utility ─── */
-.no-scrollbar::-webkit-scrollbar { display: none; }
-.no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+::-webkit-scrollbar-thumb { background: #ccc; border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: #999; }
