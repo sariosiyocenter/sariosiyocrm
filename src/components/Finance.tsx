@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import {
     TrendingUp, TrendingDown, DollarSign, Wallet,
-    ArrowUpRight, Plus, X, Trash2, SlidersHorizontal, ListChecks
+    ArrowUpRight, Plus, X, Trash2, SlidersHorizontal, ListChecks,
+    CreditCard, UserMinus, ClipboardList, Award, Target, BarChart3, GraduationCap
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useCRM } from '../context/CRMContext';
@@ -37,15 +38,15 @@ export default function Finance() {
     ];
 
     const reports = [
-        { id: 'payments', label: "To'lovlar hisoboti" },
-        { id: 'students_payment', label: "O'quvchilar to'lovi" },
-        { id: 'left_students', label: "Ketgan o'quvchilar" },
-        { id: 'staff_attendance', label: "Davomat hisoboti" },
-        { id: 'bonuses', label: "Bonuslar hisoboti" },
-        { id: 'leads', label: "Lidlar hisoboti" },
-        { id: 'students_general', label: "Umumiy hisobotlar" },
-        { id: 'graduates', label: "Bitiruvchilar" },
-        { id: 'stats', label: "Faoliyat statistikasi" }
+        { id: 'payments', label: "To'lovlar hisoboti", icon: <DollarSign size={14} className="text-emerald-500" /> },
+        { id: 'students_payment', label: "O'quvchilar to'lovi", icon: <CreditCard size={14} className="text-blue-500" /> },
+        { id: 'left_students', label: "Ketgan o'quvchilar", icon: <UserMinus size={14} className="text-rose-500" /> },
+        { id: 'staff_attendance', label: "Davomat hisoboti", icon: <ClipboardList size={14} className="text-teal-500" /> },
+        { id: 'bonuses', label: "Bonuslar hisoboti", icon: <Award size={14} className="text-amber-500" /> },
+        { id: 'leads', label: "Lidlar hisoboti", icon: <Target size={14} className="text-indigo-500" /> },
+        { id: 'students_general', label: "Umumiy hisobotlar", icon: <BarChart3 size={14} className="text-violet-500" /> },
+        { id: 'graduates', label: "Bitiruvchilar", icon: <GraduationCap size={14} className="text-pink-500" /> },
+        { id: 'stats', label: "Faoliyat statistikasi", icon: <TrendingUp size={14} className="text-cyan-500" /> }
     ];
 
     return (
@@ -159,19 +160,29 @@ export default function Finance() {
                 </div>
 
                 {/* Right Side: Reports links */}
-                <div className="bg-white dark:bg-gray-800 rounded-3xl border border-gray-100 dark:border-gray-700/50 shadow-sm overflow-hidden h-fit">
-                    <div className="px-5 py-4 border-b border-gray-50 dark:border-gray-700 bg-gray-50/50">
-                        <span className="text-[9px] font-black uppercase text-gray-400 tracking-wider">Tizim hisobotlari</span>
+                <div className="bg-white dark:bg-gray-800 rounded-3xl border border-gray-100 dark:border-gray-700/50 shadow-sm overflow-hidden h-fit transition-all hover:shadow-md">
+                    <div className="px-6 py-5 border-b border-gray-100 dark:border-gray-700/50 flex items-center justify-between">
+                        <div className="flex items-center gap-2.5">
+                            <div className="w-7 h-7 rounded-lg bg-gray-50 dark:bg-gray-900 flex items-center justify-center text-[#1b6b6b]">
+                                <ListChecks size={15} />
+                            </div>
+                            <span className="text-xs font-black uppercase text-gray-800 dark:text-gray-250 tracking-wider">Tizim hisobotlari</span>
+                        </div>
                     </div>
-                    <div className="divide-y divide-gray-50 dark:divide-gray-700/50">
+                    <div className="divide-y divide-gray-100 dark:divide-gray-750">
                         {reports.map((r) => (
                             <button
                                 key={r.id}
                                 onClick={() => navigate('/reports', { state: { activeReport: r.id } })}
-                                className="w-full px-5 py-3 text-left text-[10px] font-bold text-gray-500 hover:text-[#1b6b6b] hover:bg-[#1b6b6b]/5 dark:hover:bg-[#1b6b6b]/10 transition-all flex items-center justify-between uppercase tracking-wider cursor-pointer"
+                                className="w-full px-6 py-3.5 text-left text-[11px] font-bold text-gray-600 dark:text-gray-400 hover:text-[#1b6b6b] dark:hover:text-white hover:bg-gray-50/50 dark:hover:bg-gray-750/30 transition-all flex items-center justify-between uppercase tracking-wider cursor-pointer group"
                             >
-                                {r.label}
-                                <ArrowUpRight size={12} className="text-gray-300" />
+                                <div className="flex items-center gap-3">
+                                    <div className="p-1.5 rounded-lg bg-gray-50/80 dark:bg-gray-900 group-hover:bg-white dark:group-hover:bg-gray-800 transition-colors">
+                                        {r.icon}
+                                    </div>
+                                    <span>{r.label}</span>
+                                </div>
+                                <ArrowUpRight size={14} className="text-gray-400 dark:text-gray-600 group-hover:text-[#1b6b6b] dark:group-hover:text-white transition-all group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
                             </button>
                         ))}
                     </div>
