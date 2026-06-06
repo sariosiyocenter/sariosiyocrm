@@ -178,6 +178,7 @@ model Lead {
   motherPhone   String?
   preferredTime String?
   notes         String?
+  photo         String?
 
   schoolId      Int
   school        School   @relation(fields: [schoolId], references: [id])

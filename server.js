@@ -753,7 +753,7 @@ app.post('/api/public/schools/:schoolId/leads', async (req, res, next) => {
       name, phone, course, source, token,
       birthDate, address, studentSchool,
       fatherName, fatherPhone, motherName, motherPhone,
-      preferredTime, notes
+      preferredTime, notes, photo
     } = req.body;
 
     if (!name || !phone) return res.status(400).json({ error: 'Ism va telefon raqami majburiy' });
@@ -819,6 +819,7 @@ app.post('/api/public/schools/:schoolId/leads', async (req, res, next) => {
         motherPhone: motherPhone || null,
         preferredTime: preferredTime || null,
         notes: notes || null,
+        photo: photo || null,
         schoolId
       }
     });

@@ -33,7 +33,8 @@ export default function Leads() {
     fatherName: '',
     fatherPhone: '',
     motherName: '',
-    motherPhone: ''
+    motherPhone: '',
+    photo: ''
   });
 
   const [filters, setFilters] = useState({
@@ -126,6 +127,7 @@ export default function Leads() {
         motherName: conversionData.motherName,
         motherPhone: conversionData.motherPhone,
         studentSchool: conversionData.studentSchool,
+        photo: conversionData.photo || null,
         comment: `QR formadan kelgan lid. Manba: ${selectedLead.source}. Kurs: ${selectedLead.course}`
       });
 
@@ -144,7 +146,8 @@ export default function Leads() {
         fatherName: '',
         fatherPhone: '',
         motherName: '',
-        motherPhone: ''
+        motherPhone: '',
+        photo: ''
       });
     } catch (err) {
       console.error("Talabaga o'tkazishda xatolik:", err);
@@ -391,6 +394,13 @@ export default function Leads() {
 
             {!isConverting ? (
               <div className="space-y-6">
+                {selectedLead.photo && (
+                  <div className="flex justify-center mb-2">
+                    <div className="w-24 h-24 rounded-3xl border border-gray-150 dark:border-gray-700 overflow-hidden shadow-sm shrink-0">
+                      <img src={selectedLead.photo} alt="Preview" className="w-full h-full object-cover" />
+                    </div>
+                  </div>
+                )}
                 {/* Details list */}
                 <div className="grid grid-cols-2 gap-4">
                   <div className="bg-gray-55 dark:bg-gray-900/30 p-4 rounded-2xl border border-gray-100 dark:border-gray-750">
@@ -498,7 +508,8 @@ export default function Leads() {
                         fatherName: selectedLead.fatherName || '',
                         fatherPhone: selectedLead.fatherPhone || '',
                         motherName: selectedLead.motherName || '',
-                        motherPhone: selectedLead.motherPhone || ''
+                        motherPhone: selectedLead.motherPhone || '',
+                        photo: selectedLead.photo || ''
                       });
                     }}
                     className="flex items-center gap-1.5 px-4 py-2.5 bg-[#1b6b6b] hover:bg-[#155252] text-white rounded-xl text-[10px] font-black uppercase tracking-widest cursor-pointer shadow-md transition-all"

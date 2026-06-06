@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
-import { Building2, Phone, CheckCircle2, ChevronRight, User, BookOpen, Clock, MessageSquare, Calendar, MapPin, GraduationCap } from 'lucide-react';
+import { Building2, Phone, CheckCircle2, ChevronRight, User, BookOpen, Clock, MessageSquare, Calendar, MapPin, GraduationCap, Image as ImageIcon } from 'lucide-react';
+import PhotoCapture from './PhotoCapture';
+import { compressImage } from '../lib/image';
 
 interface Course {
     id: number;
@@ -33,8 +35,11 @@ export default function PublicApply() {
         address: '',
         course: '',
         preferredTime: 'Ertalab',
-        notes: ''
+        notes: '',
+        photo: ''
     });
+
+    const [isPhotoModalOpen, setIsPhotoModalOpen] = useState(false);
 
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [submitted, setSubmitted] = useState(false);
@@ -255,6 +260,43 @@ export default function PublicApply() {
                                 </div>
                             </div>
 
+                            <div>
+                                <label className={lbl}>O'quvchi rasmi</label>
+                                <div className="flex items-center gap-4 mt-2">
+                                    <div className="w-20 h-20 rounded-2xl bg-gray-55 dark:bg-gray-900 border border-gray-100 dark:border-gray-700/55 flex items-center justify-center overflow-hidden shrink-0 shadow-inner">
+                                        {form.photo ? <img src={form.photo} alt="Preview" className="w-full h-full object-cover" /> : <ImageIcon size={24} className="text-gray-300" />}
+                                    </div>
+                                    <div className="flex-1 space-y-2 text-left">
+                                        <div className="flex gap-2">
+                                            <label className="flex-1 flex items-center justify-center gap-1.5 py-2.5 border border-gray-150 dark:border-gray-700 rounded-xl cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-900 text-[10px] font-bold uppercase tracking-wider text-gray-500">
+                                                <input type="file" className="hidden" accept="image/*" onChange={async (e) => {
+                                                    const file = e.target.files?.[0];
+                                                    if (file) {
+                                                        const reader = new FileReader();
+                                                        reader.onloadend = async () => {
+                                                            const compressed = await compressImage(reader.result as string);
+                                                            setForm({ ...form, photo: compressed });
+                                                        };
+                                                        reader.readAsDataURL(file);
+                                                    }
+                                                }} />
+                                                Fayldan
+                                            </label>
+                                            <button type="button" onClick={() => setIsPhotoModalOpen(true)}
+                                                className="flex-1 flex items-center justify-center gap-1.5 py-2.5 border border-gray-150 dark:border-gray-700 rounded-xl hover:bg-gray-55 dark:hover:bg-gray-900 text-[10px] font-bold uppercase tracking-wider text-gray-500 cursor-pointer">
+                                                Kamera
+                                            </button>
+                                        </div>
+                                        {form.photo && (
+                                            <button type="button" onClick={() => setForm({ ...form, photo: '' })}
+                                                className="w-full py-1.5 bg-red-50 text-red-600 dark:bg-red-950/20 dark:text-red-400 rounded-xl border border-red-100 dark:border-red-900/40 text-[9px] font-black uppercase tracking-wider cursor-pointer">
+                                                Rasmni o'chirish
+                                            </button>
+                                        )}
+                                    </div>
+                                </div>
+                            </div>
+
                             {/* SECTION 2: PARENTS */}
                             <span className={secTitle}>Ota-ona ma'lumotlari</span>
 
@@ -414,6 +456,15 @@ export default function PublicApply() {
                     )}
                 </div>
             </div>
+            {isPhotoModalOpen && (
+                <PhotoCapture
+                    onCapture={async (photo) => {
+                        const compressed = await compressImage(photo);
+                        setForm({ ...form, photo: compressed });
+                    }}
+                    onClose={() => setIsPhotoModalOpen(false)}
+                />
+            )}
         </div>
     );
 }
