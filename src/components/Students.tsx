@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { Search, Plus, FileSpreadsheet, MoreVertical, X, Filter, Camera, Sparkles, Image as ImageIcon, MapPin, SlidersHorizontal, GraduationCap } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Search, Plus, FileSpreadsheet, MoreVertical, X, Filter, Camera, Sparkles, Image as ImageIcon, MapPin, SlidersHorizontal, GraduationCap, Link as LinkIcon, QrCode } from 'lucide-react';
 import { useCRM } from '../context/CRMContext';
 import { useNavigate } from 'react-router-dom';
 import PhotoCapture from './PhotoCapture';
@@ -11,7 +11,7 @@ const inp = "w-full px-4 py-3 bg-gray-50 dark:bg-gray-900/50 border border-gray-
 const lbl = "block text-[10px] font-extrabold uppercase tracking-widest text-gray-400 mb-2";
 
 export default function Students() {
-    const { students, groups, teachers, transports, addStudent, deleteStudent, importStudents } = useCRM();
+    const { students, groups, teachers, transports, addStudent, deleteStudent, importStudents, selectedSchoolId } = useCRM();
     const navigate = useNavigate();
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [isAdding, setIsAdding] = useState(false);
@@ -27,6 +27,34 @@ export default function Students() {
     const [isImporting, setIsImporting] = useState(false);
     const [search, setSearch] = useState('');
     const [showFilters, setShowFilters] = useState(false);
+    
+    // Link creation states
+    const [isLinkModalOpen, setIsLinkModalOpen] = useState(false);
+    const [qrCodeDataUrl, setQrCodeDataUrl] = useState('');
+    const [copySuccess, setCopySuccess] = useState(false);
+
+    useEffect(() => {
+        if (isLinkModalOpen && selectedSchoolId) {
+            import('qrcode').then((QRCodeLib) => {
+                const QRCode = QRCodeLib.default || QRCodeLib;
+                const applyUrl = `${window.location.origin}/apply/${selectedSchoolId}`;
+                QRCode.toDataURL(applyUrl, { width: 200, margin: 2 })
+                    .then(url => setQrCodeDataUrl(url))
+                    .catch(err => console.error(err));
+            });
+        }
+    }, [isLinkModalOpen, selectedSchoolId]);
+
+    const copyLinkToClipboard = () => {
+        const applyUrl = `${window.location.origin}/apply/${selectedSchoolId}`;
+        navigator.clipboard.writeText(applyUrl)
+            .then(() => {
+                setCopySuccess(true);
+                setTimeout(() => setCopySuccess(false), 2000);
+            })
+            .catch(err => console.error("Havolani nusxalashda xatolik:", err));
+    };
+
     const [filters, setFilters] = useState({
         status: '',
         groupId: '',
@@ -329,6 +357,12 @@ export default function Students() {
                             <FileSpreadsheet size={14} /> Import
                         </button>
                         <input type="file" id="import-excel-input" accept=".xlsx, .xls, .csv" className="hidden" onChange={handleImportChange} />
+                        <button
+                            onClick={() => setIsLinkModalOpen(true)}
+                            className="flex items-center gap-2 px-3.5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-extrabold uppercase tracking-widest shadow-lg shadow-blue-600/20 transition-all cursor-pointer"
+                        >
+                            <QrCode size={14} /> Link Yaratish
+                        </button>
                         <button
                             onClick={() => setIsModalOpen(true)}
                             className="flex items-center gap-2 px-4 py-2.5 bg-[#1b6b6b] hover:bg-[#155252] text-white rounded-xl text-xs font-extrabold uppercase tracking-widest shadow-lg shadow-[#1b6b6b]/20 transition-all cursor-pointer"
@@ -652,6 +686,54 @@ export default function Students() {
                             </button>
                             <button onClick={confirmDeleteStudent} className="flex-1 py-2.5 bg-rose-600 text-white text-[10px] font-extrabold uppercase tracking-widest rounded-xl cursor-pointer">
                                 O'chirish
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+            {isLinkModalOpen && (
+                <div className="fixed inset-0 z-[200] flex items-center justify-center p-4">
+                    <div className="absolute inset-0 bg-gray-900/60 backdrop-blur-sm" onClick={() => setIsLinkModalOpen(false)} />
+                    <div className="relative bg-white dark:bg-gray-800 rounded-[2rem] border border-gray-100 dark:border-gray-700/50 shadow-2xl w-full max-w-sm p-8 text-center">
+                        <div className="flex items-center justify-between mb-6 pb-4 border-b border-gray-150 dark:border-gray-700/50">
+                            <h3 className="text-sm font-black text-gray-900 dark:text-white uppercase tracking-tight">Qabul Havolasi</h3>
+                            <button onClick={() => setIsLinkModalOpen(false)} className="w-8 h-8 flex items-center justify-center text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700 rounded-lg cursor-pointer">
+                                <X size={16} />
+                            </button>
+                        </div>
+                        <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest leading-relaxed mb-6">
+                            Yangi kelgan o'quvchilar ushbu QR-kodni skanerlab yoki quyidagi havola orqali o'z arizalarini mustaqil to'ldirishlari mumkin.
+                        </p>
+                        
+                        <div className="bg-white p-4 rounded-2xl border border-gray-100 dark:border-gray-200 w-fit mx-auto mb-6 shadow-sm">
+                            {qrCodeDataUrl ? (
+                                <img src={qrCodeDataUrl} alt="QR Code" className="w-[180px] h-[180px] block" />
+                            ) : (
+                                <div className="w-[180px] h-[180px] flex items-center justify-center">
+                                    <div className="w-8 h-8 border-2 border-[#1b6b6b] border-t-transparent rounded-full animate-spin" />
+                                </div>
+                            )}
+                        </div>
+
+                        <div className="space-y-4">
+                            <div className="flex items-center gap-2 bg-gray-55 dark:bg-gray-900/50 p-3 rounded-2xl border border-gray-100 dark:border-gray-750">
+                                <span className="text-[9px] font-black text-[#1b6b6b] uppercase tracking-wider shrink-0">Havola:</span>
+                                <input 
+                                    readOnly 
+                                    type="text" 
+                                    value={`${window.location.origin}/apply/${selectedSchoolId}`} 
+                                    className="bg-transparent border-none text-[10px] font-extrabold text-gray-700 dark:text-white outline-none w-full select-all"
+                                />
+                            </div>
+                            <button
+                                onClick={copyLinkToClipboard}
+                                className={`w-full py-3.5 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all cursor-pointer ${
+                                    copySuccess 
+                                        ? 'bg-emerald-600 text-white shadow-lg shadow-emerald-500/10' 
+                                        : 'bg-[#1b6b6b] hover:bg-[#155252] text-white shadow-lg shadow-[#1b6b6b]/15'
+                                }`}
+                            >
+                                {copySuccess ? "Nusxalandi!" : "Havolani nusxalash"}
                             </button>
                         </div>
                     </div>
