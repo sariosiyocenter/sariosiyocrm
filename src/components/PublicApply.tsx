@@ -56,6 +56,15 @@ export default function PublicApply() {
             }
         };
         fetchData();
+
+        // Check local storage submission lock (5 min cooldown)
+        const lastSubmit = localStorage.getItem(`submitted_apply_${schoolId}`);
+        if (lastSubmit) {
+            const timePassed = Date.now() - parseInt(lastSubmit);
+            if (timePassed < 5 * 60 * 1000) {
+                setSubmitted(true);
+            }
+        }
     }, [schoolId]);
 
     const handleSubmit = async (e: React.FormEvent) => {
@@ -76,8 +85,10 @@ export default function PublicApply() {
             });
             if (res.ok) {
                 setSubmitted(true);
+                localStorage.setItem(`submitted_apply_${schoolId}`, Date.now().toString());
             } else {
-                alert('Yuborishda xatolik yuz berdi. Iltimos qaytadan urining.');
+                const data = await res.json().catch(() => ({}));
+                alert(data.error || 'Yuborishda xatolik yuz berdi. Iltimos qaytadan urining.');
             }
         } catch (err) {
             console.error(err);
@@ -144,9 +155,26 @@ export default function PublicApply() {
                                 <CheckCircle2 size={40} className="animate-bounce" />
                             </div>
                             <h2 className="text-sm font-black text-gray-900 dark:text-white uppercase tracking-wider mb-2">Arizangiz qabul qilindi!</h2>
-                            <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest leading-relaxed">
+                            <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest leading-relaxed mb-6">
                                 Tez orada administratorlarimiz siz bilan bog'lanishadi va guruhga qo'shishadi.
                             </p>
+                            <button
+                                type="button"
+                                onClick={() => {
+                                    localStorage.removeItem(`submitted_apply_${schoolId}`);
+                                    setSubmitted(false);
+                                    setForm({
+                                        name: '',
+                                        phone: '',
+                                        course: '',
+                                        preferredTime: 'Ertalab',
+                                        notes: ''
+                                    });
+                                }}
+                                className="px-4 py-2.5 bg-gray-55 hover:bg-gray-100 dark:bg-gray-900/50 dark:hover:bg-gray-900 text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-white rounded-xl text-[9px] font-extrabold uppercase tracking-widest transition-all cursor-pointer border border-gray-100 dark:border-gray-700/50"
+                            >
+                                Yana ariza yuborish (Aka-uka yoki boshqa kurs uchun)
+                            </button>
                         </div>
                     ) : (
                         <form onSubmit={handleSubmit} className="space-y-5 animate-in fade-in duration-500">

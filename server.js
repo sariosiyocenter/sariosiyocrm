@@ -723,10 +723,39 @@ app.post('/api/public/schools/:schoolId/leads', async (req, res, next) => {
     const { name, phone, course, source } = req.body;
     if (!name || !phone) return res.status(400).json({ error: 'Ism va telefon raqami majburiy' });
 
+    const cleanName = name.trim();
+    const cleanPhone = phone.trim();
+
+    // Check duplicate lead
+    const duplicateLead = await prisma.lead.findFirst({
+      where: {
+        name: { equals: cleanName, mode: 'insensitive' },
+        phone: cleanPhone,
+        schoolId
+      }
+    });
+
+    if (duplicateLead) {
+      return res.status(400).json({ error: 'Siz kiritgan ism va telefon raqami bilan allaqachon ariza topshirilgan.' });
+    }
+
+    // Check duplicate student
+    const duplicateStudent = await prisma.student.findFirst({
+      where: {
+        name: { equals: cleanName, mode: 'insensitive' },
+        phone: cleanPhone,
+        schoolId
+      }
+    });
+
+    if (duplicateStudent) {
+      return res.status(400).json({ error: 'Siz kiritgan ma\'lumotlar bilan o\'quvchi allaqachon mavjud.' });
+    }
+
     const lead = await prisma.lead.create({
       data: {
-        name,
-        phone,
+        name: cleanName,
+        phone: cleanPhone,
         course: course || 'Aniqlanmagan',
         source: source || 'QR Ro\'yxatdan o\'tish',
         status: 'Yangi',
