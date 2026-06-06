@@ -412,6 +412,46 @@ export default function Leads() {
                     <span className="block text-[9px] font-bold text-gray-400 uppercase tracking-wider mb-1">Kelgan manbasi</span>
                     <span className="text-xs font-extrabold text-gray-700 dark:text-gray-300">{selectedLead.source}</span>
                   </div>
+                  {selectedLead.birthDate && (
+                    <div className="bg-gray-55 dark:bg-gray-900/30 p-4 rounded-2xl border border-gray-100 dark:border-gray-750">
+                      <span className="block text-[9px] font-bold text-gray-400 uppercase tracking-wider mb-1">Tug'ilgan sana</span>
+                      <span className="text-xs font-extrabold text-gray-700 dark:text-gray-300">{selectedLead.birthDate}</span>
+                    </div>
+                  )}
+                  {selectedLead.studentSchool && (
+                    <div className="bg-gray-55 dark:bg-gray-900/30 p-4 rounded-2xl border border-gray-100 dark:border-gray-750">
+                      <span className="block text-[9px] font-bold text-gray-400 uppercase tracking-wider mb-1">Maktab / Bog'cha</span>
+                      <span className="text-xs font-extrabold text-gray-700 dark:text-gray-300">{selectedLead.studentSchool}</span>
+                    </div>
+                  )}
+                  {(selectedLead.fatherName || selectedLead.fatherPhone) && (
+                    <div className="bg-gray-55 dark:bg-gray-900/30 p-4 rounded-2xl border border-gray-100 dark:border-gray-750">
+                      <span className="block text-[9px] font-bold text-gray-400 uppercase tracking-wider mb-1">Otasi</span>
+                      <span className="text-xs font-extrabold text-gray-700 dark:text-gray-300">
+                        {selectedLead.fatherName || 'Ismsiz'} {selectedLead.fatherPhone ? `(${selectedLead.fatherPhone})` : ''}
+                      </span>
+                    </div>
+                  )}
+                  {(selectedLead.motherName || selectedLead.motherPhone) && (
+                    <div className="bg-gray-55 dark:bg-gray-900/30 p-4 rounded-2xl border border-gray-100 dark:border-gray-750">
+                      <span className="block text-[9px] font-bold text-gray-400 uppercase tracking-wider mb-1">Onasi</span>
+                      <span className="text-xs font-extrabold text-gray-700 dark:text-gray-300">
+                        {selectedLead.motherName || 'Ismsiz'} {selectedLead.motherPhone ? `(${selectedLead.motherPhone})` : ''}
+                      </span>
+                    </div>
+                  )}
+                  {selectedLead.address && (
+                    <div className="bg-gray-55 dark:bg-gray-900/30 p-4 rounded-2xl border border-gray-100 dark:border-gray-750 col-span-2">
+                      <span className="block text-[9px] font-bold text-gray-400 uppercase tracking-wider mb-1">Manzili</span>
+                      <span className="text-xs font-extrabold text-gray-700 dark:text-gray-300">{selectedLead.address}</span>
+                    </div>
+                  )}
+                  {selectedLead.notes && (
+                    <div className="bg-gray-55 dark:bg-gray-900/30 p-4 rounded-2xl border border-gray-100 dark:border-gray-750 col-span-2">
+                      <span className="block text-[9px] font-bold text-gray-400 uppercase tracking-wider mb-1">Qo'shimcha izohlar</span>
+                      <span className="text-xs font-semibold text-gray-700 dark:text-gray-300">{selectedLead.notes}</span>
+                    </div>
+                  )}
                 </div>
 
                 {/* Status selector */}
@@ -449,9 +489,17 @@ export default function Leads() {
                         const c = courses.find(course => course.id === g.courseId);
                         return c && c.name.toLowerCase() === selectedLead.course.toLowerCase();
                       });
-                      if (matchingGroup) {
-                        setConversionData(prev => ({ ...prev, groupId: matchingGroup.id.toString() }));
-                      }
+                      setConversionData({
+                        birthDate: selectedLead.birthDate || '',
+                        address: selectedLead.address || '',
+                        studentSchool: selectedLead.studentSchool || '',
+                        groupId: matchingGroup ? matchingGroup.id.toString() : '',
+                        balance: '0',
+                        fatherName: selectedLead.fatherName || '',
+                        fatherPhone: selectedLead.fatherPhone || '',
+                        motherName: selectedLead.motherName || '',
+                        motherPhone: selectedLead.motherPhone || ''
+                      });
                     }}
                     className="flex items-center gap-1.5 px-4 py-2.5 bg-[#1b6b6b] hover:bg-[#155252] text-white rounded-xl text-[10px] font-black uppercase tracking-widest cursor-pointer shadow-md transition-all"
                   >

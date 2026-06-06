@@ -160,16 +160,27 @@ model Group {
 }
 
 model Lead {
-  id        Int      @id @default(autoincrement())
-  name      String
-  phone     String
-  course    String
-  source    String
-  status    String   @default("Yangi")
-  createdAt DateTime @default(now())
+  id            Int      @id @default(autoincrement())
+  name          String
+  phone         String
+  course        String
+  source        String
+  status        String   @default("Yangi")
+  createdAt     DateTime @default(now())
 
-  schoolId  Int
-  school    School   @relation(fields: [schoolId], references: [id])
+  // Additional profile fields from registration
+  birthDate     String?
+  address       String?
+  studentSchool String?
+  fatherName    String?
+  fatherPhone   String?
+  motherName    String?
+  motherPhone   String?
+  preferredTime String?
+  notes         String?
+
+  schoolId      Int
+  school        School   @relation(fields: [schoolId], references: [id])
 
   @@index([schoolId])
 }

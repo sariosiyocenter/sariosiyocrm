@@ -749,7 +749,13 @@ app.post('/api/public/schools/:schoolId/leads', async (req, res, next) => {
     const schoolId = parseInt(req.params.schoolId);
     if (isNaN(schoolId)) return res.status(400).json({ error: 'Mavjud bo\'lmagan filial ID' });
 
-    const { name, phone, course, source, token } = req.body;
+    const { 
+      name, phone, course, source, token,
+      birthDate, address, studentSchool,
+      fatherName, fatherPhone, motherName, motherPhone,
+      preferredTime, notes
+    } = req.body;
+
     if (!name || !phone) return res.status(400).json({ error: 'Ism va telefon raqami majburiy' });
     if (!token) return res.status(400).json({ error: 'Havola tokeni kiritilmagan yoki noto\'g\'ri' });
 
@@ -804,6 +810,15 @@ app.post('/api/public/schools/:schoolId/leads', async (req, res, next) => {
         course: course || 'Aniqlanmagan',
         source: source || 'Bir martalik QR Havola',
         status: 'Yangi',
+        birthDate: birthDate || null,
+        address: address || null,
+        studentSchool: studentSchool || null,
+        fatherName: fatherName || null,
+        fatherPhone: fatherPhone || null,
+        motherName: motherName || null,
+        motherPhone: motherPhone || null,
+        preferredTime: preferredTime || null,
+        notes: notes || null,
         schoolId
       }
     });

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
-import { Building2, Phone, CheckCircle2, ChevronRight, User, BookOpen, Clock, MessageSquare } from 'lucide-react';
+import { Building2, Phone, CheckCircle2, ChevronRight, User, BookOpen, Clock, MessageSquare, Calendar, MapPin, GraduationCap } from 'lucide-react';
 
 interface Course {
     id: number;
@@ -24,6 +24,13 @@ export default function PublicApply() {
     const [form, setForm] = useState({
         name: '',
         phone: '',
+        birthDate: '',
+        studentSchool: '',
+        fatherName: '',
+        fatherPhone: '',
+        motherName: '',
+        motherPhone: '',
+        address: '',
         course: '',
         preferredTime: 'Ertalab',
         notes: ''
@@ -91,10 +98,8 @@ export default function PublicApply() {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
-                    name: form.name,
-                    phone: form.phone,
-                    course: form.course || 'Kurs tanlanmagan',
-                    source: `Bir martalik QR Havola - Vaqt: ${form.preferredTime}${form.notes ? ` / Izoh: ${form.notes}` : ''}`,
+                    ...form,
+                    source: `Bir martalik QR Havola - Vaqt: ${form.preferredTime}`,
                     token: token
                 })
             });
@@ -140,8 +145,9 @@ export default function PublicApply() {
         );
     }
 
-    const inp = "w-full pl-10 pr-4 py-3.5 bg-gray-50 dark:bg-gray-900/50 border border-gray-100 dark:border-gray-700 rounded-2xl text-xs font-bold text-gray-900 dark:text-white focus:border-[var(--brand-color,#1b6b6b)] focus:ring-4 focus:ring-[var(--brand-color,#1b6b6b)]/10 outline-none transition-all";
+    const inp = "w-full pl-10 pr-4 py-3.5 bg-gray-55 dark:bg-gray-900 border border-gray-100 dark:border-gray-700/50 rounded-2xl text-xs font-bold text-gray-950 dark:text-white focus:border-[var(--brand-color,#1b6b6b)] focus:ring-4 focus:ring-[var(--brand-color,#1b6b6b)]/10 outline-none transition-all";
     const lbl = "block text-[10px] font-extrabold uppercase tracking-widest text-gray-400 mb-2";
+    const secTitle = "block text-[10px] font-black uppercase text-[#1b6b6b] tracking-widest border-b border-dashed border-gray-150 dark:border-gray-750 pb-2 mb-4 mt-6 first:mt-0";
 
     return (
         <div className="min-h-screen bg-gradient-to-tr from-gray-50 to-gray-100 dark:from-gray-900 dark:to-gray-950 flex items-center justify-center p-4 py-12">
@@ -157,7 +163,7 @@ export default function PublicApply() {
                                 <Building2 size={22} />
                             )}
                         </div>
-                        <div>
+                        <div className="text-left">
                             <h1 className="text-md font-black uppercase tracking-tight leading-tight">{schoolInfo.orgName}</h1>
                             <p className="text-[9px] font-bold text-white/70 uppercase tracking-widest mt-1">Online ariza topshirish</p>
                         </div>
@@ -177,8 +183,11 @@ export default function PublicApply() {
                             </p>
                         </div>
                     ) : (
-                        <form onSubmit={handleSubmit} className="space-y-5 animate-in fade-in duration-500">
-                            {/* Name */}
+                        <form onSubmit={handleSubmit} className="space-y-4 animate-in fade-in duration-500 text-left">
+                            
+                            {/* SECTION 1: STUDENT */}
+                            <span className={secTitle}>O'quvchi ma'lumotlari</span>
+                            
                             <div>
                                 <label className={lbl}>Ism-sharifingiz *</label>
                                 <div className="relative">
@@ -188,7 +197,7 @@ export default function PublicApply() {
                                     <input
                                         required
                                         type="text"
-                                        placeholder="Toshmatov Toshmat"
+                                        placeholder="Jasur Alimov"
                                         className={inp}
                                         value={form.name}
                                         onChange={e => setForm({ ...form, name: e.target.value })}
@@ -196,32 +205,138 @@ export default function PublicApply() {
                                 </div>
                             </div>
 
-                            {/* Phone */}
+                            <div className="grid grid-cols-2 gap-4">
+                                <div>
+                                    <label className={lbl}>Telefon raqamingiz *</label>
+                                    <div className="relative">
+                                        <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-gray-400">
+                                            <Phone size={15} />
+                                        </div>
+                                        <input
+                                            required
+                                            type="text"
+                                            placeholder="+998 (90) 123-45-67"
+                                            className={inp}
+                                            value={form.phone}
+                                            onChange={e => setForm({ ...form, phone: e.target.value })}
+                                        />
+                                    </div>
+                                </div>
+
+                                <div>
+                                    <label className={lbl}>Tug'ilgan sana</label>
+                                    <div className="relative">
+                                        <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-gray-400">
+                                            <Calendar size={15} />
+                                        </div>
+                                        <input
+                                            type="date"
+                                            className={inp}
+                                            value={form.birthDate}
+                                            onChange={e => setForm({ ...form, birthDate: e.target.value })}
+                                        />
+                                    </div>
+                                </div>
+                            </div>
+
                             <div>
-                                <label className={lbl}>Telefon raqamingiz *</label>
+                                <label className={lbl}>Maktab / Bog'cha</label>
                                 <div className="relative">
                                     <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-gray-400">
-                                        <Phone size={15} />
+                                        <GraduationCap size={15} />
                                     </div>
                                     <input
-                                        required
                                         type="text"
-                                        placeholder="+998 (90) 123-45-67"
+                                        placeholder="42-maktab"
                                         className={inp}
-                                        value={form.phone}
-                                        onChange={e => setForm({ ...form, phone: e.target.value })}
+                                        value={form.studentSchool}
+                                        onChange={e => setForm({ ...form, studentSchool: e.target.value })}
                                     />
                                 </div>
                             </div>
 
-                            {/* Course */}
+                            {/* SECTION 2: PARENTS */}
+                            <span className={secTitle}>Ota-ona ma'lumotlari</span>
+
+                            <div className="grid grid-cols-2 gap-4">
+                                <div>
+                                    <label className={lbl}>Otasining ismi</label>
+                                    <div className="relative">
+                                        <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-gray-400">
+                                            <User size={15} />
+                                        </div>
+                                        <input
+                                            type="text"
+                                            placeholder="FISH"
+                                            className={inp}
+                                            value={form.fatherName}
+                                            onChange={e => setForm({ ...form, fatherName: e.target.value })}
+                                        />
+                                    </div>
+                                </div>
+
+                                <div>
+                                    <label className={lbl}>Otasining telefoni</label>
+                                    <div className="relative">
+                                        <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-gray-400">
+                                            <Phone size={15} />
+                                        </div>
+                                        <input
+                                            type="text"
+                                            placeholder="+998"
+                                            className={inp}
+                                            value={form.fatherPhone}
+                                            onChange={e => setForm({ ...form, fatherPhone: e.target.value })}
+                                        />
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div className="grid grid-cols-2 gap-4">
+                                <div>
+                                    <label className={lbl}>Onasining ismi</label>
+                                    <div className="relative">
+                                        <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-gray-400">
+                                            <User size={15} />
+                                        </div>
+                                        <input
+                                            type="text"
+                                            placeholder="FISH"
+                                            className={inp}
+                                            value={form.motherName}
+                                            onChange={e => setForm({ ...form, motherName: e.target.value })}
+                                        />
+                                    </div>
+                                </div>
+
+                                <div>
+                                    <label className={lbl}>Onasining telefoni</label>
+                                    <div className="relative">
+                                        <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-gray-400">
+                                            <Phone size={15} />
+                                        </div>
+                                        <input
+                                            type="text"
+                                            placeholder="+998"
+                                            className={inp}
+                                            value={form.motherPhone}
+                                            onChange={e => setForm({ ...form, motherPhone: e.target.value })}
+                                        />
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* SECTION 3: OTHER INFO */}
+                            <span className={secTitle}>Kurs va manzil</span>
+
                             <div>
-                                <label className={lbl}>Qaysi kursda o'qimoqchisiz?</label>
+                                <label className={lbl}>Qaysi kursda o'qimoqchisiz? *</label>
                                 <div className="relative">
                                     <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-gray-400">
                                         <BookOpen size={15} />
                                     </div>
                                     <select
+                                        required
                                         className={`${inp} appearance-none cursor-pointer`}
                                         value={form.course}
                                         onChange={e => setForm({ ...form, course: e.target.value })}
@@ -234,26 +349,42 @@ export default function PublicApply() {
                                 </div>
                             </div>
 
-                            {/* Preferred Time */}
-                            <div>
-                                <label className={lbl}>Sizga qaysi vaqt qulay?</label>
-                                <div className="relative">
-                                    <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-gray-400">
-                                        <Clock size={15} />
+                            <div className="grid grid-cols-2 gap-4">
+                                <div>
+                                    <label className={lbl}>Sizga qaysi vaqt qulay?</label>
+                                    <div className="relative">
+                                        <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-gray-400">
+                                            <Clock size={15} />
+                                        </div>
+                                        <select
+                                            className={`${inp} appearance-none cursor-pointer`}
+                                            value={form.preferredTime}
+                                            onChange={e => setForm({ ...form, preferredTime: e.target.value })}
+                                        >
+                                            <option value="Ertalab">Ertalab (09:00 - 13:00)</option>
+                                            <option value="Tushdan keyin">Tushdan keyin (14:00 - 18:00)</option>
+                                            <option value="Kechki payt">Kechki payt (18:00 - 21:00)</option>
+                                        </select>
                                     </div>
-                                    <select
-                                        className={`${inp} appearance-none cursor-pointer`}
-                                        value={form.preferredTime}
-                                        onChange={e => setForm({ ...form, preferredTime: e.target.value })}
-                                    >
-                                        <option value="Ertalab">Ertalab (09:00 - 13:00)</option>
-                                        <option value="Tushdan keyin">Tushdan keyin (14:00 - 18:00)</option>
-                                        <option value="Kechki payt">Kechki payt (18:00 - 21:00)</option>
-                                    </select>
+                                </div>
+
+                                <div>
+                                    <label className={lbl}>Yashash manzilingiz</label>
+                                    <div className="relative">
+                                        <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-gray-400">
+                                            <MapPin size={15} />
+                                        </div>
+                                        <input
+                                            type="text"
+                                            placeholder="Sariosiyo"
+                                            className={inp}
+                                            value={form.address}
+                                            onChange={e => setForm({ ...form, address: e.target.value })}
+                                        />
+                                    </div>
                                 </div>
                             </div>
 
-                            {/* Notes */}
                             <div>
                                 <label className={lbl}>Savollaringiz yoki qo'shimcha izohlar</label>
                                 <div className="relative">
@@ -274,7 +405,7 @@ export default function PublicApply() {
                             <button
                                 type="submit"
                                 disabled={isSubmitting}
-                                className="w-full mt-2 py-4 bg-gradient-to-tr from-[var(--brand-color,#1b6b6b)] to-[var(--brand-color,#1b6b6b)]/95 hover:shadow-lg hover:shadow-[var(--brand-color,#1b6b6b)]/20 active:scale-[0.98] text-white rounded-2xl text-[10px] font-black uppercase tracking-widest flex items-center justify-center gap-2 transition-all cursor-pointer disabled:opacity-50"
+                                className="w-full mt-4 py-4 bg-gradient-to-tr from-[var(--brand-color,#1b6b6b)] to-[var(--brand-color,#1b6b6b)]/95 hover:shadow-lg hover:shadow-[var(--brand-color,#1b6b6b)]/20 active:scale-[0.98] text-white rounded-2xl text-[10px] font-black uppercase tracking-widest flex items-center justify-center gap-2 transition-all cursor-pointer disabled:opacity-50"
                             >
                                 {isSubmitting ? "Yuborilmoqda..." : "Ro'yxatdan o'tish"}
                                 <ChevronRight size={14} />
