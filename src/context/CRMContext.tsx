@@ -47,6 +47,7 @@ interface CRMContextType extends CRMState {
     deleteGroup: (id: number) => Promise<void>;
     addLead: (lead: Omit<Lead, 'id' | 'schoolId'>) => Promise<void>;
     updateLead: (id: number, status: Lead['status']) => Promise<void>;
+    deleteLead: (id: number) => Promise<void>;
     addPayment: (payment: Omit<Payment, 'id' | 'schoolId'>) => Promise<void>;
     updateSettings: (settings: Partial<CRMState['settings']>) => Promise<void>;
     addCourse: (course: Omit<Course, 'id' | 'schoolId'>) => Promise<void>;
@@ -627,6 +628,12 @@ export const CRMProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         setState(prev => ({ ...prev, leads: prev.leads.map(l => l.id === id ? updated : l) }));
     };
 
+    const deleteLead = async (id: number) => {
+        await apiCall(`leads/${id}`, 'DELETE');
+        setState(prev => ({ ...prev, leads: prev.leads.filter(l => l.id !== id) }));
+        showNotification("Lid muvaffaqiyatli o'chirildi", "success");
+    };
+
     const addPayment = async (payment: Omit<Payment, 'id' | 'schoolId'>) => {
         const newPayment = await apiCall('payments', 'POST', payment);
         setState(prev => {
@@ -936,7 +943,7 @@ export const CRMProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             addStudent, updateStudent, deleteStudent, importStudents, addStudentToGroup,
             addTeacher, updateTeacher, deleteTeacher,
             addGroup, updateGroup, deleteGroup,
-            updateLead, addLead,
+            updateLead, addLead, deleteLead,
             addPayment,
             updateSettings,
             addCourse, deleteCourse,

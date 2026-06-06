@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { MoreHorizontal, Plus, Search, Filter, Phone, Calendar, ArrowRight, X, Sparkles, SlidersHorizontal } from 'lucide-react';
+import { MoreHorizontal, Plus, Search, Filter, Phone, Calendar, ArrowRight, X, Sparkles, SlidersHorizontal, Trash2, UserPlus, GraduationCap, MapPin, Award, BookOpen, Clock, Building } from 'lucide-react';
 import { useCRM } from '../context/CRMContext';
 import { Lead } from '../types';
 
@@ -15,11 +15,27 @@ const inp = "w-full px-4 py-3 bg-gray-50 dark:bg-gray-900/50 border border-gray-
 const lbl = "block text-[10px] font-extrabold uppercase tracking-widest text-gray-400 mb-2";
 
 export default function Leads() {
-  const { leads, courses, updateLead, addLead } = useCRM();
+  const { leads, courses, groups, updateLead, addLead, deleteLead, addStudent } = useCRM();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [showFilters, setShowFilters] = useState(false);
   const [newLead, setNewLead] = useState({ name: '', phone: '', course: '', source: 'Instagram' });
   const [searchQuery, setSearchQuery] = useState('');
+  
+  // Selected lead details & conversion state
+  const [selectedLead, setSelectedLead] = useState<Lead | null>(null);
+  const [isConverting, setIsConverting] = useState(false);
+  const [conversionData, setConversionData] = useState({
+    birthDate: '',
+    address: '',
+    studentSchool: '',
+    groupId: '',
+    balance: '0',
+    fatherName: '',
+    fatherPhone: '',
+    motherName: '',
+    motherPhone: ''
+  });
+
   const [filters, setFilters] = useState({
     course: '',
     source: '',
@@ -66,6 +82,75 @@ export default function Leads() {
     setNewLead({ name: '', phone: '', course: '', source: 'Instagram' });
   };
 
+  const handleStatusChange = async (leadId: number, newStatus: Lead['status']) => {
+    try {
+      await updateLead(leadId, newStatus);
+      if (selectedLead && selectedLead.id === leadId) {
+        setSelectedLead(prev => prev ? { ...prev, status: newStatus } : null);
+      }
+    } catch (err) {
+      console.error("Lid holatini yangilashda xatolik:", err);
+    }
+  };
+
+  const handleDeleteLead = async (leadId: number) => {
+    if (window.confirm("Haqiqatan ham bu lidni o'chirmoqchimisiz?")) {
+      try {
+        await deleteLead(leadId);
+        setSelectedLead(null);
+      } catch (err) {
+        console.error("Lidni o'chirishda xatolik:", err);
+      }
+    }
+  };
+
+  const handleConvertToStudent = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedLead) return;
+
+    try {
+      const studentGroups = conversionData.groupId ? [parseInt(conversionData.groupId)] : [];
+      
+      // Create student
+      await addStudent({
+        name: selectedLead.name,
+        phone: selectedLead.phone,
+        birthDate: conversionData.birthDate,
+        address: conversionData.address || "Kiritilmagan",
+        status: 'Faol',
+        joinedDate: new Date().toISOString().split('T')[0],
+        balance: parseFloat(conversionData.balance) || 0,
+        groups: studentGroups,
+        fatherName: conversionData.fatherName,
+        fatherPhone: conversionData.fatherPhone,
+        motherName: conversionData.motherName,
+        motherPhone: conversionData.motherPhone,
+        studentSchool: conversionData.studentSchool,
+        comment: `QR formadan kelgan lid. Manba: ${selectedLead.source}. Kurs: ${selectedLead.course}`
+      });
+
+      // Remove the converted lead
+      await deleteLead(selectedLead.id);
+      
+      // Reset state and close modal
+      setSelectedLead(null);
+      setIsConverting(false);
+      setConversionData({
+        birthDate: '',
+        address: '',
+        studentSchool: '',
+        groupId: '',
+        balance: '0',
+        fatherName: '',
+        fatherPhone: '',
+        motherName: '',
+        motherPhone: ''
+      });
+    } catch (err) {
+      console.error("Talabaga o'tkazishda xatolik:", err);
+    }
+  };
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -76,7 +161,7 @@ export default function Leads() {
               <Sparkles size={22} className="text-white" />
             </div>
             <div>
-              <h1 className="text-lg font-black text-gray-900 dark:text-white uppercase tracking-tight">Lidlar</h1>
+              <h1 className="text-lg font-black text-gray-900 dark:text-white uppercase tracking-tight font-display">Lidlar</h1>
               <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mt-0.5">
                 Potensial mijozlar va sotuv voronkasi • Jami {leads.length} ta lid
               </p>
@@ -93,7 +178,7 @@ export default function Leads() {
             </div>
             <button
               onClick={() => setShowFilters(!showFilters)}
-              className={`w-10 h-10 flex items-center justify-center rounded-xl border transition-all cursor-pointer ${showFilters ? 'bg-[#1b6b6b] border-[#1b6b6b] text-white' : 'bg-gray-50 dark:bg-gray-900/50 border-gray-100 dark:border-gray-700 text-gray-400 hover:border-[#1b6b6b] hover:text-[#1b6b6b]'}`}
+              className={`w-10 h-10 flex items-center justify-center rounded-xl border transition-all cursor-pointer ${showFilters ? 'bg-[#1b6b6b] border-[#1b6b6b] text-white' : 'bg-gray-55 dark:bg-gray-900/50 border-gray-100 dark:border-gray-700 text-gray-400 hover:border-[#1b6b6b] hover:text-[#1b6b6b]'}`}
             >
               <SlidersHorizontal size={15} />
             </button>
@@ -131,6 +216,7 @@ export default function Leads() {
                 <option value="Telegram">Telegram</option>
                 <option value="Facebook">Facebook</option>
                 <option value="Tavsiya">Tavsiya</option>
+                <option value="QR Ro'yxatdan o'tish">QR Kod</option>
               </select>
             </div>
             <div>
@@ -163,7 +249,18 @@ export default function Leads() {
         {STAGES.map((stage) => {
           const stageLeads = getLeadsByStatus(stage.name);
           return (
-            <div key={stage.id} className="w-[300px] shrink-0 bg-gray-50/50 dark:bg-gray-900/20 border border-gray-100/50 dark:border-gray-800/30 rounded-3xl p-4 flex flex-col max-h-[80vh]">
+            <div 
+              key={stage.id} 
+              onDragOver={(e) => e.preventDefault()}
+              onDrop={(e) => {
+                const leadIdStr = e.dataTransfer.getData("leadId");
+                if (leadIdStr) {
+                  const leadId = parseInt(leadIdStr);
+                  if (!isNaN(leadId)) handleStatusChange(leadId, stage.name);
+                }
+              }}
+              className="w-[300px] shrink-0 bg-gray-50/50 dark:bg-gray-900/10 border border-gray-100/50 dark:border-gray-800/30 rounded-3xl p-4 flex flex-col max-h-[80vh] min-h-[500px]"
+            >
               <div className="flex items-center justify-between mb-4 px-1.5">
                 <div className="flex items-center gap-2">
                   <div className={`w-2.5 h-2.5 rounded-full ${stage.color}`} />
@@ -176,7 +273,18 @@ export default function Leads() {
 
               <div className="space-y-3 overflow-y-auto flex-1 custom-scrollbar pr-1">
                 {stageLeads.map((lead) => (
-                  <div key={lead.id} className="bg-white dark:bg-gray-800 p-4 rounded-2xl border border-gray-100 dark:border-gray-750 shadow-sm hover:shadow-md hover:border-gray-200 dark:hover:border-gray-700 transition-all duration-200 cursor-grab active:cursor-grabbing">
+                  <div 
+                    key={lead.id} 
+                    draggable
+                    onDragStart={(e) => {
+                      e.dataTransfer.setData("leadId", lead.id.toString());
+                    }}
+                    onClick={() => {
+                      setSelectedLead(lead);
+                      setIsConverting(false);
+                    }}
+                    className="bg-white dark:bg-gray-800 p-4 rounded-2xl border border-gray-100 dark:border-gray-750 shadow-sm hover:shadow-md hover:border-gray-200 dark:hover:border-gray-700 transition-all duration-200 cursor-pointer"
+                  >
                     <div className="flex items-center justify-between mb-2">
                       <span className={`text-[8px] font-black px-2 py-0.5 rounded-lg border uppercase tracking-wider ${stage.lightBgc}`}>
                         {lead.course}
@@ -185,7 +293,7 @@ export default function Leads() {
                     <h4 className="font-bold text-gray-900 dark:text-white text-xs mb-3 line-clamp-1 uppercase tracking-tight">{lead.name}</h4>
                     
                     <div className="space-y-2 text-[9px] text-gray-400 font-bold uppercase tracking-widest">
-                      <div className="flex items-center gap-2 bg-gray-50 dark:bg-gray-900/50 p-2 rounded-xl border border-gray-100/30 dark:border-gray-700/30">
+                      <div className="flex items-center gap-2 bg-gray-55 dark:bg-gray-900/50 p-2 rounded-xl border border-gray-100/30 dark:border-gray-700/30">
                         <Phone size={12} className="text-[#1b6b6b]" />
                         <span className="tabular-nums text-gray-900 dark:text-white">{lead.phone}</span>
                       </div>
@@ -215,6 +323,7 @@ export default function Leads() {
         })}
       </div>
 
+      {/* Add Lead Modal */}
       {isModalOpen && (
         <div className="fixed inset-0 z-[200] flex items-center justify-center p-4">
           <div className="absolute inset-0 bg-gray-900/60 backdrop-blur-sm" onClick={() => setIsModalOpen(false)} />
@@ -262,6 +371,189 @@ export default function Leads() {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Selected Lead Details & Conversion Modal */}
+      {selectedLead && (
+        <div className="fixed inset-0 z-[200] flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-gray-900/60 backdrop-blur-sm" onClick={() => setSelectedLead(null)} />
+          <div className="relative bg-white dark:bg-gray-800 rounded-[2rem] border border-gray-100 dark:border-gray-700/50 shadow-2xl w-full max-w-lg p-8 overflow-y-auto max-h-[90vh] custom-scrollbar">
+            
+            <div className="flex items-center justify-between mb-6 pb-4 border-b border-gray-50 dark:border-gray-700/50">
+              <div>
+                <h3 className="text-base font-black text-gray-900 dark:text-white uppercase tracking-tight">Lid Tafsilotlari</h3>
+                <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mt-0.5">Ro'yxatdan o'tgan: {new Date(selectedLead.createdAt).toLocaleString()}</p>
+              </div>
+              <button onClick={() => setSelectedLead(null)} className="w-9 h-9 flex items-center justify-center text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700 rounded-xl cursor-pointer"><X size={18} /></button>
+            </div>
+
+            {!isConverting ? (
+              <div className="space-y-6">
+                {/* Details list */}
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="bg-gray-55 dark:bg-gray-900/30 p-4 rounded-2xl border border-gray-100 dark:border-gray-750">
+                    <span className="block text-[9px] font-bold text-gray-400 uppercase tracking-wider mb-1">F.I.O.</span>
+                    <span className="text-xs font-extrabold text-gray-900 dark:text-white">{selectedLead.name}</span>
+                  </div>
+                  <div className="bg-gray-55 dark:bg-gray-900/30 p-4 rounded-2xl border border-gray-100 dark:border-gray-750">
+                    <span className="block text-[9px] font-bold text-gray-400 uppercase tracking-wider mb-1">Telefon</span>
+                    <span className="text-xs font-extrabold text-gray-900 dark:text-white flex items-center gap-1.5">
+                      <Phone size={12} className="text-[#1b6b6b]" />
+                      {selectedLead.phone}
+                    </span>
+                  </div>
+                  <div className="bg-gray-55 dark:bg-gray-900/30 p-4 rounded-2xl border border-gray-100 dark:border-gray-750">
+                    <span className="block text-[9px] font-bold text-gray-400 uppercase tracking-wider mb-1">Tanlangan Kurs</span>
+                    <span className="text-xs font-extrabold text-[#1b6b6b]">{selectedLead.course}</span>
+                  </div>
+                  <div className="bg-gray-55 dark:bg-gray-900/30 p-4 rounded-2xl border border-gray-100 dark:border-gray-750">
+                    <span className="block text-[9px] font-bold text-gray-400 uppercase tracking-wider mb-1">Kelgan manbasi</span>
+                    <span className="text-xs font-extrabold text-gray-700 dark:text-gray-300">{selectedLead.source}</span>
+                  </div>
+                </div>
+
+                {/* Status selector */}
+                <div>
+                  <label className={lbl}>Voronka holati (Status)</label>
+                  <div className="flex flex-wrap gap-2">
+                    {STAGES.map((s) => (
+                      <button
+                        key={s.id}
+                        type="button"
+                        onClick={() => handleStatusChange(selectedLead.id, s.name)}
+                        className={`px-3 py-2 rounded-xl text-[10px] font-black uppercase tracking-wider border transition-all cursor-pointer ${
+                          selectedLead.status === s.name
+                            ? `${s.color} text-white border-transparent shadow-md`
+                            : 'bg-white dark:bg-gray-900 border-gray-100 dark:border-gray-750 text-gray-500 hover:border-gray-300 dark:hover:border-gray-600'
+                        }`}
+                      >
+                        {s.name}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Conversion Prompt */}
+                <div className="p-4 rounded-2xl bg-[#1b6b6b]/5 border border-[#1b6b6b]/20 flex items-center justify-between">
+                  <div>
+                    <h4 className="text-xs font-black text-gray-900 dark:text-white uppercase tracking-tight">O'quvchiga aylantirish</h4>
+                    <p className="text-[10px] text-gray-500 mt-0.5">Ushbu lidni doimiy o'quvchilar ro'yxatiga qo'shish.</p>
+                  </div>
+                  <button
+                    onClick={() => {
+                      setIsConverting(true);
+                      // Filter group suggestion by matching course name
+                      const matchingGroup = groups.find(g => {
+                        const c = courses.find(course => course.id === g.courseId);
+                        return c && c.name.toLowerCase() === selectedLead.course.toLowerCase();
+                      });
+                      if (matchingGroup) {
+                        setConversionData(prev => ({ ...prev, groupId: matchingGroup.id.toString() }));
+                      }
+                    }}
+                    className="flex items-center gap-1.5 px-4 py-2.5 bg-[#1b6b6b] hover:bg-[#155252] text-white rounded-xl text-[10px] font-black uppercase tracking-widest cursor-pointer shadow-md transition-all"
+                  >
+                    <UserPlus size={14} /> Aylantirish
+                  </button>
+                </div>
+
+                {/* Actions footer */}
+                <div className="flex items-center justify-between pt-4 border-t border-gray-55 dark:border-gray-700/50">
+                  <button
+                    type="button"
+                    onClick={() => handleDeleteLead(selectedLead.id)}
+                    className="flex items-center gap-1.5 text-rose-500 hover:text-rose-600 text-[10px] font-black uppercase tracking-wider cursor-pointer"
+                  >
+                    <Trash2 size={14} /> Lidni o'chirish
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setSelectedLead(null)}
+                    className="px-5 py-2.5 bg-gray-100 dark:bg-gray-750 text-gray-700 dark:text-white text-[10px] font-black uppercase tracking-widest rounded-xl cursor-pointer hover:bg-gray-200"
+                  >
+                    Yopish
+                  </button>
+                </div>
+              </div>
+            ) : (
+              /* Conversion Form (Step 2) */
+              <form onSubmit={handleConvertToStudent} className="space-y-5">
+                <div className="p-3 bg-emerald-50 dark:bg-emerald-950/20 text-emerald-600 dark:text-emerald-400 rounded-xl text-[11px] font-semibold flex items-center gap-2">
+                  <GraduationCap size={16} />
+                  <span>O'quvchi qo'shish shaklini to'ldiring. Ism va telefon oldindan yozilgan.</span>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className={lbl}>Tug'ilgan Sana</label>
+                    <input type="date" className={inp} value={conversionData.birthDate} onChange={e => setConversionData({ ...conversionData, birthDate: e.target.value })} />
+                  </div>
+                  <div>
+                    <label className={lbl}>Maktab / Bog'cha</label>
+                    <input type="text" placeholder="42-maktab" className={inp} value={conversionData.studentSchool} onChange={e => setConversionData({ ...conversionData, studentSchool: e.target.value })} />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className={lbl}>O'quv guruhi</label>
+                    <select className={inp} value={conversionData.groupId} onChange={e => setConversionData({ ...conversionData, groupId: e.target.value })}>
+                      <option value="">Guruh biriktirmaslik</option>
+                      {groups.map(g => {
+                        const course = courses.find(c => c.id === g.courseId);
+                        return <option key={g.id} value={g.id}>{g.name} ({course?.name || 'Noma\'lum'})</option>;
+                      })}
+                    </select>
+                  </div>
+                  <div>
+                    <label className={lbl}>Boshlang'ich Balans (so'm)</label>
+                    <input type="number" placeholder="0" className={inp} value={conversionData.balance} onChange={e => setConversionData({ ...conversionData, balance: e.target.value })} />
+                  </div>
+                </div>
+
+                <div>
+                  <label className={lbl}>Turar joy manzili</label>
+                  <input type="text" placeholder="Sariosiyo tumani, ... ko'chasi" className={inp} value={conversionData.address} onChange={e => setConversionData({ ...conversionData, address: e.target.value })} />
+                </div>
+
+                <div className="border-t border-dashed border-gray-100 dark:border-gray-700/50 pt-4 mt-4 space-y-4">
+                  <span className="block text-[9px] font-black uppercase text-[#1b6b6b] tracking-wider">Ota-ona ma'lumotlari (Ixtiyoriy)</span>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className={lbl}>Otasining ismi</label>
+                      <input type="text" placeholder="Otasining ismi" className={inp} value={conversionData.fatherName} onChange={e => setConversionData({ ...conversionData, fatherName: e.target.value })} />
+                    </div>
+                    <div>
+                      <label className={lbl}>Otasining telefoni</label>
+                      <input type="tel" placeholder="+998" className={inp} value={conversionData.fatherPhone} onChange={e => setConversionData({ ...conversionData, fatherPhone: e.target.value })} />
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className={lbl}>Onasining ismi</label>
+                      <input type="text" placeholder="Onasining ismi" className={inp} value={conversionData.motherName} onChange={e => setConversionData({ ...conversionData, motherName: e.target.value })} />
+                    </div>
+                    <div>
+                      <label className={lbl}>Onasining telefoni</label>
+                      <input type="tel" placeholder="+998" className={inp} value={conversionData.motherPhone} onChange={e => setConversionData({ ...conversionData, motherPhone: e.target.value })} />
+                    </div>
+                  </div>
+                </div>
+
+                <div className="flex gap-3 pt-4 border-t border-gray-55 dark:border-gray-700/50">
+                  <button type="button" onClick={() => setIsConverting(false)}
+                    className="flex-1 py-3 bg-gray-100 dark:bg-gray-750 text-gray-700 dark:text-white text-xs font-extrabold uppercase tracking-widest rounded-2xl transition-all cursor-pointer hover:bg-gray-200">
+                    Orqaga
+                  </button>
+                  <button type="submit"
+                    className="flex-1 py-3 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-extrabold uppercase tracking-widest rounded-2xl shadow-lg shadow-emerald-650/20 transition-all cursor-pointer">
+                    Tasdiqlash & O'quvchi qilish
+                  </button>
+                </div>
+              </form>
+            )}
           </div>
         </div>
       )}

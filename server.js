@@ -749,6 +749,14 @@ app.put('/api/leads/:id', authenticate, async (req, res, next) => {
   } catch (error) { next(error); }
 });
 
+app.delete('/api/leads/:id', authenticate, async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    await prisma.lead.delete({ where: { id: parseInt(id) } });
+    res.json({ success: true });
+  } catch (error) { next(error); }
+});
+
 // Payments
 app.get('/api/payments', authenticate, async (req, res, next) => {
   try {
