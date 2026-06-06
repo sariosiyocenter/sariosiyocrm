@@ -198,6 +198,10 @@ model Organization {
   phone     String?
   createdAt DateTime @default(now())
   schools   School[]
+
+  status     String    @default("Sinov") // Sinov, Faol, Muzlatilgan
+  expiresAt  DateTime?
+  maxSchools Int       @default(3)
 }
 
 model School {
@@ -302,6 +306,8 @@ model User {
   
   driverTransport Transport? @relation("DriverTransport")
   driverRoutes    Route[]    @relation("DriverRoutes")
+
+  sellerLeads     SaaSLead[] @relation("SellerLeads")
 }
 
 enum UserRole {
@@ -310,6 +316,7 @@ enum UserRole {
   TEACHER
   RECEPTIONIST
   DRIVER
+  SELLER
 }
 
 model Route {
@@ -397,4 +404,18 @@ model ExamResult {
 
   @@unique([studentId, examId])
   @@index([examId, schoolId])
+}
+
+model SaaSLead {
+  id          Int      @id @default(autoincrement())
+  name        String
+  phone       String
+  centerName  String?
+  status      String   @default("Yangi") // Yangi, Bog'lanildi, Sotildi, Rad etildi
+  notes       String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  sellerId    Int?
+  seller      User?    @relation("SellerLeads", fields: [sellerId], references: [id])
 }

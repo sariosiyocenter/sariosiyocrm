@@ -10,7 +10,7 @@ export default function LeadsReport() {
     leads.forEach(l => { statusMap[l.status] = (statusMap[l.status] || 0) + 1; });
 
     const donutColors: Record<string, string> = {
-        'Yangi': '#0ea5e9', 'Qayta aloqa': '#f59e0b', "Yo'qotildi": '#ef4444', 'Yoqildi': '#10b981'
+        'Yangi': '#0ea5e9', 'Bog\'lanilmadi': '#ef4444', 'O\'ylayapti': '#f59e0b', 'Kelishdi': '#8b5cf6', 'To\'lov qildi': '#10b981'
     };
     const donutSlices = Object.entries(statusMap).map(([label, value]) => ({
         label, value, color: donutColors[label] || '#6b7280'
@@ -24,26 +24,32 @@ export default function LeadsReport() {
 
     const weeklyTrend = useMemo(() => {
         const map: Record<string, number> = {};
-        leads.forEach(l => { if (l.date) { const w = l.date.slice(0, 7); map[w] = (map[w] || 0) + 1; } });
+        leads.forEach(l => { if (l.createdAt) { const w = l.createdAt.slice(0, 7); map[w] = (map[w] || 0) + 1; } });
         return Object.entries(map).sort(([a], [b]) => a.localeCompare(b)).slice(-6).map(([label, value]) => ({ label: label.slice(5) + '-oy', value }));
     }, [leads]);
 
-    const statusColors: Record<string, string> = { 'Yangi': 'bg-sky-100 text-sky-700 dark:bg-sky-900/30 dark:text-sky-400', 'Qayta aloqa': 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400', "Yo'qotildi": 'bg-rose-100 text-rose-700 dark:bg-rose-900/30 dark:text-rose-400', 'Yoqildi': 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400' };
+    const statusColors: Record<string, string> = { 
+        'Yangi': 'bg-sky-100 text-sky-700 dark:bg-sky-900/30 dark:text-sky-400', 
+        'Bog\'lanilmadi': 'bg-rose-100 text-rose-700 dark:bg-rose-900/30 dark:text-rose-400',
+        'O\'ylayapti': 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400', 
+        'Kelishdi': 'bg-violet-100 text-violet-700 dark:bg-violet-900/30 dark:text-violet-400', 
+        'To\'lov qildi': 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400' 
+    };
 
     const handleExport = () => {
-        const csv = ['Ism,Tel,Manba,Holat,Sana', ...leads.map(l => `${l.name},${l.phone},${l.source || '-'},${l.status},${l.date || '-'}`)].join('\n');
+        const csv = ['Ism,Tel,Manba,Holat,Sana', ...leads.map(l => `${l.name},${l.phone},${l.source || '-'},${l.status},${l.createdAt ? l.createdAt.slice(0, 10) : '-'}`)].join('\n');
         const a = document.createElement('a'); a.href = `data:text/csv;charset=utf-8,${encodeURIComponent(csv)}`; a.download = 'leads.csv'; a.click();
     };
 
-    const conversionRate = leads.length ? Math.round((leads.filter(l => l.status === 'Yoqildi').length / leads.length) * 100) : 0;
+    const conversionRate = leads.length ? Math.round((leads.filter(l => l.status === 'To\'lov qildi').length / leads.length) * 100) : 0;
 
     return (
         <div className="p-6 space-y-6 animate-in fade-in duration-500">
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
                 <StatCard label="Jami lidlar" value={leads.length} icon={<Target size={16} />} color="violet" />
                 <StatCard label="Yangi so'rovlar" value={statusMap['Yangi'] || 0} icon={<User size={16} />} color="sky" />
-                <StatCard label="Konvertatsiya" value={`${conversionRate}%`} sub="yoqildi" trend={conversionRate} icon={<TrendingUp size={16} />} color="emerald" />
-                <StatCard label="Qayta aloqa" value={statusMap['Qayta aloqa'] || 0} icon={<BarChart2 size={16} />} color="amber" />
+                <StatCard label="Konvertatsiya" value={`${conversionRate}%`} sub="to'lov qildi" trend={conversionRate} icon={<TrendingUp size={16} />} color="emerald" />
+                <StatCard label="Qayta aloqa" value={statusMap['Kelishdi'] || 0} icon={<BarChart2 size={16} />} color="amber" />
             </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
@@ -80,7 +86,7 @@ export default function LeadsReport() {
                         { key: 'phone', label: 'Telefon' },
                         { key: 'source', label: 'Manba', render: r => r.source || '-' },
                         { key: 'status', label: 'Holat', render: r => <span className={`px-2 py-0.5 rounded-lg text-[10px] font-bold uppercase ${statusColors[r.status] || 'bg-gray-100 text-gray-500'}`}>{r.status}</span> },
-                        { key: 'date', label: 'Sana', render: r => r.date || '-' },
+                        { key: 'date', label: 'Sana', render: r => r.createdAt ? r.createdAt.slice(0, 10) : '-' },
                     ]}
                     rows={leads}
                 />

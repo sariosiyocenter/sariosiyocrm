@@ -2,6 +2,19 @@ import React, { createContext, useContext, useState, useEffect } from 'react';
 import { Student, Teacher, Group, Lead, Payment, CRMState, Course, Room, School, UserRole, Attendance, Score, TeacherAttendance, Expense, Transport, DeliveryLog, Route, Question, Exam, ExamResult, Variant } from '../types';
 import { generateVariants } from '../lib/shuffler';
 
+export const THEMES = [
+    { id: 'zumrad', name: "Sokin Zumrad", primary: '#1b6b6b', hover: '#155252', light: '#f0f8f8', gradientStart: '#1b6b6b', gradientEnd: '#2e9c9c' },
+    { id: 'indigo', name: "Kosmik Indigo", primary: '#6366f1', hover: '#4f46e5', light: '#eef2ff', gradientStart: '#6366f1', gradientEnd: '#4f46e5' },
+    { id: 'yoqut', name: "Qirollik Yoquti", primary: '#dc2626', hover: '#b91c1c', light: '#fef2f2', gradientStart: '#dc2626', gradientEnd: '#ef4444' },
+    { id: 'oltin', name: "Zafaron Oltin", primary: '#d97706', hover: '#b45309', light: '#fffbeb', gradientStart: '#d97706', gradientEnd: '#f59e0b' },
+    { id: 'okean', name: "Klassik Okean", primary: '#0284c7', hover: '#0369a1', light: '#f0f9ff', gradientStart: '#0284c7', gradientEnd: '#38bdf8' },
+    { id: 'yalpiz', name: "Yalpiz Tarovati", primary: '#059669', hover: '#047857', light: '#ecfdf5', gradientStart: '#059669', gradientEnd: '#10b981' },
+    { id: 'binafsha', name: "Tungi Binafsha", primary: '#7c3aed', hover: '#6d28d9', light: '#f5f3ff', gradientStart: '#7c3aed', gradientEnd: '#8b5cf6' },
+    { id: 'burgundiya', name: "Burgundiya Iffati", primary: '#db2777', hover: '#be185d', light: '#fdf2f8', gradientStart: '#db2777', gradientEnd: '#ec4899' },
+    { id: 'bronza', name: "Kuzgi Bronza", primary: '#854d0e', hover: '#713f12', light: '#fefce8', gradientStart: '#854d0e', gradientEnd: '#a16207' },
+    { id: 'shifer', name: "Tungi Shifer", primary: '#475569', hover: '#334155', light: '#f8fafc', gradientStart: '#475569', gradientEnd: '#64748b' }
+];
+
 interface AuthenticatedUser {
     id: number;
     email: string;
@@ -24,6 +37,7 @@ interface CRMContextType extends CRMState {
     addStudent: (student: Omit<Student, 'id' | 'schoolId'>) => Promise<void>;
     updateStudent: (id: number, student: Partial<Student>) => Promise<void>;
     deleteStudent: (id: number) => Promise<void>;
+    importStudents: (students: any[]) => Promise<void>;
     addStudentToGroup: (groupId: number, studentId: number) => Promise<void>;
     addTeacher: (teacher: Omit<Teacher, 'id' | 'schoolId'>) => Promise<void>;
     updateTeacher: (id: number, teacher: Partial<Teacher>) => Promise<void>;
@@ -43,6 +57,7 @@ interface CRMContextType extends CRMState {
     deleteSchool: (id: number) => Promise<void>;
     addAttendance: (attendance: Omit<Attendance, 'id' | 'schoolId'>) => Promise<void>;
     addBatchAttendance: (groupId: number, date: string, records: { studentId: number; status: string }[]) => Promise<void>;
+    deleteBatchAttendance: (groupId: number, date: string) => Promise<void>;
     addScore: (score: Omit<Score, 'id' | 'schoolId'>) => Promise<void>;
     addTeacherAttendance: (attendance: Omit<TeacherAttendance, 'id' | 'schoolId'>) => Promise<void>;
     addExpense: (expense: Omit<Expense, 'id' | 'schoolId'>) => Promise<void>;
@@ -61,8 +76,12 @@ interface CRMContextType extends CRMState {
     updateQuestion: (id: number, question: Partial<Question>) => Promise<void>;
     deleteQuestion: (id: number) => Promise<void>;
     addExamResult: (result: Omit<ExamResult, 'id' | 'schoolId'>) => Promise<ExamResult>;
+    addDeliveryLog: (log: Omit<DeliveryLog, 'id' | 'schoolId'>) => Promise<void>;
+    fetchDeliveryLogs: (date: string) => Promise<DeliveryLog[]>;
     notification: { message: string, type: 'success' | 'error' | 'info' } | null;
     showNotification: (message: string, type: 'success' | 'error' | 'info') => void;
+    themeColor: string;
+    setThemeColor: (themeId: string) => void;
 }
 
 const CRMContext = createContext<CRMContextType | undefined>(undefined);
@@ -97,6 +116,97 @@ export const CRMProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         return saved ? JSON.parse(saved) : false;
     });
     const [notification, setNotification] = useState<{ message: string, type: 'success' | 'error' | 'info' } | null>(null);
+
+    const [themeColor, setThemeColorState] = useState<string>(() => {
+        return localStorage.getItem('crm_theme') || 'zumrad';
+    });
+
+    const setThemeColor = (themeId: string) => {
+        setThemeColorState(themeId);
+        localStorage.setItem('crm_theme', themeId);
+    };
+
+    useEffect(() => {
+        const theme = THEMES.find(t => t.id === themeColor) || THEMES[0];
+        let styleEl = document.getElementById('crm-dynamic-theme');
+        if (!styleEl) {
+            styleEl = document.createElement('style');
+            styleEl.id = 'crm-dynamic-theme';
+            document.head.appendChild(styleEl);
+        }
+        styleEl.textContent = `
+            :root {
+                --color-brand: ${theme.primary};
+                --color-brand-dark: ${theme.hover};
+                --color-brand-light: ${theme.light};
+                --brand-color: ${theme.primary};
+                --brand-hover: ${theme.hover};
+                --brand-light: ${theme.light};
+                --brand-gradient: linear-gradient(135deg, ${theme.gradientStart}, ${theme.gradientEnd});
+            }
+
+            .bg-\\[\\#1b6b6b\\] {
+                background-color: ${theme.primary} !important;
+            }
+            .text-\\[\\#1b6b6b\\] {
+                color: ${theme.primary} !important;
+            }
+            .border-\\[\\#1b6b6b\\] {
+                border-color: ${theme.primary} !important;
+            }
+            .hover\\:bg-\\[\\#155252\\]:hover {
+                background-color: ${theme.hover} !important;
+            }
+            .hover\\:text-\\[\\#155252\\]:hover {
+                color: ${theme.hover} !important;
+            }
+            .focus\\:border-\\[\\#1b6b6b\\]:focus {
+                border-color: ${theme.primary} !important;
+            }
+            .focus\\:ring-\\[\\#1b6b6b\\]\\/10:focus {
+                --tw-ring-color: ${theme.primary}1a !important;
+            }
+            .from-\\[\\#1b6b6b\\] {
+                --tw-gradient-from: ${theme.primary} !important;
+                --tw-gradient-to: ${theme.primary}00 !important;
+                --tw-gradient-stops: var(--tw-gradient-from), var(--tw-gradient-to) !important;
+            }
+            .to-\\[\\#2e9c9c\\] {
+                --tw-gradient-to: ${theme.gradientEnd} !important;
+            }
+            .text-teal-650, .text-teal-600 {
+                color: ${theme.primary} !important;
+            }
+            .bg-teal-50 {
+                background-color: ${theme.light} !important;
+            }
+            .border-teal-100 {
+                border-color: ${theme.light} !important;
+            }
+            .dark\\:bg-teal-950\\/20:is(.dark, .dark *) {
+                background-color: ${theme.primary}15 !important;
+            }
+            .dark\\:text-teal-400:is(.dark, .dark *) {
+                color: ${theme.gradientEnd} !important;
+            }
+            .dark\\:border-teal-900\\/40:is(.dark, .dark *) {
+                border-color: ${theme.primary}30 !important;
+            }
+            .shadow-\\[\\#1b6b6b\\]\\/20 {
+                --tw-shadow-color: ${theme.primary}33 !important;
+            }
+            
+            .text-teal-500 {
+                color: ${theme.gradientEnd} !important;
+            }
+            .bg-teal-500 {
+                background-color: ${theme.gradientEnd} !important;
+            }
+            .border-teal-500 {
+                border-color: ${theme.gradientEnd} !important;
+            }
+        `;
+    }, [themeColor]);
 
     const showNotification = (message: string, type: 'success' | 'error' | 'info' = 'info') => {
         setNotification({ message, type });
@@ -420,6 +530,21 @@ export const CRMProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         }
     };
 
+    const importStudents = async (importedStudents: any[]) => {
+        try {
+            const res = await apiCall('students/import', 'POST', { students: importedStudents });
+            if (res.success) {
+                setState(prev => ({ ...prev, students: [...prev.students, ...res.students] }));
+                showNotification(`${res.count} ta o'quvchi muvaffaqiyatli import qilindi, ${res.skippedCount} ta o'tkazib yuborildi`, "success");
+            } else {
+                throw new Error(res.error || "Noma'lum xatolik");
+            }
+        } catch (err: any) {
+            showNotification("O'quvchilarni import qilishda xatolik: " + err.message, "error");
+            throw err;
+        }
+    };
+
     const addStudentToGroup = async (groupId: number, studentId: number) => {
         try {
             const group = state.groups.find(g => g.id === groupId);
@@ -550,7 +675,7 @@ export const CRMProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     const addAttendance = async (attendance: Omit<Attendance, 'id' | 'schoolId'>) => {
         // Optimistic update
         const tempId = -Math.floor(Math.random() * 1000000);
-        const optimisticAttendance = { ...attendance, id: tempId, schoolId: state.schoolId || 0 } as Attendance;
+        const optimisticAttendance = { ...attendance, id: tempId, schoolId: state.selectedSchoolId || 0 } as Attendance;
         
         setState(prev => {
             const filtered = prev.attendances.filter(a => !(a.studentId === attendance.studentId && a.date === attendance.date && a.groupId === attendance.groupId));
@@ -573,7 +698,7 @@ export const CRMProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     const addBatchAttendance = async (groupId: number, date: string, records: { studentId: number; status: string }[]) => {
         // Optimistic update
         const tempIds = records.map(() => -Math.floor(Math.random() * 1000000));
-        const optimisticRecords = records.map((r, i) => ({ ...r, id: tempIds[i], groupId, date, schoolId: state.schoolId || 0 } as Attendance));
+        const optimisticRecords = records.map((r, i) => ({ ...r, id: tempIds[i], groupId, date, schoolId: state.selectedSchoolId || 0 } as Attendance));
 
         setState(prev => {
             const studentIds = new Set(records.map(r => r.studentId));
@@ -605,7 +730,7 @@ export const CRMProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
     const deleteBatchAttendance = async (groupId: number, date: string) => {
         // Optimistic update
-        const studentIds = new Set(state.students.filter(s => s.groupId === groupId).map(s => s.id));
+        const studentIds = new Set(state.students.filter(s => (s.groups || []).includes(groupId)).map(s => s.id));
         const deletedRecords = state.attendances.filter(a => a.date === date && a.groupId === groupId);
 
         setState(prev => ({
@@ -808,7 +933,7 @@ export const CRMProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             ...state,
             loading, error, user, token,
             login, logout, checkAuth, setSelectedSchoolId,
-            addStudent, updateStudent, deleteStudent, addStudentToGroup,
+            addStudent, updateStudent, deleteStudent, importStudents, addStudentToGroup,
             addTeacher, updateTeacher, deleteTeacher,
             addGroup, updateGroup, deleteGroup,
             updateLead, addLead,
@@ -827,7 +952,8 @@ export const CRMProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             addExamResult,
             addDeliveryLog, fetchDeliveryLogs,
             darkMode, toggleDarkMode,
-            notification, showNotification
+            notification, showNotification,
+            themeColor, setThemeColor
         }}>
             {children}
         </CRMContext.Provider>

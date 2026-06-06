@@ -36,6 +36,7 @@ const ExamResults     = lazy(() => import('./components/ExamResults'));
 const SuperAdmin      = lazy(() => import('./components/SuperAdmin'));
 const OrgDetail       = lazy(() => import('./components/OrgDetail'));
 const HRManagement    = lazy(() => import('./components/HRManagement'));
+const PublicApply     = lazy(() => import('./components/PublicApply'));
 
 function PageLoader() {
   return (
@@ -51,8 +52,21 @@ function PageLoader() {
 export default function App() {
   const { user, logout, loading } = useCRM();
 
+  const isApplyRoute = window.location.pathname.startsWith('/apply');
+
   if (loading) {
     return <PageLoader />;
+  }
+
+  if (isApplyRoute) {
+    return (
+      <Suspense fallback={<PageLoader />}>
+        <Routes>
+          <Route path="/apply/:schoolId" element={<PublicApply />} />
+          <Route path="*" element={<Navigate to="/login" replace />} />
+        </Routes>
+      </Suspense>
+    );
   }
 
   if (!user) {

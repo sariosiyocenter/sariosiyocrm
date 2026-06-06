@@ -3,7 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { useCRM } from '../context/CRMContext';
 import {
   Building2, GitBranch, Users, GraduationCap, Wallet,
-  MapPin, Phone, ArrowLeft, Plus, Trash2, User, X, Key
+  MapPin, Phone, ArrowLeft
 } from 'lucide-react';
 
 interface Branch {
@@ -33,16 +33,6 @@ export default function OrgDetail() {
 
   const [org, setOrg] = useState<OrgData | null>(null);
   const [fetching, setFetching] = useState(true);
-  const [modalOpen, setModalOpen] = useState(false);
-  const [loading, setLoading] = useState(false);
-
-  // Branch form
-  const [branchName, setBranchName] = useState('');
-  const [branchAddress, setBranchAddress] = useState('');
-  const [adminName, setAdminName] = useState('');
-  const [adminEmail, setAdminEmail] = useState('');
-  const [adminPassword, setAdminPassword] = useState('');
-  const [adminPhone, setAdminPhone] = useState('');
 
   const fetchOrg = async () => {
     try {
@@ -69,66 +59,6 @@ export default function OrgDetail() {
   const totalTeachers = org?.schools.reduce((a, s) => a + (s.teacherCount || 0), 0) || 0;
   const totalRevenue  = org?.schools.reduce((a, s) => a + (s.revenue || 0), 0) || 0;
   const totalUsers    = org?.schools.reduce((a, s) => a + (s.userCount || 0), 0) || 0;
-
-  const handleCreateBranch = async (e: React.SyntheticEvent<HTMLFormElement>) => {
-    e.preventDefault();
-    if (!branchName) return;
-    try {
-      setLoading(true);
-
-      // 1. Filial yaratish
-      const res = await fetch('/api/schools', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-        body: JSON.stringify({ name: branchName, address: branchAddress, organizationId: id })
-      });
-      if (!res.ok) throw new Error((await res.json()).error || 'Filialni yaratishda xatolik');
-      const newSchool = await res.json();
-
-      // 2. Admin user yaratish (ixtiyoriy)
-      if (adminEmail && adminPassword && adminName) {
-        const userRes = await fetch('/api/users', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-          body: JSON.stringify({
-            name: adminName, email: adminEmail,
-            password: adminPassword, phone: adminPhone,
-            role: 'ADMIN', schoolId: newSchool.id
-          })
-        });
-        if (!userRes.ok) {
-          const err = await userRes.json();
-          throw new Error(err.error || 'Admin yaratishda xatolik');
-        }
-      }
-
-      showNotification('Yangi filial muvaffaqiyatli yaratildi!', 'success');
-      setBranchName(''); setBranchAddress('');
-      setAdminName(''); setAdminEmail('');
-      setAdminPassword(''); setAdminPhone('');
-      setModalOpen(false);
-      fetchOrg();
-    } catch (err: any) {
-      showNotification(err.message, 'error');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleDeleteBranch = async (schoolId: number, name: string) => {
-    if (!window.confirm(`"${name}" filialini va unga tegishli barcha ma'lumotlarni o'chirib tashlamoqchimisiz?`)) return;
-    try {
-      const res = await fetch(`/api/schools/${schoolId}`, {
-        method: 'DELETE',
-        headers: { 'Authorization': `Bearer ${token}` }
-      });
-      if (!res.ok) throw new Error("O'chirishda xatolik");
-      showNotification("Filial o'chirildi", 'success');
-      fetchOrg();
-    } catch (err: any) {
-      showNotification(err.message, 'error');
-    }
-  };
 
   if (fetching) {
     return (
@@ -198,20 +128,12 @@ export default function OrgDetail() {
 
       {/* Branches Section */}
       <div className="bg-white dark:bg-gray-800 rounded-[2rem] border border-gray-100 dark:border-gray-700/50 shadow-sm overflow-hidden">
-        <div className="px-8 py-5 border-b border-gray-50 dark:border-gray-700/50 flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <GitBranch size={15} className="text-[#1b6b6b]" />
-            <span className="text-xs font-extrabold text-gray-900 dark:text-white uppercase tracking-widest">
-              Filiallar ({org.schools.length})
-            </span>
-          </div>
-          <button
-            onClick={() => setModalOpen(true)}
-            className="inline-flex items-center gap-2 px-4 py-2.5 bg-[#1b6b6b] hover:bg-[#155252] text-white text-[10px] font-extrabold uppercase tracking-widest rounded-xl shadow-md shadow-[#1b6b6b]/20 transition-all hover:scale-105"
-          >
-            <Plus size={13} />
-            Yangi Filial
-          </button>
+        <div className="px-8 py-5 border-b border-gray-50 dark:border-gray-700/50 flex items-center gap-3">
+          <GitBranch size={15} className="text-[#1b6b6b]" />
+          <span className="text-xs font-extrabold text-gray-900 dark:text-white uppercase tracking-widest">
+            Filiallar ({org.schools.length})
+          </span>
+          <span className="text-[10px] text-gray-400 font-bold">— tashkilot admini boshqaradi</span>
         </div>
 
         <div className="overflow-x-auto">
@@ -223,8 +145,7 @@ export default function OrgDetail() {
                 <th className="px-4 py-4 text-[10px] font-extrabold text-gray-400 uppercase tracking-widest text-center">O'quvchilar</th>
                 <th className="px-4 py-4 text-[10px] font-extrabold text-gray-400 uppercase tracking-widest text-center">Ustozlar</th>
                 <th className="px-4 py-4 text-[10px] font-extrabold text-gray-400 uppercase tracking-widest text-center">Xodimlar</th>
-                <th className="px-4 py-4 text-[10px] font-extrabold text-gray-400 uppercase tracking-widest text-center">Kassa</th>
-                <th className="px-4 pr-8 py-4 text-[10px] font-extrabold text-gray-400 uppercase tracking-widest text-right">Amallar</th>
+                <th className="px-4 pr-8 py-4 text-[10px] font-extrabold text-gray-400 uppercase tracking-widest text-center">Kassa</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-50 dark:divide-gray-700/50">
@@ -263,21 +184,14 @@ export default function OrgDetail() {
                   <td className="px-4 py-5 text-center">
                     <div className="font-extrabold text-gray-900 dark:text-white text-sm">{(branch.revenue || 0).toLocaleString()} so'm</div>
                   </td>
-                  <td className="px-4 pr-8 py-5 text-right">
-                    <button
-                      onClick={() => handleDeleteBranch(branch.id, branch.name)}
-                      className="w-9 h-9 inline-flex items-center justify-center text-gray-400 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/20 rounded-xl transition-all"
-                    >
-                      <Trash2 size={15} />
-                    </button>
-                  </td>
                 </tr>
               ))}
               {org.schools.length === 0 && (
                 <tr>
-                  <td colSpan={7} className="px-8 py-14 text-center">
+                  <td colSpan={6} className="px-8 py-14 text-center">
                     <GitBranch size={32} className="mx-auto text-gray-200 dark:text-gray-600 mb-3" />
                     <p className="text-gray-400 font-bold text-sm">Hozircha filial qo'shilmagan</p>
+                    <p className="text-gray-300 dark:text-gray-600 text-xs mt-1">Filiallarni tashkilot admini o'z panelidan qo'sha oladi</p>
                   </td>
                 </tr>
               )}
@@ -285,97 +199,6 @@ export default function OrgDetail() {
           </table>
         </div>
       </div>
-
-      {/* Add Branch Modal */}
-      {modalOpen && (
-        <div className="fixed inset-0 z-[200] flex items-center justify-center p-4">
-          <div className="absolute inset-0 bg-gray-900/60 backdrop-blur-sm" onClick={() => setModalOpen(false)} />
-          <div className="relative bg-white dark:bg-gray-800 rounded-[2rem] border border-gray-100 dark:border-gray-700/50 shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto p-8">
-            <div className="flex items-center justify-between mb-6 pb-4 border-b border-gray-50 dark:border-gray-700/50">
-              <div>
-                <h3 className="text-lg font-black text-gray-900 dark:text-white uppercase tracking-tight">Yangi Filial Qo'shish</h3>
-                <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mt-0.5">{org.name} tashkilotiga</p>
-              </div>
-              <button onClick={() => setModalOpen(false)} className="w-9 h-9 flex items-center justify-center text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700 rounded-xl">
-                <X size={18} />
-              </button>
-            </div>
-
-            <form onSubmit={handleCreateBranch} className="space-y-5">
-              {/* Filial ma'lumotlari */}
-              <div className="space-y-3">
-                <h4 className="text-[10px] font-extrabold text-[#1b6b6b] uppercase tracking-widest flex items-center gap-2">
-                  <GitBranch size={13} /> Filial Ma'lumotlari
-                </h4>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                  <div>
-                    <label className="block text-[10px] font-extrabold uppercase tracking-widest text-gray-400 mb-1.5">Filial Nomi *</label>
-                    <input type="text" required placeholder="Masalan: Chilonzor Filliali"
-                      value={branchName} onChange={e => setBranchName(e.target.value)}
-                      className="w-full px-4 py-3 bg-gray-50 dark:bg-gray-900/50 border border-gray-100 dark:border-gray-700 rounded-2xl text-xs font-bold text-gray-900 dark:text-white focus:border-[#1b6b6b] focus:ring-4 focus:ring-[#1b6b6b]/10 outline-none transition-all"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-[10px] font-extrabold uppercase tracking-widest text-gray-400 mb-1.5">Manzil</label>
-                    <input type="text" placeholder="Masalan: Chilonzor 9-daha"
-                      value={branchAddress} onChange={e => setBranchAddress(e.target.value)}
-                      className="w-full px-4 py-3 bg-gray-50 dark:bg-gray-900/50 border border-gray-100 dark:border-gray-700 rounded-2xl text-xs font-bold text-gray-900 dark:text-white focus:border-[#1b6b6b] focus:ring-4 focus:ring-[#1b6b6b]/10 outline-none transition-all"
-                    />
-                  </div>
-                </div>
-              </div>
-
-              {/* Admin ma'lumotlari */}
-              <div className="space-y-3 pt-4 border-t border-gray-50 dark:border-gray-700/50">
-                <h4 className="text-[10px] font-extrabold text-[#1b6b6b] uppercase tracking-widest flex items-center gap-2">
-                  <User size={13} /> Filial Administratori <span className="text-gray-400 font-normal normal-case tracking-normal">(ixtiyoriy)</span>
-                </h4>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                  <div>
-                    <label className="block text-[10px] font-extrabold uppercase tracking-widest text-gray-400 mb-1.5">Admin Ismi</label>
-                    <input type="text" placeholder="Sardor Rahimov"
-                      value={adminName} onChange={e => setAdminName(e.target.value)}
-                      className="w-full px-4 py-3 bg-gray-50 dark:bg-gray-900/50 border border-gray-100 dark:border-gray-700 rounded-2xl text-xs font-bold text-gray-900 dark:text-white focus:border-[#1b6b6b] focus:ring-4 focus:ring-[#1b6b6b]/10 outline-none transition-all"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-[10px] font-extrabold uppercase tracking-widest text-gray-400 mb-1.5">Telefon</label>
-                    <input type="text" placeholder="+998 90 123 45 67"
-                      value={adminPhone} onChange={e => setAdminPhone(e.target.value)}
-                      className="w-full px-4 py-3 bg-gray-50 dark:bg-gray-900/50 border border-gray-100 dark:border-gray-700 rounded-2xl text-xs font-bold text-gray-900 dark:text-white focus:border-[#1b6b6b] focus:ring-4 focus:ring-[#1b6b6b]/10 outline-none transition-all"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-[10px] font-extrabold uppercase tracking-widest text-gray-400 mb-1.5">Email</label>
-                    <input type="email" placeholder="admin@filial.com"
-                      value={adminEmail} onChange={e => setAdminEmail(e.target.value)}
-                      className="w-full px-4 py-3 bg-gray-50 dark:bg-gray-900/50 border border-gray-100 dark:border-gray-700 rounded-2xl text-xs font-bold text-gray-900 dark:text-white focus:border-[#1b6b6b] focus:ring-4 focus:ring-[#1b6b6b]/10 outline-none transition-all"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-[10px] font-extrabold uppercase tracking-widest text-gray-400 mb-1.5">Parol</label>
-                    <input type="password" placeholder="••••••••"
-                      value={adminPassword} onChange={e => setAdminPassword(e.target.value)}
-                      className="w-full px-4 py-3 bg-gray-50 dark:bg-gray-900/50 border border-gray-100 dark:border-gray-700 rounded-2xl text-xs font-bold text-gray-900 dark:text-white focus:border-[#1b6b6b] focus:ring-4 focus:ring-[#1b6b6b]/10 outline-none transition-all"
-                    />
-                  </div>
-                </div>
-              </div>
-
-              <div className="flex gap-3 pt-2">
-                <button type="button" onClick={() => setModalOpen(false)}
-                  className="flex-1 py-3 bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-700 dark:text-white text-xs font-extrabold uppercase tracking-widest rounded-2xl transition-all">
-                  Bekor
-                </button>
-                <button type="submit" disabled={loading}
-                  className="flex-1 py-3 bg-[#1b6b6b] hover:bg-[#155252] text-white text-xs font-extrabold uppercase tracking-widest rounded-2xl shadow-lg shadow-[#1b6b6b]/20 transition-all disabled:opacity-50">
-                  {loading ? 'Yaratilmoqda...' : 'Filial Yaratish'}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
     </div>
   );
 }

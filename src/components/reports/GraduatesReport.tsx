@@ -4,7 +4,7 @@ import { StatCard, BarChart, LineChart, ReportCard, SectionHeader, DataTable } f
 import { useCRM } from '../../context/CRMContext';
 
 export default function GraduatesReport() {
-    const { students, groups } = useCRM();
+    const { students, groups, courses } = useCRM();
 
     const graduates = students.filter(s => s.status === 'Bitiruvchi');
 
@@ -12,7 +12,7 @@ export default function GraduatesReport() {
     const courseMap: Record<string, number> = {};
     graduates.forEach(s => {
         const group = groups.find(g => g.id === s.groups?.[0]);
-        const name = group?.courseName || 'Boshqa';
+        const name = courses.find(c => c.id === group?.courseId)?.name || 'Boshqa';
         courseMap[name] = (courseMap[name] || 0) + 1;
     });
 
@@ -40,7 +40,7 @@ export default function GraduatesReport() {
 
     const tableRows = graduates.map(s => ({
         name: s.name,
-        course: groups.find(g => g.id === s.groups?.[0])?.courseName || 'Noma\'lum',
+        course: courses.find(c => c.id === groups.find(g => g.id === s.groups?.[0])?.courseId)?.name || 'Noma\'lum',
         date: s.statusChangedAt ? new Date(s.statusChangedAt).toLocaleDateString() : 'Noma\'lum',
         score: s.rating || 0
     }));

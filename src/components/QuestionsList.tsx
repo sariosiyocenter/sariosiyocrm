@@ -1,10 +1,9 @@
 import React, { useState, useMemo } from 'react';
-import { Search, Plus, Filter, FileUp, Download, Eye, Edit, Trash2, X, AlertCircle, CheckCircle, XCircle } from 'lucide-react';
+import { Search, Plus, Filter, FileUp, Trash2, X, AlertCircle, CheckCircle, XCircle } from 'lucide-react';
 import { useCRM } from '../context/CRMContext';
 import { useNavigate } from 'react-router-dom';
 import * as XLSX from 'xlsx';
 
-// Map common column name variants to canonical field names
 const COL_MAP: Record<string, string> = {
     question: 'text', savol: 'text', text: 'text',
     optiona: 'optionA', a: 'optionA',
@@ -82,7 +81,6 @@ export default function QuestionsList() {
         total: number;
     } | null>(null);
 
-    // Get unique subjects and topics for filters
     const subjects = useMemo(() => Array.from(new Set(questions.map(q => q.subject).filter(Boolean))), [questions]);
     const topics = useMemo(() => {
         if (!filters.subject) return Array.from(new Set(questions.map(q => q.topic).filter(Boolean)));
@@ -121,7 +119,7 @@ export default function QuestionsList() {
                     if (result.data) {
                         valid.push(result.data);
                     } else {
-                        result.errors.forEach(err => errors.push({ ...err, row: idx + 2 })); // +2: header + 0-index
+                        result.errors.forEach(err => errors.push({ ...err, row: idx + 2 }));
                     }
                 });
 
@@ -149,7 +147,6 @@ export default function QuestionsList() {
             const result = await res.json();
             showNotification(`${result.count} ta savol muvaffaqiyatli import qilindi!`, "success");
             setImportPreview(null);
-            // Reload questions from backend
             window.location.reload();
         } catch (err: any) {
             showNotification("Import xatoligi: " + err.message, "error");
@@ -165,144 +162,138 @@ export default function QuestionsList() {
     };
 
     return (
-        <div className="space-y-8 pb-12 animate-in fade-in duration-700">
-
+        <div className="space-y-6 animate-in fade-in duration-500 max-w-7xl mx-auto">
             {/* Import Preview Modal */}
             {importPreview && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
-                    <div className="bg-white dark:bg-gray-800 rounded-3xl shadow-2xl w-full max-w-lg p-8 space-y-6">
-                        <div className="flex items-start justify-between">
+                <div className="fixed inset-0 z-[250] flex items-center justify-center p-4">
+                    <div className="absolute inset-0 bg-gray-905/65 backdrop-blur-sm" />
+                    <div className="relative bg-white dark:bg-gray-800 rounded-3xl shadow-xl w-full max-w-md p-6 space-y-4 border border-gray-100 dark:border-gray-700/50">
+                        <div className="flex items-start justify-between border-b border-gray-100 dark:border-gray-700/50 pb-3">
                             <div>
-                                <h2 className="text-lg font-black text-gray-900 dark:text-white">Excel Import Tekshiruvi</h2>
-                                <p className="text-[10px] text-gray-400 uppercase tracking-widest mt-1">Jami {importPreview.total} ta qator topildi</p>
+                                <h2 className="text-[10px] font-black text-gray-900 dark:text-white uppercase tracking-widest">Excel Import Tekshiruvi</h2>
+                                <p className="text-[9px] font-bold text-gray-400 mt-1 uppercase tracking-widest">Jami {importPreview.total} ta qator</p>
                             </div>
-                            <button onClick={() => setImportPreview(null)} className="p-2 text-gray-400 hover:text-gray-600">
-                                <X size={20} />
+                            <button onClick={() => setImportPreview(null)} className="p-1 text-gray-400 hover:text-gray-650 rounded-lg cursor-pointer">
+                                <X size={16} />
                             </button>
                         </div>
 
-                        <div className="flex gap-4">
-                            <div className="flex-1 bg-emerald-50 dark:bg-emerald-900/20 rounded-2xl p-4 border border-emerald-100 dark:border-emerald-800 flex items-center gap-3">
-                                <CheckCircle className="w-6 h-6 text-emerald-500 shrink-0" />
+                        <div className="flex gap-3">
+                            <div className="flex-1 bg-emerald-50 dark:bg-emerald-950/20 rounded-xl p-3 border border-emerald-100 dark:border-emerald-900/40 flex items-center gap-2">
+                                <CheckCircle className="w-5 h-5 text-emerald-500 shrink-0" />
                                 <div>
-                                    <p className="text-xl font-black text-emerald-600">{importPreview.valid.length}</p>
-                                    <p className="text-[9px] font-bold text-emerald-500 uppercase tracking-widest">To'g'ri savollar</p>
+                                    <p className="text-sm font-black text-emerald-600 dark:text-emerald-400">{importPreview.valid.length}</p>
+                                    <p className="text-[8px] text-emerald-500 uppercase tracking-widest font-black">To'g'ri</p>
                                 </div>
                             </div>
-                            <div className="flex-1 bg-rose-50 dark:bg-rose-900/20 rounded-2xl p-4 border border-rose-100 dark:border-rose-800 flex items-center gap-3">
-                                <XCircle className="w-6 h-6 text-rose-500 shrink-0" />
+                            <div className="flex-1 bg-rose-50 dark:bg-rose-955/20 rounded-xl p-3 border border-rose-100 dark:border-rose-900/40 flex items-center gap-2">
+                                <XCircle className="w-5 h-5 text-rose-500 shrink-0" />
                                 <div>
-                                    <p className="text-xl font-black text-rose-600">{importPreview.errors.length}</p>
-                                    <p className="text-[9px] font-bold text-rose-500 uppercase tracking-widest">Xatoliklar</p>
+                                    <p className="text-sm font-black text-rose-600 dark:text-rose-400">{importPreview.errors.length}</p>
+                                    <p className="text-[8px] text-rose-500 uppercase tracking-widest font-black">Xatolik</p>
                                 </div>
                             </div>
                         </div>
 
                         {importPreview.errors.length > 0 && (
-                            <div className="bg-rose-50 dark:bg-rose-900/10 rounded-2xl p-4 max-h-40 overflow-y-auto border border-rose-100 dark:border-rose-800 space-y-1">
+                            <div className="bg-rose-50 dark:bg-rose-950/10 rounded-2xl p-3 max-h-32 overflow-y-auto border border-rose-100 dark:border-rose-900/20 space-y-1">
                                 {importPreview.errors.map((err, i) => (
-                                    <p key={i} className="text-[10px] text-rose-600">
-                                        <span className="font-black">Qator {err.row}:</span> {err.message}
+                                    <p key={i} className="text-[10px] text-rose-600 dark:text-rose-400 font-bold uppercase">
+                                        <span>Qator {err.row}:</span> {err.message}
                                     </p>
                                 ))}
                             </div>
                         )}
 
-                        <div className="flex gap-3">
+                        <div className="flex gap-2 pt-3 border-t border-dashed border-gray-100 dark:border-gray-700/50">
                             <button
                                 onClick={() => setImportPreview(null)}
-                                className="flex-1 py-3 rounded-2xl border border-gray-200 dark:border-gray-700 text-[10px] font-black uppercase tracking-widest text-gray-500 hover:bg-gray-50"
+                                className="flex-1 py-2.5 rounded-xl border border-gray-100 dark:border-gray-700 text-[9px] font-black uppercase tracking-widest text-gray-500 hover:bg-gray-55 cursor-pointer transition-all"
                             >
-                                Bekor qilish
+                                Bekor
                             </button>
                             <button
                                 onClick={confirmImport}
                                 disabled={isImporting || importPreview.valid.length === 0}
-                                className="flex-1 py-3 rounded-2xl bg-teal-600 text-white text-[10px] font-black uppercase tracking-widest hover:bg-teal-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                                className="flex-1 py-2.5 rounded-xl bg-[#1b6b6b] hover:bg-[#155252] text-white text-[9px] font-black uppercase tracking-widest disabled:opacity-50 disabled:cursor-not-allowed transition-all cursor-pointer"
                             >
-                                {isImporting ? 'Yuklanmoqda...' : `${importPreview.valid.length} tasini Import qilish`}
+                                {isImporting ? 'Yuklanmoqda...' : `Import (${importPreview.valid.length})`}
                             </button>
                         </div>
                     </div>
                 </div>
             )}
-            <div className="flex items-center justify-between">
-                <div>
-                    <h1 className="text-3xl font-extrabold text-gray-900 dark:text-white uppercase tracking-tight">Savollar Banki</h1>
-                    <p className="text-[10px] font-bold text-gray-400 dark:text-gray-500 mt-2 uppercase tracking-widest">Imtihon savollarini professional boshqarish</p>
-                </div>
-                
-                <div className="flex items-center gap-3">
-                    <label className="cursor-pointer px-6 py-3.5 bg-amber-50 dark:bg-amber-900/20 text-amber-600 dark:text-amber-400 border border-amber-100 dark:border-amber-800 rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-amber-100 transition-all flex items-center gap-2">
-                        <FileUp size={16} />
-                        {isImporting ? 'Yuklanmoqda...' : 'Excel Import'}
-                        <input type="file" className="hidden" accept=".xlsx, .xls" onChange={handleImportExcel} disabled={isImporting} />
-                    </label>
-                    <button 
-                        onClick={() => navigate('/questions/new')}
-                        className="px-8 py-3.5 bg-teal-600 dark:bg-teal-500 text-white rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-teal-500 shadow-xl shadow-teal-500/20 flex items-center gap-2"
-                    >
-                        <Plus size={18} />
-                        Savol Qo'shish
-                    </button>
-                </div>
-            </div>
 
-            {/* Header Actions */}
-            <div className="bg-white dark:bg-gray-800 rounded-[2.5rem] border border-gray-100 dark:border-gray-700 shadow-xl shadow-teal-500/5 overflow-hidden transition-all">
-                <div className="p-8 flex flex-col lg:flex-row lg:items-center justify-between gap-6">
-                    <div className="flex items-center gap-4">
-                        <div className="relative group w-full lg:w-[400px]">
-                            <Search className="absolute left-5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 group-focus-within:text-teal-500 transition-colors" />
+            {/* Header / Filter Toolbar */}
+            <div className="bg-white dark:bg-gray-800 rounded-3xl border border-gray-100 dark:border-gray-700/50 shadow-sm p-4">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                    <div className="flex items-center gap-2 flex-1 max-w-md">
+                        <div className="relative flex-1">
+                            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
                             <input
                                 type="text"
-                                placeholder="Savol matni yoki fan bo'yicha qidiruv..."
+                                placeholder="Savollarni qidirish..."
                                 value={search}
                                 onChange={(e) => setSearch(e.target.value)}
-                                className="w-full pl-12 pr-6 py-4 bg-gray-50 dark:bg-gray-900/50 border border-gray-100 dark:border-gray-700 rounded-2xl text-[10px] font-bold uppercase tracking-widest outline-none focus:bg-white dark:focus:bg-gray-800 focus:border-teal-500 transition-all placeholder:text-gray-400/60 text-gray-900 dark:text-white"
+                                className="w-full pl-10 pr-4 py-2.5 bg-gray-55 dark:bg-gray-905 border border-gray-100 dark:border-gray-700 rounded-2xl text-xs font-bold text-gray-900 dark:text-white placeholder:text-gray-400 focus:border-[#1b6b6b] focus:ring-4 focus:ring-[#1b6b6b]/10 outline-none transition-all"
                             />
                         </div>
                         <button 
                             onClick={() => setShowFilters(!showFilters)}
-                            className={`p-4 rounded-2xl border transition-all ${
-                                showFilters ? 'bg-teal-50 border-teal-100 text-teal-600' : 'bg-gray-50 border-gray-100 text-gray-400 hover:text-gray-600'
+                            className={`w-10 h-10 flex items-center justify-center rounded-2xl border transition-colors cursor-pointer ${
+                                showFilters ? 'bg-teal-50 border-teal-200 text-[#1b6b6b] dark:bg-teal-950/20' : 'bg-white dark:bg-gray-800 border-gray-100 dark:border-gray-700 text-gray-400 hover:text-gray-650'
                             }`}
                         >
-                            <Filter size={20} />
+                            <Filter size={16} />
+                        </button>
+                    </div>
+
+                    <div className="flex items-center gap-2">
+                        <label className="cursor-pointer px-4 py-2.5 bg-amber-50 dark:bg-amber-955/20 text-amber-600 dark:text-amber-405 border border-amber-100 dark:border-amber-900/40 rounded-xl text-[9px] font-black uppercase tracking-widest hover:bg-amber-100 transition-colors flex items-center gap-1.5">
+                            <FileUp size={14} />
+                            {isImporting ? 'Kutilmoqda...' : 'Excel Import'}
+                            <input type="file" className="hidden" accept=".xlsx, .xls" onChange={handleImportExcel} disabled={isImporting} />
+                        </label>
+                        <button 
+                            onClick={() => navigate('/questions/new')}
+                            className="px-4 py-2.5 bg-[#1b6b6b] hover:bg-[#155252] text-white rounded-xl text-[9px] font-black uppercase tracking-widest transition-colors flex items-center gap-1.5 cursor-pointer shadow-lg shadow-[#1b6b6b]/20"
+                        >
+                            <Plus size={14} />
+                            Savol Qo'shish
                         </button>
                     </div>
                 </div>
 
                 {showFilters && (
-                    <div className="px-8 pb-8 pt-2 grid grid-cols-1 md:grid-cols-3 gap-6 animate-in slide-in-from-top-4 duration-500">
-                        <div className="space-y-2">
-                            <label className="text-[9px] font-black text-gray-400 uppercase tracking-widest ml-1">Fan</label>
+                    <div className="mt-4 pt-4 grid grid-cols-1 md:grid-cols-3 gap-4 border-t border-dashed border-gray-105 dark:border-gray-700/50 animate-in slide-in-from-top duration-300">
+                        <div>
+                            <label className="text-[9px] font-black text-gray-400 block mb-1.5 uppercase tracking-widest">Fan</label>
                             <select 
                                 value={filters.subject}
                                 onChange={e => setFilters({...filters, subject: e.target.value})}
-                                className="w-full px-5 py-3.5 bg-gray-50 dark:bg-gray-900/50 border border-gray-100 dark:border-gray-700 rounded-xl text-[10px] font-bold uppercase tracking-widest outline-none focus:border-teal-500 transition-all dark:text-white"
+                                className="w-full px-3 py-2 bg-gray-55 dark:bg-gray-900 border border-gray-100 dark:border-gray-700 rounded-xl text-[10px] font-bold uppercase tracking-widest text-gray-900 dark:text-white outline-none focus:border-teal-500 cursor-pointer"
                             >
                                 <option value="">Barcha fanlar</option>
                                 {subjects.map(s => <option key={s} value={s}>{s}</option>)}
                             </select>
                         </div>
-                        <div className="space-y-2">
-                            <label className="text-[9px] font-black text-gray-400 uppercase tracking-widest ml-1">Mavzu</label>
+                        <div>
+                            <label className="text-[9px] font-black text-gray-400 block mb-1.5 uppercase tracking-widest">Mavzu</label>
                             <select 
                                 value={filters.topic}
                                 onChange={e => setFilters({...filters, topic: e.target.value})}
-                                className="w-full px-5 py-3.5 bg-gray-50 dark:bg-gray-900/50 border border-gray-100 dark:border-gray-700 rounded-xl text-[10px] font-bold uppercase tracking-widest outline-none focus:border-teal-500 transition-all dark:text-white"
+                                className="w-full px-3 py-2 bg-gray-55 dark:bg-gray-900 border border-gray-100 dark:border-gray-700 rounded-xl text-[10px] font-bold uppercase tracking-widest text-gray-900 dark:text-white outline-none focus:border-teal-500 cursor-pointer"
                             >
                                 <option value="">Barcha mavzular</option>
                                 {topics.map(t => <option key={t} value={t}>{t}</option>)}
                             </select>
                         </div>
-                        <div className="space-y-2">
-                            <label className="text-[9px] font-black text-gray-400 uppercase tracking-widest ml-1">Qiyinlik Darajasi</label>
+                        <div>
+                            <label className="text-[9px] font-black text-gray-400 block mb-1.5 uppercase tracking-widest">Qiyinlik Darajasi</label>
                             <select 
                                 value={filters.difficulty}
                                 onChange={e => setFilters({...filters, difficulty: e.target.value})}
-                                className="w-full px-5 py-3.5 bg-gray-50 dark:bg-gray-900/50 border border-gray-100 dark:border-gray-700 rounded-xl text-[10px] font-bold uppercase tracking-widest outline-none focus:border-teal-500 transition-all dark:text-white"
+                                className="w-full px-3 py-2 bg-gray-55 dark:bg-gray-900 border border-gray-100 dark:border-gray-700 rounded-xl text-[10px] font-bold uppercase tracking-widest text-gray-900 dark:text-white outline-none focus:border-teal-500 cursor-pointer"
                             >
                                 <option value="">Barcha darajalar</option>
                                 <option value="1">Oson</option>
@@ -315,61 +306,58 @@ export default function QuestionsList() {
             </div>
 
             {/* Questions Table */}
-            <div className="bg-white dark:bg-gray-800 rounded-[2.5rem] border border-gray-100 dark:border-gray-700 shadow-xl shadow-teal-500/5 overflow-hidden transition-all">
+            <div className="bg-white dark:bg-gray-800 rounded-3xl border border-gray-100 dark:border-gray-700/50 shadow-sm overflow-hidden">
                 <div className="overflow-x-auto">
-                    <table className="w-full text-left border-collapse min-w-[1000px]">
+                    <table className="w-full text-left border-collapse min-w-[800px]">
                         <thead>
-                            <tr className="bg-gray-50 dark:bg-gray-900/50 border-b border-gray-100 dark:border-gray-700">
-                                <th className="p-6 text-[10px] font-black text-gray-400 uppercase tracking-widest w-20 text-center">ID</th>
-                                <th className="p-6 text-[10px] font-black text-gray-400 uppercase tracking-widest">Savol Matni</th>
-                                <th className="p-6 text-[10px] font-black text-gray-400 uppercase tracking-widest">Fan & Mavzu</th>
-                                <th className="p-6 text-[10px] font-black text-gray-400 uppercase tracking-widest text-center">Daraja</th>
-                                <th className="p-6 text-[10px] font-black text-gray-400 uppercase tracking-widest text-center">To'g'ri</th>
-                                <th className="p-6 w-24 text-center"></th>
+                            <tr className="bg-gray-55 dark:bg-gray-900 border-b border-gray-100 dark:border-gray-700/50">
+                                <th className="p-4 text-[9px] font-black text-gray-400 uppercase tracking-widest w-20 text-center">ID</th>
+                                <th className="p-4 text-[9px] font-black text-gray-400 uppercase tracking-widest">Savol Matni</th>
+                                <th className="p-4 text-[9px] font-black text-gray-400 uppercase tracking-widest">Fan & Mavzu</th>
+                                <th className="p-4 text-[9px] font-black text-gray-400 uppercase tracking-widest text-center">Daraja</th>
+                                <th className="p-4 text-[9px] font-black text-gray-400 uppercase tracking-widest text-center">To'g'ri</th>
+                                <th className="p-4 w-20 text-center"></th>
                             </tr>
                         </thead>
-                        <tbody className="divide-y divide-gray-50 dark:divide-gray-700/50">
-                            {filteredQuestions.map((q, idx) => (
-                                <tr key={q.id} className="hover:bg-gray-50/80 dark:hover:bg-teal-900/5 transition-all cursor-pointer group" onClick={() => navigate(`/questions/${q.id}/edit`)}>
-                                    <td className="p-6 text-[10px] font-extrabold text-gray-400 text-center tabular-nums">#{q.id.toString().substring(0,4)}</td>
-                                    <td className="p-6">
-                                        <p className="text-sm font-bold text-gray-900 dark:text-white line-clamp-1 max-w-[400px]">
+                        <tbody className="divide-y divide-gray-100 dark:divide-gray-800">
+                            {filteredQuestions.map((q) => (
+                                <tr key={q.id} className="hover:bg-gray-50/50 dark:hover:bg-teal-950/20 transition-all cursor-pointer group" onClick={() => navigate(`/questions/${q.id}/edit`)}>
+                                    <td className="p-4 text-[10px] font-bold text-gray-400 text-center tabular-nums">#{q.id.toString().substring(0,4)}</td>
+                                    <td className="p-4">
+                                        <p className="text-xs font-bold text-gray-900 dark:text-white line-clamp-1 max-w-[400px]">
                                             {stripHtml(q.text)}
                                         </p>
                                     </td>
-                                    <td className="p-6">
-                                        <div className="flex flex-col gap-1">
-                                            <span className="text-[10px] font-black text-teal-600 dark:text-teal-400 uppercase tracking-widest">{q.subject}</span>
-                                            <span className="text-[9px] font-bold text-gray-400 uppercase tracking-tight">{q.topic || 'Mavzusiz'}</span>
+                                    <td className="p-4">
+                                        <div className="flex flex-col gap-0.5">
+                                            <span className="text-[10px] font-black text-[#1b6b6b] uppercase tracking-wide">{q.subject}</span>
+                                            <span className="text-[9px] font-bold text-gray-400 uppercase tracking-widest">{q.topic || 'Mavzusiz'}</span>
                                         </div>
                                     </td>
-                                    <td className="p-6 text-center">
-                                        <span className={`px-3 py-1.5 rounded-xl text-[9px] font-black uppercase tracking-widest border ${
-                                            q.difficulty === 1 ? 'bg-emerald-50 text-emerald-600 border-emerald-100' :
-                                            q.difficulty === 2 ? 'bg-amber-50 text-amber-600 border-amber-100' :
-                                            'bg-rose-50 text-rose-600 border-rose-100'
+                                    <td className="p-4 text-center">
+                                        <span className={`px-2.5 py-0.5 rounded text-[9px] font-black border uppercase tracking-wider ${
+                                            q.difficulty === 1 ? 'bg-emerald-50 dark:bg-emerald-950/20 text-emerald-600 dark:text-emerald-400 border-emerald-100 dark:border-emerald-900/20' :
+                                            q.difficulty === 2 ? 'bg-amber-50 dark:bg-amber-955/20 text-amber-600 dark:text-amber-400 border-amber-100 dark:border-amber-900/20' :
+                                            'bg-rose-50 dark:bg-rose-955/20 text-rose-600 dark:text-rose-455 border-rose-100 dark:border-rose-900/20'
                                         }`}>
-                                            {q.difficulty === 1 ? 'OSON' : q.difficulty === 2 ? 'O\'RTA' : 'QIYIN'}
+                                            {q.difficulty === 1 ? 'Oson' : q.difficulty === 2 ? 'O\'rta' : 'Qiyin'}
                                         </span>
                                     </td>
-                                    <td className="p-6 text-center">
-                                        <div className="inline-flex items-center justify-center w-8 h-8 rounded-lg bg-teal-50 dark:bg-teal-900/20 text-teal-600 font-black text-xs border border-teal-100">
+                                    <td className="p-4 text-center">
+                                        <div className="inline-flex items-center justify-center w-7 h-7 rounded-lg bg-teal-50 dark:bg-teal-950/20 text-[#1b6b6b] font-black text-xs border border-teal-100 dark:border-teal-900/40">
                                             {q.correctAnswer}
                                         </div>
                                     </td>
-                                    <td className="p-6 text-center">
-                                        <div className="flex items-center justify-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                                            <button className="p-2 text-gray-400 hover:text-teal-600 transition-colors">
-                                                <Edit size={18} />
-                                            </button>
+                                    <td className="p-4 text-center">
+                                        <div className="flex items-center justify-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                                             <button 
                                                 onClick={(e) => {
                                                     e.stopPropagation();
-                                                    if(window.confirm('O\'chirilsinmi?')) deleteQuestion(q.id);
+                                                    if(window.confirm('O\'chirishni xohlaysizmi?')) deleteQuestion(q.id);
                                                 }}
-                                                className="p-2 text-gray-400 hover:text-rose-600 transition-colors"
+                                                className="w-8 h-8 flex items-center justify-center rounded-lg text-gray-400 hover:text-rose-500 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors cursor-pointer"
                                             >
-                                                <Trash2 size={18} />
+                                                <Trash2 size={14} />
                                             </button>
                                         </div>
                                     </td>
@@ -377,11 +365,9 @@ export default function QuestionsList() {
                             ))}
                             {filteredQuestions.length === 0 && (
                                 <tr>
-                                    <td colSpan={6} className="p-24 text-center">
-                                        <div className="w-16 h-16 bg-gray-50 dark:bg-gray-900/50 rounded-3xl flex items-center justify-center mx-auto mb-4 border border-gray-100 dark:border-gray-800">
-                                            <AlertCircle className="w-8 h-8 text-gray-300" />
-                                        </div>
-                                        <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Hozircha savollar topilmadi</p>
+                                    <td colSpan={6} className="p-16 text-center">
+                                        <AlertCircle className="w-8 h-8 text-gray-300 dark:text-gray-700 mx-auto mb-3" />
+                                        <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Hozircha savollar topilmadi</p>
                                     </td>
                                 </tr>
                             )}

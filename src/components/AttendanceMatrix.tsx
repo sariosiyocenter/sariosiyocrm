@@ -57,7 +57,7 @@ export default function AttendanceMatrix({ group, students, attendances }: Atten
         return 'bg-amber-400';
     };
 
-    const handleStatusSelect = async (studentId: number, date: string, status: string) => {
+    const handleStatusSelect = async (studentId: number, date: string, status: 'Keldi' | 'Kelmapdi' | 'Sababli' | 'Dars bo\'lmadi') => {
         try {
             await addAttendance({ studentId, groupId: group.id, date, status });
             setActivePopover(null);

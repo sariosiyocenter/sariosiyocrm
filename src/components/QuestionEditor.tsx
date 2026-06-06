@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { ArrowLeft, Save, Trash2, Image, X, Plus, CheckCircle2, BookOpen, Tag } from 'lucide-react';
 import { useCRM } from '../context/CRMContext';
@@ -95,7 +95,6 @@ export default function QuestionEditor() {
             } else {
                 await addQuestion(payload);
                 if (andContinue) {
-                    // Reset only the question part, keep subject/topic/difficulty
                     setQ({ ...EMPTY_QUESTION, difficulty });
                     setImagePreview(null);
                     setAddedCount(c => c + 1);
@@ -117,86 +116,89 @@ export default function QuestionEditor() {
         }
     };
 
+    const labelCls = "block text-[10px] font-extrabold uppercase tracking-widest text-gray-400 mb-2";
+    const inputCls = "w-full px-4 py-3 bg-gray-55 dark:bg-gray-900/50 border border-gray-100 dark:border-gray-700 rounded-2xl text-xs font-bold text-gray-900 dark:text-white focus:border-[#1b6b6b] focus:ring-4 focus:ring-[#1b6b6b]/10 outline-none transition-all";
+
     return (
-        <div className="max-w-7xl mx-auto pb-20 animate-in fade-in duration-700">
+        <div className="max-w-7xl mx-auto pb-20 animate-in fade-in duration-500 space-y-6">
             {/* Header */}
-            <div className="flex items-center justify-between mb-8">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <div className="flex items-center gap-4">
                     <button
                         onClick={() => navigate('/questions')}
-                        className="w-12 h-12 bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700 rounded-2xl flex items-center justify-center text-gray-400 hover:text-gray-900 dark:hover:text-white transition-all shadow-sm"
+                        className="w-10 h-10 bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700/50 rounded-xl flex items-center justify-center text-gray-450 hover:text-[#1b6b6b] hover:bg-gray-55 transition-all shadow-sm cursor-pointer"
                     >
-                        <ArrowLeft size={20} />
+                        <ArrowLeft size={18} />
                     </button>
                     <div>
-                        <h1 className="text-2xl font-black text-gray-900 dark:text-white uppercase tracking-tight">
+                        <h1 className="text-sm font-black text-gray-900 dark:text-white uppercase tracking-tight">
                             {isEditMode ? 'Savolni Tahrirlash' : 'Savol Qo\'shish'}
                         </h1>
-                        <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mt-1">
+                        <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mt-0.5">
                             {isEditMode ? 'Savolni tahrirlash va yangilash' : `Fan va mavzuni bir marta kiriting — savollarni ketma-ket qo'shing`}
                         </p>
                     </div>
                     {!isEditMode && addedCount > 0 && (
-                        <div className="flex items-center gap-2 px-4 py-2 bg-teal-50 dark:bg-teal-900/30 rounded-2xl border border-teal-100 dark:border-teal-800">
-                            <CheckCircle2 size={14} className="text-teal-600" />
-                            <span className="text-[10px] font-black text-teal-600 uppercase tracking-widest">
+                        <div className="flex items-center gap-1.5 px-3 py-1 bg-teal-50 dark:bg-teal-950/20 rounded-lg border border-teal-100 dark:border-teal-900/40">
+                            <CheckCircle2 size={12} className="text-[#1b6b6b]" />
+                            <span className="text-[9px] font-black text-[#1b6b6b] uppercase tracking-widest">
                                 {addedCount} ta savol qo'shildi
                             </span>
                         </div>
                     )}
                 </div>
 
-                <div className="flex items-center gap-3">
+                <div className="flex flex-wrap items-center gap-2">
                     {isEditMode && (
-                        <button onClick={handleDelete} className="p-3.5 text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-900/20 rounded-2xl transition-all">
-                            <Trash2 size={20} />
+                        <button onClick={handleDelete} className="p-3 text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/20 rounded-xl transition-all cursor-pointer">
+                            <Trash2 size={18} />
                         </button>
                     )}
                     {!isEditMode && (
                         <button
                             onClick={() => handleSave(true)}
                             disabled={isSaving}
-                            className="px-6 py-3.5 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200 rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-gray-200 dark:hover:bg-gray-600 transition-all flex items-center gap-2"
+                            className="px-5 py-2.5 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200 rounded-xl text-[10px] font-extrabold uppercase tracking-widest hover:bg-gray-250 transition-all flex items-center gap-1.5 cursor-pointer"
                         >
-                            <Plus size={16} />
+                            <Plus size={14} />
                             Saqlash & Davom etish
                         </button>
                     )}
                     <button
                         onClick={() => handleSave(false)}
                         disabled={isSaving}
-                        className="px-8 py-3.5 bg-teal-600 dark:bg-teal-500 text-white rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-teal-500 shadow-lg shadow-teal-500/20 flex items-center gap-2"
+                        className="px-6 py-2.5 bg-[#1b6b6b] hover:bg-[#155252] text-white rounded-xl text-[10px] font-extrabold uppercase tracking-widest hover:bg-teal-550 shadow-lg shadow-[#1b6b6b]/20 flex items-center gap-1.5 cursor-pointer"
                     >
-                        <Save size={18} />
+                        <Save size={14} />
                         {isSaving ? 'Saqlanmoqda...' : isEditMode ? 'Yangilash' : 'Saqlash & Chiqish'}
                     </button>
                 </div>
             </div>
 
-            <div className="grid grid-cols-1 xl:grid-cols-3 gap-8">
+            <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
 
                 {/* LEFT COLUMN: Subject/Topic/Difficulty — Persistent */}
                 <div className="xl:col-span-1 space-y-6">
-                    <div className="bg-white dark:bg-gray-800 rounded-[2.5rem] border border-gray-100 dark:border-gray-700 shadow-xl shadow-teal-500/5 p-8 sticky top-4">
-                        <div className="flex items-center gap-3 mb-8 pb-6 border-b border-gray-100 dark:border-gray-700">
-                            <div className="w-10 h-10 bg-teal-50 dark:bg-teal-900/30 rounded-2xl flex items-center justify-center text-teal-600">
-                                <BookOpen size={20} />
+                    <div className="bg-white dark:bg-gray-800 rounded-3xl border border-gray-100 dark:border-gray-700/50 shadow-sm p-6 sticky top-4">
+                        <div className="flex items-center gap-3 mb-6 pb-4 border-b border-dashed border-gray-100 dark:border-gray-700/50">
+                            <div className="w-10 h-10 bg-teal-50 dark:bg-teal-950/20 border border-teal-100 dark:border-teal-900/40 rounded-xl flex items-center justify-center text-[#1b6b6b]">
+                                <BookOpen size={18} />
                             </div>
                             <div>
-                                <h3 className="text-sm font-black text-gray-900 dark:text-white uppercase tracking-tight">Fan Sozlamalari</h3>
-                                <p className="text-[8px] font-bold text-gray-400 uppercase tracking-widest mt-0.5">Barcha savollarga taalluqli</p>
+                                <h3 className="text-xs font-black text-gray-900 dark:text-white uppercase tracking-tight">Fan Sozlamalari</h3>
+                                <p className="text-[9px] font-bold text-gray-400 uppercase tracking-widest mt-0.5">Barcha savollarga taalluqli</p>
                             </div>
                         </div>
 
-                        <div className="space-y-5">
+                        <div className="space-y-4">
                             {/* Subject */}
-                            <div className="space-y-2">
-                                <label className="text-[9px] font-black text-gray-400 uppercase tracking-widest ml-1">Fan <span className="text-rose-500">*</span></label>
+                            <div>
+                                <label className={labelCls}>Fan <span className="text-rose-500">*</span></label>
                                 <input
                                     type="text"
                                     list="subject-suggestions"
                                     placeholder="Masalan: Matematika"
-                                    className="w-full px-5 py-3 bg-gray-50 dark:bg-gray-900/50 border border-gray-100 dark:border-gray-700 rounded-xl text-[11px] font-bold uppercase tracking-widest focus:bg-white focus:border-teal-500 outline-none transition-all"
+                                    className={inputCls}
                                     value={subject}
                                     onChange={e => setSubject(e.target.value)}
                                 />
@@ -206,13 +208,13 @@ export default function QuestionEditor() {
                             </div>
 
                             {/* Topic */}
-                            <div className="space-y-2">
-                                <label className="text-[9px] font-black text-gray-400 uppercase tracking-widest ml-1">Mavzu <span className="text-rose-500">*</span></label>
+                            <div>
+                                <label className={labelCls}>Mavzu <span className="text-rose-500">*</span></label>
                                 <input
                                     type="text"
                                     list="topic-suggestions"
                                     placeholder="Masalan: Trigonometriya"
-                                    className="w-full px-5 py-3 bg-gray-50 dark:bg-gray-900/50 border border-gray-100 dark:border-gray-700 rounded-xl text-[11px] font-bold uppercase tracking-widest focus:bg-white focus:border-teal-500 outline-none transition-all"
+                                    className={inputCls}
                                     value={topic}
                                     onChange={e => setTopic(e.target.value)}
                                 />
@@ -222,12 +224,12 @@ export default function QuestionEditor() {
                             </div>
 
                             {/* Difficulty */}
-                            <div className="space-y-2">
-                                <label className="text-[9px] font-black text-gray-400 uppercase tracking-widest ml-1">Qiyinlik Darajasi</label>
-                                <div className="flex items-center gap-2 bg-gray-50 dark:bg-gray-900/50 p-1.5 rounded-xl border border-gray-100 dark:border-gray-700">
+                            <div>
+                                <label className={labelCls}>Qiyinlik Darajasi</label>
+                                <div className="flex items-center gap-2 bg-gray-55 dark:bg-gray-900 p-1.5 rounded-xl border border-gray-100 dark:border-gray-705">
                                     {[1, 2, 3].map((lvl) => (
                                         <button key={lvl} type="button" onClick={() => setDifficulty(lvl)}
-                                            className={`flex-1 py-2.5 rounded-lg text-[9px] font-black transition-all ${difficulty === lvl
+                                            className={`flex-1 py-2 rounded-lg text-[9px] font-black transition-all cursor-pointer ${difficulty === lvl
                                                 ? lvl === 1 ? 'bg-emerald-500 text-white shadow-md'
                                                     : lvl === 2 ? 'bg-amber-500 text-white shadow-md'
                                                         : 'bg-rose-500 text-white shadow-md'
@@ -241,13 +243,13 @@ export default function QuestionEditor() {
 
                             {/* Info card */}
                             {!isEditMode && subject && topic && (
-                                <div className="mt-4 p-4 bg-teal-50 dark:bg-teal-900/20 rounded-2xl border border-teal-100 dark:border-teal-800">
-                                    <div className="flex items-center gap-2 mb-2">
-                                        <Tag size={12} className="text-teal-600" />
-                                        <span className="text-[9px] font-black text-teal-600 uppercase tracking-widest">Joriy sozlama</span>
+                                <div className="mt-4 p-4 bg-teal-50 dark:bg-teal-950/20 rounded-2xl border border-teal-100 dark:border-teal-900/40">
+                                    <div className="flex items-center gap-1.5 mb-1.5">
+                                        <Tag size={12} className="text-[#1b6b6b]" />
+                                        <span className="text-[9px] font-black text-[#1b6b6b] uppercase tracking-widest">Joriy sozlama</span>
                                     </div>
-                                    <p className="text-xs font-bold text-gray-900 dark:text-white">{subject}</p>
-                                    <p className="text-[10px] font-bold text-gray-500 mt-0.5">{topic}</p>
+                                    <p className="text-xs font-black text-gray-900 dark:text-white uppercase tracking-tight">{subject}</p>
+                                    <p className="text-[9px] font-bold text-gray-400 uppercase tracking-widest mt-0.5">{topic}</p>
                                 </div>
                             )}
                         </div>
@@ -257,8 +259,8 @@ export default function QuestionEditor() {
                 {/* RIGHT COLUMN: Question Form */}
                 <div className="xl:col-span-2 space-y-6">
                     {/* Question Text */}
-                    <div className="bg-white dark:bg-gray-800 rounded-[2.5rem] border border-gray-100 dark:border-gray-700 shadow-xl shadow-teal-500/5 p-8">
-                        <label className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] mb-4 block ml-1">
+                    <div className="bg-white dark:bg-gray-800 rounded-3xl border border-gray-100 dark:border-gray-700/50 shadow-sm p-6">
+                        <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-4 block ml-1">
                             Savol Matni
                         </label>
                         <RichTextEditor
@@ -267,16 +269,16 @@ export default function QuestionEditor() {
                         />
 
                         {/* Image Upload */}
-                        <div className="mt-6 pt-6 border-t border-gray-50 dark:border-gray-700">
+                        <div className="mt-6 pt-6 border-t border-dashed border-gray-100 dark:border-gray-700/50">
                             <label className="text-[9px] font-black text-gray-400 uppercase tracking-widest ml-1 mb-3 block">
                                 Savol Rasmi (ixtiyoriy)
                             </label>
                             {imagePreview ? (
                                 <div className="relative rounded-2xl overflow-hidden border border-gray-100 dark:border-gray-700 group">
-                                    <img src={imagePreview} alt="Savol rasmi" className="max-h-48 w-full object-contain bg-gray-50 dark:bg-gray-900" />
+                                    <img src={imagePreview} alt="Savol rasmi" className="max-h-48 w-full object-contain bg-gray-55 dark:bg-gray-900" />
                                     <button
                                         onClick={() => { setImagePreview(null); setQ(prev => ({ ...prev, imageUrl: '' })); }}
-                                        className="absolute top-3 right-3 w-8 h-8 bg-rose-500 text-white rounded-xl flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                                        className="absolute top-3 right-3 w-8 h-8 bg-rose-500 text-white rounded-xl flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer"
                                     >
                                         <X size={14} />
                                     </button>
@@ -284,9 +286,9 @@ export default function QuestionEditor() {
                             ) : (
                                 <button
                                     onClick={() => fileInputRef.current?.click()}
-                                    className="w-full p-6 border-2 border-dashed border-gray-100 dark:border-gray-700 rounded-2xl text-center hover:border-teal-300 dark:hover:border-teal-700 transition-all group"
+                                    className="w-full p-6 border border-dashed border-gray-200 dark:border-gray-700 rounded-2xl text-center hover:border-teal-300 transition-all group cursor-pointer"
                                 >
-                                    <Image size={24} className="mx-auto text-gray-300 group-hover:text-teal-500 transition-colors mb-2" />
+                                    <Image size={24} className="mx-auto text-gray-300 group-hover:text-[#1b6b6b] transition-colors mb-2" />
                                     <p className="text-[9px] font-bold text-gray-400 uppercase tracking-widest">Rasm yuklash uchun bosing</p>
                                 </button>
                             )}
@@ -297,34 +299,34 @@ export default function QuestionEditor() {
                     {/* Answer Options */}
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         {(['A', 'B', 'C', 'D'] as const).map((opt) => (
-                            <div key={opt} className={`relative bg-white dark:bg-gray-800 rounded-[2rem] border transition-all p-6 ${
+                            <div key={opt} className={`relative bg-white dark:bg-gray-800 rounded-3xl border transition-all p-5 ${
                                 q.correctAnswer === opt
-                                    ? 'border-teal-500 ring-4 ring-teal-500/5'
-                                    : 'border-gray-100 dark:border-gray-700'
+                                    ? 'border-[#1b6b6b] ring-4 ring-[#1b6b6b]/5'
+                                    : 'border-gray-100 dark:border-gray-700/50'
                             }`}>
-                                <div className="flex items-center justify-between mb-4">
-                                    <span className={`w-8 h-8 rounded-xl flex items-center justify-center text-xs font-black ${
+                                <div className="flex items-center justify-between mb-3">
+                                    <span className={`w-7 h-7 rounded-lg flex items-center justify-center text-xs font-black ${
                                         q.correctAnswer === opt
-                                            ? 'bg-teal-500 text-white'
-                                            : 'bg-gray-50 dark:bg-gray-900 text-gray-400'
+                                            ? 'bg-[#1b6b6b] text-white'
+                                            : 'bg-gray-55 dark:bg-gray-900 text-gray-400'
                                     }`}>
                                         {opt}
                                     </span>
                                     <button
                                         type="button"
                                         onClick={() => setQ(prev => ({ ...prev, correctAnswer: opt }))}
-                                        className={`text-[9px] font-black uppercase tracking-widest px-3 py-1.5 rounded-lg transition-all ${
+                                        className={`text-[9px] font-black uppercase tracking-widest px-2.5 py-1.5 rounded-lg transition-all cursor-pointer ${
                                             q.correctAnswer === opt
-                                                ? 'bg-teal-50 text-teal-600'
-                                                : 'text-gray-400 hover:bg-gray-50'
+                                                ? 'bg-[#1b6b6b]/10 text-[#1b6b6b]'
+                                                : 'text-gray-405 hover:bg-gray-50'
                                         }`}
                                     >
-                                        {q.correctAnswer === opt ? 'To\'g\'ri javob ✓' : 'Belgilash'}
+                                        {q.correctAnswer === opt ? 'To\'g\'ri' : 'Tanlash'}
                                     </button>
                                 </div>
                                 <textarea
                                     placeholder={`Variant ${opt}...`}
-                                    className="w-full bg-transparent border-none outline-none text-sm font-bold text-gray-700 dark:text-gray-300 resize-none h-20 placeholder:text-gray-300"
+                                    className="w-full bg-transparent border-none outline-none text-xs font-bold text-gray-700 dark:text-gray-300 resize-none h-16 placeholder:text-gray-300 focus:ring-0"
                                     value={q[`option${opt}` as keyof typeof q] as string}
                                     onChange={(e) => setQ(prev => ({ ...prev, [`option${opt}`]: e.target.value }))}
                                 />
@@ -338,19 +340,19 @@ export default function QuestionEditor() {
                             <button
                                 onClick={() => handleSave(true)}
                                 disabled={isSaving}
-                                className="flex-1 py-4 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200 rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-gray-200 transition-all flex items-center justify-center gap-2"
+                                className="flex-1 py-3 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200 rounded-xl text-[10px] font-extrabold uppercase tracking-widest hover:bg-gray-200 transition-all flex items-center justify-center gap-1.5 cursor-pointer"
                             >
-                                <Plus size={16} />
+                                <Plus size={14} />
                                 Saqlash & Keyingi Savol ({addedCount + 1} →)
                             </button>
                         )}
                         <button
                             onClick={() => handleSave(false)}
                             disabled={isSaving}
-                            className="flex-1 py-4 bg-teal-600 text-white rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-teal-500 transition-all shadow-xl shadow-teal-500/20 flex items-center justify-center gap-2"
+                            className="flex-1 py-3 bg-[#1b6b6b] text-white rounded-xl text-[10px] font-extrabold uppercase tracking-widest hover:bg-teal-500 transition-all shadow-lg shadow-[#1b6b6b]/20 flex items-center justify-center gap-1.5 cursor-pointer"
                         >
-                            <Save size={16} />
-                            {isSaving ? 'Saqlanmoqda...' : isEditMode ? 'Yangilash' : 'Saqlash & Ro\'yxatga Qaytish'}
+                            <Save size={14} />
+                            {isSaving ? 'Saqlanmoqda...' : isEditMode ? 'Yangilash' : 'Saqlash & Chiqish'}
                         </button>
                     </div>
                 </div>

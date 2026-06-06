@@ -4,7 +4,7 @@ import { Activity, TrendingUp, Users, DollarSign, Target, Briefcase } from 'luci
 import { StatCard, BarChart, LineChart, DonutChart, ReportCard, SectionHeader } from './shared';
 
 export default function CenterStatsReport() {
-    const { students, teachers, groups, leads, payments, expenses } = useCRM();
+    const { students, teachers, groups, leads, payments, expenses, courses } = useCRM();
 
     const stats = useMemo(() => {
         const totalIncome = payments.reduce((s, p) => s + p.amount, 0);
@@ -23,7 +23,7 @@ export default function CenterStatsReport() {
             { label: "Boshqa xarajat", value: otherEx, color: "#ef4444" },
             { label: "Sof foyda", value: Math.max(0, netProfit), color: "#10b981" }
         ];
-
+ 
         // Growth last 6 months
         const months = ["Yan", "Fev", "Mar", "Apr", "May", "Iyun", "Iyul", "Avg", "Sen", "Okt", "Noy", "Dek"];
         const last6 = Array.from({ length: 6 }, (_, i) => {
@@ -31,7 +31,7 @@ export default function CenterStatsReport() {
             d.setMonth(d.getMonth() - (5 - i));
             return { m: d.getMonth(), y: d.getFullYear(), label: months[d.getMonth()] };
         });
-
+ 
         const growth = last6.map(m => {
             const count = students.filter(s => {
                 const jd = new Date(s.joinedDate);
@@ -39,14 +39,14 @@ export default function CenterStatsReport() {
             }).length;
             return { label: m.label, value: count };
         });
-
+ 
         // Stats by course
-        const courses: Record<string, number> = {};
+        const courseCounts: Record<string, number> = {};
         groups.forEach(g => {
-            const n = g.courseName || 'Boshqa';
-            courses[n] = (courses[n] || 0) + g.studentIds.length;
+            const n = courses.find(c => c.id === g.courseId)?.name || 'Boshqa';
+            courseCounts[n] = (courseCounts[n] || 0) + g.studentIds.length;
         });
-        const dept = Object.entries(courses).map(([label, value]) => ({
+        const dept = Object.entries(courseCounts).map(([label, value]) => ({
             label,
             value,
             color: '#8b5cf6'

@@ -675,6 +675,68 @@ app.post('/api/public/leads', async (req, res, next) => {
   } catch (error) { next(error); }
 });
 
+// GET school info for public apply form
+app.get('/api/public/schools/:schoolId/info', async (req, res, next) => {
+  try {
+    const schoolId = parseInt(req.params.schoolId);
+    if (isNaN(schoolId)) return res.status(400).json({ error: 'Mavjud bo\'lmagan filial ID' });
+
+    const school = await prisma.school.findUnique({
+      where: { id: schoolId },
+      include: { settings: true }
+    });
+
+    if (!school) return res.status(404).json({ error: 'Filial topilmadi' });
+
+    const setting = school.settings[0] || {};
+    res.json({
+      id: school.id,
+      name: school.name,
+      orgName: setting.orgName || school.name,
+      logo: setting.logo || null
+    });
+  } catch (error) { next(error); }
+});
+
+// GET school courses for public apply form
+app.get('/api/public/schools/:schoolId/courses', async (req, res, next) => {
+  try {
+    const schoolId = parseInt(req.params.schoolId);
+    if (isNaN(schoolId)) return res.status(400).json({ error: 'Mavjud bo\'lmagan filial ID' });
+
+    const courses = await prisma.course.findMany({
+      where: { schoolId },
+      select: { id: true, name: true, price: true }
+    });
+    res.json(courses);
+  } catch (error) { next(error); }
+});
+
+// POST register lead via public apply form
+app.post('/api/public/schools/:schoolId/leads', async (req, res, next) => {
+  try {
+    const schoolId = parseInt(req.params.schoolId);
+    if (isNaN(schoolId)) return res.status(400).json({ error: 'Mavjud bo\'lmagan filial ID' });
+
+    const { name, phone, course, source } = req.body;
+    if (!name || !phone) return res.status(400).json({ error: 'Ism va telefon raqami majburiy' });
+
+    const lead = await prisma.lead.create({
+      data: {
+        name,
+        phone,
+        course: course || 'Aniqlanmagan',
+        source: source || 'QR Ro\'yxatdan o\'tish',
+        status: 'Yangi',
+        schoolId
+      }
+    });
+
+    notifyAdmins(`🆕 QR Formadan yangi ariza:\n👤 ${lead.name}\n📞 ${lead.phone}\n📚 Kurs: ${lead.course}`, schoolId);
+    res.json({ success: true, id: lead.id });
+  } catch (error) { next(error); }
+});
+
 app.put('/api/leads/:id', authenticate, async (req, res, next) => {
   try {
     const { id } = req.params;
@@ -895,9 +957,45 @@ app.get('/api/organizations/:id', authenticate, async (req, res, next) => {
 app.post('/api/organizations', authenticate, async (req, res, next) => {
   try {
     if (req.user.role !== 'SUPERADMIN') return res.status(403).json({ error: 'Ruxsat yoq' });
-    const { name, address, phone } = req.body;
+    const { name, address, phone, adminName, adminEmail, adminPassword, maxSchools } = req.body;
     if (!name) return res.status(400).json({ error: 'Tashkilot nomi kiritilishi shart' });
-    const org = await prisma.organization.create({ data: { name, address, phone } });
+    if (!adminEmail || !adminPassword) return res.status(400).json({ error: 'Admin email va parol kiritilishi shart' });
+
+    // Check email unique
+    const existingUser = await prisma.user.findUnique({ where: { email: adminEmail } });
+    if (existingUser) return res.status(400).json({ error: 'Bu email allaqachon ro\'yxatdan o\'tgan' });
+
+    const bcrypt = require('bcryptjs');
+    const hashedPassword = await bcrypt.hash(adminPassword, 10);
+
+    // Create org + default school + admin user in a transaction
+    const org = await prisma.organization.create({
+      data: {
+        name,
+        address,
+        phone,
+        status: 'Sinov',
+        maxSchools: maxSchools || 3,
+        schools: {
+          create: [
+            {
+              name: name + ' (Asosiy)',
+              address: address || null,
+              users: {
+                create: [{
+                  name: adminName || 'Admin',
+                  email: adminEmail,
+                  password: hashedPassword,
+                  role: 'ADMIN',
+                  phone: phone || null,
+                }]
+              }
+            }
+          ]
+        }
+      },
+      include: { schools: { include: { users: { select: { id: true, name: true, email: true, role: true } } } } }
+    });
     res.json(org);
   } catch (error) { next(error); }
 });

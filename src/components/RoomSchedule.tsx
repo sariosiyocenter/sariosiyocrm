@@ -28,8 +28,7 @@ export default function RoomSchedule() {
 
             if (!dayMatch) return false;
             
-            // Format: "08:00 - 10:00" or just startTime property
-            const schedule = g.schedule || `${g.startTime} - ${g.endTime}`;
+            const schedule = g.schedule;
             if (!schedule) return false;
             
             const parts = schedule.split(' - ');

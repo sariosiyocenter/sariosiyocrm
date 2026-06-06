@@ -19,7 +19,7 @@ const BRAND_LIGHT = '#eef2ff';   // indigo-50
 const BRAND_DARK_TEXT = '#a5b4fc'; // indigo-300 for dark mode text
 
 export default function Layout({ children, onLogout }: LayoutProps) {
-  const { user, schools, selectedSchoolId, setSelectedSchoolId, students, leads, groups, teachers, darkMode, toggleDarkMode, notification } = useCRM();
+  const { user, schools, selectedSchoolId, setSelectedSchoolId, students, leads, groups, teachers, courses, darkMode, toggleDarkMode, notification } = useCRM();
   const location = useLocation();
   const navigate = useNavigate();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -52,7 +52,7 @@ export default function Layout({ children, onLogout }: LayoutProps) {
     return {
       students: (students || []).filter(st => s(st.name).includes(lowerQ) || s(st.phone).includes(lowerQ)).slice(0, 3),
       leads: (leads || []).filter(l => s(l.name).includes(lowerQ) || s(l.phone).includes(lowerQ)).slice(0, 3),
-      groups: (groups || []).filter(g => s(g.name).includes(lowerQ) || s(g.courseName).includes(lowerQ)).slice(0, 3),
+      groups: (groups || []).filter(g => s(g.name).includes(lowerQ) || s(courses.find(c => c.id === g.courseId)?.name).includes(lowerQ)).slice(0, 3),
       teachers: (teachers || []).filter(t => s(t.name).includes(lowerQ) || s(t.phone).includes(lowerQ)).slice(0, 3),
     };
   };
@@ -170,7 +170,7 @@ export default function Layout({ children, onLogout }: LayoutProps) {
                               <div className="w-8 h-8 rounded-lg bg-teal-100 dark:bg-teal-900/40 text-teal-600 dark:text-teal-400 flex items-center justify-center shrink-0"><Users size={16}/></div>
                               <div>
                                 <p className="text-sm font-medium text-slate-800 dark:text-white">{g.name}</p>
-                                <p className="text-xs text-slate-400">{g.courseName}</p>
+                                <p className="text-xs text-slate-400">{courses.find(c => c.id === g.courseId)?.name || ''}</p>
                               </div>
                             </div>
                           ))}

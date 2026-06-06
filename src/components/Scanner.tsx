@@ -16,8 +16,13 @@ interface ScanContext {
     maxScore: number;
 }
 
-export default function Scanner() {
+export default function Scanner({ onClose }: { onClose?: () => void }) {
     const navigate = useNavigate();
+    const handleClose = () => {
+        stopCamera();
+        if (onClose) onClose();
+        else navigate('/exams');
+    };
     const { addExamResult, exams, students, selectedSchoolId } = useCRM();
 
     const videoRef = useRef<HTMLVideoElement>(null);
@@ -156,7 +161,7 @@ export default function Scanner() {
         <div className="fixed inset-0 z-[300] bg-gray-950 flex flex-col animate-in fade-in duration-500">
             {/* Header */}
             <div className="flex items-center justify-between p-5 bg-black/50 backdrop-blur-md border-b border-white/10">
-                <button onClick={() => { stopCamera(); navigate('/exams'); }} className="text-white hover:bg-white/10 p-2 rounded-xl transition-all">
+                <button onClick={handleClose} className="text-white hover:bg-white/10 p-2 rounded-xl transition-all">
                     <ArrowLeft size={22} />
                 </button>
                 <h2 className="text-white font-black uppercase tracking-widest text-xs">Natija Skaneri</h2>
@@ -313,7 +318,7 @@ export default function Scanner() {
                                 Keyingi Varaqa
                             </button>
                             <button
-                                onClick={() => { stopCamera(); navigate('/exams'); }}
+                                onClick={handleClose}
                                 className="w-full py-4 bg-white/10 text-white rounded-2xl text-[10px] font-black uppercase tracking-[0.2em] hover:bg-white/20 transition-all"
                             >
                                 Skanerni Yopish

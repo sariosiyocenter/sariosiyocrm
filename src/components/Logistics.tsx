@@ -1,21 +1,24 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useCRM } from '../context/CRMContext';
 import { 
-    Bus, Plus, Search, MoreHorizontal, User, Phone, Settings, Trash2, Edit2, 
+    Bus, Plus, Search, User, Phone, Trash2, Edit2, 
     AlertCircle, Users, X, UserMinus, Truck, Calendar, ChevronLeft, ChevronRight, 
-    CheckCircle, Home, XCircle, MapPin, GripVertical, Navigation, ArrowUp, ArrowDown,
+    Home, XCircle, MapPin, Navigation, ArrowUp, ArrowDown,
     Clock, ChevronDown
 } from 'lucide-react';
-import { Transport, Student, DeliveryLog, Route } from '../types';
+import { Transport, DeliveryLog, Route } from '../types';
 
 type TabType = 'flot' | 'marshrutlar' | 'yetkazish';
+
+const inp = "w-full px-4 py-3 bg-gray-50 dark:bg-gray-900/50 border border-gray-100 dark:border-gray-700 rounded-2xl text-xs font-bold text-gray-900 dark:text-white focus:border-[#1b6b6b] focus:ring-4 focus:ring-[#1b6b6b]/10 outline-none transition-all";
+const lbl = "block text-[10px] font-extrabold uppercase tracking-widest text-gray-400 mb-2";
 
 export default function LogisticsHub() {
     const { 
         transports, students, users, routes, deliveryLogs, 
         addTransport, updateTransport, deleteTransport, 
         addRoute, updateRoute, deleteRoute,
-        addDeliveryLog, fetchDeliveryLogs, updateStudent 
+        addDeliveryLog, fetchDeliveryLogs
     } = useCRM();
 
     const [activeTab, setActiveTab] = useState<TabType>('marshrutlar');
@@ -78,7 +81,6 @@ export default function LogisticsHub() {
     const handleRouteSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         
-        // Explicitly pick only the fields the backend expects
         const cleanData = {
             name: routeFormData.name,
             transportId: routeFormData.transportId,
@@ -115,22 +117,16 @@ export default function LogisticsHub() {
         await updateRoute(route.id, { studentIds });
     };
 
-    // --- RENDER HELPERS ---
     const getDeliveryStatus = (studentId: number) => {
         return deliveryLogs.find(l => l.studentId === studentId && l.date === selectedDate)?.status;
     };
 
     const isRouteActiveOnDate = (route: Route, dateStr: string) => {
         if (route.days === 'HAR_KUNI') return true;
-        
         const date = new Date(dateStr);
-        const day = date.getDay(); // 0 = Sun, 1 = Mon, ..., 6 = Sat
-        
-        // TOQ: Mon(1), Wed(3), Fri(5)
-        // JUFT: Tue(2), Thu(4), Sat(6)
+        const day = date.getDay(); 
         if (route.days === 'TOQ') return [1, 3, 5].includes(day);
         if (route.days === 'JUFT') return [2, 4, 6].includes(day);
-        
         return false;
     };
 
@@ -140,557 +136,452 @@ export default function LogisticsHub() {
     };
 
     return (
-        <div className="p-6 space-y-6 max-w-[1600px] mx-auto">
+        <div className="space-y-6 animate-in fade-in duration-500">
             {/* Header */}
-            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-                <div>
-                    <h1 className="text-3xl font-black text-gray-900 dark:text-white flex items-center gap-3 uppercase tracking-tighter">
-                        <Navigation className="text-sky-500 w-8 h-8" /> Logistika Markazi
-                    </h1>
-                    <p className="text-sm text-gray-500 font-bold tracking-tight mt-1 opacity-80">Avtopark, Yo'nalishlar va Yetkazish nazorati</p>
-                </div>
+            <div className="bg-white dark:bg-gray-800 rounded-3xl border border-gray-100 dark:border-gray-700/50 shadow-sm overflow-hidden">
+                <div className="px-6 py-5 flex flex-col md:flex-row md:items-center justify-between gap-4">
+                    <div className="flex items-center gap-4">
+                        <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-[#1b6b6b] to-[#2e9c9c] flex items-center justify-center shadow-lg shadow-[#1b6b6b]/20">
+                            <Navigation size={22} className="text-white" />
+                        </div>
+                        <div>
+                            <h1 className="text-lg font-black text-gray-900 dark:text-white uppercase tracking-tight">Logistika Markazi</h1>
+                            <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mt-0.5">
+                                Avtopark, marshrutlar va kunlik yetkazish nazorati
+                            </p>
+                        </div>
+                    </div>
 
-                <div className="flex bg-gray-100 dark:bg-gray-800/80 p-1.5 rounded-[22px] border border-gray-200 dark:border-gray-700/50 shadow-inner">
-                    {[
-                        { id: 'marshrutlar', label: 'Marshrutlar', icon: Navigation, color: 'text-sky-500' },
-                        { id: 'yetkazish', label: 'Kunlik Holat', icon: Truck, color: 'text-emerald-500' },
-                        { id: 'flot', label: 'Avtopark', icon: Bus, color: 'text-amber-500' },
-                    ].map(tab => (
-                        <button
-                            key={tab.id}
-                            onClick={() => setActiveTab(tab.id as TabType)}
-                            className={`flex items-center gap-2 px-6 py-2.5 rounded-[18px] text-[11px] font-black uppercase tracking-widest transition-all duration-300 ${
-                                activeTab === tab.id 
-                                ? 'bg-white dark:bg-gray-700 text-gray-900 dark:text-white shadow-xl shadow-gray-200/50 dark:shadow-none' 
-                                : 'text-gray-400 hover:text-gray-600 dark:hover:text-gray-300'
-                            }`}
-                        >
-                            <tab.icon size={16} className={activeTab === tab.id ? tab.color : 'text-gray-400'} />
-                            {tab.label}
-                        </button>
-                    ))}
+                    <div className="flex bg-gray-50 dark:bg-gray-900 p-1 rounded-xl border border-gray-100 dark:border-gray-700/50 w-fit">
+                        {[
+                            { id: 'marshrutlar', label: 'Marshrutlar' },
+                            { id: 'yetkazish', label: 'Kunlik Holat' },
+                            { id: 'flot', label: 'Avtopark' },
+                        ].map(tab => (
+                            <button
+                                key={tab.id}
+                                onClick={() => setActiveTab(tab.id as TabType)}
+                                className={`px-5 py-2 rounded-lg text-[10px] font-extrabold uppercase tracking-widest transition-all cursor-pointer ${
+                                    activeTab === tab.id 
+                                    ? 'bg-[#1b6b6b] text-white shadow' 
+                                    : 'text-gray-400 hover:text-gray-600'
+                                }`}
+                            >
+                                {tab.label}
+                            </button>
+                        ))}
+                    </div>
                 </div>
             </div>
 
-            {/* Content Area */}
-            <div className="animate-in fade-in slide-in-from-bottom-2 duration-500">
-                {activeTab === 'flot' && (
-                    <div className="space-y-6">
-                        <div className="flex justify-between items-center bg-white dark:bg-gray-800/40 backdrop-blur-xl p-4 rounded-3xl border border-gray-100 dark:border-gray-700/50">
-                            <div className="relative flex-1 max-w-md">
-                                <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
-                                <input 
-                                    type="text" 
-                                    placeholder="Avtomobil yoki haydovchini qidirish..." 
-                                    value={searchTerm}
-                                    onChange={(e) => setSearchTerm(e.target.value)}
-                                    className="w-full bg-gray-50 dark:bg-gray-900/50 border-none rounded-xl pl-10 pr-4 py-2 text-sm focus:ring-2 focus:ring-amber-500 font-medium transition-all"
-                                />
-                            </div>
-                            <button 
-                                onClick={() => { resetTransportForm(); setIsTransportModalOpen(true); }}
-                                className="bg-amber-500 hover:bg-amber-600 text-white px-5 py-2.5 rounded-2xl font-black flex items-center gap-2 transition-all shadow-lg shadow-amber-500/20 active:scale-95 text-[10px] uppercase tracking-widest ml-4"
-                            >
-                                <Plus size={18} /> Qo'shish
-                            </button>
+            {/* Content Switcher */}
+            {activeTab === 'flot' && (
+                <div className="space-y-6">
+                    <div className="bg-white dark:bg-gray-800 p-4 rounded-2xl border border-gray-100 dark:border-gray-700/50 flex flex-wrap items-center justify-between gap-4">
+                        <div className="relative flex-1 max-w-xs">
+                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={14} />
+                            <input 
+                                type="text" 
+                                placeholder="Qidiruv..." 
+                                value={searchTerm}
+                                onChange={(e) => setSearchTerm(e.target.value)}
+                                className="w-full pl-9 pr-4 py-2 bg-gray-50 dark:bg-gray-900/50 border border-gray-100 dark:border-gray-700 rounded-xl text-xs font-bold text-gray-900 dark:text-white outline-none focus:border-[#1b6b6b] transition-all"
+                            />
                         </div>
+                        <button 
+                            onClick={() => { resetTransportForm(); setIsTransportModalOpen(true); }}
+                            className="flex items-center gap-2 px-4 py-2.5 bg-[#1b6b6b] hover:bg-[#155252] text-white rounded-xl text-xs font-extrabold uppercase tracking-widest shadow-lg shadow-[#1b6b6b]/20 transition-all cursor-pointer"
+                        >
+                            <Plus size={14} /> Qo'shish
+                        </button>
+                    </div>
 
-                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-                            {transports.filter(t => t.name.toLowerCase().includes(searchTerm.toLowerCase())).map(t => (
-                                <div key={t.id} className="group bg-white dark:bg-gray-800/50 rounded-[32px] border border-gray-100 dark:border-gray-700/50 p-6 hover:shadow-2xl transition-all duration-500 border-b-4 border-b-gray-200 dark:border-b-gray-700">
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                        {transports.filter(t => t.name.toLowerCase().includes(searchTerm.toLowerCase())).map(t => (
+                            <div key={t.id} className="bg-white dark:bg-gray-800 rounded-3xl border border-gray-100 dark:border-gray-700/50 p-6 shadow-sm hover:shadow-md transition-all group relative flex flex-col justify-between min-h-[200px]">
+                                <div>
                                     <div className="flex justify-between items-start mb-4">
-                                        <div className="p-4 bg-amber-50 dark:bg-amber-500/10 rounded-2xl text-amber-600 group-hover:rotate-12 transition-transform duration-500">
-                                            <Bus size={32} />
+                                        <div className="w-10 h-10 rounded-xl bg-gray-55 dark:bg-gray-900 border border-gray-100 dark:border-gray-700 flex items-center justify-center text-[#1b6b6b]">
+                                            <Bus size={18} />
                                         </div>
-                                        <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-all duration-300">
-                                            <button onClick={() => { setEditingTransport(t); setTransportFormData(t); setIsTransportModalOpen(true); }} className="p-2.5 hover:bg-amber-50 dark:hover:bg-amber-500/10 text-amber-600 rounded-xl transition-colors"><Edit2 size={16} /></button>
-                                            <button onClick={() => deleteTransport(t.id)} className="p-2.5 hover:bg-rose-50 dark:hover:bg-rose-500/10 text-rose-500 rounded-xl transition-colors"><Trash2 size={16} /></button>
+                                        <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                            <button onClick={() => { setEditingTransport(t); setTransportFormData(t); setIsTransportModalOpen(true); }} className="w-7 h-7 rounded-lg text-gray-400 hover:text-[#1b6b6b] hover:bg-gray-50 dark:hover:bg-gray-950 flex items-center justify-center transition-colors cursor-pointer"><Edit2 size={13} /></button>
+                                            <button onClick={() => deleteTransport(t.id)} className="w-7 h-7 rounded-lg text-rose-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/20 flex items-center justify-center transition-colors cursor-pointer"><Trash2 size={13} /></button>
                                         </div>
                                     </div>
                                     <div>
-                                        <h3 className="text-xl font-black text-gray-900 dark:text-white uppercase tracking-tight">{t.name}</h3>
-                                        <p className="text-xs font-black text-gray-400 uppercase tracking-widest mt-1">{t.model} • {t.number}</p>
-                                    </div>
-                                    <div className="mt-6 pt-6 border-t border-gray-50 dark:border-gray-700/50 grid grid-cols-2 gap-4">
-                                        <div>
-                                            <p className="text-[9px] font-black text-gray-400 uppercase tracking-widest mb-1">Haydovchi</p>
-                                            <p className="text-sm font-bold text-gray-700 dark:text-gray-200">{t.driverName || 'Noma\'lum'}</p>
-                                        </div>
-                                        <div>
-                                            <p className="text-[9px] font-black text-gray-400 uppercase tracking-widest mb-1">Sig'im</p>
-                                            <p className="text-sm font-bold text-gray-700 dark:text-gray-200">{t.capacity} kishi</p>
-                                        </div>
-                                    </div>
-                                    <div className="mt-4 flex items-center justify-between">
-                                        <span className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest ${
-                                            t.status === 'Faol' ? 'bg-emerald-50 text-emerald-600 dark:bg-emerald-500/10' : 'bg-gray-100 text-gray-400'
-                                        }`}>
-                                            {t.status}
-                                        </span>
-                                        <div className="flex items-center gap-1.5 text-xs font-bold text-gray-500">
-                                            <Phone size={12} className="text-amber-500" /> {t.driverPhone}
-                                        </div>
+                                        <h3 className="text-xs font-black text-gray-900 dark:text-white uppercase tracking-wide">{t.name}</h3>
+                                        <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mt-1">{t.model} • {t.number}</p>
                                     </div>
                                 </div>
-                            ))}
+                                <div className="mt-4 pt-4 border-t border-dashed border-gray-100 dark:border-gray-700/50 grid grid-cols-2 gap-4">
+                                    <div>
+                                        <span className="text-[8px] font-black text-gray-400 uppercase tracking-widest block mb-0.5">Haydovchi</span>
+                                        <span className="text-xs font-bold text-gray-700 dark:text-gray-200 uppercase tracking-tight">{t.driverName || 'Noma\'lum'}</span>
+                                    </div>
+                                    <div>
+                                        <span className="text-[8px] font-black text-gray-400 uppercase tracking-widest block mb-0.5">Sig'im</span>
+                                        <span className="text-xs font-bold text-gray-700 dark:text-gray-200 tabular-nums">{t.capacity} kishi</span>
+                                    </div>
+                                </div>
+                                <div className="mt-4 flex items-center justify-between">
+                                    <span className={`px-2 py-0.5 rounded-md text-[8px] font-black border uppercase tracking-wider ${
+                                        t.status === 'Faol' ? 'bg-emerald-50 text-emerald-600 border-emerald-100 dark:bg-emerald-950/20 dark:text-emerald-400' : 'bg-gray-50 text-gray-400 border-gray-100 dark:bg-gray-900/50'
+                                    }`}>
+                                        {t.status}
+                                    </span>
+                                    <div className="flex items-center gap-1 text-[10px] font-bold text-gray-500 tabular-nums">
+                                        <Phone size={10} className="text-[#1b6b6b]" /> {t.driverPhone}
+                                    </div>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            )}
+
+            {activeTab === 'marshrutlar' && (
+                <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+                    {/* Left: Route list */}
+                    <div className="lg:col-span-4 space-y-4">
+                        <div className="bg-white dark:bg-gray-800 rounded-3xl border border-gray-100 dark:border-gray-700/50 p-6 shadow-sm">
+                            <div className="flex justify-between items-center mb-6">
+                                <span className="text-[9px] font-black uppercase text-gray-400 tracking-wider">Yo'nalishlar</span>
+                                <button 
+                                    onClick={() => { resetRouteForm(); setIsRouteModalOpen(true); }}
+                                    className="w-8 h-8 rounded-lg bg-[#1b6b6b] text-white flex items-center justify-center shadow transition-all cursor-pointer"
+                                >
+                                    <Plus size={16} />
+                                </button>
+                            </div>
+                            
+                            <div className="space-y-2">
+                                {routes.map(route => (
+                                    <div 
+                                        key={route.id}
+                                        className={`p-4 rounded-2xl border transition-all cursor-pointer group ${
+                                            editingRoute?.id === route.id 
+                                            ? 'bg-[#1b6b6b]/10 border-[#1b6b6b]' 
+                                            : 'bg-gray-50/50 dark:bg-gray-900/40 border-transparent hover:border-gray-100'
+                                        }`}
+                                        onClick={() => { 
+                                            setEditingRoute(route); 
+                                            setRouteFormData({
+                                                name: route.name,
+                                                transportId: route.transportId,
+                                                driverId: route.driverId,
+                                                days: route.days,
+                                                studentIds: route.studentIds,
+                                                startTime: route.startTime || ''
+                                            }); 
+                                        }}
+                                    >
+                                        <div className="flex justify-between items-start">
+                                            <div>
+                                                <h3 className="text-xs font-black text-gray-900 dark:text-white uppercase tracking-tight">
+                                                    {route.name}
+                                                </h3>
+                                                <span className="text-[9px] text-gray-400 font-bold block mt-0.5 uppercase tracking-wide">
+                                                    {route.days} • {route.startTime || '--:--'} • {route.studentIds.length} o'quvchi
+                                                </span>
+                                            </div>
+                                            <div className="w-8 h-8 rounded-lg bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700 flex items-center justify-center text-[#1b6b6b]">
+                                                <Navigation size={14} />
+                                            </div>
+                                        </div>
+                                        <div className="mt-4 flex items-center justify-between pt-2 border-t border-dashed border-gray-100 dark:border-gray-700/50">
+                                            <span className="text-[9px] font-bold text-gray-500 uppercase tracking-wide">
+                                                🚌 {route.transport?.name || 'Belgilanmagan'}
+                                            </span>
+                                            <button 
+                                                onClick={(e) => { e.stopPropagation(); deleteRoute(route.id); if(editingRoute?.id === route.id) resetRouteForm(); }}
+                                                className="w-6 h-6 rounded-md hover:bg-rose-50 dark:hover:bg-rose-950/20 text-rose-500 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer"
+                                            >
+                                                <Trash2 size={12} />
+                                            </button>
+                                        </div>
+                                    </div>
+                                ))}
+                                {routes.length === 0 && (
+                                    <p className="text-center py-8 text-[10px] text-gray-400 font-bold uppercase tracking-widest">Hozircha yo'nalishlar yo'q</p>
+                                )}
+                            </div>
                         </div>
                     </div>
-                )}
 
-                {activeTab === 'marshrutlar' && (
-                    <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-                        {/* Route List */}
-                        <div className="lg:col-span-4 space-y-4">
-                            <div className="bg-white dark:bg-gray-800/40 backdrop-blur-xl p-5 rounded-[32px] border border-gray-100 dark:border-gray-700/50 shadow-sm">
-                                <div className="flex justify-between items-center mb-6">
-                                    <h2 className="text-xs font-black text-gray-400 uppercase tracking-widest">Yo'nalishlar Ro'yxati</h2>
-                                    <button 
-                                        onClick={() => { resetRouteForm(); setIsRouteModalOpen(true); }}
-                                        className="p-2 bg-sky-500 hover:bg-sky-600 text-white rounded-xl transition-all shadow-lg shadow-sky-500/20"
-                                    >
-                                        <Plus size={18} />
-                                    </button>
-                                </div>
-                                
-                                <div className="space-y-3">
-                                    {routes.map(route => (
-                                        <div 
-                                            key={route.id}
-                                            className={`p-4 rounded-2xl border transition-all cursor-pointer group ${
-                                                editingRoute?.id === route.id 
-                                                ? 'bg-sky-500 border-sky-500 text-white shadow-xl shadow-sky-500/30 ring-4 ring-sky-500/10' 
-                                                : 'bg-gray-50 dark:bg-gray-900/50 border-gray-100 dark:border-gray-700/50 hover:border-sky-300'
-                                            }`}
-                                            onClick={() => { 
-                                                setEditingRoute(route); 
-                                                setRouteFormData({
-                                                    name: route.name,
-                                                    transportId: route.transportId,
-                                                    driverId: route.driverId,
-                                                    days: route.days,
-                                                    studentIds: route.studentIds,
-                                                    startTime: route.startTime || ''
-                                                }); 
-                                            }}
+                    {/* Right: Route stops detail */}
+                    <div className="lg:col-span-8">
+                        {editingRoute ? (
+                            <div className="bg-white dark:bg-gray-800 rounded-3xl border border-gray-100 dark:border-gray-700/50 p-6 shadow-sm animate-in fade-in duration-300">
+                                <div className="flex justify-between items-start mb-6 pb-4 border-b border-gray-50 dark:border-gray-700/50">
+                                    <div>
+                                        <h3 className="text-sm font-black text-gray-900 dark:text-white uppercase tracking-tight">
+                                            {editingRoute.name}
+                                        </h3>
+                                        <span className="text-[10px] font-bold text-[#1b6b6b] uppercase tracking-widest mt-0.5">Boshlanishi: {editingRoute.startTime || 'Belgilanmagan'}</span>
+                                    </div>
+                                    <div className="flex gap-2">
+                                        <button 
+                                            onClick={() => setIsRouteModalOpen(true)}
+                                            className="px-3.5 py-2 bg-gray-50 dark:bg-gray-900 hover:bg-gray-100 border border-gray-100 dark:border-gray-750 text-gray-700 dark:text-white rounded-xl text-[10px] font-extrabold uppercase tracking-widest transition-all cursor-pointer"
                                         >
-                                            <div className="flex justify-between items-start">
-                                                <div>
-                                                    <h3 className={`font-black uppercase tracking-tight ${editingRoute?.id === route.id ? 'text-white' : 'text-gray-900 dark:text-white'}`}>
-                                                        {route.name}
-                                                    </h3>
-                                                    <p className={`text-[10px] font-bold mt-1 uppercase tracking-widest ${editingRoute?.id === route.id ? 'text-white/70' : 'text-gray-400'}`}>
-                                                        {route.days} • {route.startTime || '--:--'} • {route.studentIds.length} o'quvchi
-                                                    </p>
-                                                </div>
-                                                <div className={`p-2 rounded-xl scale-75 ${editingRoute?.id === route.id ? 'bg-white/20' : 'bg-gray-200 dark:bg-gray-800'}`}>
-                                                    <Navigation size={20} />
-                                                </div>
-                                            </div>
-                                            <div className="mt-4 flex items-center justify-between">
-                                                <div className="flex items-center gap-2">
-                                                    <div className={`w-6 h-6 rounded-lg flex items-center justify-center text-[10px] font-black ${editingRoute?.id === route.id ? 'bg-white/20 text-white' : 'bg-sky-100 text-sky-600'}`}>
-                                                        {route.transport?.name?.[0] || 'A'}
+                                            Tahrirlash
+                                        </button>
+                                        <button 
+                                            onClick={() => setIsStudentSelectorOpen(true)}
+                                            className="px-3.5 py-2 bg-[#1b6b6b] hover:bg-[#155252] text-white rounded-xl text-[10px] font-extrabold uppercase tracking-widest shadow-lg shadow-[#1b6b6b]/20 transition-all cursor-pointer"
+                                        >
+                                            O'quvchi qo'shish
+                                        </button>
+                                    </div>
+                                </div>
+
+                                <div className="space-y-2">
+                                    {editingRoute.studentIds.map((sid, index) => {
+                                        const student = students.find(s => s.id === sid);
+                                        if (!student) return null;
+                                        return (
+                                            <div key={sid} className="flex items-center justify-between p-4 bg-gray-50/50 dark:bg-gray-900/40 rounded-2xl hover:border-gray-100 border border-transparent transition-all group">
+                                                <div className="flex items-center gap-3">
+                                                    <div className="w-8 h-8 rounded-lg bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700 flex items-center justify-center font-black text-xs text-[#1b6b6b]">
+                                                        {index + 1}
                                                     </div>
-                                                    <span className={`text-[10px] font-bold uppercase tracking-tight ${editingRoute?.id === route.id ? 'text-white/80' : 'text-gray-500'}`}>
-                                                        {route.transport?.name || 'Transport yo\'q'}
-                                                    </span>
+                                                    <div>
+                                                        <h4 className="text-xs font-black text-gray-900 dark:text-white uppercase tracking-tight">{student.name}</h4>
+                                                        <div className="flex items-center gap-2 mt-0.5">
+                                                            <span className="text-[9px] text-gray-400 font-bold uppercase tracking-wide flex items-center gap-0.5"><MapPin size={9} /> {student.address || '—'}</span>
+                                                            <span className="text-[9px] text-gray-400 font-bold uppercase tracking-wide flex items-center gap-0.5"><Phone size={9} /> {student.phone}</span>
+                                                        </div>
+                                                    </div>
                                                 </div>
-                                                <button 
-                                                    onClick={(e) => { e.stopPropagation(); deleteRoute(route.id); if(editingRoute?.id === route.id) resetRouteForm(); }}
-                                                    className={`p-1.5 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity ${editingRoute?.id === route.id ? 'hover:bg-white/10 text-white' : 'hover:bg-rose-50 text-rose-500'}`}
-                                                >
-                                                    <Trash2 size={14} />
-                                                </button>
+                                                <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                                    <button 
+                                                        onClick={() => moveStudentInRoute(editingRoute, sid, 'up')}
+                                                        disabled={index === 0}
+                                                        className="w-7 h-7 rounded-lg text-gray-400 hover:text-[#1b6b6b] hover:bg-gray-50 dark:hover:bg-gray-950 flex items-center justify-center transition-all cursor-pointer disabled:opacity-30"
+                                                    >
+                                                        <ArrowUp size={14} />
+                                                    </button>
+                                                    <button 
+                                                        onClick={() => moveStudentInRoute(editingRoute, sid, 'down')}
+                                                        disabled={index === editingRoute.studentIds.length - 1}
+                                                        className="w-7 h-7 rounded-lg text-gray-400 hover:text-[#1b6b6b] hover:bg-gray-50 dark:hover:bg-gray-950 flex items-center justify-center transition-all cursor-pointer disabled:opacity-30"
+                                                    >
+                                                        <ArrowDown size={14} />
+                                                    </button>
+                                                    <button 
+                                                        onClick={async () => {
+                                                            const studentIds = editingRoute.studentIds.filter(id => id !== sid);
+                                                            await updateRoute(editingRoute.id, { studentIds });
+                                                        }}
+                                                        className="w-7 h-7 rounded-lg text-rose-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/20 flex items-center justify-center transition-all cursor-pointer"
+                                                    >
+                                                        <UserMinus size={14} />
+                                                    </button>
+                                                </div>
                                             </div>
-                                        </div>
-                                    ))}
-                                    {routes.length === 0 && (
-                                        <div className="py-10 text-center text-gray-400 bg-gray-50/50 dark:bg-gray-900/30 rounded-3xl border-2 border-dashed border-gray-100 dark:border-gray-800">
-                                            <p className="text-[10px] font-black uppercase tracking-widest">Hozircha marshrutlar yo'q</p>
-                                        </div>
+                                        );
+                                    })}
+                                    {editingRoute.studentIds.length === 0 && (
+                                        <p className="text-center py-12 text-[10px] text-gray-400 font-bold uppercase tracking-widest">Bu marshrutda o'quvchilar yo'q</p>
                                     )}
                                 </div>
                             </div>
+                        ) : (
+                            <div className="bg-white dark:bg-gray-800 rounded-3xl border border-gray-100 dark:border-gray-700/50 p-12 text-center shadow-sm">
+                                <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Marshrut tanlang</p>
+                            </div>
+                        )}
+                    </div>
+                </div>
+            )}
+
+            {activeTab === 'yetkazish' && (
+                <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
+                    {/* Select Transport & Date */}
+                    <div className="lg:col-span-1 space-y-4">
+                        <div className="bg-white dark:bg-gray-800 rounded-3xl border border-gray-100 dark:border-gray-700/50 p-5 shadow-sm">
+                            <span className="text-[9px] font-black uppercase text-gray-400 tracking-wider block mb-4">Transport Tanlovi</span>
+                            <div className="space-y-2">
+                                {transports.map(t => (
+                                    <button
+                                        key={t.id}
+                                        onClick={() => setSelectedTransportId(t.id)}
+                                        className={`w-full flex items-center gap-3 p-3 rounded-2xl transition-all cursor-pointer ${
+                                            selectedTransportId === t.id
+                                            ? 'bg-[#1b6b6b]/10 border border-[#1b6b6b] text-[#1b6b6b]'
+                                            : 'bg-gray-55 dark:bg-gray-900 border border-transparent text-gray-700 dark:text-gray-300'
+                                        }`}
+                                    >
+                                        <Bus size={16} />
+                                        <span className="text-xs font-black uppercase tracking-tight truncate">{t.name}</span>
+                                    </button>
+                                ))}
+                            </div>
                         </div>
 
-                        {/* Route Editor / Details */}
-                        <div className="lg:col-span-8 space-y-6">
-                            {editingRoute ? (
-                                <div className="bg-white dark:bg-gray-800/40 backdrop-blur-xl p-8 rounded-[40px] border border-gray-100 dark:border-gray-700/50 shadow-sm animate-in fade-in slide-in-from-right-4">
-                                    <div className="flex justify-between items-start mb-8">
-                                        <div>
-                                            <h2 className="text-3xl font-black text-gray-900 dark:text-white uppercase tracking-tighter">
-                                                {editingRoute.name}
-                                                <span className="ml-4 text-sky-500 text-xl font-black">{editingRoute.startTime || '08:00'}</span>
-                                            </h2>
-                                            <p className="text-xs font-black text-gray-400 uppercase tracking-widest mt-1">O'quvchilar ketma-ketligini boshqarish</p>
-                                        </div>
-                                        <button 
-                                            onClick={() => setIsRouteModalOpen(true)}
-                                            className="flex items-center gap-2 px-4 py-2 bg-gray-100 dark:bg-gray-700 hover:bg-sky-500 hover:text-white rounded-xl transition-all cursor-pointer text-[10px] font-black uppercase tracking-widest"
-                                        >
-                                            <Edit2 size={14} /> Tahrirlash
-                                        </button>
-                                    </div>
+                        <div className="flex items-center justify-between bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700/50 p-3 shadow-sm">
+                            <button onClick={() => { const d = new Date(selectedDate); d.setDate(d.getDate() - 1); setSelectedDate(d.toISOString().split('T')[0]); }} className="w-8 h-8 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center justify-center transition-colors cursor-pointer"><ChevronLeft size={16} /></button>
+                            <span className="text-[10px] font-extrabold uppercase text-gray-700 dark:text-gray-200 tracking-widest">{selectedDate}</span>
+                            <button onClick={() => { const d = new Date(selectedDate); d.setDate(d.getDate() + 1); setSelectedDate(d.toISOString().split('T')[0]); }} className="w-8 h-8 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center justify-center transition-colors cursor-pointer"><ChevronRight size={16} /></button>
+                        </div>
+                    </div>
 
-                                    <div className="space-y-4">
-                                        <div className="flex items-center justify-between px-2">
-                                            <h3 className="text-[11px] font-black text-gray-400 uppercase tracking-widest">Yo'nalish tartibi (Stoplar)</h3>
-                                            <button 
-                                                onClick={() => setIsStudentSelectorOpen(true)}
-                                                className="text-[10px] font-black text-sky-500 hover:text-sky-600 uppercase tracking-widest flex items-center gap-1"
-                                            >
-                                                <Plus size={14} /> O'quvchi qo'shish
-                                            </button>
+                    {/* Delivery updates accordion */}
+                    <div className="lg:col-span-3 space-y-4">
+                        {routes
+                            .filter(r => r.transportId === selectedTransportId && isRouteActiveOnDate(r, selectedDate))
+                            .map(route => (
+                                <div key={route.id} className="bg-white dark:bg-gray-800 rounded-3xl border border-gray-100 dark:border-gray-700/50 overflow-hidden shadow-sm">
+                                    <button 
+                                        onClick={() => setExpandedRouteId(expandedRouteId === route.id ? null : route.id)}
+                                        className="w-full flex items-center justify-between p-5 hover:bg-gray-50 dark:hover:bg-gray-750 transition-colors cursor-pointer"
+                                    >
+                                        <div className="flex items-center gap-3">
+                                            <div className="w-8 h-8 rounded-lg bg-[#1b6b6b]/10 text-[#1b6b6b] flex items-center justify-center">
+                                                <Navigation size={16} />
+                                            </div>
+                                            <div className="text-left">
+                                                <h4 className="text-xs font-black text-gray-900 dark:text-white uppercase tracking-wide">{route.name}</h4>
+                                                <span className="text-[9px] font-bold text-gray-400 uppercase tracking-widest block mt-0.5">{route.studentIds.length} o'quvchi</span>
+                                            </div>
                                         </div>
+                                        <ChevronDown size={16} className={`text-gray-400 transition-transform ${expandedRouteId === route.id ? 'rotate-180' : ''}`} />
+                                    </button>
 
-                                        <div className="grid grid-cols-1 gap-2">
-                                            {editingRoute.studentIds.map((sid, index) => {
+                                    {expandedRouteId === route.id && (
+                                        <div className="p-4 pt-0 border-t border-gray-50 dark:border-gray-700/50 space-y-2">
+                                            {route.studentIds.map(sid => {
                                                 const student = students.find(s => s.id === sid);
                                                 if (!student) return null;
-                                                return (
-                                                    <div key={sid} className="group flex items-center gap-4 bg-gray-50 dark:bg-gray-900/50 p-4 rounded-3xl border border-transparent hover:border-sky-500/20 hover:shadow-xl transition-all duration-300">
-                                                        <div className="w-10 h-10 flex flex-col items-center justify-center font-black text-lg bg-white dark:bg-gray-800 text-sky-500 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700">
-                                                            <span className="text-[10px] opacity-40 leading-none">STOP</span>
-                                                            <span className="leading-tight">{index + 1}</span>
-                                                        </div>
-                                                        <div className="flex-1">
-                                                            <h4 className="text-sm font-black text-gray-900 dark:text-white uppercase tracking-tight">{student.name}</h4>
-                                                            <div className="flex items-center gap-3 mt-1">
-                                                                <span className="text-[10px] font-bold text-gray-500 flex items-center gap-1"><MapPin size={10} className="text-emerald-500" /> {student.address || 'Noma\'lum'}</span>
-                                                                <span className="text-[10px] font-bold text-gray-500 flex items-center gap-1"><Phone size={10} className="text-sky-500" /> {student.phone}</span>
-                                                            </div>
-                                                        </div>
-                                                        <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-all">
-                                                            <button 
-                                                                onClick={() => moveStudentInRoute(editingRoute, sid, 'up')}
-                                                                disabled={index === 0}
-                                                                className="p-2 hover:bg-white dark:hover:bg-gray-700 text-gray-400 hover:text-sky-500 rounded-xl disabled:opacity-30 disabled:hover:text-gray-400 transition-all border border-transparent hover:border-gray-100 dark:hover:border-gray-600"
-                                                            >
-                                                                <ArrowUp size={16} />
-                                                            </button>
-                                                            <button 
-                                                                onClick={() => moveStudentInRoute(editingRoute, sid, 'down')}
-                                                                disabled={index === editingRoute.studentIds.length - 1}
-                                                                className="p-2 hover:bg-white dark:hover:bg-gray-700 text-gray-400 hover:text-sky-500 rounded-xl disabled:opacity-30 disabled:hover:text-gray-400 transition-all border border-transparent hover:border-gray-100 dark:hover:border-gray-600"
-                                                            >
-                                                                <ArrowDown size={16} />
-                                                            </button>
-                                                            <div className="w-px h-6 bg-gray-200 dark:bg-gray-700 mx-1" />
-                                                            <button 
-                                                                onClick={async () => {
-                                                                    const studentIds = editingRoute.studentIds.filter(id => id !== sid);
-                                                                    await updateRoute(editingRoute.id, { studentIds });
-                                                                }}
-                                                                className="p-2 hover:bg-rose-50 dark:hover:bg-rose-500/10 text-rose-500 rounded-xl transition-all border border-transparent hover:border-rose-100 dark:hover:border-rose-900/30"
-                                                            >
-                                                                <UserMinus size={16} />
-                                                            </button>
-                                                        </div>
-                                                    </div>
-                                                );
-                                            })}
-                                            {editingRoute.studentIds.length === 0 && (
-                                                <div className="py-20 flex flex-col items-center justify-center text-gray-400 bg-gray-50/50 dark:bg-gray-900/30 rounded-[3rem] border-2 border-dashed border-gray-100 dark:border-gray-800">
-                                                    <AlertCircle size={40} className="mb-3 opacity-30" />
-                                                    <p className="text-xs font-black uppercase tracking-widest">Bu marshrutda o'quvchilar yo'q</p>
-                                                    <p className="text-[10px] mt-1 font-bold">O'quvchilarni biriktirish uchun qidiruvdan foydalaning</p>
-                                                </div>
-                                            )}
-                                        </div>
-                                    </div>
-                                </div>
-                            ) : (
-                                <div className="h-full flex flex-col items-center justify-center text-gray-400 py-32 bg-white dark:bg-gray-800/20 rounded-[48px] border-2 border-dashed border-gray-100 dark:border-gray-800">
-                                    <div className="p-8 bg-gray-50 dark:bg-gray-900 rounded-[32px] mb-6 animate-pulse">
-                                        <Navigation size={64} className="opacity-20" />
-                                    </div>
-                                    <h3 className="text-xl font-black text-gray-700 dark:text-gray-300 uppercase tracking-tight">Marshrutni tanlang</h3>
-                                    <p className="text-sm font-bold text-gray-500 mt-2">Batafsil ma'lumot va tahrirlash uchun chapdan tanlang</p>
-                                </div>
-                            )}
-                        </div>
-                    </div>
-                )}
-
-                {activeTab === 'yetkazish' && (
-                    <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
-                        {/* Transport List */}
-                        <div className="lg:col-span-1 space-y-4">
-                            <div className="bg-white dark:bg-gray-800/40 backdrop-blur-xl rounded-[32px] border border-gray-100 dark:border-gray-700/50 p-5 shadow-sm">
-                                <div className="flex items-center justify-between mb-6">
-                                    <h3 className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Transport</h3>
-                                    <div className="px-2 py-1 bg-emerald-50 dark:bg-emerald-500/10 rounded-lg text-[9px] font-black text-emerald-600 uppercase tracking-widest">Live</div>
-                                </div>
-                                
-                                <div className="space-y-2">
-                                    {transports.map(t => (
-                                        <button
-                                            key={t.id}
-                                            onClick={() => setSelectedTransportId(t.id)}
-                                            className={`w-full flex items-center gap-3 p-3.5 rounded-2xl transition-all duration-300 ${
-                                                selectedTransportId === t.id
-                                                ? 'bg-emerald-500 text-white shadow-xl shadow-emerald-500/30'
-                                                : 'hover:bg-gray-50 dark:hover:bg-gray-900/50 text-gray-700 dark:text-gray-300'
-                                            }`}
-                                        >
-                                            <div className={`p-2.5 rounded-xl ${selectedTransportId === t.id ? 'bg-white/20' : 'bg-gray-100 dark:bg-gray-800'}`}>
-                                                <Bus size={20} />
-                                            </div>
-                                            <div className="text-left flex-1 min-w-0">
-                                                <p className="text-sm font-black truncate uppercase tracking-tight">{t.name}</p>
-                                                <p className={`text-[10px] font-bold uppercase tracking-widest mt-0.5 ${selectedTransportId === t.id ? 'text-white/70' : 'text-gray-400'}`}>
-                                                    {t.number || 'Raqamsiz'}
-                                                </p>
-                                            </div>
-                                        </button>
-                                    ))}
-                                </div>
-                            </div>
-
-                            <div className="flex items-center justify-center gap-4 bg-white dark:bg-gray-800/40 p-3 rounded-3xl border border-gray-100 dark:border-gray-700/50 shadow-sm">
-                                <button onClick={() => { const d = new Date(selectedDate); d.setDate(d.getDate() - 1); setSelectedDate(d.toISOString().split('T')[0]); }} className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-xl transition-colors"><ChevronLeft size={20} /></button>
-                                <div className="flex items-center gap-2 px-3 font-black text-[11px] uppercase tracking-widest text-gray-700 dark:text-gray-200">
-                                    <Calendar size={16} className="text-emerald-500" /> {selectedDate === new Date().toISOString().split('T')[0] ? 'Bugun' : selectedDate}
-                                </div>
-                                <button onClick={() => { const d = new Date(selectedDate); d.setDate(d.getDate() + 1); setSelectedDate(d.toISOString().split('T')[0]); }} className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-xl transition-colors"><ChevronRight size={20} /></button>
-                            </div>
-                        </div>
-
-                        {/* Student Delivery Status */}
-                        <div className="lg:col-span-3 space-y-4">
-                            <div className="bg-white dark:bg-gray-800/40 backdrop-blur-xl rounded-[32px] border border-gray-100 dark:border-gray-700/50 p-3 shadow-sm flex items-center justify-between gap-4">
-                                <div className="relative flex-1">
-                                    <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
-                                    <input 
-                                        type="text"
-                                        placeholder="O'quvchini qidirish..."
-                                        className="w-full bg-gray-50 dark:bg-gray-900/50 border-none rounded-2xl pl-12 pr-4 py-3 text-sm font-bold focus:ring-2 focus:ring-emerald-500 transition-all shadow-inner"
-                                    />
-                                </div>
-                            </div>
-
-                            <div className="space-y-4">
-                                {routes
-                                    .filter(r => r.transportId === selectedTransportId && isRouteActiveOnDate(r, selectedDate))
-                                    .map(route => (
-                                        <div key={route.id} className="bg-white dark:bg-gray-800/40 backdrop-blur-xl rounded-[32px] border border-gray-100 dark:border-gray-700/50 overflow-hidden transition-all duration-500 shadow-sm hover:shadow-md">
-                                            {/* Route Header / Accordion Toggle */}
-                                            <button 
-                                                onClick={() => setExpandedRouteId(expandedRouteId === route.id ? null : route.id)}
-                                                className="w-full flex items-center justify-between p-6 hover:bg-gray-50 dark:hover:bg-white/5 transition-colors"
-                                            >
-                                                <div className="flex items-center gap-4">
-                                                    <div className="w-12 h-12 rounded-2xl bg-emerald-500/10 flex items-center justify-center text-emerald-500">
-                                                        <Navigation size={24} />
-                                                    </div>
-                                                    <div className="text-left">
-                                                        <h4 className="text-lg font-black text-gray-900 dark:text-white uppercase tracking-tight">{route.name}</h4>
-                                                        <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest flex items-center gap-2 mt-0.5">
-                                                            <Clock size={10} /> {route.startTime || 'Vaqt belgilanmagan'} • {route.studentIds.length} o'quvchi
-                                                        </p>
-                                                    </div>
-                                                </div>
-                                                <div className={`p-2 rounded-xl bg-gray-50 dark:bg-gray-900 text-gray-400 transition-transform duration-300 ${expandedRouteId === route.id ? 'rotate-180' : ''}`}>
-                                                    <ChevronDown size={20} />
-                                                </div>
-                                            </button>
-
-                                            {/* Student List (Accordion Content) */}
-                                            {expandedRouteId === route.id && (
-                                                <div className="p-4 pt-0 space-y-3 animate-in slide-in-from-top-2 duration-300">
-                                                    <div className="h-px bg-gray-100 dark:bg-gray-700/50 mx-2 mb-4" />
-                                                    {route.studentIds.map(sid => {
-                                                        const student = students.find(s => s.id === sid);
-                                                        if (!student) return null;
-                                                        const status = getDeliveryStatus(student.id);
-                                                        return (
-                                                            <div key={student.id} className="bg-gray-50/50 dark:bg-gray-900/40 rounded-3xl p-4 border border-transparent hover:border-emerald-500/20 transition-all group/student">
-                                                                <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-                                                                    <div className="flex items-center gap-3">
-                                                                        <div className="w-12 h-12 rounded-2xl bg-white dark:bg-gray-800 flex items-center justify-center font-black text-gray-400 shadow-sm overflow-hidden border border-gray-100 dark:border-gray-700">
-                                                                            {student.photo ? <img src={student.photo} className="w-full h-full object-cover" /> : student.name[0]}
-                                                                        </div>
-                                                                        <div>
-                                                                            <h5 className="text-sm font-black text-gray-900 dark:text-white uppercase tracking-tight">{student.name}</h5>
-                                                                            <p className="text-[10px] font-bold text-gray-400 flex items-center gap-1 mt-0.5">
-                                                                                <MapPin size={10} className="text-emerald-500" /> {student.address || 'Manzil yo\'q'}
-                                                                            </p>
-                                                                        </div>
-                                                                    </div>
-                                                                    <div className="flex items-center gap-1.5 w-full md:w-auto">
-                                                                        {[
-                                                                            { label: 'Olib ketildi', status: 'Olib ketildi', color: 'sky', icon: Truck },
-                                                                            { label: 'Yetkazildi', status: 'Uyiga yetkazildi', color: 'emerald', icon: Home },
-                                                                            { label: 'Kelmadi', status: 'Kelmadi', color: 'rose', icon: XCircle }
-                                                                        ].map(opt => (
-                                                                            <button 
-                                                                                key={opt.status}
-                                                                                onClick={() => handleDeliveryUpdate(student.id, opt.status as any)}
-                                                                                className={`flex-1 md:flex-none flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-2xl text-[9px] font-black uppercase tracking-widest transition-all duration-300 ${
-                                                                                    status === opt.status 
-                                                                                    ? `bg-${opt.color}-500 text-white shadow-lg shadow-${opt.color}-500/30 scale-105` 
-                                                                                    : `bg-white dark:bg-gray-800 text-gray-400 hover:text-${opt.color}-500 border border-gray-100 dark:border-gray-700 hover:shadow-sm`
-                                                                                }`}
-                                                                            >
-                                                                                <opt.icon size={14} /> <span className="hidden sm:inline">{opt.label}</span>
-                                                                            </button>
-                                                                        ))}
-                                                                    </div>
-                                                                </div>
-                                                            </div>
-                                                        );
-                                                    })}
-                                                    {route.studentIds.length === 0 && (
-                                                        <div className="py-12 text-center text-gray-400">
-                                                            <AlertCircle size={32} className="mx-auto mb-2 opacity-20" />
-                                                            <p className="text-[10px] font-black uppercase tracking-widest">Bu marshrutda o'quvchilar yo'q</p>
-                                                        </div>
-                                                    )}
-                                                </div>
-                                            )}
-                                        </div>
-                                    ))}
-
-                                {/* Unrouted Students Section */}
-                                {students.filter(s => s.transportId === selectedTransportId && !routes.filter(r => isRouteActiveOnDate(r, selectedDate)).some(r => r.studentIds.includes(s.id))).length > 0 && (
-                                    <div className="bg-gray-50/50 dark:bg-gray-900/20 rounded-[32px] border border-dashed border-gray-200 dark:border-gray-800 p-6 shadow-inner mt-8">
-                                        <div className="flex items-center gap-3 mb-6">
-                                            <div className="w-8 h-8 rounded-xl bg-orange-500/10 flex items-center justify-center text-orange-500">
-                                                <Users size={18} />
-                                            </div>
-                                            <h4 className="text-xs font-black text-gray-500 uppercase tracking-widest">Marshrutga biriktirilmagan o'quvchilar</h4>
-                                        </div>
-                                        <div className="grid grid-cols-1 gap-3">
-                                            {students.filter(s => s.transportId === selectedTransportId && !routes.filter(r => isRouteActiveOnDate(r, selectedDate)).some(r => r.studentIds.includes(s.id))).map(student => {
                                                 const status = getDeliveryStatus(student.id);
                                                 return (
-                                                    <div key={student.id} className="bg-white dark:bg-gray-800/60 rounded-3xl p-4 shadow-sm border border-gray-100 dark:border-gray-700/50">
-                                                        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-                                                            <div className="flex items-center gap-3">
-                                                                <div className="w-10 h-10 rounded-xl bg-gray-50 dark:bg-gray-900/50 flex items-center justify-center font-black text-gray-300 overflow-hidden">
-                                                                    {student.photo ? <img src={student.photo} className="w-full h-full object-cover" /> : student.name[0]}
-                                                                </div>
-                                                                <div>
-                                                                    <h5 className="text-sm font-black text-gray-700 dark:text-gray-300 uppercase tracking-tight">{student.name}</h5>
-                                                                    <p className="text-[9px] font-bold text-gray-400 mt-0.5">{student.address || 'Manzil yo\'q'}</p>
-                                                                </div>
-                                                            </div>
-                                                            <div className="flex items-center gap-1.5 w-full md:w-auto">
-                                                                {[
-                                                                    { label: 'Olib ketildi', status: 'Olib ketildi', color: 'sky', icon: Truck },
-                                                                    { label: 'Yetkazildi', status: 'Uyiga yetkazildi', color: 'emerald', icon: Home },
-                                                                    { label: 'Kelmadi', status: 'Kelmadi', color: 'rose', icon: XCircle }
-                                                                ].map(opt => (
-                                                                    <button 
-                                                                        key={opt.status}
-                                                                        onClick={() => handleDeliveryUpdate(student.id, opt.status as any)}
-                                                                        className={`flex-1 md:flex-none flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all duration-300 ${
-                                                                            status === opt.status 
-                                                                            ? `bg-${opt.color}-500 text-white shadow-lg shadow-${opt.color}-500/30` 
-                                                                            : `bg-gray-50 dark:bg-gray-900/50 text-gray-400 hover:text-${opt.color}-500`
-                                                                        }`}
-                                                                    >
-                                                                        <opt.icon size={13} /> <span className="hidden sm:inline">{opt.label}</span>
-                                                                    </button>
-                                                                ))}
-                                                            </div>
+                                                    <div key={student.id} className="p-3 bg-gray-50/50 dark:bg-gray-900/40 rounded-2xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+                                                        <div>
+                                                            <h5 className="text-xs font-black text-gray-900 dark:text-white uppercase tracking-tight">{student.name}</h5>
+                                                            <span className="text-[9px] text-gray-400 font-bold block mt-0.5 uppercase tracking-wide">{student.address || 'Manzil yo\'q'}</span>
+                                                        </div>
+                                                        <div className="flex items-center gap-1.5 w-full sm:w-auto">
+                                                            {[
+                                                                { label: 'Olib ketildi', status: 'Olib ketildi', color: 'sky' },
+                                                                { label: 'Yetkazildi', status: 'Uyiga yetkazildi', color: 'emerald' },
+                                                                { label: 'Kelmadi', status: 'Kelmadi', color: 'rose' }
+                                                            ].map(opt => (
+                                                                <button 
+                                                                    key={opt.status}
+                                                                    onClick={() => handleDeliveryUpdate(student.id, opt.status as any)}
+                                                                    className={`flex-1 sm:flex-none px-3 py-1.5 rounded-xl text-[9px] font-extrabold uppercase tracking-wider transition-all cursor-pointer ${
+                                                                        status === opt.status 
+                                                                        ? 'bg-[#1b6b6b] text-white' 
+                                                                        : 'bg-white dark:bg-gray-800 text-gray-400 border border-gray-100 dark:border-gray-700'
+                                                                    }`}
+                                                                >
+                                                                    {opt.label}
+                                                                </button>
+                                                            ))}
                                                         </div>
                                                     </div>
                                                 );
                                             })}
                                         </div>
-                                    </div>
-                                )}
-
-                                {routes.filter(r => r.transportId === selectedTransportId && isRouteActiveOnDate(r, selectedDate)).length === 0 && 
-                                 students.filter(s => s.transportId === selectedTransportId).length === 0 && (
-                                    <div className="py-24 text-center bg-white dark:bg-gray-800/20 rounded-[48px] border-2 border-dashed border-gray-100 dark:border-gray-800 text-gray-400 shadow-sm animate-in fade-in zoom-in-95 duration-700">
-                                        <div className="w-20 h-20 bg-gray-50 dark:bg-gray-900 rounded-3xl flex items-center justify-center mx-auto mb-6 shadow-inner">
-                                            <Bus size={40} className="opacity-10" />
-                                        </div>
-                                        <p className="text-sm font-black uppercase tracking-widest text-gray-600 dark:text-gray-400">Bugun uchun marshrutlar yo'q</p>
-                                        <p className="text-[10px] font-bold mt-2 text-gray-400">Tanlangan {selectedDate} sanasi uchun {transports.find(t => t.id === selectedTransportId)?.name} transportiga marshrut biriktirilmagan</p>
-                                    </div>
-                                )}
-                            </div>
-                        </div>
+                                    )}
+                                </div>
+                            ))}
                     </div>
-                )}
-            </div>
+                </div>
+            )}
 
-            {/* Modals - Simplified for brevity in this turn, will expand in full implementation */}
+            {/* Transport Modal */}
             {isTransportModalOpen && (
-                <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-gray-900/60 backdrop-blur-sm shadow-2xl overflow-y-auto">
-                    <div className="bg-white dark:bg-gray-900 w-full max-w-lg rounded-[40px] p-8 shadow-2xl relative animate-in zoom-in-95 duration-300">
-                        <button onClick={() => setIsTransportModalOpen(false)} className="absolute right-6 top-6 p-2 text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors"><X size={24} /></button>
-                        <h2 className="text-2xl font-black text-gray-900 dark:text-white uppercase tracking-tighter mb-8 flex items-center gap-3">
-                            <Bus className="text-amber-500" /> {editingTransport ? 'Tahrirlash' : 'Yangi Transport'}
-                        </h2>
+                <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+                    <div className="absolute inset-0 bg-gray-900/60 backdrop-blur-sm" onClick={() => setIsTransportModalOpen(false)} />
+                    <div className="relative bg-white dark:bg-gray-800 rounded-[2rem] border border-gray-100 dark:border-gray-700/50 shadow-2xl w-full max-w-md p-8">
+                        <div className="flex items-center justify-between mb-6 pb-4 border-b border-gray-50 dark:border-gray-700/50">
+                            <div>
+                                <h3 className="text-lg font-black text-gray-900 dark:text-white uppercase tracking-tight">{editingTransport ? 'Tahrirlash' : 'Yangi Transport'}</h3>
+                                <p className="text-[10px] font-bold text-[#1b6b6b] uppercase tracking-widest mt-0.5">Avtopark tarkibi</p>
+                            </div>
+                            <button onClick={() => setIsTransportModalOpen(false)} className="w-9 h-9 flex items-center justify-center text-gray-400 hover:bg-gray-55 dark:hover:bg-gray-700 rounded-xl cursor-pointer"><X size={18} /></button>
+                        </div>
                         <form onSubmit={handleTransportSubmit} className="space-y-4">
-                            <input 
-                                className="w-full bg-gray-50 dark:bg-gray-800 border-none rounded-2xl px-5 py-4 text-sm font-bold focus:ring-2 focus:ring-amber-500"
-                                placeholder="Transport Nomi"
-                                value={transportFormData.name}
-                                onChange={e => setTransportFormData({...transportFormData, name: e.target.value})}
-                                required
-                            />
-                            <div className="grid grid-cols-2 gap-4">
-                                <input className="w-full bg-gray-50 dark:bg-gray-800 border-none rounded-2xl px-5 py-4 text-sm font-bold focus:ring-2 focus:ring-amber-500" placeholder="Model" value={transportFormData.model} onChange={e => setTransportFormData({...transportFormData, model: e.target.value})} />
-                                <input className="w-full bg-gray-50 dark:bg-gray-800 border-none rounded-2xl px-5 py-4 text-sm font-bold focus:ring-2 focus:ring-amber-500" placeholder="Raqam" value={transportFormData.number} onChange={e => setTransportFormData({...transportFormData, number: e.target.value})} />
+                            <div>
+                                <label className={lbl}>Nomi *</label>
+                                <input required type="text" className={inp} placeholder="Sariq avtobus" value={transportFormData.name} onChange={e => setTransportFormData({...transportFormData, name: e.target.value})} />
                             </div>
                             <div className="grid grid-cols-2 gap-4">
-                                <input type="number" className="w-full bg-gray-50 dark:bg-gray-800 border-none rounded-2xl px-5 py-4 text-sm font-bold focus:ring-2 focus:ring-amber-500" placeholder="Syg'im" value={transportFormData.capacity} onChange={e => setTransportFormData({...transportFormData, capacity: parseInt(e.target.value)})} />
-                                <select className="w-full bg-gray-50 dark:bg-gray-800 border-none rounded-2xl px-5 py-4 text-sm font-bold focus:ring-2 focus:ring-amber-500 appearance-none" value={transportFormData.status} onChange={e => setTransportFormData({...transportFormData, status: e.target.value as any})}>
-                                    <option value="Faol">Faol</option>
-                                    <option value="Ta'mirda">Ta'mirda</option>
-                                    <option value="Arxiv">Arxiv</option>
+                                <div>
+                                    <label className={lbl}>Model</label>
+                                    <input type="text" className={inp} placeholder="Daewoo" value={transportFormData.model} onChange={e => setTransportFormData({...transportFormData, model: e.target.value})} />
+                                </div>
+                                <div>
+                                    <label className={lbl}>Raqam</label>
+                                    <input type="text" className={inp} placeholder="70 A 777 AA" value={transportFormData.number} onChange={e => setTransportFormData({...transportFormData, number: e.target.value})} />
+                                </div>
+                            </div>
+                            <div className="grid grid-cols-2 gap-4">
+                                <div>
+                                    <label className={lbl}>Sig'im (kishi)</label>
+                                    <input type="number" className={inp} value={transportFormData.capacity} onChange={e => setTransportFormData({...transportFormData, capacity: parseInt(e.target.value)})} />
+                                </div>
+                                <div>
+                                    <label className={lbl}>Holat</label>
+                                    <select className={inp} value={transportFormData.status} onChange={e => setTransportFormData({...transportFormData, status: e.target.value as any})}>
+                                        <option value="Faol">Faol</option>
+                                        <option value="Ta'mirda">Ta'mirda</option>
+                                        <option value="Arxiv">Arxiv</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div>
+                                <label className={lbl}>Haydovchi</label>
+                                <select className={inp} value={transportFormData.driverId || ''} onChange={e => {
+                                    const did = e.target.value ? parseInt(e.target.value) : null;
+                                    const u = users.find(u => u.id === did);
+                                    setTransportFormData({...transportFormData, driverId: did, driverName: u?.name || '', driverPhone: u?.phone || ''});
+                                }}>
+                                    <option value="">Tanlang...</option>
+                                    {users.filter(u => u.role === 'DRIVER').map(u => <option key={u.id} value={u.id}>{u.name}</option>)}
                                 </select>
                             </div>
-                            <select className="w-full bg-gray-50 dark:bg-gray-800 border-none rounded-2xl px-5 py-4 text-sm font-bold focus:ring-2 focus:ring-amber-500 appearance-none" value={transportFormData.driverId || ''} onChange={e => {
-                                const did = e.target.value ? parseInt(e.target.value) : null;
-                                const u = users.find(u => u.id === did);
-                                setTransportFormData({...transportFormData, driverId: did, driverName: u?.name || '', driverPhone: u?.phone || ''});
-                            }}>
-                                <option value="">Haydovchi tanlang</option>
-                                {users.filter(u => u.role === 'DRIVER').map(u => <option key={u.id} value={u.id}>{u.name}</option>)}
-                            </select>
-                            <button type="submit" className="w-full py-5 bg-amber-500 hover:bg-amber-600 text-white rounded-3xl font-black uppercase tracking-widest shadow-xl shadow-amber-500/20 active:scale-95 transition-all mt-6">
-                                {editingTransport ? 'Yangilash' : 'Saqlash'}
-                            </button>
+                            <div className="flex gap-3 pt-4 border-t border-dashed border-gray-150 dark:border-gray-700/50">
+                                <button type="button" onClick={() => setIsTransportModalOpen(false)}
+                                    className="flex-1 py-3 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-white text-xs font-extrabold uppercase tracking-widest rounded-2xl transition-all cursor-pointer hover:bg-gray-200 dark:hover:bg-gray-600">
+                                    Bekor
+                                </button>
+                                <button type="submit"
+                                    className="flex-1 py-3 bg-[#1b6b6b] hover:bg-[#155252] text-white text-xs font-extrabold uppercase tracking-widest rounded-2xl shadow-lg shadow-[#1b6b6b]/20 transition-all cursor-pointer">
+                                    Saqlash
+                                </button>
+                            </div>
                         </form>
                     </div>
                 </div>
             )}
 
             {isRouteModalOpen && (
-                <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-gray-900/60 backdrop-blur-sm shadow-2xl overflow-y-auto">
-                    <div className="bg-white dark:bg-gray-900 w-full max-w-lg rounded-[40px] p-8 shadow-2xl relative animate-in zoom-in-95 duration-300">
-                        <button onClick={() => setIsRouteModalOpen(false)} className="absolute right-6 top-6 p-2 text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors"><X size={24} /></button>
-                        <h2 className="text-2xl font-black text-gray-900 dark:text-white uppercase tracking-tighter mb-8 flex items-center gap-3">
-                            <Navigation className="text-sky-500" /> {editingRoute ? 'Marshrutni tahrirlash' : 'Yangi Marshrut'}
-                        </h2>
+                <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+                    <div className="absolute inset-0 bg-gray-900/60 backdrop-blur-sm" onClick={() => setIsRouteModalOpen(false)} />
+                    <div className="relative bg-white dark:bg-gray-800 rounded-[2rem] border border-gray-100 dark:border-gray-700/50 shadow-2xl w-full max-w-md p-8">
+                        <div className="flex items-center justify-between mb-6 pb-4 border-b border-gray-50 dark:border-gray-700/50">
+                            <div>
+                                <h3 className="text-lg font-black text-gray-900 dark:text-white uppercase tracking-tight">{editingRoute ? 'Marshrut tahriri' : 'Yangi Marshrut'}</h3>
+                                <p className="text-[10px] font-bold text-[#1b6b6b] uppercase tracking-widest mt-0.5">Tashish yo'nalishi</p>
+                            </div>
+                            <button onClick={() => setIsRouteModalOpen(false)} className="w-9 h-9 flex items-center justify-center text-gray-400 hover:bg-gray-55 dark:hover:bg-gray-700 rounded-xl cursor-pointer"><X size={18} /></button>
+                        </div>
                         <form onSubmit={handleRouteSubmit} className="space-y-4">
-                            <input 
-                                className="w-full bg-gray-50 dark:bg-gray-800 border-none rounded-2xl px-5 py-4 text-sm font-bold focus:ring-2 focus:ring-sky-500"
-                                placeholder="Marshrut Nomi"
-                                value={routeFormData.name}
-                                onChange={e => setRouteFormData({...routeFormData, name: e.target.value})}
-                                required
-                            />
+                            <div>
+                                <label className={lbl}>Marshrut Nomi *</label>
+                                <input required type="text" className={inp} placeholder="Sariosiyo yo'nalishi" value={routeFormData.name} onChange={e => setRouteFormData({...routeFormData, name: e.target.value})} />
+                            </div>
                             <div className="grid grid-cols-2 gap-4">
-                                <div className="space-y-1">
-                                    <p className="text-[9px] font-black text-sky-500 uppercase tracking-widest ml-1">Boshlanish vaqti</p>
-                                    <input 
-                                        type="time"
-                                        className="w-full bg-gray-50 dark:bg-gray-800 border-none rounded-2xl px-5 py-4 text-sm font-bold focus:ring-2 focus:ring-sky-500"
-                                        value={routeFormData.startTime || ''}
-                                        onChange={e => setRouteFormData({...routeFormData, startTime: e.target.value})}
-                                    />
+                                <div>
+                                    <label className={lbl}>Boshlanish vaqti</label>
+                                    <input type="time" className={inp} value={routeFormData.startTime || ''} onChange={e => setRouteFormData({...routeFormData, startTime: e.target.value})} />
                                 </div>
-                                <div className="space-y-1">
-                                    <p className="text-[9px] font-black text-sky-500 uppercase tracking-widest ml-1">Kunlar</p>
-                                    <select className="w-full bg-gray-50 dark:bg-gray-800 border-none rounded-2xl px-5 py-4 text-sm font-bold focus:ring-2 focus:ring-sky-500 appearance-none" value={routeFormData.days} onChange={e => setRouteFormData({...routeFormData, days: e.target.value as any})}>
+                                <div>
+                                    <label className={lbl}>Kunlar</label>
+                                    <select className={inp} value={routeFormData.days} onChange={e => setRouteFormData({...routeFormData, days: e.target.value as any})}>
                                         <option value="HAR_KUNI">Har kuni</option>
                                         <option value="TOQ">Toq kunlar</option>
                                         <option value="JUFT">Juft kunlar</option>
@@ -698,53 +589,58 @@ export default function LogisticsHub() {
                                 </div>
                             </div>
                             <div className="grid grid-cols-2 gap-4">
-                                <select className="w-full bg-gray-50 dark:bg-gray-800 border-none rounded-2xl px-5 py-4 text-sm font-bold focus:ring-2 focus:ring-sky-500 appearance-none" value={routeFormData.transportId || ''} onChange={e => setRouteFormData({...routeFormData, transportId: e.target.value ? parseInt(e.target.value) : null})}>
-                                    <option value="">Transport tanlang</option>
-                                    {transports.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
-                                </select>
-                                <select className="w-full bg-gray-50 dark:bg-gray-800 border-none rounded-2xl px-5 py-4 text-sm font-bold focus:ring-2 focus:ring-sky-500 appearance-none" value={routeFormData.driverId || ''} onChange={e => setRouteFormData({...routeFormData, driverId: e.target.value ? parseInt(e.target.value) : null})}>
-                                    <option value="">Haydovchini tanlang</option>
-                                    {users.filter(u => u.role === 'DRIVER').map(u => <option key={u.id} value={u.id}>{u.name}</option>)}
-                                </select>
+                                <div>
+                                    <label className={lbl}>Transport</label>
+                                    <select className={inp} value={routeFormData.transportId || ''} onChange={e => setRouteFormData({...routeFormData, transportId: e.target.value ? parseInt(e.target.value) : null})}>
+                                        <option value="">Tanlang...</option>
+                                        {transports.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
+                                    </select>
+                                </div>
+                                <div>
+                                    <label className={lbl}>Haydovchi</label>
+                                    <select className={inp} value={routeFormData.driverId || ''} onChange={e => setRouteFormData({...routeFormData, driverId: e.target.value ? parseInt(e.target.value) : null})}>
+                                        <option value="">Tanlang...</option>
+                                        {users.filter(u => u.role === 'DRIVER').map(u => <option key={u.id} value={u.id}>{u.name}</option>)}
+                                    </select>
+                                </div>
                             </div>
-
-                            <div className="p-4 bg-sky-50 dark:bg-sky-500/10 rounded-2xl border border-sky-100 dark:border-sky-500/20">
-                                <p className="text-[10px] font-black text-sky-600 uppercase tracking-widest mb-1 flex items-center gap-1">
-                                    <AlertCircle size={10} /> Malumot
-                                </p>
-                                <p className="text-[10px] text-sky-800 dark:text-sky-300 font-bold leading-relaxed">
-                                    Marshrut yaratilgandan so'ng, unga o'quvchilarni qo'shishingiz va ularning stop tartibini belgilashingiz mumkin bo'ladi.
-                                </p>
+                            <div className="flex gap-3 pt-4 border-t border-dashed border-gray-150 dark:border-gray-700/50">
+                                <button type="button" onClick={() => setIsRouteModalOpen(false)}
+                                    className="flex-1 py-3 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-white text-xs font-extrabold uppercase tracking-widest rounded-2xl transition-all cursor-pointer hover:bg-gray-200 dark:hover:bg-gray-600">
+                                    Bekor
+                                </button>
+                                <button type="submit"
+                                    className="flex-1 py-3 bg-[#1b6b6b] hover:bg-[#155252] text-white text-xs font-extrabold uppercase tracking-widest rounded-2xl shadow-lg shadow-[#1b6b6b]/20 transition-all cursor-pointer">
+                                    Saqlash
+                                </button>
                             </div>
-
-                            <button type="submit" className="w-full py-5 bg-sky-500 hover:bg-sky-600 text-white rounded-3xl font-black uppercase tracking-widest shadow-xl shadow-sky-500/20 active:scale-95 transition-all mt-6">
-                                {editingRoute ? 'Sinxronizatsiya' : 'Yaratish'}
-                            </button>
                         </form>
                     </div>
                 </div>
             )}
 
             {isStudentSelectorOpen && editingRoute && (
-                <div className="fixed inset-0 z-[110] flex items-center justify-center p-4 bg-gray-900/60 backdrop-blur-sm shadow-2xl overflow-y-auto">
-                    <div className="bg-white dark:bg-gray-900 w-full max-w-2xl rounded-[40px] p-8 shadow-2xl relative animate-in zoom-in-95 duration-300 max-h-[90vh] flex flex-col">
-                        <button onClick={() => setIsStudentSelectorOpen(false)} className="absolute right-6 top-6 p-2 text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors"><X size={24} /></button>
-                        <h2 className="text-2xl font-black text-gray-900 dark:text-white uppercase tracking-tighter mb-6">
-                            O'quvchi Qo'shish
-                        </h2>
-                        
-                        <div className="relative mb-6">
-                            <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
+                <div className="fixed inset-0 z-[110] flex items-center justify-center p-4">
+                    <div className="absolute inset-0 bg-gray-900/60 backdrop-blur-sm" onClick={() => setIsStudentSelectorOpen(false)} />
+                    <div className="relative bg-white dark:bg-gray-800 rounded-[2rem] border border-gray-100 dark:border-gray-700/50 shadow-2xl w-full max-w-md p-8 max-h-[80vh] flex flex-col">
+                        <div className="flex items-center justify-between mb-6 pb-4 border-b border-gray-50 dark:border-gray-700/50 shrink-0">
+                            <div>
+                                <h3 className="text-lg font-black text-gray-900 dark:text-white uppercase tracking-tight">O'quvchi Qo'shish</h3>
+                                <p className="text-[10px] font-bold text-[#1b6b6b] uppercase tracking-widest mt-0.5">Marshrutga biriktirish</p>
+                            </div>
+                            <button onClick={() => setIsStudentSelectorOpen(false)} className="w-9 h-9 flex items-center justify-center text-gray-400 hover:bg-gray-55 dark:hover:bg-gray-700 rounded-xl cursor-pointer"><X size={18} /></button>
+                        </div>
+                        <div className="relative mb-4 shrink-0">
+                            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400" size={14} />
                             <input 
                                 type="text"
-                                placeholder="O'quvchi ismini qidirish..."
-                                className="w-full bg-gray-50 dark:bg-gray-800 border-none rounded-2xl pl-12 pr-4 py-4 text-sm font-bold focus:ring-2 focus:ring-sky-500"
+                                placeholder="Qidiruv..."
+                                className="w-full pl-9 pr-4 py-2.5 bg-gray-50 dark:bg-gray-900/50 border border-gray-100 dark:border-gray-700 rounded-xl text-xs font-bold text-gray-900 dark:text-white outline-none focus:border-[#1b6b6b] transition-all"
                                 value={searchTerm}
                                 onChange={(e) => setSearchTerm(e.target.value)}
                             />
                         </div>
-
-                        <div className="flex-1 overflow-y-auto min-h-0 space-y-2 pr-2">
+                        <div className="flex-1 overflow-y-auto custom-scrollbar space-y-2">
                             {students
                                 .filter(s => s.name.toLowerCase().includes(searchTerm.toLowerCase()))
                                 .filter(s => !editingRoute.studentIds.includes(s.id))
@@ -755,20 +651,13 @@ export default function LogisticsHub() {
                                             const studentIds = [...editingRoute.studentIds, student.id];
                                             await updateRoute(editingRoute.id, { studentIds });
                                         }}
-                                        className="w-full flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-800/50 hover:bg-sky-50 dark:hover:bg-sky-500/10 rounded-2xl border border-transparent hover:border-sky-200 dark:hover:border-sky-700/50 transition-all group"
+                                        className="w-full flex items-center justify-between p-3 bg-gray-50/50 dark:bg-gray-900/40 hover:bg-[#1b6b6b]/5 border border-transparent hover:border-gray-100 rounded-2xl transition-all cursor-pointer text-left"
                                     >
-                                        <div className="flex items-center gap-4">
-                                            <div className="w-10 h-10 rounded-xl bg-white dark:bg-gray-700 flex items-center justify-center font-bold text-sky-500">
-                                                {student.name[0]}
-                                            </div>
-                                            <div className="text-left">
-                                                <p className="text-sm font-black text-gray-900 dark:text-white uppercase tracking-tight">{student.name}</p>
-                                                <p className="text-[10px] font-bold text-gray-400">{student.phone}</p>
-                                            </div>
+                                        <div>
+                                            <p className="text-xs font-black text-gray-900 dark:text-white uppercase tracking-tight">{student.name}</p>
+                                            <span className="text-[9px] text-gray-400 font-bold block mt-0.5 uppercase tracking-wide">{student.phone}</span>
                                         </div>
-                                        <div className="p-2 bg-sky-500 text-white rounded-lg opacity-0 group-hover:opacity-100 transition-opacity">
-                                            <Plus size={16} />
-                                        </div>
+                                        <Plus size={16} className="text-gray-400" />
                                     </button>
                                 ))}
                         </div>

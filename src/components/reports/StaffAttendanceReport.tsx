@@ -99,7 +99,7 @@ export default function StaffAttendanceReport() {
                             const color = r.pct >= 80 ? 'text-emerald-600 dark:text-emerald-400' : r.pct >= 60 ? 'text-amber-600 dark:text-amber-400' : 'text-rose-600 dark:text-rose-400';
                             return <span className={`font-extrabold ${color}`}>{r.pct}%</span>;
                         }},
-                        { key: 'subject', label: 'Fan', render: r => r.subject || '-' },
+                        { key: 'phone', label: 'Telefon raqami', render: r => r.phone },
                     ]}
                     rows={statsPerTeacher}
                 />

@@ -87,7 +87,7 @@ export default function ExamResults() {
         return Object.entries(subjectMap).map(([subject, { earned, max }]) => ({
             label: subject,
             value: max > 0 ? Math.round((earned / max) * 100) : 0,
-            color: 'linear-gradient(90deg,#14b8a6,#0ea5e9)'
+            color: 'linear-gradient(90deg,#1b6b6b,#2e8b8b)'
         }));
     }, [filteredResults]);
 
@@ -126,19 +126,19 @@ export default function ExamResults() {
     );
 
     return (
-        <div className="space-y-8 pb-12 animate-in fade-in duration-700">
+        <div className="space-y-6 pb-12 animate-in fade-in duration-500 max-w-7xl mx-auto">
             {/* Header */}
-            <div className="flex items-start justify-between flex-wrap gap-4">
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white dark:bg-gray-800 p-6 rounded-3xl border border-gray-100 dark:border-gray-700/50 shadow-sm">
                 <div>
-                    <h1 className="text-3xl font-extrabold text-gray-900 dark:text-white uppercase tracking-tight">Imtihon Natijalari</h1>
-                    <p className="text-[10px] font-bold text-gray-400 dark:text-gray-500 mt-2 uppercase tracking-widest">Statistika va tahlil</p>
+                    <h1 className="text-sm font-black text-gray-900 dark:text-white uppercase tracking-tight">Imtihon Natijalari</h1>
+                    <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mt-0.5">Statistika va tahlillar</p>
                 </div>
 
-                <div className="flex items-center gap-3 flex-wrap">
+                <div className="flex flex-wrap items-center gap-3 w-full md:w-auto">
                     <select
                         value={selectedExamId || ''}
                         onChange={e => { setSelectedExamId(Number(e.target.value) || null); setExpandedRow(null); }}
-                        className="px-4 py-3 bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700 rounded-xl text-[10px] font-bold uppercase tracking-widest outline-none focus:border-teal-500 dark:text-white"
+                        className="px-4 py-2.5 bg-gray-55 dark:bg-gray-905 border border-gray-100 dark:border-gray-700 rounded-2xl text-[10px] font-bold uppercase tracking-widest outline-none focus:border-[#1b6b6b] text-gray-900 dark:text-white cursor-pointer"
                     >
                         <option value="">Imtihon tanlang</option>
                         {exams.map(e => <option key={e.id} value={e.id}>{e.name}</option>)}
@@ -147,7 +147,7 @@ export default function ExamResults() {
                     <select
                         value={selectedGroupId}
                         onChange={e => setSelectedGroupId(e.target.value ? Number(e.target.value) : '')}
-                        className="px-4 py-3 bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700 rounded-xl text-[10px] font-bold uppercase tracking-widest outline-none focus:border-teal-500 dark:text-white"
+                        className="px-4 py-2.5 bg-gray-55 dark:bg-gray-905 border border-gray-100 dark:border-gray-700 rounded-2xl text-[10px] font-bold uppercase tracking-widest outline-none focus:border-[#1b6b6b] text-gray-900 dark:text-white cursor-pointer"
                     >
                         <option value="">Barcha guruhlar</option>
                         {groups.map(g => <option key={g.id} value={g.id}>{g.name}</option>)}
@@ -156,7 +156,7 @@ export default function ExamResults() {
                     <button
                         onClick={exportToExcel}
                         disabled={filteredResults.length === 0}
-                        className="px-5 py-3 bg-emerald-600 text-white rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-emerald-500 disabled:opacity-40 flex items-center gap-2"
+                        className="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-2xl text-[10px] font-black uppercase tracking-widest disabled:opacity-40 flex items-center gap-1.5 cursor-pointer shadow-lg shadow-emerald-500/10"
                     >
                         <Download size={14} /> Excel
                     </button>
@@ -164,11 +164,11 @@ export default function ExamResults() {
             </div>
 
             {!selectedExamId ? (
-                <div className="bg-white dark:bg-gray-800 rounded-2xl p-16 border border-gray-100 dark:border-gray-700 text-center">
+                <div className="bg-white dark:bg-gray-800 rounded-3xl p-16 border border-gray-100 dark:border-gray-700/50 text-center">
                     <p className="text-gray-400 text-[10px] font-black uppercase tracking-widest">Yuqoridan imtihon tanlang</p>
                 </div>
             ) : filteredResults.length === 0 ? (
-                <div className="bg-white dark:bg-gray-800 rounded-2xl p-16 border border-gray-100 dark:border-gray-700 text-center">
+                <div className="bg-white dark:bg-gray-800 rounded-3xl p-16 border border-gray-100 dark:border-gray-700/50 text-center">
                     <p className="text-gray-400 text-[10px] font-black uppercase tracking-widest">Hali natijalar kiritilmagan</p>
                 </div>
             ) : (
@@ -187,7 +187,7 @@ export default function ExamResults() {
                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                         {/* Score distribution */}
                         {scoreDistribution.length > 0 && (
-                            <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 p-6 shadow-sm">
+                            <div className="bg-white dark:bg-gray-800 rounded-3xl border border-gray-100 dark:border-gray-700/50 p-6 shadow-sm">
                                 <h3 className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-6">Ball Taqsimoti</h3>
                                 <BarChart data={scoreDistribution} height={160} unit=" kishi" />
                             </div>
@@ -195,7 +195,7 @@ export default function ExamResults() {
 
                         {/* Subject performance */}
                         {subjectPerformance.length > 0 && (
-                            <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 p-6 shadow-sm">
+                            <div className="bg-white dark:bg-gray-800 rounded-3xl border border-gray-100 dark:border-gray-700/50 p-6 shadow-sm">
                                 <h3 className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-6">Fan Bo'yicha Ko'rsatkichlar</h3>
                                 <BarChart data={subjectPerformance} horizontal unit="%" />
                             </div>
@@ -203,27 +203,27 @@ export default function ExamResults() {
                     </div>
 
                     {/* Results table */}
-                    <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 shadow-sm overflow-hidden">
+                    <div className="bg-white dark:bg-gray-800 rounded-3xl border border-gray-100 dark:border-gray-700/50 shadow-sm overflow-hidden">
                         <div className="overflow-x-auto">
                             <table className="w-full text-left border-collapse min-w-[700px]">
                                 <thead>
-                                    <tr className="bg-gray-50 dark:bg-gray-900/50 border-b border-gray-100 dark:border-gray-700">
-                                        <th className="p-5 text-[10px] font-black text-gray-400 uppercase tracking-widest cursor-pointer hover:text-gray-600" onClick={() => toggleSort('name')}>
+                                    <tr className="bg-gray-55 dark:bg-gray-900 border-b border-gray-100 dark:border-gray-700/50">
+                                        <th className="p-4 text-[9px] font-black text-gray-400 uppercase tracking-widest cursor-pointer hover:text-gray-650" onClick={() => toggleSort('name')}>
                                             Ism <SortIcon col="name" />
                                         </th>
-                                        <th className="p-5 text-[10px] font-black text-gray-400 uppercase tracking-widest">Guruh</th>
-                                        <th className="p-5 text-[10px] font-black text-gray-400 uppercase tracking-widest text-center">Variant</th>
-                                        <th className="p-5 text-[10px] font-black text-gray-400 uppercase tracking-widest text-center cursor-pointer hover:text-gray-600" onClick={() => toggleSort('score')}>
+                                        <th className="p-4 text-[9px] font-black text-gray-400 uppercase tracking-widest">Guruh</th>
+                                        <th className="p-4 text-[9px] font-black text-gray-400 uppercase tracking-widest text-center">Variant</th>
+                                        <th className="p-4 text-[9px] font-black text-gray-400 uppercase tracking-widest text-center cursor-pointer hover:text-gray-650" onClick={() => toggleSort('score')}>
                                             Ball <SortIcon col="score" />
                                         </th>
-                                        <th className="p-5 text-[10px] font-black text-gray-400 uppercase tracking-widest text-center cursor-pointer hover:text-gray-600" onClick={() => toggleSort('percentage')}>
+                                        <th className="p-4 text-[9px] font-black text-gray-400 uppercase tracking-widest text-center cursor-pointer hover:text-gray-650" onClick={() => toggleSort('percentage')}>
                                             % <SortIcon col="percentage" />
                                         </th>
-                                        <th className="p-5 text-[10px] font-black text-gray-400 uppercase tracking-widest text-center">Sana</th>
-                                        <th className="p-5 w-10" />
+                                        <th className="p-4 text-[9px] font-black text-gray-400 uppercase tracking-widest text-center">Sana</th>
+                                        <th className="p-4 w-10" />
                                     </tr>
                                 </thead>
-                                <tbody className="divide-y divide-gray-50 dark:divide-gray-700/50">
+                                <tbody className="divide-y divide-gray-100 dark:divide-gray-800">
                                     {filteredResults.map(result => {
                                         const student = students.find(s => s.id === result.studentId);
                                         const group = groups.find(g =>
@@ -235,31 +235,31 @@ export default function ExamResults() {
                                         return (
                                             <React.Fragment key={result.id}>
                                                 <tr
-                                                    className="hover:bg-gray-50/80 dark:hover:bg-teal-900/5 cursor-pointer transition-all"
+                                                    className="hover:bg-gray-50/50 dark:hover:bg-teal-950/20 cursor-pointer transition-all"
                                                     onClick={() => setExpandedRow(isExpanded ? null : result.id)}
                                                 >
-                                                    <td className="p-5">
+                                                    <td className="p-4">
                                                         <div className="flex items-center gap-3">
-                                                            <div className="w-8 h-8 rounded-xl bg-teal-50 dark:bg-teal-900/30 flex items-center justify-center text-teal-600 font-black text-xs">
+                                                            <div className="w-8 h-8 rounded-xl bg-teal-50 dark:bg-teal-950/20 border border-teal-100 dark:border-teal-900/40 flex items-center justify-center text-[#1b6b6b] font-black text-xs">
                                                                 {student?.name?.[0] || '?'}
                                                             </div>
-                                                            <span className="text-sm font-bold text-gray-900 dark:text-white">{student?.name || `ID: ${result.studentId}`}</span>
+                                                            <span className="text-xs font-black text-gray-900 dark:text-white uppercase tracking-tight">{student?.name || `ID: ${result.studentId}`}</span>
                                                         </div>
                                                     </td>
-                                                    <td className="p-5 text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-widest">
+                                                    <td className="p-4 text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-widest">
                                                         {group?.name || '-'}
                                                     </td>
-                                                    <td className="p-5 text-center">
-                                                        <span className="px-3 py-1 bg-gray-100 dark:bg-gray-700 rounded-lg text-[10px] font-black text-gray-600 dark:text-gray-300">
+                                                    <td className="p-4 text-center">
+                                                        <span className="px-2.5 py-1 bg-gray-55 dark:bg-gray-900 rounded-lg text-[9px] font-black text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                                                             {result.variantCode || '-'}
                                                         </span>
                                                     </td>
-                                                    <td className="p-5 text-center">
-                                                        <span className="text-lg font-black text-gray-900 dark:text-white">{result.score}</span>
+                                                    <td className="p-4 text-center">
+                                                        <span className="text-sm font-black text-gray-900 dark:text-white">{result.score}</span>
                                                         <span className="text-[10px] text-gray-400 ml-1">/ {exam?.maxScore}</span>
                                                     </td>
-                                                    <td className="p-5 text-center">
-                                                        <span className={`px-3 py-1 rounded-xl text-[10px] font-black ${
+                                                    <td className="p-4 text-center">
+                                                        <span className={`px-2.5 py-1 rounded-md text-[9px] font-black uppercase tracking-wider ${
                                                             result.percentage >= 80 ? 'bg-emerald-50 text-emerald-600' :
                                                             result.percentage >= 50 ? 'bg-amber-50 text-amber-600' :
                                                             'bg-rose-50 text-rose-600'
@@ -267,25 +267,25 @@ export default function ExamResults() {
                                                             {result.percentage}%
                                                         </span>
                                                     </td>
-                                                    <td className="p-5 text-center text-[10px] text-gray-400">
+                                                    <td className="p-4 text-center text-[10px] text-gray-400">
                                                         {new Date(result.scannedAt).toLocaleDateString('uz')}
                                                     </td>
-                                                    <td className="p-5 text-center">
-                                                        {isExpanded ? <ChevronUp size={16} className="text-gray-400" /> : <ChevronDown size={16} className="text-gray-400" />}
+                                                    <td className="p-4 text-center">
+                                                        {isExpanded ? <ChevronUp size={16} className="text-gray-405" /> : <ChevronDown size={16} className="text-gray-405" />}
                                                     </td>
                                                 </tr>
 
                                                 {isExpanded && result.blockScores && (
                                                     <tr>
-                                                        <td colSpan={7} className="px-5 pb-4">
-                                                            <div className="bg-gray-50 dark:bg-gray-900/50 rounded-2xl p-5 space-y-3">
-                                                                <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-3">Fan Bo'yicha Natijalar</p>
+                                                        <td colSpan={7} className="px-4 pb-4">
+                                                            <div className="bg-gray-55 dark:bg-gray-900/50 rounded-2xl p-4 space-y-3 border border-gray-100 dark:border-gray-800">
+                                                                <p className="text-[9px] font-black text-gray-450 uppercase tracking-widest mb-3">Fan Bo'yicha Natijalar</p>
                                                                 {(result.blockScores as { subject: string; earned: number; max: number }[]).map((bs, i) => (
                                                                     <div key={i} className="flex items-center gap-4">
                                                                         <span className="text-[10px] font-black text-gray-600 dark:text-gray-300 uppercase tracking-widest w-28 shrink-0">{bs.subject}</span>
-                                                                        <div className="flex-1 h-5 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
+                                                                        <div className="flex-1 h-2 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
                                                                             <div
-                                                                                className={`h-full rounded-full transition-all ${bs.max > 0 && bs.earned / bs.max >= 0.5 ? 'bg-teal-500' : 'bg-rose-400'}`}
+                                                                                className={`h-full rounded-full transition-all ${bs.max > 0 && bs.earned / bs.max >= 0.5 ? 'bg-teal-500' : 'bg-rose-450'}`}
                                                                                 style={{ width: `${bs.max > 0 ? (bs.earned / bs.max) * 100 : 0}%` }}
                                                                             />
                                                                         </div>

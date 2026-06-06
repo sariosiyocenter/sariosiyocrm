@@ -1,4 +1,4 @@
-export type UserRole = 'ADMIN' | 'MANAGER' | 'TEACHER' | 'RECEPTIONIST' | 'DRIVER' | 'SUPERADMIN';
+export type UserRole = 'ADMIN' | 'MANAGER' | 'TEACHER' | 'RECEPTIONIST' | 'DRIVER' | 'SUPERADMIN' | 'SELLER';
 
 export interface Student {
     id: number;
@@ -155,6 +155,9 @@ export interface Organization {
     teacherCount?: number;
     revenue?: number;
     userCount?: number;
+    status?: string;
+    expiresAt?: string | null;
+    maxSchools?: number;
 }
 
 export interface School {
