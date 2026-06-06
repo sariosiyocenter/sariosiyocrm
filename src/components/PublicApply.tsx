@@ -34,7 +34,6 @@ export default function PublicApply() {
         motherPhone: '',
         address: '',
         course: '',
-        preferredTime: 'Ertalab',
         notes: '',
         photo: ''
     });
@@ -104,7 +103,7 @@ export default function PublicApply() {
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     ...form,
-                    source: `Bir martalik QR Havola - Vaqt: ${form.preferredTime}`,
+                    source: `Bir martalik QR Havola`,
                     token: token
                 })
             });
@@ -391,39 +390,19 @@ export default function PublicApply() {
                                 </div>
                             </div>
 
-                            <div className="grid grid-cols-2 gap-4">
-                                <div>
-                                    <label className={lbl}>Sizga qaysi vaqt qulay?</label>
-                                    <div className="relative">
-                                        <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-gray-400">
-                                            <Clock size={15} />
-                                        </div>
-                                        <select
-                                            className={`${inp} appearance-none cursor-pointer`}
-                                            value={form.preferredTime}
-                                            onChange={e => setForm({ ...form, preferredTime: e.target.value })}
-                                        >
-                                            <option value="Ertalab">Ertalab (09:00 - 13:00)</option>
-                                            <option value="Tushdan keyin">Tushdan keyin (14:00 - 18:00)</option>
-                                            <option value="Kechki payt">Kechki payt (18:00 - 21:00)</option>
-                                        </select>
+                            <div>
+                                <label className={lbl}>Yashash manzilingiz</label>
+                                <div className="relative">
+                                    <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-gray-400">
+                                        <MapPin size={15} />
                                     </div>
-                                </div>
-
-                                <div>
-                                    <label className={lbl}>Yashash manzilingiz</label>
-                                    <div className="relative">
-                                        <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-gray-400">
-                                            <MapPin size={15} />
-                                        </div>
-                                        <input
-                                            type="text"
-                                            placeholder="Sariosiyo"
-                                            className={inp}
-                                            value={form.address}
-                                            onChange={e => setForm({ ...form, address: e.target.value })}
-                                        />
-                                    </div>
+                                    <input
+                                        type="text"
+                                        placeholder="Sariosiyo"
+                                        className={inp}
+                                        value={form.address}
+                                        onChange={e => setForm({ ...form, address: e.target.value })}
+                                    />
                                 </div>
                             </div>
 
