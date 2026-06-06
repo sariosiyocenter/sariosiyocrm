@@ -548,132 +548,138 @@ export default function Students() {
                     </table>
                 </div>
             </div>
-
-            {/* Modal */}
             {isModalOpen && (
-                <div className="fixed inset-0 z-[200] flex items-center justify-center p-4">
-                    <div className="absolute inset-0 bg-gray-900/60 backdrop-blur-sm" onClick={() => setIsModalOpen(false)} />
-                    <div className="relative bg-white dark:bg-gray-800 rounded-[2rem] border border-gray-100 dark:border-gray-700/50 shadow-2xl w-full max-w-lg p-8 max-h-[90vh] overflow-y-auto custom-scrollbar">
-                        <div className="flex items-center justify-between mb-6 pb-4 border-b border-gray-50 dark:border-gray-700/50">
-                            <div>
-                                <h3 className="text-lg font-black text-gray-900 dark:text-white uppercase tracking-tight">Yangi O'quvchi</h3>
-                                <p className="text-[10px] font-bold text-[#1b6b6b] uppercase tracking-widest mt-0.5">O'quvchi ma'lumotlari</p>
-                            </div>
-                            <button onClick={() => setIsModalOpen(false)} className="w-9 h-9 flex items-center justify-center text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700 rounded-xl cursor-pointer"><X size={18} /></button>
-                        </div>
-                        <form onSubmit={handleAddStudent} className="space-y-4">
-                            <div>
-                                <label className={lbl}>To'liq Ism *</label>
-                                <input required type="text" placeholder="Jasur Alimov" className={inp} value={newStudent.name} onChange={e => setNewStudent({ ...newStudent, name: e.target.value })} />
-                            </div>
-                            <div className="grid grid-cols-2 gap-4">
-                                <div>
-                                    <label className={lbl}>Telefon *</label>
-                                    <input required type="tel" placeholder="+998" className={inp} value={newStudent.phone} onChange={e => setNewStudent({ ...newStudent, phone: e.target.value })} />
+                <div className="fixed inset-0 z-[200] overflow-y-auto">
+                    {/* Backdrop */}
+                    <div className="fixed inset-0 bg-gray-900/60 backdrop-blur-sm" onClick={() => setIsModalOpen(false)} />
+                    
+                    {/* Centering Wrapper */}
+                    <div className="flex min-h-full items-center justify-center p-4">
+                        {/* Modal Panel */}
+                        <div className="relative bg-white dark:bg-gray-800 rounded-[2rem] border border-gray-100 dark:border-gray-700/50 shadow-2xl w-full max-w-lg p-8 transform transition-all">
+                            <div className="flex items-center justify-between mb-6 pb-4 border-b border-gray-50 dark:border-gray-700/50">
+                                <div className="text-left">
+                                    <h3 className="text-lg font-black text-gray-900 dark:text-white uppercase tracking-tight">Yangi O'quvchi</h3>
+                                    <p className="text-[10px] font-bold text-[#1b6b6b] uppercase tracking-widest mt-0.5">O'quvchi ma'lumotlari</p>
                                 </div>
-                                <div>
-                                    <label className={lbl}>Tug'ilgan Sana</label>
-                                    <input type="date" className={inp} value={newStudent.birthDate} onChange={e => setNewStudent({ ...newStudent, birthDate: e.target.value })} />
-                                </div>
-                            </div>
-                            <div>
-                                <label className={lbl}>Maktab / Bog'cha</label>
-                                <input type="text" placeholder="42-maktab" className={inp} value={newStudent.studentSchool} onChange={e => setNewStudent({ ...newStudent, studentSchool: e.target.value })} />
-                            </div>
-
-                            <div className="border-t border-dashed border-gray-150 dark:border-gray-700/50 pt-4 mt-4 space-y-4">
-                                <span className="block text-[9px] font-black uppercase text-[#1b6b6b] tracking-wider">Ota-ona ma'lumotlari</span>
-                                <div className="grid grid-cols-2 gap-4">
-                                    <div>
-                                        <label className={lbl}>Otasining ismi</label>
-                                        <input type="text" placeholder="FISH" className={inp} value={newStudent.fatherName} onChange={e => setNewStudent({ ...newStudent, fatherName: e.target.value })} />
-                                    </div>
-                                    <div>
-                                        <label className={lbl}>Otasining telefoni</label>
-                                        <input type="tel" placeholder="+998" className={inp} value={newStudent.fatherPhone} onChange={e => setNewStudent({ ...newStudent, fatherPhone: e.target.value })} />
-                                    </div>
-                                </div>
-                                <div className="grid grid-cols-2 gap-4">
-                                    <div>
-                                        <label className={lbl}>Onasining ismi</label>
-                                        <input type="text" placeholder="FISH" className={inp} value={newStudent.motherName} onChange={e => setNewStudent({ ...newStudent, motherName: e.target.value })} />
-                                    </div>
-                                    <div>
-                                        <label className={lbl}>Onasining telefoni</label>
-                                        <input type="tel" placeholder="+998" className={inp} value={newStudent.motherPhone} onChange={e => setNewStudent({ ...newStudent, motherPhone: e.target.value })} />
-                                    </div>
-                                </div>
-                            </div>
-
-                            <div className="border-t border-dashed border-gray-150 dark:border-gray-700/50 pt-4 mt-4 space-y-4">
-                                <span className="block text-[9px] font-black uppercase text-[#1b6b6b] tracking-wider">Logistika & Manzil</span>
-                                <div className="grid grid-cols-2 gap-4">
-                                    <div>
-                                        <label className={lbl}>Transport</label>
-                                        <select className={inp} value={newStudent.transportId} onChange={e => setNewStudent({...newStudent, transportId: e.target.value})}>
-                                            <option value="">Kerak emas</option>
-                                            {transports.map(t => <option key={t.id} value={t.id}>{t.name} ({t.number})</option>)}
-                                        </select>
-                                    </div>
-                                    <div>
-                                        <label className={lbl}>Manzil</label>
-                                        <input type="text" placeholder="Sariosiyo" className={inp} value={newStudent.address} onChange={e => setNewStudent({ ...newStudent, address: e.target.value })} />
-                                    </div>
-                                </div>
-                                <button type="button" onClick={() => setIsMapOpen(true)}
-                                    className={`w-full py-2.5 rounded-xl border flex items-center justify-center gap-2 text-[10px] font-bold uppercase tracking-widest cursor-pointer transition-all ${newStudent.location ? 'bg-[#1b6b6b]/10 text-[#1b6b6b] border-[#1b6b6b]' : 'bg-gray-55 dark:bg-gray-900 border-gray-100 hover:bg-gray-100'}`}>
-                                    <MapPin size={14} /> {newStudent.location ? 'Kartada belgilandi' : 'Kartadan tanlash'}
+                                <button type="button" onClick={() => setIsModalOpen(false)} className="w-9 h-9 flex items-center justify-center text-gray-400 hover:bg-gray-55 dark:hover:bg-gray-700 rounded-xl cursor-pointer">
+                                    <X size={18} />
                                 </button>
                             </div>
-
-                            <div className="border-t border-dashed border-gray-150 dark:border-gray-700/50 pt-4 mt-4 space-y-4">
-                                <span className="block text-[9px] font-black uppercase text-[#1b6b6b] tracking-wider">Rasm</span>
-                                <div className="flex items-center gap-4">
-                                    <div className="w-20 h-20 rounded-2xl bg-gray-50 dark:bg-gray-900 border border-gray-100 flex items-center justify-center overflow-hidden shrink-0 shadow-inner">
-                                        {newStudent.photo ? <img src={newStudent.photo} alt="Preview" className="w-full h-full object-cover" /> : <ImageIcon size={24} className="text-gray-300" />}
+                            <form onSubmit={handleAddStudent} className="space-y-4 text-left">
+                                <div>
+                                    <label className={lbl}>To'liq Ism *</label>
+                                    <input required type="text" placeholder="Jasur Alimov" className={inp} value={newStudent.name} onChange={e => setNewStudent({ ...newStudent, name: e.target.value })} />
+                                </div>
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div>
+                                        <label className={lbl}>Telefon *</label>
+                                        <input required type="tel" placeholder="+998" className={inp} value={newStudent.phone} onChange={e => setNewStudent({ ...newStudent, phone: e.target.value })} />
                                     </div>
-                                    <div className="flex-1 space-y-2">
-                                        <div className="flex gap-2">
-                                            <label className="flex-1 flex items-center justify-center gap-1.5 py-2 border border-gray-100 dark:border-gray-700 rounded-xl cursor-pointer hover:bg-gray-50 text-[10px] font-bold uppercase tracking-wider">
-                                                <input type="file" className="hidden" accept="image/*" onChange={(e) => {
-                                                    const file = e.target.files?.[0];
-                                                    if (file) {
-                                                        const reader = new FileReader();
-                                                        reader.onloadend = async () => {
-                                                            const compressed = await compressImage(reader.result as string);
-                                                            setNewStudent({ ...newStudent, photo: compressed });
-                                                        };
-                                                        reader.readAsDataURL(file);
-                                                    }
-                                                }} />
-                                                Fayldan
-                                            </label>
-                                            <button type="button" onClick={() => setIsPhotoModalOpen(true)}
-                                                className="flex-1 flex items-center justify-center gap-1.5 py-2 border border-gray-100 dark:border-gray-700 rounded-xl hover:bg-gray-50 text-[10px] font-bold uppercase tracking-wider cursor-pointer">
-                                                Kamera
-                                            </button>
+                                    <div>
+                                        <label className={lbl}>Tug'ilgan Sana</label>
+                                        <input type="date" className={inp} value={newStudent.birthDate} onChange={e => setNewStudent({ ...newStudent, birthDate: e.target.value })} />
+                                    </div>
+                                </div>
+                                <div>
+                                    <label className={lbl}>Maktab / Bog'cha</label>
+                                    <input type="text" placeholder="42-maktab" className={inp} value={newStudent.studentSchool} onChange={e => setNewStudent({ ...newStudent, studentSchool: e.target.value })} />
+                                </div>
+
+                                <div className="border-t border-dashed border-gray-150 dark:border-gray-700/50 pt-4 mt-4 space-y-4">
+                                    <span className="block text-[9px] font-black uppercase text-[#1b6b6b] tracking-wider text-left">Ota-ona ma'lumotlari</span>
+                                    <div className="grid grid-cols-2 gap-4">
+                                        <div>
+                                            <label className={lbl}>Otasining ismi</label>
+                                            <input type="text" placeholder="FISH" className={inp} value={newStudent.fatherName} onChange={e => setNewStudent({ ...newStudent, fatherName: e.target.value })} />
                                         </div>
-                                        {newStudent.photo && (
-                                            <button type="button" onClick={handleRemoveBg} disabled={isRemovingBg}
-                                                className="w-full py-2 bg-violet-50 text-violet-600 dark:bg-violet-950/20 dark:text-violet-400 rounded-xl border border-violet-100 dark:border-violet-900 text-[9px] font-black uppercase tracking-wider disabled:opacity-50 cursor-pointer">
-                                                Fonni tozalash (AI)
-                                            </button>
-                                        )}
+                                        <div>
+                                            <label className={lbl}>Otasining telefoni</label>
+                                            <input type="tel" placeholder="+998" className={inp} value={newStudent.fatherPhone} onChange={e => setNewStudent({ ...newStudent, fatherPhone: e.target.value })} />
+                                        </div>
+                                    </div>
+                                    <div className="grid grid-cols-2 gap-4">
+                                        <div>
+                                            <label className={lbl}>Onasining ismi</label>
+                                            <input type="text" placeholder="FISH" className={inp} value={newStudent.motherName} onChange={e => setNewStudent({ ...newStudent, motherName: e.target.value })} />
+                                        </div>
+                                        <div>
+                                            <label className={lbl}>Onasining telefoni</label>
+                                            <input type="tel" placeholder="+998" className={inp} value={newStudent.motherPhone} onChange={e => setNewStudent({ ...newStudent, motherPhone: e.target.value })} />
+                                        </div>
                                     </div>
                                 </div>
-                            </div>
 
-                            <div className="flex gap-3 pt-4 border-t border-dashed border-gray-150 dark:border-gray-700/50">
-                                <button type="button" onClick={() => setIsModalOpen(false)}
-                                    className="flex-1 py-3 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-white text-xs font-extrabold uppercase tracking-widest rounded-2xl transition-all cursor-pointer hover:bg-gray-200 dark:hover:bg-gray-600">
-                                    Bekor
-                                </button>
-                                <button type="submit" disabled={isAdding}
-                                    className="flex-1 py-3 bg-[#1b6b6b] hover:bg-[#155252] text-white text-xs font-extrabold uppercase tracking-widest rounded-2xl shadow-lg shadow-[#1b6b6b]/20 transition-all cursor-pointer disabled:opacity-50">
-                                    {isAdding ? "Saqlanmoqda..." : "Saqlash"}
-                                </button>
-                            </div>
-                        </form>
+                                <div className="border-t border-dashed border-gray-150 dark:border-gray-700/50 pt-4 mt-4 space-y-4">
+                                    <span className="block text-[9px] font-black uppercase text-[#1b6b6b] tracking-wider text-left">Logistika & Manzil</span>
+                                    <div className="grid grid-cols-2 gap-4">
+                                        <div>
+                                            <label className={lbl}>Transport</label>
+                                            <select className={inp} value={newStudent.transportId} onChange={e => setNewStudent({...newStudent, transportId: e.target.value})}>
+                                                <option value="">Kerak emas</option>
+                                                {transports.map(t => <option key={t.id} value={t.id}>{t.name} ({t.number})</option>)}
+                                            </select>
+                                        </div>
+                                        <div>
+                                            <label className={lbl}>Manzil</label>
+                                            <input type="text" placeholder="Sariosiyo" className={inp} value={newStudent.address} onChange={e => setNewStudent({ ...newStudent, address: e.target.value })} />
+                                        </div>
+                                    </div>
+                                    <button type="button" onClick={() => setIsMapOpen(true)}
+                                        className={`w-full py-2.5 rounded-xl border flex items-center justify-center gap-2 text-[10px] font-bold uppercase tracking-widest cursor-pointer transition-all ${newStudent.location ? 'bg-[#1b6b6b]/10 text-[#1b6b6b] border-[#1b6b6b]' : 'bg-gray-55 dark:bg-gray-900 border-gray-100 hover:bg-gray-100'}`}>
+                                        <MapPin size={14} /> {newStudent.location ? 'Kartada belgilandi' : 'Kartadan tanlash'}
+                                    </button>
+                                </div>
+
+                                <div className="border-t border-dashed border-gray-150 dark:border-gray-700/50 pt-4 mt-4 space-y-4">
+                                    <span className="block text-[9px] font-black uppercase text-[#1b6b6b] tracking-wider text-left">Rasm</span>
+                                    <div className="flex items-center gap-4">
+                                        <div className="w-20 h-20 rounded-2xl bg-gray-55 dark:bg-gray-900 border border-gray-100 flex items-center justify-center overflow-hidden shrink-0 shadow-inner">
+                                            {newStudent.photo ? <img src={newStudent.photo} alt="Preview" className="w-full h-full object-cover" /> : <ImageIcon size={24} className="text-gray-300" />}
+                                        </div>
+                                        <div className="flex-1 space-y-2">
+                                            <div className="flex gap-2">
+                                                <label className="flex-1 flex items-center justify-center gap-1.5 py-2 border border-gray-100 dark:border-gray-700 rounded-xl cursor-pointer hover:bg-gray-50 text-[10px] font-bold uppercase tracking-wider">
+                                                    <input type="file" className="hidden" accept="image/*" onChange={(e) => {
+                                                        const file = e.target.files?.[0];
+                                                        if (file) {
+                                                            const reader = new FileReader();
+                                                            reader.onloadend = async () => {
+                                                                const compressed = await compressImage(reader.result as string);
+                                                                setNewStudent({ ...newStudent, photo: compressed });
+                                                            };
+                                                            reader.readAsDataURL(file);
+                                                        }
+                                                    }} />
+                                                    Fayldan
+                                                </label>
+                                                <button type="button" onClick={() => setIsPhotoModalOpen(true)}
+                                                    className="flex-1 flex items-center justify-center gap-1.5 py-2 border border-gray-100 dark:border-gray-700 rounded-xl hover:bg-gray-55 text-[10px] font-bold uppercase tracking-wider cursor-pointer">
+                                                    Kamera
+                                                </button>
+                                            </div>
+                                            {newStudent.photo && (
+                                                <button type="button" onClick={handleRemoveBg} disabled={isRemovingBg}
+                                                    className="w-full py-2 bg-violet-50 text-violet-600 dark:bg-violet-950/20 dark:text-violet-400 rounded-xl border border-violet-100 dark:border-violet-900 text-[9px] font-black uppercase tracking-wider disabled:opacity-50 cursor-pointer">
+                                                    Fonni tozalash (AI)
+                                                </button>
+                                            )}
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div className="flex gap-3 pt-4 border-t border-dashed border-gray-150 dark:border-gray-700/50">
+                                    <button type="button" onClick={() => setIsModalOpen(false)}
+                                        className="flex-1 py-3 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-white text-xs font-extrabold uppercase tracking-widest rounded-2xl transition-all cursor-pointer hover:bg-gray-200 dark:hover:bg-gray-600">
+                                        Bekor
+                                    </button>
+                                    <button type="submit" disabled={isAdding}
+                                        className="flex-1 py-3 bg-[#1b6b6b] hover:bg-[#155252] text-white text-xs font-extrabold uppercase tracking-widest rounded-2xl shadow-lg shadow-[#1b6b6b]/20 transition-all cursor-pointer disabled:opacity-50">
+                                        {isAdding ? "Saqlanmoqda..." : "Saqlash"}
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
                     </div>
                 </div>
             )}
