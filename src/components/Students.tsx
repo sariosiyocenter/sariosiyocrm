@@ -31,22 +31,46 @@ export default function Students() {
     // Link creation states
     const [isLinkModalOpen, setIsLinkModalOpen] = useState(false);
     const [qrCodeDataUrl, setQrCodeDataUrl] = useState('');
+    const [generatedToken, setGeneratedToken] = useState('');
     const [copySuccess, setCopySuccess] = useState(false);
 
     useEffect(() => {
         if (isLinkModalOpen && selectedSchoolId) {
-            import('qrcode').then((QRCodeLib) => {
-                const QRCode = QRCodeLib.default || QRCodeLib;
-                const applyUrl = `${window.location.origin}/apply/${selectedSchoolId}`;
-                QRCode.toDataURL(applyUrl, { width: 200, margin: 2 })
-                    .then(url => setQrCodeDataUrl(url))
-                    .catch(err => console.error(err));
-            });
+            const fetchToken = async () => {
+                try {
+                    const token = localStorage.getItem('token');
+                    const res = await fetch(`/api/public/schools/${selectedSchoolId}/tokens`, {
+                        method: 'POST',
+                        headers: {
+                            'Authorization': `Bearer ${token}`
+                        }
+                    });
+                    if (res.ok) {
+                        const data = await res.json();
+                        setGeneratedToken(data.token);
+
+                        const QRCodeLib = await import('qrcode');
+                        const QRCode = QRCodeLib.default || QRCodeLib;
+                        const applyUrl = `${window.location.origin}/apply/${selectedSchoolId}?token=${data.token}`;
+                        const qrUrl = await QRCode.toDataURL(applyUrl, { width: 200, margin: 2 });
+                        setQrCodeDataUrl(qrUrl);
+                    } else {
+                        console.error('Failed to create registration token');
+                    }
+                } catch (err) {
+                    console.error(err);
+                }
+            };
+            fetchToken();
+        } else {
+            setGeneratedToken('');
+            setQrCodeDataUrl('');
         }
     }, [isLinkModalOpen, selectedSchoolId]);
 
     const copyLinkToClipboard = () => {
-        const applyUrl = `${window.location.origin}/apply/${selectedSchoolId}`;
+        if (!generatedToken) return;
+        const applyUrl = `${window.location.origin}/apply/${selectedSchoolId}?token=${generatedToken}`;
         navigator.clipboard.writeText(applyUrl)
             .then(() => {
                 setCopySuccess(true);
@@ -721,7 +745,7 @@ export default function Students() {
                                 <input 
                                     readOnly 
                                     type="text" 
-                                    value={`${window.location.origin}/apply/${selectedSchoolId}`} 
+                                    value={generatedToken ? `${window.location.origin}/apply/${selectedSchoolId}?token=${generatedToken}` : "Yuklanmoqda..."} 
                                     className="bg-transparent border-none text-[10px] font-extrabold text-gray-700 dark:text-white outline-none w-full select-all"
                                 />
                             </div>

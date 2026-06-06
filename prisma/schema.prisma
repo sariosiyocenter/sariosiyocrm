@@ -255,6 +255,7 @@ model School {
   exams       Exam[]
   examResults ExamResult[]
   examAssignments ExamAssignment[]
+  applyTokens ApplyToken[]
 }
 
 model SmsLog {
@@ -450,4 +451,12 @@ model SaaSLead {
   
   sellerId    Int?
   seller      User?    @relation("SellerLeads", fields: [sellerId], references: [id])
+}
+
+model ApplyToken {
+  id        String   @id @default(uuid())
+  schoolId  Int
+  school    School   @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  used      Boolean  @default(false)
+  createdAt DateTime @default(now())
 }

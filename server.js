@@ -714,14 +714,53 @@ app.get('/api/public/schools/:schoolId/courses', async (req, res, next) => {
   } catch (error) { next(error); }
 });
 
-// POST register lead via public apply form
+// POST create single-use registration token (Authenticated)
+app.post('/api/public/schools/:schoolId/tokens', authenticate, async (req, res, next) => {
+  try {
+    const schoolId = parseInt(req.params.schoolId);
+    if (isNaN(schoolId)) return res.status(400).json({ error: 'Mavjud bo\'lmagan filial ID' });
+
+    const token = await prisma.applyToken.create({
+      data: { schoolId }
+    });
+    res.json({ token: token.id });
+  } catch (error) { next(error); }
+});
+
+// GET check if a registration token is valid
+app.get('/api/public/tokens/:tokenId', async (req, res, next) => {
+  try {
+    const { tokenId } = req.params;
+    const token = await prisma.applyToken.findUnique({
+      where: { id: tokenId }
+    });
+
+    if (!token || token.used) {
+      return res.json({ valid: false });
+    }
+
+    res.json({ valid: true, schoolId: token.schoolId });
+  } catch (error) { next(error); }
+});
+
+// POST register lead via public apply form using unique token
 app.post('/api/public/schools/:schoolId/leads', async (req, res, next) => {
   try {
     const schoolId = parseInt(req.params.schoolId);
     if (isNaN(schoolId)) return res.status(400).json({ error: 'Mavjud bo\'lmagan filial ID' });
 
-    const { name, phone, course, source } = req.body;
+    const { name, phone, course, source, token } = req.body;
     if (!name || !phone) return res.status(400).json({ error: 'Ism va telefon raqami majburiy' });
+    if (!token) return res.status(400).json({ error: 'Havola tokeni kiritilmagan yoki noto\'g\'ri' });
+
+    // Validate the token
+    const applyToken = await prisma.applyToken.findUnique({
+      where: { id: token }
+    });
+
+    if (!applyToken || applyToken.used || applyToken.schoolId !== schoolId) {
+      return res.status(400).json({ error: 'Ushbu ro\'yxatdan o\'tish havolasi eskirgan, noto\'g\'ri yoki allaqachon ishlatilgan.' });
+    }
 
     const cleanName = name.trim();
     const cleanPhone = phone.trim();
@@ -752,18 +791,24 @@ app.post('/api/public/schools/:schoolId/leads', async (req, res, next) => {
       return res.status(400).json({ error: 'Siz kiritgan ma\'lumotlar bilan o\'quvchi allaqachon mavjud.' });
     }
 
+    // Mark token as used
+    await prisma.applyToken.update({
+      where: { id: token },
+      data: { used: true }
+    });
+
     const lead = await prisma.lead.create({
       data: {
         name: cleanName,
         phone: cleanPhone,
         course: course || 'Aniqlanmagan',
-        source: source || 'QR Ro\'yxatdan o\'tish',
+        source: source || 'Bir martalik QR Havola',
         status: 'Yangi',
         schoolId
       }
     });
 
-    notifyAdmins(`🆕 QR Formadan yangi ariza:\n👤 ${lead.name}\n📞 ${lead.phone}\n📚 Kurs: ${lead.course}`, schoolId);
+    notifyAdmins(`🆕 Bir martalik QR Formadan yangi ariza:\n👤 ${lead.name}\n📞 ${lead.phone}\n📚 Kurs: ${lead.course}`, schoolId);
     res.json({ success: true, id: lead.id });
   } catch (error) { next(error); }
 });

@@ -32,11 +32,34 @@ export default function PublicApply() {
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [submitted, setSubmitted] = useState(false);
 
+    const searchParams = new URLSearchParams(window.location.search);
+    const token = searchParams.get('token');
+
     useEffect(() => {
         if (!schoolId) return;
+
+        // If they already submitted successfully in this session/browser, bypass API checks
+        if (token && localStorage.getItem(`submitted_apply_success_${token}`)) {
+            setSubmitted(true);
+            setLoading(false);
+            return;
+        }
+
         const fetchData = async () => {
             try {
                 setLoading(true);
+
+                if (!token) {
+                    throw new Error('Ro\'yxatdan o\'tish havolasi eskirgan yoki muddati tugagan.');
+                }
+
+                // Verify the single-use token
+                const tokenRes = await fetch(`/api/public/tokens/${token}`);
+                const tokenData = await tokenRes.json();
+                if (!tokenData.valid || tokenData.schoolId !== parseInt(schoolId)) {
+                    throw new Error('Ro\'yxatdan o\'tish havolasi eskirgan yoki noto\'g\'ri.');
+                }
+
                 // Fetch School Info
                 const infoRes = await fetch(`/api/public/schools/${schoolId}/info`);
                 if (!infoRes.ok) throw new Error('Filial topilmadi yoki xato yuz berdi');
@@ -56,16 +79,7 @@ export default function PublicApply() {
             }
         };
         fetchData();
-
-        // Check local storage submission lock (5 min cooldown)
-        const lastSubmit = localStorage.getItem(`submitted_apply_${schoolId}`);
-        if (lastSubmit) {
-            const timePassed = Date.now() - parseInt(lastSubmit);
-            if (timePassed < 5 * 60 * 1000) {
-                setSubmitted(true);
-            }
-        }
-    }, [schoolId]);
+    }, [schoolId, token]);
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -80,12 +94,15 @@ export default function PublicApply() {
                     name: form.name,
                     phone: form.phone,
                     course: form.course || 'Kurs tanlanmagan',
-                    source: `QR Form - Vaqt: ${form.preferredTime}${form.notes ? ` / Izoh: ${form.notes}` : ''}`
+                    source: `Bir martalik QR Havola - Vaqt: ${form.preferredTime}${form.notes ? ` / Izoh: ${form.notes}` : ''}`,
+                    token: token
                 })
             });
             if (res.ok) {
                 setSubmitted(true);
-                localStorage.setItem(`submitted_apply_${schoolId}`, Date.now().toString());
+                if (token) {
+                    localStorage.setItem(`submitted_apply_success_${token}`, 'true');
+                }
             } else {
                 const data = await res.json().catch(() => ({}));
                 alert(data.error || 'Yuborishda xatolik yuz berdi. Iltimos qaytadan urining.');
@@ -155,26 +172,9 @@ export default function PublicApply() {
                                 <CheckCircle2 size={40} className="animate-bounce" />
                             </div>
                             <h2 className="text-sm font-black text-gray-900 dark:text-white uppercase tracking-wider mb-2">Arizangiz qabul qilindi!</h2>
-                            <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest leading-relaxed mb-6">
+                            <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest leading-relaxed">
                                 Tez orada administratorlarimiz siz bilan bog'lanishadi va guruhga qo'shishadi.
                             </p>
-                            <button
-                                type="button"
-                                onClick={() => {
-                                    localStorage.removeItem(`submitted_apply_${schoolId}`);
-                                    setSubmitted(false);
-                                    setForm({
-                                        name: '',
-                                        phone: '',
-                                        course: '',
-                                        preferredTime: 'Ertalab',
-                                        notes: ''
-                                    });
-                                }}
-                                className="px-4 py-2.5 bg-gray-55 hover:bg-gray-100 dark:bg-gray-900/50 dark:hover:bg-gray-900 text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-white rounded-xl text-[9px] font-extrabold uppercase tracking-widest transition-all cursor-pointer border border-gray-100 dark:border-gray-700/50"
-                            >
-                                Yana ariza yuborish (Aka-uka yoki boshqa kurs uchun)
-                            </button>
                         </div>
                     ) : (
                         <form onSubmit={handleSubmit} className="space-y-5 animate-in fade-in duration-500">
