@@ -18,8 +18,10 @@ const supabaseAdmin = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY || ''
 );
 
-if (process.env.TELEGRAM_BOT_TOKEN) {
+if (process.env.TELEGRAM_BOT_TOKEN && !process.env.VERCEL) {
   startBot();
+} else if (process.env.VERCEL) {
+  console.log('Vercel serverless environment detected. Telegram Bot polling disabled.');
 } else {
   console.warn('TELEGRAM_BOT_TOKEN mavjud emas. Bot ishga tushmadi.');
 }
