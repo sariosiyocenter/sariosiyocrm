@@ -482,7 +482,7 @@ export const CRMProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         if (!token) throw new Error("Avtorizatsiya kerak");
 
         const dataWithSchoolId = (data && !endpoint.startsWith('schools')) ? {
-            schoolId: state.selectedSchoolId,
+            schoolId: (!state.selectedSchoolId || state.selectedSchoolId === 0) ? user?.schoolId : state.selectedSchoolId,
             ...data
         } : data;
 

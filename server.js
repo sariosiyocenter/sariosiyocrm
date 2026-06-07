@@ -992,12 +992,16 @@ app.get('/api/organizations', authenticate, async (req, res, next) => {
     const orgs = await prisma.organization.findMany({ orderBy: { createdAt: 'desc' } });
 
     // Aggregate stats per org via grouped queries (4 queries total regardless of org count)
-    const [studentGroups, teacherGroups, revenueGroups, userGroups, schoolGroups] = await Promise.all([
+    const [studentGroups, teacherGroups, revenueGroups, userGroups, schoolGroups, adminUsers] = await Promise.all([
       prisma.student.groupBy({ by: ['schoolId'], _count: { id: true } }),
       prisma.teacher.groupBy({ by: ['schoolId'], _count: { id: true } }),
       prisma.payment.groupBy({ by: ['schoolId'], _sum: { amount: true } }),
       prisma.user.groupBy({ by: ['schoolId'], _count: { id: true } }),
       prisma.school.findMany({ select: { id: true, organizationId: true } }),
+      prisma.user.findMany({
+        where: { role: 'ADMIN' },
+        select: { id: true, email: true, name: true, phone: true, schoolId: true }
+      })
     ]);
 
     const toSchoolMap = (arr, key, val) => Object.fromEntries(arr.map(r => [r.schoolId, r[key]?.[val] || 0]));
@@ -1013,7 +1017,30 @@ app.get('/api/organizations', authenticate, async (req, res, next) => {
       const teacherCount  = orgSchools.reduce((a, s) => a + (teachersBySchool[s.id] || 0), 0);
       const revenue       = orgSchools.reduce((a, s) => a + (revenuesBySchool[s.id] || 0), 0);
       const userCount     = orgSchools.reduce((a, s) => a + (usersBySchool[s.id] || 0), 0);
-      return { ...org, schoolCount, studentCount, teacherCount, revenue, userCount };
+      
+      // Sort schools by ID ascending to guarantee the primary/first branch admin is preferred
+      const sortedSchools = [...orgSchools].sort((a, b) => a.id - b.id);
+      let orgAdmin = null;
+      for (const s of sortedSchools) {
+        const admin = adminUsers.find(u => u.schoolId === s.id);
+        if (admin) {
+          orgAdmin = admin;
+          break;
+        }
+      }
+      
+      return { 
+        ...org, 
+        schoolCount, 
+        studentCount, 
+        teacherCount, 
+        revenue, 
+        userCount,
+        adminName: orgAdmin ? orgAdmin.name : '',
+        adminEmail: orgAdmin ? orgAdmin.email : '',
+        adminPhone: orgAdmin ? orgAdmin.phone : '',
+        adminId: orgAdmin ? orgAdmin.id : null
+      };
     });
 
     res.json(enriched);
@@ -1029,11 +1056,15 @@ app.get('/api/organizations/:id', authenticate, async (req, res, next) => {
 
     const schools = await prisma.school.findMany({ where: { organizationId: orgId } });
 
-    const [studentGroups, teacherGroups, revenueGroups, userGroups] = await Promise.all([
+    const [studentGroups, teacherGroups, revenueGroups, userGroups, adminUsers] = await Promise.all([
       prisma.student.groupBy({ by: ['schoolId'], where: { schoolId: { in: schools.map(s => s.id) } }, _count: { id: true } }),
       prisma.teacher.groupBy({ by: ['schoolId'], where: { schoolId: { in: schools.map(s => s.id) } }, _count: { id: true } }),
       prisma.payment.groupBy({ by: ['schoolId'], where: { schoolId: { in: schools.map(s => s.id) } }, _sum: { amount: true } }),
       prisma.user.groupBy({ by: ['schoolId'], where: { schoolId: { in: schools.map(s => s.id) } }, _count: { id: true } }),
+      prisma.user.findMany({
+        where: { role: 'ADMIN', schoolId: { in: schools.map(s => s.id) } },
+        select: { id: true, email: true, name: true, phone: true, schoolId: true }
+      })
     ]);
 
     const toMap = (arr, key, val) => Object.fromEntries(arr.map(r => [r.schoolId, r[key]?.[val] || 0]));
@@ -1050,7 +1081,25 @@ app.get('/api/organizations/:id', authenticate, async (req, res, next) => {
       userCount:    users[s.id]    || 0,
     }));
 
-    res.json({ ...org, schools: enrichedSchools });
+    // Find the admin of the first school branch (sorted by ID)
+    const sortedSchools = [...schools].sort((a, b) => a.id - b.id);
+    let firstAdmin = null;
+    for (const s of sortedSchools) {
+      const admin = adminUsers.find(u => u.schoolId === s.id);
+      if (admin) {
+        firstAdmin = admin;
+        break;
+      }
+    }
+
+    res.json({ 
+      ...org, 
+      schools: enrichedSchools,
+      adminName: firstAdmin ? firstAdmin.name : '',
+      adminEmail: firstAdmin ? firstAdmin.email : '',
+      adminPhone: firstAdmin ? firstAdmin.phone : '',
+      adminId: firstAdmin ? firstAdmin.id : null
+    });
   } catch (error) { next(error); }
 });
 
@@ -1139,22 +1188,84 @@ app.delete('/api/organizations/:id', authenticate, async (req, res, next) => {
   } catch (error) { next(error); }
 });
 
-// --- Organization Subscription Settings ---
+// --- Organization Subscription & Admin Settings ---
 app.put('/api/organizations/:id/subscription', authenticate, async (req, res, next) => {
   try {
     if (req.user.role !== 'SUPERADMIN') return res.status(403).json({ error: 'Ruxsat yoq' });
     const orgId = parseInt(req.params.id);
-    const { status, expiresAt, maxSchools } = req.body;
-    
-    const updated = await prisma.organization.update({
+    const { 
+      name, address, phone, 
+      status, expiresAt, maxSchools,
+      adminName, adminEmail, adminPhone, adminPassword 
+    } = req.body;
+
+    const orgData = {};
+    if (name !== undefined) orgData.name = name;
+    if (address !== undefined) orgData.address = address;
+    if (phone !== undefined) orgData.phone = phone;
+    if (status !== undefined) orgData.status = status;
+    if (expiresAt !== undefined) orgData.expiresAt = expiresAt ? new Date(expiresAt) : null;
+    if (maxSchools !== undefined) orgData.maxSchools = parseInt(maxSchools);
+
+    const updatedOrg = await prisma.organization.update({
       where: { id: orgId },
-      data: {
-        status,
-        expiresAt: expiresAt ? new Date(expiresAt) : null,
-        maxSchools: maxSchools ? parseInt(maxSchools) : undefined
-      }
+      data: orgData
     });
-    res.json(updated);
+
+    const schools = await prisma.school.findMany({ 
+      where: { organizationId: orgId }, 
+      select: { id: true },
+      orderBy: { id: 'asc' }
+    });
+    const schoolIds = schools.map(s => s.id);
+
+    if (schoolIds.length > 0) {
+      let firstAdmin = null;
+      for (const sId of schoolIds) {
+        const admin = await prisma.user.findFirst({
+          where: { role: 'ADMIN', schoolId: sId }
+        });
+        if (admin) {
+          firstAdmin = admin;
+          break;
+        }
+      }
+
+      if (firstAdmin) {
+        const adminData = {};
+        if (adminName !== undefined) adminData.name = adminName;
+        if (adminPhone !== undefined) adminData.phone = adminPhone;
+        if (adminEmail !== undefined && adminEmail !== firstAdmin.email) {
+          const existingUser = await prisma.user.findUnique({ where: { email: adminEmail } });
+          if (existingUser) return res.status(400).json({ error: 'Bu email allaqachon ro\'yxatdan o\'tgan' });
+          adminData.email = adminEmail;
+        }
+        if (adminPassword) {
+          adminData.password = await bcrypt.hash(adminPassword, 10);
+        }
+
+        if (Object.keys(adminData).length > 0) {
+          await prisma.user.update({
+            where: { id: firstAdmin.id },
+            data: adminData
+          });
+        }
+      } else if (adminEmail) {
+        const hashedPassword = await bcrypt.hash(adminPassword || '123456', 10);
+        await prisma.user.create({
+          data: {
+            name: adminName || 'Admin',
+            email: adminEmail,
+            password: hashedPassword,
+            role: 'ADMIN',
+            phone: adminPhone || phone || null,
+            schoolId: schoolIds[0]
+          }
+        });
+      }
+    }
+
+    res.json(updatedOrg);
   } catch (error) { next(error); }
 });
 
@@ -1356,16 +1467,41 @@ app.get('/api/init', authenticate, async (req, res, next) => {
     if (isNaN(schoolId)) return res.status(400).json({ error: 'schoolId required' });
 
     let schoolsWhere = {};
+    let targetSchoolIds = [];
+
     if (req.user.role !== 'SUPERADMIN' && req.user.role !== 'SELLER') {
-      const userSchool = await prisma.school.findUnique({
-        where: { id: req.user.schoolId || schoolId }
-      });
-      if (userSchool && userSchool.organizationId) {
-        schoolsWhere = { organizationId: userSchool.organizationId };
+      const userSchoolId = req.user.schoolId || (schoolId > 0 ? schoolId : null);
+      if (userSchoolId) {
+        const userSchool = await prisma.school.findUnique({
+          where: { id: userSchoolId }
+        });
+        if (userSchool && userSchool.organizationId) {
+          schoolsWhere = { organizationId: userSchool.organizationId };
+          const orgSchools = await prisma.school.findMany({
+            where: { organizationId: userSchool.organizationId },
+            select: { id: true }
+          });
+          targetSchoolIds = orgSchools.map(s => s.id);
+        } else {
+          schoolsWhere = { id: userSchoolId };
+          targetSchoolIds = [userSchoolId];
+        }
+      }
+      if (schoolId > 0) {
+        targetSchoolIds = [schoolId];
+      }
+    } else {
+      if (schoolId > 0) {
+        schoolsWhere = { id: schoolId };
+        targetSchoolIds = [schoolId];
       } else {
-        schoolsWhere = { id: req.user.schoolId || schoolId };
+        schoolsWhere = {};
+        const allSchools = await prisma.school.findMany({ select: { id: true } });
+        targetSchoolIds = allSchools.map(s => s.id);
       }
     }
+
+    const whereQuery = { schoolId: { in: targetSchoolIds } };
 
     // All queries run in parallel — only 1 DB round-trip overhead
     const [
@@ -1373,24 +1509,24 @@ app.get('/api/init', authenticate, async (req, res, next) => {
       settings, attendances, scores, teacherAttendances, expenses,
       transports, routes, users, questions, exams, examResults, schools
     ] = await Promise.all([
-      prisma.student.findMany({ where: { schoolId } }),
-      prisma.teacher.findMany({ where: { schoolId } }),
-      prisma.group.findMany({ where: { schoolId } }),
-      prisma.lead.findMany({ where: { schoolId } }),
-      prisma.payment.findMany({ where: { schoolId } }),
-      prisma.course.findMany({ where: { schoolId } }),
-      prisma.room.findMany({ where: { schoolId } }),
-      prisma.setting.findFirst({ where: { schoolId } }),
-      prisma.attendance.findMany({ where: { schoolId } }),
-      prisma.score.findMany({ where: { schoolId } }),
-      prisma.teacherAttendance.findMany({ where: { schoolId } }),
-      prisma.expense.findMany({ where: { schoolId } }),
-      prisma.transport.findMany({ where: { schoolId } }),
-      prisma.route.findMany({ where: { schoolId } }),
-      prisma.user.findMany({ where: { schoolId } }),
-      prisma.question.findMany({ where: { schoolId } }),
-      prisma.exam.findMany({ where: { schoolId } }),
-      prisma.examResult.findMany({ where: { schoolId } }),
+      prisma.student.findMany({ where: whereQuery }),
+      prisma.teacher.findMany({ where: whereQuery }),
+      prisma.group.findMany({ where: whereQuery }),
+      prisma.lead.findMany({ where: whereQuery }),
+      prisma.payment.findMany({ where: whereQuery }),
+      prisma.course.findMany({ where: whereQuery }),
+      prisma.room.findMany({ where: whereQuery }),
+      prisma.setting.findFirst({ where: { schoolId: { in: targetSchoolIds } } }),
+      prisma.attendance.findMany({ where: whereQuery }),
+      prisma.score.findMany({ where: whereQuery }),
+      prisma.teacherAttendance.findMany({ where: whereQuery }),
+      prisma.expense.findMany({ where: whereQuery }),
+      prisma.transport.findMany({ where: whereQuery }),
+      prisma.route.findMany({ where: whereQuery }),
+      prisma.user.findMany({ where: whereQuery }),
+      prisma.question.findMany({ where: whereQuery }),
+      prisma.exam.findMany({ where: whereQuery }),
+      prisma.examResult.findMany({ where: whereQuery }),
       prisma.school.findMany({ where: schoolsWhere }),
     ]);
 

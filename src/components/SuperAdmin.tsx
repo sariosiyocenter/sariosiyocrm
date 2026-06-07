@@ -58,13 +58,20 @@ export default function SuperAdmin() {
   const [orgMaxSchools, setOrgMaxSchools] = useState(3);
 
 
-  // --- Subscription Modal State ---
+  // --- Subscription & Organization Edit Modal State ---
   const [subModalOpen, setSubModalOpen] = useState(false);
   const [updatingSub, setUpdatingSub] = useState(false);
-  const [selectedOrg, setSelectedOrg] = useState<Organization | null>(null);
+  const [selectedOrg, setSelectedOrg] = useState<any>(null);
+  const [subName, setSubName] = useState('');
+  const [subAddress, setSubAddress] = useState('');
+  const [subPhone, setSubPhone] = useState('');
   const [subStatus, setSubStatus] = useState('Sinov');
   const [subExpiresAt, setSubExpiresAt] = useState('');
   const [subMaxSchools, setSubMaxSchools] = useState(3);
+  const [subAdminName, setSubAdminName] = useState('');
+  const [subAdminEmail, setSubAdminEmail] = useState('');
+  const [subAdminPhone, setSubAdminPhone] = useState('');
+  const [subAdminPassword, setSubAdminPassword] = useState('');
 
   // --- Leads State ---
   const [leads, setLeads] = useState<SaaSLead[]>([]);
@@ -214,11 +221,20 @@ export default function SuperAdmin() {
     }
   };
 
-  const handleOpenSubscription = (org: Organization) => {
+
+
+  const handleOpenSubscription = (org: any) => {
     setSelectedOrg(org);
+    setSubName(org.name || '');
+    setSubAddress(org.address || '');
+    setSubPhone(org.phone || '');
     setSubStatus(org.status || 'Sinov');
     setSubExpiresAt(org.expiresAt ? new Date(org.expiresAt).toISOString().split('T')[0] : '');
     setSubMaxSchools(org.maxSchools || 3);
+    setSubAdminName(org.adminName || '');
+    setSubAdminEmail(org.adminEmail || '');
+    setSubAdminPhone(org.adminPhone || '');
+    setSubAdminPassword('');
     setSubModalOpen(true);
   };
 
@@ -231,13 +247,20 @@ export default function SuperAdmin() {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
         body: JSON.stringify({
+          name: subName,
+          address: subAddress,
+          phone: subPhone,
           status: subStatus,
           expiresAt: subExpiresAt || null,
-          maxSchools: Number(subMaxSchools)
+          maxSchools: Number(subMaxSchools),
+          adminName: subAdminName,
+          adminEmail: subAdminEmail,
+          adminPhone: subAdminPhone,
+          adminPassword: subAdminPassword || undefined
         })
       });
       if (!res.ok) throw new Error((await res.json()).error || 'Xatolik');
-      showNotification('Tashkilot tarifi yangilandi!', 'success');
+      showNotification('Tashkilot ma\'lumotlari yangilandi!', 'success');
       setSubModalOpen(false);
       fetchOrgs();
     } catch (err: any) {
@@ -669,7 +692,7 @@ export default function SuperAdmin() {
                             </span>
                           </div>
                           <h3 className="font-black text-gray-900 dark:text-white uppercase tracking-tight text-base group-hover:text-[#1b6b6b] transition-colors">{org.name}</h3>
-                          <div className="flex flex-wrap gap-x-3 gap-y-1 text-[11px] text-gray-400 font-bold">
+                          <div className="flex flex-wrap gap-x-3 gap-y-1 text-[11px] text-gray-400 font-bold items-center">
                             {org.address && (
                               <div className="flex items-center gap-1">
                                 <MapPin size={11} className="text-gray-400" />
@@ -680,6 +703,13 @@ export default function SuperAdmin() {
                               <div className="flex items-center gap-1">
                                 <Phone size={11} className="text-gray-400" />
                                 {org.phone}
+                              </div>
+                            )}
+                            {(org as any).adminEmail && (
+                              <div className="flex items-center gap-1 text-slate-500 dark:text-slate-400">
+                                <span className="font-extrabold text-[9px] bg-slate-100 dark:bg-slate-800 px-1.5 py-0.5 rounded text-gray-500 dark:text-gray-400">Admin:</span>
+                                <span className="text-[#1b6b6b] dark:text-[#2b9b9b]">{(org as any).adminEmail}</span>
+                                {(org as any).adminPhone && <span className="text-[10px] opacity-75">({(org as any).adminPhone})</span>}
                               </div>
                             )}
                           </div>
@@ -1074,53 +1104,140 @@ export default function SuperAdmin() {
         </div>
       )}
 
-      {/* MODAL: Edit Subscription */}
+      {/* MODAL: Edit Organization & Admin */}
       {subModalOpen && selectedOrg && (
         <div className="fixed inset-0 z-[200] flex items-center justify-center p-4">
           <div className="absolute inset-0 bg-gray-900/60 backdrop-blur-sm" onClick={() => setSubModalOpen(false)} />
-          <div className="relative bg-white dark:bg-gray-800 rounded-[2rem] border border-gray-100 dark:border-gray-700/50 shadow-2xl w-full max-w-md p-8">
+          <div className="relative bg-white dark:bg-gray-800 rounded-[2rem] border border-gray-100 dark:border-gray-700/50 shadow-2xl w-full max-w-2xl p-8 max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between mb-6 pb-4 border-b border-gray-50 dark:border-gray-700/50">
               <div>
-                <h3 className="text-lg font-black text-gray-900 dark:text-white uppercase tracking-tight">Tarif Sozlamalari</h3>
-                <p className="text-[10px] font-bold text-[#1b6b6b] uppercase tracking-widest mt-0.5">{selectedOrg.name}</p>
+                <h3 className="text-lg font-black text-gray-900 dark:text-white uppercase tracking-tight">Tashkilot va Admin Sozlamalari</h3>
+                <p className="text-[10px] font-bold text-[#1b6b6b] uppercase tracking-widest mt-0.5">{selectedOrg.name} tahrirlash</p>
               </div>
               <button onClick={() => setSubModalOpen(false)} className="w-9 h-9 flex items-center justify-center text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700 rounded-xl cursor-pointer">
                 <X size={18} />
               </button>
             </div>
 
-            <form onSubmit={handleUpdateSubscription} className="space-y-4">
-              <div>
-                <label className="block text-[10px] font-extrabold uppercase tracking-widest text-gray-400 mb-2">Holati</label>
-                <select
-                  value={subStatus}
-                  onChange={e => setSubStatus(e.target.value)}
-                  className="w-full px-4 py-3 bg-gray-50 dark:bg-gray-900/50 border border-gray-100 dark:border-gray-700 rounded-2xl text-xs font-bold text-gray-900 dark:text-white outline-none focus:border-[#1b6b6b] transition-all"
-                >
-                  <option value="Sinov">Sinov (Trial)</option>
-                  <option value="Faol">Faol (Active)</option>
-                  <option value="Muzlatilgan">Muzlatilgan (Suspended)</option>
-                </select>
+            <form onSubmit={handleUpdateSubscription} className="space-y-6">
+              {/* Section 1: Organization Details */}
+              <div className="space-y-4">
+                <h4 className="text-[10px] font-black text-gray-400 uppercase tracking-wider pb-1 border-b border-gray-50 dark:border-gray-700/30">Tashkilot Ma'lumotlari</h4>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-[10px] font-extrabold uppercase tracking-widest text-gray-400 mb-2">Tashkilot Nomi *</label>
+                    <input
+                      type="text" required
+                      value={subName}
+                      onChange={e => setSubName(e.target.value)}
+                      className="w-full px-4 py-3 bg-gray-50 dark:bg-gray-900/50 border border-gray-100 dark:border-gray-700 rounded-2xl text-xs font-bold text-gray-900 dark:text-white outline-none focus:border-[#1b6b6b] transition-all"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[10px] font-extrabold uppercase tracking-widest text-gray-400 mb-2">Telefon Raqami</label>
+                    <input
+                      type="text"
+                      value={subPhone}
+                      onChange={e => setSubPhone(e.target.value)}
+                      className="w-full px-4 py-3 bg-gray-50 dark:bg-gray-900/50 border border-gray-100 dark:border-gray-700 rounded-2xl text-xs font-bold text-gray-900 dark:text-white outline-none focus:border-[#1b6b6b] transition-all"
+                    />
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-[10px] font-extrabold uppercase tracking-widest text-gray-400 mb-2">Manzil</label>
+                  <input
+                    type="text"
+                    value={subAddress}
+                    onChange={e => setSubAddress(e.target.value)}
+                    className="w-full px-4 py-3 bg-gray-50 dark:bg-gray-900/50 border border-gray-100 dark:border-gray-700 rounded-2xl text-xs font-bold text-gray-900 dark:text-white outline-none focus:border-[#1b6b6b] transition-all"
+                  />
+                </div>
               </div>
-              <div>
-                <label className="block text-[10px] font-extrabold uppercase tracking-widest text-gray-400 mb-2">Muddati (Expires At)</label>
-                <input
-                  type="date"
-                  value={subExpiresAt}
-                  onChange={e => setSubExpiresAt(e.target.value)}
-                  className="w-full px-4 py-3 bg-gray-50 dark:bg-gray-900/50 border border-gray-100 dark:border-gray-700 rounded-2xl text-xs font-bold text-gray-900 dark:text-white outline-none focus:border-[#1b6b6b] transition-all"
-                />
+
+              {/* Section 2: Subscription Details */}
+              <div className="space-y-4">
+                <h4 className="text-[10px] font-black text-gray-400 uppercase tracking-wider pb-1 border-b border-gray-50 dark:border-gray-700/30">Obuna Sozlamalari</h4>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div>
+                    <label className="block text-[10px] font-extrabold uppercase tracking-widest text-gray-400 mb-2">Holati</label>
+                    <select
+                      value={subStatus}
+                      onChange={e => setSubStatus(e.target.value)}
+                      className="w-full px-4 py-3 bg-gray-50 dark:bg-gray-900/50 border border-gray-100 dark:border-gray-700 rounded-2xl text-xs font-bold text-gray-900 dark:text-white outline-none focus:border-[#1b6b6b] transition-all"
+                    >
+                      <option value="Sinov">Sinov (Trial)</option>
+                      <option value="Faol">Faol (Active)</option>
+                      <option value="Muzlatilgan">Muzlatilgan (Suspended)</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-[10px] font-extrabold uppercase tracking-widest text-gray-400 mb-2">Ruxsat Muddati (Expires At)</label>
+                    <input
+                      type="date"
+                      value={subExpiresAt}
+                      onChange={e => setSubExpiresAt(e.target.value)}
+                      className="w-full px-4 py-3 bg-gray-50 dark:bg-gray-900/50 border border-gray-100 dark:border-gray-700 rounded-2xl text-xs font-bold text-gray-900 dark:text-white outline-none focus:border-[#1b6b6b] transition-all"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[10px] font-extrabold uppercase tracking-widest text-gray-400 mb-2">Maksimal Filial Limiti</label>
+                    <input
+                      type="number" required min={1}
+                      value={subMaxSchools}
+                      onChange={e => setSubMaxSchools(Number(e.target.value))}
+                      className="w-full px-4 py-3 bg-gray-50 dark:bg-gray-900/50 border border-gray-100 dark:border-gray-700 rounded-2xl text-xs font-bold text-gray-900 dark:text-white outline-none focus:border-[#1b6b6b] transition-all"
+                    />
+                  </div>
+                </div>
               </div>
-              <div>
-                <label className="block text-[10px] font-extrabold uppercase tracking-widest text-gray-400 mb-2">Maksimal Filial Limiti</label>
-                <input
-                  type="number" required min={1}
-                  value={subMaxSchools}
-                  onChange={e => setSubMaxSchools(Number(e.target.value))}
-                  className="w-full px-4 py-3 bg-gray-50 dark:bg-gray-900/50 border border-gray-100 dark:border-gray-700 rounded-2xl text-xs font-bold text-gray-900 dark:text-white outline-none focus:border-[#1b6b6b] transition-all"
-                />
+
+              {/* Section 3: Admin Details */}
+              <div className="space-y-4">
+                <h4 className="text-[10px] font-black text-gray-400 uppercase tracking-wider pb-1 border-b border-gray-50 dark:border-gray-700/30">Admin Akkaunti Ma'lumotlari</h4>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-[10px] font-extrabold uppercase tracking-widest text-gray-400 mb-2">Admin Ismi *</label>
+                    <input
+                      type="text" required
+                      value={subAdminName}
+                      onChange={e => setSubAdminName(e.target.value)}
+                      className="w-full px-4 py-3 bg-gray-50 dark:bg-gray-900/50 border border-gray-100 dark:border-gray-700 rounded-2xl text-xs font-bold text-gray-900 dark:text-white outline-none focus:border-[#1b6b6b] transition-all"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[10px] font-extrabold uppercase tracking-widest text-gray-400 mb-2">Admin Telefoni</label>
+                    <input
+                      type="text"
+                      value={subAdminPhone}
+                      onChange={e => setSubAdminPhone(e.target.value)}
+                      className="w-full px-4 py-3 bg-gray-50 dark:bg-gray-900/50 border border-gray-100 dark:border-gray-700 rounded-2xl text-xs font-bold text-gray-900 dark:text-white outline-none focus:border-[#1b6b6b] transition-all"
+                    />
+                  </div>
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-[10px] font-extrabold uppercase tracking-widest text-gray-400 mb-2">Admin Email (Login) *</label>
+                    <input
+                      type="email" required
+                      value={subAdminEmail}
+                      onChange={e => setSubAdminEmail(e.target.value)}
+                      className="w-full px-4 py-3 bg-gray-50 dark:bg-gray-900/50 border border-gray-100 dark:border-gray-700 rounded-2xl text-xs font-bold text-gray-900 dark:text-white outline-none focus:border-[#1b6b6b] transition-all"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[10px] font-extrabold uppercase tracking-widest text-gray-400 mb-2">Yangi Parol (O'zgartirish uchun to'ldiring)</label>
+                    <input
+                      type="password"
+                      placeholder="Faqat o'zgartirish uchun..."
+                      value={subAdminPassword}
+                      onChange={e => setSubAdminPassword(e.target.value)}
+                      className="w-full px-4 py-3 bg-gray-50 dark:bg-gray-900/50 border border-gray-100 dark:border-gray-700 rounded-2xl text-xs font-bold text-gray-900 dark:text-white outline-none focus:border-[#1b6b6b] transition-all"
+                    />
+                  </div>
+                </div>
               </div>
-              <div className="flex gap-3 pt-2">
+
+              <div className="flex gap-3 pt-4 border-t border-gray-50 dark:border-gray-700/50">
                 <button type="button" onClick={() => setSubModalOpen(false)}
                   className="flex-1 py-3 bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-700 dark:text-white text-xs font-extrabold uppercase tracking-widest rounded-2xl transition-all cursor-pointer">
                   Bekor

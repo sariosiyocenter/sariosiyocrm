@@ -381,12 +381,14 @@ export default function Students() {
                             <FileSpreadsheet size={14} /> Import
                         </button>
                         <input type="file" id="import-excel-input" accept=".xlsx, .xls, .csv" className="hidden" onChange={handleImportChange} />
-                        <button
-                            onClick={() => setIsLinkModalOpen(true)}
-                            className="flex items-center gap-2 px-3.5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-extrabold uppercase tracking-widest shadow-lg shadow-blue-600/20 transition-all cursor-pointer"
-                        >
-                            <QrCode size={14} /> Link Yaratish
-                        </button>
+                        {selectedSchoolId !== 0 && (
+                            <button
+                                onClick={() => setIsLinkModalOpen(true)}
+                                className="flex items-center gap-2 px-3.5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-extrabold uppercase tracking-widest shadow-lg shadow-blue-600/20 transition-all cursor-pointer"
+                            >
+                                <QrCode size={14} /> Link Yaratish
+                            </button>
+                        )}
                         <button
                             onClick={() => setIsModalOpen(true)}
                             className="flex items-center gap-2 px-4 py-2.5 bg-[#1b6b6b] hover:bg-[#155252] text-white rounded-xl text-xs font-extrabold uppercase tracking-widest shadow-lg shadow-[#1b6b6b]/20 transition-all cursor-pointer"

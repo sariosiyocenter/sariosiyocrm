@@ -98,11 +98,14 @@ export default function Layout({ children, onLogout }: LayoutProps) {
                 <div className="relative">
                   <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400" />
                   <select
-                    value={selectedSchoolId || ''}
+                    value={selectedSchoolId === null ? '' : selectedSchoolId}
                     onChange={(e) => setSelectedSchoolId(Number(e.target.value))}
                     className="pl-9 pr-8 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-xs font-medium text-slate-700 dark:text-slate-300 outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-400 transition-all cursor-pointer appearance-none min-w-[160px]"
                   >
                     <option value="" disabled>Filialni tanlang</option>
+                    {user?.role === 'ADMIN' && (
+                      <option value="0">To'liq o'quv markazi</option>
+                    )}
                     {schools.map(school => (
                       <option key={school.id} value={school.id}>{school.name}</option>
                     ))}

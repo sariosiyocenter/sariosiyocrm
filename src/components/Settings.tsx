@@ -201,36 +201,38 @@ export default function Settings() {
             </form>
 
             {/* QR Link Section */}
-            <div className="p-6 bg-gray-50 dark:bg-gray-900/40 border border-gray-100 dark:border-gray-700/50 rounded-3xl space-y-4">
-                <div>
-                    <h3 className="text-xs font-black text-gray-900 dark:text-white uppercase tracking-wide">O'quvchilar uchun QR Havola</h3>
-                    <p className="text-[9px] font-bold text-gray-400 uppercase tracking-widest mt-0.5">
-                        Yangi kelgan o'quvchilar o'zlari ro'yxatdan o'tishi uchun umumiy havola
+            {selectedSchoolId !== 0 && (
+                <div className="p-6 bg-gray-50 dark:bg-gray-900/40 border border-gray-100 dark:border-gray-700/50 rounded-3xl space-y-4">
+                    <div>
+                        <h3 className="text-xs font-black text-gray-900 dark:text-white uppercase tracking-wide">O'quvchilar uchun QR Havola</h3>
+                        <p className="text-[9px] font-bold text-gray-400 uppercase tracking-widest mt-0.5">
+                            Yangi kelgan o'quvchilar o'zlari ro'yxatdan o'tishi uchun umumiy havola
+                        </p>
+                    </div>
+                    <div className="flex flex-col sm:flex-row gap-3">
+                        <input
+                            type="text"
+                            readOnly
+                            className="bg-white dark:bg-gray-800 px-4 py-3 border border-gray-100 dark:border-gray-700/50 outline-none text-[11px] font-mono text-gray-500 dark:text-gray-400 flex-1 rounded-2xl select-all"
+                            value={applyUrl}
+                        />
+                        <button
+                            type="button"
+                            onClick={() => {
+                                navigator.clipboard.writeText(applyUrl);
+                                setCopied(true);
+                                setTimeout(() => setCopied(false), 2000);
+                            }}
+                            className="px-6 py-3 bg-[#1b6b6b] hover:bg-[#155252] text-white rounded-2xl text-[10px] font-extrabold uppercase tracking-widest transition-all cursor-pointer whitespace-nowrap"
+                        >
+                            {copied ? 'Nusxalandi!' : 'Nusxalash'}
+                        </button>
+                    </div>
+                    <p className="text-[9px] font-bold text-gray-400 leading-relaxed">
+                        * Tavsiya: Ushbu havolani QR kod generatori orqali QR kod ko'rinishida chop etib, reception stoliga qo'ying. Kelgan o'quvchilar telefon orqali skanerlab, o'zlarini tezda ro'yxatdan o'tkazishlari mumkin.
                     </p>
                 </div>
-                <div className="flex flex-col sm:flex-row gap-3">
-                    <input
-                        type="text"
-                        readOnly
-                        className="bg-white dark:bg-gray-800 px-4 py-3 border border-gray-100 dark:border-gray-700/50 outline-none text-[11px] font-mono text-gray-500 dark:text-gray-400 flex-1 rounded-2xl select-all"
-                        value={applyUrl}
-                    />
-                    <button
-                        type="button"
-                        onClick={() => {
-                            navigator.clipboard.writeText(applyUrl);
-                            setCopied(true);
-                            setTimeout(() => setCopied(false), 2000);
-                        }}
-                        className="px-6 py-3 bg-[#1b6b6b] hover:bg-[#155252] text-white rounded-2xl text-[10px] font-extrabold uppercase tracking-widest transition-all cursor-pointer whitespace-nowrap"
-                    >
-                        {copied ? 'Nusxalandi!' : 'Nusxalash'}
-                    </button>
-                </div>
-                <p className="text-[9px] font-bold text-gray-400 leading-relaxed">
-                    * Tavsiya: Ushbu havolani QR kod generatori orqali QR kod ko'rinishida chop etib, reception stoliga qo'ying. Kelgan o'quvchilar telefon orqali skanerlab, o'zlarini tezda ro'yxatdan o'tkazishlari mumkin.
-                </p>
-            </div>
+            )}
         </div>
     );
 
