@@ -11,7 +11,7 @@ import GroupAttendanceCalendar from './GroupAttendanceCalendar';
 export default function GroupDetails() {
     const { id } = useParams<{ id: string }>();
     const navigate = useNavigate();
-    const { groups, students, teachers, courses, rooms, attendances, scores, addBatchAttendance, addStudentToGroup, addScore, updateGroup, showNotification } = useCRM();
+    const { groups, students, teachers, courses, rooms, attendances, scores, addBatchAttendance, addStudentToGroup, removeStudentFromGroup, addScore, updateGroup, showNotification } = useCRM();
     const [isEditingInfo, setIsEditingInfo] = useState(false);
     const [editForm, setEditForm] = useState({
         teacherId: 0,
@@ -36,7 +36,7 @@ export default function GroupDetails() {
 
     const teacher = teachers.find(t => t.id === group.teacherId);
     const course = courses.find(c => c.id === group.courseId);
-    const groupStudents = students.filter(s => group.studentIds.includes(s.id));
+    const groupStudents = students.filter(s => (group.studentIds || []).includes(s.id));
     const groupScores = (scores || []).filter(s => s.groupId === group.id);
 
     const handleSaveAttendance = async () => {
@@ -183,7 +183,7 @@ export default function GroupDetails() {
         return dw !== 0;
     };
 
-    const availableStudents = students.filter(s => !group.studentIds.includes(s.id) && s.name.toLowerCase().includes(studentSearch.toLowerCase()));
+    const availableStudents = students.filter(s => !(group.studentIds || []).includes(s.id) && s.name.toLowerCase().includes(studentSearch.toLowerCase()));
 
     const labelCls = "block text-[10px] font-extrabold uppercase tracking-widest text-gray-400 mb-2";
     const inputCls = "w-full px-4 py-3 bg-gray-55 dark:bg-gray-900/50 border border-gray-100 dark:border-gray-700 rounded-2xl text-xs font-bold text-gray-900 dark:text-white focus:border-[#1b6b6b] focus:ring-4 focus:ring-[#1b6b6b]/10 outline-none transition-all";
@@ -293,10 +293,9 @@ export default function GroupDetails() {
                                     </div>
                                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                         {groupStudents.map(s => (
-                                            <div key={s.id} onClick={() => navigate(`/students/${s.id}`)} 
-                                                className="group bg-gray-55 dark:bg-gray-900/30 p-4 rounded-2xl border border-transparent hover:border-gray-100 dark:hover:border-gray-700/50 transition-all cursor-pointer flex items-center justify-between">
-                                                <div className="flex items-center gap-3">
-                                                    <div className="w-10 h-10 bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700/50 rounded-xl flex items-center justify-center text-[#1b6b6b] font-bold text-sm">
+                                            <div key={s.id} className="group bg-gray-55 dark:bg-gray-900/30 p-4 rounded-2xl border border-transparent hover:border-gray-100 dark:hover:border-gray-700/50 transition-all flex items-center justify-between">
+                                                <div className="flex items-center gap-3 cursor-pointer min-w-0" onClick={() => navigate(`/students/${s.id}`)}>
+                                                    <div className="w-10 h-10 bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700/50 rounded-xl flex items-center justify-center text-[#1b6b6b] font-bold text-sm shrink-0">
                                                         {s.name.charAt(0)}
                                                     </div>
                                                     <div className="min-w-0">
@@ -304,9 +303,18 @@ export default function GroupDetails() {
                                                         <p className="text-[9px] font-bold text-gray-405 mt-0.5">{s.phone}</p>
                                                     </div>
                                                 </div>
-                                                <span className={`text-[9px] font-black px-2.5 py-1 rounded-md border ${s.balance >= 0 ? 'text-emerald-600 bg-emerald-50 border-emerald-100 dark:bg-emerald-950/20 dark:text-emerald-400' : 'text-rose-600 bg-rose-50 border-rose-100 dark:bg-rose-950/20 dark:text-rose-400'}`}>
-                                                    {s.balance.toLocaleString()}
-                                                </span>
+                                                <div className="flex items-center gap-2 shrink-0">
+                                                    <span className={`text-[9px] font-black px-2.5 py-1 rounded-md border ${s.balance >= 0 ? 'text-emerald-600 bg-emerald-50 border-emerald-100 dark:bg-emerald-950/20 dark:text-emerald-400' : 'text-rose-600 bg-rose-50 border-rose-100 dark:bg-rose-950/20 dark:text-rose-400'}`}>
+                                                        {s.balance.toLocaleString()}
+                                                    </span>
+                                                    <button
+                                                        onClick={e => { e.stopPropagation(); removeStudentFromGroup(group.id, s.id); }}
+                                                        title="Guruhdan chiqarish"
+                                                        className="w-7 h-7 flex items-center justify-center rounded-lg text-gray-300 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/20 transition-all cursor-pointer"
+                                                    >
+                                                        <XCircle size={15} />
+                                                    </button>
+                                                </div>
                                             </div>
                                         ))}
                                         {groupStudents.length === 0 && (

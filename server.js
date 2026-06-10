@@ -589,6 +589,60 @@ app.post('/api/groups', authenticate, async (req, res, next) => {
     res.status(500).json({ error: error.message || 'Internal Server Error' });
   }
 });
+
+// Atomic endpoint: connect a single student to a group (uses 'connect', not 'set')
+app.post('/api/groups/:id/students', authenticate, async (req, res, next) => {
+  try {
+    const groupId = parseInt(req.params.id);
+    const { studentId } = req.body;
+    if (!studentId) return res.status(400).json({ error: 'studentId required' });
+
+    const updatedGroup = await prisma.group.update({
+      where: { id: groupId },
+      data: { students: { connect: { id: parseInt(studentId) } } },
+      include: {
+        students: { select: { id: true } },
+        course: { select: { name: true } }
+      }
+    });
+
+    res.json({
+      ...updatedGroup,
+      studentIds: updatedGroup.students.map(s => s.id),
+      courseName: updatedGroup.course?.name
+    });
+  } catch (error) {
+    console.error('Error connecting student to group:', error);
+    next(error);
+  }
+});
+
+// Atomic endpoint: disconnect a single student from a group
+app.delete('/api/groups/:id/students/:studentId', authenticate, async (req, res, next) => {
+  try {
+    const groupId = parseInt(req.params.id);
+    const studentId = parseInt(req.params.studentId);
+
+    const updatedGroup = await prisma.group.update({
+      where: { id: groupId },
+      data: { students: { disconnect: { id: studentId } } },
+      include: {
+        students: { select: { id: true } },
+        course: { select: { name: true } }
+      }
+    });
+
+    res.json({
+      ...updatedGroup,
+      studentIds: updatedGroup.students.map(s => s.id),
+      courseName: updatedGroup.course?.name
+    });
+  } catch (error) {
+    console.error('Error disconnecting student from group:', error);
+    next(error);
+  }
+});
+
 app.put('/api/groups/:id', authenticate, async (req, res, next) => {
   try {
     const { id } = req.params;
@@ -1509,9 +1563,18 @@ app.get('/api/init', authenticate, async (req, res, next) => {
       settings, attendances, scores, teacherAttendances, expenses,
       transports, routes, users, questions, exams, examResults, schools
     ] = await Promise.all([
-      prisma.student.findMany({ where: whereQuery }),
+      prisma.student.findMany({
+        where: whereQuery,
+        include: { groups: { select: { id: true } } }
+      }),
       prisma.teacher.findMany({ where: whereQuery }),
-      prisma.group.findMany({ where: whereQuery }),
+      prisma.group.findMany({
+        where: whereQuery,
+        include: {
+          students: { select: { id: true } },
+          course: { select: { name: true } }
+        }
+      }),
       prisma.lead.findMany({ where: whereQuery }),
       prisma.payment.findMany({ where: whereQuery }),
       prisma.course.findMany({ where: whereQuery }),
@@ -1521,8 +1584,17 @@ app.get('/api/init', authenticate, async (req, res, next) => {
       prisma.score.findMany({ where: whereQuery }),
       prisma.teacherAttendance.findMany({ where: whereQuery }),
       prisma.expense.findMany({ where: whereQuery }),
-      prisma.transport.findMany({ where: whereQuery }),
-      prisma.route.findMany({ where: whereQuery }),
+      prisma.transport.findMany({
+        where: whereQuery,
+        include: { driver: true }
+      }),
+      prisma.route.findMany({
+        where: whereQuery,
+        include: {
+          transport: true,
+          driver: { select: { id: true, name: true, phone: true } }
+        }
+      }),
       prisma.user.findMany({ where: whereQuery }),
       prisma.question.findMany({ where: whereQuery }),
       prisma.exam.findMany({ where: whereQuery }),
@@ -1530,8 +1602,22 @@ app.get('/api/init', authenticate, async (req, res, next) => {
       prisma.school.findMany({ where: schoolsWhere }),
     ]);
 
+    // Map relations to flat IDs / names just like individual endpoints do
+    const mappedStudents = students.map(s => ({
+      ...s,
+      groups: s.groups.map(g => g.id)
+    }));
+    const mappedGroups = groups.map(g => ({
+      ...g,
+      studentIds: g.students.map(s => s.id),
+      courseName: g.course?.name
+    }));
+
     res.json({
-      students, teachers, groups, leads, payments, courses, rooms,
+      students: mappedStudents,
+      teachers,
+      groups: mappedGroups,
+      leads, payments, courses, rooms,
       settings, attendances, scores, teacherAttendances, expenses,
       transports, routes, users, questions, exams, examResults, schools
     });

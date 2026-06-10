@@ -44,7 +44,7 @@ export default function CenterStatsReport() {
         const courseCounts: Record<string, number> = {};
         groups.forEach(g => {
             const n = courses.find(c => c.id === g.courseId)?.name || 'Boshqa';
-            courseCounts[n] = (courseCounts[n] || 0) + g.studentIds.length;
+            courseCounts[n] = (courseCounts[n] || 0) + (g.studentIds || []).length;
         });
         const dept = Object.entries(courseCounts).map(([label, value]) => ({
             label,

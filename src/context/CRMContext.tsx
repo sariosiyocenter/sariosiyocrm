@@ -39,6 +39,7 @@ interface CRMContextType extends CRMState {
     deleteStudent: (id: number) => Promise<void>;
     importStudents: (students: any[]) => Promise<void>;
     addStudentToGroup: (groupId: number, studentId: number) => Promise<void>;
+    removeStudentFromGroup: (groupId: number, studentId: number) => Promise<void>;
     addTeacher: (teacher: Omit<Teacher, 'id' | 'schoolId'>) => Promise<void>;
     updateTeacher: (id: number, teacher: Partial<Teacher>) => Promise<void>;
     deleteTeacher: (id: number) => Promise<void>;
@@ -523,7 +524,14 @@ export const CRMProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     const deleteStudent = async (id: number) => {
         try {
             await apiCall(`students/${id}`, 'DELETE');
-            setState(prev => ({ ...prev, students: prev.students.filter(s => s.id !== id) }));
+            setState(prev => ({ 
+                ...prev, 
+                students: prev.students.filter(s => s.id !== id),
+                groups: prev.groups.map(g => ({
+                    ...g,
+                    studentIds: (g.studentIds || []).filter(sid => sid !== id)
+                }))
+            }));
             showNotification("O'quvchi o'chirildi", "success");
         } catch (err: any) {
             showNotification("O'quvchini o'chirishda xatolik: " + err.message, "error");
@@ -552,25 +560,40 @@ export const CRMProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             const student = state.students.find(s => s.id === studentId);
             
             if (!group || !student) return;
-            if (group.studentIds.includes(studentId)) {
+            if ((group.studentIds || []).includes(studentId)) {
                 showNotification("O'quvchi allaqachon guruhda", "info");
                 return;
             }
 
-            // Only send the necessary fields to update the many-to-many relationship
-            // Sending the whole object might fail if it contains relational fields (like 'students' or 'groups')
-            const [groupRes, studentRes] = await Promise.all([
-                apiCall(`groups/${groupId}`, 'PUT', { studentIds: [...group.studentIds, studentId] }),
-                apiCall(`students/${studentId}`, 'PUT', { groups: [...(student.groups || []), groupId] })
-            ]);
+            // Use the atomic connect endpoint — avoids 'set' overwrite risk
+            const groupRes = await apiCall(`groups/${groupId}/students`, 'POST', { studentId });
 
             setState(prev => ({
                 ...prev,
                 groups: prev.groups.map(g => g.id === groupId ? groupRes : g),
-                students: prev.students.map(s => s.id === studentId ? studentRes : s)
+                students: prev.students.map(s => s.id === studentId ? { ...s, groups: [...(s.groups || []), groupId] } : s)
             }));
             
             showNotification("O'quvchi guruhga biriktirildi", "success");
+        } catch (err: any) {
+            showNotification("Xatolik: " + err.message, "error");
+        }
+    };
+
+    const removeStudentFromGroup = async (groupId: number, studentId: number) => {
+        try {
+            const groupRes = await apiCall(`groups/${groupId}/students/${studentId}`, 'DELETE');
+
+            setState(prev => ({
+                ...prev,
+                groups: prev.groups.map(g => g.id === groupId ? groupRes : g),
+                students: prev.students.map(s => s.id === studentId
+                    ? { ...s, groups: (s.groups || []).filter(gid => gid !== groupId) }
+                    : s
+                )
+            }));
+
+            showNotification("O'quvchi guruhdan chiqarildi", "success");
         } catch (err: any) {
             showNotification("Xatolik: " + err.message, "error");
         }
@@ -615,7 +638,14 @@ export const CRMProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
     const deleteGroup = async (id: number) => {
         await apiCall(`groups/${id}`, 'DELETE');
-        setState(prev => ({ ...prev, groups: prev.groups.filter(g => g.id !== id) }));
+        setState(prev => ({ 
+            ...prev, 
+            groups: prev.groups.filter(g => g.id !== id),
+            students: prev.students.map(s => ({
+                ...s,
+                groups: (s.groups || []).filter(gid => gid !== id)
+            }))
+        }));
     };
 
     const addLead = async (lead: Omit<Lead, 'id' | 'schoolId'>) => {
@@ -940,7 +970,7 @@ export const CRMProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             ...state,
             loading, error, user, token,
             login, logout, checkAuth, setSelectedSchoolId,
-            addStudent, updateStudent, deleteStudent, importStudents, addStudentToGroup,
+            addStudent, updateStudent, deleteStudent, importStudents, addStudentToGroup, removeStudentFromGroup,
             addTeacher, updateTeacher, deleteTeacher,
             addGroup, updateGroup, deleteGroup,
             updateLead, addLead, deleteLead,
