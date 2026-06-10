@@ -6,7 +6,7 @@ import {
 } from 'lucide-react';
 import { useCRM, THEMES } from '../context/CRMContext';
 
-type SectionId = 'profil' | 'ijtimoiy' | 'kurslar' | 'xonalar' | 'transport' | 'filiallar' | 'ruxsatlar' | 'dizayn';
+type SectionId = 'profil' | 'kurslar' | 'xonalar' | 'filiallar' | 'ruxsatlar' | 'dizayn';
 
 const MODULES = [
     { key: 'dashboard',     label: 'Dashboard' },
@@ -37,10 +37,9 @@ const inp = "w-full px-4 py-3 bg-gray-55 dark:bg-gray-900/50 border border-gray-
 const lbl = "block text-[10px] font-extrabold uppercase tracking-widest text-gray-400 mb-2";
 
 export default function Settings() {
-    const { settings, updateSettings, courses, rooms, schools, transports,
+    const { settings, updateSettings, courses, rooms, schools,
         addCourse, deleteCourse, addRoom, deleteRoom, addSchool, deleteSchool,
-        addTransport, updateTransport, deleteTransport, selectedSchoolId,
-        themeColor, setThemeColor } = useCRM();
+        selectedSchoolId, themeColor, setThemeColor } = useCRM();
     const { user: currentUser, token } = useCRM();
 
     const [activeSection, setActiveSection] = useState<SectionId>('profil');
@@ -51,9 +50,7 @@ export default function Settings() {
     const logoInputRef = useRef<HTMLInputElement>(null);
 
     const [isAddModalOpen, setIsAddModalOpen] = useState(false);
-    const [isEditTransportOpen, setIsEditTransportOpen] = useState(false);
     const [newItem, setNewItem] = useState<any>({});
-    const [editingTransport, setEditingTransport] = useState<any>(null);
 
     const [permissions, setPermissions] = useState<Record<string, Record<string, boolean>>>(() => {
         try {
@@ -100,8 +97,6 @@ export default function Settings() {
                 await addRoom({ ...newItem, capacity: Number(newItem.capacity) });
             } else if (activeSection === 'filiallar') {
                 await addSchool(newItem);
-            } else if (activeSection === 'transport') {
-                await addTransport({ ...newItem, capacity: Number(newItem.capacity || 0), schoolId: selectedSchoolId });
             }
             setIsAddModalOpen(false);
             setNewItem({});
@@ -110,21 +105,11 @@ export default function Settings() {
         }
     };
 
-    const handleSaveTransport = async (e: React.FormEvent) => {
-        e.preventDefault();
-        try {
-            await updateTransport(editingTransport.id, editingTransport);
-            setIsEditTransportOpen(false);
-            setEditingTransport(null);
-        } catch (err) { console.error('Update transport failed', err); }
-    };
-
     const menuGroups = [
         {
             id: 'tashkilot', label: 'Tashkilot', icon: <Building2 size={16} />,
             items: [
                 { id: 'profil' as SectionId, label: 'Profil', icon: <Globe size={14} /> },
-                { id: 'ijtimoiy' as SectionId, label: 'Ijtimoiy', icon: <Instagram size={14} /> },
                 { id: 'dizayn' as SectionId, label: 'Palitralar', icon: <Layout size={14} /> },
             ]
         },
@@ -133,7 +118,6 @@ export default function Settings() {
             items: [
                 { id: 'kurslar' as SectionId, label: 'Kurslar', icon: <BookOpen size={14} />, count: courses?.length },
                 { id: 'xonalar' as SectionId, label: 'Xonalar', icon: <DoorOpen size={14} />, count: rooms?.length },
-                { id: 'transport' as SectionId, label: 'Transport', icon: <Bus size={14} />, count: transports?.length },
             ]
         },
         ...(isAdminOrManager ? [{
@@ -236,30 +220,6 @@ export default function Settings() {
         </div>
     );
 
-        if (activeSection === 'ijtimoiy') return (
-            <form onSubmit={handleSaveProfile} className="space-y-6">
-                <div>
-                    <h2 className="text-xs font-black text-gray-900 dark:text-white uppercase tracking-wider">Ijtimoiy Tarmoqlar</h2>
-                    <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mt-0.5">Markaz sahifalariga havolalar</p>
-                </div>
-                <div className="space-y-4">
-                    <div>
-                        <label className={lbl}>Telegram</label>
-                        <input type="text" placeholder="@markaz_nomi" className={inp} value={profileForm?.telegram || ''} onChange={e => setProfileForm(p => ({ ...p, telegram: e.target.value }))} />
-                    </div>
-                    <div>
-                        <label className={lbl}>Instagram</label>
-                        <input type="text" placeholder="@markaz_nomi" className={inp} value={profileForm?.instagram || ''} onChange={e => setProfileForm(p => ({ ...p, instagram: e.target.value }))} />
-                    </div>
-                </div>
-                <div className="flex justify-end pt-4 border-t border-dashed border-gray-150 dark:border-gray-700/50">
-                    <button type="submit" disabled={isSaving}
-                        className="px-6 py-3 bg-[#1b6b6b] hover:bg-[#155252] disabled:opacity-50 text-white rounded-2xl text-xs font-extrabold uppercase tracking-widest flex items-center gap-2 shadow-lg shadow-[#1b6b6b]/20 transition-all cursor-pointer">
-                        <Save size={14} />{isSaving ? 'Saqlanmoqda...' : 'Saqlash'}
-                    </button>
-                </div>
-            </form>
-        );
 
         if (activeSection === 'kurslar') return (
             <ListSection
@@ -287,56 +247,6 @@ export default function Settings() {
             />
         );
 
-        if (activeSection === 'transport') return (
-            <ListSection
-                title="Transport" subtitle="Logistika uchun transport vositalari"
-                icon={<Bus size={16} />} onAdd={() => { setNewItem({}); setIsAddModalOpen(true); }}
-                items={transports || []} emptyText="Transport vositalari topilmadi"
-                renderItem={(item: any) => {
-                    const statusCls = item.status === 'Faol'
-                        ? 'bg-emerald-50 text-emerald-600 border-emerald-100 dark:bg-emerald-950/20 dark:text-emerald-400 dark:border-emerald-900/40'
-                        : item.status === "Ta'mirda"
-                        ? 'bg-amber-50 text-amber-600 border-amber-100 dark:bg-amber-950/20 dark:text-amber-400 dark:border-amber-900/40'
-                        : 'bg-gray-50 text-gray-400 border-gray-100 dark:bg-gray-900/50 dark:text-gray-500';
-                    return (
-                        <div key={item.id} className="bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700/50 rounded-3xl p-6 flex flex-col gap-4 group hover:shadow-md transition-all">
-                            <div className="flex items-start justify-between">
-                                <div className="w-10 h-10 rounded-xl bg-gray-55 dark:bg-gray-900 border border-gray-100 dark:border-gray-700/50 flex items-center justify-center text-[#1b6b6b]">
-                                    <Bus size={18} />
-                                </div>
-                                <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                                    <span className={`px-2 py-0.5 rounded-md text-[8px] font-black border uppercase tracking-wider ${statusCls}`}>
-                                        {item.status}
-                                    </span>
-                                    <button onClick={() => { setEditingTransport({ ...item }); setIsEditTransportOpen(true); }}
-                                        className="w-7 h-7 rounded-lg text-gray-400 hover:text-[#1b6b6b] hover:bg-gray-50 dark:hover:bg-gray-950 flex items-center justify-center transition-colors cursor-pointer">
-                                        <Pencil size={13} />
-                                    </button>
-                                    <button onClick={() => deleteTransport(item.id)}
-                                        className="w-7 h-7 rounded-lg text-rose-400 hover:text-rose-650 hover:bg-rose-50 dark:hover:bg-rose-950/20 flex items-center justify-center transition-colors cursor-pointer">
-                                        <Trash2 size={13} />
-                                    </button>
-                                </div>
-                            </div>
-                            <div>
-                                <p className="text-xs font-black text-gray-900 dark:text-white uppercase tracking-wide">{item.name}</p>
-                                <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mt-1">{item.model} {item.number ? `· ${item.number}` : ''}</p>
-                            </div>
-                            <div className="grid grid-cols-2 gap-3 pt-3 border-t border-dashed border-gray-100 dark:border-gray-700/50">
-                                <div>
-                                    <p className="text-[8px] font-black text-gray-400 uppercase tracking-widest">Sig'imi</p>
-                                    <p className="text-xs font-bold text-gray-900 dark:text-white mt-0.5">{item.capacity} kishi</p>
-                                </div>
-                                <div>
-                                    <p className="text-[8px] font-black text-gray-400 uppercase tracking-widest">Haydovchi</p>
-                                    <p className="text-xs font-bold text-gray-900 dark:text-white mt-0.5 truncate">{item.driverName || '—'}</p>
-                                </div>
-                            </div>
-                        </div>
-                    );
-                }}
-            />
-        );
 
         if (activeSection === 'filiallar') return (
             <ListSection
@@ -464,7 +374,7 @@ export default function Settings() {
         return null;
     };
 
-    const addModalTitle = activeSection === 'kurslar' ? 'Yangi Kurs' : activeSection === 'xonalar' ? 'Yangi Xona' : activeSection === 'filiallar' ? 'Yangi Filial' : 'Yangi Transport';
+    const addModalTitle = activeSection === 'kurslar' ? 'Yangi Kurs' : activeSection === 'xonalar' ? 'Yangi Xona' : 'Yangi Filial';
 
     return (
         <div className="space-y-6 animate-in fade-in duration-500">
@@ -542,12 +452,10 @@ export default function Settings() {
                             <button onClick={() => setIsAddModalOpen(false)} className="w-9 h-9 flex items-center justify-center text-gray-400 hover:bg-gray-55 dark:hover:bg-gray-700 rounded-xl cursor-pointer"><X size={18} /></button>
                         </div>
                         <form onSubmit={handleAddItem} className="space-y-4">
-                            {activeSection !== 'transport' && (
-                                <div>
-                                    <label className={lbl}>Nomi *</label>
-                                    <input required type="text" className={inp} value={newItem.name || ''} onChange={e => setNewItem({ ...newItem, name: e.target.value })} />
-                                </div>
-                            )}
+                            <div>
+                                <label className={lbl}>Nomi *</label>
+                                <input required type="text" className={inp} value={newItem.name || ''} onChange={e => setNewItem({ ...newItem, name: e.target.value })} />
+                            </div>
                             {activeSection === 'kurslar' && (
                                 <div>
                                     <label className={lbl}>Narxi (UZS) *</label>
@@ -566,9 +474,6 @@ export default function Settings() {
                                     <input type="text" className={inp} value={newItem.address || ''} onChange={e => setNewItem({ ...newItem, address: e.target.value })} />
                                 </div>
                             )}
-                            {activeSection === 'transport' && (
-                                <TransportForm item={newItem} onChange={setNewItem} />
-                            )}
                             <div className="flex gap-3 pt-4 border-t border-dashed border-gray-150 dark:border-gray-700/50">
                                 <button type="button" onClick={() => setIsAddModalOpen(false)}
                                     className="flex-1 py-3 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-white text-xs font-extrabold uppercase tracking-widest rounded-2xl transition-all cursor-pointer hover:bg-gray-200 dark:hover:bg-gray-600">
@@ -583,81 +488,7 @@ export default function Settings() {
                     </div>
                 </div>
             )}
-
-            {/* Edit Transport Modal */}
-            {isEditTransportOpen && editingTransport && (
-                <div className="fixed inset-0 z-[200] flex items-center justify-center p-4">
-                    <div className="absolute inset-0 bg-gray-900/60 backdrop-blur-sm" onClick={() => setIsEditTransportOpen(false)} />
-                    <div className="relative bg-white dark:bg-gray-800 rounded-[2rem] border border-gray-100 dark:border-gray-700/50 shadow-2xl w-full max-w-md p-8">
-                        <div className="flex items-center justify-between mb-6 pb-4 border-b border-gray-50 dark:border-gray-700/50">
-                            <div>
-                                <h3 className="text-lg font-black text-gray-900 dark:text-white uppercase tracking-tight">Transport Tahriri</h3>
-                                <p className="text-[10px] font-bold text-[#1b6b6b] uppercase tracking-widest mt-0.5">Avtopark tarkibini yangilash</p>
-                            </div>
-                            <button onClick={() => setIsEditTransportOpen(false)} className="w-9 h-9 flex items-center justify-center text-gray-400 hover:bg-gray-55 dark:hover:bg-gray-700 rounded-xl cursor-pointer"><X size={18} /></button>
-                        </div>
-                        <form onSubmit={handleSaveTransport} className="space-y-4">
-                            <TransportForm item={editingTransport} onChange={setEditingTransport} />
-                            <div className="flex gap-3 pt-4 border-t border-dashed border-gray-150 dark:border-gray-700/50">
-                                <button type="button" onClick={() => setIsEditTransportOpen(false)}
-                                    className="flex-1 py-3 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-white text-xs font-extrabold uppercase tracking-widest rounded-2xl transition-all cursor-pointer hover:bg-gray-200 dark:hover:bg-gray-600">
-                                    Bekor
-                                </button>
-                                <button type="submit"
-                                    className="flex-1 py-3 bg-[#1b6b6b] hover:bg-[#155252] text-white text-xs font-extrabold uppercase tracking-widest rounded-2xl shadow-lg shadow-[#1b6b6b]/20 transition-all cursor-pointer">
-                                    Saqlash
-                                </button>
-                            </div>
-                        </form>
-                    </div>
-                </div>
-            )}
         </div>
-    );
-}
-
-function TransportForm({ item, onChange }: { item: any; onChange: (v: any) => void }) {
-    return (
-        <>
-            <div className="grid grid-cols-2 gap-4">
-                <div>
-                    <label className={lbl}>Nomi *</label>
-                    <input required type="text" placeholder="Avtobus #1" className={inp} value={item.name || ''} onChange={e => onChange({ ...item, name: e.target.value })} />
-                </div>
-                <div>
-                    <label className={lbl}>Davlat raqami</label>
-                    <input type="text" placeholder="01 A 123 BC" className={inp} value={item.number || ''} onChange={e => onChange({ ...item, number: e.target.value })} />
-                </div>
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-                <div>
-                    <label className={lbl}>Modeli</label>
-                    <input type="text" placeholder="Mercedes Sprinter" className={inp} value={item.model || ''} onChange={e => onChange({ ...item, model: e.target.value })} />
-                </div>
-                <div>
-                    <label className={lbl}>Sig'imi (kishi)</label>
-                    <input type="number" placeholder="15" className={inp} value={item.capacity || ''} onChange={e => onChange({ ...item, capacity: e.target.value })} />
-                </div>
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-                <div>
-                    <label className={lbl}>Haydovchi ismi</label>
-                    <input type="text" className={inp} value={item.driverName || ''} onChange={e => onChange({ ...item, driverName: e.target.value })} />
-                </div>
-                <div>
-                    <label className={lbl}>Haydovchi teli</label>
-                    <input type="text" placeholder="+998" className={inp} value={item.driverPhone || ''} onChange={e => onChange({ ...item, driverPhone: e.target.value })} />
-                </div>
-            </div>
-            <div>
-                <label className={lbl}>Holati</label>
-                <select className={inp} value={item.status || 'Faol'} onChange={e => onChange({ ...item, status: e.target.value })}>
-                    <option value="Faol">Faol</option>
-                    <option value="Ta'mirda">Ta'mirda</option>
-                    <option value="Arxiv">Arxiv</option>
-                </select>
-            </div>
-        </>
     );
 }
 
