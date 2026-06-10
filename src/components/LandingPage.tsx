@@ -1,7 +1,13 @@
 import React, { useState, useEffect, useMemo, useRef, Fragment } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Link } from 'react-router-dom';
-import * as Lucide from 'lucide-react';
+import {
+  Sparkles, Zap, PlayCircle, Check, ArrowRight, Gift, PhoneCall, Scan,
+  MessageSquare, Users, Wallet, Calendar, ShieldCheck, GitBranch, BarChart3,
+  Bell, Atom, Download, ChevronDown, ChevronUp, Plus, Filter, Building2,
+  Instagram, Globe, Send, Phone, CheckCircle2, LayoutDashboard, GraduationCap,
+  Sun, Moon, HelpCircle,
+} from 'lucide-react';
 
 // ─── TRANSLATIONS ─────────────────────────────────────────────────────────────
 const STRINGS = {
@@ -341,52 +347,45 @@ function makeT(lang: 'uz' | 'en') {
 }
 
 // ─── CUSTOM ICON MAPPING COMPONENT ────────────────────────────────────────────
+const ICON_MAP: Record<string, React.ComponentType<{ className?: string; size?: number }>> = {
+  'sparkles': Sparkles,
+  'rocket': Zap,
+  'play-circle': PlayCircle,
+  'check': Check,
+  'arrow-right': ArrowRight,
+  'gift': Gift,
+  'phone-call': PhoneCall,
+  'scan-line': Scan,
+  'message-square-text': MessageSquare,
+  'users': Users,
+  'wallet': Wallet,
+  'calendar-range': Calendar,
+  'shield-check': ShieldCheck,
+  'git-branch': GitBranch,
+  'bar-chart-3': BarChart3,
+  'bell': Bell,
+  'atom': Atom,
+  'download': Download,
+  'chevron-down': ChevronDown,
+  'chevron-up': ChevronUp,
+  'plus': Plus,
+  'filter': Filter,
+  'building-2': Building2,
+  'instagram': Instagram,
+  'globe': Globe,
+  'send': Send,
+  'phone': Phone,
+  'calendar': Calendar,
+  'check-circle-2': CheckCircle2,
+  'zap': Zap,
+  'layout-dashboard': LayoutDashboard,
+  'graduation-cap': GraduationCap,
+  'sun': Sun,
+  'moon': Moon,
+};
+
 function Icon({ name, className = "", size = 18 }: { name: string, className?: string, size?: number }) {
-  const nameMap: Record<string, keyof typeof Lucide> = {
-    'sparkles': 'Sparkles',
-    'rocket': 'Zap',
-    'play-circle': 'PlayCircle',
-    'check': 'Check',
-    'arrow-right': 'ArrowRight',
-    'gift': 'Gift',
-    'phone-call': 'PhoneCall',
-    'scan-line': 'Scan',
-    'message-square-text': 'MessageSquare',
-    'users': 'Users',
-    'wallet': 'Wallet',
-    'calendar-range': 'Calendar',
-    'shield-check': 'ShieldCheck',
-    'git-branch': 'GitBranch',
-    'bar-chart-3': 'BarChart3',
-    'bell': 'Bell',
-    'atom': 'Atom',
-    'download': 'Download',
-    'chevron-down': 'ChevronDown',
-    'chevron-up': 'ChevronUp',
-    'plus': 'Plus',
-    'filter': 'Filter',
-    'building-2': 'Building2',
-    'instagram': 'Instagram',
-    'globe': 'Globe',
-    'send': 'Send',
-    'phone': 'Phone',
-    'calendar': 'Calendar',
-    'check-circle-2': 'CheckCircle2',
-    'zap': 'Zap',
-    'layout-dashboard': 'LayoutDashboard',
-    'graduation-cap': 'GraduationCap',
-  };
-
-  const lucideName = nameMap[name] || nameMap[name.toLowerCase()];
-  if (!lucideName) {
-    const pascalName = name.split('-').map(p => p[0].toUpperCase() + p.slice(1)).join('') as keyof typeof Lucide;
-    const Component = Lucide[pascalName] as any;
-    if (Component) return <Component className={className} size={size} />;
-    return <Lucide.HelpCircle className={className} size={size} />;
-  }
-
-  const Component = Lucide[lucideName] as any;
-  if (!Component) return <Lucide.HelpCircle className={className} size={size} />;
+  const Component = ICON_MAP[name] || ICON_MAP[name.toLowerCase()] || HelpCircle;
   return <Component className={className} size={size} />;
 }
 

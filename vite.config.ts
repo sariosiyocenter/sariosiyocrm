@@ -24,7 +24,6 @@ export default defineConfig(({ mode }) => {
             'vendor-motion': ['motion/react'],
             'vendor-pdf':    ['jspdf'],
             'vendor-canvas': ['html2canvas'],
-            'vendor-icons':  ['lucide-react'],
           },
         },
       },

@@ -28,6 +28,7 @@ export default function Layout({ children, onLogout }: LayoutProps) {
   const baseItems = [
     { label: 'Dashboard', icon: LayoutDashboard, path: '/' },
     { label: 'Lidlar', icon: Target, path: '/leads' },
+    { label: 'Ustozlar', icon: GraduationCap, path: '/teachers' },
     { label: 'Guruhlar', icon: Users, path: '/groups' },
     { label: "O'quvchilar", icon: User, path: '/students' },
     { label: 'Moliya', icon: Wallet, path: '/finance' },

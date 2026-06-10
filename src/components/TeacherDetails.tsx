@@ -59,9 +59,9 @@ export default function TeacherDetails() {
     return (
         <div className="space-y-6 animate-in fade-in duration-500">
             {/* Back Button */}
-            <button onClick={() => navigate('/hr')} className="flex items-center gap-2 text-gray-400 dark:text-gray-500 hover:text-[#1b6b6b] transition-all text-[10px] font-extrabold uppercase tracking-widest group cursor-pointer">
+            <button onClick={() => navigate('/teachers')} className="flex items-center gap-2 text-gray-400 dark:text-gray-500 hover:text-[#1b6b6b] transition-all text-[10px] font-extrabold uppercase tracking-widest group cursor-pointer">
                 <ArrowLeft size={14} className="group-hover:-translate-x-1 transition-transform" />
-                HR Menejment
+                Orqaga
             </button>
 
             <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 items-start">

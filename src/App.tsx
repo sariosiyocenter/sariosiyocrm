@@ -101,7 +101,7 @@ export default function App() {
           <Routes>
             <Route path="/"                     element={<Dashboard />} />
             <Route path="/leads"                element={<Leads />} />
-            <Route path="/teachers"             element={<Navigate to="/hr" replace />} />
+            <Route path="/teachers"             element={isAdminOrManager ? <Teachers />       : <Navigate to="/" replace />} />
             <Route path="/teachers/:id"         element={isAdminOrManager ? <TeacherDetails /> : <Navigate to="/" replace />} />
             <Route path="/groups"               element={<Groups />} />
             <Route path="/groups/:id"           element={<GroupDetails />} />
