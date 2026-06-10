@@ -1,9 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import {
     Users2, Plus, X, Save, Trash2, Pencil, ChevronDown,
-    User, Phone, Mail, Calendar, DollarSign, CheckCircle2, XCircle, Clock
+    User, Phone, Mail, Calendar, DollarSign, CheckCircle2, XCircle, Clock,
+    GraduationCap, ExternalLink
 } from 'lucide-react';
 import { useCRM } from '../context/CRMContext';
+import { useNavigate } from 'react-router-dom';
 
 type HRTab = 'xodimlar' | 'jadval' | 'maosh';
 
@@ -31,8 +33,8 @@ const STATUS_ICONS: Record<string, React.ReactNode> = {
 };
 
 export default function HRManagement() {
-    const { teachers, teacherAttendances, selectedSchoolId } = useCRM();
-    const { user: currentUser, token } = useCRM();
+    const { teachers, teacherAttendances, selectedSchoolId, user: currentUser, token } = useCRM();
+    const navigate = useNavigate();
 
     const [activeTab, setActiveTab] = useState<HRTab>('xodimlar');
     const [users, setUsers] = useState<any[]>([]);
@@ -210,49 +212,73 @@ export default function HRManagement() {
                         </div>
                     ) : (
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                            {users.map((u) => (
-                                <div key={u.id} className="bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700/50 rounded-3xl p-6 hover:shadow-md transition-all group relative flex flex-col justify-between min-h-[180px]">
-                                    <div>
-                                        <div className="flex items-start justify-between mb-4">
-                                            <div className="w-10 h-10 rounded-xl bg-gray-50 dark:bg-gray-900 border border-gray-100 dark:border-gray-700 flex items-center justify-center text-[#1b6b6b] font-bold text-sm">
-                                                <User size={16} />
-                                            </div>
-                                            {isAdminOrManager && (
-                                                <div className="flex items-center gap-1">
-                                                    <button onClick={() => { setEditingUser({ ...u, password: '' }); setIsEditOpen(true); }}
-                                                        className="w-7 h-7 rounded-lg text-gray-400 hover:text-[#1b6b6b] hover:bg-gray-55 dark:hover:bg-gray-900 flex items-center justify-center transition-colors cursor-pointer">
-                                                        <Pencil size={13} />
-                                                    </button>
-                                                    {isAdmin && (
-                                                        <button onClick={() => handleDeleteUser(u.id)}
-                                                            className="w-7 h-7 rounded-lg text-rose-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/20 flex items-center justify-center transition-colors cursor-pointer">
-                                                            <Trash2 size={13} />
+                            {users.map((u) => {
+                                // Match teacher profile by name for TEACHER role users
+                                const linkedTeacher = u.role === 'TEACHER'
+                                    ? teachers.find(t => t.name.toLowerCase().trim() === u.name.toLowerCase().trim())
+                                    : null;
+                                return (
+                                    <div key={u.id} className="bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700/50 rounded-3xl p-6 hover:shadow-md transition-all group relative flex flex-col justify-between min-h-[180px]">
+                                        <div>
+                                            <div className="flex items-start justify-between mb-4">
+                                                <div className="w-10 h-10 rounded-xl bg-gray-50 dark:bg-gray-900 border border-gray-100 dark:border-gray-700 flex items-center justify-center text-[#1b6b6b] font-bold text-sm">
+                                                    {u.role === 'TEACHER'
+                                                        ? <GraduationCap size={16} className="text-teal-600 dark:text-teal-400" />
+                                                        : <User size={16} />}
+                                                </div>
+                                                {isAdminOrManager && (
+                                                    <div className="flex items-center gap-1">
+                                                        <button onClick={() => { setEditingUser({ ...u, password: '' }); setIsEditOpen(true); }}
+                                                            className="w-7 h-7 rounded-lg text-gray-400 hover:text-[#1b6b6b] hover:bg-gray-55 dark:hover:bg-gray-900 flex items-center justify-center transition-colors cursor-pointer">
+                                                            <Pencil size={13} />
                                                         </button>
-                                                    )}
+                                                        {isAdmin && (
+                                                            <button onClick={() => handleDeleteUser(u.id)}
+                                                                className="w-7 h-7 rounded-lg text-rose-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/20 flex items-center justify-center transition-colors cursor-pointer">
+                                                                <Trash2 size={13} />
+                                                            </button>
+                                                        )}
+                                                    </div>
+                                                )}
+                                            </div>
+                                            <div>
+                                                <h4 className="text-xs font-black text-gray-900 dark:text-white uppercase tracking-wide">{u.name}</h4>
+                                                <span className={`inline-block mt-1.5 px-2.5 py-0.5 rounded-md text-[8px] font-black border uppercase tracking-wider ${ROLE_COLORS[u.role] || 'bg-gray-55 text-gray-400 border-gray-100'}`}>
+                                                    {ROLE_LABELS[u.role] || u.role}
+                                                </span>
+                                            </div>
+                                        </div>
+                                        <div className="mt-4 pt-3 border-t border-dashed border-gray-100 dark:border-gray-700/50 space-y-1">
+                                            {u.phone && (
+                                                <div className="flex items-center gap-2 text-gray-400">
+                                                    <Phone size={11} />
+                                                    <span className="text-[10px] font-bold text-gray-600 dark:text-gray-300">{u.phone}</span>
                                                 </div>
                                             )}
-                                        </div>
-                                        <div>
-                                            <h4 className="text-xs font-black text-gray-900 dark:text-white uppercase tracking-wide">{u.name}</h4>
-                                            <span className={`inline-block mt-1.5 px-2.5 py-0.5 rounded-md text-[8px] font-black border uppercase tracking-wider ${ROLE_COLORS[u.role] || 'bg-gray-55 text-gray-400 border-gray-100'}`}>
-                                                {ROLE_LABELS[u.role] || u.role}
-                                            </span>
-                                        </div>
-                                    </div>
-                                    <div className="mt-4 pt-3 border-t border-dashed border-gray-100 dark:border-gray-700/50 space-y-1">
-                                        {u.phone && (
                                             <div className="flex items-center gap-2 text-gray-400">
-                                                <Phone size={11} />
-                                                <span className="text-[10px] font-bold text-gray-600 dark:text-gray-300">{u.phone}</span>
+                                                <Mail size={11} />
+                                                <span className="text-[10px] font-bold text-gray-600 dark:text-gray-300 truncate max-w-[160px]">{u.email}</span>
+                                            </div>
+                                        </div>
+                                        {/* Profile link — only shown for TEACHER role when a matching teacher record exists */}
+                                        {u.role === 'TEACHER' && linkedTeacher && (
+                                            <button
+                                                onClick={() => navigate(`/teachers/${linkedTeacher.id}`)}
+                                                className="mt-3 w-full flex items-center justify-center gap-2 py-2 bg-teal-50 dark:bg-teal-950/20 border border-teal-100 dark:border-teal-900/40 text-[#1b6b6b] dark:text-teal-400 rounded-xl text-[9px] font-extrabold uppercase tracking-widest hover:bg-[#1b6b6b] hover:text-white hover:border-[#1b6b6b] transition-all cursor-pointer"
+                                            >
+                                                <ExternalLink size={11} />
+                                                Ustoz Profilini Ko'rish
+                                            </button>
+                                        )}
+                                        {u.role === 'TEACHER' && !linkedTeacher && (
+                                            <div className="mt-3 w-full flex items-center justify-center gap-2 py-2 bg-gray-50 dark:bg-gray-900/40 border border-dashed border-gray-200 dark:border-gray-700 rounded-xl text-[9px] font-extrabold uppercase tracking-widest text-gray-400">
+                                                <GraduationCap size={11} />
+                                                Profil biriktirilmagan
                                             </div>
                                         )}
-                                        <div className="flex items-center gap-2 text-gray-400">
-                                            <Mail size={11} />
-                                            <span className="text-[10px] font-bold text-gray-600 dark:text-gray-300 truncate max-w-[180px]">{u.email}</span>
-                                        </div>
                                     </div>
-                                </div>
-                            ))}
+                                );
+                            })}
                         </div>
                     )}
                 </div>
