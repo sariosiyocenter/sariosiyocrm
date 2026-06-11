@@ -48,7 +48,6 @@ export default function HRManagement() {
     const navigate = useNavigate();
 
     const [users, setUsers]               = useState<any[]>([]);
-    const [teacherRows, setTeacherRows]   = useState<any[]>([]);
     const [loadingUsers, setLoadingUsers] = useState(false);
     const [selectedRole, setSelectedRole] = useState<string | null>(null);
 
@@ -71,30 +70,6 @@ export default function HRManagement() {
 
     useEffect(() => { fetchUsers(); }, [token]);
 
-    // Fetch Teacher model records and convert to pseudo-user shape
-    useEffect(() => {
-        if (!token) return;
-        fetch('/api/teachers', { headers: { Authorization: `Bearer ${token}` } })
-            .then(r => r.json())
-            .then((rows: any[]) => {
-                const converted = rows
-                    .filter(t => t.status !== 'Arxiv')
-                    .map(t => ({
-                        _source:  'teacher',
-                        _tid:     t.id,
-                        id:       `t_${t.id}`,
-                        name:     t.name,
-                        phone:    t.phone,
-                        photo:    t.photo || null,
-                        salary:   t.salary || 0,
-                        role:     'TEACHER',
-                        email:    null,
-                        position: null,
-                    }));
-                setTeacherRows(converted);
-            })
-            .catch(() => setTeacherRows([]));
-    }, [token]);
 
     const handleAddUser = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -145,9 +120,23 @@ export default function HRManagement() {
         } catch (err) { console.error('Delete user failed', err); }
     };
 
-    // Merge User records + Teacher records (exclude Teacher if a User with same name already exists)
+    // Merge User records + Teacher model records from context
+    // Exclude teachers whose name already matches a User record (no duplicates)
     const userNames = new Set(users.map(u => u.name.toLowerCase().trim()));
-    const uniqueTeacherRows = teacherRows.filter(t => !userNames.has(t.name.toLowerCase().trim()));
+    const uniqueTeacherRows = (teachers || [])
+        .filter(t => t.status !== 'Arxiv' && !userNames.has(t.name.toLowerCase().trim()))
+        .map(t => ({
+            _source:  'teacher',
+            _tid:     t.id,
+            id:       `t_${t.id}`,
+            name:     t.name,
+            phone:    t.phone,
+            photo:    t.photo || null,
+            salary:   t.salary || 0,
+            role:     'TEACHER',
+            email:    null,
+            position: null,
+        }));
     const allStaff = [...users, ...uniqueTeacherRows];
 
     // Filtered by selected role
