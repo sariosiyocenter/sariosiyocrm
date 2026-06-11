@@ -267,7 +267,9 @@ model School {
   exams       Exam[]
   examResults ExamResult[]
   examAssignments ExamAssignment[]
-  applyTokens ApplyToken[]
+  applyTokens      ApplyToken[]
+  staffAttendances StaffAttendance[]
+  salaryPayments   SalaryPayment[]
 }
 
 model SmsLog {
@@ -348,12 +350,49 @@ model User {
   schoolId  Int?
   school    School?  @relation(fields: [schoolId], references: [id])
 
-  driverTransport Transport? @relation("DriverTransport")
-  driverRoutes    Route[]    @relation("DriverRoutes")
+  workDays  String?
 
-  sellerLeads     SaaSLead[] @relation("SellerLeads")
+  driverTransport  Transport?       @relation("DriverTransport")
+  driverRoutes     Route[]          @relation("DriverRoutes")
+  sellerLeads      SaaSLead[]       @relation("SellerLeads")
+  staffAttendances StaffAttendance[]
+  salaryPayments   SalaryPayment[]
 
   @@index([schoolId])
+}
+
+model SalaryPayment {
+  id         Int      @id @default(autoincrement())
+  userId     Int
+  user       User     @relation(fields: [userId], references: [id])
+  month      String   // "2026-06"
+  amount     Int
+  baseSalary Int
+  bonuses    Int      @default(0)
+  fines      Int      @default(0)
+  note       String?
+  paidAt     DateTime @default(now())
+  expenseId  Int?
+  schoolId   Int
+  school     School   @relation(fields: [schoolId], references: [id])
+
+  @@unique([userId, month])
+  @@index([schoolId])
+  @@index([userId])
+}
+
+model StaffAttendance {
+  id       Int    @id @default(autoincrement())
+  userId   Int
+  user     User   @relation(fields: [userId], references: [id])
+  date     String
+  status   String
+  schoolId Int
+  school   School @relation(fields: [schoolId], references: [id])
+
+  @@unique([userId, date])
+  @@index([schoolId])
+  @@index([userId])
 }
 
 enum UserRole {

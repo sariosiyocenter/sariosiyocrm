@@ -36,6 +36,7 @@ const ExamResults     = lazy(() => import('./components/ExamResults'));
 const SuperAdmin      = lazy(() => import('./components/SuperAdmin'));
 const OrgDetail       = lazy(() => import('./components/OrgDetail'));
 const HRManagement    = lazy(() => import('./components/HRManagement'));
+const StaffDetails    = lazy(() => import('./components/StaffDetails'));
 const PublicApply     = lazy(() => import('./components/PublicApply'));
 
 function PageLoader() {
@@ -101,13 +102,13 @@ export default function App() {
           <Routes>
             <Route path="/"                     element={<Dashboard />} />
             <Route path="/leads"                element={<Leads />} />
-            <Route path="/teachers"             element={isAdminOrManager ? <Teachers />       : <Navigate to="/" replace />} />
             <Route path="/teachers/:id"         element={isAdminOrManager ? <TeacherDetails /> : <Navigate to="/" replace />} />
             <Route path="/groups"               element={<Groups />} />
             <Route path="/groups/:id"           element={<GroupDetails />} />
             <Route path="/students"             element={<Students />} />
             <Route path="/students/:id"         element={<StudentDetails />} />
             <Route path="/hr"                   element={isAdminOrManager ? <HRManagement /> : <Navigate to="/" replace />} />
+            <Route path="/hr/:id"              element={isAdminOrManager ? <StaffDetails />  : <Navigate to="/" replace />} />
             <Route path="/settings"             element={isAdminOrManager ? <Settings />   : <Navigate to="/" replace />} />
             <Route path="/finance"              element={isAdminOrManager ? <Finance />    : <Navigate to="/" replace />} />
             <Route path="/logistics"            element={isAdminOrManager ? <Logistics />  : <Navigate to="/" replace />} />

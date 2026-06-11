@@ -169,7 +169,7 @@ app.get('/api/users', authenticate, async (req, res, next) => {
 
     const users = await prisma.user.findMany({
       where,
-      select: { id: true, email: true, name: true, phone: true, photo: true, position: true, salary: true, role: true, createdAt: true, schoolId: true }
+      select: { id: true, email: true, name: true, phone: true, photo: true, position: true, salary: true, workDays: true, role: true, createdAt: true, schoolId: true }
     });
     res.json(users);
   } catch (error) { next(error); }
@@ -242,7 +242,7 @@ app.put('/api/users/:id', authenticate, async (req, res, next) => {
   try {
     if (req.user.role !== 'ADMIN' && req.user.role !== 'MANAGER') return res.status(403).json({ error: 'Faqat ADMIN/MANAGER tahrirlay oladi' });
     const { id } = req.params;
-    const { email, name, phone, photo, position, salary, role, password } = req.body;
+    const { email, name, phone, photo, position, salary, role, password, workDays } = req.body;
     const data = {};
     if (email !== undefined) data.email = email;
     if (name !== undefined) data.name = name;
@@ -251,12 +251,13 @@ app.put('/api/users/:id', authenticate, async (req, res, next) => {
     if (position !== undefined) data.position = position;
     if (salary !== undefined) data.salary = salary ? parseInt(salary) : 0;
     if (role !== undefined) data.role = role;
+    if (workDays !== undefined) data.workDays = workDays;
     if (password) data.password = await bcrypt.hash(password, 10);
 
     const user = await prisma.user.update({
       where: { id: parseInt(id) },
       data,
-      select: { id: true, email: true, name: true, phone: true, photo: true, position: true, salary: true, role: true, createdAt: true, schoolId: true }
+      select: { id: true, email: true, name: true, phone: true, photo: true, position: true, salary: true, workDays: true, role: true, createdAt: true, schoolId: true }
     });
     res.json(user);
   } catch (error) { next(error); }
@@ -267,6 +268,113 @@ app.delete('/api/users/:id', authenticate, async (req, res, next) => {
     if (req.user.role !== 'ADMIN') return res.status(403).json({ error: 'Faqat ADMIN o\'chira oladi' });
     const { id } = req.params;
     await prisma.user.delete({ where: { id: parseInt(id) } });
+    res.json({ success: true });
+  } catch (error) { next(error); }
+});
+
+// --- Staff Attendance ---
+app.get('/api/staff-attendance', authenticate, async (req, res, next) => {
+  try {
+    if (req.user.role !== 'ADMIN' && req.user.role !== 'MANAGER') return res.status(403).json({ error: 'Ruhsat yo' });
+    const { userId, month } = req.query;
+    if (!userId) return res.status(400).json({ error: 'userId required' });
+    const where = { userId: parseInt(userId) };
+    if (month) where.date = { startsWith: String(month) };
+    const records = await prisma.staffAttendance.findMany({ where, orderBy: { date: 'asc' } });
+    res.json(records);
+  } catch (error) { next(error); }
+});
+
+app.post('/api/staff-attendance', authenticate, async (req, res, next) => {
+  try {
+    if (req.user.role !== 'ADMIN' && req.user.role !== 'MANAGER') return res.status(403).json({ error: 'Ruhsat yo' });
+    const { userId, date, status } = req.body;
+    const schoolId = req.user.schoolId;
+    const record = await prisma.staffAttendance.upsert({
+      where: { userId_date: { userId: parseInt(userId), date } },
+      update: { status },
+      create: { userId: parseInt(userId), date, status, schoolId }
+    });
+    res.json(record);
+  } catch (error) { next(error); }
+});
+
+app.delete('/api/staff-attendance', authenticate, async (req, res, next) => {
+  try {
+    if (req.user.role !== 'ADMIN' && req.user.role !== 'MANAGER') return res.status(403).json({ error: 'Ruhsat yo' });
+    const { userId, date } = req.query;
+    await prisma.staffAttendance.deleteMany({ where: { userId: parseInt(userId), date: String(date) } });
+    res.json({ success: true });
+  } catch (error) { next(error); }
+});
+
+// --- Salary Payments ---
+app.get('/api/salary-payments', authenticate, async (req, res, next) => {
+  try {
+    if (req.user.role !== 'ADMIN' && req.user.role !== 'MANAGER') return res.status(403).json({ error: 'Ruhsat yo' });
+    const { userId } = req.query;
+    if (!userId) return res.status(400).json({ error: 'userId required' });
+    const payments = await prisma.salaryPayment.findMany({
+      where: { userId: parseInt(userId) },
+      orderBy: { month: 'desc' }
+    });
+    res.json(payments);
+  } catch (error) { next(error); }
+});
+
+app.post('/api/salary-payments', authenticate, async (req, res, next) => {
+  try {
+    if (req.user.role !== 'ADMIN' && req.user.role !== 'MANAGER') return res.status(403).json({ error: 'Ruhsat yo' });
+    const { userId, month, amount, baseSalary, bonuses, fines, note } = req.body;
+    const schoolId = req.user.schoolId;
+
+    // Get employee name for expense description
+    const employee = await prisma.user.findUnique({ where: { id: parseInt(userId) }, select: { name: true } });
+    const empName = employee?.name || 'Xodim';
+
+    // Create linked expense record in Finance
+    const expense = await prisma.expense.create({
+      data: {
+        amount: parseInt(amount),
+        category: 'Ish haqi',
+        date: new Date().toISOString().split('T')[0],
+        description: `${empName} — ${month} oy maoshi`,
+        schoolId
+      }
+    });
+
+    // Create salary payment
+    const payment = await prisma.salaryPayment.create({
+      data: {
+        userId: parseInt(userId),
+        month,
+        amount: parseInt(amount),
+        baseSalary: parseInt(baseSalary),
+        bonuses: parseInt(bonuses) || 0,
+        fines: parseInt(fines) || 0,
+        note: note || null,
+        expenseId: expense.id,
+        schoolId
+      }
+    });
+
+    res.json(payment);
+  } catch (error) { next(error); }
+});
+
+app.delete('/api/salary-payments/:id', authenticate, async (req, res, next) => {
+  try {
+    if (req.user.role !== 'ADMIN' && req.user.role !== 'MANAGER') return res.status(403).json({ error: 'Ruhsat yo' });
+    const { id } = req.params;
+    const payment = await prisma.salaryPayment.findUnique({ where: { id: parseInt(id) } });
+    if (!payment) return res.status(404).json({ error: 'Not found' });
+
+    // Delete linked expense if exists
+    if (payment.expenseId) {
+      try { await prisma.expense.delete({ where: { id: payment.expenseId } }); } catch {}
+    }
+
+    await prisma.salaryPayment.delete({ where: { id: parseInt(id) } });
     res.json({ success: true });
   } catch (error) { next(error); }
 });

@@ -1,15 +1,13 @@
 import React, { useState, useEffect, useRef } from 'react';
 import {
-    Users2, Plus, X, Save, Trash2, Pencil, ChevronDown,
-    User, Phone, Mail, Calendar, DollarSign, CheckCircle2, XCircle, Clock,
-    GraduationCap, ExternalLink, Camera, Target, TrendingUp, TrendingDown, Wrench,
-    Briefcase, Star, AlertCircle
+    Users2, Plus, X, Trash2, Pencil,
+    Phone, Mail, DollarSign,
+    GraduationCap, ExternalLink, Camera, Wrench, Eye
 } from 'lucide-react';
 import { useCRM } from '../context/CRMContext';
 import { useNavigate } from 'react-router-dom';
 import { compressImage } from '../lib/image';
 
-type HRTab = 'xodimlar' | 'jadval' | 'maosh';
 
 const ROLE_LABELS: Record<string, string> = {
     ADMIN:           'Admin',
@@ -54,19 +52,10 @@ const PREDEFINED_KPIS = [
 const inp = "w-full px-4 py-3 bg-gray-50 dark:bg-gray-900/50 border border-gray-100 dark:border-gray-700 rounded-2xl text-xs font-bold text-gray-900 dark:text-white focus:border-[#1b6b6b] focus:ring-4 focus:ring-[#1b6b6b]/10 outline-none transition-all";
 const lbl = "block text-[10px] font-extrabold uppercase tracking-widest text-gray-400 mb-2";
 
-const MONTHS = ['Yanvar','Fevral','Mart','Aprel','May','Iyun','Iyul','Avgust','Sentabr','Oktabr','Noyabr','Dekabr'];
-const STATUS_ICONS: Record<string, React.ReactNode> = {
-    'Keldi':   <CheckCircle2 size={16} className="text-emerald-500" />,
-    'Kelmadi': <XCircle size={16} className="text-rose-500" />,
-    'Sababli': <Clock size={16} className="text-amber-500" />,
-    '':        <div className="w-4 h-4 rounded-full border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900" />,
-};
-
 export default function HRManagement() {
-    const { teachers, teacherAttendances, selectedSchoolId, user: currentUser, token } = useCRM();
+    const { teachers, selectedSchoolId, user: currentUser, token } = useCRM();
     const navigate = useNavigate();
 
-    const [activeTab, setActiveTab]       = useState<HRTab>('xodimlar');
     const [users, setUsers]               = useState<any[]>([]);
     const [loadingUsers, setLoadingUsers] = useState(false);
     const [selectedRole, setSelectedRole] = useState<string | null>(null);
@@ -75,17 +64,6 @@ export default function HRManagement() {
     const [isEditOpen, setIsEditOpen]     = useState(false);
     const [newUser, setNewUser]           = useState<any>({ role: 'RECEPTIONIST' });
     const [editingUser, setEditingUser]   = useState<any>(null);
-
-    const today = new Date();
-    const [selectedTeacherId, setSelectedTeacherId] = useState<number | null>(null);
-    const [selectedMonth, setSelectedMonth]         = useState(today.getMonth());
-    const [selectedYear, setSelectedYear]           = useState(today.getFullYear());
-
-    const [salaryUserId, setSalaryUserId] = useState<number | null>(null);
-    const [bonuses, setBonuses]           = useState<{ label: string; amount: number }[]>([]);
-    const [fines, setFines]               = useState<{ label: string; amount: number }[]>([]);
-    const [bonusInput, setBonusInput]     = useState({ label: '', amount: '' });
-    const [fineInput, setFineInput]       = useState({ label: '', amount: '' });
 
     const isAdmin           = currentUser?.role === 'ADMIN';
     const isAdminOrManager  = isAdmin || currentUser?.role === 'MANAGER';
@@ -153,39 +131,6 @@ export default function HRManagement() {
     // Filtered users by selected role
     const filteredUsers = selectedRole ? users.filter(u => u.role === selectedRole) : users;
 
-    // Jadval helpers
-    const daysInMonth    = new Date(selectedYear, selectedMonth + 1, 0).getDate();
-    const selectedTeacher = teachers.find(t => t.id === selectedTeacherId);
-    const getAttendance  = (day: number) => {
-        if (!selectedTeacherId) return '';
-        const dateStr = `${selectedYear}-${String(selectedMonth + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
-        return teacherAttendances.find(a => a.teacherId === selectedTeacherId && a.date === dateStr)?.status || '';
-    };
-    const attendanceSummary = () => {
-        if (!selectedTeacherId) return { keldi: 0, kelmadi: 0, sababli: 0 };
-        return Array.from({ length: daysInMonth }, (_, i) => getAttendance(i + 1)).reduce(
-            (acc, s) => {
-                if (s === 'Keldi') acc.keldi++;
-                else if (s === 'Kelmadi') acc.kelmadi++;
-                else if (s === 'Sababli') acc.sababli++;
-                return acc;
-            }, { keldi: 0, kelmadi: 0, sababli: 0 }
-        );
-    };
-
-    // Maosh helpers — now works on any user (not just teachers)
-    const salaryUser     = users.find(u => u.id === salaryUserId);
-    const totalBonus     = bonuses.reduce((s, b) => s + b.amount, 0);
-    const totalFine      = fines.reduce((s, f) => s + f.amount, 0);
-    const baseSalary     = salaryUser?.salary || 0;
-    const totalSalary    = baseSalary + totalBonus - totalFine;
-
-    const tabs: { id: HRTab; label: string; icon: React.ReactNode }[] = [
-        { id: 'xodimlar', label: 'Xodimlar',   icon: <Users2 size={15} /> },
-        { id: 'jadval',   label: 'Ish Jadvali', icon: <Calendar size={15} /> },
-        { id: 'maosh',    label: 'Ish Haqi',    icon: <DollarSign size={15} /> },
-    ];
-
     return (
         <div className="space-y-6 animate-in fade-in duration-500">
             {/* Header */}
@@ -198,34 +143,20 @@ export default function HRManagement() {
                         <div>
                             <h1 className="text-lg font-black text-gray-900 dark:text-white uppercase tracking-tight">HR Menejment</h1>
                             <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mt-0.5">
-                                Xodimlar hisobi, davomat va ish haqi boshqaruvi
+                                Xodimlar hisobi va boshqaruvi
                             </p>
                         </div>
                     </div>
-                </div>
-            </div>
-
-            {/* Tabs & Controls */}
-            <div className="flex flex-wrap items-center justify-between gap-4">
-                <div className="bg-gray-50 dark:bg-gray-900 p-1.5 rounded-xl border border-gray-100 dark:border-gray-700/50 w-fit flex gap-1">
-                    {tabs.map(tab => (
-                        <button key={tab.id} onClick={() => setActiveTab(tab.id)}
-                            className={`flex items-center gap-2 px-5 py-2 rounded-lg text-[10px] font-extrabold uppercase tracking-widest transition-all cursor-pointer ${activeTab === tab.id ? 'bg-[#1b6b6b] text-white shadow' : 'text-gray-400 hover:text-gray-600'}`}>
-                            {tab.icon}{tab.label}
+                    {isAdminOrManager && (
+                        <button onClick={() => { setNewUser({ role: 'RECEPTIONIST' }); setIsAddOpen(true); }}
+                            className="flex items-center gap-2 px-4 py-2.5 bg-[#1b6b6b] hover:bg-[#155252] text-white rounded-xl text-xs font-extrabold uppercase tracking-widest shadow-lg shadow-[#1b6b6b]/20 transition-all cursor-pointer">
+                            <Plus size={14} /> Yangi Xodim
                         </button>
-                    ))}
+                    )}
                 </div>
-                {activeTab === 'xodimlar' && isAdminOrManager && (
-                    <button onClick={() => { setNewUser({ role: 'RECEPTIONIST' }); setIsAddOpen(true); }}
-                        className="flex items-center gap-2 px-4 py-2.5 bg-[#1b6b6b] hover:bg-[#155252] text-white rounded-xl text-xs font-extrabold uppercase tracking-widest shadow-lg shadow-[#1b6b6b]/20 transition-all cursor-pointer">
-                        <Plus size={14} /> Yangi Xodim
-                    </button>
-                )}
             </div>
 
-            {/* ===== XODIMLAR ===== */}
-            {activeTab === 'xodimlar' && (
-                <div className="space-y-6">
+            <div className="space-y-6">
                     {/* Clickable role counters */}
                     <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-3">
                         {Object.entries(ROLE_LABELS).map(([role, label]) => {
@@ -344,238 +275,19 @@ export default function HRManagement() {
                                                 </div>
                                             )}
                                         </div>
-                                        {(u.role === 'TEACHER' || u.role === 'SUPPORT_TEACHER') && linkedTeacher && (
-                                            <button
-                                                onClick={() => navigate(`/teachers/${linkedTeacher.id}`)}
-                                                className="mt-3 w-full flex items-center justify-center gap-2 py-2 bg-teal-50 dark:bg-teal-950/20 border border-teal-100 dark:border-teal-900/40 text-[#1b6b6b] dark:text-teal-400 rounded-xl text-[9px] font-extrabold uppercase tracking-widest hover:bg-[#1b6b6b] hover:text-white hover:border-[#1b6b6b] transition-all cursor-pointer">
-                                                <ExternalLink size={11} />
-                                                Ustoz Profilini Ko'rish
-                                            </button>
-                                        )}
-                                        {(u.role === 'TEACHER' || u.role === 'SUPPORT_TEACHER') && !linkedTeacher && (
-                                            <div className="mt-3 w-full flex items-center justify-center gap-2 py-2 bg-gray-50 dark:bg-gray-900/40 border border-dashed border-gray-200 dark:border-gray-700 rounded-xl text-[9px] font-extrabold uppercase tracking-widest text-gray-400">
-                                                <GraduationCap size={11} />
-                                                Profil biriktirilmagan
-                                            </div>
-                                        )}
+                                        {/* Profile link */}
+                                        <button
+                                            onClick={() => navigate(`/hr/${u.id}`)}
+                                            className="mt-3 w-full flex items-center justify-center gap-2 py-2 bg-[#1b6b6b]/5 border border-[#1b6b6b]/15 text-[#1b6b6b] dark:text-teal-400 rounded-xl text-[9px] font-extrabold uppercase tracking-widest hover:bg-[#1b6b6b] hover:text-white hover:border-[#1b6b6b] transition-all cursor-pointer">
+                                            <Eye size={11} />
+                                            Profilni Ko'rish
+                                        </button>
                                     </div>
                                 );
                             })}
                         </div>
                     )}
                 </div>
-            )}
-
-            {/* ===== ISH JADVALI ===== */}
-            {activeTab === 'jadval' && (
-                <div className="space-y-6">
-                    <div className="bg-white dark:bg-gray-800 rounded-3xl border border-gray-100 dark:border-gray-700/50 p-6 flex flex-wrap items-center gap-4">
-                        <div className="flex-1 min-w-[200px]">
-                            <label className={lbl}>O'qituvchi</label>
-                            <select className={inp} value={selectedTeacherId ?? ''} onChange={e => setSelectedTeacherId(Number(e.target.value) || null)}>
-                                <option value="">Tanlang...</option>
-                                {teachers.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
-                            </select>
-                        </div>
-                        <div>
-                            <label className={lbl}>Oy</label>
-                            <select className={inp + " w-36"} value={selectedMonth} onChange={e => setSelectedMonth(Number(e.target.value))}>
-                                {MONTHS.map((m, i) => <option key={i} value={i}>{m}</option>)}
-                            </select>
-                        </div>
-                        <div>
-                            <label className={lbl}>Yil</label>
-                            <input type="number" className={inp + " w-24"} value={selectedYear} onChange={e => setSelectedYear(Number(e.target.value))} />
-                        </div>
-                    </div>
-
-                    {selectedTeacherId && (
-                        <>
-                            {(() => { const s = attendanceSummary(); return (
-                                <div className="grid grid-cols-3 gap-4">
-                                    <div className="bg-white dark:bg-gray-800 border border-emerald-100 dark:border-emerald-950/20 rounded-2xl p-4 text-center">
-                                        <span className="text-[9px] font-extrabold text-emerald-600 dark:text-emerald-400 uppercase tracking-widest block mb-1">Keldi</span>
-                                        <p className="text-xl font-black text-emerald-600 dark:text-emerald-400 tabular-nums">{s.keldi}</p>
-                                    </div>
-                                    <div className="bg-white dark:bg-gray-800 border border-rose-100 dark:border-rose-950/20 rounded-2xl p-4 text-center">
-                                        <span className="text-[9px] font-extrabold text-rose-600 dark:text-rose-400 uppercase tracking-widest block mb-1">Kelmadi</span>
-                                        <p className="text-xl font-black text-rose-600 dark:text-rose-400 tabular-nums">{s.kelmadi}</p>
-                                    </div>
-                                    <div className="bg-white dark:bg-gray-800 border border-amber-100 dark:border-amber-950/20 rounded-2xl p-4 text-center">
-                                        <span className="text-[9px] font-extrabold text-amber-600 dark:text-amber-400 uppercase tracking-widest block mb-1">Sababli</span>
-                                        <p className="text-xl font-black text-amber-600 dark:text-amber-400 tabular-nums">{s.sababli}</p>
-                                    </div>
-                                </div>
-                            ); })()}
-
-                            <div className="bg-white dark:bg-gray-800 rounded-3xl border border-gray-100 dark:border-gray-700/50 p-6">
-                                <h3 className="text-xs font-black text-[#1b6b6b] uppercase tracking-wider mb-5">
-                                    {selectedTeacher?.name} — {MONTHS[selectedMonth]} {selectedYear}
-                                </h3>
-                                <div className="grid grid-cols-7 gap-2">
-                                    {Array.from({ length: daysInMonth }, (_, i) => {
-                                        const day    = i + 1;
-                                        const status = getAttendance(day);
-                                        return (
-                                            <div key={day} className="bg-gray-50/50 dark:bg-gray-900/40 border border-gray-100 dark:border-gray-700/50 rounded-xl p-3 flex flex-col items-center gap-2">
-                                                <span className="text-[9px] font-black text-gray-400">{day}</span>
-                                                <div title={status || "Belgilanmagan"}>{STATUS_ICONS[status] || STATUS_ICONS['']}</div>
-                                                <span className="text-[8px] font-black text-gray-500 uppercase truncate w-full text-center">{status || '—'}</span>
-                                            </div>
-                                        );
-                                    })}
-                                </div>
-                            </div>
-                        </>
-                    )}
-                    {!selectedTeacherId && (
-                        <div className="py-20 text-center bg-white dark:bg-gray-800 rounded-3xl border border-gray-100 dark:border-gray-700/50">
-                            <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">O'qituvchini tanlang</p>
-                        </div>
-                    )}
-                </div>
-            )}
-
-            {/* ===== MAOSH ===== */}
-            {activeTab === 'maosh' && (
-                <div className="space-y-6">
-                    <div className="bg-white dark:bg-gray-800 rounded-3xl border border-gray-100 dark:border-gray-700/50 p-6">
-                        <label className={lbl}>Xodim</label>
-                        <select className={inp + " max-w-xs"} value={salaryUserId ?? ''} onChange={e => { setSalaryUserId(Number(e.target.value) || null); setBonuses([]); setFines([]); }}>
-                            <option value="">Tanlang...</option>
-                            {users.map(u => <option key={u.id} value={u.id}>{u.name} — {ROLE_LABELS[u.role] || u.role}</option>)}
-                        </select>
-                    </div>
-
-                    {salaryUserId && salaryUser && (
-                        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                            {/* Base info */}
-                            <div className="bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700/50 rounded-3xl p-6 space-y-4">
-                                <h3 className="text-xs font-black text-gray-900 dark:text-white uppercase tracking-wider">Asosiy ma'lumotlar</h3>
-                                <div className="space-y-2">
-                                    <InfoRow label="Ism"         value={salaryUser.name} />
-                                    <InfoRow label="Lavozim"     value={ROLE_LABELS[salaryUser.role] || salaryUser.role} />
-                                    <InfoRow label="Asosiy Maosh" value={`${baseSalary.toLocaleString()} UZS`} />
-                                    {salaryUser.position && <InfoRow label="Vazifa" value={salaryUser.position} />}
-                                </div>
-
-                                {/* Predefined KPIs */}
-                                <div className="pt-3 border-t border-dashed border-gray-100 dark:border-gray-700/50">
-                                    <p className="text-[9px] font-extrabold text-gray-400 uppercase tracking-widest mb-3 flex items-center gap-1.5">
-                                        <Target size={11} /> Tez qo'shish (KPI)
-                                    </p>
-                                    <div className="space-y-1.5">
-                                        {PREDEFINED_KPIS.map((kpi, i) => (
-                                            <button key={i}
-                                                onClick={() => {
-                                                    if (kpi.type === 'bonus') setBonuses(b => [...b, { label: kpi.label, amount: kpi.amount }]);
-                                                    else setFines(f => [...f, { label: kpi.label, amount: kpi.amount }]);
-                                                }}
-                                                className={`w-full flex items-center justify-between px-3 py-2 rounded-xl border text-[9px] font-bold transition-all cursor-pointer hover:shadow-sm ${
-                                                    kpi.type === 'bonus'
-                                                        ? 'bg-emerald-50 border-emerald-100 text-emerald-700 hover:bg-emerald-100 dark:bg-emerald-950/20 dark:border-emerald-900/30 dark:text-emerald-400'
-                                                        : 'bg-rose-50 border-rose-100 text-rose-700 hover:bg-rose-100 dark:bg-rose-950/20 dark:border-rose-900/30 dark:text-rose-400'
-                                                }`}
-                                            >
-                                                <span className="flex items-center gap-1">
-                                                    {kpi.type === 'bonus' ? <TrendingUp size={10} /> : <TrendingDown size={10} />}
-                                                    {kpi.label}
-                                                </span>
-                                                <span className="font-black">
-                                                    {kpi.type === 'bonus' ? '+' : '-'}{kpi.amount.toLocaleString()}
-                                                </span>
-                                            </button>
-                                        ))}
-                                    </div>
-                                </div>
-                            </div>
-
-                            {/* Bonus / Fine manual inputs */}
-                            <div className="bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700/50 rounded-3xl p-6 space-y-6">
-                                <div className="space-y-3">
-                                    <span className="text-[9px] font-black text-emerald-600 uppercase tracking-widest block flex items-center gap-1.5">
-                                        <Star size={11} /> Bonus
-                                    </span>
-                                    {bonuses.map((b, i) => (
-                                        <div key={i} className="flex items-center justify-between bg-emerald-50 dark:bg-emerald-950/20 border border-emerald-100 dark:border-emerald-900/30 px-3 py-2 rounded-xl">
-                                            <span className="text-[9px] font-bold text-emerald-600 dark:text-emerald-400">{b.label}</span>
-                                            <div className="flex items-center gap-2">
-                                                <span className="text-[9px] font-black text-emerald-600 dark:text-emerald-400">+{b.amount.toLocaleString()}</span>
-                                                <button onClick={() => setBonuses(bs => bs.filter((_, j) => j !== i))} className="text-gray-400 hover:text-rose-500 cursor-pointer"><X size={12} /></button>
-                                            </div>
-                                        </div>
-                                    ))}
-                                    <div className="flex gap-2">
-                                        <input type="text" placeholder="Sabab" className={inp + " py-2 text-[10px]"} value={bonusInput.label} onChange={e => setBonusInput(p => ({ ...p, label: e.target.value }))} />
-                                        <input type="number" placeholder="Summa" className={inp + " w-24 py-2 text-[10px]"} value={bonusInput.amount} onChange={e => setBonusInput(p => ({ ...p, amount: e.target.value }))} />
-                                        <button onClick={() => { if (bonusInput.label && bonusInput.amount) { setBonuses(b => [...b, { label: bonusInput.label, amount: Number(bonusInput.amount) }]); setBonusInput({ label: '', amount: '' }); } }}
-                                            className="w-9 h-9 shrink-0 bg-[#1b6b6b] hover:bg-[#155252] rounded-xl flex items-center justify-center text-white transition-all cursor-pointer">
-                                            <Plus size={14} />
-                                        </button>
-                                    </div>
-                                </div>
-
-                                <div className="space-y-3">
-                                    <span className="text-[9px] font-black text-rose-600 uppercase tracking-widest block flex items-center gap-1.5">
-                                        <AlertCircle size={11} /> Jarima
-                                    </span>
-                                    {fines.map((f, i) => (
-                                        <div key={i} className="flex items-center justify-between bg-rose-50 dark:bg-rose-950/20 border border-rose-100 dark:border-rose-900/30 px-3 py-2 rounded-xl">
-                                            <span className="text-[9px] font-bold text-rose-600 dark:text-rose-400">{f.label}</span>
-                                            <div className="flex items-center gap-2">
-                                                <span className="text-[9px] font-black text-rose-600 dark:text-rose-400">-{f.amount.toLocaleString()}</span>
-                                                <button onClick={() => setFines(fs => fs.filter((_, j) => j !== i))} className="text-gray-400 hover:text-rose-500 cursor-pointer"><X size={12} /></button>
-                                            </div>
-                                        </div>
-                                    ))}
-                                    <div className="flex gap-2">
-                                        <input type="text" placeholder="Sabab" className={inp + " py-2 text-[10px]"} value={fineInput.label} onChange={e => setFineInput(p => ({ ...p, label: e.target.value }))} />
-                                        <input type="number" placeholder="Summa" className={inp + " w-24 py-2 text-[10px]"} value={fineInput.amount} onChange={e => setFineInput(p => ({ ...p, amount: e.target.value }))} />
-                                        <button onClick={() => { if (fineInput.label && fineInput.amount) { setFines(f => [...f, { label: fineInput.label, amount: Number(fineInput.amount) }]); setFineInput({ label: '', amount: '' }); } }}
-                                            className="w-9 h-9 shrink-0 bg-rose-600 hover:bg-rose-500 rounded-xl flex items-center justify-center text-white transition-all cursor-pointer">
-                                            <Plus size={14} />
-                                        </button>
-                                    </div>
-                                </div>
-                            </div>
-
-                            {/* Calculation Summary */}
-                            <div className="bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700/50 rounded-3xl p-6 flex flex-col justify-between">
-                                <div>
-                                    <h3 className="text-xs font-black text-[#1b6b6b] uppercase tracking-wider mb-4">Yakuniy hisob</h3>
-                                    <div className="space-y-2.5">
-                                        <div className="flex justify-between">
-                                            <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Asosiy Maosh</span>
-                                            <span className="text-xs font-extrabold text-gray-900 dark:text-white">{baseSalary.toLocaleString()} UZS</span>
-                                        </div>
-                                        <div className="flex justify-between">
-                                            <span className="text-[10px] font-bold text-emerald-600 uppercase tracking-widest">Bonuslar ({bonuses.length} ta)</span>
-                                            <span className="text-xs font-extrabold text-emerald-600">+{totalBonus.toLocaleString()} UZS</span>
-                                        </div>
-                                        <div className="flex justify-between">
-                                            <span className="text-[10px] font-bold text-rose-600 uppercase tracking-widest">Jarimalar ({fines.length} ta)</span>
-                                            <span className="text-xs font-extrabold text-rose-600">-{totalFine.toLocaleString()} UZS</span>
-                                        </div>
-                                        <div className="pt-3 border-t border-dashed border-gray-100 dark:border-gray-700 flex justify-between items-center">
-                                            <span className="text-[10px] font-extrabold text-[#1b6b6b] uppercase tracking-widest">To'lanadi</span>
-                                            <span className="text-lg font-black text-[#1b6b6b]">{totalSalary.toLocaleString()} UZS</span>
-                                        </div>
-                                    </div>
-                                </div>
-                                <button className="mt-6 w-full py-3 bg-[#1b6b6b] hover:bg-[#155252] text-white rounded-2xl text-xs font-extrabold uppercase tracking-widest flex items-center justify-center gap-2 shadow-lg shadow-[#1b6b6b]/20 transition-all cursor-pointer">
-                                    <Save size={14} /> Tasdiqlayman
-                                </button>
-                            </div>
-                        </div>
-                    )}
-
-                    {!salaryUserId && (
-                        <div className="py-20 text-center bg-white dark:bg-gray-800 rounded-3xl border border-gray-100 dark:border-gray-700/50">
-                            <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Xodimni tanlang</p>
-                        </div>
-                    )}
-                </div>
-            )}
 
             {/* Add Modal */}
             {isAddOpen && (
