@@ -8,6 +8,7 @@ import {
 import { useCRM } from '../context/CRMContext';
 import { useParams, useNavigate } from 'react-router-dom';
 import { compressImage } from '../lib/image';
+import PhotoCapture from './PhotoCapture';
 
 const ROLE_LABELS: Record<string, string> = {
     ADMIN:           'Admin',
@@ -100,6 +101,7 @@ export default function StaffDetails() {
     // Edit modal
     const [isEditOpen, setIsEditOpen] = useState(false);
     const [editData,   setEditData]   = useState<any>({});
+    const [isPhotoModalOpen, setIsPhotoModalOpen] = useState(false);
     const fileRef = React.useRef<HTMLInputElement>(null);
 
     const isAdminOrManager = currentUser?.role === 'ADMIN' || currentUser?.role === 'MANAGER';
@@ -287,6 +289,19 @@ export default function StaffDetails() {
         reader.readAsDataURL(file);
     };
 
+    const handlePhotoCapture = async (base64: string) => {
+        const compressed = await compressImage(base64);
+        try {
+            const res = await fetch(`/api/users/${staffUser.id}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+                body: JSON.stringify({ photo: compressed }),
+            });
+            if (res.ok) setStaffUser((p: any) => ({ ...p, photo: compressed }));
+        } catch { /* ignore */ }
+        setIsPhotoModalOpen(false);
+    };
+
     // Salary payment helpers
     const payMonthStr = `${payYear}-${String(payMonth + 1).padStart(2, '0')}`;
     const currentPayment = salaryPayments.find(p => p.month === payMonthStr) || null;
@@ -394,14 +409,22 @@ export default function StaffDetails() {
                                 </button>
                             )}
                             {/* Avatar — centred, extends below banner */}
-                            <div className="absolute -bottom-20 left-1/2 -translate-x-1/2 rounded-2xl bg-white dark:bg-gray-800 p-2 shadow-xl">
-                                <div className="w-40 h-40 rounded-xl overflow-hidden flex items-center justify-center bg-gray-50 dark:bg-gray-900 border border-gray-100 dark:border-gray-700/50">
+                            <div className="absolute -bottom-20 left-1/2 -translate-x-1/2 rounded-2xl bg-white dark:bg-gray-800 p-2 shadow-xl group/avatar">
+                                <div className="w-40 h-40 rounded-xl overflow-hidden flex items-center justify-center bg-gray-50 dark:bg-gray-900 border border-gray-100 dark:border-gray-700/50 relative">
                                     {staffUser.photo ? (
                                         <img src={staffUser.photo} alt={staffUser.name} className="w-full h-full object-cover" />
                                     ) : (
                                         <span className="text-5xl font-black text-[#1b6b6b]">
                                             {staffUser.name?.charAt(0).toUpperCase()}
                                         </span>
+                                    )}
+                                    {isAdminOrManager && (
+                                        <button
+                                            onClick={() => setIsPhotoModalOpen(true)}
+                                            className="absolute inset-0 bg-black/40 opacity-0 group-hover/avatar:opacity-100 transition-opacity flex flex-col items-center justify-center gap-1 cursor-pointer">
+                                            <Camera size={24} className="text-white" />
+                                            <span className="text-[9px] font-extrabold text-white uppercase tracking-widest">Rasm</span>
+                                        </button>
                                     )}
                                 </div>
                             </div>
@@ -1043,6 +1066,14 @@ export default function StaffDetails() {
                         </form>
                     </div>
                 </div>
+            )}
+
+            {/* Photo capture modal */}
+            {isPhotoModalOpen && (
+                <PhotoCapture
+                    onCapture={handlePhotoCapture}
+                    onClose={() => setIsPhotoModalOpen(false)}
+                />
             )}
         </div>
     );
