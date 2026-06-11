@@ -120,6 +120,15 @@ export default function HRManagement() {
         } catch (err) { console.error('Delete user failed', err); }
     };
 
+    const handleDeleteTeacher = async (tid: number) => {
+        if (!window.confirm("O'qituvchini o'chirmoqchimisiz?")) return;
+        try {
+            await fetch(`/api/teachers/${tid}`, { method: 'DELETE', headers: { Authorization: `Bearer ${token}` } });
+            // CRMContext teachers refresh is not available here, so force page reload
+            window.location.reload();
+        } catch (err) { console.error('Delete teacher failed', err); }
+    };
+
     // Merge User records + Teacher model records from context
     // Exclude teachers whose name already matches a User record (no duplicates)
     const userNames = new Set(users.map(u => u.name.toLowerCase().trim()));
@@ -240,22 +249,23 @@ export default function HRManagement() {
                                                         </div>
                                                     )}
                                                 </div>
-                                                <div className="flex items-center gap-1">
-                                                    {isAdminOrManager && !isLegacy && (
-                                                        <>
+                                                {isAdminOrManager && (
+                                                    <div className="flex items-center gap-1">
+                                                        {!isLegacy && (
                                                             <button onClick={() => { setEditingUser({ ...u, password: '' }); setIsEditOpen(true); }}
                                                                 className="w-7 h-7 rounded-lg text-gray-400 hover:text-[#1b6b6b] hover:bg-gray-50 dark:hover:bg-gray-900 flex items-center justify-center transition-colors cursor-pointer">
                                                                 <Pencil size={13} />
                                                             </button>
-                                                            {isAdmin && (
-                                                                <button onClick={() => handleDeleteUser(u.id)}
-                                                                    className="w-7 h-7 rounded-lg text-rose-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/20 flex items-center justify-center transition-colors cursor-pointer">
-                                                                    <Trash2 size={13} />
-                                                                </button>
-                                                            )}
-                                                        </>
-                                                    )}
-                                                </div>
+                                                        )}
+                                                        {isAdmin && (
+                                                            <button
+                                                                onClick={() => isLegacy ? handleDeleteTeacher(u._tid) : handleDeleteUser(u.id)}
+                                                                className="w-7 h-7 rounded-lg text-rose-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/20 flex items-center justify-center transition-colors cursor-pointer">
+                                                                <Trash2 size={13} />
+                                                            </button>
+                                                        )}
+                                                    </div>
+                                                )}
                                             </div>
                                             <div>
                                                 <h4 className="text-xs font-black text-gray-900 dark:text-white uppercase tracking-wide">{u.name}</h4>
