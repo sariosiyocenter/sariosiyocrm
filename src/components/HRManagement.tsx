@@ -405,32 +405,26 @@ function UserModal({
                 <form onSubmit={onSubmit} className="space-y-4">
                     {/* Photo */}
                     <div className="flex items-center gap-4">
-                        <button type="button" onClick={() => setIsCameraOpen(true)}
-                            className="w-16 h-16 rounded-2xl overflow-hidden border-2 border-dashed border-gray-200 dark:border-gray-600 cursor-pointer hover:border-[#1b6b6b] transition-colors flex items-center justify-center bg-gray-50 dark:bg-gray-900 shrink-0 relative group">
-                            {user.photo ? (
-                                <>
-                                    <img src={user.photo} alt="preview" className="w-full h-full object-cover" />
-                                    <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                                        <Camera size={18} className="text-white" />
-                                    </div>
-                                </>
-                            ) : (
-                                <Camera size={20} className="text-gray-300" />
-                            )}
-                        </button>
-                        <div>
-                            <button type="button" onClick={() => setIsCameraOpen(true)}
-                                className="text-[10px] font-extrabold text-[#1b6b6b] uppercase tracking-widest cursor-pointer hover:underline">
-                                Kamera / Rasm yuklash
-                            </button>
-                            <button type="button" onClick={() => fileRef.current?.click()}
-                                className="ml-3 text-[10px] font-bold text-gray-400 uppercase tracking-widest cursor-pointer hover:underline">
-                                Fayldan
-                            </button>
+                        <div className="w-16 h-16 rounded-2xl overflow-hidden border-2 border-dashed border-gray-200 dark:border-gray-600 flex items-center justify-center bg-gray-50 dark:bg-gray-900 shrink-0">
+                            {user.photo
+                                ? <img src={user.photo} alt="preview" className="w-full h-full object-cover" />
+                                : <Camera size={20} className="text-gray-300" />}
+                        </div>
+                        <div className="flex flex-col gap-2">
+                            <div className="flex gap-2">
+                                <button type="button" onClick={() => setIsCameraOpen(true)}
+                                    className="flex items-center gap-1.5 px-3 py-2 bg-[#1b6b6b]/10 hover:bg-[#1b6b6b] text-[#1b6b6b] hover:text-white border border-[#1b6b6b]/20 rounded-xl text-[9px] font-extrabold uppercase tracking-widest cursor-pointer transition-all">
+                                    <Camera size={11} /> Kamera
+                                </button>
+                                <button type="button" onClick={() => fileRef.current?.click()}
+                                    className="flex items-center gap-1.5 px-3 py-2 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 text-gray-600 dark:text-gray-300 border border-gray-200 dark:border-gray-600 rounded-xl text-[9px] font-extrabold uppercase tracking-widest cursor-pointer transition-all">
+                                    Fayldan yuklash
+                                </button>
+                            </div>
                             {user.photo && (
                                 <button type="button" onClick={() => onChange({ ...user, photo: '' })}
-                                    className="ml-3 text-[10px] font-extrabold text-rose-500 uppercase tracking-widest cursor-pointer hover:underline">
-                                    O'chirish
+                                    className="text-[9px] font-bold text-rose-500 uppercase tracking-widest cursor-pointer hover:underline text-left">
+                                    Rasmni o'chirish
                                 </button>
                             )}
                         </div>
