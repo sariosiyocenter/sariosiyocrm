@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Search, Plus, X, Users, Filter, Layers, ChevronRight, SlidersHorizontal } from 'lucide-react';
+import { Search, Plus, X, Users, Layers, ChevronRight, SlidersHorizontal, BookOpen, Trash2 } from 'lucide-react';
 import { useCRM } from '../context/CRMContext';
 import { useNavigate } from 'react-router-dom';
 
@@ -7,9 +7,28 @@ const inp = "w-full px-4 py-3 bg-gray-55 dark:bg-gray-900/50 border border-gray-
 const lbl = "block text-[10px] font-extrabold uppercase tracking-widest text-gray-400 mb-2";
 
 export default function Groups() {
-    const { groups, teachers, rooms, addGroup, showNotification, courses } = useCRM();
+    const { groups, teachers, rooms, addGroup, showNotification, courses, addCourse, deleteCourse } = useCRM();
     const navigate = useNavigate();
     const [isModalOpen, setIsModalOpen] = useState(false);
+    const [showCourses, setShowCourses] = useState(false);
+    const [isCourseModalOpen, setIsCourseModalOpen] = useState(false);
+    const [newCourse, setNewCourse] = useState({ name: '', price: '' });
+    const [isAddingCourse, setIsAddingCourse] = useState(false);
+
+    const handleAddCourse = async (e: React.FormEvent) => {
+        e.preventDefault();
+        try {
+            setIsAddingCourse(true);
+            await addCourse({ name: newCourse.name, price: Number(newCourse.price) });
+            setIsCourseModalOpen(false);
+            setNewCourse({ name: '', price: '' });
+            showNotification("Kurs qo'shildi!", "success");
+        } catch {
+            showNotification("Xatolik yuz berdi", "error");
+        } finally {
+            setIsAddingCourse(false);
+        }
+    };
     const [isAdding, setIsAdding] = useState(false);
     const [search, setSearch] = useState('');
     const [showFilters, setShowFilters] = useState(false);
@@ -158,7 +177,49 @@ export default function Groups() {
                     </div>
                 </div>
 
-                {showFilters && (
+                {/* Courses toggle button */}
+            <div className="px-6 pb-0 flex">
+                <button
+                    onClick={() => setShowCourses(!showCourses)}
+                    className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-[10px] font-extrabold uppercase tracking-widest border transition-all cursor-pointer ${showCourses ? 'bg-sky-50 dark:bg-sky-950/30 border-sky-200 dark:border-sky-800 text-sky-600 dark:text-sky-400' : 'border-gray-100 dark:border-gray-700 text-gray-400 hover:border-sky-200 hover:text-sky-600 bg-gray-50 dark:bg-gray-900/30'}`}
+                >
+                    <BookOpen size={13} />
+                    Kurslar ({courses.length})
+                    <ChevronRight size={11} className={`transition-transform ${showCourses ? 'rotate-90' : ''}`} />
+                </button>
+            </div>
+
+            {showCourses && (
+                <div className="px-6 pb-5 pt-4 border-t border-gray-50 dark:border-gray-700/50">
+                    <div className="flex items-center justify-between mb-4">
+                        <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Barcha kurslar</p>
+                        <button onClick={() => setIsCourseModalOpen(true)}
+                            className="flex items-center gap-1.5 px-3 py-1.5 bg-sky-600 hover:bg-sky-700 text-white rounded-lg text-[10px] font-extrabold uppercase tracking-widest transition-all cursor-pointer">
+                            <Plus size={11} /> Kurs qo'shish
+                        </button>
+                    </div>
+                    {courses.length === 0 ? (
+                        <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest py-4 text-center">Hech qanday kurs yo'q</p>
+                    ) : (
+                        <div className="flex flex-wrap gap-2">
+                            {courses.map(c => (
+                                <div key={c.id} className="group flex items-center gap-2 px-3 py-2 bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-700 rounded-xl text-[10px] font-bold text-gray-700 dark:text-gray-300">
+                                    <BookOpen size={11} className="text-sky-500" />
+                                    <span>{c.name}</span>
+                                    <span className="text-gray-400">•</span>
+                                    <span className="text-sky-600 dark:text-sky-400">{(c.price || 0).toLocaleString()} UZS</span>
+                                    <button onClick={() => deleteCourse(c.id)}
+                                        className="opacity-0 group-hover:opacity-100 text-gray-300 hover:text-rose-500 transition-all cursor-pointer ml-1">
+                                        <Trash2 size={11} />
+                                    </button>
+                                </div>
+                            ))}
+                        </div>
+                    )}
+                </div>
+            )}
+
+            {showFilters && (
                     <div className="px-6 pb-5 pt-4 border-t border-gray-50 dark:border-gray-700/50 grid grid-cols-1 sm:grid-cols-3 lg:grid-cols-5 gap-4">
                         <div>
                             <label className={lbl}>Kurs bo'yicha</label>
@@ -263,6 +324,42 @@ export default function Groups() {
                             </div>
                         );
                     })}
+                </div>
+            )}
+
+            {/* Course Modal */}
+            {isCourseModalOpen && (
+                <div className="fixed inset-0 z-[200] flex items-center justify-center p-4">
+                    <div className="absolute inset-0 bg-gray-900/60 backdrop-blur-sm" onClick={() => setIsCourseModalOpen(false)} />
+                    <div className="relative bg-white dark:bg-gray-800 rounded-[2rem] border border-gray-100 dark:border-gray-700/50 shadow-2xl w-full max-w-md p-8">
+                        <div className="flex items-center justify-between mb-6 pb-4 border-b border-gray-50 dark:border-gray-700/50">
+                            <div>
+                                <h3 className="text-lg font-black text-gray-900 dark:text-white uppercase tracking-tight">Yangi Kurs</h3>
+                                <p className="text-[10px] font-bold text-sky-600 uppercase tracking-widest mt-0.5">Kurs ma'lumotlarini kiriting</p>
+                            </div>
+                            <button onClick={() => setIsCourseModalOpen(false)} className="w-9 h-9 flex items-center justify-center text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700 rounded-xl cursor-pointer"><X size={18} /></button>
+                        </div>
+                        <form onSubmit={handleAddCourse} className="space-y-4">
+                            <div>
+                                <label className={lbl}>Kurs Nomi *</label>
+                                <input required type="text" placeholder="Masalan: Frontend" className={inp} value={newCourse.name} onChange={e => setNewCourse({ ...newCourse, name: e.target.value })} />
+                            </div>
+                            <div>
+                                <label className={lbl}>Narxi (UZS) *</label>
+                                <input required type="number" placeholder="500000" className={inp} value={newCourse.price} onChange={e => setNewCourse({ ...newCourse, price: e.target.value })} />
+                            </div>
+                            <div className="flex gap-3 pt-2">
+                                <button type="button" onClick={() => setIsCourseModalOpen(false)}
+                                    className="flex-1 py-3 bg-gray-100 dark:bg-gray-750 text-gray-700 dark:text-white text-xs font-extrabold uppercase tracking-widest rounded-2xl transition-all cursor-pointer">
+                                    Bekor
+                                </button>
+                                <button type="submit" disabled={isAddingCourse}
+                                    className="flex-1 py-3 bg-sky-600 hover:bg-sky-700 text-white text-xs font-extrabold uppercase tracking-widest rounded-2xl shadow-lg transition-all cursor-pointer disabled:opacity-50">
+                                    {isAddingCourse ? 'Saqlanmoqda...' : 'Saqlash'}
+                                </button>
+                            </div>
+                        </form>
+                    </div>
                 </div>
             )}
 

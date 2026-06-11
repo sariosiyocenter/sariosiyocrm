@@ -6,7 +6,7 @@ import {
 } from 'lucide-react';
 import { useCRM, THEMES } from '../context/CRMContext';
 
-type SectionId = 'profil' | 'kurslar' | 'xonalar' | 'filiallar' | 'ruxsatlar' | 'dizayn';
+type SectionId = 'profil' | 'xonalar' | 'filiallar' | 'ruxsatlar' | 'dizayn';
 
 const MODULES = [
     { key: 'dashboard',     label: 'Dashboard' },
@@ -37,9 +37,9 @@ const inp = "w-full px-4 py-3 bg-gray-55 dark:bg-gray-900/50 border border-gray-
 const lbl = "block text-[10px] font-extrabold uppercase tracking-widest text-gray-400 mb-2";
 
 export default function Settings() {
-    const { settings, updateSettings, courses, rooms, schools,
-        addCourse, deleteCourse, addRoom, deleteRoom, addSchool, deleteSchool,
-        selectedSchoolId, themeColor, setThemeColor } = useCRM();
+    const { settings, updateSettings, rooms, schools,
+        addRoom, deleteRoom, addSchool, deleteSchool,
+        themeColor, setThemeColor } = useCRM();
     const { user: currentUser, token } = useCRM();
 
     const [activeSection, setActiveSection] = useState<SectionId>('profil');
@@ -59,8 +59,6 @@ export default function Settings() {
         } catch { return DEFAULT_PERMISSIONS; }
     });
     const [permSaved, setPermSaved] = useState(false);
-    const [copied, setCopied] = useState(false);
-
     React.useEffect(() => { setProfileForm({ ...settings }); }, [settings]);
 
     const toggle = (group: string) => setOpenGroups(p => ({ ...p, [group]: !p[group] }));
@@ -91,9 +89,7 @@ export default function Settings() {
     const handleAddItem = async (e: React.FormEvent) => {
         e.preventDefault();
         try {
-            if (activeSection === 'kurslar') {
-                await addCourse({ ...newItem, price: Number(newItem.price) });
-            } else if (activeSection === 'xonalar') {
+            if (activeSection === 'xonalar') {
                 await addRoom({ ...newItem, capacity: Number(newItem.capacity) });
             } else if (activeSection === 'filiallar') {
                 await addSchool(newItem);
@@ -116,7 +112,6 @@ export default function Settings() {
         {
             id: 'ofis', label: 'Ofis', icon: <DoorOpen size={16} />,
             items: [
-                { id: 'kurslar' as SectionId, label: 'Kurslar', icon: <BookOpen size={14} />, count: courses?.length },
                 { id: 'xonalar' as SectionId, label: 'Xonalar', icon: <DoorOpen size={14} />, count: rooms?.length },
             ]
         },
@@ -128,8 +123,6 @@ export default function Settings() {
             ]
         }] : []),
     ];
-
-    const applyUrl = `${window.location.origin}/apply/${selectedSchoolId}`;
 
     const renderContent = () => {
         if (activeSection === 'profil') return (
@@ -184,55 +177,9 @@ export default function Settings() {
                 </div>
             </form>
 
-            {/* QR Link Section */}
-            {selectedSchoolId !== 0 && (
-                <div className="p-6 bg-gray-50 dark:bg-gray-900/40 border border-gray-100 dark:border-gray-700/50 rounded-3xl space-y-4">
-                    <div>
-                        <h3 className="text-xs font-black text-gray-900 dark:text-white uppercase tracking-wide">O'quvchilar uchun QR Havola</h3>
-                        <p className="text-[9px] font-bold text-gray-400 uppercase tracking-widest mt-0.5">
-                            Yangi kelgan o'quvchilar o'zlari ro'yxatdan o'tishi uchun umumiy havola
-                        </p>
-                    </div>
-                    <div className="flex flex-col sm:flex-row gap-3">
-                        <input
-                            type="text"
-                            readOnly
-                            className="bg-white dark:bg-gray-800 px-4 py-3 border border-gray-100 dark:border-gray-700/50 outline-none text-[11px] font-mono text-gray-500 dark:text-gray-400 flex-1 rounded-2xl select-all"
-                            value={applyUrl}
-                        />
-                        <button
-                            type="button"
-                            onClick={() => {
-                                navigator.clipboard.writeText(applyUrl);
-                                setCopied(true);
-                                setTimeout(() => setCopied(false), 2000);
-                            }}
-                            className="px-6 py-3 bg-[#1b6b6b] hover:bg-[#155252] text-white rounded-2xl text-[10px] font-extrabold uppercase tracking-widest transition-all cursor-pointer whitespace-nowrap"
-                        >
-                            {copied ? 'Nusxalandi!' : 'Nusxalash'}
-                        </button>
-                    </div>
-                    <p className="text-[9px] font-bold text-gray-400 leading-relaxed">
-                        * Tavsiya: Ushbu havolani QR kod generatori orqali QR kod ko'rinishida chop etib, reception stoliga qo'ying. Kelgan o'quvchilar telefon orqali skanerlab, o'zlarini tezda ro'yxatdan o'tkazishlari mumkin.
-                    </p>
-                </div>
-            )}
         </div>
     );
 
-
-        if (activeSection === 'kurslar') return (
-            <ListSection
-                title="Kurslar" subtitle="O'quv markazidagi barcha kurslar"
-                icon={<BookOpen size={16} />} onAdd={() => { setNewItem({}); setIsAddModalOpen(true); }}
-                items={courses || []} emptyText="Hech qanday kurs topilmadi"
-                renderItem={(item: any) => (
-                    <ItemCard key={item.id} icon={<Layout size={16} />} iconBg="bg-sky-50 text-sky-600 border-sky-100 dark:bg-sky-950/20 dark:text-sky-400 dark:border-sky-900/40"
-                        title={item.name} subtitle={`${(item.price || 0).toLocaleString()} UZS`}
-                        onDelete={() => deleteCourse(item.id)} />
-                )}
-            />
-        );
 
         if (activeSection === 'xonalar') return (
             <ListSection
@@ -374,7 +321,7 @@ export default function Settings() {
         return null;
     };
 
-    const addModalTitle = activeSection === 'kurslar' ? 'Yangi Kurs' : activeSection === 'xonalar' ? 'Yangi Xona' : 'Yangi Filial';
+    const addModalTitle = activeSection === 'xonalar' ? 'Yangi Xona' : 'Yangi Filial';
 
     return (
         <div className="space-y-6 animate-in fade-in duration-500">
@@ -456,12 +403,6 @@ export default function Settings() {
                                 <label className={lbl}>Nomi *</label>
                                 <input required type="text" className={inp} value={newItem.name || ''} onChange={e => setNewItem({ ...newItem, name: e.target.value })} />
                             </div>
-                            {activeSection === 'kurslar' && (
-                                <div>
-                                    <label className={lbl}>Narxi (UZS) *</label>
-                                    <input required type="number" className={inp} value={newItem.price || ''} onChange={e => setNewItem({ ...newItem, price: e.target.value })} />
-                                </div>
-                            )}
                             {activeSection === 'xonalar' && (
                                 <div>
                                     <label className={lbl}>Sig'imi (kishi) *</label>

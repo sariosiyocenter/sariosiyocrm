@@ -1,11 +1,12 @@
 import React, { useState } from 'react';
 import {
   Users, GraduationCap, Target, Settings,
-  LayoutDashboard, Wallet, Search, Bell, Sun, Moon, LogOut, X, ChevronRight, User, MapPin,
-  CheckCircle2, AlertCircle, Info, Menu, BarChart3, Navigation, MessageSquare, FileText, BookOpen, ScanLine, Shield, Atom, Users2
+  LayoutDashboard, Wallet, Search, Sun, Moon, LogOut, X, ChevronRight, User, MapPin,
+  CheckCircle2, AlertCircle, Info, Menu, BarChart3, Navigation, FileText, Shield, Atom, Users2
 } from 'lucide-react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useCRM } from '../context/CRMContext';
+import { useLang } from '../context/LanguageContext';
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -19,7 +20,8 @@ const BRAND_LIGHT = '#eef2ff';   // indigo-50
 const BRAND_DARK_TEXT = '#a5b4fc'; // indigo-300 for dark mode text
 
 export default function Layout({ children, onLogout }: LayoutProps) {
-  const { user, schools, selectedSchoolId, setSelectedSchoolId, students, leads, groups, teachers, courses, darkMode, toggleDarkMode, notification } = useCRM();
+  const { user, schools, selectedSchoolId, setSelectedSchoolId, students, leads, groups, teachers, courses, darkMode, toggleDarkMode, notification, settings } = useCRM();
+  const { lang, setLang } = useLang();
   const location = useLocation();
   const navigate = useNavigate();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -82,11 +84,14 @@ export default function Layout({ children, onLogout }: LayoutProps) {
 
             {/* Logo */}
             <Link to="/" className="flex items-center gap-2.5 group">
-              <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center shadow-lg shadow-indigo-500/10 group-hover:scale-105 transition-transform duration-200 shrink-0">
-                <Atom size={20} className="text-white animate-pulse" />
+              <div className="w-9 h-9 rounded-xl overflow-hidden bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center shadow-lg shadow-indigo-500/10 group-hover:scale-105 transition-transform duration-200 shrink-0">
+                {settings?.logo
+                  ? <img src={settings.logo} className="w-full h-full object-cover" alt="logo" />
+                  : <Atom size={20} className="text-white animate-pulse" />
+                }
               </div>
               <div className="flex flex-col leading-none">
-                <span className="text-[13px] font-bold text-slate-900 dark:text-white tracking-tight group-hover:text-indigo-500 dark:group-hover:text-indigo-400 transition-colors">Quantum Edu</span>
+                <span className="text-[13px] font-bold text-slate-900 dark:text-white tracking-tight group-hover:text-indigo-500 dark:group-hover:text-indigo-400 transition-colors">{settings?.orgName || 'Quantum Edu'}</span>
                 <span className="text-[10px] font-semibold tracking-widest uppercase mt-0.5" style={{ color: BRAND }}>CRM System</span>
               </div>
             </Link>
@@ -201,6 +206,18 @@ export default function Layout({ children, onLogout }: LayoutProps) {
 
           {/* Right controls */}
           <div className="flex items-center gap-2">
+            {/* Language switcher */}
+            <div className="flex items-center gap-0.5 bg-slate-100 dark:bg-slate-800 rounded-lg p-0.5">
+              {(['uz', 'ru', 'en'] as const).map(l => (
+                <button
+                  key={l}
+                  onClick={() => setLang(l)}
+                  className={`px-2 py-1 rounded-md text-[10px] font-bold uppercase tracking-wider transition-all ${lang === l ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-sm' : 'text-slate-400 hover:text-slate-600 dark:hover:text-slate-300'}`}
+                >
+                  {l}
+                </button>
+              ))}
+            </div>
             <button
               onClick={toggleDarkMode}
               className="w-9 h-9 flex items-center justify-center text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors"
