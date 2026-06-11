@@ -92,23 +92,39 @@ export default function HRManagement() {
     const handleEditUser = async (e: React.FormEvent) => {
         e.preventDefault();
         try {
-            const body: any = {
-                name:     editingUser.name,
-                role:     editingUser.role,
-                phone:    editingUser.phone,
-                email:    editingUser.email,
-                photo:    editingUser.photo,
-                position: editingUser.position,
-                salary:   editingUser.salary,
-            };
-            if (editingUser.password) body.password = editingUser.password;
-            const res = await fetch(`/api/users/${editingUser.id}`, {
-                method: 'PUT',
-                headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-                body: JSON.stringify(body)
-            });
-            if (res.ok) { setIsEditOpen(false); setEditingUser(null); fetchUsers(); }
-            else { const d = await res.json(); alert(d.error || "Xatolik yuz berdi"); }
+            if (editingUser._source === 'teacher') {
+                // Legacy Teacher model
+                const res = await fetch(`/api/teachers/${editingUser._tid}`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+                    body: JSON.stringify({
+                        name:   editingUser.name,
+                        phone:  editingUser.phone,
+                        photo:  editingUser.photo,
+                        salary: editingUser.salary,
+                    }),
+                });
+                if (res.ok) { setIsEditOpen(false); setEditingUser(null); window.location.reload(); }
+                else { const d = await res.json(); alert(d.error || "Xatolik yuz berdi"); }
+            } else {
+                const body: any = {
+                    name:     editingUser.name,
+                    role:     editingUser.role,
+                    phone:    editingUser.phone,
+                    email:    editingUser.email,
+                    photo:    editingUser.photo,
+                    position: editingUser.position,
+                    salary:   editingUser.salary,
+                };
+                if (editingUser.password) body.password = editingUser.password;
+                const res = await fetch(`/api/users/${editingUser.id}`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+                    body: JSON.stringify(body)
+                });
+                if (res.ok) { setIsEditOpen(false); setEditingUser(null); fetchUsers(); }
+                else { const d = await res.json(); alert(d.error || "Xatolik yuz berdi"); }
+            }
         } catch (err) { console.error('Edit user failed', err); }
     };
 
@@ -251,12 +267,10 @@ export default function HRManagement() {
                                                 </div>
                                                 {isAdminOrManager && (
                                                     <div className="flex items-center gap-1">
-                                                        {!isLegacy && (
-                                                            <button onClick={() => { setEditingUser({ ...u, password: '' }); setIsEditOpen(true); }}
-                                                                className="w-7 h-7 rounded-lg text-gray-400 hover:text-[#1b6b6b] hover:bg-gray-50 dark:hover:bg-gray-900 flex items-center justify-center transition-colors cursor-pointer">
-                                                                <Pencil size={13} />
-                                                            </button>
-                                                        )}
+                                                        <button onClick={() => { setEditingUser({ ...u, password: '' }); setIsEditOpen(true); }}
+                                                            className="w-7 h-7 rounded-lg text-gray-400 hover:text-[#1b6b6b] hover:bg-gray-50 dark:hover:bg-gray-900 flex items-center justify-center transition-colors cursor-pointer">
+                                                            <Pencil size={13} />
+                                                        </button>
                                                         {isAdmin && (
                                                             <button
                                                                 onClick={() => isLegacy ? handleDeleteTeacher(u._tid) : handleDeleteUser(u.id)}
