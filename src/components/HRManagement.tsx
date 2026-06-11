@@ -7,6 +7,7 @@ import {
 import { useCRM } from '../context/CRMContext';
 import { useNavigate } from 'react-router-dom';
 import { compressImage } from '../lib/image';
+import PhotoCapture from './PhotoCapture';
 
 
 const ROLE_LABELS: Record<string, string> = {
@@ -368,7 +369,8 @@ function UserModal({
     onClose: () => void; onSubmit: (e: React.FormEvent) => void;
     currentUserRole?: string; showPassword: boolean;
 }) {
-    const fileRef    = useRef<HTMLInputElement>(null);
+    const fileRef     = useRef<HTMLInputElement>(null);
+    const [isCameraOpen, setIsCameraOpen] = useState(false);
     const isTechStaff = user.role === 'TECH_STAFF';
 
     const handlePhoto = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -380,6 +382,12 @@ function UserModal({
             onChange({ ...user, photo: compressed });
         };
         reader.readAsDataURL(file);
+    };
+
+    const handleCapture = async (base64: string) => {
+        const compressed = await compressImage(base64);
+        onChange({ ...user, photo: compressed });
+        setIsCameraOpen(false);
     };
 
     return (
@@ -395,22 +403,29 @@ function UserModal({
                 </div>
 
                 <form onSubmit={onSubmit} className="space-y-4">
-                    {/* Photo upload */}
+                    {/* Photo */}
                     <div className="flex items-center gap-4">
-                        <div
-                            onClick={() => fileRef.current?.click()}
-                            className="w-16 h-16 rounded-2xl overflow-hidden border-2 border-dashed border-gray-200 dark:border-gray-600 cursor-pointer hover:border-[#1b6b6b] transition-colors flex items-center justify-center bg-gray-50 dark:bg-gray-900 shrink-0"
-                        >
+                        <button type="button" onClick={() => setIsCameraOpen(true)}
+                            className="w-16 h-16 rounded-2xl overflow-hidden border-2 border-dashed border-gray-200 dark:border-gray-600 cursor-pointer hover:border-[#1b6b6b] transition-colors flex items-center justify-center bg-gray-50 dark:bg-gray-900 shrink-0 relative group">
                             {user.photo ? (
-                                <img src={user.photo} alt="preview" className="w-full h-full object-cover" />
+                                <>
+                                    <img src={user.photo} alt="preview" className="w-full h-full object-cover" />
+                                    <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                                        <Camera size={18} className="text-white" />
+                                    </div>
+                                </>
                             ) : (
                                 <Camera size={20} className="text-gray-300" />
                             )}
-                        </div>
+                        </button>
                         <div>
-                            <button type="button" onClick={() => fileRef.current?.click()}
+                            <button type="button" onClick={() => setIsCameraOpen(true)}
                                 className="text-[10px] font-extrabold text-[#1b6b6b] uppercase tracking-widest cursor-pointer hover:underline">
-                                Rasm yuklash
+                                Kamera / Rasm yuklash
+                            </button>
+                            <button type="button" onClick={() => fileRef.current?.click()}
+                                className="ml-3 text-[10px] font-bold text-gray-400 uppercase tracking-widest cursor-pointer hover:underline">
+                                Fayldan
                             </button>
                             {user.photo && (
                                 <button type="button" onClick={() => onChange({ ...user, photo: '' })}
@@ -418,10 +433,12 @@ function UserModal({
                                     O'chirish
                                 </button>
                             )}
-                            <p className="text-[9px] text-gray-400 mt-0.5">JPG, PNG — avtomatik siqiladi</p>
                         </div>
                         <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={handlePhoto} />
                     </div>
+                    {isCameraOpen && (
+                        <PhotoCapture onCapture={handleCapture} onClose={() => setIsCameraOpen(false)} />
+                    )}
 
                     <div>
                         <label className={lbl}>Ism Familiya *</label>
