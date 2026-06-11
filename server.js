@@ -162,15 +162,14 @@ app.get('/api/users', authenticate, async (req, res, next) => {
     let where = {};
 
     if (req.user.role === 'MANAGER') {
-      where = { schoolId: req.user.schoolId };
-      where.role = { not: 'ADMIN' };
+      where = { schoolId: req.user.schoolId, role: { not: 'ADMIN' } };
     } else if (schoolId && !isNaN(parseInt(schoolId))) {
       where = { schoolId: parseInt(schoolId) };
     }
 
     const users = await prisma.user.findMany({
       where,
-      select: { id: true, email: true, name: true, phone: true, role: true, createdAt: true, schoolId: true }
+      select: { id: true, email: true, name: true, phone: true, photo: true, position: true, salary: true, role: true, createdAt: true, schoolId: true }
     });
     res.json(users);
   } catch (error) { next(error); }
@@ -180,11 +179,20 @@ app.post('/api/users', authenticate, async (req, res, next) => {
   try {
     if (req.user.role !== 'ADMIN' && req.user.role !== 'MANAGER' && req.user.role !== 'SUPERADMIN') return res.status(403).json({ error: 'Ruhsat yo' });
 
-    const { email, password, name, phone, role, schoolId } = req.body;
+    let { email, password, name, phone, photo, position, salary, role, schoolId } = req.body;
 
     if (req.user.role === 'MANAGER' && (role === 'ADMIN' || role === 'MANAGER')) {
       return res.status(403).json({ error: 'Menejer faqat o\'qituvchi va resepshn qo\'sha oladi' });
     }
+
+    // TECH_STAFF doesn't need a real login — auto-generate credentials
+    if (role === 'TECH_STAFF') {
+      email = email || `tech_${Date.now()}_${Math.random().toString(36).slice(2)}@internal.local`;
+      password = password || Math.random().toString(36).slice(2) + Math.random().toString(36).slice(2);
+    }
+
+    if (!email) return res.status(400).json({ error: 'Email majburiy' });
+    if (!password) return res.status(400).json({ error: 'Parol majburiy' });
 
     const hashedPassword = await bcrypt.hash(password, 10);
     const targetSchoolId = req.user.role === 'MANAGER' ? req.user.schoolId : (schoolId ? parseInt(schoolId) : null);
@@ -196,54 +204,59 @@ app.post('/api/users', authenticate, async (req, res, next) => {
         email,
         password: hashedPassword,
         name,
-        phone,
+        phone: phone || null,
+        photo: photo || null,
+        position: position || null,
+        salary: salary ? parseInt(salary) : 0,
         role,
         schoolId: targetSchoolId
       }
     });
 
-    // Automatically create a Teacher profile if the role is TEACHER
-    if (role === 'TEACHER') {
+    // Auto-create Teacher profile for TEACHER and SUPPORT_TEACHER roles
+    if ((role === 'TEACHER' || role === 'SUPPORT_TEACHER') && targetSchoolId) {
       try {
-        // We MUST have a schoolId for a Teacher profile
-        if (targetSchoolId) {
-          await prisma.teacher.create({
-            data: {
-              name: user.name,
-              phone: user.phone || '',
-              salary: 0,
-              sharePercentage: 0,
-              lessonFee: 0,
-              birthDate: '', 
-              hiredDate: new Date().toISOString().split('T')[0],
-              status: 'Faol',
-              schoolId: targetSchoolId
-            }
-          });
-        }
+        await prisma.teacher.create({
+          data: {
+            name: user.name,
+            phone: user.phone || '',
+            salary: user.salary || 0,
+            sharePercentage: 0,
+            lessonFee: 0,
+            birthDate: '',
+            hiredDate: new Date().toISOString().split('T')[0],
+            status: 'Faol',
+            schoolId: targetSchoolId
+          }
+        });
       } catch (teacherError) {
         console.error('Failed to auto-create teacher profile:', teacherError);
       }
     }
 
-    res.json(user);
+    res.json({ ...user, password: undefined });
   } catch (error) { next(error); }
 });
 
 app.put('/api/users/:id', authenticate, async (req, res, next) => {
   try {
-    console.log(`PUT /api/users/${req.params.id} request from role: ${req.user.role}`);
-    if (req.user.role !== 'ADMIN') return res.status(403).json({ error: 'Faqat ADMIN tahrirlay oladi' });
+    if (req.user.role !== 'ADMIN' && req.user.role !== 'MANAGER') return res.status(403).json({ error: 'Faqat ADMIN/MANAGER tahrirlay oladi' });
     const { id } = req.params;
-    const { email, name, phone, role, password } = req.body;
-    const data = { email, name, phone, role };
-    if (password) {
-      data.password = await bcrypt.hash(password, 10);
-    }
+    const { email, name, phone, photo, position, salary, role, password } = req.body;
+    const data = {};
+    if (email !== undefined) data.email = email;
+    if (name !== undefined) data.name = name;
+    if (phone !== undefined) data.phone = phone;
+    if (photo !== undefined) data.photo = photo;
+    if (position !== undefined) data.position = position;
+    if (salary !== undefined) data.salary = salary ? parseInt(salary) : 0;
+    if (role !== undefined) data.role = role;
+    if (password) data.password = await bcrypt.hash(password, 10);
 
     const user = await prisma.user.update({
       where: { id: parseInt(id) },
-      data
+      data,
+      select: { id: true, email: true, name: true, phone: true, photo: true, position: true, salary: true, role: true, createdAt: true, schoolId: true }
     });
     res.json(user);
   } catch (error) { next(error); }

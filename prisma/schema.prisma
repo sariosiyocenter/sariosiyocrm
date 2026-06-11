@@ -335,16 +335,19 @@ model Setting {
 model User {
   id        Int      @id @default(autoincrement())
   email     String   @unique
-  password  String   // Hashed
+  password  String
   name      String
   phone     String?
+  photo     String?
+  position  String?
+  salary    Int?     @default(0)
   role      UserRole @default(RECEPTIONIST)
   createdAt DateTime @default(now())
   telegramId String?   @unique
 
   schoolId  Int?
   school    School?  @relation(fields: [schoolId], references: [id])
-  
+
   driverTransport Transport? @relation("DriverTransport")
   driverRoutes    Route[]    @relation("DriverRoutes")
 
@@ -357,8 +360,10 @@ enum UserRole {
   ADMIN
   MANAGER
   TEACHER
+  SUPPORT_TEACHER
   RECEPTIONIST
   DRIVER
+  TECH_STAFF
   SELLER
 }
 
