@@ -169,7 +169,7 @@ app.get('/api/users', authenticate, async (req, res, next) => {
 
     const users = await prisma.user.findMany({
       where,
-      select: { id: true, email: true, name: true, phone: true, photo: true, position: true, salary: true, workDays: true, role: true, createdAt: true, schoolId: true }
+      select: { id: true, email: true, name: true, phone: true, photo: true, position: true, salary: true, workDays: true, kpiPercent: true, role: true, createdAt: true, schoolId: true }
     });
     res.json(users);
   } catch (error) { next(error); }
@@ -199,19 +199,27 @@ app.post('/api/users', authenticate, async (req, res, next) => {
 
     if (isNaN(targetSchoolId) && targetSchoolId !== null) return res.status(400).json({ error: 'Invalid schoolId' });
 
-    const user = await prisma.user.create({
-      data: {
-        email,
-        password: hashedPassword,
-        name,
-        phone: phone || null,
-        photo: photo || null,
-        position: position || null,
-        salary: salary ? parseInt(salary) : 0,
-        role,
-        schoolId: targetSchoolId
+    let user;
+    try {
+      user = await prisma.user.create({
+        data: {
+          email,
+          password: hashedPassword,
+          name,
+          phone: phone || null,
+          photo: photo || null,
+          position: position || null,
+          salary: salary ? parseInt(salary) : 0,
+          role,
+          schoolId: targetSchoolId
+        }
+      });
+    } catch (createErr) {
+      if (createErr.code === 'P2002') {
+        return res.status(400).json({ error: 'Bu email allaqachon ro\'yxatdan o\'tgan' });
       }
-    });
+      throw createErr;
+    }
 
     // Auto-create Teacher profile for TEACHER and SUPPORT_TEACHER roles
     if ((role === 'TEACHER' || role === 'SUPPORT_TEACHER') && targetSchoolId) {
@@ -242,7 +250,7 @@ app.put('/api/users/:id', authenticate, async (req, res, next) => {
   try {
     if (req.user.role !== 'ADMIN' && req.user.role !== 'MANAGER') return res.status(403).json({ error: 'Faqat ADMIN/MANAGER tahrirlay oladi' });
     const { id } = req.params;
-    const { email, name, phone, photo, position, salary, role, password, workDays } = req.body;
+    const { email, name, phone, photo, position, salary, role, password, workDays, kpiPercent } = req.body;
     const data = {};
     if (email !== undefined) data.email = email;
     if (name !== undefined) data.name = name;
@@ -252,13 +260,20 @@ app.put('/api/users/:id', authenticate, async (req, res, next) => {
     if (salary !== undefined) data.salary = salary ? parseInt(salary) : 0;
     if (role !== undefined) data.role = role;
     if (workDays !== undefined) data.workDays = workDays;
+    if (kpiPercent !== undefined) data.kpiPercent = parseInt(kpiPercent) || 0;
     if (password) data.password = await bcrypt.hash(password, 10);
 
-    const user = await prisma.user.update({
-      where: { id: parseInt(id) },
-      data,
-      select: { id: true, email: true, name: true, phone: true, photo: true, position: true, salary: true, workDays: true, role: true, createdAt: true, schoolId: true }
-    });
+    let user;
+    try {
+      user = await prisma.user.update({
+        where: { id: parseInt(id) },
+        data,
+        select: { id: true, email: true, name: true, phone: true, photo: true, position: true, salary: true, workDays: true, kpiPercent: true, role: true, createdAt: true, schoolId: true }
+      });
+    } catch (updateErr) {
+      if (updateErr.code === 'P2002') return res.status(400).json({ error: 'Bu email allaqachon ro\'yxatdan o\'tgan' });
+      throw updateErr;
+    }
     res.json(user);
   } catch (error) { next(error); }
 });
@@ -376,6 +391,60 @@ app.delete('/api/salary-payments/:id', authenticate, async (req, res, next) => {
 
     await prisma.salaryPayment.delete({ where: { id: parseInt(id) } });
     res.json({ success: true });
+  } catch (error) { next(error); }
+});
+
+// KPI calculation from group payments
+app.get('/api/kpi-calculation', authenticate, async (req, res, next) => {
+  try {
+    if (req.user.role !== 'ADMIN' && req.user.role !== 'MANAGER') return res.status(403).json({ error: 'Ruhsat yo' });
+    const { userId, month } = req.query;
+    if (!userId || !month) return res.status(400).json({ error: 'userId and month required' });
+
+    const employee = await prisma.user.findUnique({
+      where: { id: parseInt(userId) },
+      select: { name: true, schoolId: true, kpiPercent: true }
+    });
+    if (!employee) return res.json({ groups: [], totalPayments: 0, kpiAmount: 0 });
+
+    // Find linked Teacher by name
+    const teacher = await prisma.teacher.findFirst({
+      where: { name: employee.name, schoolId: employee.schoolId }
+    });
+    if (!teacher) return res.json({ groups: [], totalPayments: 0, kpiAmount: 0 });
+
+    // Get teacher's groups with students and their payments for the month
+    const groups = await prisma.group.findMany({
+      where: { teacherId: teacher.id },
+      include: {
+        students: {
+          include: {
+            payments: { where: { date: { startsWith: String(month) } } }
+          }
+        },
+        course: { select: { name: true } }
+      }
+    });
+
+    let totalPayments = 0;
+    const groupBreakdown = groups.map(g => {
+      const groupTotal = g.students.reduce((sum, s) => {
+        return sum + s.payments.reduce((ps, p) => ps + p.amount, 0);
+      }, 0);
+      totalPayments += groupTotal;
+      return {
+        id: g.id,
+        name: g.name,
+        course: g.course?.name || '',
+        studentCount: g.students.length,
+        total: groupTotal
+      };
+    });
+
+    const kpiPercent = employee.kpiPercent || 0;
+    const kpiAmount  = Math.round(totalPayments * kpiPercent / 100);
+
+    res.json({ groups: groupBreakdown, totalPayments, kpiPercent, kpiAmount });
   } catch (error) { next(error); }
 });
 
