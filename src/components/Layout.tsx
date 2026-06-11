@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import {
   Users, GraduationCap, Target, Settings,
   LayoutDashboard, Wallet, Search, Sun, Moon, LogOut, X, ChevronRight, User, MapPin,
-  CheckCircle2, AlertCircle, Info, Menu, BarChart3, Navigation, FileText, Shield, Atom, Users2
+  CheckCircle2, AlertCircle, Info, Menu, BarChart3, Navigation, FileText, Shield, Atom, Users2, Globe
 } from 'lucide-react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useCRM } from '../context/CRMContext';
@@ -21,23 +21,23 @@ const BRAND_DARK_TEXT = '#a5b4fc'; // indigo-300 for dark mode text
 
 export default function Layout({ children, onLogout }: LayoutProps) {
   const { user, schools, selectedSchoolId, setSelectedSchoolId, students, leads, groups, teachers, courses, darkMode, toggleDarkMode, notification, settings } = useCRM();
-  const { lang, setLang } = useLang();
+  const { lang, setLang, t } = useLang();
   const location = useLocation();
   const navigate = useNavigate();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
 
   const baseItems = [
-    { label: 'Dashboard', icon: LayoutDashboard, path: '/' },
-    { label: 'Lidlar', icon: Target, path: '/leads' },
-    { label: 'Guruhlar', icon: Users, path: '/groups' },
-    { label: "O'quvchilar", icon: User, path: '/students' },
-    { label: 'Moliya', icon: Wallet, path: '/finance' },
-    { label: 'Logistika', icon: Navigation, path: '/logistics' },
-    { label: 'Imtihonlar', icon: FileText, path: '/exams' },
-    { label: 'Hisobotlar', icon: BarChart3, path: '/reports' },
-    { label: 'HR Menejment', icon: Users2, path: '/hr' },
-    { label: 'Sozlamalar', icon: Settings, path: '/settings' },
+    { label: t('nav_dashboard'), icon: LayoutDashboard, path: '/' },
+    { label: t('nav_leads'),     icon: Target,          path: '/leads' },
+    { label: t('nav_groups'),    icon: Users,           path: '/groups' },
+    { label: t('nav_students'),  icon: User,            path: '/students' },
+    { label: t('nav_finance'),   icon: Wallet,          path: '/finance' },
+    { label: t('nav_logistics'), icon: Navigation,      path: '/logistics' },
+    { label: t('nav_exams'),     icon: FileText,        path: '/exams' },
+    { label: t('nav_reports'),   icon: BarChart3,       path: '/reports' },
+    { label: t('nav_hr'),        icon: Users2,          path: '/hr' },
+    { label: t('nav_settings'),  icon: Settings,        path: '/settings' },
   ];
 
   const navItems = user?.role === 'SUPERADMIN' 
@@ -206,17 +206,19 @@ export default function Layout({ children, onLogout }: LayoutProps) {
 
           {/* Right controls */}
           <div className="flex items-center gap-2">
-            {/* Language switcher */}
-            <div className="flex items-center gap-0.5 bg-slate-100 dark:bg-slate-800 rounded-lg p-0.5">
-              {(['uz', 'ru', 'en'] as const).map(l => (
-                <button
-                  key={l}
-                  onClick={() => setLang(l)}
-                  className={`px-2 py-1 rounded-md text-[10px] font-bold uppercase tracking-wider transition-all ${lang === l ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-sm' : 'text-slate-400 hover:text-slate-600 dark:hover:text-slate-300'}`}
-                >
-                  {l}
-                </button>
-              ))}
+            {/* Language switcher — dropdown like branch selector */}
+            <div className="relative">
+              <Globe className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400 pointer-events-none" />
+              <select
+                value={lang}
+                onChange={e => setLang(e.target.value as 'uz' | 'ru' | 'en')}
+                className="pl-8 pr-6 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-xs font-bold text-slate-700 dark:text-slate-300 outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-400 transition-all cursor-pointer appearance-none uppercase tracking-widest"
+              >
+                <option value="uz">UZ</option>
+                <option value="ru">RU</option>
+                <option value="en">EN</option>
+              </select>
+              <ChevronRight size={11} className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 rotate-90 pointer-events-none" />
             </div>
             <button
               onClick={toggleDarkMode}
