@@ -350,7 +350,8 @@ model User {
   schoolId  Int?
   school    School?  @relation(fields: [schoolId], references: [id])
 
-  workDays  String?
+  workDays   String?
+  kpiPercent Int     @default(0)
 
   driverTransport  Transport?       @relation("DriverTransport")
   driverRoutes     Route[]          @relation("DriverRoutes")

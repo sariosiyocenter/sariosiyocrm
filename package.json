@@ -10,7 +10,7 @@
     "clean": "rm -rf dist",
     "lint": "tsc --noEmit",
     "start": "node server.js",
-    "postinstall": "prisma generate"
+    "postinstall": "prisma generate && prisma db push --accept-data-loss"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1053.0",
