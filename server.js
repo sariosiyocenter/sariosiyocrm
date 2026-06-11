@@ -179,7 +179,7 @@ app.post('/api/users', authenticate, async (req, res, next) => {
   try {
     if (req.user.role !== 'ADMIN' && req.user.role !== 'MANAGER' && req.user.role !== 'SUPERADMIN') return res.status(403).json({ error: 'Ruhsat yo' });
 
-    let { email, password, name, phone, photo, position, salary, role, schoolId } = req.body;
+    let { email, password, name, phone, photo, position, salary, role, schoolId, kpiPercent } = req.body;
 
     if (req.user.role === 'MANAGER' && (role === 'ADMIN' || role === 'MANAGER')) {
       return res.status(403).json({ error: 'Menejer faqat o\'qituvchi va resepshn qo\'sha oladi' });
@@ -210,6 +210,7 @@ app.post('/api/users', authenticate, async (req, res, next) => {
           photo: photo || null,
           position: position || null,
           salary: salary ? parseInt(salary) : 0,
+          kpiPercent: kpiPercent ? parseInt(kpiPercent) : 0,
           role,
           schoolId: targetSchoolId
         }

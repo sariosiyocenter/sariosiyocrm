@@ -109,13 +109,14 @@ export default function HRManagement() {
                 else { const d = await res.json(); alert(d.error || "Xatolik yuz berdi"); }
             } else {
                 const body: any = {
-                    name:     editingUser.name,
-                    role:     editingUser.role,
-                    phone:    editingUser.phone,
-                    email:    editingUser.email,
-                    photo:    editingUser.photo,
-                    position: editingUser.position,
-                    salary:   editingUser.salary,
+                    name:       editingUser.name,
+                    role:       editingUser.role,
+                    phone:      editingUser.phone,
+                    email:      editingUser.email,
+                    photo:      editingUser.photo,
+                    position:   editingUser.position,
+                    salary:     editingUser.salary,
+                    kpiPercent: editingUser.kpiPercent ?? 0,
                 };
                 if (editingUser.password) body.password = editingUser.password;
                 const res = await fetch(`/api/users/${editingUser.id}`, {
@@ -467,6 +468,11 @@ function UserModal({
                             <label className={lbl}>Asosiy Maosh (UZS)</label>
                             <input type="number" placeholder="0" className={inp} value={user.salary || ''} onChange={e => onChange({ ...user, salary: e.target.value })} />
                         </div>
+                    </div>
+
+                    <div>
+                        <label className={lbl}>KPI Foiz (%)</label>
+                        <input type="number" min="0" max="100" placeholder="0" className={inp} value={user.kpiPercent ?? ''} onChange={e => onChange({ ...user, kpiPercent: Number(e.target.value) })} />
                     </div>
 
                     {/* Email/password — hidden for TECH_STAFF */}
