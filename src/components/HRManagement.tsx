@@ -39,15 +39,6 @@ const ROLE_AVATAR_COLORS: Record<string, string> = {
     TECH_STAFF:      'from-orange-500 to-orange-700',
 };
 
-const PREDEFINED_KPIS = [
-    { label: "Yangi o'quvchi jalb",  amount: 50000,  type: 'bonus' },
-    { label: "Davomat 100%",         amount: 100000, type: 'bonus' },
-    { label: "Natijalar yuqori",     amount: 200000, type: 'bonus' },
-    { label: "Erta kelish",          amount: 30000,  type: 'bonus' },
-    { label: "Kechikish",            amount: 20000,  type: 'fine'  },
-    { label: "Sabab ko'rsatmasdan kelmadi", amount: 50000, type: 'fine' },
-    { label: "Intizom buzilishi",    amount: 30000,  type: 'fine'  },
-];
 
 const inp = "w-full px-4 py-3 bg-gray-50 dark:bg-gray-900/50 border border-gray-100 dark:border-gray-700 rounded-2xl text-xs font-bold text-gray-900 dark:text-white focus:border-[#1b6b6b] focus:ring-4 focus:ring-[#1b6b6b]/10 outline-none transition-all";
 const lbl = "block text-[10px] font-extrabold uppercase tracking-widest text-gray-400 mb-2";
@@ -57,6 +48,7 @@ export default function HRManagement() {
     const navigate = useNavigate();
 
     const [users, setUsers]               = useState<any[]>([]);
+    const [teacherRows, setTeacherRows]   = useState<any[]>([]);
     const [loadingUsers, setLoadingUsers] = useState(false);
     const [selectedRole, setSelectedRole] = useState<string | null>(null);
 
@@ -78,6 +70,31 @@ export default function HRManagement() {
     };
 
     useEffect(() => { fetchUsers(); }, [token]);
+
+    // Fetch Teacher model records and convert to pseudo-user shape
+    useEffect(() => {
+        if (!token) return;
+        fetch('/api/teachers', { headers: { Authorization: `Bearer ${token}` } })
+            .then(r => r.json())
+            .then((rows: any[]) => {
+                const converted = rows
+                    .filter(t => t.status !== 'Arxiv')
+                    .map(t => ({
+                        _source:  'teacher',
+                        _tid:     t.id,
+                        id:       `t_${t.id}`,
+                        name:     t.name,
+                        phone:    t.phone,
+                        photo:    t.photo || null,
+                        salary:   t.salary || 0,
+                        role:     'TEACHER',
+                        email:    null,
+                        position: null,
+                    }));
+                setTeacherRows(converted);
+            })
+            .catch(() => setTeacherRows([]));
+    }, [token]);
 
     const handleAddUser = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -128,8 +145,13 @@ export default function HRManagement() {
         } catch (err) { console.error('Delete user failed', err); }
     };
 
-    // Filtered users by selected role
-    const filteredUsers = selectedRole ? users.filter(u => u.role === selectedRole) : users;
+    // Merge User records + Teacher records (exclude Teacher if a User with same name already exists)
+    const userNames = new Set(users.map(u => u.name.toLowerCase().trim()));
+    const uniqueTeacherRows = teacherRows.filter(t => !userNames.has(t.name.toLowerCase().trim()));
+    const allStaff = [...users, ...uniqueTeacherRows];
+
+    // Filtered by selected role
+    const filteredUsers = selectedRole ? allStaff.filter(u => u.role === selectedRole) : allStaff;
 
     return (
         <div className="space-y-6 animate-in fade-in duration-500">
@@ -160,7 +182,7 @@ export default function HRManagement() {
                     {/* Clickable role counters */}
                     <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-3">
                         {Object.entries(ROLE_LABELS).map(([role, label]) => {
-                            const count    = users.filter(u => u.role === role).length;
+                            const count    = allStaff.filter(u => u.role === role).length;
                             const isActive = selectedRole === role;
                             return (
                                 <button
@@ -213,9 +235,8 @@ export default function HRManagement() {
                     ) : (
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                             {filteredUsers.map((u) => {
-                                const linkedTeacher = (u.role === 'TEACHER' || u.role === 'SUPPORT_TEACHER')
-                                    ? teachers.find(t => t.name.toLowerCase().trim() === u.name.toLowerCase().trim())
-                                    : null;
+                                const isLegacy = u._source === 'teacher';
+                                const profilePath = isLegacy ? `/teachers/${u._tid}` : `/hr/${u.id}`;
                                 return (
                                     <div key={u.id} className="bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700/50 rounded-3xl p-6 hover:shadow-md transition-all group relative flex flex-col justify-between min-h-[180px]">
                                         <div>
@@ -230,20 +251,27 @@ export default function HRManagement() {
                                                         </div>
                                                     )}
                                                 </div>
-                                                {isAdminOrManager && (
-                                                    <div className="flex items-center gap-1">
-                                                        <button onClick={() => { setEditingUser({ ...u, password: '' }); setIsEditOpen(true); }}
-                                                            className="w-7 h-7 rounded-lg text-gray-400 hover:text-[#1b6b6b] hover:bg-gray-50 dark:hover:bg-gray-900 flex items-center justify-center transition-colors cursor-pointer">
-                                                            <Pencil size={13} />
-                                                        </button>
-                                                        {isAdmin && (
-                                                            <button onClick={() => handleDeleteUser(u.id)}
-                                                                className="w-7 h-7 rounded-lg text-rose-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/20 flex items-center justify-center transition-colors cursor-pointer">
-                                                                <Trash2 size={13} />
+                                                <div className="flex items-center gap-1">
+                                                    {isLegacy && (
+                                                        <span className="px-2 py-0.5 bg-amber-50 border border-amber-100 dark:bg-amber-950/20 dark:border-amber-900/30 text-amber-600 dark:text-amber-400 text-[8px] font-black uppercase tracking-widest rounded-md">
+                                                            Eski
+                                                        </span>
+                                                    )}
+                                                    {isAdminOrManager && !isLegacy && (
+                                                        <>
+                                                            <button onClick={() => { setEditingUser({ ...u, password: '' }); setIsEditOpen(true); }}
+                                                                className="w-7 h-7 rounded-lg text-gray-400 hover:text-[#1b6b6b] hover:bg-gray-50 dark:hover:bg-gray-900 flex items-center justify-center transition-colors cursor-pointer">
+                                                                <Pencil size={13} />
                                                             </button>
-                                                        )}
-                                                    </div>
-                                                )}
+                                                            {isAdmin && (
+                                                                <button onClick={() => handleDeleteUser(u.id)}
+                                                                    className="w-7 h-7 rounded-lg text-rose-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/20 flex items-center justify-center transition-colors cursor-pointer">
+                                                                    <Trash2 size={13} />
+                                                                </button>
+                                                            )}
+                                                        </>
+                                                    )}
+                                                </div>
                                             </div>
                                             <div>
                                                 <h4 className="text-xs font-black text-gray-900 dark:text-white uppercase tracking-wide">{u.name}</h4>
@@ -262,7 +290,7 @@ export default function HRManagement() {
                                                     <span className="text-[10px] font-bold text-gray-600 dark:text-gray-300">{u.phone}</span>
                                                 </div>
                                             )}
-                                            {u.role !== 'TECH_STAFF' && (
+                                            {!isLegacy && u.role !== 'TECH_STAFF' && u.email && (
                                                 <div className="flex items-center gap-2 text-gray-400">
                                                     <Mail size={11} />
                                                     <span className="text-[10px] font-bold text-gray-600 dark:text-gray-300 truncate max-w-[160px]">{u.email}</span>
@@ -277,7 +305,7 @@ export default function HRManagement() {
                                         </div>
                                         {/* Profile link */}
                                         <button
-                                            onClick={() => navigate(`/hr/${u.id}`)}
+                                            onClick={() => navigate(profilePath)}
                                             className="mt-3 w-full flex items-center justify-center gap-2 py-2 bg-[#1b6b6b]/5 border border-[#1b6b6b]/15 text-[#1b6b6b] dark:text-teal-400 rounded-xl text-[9px] font-extrabold uppercase tracking-widest hover:bg-[#1b6b6b] hover:text-white hover:border-[#1b6b6b] transition-all cursor-pointer">
                                             <Eye size={11} />
                                             Profilni Ko'rish
