@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import {
     Users2, Plus, X, Trash2, Pencil,
     Phone, Mail, DollarSign,
-    GraduationCap, ExternalLink, Camera, Wrench, Eye
+    GraduationCap, ExternalLink, Camera, Wrench, Eye, Sparkles
 } from 'lucide-react';
 import { useCRM } from '../context/CRMContext';
 import { useNavigate } from 'react-router-dom';
@@ -372,7 +372,31 @@ function UserModal({
 }) {
     const fileRef     = useRef<HTMLInputElement>(null);
     const [isCameraOpen, setIsCameraOpen] = useState(false);
+    const [isRemovingBg, setIsRemovingBg] = useState(false);
     const isTechStaff = user.role === 'TECH_STAFF';
+
+    const handleRemoveBg = async () => {
+        if (!user.photo) return;
+        try {
+            setIsRemovingBg(true);
+            const token = localStorage.getItem('token');
+            const res = await fetch('/api/utils/remove-bg', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+                body: JSON.stringify({ image: user.photo }),
+            });
+            const data = await res.json();
+            if (data.success) {
+                onChange({ ...user, photo: data.image });
+            } else {
+                alert('Xatolik: ' + (data.error || 'Noma\'lum xatolik'));
+            }
+        } catch {
+            alert('Xatolik yuz berdi');
+        } finally {
+            setIsRemovingBg(false);
+        }
+    };
 
     const handlePhoto = async (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
@@ -423,10 +447,17 @@ function UserModal({
                                 </button>
                             </div>
                             {user.photo && (
-                                <button type="button" onClick={() => onChange({ ...user, photo: '' })}
-                                    className="text-[9px] font-bold text-rose-500 uppercase tracking-widest cursor-pointer hover:underline text-left">
-                                    Rasmni o'chirish
-                                </button>
+                                <div className="flex flex-col gap-1.5">
+                                    <button type="button" onClick={handleRemoveBg} disabled={isRemovingBg}
+                                        className="flex items-center gap-1.5 px-3 py-2 bg-violet-50 dark:bg-violet-950/20 text-violet-600 dark:text-violet-400 border border-violet-100 dark:border-violet-900/30 rounded-xl text-[9px] font-extrabold uppercase tracking-widest hover:bg-violet-600 hover:text-white transition-all disabled:opacity-50 cursor-pointer">
+                                        <Sparkles size={11} className={isRemovingBg ? 'animate-spin' : ''} />
+                                        {isRemovingBg ? 'Tozalanmoqda...' : 'Fonni tozalash'}
+                                    </button>
+                                    <button type="button" onClick={() => onChange({ ...user, photo: '' })}
+                                        className="text-[9px] font-bold text-rose-500 uppercase tracking-widest cursor-pointer hover:underline text-left">
+                                        Rasmni o'chirish
+                                    </button>
+                                </div>
                             )}
                         </div>
                         <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={handlePhoto} />

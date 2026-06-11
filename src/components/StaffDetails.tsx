@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import {
     ArrowLeft, Phone, Mail, Layers, Wallet,
-    Plus, X, Save, Target, Star, AlertCircle, GraduationCap, Pencil, Camera,
+    Plus, X, Save, Target, Star, AlertCircle, GraduationCap, Pencil, Camera, Sparkles,
     CheckCircle2, XCircle, ChevronLeft, ChevronRight, CalendarDays,
     Banknote, Clock, Trash2
 } from 'lucide-react';
@@ -102,6 +102,7 @@ export default function StaffDetails() {
     const [isEditOpen, setIsEditOpen] = useState(false);
     const [editData,   setEditData]   = useState<any>({});
     const [isPhotoModalOpen, setIsPhotoModalOpen] = useState(false);
+    const [isRemovingBg, setIsRemovingBg] = useState(false);
     const fileRef = React.useRef<HTMLInputElement>(null);
 
     const isAdminOrManager = currentUser?.role === 'ADMIN' || currentUser?.role === 'MANAGER';
@@ -302,6 +303,33 @@ export default function StaffDetails() {
         setIsPhotoModalOpen(false);
     };
 
+    const handleRemoveBg = async () => {
+        if (!staffUser?.photo) return;
+        try {
+            setIsRemovingBg(true);
+            const res = await fetch('/api/utils/remove-bg', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+                body: JSON.stringify({ image: staffUser.photo }),
+            });
+            const data = await res.json();
+            if (data.success) {
+                await fetch(`/api/users/${staffUser.id}`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+                    body: JSON.stringify({ photo: data.image }),
+                });
+                setStaffUser((p: any) => ({ ...p, photo: data.image }));
+            } else {
+                alert('Xatolik: ' + (data.error || 'Noma\'lum xatolik'));
+            }
+        } catch {
+            alert('Xatolik yuz berdi');
+        } finally {
+            setIsRemovingBg(false);
+        }
+    };
+
     // Salary payment helpers
     const payMonthStr = `${payYear}-${String(payMonth + 1).padStart(2, '0')}`;
     const currentPayment = salaryPayments.find(p => p.month === payMonthStr) || null;
@@ -441,6 +469,16 @@ export default function StaffDetails() {
                                     {ROLE_LABELS[staffUser.role] || staffUser.role}
                                 </span>
                             </div>
+                            {isAdminOrManager && staffUser.photo && (
+                                <button
+                                    onClick={handleRemoveBg}
+                                    disabled={isRemovingBg}
+                                    className="mt-3 flex items-center gap-1.5 px-4 py-2 mx-auto bg-violet-50 text-violet-600 border border-violet-100 dark:bg-violet-950/20 dark:text-violet-400 dark:border-violet-900/30 rounded-xl text-[9px] font-extrabold uppercase tracking-widest hover:bg-violet-600 hover:text-white transition-all disabled:opacity-50 cursor-pointer"
+                                >
+                                    <Sparkles size={11} className={isRemovingBg ? 'animate-spin' : ''} />
+                                    {isRemovingBg ? 'Tozalanmoqda...' : 'Fonni tozalash'}
+                                </button>
+                            )}
                         </div>
 
                         <div className="px-6 pb-6 space-y-3 border-t border-dashed border-gray-100 dark:border-gray-700/50 pt-4">
