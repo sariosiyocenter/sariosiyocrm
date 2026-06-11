@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import {
-    ArrowLeft, Phone, Mail, Layers, Wallet, TrendingUp, TrendingDown,
+    ArrowLeft, Phone, Mail, Layers, Wallet,
     Plus, X, Save, Target, Star, AlertCircle, GraduationCap, Pencil, Camera,
     CheckCircle2, XCircle, ChevronLeft, ChevronRight, CalendarDays,
     Banknote, Clock, Trash2
@@ -39,15 +39,6 @@ const ROLE_GRADIENT: Record<string, string> = {
     TECH_STAFF:      'from-orange-500 to-orange-700',
 };
 
-const PREDEFINED_KPIS = [
-    { label: "Yangi o'quvchi jalb",         amount: 50000,  type: 'bonus' },
-    { label: "Davomat 100%",                amount: 100000, type: 'bonus' },
-    { label: "Natijalar yuqori",            amount: 200000, type: 'bonus' },
-    { label: "Erta kelish",                 amount: 30000,  type: 'bonus' },
-    { label: "Kechikish",                   amount: 20000,  type: 'fine'  },
-    { label: "Sabab ko'rsatmasdan kelmadi", amount: 50000,  type: 'fine'  },
-    { label: "Intizom buzilishi",           amount: 30000,  type: 'fine'  },
-];
 
 const MONTHS = ['Yanvar','Fevral','Mart','Aprel','May','Iyun','Iyul','Avgust','Sentabr','Oktabr','Noyabr','Dekabr'];
 const WEEK_DAYS      = ['Du','Se','Ch','Pa','Ju','Sh','Ya'];
@@ -96,9 +87,15 @@ export default function StaffDetails() {
     const [payConfirm, setPayConfirm] = useState(false);
     const [paying,     setPaying]     = useState(false);
 
-    // Inline salary edit
-    const [editingSalary, setEditingSalary] = useState(false);
-    const [salaryDraft,   setSalaryDraft]   = useState('');
+    // Inline salary / kpi edit
+    const [editingSalary,  setEditingSalary]  = useState(false);
+    const [salaryDraft,    setSalaryDraft]    = useState('');
+    const [editingKpi,     setEditingKpi]     = useState(false);
+    const [kpiDraft,       setKpiDraft]       = useState('');
+
+    // KPI calculation from groups
+    const [kpiData,    setKpiData]    = useState<any>(null);
+    const [kpiLoading, setKpiLoading] = useState(false);
 
     // Edit modal
     const [isEditOpen, setIsEditOpen] = useState(false);
@@ -169,9 +166,11 @@ export default function StaffDetails() {
 
     // Salary
     const baseSalary  = staffUser.salary || 0;
+    const kpiPercent  = staffUser.kpiPercent || 0;
+    const kpiAmount   = kpiData?.kpiAmount || 0;
     const totalBonus  = bonuses.reduce((s, b) => s + b.amount, 0);
     const totalFine   = fines.reduce((s, f) => s + f.amount, 0);
-    const totalSalary = baseSalary + totalBonus - totalFine;
+    const totalSalary = baseSalary + kpiAmount + totalBonus - totalFine;
 
     // Attendance summary for current month
     const presentDays = staffAtt.filter(a => a.status === 'Keldi').length;
@@ -316,6 +315,20 @@ export default function StaffDetails() {
         } catch { /* ignore */ }
     };
 
+    // Fetch KPI calculation when in maosh tab and month changes
+    useEffect(() => {
+        if (activeTab !== 'maosh' || !staffUser || !token) return;
+        const month = `${payYear}-${String(payMonth + 1).padStart(2, '0')}`;
+        setKpiLoading(true);
+        fetch(`/api/kpi-calculation?userId=${staffUser.id}&month=${month}`, {
+            headers: { Authorization: `Bearer ${token}` }
+        })
+        .then(r => r.json())
+        .then(data => setKpiData(data))
+        .catch(() => setKpiData(null))
+        .finally(() => setKpiLoading(false));
+    }, [activeTab, staffUser?.id, token, payMonth, payYear]);
+
     const saveSalaryInline = async () => {
         const val = parseInt(salaryDraft) || 0;
         try {
@@ -327,6 +340,26 @@ export default function StaffDetails() {
             if (res.ok) setStaffUser((p: any) => ({ ...p, salary: val }));
         } catch { /* ignore */ }
         setEditingSalary(false);
+    };
+
+    const saveKpiInline = async () => {
+        const val = Math.min(100, Math.max(0, parseInt(kpiDraft) || 0));
+        try {
+            const res = await fetch(`/api/users/${staffUser.id}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+                body: JSON.stringify({ kpiPercent: val }),
+            });
+            if (res.ok) {
+                setStaffUser((p: any) => ({ ...p, kpiPercent: val }));
+                // Re-fetch KPI calculation with new percent
+                const month = `${payYear}-${String(payMonth + 1).padStart(2, '0')}`;
+                fetch(`/api/kpi-calculation?userId=${staffUser.id}&month=${month}`, {
+                    headers: { Authorization: `Bearer ${token}` }
+                }).then(r => r.json()).then(setKpiData).catch(() => {});
+            }
+        } catch { /* ignore */ }
+        setEditingKpi(false);
     };
 
     const prevMonth = () => { if (selMonth === 0) { setSelMonth(11); setSelYear(y => y-1); } else setSelMonth(m => m-1); };
@@ -499,9 +532,33 @@ export default function StaffDetails() {
                                                 </div>
                                             )}
                                         </div>
-                                        <div className="text-right shrink-0">
-                                            <span className={lbl}>KPI bilan</span>
-                                            <p className="text-xl font-black text-[#1b6b6b] tabular-nums mt-1">{totalSalary.toLocaleString()} <span className="text-[9px] font-bold text-gray-400">UZS</span></p>
+                                        <div className="shrink-0 text-right">
+                                            <span className={lbl}>KPI Foizi (%)</span>
+                                            {editingKpi ? (
+                                                <div className="flex items-center gap-2 mt-1">
+                                                    <input
+                                                        type="number" autoFocus min={0} max={100}
+                                                        className={inp + " py-2 text-sm w-20"}
+                                                        value={kpiDraft}
+                                                        onChange={e => setKpiDraft(e.target.value)}
+                                                        onKeyDown={e => { if (e.key === 'Enter') saveKpiInline(); if (e.key === 'Escape') setEditingKpi(false); }}
+                                                    />
+                                                    <button onClick={saveKpiInline} className="px-3 py-2 bg-[#1b6b6b] hover:bg-[#155252] text-white text-[10px] font-extrabold uppercase tracking-widest rounded-xl cursor-pointer transition-all">✓</button>
+                                                    <button onClick={() => setEditingKpi(false)} className="px-3 py-2 bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-white text-[10px] font-extrabold uppercase tracking-widest rounded-xl cursor-pointer hover:bg-gray-200 transition-all">✕</button>
+                                                </div>
+                                            ) : (
+                                                <div className="flex items-center justify-end gap-2 mt-1">
+                                                    <span className="text-2xl font-black text-[#1b6b6b] tabular-nums">{kpiPercent}</span>
+                                                    <span className="text-[9px] font-bold text-gray-400 uppercase tracking-widest">%</span>
+                                                    {isAdminOrManager && (
+                                                        <button
+                                                            onClick={() => { setKpiDraft(String(kpiPercent)); setEditingKpi(true); }}
+                                                            className="ml-1 text-gray-400 hover:text-[#1b6b6b] transition-colors cursor-pointer">
+                                                            <Pencil size={13} />
+                                                        </button>
+                                                    )}
+                                                </div>
+                                            )}
                                         </div>
                                     </div>
 
@@ -555,122 +612,157 @@ export default function StaffDetails() {
                                         </div>
                                     )}
 
-                                    {/* KPI calculator + summary (only if not paid yet) */}
+                                    {/* KPI + adjustments + summary (only if not paid yet) */}
                                     {!currentPayment && (
-                                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                                            <div className="space-y-4">
-                                                {/* KPI quick-add */}
-                                                <div>
-                                                    <p className="text-[9px] font-extrabold text-gray-400 uppercase tracking-widest mb-3 flex items-center gap-1.5">
-                                                        <Target size={11} /> Tez qo'shish (KPI)
+                                        <div className="space-y-6">
+                                            {/* KPI group breakdown — teachers only */}
+                                            {(staffUser.role === 'TEACHER' || staffUser.role === 'SUPPORT_TEACHER') && (
+                                                <div className="space-y-3">
+                                                    <p className="text-[9px] font-extrabold text-gray-400 uppercase tracking-widest flex items-center gap-1.5">
+                                                        <Target size={11} /> KPI hisoblash — {MONTHS[payMonth]} {payYear}
                                                     </p>
-                                                    <div className="space-y-1.5">
-                                                        {PREDEFINED_KPIS.map((kpi, i) => (
-                                                            <button key={i}
-                                                                onClick={() => {
-                                                                    if (kpi.type === 'bonus') setBonuses(b => [...b, { label: kpi.label, amount: kpi.amount }]);
-                                                                    else setFines(f => [...f, { label: kpi.label, amount: kpi.amount }]);
-                                                                }}
-                                                                className={`w-full flex items-center justify-between px-3 py-2 rounded-xl border text-[9px] font-bold transition-all cursor-pointer hover:shadow-sm ${kpi.type === 'bonus' ? 'bg-emerald-50 border-emerald-100 text-emerald-700 hover:bg-emerald-100 dark:bg-emerald-950/20 dark:border-emerald-900/30 dark:text-emerald-400' : 'bg-rose-50 border-rose-100 text-rose-700 hover:bg-rose-100 dark:bg-rose-950/20 dark:border-rose-900/30 dark:text-rose-400'}`}>
-                                                                <span className="flex items-center gap-1.5">
-                                                                    {kpi.type === 'bonus' ? <TrendingUp size={10} /> : <TrendingDown size={10} />}
-                                                                    {kpi.label}
-                                                                </span>
-                                                                <span className="font-black">{kpi.type === 'bonus' ? '+' : '-'}{kpi.amount.toLocaleString()}</span>
-                                                            </button>
+                                                    {kpiLoading ? (
+                                                        <div className="py-8 text-center text-[10px] text-gray-400 font-bold uppercase tracking-widest">Hisoblanmoqda...</div>
+                                                    ) : kpiPercent === 0 ? (
+                                                        <div className="p-4 bg-gray-50 dark:bg-gray-900/50 border border-dashed border-gray-200 dark:border-gray-700 rounded-2xl text-center">
+                                                            <p className="text-[10px] text-gray-400 font-bold">KPI foizi belgilanmagan. Yuqorida % kiriting.</p>
+                                                        </div>
+                                                    ) : kpiData?.groups?.length > 0 ? (
+                                                        <div className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-700/50 rounded-2xl overflow-hidden">
+                                                            <table className="w-full text-left">
+                                                                <thead>
+                                                                    <tr className="bg-gray-50 dark:bg-gray-900/80 border-b border-gray-100 dark:border-gray-800">
+                                                                        <th className="p-3 text-[9px] font-black text-gray-400 uppercase tracking-widest">Guruh</th>
+                                                                        <th className="p-3 text-[9px] font-black text-gray-400 uppercase tracking-widest">O'quvchilar</th>
+                                                                        <th className="p-3 text-[9px] font-black text-gray-400 uppercase tracking-widest text-right">To'lovlar</th>
+                                                                        <th className="p-3 text-[9px] font-black text-gray-400 uppercase tracking-widest text-right">KPI ({kpiPercent}%)</th>
+                                                                    </tr>
+                                                                </thead>
+                                                                <tbody className="divide-y divide-gray-50 dark:divide-gray-800">
+                                                                    {kpiData.groups.map((g: any) => (
+                                                                        <tr key={g.id} className="hover:bg-gray-50/50 dark:hover:bg-gray-800/30">
+                                                                            <td className="p-3 text-[10px] font-black text-gray-900 dark:text-white">{g.name}</td>
+                                                                            <td className="p-3 text-[10px] font-bold text-gray-500">{g.studentCount} ta</td>
+                                                                            <td className="p-3 text-[10px] font-bold text-gray-700 dark:text-gray-300 text-right">{g.total.toLocaleString()}</td>
+                                                                            <td className="p-3 text-[10px] font-black text-[#1b6b6b] text-right">+{Math.round(g.total * kpiPercent / 100).toLocaleString()}</td>
+                                                                        </tr>
+                                                                    ))}
+                                                                </tbody>
+                                                                <tfoot>
+                                                                    <tr className="border-t border-gray-100 dark:border-gray-700 bg-[#1b6b6b]/5">
+                                                                        <td colSpan={2} className="p-3 text-[9px] font-extrabold text-[#1b6b6b] uppercase tracking-widest">Jami KPI</td>
+                                                                        <td className="p-3 text-[10px] font-bold text-gray-600 dark:text-gray-300 text-right">{kpiData.totalPayments?.toLocaleString()}</td>
+                                                                        <td className="p-3 text-[11px] font-black text-[#1b6b6b] text-right">+{kpiAmount.toLocaleString()} UZS</td>
+                                                                    </tr>
+                                                                </tfoot>
+                                                            </table>
+                                                        </div>
+                                                    ) : (
+                                                        <div className="p-4 bg-gray-50 dark:bg-gray-900/50 border border-dashed border-gray-200 dark:border-gray-700 rounded-2xl text-center">
+                                                            <p className="text-[10px] text-gray-400 font-bold">Bu oyda guruh to'lovlari topilmadi.</p>
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            )}
+
+                                            {/* Manual adjustments + summary */}
+                                            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                                                <div className="space-y-4">
+                                                    {/* Manual bonus */}
+                                                    <div className="space-y-2">
+                                                        <span className="text-[9px] font-black text-emerald-600 uppercase tracking-widest flex items-center gap-1"><Star size={10} /> Qo'shimcha bonus</span>
+                                                        {bonuses.map((b, i) => (
+                                                            <div key={i} className="flex items-center justify-between bg-emerald-50 dark:bg-emerald-950/20 border border-emerald-100 dark:border-emerald-900/30 px-3 py-2 rounded-xl">
+                                                                <span className="text-[9px] font-bold text-emerald-600 dark:text-emerald-400">{b.label}</span>
+                                                                <div className="flex items-center gap-2">
+                                                                    <span className="text-[9px] font-black text-emerald-600 dark:text-emerald-400">+{b.amount.toLocaleString()}</span>
+                                                                    <button onClick={() => setBonuses(bs => bs.filter((_,j) => j!==i))} className="text-gray-400 hover:text-rose-500 cursor-pointer"><X size={11} /></button>
+                                                                </div>
+                                                            </div>
                                                         ))}
-                                                    </div>
-                                                </div>
-
-                                                {/* Manual bonus */}
-                                                <div className="space-y-2">
-                                                    <span className="text-[9px] font-black text-emerald-600 uppercase tracking-widest flex items-center gap-1"><Star size={10} /> Qo'shimcha bonus</span>
-                                                    {bonuses.map((b, i) => (
-                                                        <div key={i} className="flex items-center justify-between bg-emerald-50 dark:bg-emerald-950/20 border border-emerald-100 dark:border-emerald-900/30 px-3 py-2 rounded-xl">
-                                                            <span className="text-[9px] font-bold text-emerald-600 dark:text-emerald-400">{b.label}</span>
-                                                            <div className="flex items-center gap-2">
-                                                                <span className="text-[9px] font-black text-emerald-600 dark:text-emerald-400">+{b.amount.toLocaleString()}</span>
-                                                                <button onClick={() => setBonuses(bs => bs.filter((_,j) => j!==i))} className="text-gray-400 hover:text-rose-500 cursor-pointer"><X size={11} /></button>
-                                                            </div>
-                                                        </div>
-                                                    ))}
-                                                    <div className="flex gap-2">
-                                                        <input type="text"   placeholder="Sabab" className={inp + " py-2 text-[10px]"} value={bonusInput.label}  onChange={e => setBonusInput(p=>({...p,label:e.target.value}))} />
-                                                        <input type="number" placeholder="Summa" className={inp + " w-24 py-2 text-[10px]"} value={bonusInput.amount} onChange={e => setBonusInput(p=>({...p,amount:e.target.value}))} />
-                                                        <button onClick={() => { if (bonusInput.label&&bonusInput.amount) { setBonuses(b=>[...b,{label:bonusInput.label,amount:Number(bonusInput.amount)}]); setBonusInput({label:'',amount:''}); } }} className="w-9 h-9 shrink-0 bg-[#1b6b6b] hover:bg-[#155252] rounded-xl flex items-center justify-center text-white transition-all cursor-pointer"><Plus size={13} /></button>
-                                                    </div>
-                                                </div>
-
-                                                {/* Manual fine */}
-                                                <div className="space-y-2">
-                                                    <span className="text-[9px] font-black text-rose-600 uppercase tracking-widest flex items-center gap-1"><AlertCircle size={10} /> Jarima</span>
-                                                    {fines.map((f, i) => (
-                                                        <div key={i} className="flex items-center justify-between bg-rose-50 dark:bg-rose-950/20 border border-rose-100 dark:border-rose-900/30 px-3 py-2 rounded-xl">
-                                                            <span className="text-[9px] font-bold text-rose-600 dark:text-rose-400">{f.label}</span>
-                                                            <div className="flex items-center gap-2">
-                                                                <span className="text-[9px] font-black text-rose-600 dark:text-rose-400">-{f.amount.toLocaleString()}</span>
-                                                                <button onClick={() => setFines(fs => fs.filter((_,j) => j!==i))} className="text-gray-400 hover:text-rose-500 cursor-pointer"><X size={11} /></button>
-                                                            </div>
-                                                        </div>
-                                                    ))}
-                                                    <div className="flex gap-2">
-                                                        <input type="text"   placeholder="Sabab" className={inp + " py-2 text-[10px]"} value={fineInput.label}  onChange={e => setFineInput(p=>({...p,label:e.target.value}))} />
-                                                        <input type="number" placeholder="Summa" className={inp + " w-24 py-2 text-[10px]"} value={fineInput.amount} onChange={e => setFineInput(p=>({...p,amount:e.target.value}))} />
-                                                        <button onClick={() => { if (fineInput.label&&fineInput.amount) { setFines(f=>[...f,{label:fineInput.label,amount:Number(fineInput.amount)}]); setFineInput({label:'',amount:''}); } }} className="w-9 h-9 shrink-0 bg-rose-600 hover:bg-rose-500 rounded-xl flex items-center justify-center text-white transition-all cursor-pointer"><Plus size={13} /></button>
-                                                    </div>
-                                                </div>
-                                            </div>
-
-                                            {/* Summary + pay button */}
-                                            <div className="bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700/50 rounded-3xl p-6 flex flex-col justify-between">
-                                                <div>
-                                                    <h3 className="text-xs font-black text-[#1b6b6b] uppercase tracking-wider mb-5">
-                                                        {MONTHS[payMonth]} {payYear} — Hisob
-                                                    </h3>
-                                                    <div className="space-y-3">
-                                                        <div className="flex justify-between">
-                                                            <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Asosiy Maosh</span>
-                                                            <span className="text-xs font-extrabold text-gray-900 dark:text-white">{baseSalary.toLocaleString()} UZS</span>
-                                                        </div>
-                                                        <div className="flex justify-between">
-                                                            <span className="text-[10px] font-bold text-emerald-600 uppercase tracking-widest">Bonuslar ({bonuses.length})</span>
-                                                            <span className="text-xs font-extrabold text-emerald-600">+{totalBonus.toLocaleString()}</span>
-                                                        </div>
-                                                        <div className="flex justify-between">
-                                                            <span className="text-[10px] font-bold text-rose-600 uppercase tracking-widest">Jarimalar ({fines.length})</span>
-                                                            <span className="text-xs font-extrabold text-rose-600">-{totalFine.toLocaleString()}</span>
-                                                        </div>
-                                                        <div className="pt-4 border-t border-dashed border-gray-100 dark:border-gray-700 flex justify-between items-center">
-                                                            <span className="text-[10px] font-extrabold text-[#1b6b6b] uppercase tracking-widest">To'lanadi</span>
-                                                            <span className="text-2xl font-black text-[#1b6b6b] tabular-nums">{totalSalary.toLocaleString()}</span>
-                                                        </div>
-                                                        <p className="text-[9px] text-right text-gray-400 font-bold uppercase tracking-widest">UZS</p>
-                                                    </div>
-                                                </div>
-
-                                                {/* Pay confirmation */}
-                                                {!payConfirm ? (
-                                                    <button
-                                                        onClick={() => setPayConfirm(true)}
-                                                        className="mt-6 w-full py-3 bg-[#1b6b6b] hover:bg-[#155252] text-white rounded-2xl text-xs font-extrabold uppercase tracking-widest flex items-center justify-center gap-2 shadow-lg shadow-[#1b6b6b]/20 transition-all cursor-pointer">
-                                                        <Banknote size={14} /> Oylik berish
-                                                    </button>
-                                                ) : (
-                                                    <div className="mt-4 p-4 bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-900/40 rounded-2xl space-y-3">
-                                                        <p className="text-[10px] font-extrabold text-amber-700 dark:text-amber-400 uppercase tracking-widest text-center">
-                                                            {staffUser.name}ga {totalSalary.toLocaleString()} UZS to'lansinmi?
-                                                        </p>
                                                         <div className="flex gap-2">
-                                                            <button onClick={() => setPayConfirm(false)} className="flex-1 py-2 bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-white text-[10px] font-extrabold uppercase tracking-widest rounded-xl cursor-pointer hover:bg-gray-200 transition-all">
-                                                                Bekor
-                                                            </button>
-                                                            <button onClick={paySalary} disabled={paying}
-                                                                className="flex-1 py-2 bg-emerald-600 hover:bg-emerald-500 text-white text-[10px] font-extrabold uppercase tracking-widest rounded-xl cursor-pointer transition-all disabled:opacity-60 flex items-center justify-center gap-1.5">
-                                                                {paying ? 'Saqlanmoqda...' : <><CheckCircle2 size={12} /> Ha, berildi</>}
-                                                            </button>
+                                                            <input type="text"   placeholder="Sabab" className={inp + " py-2 text-[10px]"} value={bonusInput.label}  onChange={e => setBonusInput(p=>({...p,label:e.target.value}))} />
+                                                            <input type="number" placeholder="Summa" className={inp + " w-24 py-2 text-[10px]"} value={bonusInput.amount} onChange={e => setBonusInput(p=>({...p,amount:e.target.value}))} />
+                                                            <button onClick={() => { if (bonusInput.label&&bonusInput.amount) { setBonuses(b=>[...b,{label:bonusInput.label,amount:Number(bonusInput.amount)}]); setBonusInput({label:'',amount:''}); } }} className="w-9 h-9 shrink-0 bg-[#1b6b6b] hover:bg-[#155252] rounded-xl flex items-center justify-center text-white transition-all cursor-pointer"><Plus size={13} /></button>
                                                         </div>
                                                     </div>
-                                                )}
+
+                                                    {/* Manual fine */}
+                                                    <div className="space-y-2">
+                                                        <span className="text-[9px] font-black text-rose-600 uppercase tracking-widest flex items-center gap-1"><AlertCircle size={10} /> Jarima</span>
+                                                        {fines.map((f, i) => (
+                                                            <div key={i} className="flex items-center justify-between bg-rose-50 dark:bg-rose-950/20 border border-rose-100 dark:border-rose-900/30 px-3 py-2 rounded-xl">
+                                                                <span className="text-[9px] font-bold text-rose-600 dark:text-rose-400">{f.label}</span>
+                                                                <div className="flex items-center gap-2">
+                                                                    <span className="text-[9px] font-black text-rose-600 dark:text-rose-400">-{f.amount.toLocaleString()}</span>
+                                                                    <button onClick={() => setFines(fs => fs.filter((_,j) => j!==i))} className="text-gray-400 hover:text-rose-500 cursor-pointer"><X size={11} /></button>
+                                                                </div>
+                                                            </div>
+                                                        ))}
+                                                        <div className="flex gap-2">
+                                                            <input type="text"   placeholder="Sabab" className={inp + " py-2 text-[10px]"} value={fineInput.label}  onChange={e => setFineInput(p=>({...p,label:e.target.value}))} />
+                                                            <input type="number" placeholder="Summa" className={inp + " w-24 py-2 text-[10px]"} value={fineInput.amount} onChange={e => setFineInput(p=>({...p,amount:e.target.value}))} />
+                                                            <button onClick={() => { if (fineInput.label&&fineInput.amount) { setFines(f=>[...f,{label:fineInput.label,amount:Number(fineInput.amount)}]); setFineInput({label:'',amount:''}); } }} className="w-9 h-9 shrink-0 bg-rose-600 hover:bg-rose-500 rounded-xl flex items-center justify-center text-white transition-all cursor-pointer"><Plus size={13} /></button>
+                                                        </div>
+                                                    </div>
+                                                </div>
+
+                                                {/* Summary + pay button */}
+                                                <div className="bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700/50 rounded-3xl p-6 flex flex-col justify-between">
+                                                    <div>
+                                                        <h3 className="text-xs font-black text-[#1b6b6b] uppercase tracking-wider mb-5">
+                                                            {MONTHS[payMonth]} {payYear} — Hisob
+                                                        </h3>
+                                                        <div className="space-y-3">
+                                                            <div className="flex justify-between">
+                                                                <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Asosiy Maosh</span>
+                                                                <span className="text-xs font-extrabold text-gray-900 dark:text-white">{baseSalary.toLocaleString()} UZS</span>
+                                                            </div>
+                                                            {kpiAmount > 0 && (
+                                                                <div className="flex justify-between">
+                                                                    <span className="text-[10px] font-bold text-[#1b6b6b] uppercase tracking-widest">KPI ({kpiPercent}%)</span>
+                                                                    <span className="text-xs font-extrabold text-[#1b6b6b]">+{kpiAmount.toLocaleString()}</span>
+                                                                </div>
+                                                            )}
+                                                            <div className="flex justify-between">
+                                                                <span className="text-[10px] font-bold text-emerald-600 uppercase tracking-widest">Bonuslar ({bonuses.length})</span>
+                                                                <span className="text-xs font-extrabold text-emerald-600">+{totalBonus.toLocaleString()}</span>
+                                                            </div>
+                                                            <div className="flex justify-between">
+                                                                <span className="text-[10px] font-bold text-rose-600 uppercase tracking-widest">Jarimalar ({fines.length})</span>
+                                                                <span className="text-xs font-extrabold text-rose-600">-{totalFine.toLocaleString()}</span>
+                                                            </div>
+                                                            <div className="pt-4 border-t border-dashed border-gray-100 dark:border-gray-700 flex justify-between items-center">
+                                                                <span className="text-[10px] font-extrabold text-[#1b6b6b] uppercase tracking-widest">To'lanadi</span>
+                                                                <span className="text-2xl font-black text-[#1b6b6b] tabular-nums">{totalSalary.toLocaleString()}</span>
+                                                            </div>
+                                                            <p className="text-[9px] text-right text-gray-400 font-bold uppercase tracking-widest">UZS</p>
+                                                        </div>
+                                                    </div>
+
+                                                    {!payConfirm ? (
+                                                        <button
+                                                            onClick={() => setPayConfirm(true)}
+                                                            className="mt-6 w-full py-3 bg-[#1b6b6b] hover:bg-[#155252] text-white rounded-2xl text-xs font-extrabold uppercase tracking-widest flex items-center justify-center gap-2 shadow-lg shadow-[#1b6b6b]/20 transition-all cursor-pointer">
+                                                            <Banknote size={14} /> Oylik berish
+                                                        </button>
+                                                    ) : (
+                                                        <div className="mt-4 p-4 bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-900/40 rounded-2xl space-y-3">
+                                                            <p className="text-[10px] font-extrabold text-amber-700 dark:text-amber-400 uppercase tracking-widest text-center">
+                                                                {staffUser.name}ga {totalSalary.toLocaleString()} UZS to'lansinmi?
+                                                            </p>
+                                                            <div className="flex gap-2">
+                                                                <button onClick={() => setPayConfirm(false)} className="flex-1 py-2 bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-white text-[10px] font-extrabold uppercase tracking-widest rounded-xl cursor-pointer hover:bg-gray-200 transition-all">
+                                                                    Bekor
+                                                                </button>
+                                                                <button onClick={paySalary} disabled={paying}
+                                                                    className="flex-1 py-2 bg-emerald-600 hover:bg-emerald-500 text-white text-[10px] font-extrabold uppercase tracking-widest rounded-xl cursor-pointer transition-all disabled:opacity-60 flex items-center justify-center gap-1.5">
+                                                                    {paying ? 'Saqlanmoqda...' : <><CheckCircle2 size={12} /> Ha, berildi</>}
+                                                                </button>
+                                                            </div>
+                                                        </div>
+                                                    )}
+                                                </div>
                                             </div>
                                         </div>
                                     )}
