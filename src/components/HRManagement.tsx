@@ -241,11 +241,6 @@ export default function HRManagement() {
                                                     )}
                                                 </div>
                                                 <div className="flex items-center gap-1">
-                                                    {isLegacy && (
-                                                        <span className="px-2 py-0.5 bg-amber-50 border border-amber-100 dark:bg-amber-950/20 dark:border-amber-900/30 text-amber-600 dark:text-amber-400 text-[8px] font-black uppercase tracking-widest rounded-md">
-                                                            Eski
-                                                        </span>
-                                                    )}
                                                     {isAdminOrManager && !isLegacy && (
                                                         <>
                                                             <button onClick={() => { setEditingUser({ ...u, password: '' }); setIsEditOpen(true); }}
