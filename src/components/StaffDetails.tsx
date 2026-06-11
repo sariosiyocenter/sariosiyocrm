@@ -96,6 +96,10 @@ export default function StaffDetails() {
     const [payConfirm, setPayConfirm] = useState(false);
     const [paying,     setPaying]     = useState(false);
 
+    // Inline salary edit
+    const [editingSalary, setEditingSalary] = useState(false);
+    const [salaryDraft,   setSalaryDraft]   = useState('');
+
     // Edit modal
     const [isEditOpen, setIsEditOpen] = useState(false);
     const [editData,   setEditData]   = useState<any>({});
@@ -312,6 +316,19 @@ export default function StaffDetails() {
         } catch { /* ignore */ }
     };
 
+    const saveSalaryInline = async () => {
+        const val = parseInt(salaryDraft) || 0;
+        try {
+            const res = await fetch(`/api/users/${staffUser.id}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+                body: JSON.stringify({ salary: val }),
+            });
+            if (res.ok) setStaffUser((p: any) => ({ ...p, salary: val }));
+        } catch { /* ignore */ }
+        setEditingSalary(false);
+    };
+
     const prevMonth = () => { if (selMonth === 0) { setSelMonth(11); setSelYear(y => y-1); } else setSelMonth(m => m-1); };
     const nextMonth = () => { if (selMonth === 11) { setSelMonth(0); setSelYear(y => y+1); } else setSelMonth(m => m+1); };
 
@@ -335,7 +352,7 @@ export default function StaffDetails() {
                 <div className="lg:col-span-1 space-y-5">
                     <div className="bg-white dark:bg-gray-800 rounded-3xl border border-gray-100 dark:border-gray-700/50 shadow-sm overflow-hidden">
                         {/* Banner */}
-                        <div className={`h-40 bg-gradient-to-br ${ROLE_GRADIENT[staffUser.role] || 'from-gray-400 to-gray-600'} relative`}>
+                        <div className={`h-48 bg-gradient-to-br ${ROLE_GRADIENT[staffUser.role] || 'from-gray-400 to-gray-600'} relative`}>
                             {isAdminOrManager && (
                                 <button
                                     onClick={() => { setEditData({ ...staffUser, password: '' }); setIsEditOpen(true); }}
@@ -344,12 +361,12 @@ export default function StaffDetails() {
                                 </button>
                             )}
                             {/* Avatar — centred, extends below banner */}
-                            <div className="absolute -bottom-16 left-1/2 -translate-x-1/2 rounded-2xl bg-white dark:bg-gray-800 p-1.5 shadow-lg">
-                                <div className="w-32 h-32 rounded-xl overflow-hidden flex items-center justify-center bg-gray-50 dark:bg-gray-900 border border-gray-100 dark:border-gray-700/50">
+                            <div className="absolute -bottom-20 left-1/2 -translate-x-1/2 rounded-2xl bg-white dark:bg-gray-800 p-2 shadow-xl">
+                                <div className="w-40 h-40 rounded-xl overflow-hidden flex items-center justify-center bg-gray-50 dark:bg-gray-900 border border-gray-100 dark:border-gray-700/50">
                                     {staffUser.photo ? (
                                         <img src={staffUser.photo} alt={staffUser.name} className="w-full h-full object-cover" />
                                     ) : (
-                                        <span className="text-4xl font-black text-[#1b6b6b]">
+                                        <span className="text-5xl font-black text-[#1b6b6b]">
                                             {staffUser.name?.charAt(0).toUpperCase()}
                                         </span>
                                     )}
@@ -358,7 +375,7 @@ export default function StaffDetails() {
                         </div>
 
                         {/* Name / role */}
-                        <div className="pt-20 pb-6 px-6 text-center">
+                        <div className="pt-24 pb-6 px-6 text-center">
                             <h2 className="text-sm font-black text-gray-900 dark:text-white uppercase tracking-tight">{staffUser.name}</h2>
                             {staffUser.position && (
                                 <p className="text-[9px] font-bold text-gray-400 mt-1">{staffUser.position}</p>
@@ -451,6 +468,42 @@ export default function StaffDetails() {
                             {/* ── ISH HAQI ── */}
                             {activeTab === 'maosh' && (
                                 <div className="space-y-6 animate-in fade-in duration-300">
+
+                                    {/* Inline base salary editor */}
+                                    <div className="flex items-center gap-4 p-4 bg-[#1b6b6b]/5 border border-[#1b6b6b]/15 rounded-2xl">
+                                        <div className="flex-1 min-w-0">
+                                            <span className={lbl}>Asosiy Maosh (UZS)</span>
+                                            {editingSalary ? (
+                                                <div className="flex items-center gap-2 mt-1">
+                                                    <input
+                                                        type="number" autoFocus
+                                                        className={inp + " py-2 text-sm"}
+                                                        value={salaryDraft}
+                                                        onChange={e => setSalaryDraft(e.target.value)}
+                                                        onKeyDown={e => { if (e.key === 'Enter') saveSalaryInline(); if (e.key === 'Escape') setEditingSalary(false); }}
+                                                    />
+                                                    <button onClick={saveSalaryInline} className="px-4 py-2 bg-[#1b6b6b] hover:bg-[#155252] text-white text-[10px] font-extrabold uppercase tracking-widest rounded-xl cursor-pointer transition-all whitespace-nowrap">Saqlash</button>
+                                                    <button onClick={() => setEditingSalary(false)} className="px-3 py-2 bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-white text-[10px] font-extrabold uppercase tracking-widest rounded-xl cursor-pointer hover:bg-gray-200 transition-all">Bekor</button>
+                                                </div>
+                                            ) : (
+                                                <div className="flex items-center gap-2 mt-1">
+                                                    <span className="text-2xl font-black text-gray-900 dark:text-white tabular-nums">{baseSalary.toLocaleString()}</span>
+                                                    <span className="text-[9px] font-bold text-gray-400 uppercase tracking-widest">UZS</span>
+                                                    {isAdminOrManager && (
+                                                        <button
+                                                            onClick={() => { setSalaryDraft(String(baseSalary)); setEditingSalary(true); }}
+                                                            className="ml-1 text-gray-400 hover:text-[#1b6b6b] transition-colors cursor-pointer">
+                                                            <Pencil size={13} />
+                                                        </button>
+                                                    )}
+                                                </div>
+                                            )}
+                                        </div>
+                                        <div className="text-right shrink-0">
+                                            <span className={lbl}>KPI bilan</span>
+                                            <p className="text-xl font-black text-[#1b6b6b] tabular-nums mt-1">{totalSalary.toLocaleString()} <span className="text-[9px] font-bold text-gray-400">UZS</span></p>
+                                        </div>
+                                    </div>
 
                                     {/* Month selector */}
                                     <div className="flex items-center justify-between">
