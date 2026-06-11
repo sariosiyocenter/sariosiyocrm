@@ -149,6 +149,20 @@ export default function StaffDetails() {
         .finally(() => setAttLoading(false));
     }, [staffUser?.id, token, selMonth, selYear]);
 
+    // Fetch KPI calculation when in maosh tab and month changes
+    useEffect(() => {
+        if (activeTab !== 'maosh' || !staffUser || !token) return;
+        const month = `${payYear}-${String(payMonth + 1).padStart(2, '0')}`;
+        setKpiLoading(true);
+        fetch(`/api/kpi-calculation?userId=${staffUser.id}&month=${month}`, {
+            headers: { Authorization: `Bearer ${token}` }
+        })
+        .then(r => r.json())
+        .then(data => setKpiData(data))
+        .catch(() => setKpiData(null))
+        .finally(() => setKpiLoading(false));
+    }, [activeTab, staffUser?.id, token, payMonth, payYear]);
+
     if (loading) {
         return <div className="py-20 text-center text-[#1b6b6b] text-xs font-bold uppercase tracking-widest">Yuklanmoqda...</div>;
     }
@@ -314,20 +328,6 @@ export default function StaffDetails() {
             setSalaryPayments(prev => prev.filter(p => p.id !== pid));
         } catch { /* ignore */ }
     };
-
-    // Fetch KPI calculation when in maosh tab and month changes
-    useEffect(() => {
-        if (activeTab !== 'maosh' || !staffUser || !token) return;
-        const month = `${payYear}-${String(payMonth + 1).padStart(2, '0')}`;
-        setKpiLoading(true);
-        fetch(`/api/kpi-calculation?userId=${staffUser.id}&month=${month}`, {
-            headers: { Authorization: `Bearer ${token}` }
-        })
-        .then(r => r.json())
-        .then(data => setKpiData(data))
-        .catch(() => setKpiData(null))
-        .finally(() => setKpiLoading(false));
-    }, [activeTab, staffUser?.id, token, payMonth, payYear]);
 
     const saveSalaryInline = async () => {
         const val = parseInt(salaryDraft) || 0;
