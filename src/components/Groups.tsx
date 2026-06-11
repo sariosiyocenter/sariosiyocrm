@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Search, Plus, X, Users, Layers, ChevronRight, SlidersHorizontal } from 'lucide-react';
 import { useCRM } from '../context/CRMContext';
+import { useLang } from '../context/LanguageContext';
 import { useNavigate } from 'react-router-dom';
 
 const inp = "w-full px-4 py-3 bg-gray-55 dark:bg-gray-900/50 border border-gray-100 dark:border-gray-750 rounded-2xl text-xs font-bold text-gray-900 dark:text-white focus:border-[#1b6b6b] focus:ring-4 focus:ring-[#1b6b6b]/10 outline-none transition-all";
@@ -8,6 +9,7 @@ const lbl = "block text-[10px] font-extrabold uppercase tracking-widest text-gra
 
 export default function Groups() {
     const { groups, teachers, rooms, addGroup, showNotification, courses } = useCRM();
+    const { t } = useLang();
     const navigate = useNavigate();
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [isAdding, setIsAdding] = useState(false);
@@ -124,9 +126,9 @@ export default function Groups() {
                             <Layers size={22} className="text-white" />
                         </div>
                         <div>
-                            <h1 className="text-lg font-black text-gray-900 dark:text-white uppercase tracking-tight">Guruhlar</h1>
+                            <h1 className="text-lg font-black text-gray-900 dark:text-white uppercase tracking-tight">{t('groups_title')}</h1>
                             <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mt-0.5">
-                                Jami {groups.length} ta guruh • Barcha dars jadvallari
+                                {groups.length} • {t('group_schedule')}
                             </p>
                         </div>
                     </div>

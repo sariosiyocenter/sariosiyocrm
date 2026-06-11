@@ -5,11 +5,13 @@ import {
   Activity, Calendar, Clock, ChevronRight, BookOpen, BarChart3, LayoutDashboard
 } from 'lucide-react';
 import { useCRM } from '../context/CRMContext';
+import { useLang } from '../context/LanguageContext';
 import { useNavigate } from 'react-router-dom';
 import RoomSchedule from './RoomSchedule';
 
 export default function Dashboard() {
     const { students, groups, teachers, leads, payments, courses } = useCRM();
+    const { t } = useLang();
     const navigate = useNavigate();
 
     // Financial Calculations
@@ -47,7 +49,7 @@ export default function Dashboard() {
     
     const debtTrend = -5.1; 
 
-    const monthNames = ['Yan', 'Fev', 'Mar', 'Apr', 'May', 'Iyun', 'Iyul', 'Avg', 'Sen', 'Okt', 'Noy', 'Dek'];
+    const monthNames = [t('month_jan'), t('month_feb'), t('month_mar'), t('month_apr'), t('month_may'), t('month_jun'), t('month_jul'), t('month_aug'), t('month_sep'), t('month_oct'), t('month_nov'), t('month_dec')];
     const last6Months = Array.from({ length: 6 }, (_, i) => {
         const d = new Date();
         d.setMonth(now.getMonth() - (5 - i));
@@ -88,10 +90,10 @@ export default function Dashboard() {
         .slice(0, 3);
 
     const stats = [
-        { label: "Faol o'quvchilar", value: students.filter(s => s.status === 'Faol').length, icon: GraduationCap, accent: '#1b6b6b', path: '/students' },
-        { label: 'Guruhlar', value: groups.length, icon: Users, accent: '#6366f1', path: '/groups' },
-        { label: "O'qituvchilar", value: teachers.filter(t => t.status === 'Faol').length, icon: BookOpen, accent: '#f59e0b', path: '/teachers' },
-        { label: 'Yangi lidlar', value: leads.filter(l => l.status === 'Yangi').length, icon: Target, accent: '#ec4899', path: '/leads' },
+        { label: t('stat_active_students'), value: students.filter(s => s.status === 'Faol').length, icon: GraduationCap, accent: '#1b6b6b', path: '/students' },
+        { label: t('stat_groups'), value: groups.length, icon: Users, accent: '#6366f1', path: '/groups' },
+        { label: t('stat_teachers'), value: teachers.filter(t => t.status === 'Faol').length, icon: BookOpen, accent: '#f59e0b', path: '/teachers' },
+        { label: t('stat_new_leads'), value: leads.filter(l => l.status === 'Yangi').length, icon: Target, accent: '#ec4899', path: '/leads' },
     ];
 
     return (
@@ -104,9 +106,9 @@ export default function Dashboard() {
                             <LayoutDashboard size={22} className="text-white" />
                         </div>
                         <div>
-                            <h1 className="text-lg font-black text-gray-900 dark:text-white uppercase tracking-tight">Boshqaruv Paneli</h1>
+                            <h1 className="text-lg font-black text-gray-900 dark:text-white uppercase tracking-tight">{t('dashboard_title')}</h1>
                             <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mt-0.5">
-                                Markazning umumiy faoliyat statistikasi
+                                {t('dashboard_subtitle')}
                             </p>
                         </div>
                     </div>
@@ -146,19 +148,19 @@ export default function Dashboard() {
                         <div className="flex items-center justify-between mb-6">
                             <h3 className="text-xs font-black text-gray-900 dark:text-white uppercase tracking-wider flex items-center gap-2">
                                 <TrendingUp size={16} className="text-[#1b6b6b]" />
-                                Moliyaviy Tahlil
+                                {t('finance_title')}
                             </h3>
                             <button onClick={() => navigate('/finance')} className="flex items-center gap-1 text-[10px] font-extrabold uppercase text-[#1b6b6b] hover:text-[#155252] transition-colors cursor-pointer">
-                                Batafsil <ArrowUpRight size={12} />
+                                {t('rep_stats')} <ArrowUpRight size={12} />
                             </button>
                         </div>
                         
                         {/* Summary Cards */}
                         <div className="grid grid-cols-3 gap-4 mb-6">
                             {[
-                                { label: 'Tushum', value: `${(monthlyIncome / 1000000).toFixed(1)}M`, trend: `${incomeTrend > 0 ? '+' : ''}${incomeTrend.toFixed(1)}%`, positive: incomeTrend >= 0, icon: TrendingUp },
-                                { label: 'Kutilgan', value: `${(monthlyExpected / 1000000).toFixed(1)}M`, trend: '+2.4%', positive: true, icon: Clock },
-                                { label: 'Qarzdorlik', value: `${(totalDebt / 1000000).toFixed(1)}M`, trend: `${debtTrend > 0 ? '+' : ''}${debtTrend.toFixed(1)}%`, positive: debtTrend <= 0, icon: TrendingDown },
+                                { label: t('income'), value: `${(monthlyIncome / 1000000).toFixed(1)}M`, trend: `${incomeTrend > 0 ? '+' : ''}${incomeTrend.toFixed(1)}%`, positive: incomeTrend >= 0, icon: TrendingUp },
+                                { label: t('expected'), value: `${(monthlyExpected / 1000000).toFixed(1)}M`, trend: '+2.4%', positive: true, icon: Clock },
+                                { label: t('debt'), value: `${(totalDebt / 1000000).toFixed(1)}M`, trend: `${debtTrend > 0 ? '+' : ''}${debtTrend.toFixed(1)}%`, positive: debtTrend <= 0, icon: TrendingDown },
                             ].map((item, i) => (
                                 <div key={i} className="bg-gray-50 dark:bg-gray-900/60 rounded-2xl p-4 border border-gray-100 dark:border-gray-700/50">
                                     <div className="flex items-center justify-between mb-2">
@@ -210,15 +212,15 @@ export default function Dashboard() {
                         <div className="flex items-center justify-between mb-4">
                             <h3 className="text-xs font-black text-gray-900 dark:text-white uppercase tracking-wider flex items-center gap-2">
                                 <Activity size={16} className="text-rose-500" />
-                                E'tibor talab qiladi
+                                {t('attention_title')}
                             </h3>
                             <span className="w-1.5 h-1.5 bg-rose-500 rounded-full animate-pulse"></span>
                         </div>
                         <div className="space-y-2">
                             {[
-                                { title: `${students.filter(s => s.balance < 0).length} ta qarzdor`, desc: "To'lov muddati o'tgan", icon: Clock, color: '#ef4444', path: '/reports' },
-                                { title: `${leads.filter(l => l.status === 'Yangi').length} ta yangi lid`, desc: "Aloqaga chiqilmagan", icon: Target, color: '#f59e0b', path: '/leads' },
-                                { title: groups[0]?.name || 'Guruhlar', desc: 'Eng faol guruh', icon: Calendar, color: '#1b6b6b', path: '/groups' },
+                                { title: `${students.filter(s => s.balance < 0).length} ${t('attention_debtors')}`, desc: t('attention_debt_desc'), icon: Clock, color: '#ef4444', path: '/reports' },
+                                { title: `${leads.filter(l => l.status === 'Yangi').length} ${t('stat_new_leads').toLowerCase()}`, desc: t('attention_leads_desc'), icon: Target, color: '#f59e0b', path: '/leads' },
+                                { title: groups[0]?.name || t('stat_groups'), desc: t('attention_top_group'), icon: Calendar, color: '#1b6b6b', path: '/groups' },
                             ].map((item, i) => (
                                 <div
                                     key={i}

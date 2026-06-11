@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useCRM } from '../context/CRMContext';
+import { useLang } from '../context/LanguageContext';
 import { 
     Bus, Plus, Search, User, Phone, Trash2, Edit2, 
     AlertCircle, Users, X, UserMinus, Truck, Calendar, ChevronLeft, ChevronRight, 
@@ -14,9 +15,10 @@ const inp = "w-full px-4 py-3 bg-gray-50 dark:bg-gray-900/50 border border-gray-
 const lbl = "block text-[10px] font-extrabold uppercase tracking-widest text-gray-400 mb-2";
 
 export default function LogisticsHub() {
-    const { 
-        transports, students, users, routes, deliveryLogs, 
-        addTransport, updateTransport, deleteTransport, 
+    const { t } = useLang();
+    const {
+        transports, students, users, routes, deliveryLogs,
+        addTransport, updateTransport, deleteTransport,
         addRoute, updateRoute, deleteRoute,
         addDeliveryLog, fetchDeliveryLogs
     } = useCRM();
@@ -145,9 +147,9 @@ export default function LogisticsHub() {
                             <Navigation size={22} className="text-white" />
                         </div>
                         <div>
-                            <h1 className="text-lg font-black text-gray-900 dark:text-white uppercase tracking-tight">Logistika Markazi</h1>
+                            <h1 className="text-lg font-black text-gray-900 dark:text-white uppercase tracking-tight">{t('logistics_title')}</h1>
                             <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mt-0.5">
-                                Avtopark, marshrutlar va kunlik yetkazish nazorati
+                                {t('logistics_subtitle')}
                             </p>
                         </div>
                     </div>

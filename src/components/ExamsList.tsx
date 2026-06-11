@@ -1,12 +1,14 @@
 import React, { useState } from 'react';
 import { Search, Plus, X, Calendar, Clock, BookOpen, ScanLine, FileText } from 'lucide-react';
 import { useCRM } from '../context/CRMContext';
+import { useLang } from '../context/LanguageContext';
 import { useNavigate } from 'react-router-dom';
 import QuestionsList from './QuestionsList';
 import Scanner from './Scanner';
 
 export default function ExamsList() {
     const { exams, deleteExam } = useCRM();
+    const { t } = useLang();
     const navigate = useNavigate();
     
     const [search, setSearch] = useState('');
@@ -94,7 +96,7 @@ export default function ExamsList() {
                             <FileText size={20} />
                         </div>
                         <div>
-                            <h1 className="text-sm font-black text-gray-900 dark:text-white uppercase tracking-tight">Imtihonlar</h1>
+                            <h1 className="text-sm font-black text-gray-900 dark:text-white uppercase tracking-tight">{t('exams_title')}</h1>
                             <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mt-0.5">Jami imtihonlar ro'yxati</p>
                         </div>
                     </div>

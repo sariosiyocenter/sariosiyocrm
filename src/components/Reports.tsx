@@ -6,6 +6,7 @@ import {
 } from 'lucide-react';
 import { useLocation } from 'react-router-dom';
 import { useCRM } from '../context/CRMContext';
+import { useLang } from '../context/LanguageContext';
 
 import RoomSchedule from './RoomSchedule';
 
@@ -19,21 +20,22 @@ import StudentsGeneralReport from './reports/StudentsGeneralReport';
 import GraduatesReport from './reports/GraduatesReport';
 import CenterStatsReport from './reports/CenterStatsReport';
 
-const REPORT_TYPES = [
-    { id: 'payments', label: "To'lovlar hisoboti", icon: <CreditCard className="w-4 h-4 text-indigo-500" /> },
-    { id: 'students_payment', label: "O'quvchilar to'lovi", icon: <Users className="w-4 h-4 text-emerald-500" /> },
-    { id: 'room_occupancy', label: "Xonalar Bandligi", icon: <Calendar className="w-4 h-4 text-sky-500" /> },
-    { id: 'left_students', label: "Ketgan o'quvchilar hisoboti", icon: <UserMinus className="w-4 h-4 text-rose-500" /> },
-    { id: 'staff_attendance', label: "Xodimlar Davomati Hisoboti", icon: <BarChart3 className="w-4 h-4 text-blue-500" /> },
-    { id: 'bonuses', label: "O'quvchilar Bonuslari", icon: <TrendingUp className="w-4 h-4 text-amber-500" /> },
-    { id: 'leads', label: "Lidlar Hisoboti", icon: <Target className="w-4 h-4 text-purple-500" /> },
-    { id: 'students_general', label: "O'quvchilar Hisoboti", icon: <Users className="w-4 h-4 text-indigo-500" /> },
-    { id: 'graduates', label: "Bitiruvchilar", icon: <GraduationCap className="w-4 h-4 text-emerald-500" /> },
-    { id: 'stats', label: "Markaz Faoliyati Statistikasi", icon: <FileText className="w-4 h-4 text-gray-500" /> },
-];
-
 export default function Reports() {
     const { students, payments } = useCRM();
+    const { t } = useLang();
+    const REPORT_TYPES = [
+        { id: 'payments', label: t('rep_payments'), icon: <CreditCard className="w-4 h-4 text-indigo-500" /> },
+        { id: 'students_payment', label: t('rep_students_payment'), icon: <Users className="w-4 h-4 text-emerald-500" /> },
+        { id: 'room_occupancy', label: t('rep_room_occupancy'), icon: <Calendar className="w-4 h-4 text-sky-500" /> },
+        { id: 'left_students', label: t('rep_left_students'), icon: <UserMinus className="w-4 h-4 text-rose-500" /> },
+        { id: 'staff_attendance', label: t('rep_staff_attendance'), icon: <BarChart3 className="w-4 h-4 text-blue-500" /> },
+        { id: 'bonuses', label: t('rep_bonuses'), icon: <TrendingUp className="w-4 h-4 text-amber-500" /> },
+        { id: 'leads', label: t('rep_leads'), icon: <Target className="w-4 h-4 text-purple-500" /> },
+        { id: 'students_general', label: t('rep_students_general'), icon: <Users className="w-4 h-4 text-indigo-500" /> },
+        { id: 'graduates', label: t('rep_graduates'), icon: <GraduationCap className="w-4 h-4 text-emerald-500" /> },
+        { id: 'stats', label: t('rep_stats'), icon: <FileText className="w-4 h-4 text-gray-500" /> },
+    ];
+
     const [activeReport, setActiveReport] = useState<string | null>(null);
     const [selectedPreset, setSelectedPreset] = useState<'this_month' | 'last_30' | 'this_year' | 'all' | 'custom'>('this_month');
     const [startDate, setStartDate] = useState(() => {
@@ -88,7 +90,7 @@ export default function Reports() {
                     <div className="w-16 h-16 bg-gray-50 dark:bg-gray-900 border border-gray-100 dark:border-gray-750 rounded-2xl flex items-center justify-center text-gray-300 dark:text-gray-700 mb-6">
                         <FileText size={28} />
                     </div>
-                    <p className="text-[10px] font-extrabold text-gray-400 dark:text-gray-500 uppercase tracking-widest">Davom etish uchun yuqoridagi filtrlardan bittasini tanlang</p>
+                    <p className="text-[10px] font-extrabold text-gray-400 dark:text-gray-500 uppercase tracking-widest">{t('report_select_hint')}</p>
                 </div>
             );
         }
@@ -104,9 +106,9 @@ export default function Reports() {
                             <FileText size={22} className="text-white" />
                         </div>
                         <div>
-                            <h1 className="text-lg font-black text-gray-900 dark:text-white uppercase tracking-tight">Hisobotlar Tizimi</h1>
+                            <h1 className="text-lg font-black text-gray-900 dark:text-white uppercase tracking-tight">{t('reports_title')}</h1>
                             <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mt-0.5">
-                                Markaz statistikasi va ma'lumotlar tahlili
+                                {t('reports_subtitle')}
                             </p>
                         </div>
                     </div>
@@ -115,7 +117,7 @@ export default function Reports() {
                         {/* Presets */}
                         <div className="flex items-center gap-1 bg-gray-55 dark:bg-gray-900 p-1 rounded-xl border border-gray-100 dark:border-gray-800">
                           {['this_month', 'last_30', 'this_year', 'all'].map((type) => {
-                            const label = type === 'this_month' ? 'Shu oy' : type === 'last_30' ? '30 kun' : type === 'this_year' ? 'Shu yil' : 'Barchasi';
+                            const label = type === 'this_month' ? t('preset_this_month') : type === 'last_30' ? t('preset_30_days') : type === 'this_year' ? t('preset_this_year') : t('preset_all');
                             return (
                               <button 
                                 key={type}
@@ -141,7 +143,7 @@ export default function Reports() {
                             onChange={(e) => { setStartDate(e.target.value); setSelectedPreset('custom'); }}
                             className="bg-gray-55 dark:bg-gray-900 px-3 py-1.5 rounded-xl border border-gray-100 dark:border-gray-700 text-xs font-bold text-gray-800 dark:text-gray-200 outline-none focus:border-[#1b6b6b] w-32 cursor-pointer"
                           />
-                          <span className="text-gray-400 dark:text-gray-500 font-extrabold text-[9px] uppercase tracking-wider">gacha</span>
+                          <span className="text-gray-400 dark:text-gray-500 font-extrabold text-[9px] uppercase tracking-wider">{t('date_to')}</span>
                           <input
                             type="date"
                             value={endDate}

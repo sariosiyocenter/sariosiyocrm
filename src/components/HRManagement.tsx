@@ -5,6 +5,7 @@ import {
     GraduationCap, ExternalLink, Camera, Wrench, Eye, Sparkles
 } from 'lucide-react';
 import { useCRM } from '../context/CRMContext';
+import { useLang } from '../context/LanguageContext';
 import { useNavigate } from 'react-router-dom';
 import { compressImage } from '../lib/image';
 import PhotoCapture from './PhotoCapture';
@@ -46,6 +47,7 @@ const lbl = "block text-[10px] font-extrabold uppercase tracking-widest text-gra
 
 export default function HRManagement() {
     const { teachers, selectedSchoolId, user: currentUser, token } = useCRM();
+    const { t } = useLang();
     const navigate = useNavigate();
 
     const [users, setUsers]               = useState<any[]>([]);
@@ -179,9 +181,9 @@ export default function HRManagement() {
                             <Users2 size={22} className="text-white" />
                         </div>
                         <div>
-                            <h1 className="text-lg font-black text-gray-900 dark:text-white uppercase tracking-tight">HR Menejment</h1>
+                            <h1 className="text-lg font-black text-gray-900 dark:text-white uppercase tracking-tight">{t('hr_title')}</h1>
                             <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mt-0.5">
-                                Xodimlar hisobi va boshqaruvi
+                                {t('hr_subtitle')}
                             </p>
                         </div>
                     </div>

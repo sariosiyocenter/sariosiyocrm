@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { MoreHorizontal, Plus, Search, Filter, Phone, Calendar, ArrowRight, X, Sparkles, SlidersHorizontal, Trash2, UserPlus, GraduationCap, MapPin, Award, BookOpen, Clock, Building } from 'lucide-react';
 import { useCRM } from '../context/CRMContext';
+import { useLang } from '../context/LanguageContext';
 import { Lead } from '../types';
 
 const STAGES = [
@@ -16,6 +17,7 @@ const lbl = "block text-[10px] font-extrabold uppercase tracking-widest text-gra
 
 export default function Leads() {
   const { leads, courses, groups, updateLead, addLead, deleteLead, addStudent } = useCRM();
+  const { t } = useLang();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [showFilters, setShowFilters] = useState(false);
   const [newLead, setNewLead] = useState({ name: '', phone: '', course: '', source: 'Instagram' });
@@ -164,9 +166,9 @@ export default function Leads() {
               <Sparkles size={22} className="text-white" />
             </div>
             <div>
-              <h1 className="text-lg font-black text-gray-900 dark:text-white uppercase tracking-tight font-display">Lidlar</h1>
+              <h1 className="text-lg font-black text-gray-900 dark:text-white uppercase tracking-tight font-display">{t('leads_title')}</h1>
               <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mt-0.5">
-                Potensial mijozlar va sotuv voronkasi • Jami {leads.length} ta lid
+                {t('leads_subtitle')} • {leads.length}
               </p>
             </div>
           </div>

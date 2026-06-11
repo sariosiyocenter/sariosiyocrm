@@ -5,6 +5,7 @@ import {
     Instagram, Send, Shield, ToggleLeft, ToggleRight, Pencil
 } from 'lucide-react';
 import { useCRM, THEMES } from '../context/CRMContext';
+import { useLang } from '../context/LanguageContext';
 
 type SectionId = 'profil' | 'xonalar' | 'filiallar' | 'ruxsatlar' | 'dizayn';
 
@@ -41,6 +42,7 @@ export default function Settings() {
         addRoom, deleteRoom, addSchool, deleteSchool,
         themeColor, setThemeColor } = useCRM();
     const { user: currentUser, token } = useCRM();
+    const { t } = useLang();
 
     const [activeSection, setActiveSection] = useState<SectionId>('profil');
     const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({ tashkilot: true, ofis: false, ceo: false });
@@ -333,7 +335,7 @@ export default function Settings() {
                             <Building2 size={22} className="text-white" />
                         </div>
                         <div>
-                            <h1 className="text-lg font-black text-gray-900 dark:text-white uppercase tracking-tight">Tizim Sozlamalari</h1>
+                            <h1 className="text-lg font-black text-gray-900 dark:text-white uppercase tracking-tight">{t('settings_title')}</h1>
                             <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mt-0.5">
                                 Markaz profili, filiallar, resurslar va ruxsatlar sozlamalari
                             </p>

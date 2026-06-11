@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Search, Plus, FileSpreadsheet, MoreVertical, X, Filter, Camera, Sparkles, Image as ImageIcon, MapPin, SlidersHorizontal, GraduationCap, Link as LinkIcon, QrCode } from 'lucide-react';
 import { useCRM } from '../context/CRMContext';
+import { useLang } from '../context/LanguageContext';
 import { useNavigate } from 'react-router-dom';
 import PhotoCapture from './PhotoCapture';
 import MapPicker from './MapPicker';
@@ -12,6 +13,7 @@ const lbl = "block text-[10px] font-extrabold uppercase tracking-widest text-gra
 
 export default function Students() {
     const { students, groups, teachers, transports, addStudent, deleteStudent, importStudents, selectedSchoolId } = useCRM();
+    const { t } = useLang();
     const navigate = useNavigate();
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [isAdding, setIsAdding] = useState(false);
@@ -346,7 +348,7 @@ export default function Students() {
                             <GraduationCap size={22} className="text-white" />
                         </div>
                         <div>
-                            <h1 className="text-lg font-black text-gray-900 dark:text-white uppercase tracking-tight">O'quvchilar</h1>
+                            <h1 className="text-lg font-black text-gray-900 dark:text-white uppercase tracking-tight">{t('students_title')}</h1>
                             <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mt-0.5">
                                 Jami {students.length} ta o'quvchi • Topildi: {filteredStudents.length} ta
                             </p>

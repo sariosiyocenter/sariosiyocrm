@@ -6,6 +6,7 @@ import {
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useCRM } from '../context/CRMContext';
+import { useLang } from '../context/LanguageContext';
 import { Payment, Expense } from '../types';
 
 const inp = "w-full px-4 py-3 bg-gray-50 dark:bg-gray-900/50 border border-gray-100 dark:border-gray-700 rounded-2xl text-xs font-bold text-gray-900 dark:text-white focus:border-[#1b6b6b] focus:ring-4 focus:ring-[#1b6b6b]/10 outline-none transition-all";
@@ -13,6 +14,7 @@ const lbl = "block text-[10px] font-extrabold uppercase tracking-widest text-gra
 
 export default function Finance() {
     const { students, payments, expenses, addPayment, addExpense, deleteExpense } = useCRM();
+    const { t } = useLang();
     const navigate = useNavigate();
     const [activeTab, setActiveTab] = useState<'payments' | 'expenses'>('payments');
     const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
@@ -31,22 +33,22 @@ export default function Finance() {
     const activeBalance = students.filter(s => s.balance > 0).reduce((sum, s) => sum + s.balance, 0);
 
     const stats = [
-        { label: 'Tushumlar', value: totalRevenue, icon: <DollarSign size={20} />, color: 'emerald' },
-        { label: 'Chiqimlar', value: totalExpenditure, icon: <TrendingDown size={20} />, color: 'rose' },
-        { label: 'Sof Foyda', value: profit, icon: <TrendingUp size={20} />, color: 'teal' },
-        { label: "O'quvchilar balansi", value: activeBalance, icon: <Wallet size={20} />, color: 'amber' },
+        { label: t('stat_revenue'), value: totalRevenue, icon: <DollarSign size={20} />, color: 'emerald' },
+        { label: t('stat_expenses'), value: totalExpenditure, icon: <TrendingDown size={20} />, color: 'rose' },
+        { label: t('stat_profit'), value: profit, icon: <TrendingUp size={20} />, color: 'teal' },
+        { label: t('stat_balance'), value: activeBalance, icon: <Wallet size={20} />, color: 'amber' },
     ];
 
     const reports = [
-        { id: 'payments', label: "To'lovlar hisoboti", icon: <DollarSign size={14} className="text-emerald-500" /> },
-        { id: 'students_payment', label: "O'quvchilar to'lovi", icon: <CreditCard size={14} className="text-blue-500" /> },
-        { id: 'left_students', label: "Ketgan o'quvchilar", icon: <UserMinus size={14} className="text-rose-500" /> },
-        { id: 'staff_attendance', label: "Davomat hisoboti", icon: <ClipboardList size={14} className="text-teal-500" /> },
-        { id: 'bonuses', label: "Bonuslar hisoboti", icon: <Award size={14} className="text-amber-500" /> },
-        { id: 'leads', label: "Lidlar hisoboti", icon: <Target size={14} className="text-indigo-500" /> },
-        { id: 'students_general', label: "Umumiy hisobotlar", icon: <BarChart3 size={14} className="text-violet-500" /> },
-        { id: 'graduates', label: "Bitiruvchilar", icon: <GraduationCap size={14} className="text-pink-500" /> },
-        { id: 'stats', label: "Faoliyat statistikasi", icon: <TrendingUp size={14} className="text-cyan-500" /> }
+        { id: 'payments', label: t('rep_payments'), icon: <DollarSign size={14} className="text-emerald-500" /> },
+        { id: 'students_payment', label: t('rep_students_payment'), icon: <CreditCard size={14} className="text-blue-500" /> },
+        { id: 'left_students', label: t('rep_left_students'), icon: <UserMinus size={14} className="text-rose-500" /> },
+        { id: 'staff_attendance', label: t('rep_staff_attendance'), icon: <ClipboardList size={14} className="text-teal-500" /> },
+        { id: 'bonuses', label: t('rep_bonuses'), icon: <Award size={14} className="text-amber-500" /> },
+        { id: 'leads', label: t('rep_leads'), icon: <Target size={14} className="text-indigo-500" /> },
+        { id: 'students_general', label: t('rep_students_general'), icon: <BarChart3 size={14} className="text-violet-500" /> },
+        { id: 'graduates', label: t('rep_graduates'), icon: <GraduationCap size={14} className="text-pink-500" /> },
+        { id: 'stats', label: t('rep_stats'), icon: <TrendingUp size={14} className="text-cyan-500" /> }
     ];
 
     return (
@@ -59,9 +61,9 @@ export default function Finance() {
                             <DollarSign size={22} className="text-white" />
                         </div>
                         <div>
-                            <h1 className="text-lg font-black text-gray-900 dark:text-white uppercase tracking-tight">Moliya</h1>
+                            <h1 className="text-lg font-black text-gray-900 dark:text-white uppercase tracking-tight">{t('finance_title')}</h1>
                             <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mt-0.5">
-                                Moliyaviy oqimlar, kirim va chiqim operatsiyalari
+                                {t('stat_revenue')} & {t('stat_expenses')}
                             </p>
                         </div>
                     </div>
@@ -70,13 +72,13 @@ export default function Finance() {
                             onClick={() => setIsPaymentModalOpen(true)}
                             className="flex items-center gap-2 px-4 py-2.5 bg-[#1b6b6b] hover:bg-[#155252] text-white rounded-xl text-xs font-extrabold uppercase tracking-widest shadow-lg shadow-[#1b6b6b]/20 transition-all cursor-pointer"
                         >
-                            <Plus size={14} /> To'lov qo'shish
+                            <Plus size={14} /> {t('add_payment')}
                         </button>
                         <button
                             onClick={() => setIsExpenseModalOpen(true)}
                             className="flex items-center gap-2 px-4 py-2.5 bg-rose-600 hover:bg-rose-700 text-white rounded-xl text-xs font-extrabold uppercase tracking-widest shadow-lg shadow-rose-600/20 transition-all cursor-pointer"
                         >
-                            <Plus size={14} /> Xarajat qo'shish
+                            <Plus size={14} /> {t('add_expense')}
                         </button>
                     </div>
                 </div>
@@ -110,13 +112,13 @@ export default function Finance() {
                 <div className="lg:col-span-2 space-y-6">
                     {/* Tab Navigation */}
                     <div className="flex items-center gap-2 bg-gray-50 dark:bg-gray-900 p-1.5 rounded-xl border border-gray-100 dark:border-gray-700/50 w-fit">
-                        <button onClick={() => setActiveTab('payments')} className={`px-5 py-2 rounded-lg text-[10px] font-extrabold uppercase tracking-widest transition-all cursor-pointer ${activeTab === 'payments' ? 'bg-[#1b6b6b] text-white shadow' : 'text-gray-400 hover:text-gray-600'}`}>To'lovlar</button>
-                        <button onClick={() => setActiveTab('expenses')} className={`px-5 py-2 rounded-lg text-[10px] font-extrabold uppercase tracking-widest transition-all cursor-pointer ${activeTab === 'expenses' ? 'bg-[#1b6b6b] text-white shadow' : 'text-gray-400 hover:text-gray-600'}`}>Xarajatlar</button>
+                        <button onClick={() => setActiveTab('payments')} className={`px-5 py-2 rounded-lg text-[10px] font-extrabold uppercase tracking-widest transition-all cursor-pointer ${activeTab === 'payments' ? 'bg-[#1b6b6b] text-white shadow' : 'text-gray-400 hover:text-gray-600'}`}>{t('payments_tab')}</button>
+                        <button onClick={() => setActiveTab('expenses')} className={`px-5 py-2 rounded-lg text-[10px] font-extrabold uppercase tracking-widest transition-all cursor-pointer ${activeTab === 'expenses' ? 'bg-[#1b6b6b] text-white shadow' : 'text-gray-400 hover:text-gray-600'}`}>{t('expenses_tab')}</button>
                     </div>
 
                     <div className="bg-white dark:bg-gray-800 rounded-3xl border border-gray-100 dark:border-gray-700/50 shadow-sm p-6">
                         <h3 className="text-xs font-black text-gray-900 dark:text-white uppercase tracking-wider mb-4">
-                            {activeTab === 'payments' ? "Oxirgi tushumlar ro'yxati" : "Oxirgi xarajatlar ro'yxati"}
+                            {activeTab === 'payments' ? t('latest_payments') : t('latest_expenses')}
                         </h3>
                         {activeTab === 'payments' ? (
                             <div className="space-y-2">
@@ -223,11 +225,11 @@ export default function Finance() {
                             <div className="flex gap-3 pt-2">
                                 <button type="button" onClick={() => setIsPaymentModalOpen(false)}
                                     className="flex-1 py-3 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-white text-xs font-extrabold uppercase tracking-widest rounded-2xl transition-all cursor-pointer hover:bg-gray-200 dark:hover:bg-gray-600">
-                                    Bekor
+                                    {t('cancel')}
                                 </button>
                                 <button type="submit"
                                     className="flex-1 py-3 bg-[#1b6b6b] hover:bg-[#155252] text-white text-xs font-extrabold uppercase tracking-widest rounded-2xl shadow-lg shadow-[#1b6b6b]/20 transition-all cursor-pointer">
-                                    Saqlash
+                                    {t('save')}
                                 </button>
                             </div>
                         </form>
@@ -269,11 +271,11 @@ export default function Finance() {
                             <div className="flex gap-3 pt-2">
                                 <button type="button" onClick={() => setIsExpenseModalOpen(false)}
                                     className="flex-1 py-3 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-white text-xs font-extrabold uppercase tracking-widest rounded-2xl transition-all cursor-pointer hover:bg-gray-200 dark:hover:bg-gray-600">
-                                    Bekor
+                                    {t('cancel')}
                                 </button>
                                 <button type="submit"
                                     className="flex-1 py-3 bg-rose-600 hover:bg-rose-700 text-white text-xs font-extrabold uppercase tracking-widest rounded-2xl shadow-lg shadow-rose-600/20 transition-all cursor-pointer">
-                                    Saqlash
+                                    {t('save')}
                                 </button>
                             </div>
                         </form>
