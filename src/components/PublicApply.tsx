@@ -183,7 +183,7 @@ export default function PublicApply() {
                             </div>
                             <h2 className="text-sm font-black text-gray-900 dark:text-white uppercase tracking-wider mb-2">Arizangiz qabul qilindi!</h2>
                             <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest leading-relaxed">
-                                Tez orada administratorlarimiz siz bilan bog'lanishadi va guruhga qo'shishadi.
+                                Tez orada administratorlarimiz siz bilan bog'lanishadi va kursga qo'shishadi.
                             </p>
                         </div>
                     ) : (

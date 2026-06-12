@@ -82,7 +82,7 @@ export default function LeftStudentsReport() {
                 <DataTable 
                     columns={[
                         { key: 'name', label: "O'quvchi" },
-                        { key: 'group', label: "Guruh" },
+                        { key: 'group', label: "Kurs" },
                         { key: 'date', label: "Ketgan sana" },
                         { key: 'reason', label: "Sabab", render: r => <span className="text-gray-500 italic">{r.reason}</span> }
                     ]}

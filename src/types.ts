@@ -72,6 +72,15 @@ export interface Lead {
     status: 'Yangi' | 'Bog\'lanilmadi' | 'O\'ylayapti' | 'Kelishdi' | 'To\'lov qildi';
     createdAt: string;
     schoolId: number;
+    birthDate?: string;
+    studentSchool?: string;
+    fatherName?: string;
+    fatherPhone?: string;
+    motherName?: string;
+    motherPhone?: string;
+    address?: string;
+    notes?: string;
+    photo?: string;
 }
 
 export interface Payment {

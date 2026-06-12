@@ -51,7 +51,7 @@ export default function GraduatesReport() {
                 <StatCard label="Jami bitiruvchilar" value={graduates.length} icon={<GraduationCap size={16} />} color="emerald" />
                 <StatCard label="Bu yil" value={thisYearCount} icon={<Award size={16} />} color="sky" />
                 <StatCard label="O'rtacha ball" value={graduates.length > 0 ? (graduates.reduce((s, g) => s + (g.rating || 0), 0) / graduates.length).toFixed(1) : '0'} icon={<TrendingUp size={16} />} color="amber" />
-                <StatCard label="Aktiv guruhlar" value={groups.length} icon={<Briefcase size={16} />} color="violet" />
+                <StatCard label="Aktiv kurslar" value={groups.length} icon={<Briefcase size={16} />} color="violet" />
             </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">

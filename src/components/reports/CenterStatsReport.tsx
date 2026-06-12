@@ -126,7 +126,7 @@ export default function CenterStatsReport() {
                     <ReportCard className="flex flex-col items-center justify-center text-center">
                         <Activity className="text-violet-500 mb-2" size={24} />
                         <p className="text-2xl font-black text-gray-900 dark:text-white tabular-nums">{groups.length}</p>
-                        <p className="text-[9px] font-bold text-gray-400 uppercase tracking-widest">Guruhlar</p>
+                        <p className="text-[9px] font-bold text-gray-400 uppercase tracking-widest">Kurslar</p>
                     </ReportCard>
                     <ReportCard className="flex flex-col items-center justify-center text-center">
                         <Target className="text-amber-500 mb-2" size={24} />

@@ -16,8 +16,8 @@ const LandingPage     = lazy(() => import('./components/LandingPage'));
 const Dashboard       = lazy(() => import('./components/Dashboard'));
 const Teachers        = lazy(() => import('./components/Teachers'));
 const TeacherDetails  = lazy(() => import('./components/TeacherDetails'));
-const Groups          = lazy(() => import('./components/Groups'));
-const GroupDetails    = lazy(() => import('./components/GroupDetails'));
+const Courses          = lazy(() => import('./components/Courses'));
+const CourseDetails    = lazy(() => import('./components/CourseDetails'));
 const Students        = lazy(() => import('./components/Students'));
 const StudentDetails  = lazy(() => import('./components/StudentDetails'));
 const Leads           = lazy(() => import('./components/Leads'));
@@ -103,8 +103,8 @@ export default function App() {
             <Route path="/"                     element={<Dashboard />} />
             <Route path="/leads"                element={<Leads />} />
             <Route path="/teachers/:id"         element={isAdminOrManager ? <TeacherDetails /> : <Navigate to="/" replace />} />
-            <Route path="/groups"               element={<Groups />} />
-            <Route path="/groups/:id"           element={<GroupDetails />} />
+            <Route path="/courses"               element={<Courses />} />
+            <Route path="/courses/:id"           element={<CourseDetails />} />
             <Route path="/students"             element={<Students />} />
             <Route path="/students/:id"         element={<StudentDetails />} />
             <Route path="/hr"                   element={isAdminOrManager ? <HRManagement /> : <Navigate to="/" replace />} />

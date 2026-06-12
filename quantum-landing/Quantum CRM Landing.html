@@ -1,0 +1,310 @@
+<!doctype html>
+<html lang="uz">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Quantum CRM — O'quv markazlari uchun AI ekotizim</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet" />
+
+<script src="https://cdn.tailwindcss.com"></script>
+<script>
+  tailwind.config = {
+    darkMode: 'class',
+    theme: {
+      extend: {
+        fontFamily: {
+          sans: ['Manrope', 'ui-sans-serif', 'system-ui'],
+          display: ['"Space Grotesk"', 'Manrope', 'ui-sans-serif'],
+          mono: ['"JetBrains Mono"', 'ui-monospace', 'monospace'],
+        },
+      }
+    }
+  }
+</script>
+
+<style>
+  :root {
+    --bg: #07090f;
+    --bg-2: #0b0f19;
+    --surface: rgba(255,255,255,0.03);
+    --surface-2: rgba(255,255,255,0.06);
+    --border: rgba(255,255,255,0.08);
+    --border-strong: rgba(255,255,255,0.14);
+    --text: #e6e9f2;
+    --text-dim: #9aa3b8;
+    --text-faint: #6b7388;
+    --accent: #6366f1;
+    --accent-2: #a855f7;
+    --accent-soft: rgba(99,102,241,0.18);
+    --glow: 24;
+    --blur: 18;
+  }
+  html.light {
+    --bg: #f5f6fb;
+    --bg-2: #ffffff;
+    --surface: rgba(15,23,42,0.03);
+    --surface-2: rgba(15,23,42,0.05);
+    --border: rgba(15,23,42,0.08);
+    --border-strong: rgba(15,23,42,0.14);
+    --text: #0f172a;
+    --text-dim: #475569;
+    --text-faint: #94a3b8;
+  }
+
+  html, body { background: var(--bg); color: var(--text); }
+  body {
+    font-family: 'Manrope', ui-sans-serif, system-ui;
+    -webkit-font-smoothing: antialiased;
+    overflow-x: hidden;
+  }
+  .font-display { font-family: 'Space Grotesk', 'Manrope', sans-serif; letter-spacing: -0.02em; }
+  .font-mono { font-family: 'JetBrains Mono', ui-monospace, monospace; }
+
+  /* Aurora mesh background */
+  .aurora {
+    position: fixed; inset: 0; z-index: 0; pointer-events: none;
+    overflow: hidden;
+  }
+  .aurora::before, .aurora::after {
+    content: ''; position: absolute; border-radius: 50%;
+    filter: blur(80px); opacity: calc(var(--glow) / 100);
+    will-change: transform;
+  }
+  .aurora::before {
+    width: 60vw; height: 60vw; left: -10vw; top: -15vw;
+    background: radial-gradient(circle, var(--accent) 0%, transparent 60%);
+    animation: drift1 28s ease-in-out infinite;
+  }
+  .aurora::after {
+    width: 55vw; height: 55vw; right: -10vw; top: 20vh;
+    background: radial-gradient(circle, var(--accent-2) 0%, transparent 60%);
+    animation: drift2 32s ease-in-out infinite;
+  }
+  .aurora-3 {
+    position: absolute; width: 45vw; height: 45vw;
+    left: 30vw; top: 50vh;
+    border-radius: 50%;
+    background: radial-gradient(circle, var(--accent) 0%, transparent 60%);
+    filter: blur(90px); opacity: calc(var(--glow) / 140);
+    animation: drift3 36s ease-in-out infinite;
+  }
+  html.light .aurora::before, html.light .aurora::after, html.light .aurora-3 {
+    opacity: calc(var(--glow) / 220);
+  }
+
+  @keyframes drift1 {
+    0%, 100% { transform: translate(0,0) scale(1); }
+    33% { transform: translate(20vw, 15vh) scale(1.15); }
+    66% { transform: translate(-10vw, 25vh) scale(0.9); }
+  }
+  @keyframes drift2 {
+    0%, 100% { transform: translate(0,0) scale(1); }
+    33% { transform: translate(-15vw, 10vh) scale(0.85); }
+    66% { transform: translate(10vw, -10vh) scale(1.2); }
+  }
+  @keyframes drift3 {
+    0%, 100% { transform: translate(0,0) scale(1); }
+    50% { transform: translate(-20vw, -30vh) scale(1.1); }
+  }
+
+  /* Grid overlay */
+  .grid-overlay {
+    position: fixed; inset: 0; z-index: 1; pointer-events: none;
+    background-image:
+      linear-gradient(to right, var(--border) 1px, transparent 1px),
+      linear-gradient(to bottom, var(--border) 1px, transparent 1px);
+    background-size: 64px 64px;
+    mask-image: radial-gradient(ellipse at center top, black 0%, transparent 70%);
+    -webkit-mask-image: radial-gradient(ellipse at center top, black 0%, transparent 70%);
+    opacity: 0.6;
+  }
+
+  /* Cursor glow */
+  .cursor-glow {
+    position: fixed; pointer-events: none; z-index: 2;
+    width: 480px; height: 480px; border-radius: 50%;
+    background: radial-gradient(circle, var(--accent) 0%, transparent 60%);
+    opacity: 0.10; filter: blur(40px);
+    transform: translate(-50%, -50%);
+    transition: opacity .4s;
+    mix-blend-mode: screen;
+  }
+  html.light .cursor-glow { opacity: 0.08; mix-blend-mode: multiply; }
+
+  /* Glass surface */
+  .glass {
+    background: var(--surface);
+    backdrop-filter: blur(calc(var(--blur) * 1px)) saturate(150%);
+    -webkit-backdrop-filter: blur(calc(var(--blur) * 1px)) saturate(150%);
+    border: 1px solid var(--border);
+  }
+  .glass-strong {
+    background: var(--surface-2);
+    backdrop-filter: blur(calc(var(--blur) * 1.4px)) saturate(160%);
+    -webkit-backdrop-filter: blur(calc(var(--blur) * 1.4px)) saturate(160%);
+    border: 1px solid var(--border-strong);
+  }
+
+  /* Neon button */
+  .btn-primary {
+    background: linear-gradient(135deg, var(--accent) 0%, var(--accent-2) 100%);
+    color: white; font-weight: 600;
+    box-shadow:
+      0 0 0 1px rgba(255,255,255,0.1) inset,
+      0 calc(var(--glow) * 0.5px) calc(var(--glow) * 1.5px) calc(var(--accent-soft));
+    transition: transform .2s, box-shadow .3s;
+  }
+  .btn-primary:hover { transform: translateY(-1px); }
+  .btn-secondary {
+    background: var(--surface-2); color: var(--text);
+    border: 1px solid var(--border-strong);
+    font-weight: 500;
+    transition: all .2s;
+  }
+  .btn-secondary:hover { background: var(--surface); border-color: var(--accent); }
+
+  /* Section headings */
+  .gradient-text {
+    background: linear-gradient(135deg, var(--text) 0%, var(--accent-2) 50%, var(--accent) 100%);
+    -webkit-background-clip: text; background-clip: text;
+    color: transparent;
+  }
+  html.light .gradient-text {
+    background: linear-gradient(135deg, #0f172a 0%, var(--accent) 60%, var(--accent-2) 100%);
+    -webkit-background-clip: text; background-clip: text; color: transparent;
+  }
+
+  /* Neon glow */
+  .neon-ring {
+    box-shadow:
+      0 0 0 1px var(--accent-soft),
+      0 0 calc(var(--glow) * 1.5px) calc(var(--accent-soft));
+  }
+
+  /* Animated chip */
+  .chip {
+    display: inline-flex; align-items: center; gap: 0.5rem;
+    padding: 0.4rem 0.85rem; border-radius: 999px;
+    font-size: 0.8rem; font-weight: 500;
+    background: var(--surface-2);
+    border: 1px solid var(--border-strong);
+    backdrop-filter: blur(12px);
+  }
+
+  /* Marquee */
+  .marquee { mask-image: linear-gradient(90deg, transparent, black 10%, black 90%, transparent); }
+  @keyframes scroll-x { to { transform: translateX(-50%); } }
+  .marquee-track { animation: scroll-x 40s linear infinite; }
+
+  /* Counter pulse */
+  @keyframes pulse-soft {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.5; }
+  }
+  .pulse-soft { animation: pulse-soft 2s ease-in-out infinite; }
+
+  /* Bar chart grow */
+  @keyframes bar-grow { from { transform: scaleY(0); } to { transform: scaleY(1); } }
+
+  /* OMR animations */
+  @keyframes omr-scan {
+    0% { transform: translateY(-100%); }
+    50% { transform: translateY(100%); }
+    100% { transform: translateY(-100%); }
+  }
+  @keyframes fade-in-up {
+    from { opacity: 0; transform: translateY(20px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  /* Float */
+  @keyframes float-y {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-8px); }
+  }
+  .float-y { animation: float-y 4s ease-in-out infinite; }
+
+  /* Tab content fade */
+  .tab-enter { animation: fade-in-up .4s ease-out; }
+
+  /* Pricing highlight pulse ring */
+  @keyframes border-pulse {
+    0%, 100% { box-shadow: 0 0 0 1px var(--accent), 0 0 60px -10px var(--accent); }
+    50% { box-shadow: 0 0 0 1px var(--accent-2), 0 0 80px -10px var(--accent-2); }
+  }
+  .pulse-border { animation: border-pulse 4s ease-in-out infinite; }
+
+  /* Logo placeholder */
+  .logo-ph {
+    height: 28px; padding: 0 16px; display: inline-flex; align-items: center;
+    color: var(--text-dim); font-weight: 600; letter-spacing: 0.04em;
+    font-size: 0.85rem; white-space: nowrap;
+  }
+
+  /* Selection */
+  ::selection { background: var(--accent-soft); color: var(--text); }
+
+  /* Scrollbar */
+  ::-webkit-scrollbar { width: 10px; height: 10px; }
+  ::-webkit-scrollbar-track { background: var(--bg); }
+  ::-webkit-scrollbar-thumb { background: var(--border-strong); border-radius: 10px; }
+  ::-webkit-scrollbar-thumb:hover { background: var(--accent); }
+
+  /* Avoid layout shift on hover */
+  button, a { transition: color .15s, background .15s, transform .15s; }
+
+  /* Hide noscript */
+  #root:empty + .loading { display: flex; }
+  .loading { display: none; }
+</style>
+</head>
+<body class="font-sans">
+  <div class="aurora">
+    <div class="aurora-3"></div>
+  </div>
+  <div class="grid-overlay"></div>
+  <div id="cursor-glow" class="cursor-glow"></div>
+
+  <div id="root"></div>
+
+  <script>
+    // Tweak defaults — host rewrites this JSON block on disk when the user
+    // changes a tweak. Read with useTweaks().
+    window.TWEAK_DEFAULTS = /*EDITMODE-BEGIN*/{
+      "accent": "indigo",
+      "glow": 32,
+      "blur": 18
+    }/*EDITMODE-END*/;
+
+    // Mouse glow
+    (() => {
+      const el = document.getElementById('cursor-glow');
+      let x = innerWidth / 2, y = innerHeight / 2;
+      let tx = x, ty = y;
+      addEventListener('mousemove', (e) => { tx = e.clientX; ty = e.clientY; });
+      function tick() {
+        x += (tx - x) * 0.12; y += (ty - y) * 0.12;
+        el.style.left = x + 'px'; el.style.top = y + 'px';
+        requestAnimationFrame(tick);
+      }
+      tick();
+    })();
+  </script>
+
+  <script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+
+  <script type="text/babel" src="tweaks-panel.jsx"></script>
+  <script type="text/babel" src="i18n.jsx"></script>
+  <script type="text/babel" src="dashboard.jsx"></script>
+  <script type="text/babel" src="tabs.jsx"></script>
+  <script type="text/babel" src="omr.jsx"></script>
+  <script type="text/babel" src="sections.jsx"></script>
+  <script type="text/babel" src="app.jsx"></script>
+</body>
+</html>

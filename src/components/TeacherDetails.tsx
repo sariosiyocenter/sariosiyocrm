@@ -143,7 +143,7 @@ export default function TeacherDetails() {
                                             color="rose"
                                         />
                                         <StatCardV3 
-                                            label="Guruh tushumi" 
+                                            label="Kurslar tushumi" 
                                             value={`${(kpiDetails?.groupRevenue || 0).toLocaleString()}`}
                                             subValue="UZS Miqdor"
                                             icon={<Wallet className="text-[#1b6b6b]" size={16} />} 
@@ -159,14 +159,14 @@ export default function TeacherDetails() {
                                     </div>
 
                                     <div>
-                                        <div className="flex items-center justify-between mb-4 pb-2 border-b border-gray-50 dark:border-gray-700/50">
-                                            <span className="text-[9px] font-black text-gray-400 uppercase tracking-widest">Biriktirilgan Guruhlar</span>
+                                        <div className="flex items-center justify-between mb-4 pb-2 border-b border-gray-55 dark:border-gray-700/50">
+                                            <span className="text-[9px] font-black text-gray-400 uppercase tracking-widest">Biriktirilgan Kurslar</span>
                                             <span className="text-[9px] font-extrabold text-[#1b6b6b] uppercase tracking-widest bg-[#1b6b6b]/5 px-2.5 py-0.5 rounded border border-[#1b6b6b]/10">Jami: {teacherGroups.length} ta</span>
                                         </div>
                                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                             {teacherGroups.map(group => (
-                                                <div key={group.id} onClick={() => navigate(`/groups/${group.id}`)} 
-                                                    className="group bg-gray-50/50 dark:bg-gray-900/40 p-5 rounded-2xl border border-transparent hover:border-gray-100 dark:hover:border-gray-700/50 transition-all cursor-pointer flex items-center justify-between">
+                                                <div key={group.id} onClick={() => navigate(`/courses/${group.id}`)} 
+                                                    className="group bg-gray-55/50 dark:bg-gray-900/40 p-5 rounded-2xl border border-transparent hover:border-gray-100 dark:hover:border-gray-700/50 transition-all cursor-pointer flex items-center justify-between">
                                                     <div className="space-y-4 w-full">
                                                         <div className="flex items-center gap-3">
                                                             <div className="w-10 h-10 rounded-xl bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700/50 flex items-center justify-center text-[#1b6b6b] group-hover:bg-[#1b6b6b] group-hover:text-white transition-all shadow-sm">
@@ -192,7 +192,7 @@ export default function TeacherDetails() {
                                                 </div>
                                             ))}
                                             {teacherGroups.length === 0 && (
-                                                <p className="col-span-2 text-center py-12 text-[10px] text-gray-400 font-bold uppercase tracking-widest">Guruhlar mavjud emas</p>
+                                                <p className="col-span-2 text-center py-12 text-[10px] text-gray-400 font-bold uppercase tracking-widest">Kurslar mavjud emas</p>
                                             )}
                                         </div>
                                     </div>
@@ -219,7 +219,7 @@ export default function TeacherDetails() {
                                                         <span className="text-[9px] font-black text-gray-400 uppercase tracking-widest block">KPI TAFSILOTLARI</span>
                                                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                                             <div className="bg-gray-55 dark:bg-gray-900/30 p-4 rounded-xl border border-gray-100 dark:border-gray-700/50">
-                                                                <span className="text-[8px] font-black text-gray-400 block mb-1 uppercase tracking-widest">Guruhlar tushumi</span>
+                                                                <span className="text-[8px] font-black text-gray-400 block mb-1 uppercase tracking-widest">Kurslar tushumi</span>
                                                                 <span className="text-sm font-black text-gray-900 dark:text-white tracking-tight tabular-nums">{kpiDetails.groupRevenue.toLocaleString()} UZS</span>
                                                             </div>
                                                             <div className="bg-gray-55 dark:bg-gray-900/30 p-4 rounded-xl border border-gray-100 dark:border-gray-700/50">

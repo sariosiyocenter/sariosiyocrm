@@ -30,7 +30,7 @@ export default function Layout({ children, onLogout }: LayoutProps) {
   const baseItems = [
     { label: t('nav_dashboard'), icon: LayoutDashboard, path: '/' },
     { label: t('nav_leads'),     icon: Target,          path: '/leads' },
-    { label: t('nav_groups'),    icon: Users,           path: '/groups' },
+    { label: t('nav_groups'),    icon: Users,           path: '/courses' },
     { label: t('nav_students'),  icon: User,            path: '/students' },
     { label: t('nav_finance'),   icon: Wallet,          path: '/finance' },
     { label: t('nav_logistics'), icon: Navigation,      path: '/logistics' },
@@ -171,9 +171,9 @@ export default function Layout({ children, onLogout }: LayoutProps) {
                       )}
                       {results.groups.length > 0 && (
                         <div className="p-2">
-                          <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider px-3 py-2">Guruhlar</p>
+                          <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider px-3 py-2">{t('stat_groups')}</p>
                           {results.groups.map(g => (
-                            <div key={g.id} onClick={() => handleResultClick(`/groups/${g.id}`)} className="flex items-center gap-3 px-3 py-2.5 hover:bg-teal-50 dark:hover:bg-teal-950/40 rounded-lg cursor-pointer transition-colors">
+                            <div key={g.id} onClick={() => handleResultClick(`/courses/${g.id}`)} className="flex items-center gap-3 px-3 py-2.5 hover:bg-teal-50 dark:hover:bg-teal-950/40 rounded-lg cursor-pointer transition-colors">
                               <div className="w-8 h-8 rounded-lg bg-teal-100 dark:bg-teal-900/40 text-teal-600 dark:text-teal-400 flex items-center justify-center shrink-0"><Users size={16}/></div>
                               <div>
                                 <p className="text-sm font-medium text-slate-800 dark:text-white">{g.name}</p>

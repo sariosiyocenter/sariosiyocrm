@@ -91,7 +91,7 @@ export default function Dashboard() {
 
     const stats = [
         { label: t('stat_active_students'), value: students.filter(s => s.status === 'Faol').length, icon: GraduationCap, accent: '#1b6b6b', path: '/students' },
-        { label: t('stat_groups'), value: groups.length, icon: Users, accent: '#6366f1', path: '/groups' },
+        { label: t('stat_groups'), value: groups.length, icon: Users, accent: '#6366f1', path: '/courses' },
         { label: t('stat_teachers'), value: teachers.filter(t => t.status === 'Faol').length, icon: BookOpen, accent: '#f59e0b', path: '/teachers' },
         { label: t('stat_new_leads'), value: leads.filter(l => l.status === 'Yangi').length, icon: Target, accent: '#ec4899', path: '/leads' },
     ];
@@ -220,7 +220,7 @@ export default function Dashboard() {
                             {[
                                 { title: `${students.filter(s => s.balance < 0).length} ${t('attention_debtors')}`, desc: t('attention_debt_desc'), icon: Clock, color: '#ef4444', path: '/reports' },
                                 { title: `${leads.filter(l => l.status === 'Yangi').length} ${t('stat_new_leads').toLowerCase()}`, desc: t('attention_leads_desc'), icon: Target, color: '#f59e0b', path: '/leads' },
-                                { title: groups[0]?.name || t('stat_groups'), desc: t('attention_top_group'), icon: Calendar, color: '#1b6b6b', path: '/groups' },
+                                { title: groups[0]?.name || t('stat_groups'), desc: t('attention_top_group'), icon: Calendar, color: '#1b6b6b', path: '/courses' },
                             ].map((item, i) => (
                                 <div
                                     key={i}

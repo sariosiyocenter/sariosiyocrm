@@ -561,7 +561,7 @@ export const CRMProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             
             if (!group || !student) return;
             if ((group.studentIds || []).includes(studentId)) {
-                showNotification("O'quvchi allaqachon guruhda", "info");
+                showNotification("O'quvchi allaqachon kursda", "info");
                 return;
             }
 
@@ -574,7 +574,7 @@ export const CRMProvider: React.FC<{ children: React.ReactNode }> = ({ children 
                 students: prev.students.map(s => s.id === studentId ? { ...s, groups: [...(s.groups || []), groupId] } : s)
             }));
             
-            showNotification("O'quvchi guruhga biriktirildi", "success");
+            showNotification("O'quvchi kursga biriktirildi", "success");
         } catch (err: any) {
             showNotification("Xatolik: " + err.message, "error");
         }
@@ -593,7 +593,7 @@ export const CRMProvider: React.FC<{ children: React.ReactNode }> = ({ children 
                 )
             }));
 
-            showNotification("O'quvchi guruhdan chiqarildi", "success");
+            showNotification("O'quvchi kursdan chiqarildi", "success");
         } catch (err: any) {
             showNotification("Xatolik: " + err.message, "error");
         }
@@ -618,9 +618,9 @@ export const CRMProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         try {
             const newGroup = await apiCall('groups', 'POST', group);
             setState(prev => ({ ...prev, groups: [...prev.groups, newGroup] }));
-            showNotification("Yangi guruh muvaffaqiyatli ochildi", "success");
+            showNotification("Yangi kurs muvaffaqiyatli ochildi", "success");
         } catch (err: any) {
-            showNotification("Guruh ochishda xatolik: " + err.message, "error");
+            showNotification("Kurs ochishda xatolik: " + err.message, "error");
             throw err;
         }
     };
@@ -629,9 +629,9 @@ export const CRMProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         try {
             const updated = await apiCall(`groups/${id}`, 'PUT', group);
             setState(prev => ({ ...prev, groups: prev.groups.map(g => g.id === id ? updated : g) }));
-            showNotification("Guruh ma'lumotlari yangilandi", "success");
+            showNotification("Kurs ma'lumotlari yangilandi", "success");
         } catch (err: any) {
-            showNotification("Guruhni yangilashda xatolik: " + err.message, "error");
+            showNotification("Kursni yangilashda xatolik: " + err.message, "error");
             throw err;
         }
     }
@@ -761,7 +761,7 @@ export const CRMProvider: React.FC<{ children: React.ReactNode }> = ({ children 
                 const tempIdSet = new Set(tempIds);
                 return { ...prev, attendances: prev.attendances.filter(a => !tempIdSet.has(a.id)) };
             });
-            showNotification("Guruh davomatini saqlashda xatolik yuz berdi", "error");
+            showNotification("Kurs davomatini saqlashda xatolik yuz berdi", "error");
         }
     };
 

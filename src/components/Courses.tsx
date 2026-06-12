@@ -7,7 +7,7 @@ import { useNavigate } from 'react-router-dom';
 const inp = "w-full px-4 py-3 bg-gray-55 dark:bg-gray-900/50 border border-gray-100 dark:border-gray-750 rounded-2xl text-xs font-bold text-gray-900 dark:text-white focus:border-[#1b6b6b] focus:ring-4 focus:ring-[#1b6b6b]/10 outline-none transition-all";
 const lbl = "block text-[10px] font-extrabold uppercase tracking-widest text-gray-400 mb-2";
 
-export default function Groups() {
+export default function Courses() {
     const { groups, teachers, rooms, addGroup, showNotification, courses } = useCRM();
     const { t } = useLang();
     const navigate = useNavigate();
@@ -210,7 +210,7 @@ export default function Groups() {
                         const scheduleParts = group.schedule ? group.schedule.split(' - ') : [];
                         const startTime = scheduleParts[0] || '';
                         return (
-                            <div key={group.id} onClick={() => navigate(`/groups/${group.id}`)}
+                            <div key={group.id} onClick={() => navigate(`/courses/${group.id}`)}
                                 className="group bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700/50 shadow-sm hover:shadow-xl hover:border-[#1b6b6b]/40 dark:hover:border-[#1b6b6b]/40 hover:-translate-y-0.5 transition-all duration-300 cursor-pointer p-5 flex flex-col">
                                 <div className="flex items-start justify-between mb-4">
                                     <div className="w-12 h-12 rounded-2xl bg-[#1b6b6b]/10 dark:bg-[#1b6b6b]/20 flex items-center justify-center text-[#1b6b6b] font-black text-lg group-hover:scale-105 transition-transform overflow-hidden shrink-0">

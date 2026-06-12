@@ -77,7 +77,7 @@ export default function ExamDetail() {
 
     const handleBulkOMR = async () => {
         if (selectedGroups.length === 0) {
-            showNotification("Iltimos, avval guruhlarni tanlang!", "info");
+            showNotification("Iltimos, avval kurslarni tanlang!", "info");
             return;
         }
 
@@ -95,7 +95,7 @@ export default function ExamDetail() {
         });
 
         if (studentsInSelectedGroups.length === 0) {
-            showNotification("Tanlangan guruhlarda o'quvchilar topilmadi!", "info");
+            showNotification("Tanlangan kurslarda o'quvchilar topilmadi!", "info");
             return;
         }
 
@@ -175,12 +175,12 @@ export default function ExamDetail() {
                     <div className="bg-white dark:bg-gray-800 rounded-3xl border border-gray-100 dark:border-gray-700/50 shadow-sm p-6">
                         <h3 className="text-[10px] font-black text-gray-900 dark:text-white uppercase tracking-widest mb-4 flex items-center gap-2">
                             <Users className="text-[#1b6b6b]" size={16} />
-                            Guruhlar Tanlovi
+                            Kurslar Tanlovi
                         </h3>
                         
                         <div className="space-y-2 mb-6 max-h-60 overflow-y-auto pr-1 custom-scrollbar">
                             {groups.length === 0 ? (
-                                <p className="text-[10px] text-gray-400 font-bold uppercase py-4">Guruhlar mavjud emas</p>
+                                <p className="text-[10px] text-gray-400 font-bold uppercase py-4">Kurslar mavjud emas</p>
                             ) : (
                                 groups.map(group => (
                                     <label key={group.id} className={`flex items-center gap-3 p-3 rounded-2xl border transition-all cursor-pointer ${

@@ -158,7 +158,7 @@ export default function Students() {
                     "Holati": student.status || 'Faol',
                     "A'zo bo'lgan sana": student.joinedDate || '',
                     "Balans (UZS)": student.balance || 0,
-                    "Guruhlar": groupNames || 'Guruhsiz',
+                    "Kurslar": groupNames || 'Kurslarsiz',
                     "Otasining ismi": student.fatherName || '',
                     "Otasining telefoni": student.fatherPhone || '',
                     "Onasining ismi": student.motherName || '',

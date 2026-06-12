@@ -485,7 +485,7 @@ export default function StudentDetails() {
                     <div className="bg-white dark:bg-gray-800 rounded-3xl border border-gray-100 dark:border-gray-700/50 shadow-sm overflow-hidden min-h-[500px]">
                         <div className="flex px-4 bg-gray-55 dark:bg-gray-900/50 border-b border-gray-100 dark:border-gray-700/50 gap-2 overflow-x-auto scrollbar-hide">
                             <TabButton label={t('general')} icon={<Layers className="w-3.5 h-3.5" />} active={activeTab === 'umumiy'} onClick={() => setActiveTab('umumiy')} />
-                            <TabButton label={t('stat_groups')} icon={<Users className="w-3.5 h-3.5" />} active={activeTab === 'guruhlar'} onClick={() => setActiveTab('guruhlar')} />
+                            <TabButton label={t('stat_groups')} icon={<Users className="w-3.5 h-3.5" />} active={activeTab === 'courses'} onClick={() => setActiveTab('courses')} />
                             <TabButton label={t('payments_tab')} icon={<CreditCard className="w-3.5 h-3.5" />} active={activeTab === 'tolovlar'} onClick={() => setActiveTab('tolovlar')} />
                             <TabButton label={t('attendance')} icon={<ClipboardCheck className="w-3.5 h-3.5" />} active={activeTab === 'yoqlama'} onClick={() => setActiveTab('yoqlama')} />
                             <TabButton label={t('scores')} icon={<Award className="w-3.5 h-3.5" />} active={activeTab === 'ballar'} onClick={() => setActiveTab('ballar')} />
@@ -502,7 +502,7 @@ export default function StudentDetails() {
                                                     <p className="text-center py-8 text-[10px] text-gray-400 font-bold uppercase tracking-widest">{t('no_groups_found')}</p>
                                                 ) : (
                                                     studentGroups.map(group => (
-                                                        <div key={group.id} onClick={() => navigate(`/groups/${group.id}`)} 
+                                                        <div key={group.id} onClick={() => navigate(`/courses/${group.id}`)} 
                                                             className="group bg-gray-55 dark:bg-gray-900/30 p-4 rounded-2xl border border-transparent hover:border-gray-100 dark:hover:border-gray-700/50 transition-all cursor-pointer flex items-center justify-between">
                                                             <div className="flex items-center gap-3">
                                                                 <div className="w-10 h-10 bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-705 rounded-xl flex items-center justify-center text-[#1b6b6b] shrink-0">
@@ -579,7 +579,7 @@ export default function StudentDetails() {
                                 </div>
                             )}
 
-                            {activeTab === 'guruhlar' && (
+                            {activeTab === 'courses' && (
                                 <div className="space-y-6 animate-in fade-in duration-300">
                                     <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-5 bg-gray-55 dark:bg-gray-900/40 border border-gray-100 dark:border-gray-700/50 rounded-2xl">
                                         <div>
@@ -592,7 +592,7 @@ export default function StudentDetails() {
                                     </div>
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                         {studentGroups.map(group => (
-                                            <div key={group.id} onClick={() => navigate(`/groups/${group.id}`)} 
+                                            <div key={group.id} onClick={() => navigate(`/courses/${group.id}`)} 
                                                 className="group bg-gray-55 dark:bg-gray-900/30 p-5 rounded-2xl border border-transparent hover:border-gray-100 dark:hover:border-gray-700/50 transition-all cursor-pointer flex flex-col justify-between">
                                                 <div className="flex items-start justify-between mb-4">
                                                     <div>
@@ -950,14 +950,14 @@ function GroupAddModal({ studentId, currentGroups, availableGroups, onClose, onA
             <div className="relative bg-white dark:bg-gray-800 w-full max-w-sm rounded-[2rem] shadow-2xl overflow-hidden border border-gray-100 dark:border-gray-700/50" onClick={e => e.stopPropagation()}>
                 <div className="p-6 flex items-center justify-between border-b border-gray-100 dark:border-gray-700/50 bg-gray-55 dark:bg-gray-900/50">
                     <div>
-                        <h3 className="text-lg font-bold text-gray-900 dark:text-white uppercase tracking-tight">Guruhga Qo'shish</h3>
+                        <h3 className="text-lg font-bold text-gray-900 dark:text-white uppercase tracking-tight">Kursga Qo'shish</h3>
                         <p className="text-[10px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-widest mt-0.5">Yangi kurs tanlash</p>
                     </div>
                     <button onClick={onClose} className="w-9 h-9 flex items-center justify-center text-gray-400 hover:bg-white dark:hover:bg-gray-700 rounded-xl cursor-pointer"><XCircle size={18} /></button>
                 </div>
                 <div className="p-4 max-h-[350px] overflow-y-auto space-y-2 custom-scrollbar">
                     {options.length === 0 ? (
-                        <p className="text-center py-8 text-[10px] text-gray-400 font-bold uppercase tracking-widest">Barcha guruhlarga a'zo</p>
+                        <p className="text-center py-8 text-[10px] text-gray-400 font-bold uppercase tracking-widest">Barcha kurslarga a'zo</p>
                     ) : (
                         options.map((g: any) => (
                             <button key={g.id} onClick={() => { onAdd(g.id); onClose(); }}
@@ -1005,7 +1005,7 @@ function AttendanceAddModal({ studentId, studentGroups, onClose, onAdd }: any) {
                 </div>
                 <form onSubmit={handleSubmit} className="p-6 space-y-6">
                     <div>
-                        <label className={labelCls}>GURUHNI TANLANG</label>
+                        <label className={labelCls}>KURSNI TANLANG</label>
                         <select value={groupId} onChange={e => setGroupId(e.target.value)} required className={inputCls}>
                             <option value="" disabled>Tanlang...</option>
                             {studentGroups.map((g: any) => <option key={g.id} value={g.id}>{g.name}</option>)}
@@ -1062,7 +1062,7 @@ function ScoreAddModal({ studentId, studentGroups, onClose, onAdd }: any) {
                 </div>
                 <form onSubmit={handleSubmit} className="p-6 space-y-4">
                     <div>
-                        <label className={labelCls}>GURUHNI TANLANG</label>
+                        <label className={labelCls}>KURSNI TANLANG</label>
                         <select value={groupId} onChange={e => setGroupId(e.target.value)} required className={inputCls}>
                             <option value="" disabled>Tanlang...</option>
                             {studentGroups.map((g: any) => <option key={g.id} value={g.id}>{g.name}</option>)}
@@ -1094,8 +1094,8 @@ function SmsSendModal({ phone, studentName, onClose, onConfirm }: { phone: strin
 
     const templates = [
         {
-            label: "Guruhga qabul",
-            text: `${studentName || '@name'} siz SARIOSIYO O'QUV MARKAZI ning MATEMATIKA o'quv kursiga 4-guruh sifatida qabul qilindingiz. Sizning darsingiz DUSHANBA, CHORSHANBA va JUMA kunlari 14:00 da bo'lib o'tadi!`
+            label: "Kursga qabul",
+            text: `${studentName || '@name'} siz SARIOSIYO O'QUV MARKAZI ning MATEMATIKA o'quv kursiga 4-kurs sifatida qabul qilindingiz. Sizning darsingiz DUSHANBA, CHORSHANBA va JUMA kunlari 14:00 da bo'lib o'tadi!`
         },
         {
             label: "Qarzdorlik",

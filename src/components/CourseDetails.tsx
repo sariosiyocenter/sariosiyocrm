@@ -8,7 +8,7 @@ import {
 import AttendanceMatrix from './AttendanceMatrix';
 import GroupAttendanceCalendar from './GroupAttendanceCalendar';
 
-export default function GroupDetails() {
+export default function CourseDetails() {
     const { id } = useParams<{ id: string }>();
     const navigate = useNavigate();
     const { groups, students, teachers, courses, rooms, attendances, scores, addBatchAttendance, addStudentToGroup, removeStudentFromGroup, addScore, updateGroup, showNotification } = useCRM();
@@ -32,7 +32,7 @@ export default function GroupDetails() {
     const [studentSearch, setStudentSearch] = useState('');
 
     const group = groups.find(g => g.id === Number(id));
-    if (!group) return <div className="p-12 text-center text-gray-500 font-medium">Guruh topilmadi</div>;
+    if (!group) return <div className="p-12 text-center text-gray-500 font-medium">Kurs topilmadi</div>;
 
     const teacher = teachers.find(t => t.id === group.teacherId);
     const course = courses.find(c => c.id === group.courseId);
@@ -121,7 +121,7 @@ export default function GroupDetails() {
                 room: Number(editForm.room)
             });
             setIsEditingInfo(false);
-            showNotification("Guruh ma'lumotlari yangilandi", "success");
+            showNotification("Kurs ma'lumotlari yangilandi", "success");
         } catch (err) {
             showNotification("Xatolik yuz berdi", "error");
         }
@@ -191,7 +191,7 @@ export default function GroupDetails() {
     return (
         <div className="space-y-6 animate-in fade-in duration-500">
             {/* Back Button */}
-            <button onClick={() => navigate('/groups')} className="flex items-center gap-2 text-gray-400 dark:text-gray-500 hover:text-[#1b6b6b] transition-all text-[10px] font-extrabold uppercase tracking-widest group cursor-pointer">
+            <button onClick={() => navigate('/courses')} className="flex items-center gap-2 text-gray-400 dark:text-gray-500 hover:text-[#1b6b6b] transition-all text-[10px] font-extrabold uppercase tracking-widest group cursor-pointer">
                 <ArrowLeft size={14} className="group-hover:-translate-x-1 transition-transform" />
                 Orqaga
             </button>
@@ -201,7 +201,7 @@ export default function GroupDetails() {
                     <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
                         <div>
                             <div className="flex items-center gap-3 mb-3">
-                                <span className="px-2 py-0.5 rounded bg-emerald-50 text-emerald-600 border border-emerald-100 dark:bg-emerald-950/20 dark:text-emerald-400 dark:border-emerald-900/40 text-[8px] font-black uppercase tracking-wider">Guruh faol</span>
+                                <span className="px-2 py-0.5 rounded bg-emerald-50 text-emerald-600 border border-emerald-100 dark:bg-emerald-950/20 dark:text-emerald-400 dark:border-emerald-900/40 text-[8px] font-black uppercase tracking-wider">Kurs faol</span>
                                 <span className="text-[9px] font-bold text-gray-400 uppercase tracking-widest">ID: #{group.id}</span>
                             </div>
                             <h1 className="text-xl font-black text-gray-900 dark:text-white uppercase tracking-tight">{group.name}</h1>
@@ -309,7 +309,7 @@ export default function GroupDetails() {
                                                     </span>
                                                     <button
                                                         onClick={e => { e.stopPropagation(); removeStudentFromGroup(group.id, s.id); }}
-                                                        title="Guruhdan chiqarish"
+                                                        title="Kursdan chiqarish"
                                                         className="w-7 h-7 flex items-center justify-center rounded-lg text-gray-300 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/20 transition-all cursor-pointer"
                                                     >
                                                         <XCircle size={15} />
@@ -318,7 +318,7 @@ export default function GroupDetails() {
                                             </div>
                                         ))}
                                         {groupStudents.length === 0 && (
-                                            <p className="col-span-full py-12 text-center text-[10px] text-gray-400 font-bold uppercase tracking-widest">Bu guruhda o'quvchilar yo'q</p>
+                                            <p className="col-span-full py-12 text-center text-[10px] text-gray-400 font-bold uppercase tracking-widest">Bu kursda o'quvchilar yo'q</p>
                                         )}
                                     </div>
                                 </div>
@@ -417,7 +417,7 @@ export default function GroupDetails() {
                                     {!isDayValid(group.days, selectedDate) ? (
                                         <p className="text-[9px] font-bold text-amber-600 dark:text-amber-400 mt-1 uppercase tracking-widest flex items-center gap-1">
                                             <XCircle size={12} />
-                                            Bugun guruh kuni emas ({group.days})
+                                            Bugun kurs kuni emas ({group.days})
                                         </p>
                                     ) : (
                                         <p className="text-[9px] font-bold text-gray-400 mt-1 uppercase tracking-widest flex items-center gap-1">
@@ -526,7 +526,7 @@ export default function GroupDetails() {
                                     );
                                 })}
                                 {groupStudents.length === 0 && (
-                                    <p className="col-span-full py-12 text-center text-[10px] text-gray-400 font-bold uppercase tracking-widest">Bu guruhda o'quvchilar yo'q</p>
+                                    <p className="col-span-full py-12 text-center text-[10px] text-gray-400 font-bold uppercase tracking-widest">Bu kursda o'quvchilar yo'q</p>
                                 )}
                             </div>
                         </div>
@@ -576,7 +576,7 @@ export default function GroupDetails() {
                         <div className="flex items-center justify-between mb-6 pb-4 border-b border-gray-50 dark:border-gray-700/50">
                             <div>
                                 <h3 className="text-lg font-black text-gray-900 dark:text-white uppercase tracking-tight">O'quvchi qo'shish</h3>
-                                <p className="text-[10px] font-bold text-[#1b6b6b] uppercase tracking-widest mt-0.5">Guruhga biriktirish</p>
+                                <p className="text-[10px] font-bold text-[#1b6b6b] uppercase tracking-widest mt-0.5">Kursga biriktirish</p>
                             </div>
                             <button onClick={() => setIsAddStudentModalOpen(false)} className="w-9 h-9 flex items-center justify-center text-gray-400 hover:bg-gray-55 dark:hover:bg-gray-700 rounded-xl cursor-pointer"><XCircle size={18} /></button>
                         </div>

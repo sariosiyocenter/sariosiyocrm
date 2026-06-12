@@ -107,7 +107,7 @@ export default function ExamResults() {
             );
             return {
                 'Ism': student?.name || r.studentId,
-                'Guruh': group?.name || '-',
+                'Kurs': group?.name || '-',
                 'Variant': r.variantCode || '-',
                 'Ball': r.score,
                 'Foiz (%)': r.percentage,
@@ -149,7 +149,7 @@ export default function ExamResults() {
                         onChange={e => setSelectedGroupId(e.target.value ? Number(e.target.value) : '')}
                         className="px-4 py-2.5 bg-gray-55 dark:bg-gray-905 border border-gray-100 dark:border-gray-700 rounded-2xl text-[10px] font-bold uppercase tracking-widest outline-none focus:border-[#1b6b6b] text-gray-900 dark:text-white cursor-pointer"
                     >
-                        <option value="">Barcha guruhlar</option>
+                        <option value="">Barcha kurslar</option>
                         {groups.map(g => <option key={g.id} value={g.id}>{g.name}</option>)}
                     </select>
 
@@ -211,7 +211,7 @@ export default function ExamResults() {
                                         <th className="p-4 text-[9px] font-black text-gray-400 uppercase tracking-widest cursor-pointer hover:text-gray-650" onClick={() => toggleSort('name')}>
                                             Ism <SortIcon col="name" />
                                         </th>
-                                        <th className="p-4 text-[9px] font-black text-gray-400 uppercase tracking-widest">Guruh</th>
+                                        <th className="p-4 text-[9px] font-black text-gray-400 uppercase tracking-widest">Kurs</th>
                                         <th className="p-4 text-[9px] font-black text-gray-400 uppercase tracking-widest text-center">Variant</th>
                                         <th className="p-4 text-[9px] font-black text-gray-400 uppercase tracking-widest text-center cursor-pointer hover:text-gray-650" onClick={() => toggleSort('score')}>
                                             Ball <SortIcon col="score" />

@@ -57,7 +57,7 @@ export default function StudentsGeneralReport() {
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
                 <StatCard label="Jami talabalar" value={students.length} icon={<Users size={16} />} color="sky" />
                 <StatCard label="Faol" value={statusCounts.Faol} icon={<TrendingUp size={16} />} color="emerald" />
-                <StatCard label="Guruhlar soni" value={groups.length} icon={<BookOpen size={16} />} color="violet" />
+                <StatCard label="Kurslar soni" value={groups.length} icon={<BookOpen size={16} />} color="violet" />
                 <StatCard label="Sinov" value={statusCounts.Sinov} icon={<BarChart2 size={16} />} color="amber" />
             </div>
 
@@ -75,7 +75,7 @@ export default function StudentsGeneralReport() {
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
                 {groupBar.length > 0 && (
                     <ReportCard>
-                        <SectionHeader title="Guruh bo'yicha talabalar" />
+                        <SectionHeader title="Kurslar bo'yicha talabalar" />
                         <BarChart data={groupBar.slice(0, 8)} horizontal />
                     </ReportCard>
                 )}
