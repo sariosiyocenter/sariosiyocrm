@@ -18,6 +18,16 @@ const lbl = "block text-[10px] font-extrabold uppercase tracking-widest text-gra
 export default function Leads() {
   const { leads, courses, groups, updateLead, addLead, deleteLead, addStudent } = useCRM();
   const { t } = useLang();
+  
+  const getStageLabel = (name: string) => {
+    if (name === 'Yangi') return t('lead_status_new');
+    if (name === "Bog'lanilmadi") return t('lead_status_no_contact');
+    if (name === "O'ylayapti") return t('lead_status_thinking');
+    if (name === 'Kelishdi') return t('lead_status_agreed');
+    if (name === "To'lov qildi") return t('lead_status_paid');
+    return name;
+  };
+
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [showFilters, setShowFilters] = useState(false);
   const [newLead, setNewLead] = useState({ name: '', phone: '', course: '', source: 'Instagram' });
@@ -97,7 +107,7 @@ export default function Leads() {
   };
 
   const handleDeleteLead = async (leadId: number) => {
-    if (window.confirm("Haqiqatan ham bu lidni o'chirmoqchimisiz?")) {
+    if (window.confirm(t('delete_lead_confirm'))) {
       try {
         await deleteLead(leadId);
         setSelectedLead(null);
@@ -176,9 +186,9 @@ export default function Leads() {
             <div className="relative">
               <Search size={14} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400" />
               <input
-                type="text" placeholder="Ism yoki telefon..."
+                type="text" placeholder={t('search_placeholder_students')}
                 value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-9 pr-4 py-2.5 bg-gray-50 dark:bg-gray-900/50 border border-gray-100 dark:border-gray-700 rounded-xl text-xs font-bold text-gray-900 dark:text-white outline-none focus:border-[#1b6b6b] transition-all w-52"
+                className="pl-9 pr-4 py-2.5 bg-gray-55 dark:bg-gray-900/50 border border-gray-100 dark:border-gray-700 rounded-xl text-xs font-bold text-gray-900 dark:text-white outline-none focus:border-[#1b6b6b] transition-all w-52"
               />
             </div>
             <button
@@ -191,7 +201,7 @@ export default function Leads() {
               onClick={() => setIsModalOpen(true)}
               className="flex items-center gap-2 px-4 py-2.5 bg-[#1b6b6b] hover:bg-[#155252] text-white rounded-xl text-xs font-extrabold uppercase tracking-widest shadow-lg shadow-[#1b6b6b]/20 transition-all cursor-pointer"
             >
-              <Plus size={14} /> Qo'shish
+              <Plus size={14} /> {t('add')}
             </button>
           </div>
         </div>
@@ -199,24 +209,24 @@ export default function Leads() {
         {showFilters && (
           <div className="px-6 pb-5 pt-4 border-t border-gray-50 dark:border-gray-700/50 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
             <div>
-              <label className={lbl}>Kurs bo'yicha</label>
+              <label className={lbl}>{t('by_course')}</label>
               <select 
                 value={filters.course}
                 onChange={e => setFilters({...filters, course: e.target.value})}
-                className="w-full px-3 py-2 bg-gray-50 dark:bg-gray-900/50 border border-gray-100 dark:border-gray-700 rounded-xl text-[10px] font-bold text-gray-700 dark:text-white outline-none focus:border-[#1b6b6b] transition-all cursor-pointer"
+                className="w-full px-3 py-2 bg-gray-55 dark:bg-gray-900/50 border border-gray-100 dark:border-gray-700 rounded-xl text-[10px] font-bold text-gray-700 dark:text-white outline-none focus:border-[#1b6b6b] transition-all cursor-pointer"
               >
-                <option value="">Barchasi</option>
+                <option value="">{t('all')}</option>
                 {courses.map(c => <option key={c.id} value={c.name}>{c.name}</option>)}
               </select>
             </div>
             <div>
-              <label className={lbl}>Manba bo'yicha</label>
+              <label className={lbl}>{t('by_source')}</label>
               <select 
                 value={filters.source}
                 onChange={e => setFilters({...filters, source: e.target.value})}
-                className="w-full px-3 py-2 bg-gray-50 dark:bg-gray-900/50 border border-gray-100 dark:border-gray-700 rounded-xl text-[10px] font-bold text-gray-700 dark:text-white outline-none focus:border-[#1b6b6b] transition-all cursor-pointer"
+                className="w-full px-3 py-2 bg-gray-55 dark:bg-gray-900/50 border border-gray-100 dark:border-gray-700 rounded-xl text-[10px] font-bold text-gray-700 dark:text-white outline-none focus:border-[#1b6b6b] transition-all cursor-pointer"
               >
-                <option value="">Barchasi</option>
+                <option value="">{t('all')}</option>
                 <option value="Instagram">Instagram</option>
                 <option value="Telegram">Telegram</option>
                 <option value="Facebook">Facebook</option>
@@ -225,16 +235,16 @@ export default function Leads() {
               </select>
             </div>
             <div>
-              <label className={lbl}>Vaqt bo'yicha</label>
+              <label className={lbl}>{t('by_time')}</label>
               <select 
                 value={filters.dateRange}
                 onChange={e => setFilters({...filters, dateRange: e.target.value})}
-                className="w-full px-3 py-2 bg-gray-50 dark:bg-gray-900/50 border border-gray-100 dark:border-gray-700 rounded-xl text-[10px] font-bold text-gray-700 dark:text-white outline-none focus:border-[#1b6b6b] transition-all cursor-pointer"
+                className="w-full px-3 py-2 bg-gray-55 dark:bg-gray-900/50 border border-gray-100 dark:border-gray-700 rounded-xl text-[10px] font-bold text-gray-700 dark:text-white outline-none focus:border-[#1b6b6b] transition-all cursor-pointer"
               >
-                <option value="all">Barcha vaqt</option>
-                <option value="today">Bugun</option>
-                <option value="week">Shu hafta</option>
-                <option value="month">Shu oy</option>
+                <option value="all">{t('all_time')}</option>
+                <option value="today">{t('today')}</option>
+                <option value="week">{t('this_week')}</option>
+                <option value="month">{t('this_month')}</option>
               </select>
             </div>
             <div className="flex items-end">
@@ -242,7 +252,7 @@ export default function Leads() {
                 onClick={() => setFilters({course: '', source: '', dateRange: 'all'})}
                 className="w-full py-2.5 text-[10px] font-extrabold uppercase text-rose-500 hover:text-rose-600 flex items-center justify-center gap-1.5 cursor-pointer"
               >
-                <X size={12} /> Tozalash
+                <X size={12} /> {t('filter_clear')}
               </button>
             </div>
           </div>
@@ -269,7 +279,7 @@ export default function Leads() {
               <div className="flex items-center justify-between mb-4 px-1.5">
                 <div className="flex items-center gap-2">
                   <div className={`w-2.5 h-2.5 rounded-full ${stage.color}`} />
-                  <h3 className="font-extrabold text-gray-900 dark:text-gray-100 text-xs uppercase tracking-widest">{stage.name}</h3>
+                  <h3 className="font-extrabold text-gray-900 dark:text-gray-100 text-xs uppercase tracking-widest">{getStageLabel(stage.name)}</h3>
                   <span className="bg-white dark:bg-gray-850 border border-gray-100 dark:border-gray-700 text-gray-500 dark:text-gray-400 text-[9px] font-black px-2 py-0.5 rounded-lg">
                     {stageLeads.length}
                   </span>
@@ -288,7 +298,7 @@ export default function Leads() {
                       setSelectedLead(lead);
                       setIsConverting(false);
                     }}
-                    className="bg-white dark:bg-gray-800 p-4 rounded-2xl border border-gray-100 dark:border-gray-750 shadow-sm hover:shadow-md hover:border-gray-200 dark:hover:border-gray-700 transition-all duration-200 cursor-pointer"
+                    className="bg-white dark:bg-gray-800 p-4 rounded-2xl border border-gray-100 dark:border-gray-755 shadow-sm hover:shadow-md hover:border-gray-200 dark:hover:border-gray-700 transition-all duration-200 cursor-pointer"
                   >
                     <div className="flex items-center justify-between mb-2">
                       <span className={`text-[8px] font-black px-2 py-0.5 rounded-lg border uppercase tracking-wider ${stage.lightBgc}`}>
@@ -320,7 +330,7 @@ export default function Leads() {
                   onClick={() => setIsModalOpen(true)}
                   className="w-full flex items-center justify-center gap-2 py-3 bg-white/40 dark:bg-gray-800/40 border border-dashed border-gray-200 dark:border-gray-700 rounded-2xl text-gray-400 hover:text-[#1b6b6b] hover:border-[#1b6b6b] hover:bg-white dark:hover:bg-gray-800 transition-all text-[9px] font-black uppercase tracking-widest cursor-pointer"
                 >
-                  <Plus size={14} /> Qo'shish
+                  <Plus size={14} /> {t('add')}
                 </button>
               </div>
             </div>
@@ -335,29 +345,29 @@ export default function Leads() {
           <div className="relative bg-white dark:bg-gray-800 rounded-[2rem] border border-gray-100 dark:border-gray-700/50 shadow-2xl w-full max-w-md p-8">
             <div className="flex items-center justify-between mb-6 pb-4 border-b border-gray-50 dark:border-gray-700/50">
               <div>
-                <h3 className="text-lg font-black text-gray-900 dark:text-white uppercase tracking-tight">Yangi Lid</h3>
-                <p className="text-[10px] font-bold text-[#1b6b6b] uppercase tracking-widest mt-0.5">Potensial mijoz ma'lumotlari</p>
+                <h3 className="text-lg font-black text-gray-900 dark:text-white uppercase tracking-tight">{t('new_lead_title')}</h3>
+                <p className="text-[10px] font-bold text-[#1b6b6b] uppercase tracking-widest mt-0.5">{t('lead_details_subtitle')}</p>
               </div>
               <button onClick={() => setIsModalOpen(false)} className="w-9 h-9 flex items-center justify-center text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700 rounded-xl cursor-pointer"><X size={18} /></button>
             </div>
             <form onSubmit={handleAddLead} className="space-y-4">
               <div>
-                <label className={lbl}>Ism Familiya *</label>
+                <label className={lbl}>{t('student_name')} *</label>
                 <input required type="text" placeholder="Sirojiddin Aliyev" className={inp} value={newLead.name} onChange={e => setNewLead({ ...newLead, name: e.target.value })} />
               </div>
               <div>
-                <label className={lbl}>Telefon Raqami *</label>
+                <label className={lbl}>{t('student_phone')} *</label>
                 <input required type="text" placeholder="+998 90 123 45 67" className={inp} value={newLead.phone} onChange={e => setNewLead({ ...newLead, phone: e.target.value })} />
               </div>
               <div>
-                <label className={lbl}>Kurs *</label>
+                <label className={lbl}>{t('course')} *</label>
                 <select required className={inp} value={newLead.course} onChange={e => setNewLead({ ...newLead, course: e.target.value })}>
-                  <option value="" disabled>Tanlang</option>
+                  <option value="" disabled>{t('select_placeholder')}</option>
                   {courses.map(c => <option key={c.id} value={c.name}>{c.name}</option>)}
                 </select>
               </div>
               <div>
-                <label className={lbl}>Manba *</label>
+                <label className={lbl}>{t('lead_source')} *</label>
                 <select required className={inp} value={newLead.source} onChange={e => setNewLead({ ...newLead, source: e.target.value })}>
                   <option value="Instagram">Instagram</option>
                   <option value="Telegram">Telegram</option>
@@ -368,11 +378,11 @@ export default function Leads() {
               <div className="flex gap-3 pt-2">
                 <button type="button" onClick={() => setIsModalOpen(false)}
                   className="flex-1 py-3 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-white text-xs font-extrabold uppercase tracking-widest rounded-2xl transition-all cursor-pointer hover:bg-gray-200 dark:hover:bg-gray-600">
-                  Bekor
+                  {t('cancel')}
                 </button>
                 <button type="submit"
                   className="flex-1 py-3 bg-[#1b6b6b] hover:bg-[#155252] text-white text-xs font-extrabold uppercase tracking-widest rounded-2xl shadow-lg shadow-[#1b6b6b]/20 transition-all cursor-pointer">
-                  Saqlash
+                  {t('save')}
                 </button>
               </div>
             </form>
@@ -388,8 +398,8 @@ export default function Leads() {
             
             <div className="flex items-center justify-between mb-6 pb-4 border-b border-gray-50 dark:border-gray-700/50">
               <div>
-                <h3 className="text-base font-black text-gray-900 dark:text-white uppercase tracking-tight">Lid Tafsilotlari</h3>
-                <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mt-0.5">Ro'yxatdan o'tgan: {new Date(selectedLead.createdAt).toLocaleString()}</p>
+                <h3 className="text-base font-black text-gray-900 dark:text-white uppercase tracking-tight">{t('lead_details_title')}</h3>
+                <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mt-0.5">{t('registered_at')}{new Date(selectedLead.createdAt).toLocaleString()}</p>
               </div>
               <button onClick={() => setSelectedLead(null)} className="w-9 h-9 flex items-center justify-center text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700 rounded-xl cursor-pointer"><X size={18} /></button>
             </div>
@@ -406,39 +416,39 @@ export default function Leads() {
                 {/* Details list */}
                 <div className="grid grid-cols-2 gap-4">
                   <div className="bg-gray-55 dark:bg-gray-900/30 p-4 rounded-2xl border border-gray-100 dark:border-gray-750">
-                    <span className="block text-[9px] font-bold text-gray-400 uppercase tracking-wider mb-1">F.I.O.</span>
+                    <span className="block text-[9px] font-bold text-gray-400 uppercase tracking-wider mb-1">{t('student_name')}</span>
                     <span className="text-xs font-extrabold text-gray-900 dark:text-white">{selectedLead.name}</span>
                   </div>
                   <div className="bg-gray-55 dark:bg-gray-900/30 p-4 rounded-2xl border border-gray-100 dark:border-gray-750">
-                    <span className="block text-[9px] font-bold text-gray-400 uppercase tracking-wider mb-1">Telefon</span>
+                    <span className="block text-[9px] font-bold text-gray-400 uppercase tracking-wider mb-1">{t('student_phone')}</span>
                     <span className="text-xs font-extrabold text-gray-900 dark:text-white flex items-center gap-1.5">
                       <Phone size={12} className="text-[#1b6b6b]" />
                       {selectedLead.phone}
                     </span>
                   </div>
                   <div className="bg-gray-55 dark:bg-gray-900/30 p-4 rounded-2xl border border-gray-100 dark:border-gray-750">
-                    <span className="block text-[9px] font-bold text-gray-400 uppercase tracking-wider mb-1">Tanlangan Kurs</span>
+                    <span className="block text-[9px] font-bold text-gray-400 uppercase tracking-wider mb-1">{t('selected_course')}</span>
                     <span className="text-xs font-extrabold text-[#1b6b6b]">{selectedLead.course}</span>
                   </div>
                   <div className="bg-gray-55 dark:bg-gray-900/30 p-4 rounded-2xl border border-gray-100 dark:border-gray-750">
-                    <span className="block text-[9px] font-bold text-gray-400 uppercase tracking-wider mb-1">Kelgan manbasi</span>
+                    <span className="block text-[9px] font-bold text-gray-400 uppercase tracking-wider mb-1">{t('lead_source')}</span>
                     <span className="text-xs font-extrabold text-gray-700 dark:text-gray-300">{selectedLead.source}</span>
                   </div>
                   {selectedLead.birthDate && (
                     <div className="bg-gray-55 dark:bg-gray-900/30 p-4 rounded-2xl border border-gray-100 dark:border-gray-750">
-                      <span className="block text-[9px] font-bold text-gray-400 uppercase tracking-wider mb-1">Tug'ilgan sana</span>
+                      <span className="block text-[9px] font-bold text-gray-400 uppercase tracking-wider mb-1">{t('birth_date')}</span>
                       <span className="text-xs font-extrabold text-gray-700 dark:text-gray-300">{selectedLead.birthDate}</span>
                     </div>
                   )}
                   {selectedLead.studentSchool && (
                     <div className="bg-gray-55 dark:bg-gray-900/30 p-4 rounded-2xl border border-gray-100 dark:border-gray-750">
-                      <span className="block text-[9px] font-bold text-gray-400 uppercase tracking-wider mb-1">Maktab / Bog'cha</span>
+                      <span className="block text-[9px] font-bold text-gray-400 uppercase tracking-wider mb-1">{t('school_kindergarten')}</span>
                       <span className="text-xs font-extrabold text-gray-700 dark:text-gray-300">{selectedLead.studentSchool}</span>
                     </div>
                   )}
                   {(selectedLead.fatherName || selectedLead.fatherPhone) && (
                     <div className="bg-gray-55 dark:bg-gray-900/30 p-4 rounded-2xl border border-gray-100 dark:border-gray-750">
-                      <span className="block text-[9px] font-bold text-gray-400 uppercase tracking-wider mb-1">Otasi</span>
+                      <span className="block text-[9px] font-bold text-gray-400 uppercase tracking-wider mb-1">{t('father')}</span>
                       <span className="text-xs font-extrabold text-gray-700 dark:text-gray-300">
                         {selectedLead.fatherName || 'Ismsiz'} {selectedLead.fatherPhone ? `(${selectedLead.fatherPhone})` : ''}
                       </span>
@@ -446,7 +456,7 @@ export default function Leads() {
                   )}
                   {(selectedLead.motherName || selectedLead.motherPhone) && (
                     <div className="bg-gray-55 dark:bg-gray-900/30 p-4 rounded-2xl border border-gray-100 dark:border-gray-750">
-                      <span className="block text-[9px] font-bold text-gray-400 uppercase tracking-wider mb-1">Onasi</span>
+                      <span className="block text-[9px] font-bold text-gray-400 uppercase tracking-wider mb-1">{t('mother')}</span>
                       <span className="text-xs font-extrabold text-gray-700 dark:text-gray-300">
                         {selectedLead.motherName || 'Ismsiz'} {selectedLead.motherPhone ? `(${selectedLead.motherPhone})` : ''}
                       </span>
@@ -454,13 +464,13 @@ export default function Leads() {
                   )}
                   {selectedLead.address && (
                     <div className="bg-gray-55 dark:bg-gray-900/30 p-4 rounded-2xl border border-gray-100 dark:border-gray-750 col-span-2">
-                      <span className="block text-[9px] font-bold text-gray-400 uppercase tracking-wider mb-1">Manzili</span>
+                      <span className="block text-[9px] font-bold text-gray-400 uppercase tracking-wider mb-1">{t('address')}</span>
                       <span className="text-xs font-extrabold text-gray-700 dark:text-gray-300">{selectedLead.address}</span>
                     </div>
                   )}
                   {selectedLead.notes && (
                     <div className="bg-gray-55 dark:bg-gray-900/30 p-4 rounded-2xl border border-gray-100 dark:border-gray-750 col-span-2">
-                      <span className="block text-[9px] font-bold text-gray-400 uppercase tracking-wider mb-1">Qo'shimcha izohlar</span>
+                      <span className="block text-[9px] font-bold text-gray-400 uppercase tracking-wider mb-1">{t('comments')}</span>
                       <span className="text-xs font-semibold text-gray-700 dark:text-gray-300">{selectedLead.notes}</span>
                     </div>
                   )}
@@ -468,7 +478,7 @@ export default function Leads() {
 
                 {/* Status selector */}
                 <div>
-                  <label className={lbl}>Voronka holati (Status)</label>
+                  <label className={lbl}>{t('lead_funnel_status')}</label>
                   <div className="flex flex-wrap gap-2">
                     {STAGES.map((s) => (
                       <button
@@ -478,10 +488,10 @@ export default function Leads() {
                         className={`px-3 py-2 rounded-xl text-[10px] font-black uppercase tracking-wider border transition-all cursor-pointer ${
                           selectedLead.status === s.name
                             ? `${s.color} text-white border-transparent shadow-md`
-                            : 'bg-white dark:bg-gray-900 border-gray-100 dark:border-gray-750 text-gray-500 hover:border-gray-300 dark:hover:border-gray-600'
+                            : 'bg-white dark:bg-gray-900 border-gray-100 dark:border-gray-755 text-gray-500 hover:border-gray-300 dark:hover:border-gray-600'
                         }`}
                       >
-                        {s.name}
+                        {getStageLabel(s.name)}
                       </button>
                     ))}
                   </div>
@@ -490,8 +500,8 @@ export default function Leads() {
                 {/* Conversion Prompt */}
                 <div className="p-4 rounded-2xl bg-[#1b6b6b]/5 border border-[#1b6b6b]/20 flex items-center justify-between">
                   <div>
-                    <h4 className="text-xs font-black text-gray-900 dark:text-white uppercase tracking-tight">O'quvchiga aylantirish</h4>
-                    <p className="text-[10px] text-gray-500 mt-0.5">Ushbu lidni doimiy o'quvchilar ro'yxatiga qo'shish.</p>
+                    <h4 className="text-xs font-black text-gray-900 dark:text-white uppercase tracking-tight">{t('convert_to_student')}</h4>
+                    <p className="text-[10px] text-gray-500 mt-0.5">{t('convert_to_student_hint')}</p>
                   </div>
                   <button
                     onClick={() => {
@@ -516,7 +526,7 @@ export default function Leads() {
                     }}
                     className="flex items-center gap-1.5 px-4 py-2.5 bg-[#1b6b6b] hover:bg-[#155252] text-white rounded-xl text-[10px] font-black uppercase tracking-widest cursor-pointer shadow-md transition-all"
                   >
-                    <UserPlus size={14} /> Aylantirish
+                    <UserPlus size={14} /> {t('convert')}
                   </button>
                 </div>
 
@@ -527,14 +537,14 @@ export default function Leads() {
                     onClick={() => handleDeleteLead(selectedLead.id)}
                     className="flex items-center gap-1.5 text-rose-500 hover:text-rose-600 text-[10px] font-black uppercase tracking-wider cursor-pointer"
                   >
-                    <Trash2 size={14} /> Lidni o'chirish
+                    <Trash2 size={14} /> {t('delete_lead')}
                   </button>
                   <button
                     type="button"
                     onClick={() => setSelectedLead(null)}
                     className="px-5 py-2.5 bg-gray-100 dark:bg-gray-750 text-gray-700 dark:text-white text-[10px] font-black uppercase tracking-widest rounded-xl cursor-pointer hover:bg-gray-200"
                   >
-                    Yopish
+                    {t('close')}
                   </button>
                 </div>
               </div>
@@ -543,25 +553,25 @@ export default function Leads() {
               <form onSubmit={handleConvertToStudent} className="space-y-5">
                 <div className="p-3 bg-emerald-50 dark:bg-emerald-950/20 text-emerald-600 dark:text-emerald-400 rounded-xl text-[11px] font-semibold flex items-center gap-2">
                   <GraduationCap size={16} />
-                  <span>O'quvchi qo'shish shaklini to'ldiring. Ism va telefon oldindan yozilgan.</span>
+                  <span>{t('convert_form_hint')}</span>
                 </div>
 
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <label className={lbl}>Tug'ilgan Sana</label>
+                    <label className={lbl}>{t('birth_date')}</label>
                     <input type="date" className={inp} value={conversionData.birthDate} onChange={e => setConversionData({ ...conversionData, birthDate: e.target.value })} />
                   </div>
                   <div>
-                    <label className={lbl}>Maktab / Bog'cha</label>
+                    <label className={lbl}>{t('school_kindergarten')}</label>
                     <input type="text" placeholder="42-maktab" className={inp} value={conversionData.studentSchool} onChange={e => setConversionData({ ...conversionData, studentSchool: e.target.value })} />
                   </div>
                 </div>
 
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <label className={lbl}>O'quv guruhi</label>
+                    <label className={lbl}>{t('group_class')}</label>
                     <select className={inp} value={conversionData.groupId} onChange={e => setConversionData({ ...conversionData, groupId: e.target.value })}>
-                      <option value="">Guruh biriktirmaslik</option>
+                      <option value="">{t('do_not_assign_group')}</option>
                       {groups.map(g => {
                         const course = courses.find(c => c.id === g.courseId);
                         return <option key={g.id} value={g.id}>{g.name} ({course?.name || 'Noma\'lum'})</option>;
@@ -569,35 +579,35 @@ export default function Leads() {
                     </select>
                   </div>
                   <div>
-                    <label className={lbl}>Boshlang'ich Balans (so'm)</label>
+                    <label className={lbl}>{t('initial_balance')}</label>
                     <input type="number" placeholder="0" className={inp} value={conversionData.balance} onChange={e => setConversionData({ ...conversionData, balance: e.target.value })} />
                   </div>
                 </div>
 
                 <div>
-                  <label className={lbl}>Turar joy manzili</label>
+                  <label className={lbl}>{t('address')}</label>
                   <input type="text" placeholder="Sariosiyo tumani, ... ko'chasi" className={inp} value={conversionData.address} onChange={e => setConversionData({ ...conversionData, address: e.target.value })} />
                 </div>
 
                 <div className="border-t border-dashed border-gray-100 dark:border-gray-700/50 pt-4 mt-4 space-y-4">
-                  <span className="block text-[9px] font-black uppercase text-[#1b6b6b] tracking-wider">Ota-ona ma'lumotlari (Ixtiyoriy)</span>
+                  <span className="block text-[9px] font-black uppercase text-[#1b6b6b] tracking-wider">{t('parents_info_optional')}</span>
                   <div className="grid grid-cols-2 gap-4">
                     <div>
-                      <label className={lbl}>Otasining ismi</label>
-                      <input type="text" placeholder="Otasining ismi" className={inp} value={conversionData.fatherName} onChange={e => setConversionData({ ...conversionData, fatherName: e.target.value })} />
+                      <label className={lbl}>{t('father_name')}</label>
+                      <input type="text" placeholder={t('father_name')} className={inp} value={conversionData.fatherName} onChange={e => setConversionData({ ...conversionData, fatherName: e.target.value })} />
                     </div>
                     <div>
-                      <label className={lbl}>Otasining telefoni</label>
+                      <label className={lbl}>{t('father_phone')}</label>
                       <input type="tel" placeholder="+998" className={inp} value={conversionData.fatherPhone} onChange={e => setConversionData({ ...conversionData, fatherPhone: e.target.value })} />
                     </div>
                   </div>
                   <div className="grid grid-cols-2 gap-4">
                     <div>
-                      <label className={lbl}>Onasining ismi</label>
-                      <input type="text" placeholder="Onasining ismi" className={inp} value={conversionData.motherName} onChange={e => setConversionData({ ...conversionData, motherName: e.target.value })} />
+                      <label className={lbl}>{t('mother_name')}</label>
+                      <input type="text" placeholder={t('mother_name')} className={inp} value={conversionData.motherName} onChange={e => setConversionData({ ...conversionData, motherName: e.target.value })} />
                     </div>
                     <div>
-                      <label className={lbl}>Onasining telefoni</label>
+                      <label className={lbl}>{t('mother_phone')}</label>
                       <input type="tel" placeholder="+998" className={inp} value={conversionData.motherPhone} onChange={e => setConversionData({ ...conversionData, motherPhone: e.target.value })} />
                     </div>
                   </div>
@@ -606,11 +616,11 @@ export default function Leads() {
                 <div className="flex gap-3 pt-4 border-t border-gray-55 dark:border-gray-700/50">
                   <button type="button" onClick={() => setIsConverting(false)}
                     className="flex-1 py-3 bg-gray-100 dark:bg-gray-750 text-gray-700 dark:text-white text-xs font-extrabold uppercase tracking-widest rounded-2xl transition-all cursor-pointer hover:bg-gray-200">
-                    Orqaga
+                    {t('back')}
                   </button>
                   <button type="submit"
                     className="flex-1 py-3 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-extrabold uppercase tracking-widest rounded-2xl shadow-lg shadow-emerald-650/20 transition-all cursor-pointer">
-                    Tasdiqlash & O'quvchi qilish
+                    {t('confirm_convert')}
                   </button>
                 </div>
               </form>

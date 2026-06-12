@@ -62,6 +62,19 @@ export default function HRManagement() {
     const isAdmin           = currentUser?.role === 'ADMIN';
     const isAdminOrManager  = isAdmin || currentUser?.role === 'MANAGER';
 
+    const getRoleLabel = (role: string) => {
+        switch (role) {
+            case 'ADMIN': return t('role_admin');
+            case 'MANAGER': return t('role_manager');
+            case 'TEACHER': return t('role_teacher');
+            case 'SUPPORT_TEACHER': return t('role_support_teacher');
+            case 'RECEPTIONIST': return t('role_receptionist');
+            case 'DRIVER': return t('role_driver');
+            case 'TECH_STAFF': return t('role_tech_staff');
+            default: return role;
+        }
+    };
+
     const fetchUsers = async () => {
         try {
             setLoadingUsers(true);
@@ -190,7 +203,7 @@ export default function HRManagement() {
                     {isAdminOrManager && (
                         <button onClick={() => { setNewUser({ role: 'RECEPTIONIST' }); setIsAddOpen(true); }}
                             className="flex items-center gap-2 px-4 py-2.5 bg-[#1b6b6b] hover:bg-[#155252] text-white rounded-xl text-xs font-extrabold uppercase tracking-widest shadow-lg shadow-[#1b6b6b]/20 transition-all cursor-pointer">
-                            <Plus size={14} /> Yangi Xodim
+                            <Plus size={14} /> {t('new_staff')}
                         </button>
                     )}
                 </div>
@@ -199,7 +212,8 @@ export default function HRManagement() {
             <div className="space-y-6">
                     {/* Clickable role counters */}
                     <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-3">
-                        {Object.entries(ROLE_LABELS).map(([role, label]) => {
+                        {Object.keys(ROLE_LABELS).map((role) => {
+                            const label    = getRoleLabel(role);
                             const count    = allStaff.filter(u => u.role === role).length;
                             const isActive = selectedRole === role;
                             return (
@@ -227,10 +241,10 @@ export default function HRManagement() {
                         {selectedRole && (
                             <button
                                 onClick={() => setSelectedRole(null)}
-                                className="bg-gray-50 dark:bg-gray-900 border border-dashed border-gray-200 dark:border-gray-700 rounded-2xl p-4 flex items-center justify-center transition-all cursor-pointer hover:border-rose-300 hover:bg-rose-50 dark:hover:bg-rose-950/10 text-gray-400 hover:text-rose-500 gap-1"
+                                className="bg-gray-55 dark:bg-gray-900 border border-dashed border-gray-200 dark:border-gray-700 rounded-2xl p-4 flex items-center justify-center transition-all cursor-pointer hover:border-rose-300 hover:bg-rose-50 dark:hover:bg-rose-950/10 text-gray-400 hover:text-rose-500 gap-1"
                             >
                                 <X size={12} />
-                                <span className="text-[9px] font-extrabold uppercase tracking-widest">Filtr</span>
+                                <span className="text-[9px] font-extrabold uppercase tracking-widest">{t('filter')}</span>
                             </button>
                         )}
                     </div>
@@ -239,16 +253,16 @@ export default function HRManagement() {
                     {selectedRole && (
                         <div className="flex items-center gap-2">
                             <span className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[9px] font-extrabold border uppercase tracking-widest ${ROLE_COLORS[selectedRole] || ''}`}>
-                                {ROLE_LABELS[selectedRole]} — {filteredUsers.length} ta
+                                {getRoleLabel(selectedRole)} — {filteredUsers.length}
                             </span>
                         </div>
                     )}
 
                     {loadingUsers ? (
-                        <div className="py-20 text-center text-[#1b6b6b] text-xs font-bold uppercase tracking-widest">Xodimlar yuklanmoqda...</div>
+                        <div className="py-20 text-center text-[#1b6b6b] text-xs font-bold uppercase tracking-widest">{t('loading')}</div>
                     ) : filteredUsers.length === 0 ? (
                         <div className="py-20 text-center bg-white dark:bg-gray-800 rounded-3xl border border-gray-100 dark:border-gray-700/50">
-                            <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Hech qanday xodim topilmadi</p>
+                            <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">{t('no_staff_found')}</p>
                         </div>
                     ) : (
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -278,7 +292,7 @@ export default function HRManagement() {
                                                         {isAdmin && (
                                                             <button
                                                                 onClick={() => isLegacy ? handleDeleteTeacher(u._tid) : handleDeleteUser(u.id)}
-                                                                className="w-7 h-7 rounded-lg text-rose-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/20 flex items-center justify-center transition-colors cursor-pointer">
+                                                                className="w-7 h-7 rounded-lg text-rose-400 hover:text-rose-600 hover:bg-rose-55/20 flex items-center justify-center transition-colors cursor-pointer">
                                                                 <Trash2 size={13} />
                                                             </button>
                                                         )}
@@ -291,7 +305,7 @@ export default function HRManagement() {
                                                     <p className="text-[9px] font-bold text-gray-400 mt-0.5">{u.position}</p>
                                                 )}
                                                 <span className={`inline-block mt-1.5 px-2.5 py-0.5 rounded-md text-[8px] font-black border uppercase tracking-wider ${ROLE_COLORS[u.role] || 'bg-gray-50 text-gray-400 border-gray-100'}`}>
-                                                    {ROLE_LABELS[u.role] || u.role}
+                                                    {getRoleLabel(u.role)}
                                                 </span>
                                             </div>
                                         </div>
@@ -320,7 +334,7 @@ export default function HRManagement() {
                                             onClick={() => navigate(profilePath)}
                                             className="mt-3 w-full flex items-center justify-center gap-2 py-2 bg-[#1b6b6b]/5 border border-[#1b6b6b]/15 text-[#1b6b6b] dark:text-teal-400 rounded-xl text-[9px] font-extrabold uppercase tracking-widest hover:bg-[#1b6b6b] hover:text-white hover:border-[#1b6b6b] transition-all cursor-pointer">
                                             <Eye size={11} />
-                                            Profilni Ko'rish
+                                            {t('view_profile')}
                                         </button>
                                     </div>
                                 );
@@ -332,7 +346,7 @@ export default function HRManagement() {
             {/* Add Modal */}
             {isAddOpen && (
                 <UserModal
-                    title="Yangi Xodim" subtitle="Tizimga yangi xodim qo'shish"
+                    title={t('new_staff')} subtitle={t('add_staff_subtitle')}
                     user={newUser} onChange={setNewUser}
                     onClose={() => setIsAddOpen(false)}
                     onSubmit={handleAddUser}
@@ -344,7 +358,7 @@ export default function HRManagement() {
             {/* Edit Modal */}
             {isEditOpen && editingUser && (
                 <UserModal
-                    title="Xodimni Tahrirlash" subtitle="Ma'lumotlarni yangilash"
+                    title={t('edit_staff')} subtitle={t('edit_staff_subtitle')}
                     user={editingUser} onChange={setEditingUser}
                     onClose={() => { setIsEditOpen(false); setEditingUser(null); }}
                     onSubmit={handleEditUser}
@@ -372,6 +386,7 @@ function UserModal({
     onClose: () => void; onSubmit: (e: React.FormEvent) => void;
     currentUserRole?: string; showPassword: boolean;
 }) {
+    const { t } = useLang();
     const fileRef     = useRef<HTMLInputElement>(null);
     const [isCameraOpen, setIsCameraOpen] = useState(false);
     const [isRemovingBg, setIsRemovingBg] = useState(false);
@@ -441,11 +456,11 @@ function UserModal({
                             <div className="flex gap-2">
                                 <button type="button" onClick={() => setIsCameraOpen(true)}
                                     className="flex items-center gap-1.5 px-3 py-2 bg-[#1b6b6b]/10 hover:bg-[#1b6b6b] text-[#1b6b6b] hover:text-white border border-[#1b6b6b]/20 rounded-xl text-[9px] font-extrabold uppercase tracking-widest cursor-pointer transition-all">
-                                    <Camera size={11} /> Kamera
+                                    <Camera size={11} /> {t('camera')}
                                 </button>
                                 <button type="button" onClick={() => fileRef.current?.click()}
                                     className="flex items-center gap-1.5 px-3 py-2 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 text-gray-600 dark:text-gray-300 border border-gray-200 dark:border-gray-600 rounded-xl text-[9px] font-extrabold uppercase tracking-widest cursor-pointer transition-all">
-                                    Fayldan yuklash
+                                    {t('upload_from_file')}
                                 </button>
                             </div>
                             {user.photo && (
@@ -453,11 +468,11 @@ function UserModal({
                                     <button type="button" onClick={handleRemoveBg} disabled={isRemovingBg}
                                         className="flex items-center gap-1.5 px-3 py-2 bg-violet-50 dark:bg-violet-950/20 text-violet-600 dark:text-violet-400 border border-violet-100 dark:border-violet-900/30 rounded-xl text-[9px] font-extrabold uppercase tracking-widest hover:bg-violet-600 hover:text-white transition-all disabled:opacity-50 cursor-pointer">
                                         <Sparkles size={11} className={isRemovingBg ? 'animate-spin' : ''} />
-                                        {isRemovingBg ? 'Tozalanmoqda...' : 'Fonni tozalash'}
+                                        {isRemovingBg ? t('clearing_bg') : t('clear_bg')}
                                     </button>
                                     <button type="button" onClick={() => onChange({ ...user, photo: '' })}
                                         className="text-[9px] font-bold text-rose-500 uppercase tracking-widest cursor-pointer hover:underline text-left">
-                                        Rasmni o'chirish
+                                        {t('delete_photo')}
                                     </button>
                                 </div>
                             )}
@@ -469,42 +484,42 @@ function UserModal({
                     )}
 
                     <div>
-                        <label className={lbl}>Ism Familiya *</label>
+                        <label className={lbl}>{t('full_name')} *</label>
                         <input required type="text" className={inp} value={user.name || ''} onChange={e => onChange({ ...user, name: e.target.value })} />
                     </div>
 
                     <div className="grid grid-cols-2 gap-4">
                         <div>
-                            <label className={lbl}>Lavozim *</label>
+                            <label className={lbl}>{t('staff_role')} *</label>
                             <select required className={inp} value={user.role || 'RECEPTIONIST'} onChange={e => onChange({ ...user, role: e.target.value })}>
-                                <option value="RECEPTIONIST">Receptionist</option>
-                                <option value="TEACHER">O'qituvchi</option>
-                                <option value="SUPPORT_TEACHER">Yord. O'qituvchi</option>
-                                <option value="TECH_STAFF">Tex. Xodim</option>
-                                <option value="DRIVER">Haydovchi</option>
-                                {(currentUserRole === 'ADMIN' || currentUserRole === 'MANAGER') && <option value="MANAGER">Menejer</option>}
-                                {currentUserRole === 'ADMIN' && <option value="ADMIN">Administrator</option>}
+                                <option value="RECEPTIONIST">{t('role_receptionist')}</option>
+                                <option value="TEACHER">{t('role_teacher')}</option>
+                                <option value="SUPPORT_TEACHER">{t('role_support_teacher')}</option>
+                                <option value="TECH_STAFF">{t('role_tech_staff')}</option>
+                                <option value="DRIVER">{t('role_driver')}</option>
+                                {(currentUserRole === 'ADMIN' || currentUserRole === 'MANAGER') && <option value="MANAGER">{t('role_manager')}</option>}
+                                {currentUserRole === 'ADMIN' && <option value="ADMIN">{t('role_admin')}</option>}
                             </select>
                         </div>
                         <div>
-                            <label className={lbl}>Telefon</label>
+                            <label className={lbl}>{t('student_phone')}</label>
                             <input type="text" placeholder="+998" className={inp} value={user.phone || ''} onChange={e => onChange({ ...user, phone: e.target.value })} />
                         </div>
                     </div>
 
                     <div className="grid grid-cols-2 gap-4">
                         <div>
-                            <label className={lbl}>Vazifa / Mutaxassislik</label>
-                            <input type="text" placeholder="Masalan: Matematika o'qituvchisi" className={inp} value={user.position || ''} onChange={e => onChange({ ...user, position: e.target.value })} />
+                            <label className={lbl}>{t('position_specialty')}</label>
+                            <input type="text" placeholder={t('position_placeholder')} className={inp} value={user.position || ''} onChange={e => onChange({ ...user, position: e.target.value })} />
                         </div>
                         <div>
-                            <label className={lbl}>Asosiy Maosh (UZS)</label>
+                            <label className={lbl}>{t('base_salary')}</label>
                             <input type="number" placeholder="0" className={inp} value={user.salary || ''} onChange={e => onChange({ ...user, salary: e.target.value })} />
                         </div>
                     </div>
 
                     <div>
-                        <label className={lbl}>KPI Foiz (%)</label>
+                        <label className={lbl}>{t('kpi_percent')}</label>
                         <input type="number" min="0" max="100" placeholder="0" className={inp} value={user.kpiPercent ?? ''} onChange={e => onChange({ ...user, kpiPercent: Number(e.target.value) })} />
                     </div>
 
@@ -516,8 +531,8 @@ function UserModal({
                                 <input required={!isTechStaff} type="email" className={inp} value={user.email || ''} onChange={e => onChange({ ...user, email: e.target.value })} />
                             </div>
                             <div>
-                                <label className={lbl}>{showPassword ? 'Parol *' : 'Yangi Parol'}</label>
-                                <input type="password" required={showPassword && !isTechStaff} placeholder={showPassword ? 'Kamida 6 belgi' : "O'zgartirish uchun"} className={inp}
+                                <label className={lbl}>{showPassword ? `${t('password')} *` : t('new_password')}</label>
+                                <input type="password" required={showPassword && !isTechStaff} placeholder={showPassword ? t('min_password_length') : t('leave_blank_to_keep')} className={inp}
                                     value={user.password || ''} onChange={e => onChange({ ...user, password: e.target.value })} />
                             </div>
                         </div>
@@ -527,7 +542,7 @@ function UserModal({
                         <div className="flex items-center gap-2 px-4 py-3 bg-orange-50 dark:bg-orange-950/20 border border-orange-100 dark:border-orange-900/30 rounded-2xl">
                             <Wrench size={14} className="text-orange-500 shrink-0" />
                             <p className="text-[10px] font-bold text-orange-600 dark:text-orange-400">
-                                Tex. xodimlar tizimga kirish huquqiga ega emas — login ma'lumotlari avtomatik yaratiladi.
+                                {t('tech_staff_no_login_warning')}
                             </p>
                         </div>
                     )}
@@ -535,11 +550,11 @@ function UserModal({
                     <div className="flex gap-3 pt-4 border-t border-dashed border-gray-100 dark:border-gray-700/50">
                         <button type="button" onClick={onClose}
                             className="flex-1 py-3 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-white text-xs font-extrabold uppercase tracking-widest rounded-2xl transition-all cursor-pointer hover:bg-gray-200 dark:hover:bg-gray-600">
-                            Bekor
+                            {t('cancel')}
                         </button>
                         <button type="submit"
                             className="flex-1 py-3 bg-[#1b6b6b] hover:bg-[#155252] text-white text-xs font-extrabold uppercase tracking-widest rounded-2xl shadow-lg shadow-[#1b6b6b]/20 transition-all cursor-pointer">
-                            Saqlash
+                            {t('save')}
                         </button>
                     </div>
                 </form>

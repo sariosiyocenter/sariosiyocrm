@@ -156,9 +156,9 @@ export default function LogisticsHub() {
 
                     <div className="flex bg-gray-50 dark:bg-gray-900 p-1 rounded-xl border border-gray-100 dark:border-gray-700/50 w-fit">
                         {[
-                            { id: 'marshrutlar', label: 'Marshrutlar' },
-                            { id: 'yetkazish', label: 'Kunlik Holat' },
-                            { id: 'flot', label: 'Avtopark' },
+                            { id: 'marshrutlar', label: t('tab_routes') },
+                            { id: 'yetkazish', label: t('tab_daily_status') },
+                            { id: 'flot', label: t('tab_fleet') },
                         ].map(tab => (
                             <button
                                 key={tab.id}
@@ -184,7 +184,7 @@ export default function LogisticsHub() {
                             <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={14} />
                             <input 
                                 type="text" 
-                                placeholder="Qidiruv..." 
+                                placeholder={t('search')} 
                                 value={searchTerm}
                                 onChange={(e) => setSearchTerm(e.target.value)}
                                 className="w-full pl-9 pr-4 py-2 bg-gray-50 dark:bg-gray-900/50 border border-gray-100 dark:border-gray-700 rounded-xl text-xs font-bold text-gray-900 dark:text-white outline-none focus:border-[#1b6b6b] transition-all"
@@ -194,61 +194,59 @@ export default function LogisticsHub() {
                             onClick={() => { resetTransportForm(); setIsTransportModalOpen(true); }}
                             className="flex items-center gap-2 px-4 py-2.5 bg-[#1b6b6b] hover:bg-[#155252] text-white rounded-xl text-xs font-extrabold uppercase tracking-widest shadow-lg shadow-[#1b6b6b]/20 transition-all cursor-pointer"
                         >
-                            <Plus size={14} /> Qo'shish
+                            <Plus size={14} /> {t('add')}
                         </button>
                     </div>
 
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                        {transports.filter(t => t.name.toLowerCase().includes(searchTerm.toLowerCase())).map(t => (
-                            <div key={t.id} className="bg-white dark:bg-gray-800 rounded-3xl border border-gray-100 dark:border-gray-700/50 p-6 shadow-sm hover:shadow-md transition-all group relative flex flex-col justify-between min-h-[200px]">
+                        {transports.filter(t => t.name.toLowerCase().includes(searchTerm.toLowerCase())).map(item => (
+                            <div key={item.id} className="bg-white dark:bg-gray-800 rounded-3xl border border-gray-100 dark:border-gray-700/50 p-6 shadow-sm hover:shadow-md transition-all group relative flex flex-col justify-between min-h-[200px]">
                                 <div>
                                     <div className="flex justify-between items-start mb-4">
                                         <div className="w-10 h-10 rounded-xl bg-gray-55 dark:bg-gray-900 border border-gray-100 dark:border-gray-700 flex items-center justify-center text-[#1b6b6b]">
                                             <Bus size={18} />
                                         </div>
                                         <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                                            <button onClick={() => { setEditingTransport(t); setTransportFormData(t); setIsTransportModalOpen(true); }} className="w-7 h-7 rounded-lg text-gray-400 hover:text-[#1b6b6b] hover:bg-gray-50 dark:hover:bg-gray-950 flex items-center justify-center transition-colors cursor-pointer"><Edit2 size={13} /></button>
-                                            <button onClick={() => deleteTransport(t.id)} className="w-7 h-7 rounded-lg text-rose-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/20 flex items-center justify-center transition-colors cursor-pointer"><Trash2 size={13} /></button>
+                                            <button onClick={() => { setEditingTransport(item); setTransportFormData(item); setIsTransportModalOpen(true); }} className="w-7 h-7 rounded-lg text-gray-400 hover:text-[#1b6b6b] hover:bg-gray-50 dark:hover:bg-gray-950 flex items-center justify-center transition-colors cursor-pointer"><Edit2 size={13} /></button>
+                                            <button onClick={() => deleteTransport(item.id)} className="w-7 h-7 rounded-lg text-rose-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/20 flex items-center justify-center transition-colors cursor-pointer"><Trash2 size={13} /></button>
                                         </div>
                                     </div>
                                     <div>
-                                        <h3 className="text-xs font-black text-gray-900 dark:text-white uppercase tracking-wide">{t.name}</h3>
-                                        <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mt-1">{t.model} • {t.number}</p>
+                                        <h3 className="text-xs font-black text-gray-900 dark:text-white uppercase tracking-wide">{item.name}</h3>
+                                        <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mt-1">{item.model} • {item.number}</p>
                                     </div>
                                 </div>
                                 <div className="mt-4 pt-4 border-t border-dashed border-gray-100 dark:border-gray-700/50 grid grid-cols-2 gap-4">
                                     <div>
-                                        <span className="text-[8px] font-black text-gray-400 uppercase tracking-widest block mb-0.5">Haydovchi</span>
-                                        <span className="text-xs font-bold text-gray-700 dark:text-gray-200 uppercase tracking-tight">{t.driverName || 'Noma\'lum'}</span>
+                                        <span className="text-[8px] font-black text-gray-400 uppercase tracking-widest block mb-0.5">{t('driver')}</span>
+                                        <span className="text-xs font-bold text-gray-700 dark:text-gray-200 uppercase tracking-tight">{item.driverName || t('unknown_teacher')}</span>
                                     </div>
                                     <div>
-                                        <span className="text-[8px] font-black text-gray-400 uppercase tracking-widest block mb-0.5">Sig'im</span>
-                                        <span className="text-xs font-bold text-gray-700 dark:text-gray-200 tabular-nums">{t.capacity} kishi</span>
+                                        <span className="text-[8px] font-black text-gray-400 uppercase tracking-widest block mb-0.5">{t('capacity')}</span>
+                                        <span className="text-xs font-bold text-gray-700 dark:text-gray-200 tabular-nums">{t('capacity_unit').replace('{count}', String(item.capacity))}</span>
                                     </div>
                                 </div>
                                 <div className="mt-4 flex items-center justify-between">
                                     <span className={`px-2 py-0.5 rounded-md text-[8px] font-black border uppercase tracking-wider ${
-                                        t.status === 'Faol' ? 'bg-emerald-50 text-emerald-600 border-emerald-100 dark:bg-emerald-950/20 dark:text-emerald-400' : 'bg-gray-50 text-gray-400 border-gray-100 dark:bg-gray-900/50'
+                                        item.status === 'Faol' ? 'bg-emerald-50 text-emerald-600 border-emerald-100 dark:bg-emerald-950/20 dark:text-emerald-400' : 'bg-gray-50 text-gray-400 border-gray-100 dark:bg-gray-900/50'
                                     }`}>
-                                        {t.status}
+                                        {item.status === 'Faol' ? t('status_active') : item.status === 'Ta\'mirda' ? t('status_repair') : item.status === 'Arxiv' ? t('status_archive') : item.status}
                                     </span>
                                     <div className="flex items-center gap-1 text-[10px] font-bold text-gray-500 tabular-nums">
-                                        <Phone size={10} className="text-[#1b6b6b]" /> {t.driverPhone}
+                                        <Phone size={10} className="text-[#1b6b6b]" /> {item.driverPhone}
                                     </div>
                                 </div>
                             </div>
                         ))}
                     </div>
                 </div>
-            )}
-
-            {activeTab === 'marshrutlar' && (
+            )}            {activeTab === 'marshrutlar' && (
                 <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
                     {/* Left: Route list */}
                     <div className="lg:col-span-4 space-y-4">
                         <div className="bg-white dark:bg-gray-800 rounded-3xl border border-gray-100 dark:border-gray-700/50 p-6 shadow-sm">
                             <div className="flex justify-between items-center mb-6">
-                                <span className="text-[9px] font-black uppercase text-gray-400 tracking-wider">Yo'nalishlar</span>
+                                <span className="text-[9px] font-black uppercase text-gray-400 tracking-wider">{t('routes')}</span>
                                 <button 
                                     onClick={() => { resetRouteForm(); setIsRouteModalOpen(true); }}
                                     className="w-8 h-8 rounded-lg bg-[#1b6b6b] text-white flex items-center justify-center shadow transition-all cursor-pointer"
@@ -284,7 +282,7 @@ export default function LogisticsHub() {
                                                     {route.name}
                                                 </h3>
                                                 <span className="text-[9px] text-gray-400 font-bold block mt-0.5 uppercase tracking-wide">
-                                                    {route.days} • {route.startTime || '--:--'} • {route.studentIds.length} o'quvchi
+                                                    {route.days === 'HAR_KUNI' ? t('every_day') : route.days === 'TOQ' ? t('odd_days') : route.days === 'JUFT' ? t('even_days') : route.days} • {route.startTime || '--:--'} • {route.studentIds.length} {t('student').toLowerCase()}
                                                 </span>
                                             </div>
                                             <div className="w-8 h-8 rounded-lg bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700 flex items-center justify-center text-[#1b6b6b]">
@@ -293,7 +291,7 @@ export default function LogisticsHub() {
                                         </div>
                                         <div className="mt-4 flex items-center justify-between pt-2 border-t border-dashed border-gray-100 dark:border-gray-700/50">
                                             <span className="text-[9px] font-bold text-gray-500 uppercase tracking-wide">
-                                                🚌 {route.transport?.name || 'Belgilanmagan'}
+                                                🚌 {route.transport?.name || t('not_marked')}
                                             </span>
                                             <button 
                                                 onClick={(e) => { e.stopPropagation(); deleteRoute(route.id); if(editingRoute?.id === route.id) resetRouteForm(); }}
@@ -305,7 +303,7 @@ export default function LogisticsHub() {
                                     </div>
                                 ))}
                                 {routes.length === 0 && (
-                                    <p className="text-center py-8 text-[10px] text-gray-400 font-bold uppercase tracking-widest">Hozircha yo'nalishlar yo'q</p>
+                                    <p className="text-center py-8 text-[10px] text-gray-400 font-bold uppercase tracking-widest">{t('no_routes_found')}</p>
                                 )}
                             </div>
                         </div>
@@ -320,20 +318,20 @@ export default function LogisticsHub() {
                                         <h3 className="text-sm font-black text-gray-900 dark:text-white uppercase tracking-tight">
                                             {editingRoute.name}
                                         </h3>
-                                        <span className="text-[10px] font-bold text-[#1b6b6b] uppercase tracking-widest mt-0.5">Boshlanishi: {editingRoute.startTime || 'Belgilanmagan'}</span>
+                                        <span className="text-[10px] font-bold text-[#1b6b6b] uppercase tracking-widest mt-0.5">{t('start_time')}: {editingRoute.startTime || t('not_marked')}</span>
                                     </div>
                                     <div className="flex gap-2">
                                         <button 
                                             onClick={() => setIsRouteModalOpen(true)}
                                             className="px-3.5 py-2 bg-gray-50 dark:bg-gray-900 hover:bg-gray-100 border border-gray-100 dark:border-gray-750 text-gray-700 dark:text-white rounded-xl text-[10px] font-extrabold uppercase tracking-widest transition-all cursor-pointer"
                                         >
-                                            Tahrirlash
+                                            {t('edit')}
                                         </button>
                                         <button 
                                             onClick={() => setIsStudentSelectorOpen(true)}
                                             className="px-3.5 py-2 bg-[#1b6b6b] hover:bg-[#155252] text-white rounded-xl text-[10px] font-extrabold uppercase tracking-widest shadow-lg shadow-[#1b6b6b]/20 transition-all cursor-pointer"
                                         >
-                                            O'quvchi qo'shish
+                                            {t('add_student')}
                                         </button>
                                     </div>
                                 </div>
@@ -385,13 +383,13 @@ export default function LogisticsHub() {
                                         );
                                     })}
                                     {editingRoute.studentIds.length === 0 && (
-                                        <p className="text-center py-12 text-[10px] text-gray-400 font-bold uppercase tracking-widest">Bu marshrutda o'quvchilar yo'q</p>
+                                        <p className="text-center py-12 text-[10px] text-gray-400 font-bold uppercase tracking-widest">{t('no_students_in_route')}</p>
                                     )}
                                 </div>
                             </div>
                         ) : (
                             <div className="bg-white dark:bg-gray-800 rounded-3xl border border-gray-100 dark:border-gray-700/50 p-12 text-center shadow-sm">
-                                <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Marshrut tanlang</p>
+                                <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">{t('select_route_prompt')}</p>
                             </div>
                         )}
                     </div>
@@ -403,7 +401,7 @@ export default function LogisticsHub() {
                     {/* Select Transport & Date */}
                     <div className="lg:col-span-1 space-y-4">
                         <div className="bg-white dark:bg-gray-800 rounded-3xl border border-gray-100 dark:border-gray-700/50 p-5 shadow-sm">
-                            <span className="text-[9px] font-black uppercase text-gray-400 tracking-wider block mb-4">Transport Tanlovi</span>
+                            <span className="text-[9px] font-black uppercase text-gray-400 tracking-wider block mb-4">{t('transport_selection')}</span>
                             <div className="space-y-2">
                                 {transports.map(t => (
                                     <button
@@ -437,7 +435,7 @@ export default function LogisticsHub() {
                                 <div key={route.id} className="bg-white dark:bg-gray-800 rounded-3xl border border-gray-100 dark:border-gray-700/50 overflow-hidden shadow-sm">
                                     <button 
                                         onClick={() => setExpandedRouteId(expandedRouteId === route.id ? null : route.id)}
-                                        className="w-full flex items-center justify-between p-5 hover:bg-gray-50 dark:hover:bg-gray-750 transition-colors cursor-pointer"
+                                        className="w-full flex items-center justify-between p-5 hover:bg-gray-55 dark:hover:bg-gray-750 transition-colors cursor-pointer"
                                     >
                                         <div className="flex items-center gap-3">
                                             <div className="w-8 h-8 rounded-lg bg-[#1b6b6b]/10 text-[#1b6b6b] flex items-center justify-center">
@@ -445,7 +443,7 @@ export default function LogisticsHub() {
                                             </div>
                                             <div className="text-left">
                                                 <h4 className="text-xs font-black text-gray-900 dark:text-white uppercase tracking-wide">{route.name}</h4>
-                                                <span className="text-[9px] font-bold text-gray-400 uppercase tracking-widest block mt-0.5">{route.studentIds.length} o'quvchi</span>
+                                                <span className="text-[9px] font-bold text-gray-400 uppercase tracking-widest block mt-0.5">{route.studentIds.length} {t('student').toLowerCase()}</span>
                                             </div>
                                         </div>
                                         <ChevronDown size={16} className={`text-gray-400 transition-transform ${expandedRouteId === route.id ? 'rotate-180' : ''}`} />
@@ -458,16 +456,16 @@ export default function LogisticsHub() {
                                                 if (!student) return null;
                                                 const status = getDeliveryStatus(student.id);
                                                 return (
-                                                    <div key={student.id} className="p-3 bg-gray-50/50 dark:bg-gray-900/40 rounded-2xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+                                                    <div key={student.id} className="p-3 bg-gray-55/50 dark:bg-gray-900/40 rounded-2xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
                                                         <div>
                                                             <h5 className="text-xs font-black text-gray-900 dark:text-white uppercase tracking-tight">{student.name}</h5>
-                                                            <span className="text-[9px] text-gray-400 font-bold block mt-0.5 uppercase tracking-wide">{student.address || 'Manzil yo\'q'}</span>
+                                                            <span className="text-[9px] text-gray-400 font-bold block mt-0.5 uppercase tracking-wide">{student.address || t('no_address')}</span>
                                                         </div>
                                                         <div className="flex items-center gap-1.5 w-full sm:w-auto">
                                                             {[
-                                                                { label: 'Olib ketildi', status: 'Olib ketildi', color: 'sky' },
-                                                                { label: 'Yetkazildi', status: 'Uyiga yetkazildi', color: 'emerald' },
-                                                                { label: 'Kelmadi', status: 'Kelmadi', color: 'rose' }
+                                                                { label: t('status_picked_up'), status: 'Olib ketildi', color: 'sky' },
+                                                                { label: t('status_delivered'), status: 'Uyiga yetkazildi', color: 'emerald' },
+                                                                { label: t('status_not_come'), status: 'Kelmadi', color: 'rose' }
                                                             ].map(opt => (
                                                                 <button 
                                                                     key={opt.status}
@@ -500,59 +498,59 @@ export default function LogisticsHub() {
                     <div className="relative bg-white dark:bg-gray-800 rounded-[2rem] border border-gray-100 dark:border-gray-700/50 shadow-2xl w-full max-w-md p-8">
                         <div className="flex items-center justify-between mb-6 pb-4 border-b border-gray-50 dark:border-gray-700/50">
                             <div>
-                                <h3 className="text-lg font-black text-gray-900 dark:text-white uppercase tracking-tight">{editingTransport ? 'Tahrirlash' : 'Yangi Transport'}</h3>
-                                <p className="text-[10px] font-bold text-[#1b6b6b] uppercase tracking-widest mt-0.5">Avtopark tarkibi</p>
+                                <h3 className="text-lg font-black text-gray-900 dark:text-white uppercase tracking-tight">{editingTransport ? t('edit_transport') : t('new_transport')}</h3>
+                                <p className="text-[10px] font-bold text-[#1b6b6b] uppercase tracking-widest mt-0.5">{t('fleet_subtitle')}</p>
                             </div>
                             <button onClick={() => setIsTransportModalOpen(false)} className="w-9 h-9 flex items-center justify-center text-gray-400 hover:bg-gray-55 dark:hover:bg-gray-700 rounded-xl cursor-pointer"><X size={18} /></button>
                         </div>
                         <form onSubmit={handleTransportSubmit} className="space-y-4">
                             <div>
-                                <label className={lbl}>Nomi *</label>
+                                <label className={lbl}>{t('transport_name')} *</label>
                                 <input required type="text" className={inp} placeholder="Sariq avtobus" value={transportFormData.name} onChange={e => setTransportFormData({...transportFormData, name: e.target.value})} />
                             </div>
                             <div className="grid grid-cols-2 gap-4">
                                 <div>
-                                    <label className={lbl}>Model</label>
+                                    <label className={lbl}>{t('model')}</label>
                                     <input type="text" className={inp} placeholder="Daewoo" value={transportFormData.model} onChange={e => setTransportFormData({...transportFormData, model: e.target.value})} />
                                 </div>
                                 <div>
-                                    <label className={lbl}>Raqam</label>
+                                    <label className={lbl}>{t('plate_number')}</label>
                                     <input type="text" className={inp} placeholder="70 A 777 AA" value={transportFormData.number} onChange={e => setTransportFormData({...transportFormData, number: e.target.value})} />
                                 </div>
                             </div>
                             <div className="grid grid-cols-2 gap-4">
                                 <div>
-                                    <label className={lbl}>Sig'im (kishi)</label>
+                                    <label className={lbl}>{t('capacity')} ({t('capacity_unit').replace('{count}', '')})</label>
                                     <input type="number" className={inp} value={transportFormData.capacity} onChange={e => setTransportFormData({...transportFormData, capacity: parseInt(e.target.value)})} />
                                 </div>
                                 <div>
-                                    <label className={lbl}>Holat</label>
+                                    <label className={lbl}>{t('status')}</label>
                                     <select className={inp} value={transportFormData.status} onChange={e => setTransportFormData({...transportFormData, status: e.target.value as any})}>
-                                        <option value="Faol">Faol</option>
-                                        <option value="Ta'mirda">Ta'mirda</option>
-                                        <option value="Arxiv">Arxiv</option>
+                                        <option value="Faol">{t('status_active')}</option>
+                                        <option value="Ta'mirda">{t('status_repair')}</option>
+                                        <option value="Arxiv">{t('status_archive')}</option>
                                     </select>
                                 </div>
                             </div>
                             <div>
-                                <label className={lbl}>Haydovchi</label>
+                                <label className={lbl}>{t('driver')}</label>
                                 <select className={inp} value={transportFormData.driverId || ''} onChange={e => {
                                     const did = e.target.value ? parseInt(e.target.value) : null;
                                     const u = users.find(u => u.id === did);
                                     setTransportFormData({...transportFormData, driverId: did, driverName: u?.name || '', driverPhone: u?.phone || ''});
                                 }}>
-                                    <option value="">Tanlang...</option>
+                                    <option value="">{t('select_placeholder')}</option>
                                     {users.filter(u => u.role === 'DRIVER').map(u => <option key={u.id} value={u.id}>{u.name}</option>)}
                                 </select>
                             </div>
                             <div className="flex gap-3 pt-4 border-t border-dashed border-gray-150 dark:border-gray-700/50">
                                 <button type="button" onClick={() => setIsTransportModalOpen(false)}
                                     className="flex-1 py-3 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-white text-xs font-extrabold uppercase tracking-widest rounded-2xl transition-all cursor-pointer hover:bg-gray-200 dark:hover:bg-gray-600">
-                                    Bekor
+                                    {t('cancel')}
                                 </button>
                                 <button type="submit"
                                     className="flex-1 py-3 bg-[#1b6b6b] hover:bg-[#155252] text-white text-xs font-extrabold uppercase tracking-widest rounded-2xl shadow-lg shadow-[#1b6b6b]/20 transition-all cursor-pointer">
-                                    Saqlash
+                                    {t('save')}
                                 </button>
                             </div>
                         </form>
@@ -566,42 +564,42 @@ export default function LogisticsHub() {
                     <div className="relative bg-white dark:bg-gray-800 rounded-[2rem] border border-gray-100 dark:border-gray-700/50 shadow-2xl w-full max-w-md p-8">
                         <div className="flex items-center justify-between mb-6 pb-4 border-b border-gray-50 dark:border-gray-700/50">
                             <div>
-                                <h3 className="text-lg font-black text-gray-900 dark:text-white uppercase tracking-tight">{editingRoute ? 'Marshrut tahriri' : 'Yangi Marshrut'}</h3>
-                                <p className="text-[10px] font-bold text-[#1b6b6b] uppercase tracking-widest mt-0.5">Tashish yo'nalishi</p>
+                                <h3 className="text-lg font-black text-gray-900 dark:text-white uppercase tracking-tight">{editingRoute ? t('edit_route') : t('new_route')}</h3>
+                                <p className="text-[10px] font-bold text-[#1b6b6b] uppercase tracking-widest mt-0.5">{t('route_subtitle')}</p>
                             </div>
                             <button onClick={() => setIsRouteModalOpen(false)} className="w-9 h-9 flex items-center justify-center text-gray-400 hover:bg-gray-55 dark:hover:bg-gray-700 rounded-xl cursor-pointer"><X size={18} /></button>
                         </div>
                         <form onSubmit={handleRouteSubmit} className="space-y-4">
                             <div>
-                                <label className={lbl}>Marshrut Nomi *</label>
+                                <label className={lbl}>{t('route_name')} *</label>
                                 <input required type="text" className={inp} placeholder="Sariosiyo yo'nalishi" value={routeFormData.name} onChange={e => setRouteFormData({...routeFormData, name: e.target.value})} />
                             </div>
                             <div className="grid grid-cols-2 gap-4">
                                 <div>
-                                    <label className={lbl}>Boshlanish vaqti</label>
+                                    <label className={lbl}>{t('start_time')}</label>
                                     <input type="time" className={inp} value={routeFormData.startTime || ''} onChange={e => setRouteFormData({...routeFormData, startTime: e.target.value})} />
                                 </div>
                                 <div>
-                                    <label className={lbl}>Kunlar</label>
+                                    <label className={lbl}>{t('days')}</label>
                                     <select className={inp} value={routeFormData.days} onChange={e => setRouteFormData({...routeFormData, days: e.target.value as any})}>
-                                        <option value="HAR_KUNI">Har kuni</option>
-                                        <option value="TOQ">Toq kunlar</option>
-                                        <option value="JUFT">Juft kunlar</option>
+                                        <option value="HAR_KUNI">{t('every_day')}</option>
+                                        <option value="TOQ">{t('odd_days')}</option>
+                                        <option value="JUFT">{t('even_days')}</option>
                                     </select>
                                 </div>
                             </div>
                             <div className="grid grid-cols-2 gap-4">
                                 <div>
-                                    <label className={lbl}>Transport</label>
+                                    <label className={lbl}>{t('transport')}</label>
                                     <select className={inp} value={routeFormData.transportId || ''} onChange={e => setRouteFormData({...routeFormData, transportId: e.target.value ? parseInt(e.target.value) : null})}>
-                                        <option value="">Tanlang...</option>
+                                        <option value="">{t('select_placeholder')}</option>
                                         {transports.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
                                     </select>
                                 </div>
                                 <div>
-                                    <label className={lbl}>Haydovchi</label>
+                                    <label className={lbl}>{t('driver')}</label>
                                     <select className={inp} value={routeFormData.driverId || ''} onChange={e => setRouteFormData({...routeFormData, driverId: e.target.value ? parseInt(e.target.value) : null})}>
-                                        <option value="">Tanlang...</option>
+                                        <option value="">{t('select_placeholder')}</option>
                                         {users.filter(u => u.role === 'DRIVER').map(u => <option key={u.id} value={u.id}>{u.name}</option>)}
                                     </select>
                                 </div>
@@ -609,11 +607,11 @@ export default function LogisticsHub() {
                             <div className="flex gap-3 pt-4 border-t border-dashed border-gray-150 dark:border-gray-700/50">
                                 <button type="button" onClick={() => setIsRouteModalOpen(false)}
                                     className="flex-1 py-3 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-white text-xs font-extrabold uppercase tracking-widest rounded-2xl transition-all cursor-pointer hover:bg-gray-200 dark:hover:bg-gray-600">
-                                    Bekor
+                                    {t('cancel')}
                                 </button>
                                 <button type="submit"
                                     className="flex-1 py-3 bg-[#1b6b6b] hover:bg-[#155252] text-white text-xs font-extrabold uppercase tracking-widest rounded-2xl shadow-lg shadow-[#1b6b6b]/20 transition-all cursor-pointer">
-                                    Saqlash
+                                    {t('save')}
                                 </button>
                             </div>
                         </form>
@@ -627,8 +625,8 @@ export default function LogisticsHub() {
                     <div className="relative bg-white dark:bg-gray-800 rounded-[2rem] border border-gray-100 dark:border-gray-700/50 shadow-2xl w-full max-w-md p-8 max-h-[80vh] flex flex-col">
                         <div className="flex items-center justify-between mb-6 pb-4 border-b border-gray-50 dark:border-gray-700/50 shrink-0">
                             <div>
-                                <h3 className="text-lg font-black text-gray-900 dark:text-white uppercase tracking-tight">O'quvchi Qo'shish</h3>
-                                <p className="text-[10px] font-bold text-[#1b6b6b] uppercase tracking-widest mt-0.5">Marshrutga biriktirish</p>
+                                <h3 className="text-lg font-black text-gray-900 dark:text-white uppercase tracking-tight">{t('add_student')}</h3>
+                                <p className="text-[10px] font-bold text-[#1b6b6b] uppercase tracking-widest mt-0.5">{t('assign_to_route')}</p>
                             </div>
                             <button onClick={() => setIsStudentSelectorOpen(false)} className="w-9 h-9 flex items-center justify-center text-gray-400 hover:bg-gray-55 dark:hover:bg-gray-700 rounded-xl cursor-pointer"><X size={18} /></button>
                         </div>
@@ -636,7 +634,7 @@ export default function LogisticsHub() {
                             <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400" size={14} />
                             <input 
                                 type="text"
-                                placeholder="Qidiruv..."
+                                placeholder={t('search')}
                                 className="w-full pl-9 pr-4 py-2.5 bg-gray-50 dark:bg-gray-900/50 border border-gray-100 dark:border-gray-700 rounded-xl text-xs font-bold text-gray-900 dark:text-white outline-none focus:border-[#1b6b6b] transition-all"
                                 value={searchTerm}
                                 onChange={(e) => setSearchTerm(e.target.value)}

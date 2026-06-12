@@ -350,7 +350,7 @@ export default function Students() {
                         <div>
                             <h1 className="text-lg font-black text-gray-900 dark:text-white uppercase tracking-tight">{t('students_title')}</h1>
                             <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mt-0.5">
-                                Jami {students.length} ta o'quvchi • Topildi: {filteredStudents.length} ta
+                                {t('students_count_summary').replace('{total}', String(students.length)).replace('{found}', String(filteredStudents.length))}
                             </p>
                         </div>
                     </div>
@@ -358,14 +358,14 @@ export default function Students() {
                         <div className="relative">
                             <Search size={14} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400" />
                             <input
-                                type="text" placeholder="Ism yoki telefon..."
+                                type="text" placeholder={t('search_placeholder_students')}
                                 value={search} onChange={e => setSearch(e.target.value)}
                                 className="pl-9 pr-4 py-2.5 bg-gray-50 dark:bg-gray-900/50 border border-gray-100 dark:border-gray-700 rounded-xl text-xs font-bold text-gray-900 dark:text-white outline-none focus:border-[#1b6b6b] transition-all w-52"
                             />
                         </div>
                         <button
                             onClick={() => setShowFilters(!showFilters)}
-                            className={`w-10 h-10 flex items-center justify-center rounded-xl border transition-all cursor-pointer ${showFilters ? 'bg-[#1b6b6b] border-[#1b6b6b] text-white' : 'bg-gray-50 dark:bg-gray-900/50 border-gray-100 dark:border-gray-700 text-gray-400 hover:border-[#1b6b6b] hover:text-[#1b6b6b]'}`}
+                            className={`w-10 h-10 flex items-center justify-center rounded-xl border transition-all cursor-pointer ${showFilters ? 'bg-[#1b6b6b] border-[#1b6b6b] text-white' : 'bg-gray-55 dark:bg-gray-900/50 border-gray-100 dark:border-gray-700 text-gray-400 hover:border-[#1b6b6b] hover:text-[#1b6b6b]'}`}
                         >
                             <SlidersHorizontal size={15} />
                         </button>
@@ -373,14 +373,14 @@ export default function Students() {
                             onClick={handleExport}
                             className="flex items-center gap-2 px-3 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-extrabold uppercase tracking-widest transition-all cursor-pointer"
                         >
-                            <FileSpreadsheet size={14} /> Eksport
+                            <FileSpreadsheet size={14} /> {t('export')}
                         </button>
                         <button 
                             onClick={() => document.getElementById('import-excel-input')?.click()}
                             disabled={isImporting}
                             className="flex items-center gap-2 px-3 py-2.5 bg-violet-600 hover:bg-violet-500 text-white rounded-xl text-xs font-extrabold uppercase tracking-widest transition-all cursor-pointer disabled:opacity-50"
                         >
-                            <FileSpreadsheet size={14} /> Import
+                            <FileSpreadsheet size={14} /> {t('import')}
                         </button>
                         <input type="file" id="import-excel-input" accept=".xlsx, .xls, .csv" className="hidden" onChange={handleImportChange} />
                         {selectedSchoolId !== 0 && (
@@ -388,14 +388,14 @@ export default function Students() {
                                 onClick={() => setIsLinkModalOpen(true)}
                                 className="flex items-center gap-2 px-3.5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-extrabold uppercase tracking-widest shadow-lg shadow-blue-600/20 transition-all cursor-pointer"
                             >
-                                <QrCode size={14} /> Link Yaratish
+                                <QrCode size={14} /> {t('create_link')}
                             </button>
                         )}
                         <button
                             onClick={() => setIsModalOpen(true)}
                             className="flex items-center gap-2 px-4 py-2.5 bg-[#1b6b6b] hover:bg-[#155252] text-white rounded-xl text-xs font-extrabold uppercase tracking-widest shadow-lg shadow-[#1b6b6b]/20 transition-all cursor-pointer"
                         >
-                            <Plus size={14} /> Qo'shish
+                            <Plus size={14} /> {t('add')}
                         </button>
                     </div>
                 </div>
@@ -403,65 +403,65 @@ export default function Students() {
                 {showFilters && (
                     <div className="px-6 pb-5 pt-4 border-t border-gray-50 dark:border-gray-700/50 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-7 gap-4">
                         <div>
-                            <label className={lbl}>Holati</label>
+                            <label className={lbl}>{t('filter_status')}</label>
                             <select value={filters.status} onChange={e => setFilters({...filters, status: e.target.value})}
                                 className="w-full px-3 py-2 bg-gray-50 dark:bg-gray-900/50 border border-gray-100 dark:border-gray-700 rounded-xl text-[10px] font-bold text-gray-700 dark:text-white outline-none focus:border-[#1b6b6b] transition-all cursor-pointer">
-                                <option value="">Barchasi</option>
-                                <option value="Faol">Faol</option>
-                                <option value="Arxiv">Arxiv</option>
-                                <option value="Sinov">Sinov</option>
+                                <option value="">{t('all')}</option>
+                                <option value="Faol">{t('status_active')}</option>
+                                <option value="Arxiv">{t('status_archive')}</option>
+                                <option value="Sinov">{t('status_test')}</option>
                             </select>
                         </div>
                         <div>
-                            <label className={lbl}>Guruh</label>
+                            <label className={lbl}>{t('filter_group')}</label>
                             <select value={filters.groupId} onChange={e => setFilters({...filters, groupId: e.target.value})}
                                 className="w-full px-3 py-2 bg-gray-50 dark:bg-gray-900/50 border border-gray-100 dark:border-gray-700 rounded-xl text-[10px] font-bold text-gray-700 dark:text-white outline-none focus:border-[#1b6b6b] transition-all cursor-pointer">
-                                <option value="">Barchasi</option>
+                                <option value="">{t('all')}</option>
                                 {groups.map(g => <option key={g.id} value={g.id}>{g.name}</option>)}
                             </select>
                         </div>
                         <div>
-                            <label className={lbl}>Balans</label>
+                            <label className={lbl}>{t('filter_balance')}</label>
                             <select value={filters.balanceStatus} onChange={e => setFilters({...filters, balanceStatus: e.target.value})}
                                 className="w-full px-3 py-2 bg-gray-50 dark:bg-gray-900/50 border border-gray-100 dark:border-gray-700 rounded-xl text-[10px] font-bold text-gray-700 dark:text-white outline-none focus:border-[#1b6b6b] transition-all cursor-pointer">
-                                <option value="">Barchasi</option>
-                                <option value="debt">Qarzdorlar</option>
-                                <option value="positive">To'laganlar</option>
+                                <option value="">{t('all')}</option>
+                                <option value="debt">{t('debtors')}</option>
+                                <option value="positive">{t('paid_students')}</option>
                             </select>
                         </div>
                         <div>
-                            <label className={lbl}>Reyting</label>
+                            <label className={lbl}>{t('filter_rating')}</label>
                             <select value={filters.rating} onChange={e => setFilters({...filters, rating: e.target.value})}
                                 className="w-full px-3 py-2 bg-gray-50 dark:bg-gray-900/50 border border-gray-100 dark:border-gray-700 rounded-xl text-[10px] font-bold text-gray-700 dark:text-white outline-none focus:border-[#1b6b6b] transition-all cursor-pointer">
-                                <option value="">Barchasi</option>
-                                {[1,2,3,4,5].map(r => <option key={r} value={r}>{r} yulduz</option>)}
+                                <option value="">{t('all')}</option>
+                                {[1,2,3,4,5].map(r => <option key={r} value={r}>{t('star_count').replace('{count}', String(r))}</option>)}
                             </select>
                         </div>
                         <div>
-                            <label className={lbl}>Manzil</label>
+                            <label className={lbl}>{t('filter_location')}</label>
                             <select value={filters.location} onChange={e => setFilters({...filters, location: e.target.value})}
                                 className="w-full px-3 py-2 bg-gray-50 dark:bg-gray-900/50 border border-gray-100 dark:border-gray-700 rounded-xl text-[10px] font-bold text-gray-700 dark:text-white outline-none focus:border-[#1b6b6b] transition-all cursor-pointer">
-                                <option value="">Barchasi</option>
+                                <option value="">{t('all')}</option>
                                 {Array.from(new Set(students.map(s => s.location).filter(Boolean))).map(loc => (
                                     <option key={loc} value={loc}>{loc}</option>
                                 ))}
                             </select>
                         </div>
                         <div>
-                            <label className={`${lbl} text-rose-500`}>⚠️ Kamchiliklar</label>
+                            <label className={`${lbl} text-rose-500`}>{t('filter_defects')}</label>
                             <select value={filters.missingInfo} onChange={e => setFilters({...filters, missingInfo: e.target.value})}
                                 className="w-full px-3 py-2 bg-rose-50 dark:bg-rose-950/20 border border-rose-100 dark:border-rose-900 rounded-xl text-[10px] font-bold text-rose-700 dark:text-rose-400 outline-none focus:border-rose-500 transition-all cursor-pointer">
-                                <option value="">Barchasi</option>
-                                <option value="fatherName">Otasining ismi ({students.filter(s => !s.fatherName || s.fatherName.trim() === '').length} ta)</option>
-                                <option value="fatherPhone">Otasining telefoni ({students.filter(s => !s.fatherPhone || s.fatherPhone.trim() === '').length} ta)</option>
-                                <option value="studentSchool">Maktabi ({students.filter(s => !s.studentSchool || s.studentSchool.trim() === '').length} ta)</option>
-                                <option value="photo">Rasmi ({students.filter(s => !s.photo || s.photo.trim() === '').length} ta)</option>
+                                <option value="">{t('all')}</option>
+                                <option value="fatherName">{t('defect_father_name').replace('{count}', String(students.filter(s => !s.fatherName || s.fatherName.trim() === '').length))}</option>
+                                <option value="fatherPhone">{t('defect_father_phone').replace('{count}', String(students.filter(s => !s.fatherPhone || s.fatherPhone.trim() === '').length))}</option>
+                                <option value="studentSchool">{t('defect_school').replace('{count}', String(students.filter(s => !s.studentSchool || s.studentSchool.trim() === '').length))}</option>
+                                <option value="photo">{t('defect_photo').replace('{count}', String(students.filter(s => !s.photo || s.photo.trim() === '').length))}</option>
                             </select>
                         </div>
                         <div className="flex items-end">
                             <button onClick={() => setFilters({status: '', groupId: '', balanceStatus: 'all', dateRange: 'all', rating: '', location: '', missingInfo: ''})}
                                 className="w-full py-2 text-[10px] font-extrabold uppercase text-rose-500 hover:text-rose-600 flex items-center justify-center gap-1.5 cursor-pointer">
-                                <X size={12} /> Tozalash
+                                <X size={12} /> {t('filter_clear')}
                             </button>
                         </div>
                     </div>
@@ -475,10 +475,10 @@ export default function Students() {
                         <thead>
                             <tr className="bg-gray-50/50 dark:bg-gray-900/50 border-b border-gray-100 dark:border-gray-700">
                                 <th className="p-4 text-[10px] font-bold text-gray-400 uppercase tracking-widest text-center">ID</th>
-                                <th className="p-4 text-[10px] font-bold text-gray-400 uppercase tracking-widest">O'quvchi</th>
-                                <th className="p-4 text-[10px] font-bold text-gray-400 uppercase tracking-widest text-center">Telefon</th>
-                                <th className="p-4 text-[10px] font-bold text-gray-400 uppercase tracking-widest">Guruhlar</th>
-                                <th className="p-4 text-[10px] font-bold text-gray-400 uppercase tracking-widest text-right">Balans</th>
+                                <th className="p-4 text-[10px] font-bold text-gray-400 uppercase tracking-widest">{t('student')}</th>
+                                <th className="p-4 text-[10px] font-bold text-gray-400 uppercase tracking-widest text-center">{t('student_phone')}</th>
+                                <th className="p-4 text-[10px] font-bold text-gray-400 uppercase tracking-widest">{t('student_groups')}</th>
+                                <th className="p-4 text-[10px] font-bold text-gray-400 uppercase tracking-widest text-right">{t('student_balance')}</th>
                                 <th className="p-4 w-12 text-center"></th>
                             </tr>
                         </thead>
@@ -489,14 +489,14 @@ export default function Students() {
                                     <td className="p-4 text-[10px] font-extrabold text-gray-400 text-center tabular-nums">#{student.id}</td>
                                     <td className="p-4">
                                         <div className="flex items-center gap-3">
-                                            <div className="w-10 h-10 rounded-xl bg-gray-50 dark:bg-gray-900 border border-gray-100 dark:border-gray-700 flex items-center justify-center text-[#1b6b6b] font-bold text-xs shadow-inner overflow-hidden shrink-0 group-hover:scale-105 transition-transform">
+                                            <div className="w-10 h-10 rounded-xl bg-gray-55 dark:bg-gray-900 border border-gray-100 dark:border-gray-700 flex items-center justify-center text-[#1b6b6b] font-bold text-xs shadow-inner overflow-hidden shrink-0 group-hover:scale-105 transition-transform">
                                                 {student.photo ? (
                                                     <img src={student.photo} alt={student.name} className="w-full h-full object-cover" />
                                                 ) : student.name.charAt(0).toUpperCase()}
                                             </div>
                                             <div>
                                                 <p className="text-xs font-bold text-gray-900 dark:text-white uppercase tracking-tight group-hover:text-[#1b6b6b] transition-colors">{student.name}</p>
-                                                <span className="text-[9px] text-gray-400 font-bold block mt-0.5 uppercase tracking-wider">A'zo: {student.joinedDate}</span>
+                                                <span className="text-[9px] text-gray-400 font-bold block mt-0.5 uppercase tracking-wider">{t('date')}: {student.joinedDate}</span>
                                             </div>
                                         </div>
                                     </td>
@@ -512,13 +512,13 @@ export default function Students() {
                                                     {g.name}
                                                 </span>
                                             ))}
-                                            {(student.groups || []).length === 0 && <span className="text-[9px] font-bold text-gray-400 uppercase tracking-widest italic">Guruhsiz</span>}
+                                            {(student.groups || []).length === 0 && <span className="text-[9px] font-bold text-gray-400 uppercase tracking-widest italic">{t('no_group')}</span>}
                                         </div>
                                     </td>
                                     <td className="p-4 text-right">
                                         <div className="flex flex-col items-end gap-1">
-                                            <span className={`px-2 py-0.5 rounded-md text-[8px] font-black border uppercase tracking-wider ${student.status === 'Faol' ? 'bg-emerald-50 text-emerald-600 border-emerald-100 dark:bg-emerald-950/20 dark:text-emerald-400' : 'bg-gray-50 text-gray-400 border-gray-100 dark:bg-gray-900/50'}`}>
-                                                {student.status}
+                                            <span className={`px-2 py-0.5 rounded-md text-[8px] font-black border uppercase tracking-wider ${student.status === 'Faol' ? 'bg-emerald-50 text-emerald-600 border-emerald-100 dark:bg-emerald-950/20 dark:text-emerald-400' : 'bg-gray-55 text-gray-400 border-gray-100 dark:bg-gray-900/50'}`}>
+                                                {student.status === 'Faol' ? t('status_active') : student.status === 'Arxiv' ? t('status_archive') : t('status_test')}
                                             </span>
                                             <span className={`text-xs font-extrabold tabular-nums ${student.balance >= 0 ? 'text-gray-900 dark:text-white' : 'text-rose-600 dark:text-rose-400'}`}>
                                                 {student.balance.toLocaleString()} UZS
@@ -536,11 +536,11 @@ export default function Students() {
                                                 <div className="absolute right-4 top-10 bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700 rounded-xl shadow-xl py-1 w-32 z-20 text-left">
                                                     <button onClick={() => { setActiveMenuId(null); navigate(`/students/${student.id}`); }}
                                                         className="w-full text-left px-4 py-2 text-[10px] font-bold text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700 uppercase tracking-widest cursor-pointer">
-                                                        Batafsil
+                                                        {t('details')}
                                                     </button>
                                                     <button onClick={() => { setActiveMenuId(null); handleDeleteStudent(student.id, student.name); }}
                                                         className="w-full text-left px-4 py-2 text-[10px] font-bold text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/30 uppercase tracking-widest cursor-pointer">
-                                                        O'chirish
+                                                        {t('delete')}
                                                     </button>
                                                 </div>
                                             </>
@@ -563,8 +563,8 @@ export default function Students() {
                         <div className="relative bg-white dark:bg-gray-800 rounded-[2rem] border border-gray-100 dark:border-gray-700/50 shadow-2xl w-full max-w-lg p-8 transform transition-all">
                             <div className="flex items-center justify-between mb-6 pb-4 border-b border-gray-50 dark:border-gray-700/50">
                                 <div className="text-left">
-                                    <h3 className="text-lg font-black text-gray-900 dark:text-white uppercase tracking-tight">Yangi O'quvchi</h3>
-                                    <p className="text-[10px] font-bold text-[#1b6b6b] uppercase tracking-widest mt-0.5">O'quvchi ma'lumotlari</p>
+                                    <h3 className="text-lg font-black text-gray-900 dark:text-white uppercase tracking-tight">{t('new_student_title')}</h3>
+                                    <p className="text-[10px] font-bold text-[#1b6b6b] uppercase tracking-widest mt-0.5">{t('student_details_subtitle')}</p>
                                 </div>
                                 <button type="button" onClick={() => setIsModalOpen(false)} className="w-9 h-9 flex items-center justify-center text-gray-400 hover:bg-gray-55 dark:hover:bg-gray-700 rounded-xl cursor-pointer">
                                     <X size={18} />
@@ -572,100 +572,100 @@ export default function Students() {
                             </div>
                             <form onSubmit={handleAddStudent} className="space-y-4 text-left">
                                 <div>
-                                    <label className={lbl}>To'liq Ism *</label>
+                                    <label className={lbl}>{t('full_name')}</label>
                                     <input required type="text" placeholder="Jasur Alimov" className={inp} value={newStudent.name} onChange={e => setNewStudent({ ...newStudent, name: e.target.value })} />
                                 </div>
                                 <div className="grid grid-cols-2 gap-4">
                                     <div>
-                                        <label className={lbl}>Telefon *</label>
+                                        <label className={lbl}>{t('student_phone')} *</label>
                                         <input required type="tel" placeholder="+998" className={inp} value={newStudent.phone} onChange={e => setNewStudent({ ...newStudent, phone: e.target.value })} />
                                     </div>
                                     <div>
-                                        <label className={lbl}>Tug'ilgan Sana</label>
+                                        <label className={lbl}>{t('birth_date')}</label>
                                         <input type="date" className={inp} value={newStudent.birthDate} onChange={e => setNewStudent({ ...newStudent, birthDate: e.target.value })} />
                                     </div>
                                 </div>
                                 <div>
-                                    <label className={lbl}>Maktab / Bog'cha</label>
+                                    <label className={lbl}>{t('school_kindergarten')}</label>
                                     <input type="text" placeholder="42-maktab" className={inp} value={newStudent.studentSchool} onChange={e => setNewStudent({ ...newStudent, studentSchool: e.target.value })} />
                                 </div>
 
                                 <div className="border-t border-dashed border-gray-150 dark:border-gray-700/50 pt-4 mt-4 space-y-4">
-                                    <span className="block text-[9px] font-black uppercase text-[#1b6b6b] tracking-wider text-left">Ota-ona ma'lumotlari</span>
+                                    <span className="block text-[9px] font-black uppercase text-[#1b6b6b] tracking-wider text-left">{t('parent_info')}</span>
                                     <div className="grid grid-cols-2 gap-4">
                                         <div>
-                                            <label className={lbl}>Otasining ismi</label>
+                                            <label className={lbl}>{t('father_name')}</label>
                                             <input type="text" placeholder="FISH" className={inp} value={newStudent.fatherName} onChange={e => setNewStudent({ ...newStudent, fatherName: e.target.value })} />
                                         </div>
                                         <div>
-                                            <label className={lbl}>Otasining telefoni</label>
+                                            <label className={lbl}>{t('father_phone')}</label>
                                             <input type="tel" placeholder="+998" className={inp} value={newStudent.fatherPhone} onChange={e => setNewStudent({ ...newStudent, fatherPhone: e.target.value })} />
                                         </div>
                                     </div>
                                     <div className="grid grid-cols-2 gap-4">
                                         <div>
-                                            <label className={lbl}>Onasining ismi</label>
+                                            <label className={lbl}>{t('mother_name')}</label>
                                             <input type="text" placeholder="FISH" className={inp} value={newStudent.motherName} onChange={e => setNewStudent({ ...newStudent, motherName: e.target.value })} />
                                         </div>
                                         <div>
-                                            <label className={lbl}>Onasining telefoni</label>
+                                            <label className={lbl}>{t('mother_phone')}</label>
                                             <input type="tel" placeholder="+998" className={inp} value={newStudent.motherPhone} onChange={e => setNewStudent({ ...newStudent, motherPhone: e.target.value })} />
                                         </div>
                                     </div>
                                 </div>
 
                                 <div className="border-t border-dashed border-gray-150 dark:border-gray-700/50 pt-4 mt-4 space-y-4">
-                                    <span className="block text-[9px] font-black uppercase text-[#1b6b6b] tracking-wider text-left">Logistika & Manzil</span>
+                                    <span className="block text-[9px] font-black uppercase text-[#1b6b6b] tracking-wider text-left">{t('logistics_address')}</span>
                                     <div className="grid grid-cols-2 gap-4">
                                         <div>
-                                            <label className={lbl}>Transport</label>
-                                            <select className={inp} value={newStudent.transportId} onChange={e => setNewStudent({...newStudent, transportId: e.target.value})}>
-                                                <option value="">Kerak emas</option>
-                                                {transports.map(t => <option key={t.id} value={t.id}>{t.name} ({t.number})</option>)}
-                                            </select>
+                                            <label className={lbl}>{t('transport')}</label>
+                                             <select className={inp} value={newStudent.transportId} onChange={e => setNewStudent({...newStudent, transportId: e.target.value})}>
+                                                 <option value="">{t('not_needed')}</option>
+                                                 {transports.map(t => <option key={t.id} value={t.id}>{t.name} ({t.number})</option>)}
+                                             </select>
                                         </div>
                                         <div>
-                                            <label className={lbl}>Manzil</label>
+                                            <label className={lbl}>{t('address')}</label>
                                             <input type="text" placeholder="Sariosiyo" className={inp} value={newStudent.address} onChange={e => setNewStudent({ ...newStudent, address: e.target.value })} />
                                         </div>
                                     </div>
                                     <button type="button" onClick={() => setIsMapOpen(true)}
                                         className={`w-full py-2.5 rounded-xl border flex items-center justify-center gap-2 text-[10px] font-bold uppercase tracking-widest cursor-pointer transition-all ${newStudent.location ? 'bg-[#1b6b6b]/10 text-[#1b6b6b] border-[#1b6b6b]' : 'bg-gray-55 dark:bg-gray-900 border-gray-100 hover:bg-gray-100'}`}>
-                                        <MapPin size={14} /> {newStudent.location ? 'Kartada belgilandi' : 'Kartadan tanlash'}
+                                        <MapPin size={14} /> {newStudent.location ? t('marked_on_map') : t('select_from_map')}
                                     </button>
                                 </div>
 
                                 <div className="border-t border-dashed border-gray-150 dark:border-gray-700/50 pt-4 mt-4 space-y-4">
-                                    <span className="block text-[9px] font-black uppercase text-[#1b6b6b] tracking-wider text-left">Rasm</span>
+                                    <span className="block text-[9px] font-black uppercase text-[#1b6b6b] tracking-wider text-left">{t('photo_label')}</span>
                                     <div className="flex items-center gap-4">
                                         <div className="w-20 h-20 rounded-2xl bg-gray-55 dark:bg-gray-900 border border-gray-100 flex items-center justify-center overflow-hidden shrink-0 shadow-inner">
                                             {newStudent.photo ? <img src={newStudent.photo} alt="Preview" className="w-full h-full object-cover" /> : <ImageIcon size={24} className="text-gray-300" />}
                                         </div>
                                         <div className="flex-1 space-y-2">
                                             <div className="flex gap-2">
-                                                <label className="flex-1 flex items-center justify-center gap-1.5 py-2 border border-gray-100 dark:border-gray-700 rounded-xl cursor-pointer hover:bg-gray-50 text-[10px] font-bold uppercase tracking-wider">
-                                                    <input type="file" className="hidden" accept="image/*" onChange={(e) => {
-                                                        const file = e.target.files?.[0];
-                                                        if (file) {
-                                                            const reader = new FileReader();
-                                                            reader.onloadend = async () => {
-                                                                const compressed = await compressImage(reader.result as string);
-                                                                setNewStudent({ ...newStudent, photo: compressed });
-                                                            };
-                                                            reader.readAsDataURL(file);
-                                                        }
-                                                    }} />
-                                                    Fayldan
-                                                </label>
+                                                 <label className="flex-1 flex items-center justify-center gap-1.5 py-2 border border-gray-100 dark:border-gray-700 rounded-xl cursor-pointer hover:bg-gray-50 text-[10px] font-bold uppercase tracking-wider">
+                                                     <input type="file" className="hidden" accept="image/*" onChange={(e) => {
+                                                         const file = e.target.files?.[0];
+                                                         if (file) {
+                                                             const reader = new FileReader();
+                                                             reader.onloadend = async () => {
+                                                                 const compressed = await compressImage(reader.result as string);
+                                                                 setNewStudent({ ...newStudent, photo: compressed });
+                                                             };
+                                                             reader.readAsDataURL(file);
+                                                         }
+                                                     }} />
+                                                     {t('photo_from_file')}
+                                                 </label>
                                                 <button type="button" onClick={() => setIsPhotoModalOpen(true)}
                                                     className="flex-1 flex items-center justify-center gap-1.5 py-2 border border-gray-100 dark:border-gray-700 rounded-xl hover:bg-gray-55 text-[10px] font-bold uppercase tracking-wider cursor-pointer">
-                                                    Kamera
+                                                    {t('photo_camera')}
                                                 </button>
                                             </div>
                                             {newStudent.photo && (
                                                 <button type="button" onClick={handleRemoveBg} disabled={isRemovingBg}
                                                     className="w-full py-2 bg-violet-50 text-violet-600 dark:bg-violet-950/20 dark:text-violet-400 rounded-xl border border-violet-100 dark:border-violet-900 text-[9px] font-black uppercase tracking-wider disabled:opacity-50 cursor-pointer">
-                                                    Fonni tozalash (AI)
+                                                    {t('clear_bg')}
                                                 </button>
                                             )}
                                         </div>
@@ -675,11 +675,11 @@ export default function Students() {
                                 <div className="flex gap-3 pt-4 border-t border-dashed border-gray-150 dark:border-gray-700/50">
                                     <button type="button" onClick={() => setIsModalOpen(false)}
                                         className="flex-1 py-3 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-white text-xs font-extrabold uppercase tracking-widest rounded-2xl transition-all cursor-pointer hover:bg-gray-200 dark:hover:bg-gray-600">
-                                        Bekor
+                                        {t('cancel')}
                                     </button>
                                     <button type="submit" disabled={isAdding}
                                         className="flex-1 py-3 bg-[#1b6b6b] hover:bg-[#155252] text-white text-xs font-extrabold uppercase tracking-widest rounded-2xl shadow-lg shadow-[#1b6b6b]/20 transition-all cursor-pointer disabled:opacity-50">
-                                        {isAdding ? "Saqlanmoqda..." : "Saqlash"}
+                                        {isAdding ? t('saving') : t('save')}
                                     </button>
                                 </div>
                             </form>
@@ -710,16 +710,16 @@ export default function Students() {
                 <div className="fixed inset-0 z-[250] flex items-center justify-center p-4">
                     <div className="absolute inset-0 bg-gray-900/60 backdrop-blur-sm" onClick={() => setStudentToDelete(null)} />
                     <div className="relative bg-white dark:bg-gray-800 rounded-3xl p-6 shadow-2xl max-w-sm w-full text-center border border-gray-100 dark:border-gray-700">
-                        <h4 className="text-sm font-black text-gray-900 dark:text-white uppercase tracking-tight mb-2">O'chirishni tasdiqlang</h4>
+                        <h4 className="text-sm font-black text-gray-900 dark:text-white uppercase tracking-tight mb-2">{t('delete_confirm_title')}</h4>
                         <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest leading-relaxed mb-6">
-                            {studentToDelete.name}ni o'chirmoqchimisiz?
+                            {t('delete_confirm_desc').replace('{name}', studentToDelete.name)}
                         </p>
                         <div className="flex gap-3">
                             <button onClick={() => setStudentToDelete(null)} className="flex-1 py-2.5 bg-gray-100 text-gray-600 text-[10px] font-extrabold uppercase tracking-widest rounded-xl cursor-pointer">
-                                Bekor
+                                {t('cancel')}
                             </button>
                             <button onClick={confirmDeleteStudent} className="flex-1 py-2.5 bg-rose-600 text-white text-[10px] font-extrabold uppercase tracking-widest rounded-xl cursor-pointer">
-                                O'chirish
+                                {t('delete')}
                             </button>
                         </div>
                     </div>
@@ -730,13 +730,13 @@ export default function Students() {
                     <div className="absolute inset-0 bg-gray-900/60 backdrop-blur-sm" onClick={() => setIsLinkModalOpen(false)} />
                     <div className="relative bg-white dark:bg-gray-800 rounded-[2rem] border border-gray-100 dark:border-gray-700/50 shadow-2xl w-full max-w-sm p-8 text-center">
                         <div className="flex items-center justify-between mb-6 pb-4 border-b border-gray-150 dark:border-gray-700/50">
-                            <h3 className="text-sm font-black text-gray-900 dark:text-white uppercase tracking-tight">Qabul Havolasi</h3>
-                            <button onClick={() => setIsLinkModalOpen(false)} className="w-8 h-8 flex items-center justify-center text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700 rounded-lg cursor-pointer">
+                            <h3 className="text-sm font-black text-gray-900 dark:text-white uppercase tracking-tight">{t('reception_link')}</h3>
+                            <button onClick={() => setIsLinkModalOpen(false)} className="w-8 h-8 flex items-center justify-center text-gray-400 hover:bg-gray-55 dark:hover:bg-gray-700 rounded-lg cursor-pointer">
                                 <X size={16} />
                             </button>
                         </div>
                         <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest leading-relaxed mb-6">
-                            Yangi kelgan o'quvchilar ushbu QR-kodni skanerlab yoki quyidagi havola orqali o'z arizalarini mustaqil to'ldirishlari mumkin.
+                            {t('reception_link_desc')}
                         </p>
                         
                         <div className="bg-white p-4 rounded-2xl border border-gray-100 dark:border-gray-200 w-fit mx-auto mb-6 shadow-sm">
@@ -751,11 +751,11 @@ export default function Students() {
 
                         <div className="space-y-4">
                             <div className="flex items-center gap-2 bg-gray-55 dark:bg-gray-900/50 p-3 rounded-2xl border border-gray-100 dark:border-gray-750">
-                                <span className="text-[9px] font-black text-[#1b6b6b] uppercase tracking-wider shrink-0">Havola:</span>
+                                <span className="text-[9px] font-black text-[#1b6b6b] uppercase tracking-wider shrink-0">{t('link')}:</span>
                                 <input 
                                     readOnly 
                                     type="text" 
-                                    value={generatedToken ? `${window.location.origin}/apply/${selectedSchoolId}?token=${generatedToken}` : "Yuklanmoqda..."} 
+                                    value={generatedToken ? `${window.location.origin}/apply/${selectedSchoolId}?token=${generatedToken}` : t('loading')} 
                                     className="bg-transparent border-none text-[10px] font-extrabold text-gray-700 dark:text-white outline-none w-full select-all"
                                 />
                             </div>
@@ -767,7 +767,7 @@ export default function Students() {
                                         : 'bg-[#1b6b6b] hover:bg-[#155252] text-white shadow-lg shadow-[#1b6b6b]/15'
                                 }`}
                             >
-                                {copySuccess ? "Nusxalandi!" : "Havolani nusxalash"}
+                                {copySuccess ? t('copied') : t('copy_link')}
                             </button>
                         </div>
                     </div>

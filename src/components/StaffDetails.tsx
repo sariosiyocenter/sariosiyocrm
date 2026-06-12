@@ -9,6 +9,7 @@ import { useCRM } from '../context/CRMContext';
 import { useParams, useNavigate } from 'react-router-dom';
 import { compressImage } from '../lib/image';
 import PhotoCapture from './PhotoCapture';
+import { useLang } from '../context/LanguageContext';
 
 const ROLE_LABELS: Record<string, string> = {
     ADMIN:           'Admin',
@@ -54,6 +55,64 @@ export default function StaffDetails() {
     const { id } = useParams<{ id: string }>();
     const navigate = useNavigate();
     const { teachers, token, user: currentUser } = useCRM();
+    const { t } = useLang();
+
+    const getRoleLabel = (role: string) => {
+        switch (role) {
+            case 'ADMIN': return t('role_admin');
+            case 'MANAGER': return t('role_manager');
+            case 'TEACHER': return t('role_teacher');
+            case 'SUPPORT_TEACHER': return t('role_support_teacher');
+            case 'RECEPTIONIST': return t('role_receptionist');
+            case 'DRIVER': return t('role_driver');
+            case 'TECH_STAFF': return t('role_tech_staff');
+            default: return role;
+        }
+    };
+
+    const getMonthName = (idx: number) => {
+        switch (idx) {
+            case 0: return t('month_0');
+            case 1: return t('month_1');
+            case 2: return t('month_2');
+            case 3: return t('month_3');
+            case 4: return t('month_4');
+            case 5: return t('month_5');
+            case 6: return t('month_6');
+            case 7: return t('month_7');
+            case 8: return t('month_8');
+            case 9: return t('month_9');
+            case 10: return t('month_10');
+            case 11: return t('month_11');
+            default: return '';
+        }
+    };
+
+    const getWeekDayShort = (day: string) => {
+        switch (day) {
+            case 'Du': return t('day_mon_short');
+            case 'Se': return t('day_tue_short');
+            case 'Ch': return t('day_wed_short');
+            case 'Pa': return t('day_thu_short');
+            case 'Ju': return t('day_fri_short');
+            case 'Sh': return t('day_sat_short');
+            case 'Ya': return t('day_sun_short');
+            default: return day;
+        }
+    };
+
+    const getWeekDayFull = (day: string) => {
+        switch (day) {
+            case 'Dushanba': return t('day_mon_full');
+            case 'Seshanba': return t('day_tue_full');
+            case 'Chorshanba': return t('day_wed_full');
+            case 'Payshanba': return t('day_thu_full');
+            case 'Juma': return t('day_fri_full');
+            case 'Shanba': return t('day_sat_full');
+            case 'Yakshanba': return t('day_sun_full');
+            default: return day;
+        }
+    };
 
     const [activeTab, setActiveTab] = useState('umumiy');
     const [staffUser, setStaffUser] = useState<any>(null);
@@ -167,12 +226,12 @@ export default function StaffDetails() {
     }, [activeTab, staffUser?.id, token, payMonth, payYear]);
 
     if (loading) {
-        return <div className="py-20 text-center text-[#1b6b6b] text-xs font-bold uppercase tracking-widest">Yuklanmoqda...</div>;
+        return <div className="py-20 text-center text-[#1b6b6b] text-xs font-bold uppercase tracking-widest">{t('loading')}</div>;
     }
     if (!staffUser) {
         return (
             <div className="p-12 text-center text-gray-500 font-bold text-sm bg-white dark:bg-gray-800 rounded-3xl border border-gray-100 dark:border-gray-700/50 shadow-sm">
-                Xodim topilmadi
+                {t('staff_not_found')}
             </div>
         );
     }
@@ -409,9 +468,9 @@ export default function StaffDetails() {
     const nextMonth = () => { if (selMonth === 11) { setSelMonth(0); setSelYear(y => y+1); } else setSelMonth(m => m+1); };
 
     const tabs = [
-        { id: 'umumiy', label: 'Umumiy',     icon: <Layers size={14} /> },
-        { id: 'maosh',  label: 'Ish Haqi',   icon: <Wallet size={14} /> },
-        { id: 'jadval', label: 'Ish Jadvali', icon: <CalendarDays size={14} /> },
+        { id: 'umumiy', label: t('general'),     icon: <Layers size={14} /> },
+        { id: 'maosh',  label: t('salary_info'),   icon: <Wallet size={14} /> },
+        { id: 'jadval', label: t('work_schedule'), icon: <CalendarDays size={14} /> },
     ];
 
     return (
@@ -420,7 +479,7 @@ export default function StaffDetails() {
             <button onClick={() => navigate('/hr')}
                 className="flex items-center gap-2 text-gray-400 hover:text-[#1b6b6b] transition-all text-[10px] font-extrabold uppercase tracking-widest group cursor-pointer">
                 <ArrowLeft size={14} className="group-hover:-translate-x-1 transition-transform" />
-                Xodimlar ro'yxati
+                {t('staff_list')}
             </button>
 
             <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 items-start">
@@ -451,7 +510,7 @@ export default function StaffDetails() {
                                             onClick={() => setIsPhotoModalOpen(true)}
                                             className="absolute inset-0 bg-black/40 opacity-0 group-hover/avatar:opacity-100 transition-opacity flex flex-col items-center justify-center gap-1 cursor-pointer">
                                             <Camera size={24} className="text-white" />
-                                            <span className="text-[9px] font-extrabold text-white uppercase tracking-widest">Rasm</span>
+                                            <span className="text-[9px] font-extrabold text-white uppercase tracking-widest">{t('camera')}</span>
                                         </button>
                                     )}
                                 </div>
@@ -466,7 +525,7 @@ export default function StaffDetails() {
                             )}
                             <div className="mt-3 flex justify-center">
                                 <span className={`px-2.5 py-0.5 rounded-md text-[8px] font-black border uppercase tracking-wider ${ROLE_COLORS[staffUser.role] || ''}`}>
-                                    {ROLE_LABELS[staffUser.role] || staffUser.role}
+                                    {getRoleLabel(staffUser.role)}
                                 </span>
                             </div>
                             {isAdminOrManager && staffUser.photo && (
@@ -476,13 +535,13 @@ export default function StaffDetails() {
                                     className="mt-3 flex items-center gap-1.5 px-4 py-2 mx-auto bg-violet-50 text-violet-600 border border-violet-100 dark:bg-violet-950/20 dark:text-violet-400 dark:border-violet-900/30 rounded-xl text-[9px] font-extrabold uppercase tracking-widest hover:bg-violet-600 hover:text-white transition-all disabled:opacity-50 cursor-pointer"
                                 >
                                     <Sparkles size={11} className={isRemovingBg ? 'animate-spin' : ''} />
-                                    {isRemovingBg ? 'Tozalanmoqda...' : 'Fonni tozalash'}
+                                    {isRemovingBg ? t('clearing_bg') : t('clear_bg_btn')}
                                 </button>
                             )}
                         </div>
 
                         <div className="px-6 pb-6 space-y-3 border-t border-dashed border-gray-100 dark:border-gray-700/50 pt-4">
-                            {staffUser.phone && <DetailRow icon={<Phone size={14} />} label="Telefon" value={staffUser.phone} />}
+                            {staffUser.phone && <DetailRow icon={<Phone size={14} />} label={t('phone')} value={staffUser.phone} />}
                             {staffUser.role !== 'TECH_STAFF' && staffUser.email && (
                                 <DetailRow icon={<Mail size={14} />} label="Email" value={staffUser.email} />
                             )}
@@ -491,13 +550,13 @@ export default function StaffDetails() {
 
                     {/* Salary card */}
                     <div className="bg-[#1b6b6b] rounded-3xl p-6 text-white shadow-lg shadow-[#1b6b6b]/20 relative overflow-hidden">
-                        <span className="text-[9px] font-black text-teal-100 uppercase tracking-widest block mb-3">Asosiy Oylik</span>
+                        <span className="text-[9px] font-black text-teal-100 uppercase tracking-widest block mb-3">{t('base_salary_short')}</span>
                         <div className="flex items-baseline gap-1">
                             <span className="text-2xl font-black tracking-tight tabular-nums">{baseSalary.toLocaleString()}</span>
                             <span className="text-[9px] font-extrabold text-teal-200 uppercase tracking-widest">UZS</span>
                         </div>
                         <div className="mt-3 pt-3 border-t border-white/10 flex items-center justify-between">
-                            <span className="text-[9px] text-teal-200 font-bold uppercase tracking-widest">KPI qo'shilganda</span>
+                            <span className="text-[9px] text-teal-200 font-bold uppercase tracking-widest">{t('with_kpi')}</span>
                             <span className="text-sm font-black">{totalSalary.toLocaleString()}</span>
                         </div>
                     </div>
@@ -521,28 +580,28 @@ export default function StaffDetails() {
                             {activeTab === 'umumiy' && (
                                 <div className="space-y-6 animate-in fade-in duration-300">
                                     <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
-                                        <StatCard label="Davomat" value={`${presentDays} kun`} sub="Bu oy keldi" color="emerald" />
-                                        <StatCard label="Sababsiz" value={`${absentDays} kun`} sub="Bu oy kelmadi" color="rose" />
-                                        <StatCard label="Sababli"  value={`${excusedDays} kun`} sub="Bu oy" color="amber" />
+                                        <StatCard label={t('attendance')} value={`${presentDays} ${t('days')}`} sub={t('present_this_month_sub')} color="emerald" />
+                                        <StatCard label={t('absent')} value={`${absentDays} ${t('days')}`} sub={t('absent_this_month_sub')} color="rose" />
+                                        <StatCard label={t('excused')}  value={`${excusedDays} ${t('days')}`} sub={t('excused_this_month')} color="amber" />
                                     </div>
 
                                     <div className="space-y-3">
                                         <span className="text-[9px] font-extrabold text-gray-400 uppercase tracking-widest block border-b border-gray-50 dark:border-gray-700/50 pb-2">
-                                            Xodim ma'lumotlari
+                                            {t('staff_info')}
                                         </span>
                                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                                             <InfoBox label="ID"           value={`#${staffUser.id}`} />
-                                            <InfoBox label="Lavozim"      value={ROLE_LABELS[staffUser.role] || staffUser.role} />
+                                            <InfoBox label="Lavozim"      value={getRoleLabel(staffUser.role)} />
                                             {staffUser.position && <InfoBox label="Vazifa" value={staffUser.position} />}
-                                            <InfoBox label="Asosiy maosh" value={`${baseSalary.toLocaleString()} UZS`} />
-                                            {staffUser.phone && <InfoBox label="Telefon" value={staffUser.phone} />}
+                                            <InfoBox label={t('base_salary')} value={`${baseSalary.toLocaleString()} UZS`} />
+                                            {staffUser.phone && <InfoBox label={t('phone')} value={staffUser.phone} />}
                                         </div>
                                     </div>
 
                                     {linkedTeacher && (
                                         <div>
                                             <span className="text-[9px] font-extrabold text-gray-400 uppercase tracking-widest block border-b border-gray-50 dark:border-gray-700/50 pb-2 mb-3">
-                                                Biriktirilgan o'qituvchi profili
+                                                {t('linked_teacher_profile')}
                                             </span>
                                             <button onClick={() => navigate(`/teachers/${linkedTeacher.id}`)}
                                                 className="flex items-center gap-3 p-4 bg-teal-50 dark:bg-teal-950/20 border border-teal-100 dark:border-teal-900/40 rounded-2xl hover:bg-[#1b6b6b] hover:text-white group transition-all cursor-pointer w-full text-left">
@@ -551,7 +610,7 @@ export default function StaffDetails() {
                                                 </div>
                                                 <div>
                                                     <p className="text-xs font-black text-[#1b6b6b] group-hover:text-white uppercase tracking-wide transition-all">{linkedTeacher.name}</p>
-                                                    <p className="text-[9px] font-bold text-teal-600 dark:text-teal-400 group-hover:text-teal-100 mt-0.5 uppercase tracking-widest">O'qituvchi profilini ko'rish →</p>
+                                                    <p className="text-[9px] font-bold text-teal-600 dark:text-teal-400 group-hover:text-teal-100 mt-0.5 uppercase tracking-widest">{t('view_teacher_profile')}</p>
                                                 </div>
                                             </button>
                                         </div>
@@ -566,7 +625,7 @@ export default function StaffDetails() {
                                     {/* Inline base salary editor */}
                                     <div className="flex items-center gap-4 p-4 bg-[#1b6b6b]/5 border border-[#1b6b6b]/15 rounded-2xl">
                                         <div className="flex-1 min-w-0">
-                                            <span className={lbl}>Asosiy Maosh (UZS)</span>
+                                            <span className={lbl}>{t('base_salary')}</span>
                                             {editingSalary ? (
                                                 <div className="flex items-center gap-2 mt-1">
                                                     <input
@@ -576,8 +635,8 @@ export default function StaffDetails() {
                                                         onChange={e => setSalaryDraft(e.target.value)}
                                                         onKeyDown={e => { if (e.key === 'Enter') saveSalaryInline(); if (e.key === 'Escape') setEditingSalary(false); }}
                                                     />
-                                                    <button onClick={saveSalaryInline} className="px-4 py-2 bg-[#1b6b6b] hover:bg-[#155252] text-white text-[10px] font-extrabold uppercase tracking-widest rounded-xl cursor-pointer transition-all whitespace-nowrap">Saqlash</button>
-                                                    <button onClick={() => setEditingSalary(false)} className="px-3 py-2 bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-white text-[10px] font-extrabold uppercase tracking-widest rounded-xl cursor-pointer hover:bg-gray-200 transition-all">Bekor</button>
+                                                    <button onClick={saveSalaryInline} className="px-4 py-2 bg-[#1b6b6b] hover:bg-[#155252] text-white text-[10px] font-extrabold uppercase tracking-widest rounded-xl cursor-pointer transition-all whitespace-nowrap">{t('save')}</button>
+                                                    <button onClick={() => setEditingSalary(false)} className="px-3 py-2 bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-white text-[10px] font-extrabold uppercase tracking-widest rounded-xl cursor-pointer hover:bg-gray-200 transition-all">{t('cancel')}</button>
                                                 </div>
                                             ) : (
                                                 <div className="flex items-center gap-2 mt-1">
@@ -594,7 +653,7 @@ export default function StaffDetails() {
                                             )}
                                         </div>
                                         <div className="shrink-0 text-right">
-                                            <span className={lbl}>KPI Foizi (%)</span>
+                                            <span className={lbl}>{t('kpi_percent')}</span>
                                             {editingKpi ? (
                                                 <div className="flex items-center gap-2 mt-1">
                                                     <input
@@ -626,13 +685,13 @@ export default function StaffDetails() {
                                     {/* Month selector */}
                                     <div className="flex items-center justify-between">
                                         <span className="text-[9px] font-extrabold text-gray-400 uppercase tracking-widest flex items-center gap-1.5">
-                                            <Banknote size={11} /> Oylik hisoblash
+                                            <Banknote size={11} /> {t('salary_calculation')}
                                         </span>
                                         <div className="flex items-center gap-2">
                                             <button onClick={prevPayMonth} className="w-8 h-8 flex items-center justify-center rounded-xl bg-gray-50 dark:bg-gray-900 border border-gray-100 dark:border-gray-700 text-gray-500 hover:border-[#1b6b6b] hover:text-[#1b6b6b] transition-all cursor-pointer">
                                                 <ChevronLeft size={14} />
                                             </button>
-                                            <span className="text-xs font-black text-gray-900 dark:text-white min-w-[120px] text-center">{MONTHS[payMonth]} {payYear}</span>
+                                            <span className="text-xs font-black text-gray-900 dark:text-white min-w-[120px] text-center">{getMonthName(payMonth)} {payYear}</span>
                                             <button onClick={nextPayMonth} className="w-8 h-8 flex items-center justify-center rounded-xl bg-gray-50 dark:bg-gray-900 border border-gray-100 dark:border-gray-700 text-gray-500 hover:border-[#1b6b6b] hover:text-[#1b6b6b] transition-all cursor-pointer">
                                                 <ChevronRight size={14} />
                                             </button>
@@ -648,7 +707,7 @@ export default function StaffDetails() {
                                                 </div>
                                                 <div>
                                                     <p className="text-xs font-black text-emerald-700 dark:text-emerald-400 uppercase tracking-wide">
-                                                        {MONTHS[payMonth]} {payYear} — Oylik berildi ✓
+                                                        {getMonthName(payMonth)} {payYear} — {t('salary_paid')} ✓
                                                     </p>
                                                     <p className="text-[9px] font-bold text-emerald-600 dark:text-emerald-500 mt-0.5 uppercase tracking-widest">
                                                         {currentPayment.amount.toLocaleString()} UZS · {new Date(currentPayment.paidAt).toLocaleDateString('uz-UZ')}
@@ -668,7 +727,7 @@ export default function StaffDetails() {
                                                 <Clock size={18} className="text-rose-500" />
                                             </div>
                                             <p className="text-[10px] font-black text-rose-600 dark:text-rose-400 uppercase tracking-widest">
-                                                {MONTHS[payMonth]} {payYear} — Oylik hali berilmagan
+                                                {getMonthName(payMonth)} {payYear} — {t('salary_not_paid')}
                                             </p>
                                         </div>
                                     )}
@@ -680,22 +739,22 @@ export default function StaffDetails() {
                                             {(staffUser.role === 'TEACHER' || staffUser.role === 'SUPPORT_TEACHER') && (
                                                 <div className="space-y-3">
                                                     <p className="text-[9px] font-extrabold text-gray-400 uppercase tracking-widest flex items-center gap-1.5">
-                                                        <Target size={11} /> KPI hisoblash — {MONTHS[payMonth]} {payYear}
+                                                        <Target size={11} /> {t('kpi_calculation')} — {getMonthName(payMonth)} {payYear}
                                                     </p>
                                                     {kpiLoading ? (
-                                                        <div className="py-8 text-center text-[10px] text-gray-400 font-bold uppercase tracking-widest">Hisoblanmoqda...</div>
+                                                        <div className="py-8 text-center text-[10px] text-gray-400 font-bold uppercase tracking-widest">{t('loading')}</div>
                                                     ) : kpiPercent === 0 ? (
                                                         <div className="p-4 bg-gray-50 dark:bg-gray-900/50 border border-dashed border-gray-200 dark:border-gray-700 rounded-2xl text-center">
-                                                            <p className="text-[10px] text-gray-400 font-bold">KPI foizi belgilanmagan. Yuqorida % kiriting.</p>
+                                                            <p className="text-[10px] text-gray-400 font-bold">{t('kpi_percent_not_set')}</p>
                                                         </div>
                                                     ) : kpiData?.groups?.length > 0 ? (
                                                         <div className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-700/50 rounded-2xl overflow-hidden">
                                                             <table className="w-full text-left">
                                                                 <thead>
                                                                     <tr className="bg-gray-50 dark:bg-gray-900/80 border-b border-gray-100 dark:border-gray-800">
-                                                                        <th className="p-3 text-[9px] font-black text-gray-400 uppercase tracking-widest">Guruh</th>
-                                                                        <th className="p-3 text-[9px] font-black text-gray-400 uppercase tracking-widest">O'quvchilar</th>
-                                                                        <th className="p-3 text-[9px] font-black text-gray-400 uppercase tracking-widest text-right">To'lovlar</th>
+                                                                        <th className="p-3 text-[9px] font-black text-gray-400 uppercase tracking-widest">{t('group')}</th>
+                                                                        <th className="p-3 text-[9px] font-black text-gray-400 uppercase tracking-widest">{t('students')}</th>
+                                                                        <th className="p-3 text-[9px] font-black text-gray-400 uppercase tracking-widest text-right">{t('payments')}</th>
                                                                         <th className="p-3 text-[9px] font-black text-gray-400 uppercase tracking-widest text-right">KPI ({kpiPercent}%)</th>
                                                                     </tr>
                                                                 </thead>
@@ -703,7 +762,7 @@ export default function StaffDetails() {
                                                                     {kpiData.groups.map((g: any) => (
                                                                         <tr key={g.id} className="hover:bg-gray-50/50 dark:hover:bg-gray-800/30">
                                                                             <td className="p-3 text-[10px] font-black text-gray-900 dark:text-white">{g.name}</td>
-                                                                            <td className="p-3 text-[10px] font-bold text-gray-500">{g.studentCount} ta</td>
+                                                                            <td className="p-3 text-[10px] font-bold text-gray-500">{g.studentCount}</td>
                                                                             <td className="p-3 text-[10px] font-bold text-gray-700 dark:text-gray-300 text-right">{g.total.toLocaleString()}</td>
                                                                             <td className="p-3 text-[10px] font-black text-[#1b6b6b] text-right">+{Math.round(g.total * kpiPercent / 100).toLocaleString()}</td>
                                                                         </tr>
@@ -711,7 +770,7 @@ export default function StaffDetails() {
                                                                 </tbody>
                                                                 <tfoot>
                                                                     <tr className="border-t border-gray-100 dark:border-gray-700 bg-[#1b6b6b]/5">
-                                                                        <td colSpan={2} className="p-3 text-[9px] font-extrabold text-[#1b6b6b] uppercase tracking-widest">Jami KPI</td>
+                                                                        <td colSpan={2} className="p-3 text-[9px] font-extrabold text-[#1b6b6b] uppercase tracking-widest">{t('total_kpi')}</td>
                                                                         <td className="p-3 text-[10px] font-bold text-gray-600 dark:text-gray-300 text-right">{kpiData.totalPayments?.toLocaleString()}</td>
                                                                         <td className="p-3 text-[11px] font-black text-[#1b6b6b] text-right">+{kpiAmount.toLocaleString()} UZS</td>
                                                                     </tr>
@@ -720,7 +779,7 @@ export default function StaffDetails() {
                                                         </div>
                                                     ) : (
                                                         <div className="p-4 bg-gray-50 dark:bg-gray-900/50 border border-dashed border-gray-200 dark:border-gray-700 rounded-2xl text-center">
-                                                            <p className="text-[10px] text-gray-400 font-bold">Bu oyda guruh to'lovlari topilmadi.</p>
+                                                            <p className="text-[10px] text-gray-400 font-bold">{t('no_group_payments_found')}</p>
                                                         </div>
                                                     )}
                                                 </div>
@@ -731,7 +790,7 @@ export default function StaffDetails() {
                                                 <div className="space-y-4">
                                                     {/* Manual bonus */}
                                                     <div className="space-y-2">
-                                                        <span className="text-[9px] font-black text-emerald-600 uppercase tracking-widest flex items-center gap-1"><Star size={10} /> Qo'shimcha bonus</span>
+                                                        <span className="text-[9px] font-black text-emerald-600 uppercase tracking-widest flex items-center gap-1"><Star size={10} /> {t('additional_bonus')}</span>
                                                         {bonuses.map((b, i) => (
                                                             <div key={i} className="flex items-center justify-between bg-emerald-50 dark:bg-emerald-950/20 border border-emerald-100 dark:border-emerald-900/30 px-3 py-2 rounded-xl">
                                                                 <span className="text-[9px] font-bold text-emerald-600 dark:text-emerald-400">{b.label}</span>
@@ -742,15 +801,15 @@ export default function StaffDetails() {
                                                             </div>
                                                         ))}
                                                         <div className="flex gap-2">
-                                                            <input type="text"   placeholder="Sabab" className={inp + " py-2 text-[10px]"} value={bonusInput.label}  onChange={e => setBonusInput(p=>({...p,label:e.target.value}))} />
-                                                            <input type="number" placeholder="Summa" className={inp + " w-24 py-2 text-[10px]"} value={bonusInput.amount} onChange={e => setBonusInput(p=>({...p,amount:e.target.value}))} />
+                                                            <input type="text"   placeholder={t('reason_input_placeholder')} className={inp + " py-2 text-[10px]"} value={bonusInput.label}  onChange={e => setBonusInput(p=>({...p,label:e.target.value}))} />
+                                                            <input type="number" placeholder={t('amount')} className={inp + " w-24 py-2 text-[10px]"} value={bonusInput.amount} onChange={e => setBonusInput(p=>({...p,amount:e.target.value}))} />
                                                             <button onClick={() => { if (bonusInput.label&&bonusInput.amount) { setBonuses(b=>[...b,{label:bonusInput.label,amount:Number(bonusInput.amount)}]); setBonusInput({label:'',amount:''}); } }} className="w-9 h-9 shrink-0 bg-[#1b6b6b] hover:bg-[#155252] rounded-xl flex items-center justify-center text-white transition-all cursor-pointer"><Plus size={13} /></button>
                                                         </div>
                                                     </div>
 
                                                     {/* Manual fine */}
                                                     <div className="space-y-2">
-                                                        <span className="text-[9px] font-black text-rose-600 uppercase tracking-widest flex items-center gap-1"><AlertCircle size={10} /> Jarima</span>
+                                                        <span className="text-[9px] font-black text-rose-600 uppercase tracking-widest flex items-center gap-1"><AlertCircle size={10} /> {t('fine')}</span>
                                                         {fines.map((f, i) => (
                                                             <div key={i} className="flex items-center justify-between bg-rose-50 dark:bg-rose-950/20 border border-rose-100 dark:border-rose-900/30 px-3 py-2 rounded-xl">
                                                                 <span className="text-[9px] font-bold text-rose-600 dark:text-rose-400">{f.label}</span>
@@ -761,8 +820,8 @@ export default function StaffDetails() {
                                                             </div>
                                                         ))}
                                                         <div className="flex gap-2">
-                                                            <input type="text"   placeholder="Sabab" className={inp + " py-2 text-[10px]"} value={fineInput.label}  onChange={e => setFineInput(p=>({...p,label:e.target.value}))} />
-                                                            <input type="number" placeholder="Summa" className={inp + " w-24 py-2 text-[10px]"} value={fineInput.amount} onChange={e => setFineInput(p=>({...p,amount:e.target.value}))} />
+                                                            <input type="text"   placeholder={t('reason_input_placeholder')} className={inp + " py-2 text-[10px]"} value={fineInput.label}  onChange={e => setFineInput(p=>({...p,label:e.target.value}))} />
+                                                            <input type="number" placeholder={t('amount')} className={inp + " w-24 py-2 text-[10px]"} value={fineInput.amount} onChange={e => setFineInput(p=>({...p,amount:e.target.value}))} />
                                                             <button onClick={() => { if (fineInput.label&&fineInput.amount) { setFines(f=>[...f,{label:fineInput.label,amount:Number(fineInput.amount)}]); setFineInput({label:'',amount:''}); } }} className="w-9 h-9 shrink-0 bg-rose-600 hover:bg-rose-500 rounded-xl flex items-center justify-center text-white transition-all cursor-pointer"><Plus size={13} /></button>
                                                         </div>
                                                     </div>
@@ -772,11 +831,11 @@ export default function StaffDetails() {
                                                 <div className="bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700/50 rounded-3xl p-6 flex flex-col justify-between">
                                                     <div>
                                                         <h3 className="text-xs font-black text-[#1b6b6b] uppercase tracking-wider mb-5">
-                                                            {MONTHS[payMonth]} {payYear} — Hisob
+                                                            {getMonthName(payMonth)} {payYear} — {t('bill')}
                                                         </h3>
                                                         <div className="space-y-3">
                                                             <div className="flex justify-between">
-                                                                <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Asosiy Maosh</span>
+                                                                <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">{t('base_salary_short')}</span>
                                                                 <span className="text-xs font-extrabold text-gray-900 dark:text-white">{baseSalary.toLocaleString()} UZS</span>
                                                             </div>
                                                             {kpiAmount > 0 && (
@@ -786,15 +845,15 @@ export default function StaffDetails() {
                                                                 </div>
                                                             )}
                                                             <div className="flex justify-between">
-                                                                <span className="text-[10px] font-bold text-emerald-600 uppercase tracking-widest">Bonuslar ({bonuses.length})</span>
+                                                                <span className="text-[10px] font-bold text-emerald-600 uppercase tracking-widest">{t('additional_bonus')} ({bonuses.length})</span>
                                                                 <span className="text-xs font-extrabold text-emerald-600">+{totalBonus.toLocaleString()}</span>
                                                             </div>
                                                             <div className="flex justify-between">
-                                                                <span className="text-[10px] font-bold text-rose-600 uppercase tracking-widest">Jarimalar ({fines.length})</span>
+                                                                <span className="text-[10px] font-bold text-rose-600 uppercase tracking-widest">{t('fine')} ({fines.length})</span>
                                                                 <span className="text-xs font-extrabold text-rose-600">-{totalFine.toLocaleString()}</span>
                                                             </div>
                                                             <div className="pt-4 border-t border-dashed border-gray-100 dark:border-gray-700 flex justify-between items-center">
-                                                                <span className="text-[10px] font-extrabold text-[#1b6b6b] uppercase tracking-widest">To'lanadi</span>
+                                                                <span className="text-[10px] font-extrabold text-[#1b6b6b] uppercase tracking-widest">{t('to_be_paid')}</span>
                                                                 <span className="text-2xl font-black text-[#1b6b6b] tabular-nums">{totalSalary.toLocaleString()}</span>
                                                             </div>
                                                             <p className="text-[9px] text-right text-gray-400 font-bold uppercase tracking-widest">UZS</p>
@@ -805,20 +864,20 @@ export default function StaffDetails() {
                                                         <button
                                                             onClick={() => setPayConfirm(true)}
                                                             className="mt-6 w-full py-3 bg-[#1b6b6b] hover:bg-[#155252] text-white rounded-2xl text-xs font-extrabold uppercase tracking-widest flex items-center justify-center gap-2 shadow-lg shadow-[#1b6b6b]/20 transition-all cursor-pointer">
-                                                            <Banknote size={14} /> Oylik berish
+                                                            <Banknote size={14} /> {t('pay_salary_btn')}
                                                         </button>
                                                     ) : (
                                                         <div className="mt-4 p-4 bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-900/40 rounded-2xl space-y-3">
                                                             <p className="text-[10px] font-extrabold text-amber-700 dark:text-amber-400 uppercase tracking-widest text-center">
-                                                                {staffUser.name}ga {totalSalary.toLocaleString()} UZS to'lansinmi?
+                                                                {t('confirm_pay_salary').replace('{name}', staffUser.name).replace('{amount}', totalSalary.toLocaleString())}
                                                             </p>
                                                             <div className="flex gap-2">
                                                                 <button onClick={() => setPayConfirm(false)} className="flex-1 py-2 bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-white text-[10px] font-extrabold uppercase tracking-widest rounded-xl cursor-pointer hover:bg-gray-200 transition-all">
-                                                                    Bekor
+                                                                    {t('cancel')}
                                                                 </button>
                                                                 <button onClick={paySalary} disabled={paying}
                                                                     className="flex-1 py-2 bg-emerald-600 hover:bg-emerald-500 text-white text-[10px] font-extrabold uppercase tracking-widest rounded-xl cursor-pointer transition-all disabled:opacity-60 flex items-center justify-center gap-1.5">
-                                                                    {paying ? 'Saqlanmoqda...' : <><CheckCircle2 size={12} /> Ha, berildi</>}
+                                                                    {paying ? t('saving') : <><CheckCircle2 size={12} /> {t('yes_paid')}</>}
                                                                 </button>
                                                             </div>
                                                         </div>
@@ -832,18 +891,18 @@ export default function StaffDetails() {
                                     {salaryPayments.length > 0 && (
                                         <div className="space-y-3">
                                             <span className="text-[9px] font-extrabold text-gray-400 uppercase tracking-widest flex items-center gap-1.5 border-t border-dashed border-gray-100 dark:border-gray-700/50 pt-4">
-                                                <Clock size={10} /> To'lovlar tarixi
+                                                <Clock size={10} /> {t('payments_history')}
                                             </span>
                                             <div className="bg-white dark:bg-gray-800 rounded-2xl overflow-hidden border border-gray-100 dark:border-gray-700/50">
                                                 <table className="w-full text-left">
                                                     <thead>
                                                         <tr className="bg-gray-50 dark:bg-gray-900 border-b border-gray-100 dark:border-gray-800">
-                                                            <th className="p-3 text-[9px] font-black text-gray-400 uppercase tracking-widest">Oy</th>
-                                                            <th className="p-3 text-[9px] font-black text-gray-400 uppercase tracking-widest">Asosiy</th>
+                                                            <th className="p-3 text-[9px] font-black text-gray-400 uppercase tracking-widest">{t('month')}</th>
+                                                            <th className="p-3 text-[9px] font-black text-gray-400 uppercase tracking-widest">{t('base_short')}</th>
                                                             <th className="p-3 text-[9px] font-black text-gray-400 uppercase tracking-widest">+Bonus</th>
                                                             <th className="p-3 text-[9px] font-black text-gray-400 uppercase tracking-widest">−Jarima</th>
-                                                            <th className="p-3 text-[9px] font-black text-gray-400 uppercase tracking-widest">Jami</th>
-                                                            <th className="p-3 text-[9px] font-black text-gray-400 uppercase tracking-widest">Sana</th>
+                                                            <th className="p-3 text-[9px] font-black text-gray-400 uppercase tracking-widest">{t('total_short')}</th>
+                                                            <th className="p-3 text-[9px] font-black text-gray-400 uppercase tracking-widest">{t('date_short')}</th>
                                                             <th className="p-3" />
                                                         </tr>
                                                     </thead>
@@ -853,7 +912,7 @@ export default function StaffDetails() {
                                                             return (
                                                                 <tr key={p.id} className="hover:bg-gray-50/50 dark:hover:bg-gray-800/50">
                                                                     <td className="p-3 text-[10px] font-black text-gray-900 dark:text-white uppercase">
-                                                                        {MONTHS[parseInt(mo)-1]} {yr}
+                                                                        {getMonthName(parseInt(mo)-1)} {yr}
                                                                     </td>
                                                                     <td className="p-3 text-[10px] font-bold text-gray-600 dark:text-gray-300">{p.baseSalary.toLocaleString()}</td>
                                                                     <td className="p-3 text-[10px] font-bold text-emerald-600">{p.bonuses > 0 ? `+${p.bonuses.toLocaleString()}` : '—'}</td>
@@ -887,12 +946,12 @@ export default function StaffDetails() {
                                     <div className="space-y-4">
                                         <div className="flex items-center justify-between">
                                             <span className="text-[9px] font-extrabold text-gray-400 uppercase tracking-widest flex items-center gap-1.5">
-                                                <CalendarDays size={11} /> Haftalik ish kunlari
+                                                <CalendarDays size={11} /> {t('weekly_work_days')}
                                             </span>
                                             {workDaysChanged && (
                                                 <button onClick={saveWorkDays} disabled={savingWD}
                                                     className="px-4 py-2 bg-[#1b6b6b] hover:bg-[#155252] text-white text-[10px] font-black uppercase tracking-widest rounded-xl cursor-pointer transition-all disabled:opacity-60 shadow-sm shadow-[#1b6b6b]/20">
-                                                    {savingWD ? 'Saqlanmoqda...' : 'Saqlash'}
+                                                    {savingWD ? t('saving') : t('save')}
                                                 </button>
                                             )}
                                         </div>
@@ -909,15 +968,15 @@ export default function StaffDetails() {
                                                                 ? 'bg-[#1b6b6b] border-[#1b6b6b] text-white shadow-md shadow-[#1b6b6b]/25'
                                                                 : 'bg-white dark:bg-gray-800 border-gray-100 dark:border-gray-700 text-gray-400 hover:border-[#1b6b6b]/40 hover:text-gray-700'
                                                         }`}>
-                                                        <span className="text-[11px] font-black">{day}</span>
-                                                        <span className="text-[8px] font-bold mt-0.5 opacity-70">{WEEK_DAYS_FULL[i].slice(0,3)}</span>
+                                                        <span className="text-[11px] font-black">{getWeekDayShort(day)}</span>
+                                                        <span className="text-[8px] font-bold mt-0.5 opacity-70">{getWeekDayFull(WEEK_DAYS_FULL[i]).slice(0,3)}</span>
                                                     </button>
                                                 );
                                             })}
                                         </div>
                                         {workDays.length === 0 && !workDaysChanged && (
                                             <p className="text-[10px] font-bold text-amber-500 uppercase tracking-widest text-center py-1">
-                                                Jadval belgilanmagan — kunlarni tanlang va saqlang
+                                                {t('work_schedule_not_set')}
                                             </p>
                                         )}
                                     </div>
@@ -929,13 +988,13 @@ export default function StaffDetails() {
                                     <div className="space-y-4">
                                         {/* Month selector */}
                                         <div className="flex items-center justify-between">
-                                            <span className="text-[9px] font-extrabold text-gray-400 uppercase tracking-widest">Davomat</span>
+                                            <span className="text-[9px] font-extrabold text-gray-400 uppercase tracking-widest">{t('attendance')}</span>
                                             <div className="flex items-center gap-2">
                                                 <button onClick={prevMonth} className="w-8 h-8 flex items-center justify-center rounded-xl bg-gray-50 dark:bg-gray-900 border border-gray-100 dark:border-gray-700 text-gray-500 hover:border-[#1b6b6b] hover:text-[#1b6b6b] transition-all cursor-pointer">
                                                     <ChevronLeft size={14} />
                                                 </button>
                                                 <span className="text-xs font-black text-gray-900 dark:text-white min-w-[120px] text-center">
-                                                    {MONTHS[selMonth]} {selYear}
+                                                    {getMonthName(selMonth)} {selYear}
                                                 </span>
                                                 <button onClick={nextMonth} className="w-8 h-8 flex items-center justify-center rounded-xl bg-gray-50 dark:bg-gray-900 border border-gray-100 dark:border-gray-700 text-gray-500 hover:border-[#1b6b6b] hover:text-[#1b6b6b] transition-all cursor-pointer">
                                                     <ChevronRight size={14} />
@@ -947,9 +1006,9 @@ export default function StaffDetails() {
                                         {workDays.length > 0 && (
                                             <div className="grid grid-cols-3 gap-3">
                                                 {[
-                                                    { label:'Keldi',   count: presentDays, cls:'border-emerald-100 dark:border-emerald-950/20 text-emerald-600 dark:text-emerald-400' },
-                                                    { label:'Kelmadi', count: absentDays,  cls:'border-rose-100 dark:border-rose-950/20 text-rose-600 dark:text-rose-400' },
-                                                    { label:'Sababli', count: excusedDays, cls:'border-amber-100 dark:border-amber-950/20 text-amber-600 dark:text-amber-400' },
+                                                    { label:t('present'),   count: presentDays, cls:'border-emerald-100 dark:border-emerald-950/20 text-emerald-600 dark:text-emerald-400' },
+                                                    { label:t('absent'), count: absentDays,  cls:'border-rose-100 dark:border-rose-950/20 text-rose-600 dark:text-rose-400' },
+                                                    { label:t('excused'), count: excusedDays, cls:'border-amber-100 dark:border-amber-950/20 text-amber-600 dark:text-amber-400' },
                                                 ].map(({ label, count, cls }) => (
                                                     <div key={label} className={`bg-white dark:bg-gray-800 border rounded-2xl p-3 text-center ${cls}`}>
                                                         <span className="text-[9px] font-extrabold uppercase tracking-widest block mb-1 opacity-70">{label}</span>
@@ -963,11 +1022,11 @@ export default function StaffDetails() {
                                             <div className="py-10 text-center bg-gray-50 dark:bg-gray-900/40 rounded-2xl border border-dashed border-gray-200 dark:border-gray-700">
                                                 <CalendarDays size={28} className="mx-auto text-gray-300 mb-2" />
                                                 <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">
-                                                    Davomat belgilash uchun avval<br/>ish jadvalini sozlang
+                                                    {t('attendance_setup_warning')}
                                                 </p>
                                             </div>
                                         ) : attLoading ? (
-                                            <div className="py-8 text-center text-[10px] text-gray-400 font-bold uppercase tracking-widest">Yuklanmoqda...</div>
+                                            <div className="py-8 text-center text-[10px] text-gray-400 font-bold uppercase tracking-widest">{t('loading')}</div>
                                         ) : (
                                             <>
                                                 {/* Day-of-week headers */}

@@ -80,16 +80,16 @@ export default function Groups() {
             });
             setIsModalOpen(false);
             setNewGroup({ name: '', teacherId: 0, startTime: '', endTime: '', days: 'TOQ', room: '' });
-            showNotification("Guruh muvaffaqiyatli ochildi!", "success");
+            showNotification(t('group_added_success'), "success");
         } catch (err) {
-            showNotification("Guruh yaratishda xatolik yuz berdi", "error");
+            showNotification(t('group_added_error'), "error");
         } finally {
             setIsAdding(false);
         }
     };
 
-    const getTeacherName = (id: number) => teachers.find(t => t.id === id)?.name || "Noma'lum";
-    const getCourseName = (id: number) => courses.find(c => c.id === id)?.name || "Noma'lum";
+    const getTeacherName = (id: number) => teachers.find(t => t.id === id)?.name || t('unknown_teacher');
+    const getCourseName = (id: number) => courses.find(c => c.id === id)?.name || t('unknown_teacher');
 
     const filteredGroups = groups.filter(g => {
         const lowerSearch = search.toLowerCase();
@@ -136,9 +136,9 @@ export default function Groups() {
                         <div className="relative">
                             <Search size={14} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400" />
                             <input
-                                type="text" placeholder="Guruh yoki kurs..."
+                                type="text" placeholder={t('search_group_placeholder')}
                                 value={search} onChange={e => setSearch(e.target.value)}
-                                className="pl-9 pr-4 py-2.5 bg-gray-50 dark:bg-gray-900/50 border border-gray-100 dark:border-gray-750 rounded-xl text-xs font-bold text-gray-900 dark:text-white outline-none focus:border-[#1b6b6b] transition-all w-52"
+                                className="pl-9 pr-4 py-2.5 bg-gray-55 dark:bg-gray-900/50 border border-gray-100 dark:border-gray-750 rounded-xl text-xs font-bold text-gray-900 dark:text-white outline-none focus:border-[#1b6b6b] transition-all w-52"
                             />
                         </div>
                         <button
@@ -151,43 +151,43 @@ export default function Groups() {
                             onClick={() => setIsModalOpen(true)}
                             className="flex items-center gap-2 px-4 py-2.5 bg-[#1b6b6b] hover:bg-[#155252] text-white rounded-xl text-xs font-extrabold uppercase tracking-widest shadow-lg shadow-[#1b6b6b]/20 transition-all cursor-pointer"
                         >
-                            <Plus size={14} /> Qo'shish
+                            <Plus size={14} /> {t('add')}
                         </button>
                     </div>
                 </div>
 
-            {showFilters && (
+                {showFilters && (
                     <div className="px-6 pb-5 pt-4 border-t border-gray-50 dark:border-gray-700/50 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                         <div>
-                            <label className={lbl}>O'qituvchi</label>
+                            <label className={lbl}>{t('group_teacher')}</label>
                             <select value={filters.teacherId} onChange={e => setFilters({...filters, teacherId: e.target.value})}
                                 className="w-full px-3 py-2 bg-gray-55 dark:bg-gray-900/50 border border-gray-100 dark:border-gray-700 rounded-xl text-[10px] font-bold text-gray-700 dark:text-white outline-none focus:border-[#1b6b6b] transition-all cursor-pointer">
-                                <option value="">Barchasi</option>
+                                <option value="">{t('all')}</option>
                                 {teachers.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
                             </select>
                         </div>
                         <div>
-                            <label className={lbl}>Kunlar</label>
+                            <label className={lbl}>{t('days')}</label>
                             <select value={filters.dayType} onChange={e => setFilters({...filters, dayType: e.target.value})}
                                 className="w-full px-3 py-2 bg-gray-55 dark:bg-gray-900/50 border border-gray-100 dark:border-gray-700 rounded-xl text-[10px] font-bold text-gray-700 dark:text-white outline-none focus:border-[#1b6b6b] transition-all cursor-pointer">
-                                <option value="all">Barchasi</option>
-                                <option value="TOQ">Toq kunlar</option>
-                                <option value="JUFT">Juft kunlar</option>
-                                <option value="HAR_KUNI">Har kuni</option>
+                                <option value="all">{t('all')}</option>
+                                <option value="TOQ">{t('odd_days')}</option>
+                                <option value="JUFT">{t('even_days')}</option>
+                                <option value="HAR_KUNI">{t('every_day')}</option>
                             </select>
                         </div>
                         <div>
-                            <label className={lbl}>Xona</label>
+                            <label className={lbl}>{t('group_room')}</label>
                             <select value={filters.roomId} onChange={e => setFilters({...filters, roomId: e.target.value})}
                                 className="w-full px-3 py-2 bg-gray-55 dark:bg-gray-900/50 border border-gray-100 dark:border-gray-700 rounded-xl text-[10px] font-bold text-gray-700 dark:text-white outline-none focus:border-[#1b6b6b] transition-all cursor-pointer">
-                                <option value="">Barchasi</option>
+                                <option value="">{t('all')}</option>
                                 {rooms.map(r => <option key={r.id} value={r.id}>{r.name}</option>)}
                             </select>
                         </div>
                         <div className="flex items-end">
                             <button onClick={() => setFilters({teacherId: '', dayType: 'all', roomId: '', timeOfDay: 'all'})}
                                 className="w-full py-2 text-[10px] font-extrabold uppercase text-rose-500 hover:text-rose-600 flex items-center justify-center gap-1.5 cursor-pointer">
-                                <X size={12} /> Tozalash
+                                <X size={12} /> {t('filter_clear')}
                             </button>
                         </div>
                     </div>
@@ -198,10 +198,10 @@ export default function Groups() {
             {filteredGroups.length === 0 ? (
                 <div className="py-24 text-center bg-white dark:bg-gray-800 rounded-3xl border border-gray-100 dark:border-gray-700/50 border-dashed">
                     <Layers size={40} className="mx-auto text-gray-200 dark:text-gray-600 mb-3" />
-                    <p className="text-sm font-bold text-gray-400">Guruhlar topilmadi</p>
+                    <p className="text-sm font-bold text-gray-400">{t('groups_not_found')}</p>
                     <button onClick={() => setIsModalOpen(true)}
                         className="mt-4 inline-flex items-center gap-2 px-5 py-2.5 bg-[#1b6b6b] text-white text-xs font-extrabold uppercase tracking-widest rounded-xl cursor-pointer">
-                        <Plus size={13} /> Yangi Guruh
+                        <Plus size={13} /> {t('new_group_title')}
                     </button>
                 </div>
             ) : (
@@ -217,7 +217,7 @@ export default function Groups() {
                                         <Layers size={22} />
                                     </div>
                                     <span className="text-[9px] font-black uppercase tracking-wider px-2.5 py-1 rounded-lg border bg-emerald-50 text-emerald-600 border-emerald-100 dark:bg-emerald-950/20 dark:text-emerald-400 dark:border-emerald-900/40">
-                                        Faol
+                                        {t('status_active')}
                                     </span>
                                 </div>
 
@@ -228,13 +228,13 @@ export default function Groups() {
 
                                 <div className="grid grid-cols-2 gap-4 py-3 border-y border-dashed border-gray-100 dark:border-gray-700 mb-3 text-[10px] font-bold uppercase text-gray-400 tracking-wider">
                                     <div>
-                                        <span className="block text-[8px] text-gray-400 mb-0.5">Ustoz</span>
+                                        <span className="block text-[8px] text-gray-400 mb-0.5">{t('group_teacher')}</span>
                                         <span className="text-gray-900 dark:text-white truncate block">{getTeacherName(group.teacherId)}</span>
                                     </div>
                                     <div className="text-right">
-                                        <span className="block text-[8px] text-gray-400 mb-0.5">Vaqt</span>
+                                        <span className="block text-[8px] text-gray-400 mb-0.5">{t('time')}</span>
                                         <span className="text-gray-900 dark:text-white truncate block tabular-nums">
-                                            {startTime} • {group.days === 'TOQ' ? 'Toq' : group.days === 'JUFT' ? 'Juft' : 'Har kun'}
+                                            {startTime} • {group.days === 'TOQ' ? t('odd_days') : group.days === 'JUFT' ? t('even_days') : t('every_day')}
                                         </span>
                                     </div>
                                 </div>
@@ -242,7 +242,9 @@ export default function Groups() {
                                 <div className="flex items-center justify-between pt-2">
                                     <div className="flex items-center gap-2">
                                         <Users size={14} className="text-[#1b6b6b]" />
-                                        <span className="text-xs font-black text-gray-900 dark:text-white tabular-nums">{(group.studentIds || []).length} ta o'quvchi</span>
+                                        <span className="text-xs font-black text-gray-900 dark:text-white tabular-nums">
+                                            {t('students_count').replace('{count}', (group.studentIds || []).length.toString())}
+                                        </span>
                                     </div>
                                     <div className="w-7 h-7 flex items-center justify-center rounded-lg bg-gray-55 dark:bg-gray-900/50 group-hover:bg-[#1b6b6b] group-hover:text-white text-gray-400 transition-all">
                                         <ChevronRight size={16} />
@@ -261,58 +263,58 @@ export default function Groups() {
                     <div className="relative bg-white dark:bg-gray-800 rounded-[2rem] border border-gray-100 dark:border-gray-700/50 shadow-2xl w-full max-w-lg p-8 max-h-[90vh] overflow-y-auto">
                         <div className="flex items-center justify-between mb-6 pb-4 border-b border-gray-50 dark:border-gray-700/50">
                             <div>
-                                <h3 className="text-lg font-black text-gray-900 dark:text-white uppercase tracking-tight">Yangi Guruh</h3>
-                                <p className="text-[10px] font-bold text-[#1b6b6b] uppercase tracking-widest mt-0.5">Guruh ma'lumotlarini kiriting</p>
+                                <h3 className="text-lg font-black text-gray-900 dark:text-white uppercase tracking-tight">{t('new_group_title')}</h3>
+                                <p className="text-[10px] font-bold text-[#1b6b6b] uppercase tracking-widest mt-0.5">{t('group_details_subtitle')}</p>
                             </div>
                             <button onClick={() => setIsModalOpen(false)} className="w-9 h-9 flex items-center justify-center text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700 rounded-xl cursor-pointer"><X size={18} /></button>
                         </div>
                         <form onSubmit={handleAddGroup} className="space-y-4">
                             <div>
-                                <label className={lbl}>Guruh Nomi *</label>
+                                <label className={lbl}>{t('group_name')} *</label>
                                 <input required type="text" placeholder="Frontend #5" className={inp} value={newGroup.name} onChange={e => setNewGroup({ ...newGroup, name: e.target.value })} />
                             </div>
                             <div>
-                                <label className={lbl}>O'qituvchi *</label>
+                                <label className={lbl}>{t('group_teacher')} *</label>
                                 <select required className={inp} value={newGroup.teacherId} onChange={e => setNewGroup({ ...newGroup, teacherId: Number(e.target.value) })}>
-                                    <option value={0} disabled>Tanlang...</option>
+                                    <option value={0} disabled>{t('select_placeholder')}</option>
                                     {teachers.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
                                 </select>
                             </div>
                             <div className="grid grid-cols-2 gap-4">
                                 <div>
-                                    <label className={lbl}>Kunlar *</label>
+                                    <label className={lbl}>{t('days')} *</label>
                                     <select required className={inp} value={newGroup.days} onChange={e => setNewGroup({ ...newGroup, days: e.target.value })}>
-                                        <option value="TOQ">Toq kunlar (Du/Chor/Jum)</option>
-                                        <option value="JUFT">Juft kunlar (Se/Pay/Sha)</option>
-                                        <option value="HAR_KUNI">Har kuni (Du-Sha)</option>
+                                        <option value="TOQ">{t('odd_days_hint')}</option>
+                                        <option value="JUFT">{t('even_days_hint')}</option>
+                                        <option value="HAR_KUNI">{t('every_day_hint')}</option>
                                     </select>
                                 </div>
                                 <div>
-                                    <label className={lbl}>Xona *</label>
+                                    <label className={lbl}>{t('group_room')} *</label>
                                     <select required className={inp} value={newGroup.room} onChange={e => setNewGroup({ ...newGroup, room: e.target.value })}>
-                                        <option value="" disabled>Tanlang...</option>
-                                        {rooms.map(r => <option key={r.id} value={r.id}>{r.name} ({r.capacity} kishi)</option>)}
+                                        <option value="" disabled>{t('select_placeholder')}</option>
+                                        {rooms.map(r => <option key={r.id} value={r.id}>{r.name} ({r.capacity} {t('staff_count_unit')})</option>)}
                                     </select>
                                 </div>
                             </div>
                             <div className="grid grid-cols-2 gap-4">
                                 <div>
-                                    <label className={lbl}>Boshlanish vaqti *</label>
+                                    <label className={lbl}>{t('start_time')} *</label>
                                     <input required type="time" className={inp} value={newGroup.startTime} onChange={e => setNewGroup({ ...newGroup, startTime: e.target.value })} />
                                 </div>
                                 <div>
-                                    <label className={lbl}>Tugash vaqti *</label>
+                                    <label className={lbl}>{t('end_time')} *</label>
                                     <input required type="time" className={inp} value={newGroup.endTime} onChange={e => setNewGroup({ ...newGroup, endTime: e.target.value })} />
                                 </div>
                             </div>
                             <div className="flex gap-3 pt-2">
                                 <button type="button" onClick={() => setIsModalOpen(false)}
-                                    className="flex-1 py-3 bg-gray-100 dark:bg-gray-750 text-gray-700 dark:text-white text-xs font-extrabold uppercase tracking-widest rounded-2xl transition-all cursor-pointer hover:bg-gray-200 dark:hover:bg-gray-700">
-                                    Bekor
+                                    className="flex-1 py-3 bg-gray-100 dark:bg-gray-755 text-gray-700 dark:text-white text-xs font-extrabold uppercase tracking-widest rounded-2xl transition-all cursor-pointer hover:bg-gray-200 dark:hover:bg-gray-700">
+                                    {t('cancel')}
                                 </button>
                                 <button type="submit" disabled={isAdding}
                                     className="flex-1 py-3 bg-[#1b6b6b] hover:bg-[#155252] text-white text-xs font-extrabold uppercase tracking-widest rounded-2xl shadow-lg shadow-[#1b6b6b]/20 transition-all cursor-pointer disabled:opacity-50">
-                                    {isAdding ? "Saqlanmoqda..." : "Saqlash"}
+                                    {isAdding ? t('saving') : t('save')}
                                 </button>
                             </div>
                         </form>

@@ -2,12 +2,8 @@ import React, { useState } from 'react';
 import { Search, Plus, X, Phone, Filter, GraduationCap, SlidersHorizontal } from 'lucide-react';
 import { useCRM } from '../context/CRMContext';
 import { useNavigate } from 'react-router-dom';
+import { useLang } from '../context/LanguageContext';
 
-const salaryTypeLabels: Record<string, string> = {
-    'FIXED': 'Fiks',
-    'KPI': 'KPI',
-    'FIXED_KPI': 'Fiks + KPI'
-};
 const salaryColors: Record<string, string> = {
     'FIXED': 'bg-sky-50 text-sky-600 border-sky-100 dark:bg-sky-950/30 dark:text-sky-400 dark:border-sky-900/40',
     'KPI': 'bg-violet-50 text-violet-600 border-violet-100 dark:bg-violet-950/30 dark:text-violet-400 dark:border-violet-900/40',
@@ -19,7 +15,15 @@ const lbl = "block text-[10px] font-extrabold uppercase tracking-widest text-gra
 
 export default function Teachers() {
     const { teachers, addTeacher, showNotification } = useCRM();
+    const { t } = useLang();
     const navigate = useNavigate();
+
+    const salaryTypeLabels: Record<string, string> = {
+        'FIXED': t('salary_fixed'),
+        'KPI': t('salary_kpi'),
+        'FIXED_KPI': t('salary_fixed_kpi')
+    };
+
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [search, setSearch] = useState('');
     const [showFilters, setShowFilters] = useState(false);
@@ -34,11 +38,11 @@ export default function Teachers() {
         e.preventDefault();
         try {
             await addTeacher(newTeacher);
-            showNotification("O'qituvchi muvaffaqiyatli qo'shildi", "success");
+            showNotification(t('teacher_added_success'), "success");
             setIsModalOpen(false);
             setNewTeacher({ name: '', phone: '', salary: 0, sharePercentage: 0, lessonFee: 0, salaryType: 'FIXED', birthDate: '', hiredDate: '', photo: '', status: 'Faol' });
         } catch {
-            showNotification("O'qituvchi qo'shishda xatolik", "error");
+            showNotification(t('teacher_added_error'), "error");
         }
     };
 
@@ -75,9 +79,9 @@ export default function Teachers() {
                             <GraduationCap size={22} className="text-white" />
                         </div>
                         <div>
-                            <h1 className="text-lg font-black text-gray-900 dark:text-white uppercase tracking-tight">Ustozlar</h1>
+                            <h1 className="text-lg font-black text-gray-900 dark:text-white uppercase tracking-tight">{t('teachers_title')}</h1>
                             <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mt-0.5">
-                                Jami {teachers.length} ta • {activeCount} faol
+                                {t('teachers_count_summary').replace('{total}', teachers.length.toString()).replace('{active}', activeCount.toString())}
                             </p>
                         </div>
                     </div>
@@ -85,14 +89,14 @@ export default function Teachers() {
                         <div className="relative">
                             <Search size={14} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400" />
                             <input
-                                type="text" placeholder="Ism yoki telefon..."
+                                type="text" placeholder={t('search_placeholder_students')}
                                 value={search} onChange={e => setSearch(e.target.value)}
-                                className="pl-9 pr-4 py-2.5 bg-gray-50 dark:bg-gray-900/50 border border-gray-100 dark:border-gray-700 rounded-xl text-xs font-bold text-gray-900 dark:text-white outline-none focus:border-violet-500 transition-all w-52"
+                                className="pl-9 pr-4 py-2.5 bg-gray-55 dark:bg-gray-900/50 border border-gray-100 dark:border-gray-700 rounded-xl text-xs font-bold text-gray-900 dark:text-white outline-none focus:border-violet-500 transition-all w-52"
                             />
                         </div>
                         <button
                             onClick={() => setShowFilters(!showFilters)}
-                            className={`w-10 h-10 flex items-center justify-center rounded-xl border transition-all cursor-pointer ${showFilters ? 'bg-violet-600 border-violet-600 text-white' : 'bg-gray-50 dark:bg-gray-900/50 border-gray-100 dark:border-gray-700 text-gray-400 hover:border-violet-400 hover:text-violet-500'}`}
+                            className={`w-10 h-10 flex items-center justify-center rounded-xl border transition-all cursor-pointer ${showFilters ? 'bg-violet-600 border-violet-600 text-white' : 'bg-gray-55 dark:bg-gray-900/50 border-gray-100 dark:border-gray-700 text-gray-400 hover:border-violet-400 hover:text-violet-500'}`}
                         >
                             <SlidersHorizontal size={15} />
                         </button>
@@ -100,7 +104,7 @@ export default function Teachers() {
                             onClick={() => setIsModalOpen(true)}
                             className="flex items-center gap-2 px-4 py-2.5 bg-[#1b6b6b] hover:bg-[#155252] text-white rounded-xl text-xs font-extrabold uppercase tracking-widest shadow-lg shadow-[#1b6b6b]/20 transition-all cursor-pointer"
                         >
-                            <Plus size={14} /> Qo'shish
+                            <Plus size={14} /> {t('add')}
                         </button>
                     </div>
                 </div>
@@ -108,32 +112,32 @@ export default function Teachers() {
                 {showFilters && (
                     <div className="px-6 pb-5 pt-4 border-t border-gray-50 dark:border-gray-700/50 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4">
                         {[
-                            { label: 'Holati', key: 'status', opts: [['', 'Barchasi'], ['Faol', 'Faol'], ['Arxiv', 'Arxiv']] },
-                            { label: 'Ish haqi', key: 'salaryType', opts: [['', 'Barchasi'], ['FIXED', 'Fiks'], ['KPI', 'KPI'], ['FIXED_KPI', 'Fiks+KPI']] },
-                            { label: 'Qabul vaqti', key: 'dateRange', opts: [['all', 'Barchasi'], ['today', 'Bugun'], ['week', 'Hafta'], ['month', 'Oy']] },
+                            { label: t('filter_status'), key: 'status', opts: [['', t('all')], ['Faol', t('status_active')], ['Arxiv', t('status_archive')]] },
+                            { label: t('salary_type'), key: 'salaryType', opts: [['', t('all')], ['FIXED', t('salary_fixed')], ['KPI', t('salary_kpi')], ['FIXED_KPI', t('salary_fixed_kpi')]] },
+                            { label: t('date'), key: 'dateRange', opts: [['all', t('all')], ['today', 'Bugun'], ['week', 'Hafta'], ['month', 'Oy']] },
                         ].map(f => (
                             <div key={f.key}>
                                 <label className="text-[9px] font-extrabold text-gray-400 uppercase tracking-widest block mb-1.5">{f.label}</label>
                                 <select value={(filters as any)[f.key]} onChange={e => setFilters({ ...filters, [f.key]: e.target.value })}
-                                    className="w-full px-3 py-2 bg-gray-50 dark:bg-gray-900/50 border border-gray-100 dark:border-gray-700 rounded-xl text-[10px] font-bold text-gray-700 dark:text-white outline-none focus:border-violet-400 transition-all cursor-pointer">
+                                    className="w-full px-3 py-2 bg-gray-55 dark:bg-gray-900/50 border border-gray-100 dark:border-gray-700 rounded-xl text-[10px] font-bold text-gray-700 dark:text-white outline-none focus:border-violet-400 transition-all cursor-pointer">
                                     {f.opts.map(([v, l]) => <option key={v} value={v}>{l}</option>)}
                                 </select>
                             </div>
                         ))}
                         <div>
-                            <label className={lbl.replace('mb-2','mb-1.5')}>Tug'ilgan (min)</label>
+                            <label className={lbl.replace('mb-2','mb-1.5')}>{t('birth_date')} (min)</label>
                             <input type="number" placeholder="1990" value={filters.minBirthYear} onChange={e => setFilters({ ...filters, minBirthYear: e.target.value })}
-                                className="w-full px-3 py-2 bg-gray-50 dark:bg-gray-900/50 border border-gray-100 dark:border-gray-700 rounded-xl text-[10px] font-bold text-gray-700 dark:text-white outline-none focus:border-violet-400 transition-all" />
+                                className="w-full px-3 py-2 bg-gray-55 dark:bg-gray-900/50 border border-gray-100 dark:border-gray-700 rounded-xl text-[10px] font-bold text-gray-700 dark:text-white outline-none focus:border-violet-400 transition-all" />
                         </div>
                         <div>
-                            <label className={lbl.replace('mb-2','mb-1.5')}>Tug'ilgan (max)</label>
+                            <label className={lbl.replace('mb-2','mb-1.5')}>{t('birth_date')} (max)</label>
                             <input type="number" placeholder="2005" value={filters.maxBirthYear} onChange={e => setFilters({ ...filters, maxBirthYear: e.target.value })}
-                                className="w-full px-3 py-2 bg-gray-50 dark:bg-gray-900/50 border border-gray-100 dark:border-gray-700 rounded-xl text-[10px] font-bold text-gray-700 dark:text-white outline-none focus:border-violet-400 transition-all" />
+                                className="w-full px-3 py-2 bg-gray-55 dark:bg-gray-900/50 border border-gray-100 dark:border-gray-700 rounded-xl text-[10px] font-bold text-gray-700 dark:text-white outline-none focus:border-violet-400 transition-all" />
                         </div>
                         <div className="flex items-end">
                             <button onClick={() => setFilters({ status: '', salaryType: '', dateRange: 'all', minBirthYear: '', maxBirthYear: '' })}
                                 className="w-full py-2 text-[10px] font-extrabold uppercase text-rose-500 hover:text-rose-600 flex items-center justify-center gap-1.5 cursor-pointer">
-                                <X size={12} /> Tozalash
+                                <X size={12} /> {t('filter_clear')}
                             </button>
                         </div>
                     </div>
@@ -144,10 +148,10 @@ export default function Teachers() {
             {filteredTeachers.length === 0 ? (
                 <div className="py-24 text-center bg-white dark:bg-gray-800 rounded-3xl border border-gray-100 dark:border-gray-700/50 border-dashed">
                     <GraduationCap size={40} className="mx-auto text-gray-200 dark:text-gray-600 mb-3" />
-                    <p className="text-sm font-bold text-gray-400">O'qituvchilar topilmadi</p>
+                    <p className="text-sm font-bold text-gray-400">{t('teachers_not_found')}</p>
                     <button onClick={() => setIsModalOpen(true)}
                         className="mt-4 inline-flex items-center gap-2 px-5 py-2.5 bg-[#1b6b6b] text-white text-xs font-extrabold uppercase tracking-widest rounded-xl cursor-pointer">
-                        <Plus size={13} /> Qo'shish
+                        <Plus size={13} /> {t('add')}
                     </button>
                 </div>
             ) : (
@@ -195,28 +199,28 @@ export default function Teachers() {
                     <div className="relative bg-white dark:bg-gray-800 rounded-[2rem] border border-gray-100 dark:border-gray-700/50 shadow-2xl w-full max-w-lg p-8 max-h-[90vh] overflow-y-auto">
                         <div className="flex items-center justify-between mb-6 pb-4 border-b border-gray-50 dark:border-gray-700/50">
                             <div>
-                                <h3 className="text-lg font-black text-gray-900 dark:text-white uppercase tracking-tight">Yangi Ustoz</h3>
-                                <p className="text-[10px] font-bold text-violet-600 uppercase tracking-widest mt-0.5">O'qituvchi ma'lumotlari</p>
+                                <h3 className="text-lg font-black text-gray-900 dark:text-white uppercase tracking-tight">{t('new_teacher_title')}</h3>
+                                <p className="text-[10px] font-bold text-violet-600 uppercase tracking-widest mt-0.5">{t('teacher_details_subtitle')}</p>
                             </div>
-                            <button onClick={() => setIsModalOpen(false)} className="w-9 h-9 flex items-center justify-center text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700 rounded-xl cursor-pointer"><X size={18} /></button>
+                            <button onClick={() => setIsModalOpen(false)} className="w-9 h-9 flex items-center justify-center text-gray-400 hover:bg-gray-55 dark:hover:bg-gray-700 rounded-xl cursor-pointer"><X size={18} /></button>
                         </div>
                         <form onSubmit={handleAddTeacher} className="space-y-4">
                             <div className="grid grid-cols-2 gap-4">
                                 <div>
-                                    <label className={lbl}>Ismi *</label>
+                                    <label className={lbl}>{t('student_name')} *</label>
                                     <input required type="text" placeholder="Asror Karimov" className={inp} value={newTeacher.name} onChange={e => setNewTeacher({ ...newTeacher, name: e.target.value })} />
                                 </div>
                                 <div>
-                                    <label className={lbl}>Telefon *</label>
+                                    <label className={lbl}>{t('student_phone')} *</label>
                                     <input required type="tel" placeholder="+998 90 123 45 67" className={inp} value={newTeacher.phone} onChange={e => setNewTeacher({ ...newTeacher, phone: e.target.value })} />
                                 </div>
                             </div>
                             <div>
-                                <label className={lbl}>Ish haqi turi</label>
+                                <label className={lbl}>{t('salary_type')}</label>
                                 <div className="flex gap-2">
                                     {(['FIXED', 'KPI', 'FIXED_KPI'] as const).map(type => (
                                         <button key={type} type="button" onClick={() => setNewTeacher({ ...newTeacher, salaryType: type })}
-                                            className={`flex-1 py-2.5 rounded-xl text-[10px] font-extrabold uppercase tracking-widest border transition-all cursor-pointer ${newTeacher.salaryType === type ? 'bg-[#1b6b6b] border-[#1b6b6b] text-white' : 'bg-gray-50 dark:bg-gray-900/50 border-gray-100 dark:border-gray-700 text-gray-500 hover:border-[#1b6b6b]/30'}`}>
+                                            className={`flex-1 py-2.5 rounded-xl text-[10px] font-extrabold uppercase tracking-widest border transition-all cursor-pointer ${newTeacher.salaryType === type ? 'bg-[#1b6b6b] border-[#1b6b6b] text-white' : 'bg-gray-55 dark:bg-gray-900/50 border-gray-100 dark:border-gray-700 text-gray-500 hover:border-[#1b6b6b]/30'}`}>
                                             {salaryTypeLabels[type]}
                                         </button>
                                     ))}
@@ -225,35 +229,35 @@ export default function Teachers() {
                             <div className="grid grid-cols-2 gap-4">
                                 {(newTeacher.salaryType === 'FIXED' || newTeacher.salaryType === 'FIXED_KPI') && (
                                     <div>
-                                        <label className={lbl}>Fiks Oylik (UZS) *</label>
+                                        <label className={lbl}>{t('fixed_salary')}</label>
                                         <input required type="number" placeholder="5 000 000" className={inp} value={newTeacher.salary || ''} onChange={e => setNewTeacher({ ...newTeacher, salary: Number(e.target.value) })} />
                                     </div>
                                 )}
                                 {(newTeacher.salaryType === 'KPI' || newTeacher.salaryType === 'FIXED_KPI') && (
                                     <div>
-                                        <label className={lbl}>Ulush Foizi (%) *</label>
+                                        <label className={lbl}>{t('share_percentage')}</label>
                                         <input required type="number" placeholder="40" min="0" max="100" className={inp} value={newTeacher.sharePercentage || ''} onChange={e => setNewTeacher({ ...newTeacher, sharePercentage: Number(e.target.value) })} />
                                     </div>
                                 )}
                             </div>
                             <div className="grid grid-cols-2 gap-4">
                                 <div>
-                                    <label className={lbl}>Tug'ilgan Sana *</label>
+                                    <label className={lbl}>{t('birth_date')} *</label>
                                     <input required type="date" className={inp} value={newTeacher.birthDate} onChange={e => setNewTeacher({ ...newTeacher, birthDate: e.target.value })} />
                                 </div>
                                 <div>
-                                    <label className={lbl}>Ishga Kirgan *</label>
+                                    <label className={lbl}>{t('hired_date')}</label>
                                     <input required type="date" className={inp} value={newTeacher.hiredDate} onChange={e => setNewTeacher({ ...newTeacher, hiredDate: e.target.value })} />
                                 </div>
                             </div>
                             <div className="flex gap-3 pt-2">
                                 <button type="button" onClick={() => setIsModalOpen(false)}
                                     className="flex-1 py-3 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-white text-xs font-extrabold uppercase tracking-widest rounded-2xl transition-all cursor-pointer hover:bg-gray-200 dark:hover:bg-gray-600">
-                                    Bekor
+                                    {t('cancel')}
                                 </button>
                                 <button type="submit"
                                     className="flex-1 py-3 bg-[#1b6b6b] hover:bg-[#155252] text-white text-xs font-extrabold uppercase tracking-widest rounded-2xl shadow-lg shadow-[#1b6b6b]/20 transition-all cursor-pointer">
-                                    Saqlash
+                                    {t('save')}
                                 </button>
                             </div>
                         </form>

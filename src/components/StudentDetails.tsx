@@ -5,6 +5,7 @@ import {
 } from 'lucide-react';
 import { useCRM } from '../context/CRMContext';
 import { useParams, useNavigate } from 'react-router-dom';
+import { useLang } from '../context/LanguageContext';
 import MapPicker from './MapPicker';
 import PhotoCapture from './PhotoCapture';
 import { compressImage } from '../lib/image';
@@ -12,6 +13,7 @@ import { compressImage } from '../lib/image';
 export default function StudentDetails() {
     const { id } = useParams<{ id: string }>();
     const navigate = useNavigate();
+    const { t } = useLang();
     const { students, groups, teachers, courses, payments, attendances, scores, transports, addPayment, addAttendance, addScore, updateStudent, addStudentToGroup, deleteStudent } = useCRM();
     const [activeTab, setActiveTab] = useState('umumiy');
     const [showPaymentModal, setShowPaymentModal] = useState(false);
@@ -32,7 +34,7 @@ export default function StudentDetails() {
             navigate('/students');
         } catch (err) {
             console.error("Delete failed", err);
-            alert("O'quvchini o'chirishda xatolik yuz berdi");
+            alert(t('error_occurred'));
         }
     };
 
@@ -64,8 +66,8 @@ export default function StudentDetails() {
                 <div className="w-20 h-20 bg-gray-55 dark:bg-gray-700 rounded-full flex items-center justify-center mb-4 border border-gray-100 dark:border-gray-650">
                     <Users className="w-8 h-8 text-gray-300 dark:text-gray-500" />
                 </div>
-                <p className="text-gray-405 dark:text-gray-500 font-bold uppercase tracking-widest text-xs">O'quvchi topilmadi</p>
-                <button onClick={() => navigate('/students')} className="mt-6 text-[#1b6b6b] font-bold uppercase tracking-widest text-[10px] hover:underline px-6 py-2 bg-teal-50 dark:bg-teal-900/30 rounded-xl transition-all">Orqaga qaytish</button>
+                <p className="text-gray-405 dark:text-gray-500 font-bold uppercase tracking-widest text-xs">{t('student_not_found')}</p>
+                <button onClick={() => navigate('/students')} className="mt-6 text-[#1b6b6b] font-bold uppercase tracking-widest text-[10px] hover:underline px-6 py-2 bg-teal-50 dark:bg-teal-900/30 rounded-xl transition-all">{t('back_to_list')}</button>
             </div>
         );
     }
@@ -73,7 +75,7 @@ export default function StudentDetails() {
     const studentGroups = groups.filter(g => (student.groups || []).includes(g.id)).map(g => {
         const teacher = teachers.find(t => t.id === g.teacherId);
         const course = courses.find(c => c.id === g.courseId);
-        return { ...g, teacherName: teacher?.name || "Noma'lum", courseName: course?.name || '-' };
+        return { ...g, teacherName: teacher?.name || t('unknown_teacher'), courseName: course?.name || '-' };
     });
 
     const studentPayments = payments.filter(p => p.studentId === Number(id)).reverse();
@@ -136,13 +138,13 @@ export default function StudentDetails() {
             const data = await response.json();
             if (data.success) {
                 await updateStudent(student.id, { photo: data.image });
-                alert("Orqa fon muvaffaqiyatli tozalandi!");
+                alert(t('bg_cleared_success'));
             } else {
-                alert("Xatolik: " + data.error);
+                alert(t('error_occurred') + ": " + data.error);
             }
         } catch (err) {
             console.error("BG Removal failed", err);
-            alert("Xatolik yuz berdi");
+            alert(t('error_occurred'));
         } finally {
             setIsRemovingBg(false);
         }
@@ -161,7 +163,7 @@ export default function StudentDetails() {
     };
     const handleSendSms = (phone: string, type: string) => {
         if (!phone) {
-            alert("Telefon raqami mavjud emas");
+            alert(t('phone_not_found'));
             return;
         }
         setSmsData({ phone, type });
@@ -187,13 +189,13 @@ export default function StudentDetails() {
             const data = await response.json();
             
             if (data.success) {
-                alert("SMS muvaffaqiyatli yuborildi");
+                alert(t('sms_sent_success') || "SMS muvaffaqiyatli yuborildi");
             } else {
-                alert("Xatolik: " + (data.error || data.message || "Noma'lum xatolik"));
+                alert(t('error_occurred') + ": " + (data.error || data.message || "Noma'lum xatolik"));
             }
         } catch (err: any) {
             console.error("SMS xatoligi:", err);
-            alert("SMS yuborishda xatolik yuz berdi: " + err.message);
+            alert(t('error_occurred') + ": " + err.message);
         }
     };
 
@@ -208,7 +210,7 @@ export default function StudentDetails() {
             {/* Back Button */}
             <button onClick={() => navigate(-1)} className="flex items-center gap-2 text-gray-400 dark:text-gray-500 hover:text-[#1b6b6b] transition-all text-[10px] font-extrabold uppercase tracking-widest group cursor-pointer">
                 <ArrowLeft size={14} className="group-hover:-translate-x-1 transition-transform" />
-                Orqaga
+                {t('back')}
             </button>
 
             <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 items-start">
@@ -230,7 +232,7 @@ export default function StudentDetails() {
                             {isEditing ? (
                                 <div className="space-y-3">
                                     <div>
-                                        <label className={labelCls}>Ism Familiya</label>
+                                        <label className={labelCls}>{t('student_name')}</label>
                                         <input 
                                             value={editForm.name}
                                             onChange={e => setEditForm({...editForm, name: e.target.value})}
@@ -238,25 +240,25 @@ export default function StudentDetails() {
                                         />
                                     </div>
                                     <div>
-                                        <label className={labelCls}>Holati</label>
+                                        <label className={labelCls}>{t('status')}</label>
                                         <select 
                                             value={editForm.status}
                                             onChange={e => setEditForm({...editForm, status: e.target.value as any})}
                                             className={inputCls}
                                         >
-                                            <option value="Faol">Faol</option>
-                                            <option value="Sinov">Sinov</option>
-                                            <option value="Arxiv">Arxiv</option>
+                                            <option value="Faol">{t('status_active')}</option>
+                                            <option value="Sinov">{t('status_test')}</option>
+                                            <option value="Arxiv">{t('status_archive')}</option>
                                         </select>
                                     </div>
                                     <div>
-                                        <label className={labelCls}>Transport</label>
+                                        <label className={labelCls}>{t('transport')}</label>
                                         <select 
                                             value={editForm.transportId}
                                             onChange={e => setEditForm({...editForm, transportId: e.target.value})}
                                             className={inputCls}
                                         >
-                                            <option value="">Transport yo'q</option>
+                                            <option value="">{t('transport_none')}</option>
                                             {transports.map(t => (
                                                 <option key={t.id} value={t.id}>{t.name} ({t.number})</option>
                                             ))}
@@ -274,7 +276,7 @@ export default function StudentDetails() {
                                     <p className="text-[9px] font-bold text-gray-400 uppercase tracking-widest mt-1">ID: #{student.id}</p>
                                     <div className="mt-4 flex justify-center">
                                         <span className={`px-2.5 py-0.5 rounded-md text-[8px] font-black border uppercase tracking-wider ${student.status === 'Faol' ? 'bg-emerald-50 text-emerald-600 border-emerald-100 dark:bg-emerald-950/20 dark:text-emerald-400' : 'bg-gray-55 text-gray-400 border-gray-100 dark:bg-gray-900/50'}`}>
-                                            {student.status}
+                                            {student.status === 'Faol' ? t('status_active') : student.status === 'Sinov' ? t('status_test') : student.status === 'Arxiv' ? t('status_archive') : student.status}
                                         </span>
                                     </div>
                                 </>
@@ -283,7 +285,7 @@ export default function StudentDetails() {
 
                         <div className="px-6 pb-6 space-y-4 border-t border-dashed border-gray-100 dark:border-gray-700/50 pt-4">
                             <div className={`p-4 rounded-2xl border ${student.balance >= 0 ? 'bg-emerald-50/50 border-emerald-100 dark:bg-emerald-950/20 dark:border-emerald-900/40 text-emerald-600' : 'bg-rose-50/50 border-rose-100 dark:bg-rose-950/20 dark:border-rose-900/40 text-rose-600'} flex flex-col items-center`}>
-                                <span className="text-[8px] font-black text-gray-405 uppercase tracking-widest mb-1">Balans</span>
+                                <span className="text-[8px] font-black text-gray-405 uppercase tracking-widest mb-1">{t('filter_balance')}</span>
                                 <span className="text-lg font-black tracking-tight tabular-nums">{student.balance.toLocaleString()} <span className="text-[9px] font-extrabold opacity-60">UZS</span></span>
                             </div>
 
@@ -291,7 +293,7 @@ export default function StudentDetails() {
                                 <label className="relative flex items-center justify-center gap-1.5 py-2.5 bg-gray-55 dark:bg-gray-900 border border-dashed border-gray-200 dark:border-gray-700 rounded-xl cursor-pointer hover:bg-white transition-all group">
                                     <input type="file" className="hidden" accept="image/*" onChange={handlePhotoUpload} />
                                     <ImageIcon size={14} className="text-gray-400 group-hover:text-[#1b6b6b]" />
-                                    <span className="text-[9px] font-extrabold text-gray-400 uppercase tracking-widest">Yuklash</span>
+                                    <span className="text-[9px] font-extrabold text-gray-400 uppercase tracking-widest">{t('upload')}</span>
                                 </label>
                                 
                                 <button 
@@ -299,7 +301,7 @@ export default function StudentDetails() {
                                     className="flex items-center justify-center gap-1.5 py-2.5 bg-gray-55 dark:bg-gray-900 border border-dashed border-gray-200 dark:border-gray-700 rounded-xl hover:bg-white transition-all cursor-pointer"
                                 >
                                     <Camera size={14} className="text-gray-400" />
-                                    <span className="text-[9px] font-extrabold text-gray-400 uppercase tracking-widest">Rasmga olish</span>
+                                    <span className="text-[9px] font-extrabold text-gray-400 uppercase tracking-widest">{t('take_photo')}</span>
                                 </button>
                             </div>
                             
@@ -310,7 +312,7 @@ export default function StudentDetails() {
                                     className="w-full flex items-center justify-center gap-1.5 py-3 bg-violet-50 text-violet-600 border border-violet-100 dark:bg-violet-950/20 dark:text-violet-400 rounded-xl text-[9px] font-extrabold uppercase tracking-widest hover:bg-violet-600 hover:text-white transition-all disabled:opacity-50 cursor-pointer"
                                 >
                                     <Sparkles size={12} className={isRemovingBg ? 'animate-spin' : ''} />
-                                    {isRemovingBg ? 'Tozalanmoqda...' : 'Fonni tozalash'}
+                                    {isRemovingBg ? t('clearing') : t('clear_bg_btn')}
                                 </button>
                             )}
 
@@ -327,49 +329,49 @@ export default function StudentDetails() {
                             {isEditing ? (
                                 <div className="space-y-4">
                                     <div>
-                                        <label className={labelCls}>Telefon</label>
+                                        <label className={labelCls}>{t('student_phone')}</label>
                                         <input type="tel" value={editForm.phone} onChange={e => setEditForm({...editForm, phone: e.target.value})} className={inputCls} />
                                     </div>
                                     <div>
-                                        <label className={labelCls}>Tug'ilgan kun</label>
+                                        <label className={labelCls}>{t('birth_date')}</label>
                                         <input type="date" value={editForm.birthDate} onChange={e => setEditForm({...editForm, birthDate: e.target.value})} className={inputCls} />
                                     </div>
                                     <div>
-                                        <label className={labelCls}>Manzil</label>
+                                        <label className={labelCls}>{t('address')}</label>
                                         <input type="text" value={editForm.address} onChange={e => setEditForm({...editForm, address: e.target.value})} className={inputCls} />
                                     </div>
                                     <div>
-                                        <label className={labelCls}>Maktab</label>
+                                        <label className={labelCls}>{t('school_kindergarten')}</label>
                                         <input type="text" value={editForm.studentSchool} onChange={e => setEditForm({...editForm, studentSchool: e.target.value})} className={inputCls} placeholder="45-maktab" />
                                     </div>
                                     <div className="grid grid-cols-2 gap-2">
                                         <div>
-                                            <label className={labelCls}>Otasi ismi</label>
+                                            <label className={labelCls}>{t('father_name')}</label>
                                             <input type="text" value={editForm.fatherName} onChange={e => setEditForm({...editForm, fatherName: e.target.value})} className={inputCls} />
                                         </div>
                                         <div>
-                                            <label className={labelCls}>Otasi tel</label>
+                                            <label className={labelCls}>{t('father_phone')}</label>
                                             <input type="tel" value={editForm.fatherPhone} onChange={e => setEditForm({...editForm, fatherPhone: e.target.value})} className={inputCls} />
                                         </div>
                                     </div>
                                     <div className="grid grid-cols-2 gap-2">
                                         <div>
-                                            <label className={labelCls}>Onasi ismi</label>
+                                            <label className={labelCls}>{t('mother_name')}</label>
                                             <input type="text" value={editForm.motherName} onChange={e => setEditForm({...editForm, motherName: e.target.value})} className={inputCls} />
                                         </div>
                                         <div>
-                                            <label className={labelCls}>Onasi tel</label>
+                                            <label className={labelCls}>{t('mother_phone')}</label>
                                             <input type="tel" value={editForm.motherPhone} onChange={e => setEditForm({...editForm, motherPhone: e.target.value})} className={inputCls} />
                                         </div>
                                     </div>
                                     <div>
-                                        <label className={labelCls}>Lokatsiya</label>
+                                        <label className={labelCls}>{t('location')}</label>
                                         <button 
                                             onClick={() => setIsMapOpen(true)}
                                             className={`w-full py-2.5 border rounded-xl flex items-center justify-center gap-1.5 text-[9px] font-extrabold uppercase transition-all cursor-pointer ${editForm.location ? 'bg-teal-50 text-[#1b6b6b] border-teal-100' : 'bg-gray-55 text-gray-400 border-gray-100'}`}
                                         >
                                             <MapPin size={12} />
-                                            {editForm.location ? "O'zgartirish" : "Kartadan belgilash"}
+                                            {editForm.location ? t('edit') : t('select_from_map')}
                                         </button>
                                     </div>
                                     <div className="pt-2 flex gap-2">
@@ -378,10 +380,10 @@ export default function StudentDetails() {
                                             disabled={isSaving}
                                             className="flex-1 py-3 bg-[#1b6b6b] hover:bg-[#155252] text-white rounded-xl text-[9px] font-extrabold uppercase shadow-lg shadow-[#1b6b6b]/20 active:scale-95 transition-all cursor-pointer disabled:opacity-50"
                                         >
-                                            Saqlash
+                                            {t('save')}
                                         </button>
                                         <button onClick={() => setIsEditing(false)} className="flex-1 py-3 bg-white border border-gray-100 text-gray-405 rounded-xl text-[9px] font-extrabold uppercase transition-all cursor-pointer">
-                                            Bekor
+                                            {t('cancel')}
                                         </button>
                                     </div>
                                 </div>
@@ -389,20 +391,20 @@ export default function StudentDetails() {
                                 <>
                                     <div className="flex items-center gap-2 mb-2 px-1">
                                         <div className="w-1.5 h-1.5 rounded-full bg-[#1b6b6b]" />
-                                        <h3 className="text-[9px] font-black text-[#1b6b6b] uppercase tracking-widest">Ma'lumotlar</h3>
+                                        <h3 className="text-[9px] font-black text-[#1b6b6b] uppercase tracking-widest">{t('lead_details_title')}</h3>
                                     </div>
-                                    <InfoRow icon={<Phone className="w-3.5 h-3.5" />} label="Telefon" value={student.phone} />
+                                    <InfoRow icon={<Phone className="w-3.5 h-3.5" />} label={t('student_phone')} value={student.phone} />
                                     <InfoRow 
                                         icon={<Bus className="w-3.5 h-3.5" />} 
-                                        label="Transport" 
-                                        value={transports.find(t => t.id === student.transportId)?.name || "Transport yo'q"} 
+                                        label={t('transport')} 
+                                        value={transports.find(t => t.id === student.transportId)?.name || t('transport_none')} 
                                     />
-                                    <InfoRow icon={<Calendar className="w-3.5 h-3.5" />} label="Tug'ilgan kun" value={student.birthDate} />
+                                    <InfoRow icon={<Calendar className="w-3.5 h-3.5" />} label={t('birth_date')} value={student.birthDate} />
                                     <div className="space-y-2">
-                                        <InfoRow icon={<Users className="w-3.5 h-3.5" />} label="Otasi" value={student.fatherName || "-"} />
+                                        <InfoRow icon={<Users className="w-3.5 h-3.5" />} label={t('father')} value={student.fatherName || "-"} />
                                         {student.fatherPhone && (
                                             <div className="flex items-center gap-1.5 pl-12 -mt-1">
-                                                <span className="text-[10px] font-bold text-gray-500 tabular-nums">{student.fatherPhone}</span>
+                                                <span className="text-[10px] font-bold text-gray-550 tabular-nums">{student.fatherPhone}</span>
                                                 <button onClick={() => handleSendSms(student.fatherPhone!, 'manual')} className="p-1 text-[#1b6b6b] hover:bg-teal-50 rounded transition-all cursor-pointer">
                                                     <Sparkles size={11} />
                                                 </button>
@@ -410,35 +412,35 @@ export default function StudentDetails() {
                                         )}
                                     </div>
                                     <div className="space-y-2">
-                                        <InfoRow icon={<Users className="w-3.5 h-3.5" />} label="Onasi" value={student.motherName || "-"} />
+                                        <InfoRow icon={<Users className="w-3.5 h-3.5" />} label={t('mother')} value={student.motherName || "-"} />
                                         {student.motherPhone && (
                                             <div className="flex items-center gap-1.5 pl-12 -mt-1">
-                                                <span className="text-[10px] font-bold text-gray-500 tabular-nums">{student.motherPhone}</span>
+                                                <span className="text-[10px] font-bold text-gray-550 tabular-nums">{student.motherPhone}</span>
                                                 <button onClick={() => handleSendSms(student.motherPhone!, 'manual')} className="p-1 text-[#1b6b6b] hover:bg-teal-50 rounded transition-all cursor-pointer">
                                                     <Sparkles size={11} />
                                                 </button>
                                             </div>
                                         )}
                                     </div>
-                                    <InfoRow icon={<BookOpen className="w-3.5 h-3.5" />} label="Maktab" value={student.studentSchool || "-"} />
-                                    <InfoRow icon={<MapPin className="w-3.5 h-3.5" />} label="Manzil" value={student.address} />
+                                    <InfoRow icon={<BookOpen className="w-3.5 h-3.5" />} label={t('school_kindergarten')} value={student.studentSchool || "-"} />
+                                    <InfoRow icon={<MapPin className="w-3.5 h-3.5" />} label={t('address')} value={student.address} />
                                     {student.location && (
                                         <button 
                                             onClick={handleOpenMap}
                                             className="w-full mt-2 flex items-center justify-center gap-1.5 px-4 py-3 bg-teal-50 dark:bg-teal-950/20 text-[#1b6b6b] border border-teal-100 dark:border-teal-900/40 text-[9px] font-black uppercase tracking-[0.1em] rounded-xl hover:bg-[#1b6b6b] hover:text-white transition-all cursor-pointer"
                                         >
                                             <MapPin size={13} />
-                                            Kartada ko'rish
+                                            {t('view_on_map')}
                                         </button>
                                     )}
-                                    <InfoRow icon={<Clock className="w-3.5 h-3.5" />} label="A'zo bo'ldi" value={student.joinedDate} />
+                                    <InfoRow icon={<Clock className="w-3.5 h-3.5" />} label={t('registered_at')} value={student.joinedDate} />
                                     
                                     <button 
                                         onClick={() => setShowDeleteModal(true)}
                                         className="w-full mt-4 flex items-center justify-center gap-1.5 px-4 py-3 bg-rose-50 text-rose-600 border border-rose-100 dark:bg-rose-950/20 dark:text-rose-400 dark:border-rose-900/40 text-[9px] font-black uppercase tracking-[0.1em] rounded-xl hover:bg-rose-600 hover:text-white transition-all cursor-pointer"
                                     >
                                         <XCircle size={13} />
-                                        O'quvchini O'chirish
+                                        {t('delete_student')}
                                     </button>
                                 </>
                             )}
@@ -451,30 +453,30 @@ export default function StudentDetails() {
                     {/* Summary Stats */}
                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                         <StatCardV3 
-                            label="O'rtacha Ball" 
+                            label={t('average_score')} 
                             value={avgScore}
-                            subValue="Akademik natija"
+                            subValue={t('academic_result')}
                             icon={<Award className="text-amber-500" size={16} />} 
                             color="amber"
                         />
                         <StatCardV3 
-                            label="Davomat" 
+                            label={t('attendance')} 
                             value={`${attendanceRate}%`}
-                            subValue="Darslarga qatnash"
+                            subValue={t('class_attendance')}
                             icon={<ClipboardCheck className="text-emerald-500" size={16} />} 
                             color="emerald"
                         />
                         <StatCardV3 
-                            label="Guruhlar" 
+                            label={t('stat_groups')} 
                             value={studentGroups.length}
-                            subValue="Faol kurslar"
+                            subValue={t('active_courses')}
                             icon={<Users className="text-[#1b6b6b]" size={16} />} 
                             color="teal"
                         />
                         <StatCardV3 
-                            label="To'lovlar" 
+                            label={t('payments_tab')} 
                             value={studentPayments.length}
-                            subValue="Jami tranzaksiyalar"
+                            subValue={t('total_transactions')}
                             icon={<CreditCard className="text-rose-500" size={16} />} 
                             color="rose"
                         />
@@ -482,11 +484,11 @@ export default function StudentDetails() {
 
                     <div className="bg-white dark:bg-gray-800 rounded-3xl border border-gray-100 dark:border-gray-700/50 shadow-sm overflow-hidden min-h-[500px]">
                         <div className="flex px-4 bg-gray-55 dark:bg-gray-900/50 border-b border-gray-100 dark:border-gray-700/50 gap-2 overflow-x-auto scrollbar-hide">
-                            <TabButton label="Umumiy" icon={<Layers className="w-3.5 h-3.5" />} active={activeTab === 'umumiy'} onClick={() => setActiveTab('umumiy')} />
-                            <TabButton label="Guruhlar" icon={<Users className="w-3.5 h-3.5" />} active={activeTab === 'guruhlar'} onClick={() => setActiveTab('guruhlar')} />
-                            <TabButton label="To'lovlar" icon={<CreditCard className="w-3.5 h-3.5" />} active={activeTab === 'tolovlar'} onClick={() => setActiveTab('tolovlar')} />
-                            <TabButton label="Yo'qlama" icon={<ClipboardCheck className="w-3.5 h-3.5" />} active={activeTab === 'yoqlama'} onClick={() => setActiveTab('yoqlama')} />
-                            <TabButton label="Ballar" icon={<Award className="w-3.5 h-3.5" />} active={activeTab === 'ballar'} onClick={() => setActiveTab('ballar')} />
+                            <TabButton label={t('general')} icon={<Layers className="w-3.5 h-3.5" />} active={activeTab === 'umumiy'} onClick={() => setActiveTab('umumiy')} />
+                            <TabButton label={t('stat_groups')} icon={<Users className="w-3.5 h-3.5" />} active={activeTab === 'guruhlar'} onClick={() => setActiveTab('guruhlar')} />
+                            <TabButton label={t('payments_tab')} icon={<CreditCard className="w-3.5 h-3.5" />} active={activeTab === 'tolovlar'} onClick={() => setActiveTab('tolovlar')} />
+                            <TabButton label={t('attendance')} icon={<ClipboardCheck className="w-3.5 h-3.5" />} active={activeTab === 'yoqlama'} onClick={() => setActiveTab('yoqlama')} />
+                            <TabButton label={t('scores')} icon={<Award className="w-3.5 h-3.5" />} active={activeTab === 'ballar'} onClick={() => setActiveTab('ballar')} />
                         </div>
 
                         <div className="p-6">
@@ -494,10 +496,10 @@ export default function StudentDetails() {
                                 <div className="space-y-8 animate-in fade-in duration-300">
                                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                                         <div className="space-y-4">
-                                            <span className="text-[9px] font-black text-gray-400 uppercase tracking-widest block pb-2 border-b border-gray-55 dark:border-gray-700/50">Faol Guruhlar</span>
+                                            <span className="text-[9px] font-black text-gray-400 uppercase tracking-widest block pb-2 border-b border-gray-55 dark:border-gray-700/50">{t('active_groups')}</span>
                                             <div className="space-y-3">
                                                 {studentGroups.length === 0 ? (
-                                                    <p className="text-center py-8 text-[10px] text-gray-400 font-bold uppercase tracking-widest">Guruhlarga biriktirilmagan</p>
+                                                    <p className="text-center py-8 text-[10px] text-gray-400 font-bold uppercase tracking-widest">{t('no_groups_found')}</p>
                                                 ) : (
                                                     studentGroups.map(group => (
                                                         <div key={group.id} onClick={() => navigate(`/groups/${group.id}`)} 
@@ -519,7 +521,7 @@ export default function StudentDetails() {
                                         </div>
 
                                         <div className="space-y-4">
-                                            <span className="text-[9px] font-black text-gray-400 uppercase tracking-widest block pb-2 border-b border-gray-55 dark:border-gray-700/50">Oxirgi To'lovlar</span>
+                                            <span className="text-[9px] font-black text-gray-400 uppercase tracking-widest block pb-2 border-b border-gray-55 dark:border-gray-700/50">{t('latest_payments')}</span>
                                             <div className="space-y-3">
                                                 {studentPayments.slice(0, 4).map(p => (
                                                     <div key={p.id} className="flex items-center justify-between p-4 bg-gray-55 dark:bg-gray-900/30 rounded-2xl">
@@ -532,11 +534,11 @@ export default function StudentDetails() {
                                                                 <p className="text-[9px] font-bold text-gray-400 mt-0.5">{p.date}</p>
                                                             </div>
                                                         </div>
-                                                        <span className="text-[9px] font-black text-gray-600 dark:text-gray-400 bg-white dark:bg-gray-800 px-2.5 py-1 rounded-md border border-gray-100 dark:border-gray-700 uppercase tracking-wider">{p.type}</span>
+                                                        <span className="text-[9px] font-black text-gray-600 dark:text-gray-400 bg-white dark:bg-gray-800 px-2.5 py-1 rounded-md border border-gray-100 dark:border-gray-700 uppercase tracking-wider">{p.type === 'Naqd' ? t('type_cash') : p.type === 'Karta' ? t('type_card') : p.type === 'Peyme' ? t('type_payme') : p.type === 'Klik' ? t('type_click') : p.type}</span>
                                                     </div>
                                                 ))}
                                                 {studentPayments.length === 0 && (
-                                                    <p className="text-center py-8 text-[10px] text-gray-400 font-bold uppercase tracking-widest">To'lovlar tarixi yo'q</p>
+                                                    <p className="text-center py-8 text-[10px] text-gray-400 font-bold uppercase tracking-widest">{t('no_payment_history')}</p>
                                                 )}
                                             </div>
                                         </div>
@@ -548,11 +550,11 @@ export default function StudentDetails() {
                                 <div className="space-y-6 animate-in fade-in duration-300">
                                     <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-5 bg-gray-55 dark:bg-gray-900/40 border border-gray-100 dark:border-gray-700/50 rounded-2xl">
                                         <div>
-                                            <h4 className="text-xs font-black text-gray-900 dark:text-white uppercase tracking-tight">Tranzaksiyalar Tarixi</h4>
+                                            <h4 className="text-xs font-black text-gray-900 dark:text-white uppercase tracking-tight">{t('transactions_history')}</h4>
                                         </div>
                                         <button onClick={() => setShowPaymentModal(true)}
                                             className="px-6 py-2.5 bg-[#1b6b6b] hover:bg-[#155252] text-white rounded-xl text-[10px] font-extrabold uppercase tracking-widest shadow-lg shadow-[#1b6b6b]/20 active:scale-95 transition-all text-center cursor-pointer">
-                                            To'lov Qo'shish
+                                            {t('add_payment')}
                                         </button>
                                     </div>
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -567,12 +569,12 @@ export default function StudentDetails() {
                                                         <p className="text-[9px] font-bold text-gray-400 mt-0.5">{p.date}</p>
                                                     </div>
                                                 </div>
-                                                <span className="text-[9px] font-black text-gray-650 dark:text-gray-400 bg-white dark:bg-gray-800 px-2.5 py-1 rounded-md border border-gray-100 dark:border-gray-700 uppercase tracking-wider">{p.type}</span>
+                                                <span className="text-[9px] font-black text-gray-650 dark:text-gray-400 bg-white dark:bg-gray-800 px-2.5 py-1 rounded-md border border-gray-100 dark:border-gray-700 uppercase tracking-wider">{p.type === 'Naqd' ? t('type_cash') : p.type === 'Karta' ? t('type_card') : p.type === 'Peyme' ? t('type_payme') : p.type === 'Klik' ? t('type_click') : p.type}</span>
                                             </div>
                                         ))}
                                     </div>
                                     {studentPayments.length === 0 && (
-                                        <p className="text-center py-12 text-[10px] text-gray-400 font-bold uppercase tracking-widest">To'lovlar topilmadi</p>
+                                        <p className="text-center py-12 text-[10px] text-gray-400 font-bold uppercase tracking-widest">{t('no_payments_found')}</p>
                                     )}
                                 </div>
                             )}
@@ -581,11 +583,11 @@ export default function StudentDetails() {
                                 <div className="space-y-6 animate-in fade-in duration-300">
                                     <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-5 bg-gray-55 dark:bg-gray-900/40 border border-gray-100 dark:border-gray-700/50 rounded-2xl">
                                         <div>
-                                            <h4 className="text-xs font-black text-gray-900 dark:text-white uppercase tracking-tight">O'quvchi Guruhlari</h4>
+                                            <h4 className="text-xs font-black text-gray-900 dark:text-white uppercase tracking-tight">{t('student_groups')}</h4>
                                         </div>
                                         <button onClick={() => setShowGroupModal(true)}
                                             className="px-6 py-2.5 bg-[#1b6b6b] hover:bg-[#155252] text-white rounded-xl text-[10px] font-extrabold uppercase tracking-widest shadow-lg shadow-[#1b6b6b]/20 active:scale-95 transition-all text-center cursor-pointer">
-                                            Guruhga Qo'shish
+                                            {t('add_to_group')}
                                         </button>
                                     </div>
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -608,14 +610,14 @@ export default function StudentDetails() {
                                                     </div>
                                                     <div className="flex items-center gap-2 text-[10px] text-gray-500 font-bold uppercase tracking-wide">
                                                         <Calendar size={14} className="text-gray-400" />
-                                                        <span className="uppercase">{group.days === 'TOQ' ? 'Toq kunlar' : group.days === 'JUFT' ? 'Juft kunlar' : 'Har kuni'}</span> &bull; {group.schedule}
+                                                        <span className="uppercase">{group.days === 'TOQ' ? t('odd_days') : group.days === 'JUFT' ? t('even_days') : t('every_day')}</span> &bull; {group.schedule}
                                                     </div>
                                                 </div>
                                             </div>
                                         ))}
                                     </div>
                                     {studentGroups.length === 0 && (
-                                        <p className="text-center py-12 text-[10px] text-gray-400 font-bold uppercase tracking-widest">Guruhlar topilmadi</p>
+                                        <p className="text-center py-12 text-[10px] text-gray-400 font-bold uppercase tracking-widest">{t('no_groups_found')}</p>
                                     )}
                                 </div>
                             )}
@@ -624,27 +626,27 @@ export default function StudentDetails() {
                                 <div className="space-y-6 animate-in fade-in duration-300">
                                     <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-5 bg-gray-55 dark:bg-gray-900/40 border border-gray-100 dark:border-gray-700/50 rounded-2xl">
                                         <div>
-                                            <h4 className="text-xs font-black text-gray-900 dark:text-white uppercase tracking-tight">Davomat Kalendari</h4>
+                                            <h4 className="text-xs font-black text-gray-900 dark:text-white uppercase tracking-tight">{t('attendance_calendar')}</h4>
                                         </div>
                                         <div className="flex flex-wrap items-center gap-3">
                                             <div className="flex items-center gap-1">
                                                 <div className="w-2 h-2 rounded-full bg-emerald-500" />
-                                                <span className="text-[8px] font-black text-gray-400 uppercase tracking-widest">Keldi</span>
+                                                <span className="text-[8px] font-black text-gray-400 uppercase tracking-widest">{t('present')}</span>
                                             </div>
                                             <div className="flex items-center gap-1">
                                                 <div className="w-2 h-2 rounded-full bg-rose-500" />
-                                                <span className="text-[8px] font-black text-gray-400 uppercase tracking-widest">Kelmapdi</span>
+                                                <span className="text-[8px] font-black text-gray-400 uppercase tracking-widest">{t('absent')}</span>
                                             </div>
                                             <div className="flex items-center gap-1">
                                                 <div className="w-2 h-2 rounded-full bg-amber-400" />
-                                                <span className="text-[8px] font-black text-gray-400 uppercase tracking-widest">Belgilanmagan</span>
+                                                <span className="text-[8px] font-black text-gray-400 uppercase tracking-widest">{t('not_marked')}</span>
                                             </div>
                                         </div>
                                     </div>
 
                                     <div className="bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700/50 rounded-3xl p-6 shadow-sm">
                                         <div className="grid grid-cols-7 gap-2">
-                                            {['Du', 'Se', 'Ch', 'Pa', 'Ju', 'Sh', 'Ya'].map(day => (
+                                            {[t('day_mon'), t('day_tue'), t('day_wed'), t('day_thu'), t('day_fri'), t('day_sat'), t('day_sun')].map(day => (
                                                 <div key={day} className="text-center text-[9px] font-black text-gray-400 uppercase tracking-widest pb-2">{day}</div>
                                             ))}
                                             {(() => {
@@ -697,13 +699,13 @@ export default function StudentDetails() {
                                     </div>
 
                                     <div className="space-y-4">
-                                        <span className="text-[9px] font-black text-gray-400 uppercase tracking-widest block pb-2 border-b border-gray-55 dark:border-gray-700/50">Batafsil Tarix</span>
+                                        <span className="text-[9px] font-black text-gray-400 uppercase tracking-widest block pb-2 border-b border-gray-55 dark:border-gray-700/50">{t('detailed_history')}</span>
                                         <div className="bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700/50 rounded-2xl overflow-hidden shadow-sm">
                                             <table className="w-full text-left border-collapse">
                                                 <thead>
                                                     <tr className="bg-gray-55 dark:bg-gray-900 border-b border-gray-100 dark:border-gray-700/50">
-                                                        <th className="p-4 text-[9px] font-black text-gray-400 uppercase tracking-widest">Sana & Guruh</th>
-                                                        <th className="p-4 text-center text-[9px] font-black text-gray-400 uppercase tracking-widest">Holati</th>
+                                                        <th className="p-4 text-[9px] font-black text-gray-400 uppercase tracking-widest">{t('date_group')}</th>
+                                                        <th className="p-4 text-center text-[9px] font-black text-gray-400 uppercase tracking-widest">{t('status')}</th>
                                                     </tr>
                                                 </thead>
                                                 <tbody className="divide-y divide-gray-100 dark:divide-gray-800">
@@ -716,7 +718,7 @@ export default function StudentDetails() {
                                                             <td className="p-4">
                                                                 <div className="flex justify-center">
                                                                     <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-lg text-[9px] font-black border uppercase tracking-wider ${a.status === 'Keldi' ? 'bg-emerald-50 text-emerald-600 border-emerald-100 dark:bg-emerald-950/20 dark:text-emerald-400' : 'bg-rose-50 text-rose-600 border-rose-100 dark:bg-rose-950/20 dark:text-rose-400'}`}>
-                                                                        {a.status}
+                                                                        {a.status === 'Keldi' ? t('present') : a.status === 'Kelmapdi' ? t('absent') : a.status === 'Sababli' ? t('reason') : a.status}
                                                                     </span>
                                                                 </div>
                                                             </td>
@@ -733,11 +735,11 @@ export default function StudentDetails() {
                                 <div className="space-y-6 animate-in fade-in duration-300">
                                     <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-5 bg-gray-55 dark:bg-gray-900/40 border border-gray-100 dark:border-gray-700/50 rounded-2xl">
                                         <div>
-                                            <h4 className="text-xs font-black text-gray-900 dark:text-white uppercase tracking-tight">Reyting va Natijalar</h4>
+                                            <h4 className="text-xs font-black text-gray-900 dark:text-white uppercase tracking-tight">{t('ratings_results')}</h4>
                                         </div>
                                         <button onClick={() => setShowScoreModal(true)}
                                             className="px-6 py-2.5 bg-[#1b6b6b] hover:bg-[#155252] text-white rounded-xl text-[10px] font-extrabold uppercase tracking-widest shadow-lg shadow-[#1b6b6b]/20 active:scale-95 transition-all text-center cursor-pointer">
-                                            Ball Qo'shish
+                                            {t('add_score')}
                                         </button>
                                     </div>
                                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -748,7 +750,7 @@ export default function StudentDetails() {
                                                 </div>
                                                 <div className="min-w-0">
                                                     <p className="text-[8px] font-black text-gray-400 uppercase tracking-widest">{groups.find(g => g.id === s.groupId)?.name || '-'}</p>
-                                                    <p className="text-xs font-black text-gray-900 dark:text-white uppercase tracking-tight mt-0.5">{s.value} BALL</p>
+                                                    <p className="text-xs font-black text-gray-900 dark:text-white uppercase tracking-tight mt-0.5">{s.value} {t('score')}</p>
                                                     {s.comment && (
                                                         <p className="text-[9px] text-gray-405 italic mt-1">"{s.comment}"</p>
                                                     )}
@@ -757,7 +759,7 @@ export default function StudentDetails() {
                                         ))}
                                     </div>
                                     {studentScores.length === 0 && (
-                                        <p className="text-center py-12 text-[10px] text-gray-400 font-bold uppercase tracking-widest">Natijalar topilmadi</p>
+                                        <p className="text-center py-12 text-[10px] text-gray-400 font-bold uppercase tracking-widest">{t('no_results_found')}</p>
                                     )}
                                 </div>
                             )}
@@ -811,22 +813,22 @@ export default function StudentDetails() {
                         <div className="w-16 h-16 bg-rose-50 rounded-2xl flex items-center justify-center mx-auto mb-4 text-rose-600 border border-rose-100 dark:bg-rose-950/20 dark:text-rose-400 dark:border-rose-900/40">
                             <X size={24} />
                         </div>
-                        <h3 className="text-base font-black text-gray-900 dark:text-white uppercase tracking-tight">O'quvchini o'chirish</h3>
+                        <h3 className="text-base font-black text-gray-900 dark:text-white uppercase tracking-tight">{t('delete_student')}</h3>
                         <p className="text-[10px] font-bold text-gray-400 mt-2 uppercase tracking-widest leading-relaxed">
-                            Haqiqatdan ham <span className="text-gray-900 dark:text-white font-black">{student.name}</span>ni o'chirmoqchimisiz? Ushbu amalni ortga qaytarib bo'lmaydi!
+                            {t('delete_student_confirm').replace('{name}', student.name)}
                         </p>
                         <div className="mt-6 flex gap-3">
                             <button 
                                 onClick={handleConfirmDelete}
                                 className="flex-1 py-3 bg-rose-650 hover:bg-rose-600 text-white rounded-xl text-[10px] font-extrabold uppercase tracking-widest transition-all active:scale-95 shadow-lg shadow-rose-500/20 cursor-pointer"
                             >
-                                O'chirish
+                                {t('delete')}
                             </button>
                             <button 
                                 onClick={() => setShowDeleteModal(false)}
                                 className="flex-1 py-3 bg-gray-55 dark:bg-gray-900 text-gray-405 rounded-xl text-[10px] font-extrabold uppercase tracking-widest transition-all active:scale-95 cursor-pointer"
                             >
-                                Bekor qilish
+                                {t('cancel')}
                             </button>
                         </div>
                     </div>
