@@ -10,18 +10,18 @@ export default function ExamsList() {
     const { exams, deleteExam } = useCRM();
     const { t } = useLang();
     const navigate = useNavigate();
-    
+
     const [search, setSearch] = useState('');
     const [activeTab, setActiveTab] = useState<'exams' | 'questions' | 'scanner'>('exams');
 
     const handleDelete = async (id: number, e: React.MouseEvent) => {
         e.stopPropagation();
-        if (window.confirm("Imtihonni o'chirishni xohlaysizmi?")) {
+        if (window.confirm(t('delete_exam_confirm'))) {
             await deleteExam(id);
         }
     };
 
-    const filteredExams = exams.filter(e => 
+    const filteredExams = exams.filter(e =>
         (e.name || '').toLowerCase().includes(search.toLowerCase())
     );
 
@@ -35,21 +35,21 @@ export default function ExamsList() {
                         className="flex items-center gap-2 px-6 py-3.5 rounded-xl text-[10px] font-extrabold uppercase tracking-widest transition-all text-gray-400 hover:text-gray-900 dark:hover:text-white cursor-pointer"
                     >
                         <FileText size={14} />
-                        Imtihonlar
+                        {t('exam_tab_exams')}
                     </button>
                     <button
                         onClick={() => setActiveTab('questions')}
                         className="flex items-center gap-2 px-6 py-3.5 rounded-xl text-[10px] font-extrabold uppercase tracking-widest transition-all bg-teal-50 dark:bg-teal-950/20 text-[#1b6b6b] cursor-pointer"
                     >
                         <BookOpen size={14} />
-                        Savollar Banki
+                        {t('exam_tab_questions')}
                     </button>
                     <button
                         onClick={() => setActiveTab('scanner')}
                         className="flex items-center gap-2 px-6 py-3.5 rounded-xl text-[10px] font-extrabold uppercase tracking-widest transition-all text-gray-400 hover:text-gray-900 dark:hover:text-white cursor-pointer"
                     >
                         <ScanLine size={14} />
-                        OMR Skaner
+                        {t('exam_tab_scanner')}
                     </button>
                 </div>
                 <QuestionsList />
@@ -70,21 +70,21 @@ export default function ExamsList() {
                     className="flex items-center gap-2 px-6 py-3.5 rounded-xl text-[10px] font-extrabold uppercase tracking-widest transition-all bg-teal-50 dark:bg-teal-950/20 text-[#1b6b6b] cursor-pointer"
                 >
                     <FileText size={14} />
-                    Imtihonlar
+                    {t('exam_tab_exams')}
                 </button>
                 <button
                     onClick={() => setActiveTab('questions')}
                     className="flex items-center gap-2 px-6 py-3.5 rounded-xl text-[10px] font-extrabold uppercase tracking-widest transition-all text-gray-400 hover:text-gray-900 dark:hover:text-white cursor-pointer"
                 >
                     <BookOpen size={14} />
-                    Savollar Banki
+                    {t('exam_tab_questions')}
                 </button>
                 <button
                     onClick={() => setActiveTab('scanner')}
                     className="flex items-center gap-2 px-6 py-3.5 rounded-xl text-[10px] font-extrabold uppercase tracking-widest transition-all text-gray-400 hover:text-gray-900 dark:hover:text-white cursor-pointer"
                 >
                     <ScanLine size={14} />
-                    OMR Skaner
+                    {t('exam_tab_scanner')}
                 </button>
             </div>
 
@@ -97,7 +97,7 @@ export default function ExamsList() {
                         </div>
                         <div>
                             <h1 className="text-sm font-black text-gray-900 dark:text-white uppercase tracking-tight">{t('exams_title')}</h1>
-                            <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mt-0.5">Jami imtihonlar ro'yxati</p>
+                            <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mt-0.5">{t('exams_list_subtitle')}</p>
                         </div>
                     </div>
                     <div className="flex flex-col sm:flex-row items-center gap-3 w-full md:w-auto">
@@ -105,7 +105,7 @@ export default function ExamsList() {
                             <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
                             <input
                                 type="text"
-                                placeholder="Qidirish..."
+                                placeholder={t('search')}
                                 value={search}
                                 onChange={(e) => setSearch(e.target.value)}
                                 className="w-full bg-gray-55 dark:bg-gray-905 border border-gray-100 dark:border-gray-700 rounded-2xl pl-10 pr-4 py-2.5 text-xs font-bold text-gray-900 dark:text-white focus:border-[#1b6b6b] focus:ring-4 focus:ring-[#1b6b6b]/10 outline-none transition-all placeholder:text-gray-400"
@@ -116,7 +116,7 @@ export default function ExamsList() {
                             className="w-full sm:w-auto flex items-center justify-center gap-2 px-6 py-2.5 bg-[#1b6b6b] hover:bg-[#155252] text-white rounded-2xl text-[10px] font-extrabold uppercase tracking-widest shadow-lg shadow-[#1b6b6b]/20 active:scale-95 transition-all cursor-pointer"
                         >
                             <Plus size={14} />
-                            Yangi Imtihon
+                            {t('add_exam')}
                         </button>
                     </div>
                 </div>
@@ -129,10 +129,10 @@ export default function ExamsList() {
                         <thead>
                             <tr className="bg-gray-55 dark:bg-gray-900 border-b border-gray-100 dark:border-gray-700/50">
                                 <th className="p-4 text-[9px] font-black text-gray-400 uppercase tracking-widest w-20 text-center">ID</th>
-                                <th className="p-4 text-[9px] font-black text-gray-400 uppercase tracking-widest">Imtihon Nomi & Fanlar</th>
-                                <th className="p-4 text-[9px] font-black text-gray-400 uppercase tracking-widest text-center">Sana & Vaqt</th>
-                                <th className="p-4 text-[9px] font-black text-gray-400 uppercase tracking-widest text-center">Savollar</th>
-                                <th className="p-4 text-[9px] font-black text-gray-400 uppercase tracking-widest text-right">Holati</th>
+                                <th className="p-4 text-[9px] font-black text-gray-400 uppercase tracking-widest">{t('exam_col_name')}</th>
+                                <th className="p-4 text-[9px] font-black text-gray-400 uppercase tracking-widest text-center">{t('exam_col_date')}</th>
+                                <th className="p-4 text-[9px] font-black text-gray-400 uppercase tracking-widest text-center">{t('exam_col_questions')}</th>
+                                <th className="p-4 text-[9px] font-black text-gray-400 uppercase tracking-widest text-right">{t('status')}</th>
                                 <th className="p-4 w-12 text-center"></th>
                             </tr>
                         </thead>
@@ -173,7 +173,7 @@ export default function ExamsList() {
                                     </td>
                                     <td className="p-4 text-right">
                                         <span className={`px-2.5 py-1 rounded-md text-[9px] font-black border uppercase tracking-wider ${
-                                            exam.status === 'Tugallangan' ? 'bg-emerald-50 text-emerald-600 border-emerald-100 dark:bg-emerald-950/20 dark:text-emerald-400' : 
+                                            exam.status === 'Tugallangan' ? 'bg-emerald-50 text-emerald-600 border-emerald-100 dark:bg-emerald-950/20 dark:text-emerald-400' :
                                             exam.status === 'Yaqinlashmoqda' ? 'bg-sky-50 text-sky-600 border-sky-100 dark:bg-sky-950/20 dark:text-sky-400' :
                                             'bg-gray-55 text-gray-400 border-gray-100'
                                         }`}>
@@ -181,7 +181,7 @@ export default function ExamsList() {
                                         </span>
                                     </td>
                                     <td className="p-4 text-center">
-                                        <button 
+                                        <button
                                             onClick={(e) => handleDelete(exam.id, e)}
                                             className="w-8 h-8 flex items-center justify-center rounded-lg text-gray-300 hover:text-rose-600 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors cursor-pointer"
                                         >
@@ -194,7 +194,7 @@ export default function ExamsList() {
                                 <tr>
                                     <td colSpan={6} className="p-16 text-center">
                                         <BookOpen className="w-10 h-10 text-gray-300 mx-auto mb-3" />
-                                        <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Hech qanday imtihon topilmadi</p>
+                                        <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">{t('no_exams_found')}</p>
                                     </td>
                                 </tr>
                             )}

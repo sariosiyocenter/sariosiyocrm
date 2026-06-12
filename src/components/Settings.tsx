@@ -9,19 +9,6 @@ import { useLang } from '../context/LanguageContext';
 
 type SectionId = 'profil' | 'xonalar' | 'filiallar' | 'ruxsatlar' | 'dizayn';
 
-const MODULES = [
-    { key: 'dashboard',     label: 'Dashboard' },
-    { key: 'students',      label: "O'quvchilar" },
-    { key: 'teachers',      label: "O'qituvchilar" },
-    { key: 'groups',        label: 'Guruhlar' },
-    { key: 'finance',       label: 'Moliya' },
-    { key: 'exams',         label: 'Imtihonlar' },
-    { key: 'leads',         label: 'Lidlar' },
-    { key: 'hr',            label: 'HR Menejment' },
-    { key: 'reports',       label: 'Hisobotlar' },
-    { key: 'settings',      label: 'Sozlamalar' },
-];
-
 const DEFAULT_PERMISSIONS: Record<string, Record<string, boolean>> = {
     ADMIN:        { dashboard: true,  students: true,  teachers: true,  groups: true,  finance: true,  exams: true,  leads: true,  hr: true,  reports: true,  settings: true  },
     MANAGER:      { dashboard: true,  students: true,  teachers: true,  groups: true,  finance: true,  exams: true,  leads: true,  hr: true,  reports: false, settings: false },
@@ -43,6 +30,19 @@ export default function Settings() {
         themeColor, setThemeColor } = useCRM();
     const { user: currentUser, token } = useCRM();
     const { t } = useLang();
+
+    const MODULES = [
+        { key: 'dashboard', label: t('nav_dashboard') },
+        { key: 'students',  label: t('nav_students') },
+        { key: 'teachers',  label: t('teachers_title') },
+        { key: 'groups',    label: t('nav_groups') },
+        { key: 'finance',   label: t('nav_finance') },
+        { key: 'exams',     label: t('nav_exams') },
+        { key: 'leads',     label: t('nav_leads') },
+        { key: 'hr',        label: t('nav_hr') },
+        { key: 'reports',   label: t('nav_reports') },
+        { key: 'settings',  label: t('nav_settings') },
+    ];
 
     const [activeSection, setActiveSection] = useState<SectionId>('profil');
     const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({ tashkilot: true, ofis: false, ceo: false });
@@ -105,23 +105,23 @@ export default function Settings() {
 
     const menuGroups = [
         {
-            id: 'tashkilot', label: 'Tashkilot', icon: <Building2 size={16} />,
+            id: 'tashkilot', label: t('settings_section_org'), icon: <Building2 size={16} />,
             items: [
-                { id: 'profil' as SectionId, label: 'Profil', icon: <Globe size={14} /> },
-                { id: 'dizayn' as SectionId, label: 'Palitralar', icon: <Layout size={14} /> },
+                { id: 'profil' as SectionId, label: t('settings_profile'), icon: <Globe size={14} /> },
+                { id: 'dizayn' as SectionId, label: t('settings_design'), icon: <Layout size={14} /> },
             ]
         },
         {
-            id: 'ofis', label: 'Ofis', icon: <DoorOpen size={16} />,
+            id: 'ofis', label: t('settings_section_office'), icon: <DoorOpen size={16} />,
             items: [
-                { id: 'xonalar' as SectionId, label: 'Xonalar', icon: <DoorOpen size={14} />, count: rooms?.length },
+                { id: 'xonalar' as SectionId, label: t('settings_rooms'), icon: <DoorOpen size={14} />, count: rooms?.length },
             ]
         },
         ...(isAdminOrManager ? [{
-            id: 'ceo', label: 'Boshqaruv', icon: <ShieldCheck size={16} />,
+            id: 'ceo', label: t('settings_section_admin'), icon: <ShieldCheck size={16} />,
             items: [
-                { id: 'filiallar' as SectionId, label: 'Filiallar', icon: <Building2 size={14} />, count: schools?.length },
-                ...(isAdmin ? [{ id: 'ruxsatlar' as SectionId, label: 'Ruxsatlar', icon: <Shield size={14} /> }] : []),
+                { id: 'filiallar' as SectionId, label: t('settings_branches'), icon: <Building2 size={14} />, count: schools?.length },
+                ...(isAdmin ? [{ id: 'ruxsatlar' as SectionId, label: t('settings_perms'), icon: <Shield size={14} /> }] : []),
             ]
         }] : []),
     ];
@@ -131,8 +131,8 @@ export default function Settings() {
             <div className="space-y-8">
                 <form onSubmit={handleSaveProfile} className="space-y-6">
                 <div>
-                    <h2 className="text-xs font-black text-gray-900 dark:text-white uppercase tracking-wider">Tashkilot Profili</h2>
-                    <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mt-0.5">Markaz haqida asosiy ma'lumotlar</p>
+                    <h2 className="text-xs font-black text-gray-900 dark:text-white uppercase tracking-wider">{t('org_profile_title')}</h2>
+                    <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mt-0.5">{t('org_profile_subtitle')}</p>
                 </div>
                 <div className="flex items-center gap-6">
                     <div className="relative group">
@@ -149,32 +149,32 @@ export default function Settings() {
                         <input ref={logoInputRef} type="file" accept="image/*" className="hidden" onChange={handleLogoChange} />
                     </div>
                     <div>
-                        <p className="text-xs font-black text-gray-900 dark:text-white uppercase tracking-wide">{profileForm?.orgName || 'Markaz nomi'}</p>
-                        <p className="text-[9px] font-bold text-gray-400 uppercase tracking-widest mt-0.5">Logo yuklash uchun kameraga bosing</p>
+                        <p className="text-xs font-black text-gray-900 dark:text-white uppercase tracking-wide">{profileForm?.orgName || t('org_name')}</p>
+                        <p className="text-[9px] font-bold text-gray-400 uppercase tracking-widest mt-0.5">{t('logo_upload_hint')}</p>
                     </div>
                 </div>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div>
-                        <label className={lbl}>Markaz Nomi *</label>
+                        <label className={lbl}>{t('org_name_label')}</label>
                         <input type="text" className={inp} value={profileForm?.orgName || ''} onChange={e => setProfileForm(p => ({ ...p, orgName: e.target.value }))} />
                     </div>
                     <div>
-                        <label className={lbl}>Telefon</label>
+                        <label className={lbl}>{t('phone')}</label>
                         <input type="text" placeholder="+998" className={inp} value={profileForm?.adminPhone || ''} onChange={e => setProfileForm(p => ({ ...p, adminPhone: e.target.value }))} />
                     </div>
                     <div className="sm:col-span-2">
-                        <label className={lbl}>Manzil</label>
+                        <label className={lbl}>{t('address')}</label>
                         <input type="text" className={inp} value={profileForm?.address || ''} onChange={e => setProfileForm(p => ({ ...p, address: e.target.value }))} />
                     </div>
                     <div>
-                        <label className={lbl}>Ish Soatlari</label>
+                        <label className={lbl}>{t('work_hours_label')}</label>
                         <input type="text" placeholder="09:00 - 21:00" className={inp} value={profileForm?.workingHours || ''} onChange={e => setProfileForm(p => ({ ...p, workingHours: e.target.value }))} />
                     </div>
                 </div>
                 <div className="flex justify-end pt-4 border-t border-dashed border-gray-150 dark:border-gray-700/50">
                     <button type="submit" disabled={isSaving}
                         className="px-6 py-3 bg-[#1b6b6b] hover:bg-[#155252] disabled:opacity-50 text-white rounded-2xl text-xs font-extrabold uppercase tracking-widest flex items-center gap-2 shadow-lg shadow-[#1b6b6b]/20 transition-all cursor-pointer">
-                        <Save size={14} />{isSaving ? 'Saqlanmoqda...' : 'Saqlash'}
+                        <Save size={14} />{isSaving ? t('saving') : t('save')}
                     </button>
                 </div>
             </form>
@@ -185,12 +185,12 @@ export default function Settings() {
 
         if (activeSection === 'xonalar') return (
             <ListSection
-                title="Dars Xonalari" subtitle="Markazdagi barcha xonalar"
+                title={t('rooms_title')} subtitle={t('rooms_subtitle')}
                 icon={<DoorOpen size={16} />} onAdd={() => { setNewItem({}); setIsAddModalOpen(true); }}
-                items={rooms || []} emptyText="Hech qanday xona topilmadi"
+                items={rooms || []} emptyText={t('no_rooms_found')}
                 renderItem={(item: any) => (
                     <ItemCard key={item.id} icon={<DoorOpen size={16} />} iconBg="bg-purple-50 text-purple-600 border-purple-100 dark:bg-purple-950/20 dark:text-purple-400 dark:border-purple-900/40"
-                        title={item.name} subtitle={`${item.capacity} kishilik`}
+                        title={item.name} subtitle={t('capacity_persons_unit').replace('{count}', item.capacity)}
                         onDelete={() => deleteRoom(item.id)} />
                 )}
             />
@@ -199,12 +199,12 @@ export default function Settings() {
 
         if (activeSection === 'filiallar') return (
             <ListSection
-                title="Filiallar" subtitle="O'quv markazi filiallari"
+                title={t('settings_branches')} subtitle={t('branches_subtitle')}
                 icon={<Building2 size={16} />} onAdd={() => { setNewItem({}); setIsAddModalOpen(true); }}
-                items={schools || []} emptyText="Hech qanday filial topilmadi"
+                items={schools || []} emptyText={t('no_branches_found')}
                 renderItem={(item: any) => (
                     <ItemCard key={item.id} icon={<Building2 size={16} />} iconBg="bg-teal-50 text-[#1b6b6b] border-teal-100 dark:bg-teal-950/20 dark:text-teal-400 dark:border-teal-900/40"
-                        title={item.name} subtitle={item.address || 'Manzil kiritilmagan'}
+                        title={item.name} subtitle={item.address || t('no_address')}
                         onDelete={() => deleteSchool(item.id)} />
                 )}
             />
@@ -213,15 +213,15 @@ export default function Settings() {
         if (activeSection === 'ruxsatlar') return (
             <div className="space-y-6">
                 <div>
-                    <h2 className="text-xs font-black text-gray-900 dark:text-white uppercase tracking-wider">Foydalanuvchi Ruxsatlari</h2>
-                    <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mt-0.5">Har bir lavozim uchun modul ruxsatlarini boshqaring</p>
+                    <h2 className="text-xs font-black text-gray-900 dark:text-white uppercase tracking-wider">{t('permissions_title')}</h2>
+                    <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mt-0.5">{t('permissions_subtitle')}</p>
                 </div>
                 <div className="bg-white dark:bg-gray-800 rounded-3xl border border-gray-100 dark:border-gray-700/50 overflow-hidden shadow-sm">
                     <div className="overflow-x-auto custom-scrollbar">
                         <table className="w-full min-w-[600px] border-collapse text-left">
                             <thead>
                                 <tr className="border-b border-gray-100 dark:border-gray-700/50 bg-gray-50/50 dark:bg-gray-900/20">
-                                    <th className="p-4 text-[9px] font-black text-gray-400 uppercase tracking-widest min-w-[150px]">Modul</th>
+                                    <th className="p-4 text-[9px] font-black text-gray-400 uppercase tracking-widest min-w-[150px]">{t('module_label')}</th>
                                     {Object.keys(permissions).map(role => (
                                         <th key={role} className="p-4 text-center text-[9px] font-black text-gray-400 uppercase tracking-widest">
                                             {ROLE_LABELS[role] || role}
@@ -263,7 +263,7 @@ export default function Settings() {
                 <div className="flex justify-end pt-4 border-t border-dashed border-gray-150 dark:border-gray-700/50">
                     <button onClick={handleSavePermissions}
                         className={`px-6 py-3 rounded-2xl text-xs font-extrabold uppercase tracking-widest flex items-center gap-2 transition-all cursor-pointer ${permSaved ? 'bg-emerald-600 text-white' : 'bg-[#1b6b6b] hover:bg-[#155252] text-white shadow-lg shadow-[#1b6b6b]/20'}`}>
-                        <Save size={14} />{permSaved ? 'Saqlandi!' : 'Saqlash'}
+                        <Save size={14} />{permSaved ? t('saved_success') : t('save')}
                     </button>
                 </div>
             </div>
@@ -272,8 +272,8 @@ export default function Settings() {
         if (activeSection === 'dizayn') return (
             <div className="space-y-6 animate-in fade-in duration-300">
                 <div>
-                    <h2 className="text-xs font-black text-gray-900 dark:text-white uppercase tracking-wider">Interfeys Palitrasi</h2>
-                    <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mt-0.5">Tizimning asosiy ranglar palitrasini tanlang</p>
+                    <h2 className="text-xs font-black text-gray-900 dark:text-white uppercase tracking-wider">{t('design_palette_title')}</h2>
+                    <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mt-0.5">{t('design_palette_subtitle')}</p>
                 </div>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     {THEMES.map(theme => {
@@ -301,7 +301,7 @@ export default function Settings() {
                                     </div>
                                 </div>
                                 <div className="flex items-center gap-3">
-                                    <div 
+                                    <div
                                         className="px-3 py-1.5 rounded-xl text-[9px] font-extrabold uppercase tracking-wider text-white shadow-sm transition-all"
                                         style={{ background: `linear-gradient(135deg, ${theme.gradientStart}, ${theme.gradientEnd})` }}
                                     >
@@ -323,7 +323,7 @@ export default function Settings() {
         return null;
     };
 
-    const addModalTitle = activeSection === 'xonalar' ? 'Yangi Xona' : 'Yangi Filial';
+    const addModalTitle = activeSection === 'xonalar' ? t('add_room') : t('add_branch');
 
     return (
         <div className="space-y-6 animate-in fade-in duration-500">
@@ -337,7 +337,7 @@ export default function Settings() {
                         <div>
                             <h1 className="text-lg font-black text-gray-900 dark:text-white uppercase tracking-tight">{t('settings_title')}</h1>
                             <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mt-0.5">
-                                Markaz profili, filiallar, resurslar va ruxsatlar sozlamalari
+                                {t('settings_subtitle')}
                             </p>
                         </div>
                     </div>
@@ -396,35 +396,35 @@ export default function Settings() {
                         <div className="flex items-center justify-between mb-6 pb-4 border-b border-gray-50 dark:border-gray-700/50">
                             <div>
                                 <h3 className="text-lg font-black text-gray-900 dark:text-white uppercase tracking-tight">{addModalTitle}</h3>
-                                <p className="text-[10px] font-bold text-[#1b6b6b] uppercase tracking-widest mt-0.5">Yangi ma'lumot qo'shish</p>
+                                <p className="text-[10px] font-bold text-[#1b6b6b] uppercase tracking-widest mt-0.5">{t('add_data_subtitle')}</p>
                             </div>
                             <button onClick={() => setIsAddModalOpen(false)} className="w-9 h-9 flex items-center justify-center text-gray-400 hover:bg-gray-55 dark:hover:bg-gray-700 rounded-xl cursor-pointer"><X size={18} /></button>
                         </div>
                         <form onSubmit={handleAddItem} className="space-y-4">
                             <div>
-                                <label className={lbl}>Nomi *</label>
+                                <label className={lbl}>{t('item_name_label')}</label>
                                 <input required type="text" className={inp} value={newItem.name || ''} onChange={e => setNewItem({ ...newItem, name: e.target.value })} />
                             </div>
                             {activeSection === 'xonalar' && (
                                 <div>
-                                    <label className={lbl}>Sig'imi (kishi) *</label>
+                                    <label className={lbl}>{t('capacity_persons_label')}</label>
                                     <input required type="number" className={inp} value={newItem.capacity || ''} onChange={e => setNewItem({ ...newItem, capacity: e.target.value })} />
                                 </div>
                             )}
                             {activeSection === 'filiallar' && (
                                 <div>
-                                    <label className={lbl}>Manzil</label>
+                                    <label className={lbl}>{t('address')}</label>
                                     <input type="text" className={inp} value={newItem.address || ''} onChange={e => setNewItem({ ...newItem, address: e.target.value })} />
                                 </div>
                             )}
                             <div className="flex gap-3 pt-4 border-t border-dashed border-gray-150 dark:border-gray-700/50">
                                 <button type="button" onClick={() => setIsAddModalOpen(false)}
                                     className="flex-1 py-3 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-white text-xs font-extrabold uppercase tracking-widest rounded-2xl transition-all cursor-pointer hover:bg-gray-200 dark:hover:bg-gray-600">
-                                    Bekor
+                                    {t('cancel')}
                                 </button>
                                 <button type="submit"
                                     className="flex-1 py-3 bg-[#1b6b6b] hover:bg-[#155252] text-white text-xs font-extrabold uppercase tracking-widest rounded-2xl shadow-lg shadow-[#1b6b6b]/20 transition-all cursor-pointer">
-                                    Saqlash
+                                    {t('save')}
                                 </button>
                             </div>
                         </form>
