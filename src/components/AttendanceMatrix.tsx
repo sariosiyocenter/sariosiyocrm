@@ -56,12 +56,14 @@ export default function AttendanceMatrix({ group, students, attendances }: Atten
         if (att.status === 'Keldi') return 'bg-emerald-500 shadow-sm shadow-emerald-500/20';
         if (att.status === 'Kelmapdi') return 'bg-rose-500 shadow-sm shadow-rose-500/20';
         if (att.status === 'Sababli') return 'bg-sky-500 shadow-sm shadow-sky-500/20';
+        if (att.status === 'Kechikdi') return 'bg-orange-400 shadow-sm shadow-orange-400/20';
+        if (att.status === 'ErtaKetdi') return 'bg-purple-500 shadow-sm shadow-purple-500/20';
         if (att.status === 'Dars bo\'lmadi') return 'bg-gray-400 dark:bg-gray-600';
         if (att.status === 'O\'tildi') return 'bg-amber-400 shadow-sm shadow-amber-500/20'; // Neutral Yellow
         return 'bg-amber-400';
     };
 
-    const handleStatusSelect = async (studentId: number, date: string, status: 'Keldi' | 'Kelmapdi' | 'Sababli' | 'Dars bo\'lmadi') => {
+    const handleStatusSelect = async (studentId: number, date: string, status: 'Keldi' | 'Kelmapdi' | 'Sababli' | 'Dars bo\'lmadi' | 'Kechikdi' | 'ErtaKetdi') => {
         try {
             const existingWithTopic = attendances.find(a => a.groupId === group.id && a.date === date && a.topicId);
             const topicId = existingWithTopic?.topicId || undefined;
@@ -124,6 +126,8 @@ export default function AttendanceMatrix({ group, students, attendances }: Atten
                                             {getStatus(student.id, date)?.status === 'Keldi' && 'K'}
                                             {getStatus(student.id, date)?.status === 'Kelmapdi' && 'Q'}
                                             {getStatus(student.id, date)?.status === 'Sababli' && 'S'}
+                                            {getStatus(student.id, date)?.status === 'Kechikdi' && 'K+'}
+                                            {getStatus(student.id, date)?.status === 'ErtaKetdi' && 'E'}
                                             {getStatus(student.id, date)?.status === 'Dars bo\'lmadi' && 'X'}
                                         </button>
                                     </td>
@@ -138,6 +142,8 @@ export default function AttendanceMatrix({ group, students, attendances }: Atten
                 <StatusLink color="bg-emerald-500" label="K - Keldi" />
                 <StatusLink color="bg-rose-500" label="Q - Qoldirdi" />
                 <StatusLink color="bg-sky-500" label="S - Sababli" />
+                <StatusLink color="bg-orange-400" label="K+ - Kechikdi" />
+                <StatusLink color="bg-purple-500" label="E - Erta ketdi" />
                 <StatusLink color="bg-gray-400 dark:bg-gray-600" label="X - Dars bo'lmadi" />
                 <StatusLink color="bg-amber-400" label="Belgilanmagan" />
                 <StatusLink color="bg-gray-100 dark:bg-gray-800 border-gray-200 dark:border-gray-700" label="Rejadagi" />
@@ -166,6 +172,14 @@ export default function AttendanceMatrix({ group, students, attendances }: Atten
                         <button onClick={() => handleStatusSelect(activePopover.studentId, activePopover.date, 'Sababli')} className="flex items-center gap-3 px-4 py-3 hover:bg-sky-50 dark:hover:bg-sky-900/30 text-sky-600 dark:text-sky-400 rounded-xl transition-all cursor-pointer">
                             <div className="w-5 h-5 bg-sky-500 rounded-lg flex items-center justify-center text-white"><HelpCircle size={12} strokeWidth={4} /></div>
                             <span className="text-[10px] font-bold uppercase tracking-widest">Sababli</span>
+                        </button>
+                        <button onClick={() => handleStatusSelect(activePopover.studentId, activePopover.date, 'Kechikdi')} className="flex items-center gap-3 px-4 py-3 hover:bg-orange-50 dark:hover:bg-orange-900/30 text-orange-600 dark:text-orange-400 rounded-xl transition-all cursor-pointer">
+                            <div className="w-5 h-5 bg-orange-400 rounded-lg flex items-center justify-center text-white text-[9px] font-black">K+</div>
+                            <span className="text-[10px] font-bold uppercase tracking-widest">Kechikib keldi</span>
+                        </button>
+                        <button onClick={() => handleStatusSelect(activePopover.studentId, activePopover.date, 'ErtaKetdi')} className="flex items-center gap-3 px-4 py-3 hover:bg-purple-50 dark:hover:bg-purple-900/30 text-purple-600 dark:text-purple-400 rounded-xl transition-all cursor-pointer">
+                            <div className="w-5 h-5 bg-purple-500 rounded-lg flex items-center justify-center text-white text-[9px] font-black">E</div>
+                            <span className="text-[10px] font-bold uppercase tracking-widest">Erta ketdi</span>
                         </button>
                         <button onClick={() => handleStatusSelect(activePopover.studentId, activePopover.date, 'Dars bo\'lmadi')} className="flex items-center gap-3 px-4 py-3 hover:bg-gray-55 dark:hover:bg-gray-700 text-gray-500 dark:text-gray-400 rounded-xl transition-all cursor-pointer">
                             <div className="w-5 h-5 bg-gray-400 dark:bg-gray-600 rounded-lg flex items-center justify-center text-white font-bold text-[10px]">X</div>

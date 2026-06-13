@@ -760,6 +760,14 @@ export default function StudentDetails() {
                                                         <span className="text-[7px] font-black text-gray-400 uppercase tracking-widest">{t('absent')}</span>
                                                     </div>
                                                     <div className="flex items-center gap-1">
+                                                        <div className="w-1.5 h-1.5 rounded-full bg-orange-400" />
+                                                        <span className="text-[7px] font-black text-gray-400 uppercase tracking-widest">{t('late')}</span>
+                                                    </div>
+                                                    <div className="flex items-center gap-1">
+                                                        <div className="w-1.5 h-1.5 rounded-full bg-purple-500" />
+                                                        <span className="text-[7px] font-black text-gray-400 uppercase tracking-widest">{t('early_leave')}</span>
+                                                    </div>
+                                                    <div className="flex items-center gap-1">
                                                         <div className="w-1.5 h-1.5 rounded-full bg-amber-400" />
                                                         <span className="text-[7px] font-black text-gray-400 uppercase tracking-widest">{t('not_marked')}</span>
                                                     </div>
@@ -800,6 +808,8 @@ export default function StudentDetails() {
                                                                 if (att.status === 'Keldi') bgColor = 'bg-emerald-500 text-white shadow-sm shadow-emerald-500/20';
                                                                 else if (att.status === 'Kelmapdi') bgColor = 'bg-rose-500 text-white shadow-sm shadow-rose-500/20';
                                                                 else if (att.status === 'Sababli') bgColor = 'bg-sky-500 text-white shadow-sm shadow-sky-500/20';
+                                                                else if (att.status === 'Kechikdi') bgColor = 'bg-orange-400 text-white shadow-sm shadow-orange-400/20';
+                                                                else if (att.status === 'ErtaKetdi') bgColor = 'bg-purple-500 text-white shadow-sm shadow-purple-500/20';
                                                                 textColor = 'text-white';
                                                             } else if (isLessonDay) {
                                                                 const todayStr = new Date().toISOString().split('T')[0];
@@ -957,10 +967,14 @@ export default function StudentDetails() {
                                                                                         ? 'bg-emerald-50 text-emerald-600 border-emerald-100 dark:bg-emerald-950/20 dark:text-emerald-400' 
                                                                                         : a.status === 'Kelmapdi'
                                                                                             ? 'bg-rose-50 text-rose-600 border-rose-100 dark:bg-rose-950/20 dark:text-rose-400'
-                                                                                            : 'bg-amber-50 text-amber-600 border-amber-100 dark:bg-amber-950/20 dark:text-amber-400'
+                                                                                            : a.status === 'Kechikdi'
+                                                                                                ? 'bg-orange-50 text-orange-600 border-orange-100 dark:bg-orange-950/20 dark:text-orange-400'
+                                                                                                : a.status === 'ErtaKetdi'
+                                                                                                    ? 'bg-purple-50 text-purple-600 border-purple-100 dark:bg-purple-950/20 dark:text-purple-400'
+                                                                                                    : 'bg-amber-50 text-amber-600 border-amber-100 dark:bg-amber-950/20 dark:text-amber-400'
                                                                                 }`}
                                                                             >
-                                                                                {a.status !== 'Keldi' && a.status !== 'Kelmapdi' && a.status !== 'Sababli' && (
+                                                                                {a.status !== 'Keldi' && a.status !== 'Kelmapdi' && a.status !== 'Sababli' && a.status !== 'Kechikdi' && a.status !== 'ErtaKetdi' && (
                                                                                     <option value={a.status} disabled hidden>
                                                                                         {(a.status as any) === "O'tildi" ? t('not_marked') : a.status}
                                                                                     </option>
@@ -968,6 +982,8 @@ export default function StudentDetails() {
                                                                                 <option value="Keldi" className="bg-white dark:bg-gray-800 text-emerald-600 font-bold">{t('present')}</option>
                                                                                 <option value="Kelmapdi" className="bg-white dark:bg-gray-800 text-rose-600 font-bold">{t('absent')}</option>
                                                                                 <option value="Sababli" className="bg-white dark:bg-gray-800 text-amber-600 font-bold">{t('excused')}</option>
+                                                                                <option value="Kechikdi" className="bg-white dark:bg-gray-800 text-orange-600 font-bold">{t('late')}</option>
+                                                                                <option value="ErtaKetdi" className="bg-white dark:bg-gray-800 text-purple-600 font-bold">{t('early_leave')}</option>
                                                                             </select>
                                                                         </div>
                                                                     </td>

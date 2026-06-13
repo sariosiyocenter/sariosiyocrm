@@ -181,7 +181,7 @@ export interface Attendance {
     studentId: number;
     groupId: number;
     date: string;
-    status: 'Keldi' | 'Kelmapdi' | 'Sababli' | 'Dars bo\'lmadi';
+    status: 'Keldi' | 'Kelmapdi' | 'Sababli' | 'Dars bo\'lmadi' | 'Kechikdi' | 'ErtaKetdi';
     topicId?: number | null;
     caughtUp?: boolean;
     schoolId: number;
