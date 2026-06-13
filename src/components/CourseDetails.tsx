@@ -12,14 +12,15 @@ import GroupAttendanceCalendar from './GroupAttendanceCalendar';
 export default function CourseDetails() {
     const { id } = useParams<{ id: string }>();
     const navigate = useNavigate();
-    const { groups, students, teachers, courses, rooms, attendances, scores, payments, addBatchAttendance, addStudentToGroup, removeStudentFromGroup, addScore, updateGroup, showNotification, topics, addTopic, updateTopic, deleteTopic, addPayment } = useCRM();
+    const { groups, students, teachers, courses, rooms, attendances, scores, payments, addBatchAttendance, addStudentToGroup, removeStudentFromGroup, addScore, updateGroup, updateCourse, showNotification, topics, addTopic, updateTopic, deleteTopic, addPayment } = useCRM();
     const [isEditingInfo, setIsEditingInfo] = useState(false);
     const [editForm, setEditForm] = useState({
         teacherId: 0,
         days: '',
         startTime: '',
         endTime: '',
-        room: 0
+        room: 0,
+        coursePrice: 0
     });
     const [activeTab, setActiveTab] = useState('umumiy');
     const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
@@ -207,7 +208,8 @@ export default function CourseDetails() {
             days: group.days,
             startTime: start || '',
             endTime: end || '',
-            room: group.room || 0
+            room: group.room || 0,
+            coursePrice: course?.price || 0
         });
         setIsEditingInfo(true);
     };
@@ -220,6 +222,9 @@ export default function CourseDetails() {
                 schedule: `${editForm.startTime} - ${editForm.endTime}`,
                 room: Number(editForm.room)
             });
+            if (course && editForm.coursePrice !== course.price) {
+                await updateCourse(course.id, { price: Number(editForm.coursePrice) });
+            }
             setIsEditingInfo(false);
             showNotification("Kurs ma'lumotlari yangilandi", "success");
         } catch (err) {
@@ -505,7 +510,7 @@ export default function CourseDetails() {
                                                 </div>
                                                 <div>
                                                     <label className={labelCls}>Xona</label>
-                                                    <select 
+                                                    <select
                                                         value={editForm.room}
                                                         onChange={e => setEditForm({ ...editForm, room: Number(e.target.value) })}
                                                         className={inputCls}
@@ -516,13 +521,23 @@ export default function CourseDetails() {
                                                         ))}
                                                     </select>
                                                 </div>
+                                                <div>
+                                                    <label className={labelCls}>Kurs narxi (UZS/oy)</label>
+                                                    <input
+                                                        type="number"
+                                                        placeholder="Masalan: 600000"
+                                                        value={editForm.coursePrice || ''}
+                                                        onChange={e => setEditForm({ ...editForm, coursePrice: Number(e.target.value) })}
+                                                        className={inputCls}
+                                                    />
+                                                </div>
                                             </>
                                         ) : (
                                             <>
                                                 <InfoItem icon={<Calendar size={16} />} label="Kunlar" value={group.days === 'TOQ' ? 'Toq kunlar' : group.days === 'JUFT' ? 'Juft kunlar' : 'Har kuni'} />
                                                 <InfoItem icon={<Clock size={16} />} label="Vaqt" value={group.schedule} />
                                                 <InfoItem icon={<Presentation size={16} />} label="Xona" value={rooms.find(r => r.id === group.room)?.name || `#${group.room || '-'}`} />
-                                                {course?.price ? <InfoItem icon={<DollarSign size={16} />} label="Kurs narxi" value={`${course.price.toLocaleString()} UZS`} /> : null}
+                                                <InfoItem icon={<DollarSign size={16} />} label="Kurs narxi" value={course?.price ? `${course.price.toLocaleString()} UZS` : "Belgilanmagan"} />
                                             </>
                                         )}
                                     </div>

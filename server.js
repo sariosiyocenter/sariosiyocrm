@@ -1198,6 +1198,14 @@ app.post('/api/courses', authenticate, async (req, res, next) => {
     res.json(await prisma.course.create({ data: { ...data, schoolId: parseInt(schoolId) } }));
   } catch (error) { next(error); }
 });
+app.put('/api/courses/:id', authenticate, async (req, res, next) => {
+  try {
+    const data = {};
+    if (req.body.name !== undefined) data.name = req.body.name;
+    if (req.body.price !== undefined) data.price = parseFloat(req.body.price);
+    res.json(await prisma.course.update({ where: { id: parseInt(req.params.id) }, data }));
+  } catch (error) { next(error); }
+});
 app.delete('/api/courses/:id', authenticate, async (req, res, next) => {
   try {
     await prisma.course.delete({ where: { id: parseInt(req.params.id) } });

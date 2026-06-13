@@ -52,6 +52,7 @@ interface CRMContextType extends CRMState {
     addPayment: (payment: Omit<Payment, 'id' | 'schoolId'>) => Promise<void>;
     updateSettings: (settings: Partial<CRMState['settings']>) => Promise<void>;
     addCourse: (course: Omit<Course, 'id' | 'schoolId'>) => Promise<void>;
+    updateCourse: (id: number, course: Partial<Course>) => Promise<void>;
     deleteCourse: (id: number) => Promise<void>;
     addRoom: (room: Omit<Room, 'id' | 'schoolId'>) => Promise<void>;
     deleteRoom: (id: number) => Promise<void>;
@@ -692,6 +693,11 @@ export const CRMProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         setState(prev => ({ ...prev, courses: [...prev.courses, newCourse] }));
     };
 
+    const updateCourse = async (id: number, course: Partial<Course>) => {
+        const updated = await apiCall(`courses/${id}`, 'PUT', course);
+        setState(prev => ({ ...prev, courses: prev.courses.map(c => c.id === id ? updated : c) }));
+    };
+
     const deleteCourse = async (id: number) => {
         await apiCall(`courses/${id}`, 'DELETE');
         setState(prev => ({ ...prev, courses: prev.courses.filter(c => c.id !== id) }));
@@ -1042,7 +1048,7 @@ export const CRMProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             updateLead, addLead, deleteLead,
             addPayment,
             updateSettings,
-            addCourse, deleteCourse,
+            addCourse, updateCourse, deleteCourse,
             addRoom, deleteRoom,
             addSchool, deleteSchool,
             addAttendance, updateAttendance, addBatchAttendance, deleteBatchAttendance, addScore,
