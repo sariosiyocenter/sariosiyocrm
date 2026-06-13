@@ -4,7 +4,7 @@ import { useCRM } from '../context/CRMContext';
 import {
     Users, Calendar, Clock, BookOpen, Plus, TrendingUp,
     CheckCircle, XCircle, ArrowLeft, Search, ClipboardCheck, ChevronRight, Presentation, Award, Check, Sparkles,
-    Pencil, Trash2
+    Pencil, Trash2, CreditCard, DollarSign, Wallet
 } from 'lucide-react';
 import AttendanceMatrix from './AttendanceMatrix';
 import GroupAttendanceCalendar from './GroupAttendanceCalendar';
@@ -12,7 +12,7 @@ import GroupAttendanceCalendar from './GroupAttendanceCalendar';
 export default function CourseDetails() {
     const { id } = useParams<{ id: string }>();
     const navigate = useNavigate();
-    const { groups, students, teachers, courses, rooms, attendances, scores, addBatchAttendance, addStudentToGroup, removeStudentFromGroup, addScore, updateGroup, showNotification, topics, addTopic, updateTopic, deleteTopic } = useCRM();
+    const { groups, students, teachers, courses, rooms, attendances, scores, payments, addBatchAttendance, addStudentToGroup, removeStudentFromGroup, addScore, updateGroup, showNotification, topics, addTopic, updateTopic, deleteTopic, addPayment } = useCRM();
     const [isEditingInfo, setIsEditingInfo] = useState(false);
     const [editForm, setEditForm] = useState({
         teacherId: 0,
@@ -35,6 +35,12 @@ export default function CourseDetails() {
     const [isTopicModalOpen, setIsTopicModalOpen] = useState(false);
     const [editingTopic, setEditingTopic] = useState<any | null>(null);
     const [topicForm, setTopicForm] = useState({ title: '', description: '', order: 1 });
+
+    const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
+    const [selectedStudentForPayment, setSelectedStudentForPayment] = useState<number | null>(null);
+    const [paymentAmount, setPaymentAmount] = useState('');
+    const [paymentType, setPaymentType] = useState<'Naqd' | 'Karta' | 'Peyme' | 'Klik'>('Naqd');
+    const [paymentDate, setPaymentDate] = useState(new Date().toISOString().split('T')[0]);
 
     const group = groups.find(g => g.id === Number(id));
     if (!group) return <div className="p-12 text-center text-gray-500 font-medium">Kurs topilmadi</div>;
@@ -158,6 +164,40 @@ export default function CourseDetails() {
     const handleDeleteTopic = async (id: number) => {
         if (!window.confirm("Haqiqatan ham ushbu mavzuni o'chirmoqchimisiz?")) return;
         await deleteTopic(id);
+    };
+
+    const openPaymentModal = (studentId: number) => {
+        setSelectedStudentForPayment(studentId);
+        setPaymentAmount(String(course?.price || ''));
+        setPaymentDate(new Date().toISOString().split('T')[0]);
+        setPaymentType('Naqd');
+        setIsPaymentModalOpen(true);
+    };
+
+    const handleAddPayment = async () => {
+        if (!selectedStudentForPayment || !paymentAmount) return;
+        const st = students.find(s => s.id === selectedStudentForPayment);
+        try {
+            await addPayment({
+                studentId: selectedStudentForPayment,
+                amount: Number(paymentAmount),
+                type: paymentType,
+                date: paymentDate,
+                description: `${course?.name || group.name} — oylik to'lov`
+            });
+            setIsPaymentModalOpen(false);
+            showNotification(`${st?.name} dan ${Number(paymentAmount).toLocaleString()} UZS qabul qilindi`, "success");
+        } catch {
+            showNotification("Xatolik yuz berdi", "error");
+        }
+    };
+
+    const getPayStatus = (balance: number) => {
+        const price = course?.price || 0;
+        if (!price) return null;
+        if (balance >= price) return 'full';
+        if (balance > 0) return 'partial';
+        return 'debt';
     };
 
     const handleStartEdit = () => {
@@ -305,6 +345,7 @@ export default function CourseDetails() {
                     <TabButton label="Umumiy" icon={<Users size={14} />} active={activeTab === 'umumiy'} onClick={() => setActiveTab('umumiy')} />
                     <TabButton label="Yo'qlama" icon={<ClipboardCheck size={14} />} active={activeTab === 'yoqlama'} onClick={() => setActiveTab('yoqlama')} />
                     <TabButton label="Ballar" icon={<Award size={14} />} active={activeTab === 'ballar'} onClick={() => setActiveTab('ballar')} />
+                    <TabButton label="To'lovlar" icon={<CreditCard size={14} />} active={activeTab === 'tolovlar'} onClick={() => setActiveTab('tolovlar')} />
                     <TabButton label="Mavzular" icon={<BookOpen size={14} />} active={activeTab === 'mavzular'} onClick={() => setActiveTab('mavzular')} />
                 </div>
 
@@ -353,7 +394,9 @@ export default function CourseDetails() {
                                         </button>
                                     </div>
                                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                                        {groupStudents.map(s => (
+                                        {groupStudents.map(s => {
+                                            const payStatus = getPayStatus(s.balance);
+                                            return (
                                             <div key={s.id} className="group bg-gray-55 dark:bg-gray-900/30 p-4 rounded-2xl border border-transparent hover:border-gray-100 dark:hover:border-gray-700/50 transition-all flex items-center justify-between">
                                                 <div className="flex items-center gap-3 cursor-pointer min-w-0" onClick={() => navigate(`/students/${s.id}`)}>
                                                     <div className="w-10 h-10 bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700/50 rounded-xl flex items-center justify-center text-[#1b6b6b] font-bold text-sm shrink-0">
@@ -364,10 +407,26 @@ export default function CourseDetails() {
                                                         <p className="text-[9px] font-bold text-gray-405 mt-0.5">{s.phone}</p>
                                                     </div>
                                                 </div>
-                                                <div className="flex items-center gap-2 shrink-0">
+                                                <div className="flex items-center gap-1.5 shrink-0">
+                                                    {payStatus && (
+                                                        <span className={`text-[8px] font-black px-2 py-1 rounded-md border uppercase tracking-wider ${
+                                                            payStatus === 'full' ? 'text-emerald-600 bg-emerald-50 border-emerald-100 dark:bg-emerald-950/20 dark:text-emerald-400' :
+                                                            payStatus === 'partial' ? 'text-amber-600 bg-amber-50 border-amber-100 dark:bg-amber-950/20 dark:text-amber-400' :
+                                                            'text-rose-600 bg-rose-50 border-rose-100 dark:bg-rose-950/20 dark:text-rose-400'
+                                                        }`}>
+                                                            {payStatus === 'full' ? "To'liq" : payStatus === 'partial' ? 'Qisman' : 'Qarzdor'}
+                                                        </span>
+                                                    )}
                                                     <span className={`text-[9px] font-black px-2.5 py-1 rounded-md border ${s.balance >= 0 ? 'text-emerald-600 bg-emerald-50 border-emerald-100 dark:bg-emerald-950/20 dark:text-emerald-400' : 'text-rose-600 bg-rose-50 border-rose-100 dark:bg-rose-950/20 dark:text-rose-400'}`}>
                                                         {s.balance.toLocaleString()}
                                                     </span>
+                                                    <button
+                                                        onClick={e => { e.stopPropagation(); openPaymentModal(s.id); }}
+                                                        title="To'lov qo'shish"
+                                                        className="w-7 h-7 flex items-center justify-center rounded-lg text-gray-300 hover:text-emerald-500 hover:bg-emerald-50 dark:hover:bg-emerald-950/20 transition-all cursor-pointer"
+                                                    >
+                                                        <CreditCard size={13} />
+                                                    </button>
                                                     <button
                                                         onClick={e => { e.stopPropagation(); removeStudentFromGroup(group.id, s.id); }}
                                                         title="Kursdan chiqarish"
@@ -377,7 +436,8 @@ export default function CourseDetails() {
                                                     </button>
                                                 </div>
                                             </div>
-                                        ))}
+                                            );
+                                        })}
                                         {groupStudents.length === 0 && (
                                             <p className="col-span-full py-12 text-center text-[10px] text-gray-400 font-bold uppercase tracking-widest">Bu kursda o'quvchilar yo'q</p>
                                         )}
@@ -462,6 +522,7 @@ export default function CourseDetails() {
                                                 <InfoItem icon={<Calendar size={16} />} label="Kunlar" value={group.days === 'TOQ' ? 'Toq kunlar' : group.days === 'JUFT' ? 'Juft kunlar' : 'Har kuni'} />
                                                 <InfoItem icon={<Clock size={16} />} label="Vaqt" value={group.schedule} />
                                                 <InfoItem icon={<Presentation size={16} />} label="Xona" value={rooms.find(r => r.id === group.room)?.name || `#${group.room || '-'}`} />
+                                                {course?.price ? <InfoItem icon={<DollarSign size={16} />} label="Kurs narxi" value={`${course.price.toLocaleString()} UZS`} /> : null}
                                             </>
                                         )}
                                     </div>
@@ -653,6 +714,133 @@ export default function CourseDetails() {
                         </div>
                     )}
 
+                    {activeTab === 'tolovlar' && (() => {
+                        const price = course?.price || 0;
+                        const totalExpected = groupStudents.length * price;
+                        const totalPaid = groupStudents.reduce((sum, s) => sum + Math.max(0, s.balance), 0);
+                        const totalDebt = groupStudents.reduce((sum, s) => sum + Math.abs(Math.min(0, s.balance)), 0);
+                        const fullPaid = groupStudents.filter(s => price && s.balance >= price).length;
+                        const partial = groupStudents.filter(s => price && s.balance > 0 && s.balance < price).length;
+                        const debtors = groupStudents.filter(s => s.balance <= 0).length;
+
+                        return (
+                        <div className="space-y-6 animate-in fade-in duration-300">
+                            {/* Summary stats */}
+                            {price > 0 && (
+                            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
+                                <div className="bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700/50 rounded-2xl p-4 space-y-1">
+                                    <span className="text-[9px] font-bold text-gray-400 uppercase tracking-widest">Kurs narxi</span>
+                                    <p className="text-sm font-black text-gray-900 dark:text-white tabular-nums">{price.toLocaleString()}</p>
+                                    <p className="text-[9px] font-bold text-gray-400 uppercase">UZS / oy</p>
+                                </div>
+                                <div className="bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700/50 rounded-2xl p-4 space-y-1">
+                                    <span className="text-[9px] font-bold text-gray-400 uppercase tracking-widest">Kutilgan</span>
+                                    <p className="text-sm font-black text-gray-900 dark:text-white tabular-nums">{totalExpected.toLocaleString()}</p>
+                                    <p className="text-[9px] font-bold text-gray-400 uppercase">{groupStudents.length} ta o'q.</p>
+                                </div>
+                                <div className="bg-emerald-50 dark:bg-emerald-950/20 border border-emerald-100 dark:border-emerald-900/40 rounded-2xl p-4 space-y-1">
+                                    <span className="text-[9px] font-bold text-emerald-600 dark:text-emerald-400 uppercase tracking-widest">To'liq</span>
+                                    <p className="text-sm font-black text-emerald-700 dark:text-emerald-300 tabular-nums">{fullPaid}</p>
+                                    <p className="text-[9px] font-bold text-emerald-600/70 uppercase">ta o'quvchi</p>
+                                </div>
+                                <div className="bg-amber-50 dark:bg-amber-950/20 border border-amber-100 dark:border-amber-900/40 rounded-2xl p-4 space-y-1">
+                                    <span className="text-[9px] font-bold text-amber-600 dark:text-amber-400 uppercase tracking-widest">Qisman</span>
+                                    <p className="text-sm font-black text-amber-700 dark:text-amber-300 tabular-nums">{partial}</p>
+                                    <p className="text-[9px] font-bold text-amber-600/70 uppercase">ta o'quvchi</p>
+                                </div>
+                                <div className="bg-rose-50 dark:bg-rose-950/20 border border-rose-100 dark:border-rose-900/40 rounded-2xl p-4 space-y-1">
+                                    <span className="text-[9px] font-bold text-rose-600 dark:text-rose-400 uppercase tracking-widest">Qarzdor</span>
+                                    <p className="text-sm font-black text-rose-700 dark:text-rose-300 tabular-nums">{debtors}</p>
+                                    <p className="text-[9px] font-bold text-rose-600/70 uppercase">ta o'quvchi</p>
+                                </div>
+                            </div>
+                            )}
+
+                            {/* Student payment table */}
+                            <div className="bg-white dark:bg-gray-800 rounded-3xl border border-gray-100 dark:border-gray-700/50 shadow-sm overflow-hidden">
+                                <div className="overflow-x-auto">
+                                    <table className="w-full text-left border-collapse min-w-[600px]">
+                                        <thead>
+                                            <tr className="bg-gray-55 dark:bg-gray-900 border-b border-gray-100 dark:border-gray-700/50">
+                                                <th className="p-4 text-[9px] font-black text-gray-400 uppercase tracking-widest">O'quvchi</th>
+                                                {price > 0 && <th className="p-4 text-[9px] font-black text-gray-400 uppercase tracking-widest text-right">Kurs narxi</th>}
+                                                <th className="p-4 text-[9px] font-black text-gray-400 uppercase tracking-widest text-right">Joriy balans</th>
+                                                {price > 0 && <th className="p-4 text-[9px] font-black text-gray-400 uppercase tracking-widest text-right">Qarz / Ortiqcha</th>}
+                                                <th className="p-4 text-[9px] font-black text-gray-400 uppercase tracking-widest text-center">Status</th>
+                                                <th className="p-4 w-12 text-center"></th>
+                                            </tr>
+                                        </thead>
+                                        <tbody className="divide-y divide-gray-100 dark:divide-gray-800">
+                                            {groupStudents.map(s => {
+                                                const payStatus = getPayStatus(s.balance);
+                                                const diff = price ? s.balance - price : 0;
+                                                return (
+                                                <tr key={s.id} className="hover:bg-gray-50/30 transition-colors group cursor-pointer" onClick={() => navigate(`/students/${s.id}`)}>
+                                                    <td className="p-4">
+                                                        <div className="flex items-center gap-3">
+                                                            <div className="w-8 h-8 rounded-xl bg-teal-50 dark:bg-teal-950/20 border border-teal-100 dark:border-teal-900/40 flex items-center justify-center text-[#1b6b6b] font-bold text-xs shrink-0">
+                                                                {s.name.charAt(0)}
+                                                            </div>
+                                                            <div>
+                                                                <p className="text-xs font-black text-gray-900 dark:text-white uppercase tracking-tight group-hover:text-[#1b6b6b] transition-colors">{s.name}</p>
+                                                                <p className="text-[9px] font-bold text-gray-400 mt-0.5">{s.phone}</p>
+                                                            </div>
+                                                        </div>
+                                                    </td>
+                                                    {price > 0 && (
+                                                        <td className="p-4 text-right">
+                                                            <span className="text-[10px] font-black text-gray-600 dark:text-gray-300 tabular-nums">{price.toLocaleString()} UZS</span>
+                                                        </td>
+                                                    )}
+                                                    <td className="p-4 text-right">
+                                                        <span className={`text-[10px] font-black tabular-nums ${s.balance >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'}`}>
+                                                            {s.balance.toLocaleString()} UZS
+                                                        </span>
+                                                    </td>
+                                                    {price > 0 && (
+                                                        <td className="p-4 text-right">
+                                                            <span className={`text-[10px] font-black tabular-nums ${diff >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'}`}>
+                                                                {diff >= 0 ? '+' : ''}{diff.toLocaleString()} UZS
+                                                            </span>
+                                                        </td>
+                                                    )}
+                                                    <td className="p-4 text-center">
+                                                        <span className={`text-[8px] font-black px-2.5 py-1 rounded-md border uppercase tracking-wider ${
+                                                            payStatus === 'full' ? 'text-emerald-600 bg-emerald-50 border-emerald-100 dark:bg-emerald-950/20 dark:text-emerald-400' :
+                                                            payStatus === 'partial' ? 'text-amber-600 bg-amber-50 border-amber-100 dark:bg-amber-950/20 dark:text-amber-400' :
+                                                            'text-rose-600 bg-rose-50 border-rose-100 dark:bg-rose-950/20 dark:text-rose-400'
+                                                        }`}>
+                                                            {payStatus === 'full' ? "To'liq" : payStatus === 'partial' ? 'Qisman' : 'Qarzdor'}
+                                                        </span>
+                                                    </td>
+                                                    <td className="p-4 text-center" onClick={e => e.stopPropagation()}>
+                                                        <button
+                                                            onClick={() => openPaymentModal(s.id)}
+                                                            title="To'lov qo'shish"
+                                                            className="w-8 h-8 flex items-center justify-center rounded-lg text-gray-300 hover:text-emerald-500 hover:bg-emerald-50 dark:hover:bg-emerald-950/20 transition-all cursor-pointer"
+                                                        >
+                                                            <CreditCard size={15} />
+                                                        </button>
+                                                    </td>
+                                                </tr>
+                                                );
+                                            })}
+                                            {groupStudents.length === 0 && (
+                                                <tr>
+                                                    <td colSpan={6} className="p-16 text-center">
+                                                        <Wallet className="w-10 h-10 text-gray-300 mx-auto mb-3" />
+                                                        <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Bu kursda o'quvchilar yo'q</p>
+                                                    </td>
+                                                </tr>
+                                            )}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                        );
+                    })()}
+
                     {activeTab === 'mavzular' && (
                         <div className="space-y-6 animate-in duration-300">
                             {/* Topics Header / Progress */}
@@ -837,6 +1025,76 @@ export default function CourseDetails() {
                                     <p className="py-12 text-center text-[9px] text-gray-450 font-bold uppercase tracking-widest">O'quvchi topilmadi</p>
                                 )}
                             </div>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Payment Modal */}
+            {isPaymentModalOpen && (
+                <div className="fixed inset-0 z-[200] flex items-center justify-center p-4">
+                    <div className="absolute inset-0 bg-gray-900/60 backdrop-blur-sm" onClick={() => setIsPaymentModalOpen(false)} />
+                    <div className="relative bg-white dark:bg-gray-800 rounded-[2rem] border border-gray-100 dark:border-gray-700/50 shadow-2xl w-full max-w-sm p-8">
+                        <div className="flex items-center justify-between mb-6 pb-4 border-b border-gray-50 dark:border-gray-700/50">
+                            <div>
+                                <h3 className="text-lg font-black text-gray-900 dark:text-white uppercase tracking-tight">To'lov qabul qilish</h3>
+                                <p className="text-[10px] font-bold text-[#1b6b6b] uppercase tracking-widest mt-0.5">
+                                    {students.find(s => s.id === selectedStudentForPayment)?.name}
+                                </p>
+                            </div>
+                            <button onClick={() => setIsPaymentModalOpen(false)} className="w-9 h-9 flex items-center justify-center text-gray-400 hover:bg-gray-55 dark:hover:bg-gray-700 rounded-xl cursor-pointer"><XCircle size={18} /></button>
+                        </div>
+                        {course?.price && (
+                            <div className="mb-4 p-3 bg-teal-50 dark:bg-teal-950/20 border border-teal-100 dark:border-teal-900/40 rounded-xl flex items-center justify-between">
+                                <span className="text-[9px] font-black text-gray-400 uppercase tracking-widest">Kurs narxi</span>
+                                <span className="text-sm font-black text-[#1b6b6b]">{course.price.toLocaleString()} UZS</span>
+                            </div>
+                        )}
+                        <div className="space-y-4">
+                            <div>
+                                <label className={labelCls}>To'lov miqdori (UZS)</label>
+                                <input
+                                    type="number"
+                                    placeholder="0"
+                                    value={paymentAmount}
+                                    onChange={e => setPaymentAmount(e.target.value)}
+                                    className={inputCls}
+                                />
+                                {course?.price && (
+                                    <div className="flex gap-2 mt-2">
+                                        <button type="button" onClick={() => setPaymentAmount(String(course.price))}
+                                            className="flex-1 py-1.5 bg-gray-100 dark:bg-gray-700 rounded-lg text-[9px] font-black uppercase tracking-widest text-gray-600 dark:text-gray-300 hover:bg-teal-50 hover:text-[#1b6b6b] transition-all cursor-pointer">
+                                            To'liq ({course.price.toLocaleString()})
+                                        </button>
+                                        <button type="button" onClick={() => setPaymentAmount(String(Math.round(course.price / 2)))}
+                                            className="flex-1 py-1.5 bg-gray-100 dark:bg-gray-700 rounded-lg text-[9px] font-black uppercase tracking-widest text-gray-600 dark:text-gray-300 hover:bg-amber-50 hover:text-amber-600 transition-all cursor-pointer">
+                                            Yarmi ({Math.round(course.price / 2).toLocaleString()})
+                                        </button>
+                                    </div>
+                                )}
+                            </div>
+                            <div>
+                                <label className={labelCls}>To'lov turi</label>
+                                <div className="grid grid-cols-2 gap-2">
+                                    {(['Naqd', 'Karta', 'Click', 'Payme'] as const).map(type => (
+                                        <button key={type} type="button"
+                                            onClick={() => setPaymentType(type as any)}
+                                            className={`py-2 rounded-xl text-[10px] font-black uppercase tracking-widest border transition-all cursor-pointer ${paymentType === type ? 'bg-[#1b6b6b] text-white border-[#1b6b6b]' : 'bg-gray-55 dark:bg-gray-900 text-gray-600 dark:text-gray-300 border-gray-100 dark:border-gray-700 hover:border-[#1b6b6b]'}`}>
+                                            {type}
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
+                            <div>
+                                <label className={labelCls}>Sana</label>
+                                <input type="date" value={paymentDate} onChange={e => setPaymentDate(e.target.value)} className={inputCls} />
+                            </div>
+                            <button onClick={handleAddPayment}
+                                disabled={!paymentAmount || Number(paymentAmount) <= 0}
+                                className="w-full py-3 bg-[#1b6b6b] hover:bg-[#155252] disabled:opacity-50 text-white rounded-xl font-bold uppercase tracking-widest text-[10px] shadow-lg shadow-[#1b6b6b]/20 transition-all cursor-pointer flex items-center justify-center gap-1.5">
+                                <Check size={14} />
+                                To'lovni tasdiqlash
+                            </button>
                         </div>
                     </div>
                 </div>
