@@ -15,6 +15,74 @@ const STAGES = [
 const inp = "w-full px-4 py-3 bg-gray-50 dark:bg-gray-900/50 border border-gray-100 dark:border-gray-700 rounded-2xl text-xs font-bold text-gray-900 dark:text-white focus:border-[#1b6b6b] focus:ring-4 focus:ring-[#1b6b6b]/10 outline-none transition-all";
 const lbl = "block text-[10px] font-extrabold uppercase tracking-widest text-gray-400 mb-2";
 
+const UZB_REGIONS: Record<string, string[]> = {
+  "Surxondaryo": [
+    "Sariosiyo", "Denov", "Uzun", "Sho'rchi", "Termiz", "Qumqo'rg'on", 
+    "Jarqo'rg'on", "Sherobod", "Boysun", "Muzrabot", "Angor", "Qiziriq", 
+    "Oltinsoy", "Bandixon"
+  ],
+  "Toshkent shahri": [
+    "Yunusobod", "Chilonzor", "Mirzo Ulug'bek", "Yashnobod", "Mirobod", 
+    "Uchtepa", "Shayxontohur", "Olmazor", "Sergeli", "Yakkasaroy", 
+    "Bektemir", "Yangihayot"
+  ],
+  "Toshkent viloyati": [
+    "Chirchiq", "Angren", "Olmaliq", "Bekobod", "Keles", "Zangiota", 
+    "Qibray", "Bo'stonliq", "Parkent", "Piskent", "O'rtachirchiq", 
+    "Yuqorichirchiq", "Quyichirchiq", "Oqqo'rg'on", "Bo'ka", "Yangiyo'l"
+  ],
+  "Samarqand": [
+    "Samarqand shahri", "Bulung'ur", "Ishtixon", "Jomboy", "Kattaqo'rg'on", 
+    "Narpay", "Nurobod", "Oqdaryo", "Payariq", "Pastdarg'om", "Paxtachi", 
+    "Toyloq", "Qo'shrabot", "Urgut"
+  ],
+  "Farg'ona": [
+    "Farg'ona shahri", "Marg'ilon", "Qo'qon", "Bog'dod", "Beshariq", 
+    "Buvayda", "Dang'ara", "Quva", "Rishton", "Toshloq", "Uchko'prik", 
+    "O'zbekiston", "Yozyovon", "So'x"
+  ],
+  "Andijon": [
+    "Andijon shahri", "Asaka", "Baliqchi", "Buloqboshi", "Bo'ston", 
+    "Jalaquduq", "Izboskan", "Marhamat", "Oltinko'l", "Paxtaobod", 
+    "Ulug'nor", "Xo'jaobod", "Shahrixon", "Qo'rg'ontepa"
+  ],
+  "Namangan": [
+    "Namangan shahri", "Kosonsoy", "Mingbuloq", "Pop", "To'raqo'rg'on", 
+    "Uychi", "Uchqo'rg'on", "Chortoq", "Chust", "Yangiqo'rg'on", "Davlatobod"
+  ],
+  "Qashqadaryo": [
+    "Karshi shahri", "Dehqonobod", "Kamashi", "Kasbi", "Kitob", 
+    "Koson", "Ko'kdala", "Mirishkor", "Muborak", "Nishon", 
+    "Chiroqchi", "Shahrisabz", "Yakkabog'"
+  ],
+  "Buxoro": [
+    "Buxoro shahri", "Gijduvon", "Jondor", "Kogon", "Kofirnihon", 
+    "Qorako'l", "Qoravulbozor", "Olot", "Peshku", "Romitan", 
+    "Shofirkon", "Vobkent"
+  ],
+  "Xorazm": [
+    "Urganch shahri", "Xiva", "Bog'ot", "Gurlan", "Qo'shko'pir", 
+    "Shovot", "Toza bozor", "Xonqa", "Hazorasp", "Yangiariq", "Yangibozor"
+  ],
+  "Navoiy": [
+    "Navoiy shahri", "Karmana", "Konimex", "Nurota", "Qiziltepa", 
+    "Tomdi", "Uchquduq", "Xatirchi"
+  ],
+  "Jizzax": [
+    "Jizzax shahri", "Arnasoy", "Baxmal", "Do'stlik", "Forish", 
+    "G'allaorol", "Sharof Rashidov", "Mirzacho'l", "Paxtakor", "Yangiobod"
+  ],
+  "Sirdaryo": [
+    "Guliston shahri", "Shirin", "Yangiyer", "Boyovut", "Oqoltin", 
+    "Sardoba", "Sayxunobod", "Sirdaryo tumani", "Xovost"
+  ],
+  "Qoraqalpog'iston": [
+    "Nukus shahri", "Amudaryo", "Beruniy", "Chimboy", "Ellikqala", 
+    "Kegeyli", "Mo'ynoq", "Qonliko'l", "Qo'ng'irot", "Shumanay", 
+    "Taxtako'pir", "To'rtko'l", "Xo'jayli"
+  ]
+};
+
 export default function Leads() {
   const { leads, courses, groups, updateLead, addLead, deleteLead, addStudent } = useCRM();
   const { t } = useLang();
@@ -30,7 +98,20 @@ export default function Leads() {
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [showFilters, setShowFilters] = useState(false);
-  const [newLead, setNewLead] = useState({ name: '', phone: '', course: '', source: 'Instagram' });
+  const [newLead, setNewLead] = useState({ 
+    name: '', 
+    phone: '', 
+    course: '', 
+    source: 'Instagram',
+    privilegeType: 'None',
+    certCategory: '',
+    certSubject: '',
+    certType: '',
+    studentSchool: '',
+    orgType: '',
+    region: '',
+    district: ''
+  });
   const [searchQuery, setSearchQuery] = useState('');
   
   // Selected lead details & conversion state
@@ -46,7 +127,10 @@ export default function Leads() {
     fatherPhone: '',
     motherName: '',
     motherPhone: '',
-    photo: ''
+    photo: '',
+    orgType: '',
+    region: '',
+    district: ''
   });
 
   const [filters, setFilters] = useState({
@@ -92,7 +176,11 @@ export default function Leads() {
       createdAt: new Date().toISOString() 
     });
     setIsModalOpen(false);
-    setNewLead({ name: '', phone: '', course: '', source: 'Instagram' });
+    setNewLead({ 
+      name: '', phone: '', course: '', source: 'Instagram', 
+      privilegeType: 'None', certCategory: '', certSubject: '', certType: '',
+      studentSchool: '', orgType: '', region: '', district: '' 
+    });
   };
 
   const handleStatusChange = async (leadId: number, newStatus: Lead['status']) => {
@@ -140,7 +228,15 @@ export default function Leads() {
         motherPhone: conversionData.motherPhone,
         studentSchool: conversionData.studentSchool,
         photo: conversionData.photo || null,
-        comment: `QR formadan kelgan lid. Manba: ${selectedLead.source}. Kurs: ${selectedLead.course}`
+        comment: `QR formadan kelgan lid. Manba: ${selectedLead.source}. Kurs: ${selectedLead.course}`,
+        privilegeType: selectedLead.privilegeType || 'None',
+        certCategory: selectedLead.certCategory || '',
+        certSubject: selectedLead.certSubject || '',
+        certType: selectedLead.certType || '',
+        orgType: conversionData.orgType || null,
+        region: conversionData.region || null,
+        district: conversionData.district || null,
+        customPrices: {}
       });
 
       // Remove the converted lead
@@ -159,7 +255,10 @@ export default function Leads() {
         fatherPhone: '',
         motherName: '',
         motherPhone: '',
-        photo: ''
+        photo: '',
+        orgType: '',
+        region: '',
+        district: ''
       });
     } catch (err) {
       console.error("Talabaga o'tkazishda xatolik:", err);
@@ -375,6 +474,135 @@ export default function Leads() {
                   <option value="Tavsiya">Tavsiya</option>
                 </select>
               </div>
+              <div>
+                <label className={lbl}>Ta'lim muassasasi turi</label>
+                <select 
+                  className={inp} 
+                  value={newLead.orgType} 
+                  onChange={e => setNewLead({ ...newLead, orgType: e.target.value })}
+                >
+                  <option value="">Tanlang...</option>
+                  <option value="Maktab">Maktab</option>
+                  <option value="Bog'cha">Bog'cha</option>
+                  <option value="Oliy o'quv yurti">Oliy o'quv yurti</option>
+                  <option value="Kollej / Litsey">Kollej / Litsey</option>
+                  <option value="Boshqa">Boshqa</option>
+                </select>
+              </div>
+              <div>
+                <label className={lbl}>Muassasa nomi</label>
+                <input type="text" placeholder="42-maktab" className={inp} value={newLead.studentSchool} onChange={e => setNewLead({ ...newLead, studentSchool: e.target.value })} />
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className={lbl}>Viloyat</label>
+                  <select 
+                    className={inp} 
+                    value={newLead.region} 
+                    onChange={e => setNewLead({ ...newLead, region: e.target.value, district: '' })}
+                  >
+                    <option value="">Tanlang...</option>
+                    {Object.keys(UZB_REGIONS).map(r => (
+                      <option key={r} value={r}>{r}</option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className={lbl}>Tuman</label>
+                  <select 
+                    className={inp} 
+                    value={newLead.district} 
+                    onChange={e => setNewLead({ ...newLead, district: e.target.value })}
+                    disabled={!newLead.region}
+                  >
+                    <option value="">Tanlang...</option>
+                    {newLead.region && UZB_REGIONS[newLead.region]?.map(d => (
+                      <option key={d} value={d}>{d}</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+              <div>
+                <label className={lbl}>Imtiyoz turi</label>
+                <select 
+                  className={inp} 
+                  value={newLead.privilegeType} 
+                  onChange={e => setNewLead({ 
+                    ...newLead, 
+                    privilegeType: e.target.value,
+                    certCategory: e.target.value === 'Sertifikat' ? newLead.certCategory || 'Milliy' : '',
+                    certSubject: e.target.value === 'Sertifikat' ? newLead.certSubject : '',
+                    certType: e.target.value === 'Sertifikat' ? newLead.certType : ''
+                  })}
+                >
+                  <option value="None">Mavjud emas</option>
+                  <option value="Nogironligi bor">Nogironligi bor</option>
+                  <option value="Harbiy oila">Harbiy oila</option>
+                  <option value="Xotin-qizlar daftari">Xotin-qizlar daftari</option>
+                  <option value="Sertifikat">Sertifikat</option>
+                </select>
+              </div>
+
+              {newLead.privilegeType === 'Sertifikat' && (
+                <div className="space-y-3 p-3 bg-gray-55 dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800">
+                  <div>
+                    <label className={lbl}>Sertifikat toifasi</label>
+                    <select 
+                      className={inp} 
+                      value={newLead.certCategory} 
+                      onChange={e => setNewLead({ 
+                        ...newLead, 
+                        certCategory: e.target.value,
+                        certSubject: e.target.value === 'Milliy' ? newLead.certSubject || 'Matematika' : '',
+                        certType: e.target.value === 'Xalqaro' ? newLead.certType || 'IELTS' : ''
+                      })}
+                    >
+                      <option value="Milliy">Milliy sertifikat</option>
+                      <option value="Xalqaro">Xalqaro sertifikat</option>
+                    </select>
+                  </div>
+
+                  {newLead.certCategory === 'Milliy' && (
+                    <div>
+                      <label className={lbl}>Sertifikat fani</label>
+                      <select 
+                        className={inp} 
+                        value={newLead.certSubject} 
+                        onChange={e => setNewLead({ ...newLead, certSubject: e.target.value })}
+                      >
+                        <option value="">Tanlang...</option>
+                        <option value="Matematika">Matematika</option>
+                        <option value="Fizika">Fizika</option>
+                        <option value="Kimyo">Kimyo</option>
+                        <option value="Biologiya">Biologiya</option>
+                        <option value="Tarix">Tarix</option>
+                        <option value="Ingliz tili">Ingliz tili</option>
+                        <option value="Nemis tili">Nemis tili</option>
+                        <option value="Rus tili">Rus tili</option>
+                        <option value="Ona tili">Ona tili</option>
+                      </select>
+                    </div>
+                  )}
+
+                  {newLead.certCategory === 'Xalqaro' && (
+                    <div>
+                      <label className={lbl}>Sertifikat turi</label>
+                      <select 
+                        className={inp} 
+                        value={newLead.certType} 
+                        onChange={e => setNewLead({ ...newLead, certType: e.target.value })}
+                      >
+                        <option value="">Tanlang...</option>
+                        <option value="IELTS">IELTS</option>
+                        <option value="SAT">SAT</option>
+                        <option value="TOEFL">TOEFL</option>
+                        <option value="CEFR">CEFR</option>
+                      </select>
+                    </div>
+                  )}
+                </div>
+              )}
+
               <div className="flex gap-3 pt-2">
                 <button type="button" onClick={() => setIsModalOpen(false)}
                   className="flex-1 py-3 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-white text-xs font-extrabold uppercase tracking-widest rounded-2xl transition-all cursor-pointer hover:bg-gray-200 dark:hover:bg-gray-600">
@@ -440,10 +668,24 @@ export default function Leads() {
                       <span className="text-xs font-extrabold text-gray-700 dark:text-gray-300">{selectedLead.birthDate}</span>
                     </div>
                   )}
+                  {selectedLead.orgType && (
+                    <div className="bg-gray-55 dark:bg-gray-900/30 p-4 rounded-2xl border border-gray-100 dark:border-gray-750">
+                      <span className="block text-[9px] font-bold text-gray-400 uppercase tracking-wider mb-1">Muassasa turi</span>
+                      <span className="text-xs font-extrabold text-gray-700 dark:text-gray-300">{selectedLead.orgType}</span>
+                    </div>
+                  )}
                   {selectedLead.studentSchool && (
                     <div className="bg-gray-55 dark:bg-gray-900/30 p-4 rounded-2xl border border-gray-100 dark:border-gray-750">
-                      <span className="block text-[9px] font-bold text-gray-400 uppercase tracking-wider mb-1">{t('school_kindergarten')}</span>
+                      <span className="block text-[9px] font-bold text-gray-400 uppercase tracking-wider mb-1">Muassasa nomi</span>
                       <span className="text-xs font-extrabold text-gray-700 dark:text-gray-300">{selectedLead.studentSchool}</span>
+                    </div>
+                  )}
+                  {(selectedLead.region || selectedLead.district) && (
+                    <div className="bg-gray-55 dark:bg-gray-900/30 p-4 rounded-2xl border border-gray-100 dark:border-gray-750">
+                      <span className="block text-[9px] font-bold text-gray-400 uppercase tracking-wider mb-1">Viloyat / Tuman</span>
+                      <span className="text-xs font-extrabold text-gray-700 dark:text-gray-300">
+                        {[selectedLead.region, selectedLead.district].filter(Boolean).join(', ')}
+                      </span>
                     </div>
                   )}
                   {(selectedLead.fatherName || selectedLead.fatherPhone) && (
@@ -521,7 +763,10 @@ export default function Leads() {
                         fatherPhone: selectedLead.fatherPhone || '',
                         motherName: selectedLead.motherName || '',
                         motherPhone: selectedLead.motherPhone || '',
-                        photo: selectedLead.photo || ''
+                        photo: selectedLead.photo || '',
+                        orgType: selectedLead.orgType || '',
+                        region: selectedLead.region || '',
+                        district: selectedLead.district || ''
                       });
                     }}
                     className="flex items-center gap-1.5 px-4 py-2.5 bg-[#1b6b6b] hover:bg-[#155252] text-white rounded-xl text-[10px] font-black uppercase tracking-widest cursor-pointer shadow-md transition-all"
@@ -562,8 +807,55 @@ export default function Leads() {
                     <input type="date" className={inp} value={conversionData.birthDate} onChange={e => setConversionData({ ...conversionData, birthDate: e.target.value })} />
                   </div>
                   <div>
-                    <label className={lbl}>{t('school_kindergarten')}</label>
+                    <label className={lbl}>Ta'lim muassasasi turi</label>
+                    <select 
+                      className={inp} 
+                      value={conversionData.orgType} 
+                      onChange={e => setConversionData({ ...conversionData, orgType: e.target.value })}
+                    >
+                      <option value="">Tanlang...</option>
+                      <option value="Maktab">Maktab</option>
+                      <option value="Bog'cha">Bog'cha</option>
+                      <option value="Oliy o'quv yurti">Oliy o'quv yurti</option>
+                      <option value="Kollej / Litsey">Kollej / Litsey</option>
+                      <option value="Boshqa">Boshqa</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className={lbl}>Muassasa nomi</label>
                     <input type="text" placeholder="42-maktab" className={inp} value={conversionData.studentSchool} onChange={e => setConversionData({ ...conversionData, studentSchool: e.target.value })} />
+                  </div>
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <label className={lbl}>Viloyat</label>
+                      <select 
+                        className={inp} 
+                        value={conversionData.region} 
+                        onChange={e => setConversionData({ ...conversionData, region: e.target.value, district: '' })}
+                      >
+                        <option value="">Tanlang...</option>
+                        {Object.keys(UZB_REGIONS).map(r => (
+                          <option key={r} value={r}>{r}</option>
+                        ))}
+                      </select>
+                    </div>
+                    <div>
+                      <label className={lbl}>Tuman</label>
+                      <select 
+                        className={inp} 
+                        value={conversionData.district} 
+                        onChange={e => setConversionData({ ...conversionData, district: e.target.value })}
+                        disabled={!conversionData.region}
+                      >
+                        <option value="">Tanlang...</option>
+                        {conversionData.region && UZB_REGIONS[conversionData.region]?.map(d => (
+                          <option key={d} value={d}>{d}</option>
+                        ))}
+                      </select>
+                    </div>
                   </div>
                 </div>
 

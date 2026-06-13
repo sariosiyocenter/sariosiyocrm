@@ -18,6 +18,7 @@ const Teachers        = lazy(() => import('./components/Teachers'));
 const TeacherDetails  = lazy(() => import('./components/TeacherDetails'));
 const Courses          = lazy(() => import('./components/Courses'));
 const CourseDetails    = lazy(() => import('./components/CourseDetails'));
+const SyllabusManager  = lazy(() => import('./components/SyllabusManager'));
 const Students        = lazy(() => import('./components/Students'));
 const StudentDetails  = lazy(() => import('./components/StudentDetails'));
 const Leads           = lazy(() => import('./components/Leads'));
@@ -105,6 +106,7 @@ export default function App() {
             <Route path="/teachers/:id"         element={isAdminOrManager ? <TeacherDetails /> : <Navigate to="/" replace />} />
             <Route path="/courses"               element={<Courses />} />
             <Route path="/courses/:id"           element={<CourseDetails />} />
+            <Route path="/syllabus"             element={<SyllabusManager />} />
             <Route path="/students"             element={<Students />} />
             <Route path="/students/:id"         element={<StudentDetails />} />
             <Route path="/hr"                   element={isAdminOrManager ? <HRManagement /> : <Navigate to="/" replace />} />

@@ -28,6 +28,13 @@ model Student {
   motherName  String?
   motherPhone String?
 
+  // Privilege fields
+  privilegeType String    @default("None")
+  certCategory  String?
+  certSubject   String?
+  certType      String?
+  customPrices  Json?     @default("{}")
+
   // New fields for reports
   statusChangedAt DateTime? @default(now())
   leaveReason     String?
@@ -38,6 +45,9 @@ model Student {
 
   // Student's actual school (maktab)
   studentSchool String?
+  orgType       String?
+  region        String?
+  district      String?
 
   // Relations
   schoolId   Int
@@ -149,6 +159,9 @@ model Group {
   room       Int?
   roomRel    Room?     @relation(fields: [room], references: [id])
 
+  syllabusId Int?
+  syllabus   Syllabus? @relation(fields: [syllabusId], references: [id])
+
   schoolId   Int
   school     School    @relation(fields: [schoolId], references: [id])
   students   Student[] @relation("StudentGroups")
@@ -172,6 +185,9 @@ model Lead {
   birthDate     String?
   address       String?
   studentSchool String?
+  orgType       String?
+  region        String?
+  district      String?
   fatherName    String?
   fatherPhone   String?
   motherName    String?
@@ -179,6 +195,12 @@ model Lead {
   preferredTime String?
   notes         String?
   photo         String?
+
+  // Privilege fields
+  privilegeType String    @default("None")
+  certCategory  String?
+  certSubject   String?
+  certType      String?
 
   schoolId      Int
   school        School   @relation(fields: [schoolId], references: [id])
@@ -272,6 +294,7 @@ model School {
   staffAttendances StaffAttendance[]
   salaryPayments   SalaryPayment[]
   topics           Topic[]
+  syllabuses       Syllabus[]
 }
 
 model SmsLog {
@@ -317,13 +340,28 @@ model Topic {
   title       String
   description String?
   order       Int      @default(1)
-  courseId    Int
-  course      Course   @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  courseId    Int?
+  course      Course?  @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  syllabusId  Int?
+  syllabus    Syllabus? @relation(fields: [syllabusId], references: [id], onDelete: Cascade)
   schoolId    Int
   school      School   @relation(fields: [schoolId], references: [id])
   attendances Attendance[]
 
   @@index([courseId])
+  @@index([schoolId])
+  @@index([syllabusId])
+}
+
+model Syllabus {
+  id          Int      @id @default(autoincrement())
+  name        String
+  materials   String?  // Uchebniy posobiyalar (text or list of materials)
+  schoolId    Int
+  school      School   @relation(fields: [schoolId], references: [id])
+  groups      Group[]
+  topics      Topic[]
+
   @@index([schoolId])
 }
 

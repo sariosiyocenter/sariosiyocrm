@@ -11,6 +11,74 @@ import * as XLSX from 'xlsx';
 const inp = "w-full px-4 py-3 bg-gray-50 dark:bg-gray-900/50 border border-gray-100 dark:border-gray-700 rounded-2xl text-xs font-bold text-gray-900 dark:text-white focus:border-[#1b6b6b] focus:ring-4 focus:ring-[#1b6b6b]/10 outline-none transition-all";
 const lbl = "block text-[10px] font-extrabold uppercase tracking-widest text-gray-400 mb-2";
 
+const UZB_REGIONS: Record<string, string[]> = {
+  "Surxondaryo": [
+    "Sariosiyo", "Denov", "Uzun", "Sho'rchi", "Termiz", "Qumqo'rg'on", 
+    "Jarqo'rg'on", "Sherobod", "Boysun", "Muzrabot", "Angor", "Qiziriq", 
+    "Oltinsoy", "Bandixon"
+  ],
+  "Toshkent shahri": [
+    "Yunusobod", "Chilonzor", "Mirzo Ulug'bek", "Yashnobod", "Mirobod", 
+    "Uchtepa", "Shayxontohur", "Olmazor", "Sergeli", "Yakkasaroy", 
+    "Bektemir", "Yangihayot"
+  ],
+  "Toshkent viloyati": [
+    "Chirchiq", "Angren", "Olmaliq", "Bekobod", "Keles", "Zangiota", 
+    "Qibray", "Bo'stonliq", "Parkent", "Piskent", "O'rtachirchiq", 
+    "Yuqorichirchiq", "Quyichirchiq", "Oqqo'rg'on", "Bo'ka", "Yangiyo'l"
+  ],
+  "Samarqand": [
+    "Samarqand shahri", "Bulung'ur", "Ishtixon", "Jomboy", "Kattaqo'rg'on", 
+    "Narpay", "Nurobod", "Oqdaryo", "Payariq", "Pastdarg'om", "Paxtachi", 
+    "Toyloq", "Qo'shrabot", "Urgut"
+  ],
+  "Farg'ona": [
+    "Farg'ona shahri", "Marg'ilon", "Qo'qon", "Bog'dod", "Beshariq", 
+    "Buvayda", "Dang'ara", "Quva", "Rishton", "Toshloq", "Uchko'prik", 
+    "O'zbekiston", "Yozyovon", "So'x"
+  ],
+  "Andijon": [
+    "Andijon shahri", "Asaka", "Baliqchi", "Buloqboshi", "Bo'ston", 
+    "Jalaquduq", "Izboskan", "Marhamat", "Oltinko'l", "Paxtaobod", 
+    "Ulug'nor", "Xo'jaobod", "Shahrixon", "Qo'rg'ontepa"
+  ],
+  "Namangan": [
+    "Namangan shahri", "Kosonsoy", "Mingbuloq", "Pop", "To'raqo'rg'on", 
+    "Uychi", "Uchqo'rg'on", "Chortoq", "Chust", "Yangiqo'rg'on", "Davlatobod"
+  ],
+  "Qashqadaryo": [
+    "Karshi shahri", "Dehqonobod", "Kamashi", "Kasbi", "Kitob", 
+    "Koson", "Ko'kdala", "Mirishkor", "Muborak", "Nishon", 
+    "Chiroqchi", "Shahrisabz", "Yakkabog'"
+  ],
+  "Buxoro": [
+    "Buxoro shahri", "Gijduvon", "Jondor", "Kogon", "Kofirnihon", 
+    "Qorako'l", "Qoravulbozor", "Olot", "Peshku", "Romitan", 
+    "Shofirkon", "Vobkent"
+  ],
+  "Xorazm": [
+    "Urganch shahri", "Xiva", "Bog'ot", "Gurlan", "Qo'shko'pir", 
+    "Shovot", "Toza bozor", "Xonqa", "Hazorasp", "Yangiariq", "Yangibozor"
+  ],
+  "Navoiy": [
+    "Navoiy shahri", "Karmana", "Konimex", "Nurota", "Qiziltepa", 
+    "Tomdi", "Uchquduq", "Xatirchi"
+  ],
+  "Jizzax": [
+    "Jizzax shahri", "Arnasoy", "Baxmal", "Do'stlik", "Forish", 
+    "G'allaorol", "Sharof Rashidov", "Mirzacho'l", "Paxtakor", "Yangiobod"
+  ],
+  "Sirdaryo": [
+    "Guliston shahri", "Shirin", "Yangiyer", "Boyovut", "Oqoltin", 
+    "Sardoba", "Sayxunobod", "Sirdaryo tumani", "Xovost"
+  ],
+  "Qoraqalpog'iston": [
+    "Nukus shahri", "Amudaryo", "Beruniy", "Chimboy", "Ellikqala", 
+    "Kegeyli", "Mo'ynoq", "Qonliko'l", "Qo'ng'irot", "Shumanay", 
+    "Taxtako'pir", "To'rtko'l", "Xo'jayli"
+  ]
+};
+
 export default function Students() {
     const { students, groups, teachers, transports, addStudent, deleteStudent, importStudents, selectedSchoolId } = useCRM();
     const { t } = useLang();
@@ -23,7 +91,14 @@ export default function Students() {
         name: '', phone: '', address: '', birthDate: '', location: '', photo: '', 
         fatherName: '', fatherPhone: '', motherName: '', motherPhone: '',
         transportId: '' as string | number,
-        studentSchool: ''
+        studentSchool: '',
+        privilegeType: 'None',
+        certCategory: '',
+        certSubject: '',
+        certType: '',
+        orgType: '',
+        region: '',
+        district: ''
     });
     const [isRemovingBg, setIsRemovingBg] = useState(false);
     const [isImporting, setIsImporting] = useState(false);
@@ -123,14 +198,29 @@ export default function Students() {
                 balance: 0,
                 groups: [],
                 transportId: newStudent.transportId ? Number(newStudent.transportId) : null,
-                studentSchool: newStudent.studentSchool
+                studentSchool: newStudent.studentSchool,
+                privilegeType: newStudent.privilegeType,
+                certCategory: newStudent.certCategory,
+                certSubject: newStudent.certSubject,
+                certType: newStudent.certType,
+                orgType: newStudent.orgType,
+                region: newStudent.region,
+                district: newStudent.district,
+                customPrices: {}
             });
             setIsModalOpen(false);
             setNewStudent({ 
                 name: '', phone: '', address: '', birthDate: '', location: '', photo: '', 
                 fatherName: '', fatherPhone: '', motherName: '', motherPhone: '',
                 transportId: '',
-                studentSchool: ''
+                studentSchool: '',
+                privilegeType: 'None',
+                certCategory: '',
+                certSubject: '',
+                certType: '',
+                orgType: '',
+                region: '',
+                district: ''
             });
         } catch (err) {
             console.error("Add student failed", err);
@@ -413,6 +503,10 @@ export default function Students() {
                                 <option value="Faol">{t('status_active')}</option>
                                 <option value="Arxiv">{t('status_archive')}</option>
                                 <option value="Sinov">{t('status_test')}</option>
+                                <option value="Bitiruvchi">{t('status_graduated')}</option>
+                                <option value="Passiv">{t('status_passive')}</option>
+                                <option value="Muzlatilgan">{t('status_frozen')}</option>
+                                <option value="Sertifikatli">{t('status_certified')}</option>
                             </select>
                         </div>
                         <div>
@@ -520,8 +614,23 @@ export default function Students() {
                                     </td>
                                     <td className="p-4 text-right">
                                         <div className="flex flex-col items-end gap-1">
-                                            <span className={`px-2 py-0.5 rounded-md text-[8px] font-black border uppercase tracking-wider ${student.status === 'Faol' ? 'bg-emerald-50 text-emerald-600 border-emerald-100 dark:bg-emerald-950/20 dark:text-emerald-400' : 'bg-gray-55 text-gray-400 border-gray-100 dark:bg-gray-900/50'}`}>
-                                                {student.status === 'Faol' ? t('status_active') : student.status === 'Arxiv' ? t('status_archive') : t('status_test')}
+                                            <span className={`px-2 py-0.5 rounded-md text-[8px] font-black border uppercase tracking-wider ${
+                                                student.status === 'Faol' ? 'bg-emerald-50 text-emerald-600 border-emerald-100 dark:bg-emerald-950/20 dark:text-emerald-400' :
+                                                student.status === 'Sinov' ? 'bg-amber-50 text-amber-600 border-amber-100 dark:bg-amber-950/20 dark:text-amber-400' :
+                                                student.status === 'Muzlatilgan' ? 'bg-sky-50 text-sky-650 border-sky-100 dark:bg-sky-950/20 dark:text-sky-455' :
+                                                student.status === 'Passiv' ? 'bg-rose-50 text-rose-600 border-rose-100 dark:bg-rose-950/20 dark:text-rose-400' :
+                                                student.status === 'Bitiruvchi' ? 'bg-purple-50 text-purple-600 border-purple-100 dark:bg-purple-950/20 dark:text-purple-400' :
+                                                student.status === 'Sertifikatli' ? 'bg-indigo-50 text-indigo-600 border-indigo-100 dark:bg-indigo-950/20 dark:text-indigo-400' :
+                                                'bg-gray-55 text-gray-400 border-gray-100 dark:bg-gray-900/50'
+                                            }`}>
+                                                {student.status === 'Faol' ? t('status_active') : 
+                                                 student.status === 'Arxiv' ? t('status_archive') : 
+                                                 student.status === 'Sinov' ? t('status_test') : 
+                                                 student.status === 'Muzlatilgan' ? t('status_frozen') :
+                                                 student.status === 'Passiv' ? t('status_passive') :
+                                                 student.status === 'Bitiruvchi' ? t('status_graduated') :
+                                                 student.status === 'Sertifikatli' ? t('status_certified') :
+                                                 student.status}
                                             </span>
                                             <span className={`text-xs font-extrabold tabular-nums ${student.balance >= 0 ? 'text-gray-900 dark:text-white' : 'text-rose-600 dark:text-rose-400'}`}>
                                                 {student.balance.toLocaleString()} UZS
@@ -587,9 +696,133 @@ export default function Students() {
                                     </div>
                                 </div>
                                 <div>
-                                    <label className={lbl}>{t('school_kindergarten')}</label>
+                                    <label className={lbl}>Ta'lim muassasasi turi</label>
+                                    <select 
+                                        value={newStudent.orgType} 
+                                        onChange={e => setNewStudent({...newStudent, orgType: e.target.value})} 
+                                        className={inp}
+                                    >
+                                        <option value="">Tanlang...</option>
+                                        <option value="Maktab">Maktab</option>
+                                        <option value="Bog'cha">Bog'cha</option>
+                                        <option value="Oliy o'quv yurti">Oliy o'quv yurti</option>
+                                        <option value="Kollej / Litsey">Kollej / Litsey</option>
+                                        <option value="Boshqa">Boshqa</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label className={lbl}>Muassasa nomi</label>
                                     <input type="text" placeholder="42-maktab" className={inp} value={newStudent.studentSchool} onChange={e => setNewStudent({ ...newStudent, studentSchool: e.target.value })} />
                                 </div>
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div>
+                                        <label className={lbl}>Viloyat</label>
+                                        <select 
+                                            value={newStudent.region} 
+                                            onChange={e => setNewStudent({...newStudent, region: e.target.value, district: ''})} 
+                                            className={inp}
+                                        >
+                                            <option value="">Tanlang...</option>
+                                            {Object.keys(UZB_REGIONS).map(r => (
+                                                <option key={r} value={r}>{r}</option>
+                                            ))}
+                                        </select>
+                                    </div>
+                                    <div>
+                                        <label className={lbl}>Tuman</label>
+                                        <select 
+                                            value={newStudent.district} 
+                                            onChange={e => setNewStudent({...newStudent, district: e.target.value})} 
+                                            className={inp}
+                                            disabled={!newStudent.region}
+                                        >
+                                            <option value="">Tanlang...</option>
+                                            {newStudent.region && UZB_REGIONS[newStudent.region]?.map(d => (
+                                                <option key={d} value={d}>{d}</option>
+                                            ))}
+                                        </select>
+                                    </div>
+                                </div>
+                                <div>
+                                    <label className={lbl}>Imtiyoz turi</label>
+                                    <select 
+                                        value={newStudent.privilegeType} 
+                                        onChange={e => setNewStudent({
+                                            ...newStudent, 
+                                            privilegeType: e.target.value,
+                                            certCategory: e.target.value === 'Sertifikat' ? newStudent.certCategory || 'Milliy' : '',
+                                            certSubject: e.target.value === 'Sertifikat' ? newStudent.certSubject : '',
+                                            certType: e.target.value === 'Sertifikat' ? newStudent.certType : ''
+                                        })} 
+                                        className={inp}
+                                    >
+                                        <option value="None">Mavjud emas</option>
+                                        <option value="Nogironligi bor">Nogironligi bor</option>
+                                        <option value="Harbiy oila">Harbiy oila</option>
+                                        <option value="Xotin-qizlar daftari">Xotin-qizlar daftari</option>
+                                        <option value="Sertifikat">Sertifikat</option>
+                                    </select>
+                                </div>
+
+                                {newStudent.privilegeType === 'Sertifikat' && (
+                                    <div className="space-y-3 p-3 bg-gray-55 dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800">
+                                        <div>
+                                            <label className={lbl}>Sertifikat toifasi</label>
+                                            <select 
+                                                value={newStudent.certCategory} 
+                                                onChange={e => setNewStudent({
+                                                    ...newStudent, 
+                                                    certCategory: e.target.value,
+                                                    certSubject: e.target.value === 'Milliy' ? newStudent.certSubject || 'Matematika' : '',
+                                                    certType: e.target.value === 'Xalqaro' ? newStudent.certType || 'IELTS' : ''
+                                                })} 
+                                                className={inp}
+                                            >
+                                                <option value="Milliy">Milliy sertifikat</option>
+                                                <option value="Xalqaro">Xalqaro sertifikat</option>
+                                            </select>
+                                        </div>
+
+                                        {newStudent.certCategory === 'Milliy' && (
+                                            <div>
+                                                <label className={lbl}>Sertifikat fani</label>
+                                                <select 
+                                                    value={newStudent.certSubject} 
+                                                    onChange={e => setNewStudent({...newStudent, certSubject: e.target.value})} 
+                                                    className={inp}
+                                                >
+                                                    <option value="">Tanlang...</option>
+                                                    <option value="Matematika">Matematika</option>
+                                                    <option value="Fizika">Fizika</option>
+                                                    <option value="Kimyo">Kimyo</option>
+                                                    <option value="Biologiya">Biologiya</option>
+                                                    <option value="Tarix">Tarix</option>
+                                                    <option value="Ingliz tili">Ingliz tili</option>
+                                                    <option value="Nemis tili">Nemis tili</option>
+                                                    <option value="Rus tili">Rus tili</option>
+                                                    <option value="Ona tili">Ona tili</option>
+                                                </select>
+                                            </div>
+                                        )}
+
+                                        {newStudent.certCategory === 'Xalqaro' && (
+                                            <div>
+                                                <label className={lbl}>Sertifikat turi</label>
+                                                <select 
+                                                    value={newStudent.certType} 
+                                                    onChange={e => setNewStudent({...newStudent, certType: e.target.value})} 
+                                                    className={inp}
+                                                >
+                                                    <option value="">Tanlang...</option>
+                                                    <option value="IELTS">IELTS</option>
+                                                    <option value="SAT">SAT</option>
+                                                    <option value="TOEFL">TOEFL</option>
+                                                    <option value="CEFR">CEFR</option>
+                                                </select>
+                                            </div>
+                                        )}
+                                    </div>
+                                )}
 
                                 <div className="border-t border-dashed border-gray-150 dark:border-gray-700/50 pt-4 mt-4 space-y-4">
                                     <span className="block text-[9px] font-black uppercase text-[#1b6b6b] tracking-wider text-left">{t('parent_info')}</span>

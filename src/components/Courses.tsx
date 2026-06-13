@@ -8,7 +8,7 @@ const inp = "w-full px-4 py-3 bg-gray-55 dark:bg-gray-900/50 border border-gray-
 const lbl = "block text-[10px] font-extrabold uppercase tracking-widest text-gray-400 mb-2";
 
 export default function Courses() {
-    const { groups, teachers, rooms, addGroup, showNotification, courses } = useCRM();
+    const { groups, teachers, rooms, addGroup, showNotification, courses, syllabuses } = useCRM();
     const { t } = useLang();
     const navigate = useNavigate();
     const [isModalOpen, setIsModalOpen] = useState(false);
@@ -21,7 +21,7 @@ export default function Courses() {
         roomId: '',
         timeOfDay: 'all'
     });
-    const [newGroup, setNewGroup] = useState({ name: '', teacherId: 0, startTime: '', endTime: '', days: 'TOQ', room: '' });
+    const [newGroup, setNewGroup] = useState({ name: '', teacherId: 0, startTime: '', endTime: '', days: 'TOQ', room: '', syllabusId: '' as number | '' });
 
     // Auto-calculate 2 hours
     React.useEffect(() => {
@@ -76,10 +76,11 @@ export default function Courses() {
                 room: Number(newGroup.room),
                 days: newGroup.days,
                 schedule: `${newGroup.startTime} - ${newGroup.endTime}`,
-                studentIds: []
+                studentIds: [],
+                syllabusId: newGroup.syllabusId === '' ? null : Number(newGroup.syllabusId)
             });
             setIsModalOpen(false);
-            setNewGroup({ name: '', teacherId: 0, startTime: '', endTime: '', days: 'TOQ', room: '' });
+            setNewGroup({ name: '', teacherId: 0, startTime: '', endTime: '', days: 'TOQ', room: '', syllabusId: '' });
             showNotification(t('group_added_success'), "success");
         } catch (err) {
             showNotification(t('group_added_error'), "error");
@@ -306,6 +307,13 @@ export default function Courses() {
                                     <label className={lbl}>{t('end_time')} *</label>
                                     <input required type="time" className={inp} value={newGroup.endTime} onChange={e => setNewGroup({ ...newGroup, endTime: e.target.value })} />
                                 </div>
+                            </div>
+                            <div>
+                                <label className={lbl}>O'quv programmasi (Syllabus)</label>
+                                <select className={inp} value={newGroup.syllabusId} onChange={e => setNewGroup({ ...newGroup, syllabusId: e.target.value === '' ? '' : Number(e.target.value) })}>
+                                    <option value="">Faol dastur yo'q (Kurs mavzulari)</option>
+                                    {syllabuses.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+                                </select>
                             </div>
                             <div className="flex gap-3 pt-2">
                                 <button type="button" onClick={() => setIsModalOpen(false)}

@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import {
-    ArrowLeft, Phone, Calendar, MapPin, BookOpen, CreditCard,
+    ArrowLeft, Phone, Calendar, MapPin, BookOpen, CreditCard, ReceiptText,
     Clock, CheckCircle, XCircle, Plus, Award, ClipboardCheck, Users, Layers, ChevronRight, TrendingUp, Save, Edit, Bus, Sparkles, Image as ImageIcon, Camera, X, Send
 } from 'lucide-react';
 import { useCRM } from '../context/CRMContext';
@@ -10,16 +10,83 @@ import MapPicker from './MapPicker';
 import PhotoCapture from './PhotoCapture';
 import { compressImage } from '../lib/image';
 
+const UZB_REGIONS: Record<string, string[]> = {
+  "Surxondaryo": [
+    "Sariosiyo", "Denov", "Uzun", "Sho'rchi", "Termiz", "Qumqo'rg'on", 
+    "Jarqo'rg'on", "Sherobod", "Boysun", "Muzrabot", "Angor", "Qiziriq", 
+    "Oltinsoy", "Bandixon"
+  ],
+  "Toshkent shahri": [
+    "Yunusobod", "Chilonzor", "Mirzo Ulug'bek", "Yashnobod", "Mirobod", 
+    "Uchtepa", "Shayxontohur", "Olmazor", "Sergeli", "Yakkasaroy", 
+    "Bektemir", "Yangihayot"
+  ],
+  "Toshkent viloyati": [
+    "Chirchiq", "Angren", "Olmaliq", "Bekobod", "Keles", "Zangiota", 
+    "Qibray", "Bo'stonliq", "Parkent", "Piskent", "O'rtachirchiq", 
+    "Yuqorichirchiq", "Quyichirchiq", "Oqqo'rg'on", "Bo'ka", "Yangiyo'l"
+  ],
+  "Samarqand": [
+    "Samarqand shahri", "Bulung'ur", "Ishtixon", "Jomboy", "Kattaqo'rg'on", 
+    "Narpay", "Nurobod", "Oqdaryo", "Payariq", "Pastdarg'om", "Paxtachi", 
+    "Toyloq", "Qo'shrabot", "Urgut"
+  ],
+  "Farg'ona": [
+    "Farg'ona shahri", "Marg'ilon", "Qo'qon", "Bog'dod", "Beshariq", 
+    "Buvayda", "Dang'ara", "Quva", "Rishton", "Toshloq", "Uchko'prik", 
+    "O'zbekiston", "Yozyovon", "So'x"
+  ],
+  "Andijon": [
+    "Andijon shahri", "Asaka", "Baliqchi", "Buloqboshi", "Bo'ston", 
+    "Jalaquduq", "Izboskan", "Marhamat", "Oltinko'l", "Paxtaobod", 
+    "Ulug'nor", "Xo'jaobod", "Shahrixon", "Qo'rg'ontepa"
+  ],
+  "Namangan": [
+    "Namangan shahri", "Kosonsoy", "Mingbuloq", "Pop", "To'raqo'rg'on", 
+    "Uychi", "Uchqo'rg'on", "Chortoq", "Chust", "Yangiqo'rg'on", "Davlatobod"
+  ],
+  "Qashqadaryo": [
+    "Karshi shahri", "Dehqonobod", "Kamashi", "Kasbi", "Kitob", 
+    "Koson", "Ko'kdala", "Mirishkor", "Muborak", "Nishon", 
+    "Chiroqchi", "Shahrisabz", "Yakkabog'"
+  ],
+  "Buxoro": [
+    "Buxoro shahri", "Gijduvon", "Jondor", "Kogon", "Kofirnihon", 
+    "Qorako'l", "Qoravulbozor", "Olot", "Peshku", "Romitan", 
+    "Shofirkon", "Vobkent"
+  ],
+  "Xorazm": [
+    "Urganch shahri", "Xiva", "Bog'ot", "Gurlan", "Qo'shko'pir", 
+    "Shovot", "Toza bozor", "Xonqa", "Hazorasp", "Yangiariq", "Yangibozor"
+  ],
+  "Navoiy": [
+    "Navoiy shahri", "Karmana", "Konimex", "Nurota", "Qiziltepa", 
+    "Tomdi", "Uchquduq", "Xatirchi"
+  ],
+  "Jizzax": [
+    "Jizzax shahri", "Arnasoy", "Baxmal", "Do'stlik", "Forish", 
+    "G'allaorol", "Sharof Rashidov", "Mirzacho'l", "Paxtakor", "Yangiobod"
+  ],
+  "Sirdaryo": [
+    "Guliston shahri", "Shirin", "Yangiyer", "Boyovut", "Oqoltin", 
+    "Sardoba", "Sayxunobod", "Sirdaryo tumani", "Xovost"
+  ],
+  "Qoraqalpog'iston": [
+    "Nukus shahri", "Amudaryo", "Beruniy", "Chimboy", "Ellikqala", 
+    "Kegeyli", "Mo'ynoq", "Qonliko'l", "Qo'ng'irot", "Shumanay", 
+    "Taxtako'pir", "To'rtko'l", "Xo'jayli"
+  ]
+};
+
 export default function StudentDetails() {
     const { id } = useParams<{ id: string }>();
     const navigate = useNavigate();
     const { t } = useLang();
-    const { students, groups, teachers, courses, payments, attendances, scores, transports, addPayment, addAttendance, addScore, updateStudent, addStudentToGroup, deleteStudent, topics, updateAttendance } = useCRM();
+    const { students, groups, teachers, courses, payments, attendances, transports, addPayment, addAttendance, updateStudent, addStudentToGroup, deleteStudent, topics, updateAttendance } = useCRM();
     const [activeTab, setActiveTab] = useState('umumiy');
     const [showPaymentModal, setShowPaymentModal] = useState(false);
     const [showGroupModal, setShowGroupModal] = useState(false);
     const [showAttendanceModal, setShowAttendanceModal] = useState(false);
-    const [showScoreModal, setShowScoreModal] = useState(false);
     const [isEditing, setIsEditing] = useState(false);
     const [isSaving, setIsSaving] = useState(false);
     const [isRemovingBg, setIsRemovingBg] = useState(false);
@@ -28,6 +95,9 @@ export default function StudentDetails() {
     const [smsData, setSmsData] = useState({ phone: '', type: '' });
     const [showDeleteModal, setShowDeleteModal] = useState(false);
     const [attendanceGroupFilter, setAttendanceGroupFilter] = useState<number | null>(null);
+    const [editingGroupPrice, setEditingGroupPrice] = useState<{ groupId: number, name: string, coursePrice: number } | null>(null);
+    const [customPriceVal, setCustomPriceVal] = useState('');
+    const [customNoteVal, setCustomNoteVal] = useState('');
 
     const handleConfirmDelete = async () => {
         try {
@@ -46,7 +116,7 @@ export default function StudentDetails() {
     const [isMapOpen, setIsMapOpen] = useState(false);
     const [editForm, setEditForm] = useState({
         name: '',
-        status: 'Faol' as 'Faol' | 'Arxiv' | 'Sinov' | 'Bitiruvchi',
+        status: 'Faol' as 'Faol' | 'Arxiv' | 'Sinov' | 'Bitiruvchi' | 'Passiv' | 'Muzlatilgan' | 'Sertifikatli',
         phone: '',
         birthDate: '',
         address: '',
@@ -56,7 +126,14 @@ export default function StudentDetails() {
         motherName: '',
         motherPhone: '',
         transportId: '' as string | number,
-        studentSchool: ''
+        studentSchool: '',
+        privilegeType: 'None',
+        certCategory: '',
+        certSubject: '',
+        certType: '',
+        orgType: '',
+        region: '',
+        district: ''
     });
 
     const student = students.find(s => s.id === Number(id));
@@ -76,14 +153,13 @@ export default function StudentDetails() {
     const studentGroups = groups.filter(g => (student.groups || []).includes(g.id)).map(g => {
         const teacher = teachers.find(t => t.id === g.teacherId);
         const course = courses.find(c => c.id === g.courseId);
-        return { ...g, teacherName: teacher?.name || t('unknown_teacher'), courseName: course?.name || '-' };
+        return { ...g, teacherName: teacher?.name || t('unknown_teacher'), courseName: course?.name || '-', coursePrice: course?.price || 0 };
     });
 
     const studentPayments = payments.filter(p => p.studentId === Number(id)).reverse();
     const studentAttendances = (attendances || [])
         .filter(a => a.studentId === Number(id))
         .sort((a, b) => b.date.localeCompare(a.date));
-    const studentScores = (scores || []).filter(s => s.studentId === Number(id)).reverse();
 
     const handleOpenMap = () => {
         if (!student.location) return;
@@ -104,7 +180,14 @@ export default function StudentDetails() {
             motherName: student.motherName || '',
             motherPhone: student.motherPhone || '',
             transportId: student.transportId || '',
-            studentSchool: student.studentSchool || ''
+            studentSchool: student.studentSchool || '',
+            privilegeType: student.privilegeType || 'None',
+            certCategory: student.certCategory || '',
+            certSubject: student.certSubject || '',
+            certType: student.certType || '',
+            orgType: student.orgType || '',
+            region: student.region || '',
+            district: student.district || ''
         });
         setIsEditing(true);
     };
@@ -202,8 +285,6 @@ export default function StudentDetails() {
         }
     };
 
-    const avgScore = studentScores.length ? (studentScores.reduce((a, b) => a + b.value, 0) / studentScores.length).toFixed(1) : '0';
-    const totalScoresSum = studentScores.reduce((a, b) => a + b.value, 0);
     const attendanceRate = studentAttendances.length ? ((studentAttendances.filter(a => a.status === 'Keldi').length / studentAttendances.length) * 100).toFixed(0) : '0';
     const missedLessonsCount = studentAttendances.filter(a => a.status === 'Kelmapdi').length;
     const missedTopicsCount = studentAttendances.filter(a => a.status === 'Kelmapdi' && !a.caughtUp).length;
@@ -256,6 +337,10 @@ export default function StudentDetails() {
                                             <option value="Faol">{t('status_active')}</option>
                                             <option value="Sinov">{t('status_test')}</option>
                                             <option value="Arxiv">{t('status_archive')}</option>
+                                            <option value="Bitiruvchi">{t('status_graduated')}</option>
+                                            <option value="Passiv">{t('status_passive')}</option>
+                                            <option value="Muzlatilgan">{t('status_frozen')}</option>
+                                            <option value="Sertifikatli">{t('status_certified')}</option>
                                         </select>
                                     </div>
                                     <div>
@@ -282,8 +367,23 @@ export default function StudentDetails() {
                                     </div>
                                     <p className="text-[9px] font-bold text-gray-400 uppercase tracking-widest mt-1">ID: #{student.id}</p>
                                     <div className="mt-4 flex justify-center">
-                                        <span className={`px-2.5 py-0.5 rounded-md text-[8px] font-black border uppercase tracking-wider ${student.status === 'Faol' ? 'bg-emerald-50 text-emerald-600 border-emerald-100 dark:bg-emerald-950/20 dark:text-emerald-400' : 'bg-gray-55 text-gray-400 border-gray-100 dark:bg-gray-900/50'}`}>
-                                            {student.status === 'Faol' ? t('status_active') : student.status === 'Sinov' ? t('status_test') : student.status === 'Arxiv' ? t('status_archive') : student.status}
+                                        <span className={`px-2.5 py-0.5 rounded-md text-[8px] font-black border uppercase tracking-wider ${
+                                            student.status === 'Faol' ? 'bg-emerald-50 text-emerald-600 border-emerald-100 dark:bg-emerald-950/20 dark:text-emerald-400' :
+                                            student.status === 'Sinov' ? 'bg-amber-50 text-amber-600 border-amber-100 dark:bg-amber-950/20 dark:text-amber-400' :
+                                            student.status === 'Muzlatilgan' ? 'bg-sky-50 text-sky-650 border-sky-100 dark:bg-sky-950/20 dark:text-sky-455' :
+                                            student.status === 'Passiv' ? 'bg-rose-50 text-rose-600 border-rose-100 dark:bg-rose-950/20 dark:text-rose-400' :
+                                            student.status === 'Bitiruvchi' ? 'bg-purple-50 text-purple-600 border-purple-100 dark:bg-purple-950/20 dark:text-purple-400' :
+                                            student.status === 'Sertifikatli' ? 'bg-indigo-50 text-indigo-600 border-indigo-100 dark:bg-indigo-950/20 dark:text-indigo-400' :
+                                            'bg-gray-55 text-gray-400 border-gray-100 dark:bg-gray-900/50'
+                                        }`}>
+                                            {student.status === 'Faol' ? t('status_active') : 
+                                             student.status === 'Arxiv' ? t('status_archive') : 
+                                             student.status === 'Sinov' ? t('status_test') : 
+                                             student.status === 'Muzlatilgan' ? t('status_frozen') :
+                                             student.status === 'Passiv' ? t('status_passive') :
+                                             student.status === 'Bitiruvchi' ? t('status_graduated') :
+                                             student.status === 'Sertifikatli' ? t('status_certified') :
+                                             student.status}
                                         </span>
                                     </div>
                                 </>
@@ -348,8 +448,52 @@ export default function StudentDetails() {
                                         <input type="text" value={editForm.address} onChange={e => setEditForm({...editForm, address: e.target.value})} className={inputCls} />
                                     </div>
                                     <div>
-                                        <label className={labelCls}>{t('school_kindergarten')}</label>
+                                        <label className={labelCls}>Ta'lim muassasasi turi</label>
+                                        <select 
+                                            value={editForm.orgType} 
+                                            onChange={e => setEditForm({...editForm, orgType: e.target.value})} 
+                                            className={inputCls}
+                                        >
+                                            <option value="">Tanlang...</option>
+                                            <option value="Maktab">Maktab</option>
+                                            <option value="Bog'cha">Bog'cha</option>
+                                            <option value="Oliy o'quv yurti">Oliy o'quv yurti</option>
+                                            <option value="Kollej / Litsey">Kollej / Litsey</option>
+                                            <option value="Boshqa">Boshqa</option>
+                                        </select>
+                                    </div>
+                                    <div>
+                                        <label className={labelCls}>Muassasa nomi</label>
                                         <input type="text" value={editForm.studentSchool} onChange={e => setEditForm({...editForm, studentSchool: e.target.value})} className={inputCls} placeholder="45-maktab" />
+                                    </div>
+                                    <div className="grid grid-cols-2 gap-2">
+                                        <div>
+                                            <label className={labelCls}>Viloyat</label>
+                                            <select 
+                                                value={editForm.region} 
+                                                onChange={e => setEditForm({...editForm, region: e.target.value, district: ''})} 
+                                                className={inputCls}
+                                            >
+                                                <option value="">Tanlang...</option>
+                                                {Object.keys(UZB_REGIONS).map(r => (
+                                                    <option key={r} value={r}>{r}</option>
+                                                ))}
+                                            </select>
+                                        </div>
+                                        <div>
+                                            <label className={labelCls}>Tuman</label>
+                                            <select 
+                                                value={editForm.district} 
+                                                onChange={e => setEditForm({...editForm, district: e.target.value})} 
+                                                className={inputCls}
+                                                disabled={!editForm.region}
+                                            >
+                                                <option value="">Tanlang...</option>
+                                                {editForm.region && UZB_REGIONS[editForm.region]?.map(d => (
+                                                    <option key={d} value={d}>{d}</option>
+                                                ))}
+                                            </select>
+                                        </div>
                                     </div>
                                     <div className="grid grid-cols-2 gap-2">
                                         <div>
@@ -371,6 +515,86 @@ export default function StudentDetails() {
                                             <input type="tel" value={editForm.motherPhone} onChange={e => setEditForm({...editForm, motherPhone: e.target.value})} className={inputCls} />
                                         </div>
                                     </div>
+                                    <div>
+                                        <label className={labelCls}>Imtiyoz turi</label>
+                                        <select 
+                                            value={editForm.privilegeType} 
+                                            onChange={e => setEditForm({
+                                                ...editForm, 
+                                                privilegeType: e.target.value,
+                                                certCategory: e.target.value === 'Sertifikat' ? editForm.certCategory || 'Milliy' : '',
+                                                certSubject: e.target.value === 'Sertifikat' ? editForm.certSubject : '',
+                                                certType: e.target.value === 'Sertifikat' ? editForm.certType : ''
+                                            })} 
+                                            className={inputCls}
+                                        >
+                                            <option value="None">Mavjud emas</option>
+                                            <option value="Nogironligi bor">Nogironligi bor</option>
+                                            <option value="Harbiy oila">Harbiy oila</option>
+                                            <option value="Xotin-qizlar daftari">Xotin-qizlar daftari</option>
+                                            <option value="Sertifikat">Sertifikat</option>
+                                        </select>
+                                    </div>
+
+                                    {editForm.privilegeType === 'Sertifikat' && (
+                                        <div className="space-y-3 p-3 bg-gray-55 dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800">
+                                            <div>
+                                                <label className={labelCls}>Sertifikat toifasi</label>
+                                                <select 
+                                                    value={editForm.certCategory} 
+                                                    onChange={e => setEditForm({
+                                                        ...editForm, 
+                                                        certCategory: e.target.value,
+                                                        certSubject: e.target.value === 'Milliy' ? editForm.certSubject || 'Matematika' : '',
+                                                        certType: e.target.value === 'Xalqaro' ? editForm.certType || 'IELTS' : ''
+                                                    })} 
+                                                    className={inputCls}
+                                                >
+                                                    <option value="Milliy">Milliy sertifikat</option>
+                                                    <option value="Xalqaro">Xalqaro sertifikat</option>
+                                                </select>
+                                            </div>
+
+                                            {editForm.certCategory === 'Milliy' && (
+                                                <div>
+                                                    <label className={labelCls}>Sertifikat fani</label>
+                                                    <select 
+                                                        value={editForm.certSubject} 
+                                                        onChange={e => setEditForm({...editForm, certSubject: e.target.value})} 
+                                                        className={inputCls}
+                                                    >
+                                                        <option value="">Tanlang...</option>
+                                                        <option value="Matematika">Matematika</option>
+                                                        <option value="Fizika">Fizika</option>
+                                                        <option value="Kimyo">Kimyo</option>
+                                                        <option value="Biologiya">Biologiya</option>
+                                                        <option value="Tarix">Tarix</option>
+                                                        <option value="Ingliz tili">Ingliz tili</option>
+                                                        <option value="Nemis tili">Nemis tili</option>
+                                                        <option value="Rus tili">Rus tili</option>
+                                                        <option value="Ona tili">Ona tili</option>
+                                                    </select>
+                                                </div>
+                                            )}
+
+                                            {editForm.certCategory === 'Xalqaro' && (
+                                                <div>
+                                                    <label className={labelCls}>Sertifikat turi</label>
+                                                    <select 
+                                                        value={editForm.certType} 
+                                                        onChange={e => setEditForm({...editForm, certType: e.target.value})} 
+                                                        className={inputCls}
+                                                    >
+                                                        <option value="">Tanlang...</option>
+                                                        <option value="IELTS">IELTS</option>
+                                                        <option value="SAT">SAT</option>
+                                                        <option value="TOEFL">TOEFL</option>
+                                                        <option value="CEFR">CEFR</option>
+                                                    </select>
+                                                </div>
+                                            )}
+                                        </div>
+                                    )}
                                     <div>
                                         <label className={labelCls}>{t('location')}</label>
                                         <button 
@@ -429,7 +653,13 @@ export default function StudentDetails() {
                                             </div>
                                         )}
                                     </div>
-                                    <InfoRow icon={<BookOpen className="w-3.5 h-3.5" />} label={t('school_kindergarten')} value={student.studentSchool || "-"} />
+                                    {student.orgType && (
+                                        <InfoRow icon={<BookOpen className="w-3.5 h-3.5" />} label="Muassasa turi" value={student.orgType} />
+                                    )}
+                                    <InfoRow icon={<BookOpen className="w-3.5 h-3.5" />} label="Muassasa nomi" value={student.studentSchool || "-"} />
+                                    {(student.region || student.district) && (
+                                        <InfoRow icon={<MapPin className="w-3.5 h-3.5" />} label="Viloyat / Tuman" value={[student.region, student.district].filter(Boolean).join(', ')} />
+                                    )}
                                     <InfoRow icon={<MapPin className="w-3.5 h-3.5" />} label={t('address')} value={student.address} />
                                     {student.location && (
                                         <button 
@@ -441,7 +671,25 @@ export default function StudentDetails() {
                                         </button>
                                     )}
                                     <InfoRow icon={<Clock className="w-3.5 h-3.5" />} label={t('registered_at')} value={student.joinedDate} />
-                                    
+
+                                    {student.privilegeType && student.privilegeType !== 'None' && (
+                                        <div className="flex items-start gap-2.5 p-3 bg-teal-50 dark:bg-teal-950/20 border border-teal-100 dark:border-teal-900/30 rounded-2xl">
+                                            <div className="w-7 h-7 rounded-lg bg-[#1b6b6b]/10 dark:bg-[#1b6b6b]/20 text-[#1b6b6b] flex items-center justify-center shrink-0 animate-pulse">
+                                                <Sparkles size={14} />
+                                            </div>
+                                            <div>
+                                                <p className="text-[10px] font-black text-gray-900 dark:text-white uppercase tracking-tight">
+                                                    Imtiyoz: {student.privilegeType === 'Sertifikat' ? `${student.certCategory} sertifikat` : student.privilegeType}
+                                                </p>
+                                                {student.privilegeType === 'Sertifikat' && (
+                                                    <p className="text-[8px] font-bold text-gray-400 uppercase tracking-widest mt-0.5">
+                                                        {student.certCategory === 'Milliy' ? `Fan: ${student.certSubject || '-'}` : `Turi: ${student.certType || '-'}`}
+                                                    </p>
+                                                )}
+                                            </div>
+                                        </div>
+                                    )}
+
                                     <button 
                                         onClick={() => setShowDeleteModal(true)}
                                         className="w-full mt-4 flex items-center justify-center gap-1.5 px-4 py-3 bg-rose-50 text-rose-600 border border-rose-100 dark:bg-rose-950/20 dark:text-rose-400 dark:border-rose-900/40 text-[9px] font-black uppercase tracking-[0.1em] rounded-xl hover:bg-rose-600 hover:text-white transition-all cursor-pointer"
@@ -458,21 +706,7 @@ export default function StudentDetails() {
                 {/* Right Tab Content */}
                 <div className="lg:col-span-3 space-y-6">
                     {/* Summary Stats */}
-                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
-                        <StatCardV3 
-                            label={t('average_score')} 
-                            value={avgScore}
-                            subValue={t('academic_result')}
-                            icon={<Award className="text-amber-500" size={16} />} 
-                            color="amber"
-                        />
-                        <StatCardV3 
-                            label={t('total_scores')} 
-                            value={totalScoresSum}
-                            subValue={t('total_scores_subtitle')}
-                            icon={<Award className="text-blue-500" size={16} />} 
-                            color="blue"
-                        />
+                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
                         <StatCardV3 
                             label={t('attendance')} 
                             value={`${attendanceRate}%`}
@@ -509,7 +743,6 @@ export default function StudentDetails() {
                             <TabButton label={t('stat_groups')} icon={<Users className="w-3.5 h-3.5" />} active={activeTab === 'courses'} onClick={() => setActiveTab('courses')} />
                             <TabButton label={t('payments_tab')} icon={<CreditCard className="w-3.5 h-3.5" />} active={activeTab === 'tolovlar'} onClick={() => setActiveTab('tolovlar')} />
                             <TabButton label={t('attendance')} icon={<ClipboardCheck className="w-3.5 h-3.5" />} active={activeTab === 'yoqlama'} onClick={() => setActiveTab('yoqlama')} />
-                            <TabButton label={t('scores')} icon={<Award className="w-3.5 h-3.5" />} active={activeTab === 'ballar'} onClick={() => setActiveTab('ballar')} />
                         </div>
 
                         <div className="p-6">
@@ -522,21 +755,58 @@ export default function StudentDetails() {
                                                 {studentGroups.length === 0 ? (
                                                     <p className="text-center py-8 text-[10px] text-gray-400 font-bold uppercase tracking-widest">{t('no_groups_found')}</p>
                                                 ) : (
-                                                    studentGroups.map(group => (
-                                                        <div key={group.id} onClick={() => navigate(`/courses/${group.id}`)} 
-                                                            className="group bg-gray-55 dark:bg-gray-900/30 p-4 rounded-2xl border border-transparent hover:border-gray-100 dark:hover:border-gray-700/50 transition-all cursor-pointer flex items-center justify-between">
-                                                            <div className="flex items-center gap-3">
-                                                                <div className="w-10 h-10 bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-705 rounded-xl flex items-center justify-center text-[#1b6b6b] shrink-0">
-                                                                    <BookOpen size={18} />
+                                                    studentGroups.map(group => {
+                                                        const studentCustomPrice = student.customPrices && typeof student.customPrices === 'object'
+                                                            ? (student.customPrices as Record<string, number>)[group.id]
+                                                            : undefined;
+                                                        return (
+                                                            <div key={group.id} 
+                                                                className="group bg-gray-55 dark:bg-gray-900/30 p-4 rounded-2xl border border-transparent hover:border-gray-100 dark:hover:border-gray-700/50 transition-all flex items-center justify-between">
+                                                                <div className="flex items-center gap-3 cursor-pointer" onClick={() => navigate(`/courses/${group.id}`)}>
+                                                                    <div className="w-10 h-10 bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-705 rounded-xl flex items-center justify-center text-[#1b6b6b] shrink-0">
+                                                                        <BookOpen size={18} />
+                                                                    </div>
+                                                                    <div>
+                                                                        <h5 className="text-xs font-black text-gray-900 dark:text-white group-hover:text-[#1b6b6b] uppercase tracking-tight">{group.name}</h5>
+                                                                        <p className="text-[9px] font-bold text-gray-400 mt-0.5">{group.courseName} &bull; {group.teacherName}</p>
+                                                                    </div>
                                                                 </div>
-                                                                <div>
-                                                                    <h5 className="text-xs font-black text-gray-900 dark:text-white group-hover:text-[#1b6b6b] uppercase tracking-tight">{group.name}</h5>
-                                                                    <p className="text-[9px] font-bold text-gray-400 mt-0.5">{group.courseName} &bull; {group.teacherName}</p>
+                                                                <div className="flex items-center gap-3">
+                                                                    <div className="text-right">
+                                                                        {studentCustomPrice !== undefined ? (
+                                                                            <>
+                                                                                <span className="block text-xs font-black text-[#1b6b6b] tabular-nums">{studentCustomPrice.toLocaleString()} UZS</span>
+                                                                                <span className="block text-[8px] font-extrabold uppercase text-[#1b6b6b]/60 tracking-wider">Imtiyozli narx</span>
+                                                                                {(() => {
+                                                                                    const note = student.customPrices && typeof student.customPrices === 'object'
+                                                                                        ? (student.customPrices as Record<string, any>)['note_' + group.id]
+                                                                                        : null;
+                                                                                    return note ? <span className="block text-[8px] text-gray-400 italic mt-0.5 max-w-[120px] truncate">{note}</span> : null;
+                                                                                })()}
+                                                                            </>
+                                                                        ) : (
+                                                                            <>
+                                                                                <span className="block text-xs font-black text-gray-500 dark:text-gray-400 tabular-nums">{(group.coursePrice || 0).toLocaleString()} UZS</span>
+                                                                                <span className="block text-[8px] font-extrabold uppercase text-gray-400 tracking-wider">Standart narx</span>
+                                                                            </>
+                                                                        )}
+                                                                    </div>
+                                                                    <button 
+                                                                        onClick={() => {
+                                                                            setEditingGroupPrice({ groupId: group.id, name: group.name, coursePrice: group.coursePrice || 0 });
+                                                                            setCustomPriceVal(studentCustomPrice !== undefined ? String(studentCustomPrice) : '');
+                                                                            const existingNote = student.customPrices && typeof student.customPrices === 'object' ? (student.customPrices as Record<string, any>)['note_' + group.id] || '' : '';
+                                                                            setCustomNoteVal(existingNote);
+                                                                        }}
+                                                                        className="p-2 bg-white dark:bg-gray-800 hover:bg-[#1b6b6b]/10 dark:hover:bg-[#1b6b6b]/10 border border-gray-100 dark:border-gray-700 hover:border-[#1b6b6b] rounded-xl text-gray-400 hover:text-[#1b6b6b] transition-all cursor-pointer"
+                                                                        title="Maxsus narx belgilash"
+                                                                    >
+                                                                        <Edit size={12} />
+                                                                    </button>
                                                                 </div>
                                                             </div>
-                                                            <ChevronRight size={16} className="text-gray-300 group-hover:text-[#1b6b6b] transition-colors" />
-                                                        </div>
-                                                    ))
+                                                        );
+                                                    })
                                                 )}
                                             </div>
                                         </div>
@@ -544,20 +814,27 @@ export default function StudentDetails() {
                                         <div className="space-y-4">
                                             <span className="text-[9px] font-black text-gray-400 uppercase tracking-widest block pb-2 border-b border-gray-55 dark:border-gray-700/50">{t('latest_payments')}</span>
                                             <div className="space-y-3">
-                                                {studentPayments.slice(0, 4).map(p => (
-                                                    <div key={p.id} className="flex items-center justify-between p-4 bg-gray-55 dark:bg-gray-900/30 rounded-2xl">
+                                                {studentPayments.slice(0, 4).map(p => {
+                                                    const isDed = p.amount < 0;
+                                                    return (
+                                                    <div key={p.id} className={`flex items-center justify-between p-4 rounded-2xl ${isDed ? 'bg-rose-50/60 dark:bg-rose-950/10 border border-rose-100 dark:border-rose-900/30' : 'bg-gray-55 dark:bg-gray-900/30'}`}>
                                                         <div className="flex items-center gap-3">
-                                                            <div className="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-600 border border-emerald-100 dark:bg-emerald-950/20 dark:text-emerald-400 dark:border-emerald-900/40 flex items-center justify-center shrink-0">
-                                                                <CreditCard size={18} />
+                                                            <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${isDed ? 'bg-rose-50 text-rose-500 border border-rose-100 dark:bg-rose-950/20 dark:text-rose-400 dark:border-rose-900/40' : 'bg-emerald-50 text-emerald-600 border border-emerald-100 dark:bg-emerald-950/20 dark:text-emerald-400 dark:border-emerald-900/40'}`}>
+                                                                {isDed ? <ReceiptText size={18} /> : <CreditCard size={18} />}
                                                             </div>
                                                             <div>
-                                                                <p className="text-xs font-black text-gray-900 dark:text-white">+{p.amount.toLocaleString()} <span className="text-[9px] opacity-60">UZS</span></p>
+                                                                <p className={`text-xs font-black ${isDed ? 'text-rose-600 dark:text-rose-400' : 'text-gray-900 dark:text-white'}`}>
+                                                                    {isDed ? '' : '+'}{p.amount.toLocaleString()} <span className="text-[9px] opacity-60">UZS</span>
+                                                                </p>
                                                                 <p className="text-[9px] font-bold text-gray-400 mt-0.5">{p.date}</p>
                                                             </div>
                                                         </div>
-                                                        <span className="text-[9px] font-black text-gray-600 dark:text-gray-400 bg-white dark:bg-gray-800 px-2.5 py-1 rounded-md border border-gray-100 dark:border-gray-700 uppercase tracking-wider">{p.type === 'Naqd' ? t('type_cash') : p.type === 'Karta' ? t('type_card') : p.type === 'Peyme' ? t('type_payme') : p.type === 'Klik' ? t('type_click') : p.type}</span>
+                                                        <span className={`text-[9px] font-black px-2.5 py-1 rounded-md border uppercase tracking-wider ${isDed ? 'text-rose-500 bg-rose-50 border-rose-100 dark:bg-rose-950/20 dark:border-rose-900/40' : 'text-gray-600 dark:text-gray-400 bg-white dark:bg-gray-800 border-gray-100 dark:border-gray-700'}`}>
+                                                            {isDed ? 'Oylik' : p.type === 'Naqd' ? t('type_cash') : p.type === 'Karta' ? t('type_card') : p.type === 'Peyme' ? t('type_payme') : p.type === 'Klik' ? t('type_click') : p.type}
+                                                        </span>
                                                     </div>
-                                                ))}
+                                                    );
+                                                })}
                                                 {studentPayments.length === 0 && (
                                                     <p className="text-center py-8 text-[10px] text-gray-400 font-bold uppercase tracking-widest">{t('no_payment_history')}</p>
                                                 )}
@@ -677,20 +954,34 @@ export default function StudentDetails() {
                                         </button>
                                     </div>
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                        {studentPayments.map(p => (
-                                            <div key={p.id} className="flex items-center justify-between p-4 bg-gray-55 dark:bg-gray-900/30 rounded-2xl">
+                                        {studentPayments.map(p => {
+                                            const isDeduction = p.amount < 0;
+                                            return (
+                                            <div key={p.id} className={`flex items-center justify-between p-4 rounded-2xl ${isDeduction ? 'bg-rose-50/60 dark:bg-rose-950/10 border border-rose-100 dark:border-rose-900/30' : 'bg-gray-55 dark:bg-gray-900/30'}`}>
                                                 <div className="flex items-center gap-3">
-                                                    <div className="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-600 border border-emerald-100 dark:bg-emerald-950/20 dark:text-emerald-400 dark:border-emerald-900/40 flex items-center justify-center shrink-0">
-                                                        <CreditCard size={16} />
+                                                    <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${isDeduction
+                                                        ? 'bg-rose-50 text-rose-500 border border-rose-100 dark:bg-rose-950/20 dark:text-rose-400 dark:border-rose-900/40'
+                                                        : 'bg-emerald-50 text-emerald-600 border border-emerald-100 dark:bg-emerald-950/20 dark:text-emerald-400 dark:border-emerald-900/40'
+                                                    }`}>
+                                                        {isDeduction ? <ReceiptText size={16} /> : <CreditCard size={16} />}
                                                     </div>
                                                     <div>
-                                                        <p className="text-xs font-black text-gray-900 dark:text-white">{p.amount.toLocaleString()} <span className="text-[9px] opacity-60">UZS</span></p>
+                                                        <p className={`text-xs font-black ${isDeduction ? 'text-rose-600 dark:text-rose-400' : 'text-gray-900 dark:text-white'}`}>
+                                                            {isDeduction ? '' : '+'}{p.amount.toLocaleString()} <span className="text-[9px] opacity-60">UZS</span>
+                                                        </p>
                                                         <p className="text-[9px] font-bold text-gray-400 mt-0.5">{p.date}</p>
+                                                        {p.description && <p className="text-[9px] text-gray-400 mt-0.5 truncate max-w-[140px]">{p.description}</p>}
                                                     </div>
                                                 </div>
-                                                <span className="text-[9px] font-black text-gray-650 dark:text-gray-400 bg-white dark:bg-gray-800 px-2.5 py-1 rounded-md border border-gray-100 dark:border-gray-700 uppercase tracking-wider">{p.type === 'Naqd' ? t('type_cash') : p.type === 'Karta' ? t('type_card') : p.type === 'Peyme' ? t('type_payme') : p.type === 'Klik' ? t('type_click') : p.type}</span>
+                                                <span className={`text-[9px] font-black px-2.5 py-1 rounded-md border uppercase tracking-wider ${isDeduction
+                                                    ? 'text-rose-500 bg-rose-50 border-rose-100 dark:bg-rose-950/20 dark:border-rose-900/40'
+                                                    : 'text-gray-650 dark:text-gray-400 bg-white dark:bg-gray-800 border-gray-100 dark:border-gray-700'
+                                                }`}>
+                                                    {isDeduction ? 'Oylik' : p.type === 'Naqd' ? t('type_cash') : p.type === 'Karta' ? t('type_card') : p.type === 'Peyme' ? t('type_payme') : p.type === 'Klik' ? t('type_click') : p.type}
+                                                </span>
                                             </div>
-                                        ))}
+                                            );
+                                        })}
                                     </div>
                                     {studentPayments.length === 0 && (
                                         <p className="text-center py-12 text-[10px] text-gray-400 font-bold uppercase tracking-widest">{t('no_payments_found')}</p>
@@ -998,38 +1289,6 @@ export default function StudentDetails() {
                                 </div>
                             )}
 
-                            {activeTab === 'ballar' && (
-                                <div className="space-y-6 animate-in fade-in duration-300">
-                                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-5 bg-gray-55 dark:bg-gray-900/40 border border-gray-100 dark:border-gray-700/50 rounded-2xl">
-                                        <div>
-                                            <h4 className="text-xs font-black text-gray-900 dark:text-white uppercase tracking-tight">{t('ratings_results')}</h4>
-                                        </div>
-                                        <button onClick={() => setShowScoreModal(true)}
-                                            className="px-6 py-2.5 bg-[#1b6b6b] hover:bg-[#155252] text-white rounded-xl text-[10px] font-extrabold uppercase tracking-widest shadow-lg shadow-[#1b6b6b]/20 active:scale-95 transition-all text-center cursor-pointer">
-                                            {t('add_score')}
-                                        </button>
-                                    </div>
-                                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                                        {studentScores.map(s => (
-                                            <div key={s.id} className="bg-gray-55 dark:bg-gray-900/30 p-4 rounded-2xl flex items-start gap-3 border border-transparent hover:border-gray-100 dark:hover:border-gray-700/50 transition-all">
-                                                <div className="w-10 h-10 bg-teal-50 dark:bg-teal-950/20 border border-teal-100 dark:border-teal-900/40 rounded-xl flex items-center justify-center text-[#1b6b6b] font-bold text-xs shrink-0">
-                                                    {s.value}
-                                                </div>
-                                                <div className="min-w-0">
-                                                    <p className="text-[8px] font-black text-gray-400 uppercase tracking-widest">{groups.find(g => g.id === s.groupId)?.name || '-'}</p>
-                                                    <p className="text-xs font-black text-gray-900 dark:text-white uppercase tracking-tight mt-0.5">{s.value} {t('score')}</p>
-                                                    {s.comment && (
-                                                        <p className="text-[9px] text-gray-405 italic mt-1">"{s.comment}"</p>
-                                                    )}
-                                                </div>
-                                            </div>
-                                        ))}
-                                    </div>
-                                    {studentScores.length === 0 && (
-                                        <p className="text-center py-12 text-[10px] text-gray-400 font-bold uppercase tracking-widest">{t('no_results_found')}</p>
-                                    )}
-                                </div>
-                            )}
                         </div>
                     </div>
                 </div>
@@ -1051,10 +1310,7 @@ export default function StudentDetails() {
                 <AttendanceAddModal studentId={student.id} studentGroups={studentGroups}
                     onClose={() => setShowAttendanceModal(false)} onAdd={addAttendance} />
             )}
-            {showScoreModal && (
-                <ScoreAddModal studentId={student.id} studentGroups={studentGroups}
-                    onClose={() => setShowScoreModal(false)} onAdd={addScore} />
-            )}
+
             {showSmsModal && (
                 <SmsSendModal 
                     phone={smsData.phone} 
@@ -1097,6 +1353,80 @@ export default function StudentDetails() {
                             >
                                 {t('cancel')}
                             </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {editingGroupPrice && (
+                <div className="fixed inset-0 z-[250] flex items-center justify-center p-4">
+                    <div className="absolute inset-0 bg-gray-900/60 backdrop-blur-sm" onClick={() => setEditingGroupPrice(null)} />
+                    <div className="relative bg-white dark:bg-gray-800 w-full max-w-sm rounded-[2rem] p-8 shadow-2xl overflow-hidden border border-gray-100 dark:border-gray-700/50">
+                        <div className="flex items-center justify-between mb-6 pb-4 border-b border-gray-50 dark:border-gray-700/50">
+                            <div>
+                                <h3 className="text-sm font-black text-gray-900 dark:text-white uppercase tracking-tight">Maxsus narx</h3>
+                                <p className="text-[9px] font-bold text-[#1b6b6b] uppercase tracking-widest mt-0.5">{editingGroupPrice.name}</p>
+                            </div>
+                            <button onClick={() => setEditingGroupPrice(null)} className="w-8 h-8 flex items-center justify-center text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-750 rounded-xl cursor-pointer"><X size={16} /></button>
+                        </div>
+                        <div className="space-y-4">
+                            <div>
+                                <label className="block text-[9px] font-black uppercase text-gray-400 tracking-wider mb-2">Oylik to'lov miqdori (UZS)</label>
+                                <input
+                                    type="number"
+                                    placeholder={String(editingGroupPrice.coursePrice)}
+                                    className="w-full px-4 py-3 bg-gray-55 dark:bg-gray-900 border border-gray-100 dark:border-gray-700 rounded-2xl text-xs font-bold text-gray-900 dark:text-white focus:border-[#1b6b6b] focus:ring-4 focus:ring-[#1b6b6b]/10 outline-none transition-all"
+                                    value={customPriceVal}
+                                    onChange={e => setCustomPriceVal(e.target.value)}
+                                />
+                                <span className="block text-[8px] text-gray-400 font-medium mt-1">Standart narx: {editingGroupPrice.coursePrice.toLocaleString()} UZS</span>
+                            </div>
+                            <div>
+                                <label className="block text-[9px] font-black uppercase text-gray-400 tracking-wider mb-2">Izoh (chegirma sababi)</label>
+                                <input
+                                    type="text"
+                                    placeholder="Masalan: Aka-ukasi bor, Stipendiyachi..."
+                                    className="w-full px-4 py-3 bg-gray-55 dark:bg-gray-900 border border-gray-100 dark:border-gray-700 rounded-2xl text-xs font-medium text-gray-900 dark:text-white focus:border-[#1b6b6b] focus:ring-4 focus:ring-[#1b6b6b]/10 outline-none transition-all"
+                                    value={customNoteVal}
+                                    onChange={e => setCustomNoteVal(e.target.value)}
+                                />
+                            </div>
+                            <div className="flex gap-2 pt-2">
+                                <button
+                                    type="button"
+                                    onClick={async () => {
+                                        const cp = { ...(student.customPrices || {}) };
+                                        delete cp[editingGroupPrice.groupId];
+                                        delete cp['note_' + editingGroupPrice.groupId];
+                                        await updateStudent(student.id, { customPrices: cp });
+                                        setEditingGroupPrice(null);
+                                    }}
+                                    className="flex-1 py-3 bg-rose-50 hover:bg-rose-100 text-rose-600 dark:bg-rose-950/20 dark:text-rose-400 rounded-xl text-[9px] font-black uppercase tracking-wider transition-all cursor-pointer"
+                                >
+                                    O'chirish
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={async () => {
+                                        const val = Number(customPriceVal);
+                                        if (isNaN(val) || val < 0) {
+                                            alert("Noto'g'ri qiymat kiritildi");
+                                            return;
+                                        }
+                                        const cp: Record<string, any> = { ...(student.customPrices || {}), [editingGroupPrice.groupId]: val };
+                                        if (customNoteVal.trim()) {
+                                            cp['note_' + editingGroupPrice.groupId] = customNoteVal.trim();
+                                        } else {
+                                            delete cp['note_' + editingGroupPrice.groupId];
+                                        }
+                                        await updateStudent(student.id, { customPrices: cp });
+                                        setEditingGroupPrice(null);
+                                    }}
+                                    className="flex-1 py-3 bg-[#1b6b6b] hover:bg-[#155252] text-white rounded-xl text-[9px] font-black uppercase tracking-wider transition-all cursor-pointer"
+                                >
+                                    Saqlash
+                                </button>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -1290,60 +1620,6 @@ function AttendanceAddModal({ studentId, studentGroups, onClose, onAdd }: any) {
                                 </button>
                             ))}
                         </div>
-                    </div>
-                    <div className="pt-4 border-t border-dashed border-gray-100 dark:border-gray-700/50">
-                        <button type="submit" className="w-full py-3 bg-[#1b6b6b] hover:bg-[#155252] text-white rounded-xl font-bold text-[10px] uppercase tracking-widest transition-all flex items-center justify-center gap-1.5 shadow-lg shadow-[#1b6b6b]/20 cursor-pointer">
-                            <Save size={14} />
-                            Saqlash
-                        </button>
-                    </div>
-                </form>
-            </div>
-        </div>
-    );
-}
-
-function ScoreAddModal({ studentId, studentGroups, onClose, onAdd }: any) {
-    const [groupId, setGroupId] = useState(studentGroups[0]?.id || '');
-    const [value, setValue] = useState('');
-    const [comment, setComment] = useState('');
-
-    const handleSubmit = (e: React.FormEvent) => {
-        e.preventDefault();
-        if (!groupId) return;
-        onAdd({ studentId, groupId: Number(groupId), date: new Date().toISOString().split('T')[0], value: Number(value), comment });
-        onClose();
-    };
-
-    const labelCls = "block text-[10px] font-extrabold uppercase tracking-widest text-gray-400 mb-2";
-    const inputCls = "w-full px-4 py-3 bg-gray-55 dark:bg-gray-900/50 border border-gray-100 dark:border-gray-700 rounded-2xl text-xs font-bold text-gray-900 dark:text-white focus:border-[#1b6b6b] focus:ring-4 focus:ring-[#1b6b6b]/10 outline-none transition-all";
-
-    return (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
-            <div className="absolute inset-0 bg-gray-900/60 backdrop-blur-sm" onClick={onClose} />
-            <div className="relative bg-white dark:bg-gray-800 w-full max-w-sm rounded-[2rem] shadow-2xl overflow-hidden border border-gray-100 dark:border-gray-700/50" onClick={e => e.stopPropagation()}>
-                <div className="p-6 flex items-center justify-between border-b border-gray-100 dark:border-gray-700/50 bg-gray-55 dark:bg-gray-900/50">
-                    <div>
-                        <h3 className="text-lg font-bold text-gray-900 dark:text-white uppercase tracking-tight">Ball Qo'shish</h3>
-                        <p className="text-[10px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-widest mt-0.5">Natijani kiritish</p>
-                    </div>
-                    <button onClick={onClose} className="w-9 h-9 flex items-center justify-center text-gray-400 hover:bg-white dark:hover:bg-gray-700 rounded-xl cursor-pointer"><XCircle size={18} /></button>
-                </div>
-                <form onSubmit={handleSubmit} className="p-6 space-y-4">
-                    <div>
-                        <label className={labelCls}>KURSNI TANLANG</label>
-                        <select value={groupId} onChange={e => setGroupId(e.target.value)} required className={inputCls}>
-                            <option value="" disabled>Tanlang...</option>
-                            {studentGroups.map((g: any) => <option key={g.id} value={g.id}>{g.name}</option>)}
-                        </select>
-                    </div>
-                    <div>
-                        <label className={labelCls}>BALL (0-100)</label>
-                        <input type="number" value={value} onChange={e => setValue(e.target.value)} required placeholder="85" className={inputCls} />
-                    </div>
-                    <div>
-                        <label className={labelCls}>IZOH (IXTIYORIY)</label>
-                        <input type="text" value={comment} onChange={e => setComment(e.target.value)} placeholder="Imtihon..." className={inputCls} />
                     </div>
                     <div className="pt-4 border-t border-dashed border-gray-100 dark:border-gray-700/50">
                         <button type="submit" className="w-full py-3 bg-[#1b6b6b] hover:bg-[#155252] text-white rounded-xl font-bold text-[10px] uppercase tracking-widest transition-all flex items-center justify-center gap-1.5 shadow-lg shadow-[#1b6b6b]/20 cursor-pointer">

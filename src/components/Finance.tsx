@@ -27,7 +27,8 @@ export default function Finance() {
         amount: 0, category: 'Boshqa', description: '', date: new Date().toISOString().split('T')[0] 
     });
 
-    const totalRevenue = payments.reduce((sum, p) => sum + p.amount, 0);
+    // Only count real cash income (positive payments); negative "oyni yopish" entries are internal accounting
+    const totalRevenue = payments.filter(p => p.amount > 0).reduce((sum, p) => sum + p.amount, 0);
     const totalExpenditure = expenses.reduce((sum, e) => sum + e.amount, 0);
     const profit = totalRevenue - totalExpenditure;
     const activeBalance = students.filter(s => s.balance > 0).reduce((sum, s) => sum + s.balance, 0);
@@ -125,7 +126,7 @@ export default function Finance() {
                                 {payments.length === 0 ? (
                                     <p className="text-center py-12 text-[10px] text-gray-400 font-bold uppercase tracking-widest">To'lovlar mavjud emas</p>
                                 ) : (
-                                    payments.slice(-10).reverse().map(p => (
+                                    payments.filter(p => p.amount > 0).slice(-10).reverse().map(p => (
                                         <div key={p.id} className="flex items-center justify-between p-4 rounded-xl bg-gray-50/50 dark:bg-gray-900/40 border border-transparent hover:border-gray-100 transition-all">
                                             <div>
                                                 <p className="text-xs font-bold text-gray-900 dark:text-white uppercase">{students.find(s => s.id === p.studentId)?.name || 'Noma\'lum'}</p>

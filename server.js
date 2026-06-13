@@ -837,7 +837,7 @@ app.delete('/api/groups/:id/students/:studentId', authenticate, async (req, res,
 app.put('/api/groups/:id', authenticate, async (req, res, next) => {
   try {
     const { id } = req.params;
-    let { studentIds, schoolId, name, teacherId, courseId, schedule, days, room } = req.body;
+    let { studentIds, schoolId, name, teacherId, courseId, schedule, days, room, syllabusId } = req.body;
     
     // Prepare data for Prisma - ONLY include fields that are in the schema
     const prismaData = {};
@@ -846,6 +846,9 @@ app.put('/api/groups/:id', authenticate, async (req, res, next) => {
     if (courseId !== undefined) prismaData.courseId = parseInt(courseId);
     if (schedule !== undefined) prismaData.schedule = schedule;
     if (days !== undefined) prismaData.days = days;
+    if (syllabusId !== undefined) {
+      prismaData.syllabusId = (syllabusId === null || syllabusId === '') ? null : parseInt(syllabusId);
+    }
     
     if (room !== undefined) {
       prismaData.room = (room === null || room === '') ? null : parseInt(room);
@@ -1216,10 +1219,11 @@ app.delete('/api/courses/:id', authenticate, async (req, res, next) => {
 // --- Topics (Syllabus) ---
 app.get('/api/topics', authenticate, async (req, res, next) => {
   try {
-    const { schoolId, courseId } = req.query;
+    const { schoolId, courseId, syllabusId } = req.query;
     if (!schoolId) return res.status(400).json({ error: 'schoolId required' });
     const where = { schoolId: parseInt(schoolId) };
     if (courseId) where.courseId = parseInt(courseId);
+    if (syllabusId) where.syllabusId = parseInt(syllabusId);
     const topics = await prisma.topic.findMany({ where, orderBy: { order: 'asc' } });
     res.json(topics);
   } catch (error) { next(error); }
@@ -1227,14 +1231,15 @@ app.get('/api/topics', authenticate, async (req, res, next) => {
 
 app.post('/api/topics', authenticate, async (req, res, next) => {
   try {
-    const { schoolId, title, description, order, courseId } = req.body;
-    if (!schoolId || !title || !courseId) return res.status(400).json({ error: 'Missing required fields' });
+    const { schoolId, title, description, order, courseId, syllabusId } = req.body;
+    if (!schoolId || !title) return res.status(400).json({ error: 'Missing required fields' });
     const topic = await prisma.topic.create({
       data: {
         title,
         description: description || null,
         order: order ? parseInt(order) : 1,
-        courseId: parseInt(courseId),
+        courseId: courseId ? parseInt(courseId) : null,
+        syllabusId: syllabusId ? parseInt(syllabusId) : null,
         schoolId: parseInt(schoolId)
       }
     });
@@ -1245,12 +1250,13 @@ app.post('/api/topics', authenticate, async (req, res, next) => {
 app.put('/api/topics/:id', authenticate, async (req, res, next) => {
   try {
     const { id } = req.params;
-    const { title, description, order, courseId } = req.body;
+    const { title, description, order, courseId, syllabusId } = req.body;
     const data = {};
     if (title !== undefined) data.title = title;
     if (description !== undefined) data.description = description;
     if (order !== undefined) data.order = parseInt(order);
-    if (courseId !== undefined) data.courseId = parseInt(courseId);
+    if (courseId !== undefined) data.courseId = courseId ? parseInt(courseId) : null;
+    if (syllabusId !== undefined) data.syllabusId = syllabusId ? parseInt(syllabusId) : null;
 
     const topic = await prisma.topic.update({
       where: { id: parseInt(id) },
@@ -1264,6 +1270,60 @@ app.delete('/api/topics/:id', authenticate, async (req, res, next) => {
   try {
     const { id } = req.params;
     await prisma.topic.delete({ where: { id: parseInt(id) } });
+    res.json({ success: true });
+  } catch (error) { next(error); }
+});
+
+// --- Syllabuses (O'quv programmasi) ---
+app.get('/api/syllabuses', authenticate, async (req, res, next) => {
+  try {
+    const { schoolId } = req.query;
+    if (!schoolId) return res.status(400).json({ error: 'schoolId required' });
+    const syllabuses = await prisma.syllabus.findMany({
+      where: { schoolId: parseInt(schoolId) },
+      include: { topics: { orderBy: { order: 'asc' } } }
+    });
+    res.json(syllabuses);
+  } catch (error) { next(error); }
+});
+
+app.post('/api/syllabuses', authenticate, async (req, res, next) => {
+  try {
+    const { schoolId, name, materials } = req.body;
+    if (!schoolId || !name) return res.status(400).json({ error: 'Missing required fields' });
+    const syllabus = await prisma.syllabus.create({
+      data: {
+        name,
+        materials: materials || null,
+        schoolId: parseInt(schoolId)
+      },
+      include: { topics: true }
+    });
+    res.json(syllabus);
+  } catch (error) { next(error); }
+});
+
+app.put('/api/syllabuses/:id', authenticate, async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const { name, materials } = req.body;
+    const data = {};
+    if (name !== undefined) data.name = name;
+    if (materials !== undefined) data.materials = materials;
+
+    const syllabus = await prisma.syllabus.update({
+      where: { id: parseInt(id) },
+      data,
+      include: { topics: { orderBy: { order: 'asc' } } }
+    });
+    res.json(syllabus);
+  } catch (error) { next(error); }
+});
+
+app.delete('/api/syllabuses/:id', authenticate, async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    await prisma.syllabus.delete({ where: { id: parseInt(id) } });
     res.json({ success: true });
   } catch (error) { next(error); }
 });
@@ -1817,7 +1877,7 @@ app.get('/api/init', authenticate, async (req, res, next) => {
       students, teachers, groups, leads, payments, courses, rooms,
       settings, attendances, scores, teacherAttendances, expenses,
       transports, routes, users, questions, exams, examResults, schools,
-      topics
+      topics, syllabuses
     ] = await Promise.all([
       prisma.student.findMany({
         where: whereQuery,
@@ -1857,6 +1917,7 @@ app.get('/api/init', authenticate, async (req, res, next) => {
       prisma.examResult.findMany({ where: whereQuery }),
       prisma.school.findMany({ where: schoolsWhere }),
       prisma.topic.findMany({ where: whereQuery }),
+      prisma.syllabus.findMany({ where: whereQuery, include: { topics: { orderBy: { order: 'asc' } } } }),
     ]);
 
     // Map relations to flat IDs / names just like individual endpoints do
@@ -1877,7 +1938,7 @@ app.get('/api/init', authenticate, async (req, res, next) => {
       leads, payments, courses, rooms,
       settings, attendances, scores, teacherAttendances, expenses,
       transports, routes, users, questions, exams, examResults, schools,
-      topics
+      topics, syllabuses
     });
   } catch (error) { next(error); }
 });

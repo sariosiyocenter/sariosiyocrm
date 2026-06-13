@@ -12,7 +12,7 @@ import GroupAttendanceCalendar from './GroupAttendanceCalendar';
 export default function CourseDetails() {
     const { id } = useParams<{ id: string }>();
     const navigate = useNavigate();
-    const { groups, students, teachers, courses, rooms, attendances, scores, payments, addBatchAttendance, addStudentToGroup, removeStudentFromGroup, addScore, updateGroup, updateCourse, showNotification, topics, addTopic, updateTopic, deleteTopic, addPayment } = useCRM();
+    const { groups, students, teachers, courses, rooms, attendances, payments, addBatchAttendance, addStudentToGroup, removeStudentFromGroup, updateGroup, updateCourse, showNotification, topics, addTopic, updateTopic, deleteTopic, addPayment, syllabuses } = useCRM();
     const [isEditingInfo, setIsEditingInfo] = useState(false);
     const [editForm, setEditForm] = useState({
         teacherId: 0,
@@ -20,15 +20,11 @@ export default function CourseDetails() {
         startTime: '',
         endTime: '',
         room: 0,
-        coursePrice: 0
+        coursePrice: 0,
+        syllabusId: '' as number | ''
     });
     const [activeTab, setActiveTab] = useState('umumiy');
     const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
-    const [isScoreModalOpen, setIsScoreModalOpen] = useState(false);
-    const [selectedStudentForScore, setSelectedStudentForScore] = useState<number | null>(null);
-    const [newScoreValue, setNewScoreValue] = useState('');
-    const [newScoreComment, setNewScoreComment] = useState('');
-    const [newScoreDate, setNewScoreDate] = useState(new Date().toISOString().split('T')[0]);
     const [batchAttendance, setBatchAttendance] = useState<Record<number, string>>({});
     const [isAddStudentModalOpen, setIsAddStudentModalOpen] = useState(false);
     const [studentSearch, setStudentSearch] = useState('');
@@ -48,6 +44,10 @@ export default function CourseDetails() {
         const d = new Date();
         return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
     });
+    const [paymentMonth, setPaymentMonth] = useState(() => {
+        const d = new Date();
+        return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+    });
     const [isProcessing, setIsProcessing] = useState(false);
 
     const group = groups.find(g => g.id === Number(id));
@@ -56,7 +56,7 @@ export default function CourseDetails() {
     const teacher = teachers.find(t => t.id === group.teacherId);
     const course = courses.find(c => c.id === group.courseId);
     const groupStudents = students.filter(s => (group.studentIds || []).includes(s.id));
-    const groupScores = (scores || []).filter(s => s.groupId === group.id);
+
 
     const handleSaveAttendance = async () => {
         const records = Object.entries(batchAttendance).map(([studentId, status]) => ({
@@ -107,24 +107,7 @@ export default function CourseDetails() {
         }
     };
 
-    const handleAddScore = async () => {
-        if (!selectedStudentForScore || !newScoreValue) return;
-        try {
-            await addScore({
-                studentId: selectedStudentForScore,
-                groupId: group.id,
-                date: newScoreDate,
-                value: parseFloat(newScoreValue),
-                comment: newScoreComment
-            });
-            setIsScoreModalOpen(false);
-            setNewScoreValue('');
-            setNewScoreComment('');
-            showNotification("Ball muvaffaqiyatli qo'shildi", "success");
-        } catch (err) {
-            showNotification("Xatolik yuz berdi", "error");
-        }
-    };
+
 
     const handleAddStudent = async (studentId: number) => {
         await addStudentToGroup(group.id, studentId);
@@ -132,7 +115,10 @@ export default function CourseDetails() {
         setStudentSearch('');
     };
 
-    const courseTopics = (topics || []).filter(t => t.courseId === group.courseId).sort((a, b) => a.order - b.order);
+    const activeSyllabus = group.syllabusId ? (syllabuses || []).find(s => s.id === group.syllabusId) : null;
+    const courseTopics = activeSyllabus 
+        ? (topics || []).filter(t => t.syllabusId === activeSyllabus.id).sort((a, b) => a.order - b.order)
+        : (topics || []).filter(t => t.courseId === group.courseId).sort((a, b) => a.order - b.order);
 
     const handleSaveTopic = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -144,12 +130,21 @@ export default function CourseDetails() {
                     order: Number(topicForm.order)
                 });
             } else {
-                await addTopic({
-                    title: topicForm.title,
-                    description: topicForm.description,
-                    order: Number(topicForm.order),
-                    courseId: group.courseId
-                });
+                if (group.syllabusId) {
+                    await addTopic({
+                        title: topicForm.title,
+                        description: topicForm.description,
+                        order: Number(topicForm.order),
+                        syllabusId: group.syllabusId
+                    });
+                } else {
+                    await addTopic({
+                        title: topicForm.title,
+                        description: topicForm.description,
+                        order: Number(topicForm.order),
+                        courseId: group.courseId
+                    });
+                }
             }
             setIsTopicModalOpen(false);
             setEditingTopic(null);
@@ -176,7 +171,11 @@ export default function CourseDetails() {
 
     const openPaymentModal = (studentId: number) => {
         setSelectedStudentForPayment(studentId);
-        setPaymentAmount(String(course?.price || ''));
+        const targetStudent = students.find(s => s.id === studentId);
+        const studentCustomPrice = targetStudent?.customPrices && typeof targetStudent.customPrices === 'object'
+            ? (targetStudent.customPrices as Record<string, number>)[group.id]
+            : undefined;
+        setPaymentAmount(String(studentCustomPrice !== undefined ? studentCustomPrice : (course?.price || '')));
         setPaymentDate(new Date().toISOString().split('T')[0]);
         setPaymentType('Naqd');
         setIsPaymentModalOpen(true);
@@ -200,8 +199,27 @@ export default function CourseDetails() {
         }
     };
 
-    const getPayStatus = (balance: number) => {
-        const price = course?.price || 0;
+    const openCloseModal = () => {
+        setCloseMonthValue(paymentMonth);
+        setIsCloseMonthOpen(true);
+    };
+
+    // Monthly payment status based on actual payment records (not balance)
+    const getMonthlyPayStatus = (studentId: number, price: number) => {
+        if (!price) return null;
+        const sPayments = payments.filter(p => p.studentId === studentId && p.date.startsWith(paymentMonth));
+        const incoming = sPayments.filter(p => p.amount > 0).reduce((s, p) => s + p.amount, 0);
+        const deducted = Math.abs(sPayments.filter(p => p.amount < 0).reduce((s, p) => s + p.amount, 0));
+        const monthClosed = deducted > 0;
+        // prepaid = paid before month close; full = paid after close; partial = not enough; none = nothing paid
+        const status = monthClosed
+            ? (incoming >= deducted ? 'full' : incoming > 0 ? 'partial' : 'debt')
+            : (incoming >= price ? 'prepaid' : incoming > 0 ? 'partial' : 'none');
+        return { incoming, deducted, monthClosed, status };
+    };
+
+    const getPayStatus = (balance: number, customPrice?: number) => {
+        const price = customPrice !== undefined ? customPrice : (course?.price || 0);
         if (!price) return null;
         if (balance >= price) return 'full';
         if (balance > 0) return 'partial';
@@ -218,16 +236,20 @@ export default function CourseDetails() {
         const monthLabel = `${monthNames[month - 1]} ${year}`;
         try {
             for (const st of groupStudents) {
+                const studentCustomPrice = st.customPrices && typeof st.customPrices === 'object'
+                    ? (st.customPrices as Record<string, number>)[group.id]
+                    : undefined;
+                const finalPrice = studentCustomPrice !== undefined ? studentCustomPrice : course.price;
                 await addPayment({
                     studentId: st.id,
-                    amount: -(course.price),
+                    amount: -(finalPrice),
                     type: 'Naqd',
                     date: dateStr,
                     description: `${course.name} — ${monthLabel} oylik hisob`
                 });
             }
             setIsCloseMonthOpen(false);
-            showNotification(`${monthLabel}: ${groupStudents.length} ta o'quvchidan ${course.price.toLocaleString()} UZS hisobdan chiqarildi`, "success");
+            showNotification(`${monthLabel}: ${groupStudents.length} ta o'quvchidan dars to'lovlari muvaffaqiyatli yechildi`, "success");
         } catch {
             showNotification("Xatolik yuz berdi", "error");
         } finally {
@@ -243,7 +265,8 @@ export default function CourseDetails() {
             startTime: start || '',
             endTime: end || '',
             room: group.room || 0,
-            coursePrice: course?.price || 0
+            coursePrice: course?.price || 0,
+            syllabusId: group.syllabusId || ''
         });
         setIsEditingInfo(true);
     };
@@ -254,7 +277,8 @@ export default function CourseDetails() {
                 teacherId: Number(editForm.teacherId),
                 days: editForm.days,
                 schedule: `${editForm.startTime} - ${editForm.endTime}`,
-                room: Number(editForm.room)
+                room: Number(editForm.room),
+                syllabusId: editForm.syllabusId === '' ? null : Number(editForm.syllabusId)
             });
             if (course && editForm.coursePrice !== course.price) {
                 await updateCourse(course.id, { price: Number(editForm.coursePrice) });
@@ -383,7 +407,6 @@ export default function CourseDetails() {
                 <div className="flex px-4 bg-gray-55 dark:bg-gray-900/50 border-b border-gray-100 dark:border-gray-700/50 gap-2">
                     <TabButton label="Umumiy" icon={<Users size={14} />} active={activeTab === 'umumiy'} onClick={() => setActiveTab('umumiy')} />
                     <TabButton label="Yo'qlama" icon={<ClipboardCheck size={14} />} active={activeTab === 'yoqlama'} onClick={() => setActiveTab('yoqlama')} />
-                    <TabButton label="Ballar" icon={<Award size={14} />} active={activeTab === 'ballar'} onClick={() => setActiveTab('ballar')} />
                     <TabButton label="To'lovlar" icon={<CreditCard size={14} />} active={activeTab === 'tolovlar'} onClick={() => setActiveTab('tolovlar')} />
                     <TabButton label="Mavzular" icon={<BookOpen size={14} />} active={activeTab === 'mavzular'} onClick={() => setActiveTab('mavzular')} />
                 </div>
@@ -391,7 +414,7 @@ export default function CourseDetails() {
                 <div className="p-6">
                     {activeTab === 'umumiy' && (
                         <div className="space-y-8 animate-in fade-in duration-300">
-                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                                 <StatCardV3 
                                     label="O'quvchilar" 
                                     value={groupStudents.length}
@@ -405,13 +428,6 @@ export default function CourseDetails() {
                                     subValue="O'rtacha ko'rsatkich"
                                     icon={<ClipboardCheck className="text-emerald-500" size={16} />} 
                                     color="emerald"
-                                />
-                                <StatCardV3 
-                                    label="O'rtacha Ball" 
-                                    value="86"
-                                    subValue="Guruh natijasi"
-                                    icon={<Award className="text-amber-500" size={16} />} 
-                                    color="amber"
                                 />
                                 <StatCardV3 
                                     label="Amaliy Darslar" 
@@ -565,6 +581,19 @@ export default function CourseDetails() {
                                                         className={inputCls}
                                                     />
                                                 </div>
+                                                <div>
+                                                    <label className={labelCls}>O'quv programmasi (Syllabus)</label>
+                                                    <select
+                                                        value={editForm.syllabusId}
+                                                        onChange={e => setEditForm({ ...editForm, syllabusId: e.target.value === '' ? '' : Number(e.target.value) })}
+                                                        className={inputCls}
+                                                    >
+                                                        <option value="">Faol dastur yo'q (Kurs mavzulari)</option>
+                                                        {syllabuses.map(s => (
+                                                            <option key={s.id} value={s.id}>{s.name}</option>
+                                                        ))}
+                                                    </select>
+                                                </div>
                                             </>
                                         ) : (
                                             <>
@@ -572,6 +601,7 @@ export default function CourseDetails() {
                                                 <InfoItem icon={<Clock size={16} />} label="Vaqt" value={group.schedule} />
                                                 <InfoItem icon={<Presentation size={16} />} label="Xona" value={rooms.find(r => r.id === group.room)?.name || `#${group.room || '-'}`} />
                                                 <InfoItem icon={<DollarSign size={16} />} label="Kurs narxi" value={course?.price ? `${course.price.toLocaleString()} UZS` : "Belgilanmagan"} />
+                                                <InfoItem icon={<BookOpen size={16} />} label="O'quv programmasi" value={activeSyllabus ? activeSyllabus.name : "Kurs mavzulari (Dastursiz)"} />
                                             </>
                                         )}
                                     </div>
@@ -715,78 +745,72 @@ export default function CourseDetails() {
                         </div>
                     )}
 
-                    {activeTab === 'ballar' && (
-                        <div className="space-y-6 animate-in duration-305">
-                            <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest block pb-2 border-b border-gray-55 dark:border-gray-700/50">O'quvchilar Natijalari</span>
-                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-                                {groupStudents.map(s => {
-                                    const studentScores = groupScores.filter(sc => sc.studentId === s.id);
-                                    const avgScore = studentScores.length ? (studentScores.reduce((a, b) => a + b.value, 0) / studentScores.length).toFixed(1) : '-';
-                                    return (
-                                        <div key={s.id} className="bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700/50 p-5 rounded-3xl hover:shadow-md transition-all group">
-                                            <div className="flex items-center justify-between mb-4">
-                                                <div className="flex-1 pr-2 truncate">
-                                                    <h4 className="text-xs font-black text-gray-900 dark:text-white uppercase tracking-tight group-hover:text-[#1b6b6b] transition-colors">{s.name}</h4>
-                                                    <button 
-                                                        onClick={() => {
-                                                            setSelectedStudentForScore(s.id);
-                                                            setIsScoreModalOpen(true);
-                                                        }}
-                                                        className="mt-2.5 flex items-center gap-1 px-2.5 py-1.5 bg-teal-50 dark:bg-teal-950/20 text-[9px] font-black text-[#1b6b6b] uppercase tracking-wider hover:bg-[#1b6b6b] hover:text-white rounded-lg transition-all border border-teal-100 dark:border-teal-900/40 cursor-pointer"
-                                                    >
-                                                        <Plus size={12} />
-                                                        Ball qo'shish
-                                                    </button>
-                                                </div>
-                                                <div className="w-10 h-10 bg-teal-50 dark:bg-teal-950/20 border border-teal-100 dark:border-teal-900/40 rounded-xl flex items-center justify-center text-[#1b6b6b] font-bold text-xs shrink-0">
-                                                    {avgScore}
-                                                </div>
-                                            </div>
-                                            <div className="space-y-2 max-h-48 overflow-y-auto pr-1 custom-scrollbar">
-                                                {studentScores.map(sc => (
-                                                    <div key={sc.id} className="flex items-center justify-between py-2 border-b border-dashed border-gray-55 dark:border-gray-700 last:border-0">
-                                                        <span className="text-[9px] font-bold text-gray-400 uppercase tracking-widest">{sc.date}</span>
-                                                        <span className="text-[9px] font-black text-gray-900 dark:text-white bg-gray-50 dark:bg-gray-900 px-2 py-0.5 rounded border border-gray-100 dark:border-gray-750 tabular-nums">{sc.value} B</span>
-                                                    </div>
-                                                ))}
-                                                {studentScores.length === 0 && (
-                                                    <p className="py-6 text-center text-[9px] text-gray-400 font-bold uppercase tracking-widest italic">Ballar kiritilmagan</p>
-                                                )}
-                                            </div>
-                                        </div>
-                                    );
-                                })}
-                                {groupStudents.length === 0 && (
-                                    <p className="col-span-full py-12 text-center text-[10px] text-gray-400 font-bold uppercase tracking-widest">Bu kursda o'quvchilar yo'q</p>
-                                )}
-                            </div>
-                        </div>
-                    )}
+
 
                     {activeTab === 'tolovlar' && (() => {
                         const price = course?.price || 0;
-                        const totalExpected = groupStudents.length * price;
-                        const totalPaid = groupStudents.reduce((sum, s) => sum + Math.max(0, s.balance), 0);
-                        const totalDebt = groupStudents.reduce((sum, s) => sum + Math.abs(Math.min(0, s.balance)), 0);
-                        const fullPaid = groupStudents.filter(s => price && s.balance >= price).length;
-                        const partial = groupStudents.filter(s => price && s.balance > 0 && s.balance < price).length;
-                        const debtors = groupStudents.filter(s => s.balance <= 0).length;
+
+                        const getStudentPrice = (s: typeof groupStudents[0]) => {
+                            const cp = s.customPrices && typeof s.customPrices === 'object'
+                                ? (s.customPrices as Record<string, number>)[group.id]
+                                : undefined;
+                            return cp !== undefined ? cp : price;
+                        };
+
+                        const totalExpected = groupStudents.reduce((sum, s) => sum + getStudentPrice(s), 0);
+
+                        // Monthly stats based on actual payment records
+                        const monthGroupPayments = payments.filter(p =>
+                            (group.studentIds || []).includes(p.studentId) &&
+                            p.date.startsWith(paymentMonth)
+                        );
+                        const totalIncoming = monthGroupPayments.filter(p => p.amount > 0).reduce((s, p) => s + p.amount, 0);
+                        const totalDeducted = Math.abs(monthGroupPayments.filter(p => p.amount < 0).reduce((s, p) => s + p.amount, 0));
+                        const monthIsClosed = totalDeducted > 0;
+
+                        const fullPaid = groupStudents.filter(s => {
+                            const ms = getMonthlyPayStatus(s.id, getStudentPrice(s));
+                            return ms?.status === 'full' || ms?.status === 'prepaid';
+                        }).length;
+                        const partial = groupStudents.filter(s => {
+                            const ms = getMonthlyPayStatus(s.id, getStudentPrice(s));
+                            return ms?.status === 'partial';
+                        }).length;
+                        const debtors = groupStudents.filter(s => {
+                            const ms = getMonthlyPayStatus(s.id, getStudentPrice(s));
+                            return ms?.status === 'debt' || ms?.status === 'none';
+                        }).length;
 
                         return (
                         <div className="space-y-6 animate-in fade-in duration-300">
-                            {/* Header row with close-month button */}
-                            {price > 0 && (
-                            <div className="flex items-center justify-between">
-                                <h3 className="text-sm font-bold text-gray-700 dark:text-gray-300">To'lovlar holati</h3>
-                                <button
-                                    onClick={() => setIsCloseMonthOpen(true)}
-                                    className="flex items-center gap-2 px-4 py-2 bg-violet-600 hover:bg-violet-700 text-white text-xs font-bold rounded-xl transition-colors shadow-sm"
-                                >
-                                    <ReceiptText size={14} />
-                                    Oyni yopish
-                                </button>
+                            {/* Header row with month selector and close-month button */}
+                            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                                <div className="flex items-center gap-3">
+                                    <h3 className="text-sm font-bold text-gray-700 dark:text-gray-300">To'lovlar holati</h3>
+                                    {monthIsClosed && (
+                                        <span className="text-[8px] font-black uppercase tracking-wider px-2 py-0.5 bg-violet-50 text-violet-600 border border-violet-100 dark:bg-violet-950/20 dark:text-violet-400 dark:border-violet-900/40 rounded-md">
+                                            Yopilgan
+                                        </span>
+                                    )}
+                                </div>
+                                <div className="flex items-center gap-2">
+                                    <input
+                                        type="month"
+                                        value={paymentMonth}
+                                        onChange={e => setPaymentMonth(e.target.value)}
+                                        className="px-3 py-1.5 text-xs font-semibold bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl outline-none focus:ring-2 focus:ring-violet-500/20 focus:border-violet-400"
+                                    />
+                                    {price > 0 && (
+                                    <button
+                                        onClick={openCloseModal}
+                                        className="flex items-center gap-2 px-4 py-2 bg-violet-600 hover:bg-violet-700 text-white text-xs font-bold rounded-xl transition-colors shadow-sm"
+                                    >
+                                        <ReceiptText size={14} />
+                                        Oyni yopish
+                                    </button>
+                                    )}
+                                </div>
                             </div>
-                            )}
                             {/* Summary stats */}
                             {price > 0 && (
                             <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
@@ -796,9 +820,9 @@ export default function CourseDetails() {
                                     <p className="text-[9px] font-bold text-gray-400 uppercase">UZS / oy</p>
                                 </div>
                                 <div className="bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700/50 rounded-2xl p-4 space-y-1">
-                                    <span className="text-[9px] font-bold text-gray-400 uppercase tracking-widest">Kutilgan</span>
-                                    <p className="text-sm font-black text-gray-900 dark:text-white tabular-nums">{totalExpected.toLocaleString()}</p>
-                                    <p className="text-[9px] font-bold text-gray-400 uppercase">{groupStudents.length} ta o'q.</p>
+                                    <span className="text-[9px] font-bold text-gray-400 uppercase tracking-widest">Bu oy tushum</span>
+                                    <p className="text-sm font-black text-gray-900 dark:text-white tabular-nums">{totalIncoming.toLocaleString()}</p>
+                                    <p className="text-[9px] font-bold text-gray-400 uppercase">/ {totalExpected.toLocaleString()} UZS</p>
                                 </div>
                                 <div className="bg-emerald-50 dark:bg-emerald-950/20 border border-emerald-100 dark:border-emerald-900/40 rounded-2xl p-4 space-y-1">
                                     <span className="text-[9px] font-bold text-emerald-600 dark:text-emerald-400 uppercase tracking-widest">To'liq</span>
@@ -826,16 +850,22 @@ export default function CourseDetails() {
                                             <tr className="bg-gray-55 dark:bg-gray-900 border-b border-gray-100 dark:border-gray-700/50">
                                                 <th className="p-4 text-[9px] font-black text-gray-400 uppercase tracking-widest">O'quvchi</th>
                                                 {price > 0 && <th className="p-4 text-[9px] font-black text-gray-400 uppercase tracking-widest text-right">Kurs narxi</th>}
-                                                <th className="p-4 text-[9px] font-black text-gray-400 uppercase tracking-widest text-right">Joriy balans</th>
-                                                {price > 0 && <th className="p-4 text-[9px] font-black text-gray-400 uppercase tracking-widest text-right">Qarz / Ortiqcha</th>}
+                                                <th className="p-4 text-[9px] font-black text-gray-400 uppercase tracking-widest text-right">Bu oy to'lov</th>
+                                                {price > 0 && <th className="p-4 text-[9px] font-black text-gray-400 uppercase tracking-widest text-right">Farq</th>}
                                                 <th className="p-4 text-[9px] font-black text-gray-400 uppercase tracking-widest text-center">Status</th>
                                                 <th className="p-4 w-12 text-center"></th>
                                             </tr>
                                         </thead>
                                         <tbody className="divide-y divide-gray-100 dark:divide-gray-800">
                                             {groupStudents.map(s => {
-                                                const payStatus = getPayStatus(s.balance);
-                                                const diff = price ? s.balance - price : 0;
+                                                const studentCustomPrice = s.customPrices && typeof s.customPrices === 'object'
+                                                    ? (s.customPrices as Record<string, number>)[group.id]
+                                                    : undefined;
+                                                const finalPrice = studentCustomPrice !== undefined ? studentCustomPrice : price;
+                                                const ms = getMonthlyPayStatus(s.id, finalPrice);
+                                                const payStatus = ms?.status || null;
+                                                const monthlyIncoming = ms?.incoming || 0;
+                                                const diff = finalPrice ? monthlyIncoming - finalPrice : 0;
                                                 return (
                                                 <tr key={s.id} className="hover:bg-gray-50/30 transition-colors group cursor-pointer" onClick={() => navigate(`/students/${s.id}`)}>
                                                     <td className="p-4">
@@ -851,12 +881,17 @@ export default function CourseDetails() {
                                                     </td>
                                                     {price > 0 && (
                                                         <td className="p-4 text-right">
-                                                            <span className="text-[10px] font-black text-gray-600 dark:text-gray-300 tabular-nums">{price.toLocaleString()} UZS</span>
+                                                            <span className="text-[10px] font-black text-gray-600 dark:text-gray-300 tabular-nums">
+                                                                {finalPrice.toLocaleString()} UZS
+                                                                {studentCustomPrice !== undefined && (
+                                                                    <span className="block text-[8px] text-[#1b6b6b] font-bold lowercase tracking-tight">(maxsus)</span>
+                                                                )}
+                                                            </span>
                                                         </td>
                                                     )}
                                                     <td className="p-4 text-right">
-                                                        <span className={`text-[10px] font-black tabular-nums ${s.balance >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'}`}>
-                                                            {s.balance.toLocaleString()} UZS
+                                                        <span className={`text-[10px] font-black tabular-nums ${monthlyIncoming > 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-gray-400'}`}>
+                                                            {monthlyIncoming.toLocaleString()} UZS
                                                         </span>
                                                     </td>
                                                     {price > 0 && (
@@ -868,11 +903,18 @@ export default function CourseDetails() {
                                                     )}
                                                     <td className="p-4 text-center">
                                                         <span className={`text-[8px] font-black px-2.5 py-1 rounded-md border uppercase tracking-wider ${
-                                                            payStatus === 'full' ? 'text-emerald-600 bg-emerald-50 border-emerald-100 dark:bg-emerald-950/20 dark:text-emerald-400' :
-                                                            payStatus === 'partial' ? 'text-amber-600 bg-amber-50 border-amber-100 dark:bg-amber-950/20 dark:text-amber-400' :
-                                                            'text-rose-600 bg-rose-50 border-rose-100 dark:bg-rose-950/20 dark:text-rose-400'
+                                                            payStatus === 'full' || payStatus === 'prepaid'
+                                                                ? 'text-emerald-600 bg-emerald-50 border-emerald-100 dark:bg-emerald-950/20 dark:text-emerald-400 dark:border-emerald-900/40' :
+                                                            payStatus === 'partial'
+                                                                ? 'text-amber-600 bg-amber-50 border-amber-100 dark:bg-amber-950/20 dark:text-amber-400 dark:border-amber-900/40' :
+                                                            payStatus === 'debt'
+                                                                ? 'text-rose-600 bg-rose-50 border-rose-100 dark:bg-rose-950/20 dark:text-rose-400 dark:border-rose-900/40' :
+                                                                'text-gray-400 bg-gray-50 border-gray-100 dark:bg-gray-900 dark:border-gray-700'
                                                         }`}>
-                                                            {payStatus === 'full' ? "To'liq" : payStatus === 'partial' ? 'Qisman' : 'Qarzdor'}
+                                                            {payStatus === 'full' || payStatus === 'prepaid' ? "To'liq" :
+                                                             payStatus === 'partial' ? 'Qisman' :
+                                                             payStatus === 'debt' ? 'Qarzdor' :
+                                                             "To'lamagan"}
                                                         </span>
                                                     </td>
                                                     <td className="p-4 text-center" onClick={e => e.stopPropagation()}>
@@ -1017,38 +1059,7 @@ export default function CourseDetails() {
             </div>
 
             {/* Add Score Modal */}
-            {isScoreModalOpen && (
-                <div className="fixed inset-0 z-[200] flex items-center justify-center p-4">
-                    <div className="absolute inset-0 bg-gray-900/60 backdrop-blur-sm" onClick={() => setIsScoreModalOpen(false)} />
-                    <div className="relative bg-white dark:bg-gray-800 rounded-[2rem] border border-gray-100 dark:border-gray-700/50 shadow-2xl w-full max-w-sm p-8">
-                        <div className="flex items-center justify-between mb-6 pb-4 border-b border-gray-50 dark:border-gray-700/50">
-                            <div>
-                                <h3 className="text-lg font-black text-gray-900 dark:text-white uppercase tracking-tight">Ball qo'shish</h3>
-                                <p className="text-[10px] font-bold text-[#1b6b6b] uppercase tracking-widest mt-0.5">{students.find(s => s.id === selectedStudentForScore)?.name}</p>
-                            </div>
-                            <button onClick={() => setIsScoreModalOpen(false)} className="w-9 h-9 flex items-center justify-center text-gray-400 hover:bg-gray-55 dark:hover:bg-gray-700 rounded-xl cursor-pointer"><XCircle size={18} /></button>
-                        </div>
-                        <div className="space-y-4">
-                            <div>
-                                <label className={labelCls}>Ball miqdori</label>
-                                <input type="number" placeholder="Masalan: 85" value={newScoreValue} onChange={e => setNewScoreValue(e.target.value)} className={inputCls} />
-                            </div>
-                            <div>
-                                <label className={labelCls}>Sana</label>
-                                <input type="date" value={newScoreDate} onChange={e => setNewScoreDate(e.target.value)} className={inputCls} />
-                            </div>
-                            <div>
-                                <label className={labelCls}>Izoh (ixtiyoriy)</label>
-                                <textarea placeholder="Darsdagi faollik..." value={newScoreComment} onChange={e => setNewScoreComment(e.target.value)} className={inputCls + " min-h-[80px] resize-none"} />
-                            </div>
-                            <button onClick={handleAddScore} className="w-full py-3 bg-[#1b6b6b] hover:bg-[#155252] text-white rounded-xl font-bold uppercase tracking-widest text-[10px] shadow-lg shadow-[#1b6b6b]/20 transition-all cursor-pointer flex items-center justify-center gap-1.5">
-                                <Check size={14} />
-                                Saqlash
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            )}
+
 
             {/* Add Student Modal */}
             {isAddStudentModalOpen && (
@@ -1252,7 +1263,7 @@ export default function CourseDetails() {
                             <div className="flex items-center gap-3 bg-violet-50 dark:bg-violet-950/20 border border-violet-100 dark:border-violet-900/40 rounded-2xl p-3">
                                 <AlertTriangle size={15} className="text-violet-600 shrink-0" />
                                 <p className="text-xs text-violet-700 dark:text-violet-300">
-                                    Har bir o'quvchi balansidan <span className="font-black">{course.price.toLocaleString()} UZS</span> ayiriladi
+                                    Har bir o'quvchidan ularning <span className="font-black">kurs narxi</span> miqdorida ayiriladi (maxsus narxlar hisobga olinadi)
                                 </p>
                             </div>
 
@@ -1263,11 +1274,20 @@ export default function CourseDetails() {
                                 </div>
                                 <div className="max-h-48 overflow-y-auto divide-y divide-gray-100 dark:divide-gray-700/50">
                                     {groupStudents.map(st => {
-                                        const newBalance = st.balance - course.price;
+                                        const stCustomPrice = st.customPrices && typeof st.customPrices === 'object'
+                                            ? (st.customPrices as Record<string, number>)[group.id]
+                                            : undefined;
+                                        const stPrice = stCustomPrice !== undefined ? stCustomPrice : course.price;
+                                        const newBalance = st.balance - stPrice;
                                         const willDebt = newBalance < 0;
                                         return (
                                             <div key={st.id} className="flex items-center justify-between px-4 py-2.5">
-                                                <span className="text-xs font-semibold text-gray-700 dark:text-gray-300">{st.name}</span>
+                                                <div>
+                                                    <span className="text-xs font-semibold text-gray-700 dark:text-gray-300">{st.name}</span>
+                                                    {stCustomPrice !== undefined && (
+                                                        <span className="ml-2 text-[9px] font-bold text-[#1b6b6b]">({stPrice.toLocaleString()} UZS)</span>
+                                                    )}
+                                                </div>
                                                 <div className="flex items-center gap-2 text-[11px] tabular-nums">
                                                     <span className="text-gray-400">{st.balance.toLocaleString()}</span>
                                                     <span className="text-gray-300">→</span>

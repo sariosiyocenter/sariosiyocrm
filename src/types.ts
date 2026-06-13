@@ -7,7 +7,7 @@ export interface Student {
     birthDate: string;
     address: string;
     location?: string;
-    status: 'Faol' | 'Arxiv' | 'Sinov' | 'Bitiruvchi';
+    status: 'Faol' | 'Passiv' | 'Muzlatilgan' | 'Sertifikatli';
     joinedDate: string;
     balance: number;
     photo?: string;
@@ -23,6 +23,14 @@ export interface Student {
     leaveReason?: string;
     transportId?: number | null;
     studentSchool?: string;
+    privilegeType?: string;
+    certCategory?: string;
+    certSubject?: string;
+    certType?: string;
+    customPrices?: any;
+    orgType?: string;
+    region?: string;
+    district?: string;
 }
 
 export interface User {
@@ -60,6 +68,7 @@ export interface Group {
     days: string; // e.g., "Juft kunlar"
     studentIds: number[];
     room?: number;
+    syllabusId?: number | null;
     schoolId: number;
 }
 
@@ -81,6 +90,13 @@ export interface Lead {
     address?: string;
     notes?: string;
     photo?: string;
+    privilegeType?: string;
+    certCategory?: string;
+    certSubject?: string;
+    certType?: string;
+    orgType?: string;
+    region?: string;
+    district?: string;
 }
 
 export interface Payment {
@@ -192,8 +208,17 @@ export interface Topic {
     title: string;
     description?: string;
     order: number;
-    courseId: number;
+    courseId?: number | null;
+    syllabusId?: number | null;
     schoolId: number;
+}
+
+export interface Syllabus {
+    id: number;
+    name: string;
+    materials?: string | null;
+    schoolId: number;
+    topics?: Topic[];
 }
 
 export interface Score {
@@ -232,6 +257,7 @@ export interface CRMState {
     routes: Route[];
     users: User[];
     selectedSchoolId: number | null;
+    syllabuses: Syllabus[];
     settings: {
         id: number;
         schoolId: number;
