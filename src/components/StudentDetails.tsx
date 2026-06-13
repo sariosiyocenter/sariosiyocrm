@@ -14,7 +14,7 @@ export default function StudentDetails() {
     const { id } = useParams<{ id: string }>();
     const navigate = useNavigate();
     const { t } = useLang();
-    const { students, groups, teachers, courses, payments, attendances, scores, transports, addPayment, addAttendance, addScore, updateStudent, addStudentToGroup, deleteStudent } = useCRM();
+    const { students, groups, teachers, courses, payments, attendances, scores, transports, addPayment, addAttendance, addScore, updateStudent, addStudentToGroup, deleteStudent, topics, updateAttendance } = useCRM();
     const [activeTab, setActiveTab] = useState('umumiy');
     const [showPaymentModal, setShowPaymentModal] = useState(false);
     const [showGroupModal, setShowGroupModal] = useState(false);
@@ -27,6 +27,7 @@ export default function StudentDetails() {
     const [showSmsModal, setShowSmsModal] = useState(false);
     const [smsData, setSmsData] = useState({ phone: '', type: '' });
     const [showDeleteModal, setShowDeleteModal] = useState(false);
+    const [attendanceGroupFilter, setAttendanceGroupFilter] = useState<number | null>(null);
 
     const handleConfirmDelete = async () => {
         try {
@@ -79,7 +80,9 @@ export default function StudentDetails() {
     });
 
     const studentPayments = payments.filter(p => p.studentId === Number(id)).reverse();
-    const studentAttendances = (attendances || []).filter(a => a.studentId === Number(id)).reverse();
+    const studentAttendances = (attendances || [])
+        .filter(a => a.studentId === Number(id))
+        .sort((a, b) => b.date.localeCompare(a.date));
     const studentScores = (scores || []).filter(s => s.studentId === Number(id)).reverse();
 
     const handleOpenMap = () => {
@@ -200,7 +203,11 @@ export default function StudentDetails() {
     };
 
     const avgScore = studentScores.length ? (studentScores.reduce((a, b) => a + b.value, 0) / studentScores.length).toFixed(1) : '0';
+    const totalScoresSum = studentScores.reduce((a, b) => a + b.value, 0);
     const attendanceRate = studentAttendances.length ? ((studentAttendances.filter(a => a.status === 'Keldi').length / studentAttendances.length) * 100).toFixed(0) : '0';
+    const missedLessonsCount = studentAttendances.filter(a => a.status === 'Kelmapdi').length;
+    const missedTopicsCount = studentAttendances.filter(a => a.status === 'Kelmapdi' && !a.caughtUp).length;
+    const caughtUpTopicsCount = studentAttendances.filter(a => a.status === 'Kelmapdi' && a.caughtUp).length;
 
     const labelCls = "block text-[10px] font-extrabold uppercase tracking-widest text-gray-400 mb-2";
     const inputCls = "w-full px-4 py-3 bg-gray-55 dark:bg-gray-900/50 border border-gray-100 dark:border-gray-700 rounded-2xl text-xs font-bold text-gray-900 dark:text-white focus:border-[#1b6b6b] focus:ring-4 focus:ring-[#1b6b6b]/10 outline-none transition-all";
@@ -451,13 +458,20 @@ export default function StudentDetails() {
                 {/* Right Tab Content */}
                 <div className="lg:col-span-3 space-y-6">
                     {/* Summary Stats */}
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
                         <StatCardV3 
                             label={t('average_score')} 
                             value={avgScore}
                             subValue={t('academic_result')}
                             icon={<Award className="text-amber-500" size={16} />} 
                             color="amber"
+                        />
+                        <StatCardV3 
+                            label={t('total_scores')} 
+                            value={totalScoresSum}
+                            subValue={t('total_scores_subtitle')}
+                            icon={<Award className="text-blue-500" size={16} />} 
+                            color="blue"
                         />
                         <StatCardV3 
                             label={t('attendance')} 
@@ -467,18 +481,25 @@ export default function StudentDetails() {
                             color="emerald"
                         />
                         <StatCardV3 
-                            label={t('stat_groups')} 
-                            value={studentGroups.length}
-                            subValue={t('active_courses')}
-                            icon={<Users className="text-[#1b6b6b]" size={16} />} 
-                            color="teal"
+                            label={t('missed_lessons')} 
+                            value={missedLessonsCount}
+                            subValue={t('missed_lessons_subtitle')}
+                            icon={<XCircle className="text-rose-500" size={16} />} 
+                            color="rose"
                         />
                         <StatCardV3 
-                            label={t('payments_tab')} 
-                            value={studentPayments.length}
-                            subValue={t('total_transactions')}
-                            icon={<CreditCard className="text-rose-500" size={16} />} 
-                            color="rose"
+                            label={t('missed_topics')} 
+                            value={missedTopicsCount}
+                            subValue={t('missed_topics_subtitle')}
+                            icon={<BookOpen className="text-violet-500" size={16} />} 
+                            color="violet"
+                        />
+                        <StatCardV3 
+                            label={t('caught_up_topics')} 
+                            value={caughtUpTopicsCount}
+                            subValue={t('caught_up_topics_subtitle')}
+                            icon={<CheckCircle className="text-teal-500" size={16} />} 
+                            color="teal"
                         />
                     </div>
 
@@ -542,6 +563,104 @@ export default function StudentDetails() {
                                                 )}
                                             </div>
                                         </div>
+                                    </div>
+
+                                    {/* Qoldirilgan va yopilgan mavzular section */}
+                                    <div className="space-y-4 pt-6 border-t border-dashed border-gray-150 dark:border-gray-700/50">
+                                        <div className="flex items-center justify-between">
+                                            <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">{t('missed_and_closed_topics')}</span>
+                                        </div>
+                                        
+                                        {studentAttendances.filter(a => a.status === 'Kelmapdi').length === 0 ? (
+                                            <p className="text-center py-8 text-[10px] text-gray-400 font-bold uppercase tracking-widest">{t('no_missed_topics')}</p>
+                                        ) : (
+                                            <div className="bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700/50 rounded-2xl overflow-hidden shadow-sm">
+                                                <table className="w-full text-left border-collapse">
+                                                    <thead>
+                                                        <tr className="bg-gray-55 dark:bg-gray-900 border-b border-gray-100 dark:border-gray-700/50">
+                                                            <th className="p-3 text-[9px] font-black text-gray-400 uppercase tracking-widest">{t('date_group')}</th>
+                                                            <th className="p-3 text-[9px] font-black text-gray-400 uppercase tracking-widest">{t('topic_label')}</th>
+                                                            <th className="p-3 text-center text-[9px] font-black text-gray-400 uppercase tracking-widest">{t('status')}</th>
+                                                        </tr>
+                                                    </thead>
+                                                    <tbody className="divide-y divide-gray-100 dark:divide-gray-800">
+                                                        {studentAttendances.filter(a => a.status === 'Kelmapdi').map(a => {
+                                                            const groupObj = groups.find(g => g.id === a.groupId);
+                                                            
+                                                            // Resolve Topic using our 3-tier lookup
+                                                            let topicObj = a.topicId ? (topics || []).find(t => t.id === a.topicId) : null;
+                                                            if (!topicObj && groupObj) {
+                                                                const siblingAttendance = (attendances || []).find(att => 
+                                                                    att.groupId === a.groupId && 
+                                                                    att.date === a.date && 
+                                                                    att.topicId
+                                                                );
+                                                                if (siblingAttendance) {
+                                                                    topicObj = (topics || []).find(t => t.id === siblingAttendance.topicId) || null;
+                                                                }
+                                                            }
+                                                            if (!topicObj && groupObj) {
+                                                                const courseTopics = (topics || []).filter(t => t.courseId === groupObj.courseId).sort((a, b) => a.order - b.order);
+                                                                const groupDates = Array.from(new Set(
+                                                                    (attendances || [])
+                                                                        .filter(att => att.groupId === a.groupId)
+                                                                        .map(att => att.date)
+                                                                )).sort();
+                                                                const dateIdx = groupDates.indexOf(a.date);
+                                                                if (dateIdx !== -1 && dateIdx < courseTopics.length) {
+                                                                    topicObj = courseTopics[dateIdx];
+                                                                }
+                                                            }
+
+                                                            return (
+                                                                <tr key={a.id} className="hover:bg-gray-55/30 transition-colors">
+                                                                    <td className="p-3">
+                                                                        <p className="text-[11px] font-bold text-gray-900 dark:text-white uppercase tracking-tight">{a.date}</p>
+                                                                        <p className="text-[8px] font-bold text-gray-400 uppercase tracking-widest mt-0.5">{groupObj?.name || '-'}</p>
+                                                                    </td>
+                                                                    <td className="p-3">
+                                                                        {topicObj ? (
+                                                                            <div className="space-y-1">
+                                                                                <p className="text-[9px] font-black text-[#1b6b6b] dark:text-teal-400 uppercase tracking-wider">
+                                                                                    {topicObj.order}. {topicObj.title}
+                                                                                </p>
+                                                                                {topicObj.description && (
+                                                                                    <p className="text-[8px] font-medium text-gray-400 dark:text-gray-500 uppercase truncate max-w-[300px]" title={topicObj.description}>
+                                                                                        {topicObj.description}
+                                                                                    </p>
+                                                                                )}
+                                                                            </div>
+                                                                        ) : (
+                                                                            <p className="text-[8px] font-bold text-gray-305 dark:text-gray-600 uppercase tracking-wider italic">-</p>
+                                                                        )}
+                                                                    </td>
+                                                                    <td className="p-3">
+                                                                        <div className="flex justify-center">
+                                                                            <button
+                                                                                onClick={async () => {
+                                                                                    try {
+                                                                                        await updateAttendance(a.id, { caughtUp: !a.caughtUp });
+                                                                                    } catch (err) {
+                                                                                        console.error("Failed to update caughtUp status", err);
+                                                                                    }
+                                                                                }}
+                                                                                className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[8px] font-black uppercase tracking-wider transition-all border cursor-pointer ${
+                                                                                    a.caughtUp
+                                                                                        ? 'bg-emerald-50 text-emerald-600 border-emerald-100 hover:bg-emerald-100/70 dark:bg-emerald-950/20 dark:text-emerald-400 dark:border-emerald-900/40'
+                                                                                        : 'bg-rose-50 text-rose-600 border-rose-100 hover:bg-rose-100/70 dark:bg-rose-950/20 dark:text-rose-455 dark:border-rose-900/40'
+                                                                                }`}
+                                                                            >
+                                                                                {a.caughtUp ? t('topic_caught_up') : t('topic_not_caught_up')}
+                                                                            </button>
+                                                                        </div>
+                                                                    </td>
+                                                                </tr>
+                                                            );
+                                                        })}
+                                                    </tbody>
+                                                </table>
+                                            </div>
+                                        )}
                                     </div>
                                 </div>
                             )}
@@ -623,109 +742,241 @@ export default function StudentDetails() {
                             )}
 
                             {activeTab === 'yoqlama' && (
-                                <div className="space-y-6 animate-in fade-in duration-300">
-                                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-5 bg-gray-55 dark:bg-gray-900/40 border border-gray-100 dark:border-gray-700/50 rounded-2xl">
-                                        <div>
-                                            <h4 className="text-xs font-black text-gray-900 dark:text-white uppercase tracking-tight">{t('attendance_calendar')}</h4>
-                                        </div>
-                                        <div className="flex flex-wrap items-center gap-3">
-                                            <div className="flex items-center gap-1">
-                                                <div className="w-2 h-2 rounded-full bg-emerald-500" />
-                                                <span className="text-[8px] font-black text-gray-400 uppercase tracking-widest">{t('present')}</span>
+                                <div className="animate-in fade-in duration-300">
+                                    <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 items-start">
+                                        {/* Left Column: Attendance Calendar */}
+                                        <div className="lg:col-span-5 space-y-4">
+                                            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 bg-gray-55 dark:bg-gray-900/40 border border-gray-100 dark:border-gray-700/50 rounded-2xl">
+                                                <div>
+                                                    <h4 className="text-[10px] font-black text-gray-900 dark:text-white uppercase tracking-tight">{t('attendance_calendar')}</h4>
+                                                </div>
+                                                <div className="flex flex-wrap items-center gap-2">
+                                                    <div className="flex items-center gap-1">
+                                                        <div className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+                                                        <span className="text-[7px] font-black text-gray-400 uppercase tracking-widest">{t('present')}</span>
+                                                    </div>
+                                                    <div className="flex items-center gap-1">
+                                                        <div className="w-1.5 h-1.5 rounded-full bg-rose-500" />
+                                                        <span className="text-[7px] font-black text-gray-400 uppercase tracking-widest">{t('absent')}</span>
+                                                    </div>
+                                                    <div className="flex items-center gap-1">
+                                                        <div className="w-1.5 h-1.5 rounded-full bg-amber-400" />
+                                                        <span className="text-[7px] font-black text-gray-400 uppercase tracking-widest">{t('not_marked')}</span>
+                                                    </div>
+                                                </div>
                                             </div>
-                                            <div className="flex items-center gap-1">
-                                                <div className="w-2 h-2 rounded-full bg-rose-500" />
-                                                <span className="text-[8px] font-black text-gray-400 uppercase tracking-widest">{t('absent')}</span>
-                                            </div>
-                                            <div className="flex items-center gap-1">
-                                                <div className="w-2 h-2 rounded-full bg-amber-400" />
-                                                <span className="text-[8px] font-black text-gray-400 uppercase tracking-widest">{t('not_marked')}</span>
-                                            </div>
-                                        </div>
-                                    </div>
 
-                                    <div className="bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700/50 rounded-3xl p-6 shadow-sm">
-                                        <div className="grid grid-cols-7 gap-2">
-                                            {[t('day_mon'), t('day_tue'), t('day_wed'), t('day_thu'), t('day_fri'), t('day_sat'), t('day_sun')].map(day => (
-                                                <div key={day} className="text-center text-[9px] font-black text-gray-400 uppercase tracking-widest pb-2">{day}</div>
-                                            ))}
-                                            {(() => {
-                                                const now = new Date();
-                                                const year = now.getFullYear();
-                                                const month = now.getMonth();
-                                                const firstDay = new Date(year, month, 1).getDay();
-                                                const daysInMonth = new Date(year, month + 1, 0).getDate();
-                                                const blanks = firstDay === 0 ? 6 : firstDay - 1;
-
-                                                const cells = [];
-                                                for (let i = 0; i < blanks; i++) cells.push(<div key={`b-${i}`} />);
-                                                for (let d = 1; d <= daysInMonth; d++) {
-                                                    const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
-                                                    const att = studentAttendances.find(a => a.date === dateStr);
-                                                    
-                                                    const isLessonDay = studentGroups.some(g => {
-                                                        const date = new Date(year, month, d);
-                                                        const dw = date.getDay();
-                                                        if (g.days === 'TOQ') return [1, 3, 5].includes(dw);
-                                                        if (g.days === 'JUFT') return [2, 4, 6].includes(dw);
-                                                        return dw !== 0;
-                                                    });
-
-                                                    let bgColor = 'bg-gray-55 dark:bg-gray-900/50';
-                                                    let textColor = 'text-gray-400';
-                                                    
-                                                    if (att) {
-                                                        if (att.status === 'Keldi') bgColor = 'bg-emerald-500 text-white shadow-sm shadow-emerald-500/20';
-                                                        else if (att.status === 'Kelmapdi') bgColor = 'bg-rose-500 text-white shadow-sm shadow-rose-500/20';
-                                                        else if (att.status === 'Sababli') bgColor = 'bg-sky-500 text-white shadow-sm shadow-sky-500/20';
-                                                        textColor = 'text-white';
-                                                    } else if (isLessonDay) {
-                                                        const todayStr = new Date().toISOString().split('T')[0];
-                                                        if (dateStr < todayStr) {
-                                                            bgColor = 'bg-amber-400 text-white';
-                                                            textColor = 'text-white';
-                                                        }
-                                                    }
-
-                                                    cells.push(
-                                                        <div key={d} className={`aspect-square rounded-xl flex flex-col items-center justify-center relative transition-all ${bgColor} ${textColor}`}>
-                                                            <span className="text-[9px] font-bold">{d}</span>
-                                                        </div>
-                                                    );
-                                                }
-                                                return cells;
-                                            })()}
-                                        </div>
-                                    </div>
-
-                                    <div className="space-y-4">
-                                        <span className="text-[9px] font-black text-gray-400 uppercase tracking-widest block pb-2 border-b border-gray-55 dark:border-gray-700/50">{t('detailed_history')}</span>
-                                        <div className="bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700/50 rounded-2xl overflow-hidden shadow-sm">
-                                            <table className="w-full text-left border-collapse">
-                                                <thead>
-                                                    <tr className="bg-gray-55 dark:bg-gray-900 border-b border-gray-100 dark:border-gray-700/50">
-                                                        <th className="p-4 text-[9px] font-black text-gray-400 uppercase tracking-widest">{t('date_group')}</th>
-                                                        <th className="p-4 text-center text-[9px] font-black text-gray-400 uppercase tracking-widest">{t('status')}</th>
-                                                    </tr>
-                                                </thead>
-                                                <tbody className="divide-y divide-gray-100 dark:divide-gray-800">
-                                                    {studentAttendances.map(a => (
-                                                        <tr key={a.id} className="hover:bg-gray-50/30 transition-colors">
-                                                            <td className="p-4">
-                                                                <p className="text-xs font-bold text-gray-900 dark:text-white uppercase tracking-tight">{a.date}</p>
-                                                                <p className="text-[9px] font-bold text-gray-400 uppercase tracking-widest mt-0.5">{groups.find(g => g.id === a.groupId)?.name || '-'}</p>
-                                                            </td>
-                                                            <td className="p-4">
-                                                                <div className="flex justify-center">
-                                                                    <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-lg text-[9px] font-black border uppercase tracking-wider ${a.status === 'Keldi' ? 'bg-emerald-50 text-emerald-600 border-emerald-100 dark:bg-emerald-950/20 dark:text-emerald-400' : 'bg-rose-50 text-rose-600 border-rose-100 dark:bg-rose-950/20 dark:text-rose-400'}`}>
-                                                                        {a.status === 'Keldi' ? t('present') : a.status === 'Kelmapdi' ? t('absent') : a.status === 'Sababli' ? t('reason') : a.status}
-                                                                    </span>
-                                                                </div>
-                                                            </td>
-                                                        </tr>
+                                            <div className="bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700/50 rounded-2xl p-4 shadow-sm">
+                                                <div className="grid grid-cols-7 gap-1">
+                                                    {[t('day_mon'), t('day_tue'), t('day_wed'), t('day_thu'), t('day_fri'), t('day_sat'), t('day_sun')].map(day => (
+                                                        <div key={day} className="text-center text-[8px] font-black text-gray-400 uppercase tracking-widest pb-1.5">{day}</div>
                                                     ))}
-                                                </tbody>
-                                            </table>
+                                                    {(() => {
+                                                        const now = new Date();
+                                                        const year = now.getFullYear();
+                                                        const month = now.getMonth();
+                                                        const firstDay = new Date(year, month, 1).getDay();
+                                                        const daysInMonth = new Date(year, month + 1, 0).getDate();
+                                                        const blanks = firstDay === 0 ? 6 : firstDay - 1;
+
+                                                        const cells = [];
+                                                        for (let i = 0; i < blanks; i++) cells.push(<div key={`b-${i}`} />);
+                                                        for (let d = 1; d <= daysInMonth; d++) {
+                                                            const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+                                                            const att = studentAttendances.find(a => a.date === dateStr);
+                                                            
+                                                            const isLessonDay = studentGroups.some(g => {
+                                                                const date = new Date(year, month, d);
+                                                                const dw = date.getDay();
+                                                                if (g.days === 'TOQ') return [1, 3, 5].includes(dw);
+                                                                if (g.days === 'JUFT') return [2, 4, 6].includes(dw);
+                                                                return dw !== 0;
+                                                            });
+
+                                                            let bgColor = 'bg-gray-55 dark:bg-gray-900/50';
+                                                            let textColor = 'text-gray-400';
+                                                            
+                                                            if (att) {
+                                                                if (att.status === 'Keldi') bgColor = 'bg-emerald-500 text-white shadow-sm shadow-emerald-500/20';
+                                                                else if (att.status === 'Kelmapdi') bgColor = 'bg-rose-500 text-white shadow-sm shadow-rose-500/20';
+                                                                else if (att.status === 'Sababli') bgColor = 'bg-sky-500 text-white shadow-sm shadow-sky-500/20';
+                                                                textColor = 'text-white';
+                                                            } else if (isLessonDay) {
+                                                                const todayStr = new Date().toISOString().split('T')[0];
+                                                                if (dateStr < todayStr) {
+                                                                    bgColor = 'bg-amber-400 text-white';
+                                                                    textColor = 'text-white';
+                                                                }
+                                                            }
+
+                                                            cells.push(
+                                                                <div key={d} className={`aspect-square rounded-lg flex flex-col items-center justify-center relative transition-all ${bgColor} ${textColor}`}>
+                                                                    <span className="text-[8px] font-bold">{d}</span>
+                                                                </div>
+                                                            );
+                                                        }
+                                                        return cells;
+                                                    })()}
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        {/* Right Column: Detailed History Table */}
+                                        <div className="lg:col-span-7 space-y-4">
+                                            <div className="flex items-center justify-between pb-1 border-b border-gray-55 dark:border-gray-700/50">
+                                                <span className="text-[9px] font-black text-gray-400 uppercase tracking-widest">{t('detailed_history')}</span>
+                                                <select
+                                                    value={attendanceGroupFilter || ''}
+                                                    onChange={(e) => setAttendanceGroupFilter(e.target.value ? Number(e.target.value) : null)}
+                                                    className="px-2.5 py-1 bg-gray-55 dark:bg-gray-900 border border-gray-100 dark:border-gray-700/50 rounded-lg text-[8px] font-black uppercase tracking-wider cursor-pointer outline-none focus:ring-1 focus:ring-[#1b6b6b]/20 text-[#1b6b6b] dark:text-teal-400 font-bold"
+                                                >
+                                                    <option value="" className="bg-white dark:bg-gray-850 text-gray-600 font-bold">{t('all_groups')}</option>
+                                                    {studentGroups.map(g => (
+                                                        <option key={g.id} value={g.id} className="bg-white dark:bg-gray-850 text-gray-900 dark:text-white font-bold">{g.name}</option>
+                                                    ))}
+                                                </select>
+                                            </div>
+                                            <div className="bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700/50 rounded-2xl overflow-hidden shadow-sm">
+                                                <table className="w-full text-left border-collapse">
+                                                    <thead>
+                                                        <tr className="bg-gray-55 dark:bg-gray-900 border-b border-gray-100 dark:border-gray-700/50">
+                                                            <th className="p-3 text-[9px] font-black text-gray-400 uppercase tracking-widest">{t('date_group')}</th>
+                                                            <th className="p-3 text-[9px] font-black text-gray-400 uppercase tracking-widest">{t('topic_label')}</th>
+                                                            <th className="p-3 text-center text-[9px] font-black text-gray-400 uppercase tracking-widest">{t('status')}</th>
+                                                        </tr>
+                                                    </thead>
+                                                    <tbody className="divide-y divide-gray-100 dark:divide-gray-800">
+                                                        {studentAttendances.filter(a => attendanceGroupFilter === null || a.groupId === attendanceGroupFilter).map(a => {
+                                                            const groupObj = groups.find(g => g.id === a.groupId);
+                                                            const courseObj = courses.find(c => c.id === groupObj?.courseId);
+
+                                                            // 1. Direct topicId
+                                                            let topicObj = a.topicId ? (topics || []).find(t => t.id === a.topicId) : null;
+
+                                                            // 2. Sibling fallback
+                                                            if (!topicObj && groupObj) {
+                                                                const siblingAttendance = (attendances || []).find(att => 
+                                                                    att.groupId === a.groupId && 
+                                                                    att.date === a.date && 
+                                                                    att.topicId
+                                                                );
+                                                                if (siblingAttendance) {
+                                                                    topicObj = (topics || []).find(t => t.id === siblingAttendance.topicId) || null;
+                                                                }
+                                                            }
+
+                                                            // 3. Chronological fallback
+                                                            if (!topicObj && groupObj) {
+                                                                const courseTopics = (topics || []).filter(t => t.courseId === groupObj.courseId).sort((a, b) => a.order - b.order);
+                                                                const groupDates = Array.from(new Set(
+                                                                    (attendances || [])
+                                                                        .filter(att => att.groupId === a.groupId)
+                                                                        .map(att => att.date)
+                                                                )).sort();
+                                                                const dateIdx = groupDates.indexOf(a.date);
+                                                                if (dateIdx !== -1 && dateIdx < courseTopics.length) {
+                                                                    topicObj = courseTopics[dateIdx];
+                                                                }
+                                                            }
+
+                                                            return (
+                                                                <tr key={a.id} className="hover:bg-gray-55/30 transition-colors">
+                                                                    <td className="p-3">
+                                                                        <p className="text-[11px] font-bold text-gray-900 dark:text-white uppercase tracking-tight">{a.date}</p>
+                                                                        <p className="text-[8px] font-bold text-gray-400 uppercase tracking-widest mt-0.5">{groupObj?.name || '-'}</p>
+                                                                    </td>
+                                                                    <td className="p-3">
+                                                                        {topicObj ? (
+                                                                            <div className="space-y-1">
+                                                                                <p className="text-[9px] font-black text-[#1b6b6b] dark:text-teal-400 uppercase tracking-wider">
+                                                                                    {topicObj.order}. {topicObj.title}
+                                                                                </p>
+                                                                                {topicObj.description && (
+                                                                                    <p className="text-[8px] font-medium text-gray-400 dark:text-gray-500 uppercase truncate max-w-[200px]" title={topicObj.description}>
+                                                                                        {topicObj.description}
+                                                                                    </p>
+                                                                                )}
+                                                                                {a.status === 'Kelmapdi' && (
+                                                                                    <button
+                                                                                        onClick={async () => {
+                                                                                            try {
+                                                                                                await updateAttendance(a.id, { caughtUp: !a.caughtUp });
+                                                                                            } catch (err) {
+                                                                                                console.error("Failed to update caughtUp status", err);
+                                                                                            }
+                                                                                        }}
+                                                                                        className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[8px] font-black uppercase tracking-wider transition-all border cursor-pointer mt-1 ${
+                                                                                            a.caughtUp
+                                                                                                ? 'bg-emerald-50 text-emerald-600 border-emerald-100 hover:bg-emerald-100/70 dark:bg-emerald-950/20 dark:text-emerald-400 dark:border-emerald-900/40'
+                                                                                                : 'bg-rose-50 text-rose-600 border-rose-100 hover:bg-rose-100/70 dark:bg-rose-950/20 dark:text-rose-455 dark:border-rose-900/40'
+                                                                                        }`}
+                                                                                    >
+                                                                                        {a.caughtUp ? t('topic_caught_up') : t('topic_not_caught_up')}
+                                                                                    </button>
+                                                                                )}
+                                                                            </div>
+                                                                        ) : (
+                                                                            <div className="space-y-1">
+                                                                                <p className="text-[8px] font-bold text-gray-305 dark:text-gray-600 uppercase tracking-wider italic">
+                                                                                    -
+                                                                                </p>
+                                                                                {a.status === 'Kelmapdi' && (
+                                                                                    <button
+                                                                                        onClick={async () => {
+                                                                                            try {
+                                                                                                                            await updateAttendance(a.id, { caughtUp: !a.caughtUp });
+                                                                                            } catch (err) {
+                                                                                                console.error("Failed to update caughtUp status", err);
+                                                                                            }
+                                                                                        }}
+                                                                                        className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[8px] font-black uppercase tracking-wider transition-all border cursor-pointer mt-1 ${
+                                                                                            a.caughtUp
+                                                                                                ? 'bg-emerald-50 text-emerald-600 border-emerald-100 hover:bg-emerald-100/70 dark:bg-emerald-950/20 dark:text-emerald-400 dark:border-emerald-900/40'
+                                                                                                : 'bg-rose-50 text-rose-600 border-rose-100 hover:bg-rose-100/70 dark:bg-rose-950/20 dark:text-rose-455 dark:border-rose-900/40'
+                                                                                        }`}
+                                                                                    >
+                                                                                        {a.caughtUp ? t('topic_caught_up') : t('topic_not_caught_up')}
+                                                                                    </button>
+                                                                                )}
+                                                                            </div>
+                                                                        )}
+                                                                    </td>
+                                                                    <td className="p-3">
+                                                                        <div className="flex justify-center">
+                                                                            <select
+                                                                                value={a.status}
+                                                                                onChange={async (e) => {
+                                                                                    try {
+                                                                                        await updateAttendance(a.id, { status: e.target.value as any });
+                                                                                    } catch (err) {
+                                                                                        console.error("Failed to update attendance status", err);
+                                                                                    }
+                                                                                }}
+                                                                                className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-lg text-[8px] font-black border uppercase tracking-wider cursor-pointer outline-none transition-all ${
+                                                                                    a.status === 'Keldi' 
+                                                                                        ? 'bg-emerald-50 text-emerald-600 border-emerald-100 dark:bg-emerald-950/20 dark:text-emerald-400' 
+                                                                                        : a.status === 'Kelmapdi'
+                                                                                            ? 'bg-rose-50 text-rose-600 border-rose-100 dark:bg-rose-950/20 dark:text-rose-400'
+                                                                                            : 'bg-amber-50 text-amber-600 border-amber-100 dark:bg-amber-950/20 dark:text-amber-400'
+                                                                                }`}
+                                                                            >
+                                                                                {a.status !== 'Keldi' && a.status !== 'Kelmapdi' && a.status !== 'Sababli' && (
+                                                                                    <option value={a.status} disabled hidden>
+                                                                                        {(a.status as any) === "O'tildi" ? t('not_marked') : a.status}
+                                                                                    </option>
+                                                                                )}
+                                                                                <option value="Keldi" className="bg-white dark:bg-gray-800 text-emerald-600 font-bold">{t('present')}</option>
+                                                                                <option value="Kelmapdi" className="bg-white dark:bg-gray-800 text-rose-600 font-bold">{t('absent')}</option>
+                                                                                <option value="Sababli" className="bg-white dark:bg-gray-800 text-amber-600 font-bold">{t('excused')}</option>
+                                                                            </select>
+                                                                        </div>
+                                                                    </td>
+                                                                </tr>
+                                                            );
+                                                        })}
+                                                    </tbody>
+                                                </table>
+                                            </div>
                                         </div>
                                     </div>
                                 </div>
@@ -843,7 +1094,9 @@ function StatCardV3({ label, value, subValue, icon, color }: any) {
         emerald: 'bg-emerald-50 border-emerald-100 dark:bg-emerald-950/20 dark:border-emerald-900/40',
         rose: 'bg-rose-50 border-rose-100 dark:bg-rose-950/20 dark:border-rose-900/40',
         teal: 'bg-teal-50 border-teal-100 dark:bg-teal-950/20 dark:border-teal-900/40',
-        amber: 'bg-amber-50 border-amber-100 dark:bg-amber-950/20 dark:border-amber-900/40'
+        amber: 'bg-amber-50 border-amber-100 dark:bg-amber-950/20 dark:border-amber-900/40',
+        violet: 'bg-violet-50 border-violet-100 dark:bg-violet-950/20 dark:border-violet-900/40',
+        blue: 'bg-blue-50 border-blue-100 dark:bg-blue-950/20 dark:border-blue-900/40'
     }[color] || 'bg-gray-55 dark:bg-gray-900 border-gray-100 dark:border-gray-700/50';
 
     return (

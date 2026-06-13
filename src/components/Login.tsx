@@ -95,6 +95,7 @@ export default function Login() {
                 <Mail size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500" />
                 <input
                   type="email"
+                  autoComplete="off"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   placeholder="admin@example.com"
@@ -111,11 +112,13 @@ export default function Login() {
               <div className="relative">
                 <Lock size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500" />
                 <input
-                  type="password"
+                  type="text"
+                  autoComplete="new-password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder="••••••••"
                   required
+                  style={{ WebkitTextSecurity: 'disc' } as React.CSSProperties}
                   className="w-full pl-11 pr-4 py-3.5 bg-slate-950/40 border border-slate-800 rounded-xl text-sm text-slate-200 focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 placeholder:text-slate-600 outline-none transition-all duration-300"
                 />
               </div>

@@ -1205,6 +1205,62 @@ app.delete('/api/courses/:id', authenticate, async (req, res, next) => {
   } catch (error) { next(error); }
 });
 
+// --- Topics (Syllabus) ---
+app.get('/api/topics', authenticate, async (req, res, next) => {
+  try {
+    const { schoolId, courseId } = req.query;
+    if (!schoolId) return res.status(400).json({ error: 'schoolId required' });
+    const where = { schoolId: parseInt(schoolId) };
+    if (courseId) where.courseId = parseInt(courseId);
+    const topics = await prisma.topic.findMany({ where, orderBy: { order: 'asc' } });
+    res.json(topics);
+  } catch (error) { next(error); }
+});
+
+app.post('/api/topics', authenticate, async (req, res, next) => {
+  try {
+    const { schoolId, title, description, order, courseId } = req.body;
+    if (!schoolId || !title || !courseId) return res.status(400).json({ error: 'Missing required fields' });
+    const topic = await prisma.topic.create({
+      data: {
+        title,
+        description: description || null,
+        order: order ? parseInt(order) : 1,
+        courseId: parseInt(courseId),
+        schoolId: parseInt(schoolId)
+      }
+    });
+    res.json(topic);
+  } catch (error) { next(error); }
+});
+
+app.put('/api/topics/:id', authenticate, async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const { title, description, order, courseId } = req.body;
+    const data = {};
+    if (title !== undefined) data.title = title;
+    if (description !== undefined) data.description = description;
+    if (order !== undefined) data.order = parseInt(order);
+    if (courseId !== undefined) data.courseId = parseInt(courseId);
+
+    const topic = await prisma.topic.update({
+      where: { id: parseInt(id) },
+      data
+    });
+    res.json(topic);
+  } catch (error) { next(error); }
+});
+
+app.delete('/api/topics/:id', authenticate, async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    await prisma.topic.delete({ where: { id: parseInt(id) } });
+    res.json({ success: true });
+  } catch (error) { next(error); }
+});
+
+
 app.get('/api/rooms', authenticate, async (req, res, next) => {
   try {
     const { schoolId } = req.query;
@@ -1752,7 +1808,8 @@ app.get('/api/init', authenticate, async (req, res, next) => {
     const [
       students, teachers, groups, leads, payments, courses, rooms,
       settings, attendances, scores, teacherAttendances, expenses,
-      transports, routes, users, questions, exams, examResults, schools
+      transports, routes, users, questions, exams, examResults, schools,
+      topics
     ] = await Promise.all([
       prisma.student.findMany({
         where: whereQuery,
@@ -1791,6 +1848,7 @@ app.get('/api/init', authenticate, async (req, res, next) => {
       prisma.exam.findMany({ where: whereQuery }),
       prisma.examResult.findMany({ where: whereQuery }),
       prisma.school.findMany({ where: schoolsWhere }),
+      prisma.topic.findMany({ where: whereQuery }),
     ]);
 
     // Map relations to flat IDs / names just like individual endpoints do
@@ -1810,7 +1868,8 @@ app.get('/api/init', authenticate, async (req, res, next) => {
       groups: mappedGroups,
       leads, payments, courses, rooms,
       settings, attendances, scores, teacherAttendances, expenses,
-      transports, routes, users, questions, exams, examResults, schools
+      transports, routes, users, questions, exams, examResults, schools,
+      topics
     });
   } catch (error) { next(error); }
 });
@@ -2013,7 +2072,38 @@ app.post('/api/attendances', authenticate, async (req, res, next) => {
   try {
     const { schoolId, ...data } = req.body;
     if (!schoolId) return res.status(400).json({ error: 'schoolId required' });
-    const attendance = await prisma.attendance.create({ data: { ...data, schoolId: parseInt(schoolId) } });
+    
+    const studentId = parseInt(data.studentId);
+    const groupId = parseInt(data.groupId);
+    const date = data.date;
+
+    const existing = await prisma.attendance.findFirst({
+      where: { studentId, groupId, date, schoolId: parseInt(schoolId) }
+    });
+
+    let attendance;
+    if (existing) {
+      const updateData = { status: data.status };
+      if (data.topicId !== undefined) updateData.topicId = data.topicId ? parseInt(data.topicId) : null;
+      if (data.caughtUp !== undefined) updateData.caughtUp = data.caughtUp === true;
+      
+      attendance = await prisma.attendance.update({
+        where: { id: existing.id },
+        data: updateData
+      });
+    } else {
+      const prismaData = {
+        studentId,
+        groupId,
+        date,
+        status: data.status,
+        schoolId: parseInt(schoolId)
+      };
+      if (data.topicId) prismaData.topicId = parseInt(data.topicId);
+      if (data.caughtUp !== undefined) prismaData.caughtUp = data.caughtUp === true;
+
+      attendance = await prisma.attendance.create({ data: prismaData });
+    }
     
     // Telegram Notification
     try {
@@ -2035,10 +2125,27 @@ app.post('/api/attendances', authenticate, async (req, res, next) => {
   } catch (error) { next(error); }
 });
 
+app.put('/api/attendances/:id', authenticate, async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const { status, topicId, caughtUp } = req.body;
+    const data = {};
+    if (status !== undefined) data.status = status;
+    if (topicId !== undefined) data.topicId = topicId ? parseInt(topicId) : null;
+    if (caughtUp !== undefined) data.caughtUp = caughtUp === true;
+
+    const attendance = await prisma.attendance.update({
+      where: { id: parseInt(id) },
+      data
+    });
+    res.json(attendance);
+  } catch (error) { next(error); }
+});
+
 // Batch attendance — mark all students at once for a group/date
 app.post('/api/attendances/batch', authenticate, async (req, res, next) => {
   try {
-    const { schoolId, groupId, date, records } = req.body;
+    const { schoolId, groupId, date, records, topicId } = req.body;
     if (!schoolId || !groupId || !date || !records) return res.status(400).json({ error: 'Missing fields' });
     
     const results = [];
@@ -2052,18 +2159,33 @@ app.post('/api/attendances/batch', authenticate, async (req, res, next) => {
       let shouldNotify = false;
 
       if (existing) {
+        const updateData = { status: record.status };
+        if (topicId !== undefined) {
+          updateData.topicId = topicId ? parseInt(topicId) : null;
+        }
+        
+        updatedOrCreated = await prisma.attendance.update({
+          where: { id: existing.id },
+          data: updateData
+        });
+        
         if (existing.status !== record.status) {
-          updatedOrCreated = await prisma.attendance.update({
-            where: { id: existing.id },
-            data: { status: record.status }
-          });
           shouldNotify = true;
-        } else {
-          updatedOrCreated = existing;
         }
       } else {
+        const createData = {
+          studentId: record.studentId,
+          groupId: parseInt(groupId),
+          date,
+          status: record.status,
+          schoolId: parseInt(schoolId)
+        };
+        if (topicId !== undefined) {
+          createData.topicId = topicId ? parseInt(topicId) : null;
+        }
+        
         updatedOrCreated = await prisma.attendance.create({
-          data: { studentId: record.studentId, groupId: parseInt(groupId), date, status: record.status, schoolId: parseInt(schoolId) }
+          data: createData
         });
         shouldNotify = true;
       }

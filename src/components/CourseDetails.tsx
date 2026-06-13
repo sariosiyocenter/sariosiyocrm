@@ -3,7 +3,8 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { useCRM } from '../context/CRMContext';
 import {
     Users, Calendar, Clock, BookOpen, Plus, TrendingUp,
-    CheckCircle, XCircle, ArrowLeft, Search, ClipboardCheck, ChevronRight, Presentation, Award, Check, Sparkles
+    CheckCircle, XCircle, ArrowLeft, Search, ClipboardCheck, ChevronRight, Presentation, Award, Check, Sparkles,
+    Pencil, Trash2
 } from 'lucide-react';
 import AttendanceMatrix from './AttendanceMatrix';
 import GroupAttendanceCalendar from './GroupAttendanceCalendar';
@@ -11,7 +12,7 @@ import GroupAttendanceCalendar from './GroupAttendanceCalendar';
 export default function CourseDetails() {
     const { id } = useParams<{ id: string }>();
     const navigate = useNavigate();
-    const { groups, students, teachers, courses, rooms, attendances, scores, addBatchAttendance, addStudentToGroup, removeStudentFromGroup, addScore, updateGroup, showNotification } = useCRM();
+    const { groups, students, teachers, courses, rooms, attendances, scores, addBatchAttendance, addStudentToGroup, removeStudentFromGroup, addScore, updateGroup, showNotification, topics, addTopic, updateTopic, deleteTopic } = useCRM();
     const [isEditingInfo, setIsEditingInfo] = useState(false);
     const [editForm, setEditForm] = useState({
         teacherId: 0,
@@ -30,6 +31,10 @@ export default function CourseDetails() {
     const [batchAttendance, setBatchAttendance] = useState<Record<number, string>>({});
     const [isAddStudentModalOpen, setIsAddStudentModalOpen] = useState(false);
     const [studentSearch, setStudentSearch] = useState('');
+    const [selectedTopicId, setSelectedTopicId] = useState<number | ''>('');
+    const [isTopicModalOpen, setIsTopicModalOpen] = useState(false);
+    const [editingTopic, setEditingTopic] = useState<any | null>(null);
+    const [topicForm, setTopicForm] = useState({ title: '', description: '', order: 1 });
 
     const group = groups.find(g => g.id === Number(id));
     if (!group) return <div className="p-12 text-center text-gray-500 font-medium">Kurs topilmadi</div>;
@@ -45,10 +50,23 @@ export default function CourseDetails() {
             status
         }));
         if (records.length === 0) return;
-        await addBatchAttendance(group.id, selectedDate, records);
+        await addBatchAttendance(group.id, selectedDate, records, selectedTopicId ? Number(selectedTopicId) : undefined);
         showNotification("Davomat saqlandi", "success");
-        setBatchAttendance({});
     };
+
+    React.useEffect(() => {
+        if (!group) return;
+        const existing = attendances.filter(a => a.groupId === group.id && a.date === selectedDate);
+        const initialBatch: Record<number, string> = {};
+        groupStudents.forEach(s => {
+            const rec = existing.find(a => a.studentId === s.id);
+            initialBatch[s.id] = rec ? rec.status : 'Keldi';
+        });
+        setBatchAttendance(initialBatch);
+
+        const firstRecord = existing.find(a => a.topicId !== null && a.topicId !== undefined);
+        setSelectedTopicId(firstRecord?.topicId || '');
+    }, [selectedDate, group.id, attendances]);
 
     const handleSendAttendanceSms = async () => {
         if (!window.confirm("Kelmagan o'quvchilar ota-onalariga SMS yuborilsinmi?")) return;
@@ -98,6 +116,48 @@ export default function CourseDetails() {
         await addStudentToGroup(group.id, studentId);
         setIsAddStudentModalOpen(false);
         setStudentSearch('');
+    };
+
+    const courseTopics = (topics || []).filter(t => t.courseId === group.courseId).sort((a, b) => a.order - b.order);
+
+    const handleSaveTopic = async (e: React.FormEvent) => {
+        e.preventDefault();
+        try {
+            if (editingTopic) {
+                await updateTopic(editingTopic.id, {
+                    title: topicForm.title,
+                    description: topicForm.description,
+                    order: Number(topicForm.order)
+                });
+            } else {
+                await addTopic({
+                    title: topicForm.title,
+                    description: topicForm.description,
+                    order: Number(topicForm.order),
+                    courseId: group.courseId
+                });
+            }
+            setIsTopicModalOpen(false);
+            setEditingTopic(null);
+            setTopicForm({ title: '', description: '', order: courseTopics.length + 2 });
+        } catch (err) {
+            console.error("Save topic failed", err);
+        }
+    };
+
+    const handleEditTopic = (topic: any) => {
+        setEditingTopic(topic);
+        setTopicForm({
+            title: topic.title,
+            description: topic.description || '',
+            order: topic.order
+        });
+        setIsTopicModalOpen(true);
+    };
+
+    const handleDeleteTopic = async (id: number) => {
+        if (!window.confirm("Haqiqatan ham ushbu mavzuni o'chirmoqchimisiz?")) return;
+        await deleteTopic(id);
     };
 
     const handleStartEdit = () => {
@@ -245,6 +305,7 @@ export default function CourseDetails() {
                     <TabButton label="Umumiy" icon={<Users size={14} />} active={activeTab === 'umumiy'} onClick={() => setActiveTab('umumiy')} />
                     <TabButton label="Yo'qlama" icon={<ClipboardCheck size={14} />} active={activeTab === 'yoqlama'} onClick={() => setActiveTab('yoqlama')} />
                     <TabButton label="Ballar" icon={<Award size={14} />} active={activeTab === 'ballar'} onClick={() => setActiveTab('ballar')} />
+                    <TabButton label="Mavzular" icon={<BookOpen size={14} />} active={activeTab === 'mavzular'} onClick={() => setActiveTab('mavzular')} />
                 </div>
 
                 <div className="p-6">
@@ -427,6 +488,7 @@ export default function CourseDetails() {
                                     )}
                                 </div>
                                 <div className="flex flex-col sm:flex-row items-center gap-3 w-full lg:w-auto">
+                                    {/* Date navigation */}
                                     <div className="flex items-center gap-2 bg-white dark:bg-gray-800 p-1.5 rounded-xl border border-gray-100 dark:border-gray-700 shadow-sm w-full sm:w-auto justify-between">
                                         <button 
                                             onClick={() => setSelectedDate(prev => getValidDate(prev, group.days, 'prev'))}
@@ -448,6 +510,22 @@ export default function CourseDetails() {
                                         </button>
                                     </div>
 
+                                    {/* Topic Selector */}
+                                    <div className="flex items-center gap-2 bg-white dark:bg-gray-800 p-1.5 rounded-xl border border-gray-100 dark:border-gray-700 shadow-sm w-full sm:w-auto">
+                                        <BookOpen size={14} className="text-[#1b6b6b] ml-2 shrink-0" />
+                                        <select 
+                                            value={selectedTopicId} 
+                                            onChange={e => setSelectedTopicId(e.target.value ? Number(e.target.value) : '')}
+                                            className="bg-transparent text-[10px] font-black uppercase tracking-wider outline-none border-none cursor-pointer text-gray-750 dark:text-white max-w-[200px]"
+                                        >
+                                            <option value="">-- Dars mavzusi --</option>
+                                            {(topics || []).filter(t => t.courseId === group.courseId).sort((a, b) => a.order - b.order).map(t => (
+                                                <option key={t.id} value={t.id}>{t.order}. {t.title}</option>
+                                            ))}
+                                        </select>
+                                    </div>
+
+                                    {/* Save and SMS */}
                                     <div className="flex items-center gap-2 w-full sm:w-auto shrink-0">
                                         <button 
                                             onClick={handleSendAttendanceSms}
@@ -465,9 +543,50 @@ export default function CourseDetails() {
                                 </div>
                             </div>
 
-                            <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
-                                <div className="xl:col-span-1 xl:border-r border-dashed border-gray-100 dark:border-gray-700/50 xl:pr-6">
-                                    <span className="text-[9px] font-black text-gray-400 uppercase tracking-widest block mb-4">Oylik Grafik</span>
+                            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                                {/* Students checklist for selected Date */}
+                                <div className="lg:col-span-1 bg-white dark:bg-gray-800 p-4 rounded-3xl border border-gray-100 dark:border-gray-700 shadow-sm space-y-4">
+                                    <div className="flex items-center justify-between pb-2 border-b border-gray-50 dark:border-gray-700">
+                                        <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Dars yo'qlamasi ({selectedDate})</span>
+                                        <span className="text-[9px] font-bold text-gray-450">{groupStudents.length} ta o'quvchi</span>
+                                    </div>
+                                    <div className="space-y-1.5 max-h-[360px] overflow-y-auto pr-1 custom-scrollbar">
+                                        {groupStudents.map(s => {
+                                            const status = batchAttendance[s.id] || 'Keldi';
+                                            return (
+                                                <div key={s.id} className="flex items-center justify-between p-2 bg-gray-55 dark:bg-gray-900/30 rounded-xl border border-transparent hover:border-gray-100 dark:hover:border-gray-755 transition-all">
+                                                    <span className="text-[10px] font-black text-gray-900 dark:text-white uppercase tracking-tight truncate max-w-[120px]">{s.name}</span>
+                                                    <div className="flex items-center gap-1 shrink-0">
+                                                        <button 
+                                                            onClick={() => setBatchAttendance(prev => ({ ...prev, [s.id]: 'Keldi' }))}
+                                                            className={`px-2 py-1 rounded-lg text-[8px] font-black uppercase tracking-wider transition-all cursor-pointer ${status === 'Keldi' ? 'bg-emerald-500 text-white shadow-md shadow-emerald-500/20' : 'bg-gray-100 dark:bg-gray-800 text-gray-400 hover:text-emerald-500'}`}
+                                                        >
+                                                            Keldi
+                                                        </button>
+                                                        <button 
+                                                            onClick={() => setBatchAttendance(prev => ({ ...prev, [s.id]: 'Kelmapdi' }))}
+                                                            className={`px-2 py-1 rounded-lg text-[8px] font-black uppercase tracking-wider transition-all cursor-pointer ${status === 'Kelmapdi' ? 'bg-rose-500 text-white shadow-md shadow-rose-500/20' : 'bg-gray-100 dark:bg-gray-800 text-gray-400 hover:text-rose-500'}`}
+                                                        >
+                                                            Yo'q
+                                                        </button>
+                                                        <button 
+                                                            onClick={() => setBatchAttendance(prev => ({ ...prev, [s.id]: 'Sababli' }))}
+                                                            className={`px-2 py-1 rounded-lg text-[8px] font-black uppercase tracking-wider transition-all cursor-pointer ${status === 'Sababli' ? 'bg-sky-500 text-white shadow-md shadow-sky-500/20' : 'bg-gray-100 dark:bg-gray-800 text-gray-400 hover:text-sky-500'}`}
+                                                        >
+                                                            Sababli
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                            );
+                                        })}
+                                        {groupStudents.length === 0 && (
+                                            <p className="py-12 text-center text-[10px] text-gray-400 font-bold uppercase tracking-widest italic">Bu kursda o'quvchilar yo'q</p>
+                                        )}
+                                    </div>
+                                </div>
+
+                                {/* Historical Calendar */}
+                                <div className="lg:col-span-2">
                                     <GroupAttendanceCalendar 
                                         group={group} 
                                         attendances={attendances} 
@@ -476,10 +595,12 @@ export default function CourseDetails() {
                                         students={groupStudents}
                                     />
                                 </div>
-                                <div className="xl:col-span-2 space-y-4">
-                                    <span className="text-[9px] font-black text-gray-400 uppercase tracking-widest block">Davomat Matritsasi</span>
-                                    <AttendanceMatrix group={group} students={groupStudents} attendances={attendances} />
-                                </div>
+                            </div>
+
+                            {/* Full width Matrix below the upper grid */}
+                            <div className="space-y-3">
+                                <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest block pb-1 border-b border-gray-50 dark:border-gray-700">Davomat Matritsasi</span>
+                                <AttendanceMatrix group={group} students={groupStudents} attendances={attendances} />
                             </div>
                         </div>
                     )}
@@ -528,6 +649,117 @@ export default function CourseDetails() {
                                 {groupStudents.length === 0 && (
                                     <p className="col-span-full py-12 text-center text-[10px] text-gray-400 font-bold uppercase tracking-widest">Bu kursda o'quvchilar yo'q</p>
                                 )}
+                            </div>
+                        </div>
+                    )}
+
+                    {activeTab === 'mavzular' && (
+                        <div className="space-y-6 animate-in duration-300">
+                            {/* Topics Header / Progress */}
+                            <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 p-6 bg-gray-55 dark:bg-gray-900/40 border border-gray-100 dark:border-gray-700/50 rounded-2xl">
+                                <div className="space-y-1">
+                                    <h3 className="text-xs font-black text-gray-900 dark:text-white uppercase tracking-tight">Kurs o'quv dasturi (Syllabus)</h3>
+                                    <p className="text-[10px] font-bold text-gray-450 uppercase tracking-widest">
+                                        Jami mavzular: {courseTopics.length} ta
+                                    </p>
+                                </div>
+                                
+                                {/* Covered progress bar */}
+                                {courseTopics.length > 0 && (() => {
+                                    const coveredTopicIds = new Set(attendances.filter(a => a.groupId === group.id && a.topicId).map(a => a.topicId));
+                                    const progressPercent = Math.round((coveredTopicIds.size / courseTopics.length) * 100);
+                                    return (
+                                        <div className="flex items-center gap-4 w-full md:w-80 shrink-0">
+                                            <div className="flex-1">
+                                                <div className="flex items-center justify-between text-[9px] font-black uppercase tracking-widest text-gray-400 mb-1">
+                                                    <span>Darslar progressi</span>
+                                                    <span>{coveredTopicIds.size}/{courseTopics.length} ({progressPercent}%)</span>
+                                                </div>
+                                                <div className="w-full h-2 bg-gray-200 dark:bg-gray-750 rounded-full overflow-hidden">
+                                                    <div 
+                                                        className="h-full bg-gradient-to-r from-[#1b6b6b] to-[#2e9c9c] transition-all duration-500"
+                                                        style={{ width: `${progressPercent}%` }}
+                                                    />
+                                                </div>
+                                            </div>
+                                        </div>
+                                    );
+                                })()}
+
+                                <button 
+                                    onClick={() => {
+                                        setEditingTopic(null);
+                                        setTopicForm({ title: '', description: '', order: courseTopics.length + 1 });
+                                        setIsTopicModalOpen(true);
+                                    }}
+                                    className="px-4 py-2.5 bg-[#1b6b6b] hover:bg-[#155252] text-white rounded-xl text-[10px] font-extrabold uppercase tracking-widest shadow-lg shadow-[#1b6b6b]/20 active:scale-95 transition-all flex items-center gap-1.5 group cursor-pointer"
+                                >
+                                    <Plus size={14} />
+                                    Mavzu qo'shish
+                                </button>
+                            </div>
+
+                            {/* Topics List */}
+                            <div className="bg-white dark:bg-gray-800 rounded-3xl border border-gray-100 dark:border-gray-700/50 overflow-hidden shadow-sm">
+                                <div className="overflow-x-auto custom-scrollbar">
+                                    <table className="w-full text-left border-separate border-spacing-0">
+                                        <thead>
+                                            <tr className="bg-gray-55 dark:bg-gray-900/50">
+                                                <th className="p-4 pl-6 text-[10px] font-bold text-gray-450 dark:text-gray-500 uppercase tracking-widest border-b border-gray-100 dark:border-gray-800 w-16">Tartib</th>
+                                                <th className="p-4 text-[10px] font-bold text-gray-450 dark:text-gray-500 uppercase tracking-widest border-b border-gray-100 dark:border-gray-800">Mavzu nomi</th>
+                                                <th className="p-4 text-[10px] font-bold text-gray-450 dark:text-gray-500 uppercase tracking-widest border-b border-gray-100 dark:border-gray-800">Tavsif</th>
+                                                <th className="p-4 text-[10px] font-bold text-gray-450 dark:text-gray-500 uppercase tracking-widest border-b border-gray-100 dark:border-gray-800 w-32 text-center">Holat</th>
+                                                <th className="p-4 pr-6 text-[10px] font-bold text-gray-450 dark:text-gray-500 uppercase tracking-widest border-b border-gray-100 dark:border-gray-800 w-24 text-right">Amallar</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody className="divide-y divide-gray-50 dark:divide-gray-800">
+                                            {courseTopics.map(t => {
+                                                const covered = attendances.some(a => a.groupId === group.id && a.topicId === t.id);
+                                                return (
+                                                    <tr key={t.id} className="hover:bg-gray-55/30 dark:hover:bg-gray-900/30 transition-colors">
+                                                        <td className="p-4 pl-6 text-xs font-black text-gray-450 tabular-nums">#{t.order}</td>
+                                                        <td className="p-4 text-xs font-black text-gray-900 dark:text-white uppercase tracking-tight">{t.title}</td>
+                                                        <td className="p-4 text-xs text-gray-400 dark:text-gray-500 font-bold">{t.description || '-'}</td>
+                                                        <td className="p-4 text-center">
+                                                            {covered ? (
+                                                                <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-emerald-50 text-emerald-600 border border-emerald-100 dark:bg-emerald-950/20 dark:text-emerald-400 dark:border-emerald-900/40 text-[9px] font-black uppercase tracking-wider">
+                                                                    <CheckCircle size={10} /> O'tildi
+                                                                </span>
+                                                            ) : (
+                                                                <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-gray-50 text-gray-400 border border-gray-100 dark:bg-gray-900 dark:text-gray-500 dark:border-gray-800 text-[9px] font-black uppercase tracking-wider">
+                                                                    O'tilmagan
+                                                                </span>
+                                                            )}
+                                                        </td>
+                                                        <td className="p-4 pr-6 text-right">
+                                                            <div className="flex items-center justify-end gap-1.5">
+                                                                <button 
+                                                                    onClick={() => handleEditTopic(t)}
+                                                                    className="w-7 h-7 flex items-center justify-center rounded-lg text-gray-400 hover:text-[#1b6b6b] hover:bg-gray-50 dark:hover:bg-gray-900 transition-all cursor-pointer"
+                                                                >
+                                                                    <Pencil size={13} />
+                                                                </button>
+                                                                <button 
+                                                                    onClick={() => handleDeleteTopic(t.id)}
+                                                                    className="w-7 h-7 flex items-center justify-center rounded-lg text-gray-400 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/20 transition-all cursor-pointer"
+                                                                >
+                                                                    <Trash2 size={13} />
+                                                                </button>
+                                                            </div>
+                                                        </td>
+                                                    </tr>
+                                                );
+                                            })}
+                                            {courseTopics.length === 0 && (
+                                                <tr>
+                                                    <td colSpan={5} className="py-16 text-center text-[10px] text-gray-400 font-bold uppercase tracking-widest italic">
+                                                        Ushbu kurs uchun hali mavzular kiritilmagan
+                                                    </td>
+                                                </tr>
+                                            )}
+                                        </tbody>
+                                    </table>
+                                </div>
                             </div>
                         </div>
                     )}
@@ -606,6 +838,62 @@ export default function CourseDetails() {
                                 )}
                             </div>
                         </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Add/Edit Topic Modal */}
+            {isTopicModalOpen && (
+                <div className="fixed inset-0 z-[200] flex items-center justify-center p-4">
+                    <div className="absolute inset-0 bg-gray-900/60 backdrop-blur-sm" onClick={() => { setIsTopicModalOpen(false); setEditingTopic(null); }} />
+                    <div className="relative bg-white dark:bg-gray-800 rounded-[2rem] border border-gray-100 dark:border-gray-700/50 shadow-2xl w-full max-w-sm p-8">
+                        <div className="flex items-center justify-between mb-6 pb-4 border-b border-gray-50 dark:border-gray-700/50">
+                            <div>
+                                <h3 className="text-lg font-black text-gray-900 dark:text-white uppercase tracking-tight">
+                                    {editingTopic ? "Mavzuni tahrirlash" : "Mavzu qo'shish"}
+                                </h3>
+                                <p className="text-[10px] font-bold text-[#1b6b6b] uppercase tracking-widest mt-0.5">Kurs dasturi</p>
+                            </div>
+                            <button onClick={() => { setIsTopicModalOpen(false); setEditingTopic(null); }} className="w-9 h-9 flex items-center justify-center text-gray-400 hover:bg-gray-55 dark:hover:bg-gray-700 rounded-xl cursor-pointer">
+                                <XCircle size={18} />
+                            </button>
+                        </div>
+                        <form onSubmit={handleSaveTopic} className="space-y-4">
+                            <div>
+                                <label className={labelCls}>Tartib raqami</label>
+                                <input 
+                                    type="number" 
+                                    required 
+                                    value={topicForm.order} 
+                                    onChange={e => setTopicForm({ ...topicForm, order: Number(e.target.value) })} 
+                                    className={inputCls} 
+                                />
+                            </div>
+                            <div>
+                                <label className={labelCls}>Mavzu nomi</label>
+                                <input 
+                                    type="text" 
+                                    required 
+                                    placeholder="Masalan: JavaScript Kirish" 
+                                    value={topicForm.title} 
+                                    onChange={e => setTopicForm({ ...topicForm, title: e.target.value })} 
+                                    className={inputCls} 
+                                />
+                            </div>
+                            <div>
+                                <label className={labelCls}>Tavsif (ixtiyoriy)</label>
+                                <textarea 
+                                    placeholder="Mavzu mazmuni haqida..." 
+                                    value={topicForm.description} 
+                                    onChange={e => setTopicForm({ ...topicForm, description: e.target.value })} 
+                                    className={inputCls + " min-h-[80px] resize-none"} 
+                                />
+                            </div>
+                            <button type="submit" className="w-full py-3 bg-[#1b6b6b] hover:bg-[#155252] text-white rounded-xl font-bold uppercase tracking-widest text-[10px] shadow-lg shadow-[#1b6b6b]/20 transition-all cursor-pointer flex items-center justify-center gap-1.5">
+                                <Check size={14} />
+                                Saqlash
+                            </button>
+                        </form>
                     </div>
                 </div>
             )}

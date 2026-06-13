@@ -182,6 +182,17 @@ export interface Attendance {
     groupId: number;
     date: string;
     status: 'Keldi' | 'Kelmapdi' | 'Sababli' | 'Dars bo\'lmadi';
+    topicId?: number | null;
+    caughtUp?: boolean;
+    schoolId: number;
+}
+
+export interface Topic {
+    id: number;
+    title: string;
+    description?: string;
+    order: number;
+    courseId: number;
     schoolId: number;
 }
 
@@ -235,6 +246,7 @@ export interface CRMState {
     questions: Question[];
     exams: Exam[];
     examResults: ExamResult[];
+    topics: Topic[];
 }
 
 export interface Question {

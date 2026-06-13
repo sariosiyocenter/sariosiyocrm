@@ -470,7 +470,7 @@ export default function Leads() {
                   )}
                   {selectedLead.notes && (
                     <div className="bg-gray-55 dark:bg-gray-900/30 p-4 rounded-2xl border border-gray-100 dark:border-gray-750 col-span-2">
-                      <span className="block text-[9px] font-bold text-gray-400 uppercase tracking-wider mb-1">{t('comments')}</span>
+                      <span className="block text-[9px] font-bold text-gray-400 uppercase tracking-wider mb-1">{t('description')}</span>
                       <span className="text-xs font-semibold text-gray-700 dark:text-gray-300">{selectedLead.notes}</span>
                     </div>
                   )}

@@ -90,21 +90,21 @@ export default function GroupAttendanceCalendar({ group, attendances, selectedDa
     );
 
     return (
-        <div className="bg-white dark:bg-gray-900/40 rounded-[2.5rem] border border-gray-100 dark:border-gray-800 p-8 shadow-sm transition-all h-full flex flex-col relative overflow-visible">
-            <div className="flex items-center justify-between mb-8 px-2">
-                <h4 className="text-sm font-bold text-gray-900 dark:text-white uppercase tracking-tight flex items-center gap-2">
-                    <CalendarIcon size={16} className="text-sky-500" />
+        <div className="bg-white dark:bg-gray-900/40 rounded-3xl border border-gray-100 dark:border-gray-800 p-5 shadow-sm transition-all h-full flex flex-col relative overflow-visible">
+            <div className="flex items-center justify-between mb-4 px-2">
+                <h4 className="text-xs font-bold text-gray-900 dark:text-white uppercase tracking-tight flex items-center gap-2">
+                    <CalendarIcon size={14} className="text-sky-500" />
                     {monthName}
                 </h4>
-                <div className="flex items-center gap-2">
-                    <button onClick={handlePrevMonth} className="p-2 hover:bg-gray-50 dark:hover:bg-gray-800 rounded-xl text-gray-400 transition-all"><ChevronLeft size={18} /></button>
-                    <button onClick={handleNextMonth} className="p-2 hover:bg-gray-50 dark:hover:bg-gray-800 rounded-xl text-gray-400 transition-all"><ChevronRight size={18} /></button>
+                <div className="flex items-center gap-1.5">
+                    <button onClick={handlePrevMonth} className="p-1.5 hover:bg-gray-50 dark:hover:bg-gray-800 rounded-lg text-gray-450 transition-all"><ChevronLeft size={16} /></button>
+                    <button onClick={handleNextMonth} className="p-1.5 hover:bg-gray-50 dark:hover:bg-gray-800 rounded-lg text-gray-450 transition-all"><ChevronRight size={16} /></button>
                 </div>
             </div>
 
-            <div className="grid grid-cols-7 gap-2 flex-grow">
+            <div className="grid grid-cols-7 gap-1 max-w-sm mx-auto w-full flex-grow">
                 {['Du', 'Se', 'Ch', 'Pa', 'Ju', 'Sh', 'Ya'].map(d => (
-                    <div key={d} className="text-center text-[9px] font-extrabold text-gray-300 dark:text-gray-600 uppercase tracking-widest pb-3">{d}</div>
+                    <div key={d} className="text-center text-[8px] font-extrabold text-gray-300 dark:text-gray-600 uppercase tracking-widest pb-1.5">{d}</div>
                 ))}
                 {Array(blanks).fill(0).map((_, i) => <div key={`b-${i}`} />)}
                 {Array(daysInMonth).fill(0).map((_, i) => {
@@ -131,18 +131,18 @@ export default function GroupAttendanceCalendar({ group, attendances, selectedDa
                                     if (isLesson) {
                                         const today = new Date().toISOString().split('T')[0];
                                         if (dateStr > today) {
-                                            showNotification("Kelajakdagi darsga yo'qlama qilib bo'lmaydi", "info");
+                                            showNotification("Kelajakdagi darsga yo'qlama qibly bo'lmaydi", "info");
                                             return;
                                         }
                                         setActivePopover(activePopover === dateStr ? null : dateStr);
                                     }
                                 }}
-                                className={`w-full aspect-square rounded-2xl flex flex-col items-center justify-center relative transition-all border group hover:scale-105 shadow-sm ${bg} ${border} z-10`}
+                                className={`w-8 h-8 sm:w-9 sm:h-9 mx-auto rounded-xl flex flex-col items-center justify-center relative transition-all border group hover:scale-105 shadow-sm ${bg} ${border} z-10`}
                             >
-                                <span className={`text-[10px] font-bold ${isSelected ? 'text-sky-600 dark:text-sky-400 scale-110' : (isLesson ? 'text-gray-600 dark:text-gray-400' : 'text-gray-300 dark:text-gray-700')}`}>
+                                <span className={`text-[9px] font-bold ${isSelected ? 'text-sky-600 dark:text-sky-400 scale-110' : (isLesson ? 'text-gray-600 dark:text-gray-400' : 'text-gray-300 dark:text-gray-700')}`}>
                                     {d}
                                 </span>
-                                {isLesson && <div className={`absolute bottom-1.5 w-1 h-1 rounded-full ${dotColor}`} />}
+                                {isLesson && <div className={`absolute bottom-1 w-1 h-1 rounded-full ${dotColor}`} />}
                             </button>
                             {activePopover === dateStr && <StatusChoicePopover date={dateStr} />}
                         </div>
@@ -150,8 +150,8 @@ export default function GroupAttendanceCalendar({ group, attendances, selectedDa
                 })}
             </div>
 
-            <div className="mt-8 pt-8 border-t border-dashed border-gray-100 dark:border-gray-800">
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+            <div className="mt-4 pt-4 border-t border-dashed border-gray-100 dark:border-gray-800">
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 justify-center">
                     <StatusLink color="bg-emerald-500" label="Dars o'tildi" />
                     <StatusLink color="bg-amber-400" label="Belgilanmagan" />
                     <StatusLink color="bg-rose-500" label="Dars o'tilmadi" />

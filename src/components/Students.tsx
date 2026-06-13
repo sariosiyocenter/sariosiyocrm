@@ -91,7 +91,10 @@ export default function Students() {
         missingInfo: ''
     });
 
-    const [activeMenuId, setActiveMenuId] = useState<number | null>(null);
+    const [activeMenu, setActiveMenu] = useState<{
+        id: number;
+        coords: { top: number; left: number };
+    } | null>(null);
     const [studentToDelete, setStudentToDelete] = useState<{ id: number; name: string } | null>(null);
 
     const handleDeleteStudent = async (id: number, name: string) => {
@@ -526,25 +529,23 @@ export default function Students() {
                                         </div>
                                     </td>
                                     <td className="p-4 text-center relative" onClick={(e) => e.stopPropagation()}>
-                                        <button onClick={() => setActiveMenuId(activeMenuId === student.id ? null : student.id)}
+                                        <button onClick={(e) => {
+                                            if (activeMenu?.id === student.id) {
+                                                setActiveMenu(null);
+                                            } else {
+                                                const rect = e.currentTarget.getBoundingClientRect();
+                                                setActiveMenu({
+                                                    id: student.id,
+                                                    coords: {
+                                                        top: rect.bottom,
+                                                        left: rect.right
+                                                    }
+                                                });
+                                            }
+                                        }}
                                             className="w-8 h-8 flex items-center justify-center rounded-lg text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 cursor-pointer">
                                             <MoreVertical size={16} />
                                         </button>
-                                        {activeMenuId === student.id && (
-                                            <>
-                                                <div className="fixed inset-0 z-10" onClick={() => setActiveMenuId(null)} />
-                                                <div className="absolute right-4 top-10 bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700 rounded-xl shadow-xl py-1 w-32 z-20 text-left">
-                                                    <button onClick={() => { setActiveMenuId(null); navigate(`/students/${student.id}`); }}
-                                                        className="w-full text-left px-4 py-2 text-[10px] font-bold text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700 uppercase tracking-widest cursor-pointer">
-                                                        {t('details')}
-                                                    </button>
-                                                    <button onClick={() => { setActiveMenuId(null); handleDeleteStudent(student.id, student.name); }}
-                                                        className="w-full text-left px-4 py-2 text-[10px] font-bold text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/30 uppercase tracking-widest cursor-pointer">
-                                                        {t('delete')}
-                                                    </button>
-                                                </div>
-                                            </>
-                                        )}
                                     </td>
                                 </tr>
                             ))}
@@ -772,6 +773,29 @@ export default function Students() {
                         </div>
                     </div>
                 </div>
+            )}
+
+            {activeMenu && (
+                <>
+                    <div className="fixed inset-0 z-40 cursor-pointer" onClick={() => setActiveMenu(null)} />
+                    <div 
+                        style={{ 
+                            position: 'fixed', 
+                            top: `${activeMenu.coords.top + 4}px`, 
+                            left: `${activeMenu.coords.left - 128}px`,
+                        }}
+                        className="bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700 rounded-xl shadow-xl py-1 w-32 z-50 text-left animate-in slide-in-from-top-1 duration-150"
+                    >
+                        <button onClick={() => { setActiveMenu(null); navigate(`/students/${activeMenu.id}`); }}
+                            className="w-full text-left px-4 py-2 text-[10px] font-bold text-gray-700 dark:text-gray-200 hover:bg-gray-55 dark:hover:bg-gray-700 uppercase tracking-widest cursor-pointer">
+                            {t('details')}
+                        </button>
+                        <button onClick={() => { setActiveMenu(null); handleDeleteStudent(activeMenu.id, students.find(s => s.id === activeMenu.id)?.name || ''); }}
+                            className="w-full text-left px-4 py-2 text-[10px] font-bold text-rose-600 dark:text-rose-450 hover:bg-rose-50 dark:hover:bg-rose-950/30 uppercase tracking-widest cursor-pointer">
+                            {t('delete')}
+                        </button>
+                    </div>
+                </>
             )}
         </div>
     );

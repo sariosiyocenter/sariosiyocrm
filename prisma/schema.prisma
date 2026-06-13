@@ -209,6 +209,7 @@ model Course {
   schoolId Int
   school   School @relation(fields: [schoolId], references: [id])
   groups   Group[]
+  topics   Topic[]
 
   @@index([schoolId])
 }
@@ -270,6 +271,7 @@ model School {
   applyTokens      ApplyToken[]
   staffAttendances StaffAttendance[]
   salaryPayments   SalaryPayment[]
+  topics           Topic[]
 }
 
 model SmsLog {
@@ -298,10 +300,30 @@ model Attendance {
   group     Group    @relation(fields: [groupId], references: [id])
   date      String
   status    String   // Keldi, Kelmapdi, Sababli
+
+  // Topic tracking
+  topicId   Int?
+  topic     Topic?   @relation(fields: [topicId], references: [id])
+  caughtUp  Boolean  @default(false)
   
   schoolId  Int
   school    School   @relation(fields: [schoolId], references: [id])
 
+  @@index([schoolId])
+}
+
+model Topic {
+  id          Int      @id @default(autoincrement())
+  title       String
+  description String?
+  order       Int      @default(1)
+  courseId    Int
+  course      Course   @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  schoolId    Int
+  school      School   @relation(fields: [schoolId], references: [id])
+  attendances Attendance[]
+
+  @@index([courseId])
   @@index([schoolId])
 }
 

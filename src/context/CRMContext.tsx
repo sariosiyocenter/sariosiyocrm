@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { Student, Teacher, Group, Lead, Payment, CRMState, Course, Room, School, UserRole, Attendance, Score, TeacherAttendance, Expense, Transport, DeliveryLog, Route, Question, Exam, ExamResult, Variant } from '../types';
+import { Student, Teacher, Group, Lead, Payment, CRMState, Course, Room, School, UserRole, Attendance, Score, TeacherAttendance, Expense, Transport, DeliveryLog, Route, Question, Exam, ExamResult, Variant, Topic } from '../types';
 import { generateVariants } from '../lib/shuffler';
 
 export const THEMES = [
@@ -58,8 +58,12 @@ interface CRMContextType extends CRMState {
     addSchool: (school: Omit<School, 'id'>) => Promise<void>;
     deleteSchool: (id: number) => Promise<void>;
     addAttendance: (attendance: Omit<Attendance, 'id' | 'schoolId'>) => Promise<void>;
-    addBatchAttendance: (groupId: number, date: string, records: { studentId: number; status: string }[]) => Promise<void>;
+    updateAttendance: (id: number, updates: Partial<Attendance>) => Promise<void>;
+    addBatchAttendance: (groupId: number, date: string, records: { studentId: number; status: string }[], topicId?: number) => Promise<void>;
     deleteBatchAttendance: (groupId: number, date: string) => Promise<void>;
+    addTopic: (topic: Omit<Topic, 'id' | 'schoolId'>) => Promise<void>;
+    updateTopic: (id: number, topic: Partial<Topic>) => Promise<void>;
+    deleteTopic: (id: number) => Promise<void>;
     addScore: (score: Omit<Score, 'id' | 'schoolId'>) => Promise<void>;
     addTeacherAttendance: (attendance: Omit<TeacherAttendance, 'id' | 'schoolId'>) => Promise<void>;
     addExpense: (expense: Omit<Expense, 'id' | 'schoolId'>) => Promise<void>;
@@ -96,6 +100,7 @@ export const CRMProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         attendances: [], scores: [], teacherAttendances: [], expenses: [],
         transports: [], deliveryLogs: [], routes: [], users: [],
         questions: [], exams: [], examResults: [],
+        topics: [],
         selectedSchoolId: null,
         settings: {
             id: 0,
@@ -301,6 +306,7 @@ export const CRMProvider: React.FC<{ children: React.ReactNode }> = ({ children 
                 questions:          data.questions      || [],
                 exams:              data.exams          || [],
                 examResults:        data.examResults    || [],
+                topics:             data.topics         || [],
                 deliveryLogs:       [],
                 selectedSchoolId:   schoolIdToUse
             }));
@@ -382,6 +388,7 @@ export const CRMProvider: React.FC<{ children: React.ReactNode }> = ({ children 
                             questions:          data.questions      || [],
                             exams:              data.exams          || [],
                             examResults:        data.examResults    || [],
+                            topics:             data.topics         || [],
                             deliveryLogs:       [],
                             selectedSchoolId:   userData.schoolId
                         }));
@@ -465,6 +472,7 @@ export const CRMProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             attendances: [], scores: [], teacherAttendances: [], expenses: [],
             transports: [], deliveryLogs: [], routes: [], users: [],
             questions: [], exams: [], examResults: [],
+            topics: [],
             selectedSchoolId: null,
             settings: {
                 id: 0,
@@ -722,7 +730,10 @@ export const CRMProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         try {
             const newAttendance = await apiCall('attendances', 'POST', attendance);
             setState(prev => {
-                const filtered = prev.attendances.filter(a => a.id !== tempId);
+                const filtered = prev.attendances.filter(a => 
+                    a.id !== tempId && 
+                    !(a.studentId === newAttendance.studentId && a.date === newAttendance.date && a.groupId === newAttendance.groupId)
+                );
                 return { ...prev, attendances: [...filtered, newAttendance] };
             });
         } catch (err) {
@@ -732,10 +743,18 @@ export const CRMProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         }
     };
 
-    const addBatchAttendance = async (groupId: number, date: string, records: { studentId: number; status: string }[]) => {
+    const addBatchAttendance = async (groupId: number, date: string, records: { studentId: number; status: string }[], topicId?: number) => {
         // Optimistic update
         const tempIds = records.map(() => -Math.floor(Math.random() * 1000000));
-        const optimisticRecords = records.map((r, i) => ({ ...r, id: tempIds[i], groupId, date, schoolId: state.selectedSchoolId || 0 } as Attendance));
+        const optimisticRecords = records.map((r, i) => ({ 
+            ...r, 
+            id: tempIds[i], 
+            groupId, 
+            date, 
+            schoolId: state.selectedSchoolId || 0,
+            topicId: topicId || null,
+            caughtUp: false
+        } as Attendance));
 
         setState(prev => {
             const studentIds = new Set(records.map(r => r.studentId));
@@ -744,7 +763,7 @@ export const CRMProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         });
 
         try {
-            const results = await apiCall('attendances/batch', 'POST', { groupId, date, records });
+            const results = await apiCall('attendances/batch', 'POST', { groupId, date, records, topicId });
             setState(prev => {
                 const tempIdSet = new Set(tempIds);
                 const resultStudentIds = new Set(results.map((r: any) => r.studentId));
@@ -762,6 +781,53 @@ export const CRMProvider: React.FC<{ children: React.ReactNode }> = ({ children 
                 return { ...prev, attendances: prev.attendances.filter(a => !tempIdSet.has(a.id)) };
             });
             showNotification("Kurs davomatini saqlashda xatolik yuz berdi", "error");
+        }
+    };
+
+    const updateAttendance = async (id: number, updates: Partial<Attendance>) => {
+        try {
+            const updated = await apiCall(`attendances/${id}`, 'PUT', updates);
+            setState(prev => ({
+                ...prev,
+                attendances: prev.attendances.map(a => a.id === id ? updated : a)
+            }));
+            showNotification("Davomat muvaffaqiyatli yangilandi", "success");
+        } catch (err: any) {
+            showNotification("Davomatni yangilashda xatolik: " + err.message, "error");
+            throw err;
+        }
+    };
+
+    const addTopic = async (topic: Omit<Topic, 'id' | 'schoolId'>) => {
+        try {
+            const newTopic = await apiCall('topics', 'POST', topic);
+            setState(prev => ({ ...prev, topics: [...prev.topics, newTopic] }));
+            showNotification("Yangi mavzu muvaffaqiyatli qo'shildi", "success");
+        } catch (err: any) {
+            showNotification("Mavzu qo'shishda xatolik: " + err.message, "error");
+            throw err;
+        }
+    };
+
+    const updateTopic = async (id: number, topic: Partial<Topic>) => {
+        try {
+            const updated = await apiCall(`topics/${id}`, 'PUT', topic);
+            setState(prev => ({ ...prev, topics: prev.topics.map(t => t.id === id ? updated : t) }));
+            showNotification("Mavzu muvaffaqiyatli yangilandi", "success");
+        } catch (err: any) {
+            showNotification("Mavzuni yangilashda xatolik: " + err.message, "error");
+            throw err;
+        }
+    };
+
+    const deleteTopic = async (id: number) => {
+        try {
+            await apiCall(`topics/${id}`, 'DELETE');
+            setState(prev => ({ ...prev, topics: prev.topics.filter(t => t.id !== id) }));
+            showNotification("Mavzu muvaffaqiyatli o'chirildi", "success");
+        } catch (err: any) {
+            showNotification("Mavzuni o'chirishda xatolik: " + err.message, "error");
+            throw err;
         }
     };
 
@@ -979,7 +1045,8 @@ export const CRMProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             addCourse, deleteCourse,
             addRoom, deleteRoom,
             addSchool, deleteSchool,
-            addAttendance, addBatchAttendance, deleteBatchAttendance, addScore,
+            addAttendance, updateAttendance, addBatchAttendance, deleteBatchAttendance, addScore,
+            addTopic, updateTopic, deleteTopic,
             addTeacherAttendance,
             addExpense, deleteExpense,
             addTransport, updateTransport, deleteTransport,
