@@ -10,6 +10,9 @@ import MapPicker from './MapPicker';
 import PhotoCapture from './PhotoCapture';
 import FaceEnroll from './FaceEnroll';
 import { compressImage } from '../lib/image';
+import * as faceapi from 'face-api.js';
+
+const FACE_MODEL_URL = 'https://cdn.jsdelivr.net/gh/justadudewhohacks/face-api.js@0.22.2/weights';
 
 const UZB_REGIONS: Record<string, string[]> = {
   "Surxondaryo": [
@@ -100,6 +103,7 @@ export default function StudentDetails() {
     const [customPriceVal, setCustomPriceVal] = useState('');
     const [customNoteVal, setCustomNoteVal] = useState('');
     const [isFaceEnrollOpen, setIsFaceEnrollOpen] = useState(false);
+    const [faceEnrollLoading, setFaceEnrollLoading] = useState(false);
 
     const handleConfirmDelete = async () => {
         try {
@@ -114,6 +118,40 @@ export default function StudentDetails() {
     const handlePhotoCapture = async (base64: string) => {
         const compressed = await compressImage(base64);
         updateStudent(student!.id, { photo: compressed });
+    };
+
+    const enrollFaceFromPhoto = async () => {
+        if (!student?.photo) return;
+        setFaceEnrollLoading(true);
+        try {
+            if (!faceapi.nets.tinyFaceDetector.isLoaded) {
+                await faceapi.nets.tinyFaceDetector.loadFromUri(FACE_MODEL_URL);
+            }
+            if (!faceapi.nets.faceLandmark68TinyNet.isLoaded) {
+                await faceapi.nets.faceLandmark68TinyNet.loadFromUri(FACE_MODEL_URL);
+            }
+            if (!faceapi.nets.faceRecognitionNet.isLoaded) {
+                await faceapi.nets.faceRecognitionNet.loadFromUri(FACE_MODEL_URL);
+            }
+            const img = new Image();
+            img.src = student.photo;
+            await new Promise<void>((res, rej) => { img.onload = () => res(); img.onerror = rej; });
+            const detection = await faceapi
+                .detectSingleFace(img, new faceapi.TinyFaceDetectorOptions({ inputSize: 320, scoreThreshold: 0.3 }))
+                .withFaceLandmarks(true)
+                .withFaceDescriptor();
+            if (!detection) {
+                showNotification("Rasmda yuz topilmadi. Boshqa rasm yuklang.", "error");
+                return;
+            }
+            const cp = { ...(student.customPrices as any || {}), faceDescriptor: Array.from(detection.descriptor) };
+            updateStudent(student.id, { customPrices: cp });
+            showNotification("Face ID rasmdan saqlandi ✓", "success");
+        } catch {
+            showNotification("Xatolik yuz berdi", "error");
+        } finally {
+            setFaceEnrollLoading(false);
+        }
     };
     const [isMapOpen, setIsMapOpen] = useState(false);
     const [editForm, setEditForm] = useState({
@@ -425,13 +463,24 @@ export default function StudentDetails() {
                                 </button>
                             )}
 
-                            <button
-                                onClick={() => setIsFaceEnrollOpen(true)}
-                                className="w-full flex items-center justify-center gap-1.5 py-2.5 bg-violet-50 text-violet-600 border border-violet-100 dark:bg-violet-950/20 dark:text-violet-400 dark:border-violet-900/40 rounded-xl text-[9px] font-extrabold uppercase tracking-widest hover:bg-violet-600 hover:text-white hover:border-violet-600 transition-all cursor-pointer"
-                            >
-                                <Camera size={12} />
-                                {(student.customPrices as any)?.faceDescriptor ? 'Face ID yangilash' : 'Face ID ro\'yxatdan o\'tkazish'}
-                            </button>
+                            {student.photo ? (
+                                <button
+                                    onClick={enrollFaceFromPhoto}
+                                    disabled={faceEnrollLoading}
+                                    className="w-full flex items-center justify-center gap-1.5 py-2.5 bg-violet-50 text-violet-600 border border-violet-100 dark:bg-violet-950/20 dark:text-violet-400 dark:border-violet-900/40 rounded-xl text-[9px] font-extrabold uppercase tracking-widest hover:bg-violet-600 hover:text-white hover:border-violet-600 transition-all cursor-pointer disabled:opacity-50"
+                                >
+                                    <Sparkles size={12} className={faceEnrollLoading ? 'animate-spin' : ''} />
+                                    {faceEnrollLoading ? 'Tahlil qilinmoqda...' : (student.customPrices as any)?.faceDescriptor ? 'Face ID yangilash' : 'Face ID saqlash (rasmdan)'}
+                                </button>
+                            ) : (
+                                <button
+                                    onClick={() => setIsFaceEnrollOpen(true)}
+                                    className="w-full flex items-center justify-center gap-1.5 py-2.5 bg-violet-50 text-violet-600 border border-violet-100 dark:bg-violet-950/20 dark:text-violet-400 dark:border-violet-900/40 rounded-xl text-[9px] font-extrabold uppercase tracking-widest hover:bg-violet-600 hover:text-white hover:border-violet-600 transition-all cursor-pointer"
+                                >
+                                    <Camera size={12} />
+                                    Face ID (kamera orqali)
+                                </button>
+                            )}
 
                             {/* Photo Capture Modal */}
                             {isPhotoModalOpen && (
