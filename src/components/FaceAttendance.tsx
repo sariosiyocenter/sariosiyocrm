@@ -102,7 +102,7 @@ export default function FaceAttendance({ students, attendanceStatus, onMatch, on
         if (detections.length === 0) return;
 
         const resized = faceapi.resizeResults(detections, displaySize);
-        const matcher = new faceapi.FaceMatcher(labeledDescriptors, 0.48);
+        const matcher = new faceapi.FaceMatcher(labeledDescriptors, 0.6);
 
         resized.forEach(det => {
             const match = matcher.findBestMatch(det.descriptor);
