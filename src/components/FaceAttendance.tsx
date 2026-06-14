@@ -38,9 +38,9 @@ export default function FaceAttendance({ students, attendanceStatus, onMatch, on
         const load = async () => {
             try {
                 setLoadMsg('Yuz aniqlash modeli...');
-                await faceapi.nets.ssdMobilenetv1.loadFromUri(MODEL_URL);
+                await faceapi.nets.tinyFaceDetector.loadFromUri(MODEL_URL);
                 setLoadMsg('Yuz belgilari modeli...');
-                await faceapi.nets.faceLandmark68Net.loadFromUri(MODEL_URL);
+                await faceapi.nets.faceLandmark68TinyNet.loadFromUri(MODEL_URL);
                 setLoadMsg("Yuz tanish modeli...");
                 await faceapi.nets.faceRecognitionNet.loadFromUri(MODEL_URL);
 
@@ -91,8 +91,8 @@ export default function FaceAttendance({ students, attendanceStatus, onMatch, on
         faceapi.matchDimensions(canvas, displaySize);
 
         const detections = await faceapi
-            .detectAllFaces(video, new faceapi.SsdMobilenetv1Options({ minConfidence: 0.5 }))
-            .withFaceLandmarks()
+            .detectAllFaces(video, new faceapi.TinyFaceDetectorOptions({ inputSize: 320, scoreThreshold: 0.3 }))
+            .withFaceLandmarks(true)
             .withFaceDescriptors();
 
         const ctx = canvas.getContext('2d');
@@ -102,7 +102,7 @@ export default function FaceAttendance({ students, attendanceStatus, onMatch, on
         if (detections.length === 0) return;
 
         const resized = faceapi.resizeResults(detections, displaySize);
-        const matcher = new faceapi.FaceMatcher(labeledDescriptors, 0.6);
+        const matcher = new faceapi.FaceMatcher(labeledDescriptors, 0.55);
 
         resized.forEach(det => {
             const match = matcher.findBestMatch(det.descriptor);
@@ -142,7 +142,7 @@ export default function FaceAttendance({ students, attendanceStatus, onMatch, on
     // Detection loop
     useEffect(() => {
         if (phase !== 'ready') return;
-        intervalRef.current = setInterval(detect, 900);
+        intervalRef.current = setInterval(detect, 250);
         return () => { if (intervalRef.current) clearInterval(intervalRef.current); };
     }, [phase, detect]);
 

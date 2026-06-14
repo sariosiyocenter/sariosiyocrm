@@ -21,9 +21,9 @@ export default function FaceEnroll({ studentName, onSave, onClose }: Props) {
         const init = async () => {
             try {
                 setMsg('Yuz aniqlash modeli...');
-                await faceapi.nets.ssdMobilenetv1.loadFromUri(MODEL_URL);
+                await faceapi.nets.tinyFaceDetector.loadFromUri(MODEL_URL);
                 setMsg('Yuz belgilari modeli...');
-                await faceapi.nets.faceLandmark68Net.loadFromUri(MODEL_URL);
+                await faceapi.nets.faceLandmark68TinyNet.loadFromUri(MODEL_URL);
                 setMsg('Yuz tanish modeli...');
                 await faceapi.nets.faceRecognitionNet.loadFromUri(MODEL_URL);
 
@@ -55,8 +55,8 @@ export default function FaceEnroll({ studentName, onSave, onClose }: Props) {
 
         try {
             const detection = await faceapi
-                .detectSingleFace(video, new faceapi.SsdMobilenetv1Options({ minConfidence: 0.5 }))
-                .withFaceLandmarks()
+                .detectSingleFace(video, new faceapi.TinyFaceDetectorOptions({ inputSize: 320, scoreThreshold: 0.3 }))
+                .withFaceLandmarks(true)
                 .withFaceDescriptor();
 
             if (!detection) {
