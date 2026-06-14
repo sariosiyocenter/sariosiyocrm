@@ -1005,15 +1005,14 @@ app.post('/api/public/schools/:schoolId/leads', async (req, res, next) => {
     } = req.body;
 
     if (!name || !phone) return res.status(400).json({ error: 'Ism va telefon raqami majburiy' });
-    if (!token) return res.status(400).json({ error: 'Havola tokeni kiritilmagan yoki noto\'g\'ri' });
 
-    // Validate the token
-    const applyToken = await prisma.applyToken.findUnique({
-      where: { id: token }
-    });
-
-    if (!applyToken || applyToken.used || applyToken.schoolId !== schoolId) {
-      return res.status(400).json({ error: 'Ushbu ro\'yxatdan o\'tish havolasi eskirgan, noto\'g\'ri yoki allaqachon ishlatilgan.' });
+    // Token is optional — if provided, validate it (legacy single-use support)
+    if (token) {
+      const applyToken = await prisma.applyToken.findUnique({ where: { id: token } });
+      if (!applyToken || applyToken.used || applyToken.schoolId !== schoolId) {
+        return res.status(400).json({ error: 'Ushbu ro\'yxatdan o\'tish havolasi eskirgan, noto\'g\'ri yoki allaqachon ishlatilgan.' });
+      }
+      await prisma.applyToken.update({ where: { id: token }, data: { used: true } });
     }
 
     const cleanName = name.trim();
@@ -1072,7 +1071,7 @@ app.post('/api/public/schools/:schoolId/leads', async (req, res, next) => {
       }
     });
 
-    notifyAdmins(`🆕 Bir martalik QR Formadan yangi ariza:\n👤 ${lead.name}\n📞 ${lead.phone}\n📚 Kurs: ${lead.course}`, schoolId);
+    notifyAdmins(`🆕 Onlayn formadan yangi ariza:\n👤 ${lead.name}\n📞 ${lead.phone}\n📚 Kurs: ${lead.course}`, schoolId);
     res.json({ success: true, id: lead.id });
   } catch (error) { next(error); }
 });

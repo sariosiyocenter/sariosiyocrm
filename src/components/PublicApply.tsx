@@ -50,7 +50,8 @@ export default function PublicApply() {
         if (!schoolId) return;
 
         // If they already submitted successfully in this session/browser, bypass API checks
-        if (token && localStorage.getItem(`submitted_apply_success_${token}`)) {
+        const sessionKey = `submitted_apply_${schoolId}`;
+        if (localStorage.getItem(sessionKey)) {
             setSubmitted(true);
             setLoading(false);
             return;
@@ -60,15 +61,13 @@ export default function PublicApply() {
             try {
                 setLoading(true);
 
-                if (!token) {
-                    throw new Error('Ro\'yxatdan o\'tish havolasi eskirgan yoki muddati tugagan.');
-                }
-
-                // Verify the single-use token
-                const tokenRes = await fetch(`/api/public/tokens/${token}`);
-                const tokenData = await tokenRes.json();
-                if (!tokenData.valid || tokenData.schoolId !== parseInt(schoolId)) {
-                    throw new Error('Ro\'yxatdan o\'tish havolasi eskirgan yoki noto\'g\'ri.');
+                // Token is optional — permanent links work without token
+                if (token) {
+                    const tokenRes = await fetch(`/api/public/tokens/${token}`);
+                    const tokenData = await tokenRes.json();
+                    if (!tokenData.valid || tokenData.schoolId !== parseInt(schoolId)) {
+                        throw new Error('Ro\'yxatdan o\'tish havolasi eskirgan yoki noto\'g\'ri.');
+                    }
                 }
 
                 // Fetch School Info
@@ -109,9 +108,7 @@ export default function PublicApply() {
             });
             if (res.ok) {
                 setSubmitted(true);
-                if (token) {
-                    localStorage.setItem(`submitted_apply_success_${token}`, 'true');
-                }
+                localStorage.setItem(`submitted_apply_${schoolId}`, 'true');
             } else {
                 const data = await res.json().catch(() => ({}));
                 alert(data.error || 'Yuborishda xatolik yuz berdi. Iltimos qaytadan urining.');

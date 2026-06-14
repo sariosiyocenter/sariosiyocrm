@@ -108,46 +108,30 @@ export default function Students() {
     // Link creation states
     const [isLinkModalOpen, setIsLinkModalOpen] = useState(false);
     const [qrCodeDataUrl, setQrCodeDataUrl] = useState('');
-    const [generatedToken, setGeneratedToken] = useState('');
     const [copySuccess, setCopySuccess] = useState(false);
 
-    useEffect(() => {
-        if (isLinkModalOpen && selectedSchoolId) {
-            const fetchToken = async () => {
-                try {
-                    const token = localStorage.getItem('token');
-                    const res = await fetch(`/api/public/schools/${selectedSchoolId}/tokens`, {
-                        method: 'POST',
-                        headers: {
-                            'Authorization': `Bearer ${token}`
-                        }
-                    });
-                    if (res.ok) {
-                        const data = await res.json();
-                        setGeneratedToken(data.token);
+    const applyUrl = selectedSchoolId ? `${window.location.origin}/apply/${selectedSchoolId}` : '';
 
-                        const QRCodeLib = await import('qrcode');
-                        const QRCode = QRCodeLib.default || QRCodeLib;
-                        const applyUrl = `${window.location.origin}/apply/${selectedSchoolId}?token=${data.token}`;
-                        const qrUrl = await QRCode.toDataURL(applyUrl, { width: 200, margin: 2 });
-                        setQrCodeDataUrl(qrUrl);
-                    } else {
-                        console.error('Failed to create registration token');
-                    }
+    useEffect(() => {
+        if (isLinkModalOpen && applyUrl) {
+            const generateQR = async () => {
+                try {
+                    const QRCodeLib = await import('qrcode');
+                    const QRCode = QRCodeLib.default || QRCodeLib;
+                    const qrUrl = await QRCode.toDataURL(applyUrl, { width: 200, margin: 2 });
+                    setQrCodeDataUrl(qrUrl);
                 } catch (err) {
                     console.error(err);
                 }
             };
-            fetchToken();
+            generateQR();
         } else {
-            setGeneratedToken('');
             setQrCodeDataUrl('');
         }
-    }, [isLinkModalOpen, selectedSchoolId]);
+    }, [isLinkModalOpen, applyUrl]);
 
     const copyLinkToClipboard = () => {
-        if (!generatedToken) return;
-        const applyUrl = `${window.location.origin}/apply/${selectedSchoolId}?token=${generatedToken}`;
+        if (!applyUrl) return;
         navigator.clipboard.writeText(applyUrl)
             .then(() => {
                 setCopySuccess(true);
@@ -159,9 +143,11 @@ export default function Students() {
     const [filters, setFilters] = useState({
         status: '',
         groupId: '',
-        balanceStatus: 'all', // all, debtor, positive
-        dateRange: 'all', // all, today, week, month
-        rating: '',
+        balanceStatus: 'all',
+        dateRange: 'all',
+        orgType: '',
+        region: '',
+        district: '',
         location: '',
         missingInfo: ''
     });
@@ -246,8 +232,11 @@ export default function Students() {
                     "F.I.SH.": student.name,
                     "Telefon": student.phone,
                     "Tug'ilgan sana": student.birthDate || '',
-                    "Maktab/Bog'cha": student.studentSchool || '',
-                    "Yashash manzili": student.address || '',
+                    "Ta'lim muassasasi turi": student.orgType || '',
+                    "Muassasa nomi": student.studentSchool || '',
+                    "Viloyat": student.region || '',
+                    "Tuman": student.district || '',
+                    "Manzil (ko'cha, uy)": student.address || '',
                     "Holati": student.status || 'Faol',
                     "A'zo bo'lgan sana": student.joinedDate || '',
                     "Balans (UZS)": student.balance || 0,
@@ -308,8 +297,11 @@ export default function Students() {
                         const name = row["F.I.SH."] || row["F.I.SH"] || row["name"] || row["Name"] || row["Ism Familiya"] || row["Ism"];
                         const phone = row["Telefon"] || row["phone"] || row["Phone"] || row["Telefon raqami"] || row["Tel"];
                         const birthDate = row["Tug'ilgan sana"] || row["birthDate"] || row["Birth Date"] || row["Tug'ilgan yili"];
-                        const studentSchool = row["Maktab/Bog'cha"] || row["Maktab"] || row["Bog'cha"] || row["studentSchool"] || row["School"];
-                        const address = row["Yashash manzili"] || row["address"] || row["Address"] || row["Manzil"];
+                        const orgType = row["Ta'lim muassasasi turi"] || row["orgType"] || row["Muassasa turi"] || '';
+                        const studentSchool = row["Muassasa nomi"] || row["Maktab/Bog'cha"] || row["Maktab"] || row["Bog'cha"] || row["studentSchool"] || row["School"];
+                        const region = row["Viloyat"] || row["region"] || '';
+                        const district = row["Tuman"] || row["district"] || '';
+                        const address = row["Manzil (ko'cha, uy)"] || row["Yashash manzili"] || row["address"] || row["Address"] || row["Manzil"];
                         const status = row["Holati"] || row["status"] || row["Status"] || "Faol";
                         const joinedDate = row["A'zo bo'lgan sana"] || row["joinedDate"] || row["Joined Date"] || new Date().toISOString().split('T')[0];
                         const balance = row["Balans (UZS)"] || row["balance"] || row["Balance"] || 0;
@@ -322,7 +314,10 @@ export default function Students() {
                             name,
                             phone,
                             birthDate: birthDate ? String(birthDate) : '',
+                            orgType: orgType ? String(orgType) : '',
                             studentSchool: studentSchool ? String(studentSchool) : '',
+                            region: region ? String(region) : '',
+                            district: district ? String(district) : '',
                             address: address ? String(address) : '',
                             status: status ? String(status) : 'Faol',
                             joinedDate: joinedDate ? String(joinedDate) : new Date().toISOString().split('T')[0],
@@ -401,7 +396,9 @@ export default function Students() {
         
         const matchesStatus = !filters.status || s.status === filters.status;
         const matchesGroup = !filters.groupId || (s.groups || []).includes(Number(filters.groupId));
-        const matchesRating = !filters.rating || s.rating === Number(filters.rating);
+        const matchesOrgType = !filters.orgType || s.orgType === filters.orgType;
+        const matchesRegion = !filters.region || s.region === filters.region;
+        const matchesDistrict = !filters.district || s.district === filters.district;
         const matchesLocation = !filters.location || s.location === filters.location;
         
         let matchesBalance = true;
@@ -428,7 +425,7 @@ export default function Students() {
             matchesMissingInfo = !s.photo || s.photo.trim() === '';
         }
 
-        return matchesSearch && matchesStatus && matchesGroup && matchesBalance && matchesDate && matchesRating && matchesLocation && matchesMissingInfo;
+        return matchesSearch && matchesStatus && matchesGroup && matchesBalance && matchesDate && matchesOrgType && matchesRegion && matchesDistrict && matchesLocation && matchesMissingInfo;
     });
 
     return (
@@ -494,7 +491,7 @@ export default function Students() {
                 </div>
 
                 {showFilters && (
-                    <div className="px-6 pb-5 pt-4 border-t border-gray-50 dark:border-gray-700/50 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-7 gap-4">
+                    <div className="px-6 pb-5 pt-4 border-t border-gray-50 dark:border-gray-700/50 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-8 gap-4">
                         <div>
                             <label className={lbl}>{t('filter_status')}</label>
                             <select value={filters.status} onChange={e => setFilters({...filters, status: e.target.value})}
@@ -527,21 +524,32 @@ export default function Students() {
                             </select>
                         </div>
                         <div>
-                            <label className={lbl}>{t('filter_rating')}</label>
-                            <select value={filters.rating} onChange={e => setFilters({...filters, rating: e.target.value})}
+                            <label className={lbl}>Ta'lim muassasasi</label>
+                            <select value={filters.orgType} onChange={e => setFilters({...filters, orgType: e.target.value})}
                                 className="w-full px-3 py-2 bg-gray-50 dark:bg-gray-900/50 border border-gray-100 dark:border-gray-700 rounded-xl text-[10px] font-bold text-gray-700 dark:text-white outline-none focus:border-[#1b6b6b] transition-all cursor-pointer">
-                                <option value="">{t('all')}</option>
-                                {[1,2,3,4,5].map(r => <option key={r} value={r}>{t('star_count').replace('{count}', String(r))}</option>)}
+                                <option value="">Barchasi</option>
+                                <option value="Maktab">Maktab</option>
+                                <option value="Bog'cha">Bog'cha</option>
+                                <option value="Oliy o'quv yurti">Oliy o'quv yurti</option>
+                                <option value="Kollej / Litsey">Kollej / Litsey</option>
+                                <option value="Boshqa">Boshqa</option>
                             </select>
                         </div>
                         <div>
-                            <label className={lbl}>{t('filter_location')}</label>
-                            <select value={filters.location} onChange={e => setFilters({...filters, location: e.target.value})}
+                            <label className={lbl}>Viloyat</label>
+                            <select value={filters.region} onChange={e => setFilters({...filters, region: e.target.value, district: ''})}
                                 className="w-full px-3 py-2 bg-gray-50 dark:bg-gray-900/50 border border-gray-100 dark:border-gray-700 rounded-xl text-[10px] font-bold text-gray-700 dark:text-white outline-none focus:border-[#1b6b6b] transition-all cursor-pointer">
-                                <option value="">{t('all')}</option>
-                                {Array.from(new Set(students.map(s => s.location).filter(Boolean))).map(loc => (
-                                    <option key={loc} value={loc}>{loc}</option>
-                                ))}
+                                <option value="">Barchasi</option>
+                                {Object.keys(UZB_REGIONS).map(r => <option key={r} value={r}>{r}</option>)}
+                            </select>
+                        </div>
+                        <div>
+                            <label className={lbl}>Tuman</label>
+                            <select value={filters.district} onChange={e => setFilters({...filters, district: e.target.value})}
+                                disabled={!filters.region}
+                                className="w-full px-3 py-2 bg-gray-50 dark:bg-gray-900/50 border border-gray-100 dark:border-gray-700 rounded-xl text-[10px] font-bold text-gray-700 dark:text-white outline-none focus:border-[#1b6b6b] transition-all cursor-pointer disabled:opacity-50">
+                                <option value="">Barchasi</option>
+                                {filters.region && UZB_REGIONS[filters.region]?.map(d => <option key={d} value={d}>{d}</option>)}
                             </select>
                         </div>
                         <div>
@@ -556,7 +564,7 @@ export default function Students() {
                             </select>
                         </div>
                         <div className="flex items-end">
-                            <button onClick={() => setFilters({status: '', groupId: '', balanceStatus: 'all', dateRange: 'all', rating: '', location: '', missingInfo: ''})}
+                            <button onClick={() => setFilters({status: '', groupId: '', balanceStatus: 'all', dateRange: 'all', orgType: '', region: '', district: '', location: '', missingInfo: ''})}
                                 className="w-full py-2 text-[10px] font-extrabold uppercase text-rose-500 hover:text-rose-600 flex items-center justify-center gap-1.5 cursor-pointer">
                                 <X size={12} /> {t('filter_clear')}
                             </button>
@@ -697,18 +705,22 @@ export default function Students() {
                                 </div>
                                 <div>
                                     <label className={lbl}>Ta'lim muassasasi turi</label>
-                                    <select 
-                                        value={newStudent.orgType} 
-                                        onChange={e => setNewStudent({...newStudent, orgType: e.target.value})} 
-                                        className={inp}
-                                    >
-                                        <option value="">Tanlang...</option>
-                                        <option value="Maktab">Maktab</option>
-                                        <option value="Bog'cha">Bog'cha</option>
-                                        <option value="Oliy o'quv yurti">Oliy o'quv yurti</option>
-                                        <option value="Kollej / Litsey">Kollej / Litsey</option>
-                                        <option value="Boshqa">Boshqa</option>
-                                    </select>
+                                    <div className="flex flex-wrap gap-2">
+                                        {['Maktab', "Bog'cha", "Kollej / Litsey", "Oliy o'quv yurti", 'Boshqa'].map(opt => (
+                                            <button
+                                                key={opt}
+                                                type="button"
+                                                onClick={() => setNewStudent({...newStudent, orgType: newStudent.orgType === opt ? '' : opt})}
+                                                className={`px-3 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-wide border transition-all cursor-pointer ${
+                                                    newStudent.orgType === opt
+                                                        ? 'bg-[#1b6b6b] text-white border-[#1b6b6b]'
+                                                        : 'bg-gray-50 dark:bg-gray-900/50 text-gray-500 dark:text-gray-400 border-gray-200 dark:border-gray-700 hover:border-[#1b6b6b] hover:text-[#1b6b6b]'
+                                                }`}
+                                            >
+                                                {opt}
+                                            </button>
+                                        ))}
+                                    </div>
                                 </div>
                                 <div>
                                     <label className={lbl}>Muassasa nomi</label>
@@ -717,9 +729,9 @@ export default function Students() {
                                 <div className="grid grid-cols-2 gap-4">
                                     <div>
                                         <label className={lbl}>Viloyat</label>
-                                        <select 
-                                            value={newStudent.region} 
-                                            onChange={e => setNewStudent({...newStudent, region: e.target.value, district: ''})} 
+                                        <select
+                                            value={newStudent.region}
+                                            onChange={e => setNewStudent({...newStudent, region: e.target.value, district: ''})}
                                             className={inp}
                                         >
                                             <option value="">Tanlang...</option>
@@ -730,9 +742,9 @@ export default function Students() {
                                     </div>
                                     <div>
                                         <label className={lbl}>Tuman</label>
-                                        <select 
-                                            value={newStudent.district} 
-                                            onChange={e => setNewStudent({...newStudent, district: e.target.value})} 
+                                        <select
+                                            value={newStudent.district}
+                                            onChange={e => setNewStudent({...newStudent, district: e.target.value})}
                                             className={inp}
                                             disabled={!newStudent.region}
                                         >
@@ -742,6 +754,10 @@ export default function Students() {
                                             ))}
                                         </select>
                                     </div>
+                                </div>
+                                <div>
+                                    <label className={lbl}>Manzil (ko'cha, uy)</label>
+                                    <input type="text" placeholder="Navruz ko'chasi, 12-uy" className={inp} value={newStudent.address} onChange={e => setNewStudent({ ...newStudent, address: e.target.value })} />
                                 </div>
                                 <div>
                                     <label className={lbl}>Imtiyoz turi</label>
@@ -986,10 +1002,10 @@ export default function Students() {
                         <div className="space-y-4">
                             <div className="flex items-center gap-2 bg-gray-55 dark:bg-gray-900/50 p-3 rounded-2xl border border-gray-100 dark:border-gray-750">
                                 <span className="text-[9px] font-black text-[#1b6b6b] uppercase tracking-wider shrink-0">{t('link')}:</span>
-                                <input 
-                                    readOnly 
-                                    type="text" 
-                                    value={generatedToken ? `${window.location.origin}/apply/${selectedSchoolId}?token=${generatedToken}` : t('loading')} 
+                                <input
+                                    readOnly
+                                    type="text"
+                                    value={applyUrl || t('loading')}
                                     className="bg-transparent border-none text-[10px] font-extrabold text-gray-700 dark:text-white outline-none w-full select-all"
                                 />
                             </div>
