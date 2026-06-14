@@ -286,9 +286,9 @@ export default function StudentDetails() {
     };
 
     const attendanceRate = studentAttendances.length ? ((studentAttendances.filter(a => a.status === 'Keldi').length / studentAttendances.length) * 100).toFixed(0) : '0';
-    const missedLessonsCount = studentAttendances.filter(a => a.status === 'Kelmapdi').length;
-    const missedTopicsCount = studentAttendances.filter(a => a.status === 'Kelmapdi' && !a.caughtUp).length;
-    const caughtUpTopicsCount = studentAttendances.filter(a => a.status === 'Kelmapdi' && a.caughtUp).length;
+    const missedLessonsCount = studentAttendances.filter(a => a.status === 'Kelmapdi' || a.status === 'Sababli').length;
+    const missedTopicsCount = studentAttendances.filter(a => (a.status === 'Kelmapdi' || a.status === 'Sababli') && !a.caughtUp).length;
+    const caughtUpTopicsCount = studentAttendances.filter(a => (a.status === 'Kelmapdi' || a.status === 'Sababli') && a.caughtUp).length;
 
     const labelCls = "block text-[10px] font-extrabold uppercase tracking-widest text-gray-400 mb-2";
     const inputCls = "w-full px-4 py-3 bg-gray-55 dark:bg-gray-900/50 border border-gray-100 dark:border-gray-700 rounded-2xl text-xs font-bold text-gray-900 dark:text-white focus:border-[#1b6b6b] focus:ring-4 focus:ring-[#1b6b6b]/10 outline-none transition-all";
@@ -848,7 +848,7 @@ export default function StudentDetails() {
                                             <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">{t('missed_and_closed_topics')}</span>
                                         </div>
                                         
-                                        {studentAttendances.filter(a => a.status === 'Kelmapdi').length === 0 ? (
+                                        {studentAttendances.filter(a => a.status === 'Kelmapdi' || a.status === 'Sababli').length === 0 ? (
                                             <p className="text-center py-8 text-[10px] text-gray-400 font-bold uppercase tracking-widest">{t('no_missed_topics')}</p>
                                         ) : (
                                             <div className="bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700/50 rounded-2xl overflow-hidden shadow-sm">
@@ -861,7 +861,7 @@ export default function StudentDetails() {
                                                         </tr>
                                                     </thead>
                                                     <tbody className="divide-y divide-gray-100 dark:divide-gray-800">
-                                                        {studentAttendances.filter(a => a.status === 'Kelmapdi').map(a => {
+                                                        {studentAttendances.filter(a => a.status === 'Kelmapdi' || a.status === 'Sababli').map(a => {
                                                             const groupObj = groups.find(g => g.id === a.groupId);
                                                             
                                                             // Resolve Topic using our 3-tier lookup
@@ -894,6 +894,9 @@ export default function StudentDetails() {
                                                                     <td className="p-3">
                                                                         <p className="text-[11px] font-bold text-gray-900 dark:text-white uppercase tracking-tight">{a.date}</p>
                                                                         <p className="text-[8px] font-bold text-gray-400 uppercase tracking-widest mt-0.5">{groupObj?.name || '-'}</p>
+                                                                        {a.status === 'Sababli' && (
+                                                                            <span className="inline-block mt-0.5 text-[7px] font-black uppercase tracking-wider px-1.5 py-0.5 rounded bg-amber-50 text-amber-600 border border-amber-100 dark:bg-amber-950/20 dark:text-amber-400 dark:border-amber-900/40">Sababli</span>
+                                                                        )}
                                                                     </td>
                                                                     <td className="p-3">
                                                                         {topicObj ? (
@@ -1197,7 +1200,7 @@ export default function StudentDetails() {
                                                                                         {topicObj.description}
                                                                                     </p>
                                                                                 )}
-                                                                                {a.status === 'Kelmapdi' && (
+                                                                                {(a.status === 'Kelmapdi' || a.status === 'Sababli') && (
                                                                                     <button
                                                                                         onClick={async () => {
                                                                                             try {
