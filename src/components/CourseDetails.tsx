@@ -13,7 +13,7 @@ import FaceAttendance from './FaceAttendance';
 export default function CourseDetails() {
     const { id } = useParams<{ id: string }>();
     const navigate = useNavigate();
-    const { groups, students, teachers, courses, rooms, attendances, payments, addBatchAttendance, addStudentToGroup, removeStudentFromGroup, updateGroup, updateCourse, showNotification, topics, addTopic, updateTopic, deleteTopic, addPayment, syllabuses } = useCRM();
+    const { groups, students, teachers, courses, rooms, attendances, payments, addBatchAttendance, addAttendance, addStudentToGroup, removeStudentFromGroup, updateGroup, updateCourse, showNotification, topics, addTopic, updateTopic, deleteTopic, addPayment, syllabuses } = useCRM();
     const [isEditingInfo, setIsEditingInfo] = useState(false);
     const [editForm, setEditForm] = useState({
         teacherId: 0,
@@ -26,7 +26,6 @@ export default function CourseDetails() {
     });
     const [activeTab, setActiveTab] = useState('umumiy');
     const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
-    const [batchAttendance, setBatchAttendance] = useState<Record<number, string>>({});
     const [isAddStudentModalOpen, setIsAddStudentModalOpen] = useState(false);
     const [studentSearch, setStudentSearch] = useState('');
     const [selectedTopicId, setSelectedTopicId] = useState<number | ''>('');
@@ -60,29 +59,21 @@ export default function CourseDetails() {
     const groupStudents = students.filter(s => (group.studentIds || []).includes(s.id));
 
 
-    const handleSaveAttendance = async () => {
-        const records = Object.entries(batchAttendance).map(([studentId, status]) => ({
-            studentId: Number(studentId),
-            status
-        }));
-        if (records.length === 0) return;
-        await addBatchAttendance(group.id, selectedDate, records, selectedTopicId ? Number(selectedTopicId) : undefined);
-        showNotification("Davomat saqlandi", "success");
-    };
-
+    // Auto-load topic for selected date
     React.useEffect(() => {
-        if (!group) return;
         const existing = attendances.filter(a => a.groupId === group.id && a.date === selectedDate);
-        const initialBatch: Record<number, string> = {};
-        groupStudents.forEach(s => {
-            const rec = existing.find(a => a.studentId === s.id);
-            initialBatch[s.id] = rec ? rec.status : 'Keldi';
-        });
-        setBatchAttendance(initialBatch);
-
         const firstRecord = existing.find(a => a.topicId !== null && a.topicId !== undefined);
         setSelectedTopicId(firstRecord?.topicId || '');
     }, [selectedDate, group.id, attendances]);
+
+    type AttStatus = 'Keldi' | 'Kelmapdi' | 'Sababli' | "Dars bo'lmadi" | 'Kechikdi' | 'ErtaKetdi';
+    const saveAttendance = (studentId: number, status: AttStatus) => {
+        addAttendance({ studentId, groupId: group.id, date: selectedDate, status, topicId: selectedTopicId ? Number(selectedTopicId) : undefined });
+    };
+    const getStudentAttStatus = (studentId: number): AttStatus | null => {
+        const rec = attendances.find(a => a.groupId === group.id && a.date === selectedDate && a.studentId === studentId);
+        return (rec?.status as AttStatus) || null;
+    };
 
     const handleSendAttendanceSms = async () => {
         if (!window.confirm("Kelmagan o'quvchilar ota-onalariga SMS yuborilsinmi?")) return;
@@ -667,19 +658,15 @@ export default function CourseDetails() {
                                         </select>
                                     </div>
 
-                                    {/* Save and SMS */}
+                                    {/* SMS only */}
                                     <div className="flex items-center gap-2 w-full sm:w-auto shrink-0">
-                                        <button 
+                                        <button
                                             onClick={handleSendAttendanceSms}
                                             className="px-4 py-2 bg-amber-50 dark:bg-amber-950/20 text-amber-600 dark:text-amber-400 border border-amber-100 dark:border-amber-900/40 rounded-xl text-[10px] font-extrabold uppercase tracking-widest hover:bg-amber-600 hover:text-white transition-all flex items-center gap-1.5 group cursor-pointer"
                                             title="Kelmaganlarga SMS yuborish"
                                         >
                                             <Sparkles size={13} className="group-hover:animate-pulse" />
                                             SMS
-                                        </button>
-                                        <button onClick={handleSaveAttendance} 
-                                            className={`flex-1 sm:flex-none px-6 py-2.5 bg-[#1b6b6b] hover:bg-[#155252] text-white rounded-xl text-[10px] font-extrabold uppercase tracking-widest shadow-lg shadow-[#1b6b6b]/20 active:scale-95 transition-all cursor-pointer ${!isDayValid(group.days, selectedDate) ? 'opacity-50' : ''}`}>
-                                            Saqlash
                                         </button>
                                     </div>
                                 </div>
@@ -693,11 +680,7 @@ export default function CourseDetails() {
                                         <div className="flex items-center gap-2">
                                             <span className="text-[9px] font-bold text-gray-450">{groupStudents.length} ta o'quvchi</span>
                                             <button
-                                                onClick={() => {
-                                                    const all: Record<number, string> = {};
-                                                    groupStudents.forEach(s => { all[s.id] = 'Keldi'; });
-                                                    setBatchAttendance(all);
-                                                }}
+                                                onClick={() => addBatchAttendance(group.id, selectedDate, groupStudents.map(s => ({ studentId: s.id, status: 'Keldi' })), selectedTopicId ? Number(selectedTopicId) : undefined)}
                                                 className="px-2.5 py-1 rounded-lg text-[8px] font-black uppercase tracking-wider bg-emerald-50 text-emerald-600 border border-emerald-100 hover:bg-emerald-500 hover:text-white hover:border-emerald-500 dark:bg-emerald-950/20 dark:text-emerald-400 dark:border-emerald-900/40 transition-all cursor-pointer"
                                             >
                                                 Hammasi keldi
@@ -710,30 +693,31 @@ export default function CourseDetails() {
                                             </button>
                                         </div>
                                     </div>
-                                    <div className="space-y-1.5 max-h-[360px] overflow-y-auto pr-1 custom-scrollbar">
+                                    <div className="space-y-1 max-h-[360px] overflow-y-auto pr-1 custom-scrollbar">
                                         {groupStudents.map(s => {
-                                            const status = batchAttendance[s.id] || 'Keldi';
+                                            const status = getStudentAttStatus(s.id);
                                             return (
-                                                <div key={s.id} className="flex items-center justify-between p-2 bg-gray-55 dark:bg-gray-900/30 rounded-xl border border-transparent hover:border-gray-100 dark:hover:border-gray-755 transition-all">
-                                                    <span className="text-[10px] font-black text-gray-900 dark:text-white uppercase tracking-tight truncate max-w-[120px]">{s.name}</span>
-                                                    <div className="flex items-center gap-1 shrink-0">
-                                                        <button 
-                                                            onClick={() => setBatchAttendance(prev => ({ ...prev, [s.id]: 'Keldi' }))}
-                                                            className={`px-2 py-1 rounded-lg text-[8px] font-black uppercase tracking-wider transition-all cursor-pointer ${status === 'Keldi' ? 'bg-emerald-500 text-white shadow-md shadow-emerald-500/20' : 'bg-gray-100 dark:bg-gray-800 text-gray-400 hover:text-emerald-500'}`}
-                                                        >
+                                                <div key={s.id} className={`flex items-center justify-between px-3 py-2 rounded-xl border transition-all ${status ? 'bg-white dark:bg-gray-900 border-gray-100 dark:border-gray-700' : 'bg-gray-50 dark:bg-gray-900/40 border-dashed border-gray-200 dark:border-gray-700/50'}`}>
+                                                    <div className="flex items-center gap-2 min-w-0">
+                                                        <div className={`w-1.5 h-5 rounded-full shrink-0 ${status === 'Keldi' ? 'bg-emerald-400' : status === 'Kelmapdi' ? 'bg-rose-400' : status === 'Sababli' ? 'bg-sky-400' : status === 'Kechikdi' ? 'bg-orange-400' : 'bg-gray-200 dark:bg-gray-700'}`} />
+                                                        <span className="text-[10px] font-black text-gray-900 dark:text-white uppercase tracking-tight truncate max-w-[100px]">{s.name}</span>
+                                                    </div>
+                                                    <div className="flex items-center gap-0.5 shrink-0">
+                                                        <button onClick={() => saveAttendance(s.id, 'Keldi')}
+                                                            className={`px-2 py-1 rounded-lg text-[8px] font-black uppercase tracking-wider transition-all cursor-pointer ${status === 'Keldi' ? 'bg-emerald-500 text-white' : 'bg-gray-100 dark:bg-gray-800 text-gray-400 hover:text-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-950/20'}`}>
                                                             Keldi
                                                         </button>
-                                                        <button 
-                                                            onClick={() => setBatchAttendance(prev => ({ ...prev, [s.id]: 'Kelmapdi' }))}
-                                                            className={`px-2 py-1 rounded-lg text-[8px] font-black uppercase tracking-wider transition-all cursor-pointer ${status === 'Kelmapdi' ? 'bg-rose-500 text-white shadow-md shadow-rose-500/20' : 'bg-gray-100 dark:bg-gray-800 text-gray-400 hover:text-rose-500'}`}
-                                                        >
+                                                        <button onClick={() => saveAttendance(s.id, 'Kelmapdi')}
+                                                            className={`px-2 py-1 rounded-lg text-[8px] font-black uppercase tracking-wider transition-all cursor-pointer ${status === 'Kelmapdi' ? 'bg-rose-500 text-white' : 'bg-gray-100 dark:bg-gray-800 text-gray-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/20'}`}>
                                                             Yo'q
                                                         </button>
-                                                        <button 
-                                                            onClick={() => setBatchAttendance(prev => ({ ...prev, [s.id]: 'Sababli' }))}
-                                                            className={`px-2 py-1 rounded-lg text-[8px] font-black uppercase tracking-wider transition-all cursor-pointer ${status === 'Sababli' ? 'bg-sky-500 text-white shadow-md shadow-sky-500/20' : 'bg-gray-100 dark:bg-gray-800 text-gray-400 hover:text-sky-500'}`}
-                                                        >
+                                                        <button onClick={() => saveAttendance(s.id, 'Sababli')}
+                                                            className={`px-2 py-1 rounded-lg text-[8px] font-black uppercase tracking-wider transition-all cursor-pointer ${status === 'Sababli' ? 'bg-sky-500 text-white' : 'bg-gray-100 dark:bg-gray-800 text-gray-400 hover:text-sky-600 hover:bg-sky-50 dark:hover:bg-sky-950/20'}`}>
                                                             Sababli
+                                                        </button>
+                                                        <button onClick={() => saveAttendance(s.id, 'Kechikdi')}
+                                                            className={`px-2 py-1 rounded-lg text-[8px] font-black uppercase tracking-wider transition-all cursor-pointer ${status === 'Kechikdi' ? 'bg-orange-400 text-white' : 'bg-gray-100 dark:bg-gray-800 text-gray-400 hover:text-orange-500 hover:bg-orange-50 dark:hover:bg-orange-950/20'}`}>
+                                                            Kech
                                                         </button>
                                                     </div>
                                                 </div>
@@ -1356,10 +1340,13 @@ export default function CourseDetails() {
             {isFaceAttendanceOpen && (
                 <FaceAttendance
                     students={groupStudents}
-                    attendanceStatus={batchAttendance}
-                    onMatch={(studentId) => {
-                        setBatchAttendance(prev => ({ ...prev, [studentId]: 'Keldi' }));
-                    }}
+                    attendanceStatus={Object.fromEntries(
+                        groupStudents.map(s => {
+                            const rec = attendances.find(a => a.groupId === group.id && a.date === selectedDate && a.studentId === s.id);
+                            return [s.id, rec?.status || ''];
+                        })
+                    )}
+                    onMatch={(studentId) => saveAttendance(studentId, 'Keldi')}
                     onClose={() => setIsFaceAttendanceOpen(false)}
                 />
             )}

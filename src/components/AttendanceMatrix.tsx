@@ -1,207 +1,235 @@
 import React, { useState } from 'react';
 import { Attendance, Student, Group } from '../types';
 import { useCRM } from '../context/CRMContext';
-import { Check, X, HelpCircle, XCircle } from 'lucide-react';
+import { Check, X, HelpCircle, XCircle, Clock, LogOut, Ban } from 'lucide-react';
 
 interface AttendanceMatrixProps {
     group: Group;
     students: Student[];
     attendances: Attendance[];
+    selectedDate?: string;
 }
 
-export default function AttendanceMatrix({ group, students, attendances }: AttendanceMatrixProps) {
+const STATUSES = [
+    { key: 'Keldi',       label: 'Keldi',           color: 'bg-emerald-500', text: 'text-emerald-600 dark:text-emerald-400', light: 'hover:bg-emerald-50 dark:hover:bg-emerald-900/30', icon: <Check size={11} strokeWidth={3} />, short: '✓' },
+    { key: 'Kelmapdi',    label: 'Kelmadi',          color: 'bg-rose-500',    text: 'text-rose-600 dark:text-rose-400',       light: 'hover:bg-rose-50 dark:hover:bg-rose-900/30',       icon: <X size={11} strokeWidth={3} />, short: '✗' },
+    { key: 'Sababli',     label: 'Sababli',          color: 'bg-sky-500',     text: 'text-sky-600 dark:text-sky-400',         light: 'hover:bg-sky-50 dark:hover:bg-sky-900/30',         icon: <HelpCircle size={11} />, short: 'S' },
+    { key: 'Kechikdi',    label: 'Kechikib keldi',   color: 'bg-orange-400',  text: 'text-orange-600 dark:text-orange-400',   light: 'hover:bg-orange-50 dark:hover:bg-orange-900/30',   icon: <Clock size={11} />, short: '~' },
+    { key: 'ErtaKetdi',   label: 'Erta ketdi',       color: 'bg-purple-500',  text: 'text-purple-600 dark:text-purple-400',   light: 'hover:bg-purple-50 dark:hover:bg-purple-900/30',   icon: <LogOut size={11} />, short: '↓' },
+    { key: "Dars bo'lmadi", label: "Dars bo'lmadi",  color: 'bg-gray-400 dark:bg-gray-600', text: 'text-gray-500', light: 'hover:bg-gray-100 dark:hover:bg-gray-700', icon: <Ban size={11} />, short: '—' },
+] as const;
+
+export default function AttendanceMatrix({ group, students, attendances, selectedDate }: AttendanceMatrixProps) {
     const { addAttendance, showNotification } = useCRM();
-    const [activePopover, setActivePopover] = useState<{ 
-        studentId: number; 
-        date: string; 
+    const [activePopover, setActivePopover] = useState<{
+        studentId: number;
+        date: string;
         coords: { top: number; left: number };
     } | null>(null);
 
-    // Helper to get last 12 lesson dates
+    const today = new Date().toISOString().split('T')[0];
+
     const getLessonDates = (count: number) => {
         const dates: string[] = [];
         let curr = new Date();
+        const pattern = (group.days || '').toUpperCase();
         const isMatch = (d: Date) => {
             const dw = d.getDay();
-            const pattern = (group.days || '').toUpperCase();
             if (pattern.includes('TOQ')) return [1, 3, 5].includes(dw);
             if (pattern.includes('JUFT')) return [2, 4, 6].includes(dw);
-            return dw !== 0; // HAR_KUNI
+            return dw !== 0;
         };
-
         let attempts = 0;
-        while (dates.length < count && attempts < 60) {
-            if (isMatch(curr)) {
-                dates.unshift(curr.toISOString().split('T')[0]);
-            }
+        while (dates.length < count && attempts < 90) {
+            if (isMatch(curr)) dates.unshift(curr.toISOString().split('T')[0]);
             curr.setDate(curr.getDate() - 1);
             attempts++;
         }
         return dates;
     };
 
-    const lessonDates = getLessonDates(12);
+    const lessonDates = getLessonDates(14);
 
-    const getStatus = (studentId: number, date: string) => {
-        return attendances.find(a => a.studentId === studentId && a.date === date && a.groupId === group.id);
+    const getAtt = (studentId: number, date: string) =>
+        attendances.find(a => a.studentId === studentId && a.date === date && a.groupId === group.id);
+
+    const getAttendancePct = (studentId: number) => {
+        const pastDates = lessonDates.filter(d => d <= today);
+        if (!pastDates.length) return null;
+        const came = pastDates.filter(d => {
+            const s = getAtt(studentId, d)?.status;
+            return s === 'Keldi' || s === 'Kechikdi' || s === 'ErtaKetdi';
+        }).length;
+        return Math.round((came / pastDates.length) * 100);
     };
 
-    const getStatusColor = (studentId: number, date: string) => {
-        const att = getStatus(studentId, date);
-        if (!att) {
-            const today = new Date().toISOString().split('T')[0];
-            if (date < today) return 'bg-amber-400 shadow-sm shadow-amber-500/20'; // Unmarked/Waiting
-            return 'bg-gray-100 dark:bg-gray-800 border border-dashed border-gray-200 dark:border-gray-700'; // Future
-        }
-        if (att.status === 'Keldi') return 'bg-emerald-500 shadow-sm shadow-emerald-500/20';
-        if (att.status === 'Kelmapdi') return 'bg-rose-500 shadow-sm shadow-rose-500/20';
-        if (att.status === 'Sababli') return 'bg-sky-500 shadow-sm shadow-sky-500/20';
-        if (att.status === 'Kechikdi') return 'bg-orange-400 shadow-sm shadow-orange-400/20';
-        if (att.status === 'ErtaKetdi') return 'bg-purple-500 shadow-sm shadow-purple-500/20';
-        if (att.status === 'Dars bo\'lmadi') return 'bg-gray-400 dark:bg-gray-600';
-        if (att.status === 'O\'tildi') return 'bg-amber-400 shadow-sm shadow-amber-500/20'; // Neutral Yellow
-        return 'bg-amber-400';
-    };
-
-    const handleStatusSelect = async (studentId: number, date: string, status: 'Keldi' | 'Kelmapdi' | 'Sababli' | 'Dars bo\'lmadi' | 'Kechikdi' | 'ErtaKetdi') => {
+    const handleStatusSelect = async (studentId: number, date: string, status: typeof STATUSES[number]['key']) => {
         try {
             const existingWithTopic = attendances.find(a => a.groupId === group.id && a.date === date && a.topicId);
-            const topicId = existingWithTopic?.topicId || undefined;
-            await addAttendance({ studentId, groupId: group.id, date, status, topicId });
+            await addAttendance({ studentId, groupId: group.id, date, status, topicId: existingWithTopic?.topicId });
             setActivePopover(null);
-        } catch (err) {
-            console.error("Attendance update failed", err);
+        } catch {
+            showNotification("Xatolik yuz berdi", "error");
         }
     };
 
     const getDayLabel = (dateStr: string) => {
-        const date = new Date(dateStr);
-        return `${date.getDate()}/${date.getMonth() + 1}`;
+        const d = new Date(dateStr);
+        const days = ['Ya', 'Du', 'Se', 'Ch', 'Pa', 'Ju', 'Sh'];
+        return { day: days[d.getDay()], date: `${d.getDate()}/${d.getMonth() + 1}` };
     };
 
+    const isToday = (d: string) => d === today;
+    const isSelected = (d: string) => selectedDate && d === selectedDate;
+
     return (
-        <div className="bg-white dark:bg-gray-900/40 rounded-3xl shadow-sm border border-gray-100 dark:border-gray-800 transition-all">
-            <div className="overflow-x-auto custom-scrollbar min-h-[200px] p-2">
-                <table className="w-full text-left border-separate border-spacing-0">
+        <div className="bg-white dark:bg-gray-900 rounded-3xl border border-gray-100 dark:border-gray-800 overflow-hidden shadow-sm">
+            <div className="overflow-x-auto custom-scrollbar">
+                <table className="w-full border-separate border-spacing-0">
                     <thead>
-                        <tr className="bg-gray-50/50 dark:bg-gray-800/50">
-                            <th className="sticky left-0 z-30 bg-gray-50 dark:bg-gray-800 p-3 text-[9px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-widest border-b border-r border-gray-100 dark:border-gray-700 min-w-[140px]">O'quvchi</th>
-                            {lessonDates.map(date => (
-                                <th key={date} className="p-3 text-center text-[9px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-widest border-b border-gray-100 dark:border-gray-800">{getDayLabel(date)}</th>
-                            ))}
+                        <tr>
+                            {/* Name column header */}
+                            <th className="sticky left-0 z-30 bg-gray-50 dark:bg-gray-800/80 px-4 py-3 text-left border-b border-r border-gray-100 dark:border-gray-700 min-w-[160px]">
+                                <span className="text-[9px] font-bold text-gray-400 uppercase tracking-widest">O'quvchi</span>
+                            </th>
+                            {/* % column */}
+                            <th className="bg-gray-50 dark:bg-gray-800/80 px-3 py-3 border-b border-r border-gray-100 dark:border-gray-700 min-w-[52px]">
+                                <span className="text-[9px] font-bold text-gray-400 uppercase tracking-widest block text-center">%</span>
+                            </th>
+                            {/* Date columns */}
+                            {lessonDates.map(date => {
+                                const { day, date: dateNum } = getDayLabel(date);
+                                const highlight = isToday(date) || isSelected(date);
+                                return (
+                                    <th key={date} className={`px-1 py-2 border-b border-gray-100 dark:border-gray-800 min-w-[44px] ${highlight ? 'bg-emerald-50 dark:bg-emerald-950/30 border-b-2 border-b-emerald-400' : 'bg-gray-50/50 dark:bg-gray-800/50'}`}>
+                                        <div className="flex flex-col items-center gap-0.5">
+                                            <span className={`text-[7px] font-black uppercase tracking-widest ${highlight ? 'text-emerald-600 dark:text-emerald-400' : 'text-gray-400'}`}>{day}</span>
+                                            <span className={`text-[9px] font-black ${highlight ? 'text-emerald-700 dark:text-emerald-300' : 'text-gray-500 dark:text-gray-400'}`}>{dateNum}</span>
+                                        </div>
+                                    </th>
+                                );
+                            })}
                         </tr>
                     </thead>
-                    <tbody className="divide-y divide-gray-50 dark:divide-gray-800">
-                        {students.map(student => (
-                            <tr key={student.id} className="hover:bg-gray-50/30 dark:hover:bg-gray-800/30 transition-colors">
-                                <td className="sticky left-0 z-20 bg-white dark:bg-gray-900 p-3 border-r border-gray-100 dark:border-gray-700">
-                                    <p className="text-[10px] font-black text-gray-900 dark:text-white uppercase tracking-tighter truncate max-w-[130px]">{student.name}</p>
-                                </td>
-                                {lessonDates.map(date => (
-                                    <td key={date} className="p-1.5 text-center relative overflow-visible">
-                                        <button 
-                                            onClick={(e) => {
-                                                const today = new Date().toISOString().split('T')[0];
-                                                if (date > today) {
-                                                    showNotification("Kelajakdagi darsga yo'qlama qilib bo'lmaydi", "info");
-                                                    return;
-                                                }
-                                                if (activePopover?.studentId === student.id && activePopover?.date === date) {
-                                                    setActivePopover(null);
-                                                } else {
-                                                    const rect = e.currentTarget.getBoundingClientRect();
-                                                    setActivePopover({
-                                                        studentId: student.id,
-                                                        date,
-                                                        coords: {
-                                                            top: rect.bottom,
-                                                            left: rect.left + rect.width / 2
-                                                        }
-                                                    });
-                                                }
-                                            }}
-                                            className={`w-8 h-8 rounded-lg mx-auto transition-all transform hover:scale-110 active:scale-90 flex items-center justify-center text-[10px] font-black text-white ${getStatusColor(student.id, date)}`}
-                                            title={`${student.name}: ${date}`}
-                                        >
-                                            {getStatus(student.id, date)?.status === 'Keldi' && 'K'}
-                                            {getStatus(student.id, date)?.status === 'Kelmapdi' && 'Q'}
-                                            {getStatus(student.id, date)?.status === 'Sababli' && 'S'}
-                                            {getStatus(student.id, date)?.status === 'Kechikdi' && 'K+'}
-                                            {getStatus(student.id, date)?.status === 'ErtaKetdi' && 'E'}
-                                            {getStatus(student.id, date)?.status === 'Dars bo\'lmadi' && 'X'}
-                                        </button>
+                    <tbody>
+                        {students.map((student, si) => {
+                            const pct = getAttendancePct(student.id);
+                            const rowBg = si % 2 === 0 ? 'bg-white dark:bg-gray-900' : 'bg-gray-50/30 dark:bg-gray-800/20';
+                            return (
+                                <tr key={student.id} className={`${rowBg} hover:bg-emerald-50/20 dark:hover:bg-emerald-950/10 transition-colors`}>
+                                    {/* Name */}
+                                    <td className={`sticky left-0 z-20 ${rowBg} px-4 py-2.5 border-r border-b border-gray-100 dark:border-gray-800`}>
+                                        <p className="text-[10px] font-black text-gray-900 dark:text-white uppercase tracking-tight truncate max-w-[140px]">{student.name}</p>
                                     </td>
-                                ))}
+                                    {/* % */}
+                                    <td className="px-2 py-2.5 border-r border-b border-gray-100 dark:border-gray-800 text-center">
+                                        {pct !== null && (
+                                            <span className={`text-[10px] font-black tabular-nums ${pct >= 80 ? 'text-emerald-500' : pct >= 60 ? 'text-amber-500' : 'text-rose-500'}`}>
+                                                {pct}%
+                                            </span>
+                                        )}
+                                    </td>
+                                    {/* Date cells */}
+                                    {lessonDates.map(date => {
+                                        const att = getAtt(student.id, date);
+                                        const isFuture = date > today;
+                                        const isHighlight = isToday(date) || isSelected(date);
+                                        const statusObj = att ? STATUSES.find(s => s.key === att.status) : null;
+
+                                        let cellClass = '';
+                                        let content: React.ReactNode = null;
+
+                                        if (isFuture) {
+                                            cellClass = 'border border-dashed border-gray-200 dark:border-gray-700 opacity-30';
+                                        } else if (!att) {
+                                            cellClass = 'border border-gray-200 dark:border-gray-700';
+                                            content = <span className="text-gray-300 dark:text-gray-600 text-[10px] font-bold">—</span>;
+                                        } else if (statusObj) {
+                                            cellClass = `${statusObj.color} text-white`;
+                                            content = <span className="text-[9px] font-black">{statusObj.short}</span>;
+                                        }
+
+                                        return (
+                                            <td key={date} className={`p-1 text-center border-b border-gray-50 dark:border-gray-800/50 ${isHighlight ? 'bg-emerald-50/60 dark:bg-emerald-950/20' : ''}`}>
+                                                <button
+                                                    onClick={e => {
+                                                        if (isFuture) {
+                                                            showNotification("Kelajakdagi darsga yo'qlama qilib bo'lmaydi", "info");
+                                                            return;
+                                                        }
+                                                        if (activePopover?.studentId === student.id && activePopover?.date === date) {
+                                                            setActivePopover(null);
+                                                        } else {
+                                                            const rect = e.currentTarget.getBoundingClientRect();
+                                                            setActivePopover({ studentId: student.id, date, coords: { top: rect.bottom, left: rect.left + rect.width / 2 } });
+                                                        }
+                                                    }}
+                                                    className={`w-8 h-8 rounded-xl mx-auto flex items-center justify-center transition-all hover:scale-110 active:scale-90 cursor-pointer ${cellClass}`}
+                                                    title={`${student.name} — ${date}${att ? `: ${att.status}` : ''}`}
+                                                >
+                                                    {content}
+                                                </button>
+                                            </td>
+                                        );
+                                    })}
+                                </tr>
+                            );
+                        })}
+                        {students.length === 0 && (
+                            <tr>
+                                <td colSpan={lessonDates.length + 2} className="py-12 text-center text-[10px] font-bold text-gray-400 uppercase tracking-widest">
+                                    Bu kursda o'quvchilar yo'q
+                                </td>
                             </tr>
-                        ))}
+                        )}
                     </tbody>
                 </table>
             </div>
-            
-            <div className="p-4 bg-gray-50/20 dark:bg-gray-800/20 border-t border-dashed border-gray-100 dark:border-gray-800 flex flex-wrap gap-4 justify-center">
-                <StatusLink color="bg-emerald-500" label="K - Keldi" />
-                <StatusLink color="bg-rose-500" label="Q - Qoldirdi" />
-                <StatusLink color="bg-sky-500" label="S - Sababli" />
-                <StatusLink color="bg-orange-400" label="K+ - Kechikdi" />
-                <StatusLink color="bg-purple-500" label="E - Erta ketdi" />
-                <StatusLink color="bg-gray-400 dark:bg-gray-600" label="X - Dars bo'lmadi" />
-                <StatusLink color="bg-amber-400" label="Belgilanmagan" />
-                <StatusLink color="bg-gray-100 dark:bg-gray-800 border-gray-200 dark:border-gray-700" label="Rejadagi" />
+
+            {/* Legend — compact */}
+            <div className="px-4 py-2.5 border-t border-gray-100 dark:border-gray-800 flex flex-wrap gap-x-4 gap-y-1">
+                {STATUSES.map(s => (
+                    <div key={s.key} className="flex items-center gap-1.5">
+                        <div className={`w-4 h-4 rounded-md flex items-center justify-center text-white ${s.color}`}>
+                            <span className="text-[7px] font-black">{s.short}</span>
+                        </div>
+                        <span className="text-[8px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-wider">{s.label}</span>
+                    </div>
+                ))}
+                <div className="flex items-center gap-1.5">
+                    <div className="w-4 h-4 rounded-md border border-gray-200 dark:border-gray-700 flex items-center justify-center">
+                        <span className="text-[7px] font-black text-gray-300">—</span>
+                    </div>
+                    <span className="text-[8px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-wider">Belgilanmagan</span>
+                </div>
             </div>
 
+            {/* Popover */}
             {activePopover && (
                 <>
-                    <div className="fixed inset-0 z-40 cursor-pointer" onClick={() => setActivePopover(null)} />
-                    <div 
-                        style={{ 
-                            position: 'fixed', 
-                            top: `${activePopover.coords.top + 6}px`, 
-                            left: `${activePopover.coords.left}px`,
-                            transform: 'translateX(-50%)'
-                        }}
-                        className="z-50 bg-white dark:bg-gray-800 rounded-2xl shadow-2xl border border-gray-200 dark:border-gray-700 p-2 flex flex-col gap-1 min-w-[140px] animate-in slide-in-from-top-2 duration-200 text-left"
+                    <div className="fixed inset-0 z-40" onClick={() => setActivePopover(null)} />
+                    <div
+                        style={{ position: 'fixed', top: `${activePopover.coords.top + 6}px`, left: `${activePopover.coords.left}px`, transform: 'translateX(-50%)' }}
+                        className="z-50 bg-white dark:bg-gray-800 rounded-2xl shadow-2xl border border-gray-100 dark:border-gray-700 p-1.5 flex flex-col gap-0.5 min-w-[160px] animate-in slide-in-from-top-2 duration-150"
                     >
-                        <button onClick={() => handleStatusSelect(activePopover.studentId, activePopover.date, 'Keldi')} className="flex items-center gap-3 px-4 py-3 hover:bg-emerald-50 dark:hover:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 rounded-xl transition-all cursor-pointer">
-                            <div className="w-5 h-5 bg-emerald-500 rounded-lg flex items-center justify-center text-white"><Check size={12} strokeWidth={4} /></div>
-                            <span className="text-[10px] font-bold uppercase tracking-widest">Keldi</span>
-                        </button>
-                        <button onClick={() => handleStatusSelect(activePopover.studentId, activePopover.date, 'Kelmapdi')} className="flex items-center gap-3 px-4 py-3 hover:bg-rose-50 dark:hover:bg-rose-900/30 text-rose-600 dark:text-rose-450 rounded-xl transition-all cursor-pointer">
-                            <div className="w-5 h-5 bg-rose-500 rounded-lg flex items-center justify-center text-white"><X size={12} strokeWidth={4} /></div>
-                            <span className="text-[10px] font-bold uppercase tracking-widest">Qoldi</span>
-                        </button>
-                        <button onClick={() => handleStatusSelect(activePopover.studentId, activePopover.date, 'Sababli')} className="flex items-center gap-3 px-4 py-3 hover:bg-sky-50 dark:hover:bg-sky-900/30 text-sky-600 dark:text-sky-400 rounded-xl transition-all cursor-pointer">
-                            <div className="w-5 h-5 bg-sky-500 rounded-lg flex items-center justify-center text-white"><HelpCircle size={12} strokeWidth={4} /></div>
-                            <span className="text-[10px] font-bold uppercase tracking-widest">Sababli</span>
-                        </button>
-                        <button onClick={() => handleStatusSelect(activePopover.studentId, activePopover.date, 'Kechikdi')} className="flex items-center gap-3 px-4 py-3 hover:bg-orange-50 dark:hover:bg-orange-900/30 text-orange-600 dark:text-orange-400 rounded-xl transition-all cursor-pointer">
-                            <div className="w-5 h-5 bg-orange-400 rounded-lg flex items-center justify-center text-white text-[9px] font-black">K+</div>
-                            <span className="text-[10px] font-bold uppercase tracking-widest">Kechikib keldi</span>
-                        </button>
-                        <button onClick={() => handleStatusSelect(activePopover.studentId, activePopover.date, 'ErtaKetdi')} className="flex items-center gap-3 px-4 py-3 hover:bg-purple-50 dark:hover:bg-purple-900/30 text-purple-600 dark:text-purple-400 rounded-xl transition-all cursor-pointer">
-                            <div className="w-5 h-5 bg-purple-500 rounded-lg flex items-center justify-center text-white text-[9px] font-black">E</div>
-                            <span className="text-[10px] font-bold uppercase tracking-widest">Erta ketdi</span>
-                        </button>
-                        <button onClick={() => handleStatusSelect(activePopover.studentId, activePopover.date, 'Dars bo\'lmadi')} className="flex items-center gap-3 px-4 py-3 hover:bg-gray-55 dark:hover:bg-gray-700 text-gray-500 dark:text-gray-400 rounded-xl transition-all cursor-pointer">
-                            <div className="w-5 h-5 bg-gray-400 dark:bg-gray-600 rounded-lg flex items-center justify-center text-white font-bold text-[10px]">X</div>
-                            <span className="text-[10px] font-bold uppercase tracking-widest leading-none">Dars bo'lmadi</span>
-                        </button>
-                        <div className="h-px bg-gray-50 dark:bg-gray-700 my-1 px-2" />
-                        <button onClick={() => setActivePopover(null)} className="flex items-center gap-3 px-4 py-2 hover:bg-gray-50 dark:hover:bg-gray-700 text-gray-400 rounded-xl transition-all cursor-pointer">
+                        {STATUSES.map(s => (
+                            <button
+                                key={s.key}
+                                onClick={() => handleStatusSelect(activePopover.studentId, activePopover.date, s.key)}
+                                className={`flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all cursor-pointer ${s.light} ${s.text}`}
+                            >
+                                <div className={`w-5 h-5 ${s.color} rounded-lg flex items-center justify-center text-white`}>{s.icon}</div>
+                                <span className="text-[10px] font-bold uppercase tracking-widest">{s.label}</span>
+                            </button>
+                        ))}
+                        <div className="h-px bg-gray-100 dark:bg-gray-700 my-0.5" />
+                        <button onClick={() => setActivePopover(null)} className="flex items-center gap-3 px-3 py-2 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-700 text-gray-400 transition-all cursor-pointer">
                             <XCircle size={14} />
                             <span className="text-[9px] font-bold uppercase tracking-widest">Yopish</span>
                         </button>
                     </div>
                 </>
             )}
-        </div>
-    );
-}
-
-function StatusLink({ color, label }: { color: string, label: string }) {
-    return (
-        <div className="flex items-center gap-2">
-            <div className={`w-2 h-2 rounded-full ${color}`} />
-            <span className="text-[9px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-widest">{label}</span>
         </div>
     );
 }
