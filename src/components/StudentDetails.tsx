@@ -8,6 +8,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { useLang } from '../context/LanguageContext';
 import MapPicker from './MapPicker';
 import PhotoCapture from './PhotoCapture';
+import FaceEnroll from './FaceEnroll';
 import { compressImage } from '../lib/image';
 
 const UZB_REGIONS: Record<string, string[]> = {
@@ -82,7 +83,7 @@ export default function StudentDetails() {
     const { id } = useParams<{ id: string }>();
     const navigate = useNavigate();
     const { t } = useLang();
-    const { students, groups, teachers, courses, payments, attendances, transports, addPayment, addAttendance, updateStudent, addStudentToGroup, deleteStudent, topics, updateAttendance } = useCRM();
+    const { students, groups, teachers, courses, payments, attendances, transports, addPayment, addAttendance, updateStudent, addStudentToGroup, deleteStudent, topics, updateAttendance, showNotification } = useCRM();
     const [activeTab, setActiveTab] = useState('umumiy');
     const [showPaymentModal, setShowPaymentModal] = useState(false);
     const [showGroupModal, setShowGroupModal] = useState(false);
@@ -98,6 +99,7 @@ export default function StudentDetails() {
     const [editingGroupPrice, setEditingGroupPrice] = useState<{ groupId: number, name: string, coursePrice: number } | null>(null);
     const [customPriceVal, setCustomPriceVal] = useState('');
     const [customNoteVal, setCustomNoteVal] = useState('');
+    const [isFaceEnrollOpen, setIsFaceEnrollOpen] = useState(false);
 
     const handleConfirmDelete = async () => {
         try {
@@ -413,7 +415,7 @@ export default function StudentDetails() {
                             </div>
                             
                             {student.photo && (
-                                <button 
+                                <button
                                     onClick={handleRemoveBg}
                                     disabled={isRemovingBg}
                                     className="w-full flex items-center justify-center gap-1.5 py-3 bg-violet-50 text-violet-600 border border-violet-100 dark:bg-violet-950/20 dark:text-violet-400 rounded-xl text-[9px] font-extrabold uppercase tracking-widest hover:bg-violet-600 hover:text-white transition-all disabled:opacity-50 cursor-pointer"
@@ -423,11 +425,31 @@ export default function StudentDetails() {
                                 </button>
                             )}
 
+                            <button
+                                onClick={() => setIsFaceEnrollOpen(true)}
+                                className="w-full flex items-center justify-center gap-1.5 py-2.5 bg-violet-50 text-violet-600 border border-violet-100 dark:bg-violet-950/20 dark:text-violet-400 dark:border-violet-900/40 rounded-xl text-[9px] font-extrabold uppercase tracking-widest hover:bg-violet-600 hover:text-white hover:border-violet-600 transition-all cursor-pointer"
+                            >
+                                <Camera size={12} />
+                                {(student.customPrices as any)?.faceDescriptor ? 'Face ID yangilash' : 'Face ID ro\'yxatdan o\'tkazish'}
+                            </button>
+
                             {/* Photo Capture Modal */}
                             {isPhotoModalOpen && (
                                 <PhotoCapture
                                     onCapture={handlePhotoCapture}
                                     onClose={() => setIsPhotoModalOpen(false)}
+                                />
+                            )}
+
+                            {isFaceEnrollOpen && (
+                                <FaceEnroll
+                                    studentName={student.name}
+                                    onSave={(descriptor) => {
+                                        const cp = { ...(student.customPrices as any || {}), faceDescriptor: descriptor };
+                                        updateStudent(student.id, { customPrices: cp });
+                                        showNotification('Face ID saqlandi', 'success');
+                                    }}
+                                    onClose={() => setIsFaceEnrollOpen(false)}
                                 />
                             )}
                         </div>

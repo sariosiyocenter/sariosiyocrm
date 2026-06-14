@@ -8,6 +8,7 @@ import {
 } from 'lucide-react';
 import AttendanceMatrix from './AttendanceMatrix';
 import GroupAttendanceCalendar from './GroupAttendanceCalendar';
+import FaceAttendance from './FaceAttendance';
 
 export default function CourseDetails() {
     const { id } = useParams<{ id: string }>();
@@ -49,6 +50,7 @@ export default function CourseDetails() {
         return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
     });
     const [isProcessing, setIsProcessing] = useState(false);
+    const [isFaceAttendanceOpen, setIsFaceAttendanceOpen] = useState(false);
 
     const group = groups.find(g => g.id === Number(id));
     if (!group) return <div className="p-12 text-center text-gray-500 font-medium">Kurs topilmadi</div>;
@@ -688,7 +690,25 @@ export default function CourseDetails() {
                                 <div className="lg:col-span-1 bg-white dark:bg-gray-800 p-4 rounded-3xl border border-gray-100 dark:border-gray-700 shadow-sm space-y-4">
                                     <div className="flex items-center justify-between pb-2 border-b border-gray-50 dark:border-gray-700">
                                         <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Dars yo'qlamasi ({selectedDate})</span>
-                                        <span className="text-[9px] font-bold text-gray-450">{groupStudents.length} ta o'quvchi</span>
+                                        <div className="flex items-center gap-2">
+                                            <span className="text-[9px] font-bold text-gray-450">{groupStudents.length} ta o'quvchi</span>
+                                            <button
+                                                onClick={() => {
+                                                    const all: Record<number, string> = {};
+                                                    groupStudents.forEach(s => { all[s.id] = 'Keldi'; });
+                                                    setBatchAttendance(all);
+                                                }}
+                                                className="px-2.5 py-1 rounded-lg text-[8px] font-black uppercase tracking-wider bg-emerald-50 text-emerald-600 border border-emerald-100 hover:bg-emerald-500 hover:text-white hover:border-emerald-500 dark:bg-emerald-950/20 dark:text-emerald-400 dark:border-emerald-900/40 transition-all cursor-pointer"
+                                            >
+                                                Hammasi keldi
+                                            </button>
+                                            <button
+                                                onClick={() => setIsFaceAttendanceOpen(true)}
+                                                className="px-2.5 py-1 rounded-lg text-[8px] font-black uppercase tracking-wider bg-violet-50 text-violet-600 border border-violet-100 hover:bg-violet-500 hover:text-white hover:border-violet-500 dark:bg-violet-950/20 dark:text-violet-400 dark:border-violet-900/40 transition-all cursor-pointer"
+                                            >
+                                                Face ID
+                                            </button>
+                                        </div>
                                     </div>
                                     <div className="space-y-1.5 max-h-[360px] overflow-y-auto pr-1 custom-scrollbar">
                                         {groupStudents.map(s => {
@@ -1331,6 +1351,17 @@ export default function CourseDetails() {
                         </div>
                     </div>
                 </div>
+            )}
+
+            {isFaceAttendanceOpen && (
+                <FaceAttendance
+                    students={groupStudents}
+                    attendanceStatus={batchAttendance}
+                    onMatch={(studentId) => {
+                        setBatchAttendance(prev => ({ ...prev, [studentId]: 'Keldi' }));
+                    }}
+                    onClose={() => setIsFaceAttendanceOpen(false)}
+                />
             )}
         </div>
     );

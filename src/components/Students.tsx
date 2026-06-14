@@ -529,9 +529,9 @@ export default function Students() {
                                 className="w-full px-3 py-2 bg-gray-50 dark:bg-gray-900/50 border border-gray-100 dark:border-gray-700 rounded-xl text-[10px] font-bold text-gray-700 dark:text-white outline-none focus:border-[#1b6b6b] transition-all cursor-pointer">
                                 <option value="">Barchasi</option>
                                 <option value="Maktab">Maktab</option>
-                                <option value="Bog'cha">Bog'cha</option>
-                                <option value="Oliy o'quv yurti">Oliy o'quv yurti</option>
+                                <option value="Prezident maktabi">Prezident maktabi</option>
                                 <option value="Kollej / Litsey">Kollej / Litsey</option>
+                                <option value="Oliy o'quv yurti">Oliy o'quv yurti</option>
                                 <option value="Boshqa">Boshqa</option>
                             </select>
                         </div>
@@ -703,28 +703,26 @@ export default function Students() {
                                         <input type="date" className={inp} value={newStudent.birthDate} onChange={e => setNewStudent({ ...newStudent, birthDate: e.target.value })} />
                                     </div>
                                 </div>
-                                <div>
-                                    <label className={lbl}>Ta'lim muassasasi turi</label>
-                                    <div className="flex flex-wrap gap-2">
-                                        {['Maktab', "Bog'cha", "Kollej / Litsey", "Oliy o'quv yurti", 'Boshqa'].map(opt => (
-                                            <button
-                                                key={opt}
-                                                type="button"
-                                                onClick={() => setNewStudent({...newStudent, orgType: newStudent.orgType === opt ? '' : opt})}
-                                                className={`px-3 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-wide border transition-all cursor-pointer ${
-                                                    newStudent.orgType === opt
-                                                        ? 'bg-[#1b6b6b] text-white border-[#1b6b6b]'
-                                                        : 'bg-gray-50 dark:bg-gray-900/50 text-gray-500 dark:text-gray-400 border-gray-200 dark:border-gray-700 hover:border-[#1b6b6b] hover:text-[#1b6b6b]'
-                                                }`}
-                                            >
-                                                {opt}
-                                            </button>
-                                        ))}
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div>
+                                        <label className={lbl}>Ta'lim muassasasi turi</label>
+                                        <select
+                                            value={newStudent.orgType}
+                                            onChange={e => setNewStudent({...newStudent, orgType: e.target.value})}
+                                            className={inp}
+                                        >
+                                            <option value="">Tanlang...</option>
+                                            <option value="Maktab">Maktab</option>
+                                            <option value="Prezident maktabi">Prezident maktabi</option>
+                                            <option value="Kollej / Litsey">Kollej / Litsey</option>
+                                            <option value="Oliy o'quv yurti">Oliy o'quv yurti</option>
+                                            <option value="Boshqa">Boshqa</option>
+                                        </select>
                                     </div>
-                                </div>
-                                <div>
-                                    <label className={lbl}>Muassasa nomi</label>
-                                    <input type="text" placeholder="42-maktab" className={inp} value={newStudent.studentSchool} onChange={e => setNewStudent({ ...newStudent, studentSchool: e.target.value })} />
+                                    <div>
+                                        <label className={lbl}>Muassasa nomi</label>
+                                        <input type="text" placeholder="42-maktab" className={inp} value={newStudent.studentSchool} onChange={e => setNewStudent({ ...newStudent, studentSchool: e.target.value })} />
+                                    </div>
                                 </div>
                                 <div className="grid grid-cols-2 gap-4">
                                     <div>
@@ -755,10 +753,23 @@ export default function Students() {
                                         </select>
                                     </div>
                                 </div>
-                                <div>
-                                    <label className={lbl}>Manzil (ko'cha, uy)</label>
-                                    <input type="text" placeholder="Navruz ko'chasi, 12-uy" className={inp} value={newStudent.address} onChange={e => setNewStudent({ ...newStudent, address: e.target.value })} />
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div>
+                                        <label className={lbl}>{t('transport')}</label>
+                                        <select className={inp} value={newStudent.transportId} onChange={e => setNewStudent({...newStudent, transportId: e.target.value})}>
+                                            <option value="">{t('not_needed')}</option>
+                                            {transports.map(tr => <option key={tr.id} value={tr.id}>{tr.name} ({tr.number})</option>)}
+                                        </select>
+                                    </div>
+                                    <div>
+                                        <label className={lbl}>Manzil (ko'cha, uy)</label>
+                                        <input type="text" placeholder="Navruz ko'chasi, 12-uy" className={inp} value={newStudent.address} onChange={e => setNewStudent({ ...newStudent, address: e.target.value })} />
+                                    </div>
                                 </div>
+                                <button type="button" onClick={() => setIsMapOpen(true)}
+                                    className={`w-full py-2.5 rounded-xl border flex items-center justify-center gap-2 text-[10px] font-bold uppercase tracking-widest cursor-pointer transition-all ${newStudent.location ? 'bg-[#1b6b6b]/10 text-[#1b6b6b] border-[#1b6b6b]' : 'bg-gray-55 dark:bg-gray-900 border-gray-100 hover:bg-gray-100'}`}>
+                                    <MapPin size={14} /> {newStudent.location ? t('marked_on_map') : t('select_from_map')}
+                                </button>
                                 <div>
                                     <label className={lbl}>Imtiyoz turi</label>
                                     <select 
@@ -864,26 +875,6 @@ export default function Students() {
                                     </div>
                                 </div>
 
-                                <div className="border-t border-dashed border-gray-150 dark:border-gray-700/50 pt-4 mt-4 space-y-4">
-                                    <span className="block text-[9px] font-black uppercase text-[#1b6b6b] tracking-wider text-left">{t('logistics_address')}</span>
-                                    <div className="grid grid-cols-2 gap-4">
-                                        <div>
-                                            <label className={lbl}>{t('transport')}</label>
-                                             <select className={inp} value={newStudent.transportId} onChange={e => setNewStudent({...newStudent, transportId: e.target.value})}>
-                                                 <option value="">{t('not_needed')}</option>
-                                                 {transports.map(t => <option key={t.id} value={t.id}>{t.name} ({t.number})</option>)}
-                                             </select>
-                                        </div>
-                                        <div>
-                                            <label className={lbl}>{t('address')}</label>
-                                            <input type="text" placeholder="Sariosiyo" className={inp} value={newStudent.address} onChange={e => setNewStudent({ ...newStudent, address: e.target.value })} />
-                                        </div>
-                                    </div>
-                                    <button type="button" onClick={() => setIsMapOpen(true)}
-                                        className={`w-full py-2.5 rounded-xl border flex items-center justify-center gap-2 text-[10px] font-bold uppercase tracking-widest cursor-pointer transition-all ${newStudent.location ? 'bg-[#1b6b6b]/10 text-[#1b6b6b] border-[#1b6b6b]' : 'bg-gray-55 dark:bg-gray-900 border-gray-100 hover:bg-gray-100'}`}>
-                                        <MapPin size={14} /> {newStudent.location ? t('marked_on_map') : t('select_from_map')}
-                                    </button>
-                                </div>
 
                                 <div className="border-t border-dashed border-gray-150 dark:border-gray-700/50 pt-4 mt-4 space-y-4">
                                     <span className="block text-[9px] font-black uppercase text-[#1b6b6b] tracking-wider text-left">{t('photo_label')}</span>
