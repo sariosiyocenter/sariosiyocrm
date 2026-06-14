@@ -174,6 +174,16 @@ export default function FaceAttendance({ students, attendanceStatus, onMatch, on
                 </div>
             </div>
 
+            {/* Warning banner if no students enrolled */}
+            {totalEnrolled === 0 && phase === 'ready' && (
+                <div className="flex items-center gap-3 px-5 py-2.5 bg-amber-500/10 border-b border-amber-500/20">
+                    <Users size={13} className="text-amber-400 shrink-0" />
+                    <p className="text-amber-300 text-[10px] font-bold">
+                        Hech bir o'quvchi yuz ro'yxatidan o'tmagan — avval har bir o'quvchi sahifasida <span className="text-white">"Face ID ro'yxatdan o'tkazish"</span> tugmasini bosing
+                    </p>
+                </div>
+            )}
+
             {/* Camera view */}
             <div className="flex-1 relative overflow-hidden bg-black">
                 {phase === 'loading' && (
@@ -187,15 +197,6 @@ export default function FaceAttendance({ students, attendanceStatus, onMatch, on
                     <div className="absolute inset-0 flex flex-col items-center justify-center z-20">
                         <p className="text-rose-400 text-sm font-bold text-center px-8">{loadMsg}</p>
                         <button onClick={onClose} className="mt-4 px-6 py-2 bg-gray-800 text-white rounded-xl text-sm font-bold cursor-pointer">Yopish</button>
-                    </div>
-                )}
-                {totalEnrolled === 0 && phase === 'ready' && (
-                    <div className="absolute inset-0 flex flex-col items-center justify-center z-20 bg-black/80">
-                        <Users size={40} className="text-gray-500 mb-4" />
-                        <p className="text-white text-sm font-bold">Hech bir o'quvchi ro'yxatda yo'q</p>
-                        <p className="text-gray-400 text-xs mt-2 text-center px-8">
-                            O'quvchi sahifasida "Yuz ro'yxatdan o'tkazish" tugmasini bosib avval yuzlarni saqlang
-                        </p>
                     </div>
                 )}
 
