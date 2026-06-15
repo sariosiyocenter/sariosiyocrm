@@ -91,7 +91,7 @@ export default function FaceAttendance({ students, attendanceStatus, onMatch, on
         faceapi.matchDimensions(canvas, displaySize);
 
         const detections = await faceapi
-            .detectAllFaces(video, new faceapi.TinyFaceDetectorOptions({ inputSize: 320, scoreThreshold: 0.3 }))
+            .detectAllFaces(video, new faceapi.TinyFaceDetectorOptions({ inputSize: 320, scoreThreshold: 0.6 }))
             .withFaceLandmarks(true)
             .withFaceDescriptors();
 
