@@ -33,6 +33,7 @@ model Student {
   certCategory  String?
   certSubject   String?
   certType      String?
+  certScore     String?
   customPrices  Json?     @default("{}")
 
   // New fields for reports

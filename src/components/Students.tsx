@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Search, Plus, FileSpreadsheet, MoreVertical, X, Filter, Camera, Sparkles, Image as ImageIcon, MapPin, SlidersHorizontal, GraduationCap, Link as LinkIcon, QrCode } from 'lucide-react';
+import { Search, Plus, FileSpreadsheet, MoreVertical, X, Image as ImageIcon, MapPin, GraduationCap, QrCode } from 'lucide-react';
 import { useCRM } from '../context/CRMContext';
 import { useLang } from '../context/LanguageContext';
 import { useNavigate } from 'react-router-dom';
@@ -104,7 +104,6 @@ export default function Students() {
     const [isRemovingBg, setIsRemovingBg] = useState(false);
     const [isImporting, setIsImporting] = useState(false);
     const [search, setSearch] = useState('');
-    const [showFilters, setShowFilters] = useState(false);
     
     // Link creation states
     const [isLinkModalOpen, setIsLinkModalOpen] = useState(false);
@@ -147,6 +146,7 @@ export default function Students() {
         balanceStatus: 'all',
         dateRange: 'all',
         orgType: '',
+        muassasaSearch: '',
         region: '',
         district: '',
         location: '',
@@ -394,12 +394,14 @@ export default function Students() {
 
     const filteredStudents = students.filter(s => {
         const lowerSearch = search.toLowerCase();
-        const matchesSearch = (s.name || '').toLowerCase().includes(lowerSearch) || 
-               (s.phone || '').toLowerCase().includes(lowerSearch);
+        const matchesSearch = (s.name || '').toLowerCase().includes(lowerSearch) ||
+               (s.phone || '').toLowerCase().includes(lowerSearch) ||
+               (s.studentSchool || '').toLowerCase().includes(lowerSearch);
         
         const matchesStatus = !filters.status || s.status === filters.status;
         const matchesGroup = !filters.groupId || (s.groups || []).includes(Number(filters.groupId));
         const matchesOrgType = !filters.orgType || s.orgType === filters.orgType;
+        const matchesMuassasa = !filters.muassasaSearch || (s.studentSchool || '').toLowerCase().includes(filters.muassasaSearch.toLowerCase());
         const matchesRegion = !filters.region || s.region === filters.region;
         const matchesDistrict = !filters.district || s.district === filters.district;
         const matchesLocation = !filters.location || s.location === filters.location;
@@ -428,7 +430,7 @@ export default function Students() {
             matchesMissingInfo = !s.photo || s.photo.trim() === '';
         }
 
-        return matchesSearch && matchesStatus && matchesGroup && matchesBalance && matchesDate && matchesOrgType && matchesRegion && matchesDistrict && matchesLocation && matchesMissingInfo;
+        return matchesSearch && matchesStatus && matchesGroup && matchesBalance && matchesDate && matchesOrgType && matchesMuassasa && matchesRegion && matchesDistrict && matchesLocation && matchesMissingInfo;
     });
 
     return (
@@ -448,21 +450,7 @@ export default function Students() {
                         </div>
                     </div>
                     <div className="flex flex-wrap items-center gap-3">
-                        <div className="relative">
-                            <Search size={14} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400" />
-                            <input
-                                type="text" placeholder={t('search_placeholder_students')}
-                                value={search} onChange={e => setSearch(e.target.value)}
-                                className="pl-9 pr-4 py-2.5 bg-gray-50 dark:bg-gray-900/50 border border-gray-100 dark:border-gray-700 rounded-xl text-xs font-bold text-gray-900 dark:text-white outline-none focus:border-[#1b6b6b] transition-all w-52"
-                            />
-                        </div>
                         <button
-                            onClick={() => setShowFilters(!showFilters)}
-                            className={`w-10 h-10 flex items-center justify-center rounded-xl border transition-all cursor-pointer ${showFilters ? 'bg-[#1b6b6b] border-[#1b6b6b] text-white' : 'bg-gray-55 dark:bg-gray-900/50 border-gray-100 dark:border-gray-700 text-gray-400 hover:border-[#1b6b6b] hover:text-[#1b6b6b]'}`}
-                        >
-                            <SlidersHorizontal size={15} />
-                        </button>
-                        <button 
                             onClick={handleExport}
                             className="flex items-center gap-2 px-3 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-extrabold uppercase tracking-widest transition-all cursor-pointer"
                         >
@@ -493,17 +481,24 @@ export default function Students() {
                     </div>
                 </div>
 
-                {showFilters && (
-                    <div className="px-6 pb-5 pt-4 border-t border-gray-50 dark:border-gray-700/50 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-8 gap-4">
+                <div className="px-6 pb-5 pt-3 border-t border-gray-50 dark:border-gray-700/50 space-y-3">
+                    <div className="relative">
+                        <Search size={14} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400" />
+                        <input
+                            type="text"
+                            placeholder={t('search_placeholder_students')}
+                            value={search}
+                            onChange={e => setSearch(e.target.value)}
+                            className="w-full pl-9 pr-4 py-2.5 bg-gray-50 dark:bg-gray-900/50 border border-gray-100 dark:border-gray-700 rounded-xl text-xs font-bold text-gray-900 dark:text-white outline-none focus:border-[#1b6b6b] transition-all"
+                        />
+                    </div>
+                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 xl:grid-cols-9 gap-3">
                         <div>
                             <label className={lbl}>{t('filter_status')}</label>
                             <select value={filters.status} onChange={e => setFilters({...filters, status: e.target.value})}
                                 className="w-full px-3 py-2 bg-gray-50 dark:bg-gray-900/50 border border-gray-100 dark:border-gray-700 rounded-xl text-[10px] font-bold text-gray-700 dark:text-white outline-none focus:border-[#1b6b6b] transition-all cursor-pointer">
                                 <option value="">{t('all')}</option>
                                 <option value="Faol">{t('status_active')}</option>
-                                <option value="Arxiv">{t('status_archive')}</option>
-                                <option value="Sinov">{t('status_test')}</option>
-                                <option value="Bitiruvchi">{t('status_graduated')}</option>
                                 <option value="Passiv">{t('status_passive')}</option>
                                 <option value="Muzlatilgan">{t('status_frozen')}</option>
                                 <option value="Sertifikatli">{t('status_certified')}</option>
@@ -521,13 +516,13 @@ export default function Students() {
                             <label className={lbl}>{t('filter_balance')}</label>
                             <select value={filters.balanceStatus} onChange={e => setFilters({...filters, balanceStatus: e.target.value})}
                                 className="w-full px-3 py-2 bg-gray-50 dark:bg-gray-900/50 border border-gray-100 dark:border-gray-700 rounded-xl text-[10px] font-bold text-gray-700 dark:text-white outline-none focus:border-[#1b6b6b] transition-all cursor-pointer">
-                                <option value="">{t('all')}</option>
+                                <option value="all">{t('all')}</option>
                                 <option value="debt">{t('debtors')}</option>
                                 <option value="positive">{t('paid_students')}</option>
                             </select>
                         </div>
                         <div>
-                            <label className={lbl}>Ta'lim muassasasi</label>
+                            <label className={lbl}>Muassasa turi</label>
                             <select value={filters.orgType} onChange={e => setFilters({...filters, orgType: e.target.value})}
                                 className="w-full px-3 py-2 bg-gray-50 dark:bg-gray-900/50 border border-gray-100 dark:border-gray-700 rounded-xl text-[10px] font-bold text-gray-700 dark:text-white outline-none focus:border-[#1b6b6b] transition-all cursor-pointer">
                                 <option value="">Barchasi</option>
@@ -537,6 +532,16 @@ export default function Students() {
                                 <option value="Oliy o'quv yurti">Oliy o'quv yurti</option>
                                 <option value="Boshqa">Boshqa</option>
                             </select>
+                        </div>
+                        <div>
+                            <label className={lbl}>Muassasa nomi</label>
+                            <input
+                                type="text"
+                                value={filters.muassasaSearch}
+                                onChange={e => setFilters({...filters, muassasaSearch: e.target.value})}
+                                placeholder="Masalan: 42-maktab"
+                                className="w-full px-3 py-2 bg-gray-50 dark:bg-gray-900/50 border border-gray-100 dark:border-gray-700 rounded-xl text-[10px] font-bold text-gray-700 dark:text-white outline-none focus:border-[#1b6b6b] transition-all"
+                            />
                         </div>
                         <div>
                             <label className={lbl}>Viloyat</label>
@@ -567,13 +572,14 @@ export default function Students() {
                             </select>
                         </div>
                         <div className="flex items-end">
-                            <button onClick={() => setFilters({status: '', groupId: '', balanceStatus: 'all', dateRange: 'all', orgType: '', region: '', district: '', location: '', missingInfo: ''})}
+                            <button
+                                onClick={() => { setSearch(''); setFilters({status: '', groupId: '', balanceStatus: 'all', dateRange: 'all', orgType: '', muassasaSearch: '', region: '', district: '', location: '', missingInfo: ''}); }}
                                 className="w-full py-2 text-[10px] font-extrabold uppercase text-rose-500 hover:text-rose-600 flex items-center justify-center gap-1.5 cursor-pointer">
                                 <X size={12} /> {t('filter_clear')}
                             </button>
                         </div>
                     </div>
-                )}
+                </div>
             </div>
 
             {/* Table layout */}
