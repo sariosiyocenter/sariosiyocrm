@@ -146,7 +146,8 @@ export default function FaceAttendance({ students, attendanceStatus, onMatch, on
         return () => { if (intervalRef.current) clearInterval(intervalRef.current); };
     }, [phase, detect]);
 
-    const alreadyPresent = students.filter(s => attendanceStatus[s.id] === 'Keldi' || markedRef.current.has(s.id));
+    const markedThisSession = students.filter(s => markedRef.current.has(s.id));
+    const alreadyPresent = students.filter(s => attendanceStatus[s.id] === 'Keldi' && !markedRef.current.has(s.id));
 
     return (
         <div className="fixed inset-0 z-[300] bg-black flex flex-col">
@@ -166,7 +167,7 @@ export default function FaceAttendance({ students, attendanceStatus, onMatch, on
                 <div className="flex items-center gap-3">
                     <div className="flex items-center gap-1.5 bg-emerald-500/20 px-3 py-1.5 rounded-xl border border-emerald-500/30">
                         <UserCheck size={13} className="text-emerald-400" />
-                        <span className="text-emerald-300 text-xs font-black tabular-nums">{alreadyPresent.length}/{students.length}</span>
+                        <span className="text-emerald-300 text-xs font-black tabular-nums">{markedThisSession.length + alreadyPresent.length}/{students.length}</span>
                     </div>
                     <button onClick={onClose} className="w-9 h-9 flex items-center justify-center rounded-xl bg-gray-800 hover:bg-gray-700 transition-colors cursor-pointer">
                         <X size={16} className="text-white" />
@@ -227,16 +228,29 @@ export default function FaceAttendance({ students, attendanceStatus, onMatch, on
             </div>
 
             {/* Present list */}
-            <div className="bg-gray-950/90 border-t border-gray-800 px-5 py-3" style={{ maxHeight: '100px', overflowY: 'auto' }}>
-                {alreadyPresent.length === 0 ? (
+            <div className="bg-gray-950/90 border-t border-gray-800 px-5 py-3" style={{ maxHeight: '110px', overflowY: 'auto' }}>
+                {markedThisSession.length === 0 && alreadyPresent.length === 0 ? (
                     <p className="text-gray-600 text-[9px] font-bold uppercase tracking-widest text-center py-1">Hali hech kim aniqlanmadi...</p>
                 ) : (
-                    <div className="flex flex-wrap gap-1.5">
-                        {alreadyPresent.map(s => (
-                            <span key={s.id} className="text-[8px] font-black uppercase tracking-wide text-emerald-400 bg-emerald-950/60 border border-emerald-900/50 px-2 py-0.5 rounded-lg">
-                                ✓ {s.name}
-                            </span>
-                        ))}
+                    <div className="space-y-1.5">
+                        {markedThisSession.length > 0 && (
+                            <div className="flex flex-wrap gap-1.5">
+                                {markedThisSession.map(s => (
+                                    <span key={s.id} className="text-[8px] font-black uppercase tracking-wide text-emerald-400 bg-emerald-950/60 border border-emerald-500/40 px-2 py-0.5 rounded-lg">
+                                        ✓ {s.name}
+                                    </span>
+                                ))}
+                            </div>
+                        )}
+                        {alreadyPresent.length > 0 && (
+                            <div className="flex flex-wrap gap-1.5">
+                                {alreadyPresent.map(s => (
+                                    <span key={s.id} className="text-[8px] font-bold uppercase tracking-wide text-gray-500 bg-gray-900/40 border border-gray-800 px-2 py-0.5 rounded-lg">
+                                        ✓ {s.name}
+                                    </span>
+                                ))}
+                            </div>
+                        )}
                     </div>
                 )}
             </div>
