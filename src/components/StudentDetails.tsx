@@ -171,6 +171,7 @@ export default function StudentDetails() {
         certCategory: '',
         certSubject: '',
         certType: '',
+        certScore: '',
         orgType: '',
         region: '',
         district: ''
@@ -225,6 +226,7 @@ export default function StudentDetails() {
             certCategory: student.certCategory || '',
             certSubject: student.certSubject || '',
             certType: student.certType || '',
+            certScore: student.certScore || '',
             orgType: student.orgType || '',
             region: student.region || '',
             district: student.district || ''
@@ -651,9 +653,9 @@ export default function StudentDetails() {
                                             {editForm.certCategory === 'Xalqaro' && (
                                                 <div>
                                                     <label className={labelCls}>Sertifikat turi</label>
-                                                    <select 
-                                                        value={editForm.certType} 
-                                                        onChange={e => setEditForm({...editForm, certType: e.target.value})} 
+                                                    <select
+                                                        value={editForm.certType}
+                                                        onChange={e => setEditForm({...editForm, certType: e.target.value})}
                                                         className={inputCls}
                                                     >
                                                         <option value="">Tanlang...</option>
@@ -664,6 +666,16 @@ export default function StudentDetails() {
                                                     </select>
                                                 </div>
                                             )}
+                                            <div>
+                                                <label className={labelCls}>Ball / Foiz</label>
+                                                <input
+                                                    type="text"
+                                                    value={editForm.certScore}
+                                                    onChange={e => setEditForm({...editForm, certScore: e.target.value})}
+                                                    placeholder={editForm.certCategory === 'Xalqaro' ? 'Misol: 7.5 yoki 1450' : 'Misol: 94.8%'}
+                                                    className={inputCls}
+                                                />
+                                            </div>
                                         </div>
                                     )}
                                     <div>
@@ -755,6 +767,7 @@ export default function StudentDetails() {
                                                 {student.privilegeType === 'Sertifikat' && (
                                                     <p className="text-[8px] font-bold text-gray-400 uppercase tracking-widest mt-0.5">
                                                         {student.certCategory === 'Milliy' ? `Fan: ${student.certSubject || '-'}` : `Turi: ${student.certType || '-'}`}
+                                                        {student.certScore ? ` · Ball: ${student.certScore}` : ''}
                                                     </p>
                                                 )}
                                             </div>

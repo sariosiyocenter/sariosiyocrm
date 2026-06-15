@@ -27,6 +27,7 @@ export interface Student {
     certCategory?: string;
     certSubject?: string;
     certType?: string;
+    certScore?: string;
     customPrices?: any;
     orgType?: string;
     region?: string;
@@ -94,6 +95,7 @@ export interface Lead {
     certCategory?: string;
     certSubject?: string;
     certType?: string;
+    certScore?: string;
     orgType?: string;
     region?: string;
     district?: string;

@@ -3,8 +3,8 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { useCRM } from '../context/CRMContext';
 import {
     Users, Calendar, Clock, BookOpen, Plus, TrendingUp,
-    CheckCircle, XCircle, ArrowLeft, Search, ClipboardCheck, ChevronRight, Presentation, Award, Check, Sparkles,
-    Pencil, Trash2, CreditCard, DollarSign, Wallet, AlertTriangle, ReceiptText
+    XCircle, ArrowLeft, Search, ClipboardCheck, ChevronRight, Presentation, Check, Sparkles,
+    CreditCard, DollarSign, Wallet, AlertTriangle, ReceiptText
 } from 'lucide-react';
 import AttendanceMatrix from './AttendanceMatrix';
 import GroupAttendanceCalendar from './GroupAttendanceCalendar';
@@ -13,7 +13,7 @@ import FaceAttendance from './FaceAttendance';
 export default function CourseDetails() {
     const { id } = useParams<{ id: string }>();
     const navigate = useNavigate();
-    const { groups, students, teachers, courses, rooms, attendances, payments, addBatchAttendance, addAttendance, addStudentToGroup, removeStudentFromGroup, updateGroup, updateCourse, showNotification, topics, addTopic, updateTopic, deleteTopic, addPayment, syllabuses } = useCRM();
+    const { groups, students, teachers, courses, rooms, attendances, payments, addBatchAttendance, addAttendance, addStudentToGroup, removeStudentFromGroup, updateGroup, updateCourse, showNotification, topics, addTopic, updateTopic, addPayment, syllabuses } = useCRM();
     const [isEditingInfo, setIsEditingInfo] = useState(false);
     const [editForm, setEditForm] = useState({
         teacherId: 0,
@@ -145,21 +145,6 @@ export default function CourseDetails() {
         } catch (err) {
             console.error("Save topic failed", err);
         }
-    };
-
-    const handleEditTopic = (topic: any) => {
-        setEditingTopic(topic);
-        setTopicForm({
-            title: topic.title,
-            description: topic.description || '',
-            order: topic.order
-        });
-        setIsTopicModalOpen(true);
-    };
-
-    const handleDeleteTopic = async (id: number) => {
-        if (!window.confirm("Haqiqatan ham ushbu mavzuni o'chirmoqchimisiz?")) return;
-        await deleteTopic(id);
     };
 
     const openPaymentModal = (studentId: number) => {
@@ -401,7 +386,6 @@ export default function CourseDetails() {
                     <TabButton label="Umumiy" icon={<Users size={14} />} active={activeTab === 'umumiy'} onClick={() => setActiveTab('umumiy')} />
                     <TabButton label="Yo'qlama" icon={<ClipboardCheck size={14} />} active={activeTab === 'yoqlama'} onClick={() => setActiveTab('yoqlama')} />
                     <TabButton label="To'lovlar" icon={<CreditCard size={14} />} active={activeTab === 'tolovlar'} onClick={() => setActiveTab('tolovlar')} />
-                    <TabButton label="Mavzular" icon={<BookOpen size={14} />} active={activeTab === 'mavzular'} onClick={() => setActiveTab('mavzular')} />
                 </div>
 
                 <div className="p-6">
@@ -949,116 +933,6 @@ export default function CourseDetails() {
                         );
                     })()}
 
-                    {activeTab === 'mavzular' && (
-                        <div className="space-y-6 animate-in duration-300">
-                            {/* Topics Header / Progress */}
-                            <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 p-6 bg-gray-55 dark:bg-gray-900/40 border border-gray-100 dark:border-gray-700/50 rounded-2xl">
-                                <div className="space-y-1">
-                                    <h3 className="text-xs font-black text-gray-900 dark:text-white uppercase tracking-tight">Kurs o'quv dasturi (Syllabus)</h3>
-                                    <p className="text-[10px] font-bold text-gray-450 uppercase tracking-widest">
-                                        Jami mavzular: {courseTopics.length} ta
-                                    </p>
-                                </div>
-                                
-                                {/* Covered progress bar */}
-                                {courseTopics.length > 0 && (() => {
-                                    const coveredTopicIds = new Set(attendances.filter(a => a.groupId === group.id && a.topicId).map(a => a.topicId));
-                                    const progressPercent = Math.round((coveredTopicIds.size / courseTopics.length) * 100);
-                                    return (
-                                        <div className="flex items-center gap-4 w-full md:w-80 shrink-0">
-                                            <div className="flex-1">
-                                                <div className="flex items-center justify-between text-[9px] font-black uppercase tracking-widest text-gray-400 mb-1">
-                                                    <span>Darslar progressi</span>
-                                                    <span>{coveredTopicIds.size}/{courseTopics.length} ({progressPercent}%)</span>
-                                                </div>
-                                                <div className="w-full h-2 bg-gray-200 dark:bg-gray-750 rounded-full overflow-hidden">
-                                                    <div 
-                                                        className="h-full bg-gradient-to-r from-[#1b6b6b] to-[#2e9c9c] transition-all duration-500"
-                                                        style={{ width: `${progressPercent}%` }}
-                                                    />
-                                                </div>
-                                            </div>
-                                        </div>
-                                    );
-                                })()}
-
-                                <button 
-                                    onClick={() => {
-                                        setEditingTopic(null);
-                                        setTopicForm({ title: '', description: '', order: courseTopics.length + 1 });
-                                        setIsTopicModalOpen(true);
-                                    }}
-                                    className="px-4 py-2.5 bg-[#1b6b6b] hover:bg-[#155252] text-white rounded-xl text-[10px] font-extrabold uppercase tracking-widest shadow-lg shadow-[#1b6b6b]/20 active:scale-95 transition-all flex items-center gap-1.5 group cursor-pointer"
-                                >
-                                    <Plus size={14} />
-                                    Mavzu qo'shish
-                                </button>
-                            </div>
-
-                            {/* Topics List */}
-                            <div className="bg-white dark:bg-gray-800 rounded-3xl border border-gray-100 dark:border-gray-700/50 overflow-hidden shadow-sm">
-                                <div className="overflow-x-auto custom-scrollbar">
-                                    <table className="w-full text-left border-separate border-spacing-0">
-                                        <thead>
-                                            <tr className="bg-gray-55 dark:bg-gray-900/50">
-                                                <th className="p-4 pl-6 text-[10px] font-bold text-gray-450 dark:text-gray-500 uppercase tracking-widest border-b border-gray-100 dark:border-gray-800 w-16">Tartib</th>
-                                                <th className="p-4 text-[10px] font-bold text-gray-450 dark:text-gray-500 uppercase tracking-widest border-b border-gray-100 dark:border-gray-800">Mavzu nomi</th>
-                                                <th className="p-4 text-[10px] font-bold text-gray-450 dark:text-gray-500 uppercase tracking-widest border-b border-gray-100 dark:border-gray-800">Tavsif</th>
-                                                <th className="p-4 text-[10px] font-bold text-gray-450 dark:text-gray-500 uppercase tracking-widest border-b border-gray-100 dark:border-gray-800 w-32 text-center">Holat</th>
-                                                <th className="p-4 pr-6 text-[10px] font-bold text-gray-450 dark:text-gray-500 uppercase tracking-widest border-b border-gray-100 dark:border-gray-800 w-24 text-right">Amallar</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody className="divide-y divide-gray-50 dark:divide-gray-800">
-                                            {courseTopics.map(t => {
-                                                const covered = attendances.some(a => a.groupId === group.id && a.topicId === t.id);
-                                                return (
-                                                    <tr key={t.id} className="hover:bg-gray-55/30 dark:hover:bg-gray-900/30 transition-colors">
-                                                        <td className="p-4 pl-6 text-xs font-black text-gray-450 tabular-nums">#{t.order}</td>
-                                                        <td className="p-4 text-xs font-black text-gray-900 dark:text-white uppercase tracking-tight">{t.title}</td>
-                                                        <td className="p-4 text-xs text-gray-400 dark:text-gray-500 font-bold">{t.description || '-'}</td>
-                                                        <td className="p-4 text-center">
-                                                            {covered ? (
-                                                                <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-emerald-50 text-emerald-600 border border-emerald-100 dark:bg-emerald-950/20 dark:text-emerald-400 dark:border-emerald-900/40 text-[9px] font-black uppercase tracking-wider">
-                                                                    <CheckCircle size={10} /> O'tildi
-                                                                </span>
-                                                            ) : (
-                                                                <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-gray-50 text-gray-400 border border-gray-100 dark:bg-gray-900 dark:text-gray-500 dark:border-gray-800 text-[9px] font-black uppercase tracking-wider">
-                                                                    O'tilmagan
-                                                                </span>
-                                                            )}
-                                                        </td>
-                                                        <td className="p-4 pr-6 text-right">
-                                                            <div className="flex items-center justify-end gap-1.5">
-                                                                <button 
-                                                                    onClick={() => handleEditTopic(t)}
-                                                                    className="w-7 h-7 flex items-center justify-center rounded-lg text-gray-400 hover:text-[#1b6b6b] hover:bg-gray-50 dark:hover:bg-gray-900 transition-all cursor-pointer"
-                                                                >
-                                                                    <Pencil size={13} />
-                                                                </button>
-                                                                <button 
-                                                                    onClick={() => handleDeleteTopic(t.id)}
-                                                                    className="w-7 h-7 flex items-center justify-center rounded-lg text-gray-400 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/20 transition-all cursor-pointer"
-                                                                >
-                                                                    <Trash2 size={13} />
-                                                                </button>
-                                                            </div>
-                                                        </td>
-                                                    </tr>
-                                                );
-                                            })}
-                                            {courseTopics.length === 0 && (
-                                                <tr>
-                                                    <td colSpan={5} className="py-16 text-center text-[10px] text-gray-400 font-bold uppercase tracking-widest italic">
-                                                        Ushbu kurs uchun hali mavzular kiritilmagan
-                                                    </td>
-                                                </tr>
-                                            )}
-                                        </tbody>
-                                    </table>
-                                </div>
-                            </div>
-                        </div>
-                    )}
                 </div>
             </div>
 
