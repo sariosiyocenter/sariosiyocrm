@@ -1,4 +1,4 @@
-import 'dotenv/config';
+﻿import 'dotenv/config';
 import express from 'express';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
@@ -502,21 +502,38 @@ app.get('/api/students', authenticate, async (req, res, next) => {
 });
 app.post('/api/students', authenticate, async (req, res, next) => {
   try {
-    const { groups, schoolId, ...data } = req.body;
+    const { groups, schoolId, selectedGroupIds, selectedPrivileges, ...rest } = req.body;
     if (!schoolId) return res.status(400).json({ error: 'schoolId required' });
-    if (data.balance) data.balance = parseFloat(data.balance);
+    const ALLOWED = ['name','phone','birthDate','address','location','status','joinedDate',
+      'balance','photo','comment','rating','fatherName','fatherPhone','motherName','motherPhone',
+      'studentSchool','privilegeType','certCategory','certSubject','certType','certScore',
+      'customPrices','orgType','region','district','transportId','statusChangedAt','leaveReason'];
+    const data = {};
+    for (const key of ALLOWED) {
+      if (rest[key] !== undefined) data[key] = rest[key];
+    }
+    if (data.balance !== undefined) data.balance = parseFloat(data.balance) || 0;
+    if (data.transportId !== undefined) data.transportId = data.transportId ? parseInt(data.transportId) : null;
+    if (data.customPrices !== undefined && typeof data.customPrices !== 'object') delete data.customPrices;
     const student = await prisma.student.create({
       data: { ...data, schoolId: parseInt(schoolId) }
     });
-    if (groups && groups.length > 0) {
+    const groupIds = (groups || selectedGroupIds || []).map(id => parseInt(id)).filter(id => !isNaN(id));
+    if (groupIds.length > 0) {
       await prisma.student.update({
         where: { id: student.id },
-        data: { groups: { connect: groups.map(id => ({ id })) } }
+        data: { groups: { connect: groupIds.map(id => ({ id })) } }
       });
     }
-    const updatedStudent = await prisma.student.findUnique({ where: { id: student.id }, include: { groups: { select: { id: true } } } });
+    const updatedStudent = await prisma.student.findUnique({
+      where: { id: student.id },
+      include: { groups: { select: { id: true } } }
+    });
     res.json({ ...updatedStudent, groups: updatedStudent.groups.map(g => g.id) });
-  } catch (error) { next(error); }
+  } catch (error) {
+    console.error('POST /api/students error:', error.message);
+    next(error);
+  }
 });
 
 app.post('/api/students/import', authenticate, async (req, res, next) => {
@@ -643,16 +660,22 @@ app.put('/api/students/:id', authenticate, async (req, res, next) => {
 app.delete('/api/students/:id', authenticate, async (req, res, next) => {
   try {
     const sid = parseInt(req.params.id);
-    await prisma.$transaction([
-      prisma.examResult.deleteMany({ where: { studentId: sid } }),
-      prisma.score.deleteMany({ where: { studentId: sid } }),
-      prisma.attendance.deleteMany({ where: { studentId: sid } }),
-      prisma.deliveryLog.deleteMany({ where: { studentId: sid } }),
-      prisma.payment.deleteMany({ where: { studentId: sid } }),
-      prisma.student.delete({ where: { id: sid } }),
-    ]);
+    if (isNaN(sid)) return res.status(400).json({ error: 'Noto\u2019g\u2019ri ID' });
+    // Many-to-many: guruhlardan uzib olamiz
+    await prisma.student.update({ where: { id: sid }, data: { groups: { set: [] } } }).catch(() => {});
+    // Bog'liq yozuvlarni ketma-ket o'chiramiz
+    await prisma.examResult.deleteMany({ where: { studentId: sid } }).catch(() => {});
+    await prisma.score.deleteMany({ where: { studentId: sid } }).catch(() => {});
+    await prisma.attendance.deleteMany({ where: { studentId: sid } }).catch(() => {});
+    await prisma.deliveryLog.deleteMany({ where: { studentId: sid } }).catch(() => {});
+    await prisma.payment.deleteMany({ where: { studentId: sid } }).catch(() => {});
+    // Nihoyat studentni o'chiramiz
+    await prisma.student.delete({ where: { id: sid } });
     res.json({ success: true });
-  } catch (error) { next(error); }
+  } catch (error) {
+    console.error('Delete student error:', error);
+    next(error);
+  }
 });
 
 // Teachers
@@ -3232,3 +3255,5 @@ app.listen(PORT, () => {
 });
 
 export default app;
+
+
