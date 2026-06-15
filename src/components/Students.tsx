@@ -87,19 +87,20 @@ export default function Students() {
     const [isAdding, setIsAdding] = useState(false);
     const [isPhotoModalOpen, setIsPhotoModalOpen] = useState(false);
     const [isMapOpen, setIsMapOpen] = useState(false);
-    const [newStudent, setNewStudent] = useState({ 
-        name: '', phone: '', address: '', birthDate: '', location: '', photo: '', 
+    const [newStudent, setNewStudent] = useState({
+        name: '', phone: '', address: '', birthDate: '', location: '', photo: '',
         fatherName: '', fatherPhone: '', motherName: '', motherPhone: '',
         transportId: '' as string | number,
         studentSchool: '',
-        privilegeType: 'None',
+        selectedPrivileges: [] as string[],
         certCategory: '',
         certSubject: '',
         certType: '',
         certScore: '',
         orgType: '',
         region: '',
-        district: ''
+        district: '',
+        selectedGroupIds: [] as number[]
     });
     const [isRemovingBg, setIsRemovingBg] = useState(false);
     const [isImporting, setIsImporting] = useState(false);
@@ -183,10 +184,10 @@ export default function Students() {
                 status: 'Faol',
                 joinedDate: new Date().toISOString().split('T')[0],
                 balance: 0,
-                groups: [],
+                groups: newStudent.selectedGroupIds,
                 transportId: newStudent.transportId ? Number(newStudent.transportId) : null,
                 studentSchool: newStudent.studentSchool,
-                privilegeType: newStudent.privilegeType,
+                privilegeType: newStudent.selectedPrivileges.length ? newStudent.selectedPrivileges.join(',') : 'None',
                 certCategory: newStudent.certCategory,
                 certSubject: newStudent.certSubject,
                 certType: newStudent.certType,
@@ -202,14 +203,15 @@ export default function Students() {
                 fatherName: '', fatherPhone: '', motherName: '', motherPhone: '',
                 transportId: '',
                 studentSchool: '',
-                privilegeType: 'None',
+                selectedPrivileges: [],
                 certCategory: '',
                 certSubject: '',
                 certType: '',
                 certScore: '',
                 orgType: '',
                 region: '',
-                district: ''
+                district: '',
+                selectedGroupIds: []
             });
         } catch (err) {
             console.error("Add student failed", err);
@@ -780,27 +782,40 @@ export default function Students() {
                                     <MapPin size={14} /> {newStudent.location ? t('marked_on_map') : t('select_from_map')}
                                 </button>
                                 <div>
-                                    <label className={lbl}>Imtiyoz turi</label>
-                                    <select 
-                                        value={newStudent.privilegeType} 
-                                        onChange={e => setNewStudent({
-                                            ...newStudent, 
-                                            privilegeType: e.target.value,
-                                            certCategory: e.target.value === 'Sertifikat' ? newStudent.certCategory || 'Milliy' : '',
-                                            certSubject: e.target.value === 'Sertifikat' ? newStudent.certSubject : '',
-                                            certType: e.target.value === 'Sertifikat' ? newStudent.certType : ''
-                                        })} 
-                                        className={inp}
-                                    >
-                                        <option value="None">Mavjud emas</option>
-                                        <option value="Nogironligi bor">Nogironligi bor</option>
-                                        <option value="Harbiy oila">Harbiy oila</option>
-                                        <option value="Xotin-qizlar daftari">Xotin-qizlar daftari</option>
-                                        <option value="Sertifikat">Sertifikat</option>
-                                    </select>
+                                    <label className={lbl}>Imtiyoz turi (bir nechtasini tanlash mumkin)</label>
+                                    <div className="flex flex-wrap gap-2 mt-1">
+                                        {['Nogironligi bor', 'Harbiy oila', 'Xotin-qizlar daftari', 'Sertifikat'].map(priv => {
+                                            const checked = newStudent.selectedPrivileges.includes(priv);
+                                            return (
+                                                <button
+                                                    key={priv}
+                                                    type="button"
+                                                    onClick={() => {
+                                                        const updated = checked
+                                                            ? newStudent.selectedPrivileges.filter(p => p !== priv)
+                                                            : [...newStudent.selectedPrivileges, priv];
+                                                        setNewStudent({
+                                                            ...newStudent,
+                                                            selectedPrivileges: updated,
+                                                            certCategory: updated.includes('Sertifikat') ? (newStudent.certCategory || 'Milliy') : '',
+                                                            certSubject: updated.includes('Sertifikat') ? newStudent.certSubject : '',
+                                                            certType: updated.includes('Sertifikat') ? newStudent.certType : ''
+                                                        });
+                                                    }}
+                                                    className={`px-3 py-1.5 rounded-xl text-[10px] font-bold uppercase tracking-wide border transition-all cursor-pointer ${
+                                                        checked
+                                                            ? 'bg-[#1b6b6b] text-white border-[#1b6b6b]'
+                                                            : 'bg-gray-50 dark:bg-gray-900 text-gray-600 dark:text-gray-400 border-gray-200 dark:border-gray-700 hover:border-[#1b6b6b] hover:text-[#1b6b6b]'
+                                                    }`}
+                                                >
+                                                    {checked ? '✓ ' : ''}{priv}
+                                                </button>
+                                            );
+                                        })}
+                                    </div>
                                 </div>
 
-                                {newStudent.privilegeType === 'Sertifikat' && (
+                                {newStudent.selectedPrivileges.includes('Sertifikat') && (
                                     <div className="space-y-3 p-3 bg-gray-55 dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800">
                                         <div>
                                             <label className={lbl}>Sertifikat toifasi</label>
@@ -869,6 +884,38 @@ export default function Students() {
                                         </div>
                                     </div>
                                 )}
+
+                                <div className="border-t border-dashed border-gray-150 dark:border-gray-700/50 pt-4 mt-4 space-y-3">
+                                    <span className="block text-[9px] font-black uppercase text-[#1b6b6b] tracking-wider text-left">Guruhga qo'shish</span>
+                                    {groups.length === 0 ? (
+                                        <p className="text-[10px] text-gray-400 italic">Guruhlar mavjud emas</p>
+                                    ) : (
+                                        <div className="flex flex-wrap gap-2">
+                                            {groups.map(g => {
+                                                const selected = newStudent.selectedGroupIds.includes(g.id);
+                                                return (
+                                                    <button
+                                                        key={g.id}
+                                                        type="button"
+                                                        onClick={() => {
+                                                            const updated = selected
+                                                                ? newStudent.selectedGroupIds.filter(id => id !== g.id)
+                                                                : [...newStudent.selectedGroupIds, g.id];
+                                                            setNewStudent({...newStudent, selectedGroupIds: updated});
+                                                        }}
+                                                        className={`px-3 py-1.5 rounded-xl text-[10px] font-bold border transition-all cursor-pointer ${
+                                                            selected
+                                                                ? 'bg-[#1b6b6b] text-white border-[#1b6b6b]'
+                                                                : 'bg-gray-50 dark:bg-gray-900 text-gray-600 dark:text-gray-400 border-gray-200 dark:border-gray-700 hover:border-[#1b6b6b] hover:text-[#1b6b6b]'
+                                                        }`}
+                                                    >
+                                                        {selected ? '✓ ' : ''}{g.name}
+                                                    </button>
+                                                );
+                                            })}
+                                        </div>
+                                    )}
+                                </div>
 
                                 <div className="border-t border-dashed border-gray-150 dark:border-gray-700/50 pt-4 mt-4 space-y-4">
                                     <span className="block text-[9px] font-black uppercase text-[#1b6b6b] tracking-wider text-left">{t('parent_info')}</span>
