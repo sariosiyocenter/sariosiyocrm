@@ -96,6 +96,7 @@ export default function Students() {
         certCategory: '',
         certSubject: '',
         certType: '',
+        certScore: '',
         orgType: '',
         region: '',
         district: ''
@@ -189,14 +190,15 @@ export default function Students() {
                 certCategory: newStudent.certCategory,
                 certSubject: newStudent.certSubject,
                 certType: newStudent.certType,
+                certScore: newStudent.certScore,
                 orgType: newStudent.orgType,
                 region: newStudent.region,
                 district: newStudent.district,
                 customPrices: {}
             });
             setIsModalOpen(false);
-            setNewStudent({ 
-                name: '', phone: '', address: '', birthDate: '', location: '', photo: '', 
+            setNewStudent({
+                name: '', phone: '', address: '', birthDate: '', location: '', photo: '',
                 fatherName: '', fatherPhone: '', motherName: '', motherPhone: '',
                 transportId: '',
                 studentSchool: '',
@@ -204,6 +206,7 @@ export default function Students() {
                 certCategory: '',
                 certSubject: '',
                 certType: '',
+                certScore: '',
                 orgType: '',
                 region: '',
                 district: ''
@@ -835,9 +838,9 @@ export default function Students() {
                                         {newStudent.certCategory === 'Xalqaro' && (
                                             <div>
                                                 <label className={lbl}>Sertifikat turi</label>
-                                                <select 
-                                                    value={newStudent.certType} 
-                                                    onChange={e => setNewStudent({...newStudent, certType: e.target.value})} 
+                                                <select
+                                                    value={newStudent.certType}
+                                                    onChange={e => setNewStudent({...newStudent, certType: e.target.value})}
                                                     className={inp}
                                                 >
                                                     <option value="">Tanlang...</option>
@@ -848,6 +851,16 @@ export default function Students() {
                                                 </select>
                                             </div>
                                         )}
+                                        <div>
+                                            <label className={lbl}>Ball / Foiz</label>
+                                            <input
+                                                type="text"
+                                                value={newStudent.certScore}
+                                                onChange={e => setNewStudent({...newStudent, certScore: e.target.value})}
+                                                placeholder={newStudent.certCategory === 'Xalqaro' ? 'Misol: 7.5 yoki 1450' : 'Misol: 94.8%'}
+                                                className={inp}
+                                            />
+                                        </div>
                                     </div>
                                 )}
 
