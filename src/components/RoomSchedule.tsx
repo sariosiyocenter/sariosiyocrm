@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useCRM } from '../context/CRMContext';
-import { Clock, MapPin, Calendar, X, Users, Edit2, Save, Sun, Sunset, Filter, LayoutGrid, Map, Info, Compass } from 'lucide-react';
+import { Clock, MapPin, Calendar, X, Users, Edit2, Save, Sun, Sunset, Filter, LayoutGrid, CalendarRange, Info } from 'lucide-react';
 import { Group } from '../types';
 
 const WEEK_DAYS = [
@@ -8,6 +8,15 @@ const WEEK_DAYS = [
     { id: 'TOQ', label: 'Toq kunlar', short: 'Toq' },
     { id: 'JUFT', label: 'Juft kunlar', short: 'Juft' },
     { id: 'HAR', label: 'Har kuni', short: 'Har' },
+];
+
+const FULL_WEEK = [
+    { id: 'Dushanba', label: 'Dushanba (Toq)', isToq: true },
+    { id: 'Seshanba', label: 'Seshanba (Juft)', isToq: false },
+    { id: 'Chorshanba', label: 'Chorshanba (Toq)', isToq: true },
+    { id: 'Payshanba', label: 'Payshanba (Juft)', isToq: false },
+    { id: 'Juma', label: 'Juma (Toq)', isToq: true },
+    { id: 'Shanba', label: 'Shanba (Juft)', isToq: false },
 ];
 
 type TimeFilter = 'ALL' | 'BEFORE_NOON' | 'AFTER_NOON';
@@ -19,43 +28,47 @@ const timeToMinutes = (time: string) => {
 
 const getGroupColor = (days: string) => {
     const d = days?.toUpperCase() || '';
-    if (d.includes('HAR') || d.includes('EVERY')) return { bg: 'bg-amber-500/10 dark:bg-amber-500/20', text: 'text-amber-500', border: 'border-amber-500/30', dot: 'bg-amber-400' };
-    if (d.includes('TOQ')) return { bg: 'bg-cyan-500/10 dark:bg-cyan-500/20', text: 'text-cyan-400', border: 'border-cyan-500/30', dot: 'bg-cyan-455' };
-    return { bg: 'bg-emerald-500/10 dark:bg-emerald-500/20', text: 'text-emerald-400', border: 'border-emerald-500/30', dot: 'bg-emerald-400' };
+    if (d.includes('HAR') || d.includes('EVERY')) return { bg: 'bg-amber-500/10 dark:bg-amber-500/20', text: 'text-amber-600 dark:text-amber-400', border: 'border-amber-500/30', dot: 'bg-amber-400' };
+    if (d.includes('TOQ')) return { bg: 'bg-cyan-500/10 dark:bg-cyan-500/20', text: 'text-cyan-600 dark:text-cyan-400', border: 'border-cyan-500/30', dot: 'bg-cyan-400' };
+    return { bg: 'bg-emerald-500/10 dark:bg-emerald-500/20', text: 'text-emerald-600 dark:text-emerald-400', border: 'border-emerald-500/30', dot: 'bg-emerald-400' };
 };
 
-const inp = "w-full px-3 py-2 bg-slate-900/70 border border-slate-700 rounded-xl text-xs font-bold text-white focus:border-cyan-500 focus:ring-2 focus:ring-cyan-500/20 outline-none transition-all";
+const inp = "w-full px-3 py-2 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl text-xs font-bold text-gray-900 dark:text-white focus:border-[#1b6b6b] focus:ring-2 focus:ring-[#1b6b6b]/10 outline-none transition-all";
 
 export default function RoomSchedule() {
     const { groups, rooms, teachers, courses, updateGroup } = useCRM();
 
-    const [viewMode, setViewMode] = useState<'map' | 'grid'>('map');
-    const [dayFilter, setDayFilter] = useState<'ALL' | 'TOQ' | 'JUFT' | 'HAR'>('ALL');
-    const [timeFilter, setTimeFilter] = useState<TimeFilter>('ALL');
+    const [viewMode, setViewMode] = useState<'day' | 'week'>('day');
+    const [selectedDayType, setSelectedDayType] = useState<'TOQ' | 'JUFT'>('TOQ');
     const [selectedRoom, setSelectedRoom] = useState<typeof rooms[0] | null>(null);
     const [editingGroup, setEditingGroup] = useState<Group | null>(null);
     const [editSchedule, setEditSchedule] = useState({ start: '', end: '' });
     const [isSaving, setIsSaving] = useState(false);
     const [currentTime, setCurrentTime] = useState(new Date());
 
-    // Live update for checking current classes
     useEffect(() => {
         const timer = setInterval(() => setCurrentTime(new Date()), 30000);
         return () => clearInterval(timer);
     }, []);
 
-    // Helper: Is group active *right now*?
-    const isGroupActiveNow = (g: Group) => {
-        const day = currentTime.getDay(); // 0=Sun, 1=Mon, 2=Tue...
+    // 30-minute slots: 08:00 to 22:00
+    const timeSlots: string[] = [];
+    for (let h = 8; h <= 21; h++) {
+        timeSlots.push(`${h.toString().padStart(2, '0')}:00`);
+        timeSlots.push(`${h.toString().padStart(2, '0')}:30`);
+    }
+
+    // Is class running *right now*?
+    const isCurrentlyActive = (g: Group) => {
+        const day = currentTime.getDay(); // 0=Sun, 1=Mon...
         const d = g.days?.toUpperCase() || '';
-        
         let dayMatches = false;
         if (d.includes('HAR') || d.includes('EVERY')) {
-            dayMatches = day !== 0; // Mon-Sat
+            dayMatches = day !== 0;
         } else if (d.includes('TOQ')) {
-            dayMatches = [1, 3, 5].includes(day); // Mon, Wed, Fri
+            dayMatches = [1, 3, 5].includes(day);
         } else if (d.includes('JUFT')) {
-            dayMatches = [2, 4, 6].includes(day); // Tue, Thu, Sat
+            dayMatches = [2, 4, 6].includes(day);
         }
 
         if (!dayMatches) return false;
@@ -70,33 +83,70 @@ export default function RoomSchedule() {
         return currentMin >= startMin && currentMin <= endMin;
     };
 
-    // Filter groups by day type
-    const filterGroup = (g: Group) => {
-        const d = g.days?.toUpperCase() || '';
-        const isHarKuni = d.includes('HAR') || d.includes('EVERY');
+    // Helper: Find occupant for time slot (Daily View)
+    const getOccupant = (roomId: number, time: string) => {
+        return groups.find(g => {
+            if (Number(g.room) !== Number(roomId)) return false;
+            
+            const groupDays = g.days?.toUpperCase() || '';
+            const isGroupHarKuni = groupDays.includes('HAR') || groupDays.includes('EVERY');
+            const dayMatch = groupDays.includes(selectedDayType) || isGroupHarKuni;
 
-        if (dayFilter === 'HAR') return isHarKuni;
-        if (dayFilter === 'TOQ') return d.includes('TOQ') || isHarKuni;
-        if (dayFilter === 'JUFT') return d.includes('JUFT') || isHarKuni;
-        return true;
+            if (!dayMatch) return false;
+            
+            const schedule = g.schedule;
+            if (!schedule) return false;
+            
+            const parts = schedule.split(' - ');
+            const start = parts[0];
+            const end = parts[1];
+            
+            if (!start || !end) return false;
+            
+            const slotTime = timeToMinutes(time);
+            const startTime = timeToMinutes(start);
+            const endTime = timeToMinutes(end);
+            
+            return slotTime >= startTime && slotTime < endTime;
+        });
     };
 
-    // Filter by time
-    const filterByTime = (g: Group) => {
-        if (timeFilter === 'ALL') return true;
-        const parts = g.schedule?.split(' - ') || [];
-        if (!parts[0]) return true;
-        const startMin = timeToMinutes(parts[0]);
-        if (timeFilter === 'BEFORE_NOON') return startMin < 13 * 60;
-        if (timeFilter === 'AFTER_NOON') return startMin >= 13 * 60;
-        return true;
+    // Helper: Build cells with colspans (Daily View)
+    const buildRowCells = (roomId: number) => {
+        const cells: { time: string; group: ReturnType<typeof getOccupant>; colspan: number }[] = [];
+        let i = 0;
+        while (i < timeSlots.length) {
+            const time = timeSlots[i];
+            const group = getOccupant(roomId, time);
+            if (group) {
+                const [, end] = group.schedule.split(' - ');
+                const endMin = timeToMinutes(end);
+                let span = 1;
+                while (i + span < timeSlots.length && timeToMinutes(timeSlots[i + span]) < endMin) {
+                    span++;
+                }
+                cells.push({ time, group, colspan: span });
+                i += span;
+            } else {
+                cells.push({ time, group: undefined, colspan: 1 });
+                i++;
+            }
+        }
+        return cells;
     };
 
-    const getGroupsForRoom = (roomId: number) =>
-        groups.filter(g => Number(g.room) === Number(roomId) && filterGroup(g) && filterByTime(g));
-
-    const getRoomUtilization = (roomId: number) => {
-        return groups.filter(g => Number(g.room) === Number(roomId)).length;
+    // Helper: Get groups for a specific room and day of week (Weekly View)
+    const getGroupsForRoomAndDay = (roomId: number, isToq: boolean) => {
+        return groups.filter(g => {
+            if (Number(g.room) !== Number(roomId)) return false;
+            const d = g.days?.toUpperCase() || '';
+            const isHarKuni = d.includes('HAR') || d.includes('EVERY');
+            return isHarKuni || (isToq ? d.includes('TOQ') : d.includes('JUFT'));
+        }).sort((a, b) => {
+            const timeA = a.schedule?.split(' - ')[0] || '';
+            const timeB = b.schedule?.split(' - ')[0] || '';
+            return timeToMinutes(timeA) - timeToMinutes(timeB);
+        });
     };
 
     const openEditGroup = (g: Group) => {
@@ -118,515 +168,324 @@ export default function RoomSchedule() {
         }
     };
 
-    const roomGroupsInModal = selectedRoom ? getGroupsForRoom(selectedRoom.id) : [];
-
-    // Stats
-    const totalGroups = groups.filter(filterGroup).filter(filterByTime).length;
-    const occupiedRooms = rooms.filter(r => getGroupsForRoom(r.id).length > 0).length;
-
-    // Split rooms dynamically for North/South wing of floor map
-    const northRooms = rooms.filter((_, idx) => idx % 2 === 0);
-    const southRooms = rooms.filter((_, idx) => idx % 2 !== 0);
-    const mapColCount = Math.max(1, Math.max(northRooms.length, southRooms.length));
-
     return (
         <div className="space-y-6">
-            {/* Header + Control Panel */}
-            <div className="bg-slate-900 border border-slate-800 rounded-[2rem] shadow-xl p-6 text-white">
-                <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
+            {/* Header + View Toggle */}
+            <div className="bg-white dark:bg-gray-800 rounded-[2rem] border border-gray-100 dark:border-gray-700 shadow-sm p-6">
+                <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                     <div className="flex items-center gap-3">
-                        <div className="w-12 h-12 rounded-2xl bg-cyan-500/10 border border-cyan-500/30 flex items-center justify-center text-cyan-400">
-                            <Compass className="animate-spin-slow" size={24} />
+                        <div className="w-10 h-10 rounded-xl bg-[#1b6b6b]/10 flex items-center justify-center text-[#1b6b6b]">
+                            <Calendar size={20} />
                         </div>
                         <div>
-                            <h3 className="text-base font-black uppercase tracking-tight text-white">Xonalar Xaritasi & Boshqaruvi</h3>
-                            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Interaktiv bino chizmasi • Guruhlar va darslar nazorati</p>
+                            <h3 className="text-sm font-extrabold text-gray-900 dark:text-white uppercase tracking-tight">Jadval Xaritasi (Timetable)</h3>
+                            <p className="text-[10px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-widest">Xonalar bandligi jadvali</p>
                         </div>
                     </div>
 
                     <div className="flex flex-wrap items-center gap-3">
-                        {/* Status Pills */}
-                        <div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest bg-slate-950/60 p-1.5 rounded-2xl border border-slate-800">
-                            <span className="px-3 py-1.5 rounded-xl bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
-                                {occupiedRooms} band xona
-                            </span>
-                            <span className="px-3 py-1.5 rounded-xl bg-cyan-500/10 text-cyan-400 border border-cyan-500/20">
-                                {totalGroups} guruh
-                            </span>
-                        </div>
-
-                        {/* View Mode Toggle */}
-                        <div className="flex bg-slate-950 p-1 rounded-2xl border border-slate-800">
+                        {/* View Switcher */}
+                        <div className="flex bg-gray-50 dark:bg-gray-900 p-1.5 rounded-2xl border border-gray-100 dark:border-gray-800">
                             <button
-                                onClick={() => setViewMode('map')}
+                                onClick={() => setViewMode('day')}
                                 className={`flex items-center gap-2 px-4 py-2 rounded-[1rem] text-[10px] font-extrabold uppercase tracking-widest transition-all cursor-pointer ${
-                                    viewMode === 'map' ? 'bg-cyan-500 text-slate-950 shadow-lg shadow-cyan-500/20' : 'text-slate-400 hover:text-white'
+                                    viewMode === 'day' 
+                                        ? 'bg-white dark:bg-gray-800 text-[#1b6b6b] shadow-sm ring-1 ring-black/5 dark:ring-white/5' 
+                                        : 'text-gray-400 hover:text-gray-600 dark:hover:text-gray-200'
                                 }`}
                             >
-                                <Map size={12} /> Xarita
+                                <Clock size={12} /> Kunlik
                             </button>
                             <button
-                                onClick={() => setViewMode('grid')}
+                                onClick={() => setViewMode('week')}
                                 className={`flex items-center gap-2 px-4 py-2 rounded-[1rem] text-[10px] font-extrabold uppercase tracking-widest transition-all cursor-pointer ${
-                                    viewMode === 'grid' ? 'bg-cyan-500 text-slate-950 shadow-lg shadow-cyan-500/20' : 'text-slate-400 hover:text-white'
+                                    viewMode === 'week' 
+                                        ? 'bg-white dark:bg-gray-800 text-[#1b6b6b] shadow-sm ring-1 ring-black/5 dark:ring-white/5' 
+                                        : 'text-gray-400 hover:text-gray-600 dark:hover:text-gray-200'
                                 }`}
                             >
-                                <LayoutGrid size={12} /> Ro'yxat
+                                <CalendarRange size={12} /> Haftalik
                             </button>
                         </div>
-                    </div>
-                </div>
 
-                {/* Filters */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-4 border-t border-slate-800/80">
-                    <div>
-                        <p className="text-[9px] font-black uppercase tracking-widest text-slate-400 mb-2 flex items-center gap-1.5"><Filter size={10} /> Kun filtri</p>
-                        <div className="flex flex-wrap bg-slate-950 p-1 rounded-2xl border border-slate-800 w-fit gap-0.5">
-                            {WEEK_DAYS.map(d => (
-                                <button
-                                    key={d.id}
-                                    onClick={() => setDayFilter(d.id as any)}
-                                    className={`px-4 py-2 rounded-[1rem] text-[10px] font-extrabold uppercase tracking-widest transition-all cursor-pointer ${
-                                        dayFilter === d.id
-                                            ? 'bg-slate-800 text-cyan-400 border border-slate-700'
-                                            : 'text-slate-400 hover:text-white'
-                                    }`}
-                                >{d.short}</button>
-                            ))}
-                        </div>
-                    </div>
-
-                    <div>
-                        <p className="text-[9px] font-black uppercase tracking-widest text-slate-400 mb-2 flex items-center gap-1.5"><Clock size={10} /> Vaqt filtri</p>
-                        <div className="flex flex-wrap bg-slate-950 p-1 rounded-2xl border border-slate-800 w-fit gap-0.5">
-                            {[
-                                { id: 'ALL', label: 'Barchasi', icon: <Calendar size={10} /> },
-                                { id: 'BEFORE_NOON', label: 'Tushgacha', icon: <Sun size={10} /> },
-                                { id: 'AFTER_NOON', label: 'Tushdan keyin', icon: <Sunset size={10} /> },
-                            ].map(t => (
-                                <button
-                                    key={t.id}
-                                    onClick={() => setTimeFilter(t.id as TimeFilter)}
-                                    className={`flex items-center gap-1.5 px-4 py-2 rounded-[1rem] text-[10px] font-extrabold uppercase tracking-widest transition-all cursor-pointer ${
-                                        timeFilter === t.id
-                                            ? 'bg-slate-800 text-cyan-400 border border-slate-700'
-                                            : 'text-slate-400 hover:text-white'
-                                    }`}
-                                >{t.icon}{t.label}</button>
-                            ))}
-                        </div>
+                        {/* Day filter for Daily View */}
+                        {viewMode === 'day' && (
+                            <div className="flex bg-gray-50 dark:bg-gray-900 p-1.5 rounded-2xl border border-gray-100 dark:border-gray-800">
+                                {[
+                                    { id: 'TOQ', label: 'Toq kunlar' },
+                                    { id: 'JUFT', label: 'Juft kunlar' }
+                                ].map((type) => (
+                                    <button
+                                        key={type.id}
+                                        onClick={() => setSelectedDayType(type.id as any)}
+                                        className={`px-4 py-2 rounded-[1rem] text-[10px] font-extrabold uppercase tracking-widest transition-all cursor-pointer ${
+                                            selectedDayType === type.id
+                                                ? 'bg-white dark:bg-gray-800 text-[#1b6b6b] shadow-sm ring-1 ring-black/5 dark:ring-white/5'
+                                                : 'text-gray-400 hover:text-gray-600 dark:hover:text-gray-200'
+                                        }`}
+                                    >
+                                        {type.label}
+                                    </button>
+                                ))}
+                            </div>
+                        )}
                     </div>
                 </div>
             </div>
 
-            {/* MAP VIEW (Blueprint Style) */}
-            {viewMode === 'map' && (
-                <div className="relative bg-[#0b1329] rounded-[2.5rem] border border-slate-800 shadow-2xl p-6 sm:p-8 overflow-hidden text-white">
-                    {/* Blueprint grid background lines */}
-                    <div className="absolute inset-0 opacity-[0.03] pointer-events-none" 
-                         style={{ 
-                             backgroundImage: 'linear-gradient(#fff 1px, transparent 1px), linear-gradient(90deg, #fff 1px, transparent 1px)', 
-                             backgroundSize: '20px 20px' 
-                         }} 
-                    />
+            {/* DAILY TIMELINE VIEW */}
+            {viewMode === 'day' && (
+                <div className="bg-white dark:bg-gray-800 rounded-[2.5rem] border border-gray-100 dark:border-gray-700 shadow-xl overflow-hidden">
+                    <div className="overflow-x-auto custom-scrollbar">
+                        <table className="w-full border-collapse">
+                            <thead>
+                                <tr className="bg-gray-50/50 dark:bg-gray-900/50 border-b border-gray-100 dark:border-gray-700">
+                                    <th className="sticky left-0 z-20 bg-gray-50 dark:bg-gray-900 p-6 min-w-[200px] text-[10px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-widest text-left border-r border-gray-100 dark:border-gray-700">
+                                        Xona nomi
+                                    </th>
+                                    {timeSlots.map(time => (
+                                        <th key={time} className="p-4 min-w-[90px] text-[9px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-widest text-center border-r border-gray-100/50 dark:border-gray-700/30">
+                                            {time}
+                                        </th>
+                                    ))}
+                                </tr>
+                            </thead>
+                            <tbody className="divide-y divide-gray-50 dark:divide-gray-700/50">
+                                {rooms.map(room => {
+                                    const cells = buildRowCells(room.id);
+                                    return (
+                                        <tr key={room.id} className="group hover:bg-gray-50/30 dark:hover:bg-slate-700/20 transition-colors">
+                                            {/* Room details */}
+                                            <td className="sticky left-0 z-10 bg-white dark:bg-gray-800 p-5 border-r border-gray-100 dark:border-gray-700 group-hover:bg-gray-50 dark:group-hover:bg-gray-900/50 transition-colors">
+                                                <button 
+                                                    onClick={() => setSelectedRoom(room)}
+                                                    className="text-left flex items-center gap-3 w-full hover:opacity-80 transition-opacity"
+                                                >
+                                                    <div className="w-9 h-9 rounded-xl bg-gray-50 dark:bg-gray-900 border border-gray-100 dark:border-gray-800 flex items-center justify-center text-gray-400 group-hover:text-[#1b6b6b] transition-colors">
+                                                        <MapPin size={16} />
+                                                    </div>
+                                                    <div>
+                                                        <p className="text-xs font-black text-gray-900 dark:text-white uppercase tracking-tight">{room.name}</p>
+                                                        <p className="text-[9px] font-bold text-gray-450 uppercase tracking-widest">{room.capacity} o'rin</p>
+                                                    </div>
+                                                </button>
+                                            </td>
 
-                    {/* Architectural Map Header Details */}
-                    <div className="relative flex justify-between items-center text-[8px] font-mono tracking-widest text-slate-500 uppercase border-b border-slate-800/80 pb-4 mb-8">
-                        <div>Blueprint Ref: SARIOSIYO-EDU-FLOOR1</div>
-                        <div className="hidden sm:block">Scale: 1:50 | North Oriented 🧭</div>
-                        <div>Date: 2026-06-15</div>
-                    </div>
+                                            {/* Occupancy cells */}
+                                            {cells.map(({ time, group, colspan }) => {
+                                                const isActive = group ? isCurrentlyActive(group) : false;
+                                                const color = group ? getGroupColor(group.days) : null;
+                                                return (
+                                                    <td
+                                                        key={time}
+                                                        colSpan={colspan}
+                                                        onClick={() => group && setSelectedRoom(room)}
+                                                        className={`p-1 border-r border-gray-100/40 dark:border-gray-700/20 min-h-[70px] align-middle ${group ? 'cursor-pointer' : ''}`}
+                                                        style={{ minWidth: `${colspan * 90}px` }}
+                                                    >
+                                                        {group ? (
+                                                            <div className={`h-full min-h-[50px] p-2.5 rounded-xl flex flex-col justify-center border transition-all ${color?.bg} ${color?.border} ${
+                                                                isActive ? 'ring-2 ring-rose-500/30 dark:ring-rose-500/20 border-rose-500/40' : ''
+                                                            }`}>
+                                                                <div className="flex items-center justify-between gap-1">
+                                                                    <p className={`text-[9px] font-black uppercase tracking-tight truncate ${color?.text}`}>{group.name}</p>
+                                                                    {isActive && <span className="h-1.5 w-1.5 rounded-full bg-rose-500 animate-ping flex-shrink-0" />}
+                                                                </div>
+                                                                <span className="text-[8px] font-bold opacity-80 mt-0.5 tabular-nums block">{group.schedule}</span>
+                                                            </div>
+                                                        ) : (
+                                                            <div className="h-full flex items-center justify-center py-4">
+                                                                <span className="text-[8px] font-black text-gray-200 dark:text-gray-700/80 uppercase tracking-widest">Bo'sh</span>
+                                                            </div>
+                                                        )}
+                                                    </td>
+                                                );
+                                            })}
+                                        </tr>
+                                    );
+                                })}
 
-                    <div className="space-y-4 relative">
-                        {/* NORTH WING (Top row of rooms) */}
-                        <div 
-                            className="grid gap-4"
-                            style={{ gridTemplateColumns: `repeat(${mapColCount}, minmax(0, 1fr))` }}
-                        >
-                            {northRooms.map(room => {
-                                const roomGroups = getGroupsForRoom(room.id);
-                                const isBusy = roomGroups.length > 0;
-                                const hasLiveClass = roomGroups.some(isGroupActiveNow);
-
-                                return (
-                                    <button
-                                        key={room.id}
-                                        onClick={() => setSelectedRoom(room)}
-                                        className={`group relative text-left bg-slate-900/60 backdrop-blur-sm p-5 rounded-3xl border transition-all hover:-translate-y-1 hover:shadow-cyan-500/10 hover:shadow-xl cursor-pointer ${
-                                            hasLiveClass 
-                                                ? 'border-rose-500/65 shadow-rose-500/5 bg-gradient-to-b from-rose-500/5 to-transparent' 
-                                                : isBusy 
-                                                    ? 'border-cyan-500/35 bg-gradient-to-b from-cyan-500/5 to-transparent' 
-                                                    : 'border-slate-800 hover:border-slate-700'
-                                        }`}
-                                    >
-                                        <div className="flex items-start justify-between mb-4">
-                                            <span className="text-[8px] font-mono text-slate-500 tracking-wider">ROOM #{room.id}</span>
-                                            <div className="flex items-center gap-1.5">
-                                                {hasLiveClass && (
-                                                    <span className="flex h-2 w-2 relative">
-                                                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-75"></span>
-                                                        <span className="relative inline-flex rounded-full h-2 w-2 bg-rose-500"></span>
-                                                    </span>
-                                                )}
-                                                <span className={`text-[8px] font-black uppercase tracking-wider px-2 py-0.5 rounded border ${
-                                                    hasLiveClass 
-                                                        ? 'bg-rose-500/10 text-rose-455 border-rose-500/30'
-                                                        : isBusy 
-                                                            ? 'bg-cyan-500/10 text-cyan-400 border-cyan-500/20' 
-                                                            : 'bg-slate-950/60 text-slate-500 border-slate-800'
-                                                }`}>
-                                                    {hasLiveClass ? 'Darsda' : isBusy ? 'Band' : 'Bo\'sh'}
-                                                </span>
-                                            </div>
-                                        </div>
-
-                                        <h4 className="text-sm font-black uppercase tracking-tight text-white">{room.name}</h4>
-                                        <span className="text-[10px] font-mono text-slate-400 block mt-0.5">{room.capacity} seats / {room.capacity * 1.5} m²</span>
-
-                                        {/* Stylized blueprint chairs representation */}
-                                        <div className="grid grid-cols-5 gap-1.5 my-4 p-2.5 rounded-xl bg-slate-950/50 border border-slate-800/40">
-                                            {Array.from({ length: Math.min(10, room.capacity) }).map((_, i) => (
-                                                <div 
-                                                    key={i} 
-                                                    className={`h-2 rounded-sm transition-all ${
-                                                        hasLiveClass 
-                                                            ? 'bg-rose-500/70 border border-rose-400/50 animate-pulse'
-                                                            : (isBusy && i < roomGroups.length * 3)
-                                                                ? 'bg-cyan-400/55' 
-                                                                : 'bg-slate-800'
-                                                    }`} 
-                                                />
-                                            ))}
-                                        </div>
-
-                                        <div className="flex items-center justify-between text-[9px] font-bold text-slate-400 pt-2 border-t border-slate-800/60">
-                                            <span>Guruhlar: {roomGroups.length}</span>
-                                            <span className="text-cyan-400 group-hover:translate-x-1 transition-transform">Kirish →</span>
-                                        </div>
-
-                                        {/* Door swinging arc at bottom */}
-                                        <div className="absolute left-1/2 -translate-x-1/2 bottom-0 w-6 h-6 overflow-hidden pointer-events-none">
-                                            <div className="w-12 h-12 border border-slate-800 rounded-full absolute -bottom-6 -left-3" />
-                                            <div className="w-0.5 h-6 bg-slate-700/60 absolute bottom-0 left-1/2" />
-                                        </div>
-                                    </button>
-                                );
-                            })}
-                            {/* Empty space filler to keep grid aligned */}
-                            {northRooms.length < mapColCount && 
-                                Array.from({ length: mapColCount - northRooms.length }).map((_, i) => <div key={i} />)
-                            }
-                        </div>
-
-                        {/* CENTRAL CORRIDOR & RECEPTION */}
-                        <div className="grid grid-cols-12 gap-4 bg-slate-900/35 border-y border-dashed border-slate-800 my-6 py-5 px-6 rounded-3xl relative">
-                            {/* Left: Kutish Zali (Lounge) */}
-                            <div className="col-span-3 bg-[#0f172a] rounded-2xl p-4 border border-slate-800 flex flex-col justify-between min-h-[90px]">
-                                <div className="flex items-center justify-between">
-                                    <span className="text-[8px] font-mono text-slate-500">LOUNGE</span>
-                                    <span className="w-1.5 h-1.5 rounded-full bg-cyan-400 animate-pulse" />
-                                </div>
-                                <div>
-                                    <h5 className="text-[10px] font-black uppercase tracking-wider text-cyan-400">Kutish Zali</h5>
-                                    <span className="text-[8px] font-mono text-slate-500">Sofa / Coffee Bar</span>
-                                </div>
-                            </div>
-
-                            {/* Middle: Corridor pathway */}
-                            <div className="col-span-6 flex flex-col items-center justify-center border-x border-dashed border-slate-800/80">
-                                <span className="text-[9px] font-black uppercase tracking-widest text-slate-600 block">Dahliz • Main Corridor</span>
-                                <div className="flex gap-4 mt-2">
-                                    <span className="text-[8px] font-mono text-slate-700">← EXIT</span>
-                                    <span className="text-[8px] font-mono text-slate-700">CLASSROOMS →</span>
-                                </div>
-                            </div>
-
-                            {/* Right: Reception */}
-                            <div className="col-span-3 bg-[#0f172a] rounded-2xl p-4 border border-slate-800 flex flex-col justify-between min-h-[90px]">
-                                <div className="flex items-center justify-between">
-                                    <span className="text-[8px] font-mono text-slate-500">RECEPTION</span>
-                                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-                                </div>
-                                <div>
-                                    <h5 className="text-[10px] font-black uppercase tracking-wider text-emerald-450">Qabulxona</h5>
-                                    <span className="text-[8px] font-mono text-slate-500">Info / Desk</span>
-                                </div>
-                            </div>
-                        </div>
-
-                        {/* SOUTH WING (Bottom row of rooms) */}
-                        <div 
-                            className="grid gap-4"
-                            style={{ gridTemplateColumns: `repeat(${mapColCount}, minmax(0, 1fr))` }}
-                        >
-                            {southRooms.map(room => {
-                                const roomGroups = getGroupsForRoom(room.id);
-                                const isBusy = roomGroups.length > 0;
-                                const hasLiveClass = roomGroups.some(isGroupActiveNow);
-
-                                return (
-                                    <button
-                                        key={room.id}
-                                        onClick={() => setSelectedRoom(room)}
-                                        className={`group relative text-left bg-slate-900/60 backdrop-blur-sm p-5 rounded-3xl border transition-all hover:translate-y-1 hover:shadow-cyan-500/10 hover:shadow-xl cursor-pointer ${
-                                            hasLiveClass 
-                                                ? 'border-rose-500/65 shadow-rose-500/5 bg-gradient-to-t from-rose-500/5 to-transparent' 
-                                                : isBusy 
-                                                    ? 'border-cyan-500/35 bg-gradient-to-t from-cyan-500/5 to-transparent' 
-                                                    : 'border-slate-800 hover:border-slate-700'
-                                        }`}
-                                    >
-                                        {/* Door swinging arc at top */}
-                                        <div className="absolute left-1/2 -translate-x-1/2 top-0 w-6 h-6 overflow-hidden pointer-events-none">
-                                            <div className="w-12 h-12 border border-slate-800 rounded-full absolute -top-6 -left-3" />
-                                            <div className="w-0.5 h-6 bg-slate-700/60 absolute top-0 left-1/2" />
-                                        </div>
-
-                                        <div className="flex items-start justify-between mb-4 pt-4">
-                                            <span className="text-[8px] font-mono text-slate-500 tracking-wider">ROOM #{room.id}</span>
-                                            <div className="flex items-center gap-1.5">
-                                                {hasLiveClass && (
-                                                    <span className="flex h-2 w-2 relative">
-                                                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-75"></span>
-                                                        <span className="relative inline-flex rounded-full h-2 w-2 bg-rose-500"></span>
-                                                    </span>
-                                                )}
-                                                <span className={`text-[8px] font-black uppercase tracking-wider px-2 py-0.5 rounded border ${
-                                                    hasLiveClass 
-                                                        ? 'bg-rose-500/10 text-rose-455 border-rose-500/30'
-                                                        : isBusy 
-                                                            ? 'bg-cyan-500/10 text-cyan-400 border-cyan-500/20' 
-                                                            : 'bg-slate-950/60 text-slate-500 border-slate-800'
-                                                }`}>
-                                                    {hasLiveClass ? 'Darsda' : isBusy ? 'Band' : 'Bo\'sh'}
-                                                </span>
-                                            </div>
-                                        </div>
-
-                                        <h4 className="text-sm font-black uppercase tracking-tight text-white">{room.name}</h4>
-                                        <span className="text-[10px] font-mono text-slate-400 block mt-0.5">{room.capacity} seats / {room.capacity * 1.5} m²</span>
-
-                                        {/* Stylized blueprint chairs representation */}
-                                        <div className="grid grid-cols-5 gap-1.5 my-4 p-2.5 rounded-xl bg-slate-950/50 border border-slate-800/40">
-                                            {Array.from({ length: Math.min(10, room.capacity) }).map((_, i) => (
-                                                <div 
-                                                    key={i} 
-                                                    className={`h-2 rounded-sm transition-all ${
-                                                        hasLiveClass 
-                                                            ? 'bg-rose-500/70 border border-rose-400/50 animate-pulse'
-                                                            : (isBusy && i < roomGroups.length * 3)
-                                                                ? 'bg-cyan-400/55' 
-                                                                : 'bg-slate-800'
-                                                    }`} 
-                                                />
-                                            ))}
-                                        </div>
-
-                                        <div className="flex items-center justify-between text-[9px] font-bold text-slate-400 pt-2 border-t border-slate-800/60">
-                                            <span>Guruhlar: {roomGroups.length}</span>
-                                            <span className="text-cyan-400 group-hover:translate-x-1 transition-transform">Kirish →</span>
-                                        </div>
-                                    </button>
-                                );
-                            })}
-                            {/* Empty space filler to keep grid aligned */}
-                            {southRooms.length < mapColCount && 
-                                Array.from({ length: mapColCount - southRooms.length }).map((_, i) => <div key={i} />)
-                            }
-                        </div>
-                    </div>
-
-                    {/* Bottom Info Banner */}
-                    <div className="flex items-start gap-3 mt-8 p-4 rounded-2xl bg-cyan-950/25 border border-cyan-800/30 text-cyan-400/90">
-                        <Info size={16} className="mt-0.5 flex-shrink-0" />
-                        <p className="text-[10px] leading-relaxed">
-                            <strong>Interaktiv Xarita Xizmati:</strong> Qizil rangda miltillab turgan xonalarda hozir ayni daqiqada dars ketmoqda. Xonalarga bosish orqali darslar jadvalini ko'rishingiz, o'zgartirishingiz va xonadagi dars soatlarini boshqarishingiz mumkin.
-                        </p>
+                                {rooms.length === 0 && (
+                                    <tr>
+                                        <td colSpan={timeSlots.length + 1} className="p-20 text-center text-slate-400">
+                                            Xonalar mavjud emas
+                                        </td>
+                                    </tr>
+                                )}
+                            </tbody>
+                        </table>
                     </div>
                 </div>
             )}
 
-            {/* GRID VIEW (Traditional Grid) */}
-            {viewMode === 'grid' && (
-                <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
-                    {rooms.map(room => {
-                        const roomGroups = getGroupsForRoom(room.id);
-                        const totalRoomGroups = getRoomUtilization(room.id);
-                        const isBusy = roomGroups.length > 0;
-                        const hasLiveClass = roomGroups.some(isGroupActiveNow);
-
-                        return (
-                            <button
-                                key={room.id}
-                                onClick={() => setSelectedRoom(room)}
-                                className={`text-left bg-slate-900 border transition-all shadow-md hover:shadow-xl hover:-translate-y-0.5 group cursor-pointer overflow-hidden rounded-[1.75rem] ${
-                                    hasLiveClass
-                                        ? 'border-rose-500/50 shadow-rose-500/5 bg-gradient-to-br from-rose-500/5 to-transparent'
-                                        : isBusy
-                                            ? 'border-cyan-500/30 bg-gradient-to-br from-cyan-500/5 to-transparent'
-                                            : 'border-slate-800 hover:border-slate-700'
-                                }`}
-                            >
-                                <div className="p-5">
-                                    <div className="flex items-start justify-between mb-4">
-                                        <div className={`w-11 h-11 rounded-xl flex items-center justify-center ${
-                                            hasLiveClass 
-                                                ? 'bg-rose-500/10 text-rose-455' 
-                                                : isBusy 
-                                                    ? 'bg-cyan-500/10 text-cyan-400' 
-                                                    : 'bg-slate-950 text-slate-500'
-                                        }`}>
-                                            <MapPin size={20} />
-                                        </div>
-                                        <div className="flex items-center gap-1.5">
-                                            {hasLiveClass && <span className="h-2 w-2 rounded-full bg-rose-500 animate-ping" />}
-                                            <span className={`text-[9px] font-black uppercase tracking-widest px-2.5 py-1 rounded-lg border ${
-                                                hasLiveClass 
-                                                    ? 'bg-rose-500/10 text-rose-455 border-rose-500/20'
-                                                    : isBusy
-                                                        ? 'bg-cyan-500/10 text-cyan-455 border-cyan-500/20'
-                                                        : 'bg-slate-950 text-slate-500 border-slate-800'
-                                            }`}>
-                                                {hasLiveClass ? 'Hozir darsda' : isBusy ? `${roomGroups.length} guruh` : "Bo'sh"}
-                                            </span>
-                                        </div>
-                                    </div>
-                                    <p className="text-sm font-black text-white uppercase tracking-tight">{room.name}</p>
-                                    <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mt-0.5">{room.capacity} kishilik</p>
-                                </div>
-
-                                <div className="px-5 pb-5 space-y-2">
-                                    {roomGroups.slice(0, 3).map(g => {
-                                        const color = getGroupColor(g.days);
-                                        return (
-                                            <div key={g.id} className={`flex items-center justify-between px-3 py-2 rounded-xl border ${color.bg} ${color.border}`}>
-                                                <div className="flex items-center gap-2 min-w-0">
-                                                    <div className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${color.dot}`} />
-                                                    <span className={`text-[10px] font-black uppercase tracking-tight truncate ${color.text}`}>{g.name}</span>
+            {/* WEEKLY MAP VIEW */}
+            {viewMode === 'week' && (
+                <div className="bg-white dark:bg-gray-800 rounded-[2.5rem] border border-gray-100 dark:border-gray-700 shadow-xl overflow-hidden">
+                    <div className="overflow-x-auto custom-scrollbar">
+                        <table className="w-full border-collapse">
+                            <thead>
+                                <tr className="bg-gray-50/50 dark:bg-gray-900/50 border-b border-gray-100 dark:border-gray-700">
+                                    <th className="sticky left-0 z-20 bg-gray-50 dark:bg-gray-900 p-6 min-w-[200px] text-[10px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-widest text-left border-r border-gray-100 dark:border-gray-700">
+                                        Xona nomi
+                                    </th>
+                                    {FULL_WEEK.map(day => (
+                                        <th key={day.id} className="p-4 min-w-[150px] text-[9px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-widest text-center border-r border-gray-100/50 dark:border-gray-700/30">
+                                            {day.label}
+                                        </th>
+                                    ))}
+                                </tr>
+                            </thead>
+                            <tbody className="divide-y divide-gray-50 dark:divide-gray-700/50">
+                                {rooms.map(room => (
+                                    <tr key={room.id} className="group hover:bg-gray-50/30 dark:hover:bg-slate-700/20 transition-colors">
+                                        {/* Room details */}
+                                        <td className="sticky left-0 z-10 bg-white dark:bg-gray-800 p-5 border-r border-gray-100 dark:border-gray-700 group-hover:bg-gray-50 dark:group-hover:bg-gray-900/50 transition-colors">
+                                            <button 
+                                                onClick={() => setSelectedRoom(room)}
+                                                className="text-left flex items-center gap-3 w-full hover:opacity-80 transition-opacity"
+                                            >
+                                                <div className="w-9 h-9 rounded-xl bg-gray-55 dark:bg-gray-900 border border-gray-100 dark:border-gray-800 flex items-center justify-center text-gray-400 group-hover:text-[#1b6b6b] transition-colors">
+                                                    <MapPin size={16} />
                                                 </div>
-                                                <span className={`text-[9px] font-bold tabular-nums ml-2 flex-shrink-0 ${color.text} opacity-80`}>{g.schedule}</span>
-                                            </div>
-                                        );
-                                    })}
-                                    {roomGroups.length > 3 && (
-                                        <p className="text-[9px] font-black text-center text-slate-500 uppercase tracking-widest pt-1">
-                                            +{roomGroups.length - 3} ta guruh yana
-                                        </p>
-                                    )}
-                                    {roomGroups.length === 0 && (
-                                        <p className="text-[9px] font-bold text-slate-600 uppercase tracking-widest text-center py-3">
-                                            Filtr bo'yicha guruh yo'q
-                                        </p>
-                                    )}
-                                </div>
+                                                <div>
+                                                    <p className="text-xs font-black text-gray-900 dark:text-white uppercase tracking-tight">{room.name}</p>
+                                                    <p className="text-[9px] font-bold text-gray-450 uppercase tracking-widest">{room.capacity} o'rin</p>
+                                                </div>
+                                            </button>
+                                        </td>
 
-                                <div className="px-5 pb-4 pt-0">
-                                    <div className="flex items-center justify-between pt-3 border-t border-dashed border-slate-800">
-                                        <span className="text-[9px] font-bold text-slate-500 uppercase tracking-widest">Jami: {totalRoomGroups} guruh</span>
-                                        <span className="text-[9px] font-black text-cyan-400 uppercase tracking-widest group-hover:underline">Ko'rish →</span>
-                                    </div>
-                                </div>
-                            </button>
-                        );
-                    })}
+                                        {/* Days schedule */}
+                                        {FULL_WEEK.map(day => {
+                                            const dayGroups = getGroupsForRoomAndDay(room.id, day.isToq);
+                                            return (
+                                                <td
+                                                    key={day.id}
+                                                    className="p-2 border-r border-gray-100/40 dark:border-gray-700/20 min-h-[90px] align-top text-center"
+                                                >
+                                                    {dayGroups.length > 0 ? (
+                                                        <div className="space-y-1.5 text-left">
+                                                            {dayGroups.map(g => {
+                                                                const color = getGroupColor(g.days);
+                                                                const isActive = isCurrentlyActive(g);
+                                                                return (
+                                                                    <div 
+                                                                        key={g.id} 
+                                                                        onClick={() => setSelectedRoom(room)}
+                                                                        className={`p-2 rounded-lg border transition-all cursor-pointer text-[9px] font-black uppercase tracking-tight ${color.bg} ${color.border} ${color.text} ${
+                                                                            isActive ? 'ring-2 ring-rose-500/35 border-rose-500/40' : ''
+                                                                        }`}
+                                                                    >
+                                                                        <div className="flex items-center justify-between gap-1">
+                                                                            <span className="truncate">{g.name}</span>
+                                                                            {isActive && <span className="h-1.5 w-1.5 rounded-full bg-rose-550 animate-ping flex-shrink-0" />}
+                                                                        </div>
+                                                                        <span className="text-[7.5px] font-extrabold opacity-75 block mt-0.5">{g.schedule}</span>
+                                                                    </div>
+                                                                );
+                                                            })}
+                                                        </div>
+                                                    ) : (
+                                                        <div className="py-6 flex items-center justify-center">
+                                                            <span className="text-[8px] font-black text-gray-250 dark:text-gray-700/80 uppercase tracking-widest italic">Bo'sh</span>
+                                                        </div>
+                                                    )}
+                                                </td>
+                                            );
+                                        })}
+                                    </tr>
+                                ))}
+
+                                {rooms.length === 0 && (
+                                    <tr>
+                                        <td colSpan={FULL_WEEK.length + 1} className="p-20 text-center text-slate-400">
+                                            Xonalar mavjud emas
+                                        </td>
+                                    </tr>
+                                )}
+                            </tbody>
+                        </table>
+                    </div>
                 </div>
             )}
+
+            {/* Info Banner */}
+            <div className="bg-gray-50 dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl p-4 flex gap-3 text-slate-500 dark:text-slate-400">
+                <Info size={16} className="text-[#1b6b6b] flex-shrink-0 mt-0.5" />
+                <p className="text-[10px] leading-relaxed">
+                    <strong>Jadval Xaritasi Ko'rsatmasi:</strong> Kunlik yoki Haftalik xaritada xonalarning band bo'lgan vaqtlarini to'liq va aniq ko'rish mumkin. Xona nomiga yoki dars jadvali katagiga bosish orqali guruhlar tarkibi va dars soatlarini interaktiv tahrirlashingiz mumkin.
+                </p>
+            </div>
 
             {/* Room Detail Modal */}
             {selectedRoom && (
                 <div className="fixed inset-0 z-[200] flex items-center justify-center p-4">
-                    <div className="absolute inset-0 bg-slate-950/80 backdrop-blur-sm" onClick={() => { setSelectedRoom(null); setEditingGroup(null); }} />
-                    <div className="relative bg-slate-900 rounded-[2rem] border border-slate-800 shadow-2xl w-full max-w-2xl max-h-[90vh] flex flex-col animate-in zoom-in-95 duration-200 text-white">
+                    <div className="absolute inset-0 bg-gray-950/60 backdrop-blur-sm" onClick={() => { setSelectedRoom(null); setEditingGroup(null); }} />
+                    <div className="relative bg-white dark:bg-gray-800 rounded-[2rem] border border-gray-150 dark:border-gray-700 shadow-2xl w-full max-w-2xl max-h-[90vh] flex flex-col animate-in zoom-in-95 duration-200 text-gray-950 dark:text-white">
                         
                         {/* Modal Header */}
-                        <div className="flex items-center justify-between p-6 border-b border-slate-800 flex-shrink-0">
+                        <div className="flex items-center justify-between p-6 border-b border-gray-100 dark:border-gray-700 flex-shrink-0">
                             <div className="flex items-center gap-3">
-                                <div className="w-10 h-10 rounded-xl bg-cyan-500/10 flex items-center justify-center text-cyan-400 border border-cyan-500/20">
+                                <div className="w-10 h-10 rounded-xl bg-[#1b6b6b]/10 flex items-center justify-center text-[#1b6b6b]">
                                     <MapPin size={18} />
                                 </div>
                                 <div>
-                                    <h3 className="text-sm font-black text-white uppercase tracking-tight">{selectedRoom.name}</h3>
-                                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{selectedRoom.capacity} kishilik • {roomGroupsInModal.length} ta guruh</p>
+                                    <h3 className="text-sm font-black text-gray-900 dark:text-white uppercase tracking-tight">{selectedRoom.name}</h3>
+                                    <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">{selectedRoom.capacity} kishilik • {getGroupsForRoomAndDay(selectedRoom.id, true).length + getGroupsForRoomAndDay(selectedRoom.id, false).length} ta guruh</p>
                                 </div>
                             </div>
                             <button onClick={() => { setSelectedRoom(null); setEditingGroup(null); }}
-                                className="w-9 h-9 flex items-center justify-center text-slate-400 hover:bg-slate-800 rounded-xl cursor-pointer transition-colors">
+                                className="w-9 h-9 flex items-center justify-center text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-750 rounded-xl cursor-pointer transition-colors">
                                 <X size={18} />
                             </button>
                         </div>
 
-                        {/* Modal Filters */}
-                        <div className="px-6 pt-4 flex flex-wrap gap-3 flex-shrink-0">
-                            <div className="flex bg-slate-950 p-1 rounded-xl border border-slate-800 gap-0.5">
-                                {WEEK_DAYS.map(d => (
-                                    <button key={d.id} onClick={() => setDayFilter(d.id as any)}
-                                        className={`px-3 py-1.5 rounded-lg text-[9px] font-extrabold uppercase tracking-widest transition-all ${
-                                            dayFilter === d.id ? 'bg-slate-800 text-cyan-400' : 'text-slate-400 hover:text-white'
-                                        }`}>{d.short}</button>
-                                ))}
-                            </div>
-                            <div className="flex bg-slate-950 p-1 rounded-xl border border-slate-800 gap-0.5">
-                                {[
-                                    { id: 'ALL', label: 'Barchasi' },
-                                    { id: 'BEFORE_NOON', label: '08:00–13:00' },
-                                    { id: 'AFTER_NOON', label: '13:00–22:00' },
-                                ].map(t => (
-                                    <button key={t.id} onClick={() => setTimeFilter(t.id as TimeFilter)}
-                                        className={`px-3 py-1.5 rounded-lg text-[9px] font-extrabold uppercase tracking-widest transition-all ${
-                                            timeFilter === t.id ? 'bg-slate-800 text-cyan-400' : 'text-slate-400 hover:text-white'
-                                        }`}>{t.label}</button>
-                                ))}
-                            </div>
-                        </div>
-
-                        {/* Group List */}
+                        {/* Group List inside Modal */}
                         <div className="overflow-y-auto flex-1 p-6 space-y-3 custom-scrollbar">
-                            {roomGroupsInModal.length === 0 ? (
+                            {groups.filter(g => Number(g.room) === Number(selectedRoom.id)).length === 0 ? (
                                 <div className="py-16 flex flex-col items-center text-center">
-                                    <div className="w-12 h-12 rounded-2xl bg-slate-950 border border-slate-800 flex items-center justify-center mb-3 text-slate-500">
+                                    <div className="w-12 h-12 rounded-2xl bg-gray-50 dark:bg-gray-900 border border-gray-100 dark:border-gray-800 flex items-center justify-center mb-3 text-gray-400">
                                         <Users size={20} />
                                     </div>
-                                    <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Bu filtrlarda guruh yo'q</p>
+                                    <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Xonada guruhlar yo'q</p>
                                 </div>
-                            ) : roomGroupsInModal.map(g => {
+                            ) : groups.filter(g => Number(g.room) === Number(selectedRoom.id)).map(g => {
                                 const color = getGroupColor(g.days);
                                 const teacher = teachers.find(t => t.id === g.teacherId);
                                 const course = courses.find(c => c.id === g.courseId);
                                 const isEditing = editingGroup?.id === g.id;
-                                const isCurrentlyOn = isGroupActiveNow(g);
+                                const isCurrentlyOn = isCurrentlyActive(g);
 
                                 return (
-                                    <div key={g.id} className={`rounded-2xl border transition-all overflow-hidden bg-slate-950/40 ${color.border} ${isCurrentlyOn ? 'ring-1 ring-rose-500/40 border-rose-500/40' : ''}`}>
+                                    <div key={g.id} className={`rounded-2xl border transition-all overflow-hidden bg-gray-50/50 dark:bg-gray-900/30 ${color.border} ${isCurrentlyOn ? 'ring-1 ring-rose-500/40 border-rose-500/40' : ''}`}>
                                         
                                         {/* Group header */}
                                         <div className="flex items-start justify-between p-4">
                                             <div className="flex items-start gap-3 min-w-0">
-                                                <div className={`w-2 h-2 rounded-full mt-1.5 flex-shrink-0 ${isCurrentlyOn ? 'bg-rose-550 animate-ping' : color.dot}`} />
+                                                <div className={`w-2 h-2 rounded-full mt-1.5 flex-shrink-0 ${isCurrentlyOn ? 'bg-rose-500 animate-ping' : color.dot}`} />
                                                 <div className="min-w-0">
                                                     <div className="flex items-center gap-2">
                                                         <p className={`text-xs font-black uppercase tracking-tight ${color.text}`}>{g.name}</p>
                                                         {isCurrentlyOn && (
-                                                            <span className="px-1.5 py-0.5 bg-rose-550/10 border border-rose-500/30 text-rose-500 rounded text-[7px] font-black uppercase tracking-widest animate-pulse">
+                                                            <span className="px-1.5 py-0.5 bg-rose-500/10 border border-rose-500/30 text-rose-550 rounded text-[7px] font-black uppercase tracking-widest animate-pulse">
                                                                 Hozir Darsda
                                                             </span>
                                                         )}
                                                     </div>
-                                                    <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mt-0.5">
+                                                    <p className="text-[9px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-widest mt-0.5">
                                                         {course?.name || '—'} • {teacher?.name || '—'}
                                                     </p>
                                                     <div className="flex items-center gap-3 mt-1">
-                                                        <span className="flex items-center gap-1 text-[9px] font-bold text-slate-500 uppercase tracking-widest">
+                                                        <span className="flex items-center gap-1 text-[9px] font-bold text-gray-500 uppercase tracking-widest">
                                                             <Users size={9} /> {g.studentIds?.length || 0} o'quvchi
                                                         </span>
-                                                        <span className="flex items-center gap-1 text-[9px] font-bold text-slate-500 uppercase tracking-widest">
+                                                        <span className="flex items-center gap-1 text-[9px] font-bold text-gray-500 uppercase tracking-widest">
                                                             <Calendar size={9} /> {g.days}
                                                         </span>
                                                     </div>
                                                 </div>
                                             </div>
                                             <div className="flex items-center gap-2 flex-shrink-0">
-                                                <div className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-slate-900 border border-slate-800 ${color.text}`}>
+                                                <div className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-white dark:bg-gray-900 border border-gray-150 dark:border-gray-850 ${color.text}`}>
                                                     <Clock size={10} />
                                                     <span className="text-[10px] font-black tabular-nums">{g.schedule}</span>
                                                 </div>
@@ -634,8 +493,8 @@ export default function RoomSchedule() {
                                                     onClick={() => isEditing ? setEditingGroup(null) : openEditGroup(g)}
                                                     className={`w-7 h-7 rounded-lg flex items-center justify-center transition-all cursor-pointer ${
                                                         isEditing
-                                                            ? 'bg-slate-800 text-white border border-slate-700'
-                                                            : 'bg-slate-900 hover:bg-slate-800 text-slate-500 hover:text-cyan-400 border border-slate-800'
+                                                            ? 'bg-gray-250 dark:bg-gray-700 text-gray-800 dark:text-white border border-gray-300 dark:border-slate-600'
+                                                            : 'bg-white dark:bg-gray-900 hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-550 hover:text-[#1b6b6b] border border-gray-200 dark:border-gray-800'
                                                     }`}
                                                     title="Vaqtni o'zgartirish"
                                                 >
@@ -646,11 +505,11 @@ export default function RoomSchedule() {
 
                                         {/* Inline time editor */}
                                         {isEditing && (
-                                            <div className="px-4 pb-4 border-t border-slate-800 pt-3">
-                                                <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-2">Dars vaqtini o'zgartirish</p>
+                                            <div className="px-4 pb-4 border-t border-gray-150 dark:border-gray-800 pt-3">
+                                                <p className="text-[9px] font-black text-gray-450 uppercase tracking-widest mb-2">Dars vaqtini o'zgartirish</p>
                                                 <div className="flex items-center gap-3">
                                                     <div className="flex-1">
-                                                        <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest block mb-1">Boshlanish</label>
+                                                        <label className="text-[9px] font-black text-gray-400 uppercase tracking-widest block mb-1">Boshlanish</label>
                                                         <input
                                                             type="time"
                                                             value={editSchedule.start}
@@ -658,9 +517,9 @@ export default function RoomSchedule() {
                                                             className={inp}
                                                         />
                                                     </div>
-                                                    <div className="flex-shrink-0 pt-5 text-slate-500 font-black">→</div>
+                                                    <div className="flex-shrink-0 pt-5 text-gray-400 font-black">→</div>
                                                     <div className="flex-1">
-                                                        <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest block mb-1">Tugash</label>
+                                                        <label className="text-[9px] font-black text-gray-405 uppercase tracking-widest block mb-1">Tugash</label>
                                                         <input
                                                             type="time"
                                                             value={editSchedule.end}
@@ -672,7 +531,7 @@ export default function RoomSchedule() {
                                                         <button
                                                             onClick={handleSaveSchedule}
                                                             disabled={isSaving}
-                                                            className="flex items-center gap-1.5 px-4 py-2 bg-cyan-500 hover:bg-cyan-600 disabled:opacity-50 text-slate-950 rounded-xl text-[10px] font-extrabold uppercase tracking-widest shadow-lg shadow-cyan-500/20 transition-all cursor-pointer"
+                                                            className="flex items-center gap-1.5 px-4 py-2 bg-[#1b6b6b] hover:bg-[#155252] disabled:opacity-50 text-white rounded-xl text-[10px] font-extrabold uppercase tracking-widest shadow-lg transition-all cursor-pointer"
                                                         >
                                                             <Save size={12} />
                                                             {isSaving ? 'Saqlanmoqda...' : 'Saqlash'}
@@ -687,12 +546,12 @@ export default function RoomSchedule() {
                         </div>
 
                         {/* Modal Footer */}
-                        <div className="px-6 py-4 border-t border-slate-800 flex items-center justify-between flex-shrink-0">
-                            <p className="text-[9px] font-bold text-slate-500 uppercase tracking-widest">
+                        <div className="px-6 py-4 border-t border-gray-150 dark:border-gray-700 flex items-center justify-between flex-shrink-0">
+                            <p className="text-[9px] font-bold text-gray-400 uppercase tracking-widest">
                                 Guruh vaqtini o'zgartirish uchun ✏️ belgisini bosing
                             </p>
                             <button onClick={() => { setSelectedRoom(null); setEditingGroup(null); }}
-                                className="px-5 py-2 bg-slate-800 hover:bg-slate-700 text-white rounded-xl text-[10px] font-extrabold uppercase tracking-widest transition-all cursor-pointer">
+                                className="px-5 py-2 bg-gray-105 hover:bg-gray-200 dark:bg-gray-800 dark:hover:bg-gray-705 text-gray-700 dark:text-white rounded-xl text-[10px] font-extrabold uppercase tracking-widest transition-all cursor-pointer">
                                 Yopish
                             </button>
                         </div>
