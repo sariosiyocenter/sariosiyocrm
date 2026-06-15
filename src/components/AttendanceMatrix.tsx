@@ -134,19 +134,26 @@ export default function AttendanceMatrix({ group, students, attendances, selecte
                                         const att = getAtt(student.id, date);
                                         const isFuture = date > today;
                                         const isHighlight = isToday(date) || isSelected(date);
-                                        const statusObj = att ? STATUSES.find(s => s.key === att.status) : null;
-
                                         let cellClass = '';
                                         let content: React.ReactNode = null;
+
+                                        // normalize legacy status names (e.g. old "Kelmadi" → "Kelmapdi")
+                                        const rawStatus: string = att?.status ?? '';
+                                        const normalizedStatus = rawStatus === 'Kelmadi' ? 'Kelmapdi' : rawStatus;
+                                        const resolvedStatusObj = att ? STATUSES.find(s => s.key === normalizedStatus) : null;
 
                                         if (isFuture) {
                                             cellClass = 'border border-dashed border-gray-200 dark:border-gray-700 opacity-30';
                                         } else if (!att) {
                                             cellClass = 'border border-gray-200 dark:border-gray-700 hover:bg-gray-100 dark:hover:bg-gray-700/60 hover:border-gray-400 dark:hover:border-gray-500';
                                             content = <span className="text-gray-300 dark:text-gray-600 text-[10px] font-bold">—</span>;
-                                        } else if (statusObj) {
-                                            cellClass = `${statusObj.color} text-white`;
-                                            content = <span className="text-[9px] font-black">{statusObj.short}</span>;
+                                        } else if (resolvedStatusObj) {
+                                            cellClass = `${resolvedStatusObj.color} text-white`;
+                                            content = <span className="text-[9px] font-black">{resolvedStatusObj.short}</span>;
+                                        } else {
+                                            // unknown legacy status — show as editable gray
+                                            cellClass = 'border border-gray-200 dark:border-gray-700 hover:bg-gray-100 dark:hover:bg-gray-700/60';
+                                            content = <span className="text-gray-400 dark:text-gray-500 text-[9px] font-bold">?</span>;
                                         }
 
                                         return (
