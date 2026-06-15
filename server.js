@@ -642,8 +642,15 @@ app.put('/api/students/:id', authenticate, async (req, res, next) => {
 });
 app.delete('/api/students/:id', authenticate, async (req, res, next) => {
   try {
-    const { id } = req.params;
-    await prisma.student.delete({ where: { id: parseInt(id) } });
+    const sid = parseInt(req.params.id);
+    await prisma.$transaction([
+      prisma.examResult.deleteMany({ where: { studentId: sid } }),
+      prisma.score.deleteMany({ where: { studentId: sid } }),
+      prisma.attendance.deleteMany({ where: { studentId: sid } }),
+      prisma.deliveryLog.deleteMany({ where: { studentId: sid } }),
+      prisma.payment.deleteMany({ where: { studentId: sid } }),
+      prisma.student.delete({ where: { id: sid } }),
+    ]);
     res.json({ success: true });
   } catch (error) { next(error); }
 });
