@@ -9,11 +9,12 @@ import { LanguageProvider } from './context/LanguageContext';
 // Auto-reload when JS chunks are stale after a new deployment
 window.addEventListener('unhandledrejection', (e: PromiseRejectionEvent) => {
   const msg = e.reason?.message ?? '';
-  if (msg.includes('Failed to fetch dynamically imported module') || msg.includes('Unable to preload')) {
+  if (msg.includes('Failed to fetch dynamically imported module') || msg.includes('Unable to preload') || msg.includes('error loading dynamically imported module')) {
     const last = sessionStorage.getItem('_chunk_reload');
-    if (!last || Date.now() - Number(last) > 15000) {
+    if (!last || Date.now() - Number(last) > 10000) {
       sessionStorage.setItem('_chunk_reload', String(Date.now()));
-      window.location.reload();
+      // Force bypass cache on reload
+      window.location.href = window.location.href.split('?')[0] + '?_r=' + Date.now();
     }
   }
 });
