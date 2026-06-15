@@ -802,10 +802,10 @@ export default function Students() {
                                                             certType: updated.includes('Sertifikat') ? newStudent.certType : ''
                                                         });
                                                     }}
-                                                    className={`px-3 py-1.5 rounded-xl text-[10px] font-bold uppercase tracking-wide border transition-all cursor-pointer ${
+                                                    className={`px-3 py-1.5 rounded-xl text-[10px] font-bold uppercase tracking-wide border-2 transition-all cursor-pointer ${
                                                         checked
-                                                            ? 'bg-[#1b6b6b] text-white border-[#1b6b6b]'
-                                                            : 'bg-gray-50 dark:bg-gray-900 text-gray-600 dark:text-gray-400 border-gray-200 dark:border-gray-700 hover:border-[#1b6b6b] hover:text-[#1b6b6b]'
+                                                            ? 'bg-[#1b6b6b] text-white border-[#1b6b6b] shadow-lg shadow-[#1b6b6b]/30'
+                                                            : 'bg-transparent text-gray-400 dark:text-gray-500 border-gray-300 dark:border-gray-600 hover:border-[#1b6b6b] hover:text-[#1b6b6b]'
                                                     }`}
                                                 >
                                                     {checked ? '✓ ' : ''}{priv}
@@ -903,13 +903,13 @@ export default function Students() {
                                                                 : [...newStudent.selectedGroupIds, g.id];
                                                             setNewStudent({...newStudent, selectedGroupIds: updated});
                                                         }}
-                                                        className={`px-3 py-1.5 rounded-xl text-[10px] font-bold border transition-all cursor-pointer ${
+                                                        className={`px-3 py-1.5 rounded-xl text-[10px] font-bold border-2 transition-all cursor-pointer ${
                                                             selected
-                                                                ? 'bg-[#1b6b6b] text-white border-[#1b6b6b]'
-                                                                : 'bg-gray-50 dark:bg-gray-900 text-gray-600 dark:text-gray-400 border-gray-200 dark:border-gray-700 hover:border-[#1b6b6b] hover:text-[#1b6b6b]'
+                                                                ? 'bg-[#1b6b6b] text-white border-[#1b6b6b] shadow-lg shadow-[#1b6b6b]/30'
+                                                                : 'bg-transparent text-gray-400 dark:text-gray-500 border-gray-300 dark:border-gray-600 hover:border-[#1b6b6b] hover:text-[#1b6b6b]'
                                                         }`}
                                                     >
-                                                        {selected ? '✓ ' : ''}{g.name}
+                                                        {selected ? '✓ ' : '+ '}{g.name}
                                                     </button>
                                                 );
                                             })}
