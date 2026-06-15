@@ -150,10 +150,10 @@ export default function AttendanceMatrix({ group, students, attendances, selecte
                                         } else if (resolvedStatusObj) {
                                             cellClass = `${resolvedStatusObj.color} text-white`;
                                             content = <span className="text-[9px] font-black">{resolvedStatusObj.short}</span>;
-                                        } else {
-                                            // unknown legacy status — show as editable gray
-                                            cellClass = 'border border-gray-200 dark:border-gray-700 hover:bg-gray-100 dark:hover:bg-gray-700/60';
-                                            content = <span className="text-gray-400 dark:text-gray-500 text-[9px] font-bold">?</span>;
+                                        } else if (att) {
+                                            // unknown/legacy status — treat as unrecorded so user can re-set
+                                            cellClass = 'border border-gray-200 dark:border-gray-700 hover:bg-gray-100 dark:hover:bg-gray-700/60 hover:border-gray-400 dark:hover:border-gray-500';
+                                            content = <span className="text-gray-300 dark:text-gray-600 text-[10px] font-bold">—</span>;
                                         }
 
                                         return (
