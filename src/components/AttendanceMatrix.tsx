@@ -142,7 +142,7 @@ export default function AttendanceMatrix({ group, students, attendances, selecte
                                         if (isFuture) {
                                             cellClass = 'border border-dashed border-gray-200 dark:border-gray-700 opacity-30';
                                         } else if (!att) {
-                                            cellClass = 'border border-gray-200 dark:border-gray-700';
+                                            cellClass = 'border border-gray-200 dark:border-gray-700 hover:bg-gray-100 dark:hover:bg-gray-700/60 hover:border-gray-400 dark:hover:border-gray-500';
                                             content = <span className="text-gray-300 dark:text-gray-600 text-[10px] font-bold">—</span>;
                                         } else if (statusObj) {
                                             cellClass = `${statusObj.color} text-white`;

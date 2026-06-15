@@ -14,7 +14,7 @@ interface Props {
     students: StudentInfo[];
     attendanceStatus: Record<number, string>;
     onMatch: (studentId: number) => void;
-    onClose: () => void;
+    onClose: (markedIds: number[]) => void;
 }
 
 export default function FaceAttendance({ students, attendanceStatus, onMatch, onClose }: Props) {
@@ -169,7 +169,7 @@ export default function FaceAttendance({ students, attendanceStatus, onMatch, on
                         <UserCheck size={13} className="text-emerald-400" />
                         <span className="text-emerald-300 text-xs font-black tabular-nums">{markedThisSession.length + alreadyPresent.length}/{students.length}</span>
                     </div>
-                    <button onClick={onClose} className="w-9 h-9 flex items-center justify-center rounded-xl bg-gray-800 hover:bg-gray-700 transition-colors cursor-pointer">
+                    <button onClick={() => onClose(Array.from(markedRef.current))} className="w-9 h-9 flex items-center justify-center rounded-xl bg-gray-800 hover:bg-gray-700 transition-colors cursor-pointer">
                         <X size={16} className="text-white" />
                     </button>
                 </div>
@@ -197,7 +197,7 @@ export default function FaceAttendance({ students, attendanceStatus, onMatch, on
                 {phase === 'error' && (
                     <div className="absolute inset-0 flex flex-col items-center justify-center z-20">
                         <p className="text-rose-400 text-sm font-bold text-center px-8">{loadMsg}</p>
-                        <button onClick={onClose} className="mt-4 px-6 py-2 bg-gray-800 text-white rounded-xl text-sm font-bold cursor-pointer">Yopish</button>
+                        <button onClick={() => onClose([])} className="mt-4 px-6 py-2 bg-gray-800 text-white rounded-xl text-sm font-bold cursor-pointer">Yopish</button>
                     </div>
                 )}
 
