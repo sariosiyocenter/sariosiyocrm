@@ -110,26 +110,49 @@ export default function Students() {
     const [isLinkModalOpen, setIsLinkModalOpen] = useState(false);
     const [qrCodeDataUrl, setQrCodeDataUrl] = useState('');
     const [copySuccess, setCopySuccess] = useState(false);
+    const [applyUrl, setApplyUrl] = useState('');
 
-    const applyUrl = selectedSchoolId ? `${window.location.origin}/apply/${selectedSchoolId}` : '';
+    const LINK_ROTATE_MS = 30 * 60 * 1000;
 
     useEffect(() => {
-        if (isLinkModalOpen && applyUrl) {
-            const generateQR = async () => {
-                try {
-                    const QRCodeLib = await import('qrcode');
-                    const QRCode = QRCodeLib.default || QRCodeLib;
-                    const qrUrl = await QRCode.toDataURL(applyUrl, { width: 200, margin: 2 });
-                    setQrCodeDataUrl(qrUrl);
-                } catch (err) {
-                    console.error(err);
-                }
-            };
-            generateQR();
-        } else {
+        if (!isLinkModalOpen || !selectedSchoolId) {
+            setApplyUrl('');
             setQrCodeDataUrl('');
+            return;
         }
-    }, [isLinkModalOpen, applyUrl]);
+
+        let cancelled = false;
+
+        const generateLink = async () => {
+            try {
+                const authToken = localStorage.getItem('token');
+                const res = await fetch(`/api/public/schools/${selectedSchoolId}/tokens`, {
+                    method: 'POST',
+                    headers: { 'Authorization': `Bearer ${authToken}` }
+                });
+                const data = await res.json();
+                if (cancelled || !data.token) return;
+
+                const url = `${window.location.origin}/apply/${selectedSchoolId}?token=${data.token}`;
+                setApplyUrl(url);
+
+                const QRCodeLib = await import('qrcode');
+                const QRCode = QRCodeLib.default || QRCodeLib;
+                const qrUrl = await QRCode.toDataURL(url, { width: 200, margin: 2 });
+                if (!cancelled) setQrCodeDataUrl(qrUrl);
+            } catch (err) {
+                console.error(err);
+            }
+        };
+
+        generateLink();
+        const interval = setInterval(generateLink, LINK_ROTATE_MS);
+
+        return () => {
+            cancelled = true;
+            clearInterval(interval);
+        };
+    }, [isLinkModalOpen, selectedSchoolId]);
 
     const copyLinkToClipboard = () => {
         if (!applyUrl) return;
@@ -1042,10 +1065,13 @@ export default function Students() {
                                 <X size={16} />
                             </button>
                         </div>
-                        <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest leading-relaxed mb-6">
+                        <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest leading-relaxed mb-2">
                             {t('reception_link_desc')}
                         </p>
-                        
+                        <p className="text-[9px] font-bold text-amber-500 leading-relaxed mb-6 normal-case">
+                            {t('reception_link_rotate')}
+                        </p>
+
                         <div className="bg-white p-4 rounded-2xl border border-gray-100 dark:border-gray-200 w-fit mx-auto mb-6 shadow-sm">
                             {qrCodeDataUrl ? (
                                 <img src={qrCodeDataUrl} alt="QR Code" className="w-[180px] h-[180px] block" />

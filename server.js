@@ -1013,6 +1013,9 @@ app.get('/api/public/schools/:schoolId/courses', async (req, res, next) => {
   } catch (error) { next(error); }
 });
 
+// Registration QR/link rotates every 30 minutes for security
+const APPLY_TOKEN_TTL_MS = 30 * 60 * 1000;
+
 // POST create single-use registration token (Authenticated)
 app.post('/api/public/schools/:schoolId/tokens', authenticate, async (req, res, next) => {
   try {
@@ -1022,7 +1025,7 @@ app.post('/api/public/schools/:schoolId/tokens', authenticate, async (req, res, 
     const token = await prisma.applyToken.create({
       data: { schoolId }
     });
-    res.json({ token: token.id });
+    res.json({ token: token.id, expiresAt: new Date(token.createdAt.getTime() + APPLY_TOKEN_TTL_MS) });
   } catch (error) { next(error); }
 });
 
@@ -1034,7 +1037,7 @@ app.get('/api/public/tokens/:tokenId', async (req, res, next) => {
       where: { id: tokenId }
     });
 
-    if (!token || token.used) {
+    if (!token || token.used || Date.now() - token.createdAt.getTime() > APPLY_TOKEN_TTL_MS) {
       return res.json({ valid: false });
     }
 
@@ -1060,10 +1063,10 @@ app.post('/api/public/schools/:schoolId/leads', async (req, res, next) => {
     // Token is optional — if provided, validate it (legacy single-use support)
     if (token) {
       const applyToken = await prisma.applyToken.findUnique({ where: { id: token } });
-      if (!applyToken || applyToken.used || applyToken.schoolId !== schoolId) {
+      const isExpired = applyToken && Date.now() - applyToken.createdAt.getTime() > APPLY_TOKEN_TTL_MS;
+      if (!applyToken || applyToken.used || isExpired || applyToken.schoolId !== schoolId) {
         return res.status(400).json({ error: 'Ushbu ro\'yxatdan o\'tish havolasi eskirgan, noto\'g\'ri yoki allaqachon ishlatilgan.' });
       }
-      await prisma.applyToken.update({ where: { id: token }, data: { used: true } });
     }
 
     const cleanName = name.trim();
