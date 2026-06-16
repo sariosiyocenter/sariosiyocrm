@@ -178,7 +178,12 @@ export default function Layout({ children, onLogout }: LayoutProps) {
                               <div className="w-8 h-8 rounded-lg bg-teal-100 dark:bg-teal-900/40 text-teal-600 dark:text-teal-400 flex items-center justify-center shrink-0"><Users size={16}/></div>
                               <div>
                                 <p className="text-sm font-medium text-slate-800 dark:text-white">{g.name}</p>
-                                <p className="text-xs text-slate-400">{courses.find(c => c.id === g.courseId)?.name || ''}</p>
+                                <p className="text-xs text-slate-400">
+                                  {(() => {
+                                    const c = courses.find(c => c.id === g.courseId);
+                                    return c && c.name !== 'birinchi' ? c.name : '';
+                                  })()}
+                                </p>
                               </div>
                             </div>
                           ))}

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
-import { Building2, Phone, CheckCircle2, ChevronRight, User, BookOpen, Clock, MessageSquare, Calendar, MapPin, GraduationCap, Image as ImageIcon } from 'lucide-react';
+import { Building2, Phone, CheckCircle2, ChevronRight, User, BookOpen, Clock, MessageSquare, Calendar, MapPin, GraduationCap, Image as ImageIcon, Plus, Trash2 } from 'lucide-react';
 import PhotoCapture from './PhotoCapture';
 import { compressImage } from '../lib/image';
 
@@ -14,6 +14,13 @@ interface SchoolInfo {
     name: string;
     orgName: string;
     logo: string | null;
+}
+
+interface Certificate {
+    category: 'Milliy' | 'Xalqaro';
+    subject?: string;
+    type?: string;
+    score?: string;
 }
 
 export default function PublicApply() {
@@ -35,8 +42,43 @@ export default function PublicApply() {
         address: '',
         course: '',
         notes: '',
-        photo: ''
+        photo: '',
+        certificates: [] as Certificate[]
     });
+
+    const addCertificate = () => {
+        setForm(prev => ({
+            ...prev,
+            certificates: [...prev.certificates, { category: 'Milliy', subject: 'Matematika', score: '' }]
+        }));
+    };
+
+    const removeCertificate = (index: number) => {
+        setForm(prev => ({
+            ...prev,
+            certificates: prev.certificates.filter((_, i) => i !== index)
+        }));
+    };
+
+    const updateCertificate = (index: number, key: keyof Certificate, value: string) => {
+        setForm(prev => {
+            const updated = [...prev.certificates];
+            updated[index] = {
+                ...updated[index],
+                [key]: value
+            };
+            if (key === 'category') {
+                if (value === 'Milliy') {
+                    updated[index].subject = 'Matematika';
+                    delete updated[index].type;
+                } else {
+                    updated[index].type = 'IELTS';
+                    delete updated[index].subject;
+                }
+            }
+            return { ...prev, certificates: updated };
+        });
+    };
 
     const [isPhotoModalOpen, setIsPhotoModalOpen] = useState(false);
 
@@ -291,6 +333,94 @@ export default function PublicApply() {
                                         )}
                                     </div>
                                 </div>
+                            </div>
+
+                            {/* SECTION: CERTIFICATES */}
+                            <span className={secTitle}>Sertifikatlar</span>
+                            
+                            <div className="space-y-3">
+                                {form.certificates.map((cert, index) => (
+                                    <div key={index} className="p-4 bg-gray-55 dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-750/50 space-y-3 relative animate-in fade-in slide-in-from-top-2 duration-250">
+                                        <button 
+                                            type="button" 
+                                            onClick={() => removeCertificate(index)}
+                                            className="absolute top-3 right-3 text-gray-400 hover:text-red-500 transition-colors"
+                                        >
+                                            <Trash2 size={14} />
+                                        </button>
+                                        
+                                        <div>
+                                            <label className={lbl}>Sertifikat toifasi</label>
+                                            <select
+                                                value={cert.category}
+                                                onChange={e => updateCertificate(index, 'category', e.target.value as any)}
+                                                className="w-full px-3 py-2 bg-white dark:bg-gray-800 border border-gray-150 dark:border-gray-750 rounded-xl text-xs font-bold text-gray-900 dark:text-white outline-none focus:border-[var(--brand-color,#1b6b6b)]"
+                                            >
+                                                <option value="Milliy">Milliy sertifikat</option>
+                                                <option value="Xalqaro">Xalqaro sertifikat</option>
+                                            </select>
+                                        </div>
+
+                                        {cert.category === 'Milliy' && (
+                                            <div>
+                                                <label className={lbl}>Sertifikat fani</label>
+                                                <select
+                                                    value={cert.subject || ''}
+                                                    onChange={e => updateCertificate(index, 'subject', e.target.value)}
+                                                    className="w-full px-3 py-2 bg-white dark:bg-gray-800 border border-gray-150 dark:border-gray-750 rounded-xl text-xs font-bold text-gray-900 dark:text-white outline-none focus:border-[var(--brand-color,#1b6b6b)]"
+                                                >
+                                                    <option value="Matematika">Matematika</option>
+                                                    <option value="Fizika">Fizika</option>
+                                                    <option value="Kimyo">Kimyo</option>
+                                                    <option value="Biologiya">Biologiya</option>
+                                                    <option value="Tarix">Tarix</option>
+                                                    <option value="Ingliz tili">Ingliz tili</option>
+                                                    <option value="Nemis tili">Nemis tili</option>
+                                                    <option value="Rus tili">Rus tili</option>
+                                                    <option value="Ona tili">Ona tili</option>
+                                                    <option value="Boshqa">Boshqa</option>
+                                                </select>
+                                            </div>
+                                        )}
+
+                                        {cert.category === 'Xalqaro' && (
+                                            <div>
+                                                <label className={lbl}>Sertifikat turi</label>
+                                                <select
+                                                    value={cert.type || ''}
+                                                    onChange={e => updateCertificate(index, 'type', e.target.value)}
+                                                    className="w-full px-3 py-2 bg-white dark:bg-gray-800 border border-gray-150 dark:border-gray-750 rounded-xl text-xs font-bold text-gray-900 dark:text-white outline-none focus:border-[var(--brand-color,#1b6b6b)]"
+                                                >
+                                                    <option value="IELTS">IELTS</option>
+                                                    <option value="SAT">SAT</option>
+                                                    <option value="TOEFL">TOEFL</option>
+                                                    <option value="CEFR">CEFR</option>
+                                                    <option value="Boshqa">Boshqa</option>
+                                                </select>
+                                            </div>
+                                        )}
+
+                                        <div>
+                                            <label className={lbl}>Ball / Foiz</label>
+                                            <input
+                                                type="text"
+                                                placeholder={cert.category === 'Xalqaro' ? 'Misol: 7.5 yoki 1450' : 'Misol: 94.8%'}
+                                                value={cert.score || ''}
+                                                onChange={e => updateCertificate(index, 'score', e.target.value)}
+                                                className="w-full px-3 py-2 bg-white dark:bg-gray-800 border border-gray-150 dark:border-gray-750 rounded-xl text-xs font-bold text-gray-900 dark:text-white outline-none focus:border-[var(--brand-color,#1b6b6b)]"
+                                            />
+                                        </div>
+                                    </div>
+                                ))}
+                                
+                                <button
+                                    type="button"
+                                    onClick={addCertificate}
+                                    className="w-full py-3 bg-gray-55 dark:bg-gray-900 border border-dashed border-gray-200 dark:border-gray-750 rounded-2xl text-[10px] font-black uppercase tracking-widest text-[#1b6b6b] hover:bg-teal-50/10 dark:hover:bg-teal-900/10 transition-colors flex items-center justify-center gap-1.5 cursor-pointer"
+                                >
+                                    <Plus size={14} />
+                                    Sertifikat qo'shish
+                                </button>
                             </div>
 
                             {/* SECTION 2: PARENTS */}

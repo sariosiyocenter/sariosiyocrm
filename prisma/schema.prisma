@@ -35,6 +35,7 @@ model Student {
   certType      String?
   certScore     String?
   customPrices  Json?     @default("{}")
+  certificates  Json?     @default("[]")
 
   // New fields for reports
   statusChangedAt DateTime? @default(now())
@@ -202,6 +203,7 @@ model Lead {
   certCategory  String?
   certSubject   String?
   certType      String?
+  certificates  Json?     @default("[]")
 
   schoolId      Int
   school        School   @relation(fields: [schoolId], references: [id])
@@ -225,14 +227,16 @@ model Payment {
 }
 
 model Course {
-  id    Int    @id @default(autoincrement())
-  name  String
-  price Float
+  id         Int       @id @default(autoincrement())
+  name       String
+  price      Float
   
-  schoolId Int
-  school   School @relation(fields: [schoolId], references: [id])
-  groups   Group[]
-  topics   Topic[]
+  syllabusId Int?
+  syllabus   Syllabus? @relation(fields: [syllabusId], references: [id])
+  
+  schoolId   Int
+  school     School    @relation(fields: [schoolId], references: [id])
+  groups     Group[]
 
   @@index([schoolId])
 }
@@ -341,15 +345,12 @@ model Topic {
   title       String
   description String?
   order       Int      @default(1)
-  courseId    Int?
-  course      Course?  @relation(fields: [courseId], references: [id], onDelete: Cascade)
   syllabusId  Int?
   syllabus    Syllabus? @relation(fields: [syllabusId], references: [id], onDelete: Cascade)
   schoolId    Int
   school      School   @relation(fields: [schoolId], references: [id])
   attendances Attendance[]
 
-  @@index([courseId])
   @@index([schoolId])
   @@index([syllabusId])
 }
@@ -362,6 +363,7 @@ model Syllabus {
   school      School   @relation(fields: [schoolId], references: [id])
   groups      Group[]
   topics      Topic[]
+  courses     Course[]
 
   @@index([schoolId])
 }

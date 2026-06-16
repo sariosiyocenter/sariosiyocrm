@@ -1,4 +1,4 @@
-﻿import 'dotenv/config';
+import 'dotenv/config';
 import express from 'express';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
@@ -507,7 +507,8 @@ app.post('/api/students', authenticate, async (req, res, next) => {
     const ALLOWED = ['name','phone','birthDate','address','location','status','joinedDate',
       'balance','photo','comment','rating','fatherName','fatherPhone','motherName','motherPhone',
       'studentSchool','privilegeType','certCategory','certSubject','certType','certScore',
-      'customPrices','orgType','region','district','transportId','statusChangedAt','leaveReason'];
+      'customPrices','orgType','region','district','transportId','statusChangedAt','leaveReason',
+      'certificates'];
     const data = {};
     for (const key of ALLOWED) {
       if (rest[key] !== undefined) data[key] = rest[key];
@@ -585,6 +586,9 @@ app.post('/api/students/import', authenticate, async (req, res, next) => {
         motherName: item.motherName ? String(item.motherName).trim() : null,
         motherPhone: item.motherPhone ? String(item.motherPhone).trim() : null,
         studentSchool: item.studentSchool ? String(item.studentSchool).trim() : null,
+        orgType: item.orgType ? String(item.orgType).trim() : null,
+        region: item.region ? String(item.region).trim() : null,
+        district: item.district ? String(item.district).trim() : null,
         schoolId: sId
       };
 
@@ -611,8 +615,21 @@ app.put('/api/students/:id', authenticate, async (req, res, next) => {
       return res.status(400).json({ error: 'Valid student ID talab qilinadi' });
     }
 
-    const { groups, schoolId, ...data } = req.body;
-    console.log(`Updating student ${studentId}:`, data);
+    const { groups, schoolId, ...rest } = req.body;
+    console.log(`Updating student ${studentId}`);
+
+    // Whitelist only known Student schema fields
+    const ALLOWED_STUDENT_FIELDS = [
+      'name','phone','birthDate','address','location','status','joinedDate',
+      'balance','photo','rating','fatherName','fatherPhone','motherName','motherPhone',
+      'studentSchool','privilegeType','certCategory','certSubject','certType','certScore',
+      'customPrices','orgType','region','district','transportId','statusChangedAt',
+      'leaveReason','certificates','telegramId'
+    ];
+    const data = {};
+    for (const key of ALLOWED_STUDENT_FIELDS) {
+      if (rest[key] !== undefined) data[key] = rest[key];
+    }
 
     // If status is changing, update statusChangedAt
     if (data.status) {
@@ -625,6 +642,7 @@ app.put('/api/students/:id', authenticate, async (req, res, next) => {
     if (data.transportId !== undefined) {
       data.transportId = data.transportId ? parseInt(data.transportId) : null;
     }
+    if (data.balance !== undefined) data.balance = parseFloat(data.balance) || 0;
 
     await prisma.student.update({
       where: { id: studentId },
@@ -736,8 +754,8 @@ app.get('/api/groups', authenticate, async (req, res, next) => {
 app.post('/api/groups', authenticate, async (req, res, next) => {
   console.log('--- [POST /api/groups] Request received ---');
   try {
-    let { studentIds, schoolId, courseName, name, teacherId, courseId, schedule, days, room } = req.body;
-    console.log('Payload:', { studentIds, schoolId, courseName, name, teacherId, courseId, schedule, days, room });
+    let { studentIds, schoolId, courseName, name, teacherId, courseId, schedule, days, room, syllabusId } = req.body;
+    console.log('Payload:', { studentIds, schoolId, courseName, name, teacherId, courseId, schedule, days, room, syllabusId });
 
     const sId = parseInt(schoolId);
     if (!sId) {
@@ -776,6 +794,9 @@ app.post('/api/groups', authenticate, async (req, res, next) => {
 
     if (room !== undefined && room !== null && room !== '') {
       prismaData.room = parseInt(room);
+    }
+    if (syllabusId !== undefined && syllabusId !== null && syllabusId !== '') {
+      prismaData.syllabusId = parseInt(syllabusId);
     }
 
     console.log('Prisma create data:', prismaData);
@@ -1021,7 +1042,7 @@ app.get('/api/public/tokens/:tokenId', async (req, res, next) => {
   } catch (error) { next(error); }
 });
 
-// POST register lead via public apply form using unique token
+// POST register lead via public apply form using unique token (directly to students module)
 app.post('/api/public/schools/:schoolId/leads', async (req, res, next) => {
   try {
     const schoolId = parseInt(req.params.schoolId);
@@ -1031,7 +1052,7 @@ app.post('/api/public/schools/:schoolId/leads', async (req, res, next) => {
       name, phone, course, source, token,
       birthDate, address, studentSchool,
       fatherName, fatherPhone, motherName, motherPhone,
-      preferredTime, notes, photo
+      preferredTime, notes, photo, certificates
     } = req.body;
 
     if (!name || !phone) return res.status(400).json({ error: 'Ism va telefon raqami majburiy' });
@@ -1048,19 +1069,6 @@ app.post('/api/public/schools/:schoolId/leads', async (req, res, next) => {
     const cleanName = name.trim();
     const cleanPhone = phone.trim();
 
-    // Check duplicate lead
-    const duplicateLead = await prisma.lead.findFirst({
-      where: {
-        name: { equals: cleanName, mode: 'insensitive' },
-        phone: cleanPhone,
-        schoolId
-      }
-    });
-
-    if (duplicateLead) {
-      return res.status(400).json({ error: 'Siz kiritgan ism va telefon raqami bilan allaqachon ariza topshirilgan.' });
-    }
-
     // Check duplicate student
     const duplicateStudent = await prisma.student.findFirst({
       where: {
@@ -1071,38 +1079,35 @@ app.post('/api/public/schools/:schoolId/leads', async (req, res, next) => {
     });
 
     if (duplicateStudent) {
-      return res.status(400).json({ error: 'Siz kiritgan ma\'lumotlar bilan o\'quvchi allaqachon mavjud.' });
+      return res.status(400).json({ error: 'Siz kiritgan ma\'lumotlar bilan o\'quvchi allaqachon ro\'yxatdan o\'tgan.' });
     }
 
-    // Mark token as used
-    await prisma.applyToken.update({
-      where: { id: token },
-      data: { used: true }
-    });
+    const certList = Array.isArray(certificates) ? certificates : [];
 
-    const lead = await prisma.lead.create({
+    const student = await prisma.student.create({
       data: {
         name: cleanName,
         phone: cleanPhone,
-        course: course || 'Aniqlanmagan',
-        source: source || 'Bir martalik QR Havola',
-        status: 'Yangi',
-        birthDate: birthDate || null,
-        address: address || null,
-        studentSchool: studentSchool || null,
+        birthDate: birthDate || "",
+        address: address || "",
+        status: "Sinov",
+        joinedDate: new Date().toISOString().split('T')[0],
+        balance: 0,
+        photo: photo || null,
         fatherName: fatherName || null,
         fatherPhone: fatherPhone || null,
         motherName: motherName || null,
         motherPhone: motherPhone || null,
-        preferredTime: preferredTime || null,
-        notes: notes || null,
-        photo: photo || null,
+        studentSchool: studentSchool || null,
+        privilegeType: certList.length > 0 ? 'Sertifikat' : 'None',
+        certificates: certList,
+        comment: `[Onlayn Ariza] Kurs: ${course || 'Aniqlanmagan'}.${notes ? ` Izoh: ${notes}` : ''}`,
         schoolId
       }
     });
 
-    notifyAdmins(`🆕 Onlayn formadan yangi ariza:\n👤 ${lead.name}\n📞 ${lead.phone}\n📚 Kurs: ${lead.course}`, schoolId);
-    res.json({ success: true, id: lead.id });
+    notifyAdmins(`🆕 Onlayn formadan yangi o'quvchi:\n👤 ${student.name}\n📞 ${student.phone}\n📚 Kurs: ${course || 'Aniqlanmagan'}`, schoolId);
+    res.json({ success: true, id: student.id });
   } catch (error) { next(error); }
 });
 
@@ -1215,6 +1220,7 @@ app.delete('/api/transports/:id', authenticate, async (req, res, next) => {
 });
 
 // Specific Types API
+// Specific Types API
 app.get('/api/courses', authenticate, async (req, res, next) => {
   try {
     const { schoolId } = req.query;
@@ -1227,6 +1233,9 @@ app.post('/api/courses', authenticate, async (req, res, next) => {
     const { schoolId, ...data } = req.body;
     if (!schoolId) return res.status(400).json({ error: 'schoolId required' });
     if (data.price) data.price = parseFloat(data.price);
+    if (data.syllabusId !== undefined) {
+      data.syllabusId = data.syllabusId ? parseInt(data.syllabusId) : null;
+    }
     res.json(await prisma.course.create({ data: { ...data, schoolId: parseInt(schoolId) } }));
   } catch (error) { next(error); }
 });
@@ -1235,23 +1244,37 @@ app.put('/api/courses/:id', authenticate, async (req, res, next) => {
     const data = {};
     if (req.body.name !== undefined) data.name = req.body.name;
     if (req.body.price !== undefined) data.price = parseFloat(req.body.price);
+    if (req.body.syllabusId !== undefined) {
+      data.syllabusId = req.body.syllabusId ? parseInt(req.body.syllabusId) : null;
+    }
     res.json(await prisma.course.update({ where: { id: parseInt(req.params.id) }, data }));
   } catch (error) { next(error); }
 });
 app.delete('/api/courses/:id', authenticate, async (req, res, next) => {
   try {
-    await prisma.course.delete({ where: { id: parseInt(req.params.id) } });
+    const cId = parseInt(req.params.id);
+    // Detach all groups from this course before deleting (set courseId to a placeholder)
+    // First, find a fallback course (id=1 or any other) or just nullify by finding the 'birinchi' course
+    const fallback = await prisma.course.findFirst({
+      where: { NOT: { id: cId } }
+    });
+    if (fallback) {
+      await prisma.group.updateMany({ where: { courseId: cId }, data: { courseId: fallback.id } });
+    }
+    await prisma.course.delete({ where: { id: cId } });
     res.json({ success: true });
-  } catch (error) { next(error); }
+  } catch (error) {
+    console.error('Delete course error:', error);
+    next(error);
+  }
 });
 
 // --- Topics (Syllabus) ---
 app.get('/api/topics', authenticate, async (req, res, next) => {
   try {
-    const { schoolId, courseId, syllabusId } = req.query;
+    const { schoolId, syllabusId } = req.query;
     if (!schoolId) return res.status(400).json({ error: 'schoolId required' });
     const where = { schoolId: parseInt(schoolId) };
-    if (courseId) where.courseId = parseInt(courseId);
     if (syllabusId) where.syllabusId = parseInt(syllabusId);
     const topics = await prisma.topic.findMany({ where, orderBy: { order: 'asc' } });
     res.json(topics);
@@ -1260,14 +1283,13 @@ app.get('/api/topics', authenticate, async (req, res, next) => {
 
 app.post('/api/topics', authenticate, async (req, res, next) => {
   try {
-    const { schoolId, title, description, order, courseId, syllabusId } = req.body;
+    const { schoolId, title, description, order, syllabusId } = req.body;
     if (!schoolId || !title) return res.status(400).json({ error: 'Missing required fields' });
     const topic = await prisma.topic.create({
       data: {
         title,
         description: description || null,
         order: order ? parseInt(order) : 1,
-        courseId: courseId ? parseInt(courseId) : null,
         syllabusId: syllabusId ? parseInt(syllabusId) : null,
         schoolId: parseInt(schoolId)
       }
@@ -1279,12 +1301,11 @@ app.post('/api/topics', authenticate, async (req, res, next) => {
 app.put('/api/topics/:id', authenticate, async (req, res, next) => {
   try {
     const { id } = req.params;
-    const { title, description, order, courseId, syllabusId } = req.body;
+    const { title, description, order, syllabusId } = req.body;
     const data = {};
     if (title !== undefined) data.title = title;
     if (description !== undefined) data.description = description;
     if (order !== undefined) data.order = parseInt(order);
-    if (courseId !== undefined) data.courseId = courseId ? parseInt(courseId) : null;
     if (syllabusId !== undefined) data.syllabusId = syllabusId ? parseInt(syllabusId) : null;
 
     const topic = await prisma.topic.update({

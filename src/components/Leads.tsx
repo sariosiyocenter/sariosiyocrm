@@ -866,7 +866,8 @@ export default function Leads() {
                       <option value="">{t('do_not_assign_group')}</option>
                       {groups.map(g => {
                         const course = courses.find(c => c.id === g.courseId);
-                        return <option key={g.id} value={g.id}>{g.name} ({course?.name || 'Noma\'lum'})</option>;
+                        const cName = course?.name && course.name !== 'birinchi' ? ` (${course.name})` : '';
+                        return <option key={g.id} value={g.id}>{g.name}{cName}</option>;
                       })}
                     </select>
                   </div>

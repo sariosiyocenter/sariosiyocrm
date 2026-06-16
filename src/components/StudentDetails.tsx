@@ -1,18 +1,14 @@
 import React, { useState } from 'react';
 import {
     ArrowLeft, Phone, Calendar, MapPin, BookOpen, CreditCard, ReceiptText,
-    Clock, CheckCircle, XCircle, Plus, Award, ClipboardCheck, Users, Layers, ChevronRight, TrendingUp, Save, Edit, Bus, Sparkles, Image as ImageIcon, Camera, X, Send
+    Clock, CheckCircle, XCircle, Plus, Award, ClipboardCheck, Users, Layers, ChevronRight, TrendingUp, Save, Edit, Bus, Sparkles, Image as ImageIcon, Camera, X, Send, Trash2
 } from 'lucide-react';
 import { useCRM } from '../context/CRMContext';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useLang } from '../context/LanguageContext';
 import MapPicker from './MapPicker';
 import PhotoCapture from './PhotoCapture';
-import FaceEnroll from './FaceEnroll';
 import { compressImage } from '../lib/image';
-import * as faceapi from 'face-api.js';
-
-const FACE_MODEL_URL = 'https://cdn.jsdelivr.net/gh/justadudewhohacks/face-api.js@0.22.2/weights';
 
 const UZB_REGIONS: Record<string, string[]> = {
   "Surxondaryo": [
@@ -102,8 +98,6 @@ export default function StudentDetails() {
     const [editingGroupPrice, setEditingGroupPrice] = useState<{ groupId: number, name: string, coursePrice: number } | null>(null);
     const [customPriceVal, setCustomPriceVal] = useState('');
     const [customNoteVal, setCustomNoteVal] = useState('');
-    const [isFaceEnrollOpen, setIsFaceEnrollOpen] = useState(false);
-    const [faceEnrollLoading, setFaceEnrollLoading] = useState(false);
 
     const handleConfirmDelete = async () => {
         try {
@@ -120,39 +114,7 @@ export default function StudentDetails() {
         updateStudent(student!.id, { photo: compressed });
     };
 
-    const enrollFaceFromPhoto = async () => {
-        if (!student?.photo) return;
-        setFaceEnrollLoading(true);
-        try {
-            if (!faceapi.nets.tinyFaceDetector.isLoaded) {
-                await faceapi.nets.tinyFaceDetector.loadFromUri(FACE_MODEL_URL);
-            }
-            if (!faceapi.nets.faceLandmark68TinyNet.isLoaded) {
-                await faceapi.nets.faceLandmark68TinyNet.loadFromUri(FACE_MODEL_URL);
-            }
-            if (!faceapi.nets.faceRecognitionNet.isLoaded) {
-                await faceapi.nets.faceRecognitionNet.loadFromUri(FACE_MODEL_URL);
-            }
-            const img = new Image();
-            img.src = student.photo;
-            await new Promise<void>((res, rej) => { img.onload = () => res(); img.onerror = rej; });
-            const detection = await faceapi
-                .detectSingleFace(img, new faceapi.TinyFaceDetectorOptions({ inputSize: 320, scoreThreshold: 0.3 }))
-                .withFaceLandmarks(true)
-                .withFaceDescriptor();
-            if (!detection) {
-                showNotification("Rasmda yuz topilmadi. Boshqa rasm yuklang.", "error");
-                return;
-            }
-            const cp = { ...(student.customPrices as any || {}), faceDescriptor: Array.from(detection.descriptor) };
-            updateStudent(student.id, { customPrices: cp });
-            showNotification("Face ID rasmdan saqlandi ✓", "success");
-        } catch {
-            showNotification("Xatolik yuz berdi", "error");
-        } finally {
-            setFaceEnrollLoading(false);
-        }
-    };
+
     const [isMapOpen, setIsMapOpen] = useState(false);
     const [editForm, setEditForm] = useState({
         name: '',
@@ -174,7 +136,8 @@ export default function StudentDetails() {
         certScore: '',
         orgType: '',
         region: '',
-        district: ''
+        district: '',
+        certificates: [] as Array<{ category: 'Milliy' | 'Xalqaro'; subject?: string; type?: string; score?: string }>
     });
 
     const student = students.find(s => s.id === Number(id));
@@ -194,7 +157,7 @@ export default function StudentDetails() {
     const studentGroups = groups.filter(g => (student.groups || []).includes(g.id)).map(g => {
         const teacher = teachers.find(t => t.id === g.teacherId);
         const course = courses.find(c => c.id === g.courseId);
-        return { ...g, teacherName: teacher?.name || t('unknown_teacher'), courseName: course?.name || '-', coursePrice: course?.price || 0 };
+        return { ...g, teacherName: teacher?.name || t('unknown_teacher'), courseName: (course?.name && course.name !== 'birinchi') ? course.name : '', coursePrice: course?.price || 0 };
     });
 
     const studentPayments = payments.filter(p => p.studentId === Number(id)).reverse();
@@ -209,6 +172,17 @@ export default function StudentDetails() {
     };
 
     const handleStartEdit = () => {
+        let parsedCerts = [];
+        try {
+            if (Array.isArray(student.certificates)) {
+                parsedCerts = student.certificates;
+            } else if (student.certificates && typeof student.certificates === 'string') {
+                parsedCerts = JSON.parse(student.certificates);
+            }
+        } catch (e) {
+            console.error("Error parsing certificates:", e);
+        }
+
         setEditForm({
             name: student.name,
             status: student.status,
@@ -229,9 +203,47 @@ export default function StudentDetails() {
             certScore: student.certScore || '',
             orgType: student.orgType || '',
             region: student.region || '',
-            district: student.district || ''
+            district: student.district || '',
+            certificates: parsedCerts || []
         });
         setIsEditing(true);
+    };
+
+    const addEditCertificate = () => {
+        setEditForm(prev => ({
+            ...prev,
+            certificates: [
+                ...prev.certificates,
+                { category: 'Milliy', subject: 'Matematika', score: '' }
+            ]
+        }));
+    };
+
+    const removeEditCertificate = (index: number) => {
+        setEditForm(prev => ({
+            ...prev,
+            certificates: prev.certificates.filter((_, i) => i !== index)
+        }));
+    };
+
+    const updateEditCertificate = (index: number, key: string, value: string) => {
+        setEditForm(prev => ({
+            ...prev,
+            certificates: prev.certificates.map((c, i) => {
+                if (i !== index) return c;
+                const updated = { ...c, [key]: value };
+                if (key === 'category') {
+                    if (value === 'Milliy') {
+                        delete updated.type;
+                        updated.subject = 'Matematika';
+                    } else {
+                        delete updated.subject;
+                        updated.type = 'IELTS';
+                    }
+                }
+                return updated;
+            })
+        }));
     };
 
     const handleSaveEdit = async () => {
@@ -347,18 +359,18 @@ export default function StudentDetails() {
                 {/* Left Profile Card */}
                 <div className="lg:col-span-1 space-y-6">
                     <div className="bg-white dark:bg-gray-800 rounded-3xl border border-gray-100 dark:border-gray-700/50 shadow-sm overflow-hidden">
-                        <div className="h-28 bg-[#1b6b6b] relative">
-                            <div className="absolute -bottom-10 left-1/2 -translate-x-1/2 rounded-2xl bg-white dark:bg-gray-800 p-1 shadow-md">
-                                <div className="w-20 h-20 rounded-xl bg-gray-55 dark:bg-gray-900 border border-gray-100 dark:border-gray-700/50 flex items-center justify-center text-[#1b6b6b] font-bold text-2xl">
+                        <div className="h-40 bg-[#1b6b6b] relative">
+                            <div className="absolute -bottom-22 left-1/2 -translate-x-1/2 rounded-[2.2rem] bg-white dark:bg-gray-800 p-1 shadow-lg">
+                                <div className="w-44 h-44 rounded-[2rem] bg-gray-55 dark:bg-gray-900 border border-gray-100 dark:border-gray-700/50 flex items-center justify-center text-[#1b6b6b] font-black text-5xl overflow-hidden shadow-inner">
                                     {student.photo ? (
-                                        <img src={student.photo} alt={student.name} className="w-full h-full object-cover rounded-lg" />
+                                        <img src={student.photo} alt={student.name} className="w-full h-full object-cover" />
                                     ) : (
                                         student.name.charAt(0).toUpperCase()
                                     )}
                                 </div>
                             </div>
                         </div>
-                        <div className="pt-14 pb-6 px-6 text-center">
+                        <div className="pt-26 pb-6 px-6 text-center">
                             {isEditing ? (
                                 <div className="space-y-3">
                                     <div>
@@ -465,24 +477,6 @@ export default function StudentDetails() {
                                 </button>
                             )}
 
-                            {student.photo ? (
-                                <button
-                                    onClick={enrollFaceFromPhoto}
-                                    disabled={faceEnrollLoading}
-                                    className="w-full flex items-center justify-center gap-1.5 py-2.5 bg-violet-50 text-violet-600 border border-violet-100 dark:bg-violet-950/20 dark:text-violet-400 dark:border-violet-900/40 rounded-xl text-[9px] font-extrabold uppercase tracking-widest hover:bg-violet-600 hover:text-white hover:border-violet-600 transition-all cursor-pointer disabled:opacity-50"
-                                >
-                                    <Sparkles size={12} className={faceEnrollLoading ? 'animate-spin' : ''} />
-                                    {faceEnrollLoading ? 'Tahlil qilinmoqda...' : (student.customPrices as any)?.faceDescriptor ? 'Face ID yangilash' : 'Face ID saqlash (rasmdan)'}
-                                </button>
-                            ) : (
-                                <button
-                                    onClick={() => setIsFaceEnrollOpen(true)}
-                                    className="w-full flex items-center justify-center gap-1.5 py-2.5 bg-violet-50 text-violet-600 border border-violet-100 dark:bg-violet-950/20 dark:text-violet-400 dark:border-violet-900/40 rounded-xl text-[9px] font-extrabold uppercase tracking-widest hover:bg-violet-600 hover:text-white hover:border-violet-600 transition-all cursor-pointer"
-                                >
-                                    <Camera size={12} />
-                                    Face ID (kamera orqali)
-                                </button>
-                            )}
 
                             {/* Photo Capture Modal */}
                             {isPhotoModalOpen && (
@@ -492,17 +486,6 @@ export default function StudentDetails() {
                                 />
                             )}
 
-                            {isFaceEnrollOpen && (
-                                <FaceEnroll
-                                    studentName={student.name}
-                                    onSave={(descriptor) => {
-                                        const cp = { ...(student.customPrices as any || {}), faceDescriptor: descriptor };
-                                        updateStudent(student.id, { customPrices: cp });
-                                        showNotification('Face ID saqlandi', 'success');
-                                    }}
-                                    onClose={() => setIsFaceEnrollOpen(false)}
-                                />
-                            )}
                         </div>
 
                         <div className="px-6 pb-6 space-y-3 border-t border-dashed border-gray-100 dark:border-gray-700/50 pt-4">
@@ -678,6 +661,94 @@ export default function StudentDetails() {
                                             </div>
                                         </div>
                                     )}
+
+                                    {/* SECTION: MULTIPLE CERTIFICATES */}
+                                    <div className="space-y-3 pt-2">
+                                        <label className={labelCls}>Qo'shimcha Sertifikatlar</label>
+                                        {editForm.certificates.map((cert, index) => (
+                                            <div key={index} className="p-4 bg-gray-55 dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-850/50 space-y-3 relative animate-in fade-in slide-in-from-top-2 duration-250">
+                                                <button 
+                                                    type="button" 
+                                                    onClick={() => removeEditCertificate(index)}
+                                                    className="absolute top-3 right-3 text-gray-400 hover:text-red-500 transition-colors"
+                                                >
+                                                    <Trash2 size={14} />
+                                                </button>
+                                                
+                                                <div>
+                                                    <label className={labelCls}>Sertifikat toifasi</label>
+                                                    <select
+                                                        value={cert.category}
+                                                        onChange={e => updateEditCertificate(index, 'category', e.target.value as any)}
+                                                        className={inputCls}
+                                                    >
+                                                        <option value="Milliy">Milliy sertifikat</option>
+                                                        <option value="Xalqaro">Xalqaro sertifikat</option>
+                                                    </select>
+                                                </div>
+
+                                                {cert.category === 'Milliy' && (
+                                                    <div>
+                                                        <label className={labelCls}>Sertifikat fani</label>
+                                                        <select
+                                                            value={cert.subject || ''}
+                                                            onChange={e => updateEditCertificate(index, 'subject', e.target.value)}
+                                                            className={inputCls}
+                                                        >
+                                                            <option value="Matematika">Matematika</option>
+                                                            <option value="Fizika">Fizika</option>
+                                                            <option value="Kimyo">Kimyo</option>
+                                                            <option value="Biologiya">Biologiya</option>
+                                                            <option value="Tarix">Tarix</option>
+                                                            <option value="Ingliz tili">Ingliz tili</option>
+                                                            <option value="Nemis tili">Nemis tili</option>
+                                                            <option value="Rus tili">Rus tili</option>
+                                                            <option value="Ona tili">Ona tili</option>
+                                                            <option value="Boshqa">Boshqa</option>
+                                                        </select>
+                                                    </div>
+                                                )}
+
+                                                {cert.category === 'Xalqaro' && (
+                                                    <div>
+                                                        <label className={labelCls}>Sertifikat turi</label>
+                                                        <select
+                                                            value={cert.type || ''}
+                                                            onChange={e => updateEditCertificate(index, 'type', e.target.value)}
+                                                            className={inputCls}
+                                                        >
+                                                            <option value="IELTS">IELTS</option>
+                                                            <option value="SAT">SAT</option>
+                                                            <option value="TOEFL">TOEFL</option>
+                                                            <option value="CEFR">CEFR</option>
+                                                            <option value="Boshqa">Boshqa</option>
+                                                        </select>
+                                                    </div>
+                                                )}
+
+                                                <div>
+                                                    <label className={labelCls}>Ball / Foiz</label>
+                                                    <input
+                                                        type="text"
+                                                        placeholder={cert.category === 'Xalqaro' ? 'Misol: 7.5 yoki 1450' : 'Misol: 94.8%'}
+                                                        value={cert.score || ''}
+                                                        onChange={e => updateEditCertificate(index, 'score', e.target.value)}
+                                                        className={inputCls}
+                                                    />
+                                                </div>
+                                            </div>
+                                        ))}
+                                        
+                                        <button
+                                            type="button"
+                                            onClick={addEditCertificate}
+                                            className="w-full py-3 bg-gray-55 dark:bg-gray-900 border border-dashed border-gray-200 dark:border-gray-700 rounded-2xl text-[10px] font-black uppercase tracking-widest text-[#1b6b6b] hover:bg-teal-50/10 dark:hover:bg-teal-900/10 transition-colors flex items-center justify-center gap-1.5 cursor-pointer"
+                                        >
+                                            <Plus size={14} />
+                                            Sertifikat qo'shish
+                                        </button>
+                                    </div>
+
                                     <div>
                                         <label className={labelCls}>{t('location')}</label>
                                         <button 
@@ -765,7 +836,7 @@ export default function StudentDetails() {
                                                     Imtiyoz: {student.privilegeType === 'Sertifikat' ? `${student.certCategory} sertifikat` : student.privilegeType}
                                                 </p>
                                                 {student.privilegeType === 'Sertifikat' && (
-                                                    <p className="text-[8px] font-bold text-gray-400 uppercase tracking-widest mt-0.5">
+                                                    <p className="text-[8px] font-bold text-gray-450 uppercase tracking-widest mt-0.5">
                                                         {student.certCategory === 'Milliy' ? `Fan: ${student.certSubject || '-'}` : `Turi: ${student.certType || '-'}`}
                                                         {student.certScore ? ` · Ball: ${student.certScore}` : ''}
                                                     </p>
@@ -773,6 +844,44 @@ export default function StudentDetails() {
                                             </div>
                                         </div>
                                     )}
+
+                                    {(() => {
+                                        let parsedCerts = [];
+                                        try {
+                                            if (Array.isArray(student.certificates)) {
+                                                parsedCerts = student.certificates;
+                                            } else if (student.certificates && typeof student.certificates === 'string') {
+                                                parsedCerts = JSON.parse(student.certificates);
+                                            }
+                                        } catch (e) {
+                                            console.error("Error parsing certificates:", e);
+                                        }
+                                        if (parsedCerts.length === 0) return null;
+                                        return (
+                                            <div className="space-y-2.5 mt-2">
+                                                <div className="flex items-center gap-2 mb-1 px-1">
+                                                    <Award size={12} className="text-[#1b6b6b]" />
+                                                    <h4 className="text-[9px] font-black text-[#1b6b6b] uppercase tracking-widest">Sertifikatlar</h4>
+                                                </div>
+                                                {parsedCerts.map((cert: any, idx: number) => (
+                                                    <div key={idx} className="flex items-start gap-2.5 p-3 bg-gray-55 dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl">
+                                                        <div className="w-7 h-7 rounded-lg bg-[#1b6b6b]/10 dark:bg-[#1b6b6b]/20 text-[#1b6b6b] flex items-center justify-center shrink-0">
+                                                            <Award size={14} />
+                                                        </div>
+                                                        <div>
+                                                            <p className="text-[10px] font-black text-gray-900 dark:text-white uppercase tracking-tight">
+                                                                {cert.category} sertifikat
+                                                            </p>
+                                                            <p className="text-[8px] font-bold text-gray-400 uppercase tracking-widest mt-0.5">
+                                                                {cert.category === 'Milliy' ? `Fan: ${cert.subject || '-'}` : `Turi: ${cert.type || '-'}`}
+                                                                {cert.score ? ` · Ball: ${cert.score}` : ''}
+                                                            </p>
+                                                        </div>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        );
+                                    })()}
 
                                     <button 
                                         onClick={() => setShowDeleteModal(true)}
@@ -852,7 +961,7 @@ export default function StudentDetails() {
                                                                     </div>
                                                                     <div>
                                                                         <h5 className="text-xs font-black text-gray-900 dark:text-white group-hover:text-[#1b6b6b] uppercase tracking-tight">{group.name}</h5>
-                                                                        <p className="text-[9px] font-bold text-gray-400 mt-0.5">{group.courseName} &bull; {group.teacherName}</p>
+                                                                        <p className="text-[9px] font-bold text-gray-400 mt-0.5">{group.courseName ? `${group.courseName} • ` : ''}{group.teacherName}</p>
                                                                     </div>
                                                                 </div>
                                                                 <div className="flex items-center gap-3">
@@ -961,7 +1070,11 @@ export default function StudentDetails() {
                                                                 }
                                                             }
                                                             if (!topicObj && groupObj) {
-                                                                const courseTopics = (topics || []).filter(t => t.courseId === groupObj.courseId).sort((a, b) => a.order - b.order);
+                                                                const courseObj = (courses || []).find(c => c.id === groupObj.courseId);
+                                                                 const syllabusId = courseObj?.syllabusId || groupObj.syllabusId;
+                                                                 const courseTopics = syllabusId 
+                                                                     ? (topics || []).filter(t => t.syllabusId === syllabusId).sort((a, b) => a.order - b.order)
+                                                                     : [];
                                                                 const groupDates = Array.from(new Set(
                                                                     (attendances || [])
                                                                         .filter(att => att.groupId === a.groupId)
@@ -1094,7 +1207,7 @@ export default function StudentDetails() {
                                                 <div className="flex items-start justify-between mb-4">
                                                     <div>
                                                         <h5 className="text-xs font-black text-gray-900 dark:text-white group-hover:text-[#1b6b6b] transition-colors uppercase tracking-tight">{group.name}</h5>
-                                                        <p className="text-[9px] font-bold text-gray-400 mt-0.5">{group.courseName}</p>
+                                                        {group.courseName && <p className="text-[9px] font-bold text-gray-400 mt-0.5">{group.courseName}</p>}
                                                     </div>
                                                     <div className="w-9 h-9 bg-white dark:bg-gray-800 rounded-xl flex items-center justify-center text-[#1b6b6b] shrink-0 shadow-sm border border-gray-100 dark:border-gray-700/50">
                                                         <BookOpen size={16} />
@@ -1255,7 +1368,10 @@ export default function StudentDetails() {
 
                                                             // 3. Chronological fallback
                                                             if (!topicObj && groupObj) {
-                                                                const courseTopics = (topics || []).filter(t => t.courseId === groupObj.courseId).sort((a, b) => a.order - b.order);
+                                                                 const syllabusId = courseObj?.syllabusId || groupObj.syllabusId;
+                                                                 const courseTopics = syllabusId 
+                                                                     ? (topics || []).filter(t => t.syllabusId === syllabusId).sort((a, b) => a.order - b.order)
+                                                                     : [];
                                                                 const groupDates = Array.from(new Set(
                                                                     (attendances || [])
                                                                         .filter(att => att.groupId === a.groupId)

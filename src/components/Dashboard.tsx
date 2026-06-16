@@ -70,7 +70,7 @@ export default function Dashboard() {
 
     const courseStatsMap: { [key: string]: { name: string, students: number, revenue: number } } = {};
     
-    courses.forEach(c => {
+    courses.filter(c => c.name !== 'birinchi').forEach(c => {
         const courseGroups = groups.filter(g => g.courseId === c.id);
         const studentCount = courseGroups.reduce((acc, g) => acc + (g.studentIds || []).length, 0);
         const revenue = studentCount * c.price;

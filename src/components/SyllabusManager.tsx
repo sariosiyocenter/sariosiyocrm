@@ -10,7 +10,7 @@ import { Syllabus, Topic } from '../types';
 export default function SyllabusManager() {
   const { 
     syllabuses, addSyllabus, updateSyllabus, deleteSyllabus,
-    topics, addTopic, updateTopic, deleteTopic, groups, user
+    topics, addTopic, updateTopic, deleteTopic, groups, user, courses
   } = useCRM();
   const { t } = useLang();
 
@@ -33,7 +33,11 @@ export default function SyllabusManager() {
     : [];
 
   const linkedGroups = activeSyllabus 
-    ? (groups || []).filter(g => g.syllabusId === activeSyllabus.id)
+    ? (groups || []).filter(g => {
+        if (g.syllabusId === activeSyllabus.id) return true;
+        const groupCourse = courses.find(c => c.id === g.courseId);
+        return groupCourse?.syllabusId === activeSyllabus.id;
+      })
     : [];
 
   // Syllabus CRUD Handlers

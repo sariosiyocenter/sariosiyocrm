@@ -7,7 +7,7 @@ export interface Student {
     birthDate: string;
     address: string;
     location?: string;
-    status: 'Faol' | 'Passiv' | 'Muzlatilgan' | 'Sertifikatli';
+    status: 'Faol' | 'Passiv' | 'Muzlatilgan' | 'Sertifikatli' | 'Sinov' | 'Bitiruvchi' | 'Arxiv';
     joinedDate: string;
     balance: number;
     photo?: string;
@@ -29,6 +29,7 @@ export interface Student {
     certType?: string;
     certScore?: string;
     customPrices?: any;
+    certificates?: any;
     orgType?: string;
     region?: string;
     district?: string;
@@ -161,6 +162,7 @@ export interface Course {
     id: number;
     name: string;
     price: number;
+    syllabusId?: number | null;
     schoolId: number;
 }
 
@@ -210,7 +212,6 @@ export interface Topic {
     title: string;
     description?: string;
     order: number;
-    courseId?: number | null;
     syllabusId?: number | null;
     schoolId: number;
 }

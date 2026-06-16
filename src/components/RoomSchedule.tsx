@@ -472,7 +472,7 @@ export default function RoomSchedule() {
                                                         )}
                                                     </div>
                                                     <p className="text-[9px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-widest mt-0.5">
-                                                        {course?.name || '—'} • {teacher?.name || '—'}
+                                                        {(course?.name && course.name !== 'birinchi') ? `${course.name} • ` : ''}{teacher?.name || '—'}
                                                     </p>
                                                     <div className="flex items-center gap-3 mt-1">
                                                         <span className="flex items-center gap-1 text-[9px] font-bold text-gray-500 uppercase tracking-widest">
