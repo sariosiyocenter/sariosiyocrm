@@ -12,7 +12,7 @@ import GroupAttendanceCalendar from './GroupAttendanceCalendar';
 export default function CourseDetails() {
     const { id } = useParams<{ id: string }>();
     const navigate = useNavigate();
-    const { groups, students, teachers, courses, rooms, attendances, payments, addBatchAttendance, addAttendance, addStudentToGroup, removeStudentFromGroup, updateGroup, updateCourse, showNotification, topics, addTopic, updateTopic, addPayment, syllabuses } = useCRM();
+    const { groups, students, teachers, courses, rooms, attendances, payments, addBatchAttendance, addAttendance, updateDayTopic, addStudentToGroup, removeStudentFromGroup, updateGroup, updateCourse, showNotification, topics, addTopic, updateTopic, addPayment, syllabuses } = useCRM();
     const [isEditingInfo, setIsEditingInfo] = useState(false);
     const [editForm, setEditForm] = useState({
         teacherId: 0,
@@ -107,7 +107,7 @@ export default function CourseDetails() {
     };
 
     const courseObj = (courses || []).find(c => c.id === group.courseId);
-    const activeSyllabusId = courseObj?.syllabusId || group.syllabusId;
+    const activeSyllabusId = group.syllabusId || courseObj?.syllabusId;
     const activeSyllabus = activeSyllabusId ? (syllabuses || []).find(s => s.id === activeSyllabusId) : null;
     const courseTopics = activeSyllabus 
         ? (topics || []).filter(t => t.syllabusId === activeSyllabus.id).sort((a, b) => a.order - b.order)
@@ -629,8 +629,12 @@ export default function CourseDetails() {
                                     <div className="flex items-center gap-2 bg-white dark:bg-gray-800 p-1.5 rounded-xl border border-gray-100 dark:border-gray-700 shadow-sm w-full sm:w-auto">
                                         <BookOpen size={14} className="text-[#1b6b6b] ml-2 shrink-0" />
                                         <select 
-                                            value={selectedTopicId} 
-                                            onChange={e => setSelectedTopicId(e.target.value ? Number(e.target.value) : '')}
+                                            value={selectedTopicId}
+                                            onChange={e => {
+                                                const newId = e.target.value ? Number(e.target.value) : '';
+                                                setSelectedTopicId(newId);
+                                                updateDayTopic(group.id, selectedDate, newId ? Number(newId) : null);
+                                            }}
                                             className="bg-transparent text-[10px] font-black uppercase tracking-wider outline-none border-none cursor-pointer text-gray-750 dark:text-white max-w-[200px]"
                                         >
                                             <option value="">-- Dars mavzusi --</option>

@@ -2264,6 +2264,20 @@ app.put('/api/attendances/:id', authenticate, async (req, res, next) => {
   } catch (error) { next(error); }
 });
 
+// PATCH update topic for all existing attendances in a group/date
+app.patch('/api/attendances/topic', authenticate, async (req, res, next) => {
+  try {
+    const { schoolId, groupId, date, topicId } = req.body;
+    if (!schoolId || !groupId || !date) return res.status(400).json({ error: 'Missing fields' });
+
+    const result = await prisma.attendance.updateMany({
+      where: { groupId: parseInt(groupId), date, schoolId: parseInt(schoolId) },
+      data: { topicId: topicId ? parseInt(topicId) : null }
+    });
+    res.json({ count: result.count });
+  } catch (error) { next(error); }
+});
+
 // Batch attendance — mark all students at once for a group/date
 app.post('/api/attendances/batch', authenticate, async (req, res, next) => {
   try {

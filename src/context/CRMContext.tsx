@@ -49,9 +49,9 @@ interface CRMContextType extends CRMState {
     addLead: (lead: Omit<Lead, 'id' | 'schoolId'>) => Promise<void>;
     updateLead: (id: number, status: Lead['status']) => Promise<void>;
     deleteLead: (id: number) => Promise<void>;
-    addPayment: (payment: Omit<Payment, 'id' | 'schoolId'>) => Promise<void>;
+    addPayment: (payment: Omit<Payment, 'id' | 'schoolId'>) => Promise<any>;
     updateSettings: (settings: Partial<CRMState['settings']>) => Promise<void>;
-    addCourse: (course: Omit<Course, 'id' | 'schoolId'>) => Promise<void>;
+    addCourse: (course: Omit<Course, 'id' | 'schoolId'>) => Promise<any>;
     updateCourse: (id: number, course: Partial<Course>) => Promise<void>;
     deleteCourse: (id: number) => Promise<void>;
     addRoom: (room: Omit<Room, 'id' | 'schoolId'>) => Promise<void>;
@@ -62,6 +62,7 @@ interface CRMContextType extends CRMState {
     updateAttendance: (id: number, updates: Partial<Attendance>) => Promise<void>;
     addBatchAttendance: (groupId: number, date: string, records: { studentId: number; status: string }[], topicId?: number) => Promise<void>;
     deleteBatchAttendance: (groupId: number, date: string) => Promise<void>;
+    updateDayTopic: (groupId: number, date: string, topicId: number | null) => Promise<void>;
     addTopic: (topic: Omit<Topic, 'id' | 'schoolId'>) => Promise<void>;
     updateTopic: (id: number, topic: Partial<Topic>) => Promise<void>;
     deleteTopic: (id: number) => Promise<void>;
@@ -688,6 +689,7 @@ export const CRMProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             );
             return { ...prev, payments: [...prev.payments, newPayment], students: updatedStudents };
         });
+        return newPayment;
     };
 
     const updateSettings = async (newSettings: Partial<CRMState['settings']>) => {
@@ -698,6 +700,7 @@ export const CRMProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     const addCourse = async (course: Omit<Course, 'id' | 'schoolId'>) => {
         const newCourse = await apiCall('courses', 'POST', course);
         setState(prev => ({ ...prev, courses: [...prev.courses, newCourse] }));
+        return newCourse;
     };
 
     const updateCourse = async (id: number, course: Partial<Course>) => {
@@ -794,6 +797,20 @@ export const CRMProvider: React.FC<{ children: React.ReactNode }> = ({ children 
                 return { ...prev, attendances: prev.attendances.filter(a => !tempIdSet.has(a.id)) };
             });
             showNotification("Kurs davomatini saqlashda xatolik yuz berdi", "error");
+        }
+    };
+
+    const updateDayTopic = async (groupId: number, date: string, topicId: number | null) => {
+        setState(prev => ({
+            ...prev,
+            attendances: prev.attendances.map(a =>
+                a.groupId === groupId && a.date === date ? { ...a, topicId: topicId ?? undefined } : a
+            )
+        }));
+        try {
+            await apiCall('attendances/topic', 'PATCH', { groupId, date, topicId });
+        } catch (err) {
+            console.error('updateDayTopic failed', err);
         }
     };
 
@@ -1098,7 +1115,7 @@ export const CRMProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             addCourse, updateCourse, deleteCourse,
             addRoom, deleteRoom,
             addSchool, deleteSchool,
-            addAttendance, updateAttendance, addBatchAttendance, deleteBatchAttendance, addScore,
+            addAttendance, updateAttendance, addBatchAttendance, deleteBatchAttendance, updateDayTopic, addScore,
             addTopic, updateTopic, deleteTopic,
             addSyllabus, updateSyllabus, deleteSyllabus,
             addTeacherAttendance,
