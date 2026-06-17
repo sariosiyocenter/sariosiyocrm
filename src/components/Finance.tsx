@@ -23,6 +23,64 @@ export default function Finance() {
     const [selectedStudent, setSelectedStudent] = useState<any>(null);
     const [createdPaymentForReceipt, setCreatedPaymentForReceipt] = useState<any>(null);
 
+    const handlePrintReceipt = (payment: any, student: any) => {
+        const studentGroups = groups.filter(g => (g.studentIds || []).includes(student?.id));
+        const groupLines = studentGroups.map(g => {
+            const courseName = courses.find(c => c.id === g.courseId)?.name || '';
+            return `<div>- ${g.name}${courseName ? ` (${courseName})` : ''}</div>`;
+        }).join('');
+
+        const popup = window.open('', '_blank', 'width=420,height=640');
+        if (!popup) return;
+        popup.document.write(`<!DOCTYPE html>
+<html><head><meta charset="utf-8"><title>Chek #${payment.id}</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: 'Courier New', monospace; font-size: 12px; color: #111; background: #fff; padding: 24px 20px; }
+  h2 { font-size: 15px; font-weight: 900; text-align: center; letter-spacing: 2px; text-transform: uppercase; color: #1b6b6b; margin-bottom: 4px; }
+  .sub { text-align: center; font-size: 9px; letter-spacing: 2px; text-transform: uppercase; color: #888; margin-bottom: 18px; }
+  .box { border: 1px dashed #ccc; border-radius: 8px; padding: 16px; }
+  .row { display: flex; justify-content: space-between; margin-bottom: 6px; }
+  .row .val { font-weight: 900; }
+  .divider { border-top: 1px dashed #ccc; margin: 12px 0; }
+  .label { font-size: 9px; text-transform: uppercase; color: #888; display: block; margin-bottom: 2px; }
+  .big { font-size: 14px; font-weight: 900; }
+  .green { color: #059669; }
+  .red { color: #e11d48; }
+  .footer { margin-top: 14px; text-align: center; font-size: 9px; letter-spacing: 2px; text-transform: uppercase; color: #aaa; }
+  @media print { body { padding: 10px; } }
+</style></head><body>
+<h2>SARIOSIYO CENTER</h2>
+<div class="sub">To'lov cheki (Receipt)</div>
+<div class="box">
+  <div class="row"><span>Chek #</span><span class="val">#${payment.id}</span></div>
+  <div class="row"><span>Sana:</span><span class="val">${payment.date}</span></div>
+  <div class="divider"></div>
+  <div style="margin-bottom:10px">
+    <span class="label">O'quvchi:</span>
+    <div class="big">${student?.name || ''}</div>
+  </div>
+  ${student?.phone ? `<div style="margin-bottom:10px"><span class="label">Telefon:</span><div>${student.phone}</div></div>` : ''}
+  ${groupLines ? `<div style="margin-bottom:10px"><span class="label">Kurslar:</span>${groupLines}</div>` : ''}
+  <div class="divider"></div>
+  <div class="row"><span>To'lov turi:</span><span class="val">${payment.type}</span></div>
+  <div class="row" style="font-size:15px">
+    <span style="color:#1b6b6b;font-weight:700">To'landi:</span>
+    <span class="val green">+${payment.amount.toLocaleString()} UZS</span>
+  </div>
+  <div class="row">
+    <span>Joriy balans:</span>
+    <span class="val ${(student?.balance || 0) >= 0 ? 'green' : 'red'}">${(student?.balance || 0).toLocaleString()} UZS</span>
+  </div>
+  <div class="divider"></div>
+  <div class="footer">To'lovingiz uchun rahmat!</div>
+</div>
+</body></html>`);
+        popup.document.close();
+        popup.focus();
+        setTimeout(() => { popup.print(); popup.close(); }, 400);
+    };
+
     const [newPayment, setNewPayment] = useState<Omit<Payment, 'id' | 'schoolId'>>({ 
         studentId: 0, amount: 0, type: 'Naqd', description: '', date: new Date().toISOString().split('T')[0] 
     });
@@ -165,33 +223,7 @@ export default function Finance() {
                     <div className="relative bg-white dark:bg-gray-800 rounded-[2rem] border border-gray-100 dark:border-gray-700/50 shadow-2xl w-full max-w-md p-8 overflow-hidden">
                         
                         {createdPaymentForReceipt ? (
-                            <div className="space-y-6" id="print-receipt-container">
-                                <style dangerouslySetInnerHTML={{ __html: `
-                                    @media print {
-                                        body > * {
-                                            display: none !important;
-                                        }
-                                        #print-receipt-container, #print-receipt-container * {
-                                            display: block !important;
-                                            visibility: visible !important;
-                                        }
-                                        #print-receipt-container {
-                                            position: absolute !important;
-                                            left: 0 !important;
-                                            top: 0 !important;
-                                            width: 100% !important;
-                                            margin: 0 !important;
-                                            padding: 20px !important;
-                                            background: white !important;
-                                            color: black !important;
-                                            box-shadow: none !important;
-                                            border: none !important;
-                                        }
-                                        .no-print {
-                                            display: none !important;
-                                        }
-                                    }
-                                `}} />
+                            <div className="space-y-6">
                                 <div className="text-center space-y-1">
                                     <h3 className="text-sm font-black uppercase tracking-widest text-[#1b6b6b] dark:text-teal-400">SARIOSIYO CENTER</h3>
                                     <p className="text-[10px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-widest">TO'LOV CHEKI (RECEIPT)</p>
@@ -259,10 +291,10 @@ export default function Finance() {
                                     </div>
                                 </div>
 
-                                <div className="flex gap-3 no-print">
+                                <div className="flex gap-3">
                                     <button
                                         type="button"
-                                        onClick={() => window.print()}
+                                        onClick={() => handlePrintReceipt(createdPaymentForReceipt, selectedStudent)}
                                         className="flex-1 py-3 bg-[#1b6b6b] hover:bg-[#155252] text-white text-xs font-extrabold uppercase tracking-widest rounded-2xl transition-all cursor-pointer shadow-lg shadow-[#1b6b6b]/20 text-center"
                                     >
                                         Chop etish (Print)
