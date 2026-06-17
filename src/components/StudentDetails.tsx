@@ -1670,36 +1670,41 @@ function StatCardV3({ label, value, subValue, icon, color }: any) {
 }
 
 function PaymentAddModal({ studentId, onClose, onAdd }: { studentId: number; onClose: () => void; onAdd: (data: any) => void }) {
+    const { students, groups, courses, payments } = useCRM();
     const [amount, setAmount] = useState('');
     const [type, setType] = useState('Naqd');
+    const [createdPaymentForReceipt, setCreatedPaymentForReceipt] = useState<any>(null);
+
+    const student = students.find(s => s.id === studentId);
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         const paymentData = { studentId, amount: Number(amount), type, date: new Date().toISOString().split('T')[0], description: '' };
-        await onAdd(paymentData);
+        const created = await onAdd(paymentData);
+        setCreatedPaymentForReceipt(created);
         
-        if (window.confirm("To'lov haqida ota-onaga SMS xabarnoma yuborilsinmi?")) {
-            try {
-                const token = localStorage.getItem('token');
-                await fetch('/api/sms/send', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'Authorization': `Bearer ${token}`
-                    },
-                    body: JSON.stringify({ 
-                        phone: 'AUTO_RESOLVE',
-                        studentId,
-                        message: `Sariosiyo o'quv markazi: to'lov qabul qilindi: ${Number(amount).toLocaleString()} UZS.`,
-                        type: 'PAYMENT'
-                    })
-                });
-            } catch (err) {
-                console.error("Payment SMS failed", err);
+        setTimeout(async () => {
+            if (window.confirm("To'lov haqida ota-onaga SMS xabarnoma yuborilsinmi?")) {
+                try {
+                    const token = localStorage.getItem('token');
+                    await fetch('/api/sms/send', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': `Bearer ${token}`
+                        },
+                        body: JSON.stringify({ 
+                            phone: 'AUTO_RESOLVE',
+                            studentId,
+                            message: `Sariosiyo o'quv markazi: to'lov qabul qilindi: ${Number(amount).toLocaleString()} UZS.`,
+                            type: 'PAYMENT'
+                        })
+                    });
+                } catch (err) {
+                    console.error("Payment SMS failed", err);
+                }
             }
-        }
-        
-        onClose();
+        }, 300);
     };
 
     const labelCls = "block text-[10px] font-extrabold uppercase tracking-widest text-gray-400 mb-2";
@@ -1708,37 +1713,227 @@ function PaymentAddModal({ studentId, onClose, onAdd }: { studentId: number; onC
     return (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
             <div className="absolute inset-0 bg-gray-900/60 backdrop-blur-sm" onClick={onClose} />
-            <div className="relative bg-white dark:bg-gray-800 w-full max-w-sm rounded-[2rem] shadow-2xl overflow-hidden border border-gray-100 dark:border-gray-700/50" onClick={e => e.stopPropagation()}>
-                <div className="p-6 flex items-center justify-between border-b border-gray-100 dark:border-gray-700/50 bg-gray-55 dark:bg-gray-900/50">
-                    <div>
-                        <h3 className="text-lg font-bold text-gray-900 dark:text-white uppercase tracking-tight">To'lov Qo'shish</h3>
-                        <p className="text-[10px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-widest mt-0.5">Yangi tranzaksiya kiritish</p>
-                    </div>
-                    <button onClick={onClose} className="w-9 h-9 flex items-center justify-center text-gray-400 hover:bg-white dark:hover:bg-gray-700 rounded-xl cursor-pointer"><XCircle size={18} /></button>
-                </div>
-                <form onSubmit={handleSubmit} className="p-6 space-y-6">
-                    <div>
-                        <label className={labelCls}>SUMMA (UZS)</label>
-                        <input type="number" value={amount} onChange={e => setAmount(e.target.value)} required placeholder="500,000" className={inputCls} />
-                    </div>
-                    <div>
-                        <label className={labelCls}>TO'LOV USULI</label>
-                        <div className="grid grid-cols-2 gap-2">
-                            {['Naqd', 'Karta', 'Payme', 'Klik'].map(t => (
-                                <button key={t} type="button" onClick={() => setType(t)}
-                                    className={`py-2.5 rounded-xl text-xs font-bold uppercase tracking-widest transition-all border cursor-pointer ${type === t ? 'bg-[#1b6b6b] border-[#1b6b6b] text-white shadow-lg shadow-[#1b6b6b]/20 scale-105' : 'bg-white dark:bg-gray-800 border-gray-100 dark:border-gray-700 text-gray-400 dark:text-gray-500 hover:bg-gray-50'}`}>
-                                    {t}
-                                </button>
-                            ))}
+            <div className="relative bg-white dark:bg-gray-800 w-full max-w-md rounded-[2rem] shadow-2xl overflow-hidden border border-gray-100 dark:border-gray-700/50" onClick={e => e.stopPropagation()}>
+                
+                {createdPaymentForReceipt ? (
+                    <div className="p-8 space-y-6" id="print-receipt-container">
+                        <style dangerouslySetInnerHTML={{ __html: `
+                            @media print {
+                                body > * {
+                                    display: none !important;
+                                }
+                                #print-receipt-container, #print-receipt-container * {
+                                    display: block !important;
+                                    visibility: visible !important;
+                                }
+                                #print-receipt-container {
+                                    position: absolute !important;
+                                    left: 0 !important;
+                                    top: 0 !important;
+                                    width: 100% !important;
+                                    margin: 0 !important;
+                                    padding: 20px !important;
+                                    background: white !important;
+                                    color: black !important;
+                                    box-shadow: none !important;
+                                    border: none !important;
+                                }
+                                .no-print {
+                                    display: none !important;
+                                }
+                            }
+                        `}} />
+                        <div className="text-center space-y-1">
+                            <h3 className="text-sm font-black uppercase tracking-widest text-[#1b6b6b] dark:text-teal-400">SARIOSIYO CENTER</h3>
+                            <p className="text-[10px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-widest">TO'LOV CHEKI (RECEIPT)</p>
+                        </div>
+                        
+                        <div className="bg-gray-50 dark:bg-gray-900/30 p-6 rounded-3xl border border-gray-100 dark:border-gray-750 font-mono text-xs text-gray-800 dark:text-gray-300 space-y-4 shadow-inner">
+                            <div className="border-b border-dashed border-gray-300 dark:border-gray-700 pb-3 space-y-1">
+                                <div className="flex justify-between">
+                                    <span>Chek #</span>
+                                    <span className="font-black">#{createdPaymentForReceipt.id}</span>
+                                </div>
+                                <div className="flex justify-between">
+                                    <span>Sana:</span>
+                                    <span className="font-semibold">{createdPaymentForReceipt.date}</span>
+                                </div>
+                            </div>
+
+                            <div className="space-y-2">
+                                <div>
+                                    <span className="text-[9px] text-gray-450 uppercase block">O'quvchi:</span>
+                                    <span className="font-black text-gray-900 dark:text-white text-[13px]">{student?.name}</span>
+                                </div>
+                                {student?.phone && (
+                                    <div>
+                                        <span className="text-[9px] text-gray-450 uppercase block">Telefon:</span>
+                                        <span>{student.phone}</span>
+                                    </div>
+                                )}
+                                {(() => {
+                                    const sg = groups.filter(g => g.studentIds.includes(studentId));
+                                    if (sg.length === 0) return null;
+                                    return (
+                                        <div>
+                                            <span className="text-[9px] text-gray-450 uppercase block">Kurslar:</span>
+                                            <div className="font-semibold">
+                                                {sg.map(g => {
+                                                    const courseName = courses.find(c => c.id === g.courseId)?.name || '';
+                                                    return <div key={g.id}>- {g.name} {courseName && `(${courseName})`}</div>;
+                                                })}
+                                            </div>
+                                        </div>
+                                    );
+                                })()}
+                            </div>
+
+                            <div className="border-t border-dashed border-gray-300 dark:border-gray-700 pt-3 space-y-1.5">
+                                <div className="flex justify-between text-[13px]">
+                                    <span className="font-bold">To'lov turi:</span>
+                                    <span className="font-black uppercase">{createdPaymentForReceipt.type}</span>
+                                </div>
+                                <div className="flex justify-between text-base">
+                                    <span className="font-bold text-[#1b6b6b]">To'landi:</span>
+                                    <span className="font-black text-emerald-600 tabular-nums">+{createdPaymentForReceipt.amount.toLocaleString()} UZS</span>
+                                </div>
+                                <div className="flex justify-between text-[13px]">
+                                    <span className="font-bold">Joriy balans:</span>
+                                    <span className={`font-black tabular-nums ${student && student.balance >= 0 ? 'text-emerald-500' : 'text-rose-500'}`}>
+                                        {(student?.balance || 0).toLocaleString()} UZS
+                                    </span>
+                                </div>
+                            </div>
+
+                            <div className="border-t border-dashed border-gray-300 dark:border-gray-700 pt-3 text-center text-[9px] text-gray-400 uppercase tracking-widest font-bold">
+                                To'lovingiz uchun rahmat!
+                            </div>
+                        </div>
+
+                        <div className="flex gap-3 no-print">
+                            <button
+                                type="button"
+                                onClick={() => window.print()}
+                                className="flex-1 py-3 bg-[#1b6b6b] hover:bg-[#155252] text-white text-xs font-extrabold uppercase tracking-widest rounded-2xl transition-all cursor-pointer shadow-lg shadow-[#1b6b6b]/20 text-center"
+                            >
+                                Chop etish (Print)
+                            </button>
+                            <button
+                                type="button"
+                                onClick={onClose}
+                                className="flex-1 py-3 bg-gray-150 dark:bg-gray-700 text-gray-700 dark:text-white text-xs font-extrabold uppercase tracking-widest rounded-2xl transition-all cursor-pointer hover:bg-gray-200 dark:hover:bg-gray-650"
+                            >
+                                Yopish (Close)
+                            </button>
                         </div>
                     </div>
-                    <div className="pt-4 border-t border-dashed border-gray-100 dark:border-gray-700/50">
-                        <button type="submit" className="w-full py-3 bg-[#1b6b6b] hover:bg-[#155252] text-white rounded-xl font-bold text-[10px] uppercase tracking-widest transition-all flex items-center justify-center gap-1.5 shadow-lg shadow-[#1b6b6b]/20 cursor-pointer">
-                            <Save size={14} />
-                            Saqlash
-                        </button>
-                    </div>
-                </form>
+                ) : (
+                    <>
+                        <div className="p-6 flex items-center justify-between border-b border-gray-100 dark:border-gray-700/50 bg-gray-55 dark:bg-gray-900/50">
+                            <div>
+                                <h3 className="text-lg font-bold text-gray-900 dark:text-white uppercase tracking-tight">To'lov Qo'shish</h3>
+                                <p className="text-[10px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-widest mt-0.5">Yangi tranzaksiya kiritish</p>
+                            </div>
+                            <button onClick={onClose} className="w-9 h-9 flex items-center justify-center text-gray-400 hover:bg-white dark:hover:bg-gray-700 rounded-xl cursor-pointer"><XCircle size={18} /></button>
+                        </div>
+                        <form onSubmit={handleSubmit} className="p-6 space-y-6">
+                            
+                            {student && (
+                                <div className="p-4 bg-gray-50 dark:bg-gray-900/50 rounded-2xl border border-gray-100 dark:border-gray-800/80 space-y-3">
+                                    <div>
+                                        <span className="text-[8px] font-black text-[#1b6b6b] uppercase tracking-widest block">O'quvchi</span>
+                                        <h4 className="text-xs font-bold text-gray-900 dark:text-white mt-0.5">{student.name}</h4>
+                                        {student.phone && <p className="text-[9px] text-gray-400 font-bold mt-0.5">{student.phone}</p>}
+                                    </div>
+                                    
+                                    <div className="grid grid-cols-2 gap-3 pt-2 border-t border-dashed border-gray-200 dark:border-gray-700/50">
+                                        <div>
+                                            <span className="text-[8px] font-black text-gray-400 uppercase tracking-widest block">Joriy Balans</span>
+                                            <span className={`text-[11px] font-black block mt-0.5 tabular-nums ${student.balance >= 0 ? 'text-emerald-600' : 'text-rose-600'}`}>
+                                                {student.balance.toLocaleString()} UZS
+                                            </span>
+                                        </div>
+                                        <div>
+                                            <span className="text-[8px] font-black text-gray-400 uppercase tracking-widest block">Oxirgi to'lov</span>
+                                            {(() => {
+                                                const sp = payments.filter(p => p.studentId === student.id && p.amount > 0);
+                                                const lp = sp.length > 0 ? sp[sp.length - 1] : null;
+                                                return lp ? (
+                                                    <span className="text-[10px] font-bold text-gray-600 dark:text-gray-300 block mt-0.5 tabular-nums">
+                                                        {lp.amount.toLocaleString()} UZS ({lp.date})
+                                                    </span>
+                                                ) : (
+                                                    <span className="text-[10px] text-gray-400 italic block mt-0.5">Mavjud emas</span>
+                                                );
+                                            })()}
+                                        </div>
+                                    </div>
+
+                                    <div className="pt-2 border-t border-dashed border-gray-200 dark:border-gray-700/50">
+                                        <span className="text-[8px] font-black text-gray-400 uppercase tracking-widest block">Kurslar</span>
+                                        {(() => {
+                                            const sg = groups.filter(g => g.studentIds.includes(student.id));
+                                            return sg.length > 0 ? (
+                                                <div className="flex flex-wrap gap-1 mt-1">
+                                                    {sg.map(g => {
+                                                        const courseName = courses.find(c => c.id === g.courseId)?.name || '';
+                                                        return (
+                                                            <span key={g.id} className="px-2 py-0.5 bg-white dark:bg-gray-800 text-[8px] font-black uppercase tracking-wider text-[#1b6b6b] border border-teal-100/50 dark:border-teal-900/40 rounded-md">
+                                                                {g.name} {courseName && `(${courseName})`}
+                                                            </span>
+                                                        );
+                                                    })}
+                                                </div>
+                                            ) : (
+                                                <span className="text-[9px] text-gray-400 italic block mt-0.5">Kurslarga a'zo emas</span>
+                                            );
+                                        })()}
+                                    </div>
+                                </div>
+                            )}
+
+                            <div>
+                                <label className={labelCls}>SUMMA (UZS)</label>
+                                <input type="number" value={amount} onChange={e => setAmount(e.target.value)} required placeholder="500,000" className={inputCls} />
+                                <div className="flex flex-wrap gap-1.5 mt-2">
+                                    {[300000, 400000, 500000, 600000, 800000].map(amt => (
+                                        <button
+                                            key={amt}
+                                            type="button"
+                                            onClick={() => setAmount(String(amt))}
+                                            className={`px-3 py-1.5 text-[9px] font-black uppercase tracking-wider border rounded-xl transition-all cursor-pointer ${
+                                                Number(amount) === amt 
+                                                    ? 'bg-[#1b6b6b] border-[#1b6b6b] text-white shadow-sm' 
+                                                    : 'bg-gray-55 dark:bg-gray-900/30 dark:border-gray-800 hover:bg-gray-100 text-gray-550 dark:text-gray-400'
+                                            }`}
+                                        >
+                                            {amt.toLocaleString()}
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
+
+                            <div>
+                                <label className={labelCls}>TO'LOV USULI</label>
+                                <div className="grid grid-cols-3 gap-2">
+                                    {['Naqd', 'Karta', "O'tkazma"].map(t => (
+                                        <button key={t} type="button" onClick={() => setType(t)}
+                                            className={`py-2.5 rounded-xl text-xs font-bold uppercase tracking-widest transition-all border cursor-pointer ${type === t ? 'bg-[#1b6b6b] border-[#1b6b6b] text-white shadow-lg shadow-[#1b6b6b]/20 scale-102' : 'bg-white dark:bg-gray-800 border-gray-100 dark:border-gray-700 text-gray-400 dark:text-gray-500 hover:bg-gray-50'}`}>
+                                            {t}
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
+                            
+                            <div className="pt-4 border-t border-dashed border-gray-100 dark:border-gray-700/50">
+                                <button type="submit" className="w-full py-3 bg-[#1b6b6b] hover:bg-[#155252] text-white rounded-xl font-bold text-[10px] uppercase tracking-widest transition-all flex items-center justify-center gap-1.5 shadow-lg shadow-[#1b6b6b]/20 cursor-pointer">
+                                    <Save size={14} />
+                                    Saqlash va Chek chiqarish
+                                </button>
+                            </div>
+                        </form>
+                    </>
+                )}
             </div>
         </div>
     );

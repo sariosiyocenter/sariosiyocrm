@@ -412,7 +412,7 @@ export default function RoomSchedule() {
             <div className="bg-gray-50 dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl p-4 flex gap-3 text-slate-500 dark:text-slate-400">
                 <Info size={16} className="text-[#1b6b6b] flex-shrink-0 mt-0.5" />
                 <p className="text-[10px] leading-relaxed">
-                    <strong>Jadval Xaritasi Ko'rsatmasi:</strong> Kunlik yoki Haftalik xaritada xonalarning band bo'lgan vaqtlarini to'liq va aniq ko'rish mumkin. Xona nomiga yoki dars jadvali katagiga bosish orqali guruhlar tarkibi va dars soatlarini interaktiv tahrirlashingiz mumkin.
+                    <strong>Jadval Xaritasi Ko'rsatmasi:</strong> Kunlik yoki Haftalik xaritada xonalarning band bo'lgan vaqtlarini to'liq va aniq ko'rish mumkin. Xona nomiga yoki dars jadvali katagiga bosish orqali darslar tarkibi va dars soatlarini interaktiv tahrirlashingiz mumkin.
                 </p>
             </div>
 
@@ -430,7 +430,7 @@ export default function RoomSchedule() {
                                 </div>
                                 <div>
                                     <h3 className="text-sm font-black text-gray-900 dark:text-white uppercase tracking-tight">{selectedRoom.name}</h3>
-                                    <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">{selectedRoom.capacity} kishilik • {getGroupsForRoomAndDay(selectedRoom.id, true).length + getGroupsForRoomAndDay(selectedRoom.id, false).length} ta guruh</p>
+                                    <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">{selectedRoom.capacity} kishilik • {getGroupsForRoomAndDay(selectedRoom.id, true).length + getGroupsForRoomAndDay(selectedRoom.id, false).length} ta dars</p>
                                 </div>
                             </div>
                             <button onClick={() => { setSelectedRoom(null); setEditingGroup(null); }}
@@ -446,7 +446,7 @@ export default function RoomSchedule() {
                                     <div className="w-12 h-12 rounded-2xl bg-gray-50 dark:bg-gray-900 border border-gray-100 dark:border-gray-800 flex items-center justify-center mb-3 text-gray-400">
                                         <Users size={20} />
                                     </div>
-                                    <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Xonada guruhlar yo'q</p>
+                                    <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Xonada darslar yo'q</p>
                                 </div>
                             ) : groups.filter(g => Number(g.room) === Number(selectedRoom.id)).map(g => {
                                 const color = getGroupColor(g.days);
@@ -548,7 +548,7 @@ export default function RoomSchedule() {
                         {/* Modal Footer */}
                         <div className="px-6 py-4 border-t border-gray-150 dark:border-gray-700 flex items-center justify-between flex-shrink-0">
                             <p className="text-[9px] font-bold text-gray-400 uppercase tracking-widest">
-                                Guruh vaqtini o'zgartirish uchun ✏️ belgisini bosing
+                                Dars vaqtini o'zgartirish uchun ✏️ belgisini bosing
                             </p>
                             <button onClick={() => { setSelectedRoom(null); setEditingGroup(null); }}
                                 className="px-5 py-2 bg-gray-105 hover:bg-gray-200 dark:bg-gray-800 dark:hover:bg-gray-705 text-gray-700 dark:text-white rounded-xl text-[10px] font-extrabold uppercase tracking-widest transition-all cursor-pointer">

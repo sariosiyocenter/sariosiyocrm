@@ -909,9 +909,9 @@ export default function Students() {
                                 )}
 
                                 <div className="border-t border-dashed border-gray-150 dark:border-gray-700/50 pt-4 mt-4 space-y-3">
-                                    <span className="block text-[9px] font-black uppercase text-[#1b6b6b] tracking-wider text-left">Guruhga qo'shish</span>
+                                    <span className="block text-[9px] font-black uppercase text-[#1b6b6b] tracking-wider text-left">Kursga qo'shish</span>
                                     {groups.length === 0 ? (
-                                        <p className="text-[10px] text-gray-400 italic">Guruhlar mavjud emas</p>
+                                        <p className="text-[10px] text-gray-400 italic">Kurslar mavjud emas</p>
                                     ) : (
                                         <div className="flex flex-wrap gap-2">
                                             {groups.map(g => {

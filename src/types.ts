@@ -106,7 +106,7 @@ export interface Payment {
     id: number;
     studentId: number;
     amount: number;
-    type: 'Naqd' | 'Karta' | 'Peyme' | 'Klik';
+    type: 'Naqd' | 'Karta' | 'Peyme' | 'Klik' | 'O\'tkazma';
     date: string;
     description: string;
     schoolId: number;

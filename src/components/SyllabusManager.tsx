@@ -34,9 +34,8 @@ export default function SyllabusManager() {
 
   const linkedGroups = activeSyllabus 
     ? (groups || []).filter(g => {
-        if (g.syllabusId === activeSyllabus.id) return true;
-        const groupCourse = courses.find(c => c.id === g.courseId);
-        return groupCourse?.syllabusId === activeSyllabus.id;
+        const effectiveSyllabusId = g.syllabusId || courses.find(c => c.id === g.courseId)?.syllabusId;
+        return effectiveSyllabusId === activeSyllabus.id;
       })
     : [];
 
@@ -75,7 +74,7 @@ export default function SyllabusManager() {
   };
 
   const handleDeleteSyllabus = async (id: number) => {
-    if (window.confirm("Haqiqatan ham ushbu o'quv dasturini o'chirmoqchisiz? Guruhlardagi bog'liqliklar bekor qilinadi.")) {
+    if (window.confirm("Haqiqatan ham ushbu o'quv dasturini o'chirmoqchisiz? Kurslardagi bog'liqliklar bekor qilinadi.")) {
       try {
         await deleteSyllabus(id);
         if (selectedSyllabusId === id) {
@@ -182,7 +181,7 @@ export default function SyllabusManager() {
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {syllabuses.map(s => {
               const count = (topics || []).filter(t => t.syllabusId === s.id).length;
-              const activeGroups = (groups || []).filter(g => g.syllabusId === s.id).length;
+              const activeGroups = (groups || []).filter(g => (g.syllabusId || courses.find(c => c.id === g.courseId)?.syllabusId) === s.id).length;
               return (
                 <div 
                   key={s.id} 
@@ -211,7 +210,7 @@ export default function SyllabusManager() {
                     <div>
                       <h3 className="text-sm font-black text-gray-900 dark:text-white uppercase tracking-tight line-clamp-1">{s.name}</h3>
                       <p className="text-[10px] text-gray-400 font-bold mt-1 uppercase tracking-wider">
-                        {count} ta dars/mavzu • {activeGroups} ta guruh biriktirilgan
+                        {count} ta dars/mavzu • {activeGroups} ta kurs biriktirilgan
                       </p>
                     </div>
                     {s.materials && (
@@ -359,16 +358,16 @@ export default function SyllabusManager() {
               </div>
               <div className="bg-gray-55 dark:bg-gray-900/30 p-3.5 rounded-2xl text-center">
                 <span className="text-[20px] font-black text-emerald-500 block">{linkedGroups.length}</span>
-                <span className="text-[8px] font-bold text-gray-400 uppercase tracking-widest">Guruhlar soni</span>
+                <span className="text-[8px] font-bold text-gray-400 uppercase tracking-widest">Kurslar soni</span>
               </div>
             </div>
           </div>
 
           {/* Linked Groups */}
           <div className="bg-white dark:bg-gray-800 p-6 rounded-3xl border border-gray-100 dark:border-gray-700/50 shadow-sm space-y-4">
-            <h3 className="text-xs font-black text-gray-900 dark:text-white uppercase tracking-wider border-b border-gray-55 dark:border-gray-700/50 pb-3 font-bold">Biriktirilgan Guruhlar</h3>
+            <h3 className="text-xs font-black text-gray-900 dark:text-white uppercase tracking-wider border-b border-gray-55 dark:border-gray-700/50 pb-3 font-bold">Biriktirilgan Kurslar</h3>
             {linkedGroups.length === 0 ? (
-              <p className="text-xs text-gray-400 italic font-bold py-2">Ushbu dastur hali hech bir guruhga ulanmagan. Kurs sahifasida "O'quv programmasi" bo'limidan ulanadi.</p>
+              <p className="text-xs text-gray-400 italic font-bold py-2">Ushbu dastur hali hech bir kursga ulanmagan. Kurs sahifasida "O'quv programmasi" bo'limidan ulanadi.</p>
             ) : (
               <div className="space-y-3">
                 {linkedGroups.map(g => (
@@ -380,7 +379,7 @@ export default function SyllabusManager() {
                     <a 
                       href={`/courses/${g.id}`} 
                       className="p-2 bg-white dark:bg-gray-850 hover:bg-teal-50 dark:hover:bg-teal-950/20 text-gray-400 hover:text-[#1b6b6b] border border-gray-100 dark:border-gray-700 rounded-xl transition-all cursor-pointer"
-                      title="Guruhga o'tish"
+                      title="Kursga o'tish"
                     >
                       <ExternalLink size={13} />
                     </a>

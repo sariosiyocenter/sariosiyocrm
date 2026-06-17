@@ -1,8 +1,7 @@
 import React, { useState } from 'react';
 import {
     TrendingUp, TrendingDown, DollarSign, Wallet,
-    ArrowUpRight, Plus, X, Trash2, SlidersHorizontal, ListChecks,
-    CreditCard, UserMinus, ClipboardList, Award, Target, BarChart3, GraduationCap
+    Plus, X, Trash2, SlidersHorizontal
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useCRM } from '../context/CRMContext';
@@ -13,13 +12,17 @@ const inp = "w-full px-4 py-3 bg-gray-50 dark:bg-gray-900/50 border border-gray-
 const lbl = "block text-[10px] font-extrabold uppercase tracking-widest text-gray-400 mb-2";
 
 export default function Finance() {
-    const { students, payments, expenses, addPayment, addExpense, deleteExpense } = useCRM();
+    const { students, payments, expenses, addPayment, addExpense, deleteExpense, groups, courses } = useCRM();
     const { t } = useLang();
     const navigate = useNavigate();
     const [activeTab, setActiveTab] = useState<'payments' | 'expenses'>('payments');
     const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
     const [isExpenseModalOpen, setIsExpenseModalOpen] = useState(false);
     
+    const [studentSearch, setStudentSearch] = useState('');
+    const [selectedStudent, setSelectedStudent] = useState<any>(null);
+    const [createdPaymentForReceipt, setCreatedPaymentForReceipt] = useState<any>(null);
+
     const [newPayment, setNewPayment] = useState<Omit<Payment, 'id' | 'schoolId'>>({ 
         studentId: 0, amount: 0, type: 'Naqd', description: '', date: new Date().toISOString().split('T')[0] 
     });
@@ -38,18 +41,6 @@ export default function Finance() {
         { label: t('stat_expenses'), value: totalExpenditure, icon: <TrendingDown size={20} />, color: 'rose' },
         { label: t('stat_profit'), value: profit, icon: <TrendingUp size={20} />, color: 'teal' },
         { label: t('stat_balance'), value: activeBalance, icon: <Wallet size={20} />, color: 'amber' },
-    ];
-
-    const reports = [
-        { id: 'payments', label: t('rep_payments'), icon: <DollarSign size={14} className="text-emerald-500" /> },
-        { id: 'students_payment', label: t('rep_students_payment'), icon: <CreditCard size={14} className="text-blue-500" /> },
-        { id: 'left_students', label: t('rep_left_students'), icon: <UserMinus size={14} className="text-rose-500" /> },
-        { id: 'staff_attendance', label: t('rep_staff_attendance'), icon: <ClipboardList size={14} className="text-teal-500" /> },
-        { id: 'bonuses', label: t('rep_bonuses'), icon: <Award size={14} className="text-amber-500" /> },
-        { id: 'leads', label: t('rep_leads'), icon: <Target size={14} className="text-indigo-500" /> },
-        { id: 'students_general', label: t('rep_students_general'), icon: <BarChart3 size={14} className="text-violet-500" /> },
-        { id: 'graduates', label: t('rep_graduates'), icon: <GraduationCap size={14} className="text-pink-500" /> },
-        { id: 'stats', label: t('rep_stats'), icon: <TrendingUp size={14} className="text-cyan-500" /> }
     ];
 
     return (
@@ -108,132 +99,374 @@ export default function Finance() {
                 })}
             </div>
 
-            {/* Split layout */}
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                <div className="lg:col-span-2 space-y-6">
-                    {/* Tab Navigation */}
-                    <div className="flex items-center gap-2 bg-gray-50 dark:bg-gray-900 p-1.5 rounded-xl border border-gray-100 dark:border-gray-700/50 w-fit">
-                        <button onClick={() => setActiveTab('payments')} className={`px-5 py-2 rounded-lg text-[10px] font-extrabold uppercase tracking-widest transition-all cursor-pointer ${activeTab === 'payments' ? 'bg-[#1b6b6b] text-white shadow' : 'text-gray-400 hover:text-gray-600'}`}>{t('payments_tab')}</button>
-                        <button onClick={() => setActiveTab('expenses')} className={`px-5 py-2 rounded-lg text-[10px] font-extrabold uppercase tracking-widest transition-all cursor-pointer ${activeTab === 'expenses' ? 'bg-[#1b6b6b] text-white shadow' : 'text-gray-400 hover:text-gray-600'}`}>{t('expenses_tab')}</button>
-                    </div>
-
-                    <div className="bg-white dark:bg-gray-800 rounded-3xl border border-gray-100 dark:border-gray-700/50 shadow-sm p-6">
-                        <h3 className="text-xs font-black text-gray-900 dark:text-white uppercase tracking-wider mb-4">
-                            {activeTab === 'payments' ? t('latest_payments') : t('latest_expenses')}
-                        </h3>
-                        {activeTab === 'payments' ? (
-                            <div className="space-y-2">
-                                {payments.length === 0 ? (
-                                    <p className="text-center py-12 text-[10px] text-gray-400 font-bold uppercase tracking-widest">To'lovlar mavjud emas</p>
-                                ) : (
-                                    payments.filter(p => p.amount > 0).slice(-10).reverse().map(p => (
-                                        <div key={p.id} className="flex items-center justify-between p-4 rounded-xl bg-gray-50/50 dark:bg-gray-900/40 border border-transparent hover:border-gray-100 transition-all">
-                                            <div>
-                                                <p className="text-xs font-bold text-gray-900 dark:text-white uppercase">{students.find(s => s.id === p.studentId)?.name || 'Noma\'lum'}</p>
-                                                <span className="text-[9px] text-gray-400 font-bold block mt-0.5 uppercase tracking-wide">{p.date} • {p.type}</span>
-                                            </div>
-                                            <span className="text-xs font-black text-emerald-600">+{p.amount.toLocaleString()} UZS</span>
-                                        </div>
-                                    ))
-                                )}
-                            </div>
-                        ) : (
-                            <div className="space-y-2">
-                                {expenses.length === 0 ? (
-                                    <p className="text-center py-12 text-[10px] text-gray-400 font-bold uppercase tracking-widest">Xarajatlar mavjud emas</p>
-                                ) : (
-                                    expenses.slice(-10).reverse().map(e => (
-                                        <div key={e.id} className="flex items-center justify-between p-4 rounded-xl bg-gray-50/50 dark:bg-gray-900/40 border border-transparent hover:border-gray-100 transition-all">
-                                            <div>
-                                                <p className="text-xs font-bold text-gray-900 dark:text-white uppercase">{e.category}</p>
-                                                <span className="text-[9px] text-gray-400 font-bold block mt-0.5 uppercase tracking-wide">{e.date} • {e.description || 'Izohsiz'}</span>
-                                            </div>
-                                            <div className="flex items-center gap-3">
-                                                <span className="text-xs font-black text-rose-600">-{e.amount.toLocaleString()} UZS</span>
-                                                <button onClick={() => deleteExpense(e.id)} className="w-8 h-8 rounded-lg text-rose-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/20 flex items-center justify-center transition-colors cursor-pointer">
-                                                    <Trash2 size={14} />
-                                                </button>
-                                            </div>
-                                        </div>
-                                    ))
-                                )}
-                            </div>
-                        )}
-                    </div>
+            {/* Main Content */}
+            <div className="space-y-6">
+                {/* Tab Navigation */}
+                <div className="flex items-center gap-2 bg-gray-50 dark:bg-gray-900 p-1.5 rounded-xl border border-gray-100 dark:border-gray-700/50 w-fit">
+                    <button onClick={() => setActiveTab('payments')} className={`px-5 py-2 rounded-lg text-[10px] font-extrabold uppercase tracking-widest transition-all cursor-pointer ${activeTab === 'payments' ? 'bg-[#1b6b6b] text-white shadow' : 'text-gray-400 hover:text-gray-600'}`}>{t('payments_tab')}</button>
+                    <button onClick={() => setActiveTab('expenses')} className={`px-5 py-2 rounded-lg text-[10px] font-extrabold uppercase tracking-widest transition-all cursor-pointer ${activeTab === 'expenses' ? 'bg-[#1b6b6b] text-white shadow' : 'text-gray-400 hover:text-gray-600'}`}>{t('expenses_tab')}</button>
                 </div>
 
-                {/* Right Side: Reports links */}
-                <div className="bg-white dark:bg-gray-800 rounded-3xl border border-gray-100 dark:border-gray-700/50 shadow-sm overflow-hidden h-fit transition-all hover:shadow-md">
-                    <div className="px-6 py-5 border-b border-gray-100 dark:border-gray-700/50 flex items-center justify-between">
-                        <div className="flex items-center gap-2.5">
-                            <div className="w-7 h-7 rounded-lg bg-gray-50 dark:bg-gray-900 flex items-center justify-center text-[#1b6b6b]">
-                                <ListChecks size={15} />
-                            </div>
-                            <span className="text-xs font-black uppercase text-gray-800 dark:text-gray-250 tracking-wider">Tizim hisobotlari</span>
-                        </div>
-                    </div>
-                    <div className="divide-y divide-gray-100 dark:divide-gray-750">
-                        {reports.map((r) => (
-                            <button
-                                key={r.id}
-                                onClick={() => navigate('/reports', { state: { activeReport: r.id } })}
-                                className="w-full px-6 py-3.5 text-left text-[11px] font-bold text-gray-600 dark:text-gray-400 hover:text-[#1b6b6b] dark:hover:text-white hover:bg-gray-50/50 dark:hover:bg-gray-750/30 transition-all flex items-center justify-between uppercase tracking-wider cursor-pointer group"
-                            >
-                                <div className="flex items-center gap-3">
-                                    <div className="p-1.5 rounded-lg bg-gray-50/80 dark:bg-gray-900 group-hover:bg-white dark:group-hover:bg-gray-800 transition-colors">
-                                        {r.icon}
+                <div className="bg-white dark:bg-gray-800 rounded-3xl border border-gray-100 dark:border-gray-700/50 shadow-sm p-6">
+                    <h3 className="text-xs font-black text-gray-900 dark:text-white uppercase tracking-wider mb-4">
+                        {activeTab === 'payments' ? t('latest_payments') : t('latest_expenses')}
+                    </h3>
+                    {activeTab === 'payments' ? (
+                        <div className="space-y-2">
+                            {payments.length === 0 ? (
+                                <p className="text-center py-12 text-[10px] text-gray-400 font-bold uppercase tracking-widest">To'lovlar mavjud emas</p>
+                            ) : (
+                                payments.filter(p => p.amount > 0).slice(-10).reverse().map(p => (
+                                    <div key={p.id} className="flex items-center justify-between p-4 rounded-xl bg-gray-50/50 dark:bg-gray-900/40 border border-transparent hover:border-gray-100 transition-all">
+                                        <div>
+                                            <p className="text-xs font-bold text-gray-900 dark:text-white uppercase">{students.find(s => s.id === p.studentId)?.name || 'Noma\'lum'}</p>
+                                            <span className="text-[9px] text-gray-400 font-bold block mt-0.5 uppercase tracking-wide">{p.date} • {p.type}</span>
+                                        </div>
+                                        <span className="text-xs font-black text-emerald-600">+{p.amount.toLocaleString()} UZS</span>
                                     </div>
-                                    <span>{r.label}</span>
-                                </div>
-                                <ArrowUpRight size={14} className="text-gray-400 dark:text-gray-600 group-hover:text-[#1b6b6b] dark:group-hover:text-white transition-all group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
-                            </button>
-                        ))}
-                    </div>
+                                ))
+                            )}
+                        </div>
+                    ) : (
+                        <div className="space-y-2">
+                            {expenses.length === 0 ? (
+                                <p className="text-center py-12 text-[10px] text-gray-400 font-bold uppercase tracking-widest">Xarajatlar mavjud emas</p>
+                            ) : (
+                                expenses.slice(-10).reverse().map(e => (
+                                    <div key={e.id} className="flex items-center justify-between p-4 rounded-xl bg-gray-50/50 dark:bg-gray-900/40 border border-transparent hover:border-gray-100 transition-all">
+                                        <div>
+                                            <p className="text-xs font-bold text-gray-900 dark:text-white uppercase">{e.category}</p>
+                                            <span className="text-[9px] text-gray-400 font-bold block mt-0.5 uppercase tracking-wide">{e.date} • {e.description || 'Izohsiz'}</span>
+                                        </div>
+                                        <div className="flex items-center gap-3">
+                                            <span className="text-xs font-black text-rose-600">-{e.amount.toLocaleString()} UZS</span>
+                                            <button onClick={() => deleteExpense(e.id)} className="w-8 h-8 rounded-lg text-rose-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/20 flex items-center justify-center transition-colors cursor-pointer">
+                                                <Trash2 size={14} />
+                                            </button>
+                                        </div>
+                                    </div>
+                                ))
+                            )}
+                        </div>
+                    )}
                 </div>
             </div>
 
             {/* Payment Modal */}
             {isPaymentModalOpen && (
                 <div className="fixed inset-0 z-[200] flex items-center justify-center p-4">
-                    <div className="absolute inset-0 bg-gray-900/60 backdrop-blur-sm" onClick={() => setIsPaymentModalOpen(false)} />
-                    <div className="relative bg-white dark:bg-gray-800 rounded-[2rem] border border-gray-100 dark:border-gray-700/50 shadow-2xl w-full max-w-md p-8">
-                        <div className="flex items-center justify-between mb-6 pb-4 border-b border-gray-50 dark:border-gray-700/50">
-                            <div>
-                                <h3 className="text-lg font-black text-gray-900 dark:text-white uppercase tracking-tight">Yangi Kirim</h3>
-                                <p className="text-[10px] font-bold text-[#1b6b6b] uppercase tracking-widest mt-0.5">To'lov qabul qilish</p>
+                    <div className="absolute inset-0 bg-gray-900/60 backdrop-blur-sm" onClick={() => {
+                        setIsPaymentModalOpen(false);
+                        setCreatedPaymentForReceipt(null);
+                        setSelectedStudent(null);
+                        setStudentSearch('');
+                        setNewPayment({ studentId: 0, amount: 0, type: 'Naqd', description: '', date: new Date().toISOString().split('T')[0] });
+                    }} />
+                    <div className="relative bg-white dark:bg-gray-800 rounded-[2rem] border border-gray-100 dark:border-gray-700/50 shadow-2xl w-full max-w-md p-8 overflow-hidden">
+                        
+                        {createdPaymentForReceipt ? (
+                            <div className="space-y-6" id="print-receipt-container">
+                                <style dangerouslySetInnerHTML={{ __html: `
+                                    @media print {
+                                        body > * {
+                                            display: none !important;
+                                        }
+                                        #print-receipt-container, #print-receipt-container * {
+                                            display: block !important;
+                                            visibility: visible !important;
+                                        }
+                                        #print-receipt-container {
+                                            position: absolute !important;
+                                            left: 0 !important;
+                                            top: 0 !important;
+                                            width: 100% !important;
+                                            margin: 0 !important;
+                                            padding: 20px !important;
+                                            background: white !important;
+                                            color: black !important;
+                                            box-shadow: none !important;
+                                            border: none !important;
+                                        }
+                                        .no-print {
+                                            display: none !important;
+                                        }
+                                    }
+                                `}} />
+                                <div className="text-center space-y-1">
+                                    <h3 className="text-sm font-black uppercase tracking-widest text-[#1b6b6b] dark:text-teal-400">SARIOSIYO CENTER</h3>
+                                    <p className="text-[10px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-widest">TO'LOV CHEKI (RECEIPT)</p>
+                                </div>
+                                
+                                <div className="bg-gray-50 dark:bg-gray-900/30 p-6 rounded-3xl border border-gray-100 dark:border-gray-750 font-mono text-xs text-gray-800 dark:text-gray-300 space-y-4 shadow-inner">
+                                    <div className="border-b border-dashed border-gray-300 dark:border-gray-700 pb-3 space-y-1">
+                                        <div className="flex justify-between">
+                                            <span>Chek #</span>
+                                            <span className="font-black">#{createdPaymentForReceipt.id}</span>
+                                        </div>
+                                        <div className="flex justify-between">
+                                            <span>Sana:</span>
+                                            <span className="font-semibold">{createdPaymentForReceipt.date}</span>
+                                        </div>
+                                    </div>
+
+                                    <div className="space-y-2">
+                                        <div>
+                                            <span className="text-[9px] text-gray-450 uppercase block">O'quvchi:</span>
+                                            <span className="font-black text-gray-900 dark:text-white text-[13px]">{selectedStudent?.name}</span>
+                                        </div>
+                                        {selectedStudent?.phone && (
+                                            <div>
+                                                <span className="text-[9px] text-gray-450 uppercase block">Telefon:</span>
+                                                <span>{selectedStudent.phone}</span>
+                                            </div>
+                                        )}
+                                        {(() => {
+                                            const sg = groups.filter(g => g.studentIds.includes(selectedStudent?.id));
+                                            if (sg.length === 0) return null;
+                                            return (
+                                                <div>
+                                                    <span className="text-[9px] text-gray-450 uppercase block">Kurslar:</span>
+                                                    <div className="font-semibold">
+                                                        {sg.map(g => {
+                                                            const courseName = courses.find(c => c.id === g.courseId)?.name || '';
+                                                            return <div key={g.id}>- {g.name} {courseName && `(${courseName})`}</div>;
+                                                        })}
+                                                    </div>
+                                                </div>
+                                            );
+                                        })()}
+                                    </div>
+
+                                    <div className="border-t border-dashed border-gray-300 dark:border-gray-700 pt-3 space-y-1.5">
+                                        <div className="flex justify-between text-[13px]">
+                                            <span className="font-bold">To'lov turi:</span>
+                                            <span className="font-black uppercase">{createdPaymentForReceipt.type}</span>
+                                        </div>
+                                        <div className="flex justify-between text-base">
+                                            <span className="font-bold text-[#1b6b6b]">To'landi:</span>
+                                            <span className="font-black text-emerald-600 tabular-nums">+{createdPaymentForReceipt.amount.toLocaleString()} UZS</span>
+                                        </div>
+                                        <div className="flex justify-between text-[13px]">
+                                            <span className="font-bold">Joriy balans:</span>
+                                            <span className={`font-black tabular-nums ${selectedStudent?.balance + createdPaymentForReceipt.amount >= 0 ? 'text-emerald-500' : 'text-rose-500'}`}>
+                                                {(selectedStudent?.balance || 0).toLocaleString()} UZS
+                                            </span>
+                                        </div>
+                                    </div>
+
+                                    <div className="border-t border-dashed border-gray-300 dark:border-gray-700 pt-3 text-center text-[9px] text-gray-400 uppercase tracking-widest font-bold">
+                                        To'lovingiz uchun rahmat!
+                                    </div>
+                                </div>
+
+                                <div className="flex gap-3 no-print">
+                                    <button
+                                        type="button"
+                                        onClick={() => window.print()}
+                                        className="flex-1 py-3 bg-[#1b6b6b] hover:bg-[#155252] text-white text-xs font-extrabold uppercase tracking-widest rounded-2xl transition-all cursor-pointer shadow-lg shadow-[#1b6b6b]/20 text-center"
+                                    >
+                                        Chop etish (Print)
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={() => {
+                                            setIsPaymentModalOpen(false);
+                                            setCreatedPaymentForReceipt(null);
+                                            setSelectedStudent(null);
+                                            setStudentSearch('');
+                                            setNewPayment({ studentId: 0, amount: 0, type: 'Naqd', description: '', date: new Date().toISOString().split('T')[0] });
+                                        }}
+                                        className="flex-1 py-3 bg-gray-150 dark:bg-gray-700 text-gray-700 dark:text-white text-xs font-extrabold uppercase tracking-widest rounded-2xl transition-all cursor-pointer hover:bg-gray-200 dark:hover:bg-gray-650"
+                                    >
+                                        Yopish (Close)
+                                    </button>
+                                </div>
                             </div>
-                            <button onClick={() => setIsPaymentModalOpen(false)} className="w-9 h-9 flex items-center justify-center text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700 rounded-xl cursor-pointer"><X size={18} /></button>
-                        </div>
-                        <form onSubmit={(e) => { e.preventDefault(); addPayment(newPayment); setIsPaymentModalOpen(false); }} className="space-y-4">
-                            <div>
-                                <label className={lbl}>O'quvchi *</label>
-                                <select required className={inp} value={newPayment.studentId} onChange={(e) => setNewPayment({...newPayment, studentId: Number(e.target.value)})}>
-                                    <option value={0} disabled>Tanlang...</option>
-                                    {students.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
-                                </select>
-                            </div>
-                            <div>
-                                <label className={lbl}>Summa (UZS) *</label>
-                                <input type="number" required placeholder="Masalan: 500 000" className={inp} value={newPayment.amount || ''} onChange={(e) => setNewPayment({...newPayment, amount: Number(e.target.value)})}/>
-                            </div>
-                            <div>
-                                <label className={lbl}>Turi *</label>
-                                <select className={inp} value={newPayment.type} onChange={(e) => setNewPayment({...newPayment, type: e.target.value as any})}>
-                                    <option value="Naqd">Naqd</option>
-                                    <option value="Karta">Karta</option>
-                                </select>
-                            </div>
-                            <div className="flex gap-3 pt-2">
-                                <button type="button" onClick={() => setIsPaymentModalOpen(false)}
-                                    className="flex-1 py-3 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-white text-xs font-extrabold uppercase tracking-widest rounded-2xl transition-all cursor-pointer hover:bg-gray-200 dark:hover:bg-gray-600">
-                                    {t('cancel')}
-                                </button>
-                                <button type="submit"
-                                    className="flex-1 py-3 bg-[#1b6b6b] hover:bg-[#155252] text-white text-xs font-extrabold uppercase tracking-widest rounded-2xl shadow-lg shadow-[#1b6b6b]/20 transition-all cursor-pointer">
-                                    {t('save')}
-                                </button>
-                            </div>
-                        </form>
+                        ) : (
+                            <>
+                                <div className="flex items-center justify-between mb-6 pb-4 border-b border-gray-50 dark:border-gray-700/50">
+                                    <div>
+                                        <h3 className="text-lg font-black text-gray-900 dark:text-white uppercase tracking-tight">Yangi Kirim</h3>
+                                        <p className="text-[10px] font-bold text-[#1b6b6b] uppercase tracking-widest mt-0.5">To'lov qabul qilish</p>
+                                    </div>
+                                    <button onClick={() => {
+                                        setIsPaymentModalOpen(false);
+                                        setSelectedStudent(null);
+                                        setStudentSearch('');
+                                    }} className="w-9 h-9 flex items-center justify-center text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700 rounded-xl cursor-pointer"><X size={18} /></button>
+                                </div>
+                                <form onSubmit={async (e) => {
+                                    e.preventDefault();
+                                    if (!selectedStudent) return;
+                                    const created = await addPayment({
+                                        studentId: selectedStudent.id,
+                                        amount: newPayment.amount,
+                                        type: newPayment.type,
+                                        description: newPayment.description || '',
+                                        date: newPayment.date
+                                    });
+                                    setCreatedPaymentForReceipt(created);
+                                }} className="space-y-4">
+                                    
+                                    {/* Student Selector / Search */}
+                                    {!selectedStudent ? (
+                                        <div className="relative">
+                                            <label className={lbl}>O'quvchini qidirish *</label>
+                                            <input 
+                                                type="text" 
+                                                placeholder="O'quvchi ismi yoki telefonidan qidiring..." 
+                                                className={inp} 
+                                                value={studentSearch} 
+                                                onChange={(e) => setStudentSearch(e.target.value)} 
+                                                required
+                                            />
+                                            {studentSearch.trim() !== '' && (
+                                                <div className="absolute z-[210] left-0 right-0 mt-1 bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700 rounded-2xl shadow-xl overflow-hidden max-h-48 overflow-y-auto divide-y divide-gray-50 dark:divide-gray-750">
+                                                    {students.filter(s => 
+                                                        s.name.toLowerCase().includes(studentSearch.toLowerCase()) || 
+                                                        (s.phone && s.phone.includes(studentSearch))
+                                                    ).slice(0, 5).map(s => (
+                                                        <button
+                                                            key={s.id}
+                                                            type="button"
+                                                            onClick={() => {
+                                                                setSelectedStudent(s);
+                                                                setStudentSearch('');
+                                                            }}
+                                                            className="w-full text-left px-4 py-3 hover:bg-gray-50 dark:hover:bg-gray-700/50 text-xs font-bold text-gray-900 dark:text-white flex flex-col cursor-pointer transition-colors"
+                                                        >
+                                                            <span>{s.name}</span>
+                                                            {s.phone && <span className="text-[9px] text-gray-400 font-bold mt-0.5">{s.phone}</span>}
+                                                        </button>
+                                                    ))}
+                                                    {students.filter(s => 
+                                                        s.name.toLowerCase().includes(studentSearch.toLowerCase()) || 
+                                                        (s.phone && s.phone.includes(studentSearch))
+                                                    ).length === 0 && (
+                                                        <div className="px-4 py-4 text-center text-[10px] text-gray-400 font-bold uppercase tracking-wider">O'quvchi topilmadi</div>
+                                                    )}
+                                                </div>
+                                            )}
+                                        </div>
+                                    ) : (
+                                        <div className="p-4 bg-gray-50 dark:bg-gray-900/50 rounded-2xl border border-gray-100 dark:border-gray-800/80 relative space-y-3">
+                                            <button 
+                                                type="button" 
+                                                onClick={() => { setSelectedStudent(null); setNewPayment({ ...newPayment, studentId: 0 }); }}
+                                                className="absolute top-3.5 right-3.5 text-[9px] text-rose-500 font-black uppercase tracking-wider hover:underline cursor-pointer bg-white dark:bg-gray-800 px-2.5 py-1 rounded-lg border border-gray-100 dark:border-gray-700"
+                                            >
+                                                O'zgartirish
+                                            </button>
+                                            <div>
+                                                <span className="text-[8px] font-black text-[#1b6b6b] uppercase tracking-widest block">Tanlangan o'quvchi</span>
+                                                <h4 className="text-xs font-bold text-gray-900 dark:text-white mt-0.5">{selectedStudent.name}</h4>
+                                                {selectedStudent.phone && <p className="text-[9px] text-gray-400 font-bold mt-0.5">{selectedStudent.phone}</p>}
+                                            </div>
+                                            
+                                            <div className="grid grid-cols-2 gap-3 pt-2 border-t border-dashed border-gray-200 dark:border-gray-700/50">
+                                                <div>
+                                                    <span className="text-[8px] font-black text-gray-400 uppercase tracking-widest block">Joriy Balans</span>
+                                                    <span className={`text-[11px] font-black block mt-0.5 tabular-nums ${selectedStudent.balance >= 0 ? 'text-emerald-600' : 'text-rose-600'}`}>
+                                                        {selectedStudent.balance.toLocaleString()} UZS
+                                                    </span>
+                                                </div>
+                                                <div>
+                                                    <span className="text-[8px] font-black text-gray-400 uppercase tracking-widest block">Oxirgi to'lov</span>
+                                                    {(() => {
+                                                        const sp = payments.filter(p => p.studentId === selectedStudent.id && p.amount > 0);
+                                                        const lp = sp.length > 0 ? sp[sp.length - 1] : null;
+                                                        return lp ? (
+                                                            <span className="text-[10px] font-bold text-gray-600 dark:text-gray-300 block mt-0.5 tabular-nums">
+                                                                {lp.amount.toLocaleString()} UZS ({lp.date})
+                                                            </span>
+                                                        ) : (
+                                                            <span className="text-[10px] text-gray-400 italic block mt-0.5">Mavjud emas</span>
+                                                        );
+                                                    })()}
+                                                </div>
+                                            </div>
+
+                                            <div className="pt-2 border-t border-dashed border-gray-200 dark:border-gray-700/50">
+                                                <span className="text-[8px] font-black text-gray-400 uppercase tracking-widest block">Kurslar</span>
+                                                {(() => {
+                                                    const sg = groups.filter(g => g.studentIds.includes(selectedStudent.id));
+                                                    return sg.length > 0 ? (
+                                                        <div className="flex flex-wrap gap-1 mt-1">
+                                                            {sg.map(g => {
+                                                                const courseName = courses.find(c => c.id === g.courseId)?.name || '';
+                                                                return (
+                                                                    <span key={g.id} className="px-2 py-0.5 bg-white dark:bg-gray-800 text-[8px] font-black uppercase tracking-wider text-[#1b6b6b] border border-teal-100/50 dark:border-teal-900/40 rounded-md">
+                                                                        {g.name} {courseName && `(${courseName})`}
+                                                                    </span>
+                                                                );
+                                                            })}
+                                                        </div>
+                                                    ) : (
+                                                        <span className="text-[9px] text-gray-400 italic block mt-0.5">Kurslarga a'zo emas</span>
+                                                    );
+                                                })()}
+                                            </div>
+                                        </div>
+                                    )}
+
+                                    <div>
+                                        <label className={lbl}>Summa (UZS) *</label>
+                                        <input type="number" required placeholder="Masalan: 500 000" className={inp} value={newPayment.amount || ''} onChange={(e) => setNewPayment({...newPayment, amount: Number(e.target.value)})}/>
+                                        <div className="flex flex-wrap gap-1.5 mt-2">
+                                            {[300000, 400000, 500000, 600000, 800000].map(amt => (
+                                                <button
+                                                    key={amt}
+                                                    type="button"
+                                                    onClick={() => setNewPayment({ ...newPayment, amount: amt })}
+                                                    className={`px-3 py-1.5 text-[9px] font-black uppercase tracking-wider border rounded-xl transition-all cursor-pointer ${
+                                                        newPayment.amount === amt 
+                                                            ? 'bg-[#1b6b6b] border-[#1b6b6b] text-white shadow-sm' 
+                                                            : 'bg-gray-50 dark:bg-gray-900/30 dark:border-gray-800 hover:bg-gray-100 text-gray-500 dark:text-gray-400'
+                                                    }`}
+                                                >
+                                                    {amt.toLocaleString()}
+                                                </button>
+                                            ))}
+                                        </div>
+                                    </div>
+
+                                    <div>
+                                        <label className={lbl}>Turi (To'lov Usuli) *</label>
+                                        <div className="grid grid-cols-3 gap-2">
+                                            {['Naqd', 'Karta', "O'tkazma"].map(tType => (
+                                                <button
+                                                    key={tType}
+                                                    type="button"
+                                                    onClick={() => setNewPayment({ ...newPayment, type: tType as any })}
+                                                    className={`py-2.5 rounded-xl text-xs font-extrabold uppercase tracking-widest transition-all border cursor-pointer ${
+                                                        newPayment.type === tType 
+                                                            ? 'bg-[#1b6b6b] border-[#1b6b6b] text-white shadow-lg shadow-[#1b6b6b]/20 scale-102' 
+                                                            : 'bg-white dark:bg-gray-850 border-gray-100 dark:border-gray-700 text-gray-400 dark:text-gray-500 hover:bg-gray-50'
+                                                    }`}
+                                                >
+                                                    {tType}
+                                                </button>
+                                            ))}
+                                        </div>
+                                    </div>
+
+                                    <div className="flex gap-3 pt-4 border-t border-gray-50 dark:border-gray-700/50">
+                                        <button type="button" onClick={() => {
+                                            setIsPaymentModalOpen(false);
+                                            setSelectedStudent(null);
+                                            setStudentSearch('');
+                                        }}
+                                            className="flex-1 py-3 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-white text-xs font-extrabold uppercase tracking-widest rounded-2xl transition-all cursor-pointer hover:bg-gray-200 dark:hover:bg-gray-600">
+                                            {t('cancel')}
+                                        </button>
+                                        <button type="submit" disabled={!selectedStudent}
+                                            className="flex-1 py-3 bg-[#1b6b6b] hover:bg-[#155252] disabled:opacity-50 disabled:hover:bg-[#1b6b6b] text-white text-xs font-extrabold uppercase tracking-widest rounded-2xl shadow-lg shadow-[#1b6b6b]/20 transition-all cursor-pointer">
+                                            {t('save')}
+                                        </button>
+                                    </div>
+                                </form>
+                            </>
+                        )}
                     </div>
                 </div>
             )}
