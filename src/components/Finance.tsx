@@ -1,12 +1,14 @@
 import { useState, useMemo } from 'react';
 import {
     TrendingUp, TrendingDown, DollarSign, Wallet,
-    Plus, X, Trash2, Search, ChevronRight
+    Plus, X, Trash2, Search, ChevronRight, BarChart2
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useCRM } from '../context/CRMContext';
 import { useLang } from '../context/LanguageContext';
 import { Payment, Expense } from '../types';
+import PaymentsReport from './reports/PaymentsReport';
+import StudentsPaymentReport from './reports/StudentsPaymentReport';
 
 const inp = "w-full px-4 py-3 bg-gray-50 dark:bg-gray-900/50 border border-gray-100 dark:border-gray-700 rounded-2xl text-xs font-bold text-gray-900 dark:text-white focus:border-[#1b6b6b] focus:ring-4 focus:ring-[#1b6b6b]/10 outline-none transition-all";
 const lbl = "block text-[10px] font-extrabold uppercase tracking-widest text-gray-400 mb-2";
@@ -17,7 +19,13 @@ export default function Finance() {
     const { students, payments, expenses, addPayment, addExpense, deleteExpense, groups, courses } = useCRM();
     const { t } = useLang();
     const navigate = useNavigate();
-    const [activeTab, setActiveTab] = useState<'payments' | 'expenses'>('payments');
+    const [activeTab, setActiveTab] = useState<'payments' | 'expenses' | 'reports'>('payments');
+    const [activeReport, setActiveReport] = useState<'payments_report' | 'students_payment'>('payments_report');
+    const now2 = new Date();
+    const defaultStart = `${now2.getFullYear()}-${String(now2.getMonth() + 1).padStart(2, '0')}-01`;
+    const defaultEnd = now2.toISOString().split('T')[0];
+    const [reportStart, setReportStart] = useState(defaultStart);
+    const [reportEnd, setReportEnd] = useState(defaultEnd);
     const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
     const [isExpenseModalOpen, setIsExpenseModalOpen] = useState(false);
 
@@ -232,9 +240,10 @@ export default function Finance() {
                     <div className="flex items-center gap-2 bg-gray-50 dark:bg-gray-900 p-1.5 rounded-xl border border-gray-100 dark:border-gray-700/50 w-fit">
                         <button onClick={() => { setActiveTab('payments'); setListSearch(''); }} className={`px-5 py-2 rounded-lg text-[10px] font-extrabold uppercase tracking-widest transition-all cursor-pointer ${activeTab === 'payments' ? 'bg-[#1b6b6b] text-white shadow' : 'text-gray-400 hover:text-gray-600'}`}>{t('payments_tab')}</button>
                         <button onClick={() => { setActiveTab('expenses'); setListSearch(''); }} className={`px-5 py-2 rounded-lg text-[10px] font-extrabold uppercase tracking-widest transition-all cursor-pointer ${activeTab === 'expenses' ? 'bg-[#1b6b6b] text-white shadow' : 'text-gray-400 hover:text-gray-600'}`}>{t('expenses_tab')}</button>
+                        <button onClick={() => setActiveTab('reports')} className={`flex items-center gap-1.5 px-5 py-2 rounded-lg text-[10px] font-extrabold uppercase tracking-widest transition-all cursor-pointer ${activeTab === 'reports' ? 'bg-[#1b6b6b] text-white shadow' : 'text-gray-400 hover:text-gray-600'}`}><BarChart2 size={12} /> Hisobotlar</button>
                     </div>
 
-                    <div className="flex items-center gap-2">
+                    {activeTab !== 'reports' && <div className="flex items-center gap-2">
                         {/* Date filter */}
                         <div className="flex items-center gap-1 bg-gray-50 dark:bg-gray-900 p-1 rounded-xl border border-gray-100 dark:border-gray-700/50">
                             {(['thisMonth', 'lastMonth', 'all'] as const).map(f => (
@@ -264,11 +273,36 @@ export default function Finance() {
                                 </button>
                             )}
                         </div>
-                    </div>
+                    </div>}
                 </div>
 
-                {/* Summary row */}
-                <div className="px-6 py-3 border-b border-gray-50 dark:border-gray-700/30 flex items-center gap-4">
+                {/* Reports tab content */}
+                {activeTab === 'reports' && (
+                    <div>
+                        {/* Report sub-tabs + date range */}
+                        <div className="px-6 py-4 border-b border-gray-50 dark:border-gray-700/50 flex flex-col sm:flex-row sm:items-center gap-3">
+                            <div className="flex items-center gap-1 bg-gray-50 dark:bg-gray-900 p-1 rounded-xl border border-gray-100 dark:border-gray-700/50">
+                                <button onClick={() => setActiveReport('payments_report')} className={`px-4 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-wider transition-all cursor-pointer ${activeReport === 'payments_report' ? 'bg-[#1b6b6b] text-white shadow' : 'text-gray-400 hover:text-gray-600'}`}>To'lovlar hisoboti</button>
+                                <button onClick={() => setActiveReport('students_payment')} className={`px-4 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-wider transition-all cursor-pointer ${activeReport === 'students_payment' ? 'bg-[#1b6b6b] text-white shadow' : 'text-gray-400 hover:text-gray-600'}`}>O'quvchilar balansi</button>
+                            </div>
+                            <div className="flex items-center gap-2 ml-auto">
+                                <span className="text-[9px] font-black text-gray-400 uppercase tracking-widest">Sana:</span>
+                                <input type="date" value={reportStart} onChange={e => setReportStart(e.target.value)}
+                                    className="px-3 py-1.5 bg-gray-50 dark:bg-gray-900 border border-gray-100 dark:border-gray-700 rounded-xl text-[10px] font-bold text-gray-900 dark:text-white outline-none focus:border-[#1b6b6b]" />
+                                <span className="text-[9px] text-gray-400">—</span>
+                                <input type="date" value={reportEnd} onChange={e => setReportEnd(e.target.value)}
+                                    className="px-3 py-1.5 bg-gray-50 dark:bg-gray-900 border border-gray-100 dark:border-gray-700 rounded-xl text-[10px] font-bold text-gray-900 dark:text-white outline-none focus:border-[#1b6b6b]" />
+                            </div>
+                        </div>
+                        {activeReport === 'payments_report'
+                            ? <PaymentsReport startDate={reportStart} endDate={reportEnd} />
+                            : <StudentsPaymentReport startDate={reportStart} endDate={reportEnd} />
+                        }
+                    </div>
+                )}
+
+                {/* Summary row — only for payments/expenses tabs */}
+                {activeTab !== 'reports' && <div className="px-6 py-3 border-b border-gray-50 dark:border-gray-700/30 flex items-center gap-4">
                     <span className="text-[9px] font-black text-gray-400 uppercase tracking-widest">{dateLabel}</span>
                     {activeTab === 'payments' ? (
                         <>
@@ -281,10 +315,10 @@ export default function Finance() {
                             <span className="text-[10px] font-black text-rose-600 tabular-nums ml-auto">-{filteredExpenditure.toLocaleString()} UZS</span>
                         </>
                     )}
-                </div>
+                </div>}
 
                 {/* List */}
-                <div className="divide-y divide-gray-50 dark:divide-gray-700/30 max-h-[520px] overflow-y-auto">
+                {activeTab !== 'reports' && <div className="divide-y divide-gray-50 dark:divide-gray-700/30 max-h-[520px] overflow-y-auto">
                     {activeTab === 'payments' ? (
                         filteredPayments.length === 0 ? (
                             <p className="text-center py-12 text-[10px] text-gray-400 font-bold uppercase tracking-widest">To'lovlar topilmadi</p>
@@ -335,7 +369,7 @@ export default function Finance() {
                             </div>
                         ))
                     )}
-                </div>
+                </div>}
             </div>
 
             {/* Payment Modal */}
