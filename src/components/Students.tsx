@@ -89,6 +89,7 @@ export default function Students() {
     const [isMapOpen, setIsMapOpen] = useState(false);
     const [newStudent, setNewStudent] = useState({
         name: '', phone: '', address: '', birthDate: '', location: '', photo: '',
+        gender: 'Erkak' as 'Erkak' | 'Ayol',
         fatherName: '', fatherPhone: '', motherName: '', motherPhone: '',
         transportId: '' as string | number,
         studentSchool: '',
@@ -223,6 +224,7 @@ export default function Students() {
             setIsModalOpen(false);
             setNewStudent({
                 name: '', phone: '', address: '', birthDate: '', location: '', photo: '',
+                gender: 'Erkak',
                 fatherName: '', fatherPhone: '', motherName: '', motherPhone: '',
                 transportId: '',
                 studentSchool: '',
@@ -259,6 +261,7 @@ export default function Students() {
                 return {
                     "F.I.SH.": student.name,
                     "Telefon": student.phone,
+                    "Jins": student.gender || 'Erkak',
                     "Tug'ilgan sana": student.birthDate || '',
                     "Ta'lim muassasasi turi": student.orgType || '',
                     "Muassasa nomi": student.studentSchool || '',
@@ -333,6 +336,7 @@ export default function Students() {
                         const status = row["Holati"] || row["status"] || row["Status"] || "Faol";
                         const joinedDate = row["A'zo bo'lgan sana"] || row["joinedDate"] || row["Joined Date"] || new Date().toISOString().split('T')[0];
                         const balance = row["Balans (UZS)"] || row["balance"] || row["Balance"] || 0;
+                        const gender = row["Jins"] || row["gender"] || row["Gender"] || 'Erkak';
                         const fatherName = row["Otasining ismi"] || row["fatherName"] || row["Father Name"];
                         const fatherPhone = row["Otasining telefoni"] || row["fatherPhone"] || row["Father Phone"];
                         const motherName = row["Onasining ismi"] || row["motherName"] || row["Mother Name"];
@@ -341,6 +345,7 @@ export default function Students() {
                         return {
                             name,
                             phone,
+                            gender: ['Erkak','Ayol'].includes(String(gender)) ? String(gender) : 'Erkak',
                             birthDate: birthDate ? String(birthDate) : '',
                             orgType: orgType ? String(orgType) : '',
                             studentSchool: studentSchool ? String(studentSchool) : '',
@@ -735,6 +740,18 @@ export default function Students() {
                                     <div>
                                         <label className={lbl}>{t('birth_date')}</label>
                                         <input type="date" className={inp} value={newStudent.birthDate} onChange={e => setNewStudent({ ...newStudent, birthDate: e.target.value })} />
+                                    </div>
+                                </div>
+                                <div>
+                                    <label className={lbl}>Jins</label>
+                                    <div className="grid grid-cols-2 gap-2">
+                                        {(['Erkak', 'Ayol'] as const).map(g => (
+                                            <button key={g} type="button"
+                                                onClick={() => setNewStudent({ ...newStudent, gender: g })}
+                                                className={`py-2.5 rounded-xl text-xs font-extrabold uppercase tracking-widest transition-all border cursor-pointer ${newStudent.gender === g ? 'bg-[#1b6b6b] border-[#1b6b6b] text-white shadow' : 'bg-gray-50 dark:bg-gray-900/30 border-gray-100 dark:border-gray-700 text-gray-400 hover:text-gray-600'}`}>
+                                                {g === 'Erkak' ? '♂ Erkak' : '♀ Ayol'}
+                                            </button>
+                                        ))}
                                     </div>
                                 </div>
                                 <div className="grid grid-cols-2 gap-4">

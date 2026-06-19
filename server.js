@@ -505,7 +505,7 @@ app.post('/api/students', authenticate, async (req, res, next) => {
     const { groups, schoolId, selectedGroupIds, selectedPrivileges, ...rest } = req.body;
     if (!schoolId) return res.status(400).json({ error: 'schoolId required' });
     const ALLOWED = ['name','phone','birthDate','address','location','status','joinedDate',
-      'balance','photo','comment','rating','fatherName','fatherPhone','motherName','motherPhone',
+      'balance','photo','comment','rating','gender','fatherName','fatherPhone','motherName','motherPhone',
       'studentSchool','privilegeType','certCategory','certSubject','certType','certScore',
       'customPrices','orgType','region','district','transportId','statusChangedAt','leaveReason',
       'certificates'];
@@ -581,6 +581,7 @@ app.post('/api/students/import', authenticate, async (req, res, next) => {
         status: item.status ? String(item.status).trim() : "Faol",
         joinedDate: item.joinedDate ? String(item.joinedDate).trim() : today,
         balance: item.balance ? parseFloat(item.balance) : 0,
+        gender: item.gender && ['Erkak','Ayol'].includes(String(item.gender).trim()) ? String(item.gender).trim() : 'Erkak',
         fatherName: item.fatherName ? String(item.fatherName).trim() : null,
         fatherPhone: item.fatherPhone ? String(item.fatherPhone).trim() : null,
         motherName: item.motherName ? String(item.motherName).trim() : null,
@@ -621,7 +622,7 @@ app.put('/api/students/:id', authenticate, async (req, res, next) => {
     // Whitelist only known Student schema fields
     const ALLOWED_STUDENT_FIELDS = [
       'name','phone','birthDate','address','location','status','joinedDate',
-      'balance','photo','rating','fatherName','fatherPhone','motherName','motherPhone',
+      'balance','photo','rating','gender','fatherName','fatherPhone','motherName','motherPhone',
       'studentSchool','privilegeType','certCategory','certSubject','certType','certScore',
       'customPrices','orgType','region','district','transportId','statusChangedAt',
       'leaveReason','certificates','telegramId'
@@ -1051,9 +1052,9 @@ app.post('/api/public/schools/:schoolId/leads', async (req, res, next) => {
     const schoolId = parseInt(req.params.schoolId);
     if (isNaN(schoolId)) return res.status(400).json({ error: 'Mavjud bo\'lmagan filial ID' });
 
-    const { 
+    const {
       name, phone, course, source, token,
-      birthDate, address, studentSchool,
+      birthDate, address, gender, studentSchool,
       fatherName, fatherPhone, motherName, motherPhone,
       preferredTime, notes, photo, certificates
     } = req.body;
@@ -1097,6 +1098,7 @@ app.post('/api/public/schools/:schoolId/leads', async (req, res, next) => {
         joinedDate: new Date().toISOString().split('T')[0],
         balance: 0,
         photo: photo || null,
+        gender: ['Erkak','Ayol'].includes(gender) ? gender : 'Erkak',
         fatherName: fatherName || null,
         fatherPhone: fatherPhone || null,
         motherName: motherName || null,

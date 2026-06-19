@@ -34,6 +34,7 @@ export default function PublicApply() {
         name: '',
         phone: '',
         birthDate: '',
+        gender: 'Erkak' as 'Erkak' | 'Ayol',
         studentSchool: '',
         fatherName: '',
         fatherPhone: '',
@@ -278,6 +279,18 @@ export default function PublicApply() {
                                             value={form.birthDate}
                                             onChange={e => setForm({ ...form, birthDate: e.target.value })}
                                         />
+                                    </div>
+                                </div>
+                                <div>
+                                    <label className={lbl}>Jins</label>
+                                    <div className="grid grid-cols-2 gap-2">
+                                        {(['Erkak', 'Ayol'] as const).map(g => (
+                                            <button key={g} type="button"
+                                                onClick={() => setForm({ ...form, gender: g })}
+                                                className={`py-3 rounded-xl text-xs font-extrabold uppercase tracking-widest transition-all border cursor-pointer ${form.gender === g ? 'bg-[#1b6b6b] border-[#1b6b6b] text-white shadow' : 'bg-gray-50 border-gray-200 text-gray-400 hover:text-gray-600'}`}>
+                                                {g === 'Erkak' ? '♂ Erkak' : '♀ Ayol'}
+                                            </button>
+                                        ))}
                                     </div>
                                 </div>
                             </div>

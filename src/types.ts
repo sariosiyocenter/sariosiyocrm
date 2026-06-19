@@ -12,6 +12,7 @@ export interface Student {
     balance: number;
     photo?: string;
     groups: number[]; // Array of Group IDs
+    gender?: 'Erkak' | 'Ayol';
     comment?: string;
     rating?: number;
     fatherName?: string;

@@ -121,6 +121,7 @@ export default function StudentDetails() {
         status: 'Faol' as 'Faol' | 'Arxiv' | 'Sinov' | 'Bitiruvchi' | 'Passiv' | 'Muzlatilgan' | 'Sertifikatli',
         phone: '',
         birthDate: '',
+        gender: 'Erkak' as 'Erkak' | 'Ayol',
         address: '',
         location: '',
         fatherName: '',
@@ -188,6 +189,7 @@ export default function StudentDetails() {
             status: student.status,
             phone: student.phone,
             birthDate: student.birthDate,
+            gender: (student.gender as 'Erkak' | 'Ayol') || 'Erkak',
             address: student.address,
             location: student.location || '',
             fatherName: student.fatherName || '',
@@ -500,6 +502,18 @@ export default function StudentDetails() {
                                         <input type="date" value={editForm.birthDate} onChange={e => setEditForm({...editForm, birthDate: e.target.value})} className={inputCls} />
                                     </div>
                                     <div>
+                                        <label className={labelCls}>Jins</label>
+                                        <div className="grid grid-cols-2 gap-2">
+                                            {(['Erkak', 'Ayol'] as const).map(g => (
+                                                <button key={g} type="button"
+                                                    onClick={() => setEditForm({...editForm, gender: g})}
+                                                    className={`py-2 rounded-xl text-[10px] font-extrabold uppercase tracking-widest transition-all border cursor-pointer ${editForm.gender === g ? 'bg-[#1b6b6b] border-[#1b6b6b] text-white shadow' : 'bg-gray-50 dark:bg-gray-900/30 border-gray-100 dark:border-gray-700 text-gray-400 hover:text-gray-600'}`}>
+                                                    {g === 'Erkak' ? '♂ Erkak' : '♀ Ayol'}
+                                                </button>
+                                            ))}
+                                        </div>
+                                    </div>
+                                    <div>
                                         <label className={labelCls}>{t('address')}</label>
                                         <input type="text" value={editForm.address} onChange={e => setEditForm({...editForm, address: e.target.value})} className={inputCls} />
                                     </div>
@@ -785,6 +799,7 @@ export default function StudentDetails() {
                                         value={transports.find(t => t.id === student.transportId)?.name || t('transport_none')} 
                                     />
                                     <InfoRow icon={<Calendar className="w-3.5 h-3.5" />} label={t('birth_date')} value={student.birthDate} />
+                                    <InfoRow icon={<Users className="w-3.5 h-3.5" />} label="Jins" value={student.gender === 'Ayol' ? '♀ Ayol' : '♂ Erkak'} />
                                     <div className="space-y-2">
                                         <InfoRow icon={<Users className="w-3.5 h-3.5" />} label={t('father')} value={student.fatherName || "-"} />
                                         {student.fatherPhone && (

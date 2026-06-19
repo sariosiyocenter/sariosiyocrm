@@ -37,6 +37,8 @@ model Student {
   customPrices  Json?     @default("{}")
   certificates  Json?     @default("[]")
 
+  gender          String?   @default("Erkak")
+
   // New fields for reports
   statusChangedAt DateTime? @default(now())
   leaveReason     String?
