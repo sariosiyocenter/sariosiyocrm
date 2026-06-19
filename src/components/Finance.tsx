@@ -1,14 +1,14 @@
 import { useState, useMemo } from 'react';
 import {
     TrendingUp, TrendingDown, DollarSign, Wallet,
-    Plus, X, Trash2, Search, ChevronRight, BarChart2
+    Plus, X, Trash2, Search, ChevronRight, BarChart2,
+    AlertCircle, CreditCard, ArrowUpRight, Calendar
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useCRM } from '../context/CRMContext';
 import { useLang } from '../context/LanguageContext';
 import { Payment, Expense } from '../types';
-import PaymentsReport from './reports/PaymentsReport';
-import StudentsPaymentReport from './reports/StudentsPaymentReport';
+import { StatCard, BarChart, DonutChart, LineChart } from './reports/shared';
 
 const inp = "w-full px-4 py-3 bg-gray-50 dark:bg-gray-900/50 border border-gray-100 dark:border-gray-700 rounded-2xl text-xs font-bold text-gray-900 dark:text-white focus:border-[#1b6b6b] focus:ring-4 focus:ring-[#1b6b6b]/10 outline-none transition-all";
 const lbl = "block text-[10px] font-extrabold uppercase tracking-widest text-gray-400 mb-2";
@@ -19,13 +19,8 @@ export default function Finance() {
     const { students, payments, expenses, addPayment, addExpense, deleteExpense, groups, courses } = useCRM();
     const { t } = useLang();
     const navigate = useNavigate();
-    const [activeTab, setActiveTab] = useState<'payments' | 'expenses' | 'reports'>('payments');
-    const [activeReport, setActiveReport] = useState<'payments_report' | 'students_payment'>('payments_report');
-    const now2 = new Date();
-    const defaultStart = `${now2.getFullYear()}-${String(now2.getMonth() + 1).padStart(2, '0')}-01`;
-    const defaultEnd = now2.toISOString().split('T')[0];
-    const [reportStart, setReportStart] = useState(defaultStart);
-    const [reportEnd, setReportEnd] = useState(defaultEnd);
+    const [activeTab, setActiveTab] = useState<'reports' | 'payments' | 'expenses'>('reports');
+
     const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
     const [isExpenseModalOpen, setIsExpenseModalOpen] = useState(false);
 
@@ -50,7 +45,6 @@ export default function Finance() {
             const courseName = courses.find(c => c.id === g.courseId)?.name || '';
             return `<div>- ${g.name}${courseName ? ` (${courseName})` : ''}</div>`;
         }).join('');
-
         const popup = window.open('', '_blank', 'width=420,height=640');
         if (!popup) return;
         popup.document.write(`<!DOCTYPE html>
@@ -77,10 +71,7 @@ export default function Finance() {
   <div class="row"><span>Chek #</span><span class="val">#${payment.id}</span></div>
   <div class="row"><span>Sana:</span><span class="val">${payment.date}</span></div>
   <div class="divider"></div>
-  <div style="margin-bottom:10px">
-    <span class="label">O'quvchi:</span>
-    <div class="big">${student?.name || ''}</div>
-  </div>
+  <div style="margin-bottom:10px"><span class="label">O'quvchi:</span><div class="big">${student?.name || ''}</div></div>
   ${student?.phone ? `<div style="margin-bottom:10px"><span class="label">Telefon:</span><div>${student.phone}</div></div>` : ''}
   ${groupLines ? `<div style="margin-bottom:10px"><span class="label">Kurslar:</span>${groupLines}</div>` : ''}
   <div class="divider"></div>
@@ -110,13 +101,9 @@ export default function Finance() {
         setNewPayment({ studentId: 0, amount: 0, type: 'Naqd', description: '', date: new Date().toISOString().split('T')[0] });
     };
 
-    // Stats
-    const totalRevenue = payments.filter(p => p.amount > 0).reduce((sum, p) => sum + p.amount, 0);
-    const totalExpenditure = expenses.reduce((sum, e) => sum + e.amount, 0);
-    const profit = totalRevenue - totalExpenditure;
-    const activeBalance = students.filter(s => s.balance > 0).reduce((sum, s) => sum + s.balance, 0);
-
+    // ─── Date helpers ─────────────────────────────────────────────
     const now = new Date();
+    const todayStr = now.toISOString().split('T')[0];
     const thisMonthPrefix = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
     const lastMonthDate = new Date(now.getFullYear(), now.getMonth() - 1, 1);
     const lastMonthPrefix = `${lastMonthDate.getFullYear()}-${String(lastMonthDate.getMonth() + 1).padStart(2, '0')}`;
@@ -127,6 +114,89 @@ export default function Finance() {
             ? `${MONTHS[lastMonthDate.getMonth()]} ${lastMonthDate.getFullYear()}`
             : 'Barchasi';
 
+    // ─── Core metrics ─────────────────────────────────────────────
+    const metrics = useMemo(() => {
+        const posPayments = payments.filter(p => p.amount > 0);
+
+        const thisMonthRevenue = posPayments.filter(p => p.date.startsWith(thisMonthPrefix)).reduce((s, p) => s + p.amount, 0);
+        const lastMonthRevenue = posPayments.filter(p => p.date.startsWith(lastMonthPrefix)).reduce((s, p) => s + p.amount, 0);
+        const thisMonthExpenses = expenses.filter(e => e.date.startsWith(thisMonthPrefix)).reduce((s, e) => s + e.amount, 0);
+        const lastMonthExpenses = expenses.filter(e => e.date.startsWith(lastMonthPrefix)).reduce((s, e) => s + e.amount, 0);
+        const thisMonthProfit = thisMonthRevenue - thisMonthExpenses;
+        const lastMonthProfit = lastMonthRevenue - lastMonthExpenses;
+        const thisMonthCount = posPayments.filter(p => p.date.startsWith(thisMonthPrefix)).length;
+        const todayRevenue = posPayments.filter(p => p.date === todayStr).reduce((s, p) => s + p.amount, 0);
+        const allTimeRevenue = posPayments.reduce((s, p) => s + p.amount, 0);
+        const allTimeExpenses = expenses.reduce((s, e) => s + e.amount, 0);
+        const allTimeProfit = allTimeRevenue - allTimeExpenses;
+        const avgPayment = posPayments.length ? Math.round(allTimeRevenue / posPayments.length) : 0;
+
+        const revTrend = lastMonthRevenue ? Math.round(((thisMonthRevenue - lastMonthRevenue) / lastMonthRevenue) * 100) : 0;
+        const expTrend = lastMonthExpenses ? Math.round(((thisMonthExpenses - lastMonthExpenses) / lastMonthExpenses) * 100) : 0;
+        const profTrend = lastMonthProfit ? Math.round(((thisMonthProfit - lastMonthProfit) / Math.abs(lastMonthProfit)) * 100) : 0;
+
+        // Student balances
+        const debtors = students.filter(s => s.balance < 0);
+        const totalDebt = debtors.reduce((s, st) => s + Math.abs(st.balance), 0);
+        const creditors = students.filter(s => s.balance > 0);
+        const totalCredit = creditors.reduce((s, st) => s + st.balance, 0);
+
+        // Students who haven't paid this month (active students = in at least 1 group)
+        const activeStudentIds = new Set(groups.flatMap(g => g.studentIds || []));
+        const paidThisMonth = new Set(posPayments.filter(p => p.date.startsWith(thisMonthPrefix)).map(p => p.studentId));
+        const unpaidCount = [...activeStudentIds].filter(id => !paidThisMonth.has(id)).length;
+
+        // Payment type breakdown (this month)
+        const typeMap: Record<string, number> = {};
+        posPayments.filter(p => p.date.startsWith(thisMonthPrefix)).forEach(p => {
+            typeMap[p.type] = (typeMap[p.type] || 0) + p.amount;
+        });
+        const typeColors: Record<string, string> = { Naqd: '#10b981', Karta: '#0ea5e9', "O'tkazma": '#8b5cf6', Online: '#f59e0b' };
+        const typeSlices = Object.entries(typeMap).map(([label, value]) => ({
+            label, value, color: typeColors[label] || '#6b7280'
+        }));
+
+        // Expense category breakdown (this month)
+        const catMap: Record<string, number> = {};
+        expenses.filter(e => e.date.startsWith(thisMonthPrefix)).forEach(e => {
+            catMap[e.category] = (catMap[e.category] || 0) + e.amount;
+        });
+        const catBars = Object.entries(catMap)
+            .sort(([, a], [, b]) => b - a)
+            .map(([label, value]) => ({ label, value, color: 'linear-gradient(90deg,#1b6b6b,#2e9c9c)' }));
+
+        // Monthly trend last 6 months
+        const monthMap: Record<string, { rev: number; exp: number }> = {};
+        for (let i = 5; i >= 0; i--) {
+            const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+            const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+            monthMap[key] = { rev: 0, exp: 0 };
+        }
+        posPayments.forEach(p => { const k = p.date.slice(0, 7); if (monthMap[k]) monthMap[k].rev += p.amount; });
+        expenses.forEach(e => { const k = e.date.slice(0, 7); if (monthMap[k]) monthMap[k].exp += e.amount; });
+        const trendBars = Object.entries(monthMap).map(([key, val]) => ({
+            label: MONTHS[parseInt(key.slice(5, 7)) - 1],
+            value: val.rev,
+            color: 'linear-gradient(180deg,#1b6b6b,#2e9c9c)'
+        }));
+        const trendLine = Object.entries(monthMap).map(([key, val]) => ({
+            label: MONTHS[parseInt(key.slice(5, 7)) - 1],
+            value: val.rev
+        }));
+
+        // Top 5 debtors
+        const topDebtors = [...debtors].sort((a, b) => a.balance - b.balance).slice(0, 5);
+
+        return {
+            thisMonthRevenue, lastMonthRevenue, thisMonthExpenses, lastMonthExpenses,
+            thisMonthProfit, thisMonthCount, todayRevenue, allTimeRevenue, allTimeExpenses,
+            allTimeProfit, avgPayment, revTrend, expTrend, profTrend,
+            debtors, totalDebt, creditors, totalCredit, unpaidCount,
+            typeSlices, catBars, trendBars, trendLine, topDebtors
+        };
+    }, [payments, expenses, students, groups, thisMonthPrefix, lastMonthPrefix, todayStr]);
+
+    // ─── List filters ─────────────────────────────────────────────
     const filteredPayments = useMemo(() => {
         return payments
             .filter(p => p.amount > 0)
@@ -145,8 +215,7 @@ export default function Finance() {
                     p.type.toLowerCase().includes(q)
                 );
             })
-            .slice()
-            .reverse();
+            .slice().reverse();
     }, [payments, dateFilter, listSearch, students, thisMonthPrefix, lastMonthPrefix]);
 
     const filteredExpenses = useMemo(() => {
@@ -159,31 +228,13 @@ export default function Finance() {
             .filter(e => {
                 if (!listSearch.trim()) return true;
                 const q = listSearch.toLowerCase();
-                return (
-                    e.category.toLowerCase().includes(q) ||
-                    (e.description || '').toLowerCase().includes(q)
-                );
+                return e.category.toLowerCase().includes(q) || (e.description || '').toLowerCase().includes(q);
             })
-            .slice()
-            .reverse();
+            .slice().reverse();
     }, [expenses, dateFilter, listSearch, thisMonthPrefix, lastMonthPrefix]);
 
     const filteredRevenue = filteredPayments.reduce((sum, p) => sum + p.amount, 0);
     const filteredExpenditure = filteredExpenses.reduce((sum, e) => sum + e.amount, 0);
-
-    const stats = [
-        { label: t('stat_revenue'), value: totalRevenue, icon: <DollarSign size={20} />, color: 'emerald' },
-        { label: t('stat_expenses'), value: totalExpenditure, icon: <TrendingDown size={20} />, color: 'rose' },
-        { label: t('stat_profit'), value: profit, icon: <TrendingUp size={20} />, color: 'teal' },
-        { label: t('stat_balance'), value: activeBalance, icon: <Wallet size={20} />, color: 'amber' },
-    ];
-
-    const colorVariants: Record<string, string> = {
-        emerald: 'bg-emerald-50 text-emerald-600 border-emerald-100 dark:bg-emerald-950/20 dark:text-emerald-400 dark:border-emerald-900/40',
-        rose: 'bg-rose-50 text-rose-600 border-rose-100 dark:bg-rose-950/20 dark:text-rose-400 dark:border-rose-900/40',
-        teal: 'bg-teal-50 text-[#1b6b6b] border-teal-100 dark:bg-teal-950/20 dark:text-teal-400 dark:border-teal-900/40',
-        amber: 'bg-amber-50 text-amber-600 border-amber-100 dark:bg-amber-950/20 dark:text-amber-400 dark:border-amber-900/40'
-    };
 
     return (
         <div className="space-y-6 animate-in fade-in duration-500">
@@ -218,158 +269,294 @@ export default function Finance() {
                 </div>
             </div>
 
-            {/* Stats Cards */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                {stats.map((stat, idx) => (
-                    <div key={idx} className="bg-white dark:bg-gray-800 p-5 rounded-2xl border border-gray-100 dark:border-gray-700/50 shadow-sm flex items-center justify-between group">
-                        <div>
-                            <span className="text-[9px] font-extrabold text-gray-400 uppercase tracking-widest block mb-1">{stat.label}</span>
-                            <h4 className="text-xl font-black text-gray-900 dark:text-white tracking-tight tabular-nums">{stat.value.toLocaleString()} UZS</h4>
-                        </div>
-                        <div className={`w-10 h-10 rounded-xl flex items-center justify-center border transition-transform group-hover:scale-105 ${colorVariants[stat.color]}`}>
-                            {stat.icon}
-                        </div>
-                    </div>
-                ))}
-            </div>
-
-            {/* Main List */}
+            {/* Main Card with Tabs */}
             <div className="bg-white dark:bg-gray-800 rounded-3xl border border-gray-100 dark:border-gray-700/50 shadow-sm">
-                {/* Tabs + Filters */}
+                {/* Tab Bar */}
                 <div className="px-6 pt-5 pb-4 border-b border-gray-50 dark:border-gray-700/50 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                     <div className="flex items-center gap-2 bg-gray-50 dark:bg-gray-900 p-1.5 rounded-xl border border-gray-100 dark:border-gray-700/50 w-fit">
+                        <button onClick={() => setActiveTab('reports')} className={`flex items-center gap-1.5 px-5 py-2 rounded-lg text-[10px] font-extrabold uppercase tracking-widest transition-all cursor-pointer ${activeTab === 'reports' ? 'bg-[#1b6b6b] text-white shadow' : 'text-gray-400 hover:text-gray-600'}`}>
+                            <BarChart2 size={12} /> Hisobotlar
+                        </button>
                         <button onClick={() => { setActiveTab('payments'); setListSearch(''); }} className={`px-5 py-2 rounded-lg text-[10px] font-extrabold uppercase tracking-widest transition-all cursor-pointer ${activeTab === 'payments' ? 'bg-[#1b6b6b] text-white shadow' : 'text-gray-400 hover:text-gray-600'}`}>{t('payments_tab')}</button>
                         <button onClick={() => { setActiveTab('expenses'); setListSearch(''); }} className={`px-5 py-2 rounded-lg text-[10px] font-extrabold uppercase tracking-widest transition-all cursor-pointer ${activeTab === 'expenses' ? 'bg-[#1b6b6b] text-white shadow' : 'text-gray-400 hover:text-gray-600'}`}>{t('expenses_tab')}</button>
-                        <button onClick={() => setActiveTab('reports')} className={`flex items-center gap-1.5 px-5 py-2 rounded-lg text-[10px] font-extrabold uppercase tracking-widest transition-all cursor-pointer ${activeTab === 'reports' ? 'bg-[#1b6b6b] text-white shadow' : 'text-gray-400 hover:text-gray-600'}`}><BarChart2 size={12} /> Hisobotlar</button>
                     </div>
 
-                    {activeTab !== 'reports' && <div className="flex items-center gap-2">
-                        {/* Date filter */}
-                        <div className="flex items-center gap-1 bg-gray-50 dark:bg-gray-900 p-1 rounded-xl border border-gray-100 dark:border-gray-700/50">
-                            {(['thisMonth', 'lastMonth', 'all'] as const).map(f => (
-                                <button
-                                    key={f}
-                                    onClick={() => setDateFilter(f)}
-                                    className={`px-3 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-wider transition-all cursor-pointer ${dateFilter === f ? 'bg-[#1b6b6b] text-white shadow' : 'text-gray-400 hover:text-gray-600'}`}
-                                >
-                                    {f === 'thisMonth' ? 'Bu oy' : f === 'lastMonth' ? "O'tgan oy" : 'Barchasi'}
-                                </button>
+                    {activeTab !== 'reports' && (
+                        <div className="flex items-center gap-2">
+                            <div className="flex items-center gap-1 bg-gray-50 dark:bg-gray-900 p-1 rounded-xl border border-gray-100 dark:border-gray-700/50">
+                                {(['thisMonth', 'lastMonth', 'all'] as const).map(f => (
+                                    <button key={f} onClick={() => setDateFilter(f)}
+                                        className={`px-3 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-wider transition-all cursor-pointer ${dateFilter === f ? 'bg-[#1b6b6b] text-white shadow' : 'text-gray-400 hover:text-gray-600'}`}>
+                                        {f === 'thisMonth' ? 'Bu oy' : f === 'lastMonth' ? "O'tgan oy" : 'Barchasi'}
+                                    </button>
+                                ))}
+                            </div>
+                            <div className="relative">
+                                <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                                <input
+                                    type="text"
+                                    placeholder={activeTab === 'payments' ? "O'quvchi ismi..." : "Kategoriya..."}
+                                    value={listSearch}
+                                    onChange={e => setListSearch(e.target.value)}
+                                    className="pl-8 pr-4 py-2 bg-gray-50 dark:bg-gray-900 border border-gray-100 dark:border-gray-700 rounded-xl text-[10px] font-bold text-gray-900 dark:text-white outline-none focus:border-[#1b6b6b] w-40 transition-all"
+                                />
+                                {listSearch && (
+                                    <button onClick={() => setListSearch('')} className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-300 hover:text-gray-500 cursor-pointer">
+                                        <X size={11} />
+                                    </button>
+                                )}
+                            </div>
+                        </div>
+                    )}
+                </div>
+
+                {/* ─── HISOBOTLAR TAB ──────────────────────────────────────── */}
+                {activeTab === 'reports' && (
+                    <div className="p-6 space-y-8">
+
+                        {/* Bu oy asosiy 3 ta metrika */}
+                        <div>
+                            <p className="text-[9px] font-black text-gray-400 uppercase tracking-widest mb-4">
+                                Bu oy — {MONTHS[now.getMonth()]} {now.getFullYear()}
+                            </p>
+                            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                                <StatCard
+                                    label="Bu oylik tushum"
+                                    value={metrics.thisMonthRevenue.toLocaleString() + ' UZS'}
+                                    sub="kirim"
+                                    trend={metrics.revTrend}
+                                    icon={<TrendingUp size={18} />}
+                                    color="emerald"
+                                />
+                                <StatCard
+                                    label="Bu oylik xarajat"
+                                    value={metrics.thisMonthExpenses.toLocaleString() + ' UZS'}
+                                    sub="chiqim"
+                                    trend={metrics.expTrend !== 0 ? -metrics.expTrend : undefined}
+                                    icon={<TrendingDown size={18} />}
+                                    color="rose"
+                                />
+                                <StatCard
+                                    label="Bu oylik sof foyda"
+                                    value={metrics.thisMonthProfit.toLocaleString() + ' UZS'}
+                                    sub="foyda"
+                                    trend={metrics.profTrend}
+                                    icon={<Wallet size={18} />}
+                                    color={metrics.thisMonthProfit >= 0 ? 'sky' : 'rose'}
+                                />
+                            </div>
+                        </div>
+
+                        {/* Ikkinchi qator — qo'shimcha metrikalar */}
+                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                            {[
+                                { label: "Bugungi tushum", value: metrics.todayRevenue.toLocaleString() + ' UZS', icon: <Calendar size={16} />, color: 'amber' as const },
+                                { label: "Bu oylik to'lovlar", value: metrics.thisMonthCount + ' ta', icon: <CreditCard size={16} />, color: 'violet' as const },
+                                { label: "O'rtacha to'lov", value: metrics.avgPayment.toLocaleString() + ' UZS', icon: <ArrowUpRight size={16} />, color: 'indigo' as const },
+                                { label: "To'lamagan o'quvchilar", value: metrics.unpaidCount + ' ta', icon: <AlertCircle size={16} />, color: 'rose' as const },
+                            ].map((m, i) => (
+                                <div key={i} className="bg-gray-50 dark:bg-gray-900/50 rounded-2xl border border-gray-100 dark:border-gray-700/50 p-4 flex flex-col gap-2">
+                                    <span className="text-[9px] font-black text-gray-400 uppercase tracking-widest">{m.label}</span>
+                                    <p className="text-base font-black text-gray-900 dark:text-white tabular-nums">{m.value}</p>
+                                </div>
                             ))}
                         </div>
 
-                        {/* Search */}
-                        <div className="relative">
-                            <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-                            <input
-                                type="text"
-                                placeholder={activeTab === 'payments' ? "O'quvchi ismi..." : "Kategoriya..."}
-                                value={listSearch}
-                                onChange={e => setListSearch(e.target.value)}
-                                className="pl-8 pr-4 py-2 bg-gray-50 dark:bg-gray-900 border border-gray-100 dark:border-gray-700 rounded-xl text-[10px] font-bold text-gray-900 dark:text-white outline-none focus:border-[#1b6b6b] w-40 transition-all"
-                            />
-                            {listSearch && (
-                                <button onClick={() => setListSearch('')} className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-300 hover:text-gray-500 cursor-pointer">
-                                    <X size={11} />
-                                </button>
-                            )}
+                        {/* Oylik tushum trendi */}
+                        <div className="bg-gray-50 dark:bg-gray-900/40 rounded-2xl border border-gray-100 dark:border-gray-700/50 p-5">
+                            <p className="text-[9px] font-black text-gray-400 uppercase tracking-widest mb-4">Oylik tushum trendi (so'nggi 6 oy)</p>
+                            {metrics.trendLine.length >= 2
+                                ? <LineChart data={metrics.trendLine} color="#1b6b6b" height={160} />
+                                : <BarChart data={metrics.trendBars} height={160} />
+                            }
                         </div>
-                    </div>}
-                </div>
 
-                {/* Reports tab content */}
-                {activeTab === 'reports' && (
-                    <div>
-                        {/* Report sub-tabs + date range */}
-                        <div className="px-6 py-4 border-b border-gray-50 dark:border-gray-700/50 flex flex-col sm:flex-row sm:items-center gap-3">
-                            <div className="flex items-center gap-1 bg-gray-50 dark:bg-gray-900 p-1 rounded-xl border border-gray-100 dark:border-gray-700/50">
-                                <button onClick={() => setActiveReport('payments_report')} className={`px-4 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-wider transition-all cursor-pointer ${activeReport === 'payments_report' ? 'bg-[#1b6b6b] text-white shadow' : 'text-gray-400 hover:text-gray-600'}`}>To'lovlar hisoboti</button>
-                                <button onClick={() => setActiveReport('students_payment')} className={`px-4 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-wider transition-all cursor-pointer ${activeReport === 'students_payment' ? 'bg-[#1b6b6b] text-white shadow' : 'text-gray-400 hover:text-gray-600'}`}>O'quvchilar balansi</button>
+                        {/* To'lov usullari + Xarajat kategoriyalari */}
+                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                            <div className="bg-gray-50 dark:bg-gray-900/40 rounded-2xl border border-gray-100 dark:border-gray-700/50 p-5">
+                                <p className="text-[9px] font-black text-gray-400 uppercase tracking-widest mb-4">Bu oy to'lov usullari</p>
+                                {metrics.typeSlices.length > 0
+                                    ? <DonutChart slices={metrics.typeSlices} size={140} />
+                                    : <p className="text-[10px] text-gray-400 font-bold text-center py-8">Bu oy to'lovlar yo'q</p>
+                                }
                             </div>
-                            <div className="flex items-center gap-2 ml-auto">
-                                <span className="text-[9px] font-black text-gray-400 uppercase tracking-widest">Sana:</span>
-                                <input type="date" value={reportStart} onChange={e => setReportStart(e.target.value)}
-                                    className="px-3 py-1.5 bg-gray-50 dark:bg-gray-900 border border-gray-100 dark:border-gray-700 rounded-xl text-[10px] font-bold text-gray-900 dark:text-white outline-none focus:border-[#1b6b6b]" />
-                                <span className="text-[9px] text-gray-400">—</span>
-                                <input type="date" value={reportEnd} onChange={e => setReportEnd(e.target.value)}
-                                    className="px-3 py-1.5 bg-gray-50 dark:bg-gray-900 border border-gray-100 dark:border-gray-700 rounded-xl text-[10px] font-bold text-gray-900 dark:text-white outline-none focus:border-[#1b6b6b]" />
+                            <div className="bg-gray-50 dark:bg-gray-900/40 rounded-2xl border border-gray-100 dark:border-gray-700/50 p-5">
+                                <p className="text-[9px] font-black text-gray-400 uppercase tracking-widest mb-4">Bu oy xarajat kategoriyalari</p>
+                                {metrics.catBars.length > 0
+                                    ? <BarChart data={metrics.catBars} horizontal />
+                                    : <p className="text-[10px] text-gray-400 font-bold text-center py-8">Bu oy xarajatlar yo'q</p>
+                                }
                             </div>
                         </div>
-                        {activeReport === 'payments_report'
-                            ? <PaymentsReport startDate={reportStart} endDate={reportEnd} />
-                            : <StudentsPaymentReport startDate={reportStart} endDate={reportEnd} />
-                        }
+
+                        {/* Jami ko'rsatkichlar */}
+                        <div>
+                            <p className="text-[9px] font-black text-gray-400 uppercase tracking-widest mb-4">Jami (barcha vaqt)</p>
+                            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                                <StatCard label="Jami tushum" value={metrics.allTimeRevenue.toLocaleString() + ' UZS'} sub="barcha vaqt" icon={<DollarSign size={18} />} color="emerald" />
+                                <StatCard label="Jami xarajat" value={metrics.allTimeExpenses.toLocaleString() + ' UZS'} sub="barcha vaqt" icon={<TrendingDown size={18} />} color="rose" />
+                                <StatCard label="Jami sof foyda" value={metrics.allTimeProfit.toLocaleString() + ' UZS'} sub="barcha vaqt" icon={<TrendingUp size={18} />} color={metrics.allTimeProfit >= 0 ? 'sky' : 'rose'} />
+                            </div>
+                        </div>
+
+                        {/* O'quvchilar moliyaviy holati */}
+                        <div>
+                            <p className="text-[9px] font-black text-gray-400 uppercase tracking-widest mb-4">O'quvchilar moliyaviy holati</p>
+                            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                                <div className="bg-rose-50 dark:bg-rose-950/20 rounded-2xl border border-rose-100 dark:border-rose-900/40 p-4">
+                                    <span className="text-[9px] font-black text-rose-500 uppercase tracking-widest block mb-1">Qarzdorlar</span>
+                                    <p className="text-2xl font-black text-rose-600 dark:text-rose-400">{metrics.debtors.length} ta</p>
+                                    <p className="text-[9px] font-bold text-rose-400 mt-1 tabular-nums">{metrics.totalDebt.toLocaleString()} UZS</p>
+                                </div>
+                                <div className="bg-emerald-50 dark:bg-emerald-950/20 rounded-2xl border border-emerald-100 dark:border-emerald-900/40 p-4">
+                                    <span className="text-[9px] font-black text-emerald-500 uppercase tracking-widest block mb-1">Musbat balans</span>
+                                    <p className="text-2xl font-black text-emerald-600 dark:text-emerald-400">{metrics.creditors.length} ta</p>
+                                    <p className="text-[9px] font-bold text-emerald-400 mt-1 tabular-nums">{metrics.totalCredit.toLocaleString()} UZS</p>
+                                </div>
+                                <div className="bg-gray-50 dark:bg-gray-900/50 rounded-2xl border border-gray-100 dark:border-gray-700/50 p-4">
+                                    <span className="text-[9px] font-black text-gray-400 uppercase tracking-widest block mb-1">Nol balans</span>
+                                    <p className="text-2xl font-black text-gray-600 dark:text-gray-300">{students.filter(s => s.balance === 0).length} ta</p>
+                                    <p className="text-[9px] font-bold text-gray-400 mt-1">to'langan</p>
+                                </div>
+                                <div className="bg-amber-50 dark:bg-amber-950/20 rounded-2xl border border-amber-100 dark:border-amber-900/40 p-4">
+                                    <span className="text-[9px] font-black text-amber-500 uppercase tracking-widest block mb-1">Bu oy to'lamagan</span>
+                                    <p className="text-2xl font-black text-amber-600 dark:text-amber-400">{metrics.unpaidCount} ta</p>
+                                    <p className="text-[9px] font-bold text-amber-400 mt-1">faol o'quvchi</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Top qarzdorlar */}
+                        {metrics.topDebtors.length > 0 && (
+                            <div>
+                                <p className="text-[9px] font-black text-gray-400 uppercase tracking-widest mb-4">Eng ko'p qarzdorlar (top 5)</p>
+                                <div className="space-y-2">
+                                    {metrics.topDebtors.map((st, i) => (
+                                        <div
+                                            key={st.id}
+                                            onClick={() => navigate(`/students/${st.id}`)}
+                                            className="flex items-center justify-between px-4 py-3 bg-rose-50/60 dark:bg-rose-950/10 border border-rose-100 dark:border-rose-900/30 rounded-xl hover:bg-rose-50 dark:hover:bg-rose-950/20 cursor-pointer transition-all group"
+                                        >
+                                            <div className="flex items-center gap-3">
+                                                <span className="text-[9px] font-black text-rose-300 w-5">{i + 1}.</span>
+                                                <div>
+                                                    <p className="text-xs font-bold text-gray-900 dark:text-white uppercase">{st.name}</p>
+                                                    {st.phone && <p className="text-[9px] text-gray-400 font-bold mt-0.5">{st.phone}</p>}
+                                                </div>
+                                            </div>
+                                            <div className="flex items-center gap-2">
+                                                <span className="text-xs font-black text-rose-600 tabular-nums">{st.balance.toLocaleString()} UZS</span>
+                                                <ChevronRight size={13} className="text-rose-300 group-hover:text-rose-400 transition-colors" />
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
+
+                        {/* O'tgan oy taqqoslash */}
+                        <div className="bg-gray-50 dark:bg-gray-900/40 rounded-2xl border border-gray-100 dark:border-gray-700/50 p-5">
+                            <p className="text-[9px] font-black text-gray-400 uppercase tracking-widest mb-4">
+                                O'tgan oy taqqoslash — {MONTHS[lastMonthDate.getMonth()]} {lastMonthDate.getFullYear()}
+                            </p>
+                            <div className="grid grid-cols-3 gap-4">
+                                {[
+                                    { label: "Tushum", cur: metrics.thisMonthRevenue, prev: metrics.lastMonthRevenue, pos: true },
+                                    { label: "Xarajat", cur: metrics.thisMonthExpenses, prev: metrics.lastMonthExpenses, pos: false },
+                                    { label: "Foyda", cur: metrics.thisMonthProfit, prev: metrics.lastMonthRevenue - metrics.lastMonthExpenses, pos: true },
+                                ].map((item, i) => {
+                                    const diff = item.cur - item.prev;
+                                    const isUp = diff > 0;
+                                    return (
+                                        <div key={i} className="text-center">
+                                            <p className="text-[9px] font-black text-gray-400 uppercase tracking-widest mb-2">{item.label}</p>
+                                            <p className="text-lg font-black text-gray-900 dark:text-white tabular-nums">{item.cur.toLocaleString()}</p>
+                                            <p className="text-[9px] text-gray-400 tabular-nums mt-0.5">{item.prev.toLocaleString()} o'tgan oy</p>
+                                            {diff !== 0 && (
+                                                <span className={`inline-flex items-center gap-0.5 text-[9px] font-black mt-1 px-2 py-0.5 rounded-lg ${(item.pos ? isUp : !isUp) ? 'text-emerald-600 bg-emerald-50 dark:bg-emerald-950/30' : 'text-rose-600 bg-rose-50 dark:bg-rose-950/30'}`}>
+                                                    {isUp ? <TrendingUp size={9} /> : <TrendingDown size={9} />}
+                                                    {Math.abs(diff).toLocaleString()} UZS
+                                                </span>
+                                            )}
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                        </div>
                     </div>
                 )}
 
-                {/* Summary row — only for payments/expenses tabs */}
-                {activeTab !== 'reports' && <div className="px-6 py-3 border-b border-gray-50 dark:border-gray-700/30 flex items-center gap-4">
-                    <span className="text-[9px] font-black text-gray-400 uppercase tracking-widest">{dateLabel}</span>
-                    {activeTab === 'payments' ? (
-                        <>
-                            <span className="text-[9px] font-black text-gray-400">{filteredPayments.length} ta to'lov</span>
-                            <span className="text-[10px] font-black text-emerald-600 tabular-nums ml-auto">+{filteredRevenue.toLocaleString()} UZS</span>
-                        </>
-                    ) : (
-                        <>
-                            <span className="text-[9px] font-black text-gray-400">{filteredExpenses.length} ta xarajat</span>
-                            <span className="text-[10px] font-black text-rose-600 tabular-nums ml-auto">-{filteredExpenditure.toLocaleString()} UZS</span>
-                        </>
-                    )}
-                </div>}
+                {/* Summary row — only for payments/expenses */}
+                {activeTab !== 'reports' && (
+                    <div className="px-6 py-3 border-b border-gray-50 dark:border-gray-700/30 flex items-center gap-4">
+                        <span className="text-[9px] font-black text-gray-400 uppercase tracking-widest">{dateLabel}</span>
+                        {activeTab === 'payments' ? (
+                            <>
+                                <span className="text-[9px] font-black text-gray-400">{filteredPayments.length} ta to'lov</span>
+                                <span className="text-[10px] font-black text-emerald-600 tabular-nums ml-auto">+{filteredRevenue.toLocaleString()} UZS</span>
+                            </>
+                        ) : (
+                            <>
+                                <span className="text-[9px] font-black text-gray-400">{filteredExpenses.length} ta xarajat</span>
+                                <span className="text-[10px] font-black text-rose-600 tabular-nums ml-auto">-{filteredExpenditure.toLocaleString()} UZS</span>
+                            </>
+                        )}
+                    </div>
+                )}
 
                 {/* List */}
-                {activeTab !== 'reports' && <div className="divide-y divide-gray-50 dark:divide-gray-700/30 max-h-[520px] overflow-y-auto">
-                    {activeTab === 'payments' ? (
-                        filteredPayments.length === 0 ? (
-                            <p className="text-center py-12 text-[10px] text-gray-400 font-bold uppercase tracking-widest">To'lovlar topilmadi</p>
-                        ) : filteredPayments.map(p => {
-                            const student = students.find(s => s.id === p.studentId);
-                            return (
-                                <div
-                                    key={p.id}
-                                    onClick={() => student && navigate(`/students/${student.id}`)}
-                                    className="flex items-center justify-between px-6 py-3.5 hover:bg-gray-50/70 dark:hover:bg-gray-900/40 transition-all cursor-pointer group"
-                                >
+                {activeTab !== 'reports' && (
+                    <div className="divide-y divide-gray-50 dark:divide-gray-700/30 max-h-[520px] overflow-y-auto">
+                        {activeTab === 'payments' ? (
+                            filteredPayments.length === 0 ? (
+                                <p className="text-center py-12 text-[10px] text-gray-400 font-bold uppercase tracking-widest">To'lovlar topilmadi</p>
+                            ) : filteredPayments.map(p => {
+                                const student = students.find(s => s.id === p.studentId);
+                                return (
+                                    <div key={p.id}
+                                        onClick={() => student && navigate(`/students/${student.id}`)}
+                                        className="flex items-center justify-between px-6 py-3.5 hover:bg-gray-50/70 dark:hover:bg-gray-900/40 transition-all cursor-pointer group">
+                                        <div className="flex items-center gap-3 min-w-0">
+                                            <div className="w-8 h-8 rounded-xl bg-emerald-50 dark:bg-emerald-950/20 border border-emerald-100 dark:border-emerald-900/40 flex items-center justify-center shrink-0">
+                                                <DollarSign size={14} className="text-emerald-600 dark:text-emerald-400" />
+                                            </div>
+                                            <div className="min-w-0">
+                                                <p className="text-xs font-bold text-gray-900 dark:text-white uppercase truncate">{student?.name || "Noma'lum"}</p>
+                                                <span className="text-[9px] text-gray-400 font-bold block mt-0.5 uppercase tracking-wide">{p.date} • {p.type}</span>
+                                            </div>
+                                        </div>
+                                        <div className="flex items-center gap-2 shrink-0">
+                                            <span className="text-xs font-black text-emerald-600 tabular-nums">+{p.amount.toLocaleString()} UZS</span>
+                                            <ChevronRight size={13} className="text-gray-300 group-hover:text-gray-400 transition-colors" />
+                                        </div>
+                                    </div>
+                                );
+                            })
+                        ) : (
+                            filteredExpenses.length === 0 ? (
+                                <p className="text-center py-12 text-[10px] text-gray-400 font-bold uppercase tracking-widest">Xarajatlar topilmadi</p>
+                            ) : filteredExpenses.map(e => (
+                                <div key={e.id} className="flex items-center justify-between px-6 py-3.5 hover:bg-gray-50/70 dark:hover:bg-gray-900/40 transition-all">
                                     <div className="flex items-center gap-3 min-w-0">
-                                        <div className="w-8 h-8 rounded-xl bg-emerald-50 dark:bg-emerald-950/20 border border-emerald-100 dark:border-emerald-900/40 flex items-center justify-center shrink-0">
-                                            <DollarSign size={14} className="text-emerald-600 dark:text-emerald-400" />
+                                        <div className="w-8 h-8 rounded-xl bg-rose-50 dark:bg-rose-950/20 border border-rose-100 dark:border-rose-900/40 flex items-center justify-center shrink-0">
+                                            <TrendingDown size={14} className="text-rose-500 dark:text-rose-400" />
                                         </div>
                                         <div className="min-w-0">
-                                            <p className="text-xs font-bold text-gray-900 dark:text-white uppercase truncate">{student?.name || "Noma'lum"}</p>
-                                            <span className="text-[9px] text-gray-400 font-bold block mt-0.5 uppercase tracking-wide">{p.date} • {p.type}</span>
+                                            <p className="text-xs font-bold text-gray-900 dark:text-white uppercase truncate">{e.category}</p>
+                                            <span className="text-[9px] text-gray-400 font-bold block mt-0.5 uppercase tracking-wide">{e.date}{e.description ? ` • ${e.description}` : ''}</span>
                                         </div>
                                     </div>
-                                    <div className="flex items-center gap-2 shrink-0">
-                                        <span className="text-xs font-black text-emerald-600 tabular-nums">+{p.amount.toLocaleString()} UZS</span>
-                                        <ChevronRight size={13} className="text-gray-300 group-hover:text-gray-400 transition-colors" />
+                                    <div className="flex items-center gap-3 shrink-0">
+                                        <span className="text-xs font-black text-rose-600 tabular-nums">-{e.amount.toLocaleString()} UZS</span>
+                                        <button onClick={() => deleteExpense(e.id)} className="w-7 h-7 rounded-lg text-gray-300 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/20 flex items-center justify-center transition-colors cursor-pointer">
+                                            <Trash2 size={13} />
+                                        </button>
                                     </div>
                                 </div>
-                            );
-                        })
-                    ) : (
-                        filteredExpenses.length === 0 ? (
-                            <p className="text-center py-12 text-[10px] text-gray-400 font-bold uppercase tracking-widest">Xarajatlar topilmadi</p>
-                        ) : filteredExpenses.map(e => (
-                            <div key={e.id} className="flex items-center justify-between px-6 py-3.5 hover:bg-gray-50/70 dark:hover:bg-gray-900/40 transition-all">
-                                <div className="flex items-center gap-3 min-w-0">
-                                    <div className="w-8 h-8 rounded-xl bg-rose-50 dark:bg-rose-950/20 border border-rose-100 dark:border-rose-900/40 flex items-center justify-center shrink-0">
-                                        <TrendingDown size={14} className="text-rose-500 dark:text-rose-400" />
-                                    </div>
-                                    <div className="min-w-0">
-                                        <p className="text-xs font-bold text-gray-900 dark:text-white uppercase truncate">{e.category}</p>
-                                        <span className="text-[9px] text-gray-400 font-bold block mt-0.5 uppercase tracking-wide">{e.date}{e.description ? ` • ${e.description}` : ''}</span>
-                                    </div>
-                                </div>
-                                <div className="flex items-center gap-3 shrink-0">
-                                    <span className="text-xs font-black text-rose-600 tabular-nums">-{e.amount.toLocaleString()} UZS</span>
-                                    <button onClick={() => deleteExpense(e.id)} className="w-7 h-7 rounded-lg text-gray-300 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/20 flex items-center justify-center transition-colors cursor-pointer">
-                                        <Trash2 size={13} />
-                                    </button>
-                                </div>
-                            </div>
-                        ))
-                    )}
-                </div>}
+                            ))
+                        )}
+                    </div>
+                )}
             </div>
 
             {/* Payment Modal */}
@@ -384,7 +571,6 @@ export default function Finance() {
                                     <h3 className="text-sm font-black uppercase tracking-widest text-[#1b6b6b] dark:text-teal-400">SARIOSIYO CENTER</h3>
                                     <p className="text-[10px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-widest">TO'LOV CHEKI (RECEIPT)</p>
                                 </div>
-
                                 <div className="bg-gray-50 dark:bg-gray-900/30 p-6 rounded-3xl border border-gray-100 dark:border-gray-750 font-mono text-xs text-gray-800 dark:text-gray-300 space-y-4 shadow-inner">
                                     <div className="border-b border-dashed border-gray-300 dark:border-gray-700 pb-3 space-y-1">
                                         <div className="flex justify-between"><span>Chek #</span><span className="font-black">#{createdPaymentForReceipt.id}</span></div>
@@ -392,18 +578,18 @@ export default function Finance() {
                                     </div>
                                     <div className="space-y-2">
                                         <div>
-                                            <span className="text-[9px] text-gray-450 uppercase block">O'quvchi:</span>
+                                            <span className="text-[9px] text-gray-400 uppercase block">O'quvchi:</span>
                                             <span className="font-black text-gray-900 dark:text-white text-[13px]">{selectedStudent?.name}</span>
                                         </div>
                                         {selectedStudent?.phone && (
-                                            <div><span className="text-[9px] text-gray-450 uppercase block">Telefon:</span><span>{selectedStudent.phone}</span></div>
+                                            <div><span className="text-[9px] text-gray-400 uppercase block">Telefon:</span><span>{selectedStudent.phone}</span></div>
                                         )}
                                         {(() => {
                                             const sg = groups.filter(g => (g.studentIds || []).includes(selectedStudent?.id));
                                             if (!sg.length) return null;
                                             return (
                                                 <div>
-                                                    <span className="text-[9px] text-gray-450 uppercase block">Kurslar:</span>
+                                                    <span className="text-[9px] text-gray-400 uppercase block">Kurslar:</span>
                                                     <div className="font-semibold">{sg.map(g => {
                                                         const cn = courses.find(c => c.id === g.courseId)?.name || '';
                                                         return <div key={g.id}>- {g.name}{cn && ` (${cn})`}</div>;
@@ -432,13 +618,9 @@ export default function Finance() {
                                         To'lovingiz uchun rahmat!
                                     </div>
                                 </div>
-
                                 <div className="flex gap-3">
-                                    <button
-                                        type="button"
-                                        onClick={() => handlePrintReceipt(createdPaymentForReceipt, selectedStudent)}
-                                        className="flex-1 py-3 bg-[#1b6b6b] hover:bg-[#155252] text-white text-xs font-extrabold uppercase tracking-widest rounded-2xl transition-all cursor-pointer shadow-lg shadow-[#1b6b6b]/20 text-center"
-                                    >
+                                    <button type="button" onClick={() => handlePrintReceipt(createdPaymentForReceipt, selectedStudent)}
+                                        className="flex-1 py-3 bg-[#1b6b6b] hover:bg-[#155252] text-white text-xs font-extrabold uppercase tracking-widest rounded-2xl transition-all cursor-pointer shadow-lg shadow-[#1b6b6b]/20 text-center">
                                         Chop etish (Print)
                                     </button>
                                     <button type="button" onClick={closePaymentModal}
@@ -468,17 +650,11 @@ export default function Finance() {
                                     });
                                     setCreatedPaymentForReceipt(created);
                                 }} className="space-y-4">
-
                                     {!selectedStudent ? (
                                         <div className="relative">
                                             <label className={lbl}>O'quvchini qidirish *</label>
-                                            <input
-                                                type="text"
-                                                placeholder="Ism yoki telefon raqami..."
-                                                className={inp}
-                                                value={studentSearch}
-                                                onChange={(e) => setStudentSearch(e.target.value)}
-                                            />
+                                            <input type="text" placeholder="Ism yoki telefon raqami..." className={inp}
+                                                value={studentSearch} onChange={(e) => setStudentSearch(e.target.value)} />
                                             {studentSearch.trim() !== '' && (
                                                 <div className="absolute z-[210] left-0 right-0 mt-1 bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700 rounded-2xl shadow-xl overflow-hidden max-h-48 overflow-y-auto divide-y divide-gray-50 dark:divide-gray-750">
                                                     {students.filter(s =>
