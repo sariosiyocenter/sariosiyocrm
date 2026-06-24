@@ -244,6 +244,9 @@ export default function Finance() {
     // ─── Date helpers ─────────────────────────────────────────────
     const now = new Date();
     const todayStr = now.toISOString().split('T')[0];
+    const thisMonthPrefix = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+    const lastMonthDate = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+    const lastMonthPrefix = `${lastMonthDate.getFullYear()}-${String(lastMonthDate.getMonth() + 1).padStart(2, '0')}`;
 
     const dateLabel = selectedPreset === 'this_month'
         ? `${MONTHS[now.getMonth()]} ${now.getFullYear()}`

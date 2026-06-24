@@ -64,7 +64,7 @@ export default function LeftStudentsReport({ startDate, endDate }: { startDate?:
                 <StatCard label="Jami ketganlar" value={leftStudents.length} icon={<UserMinus size={16} />} color="rose" />
                 <StatCard label="Bu oy" value={thisMonthCount} icon={<Calendar size={16} />} color="amber" />
                 <StatCard label="Asosiy sabab" value={reasonsData[0]?.label || "Noma'lum"} sub={leftStudents.length > 0 ? `${Math.round((reasonsData[0]?.value / leftStudents.length) * 100)}%` : '0%'} icon={<AlertCircle size={16} />} color="sky" />
-                <StatCard label="Aktiv o'quvchilar" value={students.filter(s => s.status === 'Faol').length} icon={<TrendingDown size={16} />} color="emerald" />
+                <StatCard label="Aktiv o'quvchilar" value={rawStudents.filter(s => s.status === 'Faol').length} icon={<TrendingDown size={16} />} color="emerald" />
             </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
