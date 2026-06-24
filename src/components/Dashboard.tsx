@@ -410,18 +410,19 @@ export default function Dashboard() {
                         <p className="text-[9px] font-bold text-gray-400 uppercase tracking-widest mt-0.5">Markaz tahliliy ko'rsatkichlari (Tanlangan muddat uchun)</p>
                     </div>
                     {/* Secondary Tabs for Reports */}
-                    <div className="flex flex-wrap gap-1 bg-gray-55 dark:bg-gray-900 p-1.5 rounded-xl border border-gray-100 dark:border-gray-700/50 w-fit">
+                    <div className="flex items-center gap-1 bg-gray-100/80 dark:bg-gray-950/40 p-1 rounded-xl border border-gray-200/40 dark:border-gray-850/20 w-full xl:w-auto max-w-full overflow-x-auto no-scrollbar flex-nowrap">
                         {DASHBOARD_REPORTS.map(r => (
                             <button
                                 key={r.id}
                                 onClick={() => setActiveReportTab(r.id)}
-                                className={`px-3 py-1.5 rounded-lg text-[9px] font-extrabold uppercase tracking-wider transition-all cursor-pointer ${
+                                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-wider transition-all duration-200 cursor-pointer whitespace-nowrap transform active:scale-95 ${
                                     activeReportTab === r.id
-                                        ? 'bg-[#1b6b6b] text-white shadow'
-                                        : 'text-gray-400 hover:text-gray-600'
+                                        ? 'bg-white dark:bg-gray-800 text-[#1b6b6b] dark:text-emerald-400 shadow-sm border border-gray-200/50 dark:border-gray-700/50 scale-[1.01]'
+                                        : 'text-gray-400 dark:text-gray-500 hover:text-gray-700 dark:hover:text-gray-300'
                                 }`}
                             >
-                                {r.label}
+                                <span className="shrink-0">{r.icon}</span>
+                                <span>{r.label}</span>
                             </button>
                         ))}
                     </div>

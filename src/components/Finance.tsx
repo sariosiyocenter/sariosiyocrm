@@ -416,15 +416,39 @@ export default function Finance() {
             <div className="bg-white dark:bg-gray-800 rounded-3xl border border-gray-100 dark:border-gray-700/50 shadow-sm">
                 {/* Tab Bar */}
                 <div className="px-6 pt-5 pb-4 border-b border-gray-50 dark:border-gray-700/50 flex flex-col xl:flex-row xl:items-center justify-between gap-4">
-                    <div className="flex flex-wrap items-center gap-2 bg-gray-55 dark:bg-gray-900 p-1.5 rounded-xl border border-gray-100 dark:border-gray-700/50 w-fit">
-                        <button onClick={() => setActiveTab('reports')} className={`flex items-center gap-1.5 px-5 py-2 rounded-lg text-[10px] font-extrabold uppercase tracking-widest transition-all cursor-pointer ${activeTab === 'reports' ? 'bg-[#1b6b6b] text-white shadow' : 'text-gray-400 hover:text-gray-600'}`}>
-                            <BarChart2 size={12} /> Hisobotlar
+                    <div className="flex items-center gap-1 bg-gray-100/80 dark:bg-gray-950/40 p-1 rounded-xl border border-gray-200/40 dark:border-gray-800/40 w-full xl:w-auto max-w-full overflow-x-auto no-scrollbar flex-nowrap">
+                        <button onClick={() => setActiveTab('reports')} className={`flex items-center gap-1.5 px-3.5 py-2 rounded-lg text-[10px] font-black uppercase tracking-wider transition-all duration-200 cursor-pointer whitespace-nowrap transform active:scale-95 ${
+                            activeTab === 'reports'
+                                ? 'bg-white dark:bg-gray-800 text-[#1b6b6b] dark:text-emerald-400 shadow-sm border border-gray-200/50 dark:border-gray-700/50 scale-[1.01]'
+                                : 'text-gray-400 dark:text-gray-500 hover:text-gray-700 dark:hover:text-gray-300'
+                        }`}>
+                            <BarChart2 size={12} className="shrink-0" />
+                            <span>Hisobotlar</span>
                         </button>
-                        <button onClick={() => setActiveTab('billing')} className={`flex items-center gap-1.5 px-5 py-2 rounded-lg text-[10px] font-extrabold uppercase tracking-widest transition-all cursor-pointer ${activeTab === 'billing' ? 'bg-violet-600 text-white shadow' : 'text-gray-400 hover:text-gray-600'}`}>
-                            <Calendar size={12} /> Oylik nazorat
+                        <button onClick={() => setActiveTab('billing')} className={`flex items-center gap-1.5 px-3.5 py-2 rounded-lg text-[10px] font-black uppercase tracking-wider transition-all duration-200 cursor-pointer whitespace-nowrap transform active:scale-95 ${
+                            activeTab === 'billing'
+                                ? 'bg-white dark:bg-gray-800 text-violet-600 dark:text-violet-400 shadow-sm border border-gray-200/50 dark:border-gray-700/50 scale-[1.01]'
+                                : 'text-gray-400 dark:text-gray-500 hover:text-gray-700 dark:hover:text-gray-300'
+                        }`}>
+                            <Calendar size={12} className="shrink-0" />
+                            <span>Oylik nazorat</span>
                         </button>
-                        <button onClick={() => { setActiveTab('payments'); setListSearch(''); }} className={`px-5 py-2 rounded-lg text-[10px] font-extrabold uppercase tracking-widest transition-all cursor-pointer ${activeTab === 'payments' ? 'bg-[#1b6b6b] text-white shadow' : 'text-gray-400 hover:text-gray-600'}`}>{t('payments_tab')}</button>
-                        <button onClick={() => { setActiveTab('expenses'); setListSearch(''); }} className={`px-5 py-2 rounded-lg text-[10px] font-extrabold uppercase tracking-widest transition-all cursor-pointer ${activeTab === 'expenses' ? 'bg-[#1b6b6b] text-white shadow' : 'text-gray-400 hover:text-gray-600'}`}>{t('expenses_tab')}</button>
+                        <button onClick={() => { setActiveTab('payments'); setListSearch(''); }} className={`flex items-center gap-1.5 px-3.5 py-2 rounded-lg text-[10px] font-black uppercase tracking-wider transition-all duration-200 cursor-pointer whitespace-nowrap transform active:scale-95 ${
+                            activeTab === 'payments'
+                                ? 'bg-white dark:bg-gray-800 text-[#1b6b6b] dark:text-emerald-400 shadow-sm border border-gray-200/50 dark:border-gray-700/50 scale-[1.01]'
+                                : 'text-gray-400 dark:text-gray-500 hover:text-gray-700 dark:hover:text-gray-300'
+                        }`}>
+                            <CreditCard size={12} className="shrink-0" />
+                            <span>{t('payments_tab')}</span>
+                        </button>
+                        <button onClick={() => { setActiveTab('expenses'); setListSearch(''); }} className={`flex items-center gap-1.5 px-3.5 py-2 rounded-lg text-[10px] font-black uppercase tracking-wider transition-all duration-200 cursor-pointer whitespace-nowrap transform active:scale-95 ${
+                            activeTab === 'expenses'
+                                ? 'bg-white dark:bg-gray-800 text-[#1b6b6b] dark:text-emerald-400 shadow-sm border border-gray-200/50 dark:border-gray-700/50 scale-[1.01]'
+                                : 'text-gray-400 dark:text-gray-500 hover:text-gray-700 dark:hover:text-gray-300'
+                        }`}>
+                            <TrendingDown size={12} className="shrink-0" />
+                            <span>{t('expenses_tab')}</span>
+                        </button>
                     </div>
 
                     {activeTab !== 'billing' && (
