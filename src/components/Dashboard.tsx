@@ -401,25 +401,24 @@ export default function Dashboard() {
 
             {/* Reports Section integrated into Dashboard */}
             <div className="bg-white dark:bg-gray-800 rounded-3xl border border-gray-100 dark:border-gray-700/50 p-6 shadow-sm">
-                <div className="border-b border-gray-50 dark:border-gray-700/50 pb-4 mb-6">
-                    <h3 className="text-xs font-black text-gray-900 dark:text-white uppercase tracking-wider flex items-center gap-2">
-                        <BarChart3 size={16} className="text-[#1b6b6b]" />
-                        {t('reports_title')}
-                    </h3>
-                    <p className="text-[9px] font-bold text-gray-400 uppercase tracking-widest mt-0.5">Markaz tahliliy ko'rsatkichlari (Tanlangan muddat uchun)</p>
-                </div>
-
-                <div className="flex flex-col lg:flex-row gap-6">
+                <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-4 border-b border-gray-50 dark:border-gray-700/50 pb-4 mb-6">
+                    <div>
+                        <h3 className="text-xs font-black text-gray-900 dark:text-white uppercase tracking-wider flex items-center gap-2">
+                            <BarChart3 size={16} className="text-[#1b6b6b]" />
+                            {t('reports_title')}
+                        </h3>
+                        <p className="text-[9px] font-bold text-gray-400 uppercase tracking-widest mt-0.5">Markaz tahliliy ko'rsatkichlari (Tanlangan muddat uchun)</p>
+                    </div>
                     {/* Secondary Tabs for Reports */}
-                    <div className="flex flex-row lg:flex-col overflow-x-auto lg:overflow-x-visible flex-nowrap lg:w-64 gap-1 p-1 bg-gray-100/50 dark:bg-gray-900/40 rounded-2xl border border-gray-200/30 dark:border-gray-800/40 w-full shrink-0 h-fit no-scrollbar">
+                    <div className="flex xl:grid xl:grid-cols-7 overflow-x-auto xl:overflow-x-visible flex-nowrap gap-1 bg-gray-100/80 dark:bg-gray-950/40 p-1 rounded-xl border border-gray-200/40 dark:border-gray-800/40 w-full xl:w-auto max-w-full no-scrollbar">
                         {DASHBOARD_REPORTS.map(r => (
                             <button
                                 key={r.id}
                                 onClick={() => setActiveReportTab(r.id)}
-                                className={`flex items-center gap-2.5 px-4 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all duration-200 cursor-pointer text-left whitespace-nowrap lg:whitespace-normal lg:w-full transform active:scale-95 ${
+                                className={`flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-wider transition-all duration-200 cursor-pointer whitespace-nowrap xl:w-full transform active:scale-95 ${
                                     activeReportTab === r.id
                                         ? 'bg-white dark:bg-gray-800 text-[#1b6b6b] dark:text-emerald-400 shadow-sm border border-gray-200/50 dark:border-gray-700/50 scale-[1.01]'
-                                        : 'text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-50 dark:hover:bg-gray-850/40'
+                                        : 'text-gray-400 dark:text-gray-500 hover:text-gray-700 dark:hover:text-gray-300'
                                 }`}
                             >
                                 <span className="shrink-0">{r.icon}</span>
@@ -427,10 +426,10 @@ export default function Dashboard() {
                             </button>
                         ))}
                     </div>
+                </div>
 
-                    <div className="flex-1 min-w-0 overflow-hidden">
-                        {renderReportContent()}
-                    </div>
+                <div className="overflow-hidden">
+                    {renderReportContent()}
                 </div>
             </div>
 
