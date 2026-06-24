@@ -14,6 +14,7 @@ const translations = {
     nav_hr:          'HR Menejment',
     nav_settings:    'Sozlamalar',
     nav_syllabus:    "O'quv programmasi",
+    nav_messaging:   'Xabarlar',
     // Common actions
     save:        'Saqlash',
     saving:      'Saqlanmoqda...',
@@ -557,6 +558,7 @@ const translations = {
     nav_hr:          'HR Менеджмент',
     nav_settings:    'Настройки',
     nav_syllabus:    'Учебная программа',
+    nav_messaging:   'Сообщения',
     save:        'Сохранить',
     saving:      'Сохранение...',
     cancel:      'Отмена',
@@ -1071,6 +1073,7 @@ const translations = {
     nav_hr:          'HR Management',
     nav_settings:    'Settings',
     nav_syllabus:    'Syllabus',
+    nav_messaging:   'Messaging',
     save:        'Save',
     saving:      'Saving...',
     cancel:      'Cancel',

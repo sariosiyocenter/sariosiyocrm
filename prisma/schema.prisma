@@ -302,6 +302,9 @@ model School {
   salaryPayments   SalaryPayment[]
   topics           Topic[]
   syllabuses       Syllabus[]
+  messageTemplates MessageTemplate[]
+  messageCampaigns MessageCampaign[]
+  autoMessageRules AutoMessageRule[]
 }
 
 model SmsLog {
@@ -314,11 +317,57 @@ model SmsLog {
   studentId Int?
   eskizId   String?
   errorMsg  String?
+  channel   String   @default("SMS") // SMS | TELEGRAM
+  campaignId Int?
   sentAt    DateTime @default(now())
 
   schoolId  Int
   school    School   @relation(fields: [schoolId], references: [id])
 
+  @@index([schoolId])
+}
+
+model MessageTemplate {
+  id        Int      @id @default(autoincrement())
+  name      String
+  body      String
+  category  String   @default("Umumiy") // Qarzdorlik | Tug'ilgan kun | Eslatma | Umumiy
+  schoolId  Int
+  school    School   @relation(fields: [schoolId], references: [id])
+  createdAt DateTime @default(now())
+
+  @@index([schoolId])
+}
+
+model MessageCampaign {
+  id          Int      @id @default(autoincrement())
+  message     String
+  channel     String   // SMS | TELEGRAM | BOTH
+  recipientTo String   // PARENT | STUDENT
+  filtersJson Json?
+  totalCount  Int      @default(0)
+  sentCount   Int      @default(0)
+  failedCount Int      @default(0)
+  schoolId    Int
+  school      School   @relation(fields: [schoolId], references: [id])
+  createdAt   DateTime @default(now())
+
+  @@index([schoolId])
+}
+
+model AutoMessageRule {
+  id          Int      @id @default(autoincrement())
+  type        String   // BIRTHDAY | DEBT_REMINDER
+  enabled     Boolean  @default(false)
+  body        String
+  channel     String   @default("BOTH")   // SMS | TELEGRAM | BOTH
+  recipientTo String   @default("PARENT") // PARENT | STUDENT
+  config      Json?
+  lastRunDate String?
+  schoolId    Int
+  school      School   @relation(fields: [schoolId], references: [id])
+
+  @@unique([schoolId, type])
   @@index([schoolId])
 }
 

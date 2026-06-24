@@ -26,7 +26,7 @@ const Finance         = lazy(() => import('./components/Finance'));
 const Settings        = lazy(() => import('./components/Settings'));
 const Reports         = lazy(() => import('./components/Reports'));
 const Logistics       = lazy(() => import('./components/Logistics'));
-const SmsHistory      = lazy(() => import('./components/SmsHistory'));
+const Messaging       = lazy(() => import('./components/Messaging'));
 const ExamsList       = lazy(() => import('./components/ExamsList'));
 const ExamBuilder     = lazy(() => import('./components/ExamBuilder'));
 const ExamDetail      = lazy(() => import('./components/ExamDetail'));
@@ -114,6 +114,7 @@ export default function App() {
             <Route path="/settings"             element={isAdminOrManager ? <Settings />   : <Navigate to="/" replace />} />
             <Route path="/finance"              element={isAdminOrManager ? <Finance />    : <Navigate to="/" replace />} />
             <Route path="/logistics"            element={isAdminOrManager ? <Logistics />  : <Navigate to="/" replace />} />
+            <Route path="/messaging"            element={isAdminOrManager ? <Messaging />  : <Navigate to="/" replace />} />
             <Route path="/reports"              element={<Navigate to="/" replace />} />
             <Route path="/exams"                element={isAdminOrManager ? <ExamsList />   : <Navigate to="/" replace />} />
             <Route path="/exams/new"            element={isAdminOrManager ? <ExamBuilder /> : <Navigate to="/" replace />} />

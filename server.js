@@ -2836,12 +2836,12 @@ function resolveRecipientPhone(student) {
 }
 
 // Bitta raqamga SMS yuborish
-async function sendSms(phone, message, type, studentId, schoolId) {
+async function sendSms(phone, message, type, studentId, schoolId, campaignId = null) {
   const from = process.env.ESKIZ_FROM || '4546';
   try {
     const token = await getEskizToken();
     const cleanPhone = phone.replace(/\D/g, ''); // Faqat raqamlar
-    
+
     const params = new URLSearchParams();
     params.append('mobile_phone', cleanPhone);
     params.append('message', message);
@@ -2873,6 +2873,8 @@ async function sendSms(phone, message, type, studentId, schoolId) {
         studentId: studentId || null,
         eskizId: data.id ? String(data.id) : null,
         errorMsg: success ? null : JSON.stringify(data),
+        channel: 'SMS',
+        campaignId: campaignId || null,
         schoolId
       }
     });
@@ -2883,7 +2885,8 @@ async function sendSms(phone, message, type, studentId, schoolId) {
       await prisma.smsLog.create({
         data: {
           toPhone: phone, message, status: 'FAILED', type,
-          studentId: studentId || null, errorMsg: err.message, schoolId
+          studentId: studentId || null, errorMsg: err.message,
+          channel: 'SMS', campaignId: campaignId || null, schoolId
         }
       });
     } catch (_) {}
@@ -3018,6 +3021,251 @@ app.get('/api/sms/test-connection', authenticate, async (req, res, next) => {
 });
 
 // ==================== END ESKIZ SMS ====================
+
+// ==================== MESSAGING MODULE ====================
+
+// Shablon o'zgaruvchilarini to'ldirish: {ism} {qarz} {balans} {guruh} {markaz}
+function fillTemplate(body, student, groupsForStudent, school) {
+  const balance = Number(student.balance || 0);
+  const debt = balance < 0 ? Math.abs(balance) : 0;
+  const groupNames = (groupsForStudent || []).map(g => g.name).join(', ');
+  return String(body || '')
+    .replace(/\{ism\}/gi, student.name || '')
+    .replace(/\{qarz\}/gi, debt.toLocaleString())
+    .replace(/\{balans\}/gi, balance.toLocaleString())
+    .replace(/\{guruh\}/gi, groupNames)
+    .replace(/\{markaz\}/gi, school?.name || '');
+}
+
+// Bitta o'quvchiga tanlangan kanal(lar) orqali yuborish
+async function sendToOne({ student, message, channel, recipientTo, type, schoolId, campaignId }) {
+  let anySuccess = false;
+  let attempted = false;
+
+  // Telegram
+  if (channel === 'TELEGRAM' || channel === 'BOTH') {
+    if (student.telegramId) {
+      attempted = true;
+      try {
+        await bot.telegram.sendMessage(student.telegramId, message);
+        anySuccess = true;
+        await prisma.smsLog.create({
+          data: {
+            toPhone: String(student.telegramId), toName: student.name, message,
+            status: 'SENT', type, studentId: student.id,
+            channel: 'TELEGRAM', campaignId: campaignId || null, schoolId
+          }
+        });
+      } catch (tgErr) {
+        await prisma.smsLog.create({
+          data: {
+            toPhone: String(student.telegramId), toName: student.name, message,
+            status: 'FAILED', type, studentId: student.id, errorMsg: tgErr.message,
+            channel: 'TELEGRAM', campaignId: campaignId || null, schoolId
+          }
+        }).catch(() => {});
+      }
+    }
+  }
+
+  // SMS
+  if (channel === 'SMS' || channel === 'BOTH') {
+    const phone = recipientTo === 'STUDENT' ? student.phone : resolveRecipientPhone(student);
+    if (phone) {
+      attempted = true;
+      const r = await sendSms(phone, message, type || 'MANUAL', student.id, schoolId, campaignId);
+      if (r.success) anySuccess = true;
+    }
+  }
+
+  return { attempted, success: anySuccess };
+}
+
+// O'quvchining guruhlarini (StudentGroups relation) olish uchun yordamchi
+async function getStudentGroupsMap(schoolId) {
+  const groups = await prisma.group.findMany({
+    where: { schoolId },
+    include: { students: { select: { id: true } } }
+  });
+  const map = {}; // studentId -> [{id,name}]
+  for (const g of groups) {
+    for (const s of g.students) {
+      if (!map[s.id]) map[s.id] = [];
+      map[s.id].push({ id: g.id, name: g.name });
+    }
+  }
+  return map;
+}
+
+// Ommaviy yuborish
+app.post('/api/messaging/send-batch', authenticate, async (req, res, next) => {
+  try {
+    const { studentIds, message, channel, recipientTo, filters } = req.body;
+    const schoolId = req.user.schoolId;
+    if (!Array.isArray(studentIds) || studentIds.length === 0) return res.status(400).json({ error: 'studentIds kerak' });
+    if (!message || !message.trim()) return res.status(400).json({ error: 'Xabar matni kerak' });
+    const ch = ['SMS', 'TELEGRAM', 'BOTH'].includes(channel) ? channel : 'SMS';
+    const to = recipientTo === 'STUDENT' ? 'STUDENT' : 'PARENT';
+
+    const campaign = await prisma.messageCampaign.create({
+      data: { message, channel: ch, recipientTo: to, filtersJson: filters || null, totalCount: studentIds.length, schoolId }
+    });
+
+    const students = await prisma.student.findMany({ where: { id: { in: studentIds.map(Number) }, schoolId } });
+    const school = await prisma.school.findUnique({ where: { id: schoolId } });
+    const groupsMap = await getStudentGroupsMap(schoolId);
+
+    let sentCount = 0, failedCount = 0;
+    for (const student of students) {
+      const personalized = fillTemplate(message, student, groupsMap[student.id] || [], school);
+      const r = await sendToOne({ student, message: personalized, channel: ch, recipientTo: to, type: 'MANUAL', schoolId, campaignId: campaign.id });
+      if (r.success) sentCount++; else failedCount++;
+    }
+
+    const updated = await prisma.messageCampaign.update({
+      where: { id: campaign.id },
+      data: { sentCount, failedCount }
+    });
+    res.json({ success: true, campaign: updated, sentCount, failedCount, total: students.length });
+  } catch (err) { next(err); }
+});
+
+// Shablonlar CRUD
+app.get('/api/messaging/templates', authenticate, async (req, res, next) => {
+  try {
+    const templates = await prisma.messageTemplate.findMany({
+      where: { schoolId: req.user.schoolId }, orderBy: { createdAt: 'desc' }
+    });
+    res.json(templates);
+  } catch (err) { next(err); }
+});
+
+app.post('/api/messaging/templates', authenticate, async (req, res, next) => {
+  try {
+    const { name, body, category } = req.body;
+    if (!name || !body) return res.status(400).json({ error: 'name va body kerak' });
+    const template = await prisma.messageTemplate.create({
+      data: { name, body, category: category || 'Umumiy', schoolId: req.user.schoolId }
+    });
+    res.status(201).json(template);
+  } catch (err) { next(err); }
+});
+
+app.put('/api/messaging/templates/:id', authenticate, async (req, res, next) => {
+  try {
+    const { name, body, category } = req.body;
+    const template = await prisma.messageTemplate.update({
+      where: { id: parseInt(req.params.id) },
+      data: { ...(name !== undefined && { name }), ...(body !== undefined && { body }), ...(category !== undefined && { category }) }
+    });
+    res.json(template);
+  } catch (err) { next(err); }
+});
+
+app.delete('/api/messaging/templates/:id', authenticate, async (req, res, next) => {
+  try {
+    await prisma.messageTemplate.delete({ where: { id: parseInt(req.params.id) } });
+    res.json({ success: true });
+  } catch (err) { next(err); }
+});
+
+// Kampaniyalar tarixi
+app.get('/api/messaging/campaigns', authenticate, async (req, res, next) => {
+  try {
+    const campaigns = await prisma.messageCampaign.findMany({
+      where: { schoolId: req.user.schoolId }, orderBy: { createdAt: 'desc' }, take: 100
+    });
+    res.json(campaigns);
+  } catch (err) { next(err); }
+});
+
+// Avtomatik qoidalar
+app.get('/api/messaging/auto-rules', authenticate, async (req, res, next) => {
+  try {
+    const rules = await prisma.autoMessageRule.findMany({ where: { schoolId: req.user.schoolId } });
+    res.json(rules);
+  } catch (err) { next(err); }
+});
+
+app.put('/api/messaging/auto-rules/:type', authenticate, async (req, res, next) => {
+  try {
+    const type = req.params.type;
+    if (!['BIRTHDAY', 'DEBT_REMINDER'].includes(type)) return res.status(400).json({ error: 'Noto\'g\'ri tur' });
+    const { enabled, body, channel, recipientTo, config } = req.body;
+    const schoolId = req.user.schoolId;
+    const data = {
+      ...(enabled !== undefined && { enabled: !!enabled }),
+      ...(body !== undefined && { body }),
+      ...(channel !== undefined && { channel }),
+      ...(recipientTo !== undefined && { recipientTo }),
+      ...(config !== undefined && { config })
+    };
+    const rule = await prisma.autoMessageRule.upsert({
+      where: { schoolId_type: { schoolId, type } },
+      update: data,
+      create: { schoolId, type, enabled: !!enabled, body: body || '', channel: channel || 'BOTH', recipientTo: recipientTo || 'PARENT', config: config || null }
+    });
+    res.json(rule);
+  } catch (err) { next(err); }
+});
+
+// Vercel cron: kunlik avtomatik xabarlar
+app.get('/api/messaging/auto-process', async (req, res, next) => {
+  try {
+    const authHeader = req.headers['authorization'];
+    if (process.env.CRON_SECRET && authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
+      return res.status(401).json({ error: 'Unauthorized' });
+    }
+    const now = new Date();
+    const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+    const mmdd = `${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+    const dayOfMonth = now.getDate();
+
+    const rules = await prisma.autoMessageRule.findMany({ where: { enabled: true } });
+    const results = [];
+
+    for (const rule of rules) {
+      if (rule.lastRunDate === todayStr) { results.push({ ruleId: rule.id, type: rule.type, skipped: 'already-run' }); continue; }
+      const schoolId = rule.schoolId;
+      const school = await prisma.school.findUnique({ where: { id: schoolId } });
+      const groupsMap = await getStudentGroupsMap(schoolId);
+
+      let targets = [];
+      if (rule.type === 'BIRTHDAY') {
+        const students = await prisma.student.findMany({ where: { schoolId, status: { in: ['Faol', 'Sinov'] } } });
+        targets = students.filter(s => (s.birthDate || '').slice(5, 10) === mmdd);
+      } else if (rule.type === 'DEBT_REMINDER') {
+        const cfg = rule.config || {};
+        const ruleDay = Number(cfg.dayOfMonth || 1);
+        if (dayOfMonth !== ruleDay) { results.push({ ruleId: rule.id, type: rule.type, skipped: 'not-due-day' }); continue; }
+        const minDebt = Number(cfg.minDebt || 0);
+        const students = await prisma.student.findMany({ where: { schoolId, status: { in: ['Faol', 'Sinov'] } } });
+        targets = students.filter(s => Number(s.balance || 0) < -minDebt);
+      }
+
+      let sent = 0, failed = 0;
+      let campaign = null;
+      if (targets.length > 0) {
+        campaign = await prisma.messageCampaign.create({
+          data: { message: rule.body, channel: rule.channel, recipientTo: rule.recipientTo, filtersJson: { auto: rule.type }, totalCount: targets.length, schoolId }
+        });
+        for (const student of targets) {
+          const msg = fillTemplate(rule.body, student, groupsMap[student.id] || [], school);
+          const r = await sendToOne({ student, message: msg, channel: rule.channel, recipientTo: rule.recipientTo, type: rule.type === 'BIRTHDAY' ? 'BIRTHDAY' : 'PAYMENT', schoolId, campaignId: campaign.id });
+          if (r.success) sent++; else failed++;
+        }
+        await prisma.messageCampaign.update({ where: { id: campaign.id }, data: { sentCount: sent, failedCount: failed } });
+      }
+
+      await prisma.autoMessageRule.update({ where: { id: rule.id }, data: { lastRunDate: todayStr } });
+      results.push({ ruleId: rule.id, type: rule.type, schoolId, targets: targets.length, sent, failed });
+    }
+
+    res.json({ success: true, date: todayStr, results });
+  } catch (err) { next(err); }
+});
+
+// ==================== END MESSAGING MODULE ====================
 
 // ==================== EXAM MODULE ====================
 
