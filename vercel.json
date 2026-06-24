@@ -1,6 +1,12 @@
 {
   "version": 2,
   "regions": ["sin1"],
+  "crons": [
+    {
+      "path": "/api/billing/auto-process",
+      "schedule": "0 0 1 * *"
+    }
+  ],
   "builds": [
     {
       "src": "package.json",

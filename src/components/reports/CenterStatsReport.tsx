@@ -3,8 +3,18 @@ import { useCRM } from '../../context/CRMContext';
 import { Activity, TrendingUp, Users, DollarSign, Target, Briefcase } from 'lucide-react';
 import { StatCard, BarChart, LineChart, DonutChart, ReportCard, SectionHeader } from './shared';
 
-export default function CenterStatsReport() {
-    const { students, teachers, groups, leads, payments, expenses, courses } = useCRM();
+export default function CenterStatsReport({ startDate, endDate }: { startDate?: string; endDate?: string }) {
+    const { students, teachers, groups, leads, payments: rawPayments, expenses: rawExpenses, courses } = useCRM();
+
+    const payments = useMemo(() => {
+        if (!startDate || !endDate) return rawPayments;
+        return rawPayments.filter(p => p.date >= startDate && p.date <= endDate);
+    }, [rawPayments, startDate, endDate]);
+
+    const expenses = useMemo(() => {
+        if (!startDate || !endDate) return rawExpenses;
+        return rawExpenses.filter(e => e.date >= startDate && e.date <= endDate);
+    }, [rawExpenses, startDate, endDate]);
 
     const stats = useMemo(() => {
         const totalIncome = payments.reduce((s, p) => s + p.amount, 0);

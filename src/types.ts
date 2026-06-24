@@ -120,6 +120,8 @@ export interface Expense {
     date: string;
     description: string;
     schoolId: number;
+    staffId?: number | null;   // "Ish haqi" uchun xodim ID
+    staffName?: string | null; // "Ish haqi" uchun xodim ismi
 }
 export interface Transport {
     id: number;

@@ -3,8 +3,16 @@ import { useCRM } from '../../context/CRMContext';
 import { BookOpen, BarChart2, Users, TrendingUp, Download } from 'lucide-react';
 import { StatCard, BarChart, ProgressBar, LineChart, ReportCard, SectionHeader, DataTable } from './shared';
 
-export default function StaffAttendanceReport() {
-    const { teachers, teacherAttendances } = useCRM();
+export default function StaffAttendanceReport({ startDate, endDate }: { startDate?: string; endDate?: string }) {
+    const { teachers, teacherAttendances: rawAttendances } = useCRM();
+
+    const teacherAttendances = useMemo(() => {
+        if (!startDate || !endDate) return rawAttendances;
+        return rawAttendances.filter((a: any) => {
+            if (!a.date) return false;
+            return a.date >= startDate && a.date <= endDate;
+        });
+    }, [rawAttendances, startDate, endDate]);
 
     const statsPerTeacher = useMemo(() => teachers.map(t => {
         const records = teacherAttendances.filter((a: any) => a.teacherId === t.id);

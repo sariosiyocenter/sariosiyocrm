@@ -114,7 +114,7 @@ export default function App() {
             <Route path="/settings"             element={isAdminOrManager ? <Settings />   : <Navigate to="/" replace />} />
             <Route path="/finance"              element={isAdminOrManager ? <Finance />    : <Navigate to="/" replace />} />
             <Route path="/logistics"            element={isAdminOrManager ? <Logistics />  : <Navigate to="/" replace />} />
-            <Route path="/reports"              element={isAdmin           ? <Reports />    : <Navigate to="/" replace />} />
+            <Route path="/reports"              element={<Navigate to="/" replace />} />
             <Route path="/exams"                element={isAdminOrManager ? <ExamsList />   : <Navigate to="/" replace />} />
             <Route path="/exams/new"            element={isAdminOrManager ? <ExamBuilder /> : <Navigate to="/" replace />} />
             <Route path="/exams/:id"            element={isAdminOrManager ? <ExamDetail />  : <Navigate to="/" replace />} />

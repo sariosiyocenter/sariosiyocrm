@@ -3,10 +3,18 @@ import { GraduationCap, Award, Briefcase, TrendingUp, Download } from 'lucide-re
 import { StatCard, BarChart, LineChart, ReportCard, SectionHeader, DataTable } from './shared';
 import { useCRM } from '../../context/CRMContext';
 
-export default function GraduatesReport() {
+export default function GraduatesReport({ startDate, endDate }: { startDate?: string; endDate?: string }) {
     const { students, groups, courses } = useCRM();
 
-    const graduates = students.filter(s => s.status === 'Bitiruvchi');
+    const graduates = React.useMemo(() => {
+        const grads = students.filter(s => s.status === 'Bitiruvchi');
+        if (!startDate || !endDate) return grads;
+        return grads.filter(s => {
+            if (!s.statusChangedAt) return false;
+            const dStr = s.statusChangedAt.slice(0, 10);
+            return dStr >= startDate && dStr <= endDate;
+        });
+    }, [students, startDate, endDate]);
 
     // Group by course
     const courseMap: Record<string, number> = {};

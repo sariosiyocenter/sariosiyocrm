@@ -3,8 +3,17 @@ import { useCRM } from '../../context/CRMContext';
 import { Target, TrendingUp, User, BarChart2, Download } from 'lucide-react';
 import { StatCard, BarChart, DonutChart, LineChart, ReportCard, SectionHeader, DataTable } from './shared';
 
-export default function LeadsReport() {
-    const { leads } = useCRM();
+export default function LeadsReport({ startDate, endDate }: { startDate?: string; endDate?: string }) {
+    const { leads: rawLeads } = useCRM();
+
+    const leads = useMemo(() => {
+        if (!startDate || !endDate) return rawLeads;
+        return rawLeads.filter(l => {
+            if (!l.createdAt) return false;
+            const dStr = l.createdAt.slice(0, 10);
+            return dStr >= startDate && dStr <= endDate;
+        });
+    }, [rawLeads, startDate, endDate]);
 
     const statusMap: Record<string, number> = {};
     leads.forEach(l => { statusMap[l.status] = (statusMap[l.status] || 0) + 1; });

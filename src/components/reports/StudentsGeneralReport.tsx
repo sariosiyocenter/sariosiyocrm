@@ -3,8 +3,17 @@ import { useCRM } from '../../context/CRMContext';
 import { Users, BookOpen, BarChart2, Download, TrendingUp } from 'lucide-react';
 import { StatCard, BarChart, DonutChart, LineChart, ReportCard, SectionHeader, DataTable } from './shared';
 
-export default function StudentsGeneralReport() {
-    const { students, groups, payments } = useCRM();
+export default function StudentsGeneralReport({ startDate, endDate }: { startDate?: string; endDate?: string }) {
+    const { students: rawStudents, groups, payments } = useCRM();
+
+    const students = useMemo(() => {
+        if (!startDate || !endDate) return rawStudents;
+        return rawStudents.filter(s => {
+            if (!s.joinedDate) return true;
+            const dStr = s.joinedDate.slice(0, 10);
+            return dStr >= startDate && dStr <= endDate;
+        });
+    }, [rawStudents, startDate, endDate]);
 
     const statusCounts = { Faol: 0, Arxiv: 0, Sinov: 0 };
     students.forEach(s => { if (s.status in statusCounts) (statusCounts as any)[s.status]++; });

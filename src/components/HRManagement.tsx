@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import {
     Users2, Plus, X, Trash2, Pencil,
-    Phone, Mail, DollarSign,
+    Phone, Mail, DollarSign, Banknote,
     GraduationCap, ExternalLink, Camera, Wrench, Eye, Sparkles
 } from 'lucide-react';
 import { useCRM } from '../context/CRMContext';
@@ -329,6 +329,16 @@ export default function HRManagement() {
                                                 </div>
                                             )}
                                         </div>
+                                        {/* Salary payment quick button — Admin/Manager only */}
+                                        {isAdminOrManager && (
+                                            <button
+                                                onClick={(e) => { e.stopPropagation(); navigate(`/finance?openExpense=1&staffId=${isLegacy ? u._tid : u.id}&staffName=${encodeURIComponent(u.name)}`); }}
+                                                className="mt-2 w-full flex items-center justify-center gap-2 py-2 bg-rose-50 dark:bg-rose-950/20 border border-rose-100 dark:border-rose-900/30 text-rose-600 dark:text-rose-400 rounded-xl text-[9px] font-extrabold uppercase tracking-widest hover:bg-rose-600 hover:text-white hover:border-rose-600 transition-all cursor-pointer"
+                                            >
+                                                <Banknote size={11} />
+                                                Ish haqqi berish
+                                            </button>
+                                        )}
                                         {/* Profile link */}
                                         <button
                                             onClick={() => navigate(profilePath)}

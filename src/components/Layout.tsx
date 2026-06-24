@@ -36,7 +36,6 @@ export default function Layout({ children, onLogout }: LayoutProps) {
     { label: t('nav_finance'),   icon: Wallet,          path: '/finance' },
     { label: t('nav_logistics'), icon: Navigation,      path: '/logistics' },
     { label: t('nav_exams'),     icon: FileText,        path: '/exams' },
-    { label: t('nav_reports'),   icon: BarChart3,       path: '/reports' },
     { label: t('nav_hr'),        icon: Users2,          path: '/hr' },
     { label: t('nav_settings'),  icon: Settings,        path: '/settings' },
   ];

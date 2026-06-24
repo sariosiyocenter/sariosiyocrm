@@ -3,10 +3,18 @@ import { useCRM } from '../../context/CRMContext';
 import { UserMinus, TrendingDown, AlertCircle, Calendar, Download } from 'lucide-react';
 import { StatCard, BarChart, LineChart, ReportCard, SectionHeader, DataTable } from './shared';
 
-export default function LeftStudentsReport() {
-    const { students, groups } = useCRM();
+export default function LeftStudentsReport({ startDate, endDate }: { startDate?: string; endDate?: string }) {
+    const { students: rawStudents, groups } = useCRM();
 
-    const leftStudents = useMemo(() => students.filter(s => s.status === 'Arxiv'), [students]);
+    const leftStudents = useMemo(() => {
+        const archived = rawStudents.filter(s => s.status === 'Arxiv');
+        if (!startDate || !endDate) return archived;
+        return archived.filter(s => {
+            if (!s.statusChangedAt) return false;
+            const dStr = s.statusChangedAt.slice(0, 10);
+            return dStr >= startDate && dStr <= endDate;
+        });
+    }, [rawStudents, startDate, endDate]);
 
     const reasonsMap: Record<string, number> = {};
     leftStudents.forEach(s => {

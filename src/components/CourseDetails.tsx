@@ -4,7 +4,7 @@ import { useCRM } from '../context/CRMContext';
 import {
     Users, Calendar, Clock, BookOpen, Plus, TrendingUp,
     XCircle, ArrowLeft, Search, ClipboardCheck, ChevronRight, Presentation, Check, Sparkles,
-    CreditCard, DollarSign, Wallet, AlertTriangle, ReceiptText
+    CreditCard, DollarSign, Wallet
 } from 'lucide-react';
 import AttendanceMatrix from './AttendanceMatrix';
 import GroupAttendanceCalendar from './GroupAttendanceCalendar';
@@ -38,11 +38,6 @@ export default function CourseDetails() {
     const [paymentType, setPaymentType] = useState<'Naqd' | 'Karta' | 'Peyme' | 'Klik'>('Naqd');
     const [paymentDate, setPaymentDate] = useState(new Date().toISOString().split('T')[0]);
 
-    const [isCloseMonthOpen, setIsCloseMonthOpen] = useState(false);
-    const [closeMonthValue, setCloseMonthValue] = useState(() => {
-        const d = new Date();
-        return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
-    });
     const [paymentMonth, setPaymentMonth] = useState(() => {
         const d = new Date();
         return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
@@ -173,11 +168,6 @@ export default function CourseDetails() {
         }
     };
 
-    const openCloseModal = () => {
-        setCloseMonthValue(paymentMonth);
-        setIsCloseMonthOpen(true);
-    };
-
     // Monthly payment status based on actual payment records (not balance)
     const getMonthlyPayStatus = (studentId: number, price: number) => {
         if (!price) return null;
@@ -198,37 +188,6 @@ export default function CourseDetails() {
         if (balance >= price) return 'full';
         if (balance > 0) return 'partial';
         return 'debt';
-    };
-
-    const handleCloseMonth = async () => {
-        if (!course?.price || isProcessing) return;
-        setIsProcessing(true);
-        const [year, month] = closeMonthValue.split('-').map(Number);
-        const lastDay = new Date(year, month, 0).getDate();
-        const dateStr = `${year}-${String(month).padStart(2, '0')}-${lastDay}`;
-        const monthNames = ['Yanvar','Fevral','Mart','Aprel','May','Iyun','Iyul','Avgust','Sentabr','Oktabr','Noyabr','Dekabr'];
-        const monthLabel = `${monthNames[month - 1]} ${year}`;
-        try {
-            for (const st of groupStudents) {
-                const studentCustomPrice = st.customPrices && typeof st.customPrices === 'object'
-                    ? (st.customPrices as Record<string, number>)[group.id]
-                    : undefined;
-                const finalPrice = studentCustomPrice !== undefined ? studentCustomPrice : course.price;
-                await addPayment({
-                    studentId: st.id,
-                    amount: -(finalPrice),
-                    type: 'Naqd',
-                    date: dateStr,
-                    description: `${course.name} — ${monthLabel} oylik hisob`
-                });
-            }
-            setIsCloseMonthOpen(false);
-            showNotification(`${monthLabel}: ${groupStudents.length} ta o'quvchidan dars to'lovlari muvaffaqiyatli yechildi`, "success");
-        } catch {
-            showNotification("Xatolik yuz berdi", "error");
-        } finally {
-            setIsProcessing(false);
-        }
     };
 
     const handleStartEdit = () => {
@@ -784,15 +743,6 @@ export default function CourseDetails() {
                                         onChange={e => setPaymentMonth(e.target.value)}
                                         className="px-3 py-1.5 text-xs font-semibold bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl outline-none focus:ring-2 focus:ring-violet-500/20 focus:border-violet-400"
                                     />
-                                    {price > 0 && (
-                                    <button
-                                        onClick={openCloseModal}
-                                        className="flex items-center gap-2 px-4 py-2 bg-violet-600 hover:bg-violet-700 text-white text-xs font-bold rounded-xl transition-colors shadow-sm"
-                                    >
-                                        <ReceiptText size={14} />
-                                        Oyni yopish
-                                    </button>
-                                    )}
                                 </div>
                             </div>
                             {/* Summary stats */}
@@ -1103,109 +1053,6 @@ export default function CourseDetails() {
                 </div>
             )}
 
-            {/* Close Month Modal */}
-            {isCloseMonthOpen && course?.price && (
-                <div className="fixed inset-0 z-[200] flex items-center justify-center p-4">
-                    <div className="absolute inset-0 bg-gray-900/60 backdrop-blur-sm" onClick={() => !isProcessing && setIsCloseMonthOpen(false)} />
-                    <div className="relative bg-white dark:bg-gray-900 rounded-3xl shadow-2xl w-full max-w-lg overflow-hidden">
-                        {/* Header */}
-                        <div className="bg-violet-600 p-5">
-                            <div className="flex items-center gap-3">
-                                <div className="w-10 h-10 bg-white/20 rounded-2xl flex items-center justify-center">
-                                    <ReceiptText size={18} className="text-white" />
-                                </div>
-                                <div>
-                                    <h3 className="text-base font-black text-white">Oyni yopish</h3>
-                                    <p className="text-violet-200 text-xs">Kurs to'lovini barcha o'quvchilardan chiqarish</p>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div className="p-5 space-y-4">
-                            {/* Month selector */}
-                            <div>
-                                <label className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-widest block mb-1.5">Oy tanlang</label>
-                                <input
-                                    type="month"
-                                    value={closeMonthValue}
-                                    onChange={e => setCloseMonthValue(e.target.value)}
-                                    className="w-full px-4 py-2.5 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-sm font-semibold text-gray-800 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-violet-500"
-                                />
-                            </div>
-
-                            {/* Info banner */}
-                            <div className="flex items-center gap-3 bg-violet-50 dark:bg-violet-950/20 border border-violet-100 dark:border-violet-900/40 rounded-2xl p-3">
-                                <AlertTriangle size={15} className="text-violet-600 shrink-0" />
-                                <p className="text-xs text-violet-700 dark:text-violet-300">
-                                    Har bir o'quvchidan ularning <span className="font-black">kurs narxi</span> miqdorida ayiriladi (maxsus narxlar hisobga olinadi)
-                                </p>
-                            </div>
-
-                            {/* Student preview table */}
-                            <div className="bg-gray-50 dark:bg-gray-800/50 rounded-2xl overflow-hidden border border-gray-100 dark:border-gray-700/50">
-                                <div className="px-4 py-2 border-b border-gray-100 dark:border-gray-700/50">
-                                    <p className="text-[9px] font-black text-gray-400 uppercase tracking-widest">{groupStudents.length} ta o'quvchi</p>
-                                </div>
-                                <div className="max-h-48 overflow-y-auto divide-y divide-gray-100 dark:divide-gray-700/50">
-                                    {groupStudents.map(st => {
-                                        const stCustomPrice = st.customPrices && typeof st.customPrices === 'object'
-                                            ? (st.customPrices as Record<string, number>)[group.id]
-                                            : undefined;
-                                        const stPrice = stCustomPrice !== undefined ? stCustomPrice : course.price;
-                                        const newBalance = st.balance - stPrice;
-                                        const willDebt = newBalance < 0;
-                                        return (
-                                            <div key={st.id} className="flex items-center justify-between px-4 py-2.5">
-                                                <div>
-                                                    <span className="text-xs font-semibold text-gray-700 dark:text-gray-300">{st.name}</span>
-                                                    {stCustomPrice !== undefined && (
-                                                        <span className="ml-2 text-[9px] font-bold text-[#1b6b6b]">({stPrice.toLocaleString()} UZS)</span>
-                                                    )}
-                                                </div>
-                                                <div className="flex items-center gap-2 text-[11px] tabular-nums">
-                                                    <span className="text-gray-400">{st.balance.toLocaleString()}</span>
-                                                    <span className="text-gray-300">→</span>
-                                                    <span className={`font-bold ${willDebt ? 'text-rose-600 dark:text-rose-400' : 'text-emerald-600 dark:text-emerald-400'}`}>
-                                                        {newBalance.toLocaleString()}
-                                                    </span>
-                                                </div>
-                                            </div>
-                                        );
-                                    })}
-                                </div>
-                            </div>
-
-                            {/* Actions */}
-                            <div className="flex gap-3">
-                                <button
-                                    onClick={() => setIsCloseMonthOpen(false)}
-                                    disabled={isProcessing}
-                                    className="flex-1 py-3 border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-400 text-xs font-bold rounded-xl hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors disabled:opacity-50"
-                                >
-                                    Bekor qilish
-                                </button>
-                                <button
-                                    onClick={handleCloseMonth}
-                                    disabled={isProcessing}
-                                    className="flex-1 py-3 bg-violet-600 hover:bg-violet-700 text-white text-xs font-bold rounded-xl transition-colors shadow-lg shadow-violet-500/25 disabled:opacity-60 flex items-center justify-center gap-2"
-                                >
-                                    {isProcessing ? (
-                                        <>
-                                            <div className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                                            Jarayonda...
-                                        </>
-                                    ) : (
-                                        <>
-                                            <ReceiptText size={14} />
-                                            Tasdiqlash
-                                        </>
-                                    )}
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            )}
 
 
         </div>

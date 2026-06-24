@@ -3272,6 +3272,153 @@ app.post('/api/upload', authenticate, async (req, res, next) => {
 
 // ==================== END EXAM MODULE ====================
 
+// ==================== BILLING MODULE ====================
+
+async function processMonthlyBilling(schoolId, month) {
+  const [year, monthNum] = month.split('-').map(Number);
+  const lastDay = new Date(year, monthNum, 0).getDate();
+  const dateStr = `${year}-${String(monthNum).padStart(2, '0')}-${lastDay}`;
+  const monthNames = ['Yanvar','Fevral','Mart','Aprel','May','Iyun','Iyul','Avgust','Sentabr','Oktabr','Noyabr','Dekabr'];
+  const monthLabel = `${monthNames[monthNum - 1]} ${year}`;
+
+  const existing = await prisma.payment.findFirst({
+    where: { schoolId, type: 'Oylik', date: { startsWith: month } }
+  });
+  if (existing) return { alreadyDone: true, month };
+
+  const groups = await prisma.group.findMany({
+    where: { schoolId },
+    include: { course: true, students: { where: { status: { in: ['Faol', 'Sinov'] } } } }
+  });
+
+  const results = [];
+  for (const group of groups) {
+    for (const student of group.students) {
+      const customPrices = (student.customPrices && typeof student.customPrices === 'object') ? student.customPrices : {};
+      const customPrice = customPrices[group.id];
+      const price = customPrice !== undefined ? customPrice : group.course.price;
+      if (!price || price <= 0) continue;
+
+      await prisma.payment.create({
+        data: {
+          studentId: student.id,
+          amount: -price,
+          type: 'Oylik',
+          date: dateStr,
+          description: `[OYLIK HISOB] ${group.course.name} — ${monthLabel}`,
+          schoolId
+        }
+      });
+      await prisma.student.update({ where: { id: student.id }, data: { balance: { decrement: price } } });
+      results.push({ studentId: student.id, groupId: group.id, amount: price });
+    }
+  }
+  return { processed: results.length, total: results.reduce((s, r) => s + r.amount, 0), month };
+}
+
+app.post('/api/billing/process-month', authenticate, async (req, res, next) => {
+  try {
+    const { schoolId, month } = req.body;
+    if (!schoolId || !month) return res.status(400).json({ error: 'schoolId and month required' });
+    const result = await processMonthlyBilling(parseInt(schoolId), month);
+    res.json(result);
+  } catch (err) { next(err); }
+});
+
+app.post('/api/billing/recalculate-month', authenticate, async (req, res, next) => {
+  try {
+    const { schoolId, month } = req.body;
+    if (!schoolId || !month) return res.status(400).json({ error: 'schoolId and month required' });
+    const sid = parseInt(schoolId);
+
+    const allOylik = await prisma.payment.findMany({
+      where: { schoolId: sid, type: 'Oylik' }
+    });
+    const monthPayments = allOylik.filter(p => p.date.startsWith(month) && p.description?.startsWith('[OYLIK HISOB]'));
+
+    for (const p of monthPayments) {
+      await prisma.student.update({ where: { id: p.studentId }, data: { balance: { increment: Math.abs(p.amount) } } });
+    }
+    if (monthPayments.length > 0) {
+      await prisma.payment.deleteMany({ where: { id: { in: monthPayments.map(p => p.id) } } });
+    }
+
+    const result = await processMonthlyBilling(sid, month);
+    res.json({ recalculated: monthPayments.length, ...result });
+  } catch (err) { next(err); }
+});
+
+app.get('/api/billing/status', authenticate, async (req, res, next) => {
+  try {
+    const { schoolId, month } = req.query;
+    if (!schoolId || !month) return res.status(400).json({ error: 'schoolId and month required' });
+    const sid = parseInt(schoolId);
+
+    const groups = await prisma.group.findMany({
+      where: { schoolId: sid },
+      include: { course: true, students: { where: { status: { in: ['Faol', 'Sinov'] } } } }
+    });
+
+    const allPayments = await prisma.payment.findMany({ where: { schoolId: sid } });
+    const positiveThisMonth = allPayments.filter(p => p.amount > 0 && p.date.startsWith(month));
+    const billingDone = allPayments.some(p => p.type === 'Oylik' && p.description?.startsWith('[OYLIK HISOB]') && p.date.startsWith(month));
+
+    const studentMap = {};
+    for (const group of groups) {
+      for (const student of group.students) {
+        if (!studentMap[student.id]) studentMap[student.id] = { student, groupEntries: [] };
+        const cp = (student.customPrices && typeof student.customPrices === 'object') ? student.customPrices : {};
+        const price = cp[group.id] !== undefined ? cp[group.id] : group.course.price;
+        studentMap[student.id].groupEntries.push({
+          groupId: group.id, groupName: group.name, courseName: group.course.name, price
+        });
+      }
+    }
+
+    const students = Object.values(studentMap).map(({ student, groupEntries }) => {
+      const expected = groupEntries.reduce((s, g) => s + g.price, 0);
+      const paid = positiveThisMonth.filter(p => p.studentId === student.id).reduce((s, p) => s + p.amount, 0);
+      const status = paid >= expected && expected > 0 ? 'paid' : paid > 0 ? 'partial' : 'unpaid';
+      return { studentId: student.id, name: student.name, phone: student.phone, balance: student.balance, groups: groupEntries, expected, paid, status };
+    });
+
+    const groupBreakdown = groups.map(group => {
+      const active = group.students;
+      const cp = (s) => { const p = (s.customPrices && typeof s.customPrices === 'object') ? s.customPrices : {}; return p[group.id] !== undefined ? p[group.id] : group.course.price; };
+      const expected = active.reduce((s, st) => s + cp(st), 0);
+      const actual = positiveThisMonth.filter(p => active.some(st => st.id === p.studentId)).reduce((s, p) => s + p.amount, 0);
+      const paidStudents = active.filter(st => positiveThisMonth.filter(p => p.studentId === st.id).reduce((s, p) => s + p.amount, 0) >= cp(st));
+      return {
+        groupId: group.id, groupName: group.name, courseName: group.course.name,
+        totalStudents: active.length, paidCount: paidStudents.length,
+        unpaidCount: active.length - paidStudents.length, expected, actual
+      };
+    });
+
+    res.json({ billingDone, students, groups: groupBreakdown, month });
+  } catch (err) { next(err); }
+});
+
+app.get('/api/billing/auto-process', async (req, res, next) => {
+  try {
+    const authHeader = req.headers['authorization'];
+    if (process.env.CRON_SECRET && authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
+      return res.status(401).json({ error: 'Unauthorized' });
+    }
+    const schools = await prisma.school.findMany({ select: { id: true, name: true } });
+    const now = new Date();
+    const month = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+    const results = [];
+    for (const school of schools) {
+      const result = await processMonthlyBilling(school.id, month);
+      results.push({ schoolId: school.id, schoolName: school.name, ...result });
+    }
+    res.json({ success: true, month, results });
+  } catch (err) { next(err); }
+});
+
+// ==================== END BILLING MODULE ====================
+
 // Serve static React files
 app.use('/uploads', express.static(join(__dirname, 'public', 'uploads')));
 app.use(express.static(join(__dirname, 'dist')));

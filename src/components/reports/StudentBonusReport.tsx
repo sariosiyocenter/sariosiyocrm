@@ -3,8 +3,16 @@ import { useCRM } from '../../context/CRMContext';
 import { Star, TrendingUp, Users, Award, Download } from 'lucide-react';
 import { StatCard, BarChart, LineChart, ProgressBar, ReportCard, SectionHeader, DataTable } from './shared';
 
-export default function StudentBonusReport() {
-    const { students, scores } = useCRM();
+export default function StudentBonusReport({ startDate, endDate }: { startDate?: string; endDate?: string }) {
+    const { students, scores: rawScores } = useCRM();
+
+    const scores = useMemo(() => {
+        if (!startDate || !endDate) return rawScores;
+        return rawScores.filter((sc: any) => {
+            if (!sc.date) return false;
+            return sc.date >= startDate && sc.date <= endDate;
+        });
+    }, [rawScores, startDate, endDate]);
 
     const studentScores = useMemo(() => students.map(s => {
         const sScores = scores.filter((sc: any) => sc.studentId === s.id);

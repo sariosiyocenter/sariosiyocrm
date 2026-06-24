@@ -1,10 +1,11 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect, useCallback } from 'react';
 import {
     TrendingUp, TrendingDown, DollarSign, Wallet,
     Plus, X, Trash2, Search, ChevronRight, BarChart2,
-    AlertCircle, CreditCard, ArrowUpRight, Calendar
+    AlertCircle, CreditCard, ArrowUpRight, Calendar,
+    RefreshCw, CheckCircle2, MessageSquare, ChevronLeft, Users
 } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useCRM } from '../context/CRMContext';
 import { useLang } from '../context/LanguageContext';
 import { Payment, Expense } from '../types';
@@ -27,10 +28,93 @@ const downloadCSV = (filename: string, rows: Record<string, any>[]) => {
 };
 
 export default function Finance() {
-    const { students, payments, expenses, addPayment, addExpense, deleteExpense, groups, courses } = useCRM();
+    const { students, payments, expenses, addPayment, addExpense, deleteExpense, groups, courses, token, selectedSchoolId, teachers } = useCRM();
+
+    // HR users (staff list for salary expense)
+    const [hrUsers, setHrUsers] = useState<any[]>([]);
+    useEffect(() => {
+        if (!token) return;
+        fetch('/api/users', { headers: { Authorization: `Bearer ${token}` } })
+            .then(r => r.json()).then(d => setHrUsers(Array.isArray(d) ? d : [])).catch(() => {});
+    }, [token]);
     const { t } = useLang();
     const navigate = useNavigate();
-    const [activeTab, setActiveTab] = useState<'reports' | 'payments' | 'expenses'>('reports');
+    const [searchParams] = useSearchParams();
+    const [activeTab, setActiveTab] = useState<'reports' | 'billing' | 'payments' | 'expenses'>('reports');
+
+    // Auto-open expense modal when navigated from HR with ?openExpense=1
+    useEffect(() => {
+        if (searchParams.get('openExpense') === '1') {
+            const staffId = searchParams.get('staffId');
+            const staffName = searchParams.get('staffName');
+            setNewExpense(prev => ({
+                ...prev,
+                category: 'Ish haqi',
+                staffId: staffId ? Number(staffId) : null,
+                staffName: staffName ? decodeURIComponent(staffName) : null,
+            }));
+            setActiveTab('expenses');
+            setIsExpenseModalOpen(true);
+            // Clean URL
+            navigate('/finance', { replace: true });
+        }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [searchParams]);
+
+    // Billing state
+    const [billingMonth, setBillingMonth] = useState(() => {
+        const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+    });
+    const [billingData, setBillingData] = useState<{ billingDone: boolean; students: any[]; groups: any[] } | null>(null);
+    const [billingLoading, setBillingLoading] = useState(false);
+    const [billingProcessing, setBillingProcessing] = useState(false);
+    const [billingFilter, setBillingFilter] = useState<'all' | 'paid' | 'partial' | 'unpaid'>('all');
+
+    const loadBillingStatus = useCallback(async () => {
+        if (!selectedSchoolId || !token) return;
+        setBillingLoading(true);
+        try {
+            const res = await fetch(`/api/billing/status?schoolId=${selectedSchoolId}&month=${billingMonth}`, {
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            if (res.ok) setBillingData(await res.json());
+        } catch { /* ignore */ } finally { setBillingLoading(false); }
+    }, [selectedSchoolId, token, billingMonth]);
+
+    useEffect(() => {
+        if (activeTab === 'billing') loadBillingStatus();
+    }, [activeTab, billingMonth, loadBillingStatus]);
+
+    const handleBillingProcess = async (recalculate = false) => {
+        if (!selectedSchoolId || !token || billingProcessing) return;
+        setBillingProcessing(true);
+        try {
+            const endpoint = recalculate ? '/api/billing/recalculate-month' : '/api/billing/process-month';
+            const res = await fetch(endpoint, {
+                method: 'POST',
+                headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+                body: JSON.stringify({ schoolId: selectedSchoolId, month: billingMonth })
+            });
+            const data = await res.json();
+            if (res.ok) await loadBillingStatus();
+            else alert(data.error || 'Xatolik yuz berdi');
+        } catch { alert('Server bilan aloqa yo\'q'); } finally { setBillingProcessing(false); }
+    };
+
+    const billingMonthLabel = (m: string) => {
+        const [y, mo] = m.split('-').map(Number);
+        return `${MONTHS[mo - 1]} ${y}`;
+    };
+    const prevBillingMonth = () => {
+        const [y, mo] = billingMonth.split('-').map(Number);
+        const d = new Date(y, mo - 2, 1);
+        setBillingMonth(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`);
+    };
+    const nextBillingMonth = () => {
+        const [y, mo] = billingMonth.split('-').map(Number);
+        const d = new Date(y, mo, 1);
+        setBillingMonth(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`);
+    };
 
     const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
     const [isExpenseModalOpen, setIsExpenseModalOpen] = useState(false);
@@ -42,9 +126,38 @@ export default function Finance() {
     const [balPage, setBalPage] = useState(0);
     const PAGE_SIZE = 10;
 
+    // Date preset states
+    const [selectedPreset, setSelectedPreset] = useState<'this_month' | 'last_30' | 'this_year' | 'all' | 'custom'>('this_month');
+    const [startDate, setStartDate] = useState(() => {
+        const d = new Date();
+        d.setDate(1);
+        return d.toISOString().split('T')[0];
+    });
+    const [endDate, setEndDate] = useState(() => new Date().toISOString().split('T')[0]);
+
+    const handlePreset = (type: 'this_month' | 'last_30' | 'this_year' | 'all') => {
+        setSelectedPreset(type);
+        const today = new Date();
+        const todayStr = today.toISOString().split('T')[0];
+        setEndDate(todayStr);
+
+        if (type === 'this_month') {
+            const start = new Date(today.getFullYear(), today.getMonth(), 1);
+            setStartDate(start.toISOString().split('T')[0]);
+        } else if (type === 'last_30') {
+            const start = new Date();
+            start.setDate(today.getDate() - 30);
+            setStartDate(start.toISOString().split('T')[0]);
+        } else if (type === 'this_year') {
+            const start = new Date(today.getFullYear(), 0, 1);
+            setStartDate(start.toISOString().split('T')[0]);
+        } else if (type === 'all') {
+            setStartDate('2024-01-01');
+        }
+    };
+
     // List filters
     const [listSearch, setListSearch] = useState('');
-    const [dateFilter, setDateFilter] = useState<'all' | 'thisMonth' | 'lastMonth'>('thisMonth');
 
     // Payment modal state
     const [studentSearch, setStudentSearch] = useState('');
@@ -54,8 +167,17 @@ export default function Finance() {
         studentId: 0, amount: 0, type: 'Naqd', description: '', date: new Date().toISOString().split('T')[0]
     });
     const [newExpense, setNewExpense] = useState<Omit<Expense, 'id' | 'schoolId'>>({
-        amount: 0, category: 'Boshqa', description: '', date: new Date().toISOString().split('T')[0]
+        amount: 0, category: 'Boshqa', description: '', date: new Date().toISOString().split('T')[0],
+        staffId: null, staffName: null
     });
+
+    // All staff for salary expense selector (users + legacy teachers)
+    const userNames = new Set(hrUsers.map(u => u.name.toLowerCase().trim()));
+    const allStaffList = [
+        ...hrUsers.map(u => ({ id: u.id, name: u.name, role: u.role, isUser: true })),
+        ...(teachers || []).filter(t => t.status !== 'Arxiv' && !userNames.has(t.name.toLowerCase().trim()))
+            .map(t => ({ id: t.id, name: t.name, role: 'TEACHER', isUser: false }))
+    ];
 
     const handlePrintReceipt = (payment: any, student: any) => {
         const studentGroups = groups.filter(g => (g.studentIds || []).includes(student?.id));
@@ -122,27 +244,31 @@ export default function Finance() {
     // ─── Date helpers ─────────────────────────────────────────────
     const now = new Date();
     const todayStr = now.toISOString().split('T')[0];
-    const thisMonthPrefix = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
-    const lastMonthDate = new Date(now.getFullYear(), now.getMonth() - 1, 1);
-    const lastMonthPrefix = `${lastMonthDate.getFullYear()}-${String(lastMonthDate.getMonth() + 1).padStart(2, '0')}`;
 
-    const dateLabel = dateFilter === 'thisMonth'
+    const dateLabel = selectedPreset === 'this_month'
         ? `${MONTHS[now.getMonth()]} ${now.getFullYear()}`
-        : dateFilter === 'lastMonth'
-            ? `${MONTHS[lastMonthDate.getMonth()]} ${lastMonthDate.getFullYear()}`
-            : 'Barchasi';
+        : `${startDate} gacha ${endDate}`;
 
     // ─── Core metrics ─────────────────────────────────────────────
     const metrics = useMemo(() => {
         const posPayments = payments.filter(p => p.amount > 0);
 
-        const thisMonthRevenue = posPayments.filter(p => p.date.startsWith(thisMonthPrefix)).reduce((s, p) => s + p.amount, 0);
-        const lastMonthRevenue = posPayments.filter(p => p.date.startsWith(lastMonthPrefix)).reduce((s, p) => s + p.amount, 0);
-        const thisMonthExpenses = expenses.filter(e => e.date.startsWith(thisMonthPrefix)).reduce((s, e) => s + e.amount, 0);
-        const lastMonthExpenses = expenses.filter(e => e.date.startsWith(lastMonthPrefix)).reduce((s, e) => s + e.amount, 0);
+        // Previous period of equal length
+        const start = new Date(startDate);
+        const end = new Date(endDate);
+        const diff = end.getTime() - start.getTime();
+        const prevStart = new Date(start.getTime() - diff - 86400000);
+        const prevEnd = new Date(start.getTime() - 86400000);
+        const prevStartStr = prevStart.toISOString().split('T')[0];
+        const prevEndStr = prevEnd.toISOString().split('T')[0];
+
+        const thisMonthRevenue = posPayments.filter(p => p.date >= startDate && p.date <= endDate).reduce((s, p) => s + p.amount, 0);
+        const lastMonthRevenue = posPayments.filter(p => p.date >= prevStartStr && p.date <= prevEndStr).reduce((s, p) => s + p.amount, 0);
+        const thisMonthExpenses = expenses.filter(e => e.date >= startDate && e.date <= endDate).reduce((s, e) => s + e.amount, 0);
+        const lastMonthExpenses = expenses.filter(e => e.date >= prevStartStr && e.date <= prevEndStr).reduce((s, e) => s + e.amount, 0);
         const thisMonthProfit = thisMonthRevenue - thisMonthExpenses;
         const lastMonthProfit = lastMonthRevenue - lastMonthExpenses;
-        const thisMonthCount = posPayments.filter(p => p.date.startsWith(thisMonthPrefix)).length;
+        const thisMonthCount = posPayments.filter(p => p.date >= startDate && p.date <= endDate).length;
         const todayRevenue = posPayments.filter(p => p.date === todayStr).reduce((s, p) => s + p.amount, 0);
         const allTimeRevenue = posPayments.reduce((s, p) => s + p.amount, 0);
         const allTimeExpenses = expenses.reduce((s, e) => s + e.amount, 0);
@@ -159,14 +285,14 @@ export default function Finance() {
         const creditors = students.filter(s => s.balance > 0);
         const totalCredit = creditors.reduce((s, st) => s + st.balance, 0);
 
-        // Students who haven't paid this month (active students = in at least 1 group)
+        // Students who haven't paid in this period (active students = in at least 1 group)
         const activeStudentIds = new Set(groups.flatMap(g => g.studentIds || []));
-        const paidThisMonth = new Set(posPayments.filter(p => p.date.startsWith(thisMonthPrefix)).map(p => p.studentId));
+        const paidThisMonth = new Set(posPayments.filter(p => p.date >= startDate && p.date <= endDate).map(p => p.studentId));
         const unpaidCount = [...activeStudentIds].filter(id => !paidThisMonth.has(id)).length;
 
-        // Payment type breakdown (this month)
+        // Payment type breakdown (this period)
         const typeMap: Record<string, number> = {};
-        posPayments.filter(p => p.date.startsWith(thisMonthPrefix)).forEach(p => {
+        posPayments.filter(p => p.date >= startDate && p.date <= endDate).forEach(p => {
             typeMap[p.type] = (typeMap[p.type] || 0) + p.amount;
         });
         const typeColors: Record<string, string> = { Naqd: '#10b981', Karta: '#0ea5e9', "O'tkazma": '#8b5cf6', Online: '#f59e0b' };
@@ -174,9 +300,9 @@ export default function Finance() {
             label, value, color: typeColors[label] || '#6b7280'
         }));
 
-        // Expense category breakdown (this month)
+        // Expense category breakdown (this period)
         const catMap: Record<string, number> = {};
-        expenses.filter(e => e.date.startsWith(thisMonthPrefix)).forEach(e => {
+        expenses.filter(e => e.date >= startDate && e.date <= endDate).forEach(e => {
             catMap[e.category] = (catMap[e.category] || 0) + e.amount;
         });
         const catBars = Object.entries(catMap)
@@ -212,16 +338,14 @@ export default function Finance() {
             debtors, totalDebt, creditors, totalCredit, unpaidCount,
             typeSlices, catBars, trendBars, trendLine, topDebtors
         };
-    }, [payments, expenses, students, groups, thisMonthPrefix, lastMonthPrefix, todayStr]);
+    }, [payments, expenses, students, groups, startDate, endDate, todayStr]);
 
     // ─── List filters ─────────────────────────────────────────────
     const filteredPayments = useMemo(() => {
         return payments
             .filter(p => p.amount > 0)
             .filter(p => {
-                if (dateFilter === 'thisMonth') return p.date.startsWith(thisMonthPrefix);
-                if (dateFilter === 'lastMonth') return p.date.startsWith(lastMonthPrefix);
-                return true;
+                return p.date >= startDate && p.date <= endDate;
             })
             .filter(p => {
                 if (!listSearch.trim()) return true;
@@ -234,14 +358,12 @@ export default function Finance() {
                 );
             })
             .slice().reverse();
-    }, [payments, dateFilter, listSearch, students, thisMonthPrefix, lastMonthPrefix]);
+    }, [payments, startDate, endDate, listSearch, students]);
 
     const filteredExpenses = useMemo(() => {
         return expenses
             .filter(e => {
-                if (dateFilter === 'thisMonth') return e.date.startsWith(thisMonthPrefix);
-                if (dateFilter === 'lastMonth') return e.date.startsWith(lastMonthPrefix);
-                return true;
+                return e.date >= startDate && e.date <= endDate;
             })
             .filter(e => {
                 if (!listSearch.trim()) return true;
@@ -249,7 +371,7 @@ export default function Finance() {
                 return e.category.toLowerCase().includes(q) || (e.description || '').toLowerCase().includes(q);
             })
             .slice().reverse();
-    }, [expenses, dateFilter, listSearch, thisMonthPrefix, lastMonthPrefix]);
+    }, [expenses, startDate, endDate, listSearch]);
 
     const filteredRevenue = filteredPayments.reduce((sum, p) => sum + p.amount, 0);
     const filteredExpenditure = filteredExpenses.reduce((sum, e) => sum + e.amount, 0);
@@ -290,40 +412,76 @@ export default function Finance() {
             {/* Main Card with Tabs */}
             <div className="bg-white dark:bg-gray-800 rounded-3xl border border-gray-100 dark:border-gray-700/50 shadow-sm">
                 {/* Tab Bar */}
-                <div className="px-6 pt-5 pb-4 border-b border-gray-50 dark:border-gray-700/50 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                    <div className="flex items-center gap-2 bg-gray-50 dark:bg-gray-900 p-1.5 rounded-xl border border-gray-100 dark:border-gray-700/50 w-fit">
+                <div className="px-6 pt-5 pb-4 border-b border-gray-50 dark:border-gray-700/50 flex flex-col xl:flex-row xl:items-center justify-between gap-4">
+                    <div className="flex flex-wrap items-center gap-2 bg-gray-55 dark:bg-gray-900 p-1.5 rounded-xl border border-gray-100 dark:border-gray-700/50 w-fit">
                         <button onClick={() => setActiveTab('reports')} className={`flex items-center gap-1.5 px-5 py-2 rounded-lg text-[10px] font-extrabold uppercase tracking-widest transition-all cursor-pointer ${activeTab === 'reports' ? 'bg-[#1b6b6b] text-white shadow' : 'text-gray-400 hover:text-gray-600'}`}>
                             <BarChart2 size={12} /> Hisobotlar
+                        </button>
+                        <button onClick={() => setActiveTab('billing')} className={`flex items-center gap-1.5 px-5 py-2 rounded-lg text-[10px] font-extrabold uppercase tracking-widest transition-all cursor-pointer ${activeTab === 'billing' ? 'bg-violet-600 text-white shadow' : 'text-gray-400 hover:text-gray-600'}`}>
+                            <Calendar size={12} /> Oylik nazorat
                         </button>
                         <button onClick={() => { setActiveTab('payments'); setListSearch(''); }} className={`px-5 py-2 rounded-lg text-[10px] font-extrabold uppercase tracking-widest transition-all cursor-pointer ${activeTab === 'payments' ? 'bg-[#1b6b6b] text-white shadow' : 'text-gray-400 hover:text-gray-600'}`}>{t('payments_tab')}</button>
                         <button onClick={() => { setActiveTab('expenses'); setListSearch(''); }} className={`px-5 py-2 rounded-lg text-[10px] font-extrabold uppercase tracking-widest transition-all cursor-pointer ${activeTab === 'expenses' ? 'bg-[#1b6b6b] text-white shadow' : 'text-gray-400 hover:text-gray-600'}`}>{t('expenses_tab')}</button>
                     </div>
 
-                    {activeTab !== 'reports' && (
-                        <div className="flex items-center gap-2">
-                            <div className="flex items-center gap-1 bg-gray-50 dark:bg-gray-900 p-1 rounded-xl border border-gray-100 dark:border-gray-700/50">
-                                {(['thisMonth', 'lastMonth', 'all'] as const).map(f => (
-                                    <button key={f} onClick={() => setDateFilter(f)}
-                                        className={`px-3 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-wider transition-all cursor-pointer ${dateFilter === f ? 'bg-[#1b6b6b] text-white shadow' : 'text-gray-400 hover:text-gray-600'}`}>
-                                        {f === 'thisMonth' ? 'Bu oy' : f === 'lastMonth' ? "O'tgan oy" : 'Barchasi'}
-                                    </button>
-                                ))}
+                    {activeTab !== 'billing' && (
+                        <div className="flex flex-wrap items-center gap-3">
+                            {/* Presets */}
+                            <div className="flex items-center gap-1 bg-gray-55 dark:bg-gray-900 p-1 rounded-xl border border-gray-100 dark:border-gray-700/50">
+                                {['this_month', 'last_30', 'this_year', 'all'].map((type) => {
+                                    const label = type === 'this_month' ? t('preset_this_month') : type === 'last_30' ? t('preset_30_days') : type === 'this_year' ? t('preset_this_year') : t('preset_all');
+                                    return (
+                                        <button
+                                            key={type}
+                                            type="button"
+                                            onClick={() => handlePreset(type as any)}
+                                            className={`px-3 py-1.5 rounded-lg text-[9px] font-extrabold uppercase tracking-wider transition-all cursor-pointer ${
+                                                selectedPreset === type
+                                                    ? 'bg-[#1b6b6b] text-white shadow'
+                                                    : 'text-gray-400 hover:text-gray-600'
+                                            }`}
+                                        >
+                                            {label}
+                                        </button>
+                                    );
+                                })}
                             </div>
-                            <div className="relative">
-                                <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+
+                            {/* Custom inputs */}
+                            <div className="flex items-center gap-2">
                                 <input
-                                    type="text"
-                                    placeholder={activeTab === 'payments' ? "O'quvchi ismi..." : "Kategoriya..."}
-                                    value={listSearch}
-                                    onChange={e => setListSearch(e.target.value)}
-                                    className="pl-8 pr-4 py-2 bg-gray-50 dark:bg-gray-900 border border-gray-100 dark:border-gray-700 rounded-xl text-[10px] font-bold text-gray-900 dark:text-white outline-none focus:border-[#1b6b6b] w-40 transition-all"
+                                    type="date"
+                                    value={startDate}
+                                    onChange={(e) => { setStartDate(e.target.value); setSelectedPreset('custom'); }}
+                                    className="bg-gray-55 dark:bg-gray-900 px-3 py-1.5 rounded-xl border border-gray-100 dark:border-gray-700 text-xs font-bold text-gray-800 dark:text-gray-200 outline-none focus:border-[#1b6b6b] w-32 cursor-pointer"
                                 />
-                                {listSearch && (
-                                    <button onClick={() => setListSearch('')} className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-300 hover:text-gray-500 cursor-pointer">
-                                        <X size={11} />
-                                    </button>
-                                )}
+                                <span className="text-gray-400 dark:text-gray-500 font-extrabold text-[9px] uppercase tracking-wider">{t('date_to')}</span>
+                                <input
+                                    type="date"
+                                    value={endDate}
+                                    onChange={(e) => { setEndDate(e.target.value); setSelectedPreset('custom'); }}
+                                    className="bg-gray-55 dark:bg-gray-900 px-3 py-1.5 rounded-xl border border-gray-100 dark:border-gray-700 text-xs font-bold text-gray-800 dark:text-gray-200 outline-none focus:border-[#1b6b6b] w-32 cursor-pointer"
+                                />
                             </div>
+
+                            {/* Search box if activeTab is payments or expenses */}
+                            {(activeTab === 'payments' || activeTab === 'expenses') && (
+                                <div className="relative">
+                                    <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                                    <input
+                                        type="text"
+                                        placeholder={activeTab === 'payments' ? "O'quvchi ismi..." : "Kategoriya..."}
+                                        value={listSearch}
+                                        onChange={e => setListSearch(e.target.value)}
+                                        className="pl-8 pr-4 py-2 bg-gray-55 dark:bg-gray-900 border border-gray-100 dark:border-gray-700 rounded-xl text-[10px] font-bold text-gray-900 dark:text-white outline-none focus:border-[#1b6b6b] w-40 transition-all"
+                                    />
+                                    {listSearch && (
+                                        <button onClick={() => setListSearch('')} className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-300 hover:text-gray-500 cursor-pointer">
+                                            <X size={11} />
+                                        </button>
+                                    )}
+                                </div>
+                            )}
                         </div>
                     )}
                 </div>
@@ -331,11 +489,10 @@ export default function Finance() {
                 {/* ─── HISOBOTLAR TAB ──────────────────────────────────────── */}
                 {activeTab === 'reports' && (
                     <div className="p-6 space-y-8">
-
                         {/* Bu oy asosiy 3 ta metrika */}
                         <div>
                             <p className="text-[9px] font-black text-gray-400 uppercase tracking-widest mb-4">
-                                Bu oy — {MONTHS[now.getMonth()]} {now.getFullYear()}
+                                Muddat: {dateLabel}
                             </p>
                             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                                 <StatCard
@@ -678,8 +835,201 @@ export default function Finance() {
                     </div>
                 )}
 
+                {/* ─── OYLIK NAZORAT TAB ──────────────────────────────────── */}
+                {activeTab === 'billing' && (
+                    <div className="p-6 space-y-6">
+                        {/* Month selector + action button */}
+                        <div className="flex flex-col sm:flex-row sm:items-center gap-4 justify-between">
+                            <div className="flex items-center gap-3">
+                                <button onClick={prevBillingMonth} className="w-8 h-8 flex items-center justify-center rounded-xl border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700 transition-all cursor-pointer">
+                                    <ChevronLeft size={14} className="text-gray-500" />
+                                </button>
+                                <div className="text-center">
+                                    <p className="text-base font-black text-gray-900 dark:text-white uppercase tracking-tight">{billingMonthLabel(billingMonth)}</p>
+                                    <p className="text-[9px] font-bold text-gray-400 uppercase tracking-widest mt-0.5">Oylik hisob-kitob</p>
+                                </div>
+                                <button onClick={nextBillingMonth} className="w-8 h-8 flex items-center justify-center rounded-xl border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700 transition-all cursor-pointer">
+                                    <ChevronRight size={14} className="text-gray-500" />
+                                </button>
+                            </div>
+                            <div className="flex items-center gap-2">
+                                <button onClick={loadBillingStatus} disabled={billingLoading}
+                                    className="flex items-center gap-1.5 px-3 py-2 border border-gray-200 dark:border-gray-700 rounded-xl text-[10px] font-black uppercase tracking-widest text-gray-500 hover:bg-gray-50 dark:hover:bg-gray-700 transition-all cursor-pointer disabled:opacity-50">
+                                    <RefreshCw size={12} className={billingLoading ? 'animate-spin' : ''} /> Yangilash
+                                </button>
+                                {billingData?.billingDone ? (
+                                    <button onClick={() => handleBillingProcess(true)} disabled={billingProcessing}
+                                        className="flex items-center gap-1.5 px-4 py-2 bg-amber-500 hover:bg-amber-600 text-white rounded-xl text-[10px] font-black uppercase tracking-widest transition-all cursor-pointer disabled:opacity-50 shadow-lg shadow-amber-500/20">
+                                        <RefreshCw size={12} className={billingProcessing ? 'animate-spin' : ''} />
+                                        {billingProcessing ? 'Hisoblanmoqda...' : 'Qayta hisoblash'}
+                                    </button>
+                                ) : (
+                                    <button onClick={() => handleBillingProcess(false)} disabled={billingProcessing}
+                                        className="flex items-center gap-1.5 px-4 py-2 bg-violet-600 hover:bg-violet-700 text-white rounded-xl text-[10px] font-black uppercase tracking-widest transition-all cursor-pointer disabled:opacity-50 shadow-lg shadow-violet-600/20">
+                                        <Calendar size={12} className={billingProcessing ? 'animate-spin' : ''} />
+                                        {billingProcessing ? 'Hisoblanmoqda...' : 'Hisoblash'}
+                                    </button>
+                                )}
+                            </div>
+                        </div>
+
+                        {/* Billing status badge */}
+                        {billingData && (
+                            <div className={`flex items-center gap-2 px-4 py-3 rounded-2xl border text-[10px] font-black uppercase tracking-widest ${billingData.billingDone ? 'bg-emerald-50 dark:bg-emerald-950/20 border-emerald-100 dark:border-emerald-900/40 text-emerald-700 dark:text-emerald-400' : 'bg-amber-50 dark:bg-amber-950/20 border-amber-100 dark:border-amber-900/40 text-amber-700 dark:text-amber-400'}`}>
+                                {billingData.billingDone
+                                    ? <><CheckCircle2 size={14} /> {billingMonthLabel(billingMonth)} — oylik hisob-kitob o'tkazilgan</>
+                                    : <><AlertCircle size={14} /> {billingMonthLabel(billingMonth)} — oylik hisob-kitob o'tkazilmagan. "Hisoblash" tugmasini bosing</>
+                                }
+                            </div>
+                        )}
+
+                        {/* 4 StatCards */}
+                        {billingData && (() => {
+                            const totalExpected = billingData.students.reduce((s, st) => s + st.expected, 0);
+                            const totalPaid = billingData.students.reduce((s, st) => s + st.paid, 0);
+                            const unpaidStudents = billingData.students.filter(st => st.status === 'unpaid').length;
+                            const paidStudents = billingData.students.filter(st => st.status === 'paid').length;
+                            return (
+                                <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                                    <StatCard label="Kutilgan tushum" value={totalExpected.toLocaleString() + ' UZS'} sub={`${billingData.students.length} ta o'quvchi`} icon={<DollarSign size={18} />} color="violet" />
+                                    <StatCard label="Haqiqiy tushum" value={totalPaid.toLocaleString() + ' UZS'} sub="bu oy to'langan" icon={<TrendingUp size={18} />} color="emerald" />
+                                    <StatCard label="To'lanmagan" value={(totalExpected - totalPaid).toLocaleString() + ' UZS'} sub={`${unpaidStudents} ta to'lamagan`} icon={<AlertCircle size={18} />} color="rose" />
+                                    <StatCard label="To'lagan o'quvchi" value={`${paidStudents} / ${billingData.students.length}`} sub="to'liq to'lagan" icon={<Users size={18} />} color="sky" />
+                                </div>
+                            );
+                        })()}
+
+                        {billingLoading && !billingData && (
+                            <div className="py-16 text-center">
+                                <RefreshCw size={24} className="animate-spin text-violet-400 mx-auto mb-2" />
+                                <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Ma'lumot yuklanmoqda...</p>
+                            </div>
+                        )}
+
+                        {/* Students status table */}
+                        {billingData && billingData.students.length > 0 && (
+                            <div className="bg-gray-50 dark:bg-gray-900/40 rounded-2xl border border-gray-100 dark:border-gray-700/50 overflow-hidden">
+                                <div className="px-5 py-4 flex flex-col sm:flex-row sm:items-center gap-3 border-b border-gray-100 dark:border-gray-700/50">
+                                    <div className="flex-1">
+                                        <p className="text-[9px] font-black text-gray-400 uppercase tracking-widest">O'quvchilar to'lov holati</p>
+                                        <p className="text-[10px] font-bold text-violet-600 mt-0.5">{billingData.students.length} ta faol o'quvchi</p>
+                                    </div>
+                                    <div className="flex items-center gap-1 bg-white dark:bg-gray-800 p-1 rounded-xl border border-gray-100 dark:border-gray-700">
+                                        {(['all', 'paid', 'partial', 'unpaid'] as const).map(f => (
+                                            <button key={f} onClick={() => setBillingFilter(f)}
+                                                className={`px-3 py-1 rounded-lg text-[9px] font-black uppercase tracking-wider transition-all cursor-pointer ${billingFilter === f
+                                                    ? f === 'paid' ? 'bg-emerald-500 text-white' : f === 'unpaid' ? 'bg-rose-500 text-white' : f === 'partial' ? 'bg-amber-500 text-white' : 'bg-violet-600 text-white shadow'
+                                                    : 'text-gray-400 hover:text-gray-600'}`}>
+                                                {f === 'all' ? 'Barchasi' : f === 'paid' ? 'To\'lagan' : f === 'partial' ? 'Qisman' : 'To\'lamagan'}
+                                            </button>
+                                        ))}
+                                    </div>
+                                </div>
+                                <div className="overflow-x-auto">
+                                    <table className="w-full text-left">
+                                        <thead>
+                                            <tr className="border-b border-gray-100 dark:border-gray-700/50">
+                                                {["O'QUVCHI", "GURUHLAR", "KUTILGAN", "TO'LANGAN", "BALANS", "HOLAT"].map(h => (
+                                                    <th key={h} className="py-3 px-4 text-[9px] font-black text-gray-400 uppercase tracking-widest whitespace-nowrap">{h}</th>
+                                                ))}
+                                            </tr>
+                                        </thead>
+                                        <tbody className="divide-y divide-gray-100 dark:divide-gray-700/30">
+                                            {billingData.students
+                                                .filter(st => billingFilter === 'all' || st.status === billingFilter)
+                                                .map(st => (
+                                                    <tr key={st.studentId} onClick={() => navigate(`/students/${st.studentId}`)}
+                                                        className="hover:bg-white dark:hover:bg-gray-800/50 cursor-pointer transition-colors">
+                                                        <td className="py-3 px-4">
+                                                            <p className="text-xs font-bold text-gray-900 dark:text-white">{st.name}</p>
+                                                            {st.phone && <p className="text-[9px] text-gray-400 font-bold mt-0.5">{st.phone}</p>}
+                                                        </td>
+                                                        <td className="py-3 px-4">
+                                                            <div className="flex flex-wrap gap-1">
+                                                                {st.groups.map((g: any) => (
+                                                                    <span key={g.groupId} className="px-1.5 py-0.5 bg-violet-50 dark:bg-violet-950/20 text-[8px] font-black uppercase tracking-wider text-violet-600 dark:text-violet-400 rounded-md">
+                                                                        {g.groupName}
+                                                                    </span>
+                                                                ))}
+                                                            </div>
+                                                        </td>
+                                                        <td className="py-3 px-4 text-xs font-black text-gray-700 dark:text-gray-300 tabular-nums">{st.expected.toLocaleString()} UZS</td>
+                                                        <td className="py-3 px-4 text-xs font-black text-emerald-600 tabular-nums">{st.paid.toLocaleString()} UZS</td>
+                                                        <td className={`py-3 px-4 text-xs font-black tabular-nums ${st.balance < 0 ? 'text-rose-600' : st.balance > 0 ? 'text-emerald-600' : 'text-gray-400'}`}>
+                                                            {st.balance.toLocaleString()} UZS
+                                                        </td>
+                                                        <td className="py-3 px-4">
+                                                            <span className={`px-2 py-1 text-[8px] font-black uppercase tracking-widest rounded-lg ${st.status === 'paid' ? 'bg-emerald-50 text-emerald-600 dark:bg-emerald-950/20 dark:text-emerald-400' : st.status === 'partial' ? 'bg-amber-50 text-amber-600 dark:bg-amber-950/20 dark:text-amber-400' : 'bg-rose-50 text-rose-600 dark:bg-rose-950/20 dark:text-rose-400'}`}>
+                                                                {st.status === 'paid' ? "To'lagan" : st.status === 'partial' ? 'Qisman' : "To'lamagan"}
+                                                            </span>
+                                                        </td>
+                                                    </tr>
+                                                ))}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        )}
+
+                        {/* Groups breakdown */}
+                        {billingData && billingData.groups.length > 0 && (
+                            <div>
+                                <p className="text-[9px] font-black text-gray-400 uppercase tracking-widest mb-4">Guruhlar bo'yicha breakdown</p>
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                    {billingData.groups.filter(g => g.totalStudents > 0).map((g: any) => (
+                                        <div key={g.groupId} className="bg-gray-50 dark:bg-gray-900/40 rounded-2xl border border-gray-100 dark:border-gray-700/50 p-4">
+                                            <div className="flex items-start justify-between mb-3">
+                                                <div>
+                                                    <p className="text-xs font-black text-gray-900 dark:text-white">{g.groupName}</p>
+                                                    <p className="text-[9px] text-gray-400 font-bold mt-0.5">{g.courseName}</p>
+                                                </div>
+                                                <span className="text-[9px] font-black text-violet-600 bg-violet-50 dark:bg-violet-950/20 px-2 py-0.5 rounded-lg">{g.totalStudents} o'quvchi</span>
+                                            </div>
+                                            <div className="grid grid-cols-2 gap-2 text-[9px]">
+                                                <div className="bg-emerald-50 dark:bg-emerald-950/20 rounded-xl px-3 py-2">
+                                                    <span className="font-black text-emerald-600 block text-xs">{g.paidCount}</span>
+                                                    <span className="text-emerald-500 uppercase tracking-wider font-bold">To'lagan</span>
+                                                </div>
+                                                <div className="bg-rose-50 dark:bg-rose-950/20 rounded-xl px-3 py-2">
+                                                    <span className="font-black text-rose-600 block text-xs">{g.unpaidCount}</span>
+                                                    <span className="text-rose-500 uppercase tracking-wider font-bold">To'lamagan</span>
+                                                </div>
+                                            </div>
+                                            <div className="mt-3 pt-3 border-t border-gray-100 dark:border-gray-700/50 flex justify-between text-[9px] font-bold text-gray-500">
+                                                <span>Kutilgan: <span className="text-gray-700 dark:text-gray-300 font-black">{g.expected.toLocaleString()}</span></span>
+                                                <span>Tushgan: <span className="text-emerald-600 font-black">{g.actual.toLocaleString()}</span></span>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
+
+                        {/* SMS button */}
+                        {billingData && billingData.students.filter((st: any) => st.status !== 'paid').length > 0 && (
+                            <div className="flex justify-end">
+                                <button
+                                    className="flex items-center gap-2 px-5 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-[10px] font-black uppercase tracking-widest transition-all cursor-pointer shadow-lg shadow-blue-600/20"
+                                    onClick={() => alert('SMS yuborish funksiyasi tez kunda!')}
+                                >
+                                    <MessageSquare size={14} />
+                                    To'lamaganlar uchun SMS yuborish ({billingData.students.filter((st: any) => st.status !== 'paid').length} ta)
+                                </button>
+                            </div>
+                        )}
+
+                        {!billingData && !billingLoading && (
+                            <div className="py-16 text-center">
+                                <Calendar size={32} className="text-gray-300 mx-auto mb-3" />
+                                <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Ma'lumot yuklanmadi</p>
+                                <button onClick={loadBillingStatus} className="mt-3 text-[10px] font-black text-violet-600 hover:underline cursor-pointer uppercase tracking-widest">Qayta urinish</button>
+                            </div>
+                        )}
+                    </div>
+                )}
+
                 {/* Summary row — only for payments/expenses */}
-                {activeTab !== 'reports' && (
+                {(activeTab === 'payments' || activeTab === 'expenses') && (
                     <div className="px-6 py-3 border-b border-gray-50 dark:border-gray-700/30 flex items-center gap-4">
                         <span className="text-[9px] font-black text-gray-400 uppercase tracking-widest">{dateLabel}</span>
                         {activeTab === 'payments' ? (
@@ -697,7 +1047,7 @@ export default function Finance() {
                 )}
 
                 {/* List */}
-                {activeTab !== 'reports' && (
+                {(activeTab === 'payments' || activeTab === 'expenses') && (
                     <div className="divide-y divide-gray-50 dark:divide-gray-700/30 max-h-[520px] overflow-y-auto">
                         {activeTab === 'payments' ? (
                             filteredPayments.length === 0 ? (
@@ -734,7 +1084,14 @@ export default function Finance() {
                                             <TrendingDown size={14} className="text-rose-500 dark:text-rose-400" />
                                         </div>
                                         <div className="min-w-0">
-                                            <p className="text-xs font-bold text-gray-900 dark:text-white uppercase truncate">{e.category}</p>
+                                            <p className="text-xs font-bold text-gray-900 dark:text-white uppercase truncate">
+                                                {e.category}
+                                                {e.category === 'Ish haqi' && (e as any).staffName && (
+                                                    <span className="ml-1.5 text-[9px] font-black text-rose-500 normal-case tracking-normal">
+                                                        — {(e as any).staffName}
+                                                    </span>
+                                                )}
+                                            </p>
                                             <span className="text-[9px] text-gray-400 font-bold block mt-0.5 uppercase tracking-wide">{e.date}{e.description ? ` • ${e.description}` : ''}</span>
                                         </div>
                                     </div>
@@ -990,7 +1347,7 @@ export default function Finance() {
                             addExpense(newExpense);
                             setIsExpenseModalOpen(false);
                             setExpenseCustomCat('');
-                            setNewExpense({ amount: 0, category: 'Boshqa', description: '', date: new Date().toISOString().split('T')[0] });
+                            setNewExpense({ amount: 0, category: 'Boshqa', description: '', date: new Date().toISOString().split('T')[0], staffId: null, staffName: null });
                         }} className="space-y-4">
                             <div>
                                 <label className={lbl}>Kategoriya *</label>
@@ -1023,6 +1380,30 @@ export default function Finance() {
                                     />
                                 )}
                             </div>
+
+                            {/* Ish haqi uchun xodim tanlash */}
+                            {newExpense.category === 'Ish haqi' && (
+                                <div>
+                                    <label className={lbl}>Xodim (kim uchun) *</label>
+                                    <select
+                                        required
+                                        className={inp}
+                                        value={newExpense.staffId ?? ''}
+                                        onChange={e => {
+                                            const selected = allStaffList.find(s => String(s.id) === e.target.value);
+                                            setNewExpense({ ...newExpense, staffId: selected ? selected.id : null, staffName: selected ? selected.name : null });
+                                        }}
+                                    >
+                                        <option value="">— Xodimni tanlang —</option>
+                                        {allStaffList.map(s => (
+                                            <option key={`${s.isUser ? 'u' : 't'}_${s.id}`} value={s.id}>
+                                                {s.name} ({s.role === 'TEACHER' ? "O'qituvchi" : s.role === 'ADMIN' ? 'Admin' : s.role === 'MANAGER' ? 'Menejer' : s.role === 'DRIVER' ? 'Haydovchi' : s.role === 'TECH_STAFF' ? 'Tex. Xodim' : s.role})
+                                            </option>
+                                        ))}
+                                    </select>
+                                </div>
+                            )}
+
                             <div>
                                 <label className={lbl}>Summa (UZS) *</label>
                                 <input type="number" required placeholder="Masalan: 100 000" className={inp}
