@@ -884,28 +884,22 @@ export default function Finance() {
                                     className="flex items-center gap-1.5 px-3 py-2 border border-gray-200 dark:border-gray-700 rounded-xl text-[10px] font-black uppercase tracking-widest text-gray-500 hover:bg-gray-50 dark:hover:bg-gray-700 transition-all cursor-pointer disabled:opacity-50">
                                     <RefreshCw size={12} className={billingLoading ? 'animate-spin' : ''} /> Yangilash
                                 </button>
-                                {billingData?.billingDone ? (
+                                {billingData?.billingDone && (
                                     <button onClick={() => handleBillingProcess(true)} disabled={billingProcessing}
                                         className="flex items-center gap-1.5 px-4 py-2 bg-amber-500 hover:bg-amber-600 text-white rounded-xl text-[10px] font-black uppercase tracking-widest transition-all cursor-pointer disabled:opacity-50 shadow-lg shadow-amber-500/20">
                                         <RefreshCw size={12} className={billingProcessing ? 'animate-spin' : ''} />
                                         {billingProcessing ? 'Hisoblanmoqda...' : 'Qayta hisoblash'}
                                     </button>
-                                ) : (
-                                    <button onClick={() => handleBillingProcess(false)} disabled={billingProcessing}
-                                        className="flex items-center gap-1.5 px-4 py-2 bg-violet-600 hover:bg-violet-700 text-white rounded-xl text-[10px] font-black uppercase tracking-widest transition-all cursor-pointer disabled:opacity-50 shadow-lg shadow-violet-600/20">
-                                        <Calendar size={12} className={billingProcessing ? 'animate-spin' : ''} />
-                                        {billingProcessing ? 'Hisoblanmoqda...' : 'Hisoblash'}
-                                    </button>
                                 )}
                             </div>
                         </div>
-
+ 
                         {/* Billing status badge */}
                         {billingData && (
-                            <div className={`flex items-center gap-2 px-4 py-3 rounded-2xl border text-[10px] font-black uppercase tracking-widest ${billingData.billingDone ? 'bg-emerald-50 dark:bg-emerald-950/20 border-emerald-100 dark:border-emerald-900/40 text-emerald-700 dark:text-emerald-400' : 'bg-amber-50 dark:bg-amber-950/20 border-amber-100 dark:border-amber-900/40 text-amber-700 dark:text-amber-400'}`}>
+                            <div className={`flex items-center gap-2 px-4 py-3 rounded-2xl border text-[10px] font-black uppercase tracking-widest ${billingData.billingDone ? 'bg-emerald-50 dark:bg-emerald-950/20 border-emerald-100 dark:border-emerald-900/40 text-emerald-700 dark:text-emerald-400' : 'bg-gray-50 dark:bg-gray-950/20 border-gray-100 dark:border-gray-900/40 text-gray-500'}`}>
                                 {billingData.billingDone
-                                    ? <><CheckCircle2 size={14} /> {billingMonthLabel(billingMonth)} — oylik hisob-kitob o'tkazilgan</>
-                                    : <><AlertCircle size={14} /> {billingMonthLabel(billingMonth)} — oylik hisob-kitob o'tkazilmagan. "Hisoblash" tugmasini bosing</>
+                                    ? <><CheckCircle2 size={14} /> {billingMonthLabel(billingMonth)} — oylik hisob-kitob avtomatik o'tkazilgan</>
+                                    : <><AlertCircle size={14} /> {billingMonthLabel(billingMonth)} — kelgusi oy uchun hisob-kitob hali boshlanmagan</>
                                 }
                             </div>
                         )}

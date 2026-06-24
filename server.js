@@ -3359,9 +3359,19 @@ app.get('/api/billing/status', authenticate, async (req, res, next) => {
       include: { course: true, students: { where: { status: { in: ['Faol', 'Sinov'] } } } }
     });
 
-    const allPayments = await prisma.payment.findMany({ where: { schoolId: sid } });
-    const positiveThisMonth = allPayments.filter(p => p.amount > 0 && p.date.startsWith(month));
-    const billingDone = allPayments.some(p => p.type === 'Oylik' && p.description?.startsWith('[OYLIK HISOB]') && p.date.startsWith(month));
+    let allPayments = await prisma.payment.findMany({ where: { schoolId: sid } });
+    let positiveThisMonth = allPayments.filter(p => p.amount > 0 && p.date.startsWith(month));
+    let billingDone = allPayments.some(p => p.type === 'Oylik' && p.description?.startsWith('[OYLIK HISOB]') && p.date.startsWith(month));
+
+    const now = new Date();
+    const currentMonthStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+
+    if (!billingDone && month <= currentMonthStr) {
+      await processMonthlyBilling(sid, month);
+      allPayments = await prisma.payment.findMany({ where: { schoolId: sid } });
+      positiveThisMonth = allPayments.filter(p => p.amount > 0 && p.date.startsWith(month));
+      billingDone = true;
+    }
 
     const studentMap = {};
     for (const group of groups) {
