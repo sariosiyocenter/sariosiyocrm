@@ -14,6 +14,17 @@ const inp = "w-full px-4 py-3 bg-gray-50 dark:bg-gray-900/50 border border-gray-
 const lbl = "block text-[10px] font-extrabold uppercase tracking-widest text-gray-400 mb-2";
 
 const MONTHS = ['Yan','Fev','Mar','Apr','May','Iyun','Iyul','Avg','Sen','Okt','Noy','Dek'];
+const PRESET_CATS = ['Ish haqi', 'Ijara', 'Kommunal', 'Marketing', 'Boshqa'];
+
+const downloadCSV = (filename: string, rows: Record<string, any>[]) => {
+    if (!rows.length) return;
+    const headers = Object.keys(rows[0]).join(',');
+    const lines = rows.map(r => Object.values(r).map(v => `"${String(v ?? '').replace(/"/g, '""')}"`).join(','));
+    const blob = new Blob(['﻿' + [headers, ...lines].join('\n')], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a'); a.href = url; a.download = filename; a.click();
+    URL.revokeObjectURL(url);
+};
 
 export default function Finance() {
     const { students, payments, expenses, addPayment, addExpense, deleteExpense, groups, courses } = useCRM();
@@ -23,6 +34,13 @@ export default function Finance() {
 
     const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
     const [isExpenseModalOpen, setIsExpenseModalOpen] = useState(false);
+    const [expenseCustomCat, setExpenseCustomCat] = useState('');
+
+    // Report table filters
+    const [reportFilter, setReportFilter] = useState<'all' | 'thisMonth' | 'lastMonth'>('all');
+    const [payPage, setPayPage] = useState(0);
+    const [balPage, setBalPage] = useState(0);
+    const PAGE_SIZE = 10;
 
     // List filters
     const [listSearch, setListSearch] = useState('');
@@ -399,6 +417,24 @@ export default function Finance() {
                             </div>
                         </div>
 
+                        {/* Asosiy 2 ta moliyaviy metrika */}
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            <StatCard
+                                label="Umumiy talabalar qarzdorligi"
+                                value={metrics.totalDebt.toLocaleString() + ' UZS'}
+                                sub={`${metrics.debtors.length} ta qarzdor o'quvchi`}
+                                icon={<AlertCircle size={18} />}
+                                color="rose"
+                            />
+                            <StatCard
+                                label="Avans to'lovlar summasi"
+                                value={metrics.totalCredit.toLocaleString() + ' UZS'}
+                                sub={`${metrics.creditors.length} ta o'quvchi oldindan to'lagan`}
+                                icon={<ArrowUpRight size={18} />}
+                                color="emerald"
+                            />
+                        </div>
+
                         {/* O'quvchilar moliyaviy holati */}
                         <div>
                             <p className="text-[9px] font-black text-gray-400 uppercase tracking-widest mb-4">O'quvchilar moliyaviy holati</p>
@@ -483,6 +519,162 @@ export default function Finance() {
                                 })}
                             </div>
                         </div>
+                        {/* ── Jadvallar ── */}
+                        {(() => {
+                            const prefix = reportFilter === 'thisMonth' ? thisMonthPrefix
+                                : reportFilter === 'lastMonth' ? lastMonthPrefix : null;
+                            const rPayments = payments
+                                .filter(p => p.amount > 0)
+                                .filter(p => !prefix || p.date.startsWith(prefix))
+                                .slice().reverse();
+                            const rPayTotal = rPayments.reduce((s, p) => s + p.amount, 0);
+
+                            const allStudents = [...students].sort((a, b) => a.balance - b.balance);
+                            const lastPayMap: Record<number, { date: string; amount: number }> = {};
+                            payments.filter(p => p.amount > 0).forEach(p => {
+                                const cur = lastPayMap[p.studentId];
+                                if (!cur || p.date > cur.date) lastPayMap[p.studentId] = { date: p.date, amount: p.amount };
+                            });
+
+                            const pTotalPages = Math.ceil(rPayments.length / PAGE_SIZE);
+                            const bTotalPages = Math.ceil(allStudents.length / PAGE_SIZE);
+                            const pPage = Math.min(payPage, Math.max(0, pTotalPages - 1));
+                            const bPage = Math.min(balPage, Math.max(0, bTotalPages - 1));
+                            const pagePayments = rPayments.slice(pPage * PAGE_SIZE, (pPage + 1) * PAGE_SIZE);
+                            const pageStudents = allStudents.slice(bPage * PAGE_SIZE, (bPage + 1) * PAGE_SIZE);
+
+                            const filterLabel = reportFilter === 'thisMonth' ? `${MONTHS[now.getMonth()]} ${now.getFullYear()}`
+                                : reportFilter === 'lastMonth' ? `${MONTHS[lastMonthDate.getMonth()]} ${lastMonthDate.getFullYear()}`
+                                : 'Barcha vaqt';
+
+                            return (
+                                <>
+                                    {/* To'lovlar ro'yxati */}
+                                    <div className="bg-gray-50 dark:bg-gray-900/40 rounded-2xl border border-gray-100 dark:border-gray-700/50 overflow-hidden">
+                                        <div className="px-5 py-4 flex flex-col sm:flex-row sm:items-center gap-3 border-b border-gray-100 dark:border-gray-700/50">
+                                            <div className="flex-1">
+                                                <p className="text-[9px] font-black text-gray-400 uppercase tracking-widest">To'lovlar ro'yxati</p>
+                                                <p className="text-[10px] font-bold text-[#1b6b6b] mt-0.5">{filterLabel} — {rPayments.length} ta yozuv • Jami: {rPayTotal.toLocaleString()} UZS</p>
+                                            </div>
+                                            <div className="flex items-center gap-2">
+                                                <div className="flex items-center gap-1 bg-white dark:bg-gray-800 p-1 rounded-xl border border-gray-100 dark:border-gray-700">
+                                                    {(['thisMonth','lastMonth','all'] as const).map(f => (
+                                                        <button key={f} onClick={() => { setReportFilter(f); setPayPage(0); setBalPage(0); }}
+                                                            className={`px-3 py-1 rounded-lg text-[9px] font-black uppercase tracking-wider transition-all cursor-pointer ${reportFilter === f ? 'bg-[#1b6b6b] text-white shadow' : 'text-gray-400 hover:text-gray-600'}`}>
+                                                            {f === 'thisMonth' ? 'Bu oy' : f === 'lastMonth' ? "O'tgan oy" : 'Hammasi'}
+                                                        </button>
+                                                    ))}
+                                                </div>
+                                                <button onClick={() => downloadCSV(`tolOvlar_${filterLabel}.csv`, rPayments.map(p => {
+                                                    const s = students.find(st => st.id === p.studentId);
+                                                    return { "O'quvchi": s?.name || '', "Summa (UZS)": p.amount, "Turi": p.type, "Sana": p.date, "Izoh": p.description || '' };
+                                                }))}
+                                                    className="flex items-center gap-1 px-3 py-1.5 bg-[#1b6b6b] hover:bg-[#155252] text-white text-[9px] font-black uppercase tracking-wider rounded-xl transition-all cursor-pointer">
+                                                    <ArrowUpRight size={11} /> CSV
+                                                </button>
+                                            </div>
+                                        </div>
+                                        <div className="overflow-x-auto">
+                                            <table className="w-full text-left">
+                                                <thead>
+                                                    <tr className="border-b border-gray-100 dark:border-gray-700/50">
+                                                        {["O'QUVCHI", "SUMMA", "TURI", "SANA", "IZOH"].map(h => (
+                                                            <th key={h} className="py-3 px-4 text-[9px] font-black text-gray-400 uppercase tracking-widest whitespace-nowrap">{h}</th>
+                                                        ))}
+                                                    </tr>
+                                                </thead>
+                                                <tbody className="divide-y divide-gray-100 dark:divide-gray-700/30">
+                                                    {pagePayments.length === 0 ? (
+                                                        <tr><td colSpan={5} className="py-10 text-center text-[10px] font-bold text-gray-400 uppercase tracking-widest">To'lovlar topilmadi</td></tr>
+                                                    ) : pagePayments.map(p => {
+                                                        const s = students.find(st => st.id === p.studentId);
+                                                        return (
+                                                            <tr key={p.id} onClick={() => s && navigate(`/students/${s.id}`)}
+                                                                className="hover:bg-white dark:hover:bg-gray-800/50 cursor-pointer transition-colors">
+                                                                <td className="py-3 px-4 text-xs font-bold text-gray-900 dark:text-white">{s?.name || 'Noma\'lum'}</td>
+                                                                <td className="py-3 px-4 text-xs font-black text-emerald-600 tabular-nums">+{p.amount.toLocaleString()} UZS</td>
+                                                                <td className="py-3 px-4"><span className="px-2 py-0.5 bg-gray-100 dark:bg-gray-700 text-[9px] font-black uppercase tracking-wider rounded-lg text-gray-600 dark:text-gray-300">{p.type}</span></td>
+                                                                <td className="py-3 px-4 text-[10px] font-bold text-gray-500 tabular-nums">{p.date}</td>
+                                                                <td className="py-3 px-4 text-[10px] text-gray-400">{p.description || '—'}</td>
+                                                            </tr>
+                                                        );
+                                                    })}
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                        {pTotalPages > 1 && (
+                                            <div className="flex items-center justify-between px-5 py-3 border-t border-gray-100 dark:border-gray-700/50">
+                                                <span className="text-[9px] font-black text-gray-400 uppercase tracking-widest">{rPayments.length} ta yozuv</span>
+                                                <div className="flex items-center gap-2">
+                                                    <button onClick={() => setPayPage(p => Math.max(0, p - 1))} disabled={pPage === 0}
+                                                        className="px-3 py-1 text-[9px] font-black uppercase tracking-wider border border-gray-200 dark:border-gray-700 rounded-lg disabled:opacity-30 hover:bg-gray-100 dark:hover:bg-gray-700 cursor-pointer transition-all">Oldin</button>
+                                                    <span className="text-[9px] font-black text-gray-600 dark:text-gray-300">{pPage + 1}/{pTotalPages}</span>
+                                                    <button onClick={() => setPayPage(p => Math.min(pTotalPages - 1, p + 1))} disabled={pPage === pTotalPages - 1}
+                                                        className="px-3 py-1 text-[9px] font-black uppercase tracking-wider border border-gray-200 dark:border-gray-700 rounded-lg disabled:opacity-30 hover:bg-gray-100 dark:hover:bg-gray-700 cursor-pointer transition-all">Keyin</button>
+                                                </div>
+                                            </div>
+                                        )}
+                                    </div>
+
+                                    {/* Barcha talabalar balansi */}
+                                    <div className="bg-gray-50 dark:bg-gray-900/40 rounded-2xl border border-gray-100 dark:border-gray-700/50 overflow-hidden">
+                                        <div className="px-5 py-4 flex items-center justify-between border-b border-gray-100 dark:border-gray-700/50">
+                                            <div>
+                                                <p className="text-[9px] font-black text-gray-400 uppercase tracking-widest">Barcha talabalar balansi</p>
+                                                <p className="text-[10px] font-bold text-[#1b6b6b] mt-0.5">{allStudents.length} ta o'quvchi</p>
+                                            </div>
+                                            <button onClick={() => downloadCSV('talabalar_balansi.csv', allStudents.map(s => {
+                                                const lp = lastPayMap[s.id];
+                                                return { "Ism Familiya": s.name, "Status": s.status, "Balans (UZS)": s.balance, "So'nggi to'lov": lp?.date || '—', "Summa": lp ? lp.amount : 0 };
+                                            }))}
+                                                className="flex items-center gap-1 px-3 py-1.5 bg-[#1b6b6b] hover:bg-[#155252] text-white text-[9px] font-black uppercase tracking-wider rounded-xl transition-all cursor-pointer">
+                                                <ArrowUpRight size={11} /> CSV
+                                            </button>
+                                        </div>
+                                        <div className="overflow-x-auto">
+                                            <table className="w-full text-left">
+                                                <thead>
+                                                    <tr className="border-b border-gray-100 dark:border-gray-700/50">
+                                                        {["ISM FAMILIYA", "STATUS", "BALANS (UZS)", "SO'NGGI TO'LOV", "SUMMA"].map(h => (
+                                                            <th key={h} className="py-3 px-4 text-[9px] font-black text-gray-400 uppercase tracking-widest whitespace-nowrap">{h}</th>
+                                                        ))}
+                                                    </tr>
+                                                </thead>
+                                                <tbody className="divide-y divide-gray-100 dark:divide-gray-700/30">
+                                                    {pageStudents.length === 0 ? (
+                                                        <tr><td colSpan={5} className="py-10 text-center text-[10px] font-bold text-gray-400 uppercase tracking-widest">O'quvchilar topilmadi</td></tr>
+                                                    ) : pageStudents.map(s => {
+                                                        const lp = lastPayMap[s.id];
+                                                        return (
+                                                            <tr key={s.id} onClick={() => navigate(`/students/${s.id}`)}
+                                                                className="hover:bg-white dark:hover:bg-gray-800/50 cursor-pointer transition-colors">
+                                                                <td className="py-3 px-4 text-xs font-bold text-gray-900 dark:text-white">{s.name}</td>
+                                                                <td className="py-3 px-4"><span className={`px-2 py-0.5 text-[9px] font-black uppercase tracking-wider rounded-lg ${s.status === 'Faol' ? 'bg-emerald-50 text-emerald-600 dark:bg-emerald-950/20 dark:text-emerald-400' : 'bg-gray-100 text-gray-500 dark:bg-gray-700 dark:text-gray-400'}`}>{s.status}</span></td>
+                                                                <td className={`py-3 px-4 text-xs font-black tabular-nums ${s.balance < 0 ? 'text-rose-600' : s.balance > 0 ? 'text-emerald-600' : 'text-gray-500'}`}>{s.balance.toLocaleString()}</td>
+                                                                <td className="py-3 px-4 text-[10px] font-bold text-gray-500 tabular-nums">{lp?.date || '—'}</td>
+                                                                <td className="py-3 px-4 text-[10px] font-bold text-gray-600 dark:text-gray-300 tabular-nums">{lp ? lp.amount.toLocaleString() + ' UZS' : '—'}</td>
+                                                            </tr>
+                                                        );
+                                                    })}
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                        {bTotalPages > 1 && (
+                                            <div className="flex items-center justify-between px-5 py-3 border-t border-gray-100 dark:border-gray-700/50">
+                                                <span className="text-[9px] font-black text-gray-400 uppercase tracking-widest">{allStudents.length} ta o'quvchi</span>
+                                                <div className="flex items-center gap-2">
+                                                    <button onClick={() => setBalPage(p => Math.max(0, p - 1))} disabled={bPage === 0}
+                                                        className="px-3 py-1 text-[9px] font-black uppercase tracking-wider border border-gray-200 dark:border-gray-700 rounded-lg disabled:opacity-30 hover:bg-gray-100 dark:hover:bg-gray-700 cursor-pointer transition-all">Oldin</button>
+                                                    <span className="text-[9px] font-black text-gray-600 dark:text-gray-300">{bPage + 1}/{bTotalPages}</span>
+                                                    <button onClick={() => setBalPage(p => Math.min(bTotalPages - 1, p + 1))} disabled={bPage === bTotalPages - 1}
+                                                        className="px-3 py-1 text-[9px] font-black uppercase tracking-wider border border-gray-200 dark:border-gray-700 rounded-lg disabled:opacity-30 hover:bg-gray-100 dark:hover:bg-gray-700 cursor-pointer transition-all">Keyin</button>
+                                                </div>
+                                            </div>
+                                        )}
+                                    </div>
+                                </>
+                            );
+                        })()}
                     </div>
                 )}
 
@@ -797,17 +989,39 @@ export default function Finance() {
                             e.preventDefault();
                             addExpense(newExpense);
                             setIsExpenseModalOpen(false);
+                            setExpenseCustomCat('');
                             setNewExpense({ amount: 0, category: 'Boshqa', description: '', date: new Date().toISOString().split('T')[0] });
                         }} className="space-y-4">
                             <div>
                                 <label className={lbl}>Kategoriya *</label>
-                                <select required className={inp} value={newExpense.category} onChange={(e) => setNewExpense({ ...newExpense, category: e.target.value })}>
-                                    <option value="Ish haqi">Ish haqi</option>
-                                    <option value="Ijara">Ijara</option>
-                                    <option value="Kommunal">Kommunal</option>
-                                    <option value="Marketing">Marketing</option>
-                                    <option value="Boshqa">Boshqa</option>
+                                <select
+                                    className={inp}
+                                    value={PRESET_CATS.includes(newExpense.category) ? newExpense.category : '__custom__'}
+                                    onChange={e => {
+                                        if (e.target.value === '__custom__') {
+                                            setNewExpense({ ...newExpense, category: expenseCustomCat });
+                                        } else {
+                                            setExpenseCustomCat('');
+                                            setNewExpense({ ...newExpense, category: e.target.value });
+                                        }
+                                    }}
+                                >
+                                    {PRESET_CATS.map(c => <option key={c} value={c}>{c}</option>)}
+                                    <option value="__custom__">O'zim yozaman...</option>
                                 </select>
+                                {!PRESET_CATS.includes(newExpense.category) && (
+                                    <input
+                                        type="text"
+                                        required
+                                        placeholder="Kategoriya nomini kiriting..."
+                                        className={`${inp} mt-2`}
+                                        value={expenseCustomCat}
+                                        onChange={e => {
+                                            setExpenseCustomCat(e.target.value);
+                                            setNewExpense({ ...newExpense, category: e.target.value });
+                                        }}
+                                    />
+                                )}
                             </div>
                             <div>
                                 <label className={lbl}>Summa (UZS) *</label>
