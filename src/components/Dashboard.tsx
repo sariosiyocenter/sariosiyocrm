@@ -2,7 +2,7 @@ import React, { useState, useMemo } from 'react';
 import { 
   Users, GraduationCap, Target, 
   TrendingUp, TrendingDown, ArrowUpRight, 
-  Activity, Calendar, Clock, ChevronRight, BookOpen, BarChart3, LayoutDashboard, FileText, UserMinus, Award, Star
+  Activity, Calendar, Clock, ChevronRight, BookOpen, BarChart3, LayoutDashboard, FileText, UserMinus, Award, Star, MoreHorizontal, ChevronDown
 } from 'lucide-react';
 import { useCRM } from '../context/CRMContext';
 import { useLang } from '../context/LanguageContext';
@@ -54,6 +54,7 @@ export default function Dashboard() {
 
     // Active tab in reports section of Dashboard
     const [activeReportTab, setActiveReportTab] = useState<string>('stats');
+    const [isDropdownOpen, setIsDropdownOpen] = useState(false);
 
     // Financial Calculations filtered by selected period
     const periodIncome = useMemo(() => {
@@ -156,12 +157,15 @@ export default function Dashboard() {
         { label: t('stat_new_leads'), value: periodNewLeads, icon: Target, accent: '#ec4899', path: '/leads' },
     ];
 
-    const DASHBOARD_REPORTS = [
+    const PRIMARY_REPORTS = [
         { id: 'stats', label: t('rep_stats'), icon: <FileText size={12} /> },
         { id: 'leads', label: t('rep_leads'), icon: <Target size={12} /> },
         { id: 'students_general', label: t('rep_students_general'), icon: <Users size={12} /> },
-        { id: 'graduates', label: t('rep_graduates'), icon: <GraduationCap size={12} /> },
         { id: 'left_students', label: t('rep_left_students'), icon: <UserMinus size={12} /> },
+    ];
+
+    const SECONDARY_REPORTS = [
+        { id: 'graduates', label: t('rep_graduates'), icon: <GraduationCap size={12} /> },
         { id: 'staff_attendance', label: t('rep_staff_attendance'), icon: <Activity size={12} /> },
         { id: 'bonuses', label: t('rep_bonuses'), icon: <Star size={12} /> },
     ];
@@ -410,12 +414,15 @@ export default function Dashboard() {
                         <p className="text-[9px] font-bold text-gray-400 uppercase tracking-widest mt-0.5">Markaz tahliliy ko'rsatkichlari (Tanlangan muddat uchun)</p>
                     </div>
                     {/* Secondary Tabs for Reports */}
-                    <div className="flex xl:grid xl:grid-cols-7 overflow-x-auto xl:overflow-x-visible flex-nowrap gap-1 bg-gray-100/80 dark:bg-gray-950/40 p-1 rounded-xl border border-gray-200/40 dark:border-gray-800/40 w-full xl:w-auto max-w-full no-scrollbar">
-                        {DASHBOARD_REPORTS.map(r => (
+                    <div className="flex overflow-x-auto no-scrollbar flex-nowrap gap-1 bg-gray-100/80 dark:bg-gray-950/40 p-1 rounded-xl border border-gray-200/40 dark:border-gray-800/40 max-w-full">
+                        {PRIMARY_REPORTS.map(r => (
                             <button
                                 key={r.id}
-                                onClick={() => setActiveReportTab(r.id)}
-                                className={`flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-wider transition-all duration-200 cursor-pointer whitespace-nowrap xl:w-full transform active:scale-95 ${
+                                onClick={() => {
+                                    setActiveReportTab(r.id);
+                                    setIsDropdownOpen(false);
+                                }}
+                                className={`flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-wider transition-all duration-200 cursor-pointer whitespace-nowrap transform active:scale-95 ${
                                     activeReportTab === r.id
                                         ? 'bg-white dark:bg-gray-800 text-[#1b6b6b] dark:text-emerald-400 shadow-sm border border-gray-200/50 dark:border-gray-700/50 scale-[1.01]'
                                         : 'text-gray-400 dark:text-gray-500 hover:text-gray-700 dark:hover:text-gray-300'
@@ -425,6 +432,55 @@ export default function Dashboard() {
                                 <span>{r.label}</span>
                             </button>
                         ))}
+
+                        {/* Secondary reports dropdown button */}
+                        <div className="relative">
+                            <button
+                                onClick={() => setIsDropdownOpen(!isDropdownOpen)}
+                                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-wider transition-all duration-200 cursor-pointer whitespace-nowrap transform active:scale-95 ${
+                                    SECONDARY_REPORTS.some(r => r.id === activeReportTab)
+                                        ? 'bg-white dark:bg-gray-800 text-[#1b6b6b] dark:text-emerald-400 shadow-sm border border-gray-200/50 dark:border-gray-700/50 scale-[1.01]'
+                                        : 'text-gray-400 dark:text-gray-500 hover:text-gray-700 dark:hover:text-gray-300'
+                                }`}
+                            >
+                                <span className="shrink-0">
+                                    {SECONDARY_REPORTS.find(r => r.id === activeReportTab)?.icon || <MoreHorizontal size={12} />}
+                                </span>
+                                <span>
+                                    {SECONDARY_REPORTS.find(r => r.id === activeReportTab)?.label || t('more')}
+                                </span>
+                                <ChevronDown size={10} className={`transition-transform duration-200 ${isDropdownOpen ? 'rotate-180' : ''}`} />
+                            </button>
+
+                            {isDropdownOpen && (
+                                <>
+                                    {/* Backdrop to close dropdown */}
+                                    <div 
+                                        className="fixed inset-0 z-10" 
+                                        onClick={() => setIsDropdownOpen(false)}
+                                    />
+                                    <div className="absolute right-0 mt-1.5 w-44 bg-white dark:bg-gray-800 rounded-xl border border-gray-150 dark:border-gray-700 shadow-lg p-1 z-20 animate-in fade-in slide-in-from-top-1 duration-100">
+                                        {SECONDARY_REPORTS.map(r => (
+                                            <button
+                                                key={r.id}
+                                                onClick={() => {
+                                                    setActiveReportTab(r.id);
+                                                    setIsDropdownOpen(false);
+                                                }}
+                                                className={`flex items-center gap-2 w-full px-3 py-2 rounded-lg text-[9px] font-black uppercase tracking-wider text-left transition-all duration-150 ${
+                                                    activeReportTab === r.id
+                                                        ? 'bg-gray-50 dark:bg-gray-700/50 text-[#1b6b6b] dark:text-emerald-400'
+                                                        : 'text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-750/30 hover:text-gray-900 dark:hover:text-white'
+                                                }`}
+                                            >
+                                                <span className="shrink-0">{r.icon}</span>
+                                                <span className="truncate">{r.label}</span>
+                                            </button>
+                                        ))}
+                                    </div>
+                                </>
+                            )}
+                        </div>
                     </div>
                 </div>
 
