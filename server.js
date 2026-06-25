@@ -4,7 +4,7 @@ import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
 import { PrismaClient } from '@prisma/client';
 import jwt from 'jsonwebtoken';
-import bot, { startBot, notifyAdmins } from './src/bot/bot.js';
+import bot, { startBot, notifyAdmins, getTelegramBot } from './src/bot/bot.js';
 import bcrypt from 'bcryptjs';
 // import { scheduleAttendanceNotifications } from './src/utils/scheduler.js';
 
@@ -74,16 +74,39 @@ app.post('/api/telegram-webhook', async (req, res) => {
   }
 });
 
+app.post('/api/telegram-webhook/:schoolId', async (req, res) => {
+  try {
+    const schoolId = parseInt(req.params.schoolId);
+    const schoolBot = await getTelegramBot(schoolId);
+    if (schoolBot) {
+      await schoolBot.handleUpdate(req.body, res);
+    } else {
+      res.status(404).json({ error: `Telegram Bot not configured for school ${schoolId}` });
+    }
+  } catch (error) {
+    console.error(`Telegram Webhook error for school ${req.params.schoolId}:`, error);
+    if (!res.headersSent) {
+      res.sendStatus(500);
+    }
+  }
+});
+
 app.get('/api/telegram-setup', async (req, res) => {
   try {
-    if (!process.env.TELEGRAM_BOT_TOKEN) {
-      return res.status(400).json({ success: false, error: 'TELEGRAM_BOT_TOKEN missing in environment variables' });
+    const { schoolId } = req.query;
+    const sId = schoolId ? parseInt(schoolId) : 1;
+    const schoolBot = await getTelegramBot(sId);
+    if (!schoolBot) {
+      return res.status(400).json({ success: false, error: `Telegram Bot not configured for school ${sId}` });
     }
     const host = req.headers.host;
     const protocol = req.headers['x-forwarded-proto'] || 'https';
-    const webhookUrl = `${protocol}://${host}/api/telegram-webhook`;
     
-    await bot.telegram.setWebhook(webhookUrl);
+    const webhookUrl = sId === 1 
+      ? `${protocol}://${host}/api/telegram-webhook`
+      : `${protocol}://${host}/api/telegram-webhook/${sId}`;
+    
+    await schoolBot.telegram.setWebhook(webhookUrl);
     res.json({ success: true, message: `Telegram Webhook set to: ${webhookUrl}` });
   } catch (error) {
     res.status(500).json({ success: false, error: error.message });
@@ -2169,11 +2192,30 @@ app.put('/api/settings', authenticate, async (req, res, next) => {
     const { schoolId, ...data } = req.body;
     if (!schoolId) return res.status(400).json({ error: 'schoolId required' });
 
+    const oldSettings = await prisma.setting.findUnique({ where: { schoolId: parseInt(schoolId) } });
+
     const settings = await prisma.setting.upsert({
       where: { schoolId: parseInt(schoolId) },
       update: data,
       create: { ...data, schoolId: parseInt(schoolId) }
     });
+
+    // If telegram token changed and is valid, set webhook automatically
+    if (settings.telegram && settings.telegram.includes(':') && (!oldSettings || oldSettings.telegram !== settings.telegram)) {
+      try {
+        const host = req.headers.host;
+        const protocol = req.headers['x-forwarded-proto'] || 'https';
+        const webhookUrl = `${protocol}://${host}/api/telegram-webhook/${schoolId}`;
+        
+        const { Telegraf } = await import('telegraf');
+        const tempBot = new Telegraf(settings.telegram.trim());
+        await tempBot.telegram.setWebhook(webhookUrl);
+        console.log(`Successfully registered Telegram Webhook for school ${schoolId} to: ${webhookUrl}`);
+      } catch (err) {
+        console.error(`Failed to register Telegram Webhook for school ${schoolId}:`, err.message);
+      }
+    }
+
     res.json(settings);
   } catch (error) { next(error); }
 });
@@ -2233,13 +2275,16 @@ app.post('/api/attendances', authenticate, async (req, res, next) => {
     try {
       const student = await prisma.student.findUnique({ where: { id: parseInt(data.studentId) } });
       if (student && student.telegramId) {
-        const icon = attendance.status === 'Keldi' ? '✅' : (attendance.status === 'Kelmapdi' ? '❌' : '⚠️');
-        bot.telegram.sendMessage(student.telegramId, 
-          `${icon} Davomat xabarnomasi:\n\n` +
-          `👤 O'quvchi: ${student.name}\n` +
-          `📌 Holat: ${attendance.status}\n` +
-          `📅 Sana: ${attendance.date}`
-        ).catch(e => console.error('Telegram error:', e));
+        const schoolBot = await getTelegramBot(student.schoolId);
+        if (schoolBot) {
+          const icon = attendance.status === 'Keldi' ? '✅' : (attendance.status === 'Kelmapdi' ? '❌' : '⚠️');
+          schoolBot.telegram.sendMessage(student.telegramId, 
+            `${icon} Davomat xabarnomasi:\n\n` +
+            `👤 O'quvchi: ${student.name}\n` +
+            `📌 Holat: ${attendance.status}\n` +
+            `📅 Sana: ${attendance.date}`
+          ).catch(e => console.error('Telegram error:', e));
+        }
       }
     } catch (e) {
       console.error('Notification error:', e);
@@ -2334,14 +2379,17 @@ app.post('/api/attendances/batch', authenticate, async (req, res, next) => {
         try {
           const student = await prisma.student.findUnique({ where: { id: record.studentId } });
           if (student && student.telegramId) {
-            const icon = record.status === 'Keldi' ? '✅' : (record.status === 'Kelmapdi' ? '❌' : '⚠️');
-            bot.telegram.sendMessage(student.telegramId, 
-              `${icon} Davomat xabarnomasi:\n\n` +
-              `👤 O'quvchi: ${student.name}\n` +
-              `📌 Holat: ${record.status}\n` +
-              `📅 Sana: ${date}\n` +
-              `📚 Guruh: ${group ? group.name : ''}`
-            ).catch(e => console.error('[Telegram Batch Notify] Error sending message:', e));
+            const schoolBot = await getTelegramBot(student.schoolId);
+            if (schoolBot) {
+              const icon = record.status === 'Keldi' ? '✅' : (record.status === 'Kelmapdi' ? '❌' : '⚠️');
+              schoolBot.telegram.sendMessage(student.telegramId, 
+                `${icon} Davomat xabarnomasi:\n\n` +
+                `👤 O'quvchi: ${student.name}\n` +
+                `📌 Holat: ${record.status}\n` +
+                `📅 Sana: ${date}\n` +
+                `📚 Guruh: ${group ? group.name : ''}`
+              ).catch(e => console.error('[Telegram Batch Notify] Error sending message:', e));
+            }
           }
         } catch (e) {
           console.error('[Telegram Batch Notify] Error:', e);
@@ -2914,8 +2962,11 @@ app.post('/api/sms/send', authenticate, async (req, res, next) => {
     let telegramSent = false;
     if (student && student.telegramId) {
       try {
-        await bot.telegram.sendMessage(student.telegramId, message);
-        telegramSent = true;
+        const schoolBot = await getTelegramBot(student.schoolId || req.user.schoolId);
+        if (schoolBot) {
+          await schoolBot.telegram.sendMessage(student.telegramId, message);
+          telegramSent = true;
+        }
       } catch (tgErr) {
         console.error('[Telegram Manual Send] Error sending to student:', tgErr.message);
       }
@@ -3047,15 +3098,18 @@ async function sendToOne({ student, message, channel, recipientTo, type, schoolI
     if (student.telegramId) {
       attempted = true;
       try {
-        await bot.telegram.sendMessage(student.telegramId, message);
-        anySuccess = true;
-        await prisma.smsLog.create({
-          data: {
-            toPhone: String(student.telegramId), toName: student.name, message,
-            status: 'SENT', type, studentId: student.id,
-            channel: 'TELEGRAM', campaignId: campaignId || null, schoolId
-          }
-        });
+        const schoolBot = await getTelegramBot(schoolId);
+        if (schoolBot) {
+          await schoolBot.telegram.sendMessage(student.telegramId, message);
+          anySuccess = true;
+          await prisma.smsLog.create({
+            data: {
+              toPhone: String(student.telegramId), toName: student.name, message,
+              status: 'SENT', type, studentId: student.id,
+              channel: 'TELEGRAM', campaignId: campaignId || null, schoolId
+            }
+          });
+        }
       } catch (tgErr) {
         await prisma.smsLog.create({
           data: {

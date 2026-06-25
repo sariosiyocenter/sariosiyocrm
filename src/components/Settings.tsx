@@ -170,6 +170,14 @@ export default function Settings() {
                         <label className={lbl}>{t('work_hours_label')}</label>
                         <input type="text" placeholder="09:00 - 21:00" className={inp} value={profileForm?.workingHours || ''} onChange={e => setProfileForm(p => ({ ...p, workingHours: e.target.value }))} />
                     </div>
+                    <div>
+                        <label className={lbl}>Telegram Bot Token</label>
+                        <input type="text" placeholder="123456789:ABCdefGhI..." className={inp} value={profileForm?.telegram || ''} onChange={e => setProfileForm(p => ({ ...p, telegram: e.target.value }))} />
+                    </div>
+                    <div>
+                        <label className={lbl}>Instagram Profil Linki</label>
+                        <input type="text" placeholder="https://instagram.com/..." className={inp} value={profileForm?.instagram || ''} onChange={e => setProfileForm(p => ({ ...p, instagram: e.target.value }))} />
+                    </div>
                 </div>
                 <div className="flex justify-end pt-4 border-t border-dashed border-gray-150 dark:border-gray-700/50">
                     <button type="submit" disabled={isSaving}

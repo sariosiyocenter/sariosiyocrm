@@ -2,17 +2,12 @@ import { Telegraf, Markup } from 'telegraf';
 import { PrismaClient } from '@prisma/client';
 
 const prisma = new PrismaClient();
-const bot = new Telegraf(process.env.TELEGRAM_BOT_TOKEN);
-
-// Error handling for the bot
-bot.catch((err, ctx) => {
-  console.error(`Telegram Bot xatosi (${ctx.updateType}):`, err);
-});
+const bot = new Telegraf(process.env.TELEGRAM_BOT_TOKEN || 'fake_token_for_init');
 
 // In-memory state tracking
 const adminStates = {};
-const teacherStates = {};
 const attStates = {}; // { tid: { groupId, records: { studentId: status } } }
+const botCache = new Map(); // token -> botInstance
 
 // User roles and menus
 const getStudentMenu = () => Markup.keyboard([
@@ -41,16 +36,18 @@ const getGuestMenu = () => Markup.keyboard([
     ['📝 Sinov darsiga yozilish', '📞 Kontaktlar']
 ]).resize();
 
-// Helper to find user by telegramId
-const findUser = async (tid) => {
+// Helper to find user by telegramId and schoolId
+const findUser = async (tid, schoolId) => {
     const tidStr = String(tid);
-    const student = await prisma.student.findUnique({ where: { telegramId: tidStr } });
+    const whereClause = schoolId ? { telegramId: tidStr, schoolId } : { telegramId: tidStr };
+
+    const student = await prisma.student.findFirst({ where: whereClause });
     if (student) return { type: 'student', data: student };
 
-    const teacher = await prisma.teacher.findUnique({ where: { telegramId: tidStr } });
+    const teacher = await prisma.teacher.findFirst({ where: whereClause });
     if (teacher) return { type: 'teacher', data: teacher };
 
-    const user = await prisma.user.findUnique({ where: { telegramId: tidStr } });
+    const user = await prisma.user.findFirst({ where: whereClause });
     if (user) {
         if (user.role === 'DRIVER') return { type: 'driver', data: user };
         return { type: 'admin', data: user };
@@ -59,579 +56,603 @@ const findUser = async (tid) => {
     return null;
 };
 
-bot.start(async (ctx) => {
-    const user = await findUser(ctx.from.id);
-    if (user) {
-        let menu;
-        if (user.type === 'student') menu = getStudentMenu();
-        else if (user.type === 'teacher') menu = getTeacherMenu();
-        else if (user.type === 'admin') menu = getAdminMenu();
-        else if (user.type === 'driver') menu = getDriverMenu();
-
-        return ctx.reply(`Xush kelibsiz, ${user.data.name}!`, menu);
-    }
-
-    ctx.reply(
-        "SARIOSIYO CRM botiga xush kelibsiz! \n\nTizimdan foydalanish uchun telefon raqamingizni yuboring:",
-        Markup.keyboard([
-            [Markup.button.contactRequest('📱 Telefon raqamni yuborish')]
-        ]).resize()
-    );
-});
-
-bot.command('logout', async (ctx) => {
-    const tidStr = String(ctx.from.id);
-    await Promise.all([
-        prisma.student.updateMany({ where: { telegramId: tidStr }, data: { telegramId: null } }),
-        prisma.teacher.updateMany({ where: { telegramId: tidStr }, data: { telegramId: null } }),
-        prisma.user.updateMany({ where: { telegramId: tidStr }, data: { telegramId: null } })
-    ]);
-    ctx.reply("Hisobingiz botdan uzildi. Endi qaytadan ro'yxatdan o'tishingiz mumkin ( /start bosib).", Markup.keyboard([
-        [Markup.button.contactRequest('📱 Telefon raqamni yuborish')]
-    ]).resize());
-});
-
-bot.on('contact', async (ctx) => {
-    const phone = ctx.message.contact.phone_number.replace('+', '').trim();
-    const tid = String(ctx.from.id);
-
-    // Try to find as student
-    let student = await prisma.student.findFirst({ 
-        where: { phone: { contains: phone.slice(-9) } } 
-    });
-    if (student) {
-        await prisma.student.update({ where: { id: student.id }, data: { telegramId: tid } });
-        return ctx.reply(`Siz o'quvchi sifatida ro'yxatdan o'tdingiz: ${student.name}`, getStudentMenu());
-    }
-
-    // Try to find as teacher
-    let teacher = await prisma.teacher.findFirst({ 
-        where: { phone: { contains: phone.slice(-9) } } 
-    });
-    if (teacher) {
-        await prisma.teacher.update({ where: { id: teacher.id }, data: { telegramId: tid } });
-        return ctx.reply(`Siz o'qituvchi sifatida ro'yxatdan o'tdingiz: ${teacher.name}`, getTeacherMenu());
-    }
-
-    // Try to find in users (Admin/Manager/Receptionist)
-    let user = await prisma.user.findFirst({ 
-        where: { phone: { contains: phone.slice(-9) } } 
-    });
-    if (user) {
-        await prisma.user.update({ where: { id: user.id }, data: { telegramId: tid } });
-        const menu = user.role === 'DRIVER' ? getDriverMenu() : getAdminMenu();
-        return ctx.reply(`Siz xodim sifatida ro'yxatdan o'tdingiz: ${user.name}`, menu);
-    }
-
-    ctx.reply("Kechirasiz, ushbu raqam tizimda topilmadi. Ma'lumot olish uchun mehmon menyusidan foydalaning.", getGuestMenu());
-});
-
-// Student Handlers
-bot.hears('📅 Dars Jadvali', async (ctx) => {
-    const user = await findUser(ctx.from.id);
-    if (!user || user.type !== 'student') return;
-
-    const student = await prisma.student.findUnique({
-        where: { id: user.data.id },
-        include: { groups: { include: { teacher: true, course: true, roomRel: true } } }
+// Setup handlers for a specific bot instance and schoolId
+export const setupBotHandlers = (botInstance, schoolId) => {
+    botInstance.catch((err, ctx) => {
+        console.error(`Telegram Bot xatosi (${ctx.updateType}) [School: ${schoolId}]:`, err);
     });
 
-    if (student.groups.length === 0) return ctx.reply("Siz hali hech qaysi guruhga a'zo emassiz.");
+    botInstance.start(async (ctx) => {
+        const user = await findUser(ctx.from.id, schoolId);
+        if (user) {
+            let menu;
+            if (user.type === 'student') menu = getStudentMenu();
+            else if (user.type === 'teacher') menu = getTeacherMenu();
+            else if (user.type === 'admin') menu = getAdminMenu();
+            else if (user.type === 'driver') menu = getDriverMenu();
 
-    let msg = "📅 Sizning dars jadvalingiz:\n\n";
-    student.groups.forEach(g => {
-        msg += `🔹 ${g.name} (${g.course.name})\n`;
-        msg += `🕒 ${g.schedule} | ${g.days}\n`;
-        msg += `👨‍🏫 Ustoz: ${g.teacher.name}\n`;
-        msg += `🚪 Xona: ${g.roomRel?.name || 'Noma\'lum'}\n\n`;
-    });
-
-    ctx.reply(msg);
-});
-
-bot.hears('💳 To\'lovlar', async (ctx) => {
-    const user = await findUser(ctx.from.id);
-    if (!user || user.type !== 'student') return;
-
-    const student = await prisma.student.findUnique({
-        where: { id: user.data.id },
-        include: { payments: { take: 5, orderBy: { id: 'desc' } } }
-    });
-
-    let msg = `💰 Joriy balansingiz: ${student.balance.toLocaleString()} UZS\n\n`;
-    msg += "💳 Oxirgi to'lovlar:\n";
-    
-    if (student.payments.length === 0) {
-        msg += "Hech qanday to'lov topilmadi.";
-    } else {
-        student.payments.forEach(p => {
-            msg += `▫️ ${p.date}: ${p.amount.toLocaleString()} (${p.type})\n`;
-        });
-    }
-
-    ctx.reply(msg);
-});
-
-bot.hears('✅ Davomat', async (ctx) => {
-    const user = await findUser(ctx.from.id);
-    if (!user || user.type !== 'student') return;
-
-    const attendances = await prisma.attendance.findMany({
-        where: { studentId: user.data.id },
-        take: 10,
-        orderBy: { date: 'desc' },
-        include: { group: true }
-    });
-
-    if (attendances.length === 0) return ctx.reply("Davomat ma'lumotlari topilmadi.");
-
-    let msg = "📊 Oxirgi davomat holati:\n\n";
-    attendances.forEach(a => {
-        const icon = a.status === 'Keldi' ? '✅' : (a.status === 'Kelmapdi' ? '❌' : '⚠️');
-        msg += `${icon} ${a.date} | ${a.group.name}\n`;
-    });
-
-    ctx.reply(msg);
-});
-
-bot.hears('📊 Baholar', async (ctx) => {
-    const user = await findUser(ctx.from.id);
-    if (!user || user.type !== 'student') return;
-
-    const scores = await prisma.score.findMany({
-        where: { studentId: user.data.id },
-        take: 10,
-        orderBy: { id: 'desc' }
-    });
-
-    if (scores.length === 0) return ctx.reply("Hozircha baholar mavjud emas.");
-
-    let msg = "📊 Oxirgi baholaringiz:\n\n";
-    scores.forEach(s => {
-        msg += `▫️ ${s.date}: ${s.value} ball\n`;
-    });
-
-    ctx.reply(msg);
-});
-
-bot.hears('✍️ Shikoyat va takliflar', async (ctx) => {
-    ctx.reply("Sizning fikringiz biz uchun muhim! ✍️\n\nShikoyat yoki taklifingiz bo'lsa, shu yerga yozib qoldiring. Adminlarimiz uni albatta ko'rib chiqishadi.");
-});
-
-bot.hears('👤 Profil', async (ctx) => {
-    const user = await findUser(ctx.from.id);
-    if (!user) return;
-
-    let msg = `👤 Mening Profilim:\n\n`;
-    msg += `🆔 ID: ${user.data.id}\n`;
-    msg += `NAME: ${user.data.name}\n`;
-    msg += `📞 TEL: ${user.data.phone}\n`;
-    msg += `🎭 ROL: ${user.type === 'admin' ? 'Xodim' : (user.type === 'teacher' ? 'O\'qituvchi' : (user.type === 'driver' ? 'Haydovchi' : 'O\'quvchi'))}\n`;
-
-    ctx.reply(msg);
-});
-
-// Teacher Handlers
-bot.hears('🎒 Davomat qilish', async (ctx) => {
-    const user = await findUser(ctx.from.id);
-    if (!user || user.type !== 'teacher') return;
-
-    const groups = await prisma.group.findMany({
-        where: { teacherId: user.data.id }
-    });
-
-    if (groups.length === 0) return ctx.reply("Sizga biriktirilgan guruhlar topilmadi.");
-
-    let buttons = groups.map(g => [Markup.button.callback(`👥 ${g.name}`, `mark_att_${g.id}`)]);
-    ctx.reply("Guruhni tanlang:", Markup.inlineKeyboard(buttons));
-});
-
-bot.hears('📅 Mening Jadvalim', async (ctx) => {
-    const user = await findUser(ctx.from.id);
-    if (!user || user.type !== 'teacher') return;
-
-    const groups = await prisma.group.findMany({
-        where: { teacherId: user.data.id },
-        include: { course: true, roomRel: true }
-    });
-
-    if (groups.length === 0) return ctx.reply("Sizga hozircha hech qanday guruh biriktirilmagan.");
-
-    let msg = "📅 Sizning dars jadvalingiz:\n\n";
-    groups.forEach(g => {
-        msg += `👥 ${g.name} (${g.course.name})\n`;
-        msg += `🕒 ${g.schedule} | ${g.days}\n`;
-        msg += `🚪 Xona: ${g.roomRel?.name || 'Noma\'lum'}\n\n`;
-    });
-
-    ctx.reply(msg);
-});
-
-bot.hears('💰 Oylik va Bonuslar', async (ctx) => {
-    const user = await findUser(ctx.from.id);
-    if (!user || user.type !== 'teacher') return;
-
-    const teacher = user.data;
-    let msg = `💰 Ish haqi ma'lumotlari:\n\n`;
-    msg += `💳 Oylik turi: ${teacher.salaryType === 'PERCENTAGE' ? 'Foizbay' : 'Belgilangan (Fixed)'}\n`;
-    
-    if (teacher.salaryType === 'PERCENTAGE') {
-        msg += `📈 Ulush: ${teacher.sharePercentage}%\n`;
-    } else {
-        msg += `💵 Oylik miqdori: ${teacher.salary.toLocaleString()} UZS\n`;
-    }
-    
-    msg += `📖 Dars haqi: ${teacher.lessonFee.toLocaleString()} UZS\n`;
-    msg += `\n(Batafsil ma'lumot uchun boshqaruv paneliga murojaat qiling)`;
-
-    ctx.reply(msg);
-});
-
-bot.action(/mark_att_(\d+)/, async (ctx) => {
-    const groupId = parseInt(ctx.match[1]);
-    const tid = ctx.from.id;
-
-    const group = await prisma.group.findUnique({
-        where: { id: groupId },
-        include: { students: true }
-    });
-
-    if (!group) return ctx.answerCbQuery("Guruh topilmadi");
-    if (group.students.length === 0) return ctx.reply("Bu guruhda o'quvchilar yo'q.");
-
-    // Initialize state
-    attStates[tid] = {
-        groupId: groupId,
-        records: {}
-    };
-    group.students.forEach(s => {
-        attStates[tid].records[s.id] = 'Keldi'; // Default
-    });
-
-    await renderAttendanceList(ctx, group.name, group.students, attStates[tid].records);
-    ctx.answerCbQuery();
-});
-
-const renderAttendanceList = async (ctx, groupName, students, records) => {
-    const buttons = students.map(s => {
-        const status = records[s.id];
-        const icon = status === 'Keldi' ? '✅' : '❌';
-        return [Markup.button.callback(`${icon} ${s.name}`, `toggle_att_${s.id}`)];
-    });
-
-    buttons.push([Markup.button.callback('💾 Saqlash', 'save_attendance')]);
-
-    const msg = `👥 ${groupName} guruhi uchun davomat (${new Date().toLocaleDateString()}):\n` +
-                `Ism yonidagi tugmani bosib holatni o'zgartiring.`;
-
-    if (ctx.callbackQuery) {
-        await ctx.editMessageText(msg, Markup.inlineKeyboard(buttons));
-    } else {
-        await ctx.reply(msg, Markup.inlineKeyboard(buttons));
-    }
-};
-
-bot.action(/toggle_att_(\d+)/, async (ctx) => {
-    const studentId = parseInt(ctx.match[1]);
-    const tid = ctx.from.id;
-    const state = attStates[tid];
-
-    if (!state) return ctx.answerCbQuery("Sessiya eskirgan, qaytadan boshlang.");
-
-    state.records[studentId] = state.records[studentId] === 'Keldi' ? 'Kelmapdi' : 'Keldi';
-
-    const group = await prisma.group.findUnique({
-        where: { id: state.groupId },
-        include: { students: true }
-    });
-
-    await renderAttendanceList(ctx, group.name, group.students, state.records);
-    ctx.answerCbQuery();
-});
-
-bot.action('save_attendance', async (ctx) => {
-    const tid = ctx.from.id;
-    const state = attStates[tid];
-
-    if (!state) return ctx.answerCbQuery("Xatolik: Ma'lumot topilmadi.");
-
-    const today = new Date().toISOString().split('T')[0];
-    const group = await prisma.group.findUnique({ where: { id: state.groupId } });
-    
-    try {
-        const results = [];
-        for (const [studentId, status] of Object.entries(state.records)) {
-            const sId = parseInt(studentId);
-            
-            // Upsert attendance
-            const existing = await prisma.attendance.findFirst({
-                where: { studentId: sId, groupId: state.groupId, date: today, schoolId: group.schoolId }
-            });
-
-            if (existing) {
-                await prisma.attendance.update({ where: { id: existing.id }, data: { status } });
-            } else {
-                await prisma.attendance.create({
-                    data: { studentId: sId, groupId: state.groupId, date: today, status, schoolId: group.schoolId }
-                });
-            }
-
-            // Optional: notify student/parent if telegramId exists
-            const student = await prisma.student.findUnique({ where: { id: sId } });
-            if (student && student.telegramId) {
-                const icon = status === 'Keldi' ? '✅' : '❌';
-                bot.telegram.sendMessage(student.telegramId, 
-                    `${icon} Davomat xabarnomasi:\n\n` +
-                    `👤 O'quvchi: ${student.name}\n` +
-                    `📌 Holat: ${status}\n` +
-                    `📅 Sana: ${today}\n` +
-                    `📚 Guruh: ${group.name}`
-                ).catch(e => console.error('Notify student error:', e));
-            }
+            return ctx.reply(`Xush kelibsiz, ${user.data.name}!`, menu);
         }
 
-        await ctx.editMessageText(`✅ ${group.name} guruhi uchun davomat saqlandi!`);
-        delete attStates[tid];
-    } catch (err) {
-        console.error('Save attendance error:', err);
-        ctx.reply("Davomatni saqlashda xatolik yuz berdi.");
-    }
-    ctx.answerCbQuery();
-});
-
-// Driver Handlers
-bot.hears('📍 O\'quvchilar lokatsiyasi', async (ctx) => {
-    const user = await findUser(ctx.from.id);
-    if (!user || user.type !== 'driver') return;
-
-    const transport = await prisma.transport.findFirst({
-        where: { driverId: user.data.id },
-        include: { 
-            students: {
-                include: { groups: true }
-            }
-        }
-    });
-
-    if (!transport) return ctx.reply("Sizga hali hech qanday transport biriktirilmagan.");
-    if (transport.students.length === 0) return ctx.reply("Sizning transportingizda hali o'quvchilar yo'q.");
-
-    // Determine today's day type (odd/even)
-    const today = new Date();
-    const dayNum = today.getDate();
-    const isOdd = dayNum % 2 !== 0;
-    const dayType = isOdd ? 'TOQ' : 'JUFT';
-    
-    const months = ['Yanvar','Fevral','Mart','Aprel','May','Iyun','Iyul','Avgust','Sentabr','Oktabr','Noyabr','Dekabr'];
-    const dateLabel = `${dayNum}-${months[today.getMonth()]}`;
-
-    // Filter students by today's schedule
-    const todayStudents = transport.students.filter(s => {
-        if (!s.groups || s.groups.length === 0) return true; // no group → always show
-        return s.groups.some(g => {
-            const d = (g.days || '').trim().toUpperCase();
-            return d === 'HAR KUNI' || d === dayType;
-        });
-    });
-
-    if (todayStudents.length === 0) {
-        return ctx.reply(
-            `🗓 Bugun: ${dateLabel}, ${dayType} kun\n\n` +
-            `✅ Bugun ushbu transportda olib boriladigan o'quvchi yo'q.`
+        ctx.reply(
+            "CRM botiga xush kelibsiz! \n\nTizimdan foydalanish uchun telefon raqamingizni yuboring:",
+            Markup.keyboard([
+                [Markup.button.contactRequest('📱 Telefon raqamni yuborish')]
+            ]).resize()
         );
-    }
-
-    let msg = `🗓 Bugun: ${dateLabel}, ${dayType} kun\n`;
-    msg += `🚍 ${transport.name} — ${todayStudents.length} ta o'quvchi:\n\n`;
-
-    todayStudents.forEach((s, idx) => {
-        msg += `${idx + 1}. 👤 ${s.name}\n`;
-        msg += `   🏫 ${s.studentSchool || 'Maktab noma\'lum'}\n`;
-        msg += `   🏠 ${s.address || 'Manzil kiritilmagan'}\n`;
-        if (s.location || s.address) {
-            const loc = encodeURIComponent((s.location || s.address).trim());
-            msg += `   🗺 https://yandex.uz/maps/?text=${loc}\n`;
-        }
-        msg += `   📞 ${s.phone}\n\n`;
     });
 
-    ctx.reply(msg, { disable_web_page_preview: true });
-});
+    botInstance.command('logout', async (ctx) => {
+        const tidStr = String(ctx.from.id);
+        const whereClause = schoolId ? { telegramId: tidStr, schoolId } : { telegramId: tidStr };
 
-
-bot.hears('🚍 Mening Transportim', async (ctx) => {
-    const user = await findUser(ctx.from.id);
-    if (!user || user.type !== 'driver') return;
-
-    const transport = await prisma.transport.findFirst({
-        where: { driverId: user.data.id }
+        await Promise.all([
+            prisma.student.updateMany({ where: whereClause, data: { telegramId: null } }),
+            prisma.teacher.updateMany({ where: whereClause, data: { telegramId: null } }),
+            prisma.user.updateMany({ where: whereClause, data: { telegramId: null } })
+        ]);
+        ctx.reply("Hisobingiz botdan uzildi. Endi qaytadan ro'yxatdan o'tishingiz mumkin ( /start bosib).", Markup.keyboard([
+            [Markup.button.contactRequest('📱 Telefon raqamni yuborish')]
+        ]).resize());
     });
 
-    if (!transport) return ctx.reply("Sizga hech qanday transport biriktirilmagan.");
+    botInstance.on('contact', async (ctx) => {
+        const phone = ctx.message.contact.phone_number.replace('+', '').trim();
+        const tid = String(ctx.from.id);
+        const phoneSuffix = phone.slice(-9);
 
-    let msg = `🚍 Mening Transportim:\n\n`;
-    msg += `📄 Nomi: ${transport.name}\n`;
-    msg += `🚙 Model: ${transport.model || 'Noma\'lum'}\n`;
-    msg += `🔢 Raqami: ${transport.number || 'Noma\'lum'}\n`;
-    msg += `👥 Sig'im: ${transport.capacity} kishi\n`;
-    msg += `✅ Holati: ${transport.status}\n`;
-
-    ctx.reply(msg);
-});
-
-// Admin Handlers
-bot.hears('📢 Yangi Lidlar', async (ctx) => {
-    const user = await findUser(ctx.from.id);
-    if (!user || user.type !== 'admin') return;
-
-    const leads = await prisma.lead.findMany({
-        where: { schoolId: user.data.schoolId || undefined },
-        take: 5,
-        orderBy: { createdAt: 'desc' }
-    });
-
-    if (leads.length === 0) return ctx.reply("Yangi lidlar topilmadi.");
-
-    let msg = "📢 Oxirgi tushgan lidlar:\n\n";
-    leads.forEach(l => {
-        msg += `👤 ${l.name} | 📞 ${l.phone}\n`;
-        msg += `📚 Kurs: ${l.course} | 🗓 ${l.createdAt.toLocaleDateString()}\n\n`;
-    });
-
-    ctx.reply(msg);
-});
-
-bot.hears('📊 Kunlik Hisobot', async (ctx) => {
-    const user = await findUser(ctx.from.id);
-    if (!user || user.type !== 'admin') return;
-
-    const schoolId = user.data.schoolId;
-    const today = new Date().toISOString().split('T')[0];
-
-    const [studentsCount, leadsToday, paymentsToday] = await Promise.all([
-        prisma.student.count({ where: { schoolId } }),
-        prisma.lead.count({ where: { schoolId, createdAt: { gte: new Date(today) } } }),
-        prisma.payment.aggregate({
-            where: { schoolId, date: today },
-            _sum: { amount: true }
-        })
-    ]);
-
-    let msg = `📊 Kunlik Hisobot (${today})\n\n`;
-    msg += `👥 Jami o'quvchilar: ${studentsCount}\n`;
-    msg += `🆕 Bugungi lidlar: ${leadsToday}\n`;
-    msg += `💰 Bugungi tushum: ${(paymentsToday._sum.amount || 0).toLocaleString()} UZS\n`;
-
-    ctx.reply(msg);
-});
-
-bot.hears('📧 Ommaviy xabar', async (ctx) => {
-    const user = await findUser(ctx.from.id);
-    if (!user || user.type !== 'admin') {
-        return ctx.reply("Bu buyruq faqat xodimlar uchun.");
-    }
-
-    adminStates[ctx.from.id] = 'AWAITING_BROADCAST';
-    ctx.reply(
-        "Hammaga yuborilishi kerak bo'lgan xabarni kiriting (yoki Bekor qilish uchun quyidagi tugmani bosing):", 
-        Markup.keyboard([['❌ Bekor qilish']]).resize()
-    );
-});
-
-// Guest Handlers
-bot.hears('ℹ️ Markaz haqida', (ctx) => {
-    ctx.reply("SARIOSIYO O'quv Markazi - sifatli ta'lim maskani! \n\nBizda: \n- Ingliz tili\n- Matematika\n- IT kurslari\n mavjud.");
-});
-
-bot.hears('📍 Geolokatsiya', (ctx) => {
-    ctx.replyWithLocation(38.4833, 67.9333); // Example coords
-});
-
-bot.hears('📞 Kontaktlar', (ctx) => {
-    ctx.reply("Telefon: +998 90 123 45 67\nTelegram: @sariosiyo_admin\nManzil: Sariosiyo tumani, Markaziy ko'cha.");
-});
-
-bot.hears('📝 Sinov darsiga yozilish', (ctx) => {
-    ctx.reply("Iltimos, ismingiz va qaysi kursga qiziqayotganingizni yozib qoldiring. \n\nMasalan: Ali, Ingliz tili");
-    ctx.session = { step: 'waiting_for_trial' }; // Note: requires session middleware if used properly, but for now we simplify
-});
-
-// Simple message handler for trial registration and general text
-bot.on('text', async (ctx, next) => {
-    const tid = ctx.from.id;
-    const text = ctx.message.text;
-
-    // Handle Broadcast State for Admins
-    if (adminStates[tid] === 'AWAITING_BROADCAST') {
-        if (text === '❌ Bekor qilish') {
-            delete adminStates[tid];
-            const user = await findUser(tid);
-            return ctx.reply('Bekor qilindi.', getAdminMenu());
+        // Try to find as student
+        let student = await prisma.student.findFirst({ 
+            where: { phone: { contains: phoneSuffix }, schoolId } 
+        });
+        if (student) {
+            await prisma.student.update({ where: { id: student.id }, data: { telegramId: tid } });
+            return ctx.reply(`Siz o'quvchi sifatida ro'yxatdan o'tdingiz: ${student.name}`, getStudentMenu());
         }
 
-        delete adminStates[tid];
+        // Try to find as teacher
+        let teacher = await prisma.teacher.findFirst({ 
+            where: { phone: { contains: phoneSuffix }, schoolId } 
+        });
+        if (teacher) {
+            await prisma.teacher.update({ where: { id: teacher.id }, data: { telegramId: tid } });
+            return ctx.reply(`Siz o'qituvchi sifatida ro'yxatdan o'tdingiz: ${teacher.name}`, getTeacherMenu());
+        }
+
+        // Try to find in users (Admin/Manager/Receptionist)
+        let user = await prisma.user.findFirst({ 
+            where: { phone: { contains: phoneSuffix }, schoolId } 
+        });
+        if (user) {
+            await prisma.user.update({ where: { id: user.id }, data: { telegramId: tid } });
+            const menu = user.role === 'DRIVER' ? getDriverMenu() : getAdminMenu();
+            return ctx.reply(`Siz xodim sifatida ro'yxatdan o'tdingiz: ${user.name}`, menu);
+        }
+
+        ctx.reply("Kechirasiz, ushbu raqam tizimda topilmadi. Ma'lumot olish uchun mehmon menyusidan foydalaning.", getGuestMenu());
+    });
+
+    // Student Handlers
+    botInstance.hears('📅 Dars Jadvali', async (ctx) => {
+        const user = await findUser(ctx.from.id, schoolId);
+        if (!user || user.type !== 'student') return;
+
+        const student = await prisma.student.findUnique({
+            where: { id: user.data.id },
+            include: { groups: { include: { teacher: true, course: true, roomRel: true } } }
+        });
+
+        if (student.groups.length === 0) return ctx.reply("Siz hali hech qaysi guruhga a'zo emassiz.");
+
+        let msg = "📅 Sizning dars jadvalingiz:\n\n";
+        student.groups.forEach(g => {
+            msg += `🔹 ${g.name} (${g.course.name})\n`;
+            msg += `🕒 ${g.schedule} | ${g.days}\n`;
+            msg += `👨‍🏫 Ustoz: ${g.teacher.name}\n`;
+            msg += `🚪 Xona: ${g.roomRel?.name || 'Noma\'lum'}\n\n`;
+        });
+
+        ctx.reply(msg);
+    });
+
+    botInstance.hears('💳 To\'lovlar', async (ctx) => {
+        const user = await findUser(ctx.from.id, schoolId);
+        if (!user || user.type !== 'student') return;
+
+        const student = await prisma.student.findUnique({
+            where: { id: user.data.id },
+            include: { payments: { take: 5, orderBy: { id: 'desc' } } }
+        });
+
+        let msg = `💰 Joriy balansingiz: ${student.balance.toLocaleString()} UZS\n\n`;
+        msg += "💳 Oxirgi to'lovlar:\n";
         
-        // Show "sending" status to admin
-        const statusMsg = await ctx.reply("Xabar yuborilmoqda...");
+        if (student.payments.length === 0) {
+            msg += "Hech qanday to'lov topilmadi.";
+        } else {
+            student.payments.forEach(p => {
+                msg += `▫️ ${p.date}: ${p.amount.toLocaleString()} (${p.type})\n`;
+            });
+        }
 
+        ctx.reply(msg);
+    });
+
+    botInstance.hears('✅ Davomat', async (ctx) => {
+        const user = await findUser(ctx.from.id, schoolId);
+        if (!user || user.type !== 'student') return;
+
+        const attendances = await prisma.attendance.findMany({
+            where: { studentId: user.data.id, schoolId },
+            take: 10,
+            orderBy: { date: 'desc' },
+            include: { group: true }
+        });
+
+        if (attendances.length === 0) return ctx.reply("Davomat ma'lumotlari topilmadi.");
+
+        let msg = "📊 Oxirgi davomat holati:\n\n";
+        attendances.forEach(a => {
+            const icon = a.status === 'Keldi' ? '✅' : (a.status === 'Kelmapdi' ? '❌' : '⚠️');
+            msg += `${icon} ${a.date} | ${a.group.name}\n`;
+        });
+
+        ctx.reply(msg);
+    });
+
+    botInstance.hears('📊 Baholar', async (ctx) => {
+        const user = await findUser(ctx.from.id, schoolId);
+        if (!user || user.type !== 'student') return;
+
+        const scores = await prisma.score.findMany({
+            where: { studentId: user.data.id, schoolId },
+            take: 10,
+            orderBy: { id: 'desc' }
+        });
+
+        if (scores.length === 0) return ctx.reply("Hozircha baholar mavjud emas.");
+
+        let msg = "📊 Oxirgi baholaringiz:\n\n";
+        scores.forEach(s => {
+            msg += `▫️ ${s.date}: ${s.value} ball\n`;
+        });
+
+        ctx.reply(msg);
+    });
+
+    botInstance.hears('✍️ Shikoyat va takliflar', async (ctx) => {
+        ctx.reply("Sizning fikringiz biz uchun muhim! ✍️\n\nShikoyat yoki taklifingiz bo'lsa, shu yerga yozib qoldiring. Adminlarimiz uni albatta ko'rib chiqishadi.");
+    });
+
+    botInstance.hears('👤 Profil', async (ctx) => {
+        const user = await findUser(ctx.from.id, schoolId);
+        if (!user) return;
+
+        let msg = `👤 Mening Profilim:\n\n`;
+        msg += `🆔 ID: ${user.data.id}\n`;
+        msg += `NAME: ${user.data.name}\n`;
+        msg += `📞 TEL: ${user.data.phone}\n`;
+        msg += `🎭 ROL: ${user.type === 'admin' ? 'Xodim' : (user.type === 'teacher' ? 'O\'qituvchi' : (user.type === 'driver' ? 'Haydovchi' : 'O\'quvchi'))}\n`;
+
+        ctx.reply(msg);
+    });
+
+    // Teacher Handlers
+    botInstance.hears('🎒 Davomat qilish', async (ctx) => {
+        const user = await findUser(ctx.from.id, schoolId);
+        if (!user || user.type !== 'teacher') return;
+
+        const groups = await prisma.group.findMany({
+            where: { teacherId: user.data.id, schoolId }
+        });
+
+        if (groups.length === 0) return ctx.reply("Sizga biriktirilgan guruhlar topilmadi.");
+
+        let buttons = groups.map(g => [Markup.button.callback(`👥 ${g.name}`, `mark_att_${g.id}`)]);
+        ctx.reply("Guruhni tanlang:", Markup.inlineKeyboard(buttons));
+    });
+
+    botInstance.hears('📅 Mening Jadvalim', async (ctx) => {
+        const user = await findUser(ctx.from.id, schoolId);
+        if (!user || user.type !== 'teacher') return;
+
+        const groups = await prisma.group.findMany({
+            where: { teacherId: user.data.id, schoolId },
+            include: { course: true, roomRel: true }
+        });
+
+        if (groups.length === 0) return ctx.reply("Sizga hozircha hech qanday guruh biriktirilmagan.");
+
+        let msg = "📅 Sizning dars jadvalingiz:\n\n";
+        groups.forEach(g => {
+            msg += `👥 ${g.name} (${g.course.name})\n`;
+            msg += `🕒 ${g.schedule} | ${g.days}\n`;
+            msg += `🚪 Xona: ${g.roomRel?.name || 'Noma\'lum'}\n\n`;
+        });
+
+        ctx.reply(msg);
+    });
+
+    botInstance.hears('💰 Oylik va Bonuslar', async (ctx) => {
+        const user = await findUser(ctx.from.id, schoolId);
+        if (!user || user.type !== 'teacher') return;
+
+        const teacher = user.data;
+        let msg = `💰 Ish haqi ma'lumotlari:\n\n`;
+        msg += `💳 Oylik turi: ${teacher.salaryType === 'PERCENTAGE' ? 'Foizbay' : 'Belgilangan (Fixed)'}\n`;
+        
+        if (teacher.salaryType === 'PERCENTAGE') {
+            msg += `📈 Ulush: ${teacher.sharePercentage}%\n`;
+        } else {
+            msg += `💵 Oylik miqdori: ${teacher.salary.toLocaleString()} UZS\n`;
+        }
+        
+        msg += `📖 Dars haqi: ${teacher.lessonFee.toLocaleString()} UZS\n`;
+        msg += `\n(Batafsil ma'lumot uchun boshqaruv paneliga murojaat qiling)`;
+
+        ctx.reply(msg);
+    });
+
+    botInstance.action(/mark_att_(\d+)/, async (ctx) => {
+        const groupId = parseInt(ctx.match[1]);
+        const tid = ctx.from.id;
+
+        const group = await prisma.group.findFirst({
+            where: { id: groupId, schoolId },
+            include: { students: true }
+        });
+
+        if (!group) return ctx.answerCbQuery("Guruh topilmadi");
+        if (group.students.length === 0) return ctx.reply("Bu guruhda o'quvchilar yo'q.");
+
+        // Initialize state
+        attStates[tid] = {
+            groupId: groupId,
+            records: {}
+        };
+        group.students.forEach(s => {
+            attStates[tid].records[s.id] = 'Keldi'; // Default
+        });
+
+        await renderAttendanceList(ctx, group.name, group.students, attStates[tid].records);
+        ctx.answerCbQuery();
+    });
+
+    const renderAttendanceList = async (ctx, groupName, students, records) => {
+        const buttons = students.map(s => {
+            const status = records[s.id];
+            const icon = status === 'Keldi' ? '✅' : '❌';
+            return [Markup.button.callback(`${icon} ${s.name}`, `toggle_att_${s.id}`)];
+        });
+
+        buttons.push([Markup.button.callback('💾 Saqlash', 'save_attendance')]);
+
+        const msg = `👥 ${groupName} guruhi uchun davomat (${new Date().toLocaleDateString()}):\n` +
+                    `Ism yonidagi tugmani bosib holatni o'zgartiring.`;
+
+        if (ctx.callbackQuery) {
+            await ctx.editMessageText(msg, Markup.inlineKeyboard(buttons));
+        } else {
+            await ctx.reply(msg, Markup.inlineKeyboard(buttons));
+        }
+    };
+
+    botInstance.action(/toggle_att_(\d+)/, async (ctx) => {
+        const studentId = parseInt(ctx.match[1]);
+        const tid = ctx.from.id;
+        const state = attStates[tid];
+
+        if (!state) return ctx.answerCbQuery("Sessiya eskirgan, qaytadan boshlang.");
+
+        state.records[studentId] = state.records[studentId] === 'Keldi' ? 'Kelmapdi' : 'Keldi';
+
+        const group = await prisma.group.findFirst({
+            where: { id: state.groupId, schoolId },
+            include: { students: true }
+        });
+
+        await renderAttendanceList(ctx, group.name, group.students, state.records);
+        ctx.answerCbQuery();
+    });
+
+    botInstance.action('save_attendance', async (ctx) => {
+        const tid = ctx.from.id;
+        const state = attStates[tid];
+
+        if (!state) return ctx.answerCbQuery("Xatolik: Ma'lumot topilmadi.");
+
+        const today = new Date().toISOString().split('T')[0];
+        const group = await prisma.group.findFirst({ where: { id: state.groupId, schoolId } });
+        
         try {
-            const [students, teachers, users] = await Promise.all([
-                prisma.student.findMany({ where: { telegramId: { not: null } }, select: { telegramId: true } }),
-                prisma.teacher.findMany({ where: { telegramId: { not: null } }, select: { telegramId: true } }),
-                prisma.user.findMany({ where: { telegramId: { not: null } }, select: { telegramId: true } })
-            ]);
+            for (const [studentId, status] of Object.entries(state.records)) {
+                const sId = parseInt(studentId);
+                
+                // Upsert attendance
+                const existing = await prisma.attendance.findFirst({
+                    where: { studentId: sId, groupId: state.groupId, date: today, schoolId }
+                });
 
-            const allTids = new Set([
-                ...students.map(s => s.telegramId),
-                ...teachers.map(t => t.telegramId),
-                ...users.map(u => u.telegramId)
-            ]);
+                if (existing) {
+                    await prisma.attendance.update({ where: { id: existing.id }, data: { status } });
+                } else {
+                    await prisma.attendance.create({
+                        data: { studentId: sId, groupId: state.groupId, date: today, status, schoolId }
+                    });
+                }
 
-            let successCount = 0;
-            for (const targetId of allTids) {
-                try {
-                    await bot.telegram.sendMessage(targetId, text);
-                    successCount++;
-                } catch (e) {
-                    console.error(`Broadcast failed for ${targetId}:`, e.message);
+                // Optional: notify student/parent if telegramId exists
+                const student = await prisma.student.findFirst({ where: { id: sId, schoolId } });
+                if (student && student.telegramId) {
+                    const icon = status === 'Keldi' ? '✅' : '❌';
+                    botInstance.telegram.sendMessage(student.telegramId, 
+                        `${icon} Davomat xabarnomasi:\n\n` +
+                        `👤 O'quvchi: ${student.name}\n` +
+                        `📌 Holat: ${status}\n` +
+                        `📅 Sana: ${today}\n` +
+                        `📚 Guruh: ${group.name}`
+                    ).catch(e => console.error('Notify student error:', e));
                 }
             }
 
-            await ctx.telegram.deleteMessage(ctx.chat.id, statusMsg.message_id).catch(() => {});
-            return ctx.reply(`Xabar ${successCount} ta foydalanuvchiga muvaffaqiyatli yuborildi! ✅`, getAdminMenu());
+            await ctx.editMessageText(`✅ ${group.name} guruhi uchun davomat saqlandi!`);
+            delete attStates[tid];
         } catch (err) {
-            console.error("Broadcast global error:", err);
-            return ctx.reply("Xabar yuborishda xatolik yuz berdi.", getAdminMenu());
+            console.error('Save attendance error:', err);
+            ctx.reply("Davomatni saqlashda xatolik yuz berdi.");
         }
-    }
+        ctx.answerCbQuery();
+    });
 
-    // Skip handling if it's a menu button
-    if (text.startsWith('/') || ['📅', '💳', '✅', '📊', '🎒', '💰', '📢', '📧', '⚙️', '📝', 'ℹ️', '📍', '📞', '👤'].some(icon => text.includes(icon))) {
-        return next();
-    }
+    // Driver Handlers
+    botInstance.hears('📍 O\'quvchilar lokatsiyasi', async (ctx) => {
+        const user = await findUser(ctx.from.id, schoolId);
+        if (!user || user.type !== 'driver') return;
 
-    // Basic heuristic for trial registration
-    if (text.includes(',') && text.length > 5) {
-        const [name, course] = text.split(',').map(s => s.trim());
-        const phone = "Bot orqali";
-
-        await prisma.lead.create({
-            data: {
-                name,
-                course,
-                phone,
-                source: 'Telegram Bot',
-                schoolId: 1,
+        const transport = await prisma.transport.findFirst({
+            where: { driverId: user.data.id, schoolId },
+            include: { 
+                students: {
+                    include: { groups: true }
+                }
             }
         });
 
-        return ctx.reply("Rahmat! Sizning so'rovingiz qabul dili. Tez orada adminlarimiz bog'lanishadi.");
+        if (!transport) return ctx.reply("Sizga hali hech qanday transport biriktirilmagan.");
+        if (transport.students.length === 0) return ctx.reply("Sizning transportingizda hali o'quvchilar yo'q.");
+
+        const today = new Date();
+        const dayNum = today.getDate();
+        const isOdd = dayNum % 2 !== 0;
+        const dayType = isOdd ? 'TOQ' : 'JUFT';
+        
+        const months = ['Yanvar','Fevral','Mart','Aprel','May','Iyun','Iyul','Avgust','Sentabr','Oktabr','Noyabr','Dekabr'];
+        const dateLabel = `${dayNum}-${months[today.getMonth()]}`;
+        
+        const todayStudents = transport.students.filter(s => {
+            if (!s.groups || s.groups.length === 0) return true;
+            return s.groups.some(g => {
+                const d = (g.days || '').trim().toUpperCase();
+                return d === 'HAR KUNI' || d === dayType;
+            });
+        });
+
+        if (todayStudents.length === 0) {
+            return ctx.reply(
+                `🗓 Bugun: ${dateLabel}, ${dayType} kun\n\n` +
+                `✅ Bugun ushbu transportda olib boriladigan o'quvchi yo'q.`
+            );
+        }
+
+        let msg = `🗓 Bugun: ${dateLabel}, ${dayType} kun\n`;
+        msg += `🚍 ${transport.name} — ${todayStudents.length} ta o'quvchi:\n\n`;
+
+        todayStudents.forEach((s, idx) => {
+            msg += `${idx + 1}. 👤 ${s.name}\n`;
+            msg += `   🏫 ${s.studentSchool || 'Maktab noma\'lum'}\n`;
+            msg += `   🏠 ${s.address || 'Manzil kiritilmagan'}\n`;
+            if (s.location || s.address) {
+                const loc = encodeURIComponent((s.location || s.address).trim());
+                msg += `   🗺 https://yandex.uz/maps/?text=${loc}\n`;
+            }
+            msg += `   📞 ${s.phone}\n\n`;
+        });
+
+        ctx.reply(msg, { disable_web_page_preview: true });
+    });
+
+    botInstance.hears('🚍 Mening Transportim', async (ctx) => {
+        const user = await findUser(ctx.from.id, schoolId);
+        if (!user || user.type !== 'driver') return;
+
+        const transport = await prisma.transport.findFirst({
+            where: { driverId: user.data.id, schoolId }
+        });
+
+        if (!transport) return ctx.reply("Sizga hech qanday transport biriktirilmagan.");
+
+        let msg = `🚍 Mening Transportim:\n\n`;
+        msg += `📄 Nomi: ${transport.name}\n`;
+        msg += `🚙 Model: ${transport.model || 'Noma\'lum'}\n`;
+        msg += `🔢 Raqami: ${transport.number || 'Noma\'lum'}\n`;
+        msg += `👥 Sig'im: ${transport.capacity} kishi\n`;
+        msg += `✅ Holati: ${transport.status}\n`;
+
+        ctx.reply(msg);
+    });
+
+    // Admin Handlers
+    botInstance.hears('📢 Yangi Lidlar', async (ctx) => {
+        const user = await findUser(ctx.from.id, schoolId);
+        if (!user || user.type !== 'admin') return;
+
+        const leads = await prisma.lead.findMany({
+            where: { schoolId },
+            take: 5,
+            orderBy: { createdAt: 'desc' }
+        });
+
+        if (leads.length === 0) return ctx.reply("Yangi lidlar topilmadi.");
+
+        let msg = "📢 Oxirgi tushgan lidlar:\n\n";
+        leads.forEach(l => {
+            msg += `👤 ${l.name} | 📞 ${l.phone}\n`;
+            msg += `📚 Kurs: ${l.course} | 🗓 ${l.createdAt.toLocaleDateString()}\n\n`;
+        });
+
+        ctx.reply(msg);
+    });
+
+    botInstance.hears('📊 Kunlik Hisobot', async (ctx) => {
+        const user = await findUser(ctx.from.id, schoolId);
+        if (!user || user.type !== 'admin') return;
+
+        const today = new Date().toISOString().split('T')[0];
+
+        const [studentsCount, leadsToday, paymentsToday] = await Promise.all([
+            prisma.student.count({ where: { schoolId } }),
+            prisma.lead.count({ where: { schoolId, createdAt: { gte: new Date(today) } } }),
+            prisma.payment.aggregate({
+                where: { schoolId, date: today },
+                _sum: { amount: true }
+            })
+        ]);
+
+        let msg = `📊 Kunlik Hisobot (${today})\n\n`;
+        msg += `👥 Jami o'quvchilar: ${studentsCount}\n`;
+        msg += `🆕 Bugungi lidlar: ${leadsToday}\n`;
+        msg += `💰 Bugungi tushum: ${(paymentsToday._sum.amount || 0).toLocaleString()} UZS\n`;
+
+        ctx.reply(msg);
+    });
+
+    botInstance.hears('📧 Ommaviy xabar', async (ctx) => {
+        const user = await findUser(ctx.from.id, schoolId);
+        if (!user || user.type !== 'admin') {
+            return ctx.reply("Bu buyruq faqat xodimlar uchun.");
+        }
+
+        adminStates[ctx.from.id] = 'AWAITING_BROADCAST';
+        ctx.reply(
+            "Hammaga yuborilishi kerak bo'lgan xabarni kiriting (yoki Bekor qilish uchun quyidagi tugmani bosing):", 
+            Markup.keyboard([['❌ Bekor qilish']]).resize()
+        );
+    });
+
+    // Guest Handlers
+    botInstance.hears('ℹ️ Markaz haqida', (ctx) => {
+        ctx.reply("Sifatli ta'lim maskani! \n\nBizda: \n- Ingliz tili\n- Matematika\n- IT kurslari\n mavjud.");
+    });
+
+    botInstance.hears('📍 Geolokatsiya', (ctx) => {
+        ctx.replyWithLocation(38.4833, 67.9333);
+    });
+
+    botInstance.hears('📞 Kontaktlar', (ctx) => {
+        ctx.reply("Biz bilan bog'lanish uchun o'quv markazimiz ma'muriyatiga murojaat qiling.");
+    });
+
+    botInstance.hears('📝 Sinov darsiga yozilish', (ctx) => {
+        ctx.reply("Iltimos, ismingiz va qaysi kursga qiziqayotganingizni yozib qoldiring. \n\nMasalan: Ali, Ingliz tili");
+    });
+
+    // Message handler for trial registration and general text
+    botInstance.on('text', async (ctx, next) => {
+        const tid = ctx.from.id;
+        const text = ctx.message.text;
+
+        if (adminStates[tid] === 'AWAITING_BROADCAST') {
+            if (text === '❌ Bekor qilish') {
+                delete adminStates[tid];
+                const user = await findUser(tid, schoolId);
+                return ctx.reply('Bekor qilindi.', getAdminMenu());
+            }
+
+            delete adminStates[tid];
+            const statusMsg = await ctx.reply("Xabar yuborilmoqda...");
+
+            try {
+                const [students, teachers, users] = await Promise.all([
+                    prisma.student.findMany({ where: { telegramId: { not: null }, schoolId }, select: { telegramId: true } }),
+                    prisma.teacher.findMany({ where: { telegramId: { not: null }, schoolId }, select: { telegramId: true } }),
+                    prisma.user.findMany({ where: { telegramId: { not: null }, schoolId }, select: { telegramId: true } })
+                ]);
+
+                const allTids = new Set([
+                    ...students.map(s => s.telegramId),
+                    ...teachers.map(t => t.telegramId),
+                    ...users.map(u => u.telegramId)
+                ]);
+
+                let successCount = 0;
+                for (const targetId of allTids) {
+                    try {
+                        await botInstance.telegram.sendMessage(targetId, text);
+                        successCount++;
+                    } catch (e) {
+                        console.error(`Broadcast failed for ${targetId}:`, e.message);
+                    }
+                }
+
+                await ctx.telegram.deleteMessage(ctx.chat.id, statusMsg.message_id).catch(() => {});
+                return ctx.reply(`Xabar ${successCount} ta foydalanuvchiga muvaffaqiyatli yuborildi! ✅`, getAdminMenu());
+            } catch (err) {
+                console.error("Broadcast global error:", err);
+                return ctx.reply("Xabar yuborishda xatolik yuz berdi.", getAdminMenu());
+            }
+        }
+
+        if (text.startsWith('/') || ['📅', '💳', '✅', '📊', '🎒', '💰', '📢', '📧', '⚙️', '📝', 'ℹ️', '📍', '📞', '👤'].some(icon => text.includes(icon))) {
+            return next();
+        }
+
+        if (text.includes(',') && text.length > 5) {
+            const [name, course] = text.split(',').map(s => s.trim());
+            const phone = "Bot orqali";
+
+            await prisma.lead.create({
+                data: {
+                    name,
+                    course,
+                    phone,
+                    source: 'Telegram Bot',
+                    schoolId: schoolId || 1,
+                }
+            });
+
+            return ctx.reply("Rahmat! Sizning so'rovingiz qabul qilindi. Tez orada adminlarimiz bog'lanishadi.");
+        }
+
+        next();
+    });
+};
+
+// Default static bot setup
+if (process.env.TELEGRAM_BOT_TOKEN) {
+    setupBotHandlers(bot, 1);
+}
+
+// Get bot instance dynamically
+export const getTelegramBot = async (schoolId) => {
+    if (!schoolId) {
+        return bot;
     }
+    const settings = await prisma.setting.findUnique({ where: { schoolId: Number(schoolId) } });
+    const token = (settings && settings.telegram && settings.telegram.includes(':')) 
+        ? settings.telegram.trim() 
+        : process.env.TELEGRAM_BOT_TOKEN;
+        
+    if (!token || token === 'fake_token_for_init') return null;
+    
+    let instance = botCache.get(token);
+    if (!instance) {
+        instance = new Telegraf(token);
+        setupBotHandlers(instance, Number(schoolId));
+        botCache.set(token, instance);
+    }
+    return instance;
+};
 
-    next();
-});
-
-// Helper for notifications
 export const notifyAdmins = async (message, schoolId) => {
     const admins = await prisma.user.findMany({
         where: { 
@@ -641,23 +662,23 @@ export const notifyAdmins = async (message, schoolId) => {
         }
     });
 
+    const schoolBot = await getTelegramBot(schoolId);
+    if (!schoolBot) return;
+
     for (const admin of admins) {
         try {
-            await bot.telegram.sendMessage(admin.telegramId, message);
+            await schoolBot.telegram.sendMessage(admin.telegramId, message);
         } catch (e) {
             console.error(`Admin ${admin.name} ga xabar yuborib bo'lmadi:`, e);
         }
     }
 };
 
-// Export a function to start the bot
 export const startBot = () => {
-    bot.launch();
-    console.log('Telegram Bot started');
-    
-    // Enable graceful stop
-    process.once('SIGINT', () => bot.stop('SIGINT'));
-    process.once('SIGTERM', () => bot.stop('SIGTERM'));
+    if (process.env.TELEGRAM_BOT_TOKEN) {
+        bot.launch();
+        console.log('Default Telegram Bot started via polling');
+    }
 };
 
 export default bot;
