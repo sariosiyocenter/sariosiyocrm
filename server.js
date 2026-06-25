@@ -3762,6 +3762,106 @@ app.get('/api/billing/status', authenticate, async (req, res, next) => {
   } catch (err) { next(err); }
 });
 
+app.post('/api/billing/notify-debtors', authenticate, async (req, res, next) => {
+  try {
+    const { schoolId, month, messageTemplate, channel } = req.body;
+    if (!schoolId || !month || !messageTemplate || !channel) {
+      return res.status(400).json({ error: 'schoolId, month, messageTemplate, and channel are required' });
+    }
+    const sid = parseInt(schoolId);
+
+    const groups = await prisma.group.findMany({
+      where: { schoolId: sid },
+      include: { course: true, students: { where: { status: { in: ['Faol', 'Sinov'] } } } }
+    });
+
+    const allPayments = await prisma.payment.findMany({ where: { schoolId: sid } });
+    const positiveThisMonth = allPayments.filter(p => p.amount > 0 && p.date.startsWith(month));
+
+    const studentMap = {};
+    for (const group of groups) {
+      for (const student of group.students) {
+        if (!studentMap[student.id]) studentMap[student.id] = { student, groupEntries: [] };
+        const cp = (student.customPrices && typeof student.customPrices === 'object') ? student.customPrices : {};
+        const price = cp[group.id] !== undefined ? cp[group.id] : group.course.price;
+        studentMap[student.id].groupEntries.push({
+          groupId: group.id, groupName: group.name, courseName: group.course.name, price
+        });
+      }
+    }
+
+    const debtors = Object.values(studentMap).map(({ student, groupEntries }) => {
+      const expected = groupEntries.reduce((s, g) => s + g.price, 0);
+      const paid = positiveThisMonth.filter(p => p.studentId === student.id).reduce((s, p) => s + p.amount, 0);
+      const status = paid >= expected && expected > 0 ? 'paid' : paid > 0 ? 'partial' : 'unpaid';
+      const debt = expected - paid;
+      return { student, expected, paid, status, debt };
+    }).filter(d => d.status !== 'paid');
+
+    const school = await prisma.school.findUnique({ where: { id: sid } });
+    const schoolBot = await getTelegramBot(sid);
+
+    let count = 0;
+    const monthsUz = {
+      '01': 'Yanvar', '02': 'Fevral', '03': 'Mart', '04': 'Aprel',
+      '05': 'May', '06': 'Iyun', '07': 'Iyul', '08': 'Avgust',
+      '09': 'Sentabr', '10': 'Oktabr', '11': 'Noyabr', '12': 'Dekabr'
+    };
+    const [y, m] = month.split('-');
+    const formattedMonth = `${monthsUz[m] || m} ${y}`;
+
+    for (const d of debtors) {
+      const student = d.student;
+      const formattedMessage = messageTemplate
+        .replace(/\{ism\}/gi, student.name)
+        .replace(/\{oylik\}/gi, formattedMonth)
+        .replace(/\{balans\}/gi, student.balance.toLocaleString())
+        .replace(/\{qarz\}/gi, d.debt.toLocaleString())
+        .replace(/\{markaz\}/gi, school?.name || '');
+
+      let sent = false;
+
+      // Telegram
+      if ((channel === 'TELEGRAM' || channel === 'BOTH') && student.telegramId && schoolBot) {
+        try {
+          await schoolBot.telegram.sendMessage(student.telegramId, formattedMessage);
+          sent = true;
+          await prisma.smsLog.create({
+            data: {
+              toPhone: String(student.telegramId),
+              message: formattedMessage,
+              status: 'SENT',
+              type: 'BILLING_DEBT',
+              studentId: student.id,
+              channel: 'TELEGRAM',
+              schoolId: sid
+            }
+          });
+        } catch (tgErr) {
+          console.error(`[Debt Notify TG] Failed for ${student.name}:`, tgErr.message);
+        }
+      }
+
+      // SMS
+      if ((channel === 'SMS' || channel === 'BOTH') && !sent) {
+        const phone = resolveRecipientPhone(student);
+        if (phone) {
+          try {
+            await sendSms(phone, formattedMessage, 'BILLING_DEBT', student.id, sid);
+            sent = true;
+          } catch (smsErr) {
+            console.error(`[Debt Notify SMS] Failed for ${student.name}:`, smsErr.message);
+          }
+        }
+      }
+
+      if (sent) count++;
+    }
+
+    res.json({ success: true, count });
+  } catch (err) { next(err); }
+});
+
 app.get('/api/billing/auto-process', async (req, res, next) => {
   try {
     const authHeader = req.headers['authorization'];

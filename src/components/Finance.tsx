@@ -28,7 +28,7 @@ const downloadCSV = (filename: string, rows: Record<string, any>[]) => {
 };
 
 export default function Finance() {
-    const { students, payments, expenses, addPayment, addExpense, deleteExpense, groups, courses, token, selectedSchoolId, teachers } = useCRM();
+    const { students, payments, expenses, addPayment, addExpense, deleteExpense, groups, courses, token, selectedSchoolId, teachers, showNotification } = useCRM();
 
     // HR users (staff list for salary expense)
     const [hrUsers, setHrUsers] = useState<any[]>([]);
@@ -69,6 +69,42 @@ export default function Finance() {
     const [billingLoading, setBillingLoading] = useState(false);
     const [billingProcessing, setBillingProcessing] = useState(false);
     const [billingFilter, setBillingFilter] = useState<'all' | 'paid' | 'partial' | 'unpaid'>('all');
+
+    const [showDebtNotifyModal, setShowDebtNotifyModal] = useState(false);
+    const [debtNotifyTemplate, setDebtNotifyTemplate] = useState("Hurmatli {ism}, sizning {oylik} oyi uchun qarzingiz {qarz} UZS. Iltimos, to'lovni vaqtida amalga oshiring. Muassasa: {markaz}");
+    const [debtNotifyChannel, setDebtNotifyChannel] = useState<'SMS' | 'TELEGRAM' | 'BOTH'>('BOTH');
+    const [isSendingDebtNotify, setIsSendingDebtNotify] = useState(false);
+
+    const handleSendDebtNotifications = async () => {
+        if (!selectedSchoolId || !token || isSendingDebtNotify) return;
+        setIsSendingDebtNotify(true);
+        try {
+            const res = await fetch('/api/billing/notify-debtors', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                },
+                body: JSON.stringify({
+                    schoolId: selectedSchoolId,
+                    month: billingMonth,
+                    messageTemplate: debtNotifyTemplate,
+                    channel: debtNotifyChannel
+                })
+            });
+            const data = await res.json();
+            if (res.ok && data.success) {
+                showNotification(`${data.count} ta qarzdor o'quvchiga xabarlar muvaffaqiyatli yuborildi.`, 'success');
+                setShowDebtNotifyModal(false);
+            } else {
+                showNotification(data.error || 'Xabar yuborishda xatolik yuz berdi.', 'error');
+            }
+        } catch (err) {
+            showNotification('Server bilan ulanishda xatolik yuz berdi.', 'error');
+        } finally {
+            setIsSendingDebtNotify(false);
+        }
+    };
 
     const loadBillingStatus = useCallback(async () => {
         if (!selectedSchoolId || !token) return;
@@ -865,32 +901,22 @@ export default function Finance() {
                 {/* ─── OYLIK NAZORAT TAB ──────────────────────────────────── */}
                 {activeTab === 'billing' && (
                     <div className="p-6 space-y-6">
-                        {/* Month selector + action button */}
-                        <div className="flex flex-col sm:flex-row sm:items-center gap-4 justify-between">
-                            <div className="flex items-center gap-3">
-                                <button onClick={prevBillingMonth} className="w-8 h-8 flex items-center justify-center rounded-xl border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700 transition-all cursor-pointer">
+                        {/* Month selector header */}
+                        <div className="flex items-center justify-between gap-4">
+                            <div>
+                                <h3 className="text-base font-black text-gray-900 dark:text-white uppercase tracking-tight">Oylik hisob-kitob kitobi</h3>
+                                <p className="text-[9px] font-bold text-gray-400 uppercase tracking-widest mt-0.5">Moliyaviy nazorat paneli</p>
+                            </div>
+                            <div className="flex items-center gap-2 bg-gray-50 dark:bg-gray-900/60 p-1.5 rounded-2xl border border-gray-100 dark:border-gray-700/50">
+                                <button onClick={prevBillingMonth} className="w-8 h-8 flex items-center justify-center rounded-xl border border-gray-200 dark:border-gray-700 hover:bg-gray-100 dark:hover:bg-gray-800 transition-all cursor-pointer">
                                     <ChevronLeft size={14} className="text-gray-500" />
                                 </button>
-                                <div className="text-center">
-                                    <p className="text-base font-black text-gray-900 dark:text-white uppercase tracking-tight">{billingMonthLabel(billingMonth)}</p>
-                                    <p className="text-[9px] font-bold text-gray-400 uppercase tracking-widest mt-0.5">Oylik hisob-kitob</p>
+                                <div className="text-center min-w-[110px]">
+                                    <p className="text-xs font-black text-gray-900 dark:text-white uppercase tracking-wider">{billingMonthLabel(billingMonth)}</p>
                                 </div>
-                                <button onClick={nextBillingMonth} className="w-8 h-8 flex items-center justify-center rounded-xl border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700 transition-all cursor-pointer">
+                                <button onClick={nextBillingMonth} className="w-8 h-8 flex items-center justify-center rounded-xl border border-gray-200 dark:border-gray-700 hover:bg-gray-100 dark:hover:bg-gray-800 transition-all cursor-pointer">
                                     <ChevronRight size={14} className="text-gray-500" />
                                 </button>
-                            </div>
-                            <div className="flex items-center gap-2">
-                                <button onClick={loadBillingStatus} disabled={billingLoading}
-                                    className="flex items-center gap-1.5 px-3 py-2 border border-gray-200 dark:border-gray-700 rounded-xl text-[10px] font-black uppercase tracking-widest text-gray-500 hover:bg-gray-50 dark:hover:bg-gray-700 transition-all cursor-pointer disabled:opacity-50">
-                                    <RefreshCw size={12} className={billingLoading ? 'animate-spin' : ''} /> Yangilash
-                                </button>
-                                {billingData?.billingDone && (
-                                    <button onClick={() => handleBillingProcess(true)} disabled={billingProcessing}
-                                        className="flex items-center gap-1.5 px-4 py-2 bg-amber-500 hover:bg-amber-600 text-white rounded-xl text-[10px] font-black uppercase tracking-widest transition-all cursor-pointer disabled:opacity-50 shadow-lg shadow-amber-500/20">
-                                        <RefreshCw size={12} className={billingProcessing ? 'animate-spin' : ''} />
-                                        {billingProcessing ? 'Hisoblanmoqda...' : 'Qayta hisoblash'}
-                                    </button>
-                                )}
                             </div>
                         </div>
  
@@ -1030,11 +1056,11 @@ export default function Finance() {
                         {billingData && billingData.students.filter((st: any) => st.status !== 'paid').length > 0 && (
                             <div className="flex justify-end">
                                 <button
-                                    className="flex items-center gap-2 px-5 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-[10px] font-black uppercase tracking-widest transition-all cursor-pointer shadow-lg shadow-blue-600/20"
-                                    onClick={() => alert('SMS yuborish funksiyasi tez kunda!')}
+                                    className="flex items-center gap-2 px-5 py-3 bg-[#1b6b6b] hover:bg-[#155252] text-white rounded-xl text-[10px] font-black uppercase tracking-widest transition-all cursor-pointer shadow-lg shadow-[#1b6b6b]/20"
+                                    onClick={() => setShowDebtNotifyModal(true)}
                                 >
                                     <MessageSquare size={14} />
-                                    To'lamaganlar uchun SMS yuborish ({billingData.students.filter((st: any) => st.status !== 'paid').length} ta)
+                                    To'lamaganlar uchun xabar yuborish ({billingData.students.filter((st: any) => st.status !== 'paid').length} ta)
                                 </button>
                             </div>
                         )}
@@ -1454,6 +1480,68 @@ export default function Finance() {
                                 </button>
                             </div>
                         </form>
+                    </div>
+                </div>
+            )}
+
+            {/* Debt Notify Modal */}
+            {showDebtNotifyModal && (
+                <div className="fixed inset-0 z-[200] flex items-center justify-center p-4">
+                    <div className="absolute inset-0 bg-gray-900/60 backdrop-blur-sm" onClick={() => setShowDebtNotifyModal(false)} />
+                    <div className="relative bg-white dark:bg-gray-800 rounded-[2rem] border border-gray-100 dark:border-gray-700/50 shadow-2xl w-full max-w-lg p-8">
+                        <div className="flex items-center justify-between mb-6 pb-4 border-b border-gray-50 dark:border-gray-700/50">
+                            <div>
+                                <h3 className="text-sm font-black text-gray-900 dark:text-white uppercase tracking-tight text-[#1b6b6b]">Qarzdorlarga Xabar Yuborish</h3>
+                                <p className="text-[9px] font-bold text-gray-400 uppercase tracking-widest mt-0.5">Oylik hisob-kitob bo'yicha</p>
+                            </div>
+                            <button onClick={() => setShowDebtNotifyModal(false)} className="w-9 h-9 flex items-center justify-center text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700 rounded-xl cursor-pointer"><X size={18} /></button>
+                        </div>
+                        <div className="space-y-4">
+                            <div>
+                                <label className={lbl}>Xabar Yuborish Kanali</label>
+                                <select className={inp} value={debtNotifyChannel} onChange={e => setDebtNotifyChannel(e.target.value as any)}>
+                                    <option value="BOTH">Telegram Bot & SMS (Telegram yo'q bo'lsa SMS)</option>
+                                    <option value="TELEGRAM">Faqat Telegram Bot</option>
+                                    <option value="SMS">Faqat SMS</option>
+                                </select>
+                            </div>
+                            <div>
+                                <div className="flex justify-between items-center mb-1">
+                                    <label className={lbl}>Xabar Shablon Matni</label>
+                                    <span className="text-[9px] text-gray-400 font-bold uppercase">Placeholder: {"{ism}"}, {"{oylik}"}, {"{qarz}"}, {"{markaz}"}</span>
+                                </div>
+                                <textarea
+                                    className={`${inp} min-h-[120px] py-3 text-xs leading-relaxed`}
+                                    value={debtNotifyTemplate}
+                                    onChange={e => setDebtNotifyTemplate(e.target.value)}
+                                    placeholder="Masalan: Hurmatli {ism}, sizning {oylik} oyi uchun qarzingiz {qarz} UZS..."
+                                />
+                            </div>
+                            
+                            <div className="bg-amber-50 dark:bg-amber-950/20 border border-amber-100 dark:border-amber-900/40 rounded-2xl p-4 text-[10px] text-amber-700 dark:text-amber-400 font-bold uppercase tracking-wider space-y-1">
+                                <p>⚠️ DIQQAT: Xabar markazga tegishli faol qarzdor o'quvchilarga (jami: {billingData?.students.filter((st: any) => st.status !== 'paid').length} ta) yuboriladi.</p>
+                                <p>SMS orqali yuborilsa, Eskiz SMS balansingizdan haq yechiladi.</p>
+                            </div>
+
+                            <div className="flex gap-3 pt-2">
+                                <button type="button" onClick={() => setShowDebtNotifyModal(false)} disabled={isSendingDebtNotify}
+                                    className="flex-1 py-3 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-white text-xs font-extrabold uppercase tracking-widest rounded-2xl transition-all cursor-pointer hover:bg-gray-200 dark:hover:bg-gray-600">
+                                    {t('cancel')}
+                                </button>
+                                <button type="button" onClick={handleSendDebtNotifications} disabled={isSendingDebtNotify}
+                                    className="flex-1 py-3 bg-[#1b6b6b] hover:bg-[#155252] text-white text-xs font-extrabold uppercase tracking-widest rounded-2xl shadow-lg shadow-[#1b6b6b]/20 transition-all cursor-pointer flex items-center justify-center gap-2">
+                                    {isSendingDebtNotify ? (
+                                        <>
+                                            <RefreshCw size={12} className="animate-spin" /> Yuborilmoqda...
+                                        </>
+                                    ) : (
+                                        <>
+                                            <MessageSquare size={12} /> Xabarlarni yuborish
+                                        </>
+                                    )}
+                                </button>
+                            </div>
+                        </div>
                     </div>
                 </div>
             )}
