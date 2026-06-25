@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { 
-  Send, FileText, Settings, History, Search, RefreshCw, Zap, CheckCircle, 
+import {
+  Send, FileText, Settings, History, Search, RefreshCw, Zap, CheckCircle,
   XCircle, Clock, Filter, Plus, Trash2, Edit, AlertCircle, HelpCircle, User, Info, Check, MessageSquare
 } from 'lucide-react';
 import { useCRM } from '../context/CRMContext';
@@ -67,12 +67,12 @@ interface AutoRule {
 export default function Messaging() {
   const { t } = useLang();
   const { students, groups, courses, selectedSchoolId, schools, teachers, users } = useCRM();
-  
+
   const [activeTab, setActiveTab] = useState<'new' | 'templates' | 'auto' | 'history'>('new');
   const [loading, setLoading] = useState(false);
   const [logsLoading, setLogsLoading] = useState(false);
   const [audience, setAudience] = useState<'STUDENTS' | 'TEACHERS' | 'STAFF'>('STUDENTS');
-  
+
   // Tab 1: New Message state
   const [filters, setFilters] = useState({
     status: 'all',
@@ -84,7 +84,7 @@ export default function Messaging() {
     birthday: 'all', // all, today, week, month
     contact: 'all', // all, phone, telegram
   });
-  
+
   const [channel, setChannel] = useState<'SMS' | 'TELEGRAM' | 'BOTH'>('SMS');
   const [recipientTo, setRecipientTo] = useState<'PARENT' | 'STUDENT'>('PARENT');
   const [messageText, setMessageText] = useState('');
@@ -92,27 +92,27 @@ export default function Messaging() {
   const [isSending, setIsSending] = useState(false);
   const [confirmModalOpen, setConfirmModalOpen] = useState(false);
   const [showRecipientListModal, setShowRecipientListModal] = useState(false);
-  
+
   // Tab 2: Templates state
   const [templates, setTemplates] = useState<MessageTemplate[]>([]);
   const [templateModalOpen, setTemplateModalOpen] = useState(false);
   const [editingTemplate, setEditingTemplate] = useState<MessageTemplate | null>(null);
   const [templateForm, setTemplateForm] = useState({ name: '', body: '', category: 'Umumiy' });
-  
+
   // Tab 3: Auto Rules state
   const [rules, setRules] = useState<AutoRule[]>([
     { type: 'BIRTHDAY', enabled: false, body: '', channel: 'BOTH', recipientTo: 'PARENT' },
     { type: 'DEBT_REMINDER', enabled: false, body: '', channel: 'BOTH', recipientTo: 'PARENT', config: { dayOfMonth: 1, minDebt: 0 } }
   ]);
   const [savingRuleType, setSavingRuleType] = useState<string | null>(null);
-  
+
   // Tab 4: History state
   const [campaigns, setCampaigns] = useState<MessageCampaign[]>([]);
   const [selectedCampaignId, setSelectedCampaignId] = useState<number | null>(null);
   const [logs, setLogs] = useState<SmsLog[]>([]);
   const [searchLogQuery, setSearchLogQuery] = useState('');
   const [statusLogFilter, setStatusLogFilter] = useState('all');
-  
+
   // CSS Classes
   const inp = "w-full px-3.5 py-2 bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700/80 rounded-xl text-xs font-bold text-slate-800 dark:text-slate-200 placeholder:text-slate-400 outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/10 transition-all";
   const lbl = "block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5";
@@ -229,7 +229,7 @@ export default function Messaging() {
       return list.filter(item => {
         // School check
         if (selectedSchoolId !== 0 && item.schoolId !== selectedSchoolId) return false;
-        
+
         // Status
         if (filters.status !== 'all' && item.status !== filters.status) return false;
 
@@ -259,10 +259,10 @@ export default function Messaging() {
     return list.filter(st => {
       // School check
       if (selectedSchoolId !== 0 && st.schoolId !== selectedSchoolId) return false;
-      
+
       // Status
       if (filters.status !== 'all' && st.status !== filters.status) return false;
-      
+
       // Course
       if (filters.courseId !== 'all') {
         const hasCourse = (st.groups || []).some(g => {
@@ -300,7 +300,7 @@ export default function Messaging() {
           const birth = new Date(st.birthDate);
           const today = new Date();
           if (isNaN(birth.getTime())) return false;
-          
+
           if (filters.birthday === 'today') {
             if (birth.getMonth() !== today.getMonth() || birth.getDate() !== today.getDate()) return false;
           } else if (filters.birthday === 'week') {
@@ -341,12 +341,12 @@ export default function Messaging() {
     const isUnicode = /[^\u0000-\u007F]/.test(text);
     let parts = 1;
     let limit = isUnicode ? 70 : 160;
-    
+
     if (len > limit) {
       const multiLimit = isUnicode ? 67 : 153;
       parts = Math.ceil(len / multiLimit);
     }
-    
+
     return {
       length: len,
       isUnicode,
@@ -359,8 +359,8 @@ export default function Messaging() {
 
   // Template placeholders replacement mockup for Preview panel
   const getPersonalizedPreview = () => {
-    if (filteredRecipients.length === 0) return "O'quvchilar ro'yxati bo'sh. Filtrni tekshiring.";
-    const st = filteredRecipients[0];
+    if (activeSelectedCount === 0) return "Tanlangan qabul qiluvchilar ro'yxati bo'sh. Kamida 1 ta qabul qiluvchini tanlang.";
+    const st = filteredRecipients.find(r => selectedRecipientIds[r.id]) || filteredRecipients[0];
     const balance = Number(st.balance || 0);
     const debt = balance < 0 ? Math.abs(balance) : 0;
     const groupNames = (st.groups || [])
@@ -399,7 +399,7 @@ export default function Messaging() {
       const studentIds = filteredRecipients.map(r => r.id);
       const res = await fetch('/api/messaging/send-batch', {
         method: 'POST',
-        headers: { 
+        headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${localStorage.getItem('token')}`
         },
@@ -509,9 +509,9 @@ export default function Messaging() {
     return logs.filter(log => {
       const matchesCampaign = selectedCampaignId === null || log.campaignId === selectedCampaignId;
       const sQuery = searchLogQuery.trim().toLowerCase();
-      const matchesSearch = !sQuery || 
-        log.toPhone.includes(sQuery) || 
-        (log.toName || '').toLowerCase().includes(sQuery) || 
+      const matchesSearch = !sQuery ||
+        log.toPhone.includes(sQuery) ||
+        (log.toName || '').toLowerCase().includes(sQuery) ||
         log.message.toLowerCase().includes(sQuery);
       const matchesStatus = statusLogFilter === 'all' || log.status.toLowerCase() === statusLogFilter.toLowerCase();
       return matchesCampaign && matchesSearch && matchesStatus;
@@ -533,28 +533,28 @@ export default function Messaging() {
             O'quvchilar va ota-onalarga ommaviy SMS va Telegram xabarnomalar moduli
           </p>
         </div>
-        
+
         {/* Navigation Tabs */}
         <div className="flex items-center gap-1.5 bg-slate-55 dark:bg-slate-800/60 p-1 rounded-2xl border border-slate-100 dark:border-slate-700/50">
-          <button 
+          <button
             onClick={() => setActiveTab('new')}
             className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all cursor-pointer ${activeTab === 'new' ? 'bg-white dark:bg-slate-700 text-indigo-600 dark:text-indigo-400 shadow-sm' : 'text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200'}`}
           >
             Yangi xabar
           </button>
-          <button 
+          <button
             onClick={() => setActiveTab('templates')}
             className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all cursor-pointer ${activeTab === 'templates' ? 'bg-white dark:bg-slate-700 text-indigo-600 dark:text-indigo-400 shadow-sm' : 'text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200'}`}
           >
             Shablonlar
           </button>
-          <button 
+          <button
             onClick={() => setActiveTab('auto')}
             className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all cursor-pointer ${activeTab === 'auto' ? 'bg-white dark:bg-slate-700 text-indigo-600 dark:text-indigo-400 shadow-sm' : 'text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200'}`}
           >
             Avtomatik
           </button>
-          <button 
+          <button
             onClick={() => setActiveTab('history')}
             className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all cursor-pointer ${activeTab === 'history' ? 'bg-white dark:bg-slate-700 text-indigo-600 dark:text-indigo-400 shadow-sm' : 'text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200'}`}
           >
@@ -572,24 +572,24 @@ export default function Messaging() {
               <Filter className="w-4 h-4 text-indigo-500" />
               <h2 className="text-xs font-black uppercase tracking-wider text-slate-800 dark:text-slate-200">Qabul qiluvchi filtrlari</h2>
             </div>
-            
+
             {/* Audience selection */}
             <div>
               <label className={lbl}>Kimlarga yuborish (Auditoriya)</label>
               <div className="grid grid-cols-3 gap-2 bg-slate-55 dark:bg-slate-800/80 p-1 rounded-xl border border-slate-200 dark:border-slate-700/50 mb-3">
-                <button 
+                <button
                   onClick={() => setAudience('STUDENTS')}
                   className={`py-1.5 rounded-lg text-[9px] font-black uppercase tracking-wider cursor-pointer transition-all ${audience === 'STUDENTS' ? 'bg-white dark:bg-slate-700 text-indigo-650 dark:text-indigo-400 shadow-sm' : 'text-slate-500'}`}
                 >
                   O'quvchilar
                 </button>
-                <button 
+                <button
                   onClick={() => setAudience('TEACHERS')}
                   className={`py-1.5 rounded-lg text-[9px] font-black uppercase tracking-wider cursor-pointer transition-all ${audience === 'TEACHERS' ? 'bg-white dark:bg-slate-700 text-indigo-650 dark:text-indigo-400 shadow-sm' : 'text-slate-500'}`}
                 >
                   O'qituvchilar
                 </button>
-                <button 
+                <button
                   onClick={() => setAudience('STAFF')}
                   className={`py-1.5 rounded-lg text-[9px] font-black uppercase tracking-wider cursor-pointer transition-all ${audience === 'STAFF' ? 'bg-white dark:bg-slate-700 text-indigo-650 dark:text-indigo-400 shadow-sm' : 'text-slate-500'}`}
                 >
@@ -756,9 +756,15 @@ export default function Messaging() {
 
             {/* Recipient list inline */}
             <div className="space-y-3 pt-3 border-t border-dashed border-slate-100 dark:border-slate-800">
-              <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <input 
+                  type="checkbox"
+                  checked={allChecked}
+                  onChange={(e) => toggleAll(e.target.checked)}
+                  className="w-3.5 h-3.5 rounded border-slate-300 dark:border-slate-700 text-indigo-600 focus:ring-indigo-500 cursor-pointer bg-white dark:bg-slate-800"
+                />
                 <h4 className="text-[10px] font-black uppercase text-slate-400 dark:text-slate-500 tracking-wider">
-                  Tanlangan qabul qiluvchilar ({filteredRecipients.length} ta)
+                  Tanlangan qabul qiluvchilar ({activeSelectedCount}/{filteredRecipients.length} ta)
                 </h4>
               </div>
 
@@ -769,10 +775,20 @@ export default function Messaging() {
                     const isDebtor = balance < 0;
                     return (
                       <div key={st.id} className="py-2.5 flex items-center justify-between text-[11px] hover:bg-white dark:hover:bg-slate-800/40 px-2 rounded-xl transition-all">
-                        <div className="flex items-center gap-2">
-                          <div className={`w-6 h-6 rounded-full flex items-center justify-center text-[9px] font-black uppercase ${
-                            st.gender === 'Ayol' ? 'bg-pink-100 dark:bg-pink-950/30 text-pink-500' : 'bg-indigo-100 dark:bg-indigo-950/30 text-indigo-500'
-                          }`}>
+                        <div className="flex items-center gap-2.5">
+                          <input 
+                            type="checkbox"
+                            checked={!!selectedRecipientIds[st.id]}
+                            onChange={(e) => {
+                              setSelectedRecipientIds(prev => ({
+                                ...prev,
+                                [st.id]: e.target.checked
+                              }));
+                            }}
+                            className="w-3.5 h-3.5 rounded border-slate-300 dark:border-slate-700 text-indigo-600 focus:ring-indigo-500 cursor-pointer bg-white dark:bg-slate-800"
+                          />
+                          <div className={`w-6 h-6 rounded-full flex items-center justify-center text-[9px] font-black uppercase ${st.gender === 'Ayol' ? 'bg-pink-100 dark:bg-pink-950/30 text-pink-500' : 'bg-indigo-100 dark:bg-indigo-950/30 text-indigo-500'
+                            }`}>
                             {st.name.charAt(0)}
                           </div>
                           <div>
@@ -816,19 +832,19 @@ export default function Messaging() {
               <div>
                 <label className={lbl}>Jo'natish kanali</label>
                 <div className="grid grid-cols-3 gap-2 bg-slate-55 dark:bg-slate-800/80 p-1 rounded-xl border border-slate-200 dark:border-slate-700/50">
-                  <button 
+                  <button
                     onClick={() => setChannel('SMS')}
                     className={`py-1.5 rounded-lg text-[9px] font-black uppercase tracking-wider cursor-pointer transition-all ${channel === 'SMS' ? 'bg-white dark:bg-slate-700 text-indigo-600 dark:text-indigo-400 shadow-sm' : 'text-slate-500'}`}
                   >
                     SMS
                   </button>
-                  <button 
+                  <button
                     onClick={() => setChannel('TELEGRAM')}
                     className={`py-1.5 rounded-lg text-[9px] font-black uppercase tracking-wider cursor-pointer transition-all ${channel === 'TELEGRAM' ? 'bg-white dark:bg-slate-700 text-indigo-600 dark:text-indigo-400 shadow-sm' : 'text-slate-500'}`}
                   >
                     Telegram
                   </button>
-                  <button 
+                  <button
                     onClick={() => setChannel('BOTH')}
                     className={`py-1.5 rounded-lg text-[9px] font-black uppercase tracking-wider cursor-pointer transition-all ${channel === 'BOTH' ? 'bg-white dark:bg-slate-700 text-indigo-600 dark:text-indigo-400 shadow-sm' : 'text-slate-500'}`}
                   >
@@ -841,25 +857,25 @@ export default function Messaging() {
                 <div>
                   <label className={lbl}>Qabul qiluvchi tomon</label>
                   <div className="grid grid-cols-4 gap-1.5 bg-slate-55 dark:bg-slate-800/80 p-1 rounded-xl border border-slate-200 dark:border-slate-700/50">
-                    <button 
+                    <button
                       onClick={() => setRecipientTo('STUDENT')}
                       className={`py-1.5 rounded-lg text-[9px] font-black uppercase tracking-wider cursor-pointer transition-all ${recipientTo === 'STUDENT' ? 'bg-white dark:bg-slate-700 text-indigo-600 dark:text-indigo-400 shadow-sm' : 'text-slate-500'}`}
                     >
                       O'quvchi
                     </button>
-                    <button 
+                    <button
                       onClick={() => setRecipientTo('FATHER')}
                       className={`py-1.5 rounded-lg text-[9px] font-black uppercase tracking-wider cursor-pointer transition-all ${recipientTo === 'FATHER' ? 'bg-white dark:bg-slate-700 text-indigo-600 dark:text-indigo-400 shadow-sm' : 'text-slate-500'}`}
                     >
                       Otasi
                     </button>
-                    <button 
+                    <button
                       onClick={() => setRecipientTo('MOTHER')}
                       className={`py-1.5 rounded-lg text-[9px] font-black uppercase tracking-wider cursor-pointer transition-all ${recipientTo === 'MOTHER' ? 'bg-white dark:bg-slate-700 text-indigo-600 dark:text-indigo-400 shadow-sm' : 'text-slate-500'}`}
                     >
                       Onasi
                     </button>
-                    <button 
+                    <button
                       onClick={() => setRecipientTo('PARENT')}
                       className={`py-1.5 rounded-lg text-[9px] font-black uppercase tracking-wider cursor-pointer transition-all ${recipientTo === 'PARENT' ? 'bg-white dark:bg-slate-700 text-indigo-600 dark:text-indigo-400 shadow-sm' : 'text-slate-500'}`}
                     >
@@ -918,7 +934,7 @@ export default function Messaging() {
                 placeholder="Xabar matnini bu yerga yozing..."
                 className="w-full px-4 py-3 bg-slate-55 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 rounded-2xl text-xs font-semibold text-slate-800 dark:text-slate-200 placeholder:text-slate-400 outline-none focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 transition-all resize-none"
               />
-              
+
               {/* Length statistics */}
               <div className="flex justify-between items-center mt-2 px-1 text-[9px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest">
                 <span>Kodlash: {charInfo.isUnicode ? 'Unicode (Kirill)' : 'GSM-7 (Lotin)'}</span>
@@ -942,10 +958,10 @@ export default function Messaging() {
               <button
                 type="button"
                 onClick={() => setConfirmModalOpen(true)}
-                disabled={filteredRecipients.length === 0 || !messageText.trim() || isSending}
+                disabled={activeSelectedCount === 0 || !messageText.trim() || isSending}
                 className={btnPrimary}
               >
-                {isSending ? 'Yuborilmoqda...' : `Kampaniyani boshlash (${filteredRecipients.length} ta)`}
+                {isSending ? 'Yuborilmoqda...' : `Kampaniyani boshlash (${activeSelectedCount} ta)`}
               </button>
             </div>
           </div>
@@ -1185,8 +1201,8 @@ export default function Messaging() {
 
               <div className="space-y-3 max-h-[500px] overflow-y-auto pr-1">
                 {campaigns.map(c => (
-                  <div 
-                    key={c.id} 
+                  <div
+                    key={c.id}
                     onClick={() => setSelectedCampaignId(c.id)}
                     className={`p-3.5 rounded-2xl border transition-all cursor-pointer ${selectedCampaignId === c.id ? 'bg-indigo-50/50 dark:bg-indigo-950/20 border-indigo-200 dark:border-indigo-900/60 shadow-sm' : 'bg-slate-55 dark:bg-slate-800/40 border-slate-100 dark:border-slate-800/60 hover:bg-slate-100/50 dark:hover:bg-slate-750'}`}
                   >
@@ -1226,14 +1242,14 @@ export default function Messaging() {
                 </div>
 
                 <div className="flex items-center gap-2">
-                  <button 
+                  <button
                     onClick={handleTestConnection}
                     className="flex items-center gap-1 px-3 py-1.5 bg-[#1b6b6b] hover:bg-[#155252] text-white rounded-lg text-[9px] font-black uppercase tracking-wider transition-all active:scale-95 cursor-pointer"
                   >
                     <Zap size={12} />
                     Ulanishni tekshirish
                   </button>
-                  <button 
+                  <button
                     onClick={fetchLogs}
                     className="p-1.5 bg-slate-55 dark:bg-slate-800 border border-slate-100 dark:border-slate-700 text-slate-450 hover:text-indigo-500 rounded-lg transition-colors cursor-pointer"
                     disabled={logsLoading}
@@ -1257,7 +1273,7 @@ export default function Messaging() {
                 </div>
                 <div className="flex items-center gap-3 w-full md:w-auto justify-end">
                   <Filter size={14} className="text-slate-400" />
-                  <select 
+                  <select
                     value={statusLogFilter}
                     onChange={e => setStatusLogFilter(e.target.value)}
                     className="px-3 py-1.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-[10px] font-bold uppercase tracking-widest outline-none focus:border-indigo-500 text-slate-900 dark:text-white cursor-pointer"
@@ -1319,7 +1335,7 @@ export default function Messaging() {
                                 <span className="text-[8px] font-black uppercase tracking-widest">OK</span>
                               </div>
                             ) : log.status === 'FAILED' ? (
-                              <div 
+                              <div
                                 className="inline-flex items-center gap-1 text-rose-500 bg-rose-50 dark:bg-rose-955/20 px-2 py-0.5 rounded border border-rose-100 dark:border-rose-900/30 cursor-help"
                                 title={log.errorMsg || 'Xatolik'}
                               >
@@ -1334,7 +1350,7 @@ export default function Messaging() {
                             )}
 
                             {log.channel === 'SMS' && log.eskizId && (
-                              <button 
+                              <button
                                 onClick={() => handleCheckStatus(log.id)}
                                 className="p-1 text-slate-400 hover:text-indigo-500 dark:hover:text-indigo-400 hover:bg-slate-50 dark:hover:bg-slate-800 rounded transition-all cursor-pointer"
                                 title="Eskiz holatini tekshirish"
@@ -1369,7 +1385,7 @@ export default function Messaging() {
             <div className="space-y-2">
               <h3 className="text-sm font-black uppercase tracking-wide text-slate-900 dark:text-white">Kampaniyani tasdiqlaysizmi?</h3>
               <p className="text-xs text-slate-500 leading-normal">
-                Ushbu xabar **{filteredRecipients.length} ta** o'quvchi/ota-onaga **{channel === 'BOTH' ? 'SMS va Telegram' : channel}** kanali orqali yuboriladi. SMS jo'natish xizmati Eskiz hisobidan mablag' yechadi.
+                Ushbu xabar **{activeSelectedCount} ta** o'quvchi/ota-onaga **{channel === 'BOTH' ? 'SMS va Telegram' : channel}** kanali orqali yuboriladi. SMS jo'natish xizmati Eskiz hisobidan mablag' yechadi.
               </p>
             </div>
 
@@ -1399,7 +1415,7 @@ export default function Messaging() {
           <div className="relative bg-white dark:bg-slate-900 rounded-3xl max-w-lg w-full p-6 space-y-4 shadow-2xl border border-slate-100 dark:border-slate-800 animate-in zoom-in-95 duration-200">
             <div className="flex justify-between items-center border-b border-dashed border-slate-100 dark:border-slate-800 pb-3">
               <h3 className="text-sm font-black uppercase tracking-wide text-slate-900 dark:text-white">Qabul qiluvchilar ro'yxati</h3>
-              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest tabular-nums">{filteredRecipients.length} ta</span>
+              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest tabular-nums">{activeSelectedCount}/{filteredRecipients.length} ta</span>
             </div>
 
             <div className="max-h-[300px] overflow-y-auto divide-y divide-slate-100 dark:divide-slate-800 pr-1">
