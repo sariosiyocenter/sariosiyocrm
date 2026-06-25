@@ -178,6 +178,18 @@ export default function Settings() {
                         <label className={lbl}>Instagram Profil Linki</label>
                         <input type="text" placeholder="https://instagram.com/..." className={inp} value={profileForm?.instagram || ''} onChange={e => setProfileForm(p => ({ ...p, instagram: e.target.value }))} />
                     </div>
+                    <div>
+                        <label className={lbl}>Eskiz SMS Email</label>
+                        <input type="email" placeholder="example@gmail.com" className={inp} value={profileForm?.eskizEmail || ''} onChange={e => setProfileForm(p => ({ ...p, eskizEmail: e.target.value }))} />
+                    </div>
+                    <div>
+                        <label className={lbl}>Eskiz SMS Parol (API Key)</label>
+                        <input type="password" placeholder="••••••••" className={inp} value={profileForm?.eskizPassword || ''} onChange={e => setProfileForm(p => ({ ...p, eskizPassword: e.target.value }))} />
+                    </div>
+                    <div>
+                        <label className={lbl}>Eskiz SMS Sender (Massa nom yoki 3700)</label>
+                        <input type="text" placeholder="4546 yoki MarkazNomi" className={inp} value={profileForm?.eskizFrom || ''} onChange={e => setProfileForm(p => ({ ...p, eskizFrom: e.target.value }))} />
+                    </div>
                 </div>
                 <div className="flex justify-end pt-4 border-t border-dashed border-gray-150 dark:border-gray-700/50">
                     <button type="submit" disabled={isSaving}

@@ -446,6 +446,9 @@ model Setting {
   telegram         String?
   instagram        String?
   workingHours     String?
+  eskizEmail       String?
+  eskizPassword    String?
+  eskizFrom        String?
 }
 
 model User {

@@ -274,6 +274,9 @@ export interface CRMState {
         telegram?: string;
         instagram?: string;
         workingHours?: string;
+        eskizEmail?: string;
+        eskizPassword?: string;
+        eskizFrom?: string;
     };
     questions: Question[];
     exams: Exam[];

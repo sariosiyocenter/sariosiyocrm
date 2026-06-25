@@ -2823,16 +2823,26 @@ app.post('/api/utils/remove-bg', authenticate, async (req, res, next) => {
 
 // ==================== ESKIZ SMS INTEGRATION ====================
 
-let eskizToken = null;
-let eskizTokenExpiry = null;
+const eskizTokensCache = new Map(); // email -> { token, expiry }
 
-async function getEskizToken() {
-  if (eskizToken && eskizTokenExpiry && Date.now() < eskizTokenExpiry) {
-    return eskizToken;
+async function getEskizToken(schoolId) {
+  let email = process.env.ESKIZ_EMAIL;
+  let password = process.env.ESKIZ_PASSWORD;
+
+  if (schoolId) {
+    const settings = await prisma.setting.findUnique({ where: { schoolId } });
+    if (settings && settings.eskizEmail && settings.eskizPassword) {
+      email = settings.eskizEmail.trim();
+      password = settings.eskizPassword.trim();
+    }
   }
-  const email = process.env.ESKIZ_EMAIL;
-  const password = process.env.ESKIZ_PASSWORD;
-  if (!email || !password) throw new Error('ESKIZ_EMAIL yoki ESKIZ_PASSWORD .env da yo\'q');
+
+  if (!email || !password) throw new Error('Eskiz SMS sozlamalari (email/password) kiritilmagan');
+
+  const cached = eskizTokensCache.get(email);
+  if (cached && Date.now() < cached.expiry) {
+    return cached.token;
+  }
 
   console.log(`[Eskiz] Token olishga urinish: ${email}`);
 
@@ -2862,10 +2872,11 @@ async function getEskizToken() {
       
       const data = await res.json();
       if (data.data?.token) {
-        eskizToken = data.data.token;
-        eskizTokenExpiry = Date.now() + 23 * 60 * 60 * 1000;
+        const token = data.data.token;
+        const expiry = Date.now() + 23 * 60 * 60 * 1000;
+        eskizTokensCache.set(email, { token, expiry });
         console.log(`[Eskiz] Token muvaffaqiyatli olindi (Source: ${url})`);
-        return eskizToken;
+        return token;
       }
       console.warn(`[Eskiz] ${url} muvaffaqiyatsiz:`, JSON.stringify(data));
       lastError = data.message || JSON.stringify(data);
@@ -2885,9 +2896,17 @@ function resolveRecipientPhone(student) {
 
 // Bitta raqamga SMS yuborish
 async function sendSms(phone, message, type, studentId, schoolId, campaignId = null) {
-  const from = process.env.ESKIZ_FROM || '4546';
+  let from = process.env.ESKIZ_FROM || '4546';
+  
+  if (schoolId) {
+    const settings = await prisma.setting.findUnique({ where: { schoolId } });
+    if (settings && settings.eskizFrom) {
+      from = settings.eskizFrom.trim();
+    }
+  }
+
   try {
-    const token = await getEskizToken();
+    const token = await getEskizToken(schoolId);
     const cleanPhone = phone.replace(/\D/g, ''); // Faqat raqamlar
 
     const params = new URLSearchParams();

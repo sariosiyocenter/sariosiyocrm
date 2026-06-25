@@ -116,7 +116,10 @@ export const CRMProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             address: "",
             telegram: "",
             instagram: "",
-            workingHours: ""
+            workingHours: "",
+            eskizEmail: "",
+            eskizPassword: "",
+            eskizFrom: ""
         }
     });
 
@@ -491,7 +494,10 @@ export const CRMProvider: React.FC<{ children: React.ReactNode }> = ({ children 
                 address: "",
                 telegram: "",
                 instagram: "",
-                workingHours: ""
+                workingHours: "",
+                eskizEmail: "",
+                eskizPassword: "",
+                eskizFrom: ""
             }
         });
     };
