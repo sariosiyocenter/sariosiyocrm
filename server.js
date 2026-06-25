@@ -3142,7 +3142,7 @@ async function sendToOne({ student, message, channel, recipientTo, type, schoolI
   }
 
   // SMS
-  if (channel === 'SMS' || channel === 'BOTH') {
+  if (channel === 'SMS' || (channel === 'BOTH' && !anySuccess)) {
     let phone;
     if (recipientTo === 'STUDENT') {
       phone = student.phone;

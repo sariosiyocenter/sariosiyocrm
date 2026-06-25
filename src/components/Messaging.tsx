@@ -920,16 +920,7 @@ export default function Messaging() {
               )}
             </div>
 
-            {/* Smart Fallback Warning */}
-            {(channel === 'TELEGRAM' || channel === 'BOTH') && (
-              <div className="bg-amber-50 dark:bg-amber-955/20 border border-amber-100 dark:border-amber-900/40 p-3.5 rounded-2xl flex items-start gap-3">
-                <AlertCircle className="w-4 h-4 text-amber-500 mt-0.5 shrink-0" />
-                <div className="text-[10px] text-amber-700 dark:text-amber-300 font-bold leading-normal">
-                  <span className="uppercase font-black text-amber-600 block mb-0.5">Zaxira mantiqi (Smart Fallback):</span>
-                  Tanlangan qabul qiluvchilar orasida Telegram ulagichini faollashtirmagan o'quvchilarga xabar avtomatik ravishda **SMS kanali** orqali yuboriladi.
-                </div>
-              </div>
-            )}
+
 
             {/* Template select dropdown */}
             <div>
