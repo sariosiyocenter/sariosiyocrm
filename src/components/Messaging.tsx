@@ -17,7 +17,7 @@ interface Student {
   telegramId?: string | null;
   fatherPhone?: string | null;
   motherPhone?: string | null;
-  groups: { id: number; name: string }[];
+  groups: any[];
 }
 
 interface MessageTemplate {
@@ -227,8 +227,9 @@ export default function Messaging() {
       
       // Course
       if (filters.courseId !== 'all') {
-        const hasCourse = st.groups?.some(g => {
-          const groupRel = (groups || []).find(gr => gr.id === g.id);
+        const hasCourse = (st.groups || []).some(g => {
+          const groupIdVal = typeof g === 'object' && g !== null ? g.id : Number(g);
+          const groupRel = (groups || []).find(gr => gr.id === groupIdVal);
           return groupRel?.courseId === Number(filters.courseId);
         });
         if (!hasCourse) return false;
@@ -236,7 +237,10 @@ export default function Messaging() {
 
       // Group
       if (filters.groupId !== 'all') {
-        const hasGroup = st.groups?.some(g => g.id === Number(filters.groupId));
+        const hasGroup = (st.groups || []).some(g => {
+          const groupIdVal = typeof g === 'object' && g !== null ? g.id : Number(g);
+          return groupIdVal === Number(filters.groupId);
+        });
         if (!hasGroup) return false;
       }
 
@@ -321,7 +325,13 @@ export default function Messaging() {
     const st = filteredRecipients[0];
     const balance = Number(st.balance || 0);
     const debt = balance < 0 ? Math.abs(balance) : 0;
-    const groupNames = (st.groups || []).map(g => g.name).join(', ') || 'Noma\'lum Guruh';
+    const groupNames = (st.groups || [])
+      .map(g => {
+        const groupIdVal = typeof g === 'object' && g !== null ? g.id : Number(g);
+        return (groups || []).find(gr => gr.id === groupIdVal)?.name;
+      })
+      .filter(Boolean)
+      .join(', ') || 'Noma\'lum Guruh';
     const schoolName = schools.find(s => s.id === (selectedSchoolId || st.schoolId))?.name || 'Quantum Edu';
 
     return messageText
@@ -635,19 +645,54 @@ export default function Messaging() {
               </div>
             </div>
 
-            {/* Recipient count card */}
-            <div className="bg-indigo-50/50 dark:bg-indigo-950/20 border border-indigo-100/60 dark:border-indigo-900/40 p-4 rounded-2xl flex items-center justify-between">
-              <div>
-                <h4 className="text-[10px] font-black uppercase text-indigo-500 tracking-wider">Tanlangan qabul qiluvchilar</h4>
-                <p className="text-xl font-black text-slate-800 dark:text-white tabular-nums mt-0.5">{filteredRecipients.length} ta o'quvchi</p>
+            {/* Recipient list inline */}
+            <div className="space-y-3 pt-3 border-t border-dashed border-slate-100 dark:border-slate-800">
+              <div className="flex items-center justify-between">
+                <h4 className="text-[10px] font-black uppercase text-slate-400 dark:text-slate-500 tracking-wider">
+                  Tanlangan qabul qiluvchilar ({filteredRecipients.length} ta)
+                </h4>
               </div>
-              <button 
-                onClick={() => setShowRecipientListModal(true)}
-                disabled={filteredRecipients.length === 0}
-                className={btnOutline}
-              >
-                Ro'yxatni ko'rish
-              </button>
+
+              {filteredRecipients.length > 0 ? (
+                <div className="max-h-[280px] overflow-y-auto divide-y divide-slate-100/80 dark:divide-slate-800/80 pr-1 border border-slate-100 dark:border-slate-800 rounded-2xl p-2 bg-slate-50/40 dark:bg-slate-950/20">
+                  {filteredRecipients.map(st => {
+                    const balance = Number(st.balance || 0);
+                    const isDebtor = balance < 0;
+                    return (
+                      <div key={st.id} className="py-2.5 flex items-center justify-between text-[11px] hover:bg-white dark:hover:bg-slate-800/40 px-2 rounded-xl transition-all">
+                        <div className="flex items-center gap-2">
+                          <div className={`w-6 h-6 rounded-full flex items-center justify-center text-[9px] font-black uppercase ${
+                            st.gender === 'Ayol' ? 'bg-pink-100 dark:bg-pink-950/30 text-pink-500' : 'bg-indigo-100 dark:bg-indigo-950/30 text-indigo-500'
+                          }`}>
+                            {st.name.charAt(0)}
+                          </div>
+                          <div>
+                            <p className="font-bold text-slate-800 dark:text-slate-200">{st.name}</p>
+                            <p className="text-[9px] font-bold text-slate-400 dark:text-slate-500 tabular-nums">
+                              {resolveRecipientPhone(st)}
+                            </p>
+                          </div>
+                        </div>
+
+                        <div className="flex items-center gap-2 text-right">
+                          <span className={`text-[9px] font-bold tabular-nums ${isDebtor ? 'text-rose-500' : balance > 0 ? 'text-emerald-500' : 'text-slate-450'}`}>
+                            {balance.toLocaleString()} s.
+                          </span>
+                          {st.telegramId ? (
+                            <span className="text-[8px] font-black uppercase tracking-wider px-1.5 py-0.5 rounded bg-sky-50 dark:bg-sky-950/25 text-sky-500 border border-sky-100/40 dark:border-sky-900/25">TG</span>
+                          ) : (
+                            <span className="text-[8px] font-black uppercase tracking-wider px-1.5 py-0.5 rounded bg-purple-50 dark:bg-purple-950/25 text-purple-500 border border-purple-100/40 dark:border-purple-900/25">SMS</span>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              ) : (
+                <div className="border border-slate-100 dark:border-slate-800 rounded-2xl p-6 text-center bg-slate-50/40 dark:bg-slate-950/20 text-[10px] font-bold uppercase tracking-wider text-slate-405 dark:text-slate-505">
+                  Filtr bo'yicha o'quvchi topilmadi
+                </div>
+              )}
             </div>
           </div>
 
