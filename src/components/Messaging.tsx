@@ -211,7 +211,10 @@ export default function Messaging() {
   };
 
   // Helper: Resolve Phone number like backend
-  const resolveRecipientPhone = (st: Student) => {
+  const resolveRecipientPhone = (st: Student, target: string = recipientTo) => {
+    if (target === 'STUDENT') return st.phone;
+    if (target === 'FATHER') return st.fatherPhone || st.phone;
+    if (target === 'MOTHER') return st.motherPhone || st.phone;
     return st.fatherPhone || st.motherPhone || st.phone;
   };
 
@@ -669,7 +672,7 @@ export default function Messaging() {
                           <div>
                             <p className="font-bold text-slate-800 dark:text-slate-200">{st.name}</p>
                             <p className="text-[9px] font-bold text-slate-400 dark:text-slate-500 tabular-nums">
-                              {resolveRecipientPhone(st)}
+                              {resolveRecipientPhone(st, recipientTo) || 'Raqam kiritilmagan'}
                             </p>
                           </div>
                         </div>
@@ -730,18 +733,30 @@ export default function Messaging() {
 
               <div>
                 <label className={lbl}>Qabul qiluvchi tomon</label>
-                <div className="grid grid-cols-2 gap-2 bg-slate-55 dark:bg-slate-800/80 p-1 rounded-xl border border-slate-200 dark:border-slate-700/50">
-                  <button 
-                    onClick={() => setRecipientTo('PARENT')}
-                    className={`py-1.5 rounded-lg text-[9px] font-black uppercase tracking-wider cursor-pointer transition-all ${recipientTo === 'PARENT' ? 'bg-white dark:bg-slate-700 text-indigo-600 dark:text-indigo-400 shadow-sm' : 'text-slate-500'}`}
-                  >
-                    Ota-ona
-                  </button>
+                <div className="grid grid-cols-4 gap-1.5 bg-slate-55 dark:bg-slate-800/80 p-1 rounded-xl border border-slate-200 dark:border-slate-700/50">
                   <button 
                     onClick={() => setRecipientTo('STUDENT')}
                     className={`py-1.5 rounded-lg text-[9px] font-black uppercase tracking-wider cursor-pointer transition-all ${recipientTo === 'STUDENT' ? 'bg-white dark:bg-slate-700 text-indigo-600 dark:text-indigo-400 shadow-sm' : 'text-slate-500'}`}
                   >
                     O'quvchi
+                  </button>
+                  <button 
+                    onClick={() => setRecipientTo('FATHER')}
+                    className={`py-1.5 rounded-lg text-[9px] font-black uppercase tracking-wider cursor-pointer transition-all ${recipientTo === 'FATHER' ? 'bg-white dark:bg-slate-700 text-indigo-600 dark:text-indigo-400 shadow-sm' : 'text-slate-500'}`}
+                  >
+                    Otasi
+                  </button>
+                  <button 
+                    onClick={() => setRecipientTo('MOTHER')}
+                    className={`py-1.5 rounded-lg text-[9px] font-black uppercase tracking-wider cursor-pointer transition-all ${recipientTo === 'MOTHER' ? 'bg-white dark:bg-slate-700 text-indigo-600 dark:text-indigo-400 shadow-sm' : 'text-slate-500'}`}
+                  >
+                    Onasi
+                  </button>
+                  <button 
+                    onClick={() => setRecipientTo('PARENT')}
+                    className={`py-1.5 rounded-lg text-[9px] font-black uppercase tracking-wider cursor-pointer transition-all ${recipientTo === 'PARENT' ? 'bg-white dark:bg-slate-700 text-indigo-600 dark:text-indigo-400 shadow-sm' : 'text-slate-500'}`}
+                  >
+                    Ota-ona
                   </button>
                 </div>
               </div>
@@ -1285,7 +1300,7 @@ export default function Messaging() {
                   <div>
                     <p className="font-bold text-slate-850 dark:text-white">{st.name}</p>
                     <p className="text-[10px] font-semibold text-slate-400 mt-0.5 tabular-nums">
-                      Tel: {resolveRecipientPhone(st)}
+                      Tel: {resolveRecipientPhone(st, recipientTo) || 'Raqam kiritilmagan'}
                     </p>
                   </div>
                   <div className="flex items-center gap-1.5">

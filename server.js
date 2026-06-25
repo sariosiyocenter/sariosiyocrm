@@ -3070,7 +3070,16 @@ async function sendToOne({ student, message, channel, recipientTo, type, schoolI
 
   // SMS
   if (channel === 'SMS' || channel === 'BOTH') {
-    const phone = recipientTo === 'STUDENT' ? student.phone : resolveRecipientPhone(student);
+    let phone;
+    if (recipientTo === 'STUDENT') {
+      phone = student.phone;
+    } else if (recipientTo === 'FATHER') {
+      phone = student.fatherPhone || student.phone;
+    } else if (recipientTo === 'MOTHER') {
+      phone = student.motherPhone || student.phone;
+    } else {
+      phone = resolveRecipientPhone(student);
+    }
     if (phone) {
       attempted = true;
       const r = await sendSms(phone, message, type || 'MANUAL', student.id, schoolId, campaignId);
@@ -3105,7 +3114,7 @@ app.post('/api/messaging/send-batch', authenticate, async (req, res, next) => {
     if (!Array.isArray(studentIds) || studentIds.length === 0) return res.status(400).json({ error: 'studentIds kerak' });
     if (!message || !message.trim()) return res.status(400).json({ error: 'Xabar matni kerak' });
     const ch = ['SMS', 'TELEGRAM', 'BOTH'].includes(channel) ? channel : 'SMS';
-    const to = recipientTo === 'STUDENT' ? 'STUDENT' : 'PARENT';
+    const to = ['STUDENT', 'FATHER', 'MOTHER', 'PARENT'].includes(recipientTo) ? recipientTo : 'PARENT';
 
     const campaign = await prisma.messageCampaign.create({
       data: { message, channel: ch, recipientTo: to, filtersJson: filters || null, totalCount: studentIds.length, schoolId }
