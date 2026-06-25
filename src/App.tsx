@@ -11,34 +11,51 @@ import { useCRM } from './context/CRMContext';
 import Login from './components/Login';
 import Layout from './components/Layout';
 
+// Helper to reload page if a dynamic import fails due to new deployment chunks mismatch
+function lazyRetry<T extends React.ComponentType<any>>(componentImport: () => Promise<{ default: T }>) {
+  return lazy(async () => {
+    try {
+      return await componentImport();
+    } catch (error) {
+      console.error("Chunk load failed, reloading page...", error);
+      const hasReloaded = sessionStorage.getItem('chunk-reload-flag');
+      if (!hasReloaded) {
+        sessionStorage.setItem('chunk-reload-flag', 'true');
+        window.location.reload();
+      }
+      throw error;
+    }
+  });
+}
+
 // Lazy (faqat kirish kerak bo'lganda yuklanadi)
-const LandingPage     = lazy(() => import('./components/LandingPage'));
-const Dashboard       = lazy(() => import('./components/Dashboard'));
-const Teachers        = lazy(() => import('./components/Teachers'));
-const TeacherDetails  = lazy(() => import('./components/TeacherDetails'));
-const Courses          = lazy(() => import('./components/Courses'));
-const CourseDetails    = lazy(() => import('./components/CourseDetails'));
-const SyllabusManager  = lazy(() => import('./components/SyllabusManager'));
-const Students        = lazy(() => import('./components/Students'));
-const StudentDetails  = lazy(() => import('./components/StudentDetails'));
-const Leads           = lazy(() => import('./components/Leads'));
-const Finance         = lazy(() => import('./components/Finance'));
-const Settings        = lazy(() => import('./components/Settings'));
-const Reports         = lazy(() => import('./components/Reports'));
-const Logistics       = lazy(() => import('./components/Logistics'));
-const Messaging       = lazy(() => import('./components/Messaging'));
-const ExamsList       = lazy(() => import('./components/ExamsList'));
-const ExamBuilder     = lazy(() => import('./components/ExamBuilder'));
-const ExamDetail      = lazy(() => import('./components/ExamDetail'));
-const Scanner         = lazy(() => import('./components/Scanner'));
-const QuestionsList   = lazy(() => import('./components/QuestionsList'));
-const QuestionEditor  = lazy(() => import('./components/QuestionEditor'));
-const ExamResults     = lazy(() => import('./components/ExamResults'));
-const SuperAdmin      = lazy(() => import('./components/SuperAdmin'));
-const OrgDetail       = lazy(() => import('./components/OrgDetail'));
-const HRManagement    = lazy(() => import('./components/HRManagement'));
-const StaffDetails    = lazy(() => import('./components/StaffDetails'));
-const PublicApply     = lazy(() => import('./components/PublicApply'));
+const LandingPage     = lazyRetry(() => import('./components/LandingPage'));
+const Dashboard       = lazyRetry(() => import('./components/Dashboard'));
+const Teachers        = lazyRetry(() => import('./components/Teachers'));
+const TeacherDetails  = lazyRetry(() => import('./components/TeacherDetails'));
+const Courses          = lazyRetry(() => import('./components/Courses'));
+const CourseDetails    = lazyRetry(() => import('./components/CourseDetails'));
+const SyllabusManager  = lazyRetry(() => import('./components/SyllabusManager'));
+const Students        = lazyRetry(() => import('./components/Students'));
+const StudentDetails  = lazyRetry(() => import('./components/StudentDetails'));
+const Leads           = lazyRetry(() => import('./components/Leads'));
+const Finance         = lazyRetry(() => import('./components/Finance'));
+const Settings        = lazyRetry(() => import('./components/Settings'));
+const Reports         = lazyRetry(() => import('./components/Reports'));
+const Logistics       = lazyRetry(() => import('./components/Logistics'));
+const Messaging       = lazyRetry(() => import('./components/Messaging'));
+const ExamsList       = lazyRetry(() => import('./components/ExamsList'));
+const ExamBuilder     = lazyRetry(() => import('./components/ExamBuilder'));
+const ExamDetail      = lazyRetry(() => import('./components/ExamDetail'));
+const Scanner         = lazyRetry(() => import('./components/Scanner'));
+const QuestionsList   = lazyRetry(() => import('./components/QuestionsList'));
+const QuestionEditor  = lazyRetry(() => import('./components/QuestionEditor'));
+const ExamResults     = lazyRetry(() => import('./components/ExamResults'));
+const SuperAdmin      = lazyRetry(() => import('./components/SuperAdmin'));
+const OrgDetail       = lazyRetry(() => import('./components/OrgDetail'));
+const HRManagement    = lazyRetry(() => import('./components/HRManagement'));
+const StaffDetails    = lazyRetry(() => import('./components/StaffDetails'));
+const PublicApply     = lazyRetry(() => import('./components/PublicApply'));
 
 function PageLoader() {
   return (
@@ -53,6 +70,10 @@ function PageLoader() {
 
 export default function App() {
   const { user, logout, loading } = useCRM();
+
+  React.useEffect(() => {
+    sessionStorage.removeItem('chunk-reload-flag');
+  }, []);
 
   const isApplyRoute = window.location.pathname.startsWith('/apply');
 
