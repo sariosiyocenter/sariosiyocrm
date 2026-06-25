@@ -86,6 +86,7 @@ export default function Messaging() {
   });
 
   const [channel, setChannel] = useState<'SMS' | 'TELEGRAM' | 'BOTH'>('SMS');
+  const [useSmsFallback, setUseSmsFallback] = useState(true);
   const [recipientTo, setRecipientTo] = useState<'PARENT' | 'STUDENT'>('PARENT');
   const [messageText, setMessageText] = useState('');
   const [selectedTemplateId, setSelectedTemplateId] = useState<string>('');
@@ -392,11 +393,11 @@ export default function Messaging() {
 
   // Send batch request
   const handleSendBatch = async () => {
-    if (filteredRecipients.length === 0) return;
+    if (activeSelectedCount === 0) return;
     setIsSending(true);
     setConfirmModalOpen(false);
     try {
-      const studentIds = filteredRecipients.map(r => r.id);
+      const studentIds = filteredRecipients.filter(r => selectedRecipientIds[r.id]).map(r => r.id);
       const res = await fetch('/api/messaging/send-batch', {
         method: 'POST',
         headers: {
@@ -407,7 +408,7 @@ export default function Messaging() {
           studentIds,
           audience,
           message: messageText,
-          channel,
+          channel: channel === 'TELEGRAM' ? (useSmsFallback ? 'BOTH' : 'TELEGRAM') : channel,
           recipientTo,
           filters
         })
@@ -831,26 +832,39 @@ export default function Messaging() {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <label className={lbl}>Jo'natish kanali</label>
-                <div className="grid grid-cols-3 gap-2 bg-slate-55 dark:bg-slate-800/80 p-1 rounded-xl border border-slate-200 dark:border-slate-700/50">
+                <div className="grid grid-cols-2 gap-2 bg-slate-55 dark:bg-slate-800/80 p-1 rounded-xl border border-slate-200 dark:border-slate-700/50">
                   <button
+                    type="button"
                     onClick={() => setChannel('SMS')}
                     className={`py-1.5 rounded-lg text-[9px] font-black uppercase tracking-wider cursor-pointer transition-all ${channel === 'SMS' ? 'bg-white dark:bg-slate-700 text-indigo-600 dark:text-indigo-400 shadow-sm' : 'text-slate-500'}`}
                   >
                     SMS
                   </button>
                   <button
-                    onClick={() => setChannel('TELEGRAM')}
-                    className={`py-1.5 rounded-lg text-[9px] font-black uppercase tracking-wider cursor-pointer transition-all ${channel === 'TELEGRAM' ? 'bg-white dark:bg-slate-700 text-indigo-600 dark:text-indigo-400 shadow-sm' : 'text-slate-500'}`}
+                    type="button"
+                    onClick={() => setChannel(useSmsFallback ? 'BOTH' : 'TELEGRAM')}
+                    className={`py-1.5 rounded-lg text-[9px] font-black uppercase tracking-wider cursor-pointer transition-all ${channel !== 'SMS' ? 'bg-white dark:bg-slate-700 text-indigo-600 dark:text-indigo-400 shadow-sm' : 'text-slate-500'}`}
                   >
                     Telegram
                   </button>
-                  <button
-                    onClick={() => setChannel('BOTH')}
-                    className={`py-1.5 rounded-lg text-[9px] font-black uppercase tracking-wider cursor-pointer transition-all ${channel === 'BOTH' ? 'bg-white dark:bg-slate-700 text-indigo-600 dark:text-indigo-400 shadow-sm' : 'text-slate-500'}`}
-                  >
-                    Ikkalasi
-                  </button>
                 </div>
+                {channel !== 'SMS' && (
+                  <label className="flex items-center gap-2 mt-3 cursor-pointer select-none">
+                    <input
+                      type="checkbox"
+                      checked={useSmsFallback}
+                      onChange={(e) => {
+                        const checked = e.target.checked;
+                        setUseSmsFallback(checked);
+                        setChannel(checked ? 'BOTH' : 'TELEGRAM');
+                      }}
+                      className="w-3.5 h-3.5 rounded border-slate-300 dark:border-slate-700 text-indigo-600 focus:ring-indigo-500 cursor-pointer bg-white dark:bg-slate-800"
+                    />
+                    <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wide">
+                      Telegramdan ro'yxatdan o'tmaganlarga SMS yuborilsin
+                    </span>
+                  </label>
+                )}
               </div>
 
               {audience === 'STUDENTS' && (
@@ -1385,7 +1399,7 @@ export default function Messaging() {
             <div className="space-y-2">
               <h3 className="text-sm font-black uppercase tracking-wide text-slate-900 dark:text-white">Kampaniyani tasdiqlaysizmi?</h3>
               <p className="text-xs text-slate-500 leading-normal">
-                Ushbu xabar **{activeSelectedCount} ta** o'quvchi/ota-onaga **{channel === 'BOTH' ? 'SMS va Telegram' : channel}** kanali orqali yuboriladi. SMS jo'natish xizmati Eskiz hisobidan mablag' yechadi.
+                Ushbu xabar **{activeSelectedCount} ta** o'quvchi/ota-onaga **{channel === 'BOTH' || (channel === 'TELEGRAM' && useSmsFallback) ? 'Telegram va SMS' : channel}** kanali orqali yuboriladi. SMS jo'natish xizmati Eskiz hisobidan mablag' yechadi.
               </p>
             </div>
 
