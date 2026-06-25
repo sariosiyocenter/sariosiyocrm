@@ -3109,7 +3109,7 @@ async function getStudentGroupsMap(schoolId) {
 // Ommaviy yuborish
 app.post('/api/messaging/send-batch', authenticate, async (req, res, next) => {
   try {
-    const { studentIds, message, channel, recipientTo, filters } = req.body;
+    const { studentIds, audience, message, channel, recipientTo, filters } = req.body;
     const schoolId = req.user.schoolId;
     if (!Array.isArray(studentIds) || studentIds.length === 0) return res.status(400).json({ error: 'studentIds kerak' });
     if (!message || !message.trim()) return res.status(400).json({ error: 'Xabar matni kerak' });
@@ -3120,14 +3120,37 @@ app.post('/api/messaging/send-batch', authenticate, async (req, res, next) => {
       data: { message, channel: ch, recipientTo: to, filtersJson: filters || null, totalCount: studentIds.length, schoolId }
     });
 
-    const students = await prisma.student.findMany({ where: { id: { in: studentIds.map(Number) }, schoolId } });
+    let recipients = [];
     const school = await prisma.school.findUnique({ where: { id: schoolId } });
-    const groupsMap = await getStudentGroupsMap(schoolId);
+    let groupsMap = {};
+
+    if (audience === 'TEACHERS') {
+      const teachers = await prisma.teacher.findMany({ where: { id: { in: studentIds.map(Number) }, schoolId } });
+      recipients = teachers.map(t => ({
+        id: t.id,
+        name: t.name,
+        phone: t.phone,
+        telegramId: t.telegramId
+      }));
+    } else if (audience === 'STAFF') {
+      const users = await prisma.user.findMany({ where: { id: { in: studentIds.map(Number) }, schoolId } });
+      recipients = users.map(u => ({
+        id: u.id,
+        name: u.name,
+        phone: u.phone,
+        telegramId: u.telegramId
+      }));
+    } else {
+      const students = await prisma.student.findMany({ where: { id: { in: studentIds.map(Number) }, schoolId } });
+      recipients = students;
+      groupsMap = await getStudentGroupsMap(schoolId);
+    }
 
     let sentCount = 0, failedCount = 0;
-    for (const student of students) {
-      const personalized = fillTemplate(message, student, groupsMap[student.id] || [], school);
-      const r = await sendToOne({ student, message: personalized, channel: ch, recipientTo: to, type: 'MANUAL', schoolId, campaignId: campaign.id });
+    for (const recipient of recipients) {
+      const personalized = fillTemplate(message, recipient, groupsMap[recipient.id] || [], school);
+      const targetTo = (audience === 'TEACHERS' || audience === 'STAFF') ? 'STUDENT' : to;
+      const r = await sendToOne({ student: recipient, message: personalized, channel: ch, recipientTo: targetTo, type: 'MANUAL', schoolId, campaignId: campaign.id });
       if (r.success) sentCount++; else failedCount++;
     }
 
@@ -3135,7 +3158,7 @@ app.post('/api/messaging/send-batch', authenticate, async (req, res, next) => {
       where: { id: campaign.id },
       data: { sentCount, failedCount }
     });
-    res.json({ success: true, campaign: updated, sentCount, failedCount, total: students.length });
+    res.json({ success: true, campaign: updated, sentCount, failedCount, total: recipients.length });
   } catch (err) { next(err); }
 });
 

@@ -66,11 +66,12 @@ interface AutoRule {
 
 export default function Messaging() {
   const { t } = useLang();
-  const { students, groups, courses, selectedSchoolId, schools } = useCRM();
+  const { students, groups, courses, selectedSchoolId, schools, teachers, users } = useCRM();
   
   const [activeTab, setActiveTab] = useState<'new' | 'templates' | 'auto' | 'history'>('new');
   const [loading, setLoading] = useState(false);
   const [logsLoading, setLogsLoading] = useState(false);
+  const [audience, setAudience] = useState<'STUDENTS' | 'TEACHERS' | 'STAFF'>('STUDENTS');
   
   // Tab 1: New Message state
   const [filters, setFilters] = useState({
@@ -211,15 +212,49 @@ export default function Messaging() {
   };
 
   // Helper: Resolve Phone number like backend
-  const resolveRecipientPhone = (st: Student, target: string = recipientTo) => {
+  const resolveRecipientPhone = (st: any, target: string = recipientTo) => {
+    if (audience !== 'STUDENTS') {
+      return st.phone || '';
+    }
     if (target === 'STUDENT') return st.phone;
     if (target === 'FATHER') return st.fatherPhone || st.phone;
     if (target === 'MOTHER') return st.motherPhone || st.phone;
     return st.fatherPhone || st.motherPhone || st.phone;
   };
 
-  // Filter student list client-side based on filter panel
-  const getFilteredStudents = (): Student[] => {
+  // Filter recipient list client-side based on filter panel and chosen audience
+  const getFilteredRecipients = (): any[] => {
+    if (audience === 'TEACHERS') {
+      const list = (teachers || []) as any[];
+      return list.filter(item => {
+        // School check
+        if (selectedSchoolId !== 0 && item.schoolId !== selectedSchoolId) return false;
+        
+        // Status
+        if (filters.status !== 'all' && item.status !== filters.status) return false;
+
+        // Aloqa kanali
+        if (filters.contact === 'phone' && !item.phone) return false;
+        if (filters.contact === 'telegram' && !item.telegramId) return false;
+
+        return true;
+      });
+    }
+
+    if (audience === 'STAFF') {
+      const list = (users || []) as any[];
+      return list.filter(item => {
+        // School check
+        if (selectedSchoolId !== 0 && item.schoolId !== selectedSchoolId) return false;
+
+        // Aloqa kanali
+        if (filters.contact === 'phone' && !item.phone) return false;
+        if (filters.contact === 'telegram' && !item.telegramId) return false;
+
+        return true;
+      });
+    }
+
     const list = (students || []) as Student[];
     return list.filter(st => {
       // School check
@@ -297,7 +332,7 @@ export default function Messaging() {
     return Math.floor(diff / oneDay);
   };
 
-  const filteredRecipients = getFilteredStudents();
+  const filteredRecipients = getFilteredRecipients();
 
   // Character Counter and SMS Parts calculator
   const getSmsPartInfo = (text: string) => {
@@ -370,6 +405,7 @@ export default function Messaging() {
         },
         body: JSON.stringify({
           studentIds,
+          audience,
           message: messageText,
           channel,
           recipientTo,
@@ -537,116 +573,186 @@ export default function Messaging() {
               <h2 className="text-xs font-black uppercase tracking-wider text-slate-800 dark:text-slate-200">Qabul qiluvchi filtrlari</h2>
             </div>
             
-            {/* Form Fields */}
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className={lbl}>O'quvchi statusi</label>
-                <select
-                  value={filters.status}
-                  onChange={e => setFilters({ ...filters, status: e.target.value })}
-                  className={inp}
+            {/* Audience selection */}
+            <div>
+              <label className={lbl}>Kimlarga yuborish (Auditoriya)</label>
+              <div className="grid grid-cols-3 gap-2 bg-slate-55 dark:bg-slate-800/80 p-1 rounded-xl border border-slate-200 dark:border-slate-700/50 mb-3">
+                <button 
+                  onClick={() => setAudience('STUDENTS')}
+                  className={`py-1.5 rounded-lg text-[9px] font-black uppercase tracking-wider cursor-pointer transition-all ${audience === 'STUDENTS' ? 'bg-white dark:bg-slate-700 text-indigo-650 dark:text-indigo-400 shadow-sm' : 'text-slate-500'}`}
                 >
-                  <option value="all">Barchasi</option>
-                  <option value="Faol">Faol</option>
-                  <option value="Sinov">Sinov</option>
-                  <option value="Muzlatilgan">Muzlatilgan</option>
-                  <option value="Ketgan">Ketgan</option>
-                </select>
-              </div>
-
-              <div>
-                <label className={lbl}>Kurs bo'yicha</label>
-                <select
-                  value={filters.courseId}
-                  onChange={e => setFilters({ ...filters, courseId: e.target.value, groupId: 'all' })}
-                  className={inp}
+                  O'quvchilar
+                </button>
+                <button 
+                  onClick={() => setAudience('TEACHERS')}
+                  className={`py-1.5 rounded-lg text-[9px] font-black uppercase tracking-wider cursor-pointer transition-all ${audience === 'TEACHERS' ? 'bg-white dark:bg-slate-700 text-indigo-650 dark:text-indigo-400 shadow-sm' : 'text-slate-500'}`}
                 >
-                  <option value="all">Barcha kurslar</option>
-                  {(courses || []).filter(c => c.name !== 'birinchi').map(c => (
-                    <option key={c.id} value={c.id}>{c.name}</option>
-                  ))}
-                </select>
-              </div>
-
-              <div className="col-span-2">
-                <label className={lbl}>Guruh bo'yicha</label>
-                <select
-                  value={filters.groupId}
-                  onChange={e => setFilters({ ...filters, groupId: e.target.value })}
-                  className={inp}
+                  O'qituvchilar
+                </button>
+                <button 
+                  onClick={() => setAudience('STAFF')}
+                  className={`py-1.5 rounded-lg text-[9px] font-black uppercase tracking-wider cursor-pointer transition-all ${audience === 'STAFF' ? 'bg-white dark:bg-slate-700 text-indigo-650 dark:text-indigo-400 shadow-sm' : 'text-slate-500'}`}
                 >
-                  <option value="all">Barcha guruhlar</option>
-                  {(groups || []).filter(g => filters.courseId === 'all' || g.courseId === Number(filters.courseId)).map(g => (
-                    <option key={g.id} value={g.id}>{g.name}</option>
-                  ))}
-                </select>
-              </div>
-
-              <div>
-                <label className={lbl}>Balans holati</label>
-                <select
-                  value={filters.balanceType}
-                  onChange={e => setFilters({ ...filters, balanceType: e.target.value })}
-                  className={inp}
-                >
-                  <option value="all">Barchasi</option>
-                  <option value="debtors">Qarzdorlar</option>
-                  <option value="advance">Avansdagi o'quvchilar</option>
-                </select>
-              </div>
-
-              <div>
-                <label className={lbl}>Minimal qarz summasi</label>
-                <input
-                  type="number"
-                  disabled={filters.balanceType !== 'debtors'}
-                  placeholder="Summa..."
-                  value={filters.minDebt}
-                  onChange={e => setFilters({ ...filters, minDebt: Number(e.target.value) })}
-                  className={inp}
-                />
-              </div>
-
-              <div>
-                <label className={lbl}>Tug'ilgan kun</label>
-                <select
-                  value={filters.birthday}
-                  onChange={e => setFilters({ ...filters, birthday: e.target.value })}
-                  className={inp}
-                >
-                  <option value="all">Filtrsiz</option>
-                  <option value="today">Bugun tug'ilganlar</option>
-                  <option value="week">Shu hafta tug'ilganlar</option>
-                  <option value="month">Shu oy tug'ilganlar</option>
-                </select>
-              </div>
-
-              <div>
-                <label className={lbl}>Aloqa kanali</label>
-                <select
-                  value={filters.contact}
-                  onChange={e => setFilters({ ...filters, contact: e.target.value })}
-                  className={inp}
-                >
-                  <option value="all">Filtrsiz</option>
-                  <option value="phone">Telefoni borlar</option>
-                  <option value="telegram">TelegramId ulanganlar</option>
-                </select>
-              </div>
-
-              <div>
-                <label className={lbl}>Jinsi</label>
-                <select
-                  value={filters.gender}
-                  onChange={e => setFilters({ ...filters, gender: e.target.value })}
-                  className={inp}
-                >
-                  <option value="all">Barchasi</option>
-                  <option value="Erkak">Erkak</option>
-                  <option value="Ayol">Ayol</option>
-                </select>
+                  Xodimlar
+                </button>
               </div>
             </div>
+
+            {/* Form Fields */}
+            {audience === 'STUDENTS' ? (
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className={lbl}>O'quvchi statusi</label>
+                  <select
+                    value={filters.status}
+                    onChange={e => setFilters({ ...filters, status: e.target.value })}
+                    className={inp}
+                  >
+                    <option value="all">Barchasi</option>
+                    <option value="Faol">Faol</option>
+                    <option value="Sinov">Sinov</option>
+                    <option value="Muzlatilgan">Muzlatilgan</option>
+                    <option value="Ketgan">Ketgan</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className={lbl}>Kurs bo'yicha</label>
+                  <select
+                    value={filters.courseId}
+                    onChange={e => setFilters({ ...filters, courseId: e.target.value, groupId: 'all' })}
+                    className={inp}
+                  >
+                    <option value="all">Barcha kurslar</option>
+                    {(courses || []).filter(c => c.name !== 'birinchi').map(c => (
+                      <option key={c.id} value={c.id}>{c.name}</option>
+                    ))}
+                  </select>
+                </div>
+
+                <div className="col-span-2">
+                  <label className={lbl}>Guruh bo'yicha</label>
+                  <select
+                    value={filters.groupId}
+                    onChange={e => setFilters({ ...filters, groupId: e.target.value })}
+                    className={inp}
+                  >
+                    <option value="all">Barcha guruhlar</option>
+                    {(groups || []).filter(g => filters.courseId === 'all' || g.courseId === Number(filters.courseId)).map(g => (
+                      <option key={g.id} value={g.id}>{g.name}</option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label className={lbl}>Balans holati</label>
+                  <select
+                    value={filters.balanceType}
+                    onChange={e => setFilters({ ...filters, balanceType: e.target.value })}
+                    className={inp}
+                  >
+                    <option value="all">Barchasi</option>
+                    <option value="debtors">Qarzdorlar</option>
+                    <option value="advance">Avansdagi o'quvchilar</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className={lbl}>Minimal qarz summasi</label>
+                  <input
+                    type="number"
+                    disabled={filters.balanceType !== 'debtors'}
+                    placeholder="Summa..."
+                    value={filters.minDebt}
+                    onChange={e => setFilters({ ...filters, minDebt: Number(e.target.value) })}
+                    className={inp}
+                  />
+                </div>
+
+                <div>
+                  <label className={lbl}>Tug'ilgan kun</label>
+                  <select
+                    value={filters.birthday}
+                    onChange={e => setFilters({ ...filters, birthday: e.target.value })}
+                    className={inp}
+                  >
+                    <option value="all">Filtrsiz</option>
+                    <option value="today">Bugun tug'ilganlar</option>
+                    <option value="week">Shu hafta tug'ilganlar</option>
+                    <option value="month">Shu oy tug'ilganlar</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className={lbl}>Aloqa kanali</label>
+                  <select
+                    value={filters.contact}
+                    onChange={e => setFilters({ ...filters, contact: e.target.value })}
+                    className={inp}
+                  >
+                    <option value="all">Filtrsiz</option>
+                    <option value="phone">Telefoni borlar</option>
+                    <option value="telegram">TelegramId ulanganlar</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className={lbl}>Jinsi</label>
+                  <select
+                    value={filters.gender}
+                    onChange={e => setFilters({ ...filters, gender: e.target.value })}
+                    className={inp}
+                  >
+                    <option value="all">Barchasi</option>
+                    <option value="Erkak">Erkak</option>
+                    <option value="Ayol">Ayol</option>
+                  </select>
+                </div>
+              </div>
+            ) : audience === 'TEACHERS' ? (
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className={lbl}>O'qituvchi statusi</label>
+                  <select
+                    value={filters.status}
+                    onChange={e => setFilters({ ...filters, status: e.target.value })}
+                    className={inp}
+                  >
+                    <option value="all">Barchasi</option>
+                    <option value="Faol">Faol</option>
+                    <option value="Nofaol">Nofaol</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className={lbl}>Aloqa kanali</label>
+                  <select
+                    value={filters.contact}
+                    onChange={e => setFilters({ ...filters, contact: e.target.value })}
+                    className={inp}
+                  >
+                    <option value="all">Filtrsiz</option>
+                    <option value="phone">Telefoni borlar</option>
+                    <option value="telegram">TelegramId ulanganlar</option>
+                  </select>
+                </div>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 gap-4">
+                <div>
+                  <label className={lbl}>Aloqa kanali</label>
+                  <select
+                    value={filters.contact}
+                    onChange={e => setFilters({ ...filters, contact: e.target.value })}
+                    className={inp}
+                  >
+                    <option value="all">Filtrsiz</option>
+                    <option value="phone">Telefoni borlar</option>
+                    <option value="telegram">TelegramId ulanganlar</option>
+                  </select>
+                </div>
+              </div>
+            )}
 
             {/* Recipient list inline */}
             <div className="space-y-3 pt-3 border-t border-dashed border-slate-100 dark:border-slate-800">
@@ -731,35 +837,37 @@ export default function Messaging() {
                 </div>
               </div>
 
-              <div>
-                <label className={lbl}>Qabul qiluvchi tomon</label>
-                <div className="grid grid-cols-4 gap-1.5 bg-slate-55 dark:bg-slate-800/80 p-1 rounded-xl border border-slate-200 dark:border-slate-700/50">
-                  <button 
-                    onClick={() => setRecipientTo('STUDENT')}
-                    className={`py-1.5 rounded-lg text-[9px] font-black uppercase tracking-wider cursor-pointer transition-all ${recipientTo === 'STUDENT' ? 'bg-white dark:bg-slate-700 text-indigo-600 dark:text-indigo-400 shadow-sm' : 'text-slate-500'}`}
-                  >
-                    O'quvchi
-                  </button>
-                  <button 
-                    onClick={() => setRecipientTo('FATHER')}
-                    className={`py-1.5 rounded-lg text-[9px] font-black uppercase tracking-wider cursor-pointer transition-all ${recipientTo === 'FATHER' ? 'bg-white dark:bg-slate-700 text-indigo-600 dark:text-indigo-400 shadow-sm' : 'text-slate-500'}`}
-                  >
-                    Otasi
-                  </button>
-                  <button 
-                    onClick={() => setRecipientTo('MOTHER')}
-                    className={`py-1.5 rounded-lg text-[9px] font-black uppercase tracking-wider cursor-pointer transition-all ${recipientTo === 'MOTHER' ? 'bg-white dark:bg-slate-700 text-indigo-600 dark:text-indigo-400 shadow-sm' : 'text-slate-500'}`}
-                  >
-                    Onasi
-                  </button>
-                  <button 
-                    onClick={() => setRecipientTo('PARENT')}
-                    className={`py-1.5 rounded-lg text-[9px] font-black uppercase tracking-wider cursor-pointer transition-all ${recipientTo === 'PARENT' ? 'bg-white dark:bg-slate-700 text-indigo-600 dark:text-indigo-400 shadow-sm' : 'text-slate-500'}`}
-                  >
-                    Ota-ona
-                  </button>
+              {audience === 'STUDENTS' && (
+                <div>
+                  <label className={lbl}>Qabul qiluvchi tomon</label>
+                  <div className="grid grid-cols-4 gap-1.5 bg-slate-55 dark:bg-slate-800/80 p-1 rounded-xl border border-slate-200 dark:border-slate-700/50">
+                    <button 
+                      onClick={() => setRecipientTo('STUDENT')}
+                      className={`py-1.5 rounded-lg text-[9px] font-black uppercase tracking-wider cursor-pointer transition-all ${recipientTo === 'STUDENT' ? 'bg-white dark:bg-slate-700 text-indigo-600 dark:text-indigo-400 shadow-sm' : 'text-slate-500'}`}
+                    >
+                      O'quvchi
+                    </button>
+                    <button 
+                      onClick={() => setRecipientTo('FATHER')}
+                      className={`py-1.5 rounded-lg text-[9px] font-black uppercase tracking-wider cursor-pointer transition-all ${recipientTo === 'FATHER' ? 'bg-white dark:bg-slate-700 text-indigo-600 dark:text-indigo-400 shadow-sm' : 'text-slate-500'}`}
+                    >
+                      Otasi
+                    </button>
+                    <button 
+                      onClick={() => setRecipientTo('MOTHER')}
+                      className={`py-1.5 rounded-lg text-[9px] font-black uppercase tracking-wider cursor-pointer transition-all ${recipientTo === 'MOTHER' ? 'bg-white dark:bg-slate-700 text-indigo-600 dark:text-indigo-400 shadow-sm' : 'text-slate-500'}`}
+                    >
+                      Onasi
+                    </button>
+                    <button 
+                      onClick={() => setRecipientTo('PARENT')}
+                      className={`py-1.5 rounded-lg text-[9px] font-black uppercase tracking-wider cursor-pointer transition-all ${recipientTo === 'PARENT' ? 'bg-white dark:bg-slate-700 text-indigo-600 dark:text-indigo-400 shadow-sm' : 'text-slate-500'}`}
+                    >
+                      Ota-ona
+                    </button>
+                  </div>
                 </div>
-              </div>
+              )}
             </div>
 
             {/* Smart Fallback Warning */}
