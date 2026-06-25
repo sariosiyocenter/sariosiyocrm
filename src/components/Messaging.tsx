@@ -93,6 +93,7 @@ export default function Messaging() {
   const [isSending, setIsSending] = useState(false);
   const [confirmModalOpen, setConfirmModalOpen] = useState(false);
   const [showRecipientListModal, setShowRecipientListModal] = useState(false);
+  const [selectedRecipientIds, setSelectedRecipientIds] = useState<Record<number, boolean>>({});
 
   // Tab 2: Templates state
   const [templates, setTemplates] = useState<MessageTemplate[]>([]);
@@ -334,6 +335,25 @@ export default function Messaging() {
   };
 
   const filteredRecipients = getFilteredRecipients();
+  const filteredRecipientsKey = filteredRecipients.map(r => r.id).join(',');
+
+  useEffect(() => {
+    const nextMap: Record<number, boolean> = {};
+    filteredRecipients.forEach(r => {
+      nextMap[r.id] = true;
+    });
+    setSelectedRecipientIds(nextMap);
+  }, [filteredRecipientsKey]);
+
+  const activeSelectedCount = filteredRecipients.filter(r => selectedRecipientIds[r.id]).length;
+  const allChecked = filteredRecipients.length > 0 && filteredRecipients.every(r => selectedRecipientIds[r.id]);
+  const toggleAll = (checked: boolean) => {
+    const nextMap: Record<number, boolean> = {};
+    filteredRecipients.forEach(r => {
+      nextMap[r.id] = checked;
+    });
+    setSelectedRecipientIds(nextMap);
+  };
 
   // Character Counter and SMS Parts calculator
   const getSmsPartInfo = (text: string) => {
