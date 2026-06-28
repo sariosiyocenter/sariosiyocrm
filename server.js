@@ -3525,151 +3525,149 @@ app.delete('/api/messaging/auto-rules/:id', authenticate, async (req, res, next)
   } catch (err) { next(err); }
 });
 
-// Vercel cron: kunlik/soatlik avtomatik xabarlar
-app.get('/api/messaging/auto-process', async (req, res, next) => {
-  try {
-    const authHeader = req.headers['authorization'];
-    if (process.env.CRON_SECRET && authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
-      return res.status(401).json({ error: 'Unauthorized' });
+async function runAutoProcessJobs() {
+  const nowUtc = new Date();
+  // Uzbekistan offset is UTC+5
+  const nowUz = new Date(nowUtc.getTime() + (5 * 60 * 60 * 1000));
+  const currentHour = nowUz.getUTCHours();
+  const todayStr = `${nowUz.getUTCFullYear()}-${String(nowUz.getUTCMonth() + 1).padStart(2, '0')}-${String(nowUz.getUTCDate()).padStart(2, '0')}`;
+  const mmdd = `${String(nowUz.getUTCMonth() + 1).padStart(2, '0')}-${String(nowUz.getUTCDate()).padStart(2, '0')}`;
+  const dayOfMonth = nowUz.getUTCDate();
+
+  const rules = await prisma.autoMessageRule.findMany({ where: { enabled: true } });
+  const results = [];
+
+  for (const rule of rules) {
+    if (rule.lastRunDate === todayStr) {
+      results.push({ ruleId: rule.id, name: rule.name, skipped: 'already-run' });
+      continue;
     }
-    const nowUtc = new Date();
-    // Uzbekistan offset is UTC+5
-    const nowUz = new Date(nowUtc.getTime() + (5 * 60 * 60 * 1000));
-    const currentHour = nowUz.getUTCHours();
-    const todayStr = `${nowUz.getUTCFullYear()}-${String(nowUz.getUTCMonth() + 1).padStart(2, '0')}-${String(nowUz.getUTCDate()).padStart(2, '0')}`;
-    const mmdd = `${String(nowUz.getUTCMonth() + 1).padStart(2, '0')}-${String(nowUz.getUTCDate()).padStart(2, '0')}`;
-    const dayOfMonth = nowUz.getUTCDate();
 
-    const rules = await prisma.autoMessageRule.findMany({ where: { enabled: true } });
-    const results = [];
+    // Check hour (default to 9 AM)
+    const scheduledHour = rule.time ? parseInt(rule.time.split(':')[0]) : 9;
+    if (currentHour !== scheduledHour) {
+      results.push({ ruleId: rule.id, name: rule.name, skipped: 'hour-not-matched', currentHour, scheduledHour });
+      continue;
+    }
 
-    for (const rule of rules) {
-      if (rule.lastRunDate === todayStr) {
-        results.push({ ruleId: rule.id, name: rule.name, skipped: 'already-run' });
+    const schoolId = rule.schoolId;
+    const school = await prisma.school.findUnique({ where: { id: schoolId } });
+    const groupsMap = await getStudentGroupsMap(schoolId);
+
+    let targets = [];
+    if (rule.type === 'BIRTHDAY') {
+      const students = await prisma.student.findMany({ where: { schoolId, status: { in: ['Faol', 'Sinov'] } } });
+      targets = students.filter(s => (s.birthDate || '').slice(5, 10) === mmdd);
+    } else if (rule.type === 'DEBT_REMINDER') {
+      const cfg = (rule.config && typeof rule.config === 'object') ? rule.config : {};
+      const ruleDay = Number(cfg.dayOfMonth || 1);
+      if (dayOfMonth !== ruleDay) {
+        results.push({ ruleId: rule.id, name: rule.name, skipped: 'not-due-day', dayOfMonth, ruleDay });
         continue;
       }
-
-      // Check hour (default to 9 AM)
-      const scheduledHour = rule.time ? parseInt(rule.time.split(':')[0]) : 9;
-      if (currentHour !== scheduledHour) {
-        results.push({ ruleId: rule.id, name: rule.name, skipped: 'hour-not-matched', currentHour, scheduledHour });
-        continue;
+      const minDebt = Number(cfg.minDebt || 0);
+      const students = await prisma.student.findMany({ where: { schoolId, status: { in: ['Faol', 'Sinov'] } } });
+      targets = students.filter(s => Number(s.balance || 0) < -minDebt);
+    } else if (rule.type === 'ABSENCE_REMINDER') {
+      const attendances = await prisma.attendance.findMany({
+        where: { schoolId, date: todayStr, status: 'Kelmapdi' },
+        include: { student: true }
+      });
+      const uniqueStudentsMap = {};
+      for (const att of attendances) {
+        if (att.student && att.student.status !== 'Ochirilgan') {
+          uniqueStudentsMap[att.studentId] = att.student;
+        }
       }
-
-      const schoolId = rule.schoolId;
-      const school = await prisma.school.findUnique({ where: { id: schoolId } });
-      const groupsMap = await getStudentGroupsMap(schoolId);
-
-      let targets = [];
-      if (rule.type === 'BIRTHDAY') {
-        const students = await prisma.student.findMany({ where: { schoolId, status: { in: ['Faol', 'Sinov'] } } });
-        targets = students.filter(s => (s.birthDate || '').slice(5, 10) === mmdd);
-      } else if (rule.type === 'DEBT_REMINDER') {
-        const cfg = (rule.config && typeof rule.config === 'object') ? rule.config : {};
-        const ruleDay = Number(cfg.dayOfMonth || 1);
-        if (dayOfMonth !== ruleDay) {
-          results.push({ ruleId: rule.id, name: rule.name, skipped: 'not-due-day', dayOfMonth, ruleDay });
-          continue;
+      targets = Object.values(uniqueStudentsMap);
+    } else if (rule.type === 'LEAD_WELCOME') {
+      const startOfDay = new Date(nowUz);
+      startOfDay.setUTCHours(0, 0, 0, 0);
+      const leads = await prisma.lead.findMany({
+        where: { schoolId, createdAt: { gte: startOfDay }, status: 'Yangi' }
+      });
+      targets = leads.map(l => ({ id: l.id, name: l.name, phone: l.phone, balance: 0, schoolId }));
+    } else if (rule.type === 'GROUP_WELCOME') {
+      targets = await prisma.student.findMany({
+        where: { schoolId, joinedDate: todayStr, status: { in: ['Faol', 'Sinov'] } }
+      });
+    } else if (rule.type === 'EXAM_RESULT') {
+      const startOfDay = new Date(nowUz);
+      startOfDay.setUTCHours(0, 0, 0, 0);
+      const resultsToday = await prisma.examResult.findMany({
+        where: { schoolId, scannedAt: { gte: startOfDay } },
+        include: { student: true, exam: true }
+      });
+      const uniqueStudentsMap = {};
+      for (const er of resultsToday) {
+        if (er.student && er.student.status !== 'Ochirilgan') {
+          uniqueStudentsMap[er.studentId] = {
+            ...er.student,
+            customExamName: er.exam.name,
+            customExamScore: er.score,
+            customExamPercentage: er.percentage
+          };
         }
-        const minDebt = Number(cfg.minDebt || 0);
-        const students = await prisma.student.findMany({ where: { schoolId, status: { in: ['Faol', 'Sinov'] } } });
-        targets = students.filter(s => Number(s.balance || 0) < -minDebt);
-      } else if (rule.type === 'ABSENCE_REMINDER') {
-        const attendances = await prisma.attendance.findMany({
-          where: { schoolId, date: todayStr, status: 'Kelmapdi' },
-          include: { student: true }
-        });
-        const uniqueStudentsMap = {};
-        for (const att of attendances) {
-          if (att.student && att.student.status !== 'Ochirilgan') {
-            uniqueStudentsMap[att.studentId] = att.student;
-          }
-        }
-        targets = Object.values(uniqueStudentsMap);
-      } else if (rule.type === 'LEAD_WELCOME') {
-        const startOfDay = new Date(nowUz);
-        startOfDay.setUTCHours(0, 0, 0, 0);
-        const leads = await prisma.lead.findMany({
-          where: { schoolId, createdAt: { gte: startOfDay }, status: 'Yangi' }
-        });
-        targets = leads.map(l => ({ id: l.id, name: l.name, phone: l.phone, balance: 0, schoolId }));
-      } else if (rule.type === 'GROUP_WELCOME') {
-        targets = await prisma.student.findMany({
-          where: { schoolId, joinedDate: todayStr, status: { in: ['Faol', 'Sinov'] } }
-        });
-      } else if (rule.type === 'EXAM_RESULT') {
-        const startOfDay = new Date(nowUz);
-        startOfDay.setUTCHours(0, 0, 0, 0);
-        const resultsToday = await prisma.examResult.findMany({
-          where: { schoolId, scannedAt: { gte: startOfDay } },
-          include: { student: true, exam: true }
-        });
-        const uniqueStudentsMap = {};
-        for (const er of resultsToday) {
-          if (er.student && er.student.status !== 'Ochirilgan') {
-            uniqueStudentsMap[er.studentId] = {
-              ...er.student,
-              customExamName: er.exam.name,
-              customExamScore: er.score,
-              customExamPercentage: er.percentage
-            };
-          }
-        }
-        targets = Object.values(uniqueStudentsMap);
-      } else if (rule.type === 'PAYMENT_CONFIRM') {
-        const paymentsToday = await prisma.payment.findMany({
-          where: { schoolId, date: todayStr },
-          include: { student: true }
-        });
-        const uniqueStudentsMap = {};
-        for (const p of paymentsToday) {
-          if (p.student && p.student.status !== 'Ochirilgan') {
-            uniqueStudentsMap[p.studentId] = {
-              ...p.student,
-              customPaymentAmount: p.amount
-            };
-          }
-        }
-        targets = Object.values(uniqueStudentsMap);
-      } else if (rule.type === 'DAILY_SCORE') {
-        const scoresToday = await prisma.score.findMany({
-          where: { schoolId, date: todayStr },
-          include: { student: true }
-        });
-        const uniqueStudentsMap = {};
-        for (const sc of scoresToday) {
-          if (sc.student && sc.student.status !== 'Ochirilgan') {
-            uniqueStudentsMap[sc.studentId] = {
-              ...sc.student,
-              customDailyScore: sc.value
-            };
-          }
-        }
-        targets = Object.values(uniqueStudentsMap);
-      } else if (rule.type === 'TRANSPORT_NOTIFY') {
-        targets = await prisma.student.findMany({
-          where: { schoolId, transportId: { not: null }, status: { in: ['Faol', 'Sinov'] } }
-        });
-      } else if (rule.type === 'COURSE_GRADUATION') {
-        targets = await prisma.student.findMany({
-          where: { schoolId, status: 'Bitirgan' }
-        });
       }
+      targets = Object.values(uniqueStudentsMap);
+    } else if (rule.type === 'PAYMENT_CONFIRM') {
+      const paymentsToday = await prisma.payment.findMany({
+        where: { schoolId, date: todayStr },
+        include: { student: true }
+      });
+      const uniqueStudentsMap = {};
+      for (const p of paymentsToday) {
+        if (p.student && p.student.status !== 'Ochirilgan') {
+          uniqueStudentsMap[p.studentId] = {
+            ...p.student,
+            customPaymentAmount: p.amount
+          };
+        }
+      }
+      targets = Object.values(uniqueStudentsMap);
+    } else if (rule.type === 'DAILY_SCORE') {
+      const scoresToday = await prisma.score.findMany({
+        where: { schoolId, date: todayStr },
+        include: { student: true }
+      });
+      const uniqueStudentsMap = {};
+      for (const sc of scoresToday) {
+        if (sc.student && sc.student.status !== 'Ochirilgan') {
+          uniqueStudentsMap[sc.studentId] = {
+            ...sc.student,
+            customDailyScore: sc.value
+          };
+        }
+      }
+      targets = Object.values(uniqueStudentsMap);
+    } else if (rule.type === 'TRANSPORT_NOTIFY') {
+      targets = await prisma.student.findMany({
+        where: { schoolId, transportId: { not: null }, status: { in: ['Faol', 'Sinov'] } }
+      });
+    } else if (rule.type === 'COURSE_GRADUATION') {
+      targets = await prisma.student.findMany({
+        where: { schoolId, status: 'Bitirgan' }
+      });
+    }
 
-      let sent = 0, failed = 0;
-      let campaign = null;
-      if (targets.length > 0) {
-        campaign = await prisma.messageCampaign.create({
-          data: {
-            message: rule.body,
-            channel: rule.channel,
-            recipientTo: rule.recipientTo,
-            filtersJson: { autoRuleId: rule.id, autoType: rule.type },
-            totalCount: targets.length,
-            schoolId
-          }
-        });
-        for (const student of targets) {
+    let sent = 0, failed = 0;
+    let campaign = null;
+    if (targets.length > 0) {
+      campaign = await prisma.messageCampaign.create({
+        data: {
+          message: rule.body,
+          channel: rule.channel,
+          recipientTo: rule.recipientTo,
+          filtersJson: { autoRuleId: rule.id, autoType: rule.type },
+          totalCount: targets.length,
+          schoolId
+        }
+      });
+      
+      const concurrencyLimit = 10;
+      for (let i = 0; i < targets.length; i += concurrencyLimit) {
+        const chunk = targets.slice(i, i + concurrencyLimit);
+        await Promise.all(chunk.map(async (student) => {
           const msg = fillTemplate(rule.body, student, groupsMap[student.id] || [], school);
           const r = await sendToOne({
             student,
@@ -3681,17 +3679,51 @@ app.get('/api/messaging/auto-process', async (req, res, next) => {
             campaignId: campaign.id
           });
           if (r.success) sent++; else failed++;
-        }
-        await prisma.messageCampaign.update({ where: { id: campaign.id }, data: { sentCount: sent, failedCount: failed } });
+        }));
       }
 
-      await prisma.autoMessageRule.update({ where: { id: rule.id }, data: { lastRunDate: todayStr } });
-      results.push({ ruleId: rule.id, name: rule.name, schoolId, targets: targets.length, sent, failed });
+      await prisma.messageCampaign.update({ where: { id: campaign.id }, data: { sentCount: sent, failedCount: failed } });
     }
 
-    res.json({ success: true, date: todayStr, hour: currentHour, results });
+    await prisma.autoMessageRule.update({ where: { id: rule.id }, data: { lastRunDate: todayStr } });
+    results.push({ ruleId: rule.id, name: rule.name, schoolId, targets: targets.length, sent, failed });
+  }
+
+  return { date: todayStr, hour: currentHour, results };
+}
+
+// Vercel cron: kunlik/soatlik avtomatik xabarlar
+app.get('/api/messaging/auto-process', async (req, res, next) => {
+  try {
+    const authHeader = req.headers['authorization'];
+    const isLocalhost = req.ip === '127.0.0.1' || req.ip === '::1' || req.hostname === 'localhost';
+    if (!isLocalhost && process.env.CRON_SECRET && authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
+      return res.status(401).json({ error: 'Unauthorized' });
+    }
+    const results = await runAutoProcessJobs();
+    res.json({ success: true, ...results });
   } catch (err) { next(err); }
 });
+
+// Local hourly automatic scheduler (only if running locally)
+if (!process.env.VERCEL) {
+  console.log('[Scheduler] Local hourly scheduler initialized.');
+  setInterval(async () => {
+    try {
+      const nowUtc = new Date();
+      const nowUz = new Date(nowUtc.getTime() + (5 * 60 * 60 * 1000));
+      const currentMinute = nowUz.getUTCMinutes();
+      // Run once an hour when minute is 0
+      if (currentMinute === 0) {
+        console.log('[Scheduler] Triggering local hourly auto-process rules...');
+        const res = await runAutoProcessJobs();
+        console.log('[Scheduler] Local run results:', JSON.stringify(res));
+      }
+    } catch (err) {
+      console.error('[Scheduler] Error in local hourly scheduler:', err);
+    }
+  }, 60 * 1000); // check every minute
+}
 
 // API: Failed SMS/Telegram loglarni qaytadan jo'natish
 app.post('/api/sms/resend-failed', authenticate, async (req, res, next) => {
