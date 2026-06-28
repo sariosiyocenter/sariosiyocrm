@@ -13,22 +13,25 @@ const botCache = new Map(); // token -> botInstance
 const getStudentMenu = () => Markup.keyboard([
     ['📅 Dars Jadvali', '💳 To\'lovlar'],
     ['✅ Davomat', '📊 Baholar'],
-    ['✍️ Shikoyat va takliflar', '👤 Profil']
+    ['✍️ Shikoyat va takliflar', '👤 Profil'],
+    ['🚪 Chiqish']
 ]).resize();
 
 const getTeacherMenu = () => Markup.keyboard([
     ['🎒 Davomat qilish', '📅 Mening Jadvalim'],
-    ['💰 Oylik va Bonuslar', '👤 Profil']
+    ['💰 Oylik va Bonuslar', '👤 Profil'],
+    ['🚪 Chiqish']
 ]).resize();
 
 const getAdminMenu = () => Markup.keyboard([
     ['📢 Yangi Lidlar', '📊 Kunlik Hisobot'],
-    ['📧 Ommaviy xabar', '⚙️ Sozlamalar']
+    ['📧 Ommaviy xabar', '⚙️ Sozlamalar'],
+    ['🚪 Chiqish']
 ]).resize();
 
 const getDriverMenu = () => Markup.keyboard([
     ['📍 O\'quvchilar lokatsiyasi', '🚍 Mening Transportim'],
-    ['👤 Profil']
+    ['👤 Profil', '🚪 Chiqish']
 ]).resize();
 
 const getGuestMenu = () => Markup.keyboard([
@@ -82,7 +85,7 @@ export const setupBotHandlers = (botInstance, schoolId) => {
         );
     });
 
-    botInstance.command('logout', async (ctx) => {
+    const logoutHandler = async (ctx) => {
         const tidStr = String(ctx.from.id);
         const whereClause = schoolId ? { telegramId: tidStr, schoolId } : { telegramId: tidStr };
 
@@ -94,7 +97,10 @@ export const setupBotHandlers = (botInstance, schoolId) => {
         ctx.reply("Hisobingiz botdan uzildi. Endi qaytadan ro'yxatdan o'tishingiz mumkin ( /start bosib).", Markup.keyboard([
             [Markup.button.contactRequest('📱 Telefon raqamni yuborish')]
         ]).resize());
-    });
+    };
+
+    botInstance.command('logout', logoutHandler);
+    botInstance.hears('🚪 Chiqish', logoutHandler);
 
     botInstance.on('contact', async (ctx) => {
         const phone = ctx.message.contact.phone_number.replace('+', '').trim();
@@ -609,7 +615,7 @@ export const setupBotHandlers = (botInstance, schoolId) => {
             }
         }
 
-        if (text.startsWith('/') || ['📅', '💳', '✅', '📊', '🎒', '💰', '📢', '📧', '⚙️', '📝', 'ℹ️', '📍', '📞', '👤'].some(icon => text.includes(icon))) {
+        if (text.startsWith('/') || ['📅', '💳', '✅', '📊', '🎒', '💰', '📢', '📧', '⚙️', '📝', 'ℹ️', '📍', '📞', '👤', '🚪'].some(icon => text.includes(icon))) {
             return next();
         }
 
