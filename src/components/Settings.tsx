@@ -63,6 +63,52 @@ export default function Settings() {
     const [permSaved, setPermSaved] = useState(false);
     React.useEffect(() => { setProfileForm({ ...settings }); }, [settings]);
 
+    const [botInfo, setBotInfo] = useState<{ username?: string; first_name?: string; loading: boolean; error?: string } | null>(null);
+
+    React.useEffect(() => {
+        const token = profileForm?.telegram?.trim();
+        if (!token) {
+            setBotInfo(null);
+            return;
+        }
+        if (!token.includes(':')) {
+            setBotInfo({ loading: false, error: "Token formati noto'g'ri" });
+            return;
+        }
+        
+        let active = true;
+        setBotInfo({ loading: true });
+        
+        const fetchBot = async () => {
+            try {
+                const res = await fetch(`https://api.telegram.org/bot${token}/getMe`);
+                if (!res.ok) {
+                    throw new Error("Token faol emas yoki noto'g'ri");
+                }
+                const data = await res.json();
+                if (data.ok && active) {
+                    setBotInfo({
+                        username: data.result.username,
+                        first_name: data.result.first_name,
+                        loading: false
+                    });
+                } else if (active) {
+                    setBotInfo({ loading: false, error: data.description || "Token xato" });
+                }
+            } catch (err: any) {
+                if (active) {
+                    setBotInfo({ loading: false, error: err.message || "Ulanishda xatolik" });
+                }
+            }
+        };
+
+        const timer = setTimeout(fetchBot, 800);
+        return () => {
+            active = false;
+            clearTimeout(timer);
+        };
+    }, [profileForm?.telegram]);
+
     const toggle = (group: string) => setOpenGroups(p => ({ ...p, [group]: !p[group] }));
 
     const isAdmin = currentUser?.role === 'ADMIN';
@@ -173,6 +219,24 @@ export default function Settings() {
                     <div>
                         <label className={lbl}>Telegram Bot Token</label>
                         <input type="text" placeholder="123456789:ABCdefGhI..." className={inp} value={profileForm?.telegram || ''} onChange={e => setProfileForm(p => ({ ...p, telegram: e.target.value }))} />
+                        {botInfo && (
+                            <div className="mt-1.5 text-[10px] font-bold">
+                                {botInfo.loading && <span className="text-gray-400">Tekshirilmoqda...</span>}
+                                {botInfo.error && <span className="text-rose-500">⚠️ {botInfo.error}</span>}
+                                {botInfo.username && (
+                                    <div className="flex items-center gap-1.5 text-emerald-600 dark:text-emerald-400">
+                                        <span className="flex h-2 w-2 relative">
+                                            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                                            <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+                                        </span>
+                                        <span>Bot ulangan:</span>
+                                        <a href={`https://t.me/${botInfo.username}`} target="_blank" rel="noopener noreferrer" className="underline font-black hover:text-emerald-700 dark:hover:text-emerald-350 transition-colors">
+                                            @{botInfo.username} ({botInfo.first_name})
+                                        </a>
+                                    </div>
+                                )}
+                            </div>
+                        )}
                     </div>
                     <div>
                         <label className={lbl}>Instagram Profil Linki</label>
