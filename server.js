@@ -3560,10 +3560,13 @@ async function runAutoProcessJobs() {
       continue;
     }
 
-    // Check hour (default to 9 AM)
-    const scheduledHour = rule.time ? parseInt(rule.time.split(':')[0]) : 9;
-    if (currentHour !== scheduledHour) {
-      results.push({ ruleId: rule.id, name: rule.name, skipped: 'hour-not-matched', currentHour, scheduledHour });
+    // Check if the current Uzbekistan time has passed the scheduled rule time today
+    const [schedH, schedM] = (rule.time || "09:00").split(':').map(Number);
+    const currentMin = nowUz.getUTCMinutes();
+    const hasPassedScheduledTime = (currentHour > schedH) || (currentHour === schedH && currentMin >= schedM);
+
+    if (!hasPassedScheduledTime) {
+      results.push({ ruleId: rule.id, name: rule.name, skipped: 'not-due-yet', currentHour, scheduledHour: schedH });
       continue;
     }
 
