@@ -354,7 +354,11 @@ export default function Messaging() {
       if (selectedSchoolId !== 0 && st.schoolId !== selectedSchoolId) return false;
 
       // Status
-      if (filters.status !== 'all' && st.status !== filters.status) return false;
+      if (filters.status === 'active_group') {
+        if (!['Faol', 'Sinov'].includes(st.status)) return false;
+      } else if (filters.status === 'passive_group') {
+        if (!['Passiv', 'Ketgan'].includes(st.status)) return false;
+      } else if (filters.status !== 'all' && st.status !== filters.status) return false;
 
       // Course
       if (filters.courseId !== 'all') {
@@ -988,8 +992,11 @@ export default function Messaging() {
                     className={inp}
                   >
                     <option value="all">Barchasi</option>
+                    <option value="active_group">✅ Faol o'quvchilar (Faol + Sinov)</option>
+                    <option value="passive_group">🚪 Ketgan/Passiv o'quvchilar</option>
                     <option value="Faol">Faol</option>
                     <option value="Sinov">Sinov</option>
+                    <option value="Passiv">Passiv</option>
                     <option value="Muzlatilgan">Muzlatilgan</option>
                     <option value="Ketgan">Ketgan</option>
                   </select>
