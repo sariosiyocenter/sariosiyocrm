@@ -638,7 +638,7 @@ export default function Messaging() {
       });
       const data = await res.json();
       if (res.ok && data.success) {
-        alert(`Kampaniya boshlandi! Muvaffaqiyatli: ${data.sentCount}, Xato: ${data.failedCount}`);
+        alert("Kampaniya muvaffaqiyatli boshlandi! Xabarlar orqa fonda (background) yuborilmoqda.");
         setMessageText('');
         setSelectedTemplateId('');
         fetchCampaigns();

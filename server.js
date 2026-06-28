@@ -2903,8 +2903,13 @@ async function getEskizToken(schoolId) {
   if (!email || !password) throw new Error('Eskiz SMS sozlamalari (email/password) kiritilmagan');
 
   const cached = eskizTokensCache.get(email);
-  if (cached && Date.now() < cached.expiry) {
-    return cached.token;
+  if (cached) {
+    if (cached.error && Date.now() < cached.errorExpiry) {
+      throw new Error('Eskiz SMS token request recently failed: ' + cached.error);
+    }
+    if (cached.token && Date.now() < cached.expiry) {
+      return cached.token;
+    }
   }
 
   console.log(`[Eskiz] Token olishga urinish: ${email}`);
@@ -2949,6 +2954,8 @@ async function getEskizToken(schoolId) {
     }
   }
 
+  // Cache the error for 60 seconds to avoid repeating timeouts during batch sending
+  eskizTokensCache.set(email, { error: lastError, errorExpiry: Date.now() + 60000 });
   throw new Error('Eskiz token olish barcha endpointlarda muvaffaqiyatsiz tugadi: ' + lastError);
 }
 
@@ -3325,46 +3332,54 @@ app.post('/api/messaging/send-batch', authenticate, async (req, res, next) => {
       groupsMap = await getStudentGroupsMap(schoolId);
     }
 
-    let sentCount = 0, failedCount = 0;
+    // Respond to user immediately so the UI is unblocked
+    res.json({ success: true, campaign, sentCount: 0, failedCount: 0, total: totalCount });
 
-    if (audience === 'STUDENTS' && Array.isArray(sendList) && sendList.length > 0) {
-      const studentIdsFromList = sendList.map(e => Number(e.studentId));
-      const students = await prisma.student.findMany({ where: { id: { in: studentIdsFromList }, schoolId } });
-      const studentsMap = {};
-      for (const s of students) {
-        studentsMap[s.id] = s;
-      }
-      groupsMap = await getStudentGroupsMap(schoolId);
+    // Background process for actual message dispatching
+    (async () => {
+      let sentCount = 0, failedCount = 0;
+      try {
+        if (audience === 'STUDENTS' && Array.isArray(sendList) && sendList.length > 0) {
+          const studentIdsFromList = sendList.map(e => Number(e.studentId));
+          const students = await prisma.student.findMany({ where: { id: { in: studentIdsFromList }, schoolId } });
+          const studentsMap = {};
+          for (const s of students) {
+            studentsMap[s.id] = s;
+          }
+          groupsMap = await getStudentGroupsMap(schoolId);
 
-      for (const entry of sendList) {
-        const student = studentsMap[Number(entry.studentId)];
-        if (!student) continue;
-        const personalized = fillTemplate(message, student, groupsMap[student.id] || [], school);
-        const r = await sendToOne({
-          student,
-          message: personalized,
-          channel: ch,
-          recipientTo: entry.recipientTo,
-          type: 'MANUAL',
-          schoolId,
-          campaignId: campaign.id
-        });
-        if (r.success) sentCount++; else failedCount++;
+          for (const entry of sendList) {
+            const student = studentsMap[Number(entry.studentId)];
+            if (!student) continue;
+            const personalized = fillTemplate(message, student, groupsMap[student.id] || [], school);
+            const r = await sendToOne({
+              student,
+              message: personalized,
+              channel: ch,
+              recipientTo: entry.recipientTo,
+              type: 'MANUAL',
+              schoolId,
+              campaignId: campaign.id
+            });
+            if (r.success) sentCount++; else failedCount++;
+          }
+        } else {
+          for (const recipient of recipients) {
+            const personalized = fillTemplate(message, recipient, groupsMap[recipient.id] || [], school);
+            const targetTo = (audience === 'TEACHERS' || audience === 'STAFF') ? 'STUDENT' : to;
+            const r = await sendToOne({ student: recipient, message: personalized, channel: ch, recipientTo: targetTo, type: 'MANUAL', schoolId, campaignId: campaign.id });
+            if (r.success) sentCount++; else failedCount++;
+          }
+        }
+      } catch (bgErr) {
+        console.error('[Background Campaign Error]:', bgErr);
+      } finally {
+        await prisma.messageCampaign.update({
+          where: { id: campaign.id },
+          data: { sentCount, failedCount }
+        }).catch(err => console.error('Failed to update final campaign counts:', err));
       }
-    } else {
-      for (const recipient of recipients) {
-        const personalized = fillTemplate(message, recipient, groupsMap[recipient.id] || [], school);
-        const targetTo = (audience === 'TEACHERS' || audience === 'STAFF') ? 'STUDENT' : to;
-        const r = await sendToOne({ student: recipient, message: personalized, channel: ch, recipientTo: targetTo, type: 'MANUAL', schoolId, campaignId: campaign.id });
-        if (r.success) sentCount++; else failedCount++;
-      }
-    }
-
-    const updated = await prisma.messageCampaign.update({
-      where: { id: campaign.id },
-      data: { sentCount, failedCount }
-    });
-    res.json({ success: true, campaign: updated, sentCount, failedCount, total: totalCount });
+    })();
   } catch (err) { next(err); }
 });
 
