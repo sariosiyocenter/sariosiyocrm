@@ -3323,39 +3323,25 @@ app.post('/api/messaging/send-batch', authenticate, async (req, res, next) => {
       data: { message, channel: ch, recipientTo: to, filtersJson: filters || null, totalCount, schoolId }
     });
 
-    let recipients = [];
-    const school = await prisma.school.findUnique({ where: { id: schoolId } });
-    let groupsMap = {};
-
-    if (audience === 'TEACHERS') {
-      const teachers = await prisma.teacher.findMany({ where: { id: { in: studentIds.map(Number) }, schoolId } });
-      recipients = teachers.map(t => ({
-        id: t.id,
-        name: t.name,
-        phone: t.phone,
-        telegramId: t.telegramId
-      }));
-    } else if (audience === 'STAFF') {
-      const users = await prisma.user.findMany({ where: { id: { in: studentIds.map(Number) }, schoolId } });
-      recipients = users.map(u => ({
-        id: u.id,
-        name: u.name,
-        phone: u.phone,
-        telegramId: u.telegramId
-      }));
-    } else {
-      const students = await prisma.student.findMany({ where: { id: { in: studentIds.map(Number) }, schoolId } });
-      recipients = students;
-      groupsMap = await getStudentGroupsMap(schoolId);
-    }
-
-    // Respond to user immediately so the UI is unblocked
+    // Respond immediately so the UI is unblocked
     res.json({ success: true, campaign, sentCount: 0, failedCount: 0, total: totalCount });
 
     // Background process for actual message dispatching
     (async () => {
       let sentCount = 0, failedCount = 0;
       try {
+        const school = await prisma.school.findUnique({ where: { id: schoolId } });
+        let recipients = [];
+        let groupsMap = {};
+
+        if (audience === 'TEACHERS') {
+          const teachers = await prisma.teacher.findMany({ where: { id: { in: studentIds.map(Number) }, schoolId } });
+          recipients = teachers.map(t => ({ id: t.id, name: t.name, phone: t.phone, telegramId: t.telegramId }));
+        } else if (audience === 'STAFF') {
+          const users = await prisma.user.findMany({ where: { id: { in: studentIds.map(Number) }, schoolId } });
+          recipients = users.map(u => ({ id: u.id, name: u.name, phone: u.phone, telegramId: u.telegramId }));
+        }
+
         if (audience === 'STUDENTS' && Array.isArray(sendList) && sendList.length > 0) {
           const studentIdsFromList = sendList.map(e => Number(e.studentId));
           const students = await prisma.student.findMany({ where: { id: { in: studentIdsFromList }, schoolId } });
