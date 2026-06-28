@@ -34,6 +34,23 @@ const JWT_SECRET = process.env.JWT_SECRET || 'your_fallback_secret';
 app.use(express.json({ limit: '3mb' }));
 app.use(express.urlencoded({ limit: '3mb', extended: true }));
 
+// Lazy Cron background execution for automatic message rules (throttled to once every 10 minutes)
+let lastLazyCronRun = 0;
+app.use((req, res, next) => {
+  if (req.path.startsWith('/api/') && Date.now() - lastLazyCronRun > 10 * 60 * 1000) {
+    lastLazyCronRun = Date.now();
+    (async () => {
+      try {
+        console.log('[Lazy Cron] Triggering background auto-process check...');
+        await runAutoProcessJobs();
+      } catch (err) {
+        console.error('[Lazy Cron Error]:', err);
+      }
+    })();
+  }
+  next();
+});
+
 // Middleware to authenticate JWT
 const authenticate = (req, res, next) => {
   const authHeader = req.headers['authorization'];
