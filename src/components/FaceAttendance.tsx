@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState, useCallback } from 'react';
 import * as faceapi from 'face-api.js';
-import { X, Camera, UserCheck, Users } from 'lucide-react';
+import { X, Camera, UserCheck, Users, CheckCircle2 } from 'lucide-react';
 
 const MODEL_URL = 'https://cdn.jsdelivr.net/gh/justadudewhohacks/face-api.js@0.22.2/weights';
 
@@ -227,32 +227,41 @@ export default function FaceAttendance({ students, attendanceStatus, onMatch, on
                 )}
             </div>
 
-            {/* Present list */}
-            <div className="bg-gray-950/90 border-t border-gray-800 px-5 py-3" style={{ maxHeight: '110px', overflowY: 'auto' }}>
-                {markedThisSession.length === 0 && alreadyPresent.length === 0 ? (
-                    <p className="text-gray-600 text-[9px] font-bold uppercase tracking-widest text-center py-1">Hali hech kim aniqlanmadi...</p>
-                ) : (
-                    <div className="space-y-1.5">
-                        {markedThisSession.length > 0 && (
-                            <div className="flex flex-wrap gap-1.5">
-                                {markedThisSession.map(s => (
-                                    <span key={s.id} className="text-[8px] font-black uppercase tracking-wide text-emerald-400 bg-emerald-950/60 border border-emerald-500/40 px-2 py-0.5 rounded-lg">
-                                        ✓ {s.name}
-                                    </span>
-                                ))}
-                            </div>
-                        )}
-                        {alreadyPresent.length > 0 && (
-                            <div className="flex flex-wrap gap-1.5">
-                                {alreadyPresent.map(s => (
-                                    <span key={s.id} className="text-[8px] font-bold uppercase tracking-wide text-gray-500 bg-gray-900/40 border border-gray-800 px-2 py-0.5 rounded-lg">
-                                        ✓ {s.name}
-                                    </span>
-                                ))}
-                            </div>
-                        )}
-                    </div>
-                )}
+            {/* Present list + Finish button */}
+            <div className="bg-gray-950 border-t border-gray-800">
+                {/* Students who passed */}
+                <div className="px-5 pt-3 pb-2" style={{ maxHeight: '120px', overflowY: 'auto' }}>
+                    <p className="text-gray-500 text-[9px] font-black uppercase tracking-widest mb-2">
+                        Face ID dan o'tganlar — {markedThisSession.length + alreadyPresent.length} ta
+                    </p>
+                    {markedThisSession.length === 0 && alreadyPresent.length === 0 ? (
+                        <p className="text-gray-700 text-[9px] font-bold uppercase tracking-widest text-center py-1">Hali hech kim aniqlanmadi...</p>
+                    ) : (
+                        <div className="flex flex-wrap gap-1.5">
+                            {markedThisSession.map(s => (
+                                <span key={s.id} className="flex items-center gap-1 text-[9px] font-black uppercase tracking-wide text-emerald-300 bg-emerald-950/60 border border-emerald-500/40 px-2.5 py-1 rounded-lg">
+                                    <CheckCircle2 size={10} className="text-emerald-400" /> {s.name}
+                                </span>
+                            ))}
+                            {alreadyPresent.map(s => (
+                                <span key={s.id} className="flex items-center gap-1 text-[9px] font-bold uppercase tracking-wide text-gray-400 bg-gray-900/40 border border-gray-800 px-2.5 py-1 rounded-lg">
+                                    <CheckCircle2 size={10} className="text-gray-500" /> {s.name}
+                                </span>
+                            ))}
+                        </div>
+                    )}
+                </div>
+
+                {/* Finish button */}
+                <div className="px-5 pb-5 pt-2">
+                    <button
+                        onClick={() => onClose(Array.from(markedRef.current))}
+                        className="w-full py-3.5 bg-emerald-500 hover:bg-emerald-400 active:bg-emerald-600 text-white text-sm font-black uppercase tracking-widest rounded-2xl shadow-lg shadow-emerald-500/20 transition-all flex items-center justify-center gap-2 cursor-pointer"
+                    >
+                        <CheckCircle2 size={16} />
+                        Tugatish — {markedThisSession.length + alreadyPresent.length} ta qatnashdi
+                    </button>
+                </div>
             </div>
         </div>
     );
