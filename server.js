@@ -3657,6 +3657,26 @@ async function runAutoProcessJobs() {
       targets = await prisma.student.findMany({
         where: { schoolId, status: 'Bitirgan' }
       });
+    } else if (rule.type === 'LATE_ARRIVAL') {
+      const lateAttendances = await prisma.attendance.findMany({
+        where: { schoolId, date: todayStr, status: 'Kechikdi' },
+        include: { student: true }
+      });
+      const uniqueMap = {};
+      for (const a of lateAttendances) {
+        if (a.student && !uniqueMap[a.student.id]) uniqueMap[a.student.id] = a.student;
+      }
+      targets = Object.values(uniqueMap);
+    } else if (rule.type === 'EARLY_LEAVE') {
+      const earlyAttendances = await prisma.attendance.findMany({
+        where: { schoolId, date: todayStr, status: 'ErtaKetdi' },
+        include: { student: true }
+      });
+      const uniqueMap = {};
+      for (const a of earlyAttendances) {
+        if (a.student && !uniqueMap[a.student.id]) uniqueMap[a.student.id] = a.student;
+      }
+      targets = Object.values(uniqueMap);
     }
 
     let sent = 0, failed = 0;

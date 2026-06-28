@@ -98,6 +98,10 @@ const getTriggerTypeMeta = (type: string) => {
       return { icon: '🚌', label: 'Transport', color: 'bg-cyan-100 dark:bg-cyan-950/30 text-cyan-500' };
     case 'COURSE_GRADUATION':
       return { icon: '🎓', label: 'Kurs bitiruvi', color: 'bg-violet-100 dark:bg-violet-950/30 text-violet-500' };
+    case 'LATE_ARRIVAL':
+      return { icon: '⏰', label: 'Kechikib keldi', color: 'bg-orange-100 dark:bg-orange-950/30 text-orange-500' };
+    case 'EARLY_LEAVE':
+      return { icon: '🚪', label: 'Erta ketdi', color: 'bg-purple-100 dark:bg-purple-950/30 text-purple-500' };
     default:
       return { icon: '⚙️', label: 'Boshqa', color: 'bg-slate-100 dark:bg-slate-950/30 text-slate-500' };
   }
@@ -1888,6 +1892,8 @@ export default function Messaging() {
                   <option value="DAILY_SCORE">⭐️ Kunlik baholash hisoboti</option>
                   <option value="TRANSPORT_NOTIFY">🚌 Transport xabarnomasi</option>
                   <option value="COURSE_GRADUATION">🎓 Kursni bitirganlik tabrigi</option>
+                  <option value="LATE_ARRIVAL">⏰ Darsga kechikkanlik eslatmasi</option>
+                  <option value="EARLY_LEAVE">🚪 Darsdan erta ketganlik eslatmasi</option>
                 </select>
               </div>
 
