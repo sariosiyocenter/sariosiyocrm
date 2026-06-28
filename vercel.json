@@ -8,7 +8,7 @@
     },
     {
       "path": "/api/messaging/auto-process",
-      "schedule": "0 * * * *"
+      "schedule": "0 9 * * *"
     }
   ],
   "builds": [
