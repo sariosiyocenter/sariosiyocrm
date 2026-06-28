@@ -3348,27 +3348,35 @@ app.post('/api/messaging/send-batch', authenticate, async (req, res, next) => {
           }
           groupsMap = await getStudentGroupsMap(schoolId);
 
-          for (const entry of sendList) {
-            const student = studentsMap[Number(entry.studentId)];
-            if (!student) continue;
-            const personalized = fillTemplate(message, student, groupsMap[student.id] || [], school);
-            const r = await sendToOne({
-              student,
-              message: personalized,
-              channel: ch,
-              recipientTo: entry.recipientTo,
-              type: 'MANUAL',
-              schoolId,
-              campaignId: campaign.id
-            });
-            if (r.success) sentCount++; else failedCount++;
+          const concurrencyLimit = 10;
+          for (let i = 0; i < sendList.length; i += concurrencyLimit) {
+            const chunk = sendList.slice(i, i + concurrencyLimit);
+            await Promise.all(chunk.map(async (entry) => {
+              const student = studentsMap[Number(entry.studentId)];
+              if (!student) return;
+              const personalized = fillTemplate(message, student, groupsMap[student.id] || [], school);
+              const r = await sendToOne({
+                student,
+                message: personalized,
+                channel: ch,
+                recipientTo: entry.recipientTo,
+                type: 'MANUAL',
+                schoolId,
+                campaignId: campaign.id
+              });
+              if (r.success) sentCount++; else failedCount++;
+            }));
           }
         } else {
-          for (const recipient of recipients) {
-            const personalized = fillTemplate(message, recipient, groupsMap[recipient.id] || [], school);
-            const targetTo = (audience === 'TEACHERS' || audience === 'STAFF') ? 'STUDENT' : to;
-            const r = await sendToOne({ student: recipient, message: personalized, channel: ch, recipientTo: targetTo, type: 'MANUAL', schoolId, campaignId: campaign.id });
-            if (r.success) sentCount++; else failedCount++;
+          const concurrencyLimit = 10;
+          for (let i = 0; i < recipients.length; i += concurrencyLimit) {
+            const chunk = recipients.slice(i, i + concurrencyLimit);
+            await Promise.all(chunk.map(async (recipient) => {
+              const personalized = fillTemplate(message, recipient, groupsMap[recipient.id] || [], school);
+              const targetTo = (audience === 'TEACHERS' || audience === 'STAFF') ? 'STUDENT' : to;
+              const r = await sendToOne({ student: recipient, message: personalized, channel: ch, recipientTo: targetTo, type: 'MANUAL', schoolId, campaignId: campaign.id });
+              if (r.success) sentCount++; else failedCount++;
+            }));
           }
         }
       } catch (bgErr) {
