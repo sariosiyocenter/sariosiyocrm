@@ -19,6 +19,7 @@ export interface Student {
     fatherPhone?: string;
     motherName?: string;
     motherPhone?: string;
+    telegramId?: string;
     schoolId: number;
     statusChangedAt?: string;
     leaveReason?: string;

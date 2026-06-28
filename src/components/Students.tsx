@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Search, Plus, FileSpreadsheet, MoreVertical, X, Image as ImageIcon, MapPin, GraduationCap, QrCode } from 'lucide-react';
+import { Search, Plus, FileSpreadsheet, MoreVertical, X, Image as ImageIcon, MapPin, GraduationCap, QrCode, Trash2 } from 'lucide-react';
 import { useCRM } from '../context/CRMContext';
 import { useLang } from '../context/LanguageContext';
 import { useNavigate } from 'react-router-dom';
@@ -101,8 +101,46 @@ export default function Students() {
         orgType: '',
         region: '',
         district: '',
-        selectedGroupIds: [] as number[]
+        selectedGroupIds: [] as number[],
+        certificates: [] as Array<{ category: 'Milliy' | 'Xalqaro'; subject?: string; type?: string; score?: string }>
     });
+
+    const addCertificate = () => {
+        setNewStudent(prev => ({
+            ...prev,
+            certificates: [
+                ...prev.certificates,
+                { category: 'Milliy', subject: 'Matematika', score: '' }
+            ]
+        }));
+    };
+
+    const removeCertificate = (index: number) => {
+        setNewStudent(prev => ({
+            ...prev,
+            certificates: prev.certificates.filter((_, i) => i !== index)
+        }));
+    };
+
+    const updateCertificate = (index: number, key: string, value: string) => {
+        setNewStudent(prev => ({
+            ...prev,
+            certificates: prev.certificates.map((c, i) => {
+                if (i !== index) return c;
+                const updated = { ...c, [key]: value };
+                if (key === 'category') {
+                    if (value === 'Milliy') {
+                        delete updated.type;
+                        updated.subject = 'Matematika';
+                    } else {
+                        delete updated.subject;
+                        updated.type = 'IELTS';
+                    }
+                }
+                return updated;
+            })
+        }));
+    };
     const [isRemovingBg, setIsRemovingBg] = useState(false);
     const [isImporting, setIsImporting] = useState(false);
     const [search, setSearch] = useState('');
@@ -219,7 +257,8 @@ export default function Students() {
                 orgType: newStudent.orgType,
                 region: newStudent.region,
                 district: newStudent.district,
-                customPrices: {}
+                customPrices: {},
+                certificates: newStudent.certificates
             });
             setIsModalOpen(false);
             setNewStudent({
@@ -236,7 +275,8 @@ export default function Students() {
                 orgType: '',
                 region: '',
                 district: '',
-                selectedGroupIds: []
+                selectedGroupIds: [],
+                certificates: []
             });
         } catch (err) {
             console.error("Add student failed", err);
@@ -458,6 +498,10 @@ export default function Students() {
             matchesMissingInfo = !s.studentSchool || s.studentSchool.trim() === '';
         } else if (filters.missingInfo === 'photo') {
             matchesMissingInfo = !s.photo || s.photo.trim() === '';
+        } else if (filters.missingInfo === 'no_telegram') {
+            matchesMissingInfo = !s.telegramId || s.telegramId.trim() === '';
+        } else if (filters.missingInfo === 'parent_no_telegram') {
+            matchesMissingInfo = (!s.telegramId || s.telegramId.trim() === '') && !!(s.fatherPhone || s.motherPhone);
         }
 
         return matchesSearch && matchesStatus && matchesGroup && matchesBalance && matchesDate && matchesOrgType && matchesMuassasa && matchesRegion && matchesDistrict && matchesLocation && matchesMissingInfo;
@@ -599,6 +643,8 @@ export default function Students() {
                                 <option value="fatherPhone">{t('defect_father_phone').replace('{count}', String(students.filter(s => !s.fatherPhone || s.fatherPhone.trim() === '').length))}</option>
                                 <option value="studentSchool">{t('defect_school').replace('{count}', String(students.filter(s => !s.studentSchool || s.studentSchool.trim() === '').length))}</option>
                                 <option value="photo">{t('defect_photo').replace('{count}', String(students.filter(s => !s.photo || s.photo.trim() === '').length))}</option>
+                                <option value="no_telegram">{t('defect_no_telegram').replace('{count}', String(students.filter(s => !s.telegramId || s.telegramId.trim() === '').length))}</option>
+                                <option value="parent_no_telegram">{t('defect_parent_no_telegram').replace('{count}', String(students.filter(s => (!s.telegramId || s.telegramId.trim() === '') && (s.fatherPhone || s.motherPhone)).length))}</option>
                             </select>
                         </div>
                         <div className="flex items-end">
@@ -921,6 +967,93 @@ export default function Students() {
                                                 placeholder={newStudent.certCategory === 'Xalqaro' ? 'Misol: 7.5 yoki 1450' : 'Misol: 94.8%'}
                                                 className={inp}
                                             />
+                                        </div>
+
+                                        {/* Dynamic multi-certificates array */}
+                                        <div className="border-t border-dashed border-gray-150 dark:border-gray-700/50 pt-3 mt-3 space-y-3">
+                                            <span className="block text-[9px] font-black uppercase text-[#1b6b6b] tracking-wider text-left">Qo'shimcha Sertifikatlar</span>
+                                            {newStudent.certificates.map((cert, index) => (
+                                                <div key={index} className="p-3 bg-white dark:bg-slate-800 rounded-xl border border-gray-100 dark:border-gray-700 space-y-3 relative">
+                                                    <button 
+                                                        type="button" 
+                                                        onClick={() => removeCertificate(index)}
+                                                        className="absolute top-2 right-2 text-gray-400 hover:text-red-500 transition-colors"
+                                                    >
+                                                        <Trash2 size={13} />
+                                                    </button>
+                                                    
+                                                    <div>
+                                                        <label className={lbl}>Sertifikat toifasi</label>
+                                                        <select
+                                                            value={cert.category}
+                                                            onChange={e => updateCertificate(index, 'category', e.target.value)}
+                                                            className={inp}
+                                                        >
+                                                            <option value="Milliy">Milliy sertifikat</option>
+                                                            <option value="Xalqaro">Xalqaro sertifikat</option>
+                                                        </select>
+                                                    </div>
+
+                                                    {cert.category === 'Milliy' && (
+                                                        <div>
+                                                            <label className={lbl}>Sertifikat fani</label>
+                                                            <select
+                                                                value={cert.subject || ''}
+                                                                onChange={e => updateCertificate(index, 'subject', e.target.value)}
+                                                                className={inp}
+                                                            >
+                                                                <option value="Matematika">Matematika</option>
+                                                                <option value="Fizika">Fizika</option>
+                                                                <option value="Kimyo">Kimyo</option>
+                                                                <option value="Biologiya">Biologiya</option>
+                                                                <option value="Tarix">Tarix</option>
+                                                                <option value="Ingliz tili">Ingliz tili</option>
+                                                                <option value="Nemis tili">Nemis tili</option>
+                                                                <option value="Rus tili">Rus tili</option>
+                                                                <option value="Ona tili">Ona tili</option>
+                                                                <option value="Boshqa">Boshqa</option>
+                                                            </select>
+                                                        </div>
+                                                    )}
+
+                                                    {cert.category === 'Xalqaro' && (
+                                                        <div>
+                                                            <label className={lbl}>Sertifikat turi</label>
+                                                            <select
+                                                                value={cert.type || ''}
+                                                                onChange={e => updateCertificate(index, 'type', e.target.value)}
+                                                                className={inp}
+                                                            >
+                                                                <option value="IELTS">IELTS</option>
+                                                                <option value="SAT">SAT</option>
+                                                                <option value="TOEFL">TOEFL</option>
+                                                                <option value="CEFR">CEFR</option>
+                                                                <option value="Boshqa">Boshqa</option>
+                                                            </select>
+                                                        </div>
+                                                    )}
+
+                                                    <div>
+                                                        <label className={lbl}>Ball / Foiz</label>
+                                                        <input
+                                                            type="text"
+                                                            placeholder={cert.category === 'Xalqaro' ? 'Misol: 7.5 yoki 1450' : 'Misol: 94.8%'}
+                                                            value={cert.score || ''}
+                                                            onChange={e => updateCertificate(index, 'score', e.target.value)}
+                                                            className={inp}
+                                                        />
+                                                    </div>
+                                                </div>
+                                            ))}
+                                            
+                                            <button
+                                                type="button"
+                                                onClick={addCertificate}
+                                                className="w-full py-2.5 bg-white dark:bg-slate-800 border border-dashed border-gray-200 dark:border-gray-700 rounded-xl text-[9px] font-black uppercase tracking-widest text-[#1b6b6b] hover:bg-teal-50/10 dark:hover:bg-teal-900/10 transition-colors flex items-center justify-center gap-1.5 cursor-pointer"
+                                            >
+                                                <Plus size={13} />
+                                                Sertifikat qo'shish
+                                            </button>
                                         </div>
                                     </div>
                                 )}

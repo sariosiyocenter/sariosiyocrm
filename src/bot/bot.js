@@ -103,11 +103,18 @@ export const setupBotHandlers = (botInstance, schoolId) => {
 
         // Try to find as student
         let student = await prisma.student.findFirst({ 
-            where: { phone: { contains: phoneSuffix }, schoolId } 
+            where: { 
+                OR: [
+                    { phone: { contains: phoneSuffix } },
+                    { fatherPhone: { contains: phoneSuffix } },
+                    { motherPhone: { contains: phoneSuffix } }
+                ],
+                schoolId 
+            } 
         });
         if (student) {
             await prisma.student.update({ where: { id: student.id }, data: { telegramId: tid } });
-            return ctx.reply(`Siz o'quvchi sifatida ro'yxatdan o'tdingiz: ${student.name}`, getStudentMenu());
+            return ctx.reply(`Siz o'quvchi / ota-ona sifatida ro'yxatdan o'tdingiz: ${student.name}`, getStudentMenu());
         }
 
         // Try to find as teacher

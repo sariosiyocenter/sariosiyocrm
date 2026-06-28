@@ -526,7 +526,10 @@ app.get('/api/students', authenticate, async (req, res, next) => {
 app.post('/api/students', authenticate, async (req, res, next) => {
   try {
     const { groups, schoolId, selectedGroupIds, selectedPrivileges, ...rest } = req.body;
-    if (!schoolId) return res.status(400).json({ error: 'schoolId required' });
+    const parsedSchoolId = parseInt(schoolId);
+    if (!parsedSchoolId || isNaN(parsedSchoolId) || parsedSchoolId <= 0) {
+      return res.status(400).json({ error: 'Valid schoolId required' });
+    }
     const ALLOWED = ['name','phone','birthDate','address','location','status','joinedDate',
       'balance','photo','comment','rating','gender','fatherName','fatherPhone','motherName','motherPhone',
       'studentSchool','privilegeType','certCategory','certSubject','certType','certScore',
@@ -539,8 +542,20 @@ app.post('/api/students', authenticate, async (req, res, next) => {
     if (data.balance !== undefined) data.balance = parseFloat(data.balance) || 0;
     if (data.transportId !== undefined) data.transportId = data.transportId ? parseInt(data.transportId) : null;
     if (data.customPrices !== undefined && typeof data.customPrices !== 'object') delete data.customPrices;
+    if (data.certificates !== undefined) {
+      if (typeof data.certificates === 'string') {
+        try {
+          data.certificates = JSON.parse(data.certificates);
+        } catch (e) {
+          data.certificates = [];
+        }
+      }
+      if (!Array.isArray(data.certificates)) {
+        data.certificates = [];
+      }
+    }
     const student = await prisma.student.create({
-      data: { ...data, schoolId: parseInt(schoolId) }
+      data: { ...data, schoolId: parsedSchoolId }
     });
     const groupIds = (groups || selectedGroupIds || []).map(id => parseInt(id)).filter(id => !isNaN(id));
     if (groupIds.length > 0) {
@@ -667,6 +682,18 @@ app.put('/api/students/:id', authenticate, async (req, res, next) => {
       data.transportId = data.transportId ? parseInt(data.transportId) : null;
     }
     if (data.balance !== undefined) data.balance = parseFloat(data.balance) || 0;
+    if (data.certificates !== undefined) {
+      if (typeof data.certificates === 'string') {
+        try {
+          data.certificates = JSON.parse(data.certificates);
+        } catch (e) {
+          data.certificates = [];
+        }
+      }
+      if (!Array.isArray(data.certificates)) {
+        data.certificates = [];
+      }
+    }
 
     await prisma.student.update({
       where: { id: studentId },
@@ -1193,10 +1220,20 @@ app.get('/api/expenses', authenticate, async (req, res, next) => {
 
 app.post('/api/expenses', authenticate, async (req, res, next) => {
   try {
-    const { schoolId, ...data } = req.body;
-    if (!schoolId) return res.status(400).json({ error: 'schoolId required' });
-    if (data.amount) data.amount = parseFloat(data.amount);
-    const expense = await prisma.expense.create({ data: { ...data, schoolId: parseInt(schoolId) } });
+    const { schoolId, amount, category, date, description } = req.body;
+    const parsedSchoolId = parseInt(schoolId);
+    if (!parsedSchoolId || isNaN(parsedSchoolId) || parsedSchoolId <= 0) {
+      return res.status(400).json({ error: 'Valid schoolId required' });
+    }
+    const expense = await prisma.expense.create({
+      data: {
+        amount: parseFloat(amount) || 0,
+        category: category || 'Boshqa',
+        date: date || new Date().toISOString().split('T')[0],
+        description: description || null,
+        schoolId: parsedSchoolId
+      }
+    });
     res.json(expense);
   } catch (error) { next(error); }
 });
@@ -2164,6 +2201,18 @@ app.delete('/api/schools/:id', authenticate, async (req, res, next) => {
 // Global Error Handler
 app.use((err, req, res, next) => {
   console.error('Server Error:', err);
+  try {
+    import('fs').then(fs => {
+      const logMsg = `\n[${new Date().toISOString()}] ERROR on ${req.method} ${req.url}\n` +
+                     `Body: ${JSON.stringify(req.body)}\n` +
+                     `Error: ${err.message}\n` +
+                     `Stack: ${err.stack}\n` +
+                     `-------------------------------------------\n`;
+      fs.appendFileSync('error.log', logMsg);
+    }).catch(e => console.error('Dynamic import of fs failed:', e));
+  } catch (e) {
+    console.error('Failed to log error to file:', e);
+  }
   res.status(500).json({
     error: 'Serverda xatolik yuz berdi',
     message: err.message,
@@ -3099,12 +3148,25 @@ function fillTemplate(body, student, groupsForStudent, school) {
   const balance = Number(student.balance || 0);
   const debt = balance < 0 ? Math.abs(balance) : 0;
   const groupNames = (groupsForStudent || []).map(g => g.name).join(', ');
+
+  // Custom trigger properties
+  const examName = student.customExamName || '';
+  const examScore = student.customExamScore !== undefined ? String(student.customExamScore) : '';
+  const examPercentage = student.customExamPercentage !== undefined ? `${student.customExamPercentage}%` : '';
+  const paymentAmount = student.customPaymentAmount !== undefined ? student.customPaymentAmount.toLocaleString() : '';
+  const dailyScore = student.customDailyScore !== undefined ? String(student.customDailyScore) : '';
+
   return String(body || '')
     .replace(/\{ism\}/gi, student.name || '')
     .replace(/\{qarz\}/gi, debt.toLocaleString())
     .replace(/\{balans\}/gi, balance.toLocaleString())
     .replace(/\{guruh\}/gi, groupNames)
-    .replace(/\{markaz\}/gi, school?.name || '');
+    .replace(/\{markaz\}/gi, school?.name || '')
+    .replace(/\{imtihon_nomi\}/gi, examName)
+    .replace(/\{imtihon_ball\}/gi, examScore)
+    .replace(/\{imtihon_foiz\}/gi, examPercentage)
+    .replace(/\{to_lov_summa\}/gi, paymentAmount)
+    .replace(/\{bahosi\}/gi, dailyScore);
 }
 
 // Bitta o'quvchiga tanlangan kanal(lar) orqali yuborish
@@ -3143,20 +3205,33 @@ async function sendToOne({ student, message, channel, recipientTo, type, schoolI
 
   // SMS
   if (channel === 'SMS' || (channel === 'BOTH' && !anySuccess)) {
-    let phone;
-    if (recipientTo === 'STUDENT') {
-      phone = student.phone;
-    } else if (recipientTo === 'FATHER') {
-      phone = student.fatherPhone || student.phone;
-    } else if (recipientTo === 'MOTHER') {
-      phone = student.motherPhone || student.phone;
+    if (recipientTo === 'PARENT') {
+      const phones = [];
+      if (student.fatherPhone) phones.push(student.fatherPhone);
+      if (student.motherPhone) phones.push(student.motherPhone);
+      if (phones.length === 0 && student.phone) phones.push(student.phone);
+
+      for (const phone of phones) {
+        attempted = true;
+        const r = await sendSms(phone, message, type || 'MANUAL', student.id, schoolId, campaignId);
+        if (r.success) anySuccess = true;
+      }
     } else {
-      phone = resolveRecipientPhone(student);
-    }
-    if (phone) {
-      attempted = true;
-      const r = await sendSms(phone, message, type || 'MANUAL', student.id, schoolId, campaignId);
-      if (r.success) anySuccess = true;
+      let phone;
+      if (recipientTo === 'STUDENT') {
+        phone = student.phone;
+      } else if (recipientTo === 'FATHER') {
+        phone = student.fatherPhone || student.phone;
+      } else if (recipientTo === 'MOTHER') {
+        phone = student.motherPhone || student.phone;
+      } else {
+        phone = resolveRecipientPhone(student);
+      }
+      if (phone) {
+        attempted = true;
+        const r = await sendSms(phone, message, type || 'MANUAL', student.id, schoolId, campaignId);
+        if (r.success) anySuccess = true;
+      }
     }
   }
 
@@ -3182,15 +3257,19 @@ async function getStudentGroupsMap(schoolId) {
 // Ommaviy yuborish
 app.post('/api/messaging/send-batch', authenticate, async (req, res, next) => {
   try {
-    const { studentIds, audience, message, channel, recipientTo, filters } = req.body;
+    const { studentIds, sendList, audience, message, channel, recipientTo, filters } = req.body;
     const schoolId = req.user.schoolId;
     if (!Array.isArray(studentIds) || studentIds.length === 0) return res.status(400).json({ error: 'studentIds kerak' });
     if (!message || !message.trim()) return res.status(400).json({ error: 'Xabar matni kerak' });
     const ch = ['SMS', 'TELEGRAM', 'BOTH'].includes(channel) ? channel : 'SMS';
     const to = ['STUDENT', 'FATHER', 'MOTHER', 'PARENT'].includes(recipientTo) ? recipientTo : 'PARENT';
 
+    const totalCount = (audience === 'STUDENTS' && Array.isArray(sendList) && sendList.length > 0)
+      ? sendList.length
+      : studentIds.length;
+
     const campaign = await prisma.messageCampaign.create({
-      data: { message, channel: ch, recipientTo: to, filtersJson: filters || null, totalCount: studentIds.length, schoolId }
+      data: { message, channel: ch, recipientTo: to, filtersJson: filters || null, totalCount, schoolId }
     });
 
     let recipients = [];
@@ -3220,18 +3299,45 @@ app.post('/api/messaging/send-batch', authenticate, async (req, res, next) => {
     }
 
     let sentCount = 0, failedCount = 0;
-    for (const recipient of recipients) {
-      const personalized = fillTemplate(message, recipient, groupsMap[recipient.id] || [], school);
-      const targetTo = (audience === 'TEACHERS' || audience === 'STAFF') ? 'STUDENT' : to;
-      const r = await sendToOne({ student: recipient, message: personalized, channel: ch, recipientTo: targetTo, type: 'MANUAL', schoolId, campaignId: campaign.id });
-      if (r.success) sentCount++; else failedCount++;
+
+    if (audience === 'STUDENTS' && Array.isArray(sendList) && sendList.length > 0) {
+      const studentIdsFromList = sendList.map(e => Number(e.studentId));
+      const students = await prisma.student.findMany({ where: { id: { in: studentIdsFromList }, schoolId } });
+      const studentsMap = {};
+      for (const s of students) {
+        studentsMap[s.id] = s;
+      }
+      groupsMap = await getStudentGroupsMap(schoolId);
+
+      for (const entry of sendList) {
+        const student = studentsMap[Number(entry.studentId)];
+        if (!student) continue;
+        const personalized = fillTemplate(message, student, groupsMap[student.id] || [], school);
+        const r = await sendToOne({
+          student,
+          message: personalized,
+          channel: ch,
+          recipientTo: entry.recipientTo,
+          type: 'MANUAL',
+          schoolId,
+          campaignId: campaign.id
+        });
+        if (r.success) sentCount++; else failedCount++;
+      }
+    } else {
+      for (const recipient of recipients) {
+        const personalized = fillTemplate(message, recipient, groupsMap[recipient.id] || [], school);
+        const targetTo = (audience === 'TEACHERS' || audience === 'STAFF') ? 'STUDENT' : to;
+        const r = await sendToOne({ student: recipient, message: personalized, channel: ch, recipientTo: targetTo, type: 'MANUAL', schoolId, campaignId: campaign.id });
+        if (r.success) sentCount++; else failedCount++;
+      }
     }
 
     const updated = await prisma.messageCampaign.update({
       where: { id: campaign.id },
       data: { sentCount, failedCount }
     });
-    res.json({ success: true, campaign: updated, sentCount, failedCount, total: recipients.length });
+    res.json({ success: true, campaign: updated, sentCount, failedCount, total: totalCount });
   } catch (err) { next(err); }
 });
 
@@ -3247,10 +3353,21 @@ app.get('/api/messaging/templates', authenticate, async (req, res, next) => {
 
 app.post('/api/messaging/templates', authenticate, async (req, res, next) => {
   try {
-    const { name, body, category } = req.body;
+    const { name, body, category, isAuto, autoType, autoChannel, autoRecipient, autoConfig, autoTime } = req.body;
     if (!name || !body) return res.status(400).json({ error: 'name va body kerak' });
     const template = await prisma.messageTemplate.create({
-      data: { name, body, category: category || 'Umumiy', schoolId: req.user.schoolId }
+      data: {
+        name,
+        body,
+        category: category || 'Umumiy',
+        isAuto: !!isAuto,
+        autoType: autoType || null,
+        autoChannel: autoChannel || 'BOTH',
+        autoRecipient: autoRecipient || 'PARENT',
+        autoConfig: autoConfig || null,
+        autoTime: autoTime || '09:00',
+        schoolId: req.user.schoolId
+      }
     });
     res.status(201).json(template);
   } catch (err) { next(err); }
@@ -3258,10 +3375,21 @@ app.post('/api/messaging/templates', authenticate, async (req, res, next) => {
 
 app.put('/api/messaging/templates/:id', authenticate, async (req, res, next) => {
   try {
-    const { name, body, category } = req.body;
+    const { name, body, category, isAuto, autoType, autoChannel, autoRecipient, autoConfig, autoTime } = req.body;
+    const data = {
+      ...(name !== undefined && { name }),
+      ...(body !== undefined && { body }),
+      ...(category !== undefined && { category }),
+      ...(isAuto !== undefined && { isAuto: !!isAuto }),
+      ...(autoType !== undefined && { autoType }),
+      ...(autoChannel !== undefined && { autoChannel }),
+      ...(autoRecipient !== undefined && { autoRecipient }),
+      ...(autoConfig !== undefined && { autoConfig }),
+      ...(autoTime !== undefined && { autoTime })
+    };
     const template = await prisma.messageTemplate.update({
       where: { id: parseInt(req.params.id) },
-      data: { ...(name !== undefined && { name }), ...(body !== undefined && { body }), ...(category !== undefined && { category }) }
+      data
     });
     res.json(template);
   } catch (err) { next(err); }
@@ -3284,53 +3412,100 @@ app.get('/api/messaging/campaigns', authenticate, async (req, res, next) => {
   } catch (err) { next(err); }
 });
 
-// Avtomatik qoidalar
+// Avtomatik qoidalar CRUD
 app.get('/api/messaging/auto-rules', authenticate, async (req, res, next) => {
   try {
-    const rules = await prisma.autoMessageRule.findMany({ where: { schoolId: req.user.schoolId } });
+    const rules = await prisma.autoMessageRule.findMany({
+      where: { schoolId: req.user.schoolId },
+      orderBy: { id: 'desc' }
+    });
     res.json(rules);
   } catch (err) { next(err); }
 });
 
-app.put('/api/messaging/auto-rules/:type', authenticate, async (req, res, next) => {
+app.post('/api/messaging/auto-rules', authenticate, async (req, res, next) => {
   try {
-    const type = req.params.type;
-    if (!['BIRTHDAY', 'DEBT_REMINDER'].includes(type)) return res.status(400).json({ error: 'Noto\'g\'ri tur' });
-    const { enabled, body, channel, recipientTo, config } = req.body;
-    const schoolId = req.user.schoolId;
+    const { name, type, enabled, body, channel, recipientTo, config, time } = req.body;
+    if (!name || !type || !body) return res.status(400).json({ error: 'name, type, va body kerak' });
+    const rule = await prisma.autoMessageRule.create({
+      data: {
+        name,
+        type,
+        enabled: !!enabled,
+        body,
+        channel: channel || 'BOTH',
+        recipientTo: recipientTo || 'PARENT',
+        config: config || null,
+        time: time || '09:00',
+        schoolId: req.user.schoolId
+      }
+    });
+    res.status(201).json(rule);
+  } catch (err) { next(err); }
+});
+
+app.put('/api/messaging/auto-rules/:id', authenticate, async (req, res, next) => {
+  try {
+    const { name, type, enabled, body, channel, recipientTo, config, time } = req.body;
+    const ruleId = parseInt(req.params.id);
     const data = {
+      ...(name !== undefined && { name }),
+      ...(type !== undefined && { type }),
       ...(enabled !== undefined && { enabled: !!enabled }),
       ...(body !== undefined && { body }),
       ...(channel !== undefined && { channel }),
       ...(recipientTo !== undefined && { recipientTo }),
-      ...(config !== undefined && { config })
+      ...(config !== undefined && { config }),
+      ...(time !== undefined && { time })
     };
-    const rule = await prisma.autoMessageRule.upsert({
-      where: { schoolId_type: { schoolId, type } },
-      update: data,
-      create: { schoolId, type, enabled: !!enabled, body: body || '', channel: channel || 'BOTH', recipientTo: recipientTo || 'PARENT', config: config || null }
+    const rule = await prisma.autoMessageRule.update({
+      where: { id: ruleId },
+      data
     });
     res.json(rule);
   } catch (err) { next(err); }
 });
 
-// Vercel cron: kunlik avtomatik xabarlar
+app.delete('/api/messaging/auto-rules/:id', authenticate, async (req, res, next) => {
+  try {
+    await prisma.autoMessageRule.delete({
+      where: { id: parseInt(req.params.id) }
+    });
+    res.json({ success: true });
+  } catch (err) { next(err); }
+});
+
+// Vercel cron: kunlik/soatlik avtomatik xabarlar
 app.get('/api/messaging/auto-process', async (req, res, next) => {
   try {
     const authHeader = req.headers['authorization'];
     if (process.env.CRON_SECRET && authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
       return res.status(401).json({ error: 'Unauthorized' });
     }
-    const now = new Date();
-    const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
-    const mmdd = `${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
-    const dayOfMonth = now.getDate();
+    const nowUtc = new Date();
+    // Uzbekistan offset is UTC+5
+    const nowUz = new Date(nowUtc.getTime() + (5 * 60 * 60 * 1000));
+    const currentHour = nowUz.getUTCHours();
+    const todayStr = `${nowUz.getUTCFullYear()}-${String(nowUz.getUTCMonth() + 1).padStart(2, '0')}-${String(nowUz.getUTCDate()).padStart(2, '0')}`;
+    const mmdd = `${String(nowUz.getUTCMonth() + 1).padStart(2, '0')}-${String(nowUz.getUTCDate()).padStart(2, '0')}`;
+    const dayOfMonth = nowUz.getUTCDate();
 
     const rules = await prisma.autoMessageRule.findMany({ where: { enabled: true } });
     const results = [];
 
     for (const rule of rules) {
-      if (rule.lastRunDate === todayStr) { results.push({ ruleId: rule.id, type: rule.type, skipped: 'already-run' }); continue; }
+      if (rule.lastRunDate === todayStr) {
+        results.push({ ruleId: rule.id, name: rule.name, skipped: 'already-run' });
+        continue;
+      }
+
+      // Check hour (default to 9 AM)
+      const scheduledHour = rule.time ? parseInt(rule.time.split(':')[0]) : 9;
+      if (currentHour !== scheduledHour) {
+        results.push({ ruleId: rule.id, name: rule.name, skipped: 'hour-not-matched', currentHour, scheduledHour });
+        continue;
+      }
+
       const schoolId = rule.schoolId;
       const school = await prisma.school.findUnique({ where: { id: schoolId } });
       const groupsMap = await getStudentGroupsMap(schoolId);
@@ -3340,33 +3515,214 @@ app.get('/api/messaging/auto-process', async (req, res, next) => {
         const students = await prisma.student.findMany({ where: { schoolId, status: { in: ['Faol', 'Sinov'] } } });
         targets = students.filter(s => (s.birthDate || '').slice(5, 10) === mmdd);
       } else if (rule.type === 'DEBT_REMINDER') {
-        const cfg = rule.config || {};
+        const cfg = (rule.config && typeof rule.config === 'object') ? rule.config : {};
         const ruleDay = Number(cfg.dayOfMonth || 1);
-        if (dayOfMonth !== ruleDay) { results.push({ ruleId: rule.id, type: rule.type, skipped: 'not-due-day' }); continue; }
+        if (dayOfMonth !== ruleDay) {
+          results.push({ ruleId: rule.id, name: rule.name, skipped: 'not-due-day', dayOfMonth, ruleDay });
+          continue;
+        }
         const minDebt = Number(cfg.minDebt || 0);
         const students = await prisma.student.findMany({ where: { schoolId, status: { in: ['Faol', 'Sinov'] } } });
         targets = students.filter(s => Number(s.balance || 0) < -minDebt);
+      } else if (rule.type === 'ABSENCE_REMINDER') {
+        const attendances = await prisma.attendance.findMany({
+          where: { schoolId, date: todayStr, status: 'Kelmapdi' },
+          include: { student: true }
+        });
+        const uniqueStudentsMap = {};
+        for (const att of attendances) {
+          if (att.student && att.student.status !== 'Ochirilgan') {
+            uniqueStudentsMap[att.studentId] = att.student;
+          }
+        }
+        targets = Object.values(uniqueStudentsMap);
+      } else if (rule.type === 'LEAD_WELCOME') {
+        const startOfDay = new Date(nowUz);
+        startOfDay.setUTCHours(0, 0, 0, 0);
+        const leads = await prisma.lead.findMany({
+          where: { schoolId, createdAt: { gte: startOfDay }, status: 'Yangi' }
+        });
+        targets = leads.map(l => ({ id: l.id, name: l.name, phone: l.phone, balance: 0, schoolId }));
+      } else if (rule.type === 'GROUP_WELCOME') {
+        targets = await prisma.student.findMany({
+          where: { schoolId, joinedDate: todayStr, status: { in: ['Faol', 'Sinov'] } }
+        });
+      } else if (rule.type === 'EXAM_RESULT') {
+        const startOfDay = new Date(nowUz);
+        startOfDay.setUTCHours(0, 0, 0, 0);
+        const resultsToday = await prisma.examResult.findMany({
+          where: { schoolId, scannedAt: { gte: startOfDay } },
+          include: { student: true, exam: true }
+        });
+        const uniqueStudentsMap = {};
+        for (const er of resultsToday) {
+          if (er.student && er.student.status !== 'Ochirilgan') {
+            uniqueStudentsMap[er.studentId] = {
+              ...er.student,
+              customExamName: er.exam.name,
+              customExamScore: er.score,
+              customExamPercentage: er.percentage
+            };
+          }
+        }
+        targets = Object.values(uniqueStudentsMap);
+      } else if (rule.type === 'PAYMENT_CONFIRM') {
+        const paymentsToday = await prisma.payment.findMany({
+          where: { schoolId, date: todayStr },
+          include: { student: true }
+        });
+        const uniqueStudentsMap = {};
+        for (const p of paymentsToday) {
+          if (p.student && p.student.status !== 'Ochirilgan') {
+            uniqueStudentsMap[p.studentId] = {
+              ...p.student,
+              customPaymentAmount: p.amount
+            };
+          }
+        }
+        targets = Object.values(uniqueStudentsMap);
+      } else if (rule.type === 'DAILY_SCORE') {
+        const scoresToday = await prisma.score.findMany({
+          where: { schoolId, date: todayStr },
+          include: { student: true }
+        });
+        const uniqueStudentsMap = {};
+        for (const sc of scoresToday) {
+          if (sc.student && sc.student.status !== 'Ochirilgan') {
+            uniqueStudentsMap[sc.studentId] = {
+              ...sc.student,
+              customDailyScore: sc.value
+            };
+          }
+        }
+        targets = Object.values(uniqueStudentsMap);
+      } else if (rule.type === 'TRANSPORT_NOTIFY') {
+        targets = await prisma.student.findMany({
+          where: { schoolId, transportId: { not: null }, status: { in: ['Faol', 'Sinov'] } }
+        });
+      } else if (rule.type === 'COURSE_GRADUATION') {
+        targets = await prisma.student.findMany({
+          where: { schoolId, status: 'Bitirgan' }
+        });
       }
 
       let sent = 0, failed = 0;
       let campaign = null;
       if (targets.length > 0) {
         campaign = await prisma.messageCampaign.create({
-          data: { message: rule.body, channel: rule.channel, recipientTo: rule.recipientTo, filtersJson: { auto: rule.type }, totalCount: targets.length, schoolId }
+          data: {
+            message: rule.body,
+            channel: rule.channel,
+            recipientTo: rule.recipientTo,
+            filtersJson: { autoRuleId: rule.id, autoType: rule.type },
+            totalCount: targets.length,
+            schoolId
+          }
         });
         for (const student of targets) {
           const msg = fillTemplate(rule.body, student, groupsMap[student.id] || [], school);
-          const r = await sendToOne({ student, message: msg, channel: rule.channel, recipientTo: rule.recipientTo, type: rule.type === 'BIRTHDAY' ? 'BIRTHDAY' : 'PAYMENT', schoolId, campaignId: campaign.id });
+          const r = await sendToOne({
+            student,
+            message: msg,
+            channel: rule.channel,
+            recipientTo: rule.recipientTo,
+            type: rule.type === 'BIRTHDAY' ? 'BIRTHDAY' : 'PAYMENT',
+            schoolId,
+            campaignId: campaign.id
+          });
           if (r.success) sent++; else failed++;
         }
         await prisma.messageCampaign.update({ where: { id: campaign.id }, data: { sentCount: sent, failedCount: failed } });
       }
 
       await prisma.autoMessageRule.update({ where: { id: rule.id }, data: { lastRunDate: todayStr } });
-      results.push({ ruleId: rule.id, type: rule.type, schoolId, targets: targets.length, sent, failed });
+      results.push({ ruleId: rule.id, name: rule.name, schoolId, targets: targets.length, sent, failed });
     }
 
-    res.json({ success: true, date: todayStr, results });
+    res.json({ success: true, date: todayStr, hour: currentHour, results });
+  } catch (err) { next(err); }
+});
+
+// API: Failed SMS/Telegram loglarni qaytadan jo'natish
+app.post('/api/sms/resend-failed', authenticate, async (req, res, next) => {
+  try {
+    const { logIds, startDate, endDate } = req.body;
+    const schoolId = req.user.schoolId;
+    let logsToResend = [];
+
+    if (Array.isArray(logIds) && logIds.length > 0) {
+      logsToResend = await prisma.smsLog.findMany({
+        where: {
+          id: { in: logIds.map(Number) },
+          schoolId,
+          status: 'FAILED'
+        }
+      });
+    } else if (startDate && endDate) {
+      const start = new Date(startDate);
+      start.setHours(0, 0, 0, 0);
+      const end = new Date(endDate);
+      end.setHours(23, 59, 59, 999);
+
+      logsToResend = await prisma.smsLog.findMany({
+        where: {
+          schoolId,
+          status: 'FAILED',
+          sentAt: { gte: start, lte: end }
+        }
+      });
+    } else {
+      return res.status(400).json({ error: 'logIds yoki startDate va endDate kerak' });
+    }
+
+    if (logsToResend.length === 0) {
+      return res.json({ success: true, count: 0, message: "Qayta jo'natish uchun xabarlar topilmadi" });
+    }
+
+    let successCount = 0;
+    let failCount = 0;
+
+    for (const log of logsToResend) {
+      if (log.channel === 'TELEGRAM') {
+        try {
+          const schoolBot = await getTelegramBot(schoolId);
+          if (schoolBot) {
+            await schoolBot.telegram.sendMessage(log.toPhone, log.message);
+            successCount++;
+            await prisma.smsLog.update({
+              where: { id: log.id },
+              data: { status: 'SENT', errorMsg: null, sentAt: new Date() }
+            });
+          } else {
+            failCount++;
+            await prisma.smsLog.update({
+              where: { id: log.id },
+              data: { errorMsg: 'Telegram bot topilmadi', sentAt: new Date() }
+            });
+          }
+        } catch (tgErr) {
+          failCount++;
+          await prisma.smsLog.update({
+            where: { id: log.id },
+            data: { errorMsg: tgErr.message, sentAt: new Date() }
+          });
+        }
+      } else if (log.channel === 'SMS') {
+        const result = await sendSms(log.toPhone, log.message, log.type, log.studentId, schoolId, log.campaignId);
+        if (result.success) {
+          successCount++;
+          await prisma.smsLog.delete({ where: { id: log.id } }).catch(() => {});
+        } else {
+          failCount++;
+          await prisma.smsLog.update({
+            where: { id: log.id },
+            data: { errorMsg: JSON.stringify(result.data || result.error || 'SMS failed on resend'), sentAt: new Date() }
+          });
+        }
+      }
+    }
+
+    res.json({ success: true, total: logsToResend.length, successCount, failCount });
   } catch (err) { next(err); }
 });
 
@@ -3764,15 +4120,21 @@ app.get('/api/billing/status', authenticate, async (req, res, next) => {
 
 app.post('/api/billing/notify-debtors', authenticate, async (req, res, next) => {
   try {
-    const { schoolId, month, messageTemplate, channel } = req.body;
+    const { schoolId, month, messageTemplate, channel, statusFilter } = req.body;
     if (!schoolId || !month || !messageTemplate || !channel) {
       return res.status(400).json({ error: 'schoolId, month, messageTemplate, and channel are required' });
     }
     const sid = parseInt(schoolId);
 
+    const statusList = statusFilter === 'passive'
+      ? ['Passiv', 'Ketgan']
+      : statusFilter === 'all'
+        ? ['Faol', 'Sinov', 'Passiv', 'Ketgan']
+        : ['Faol', 'Sinov'];
+
     const groups = await prisma.group.findMany({
       where: { schoolId: sid },
-      include: { course: true, students: { where: { status: { in: ['Faol', 'Sinov'] } } } }
+      include: { course: true, students: { where: { status: { in: statusList } } } }
     });
 
     const allPayments = await prisma.payment.findMany({ where: { schoolId: sid } });

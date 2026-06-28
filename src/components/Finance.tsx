@@ -73,6 +73,7 @@ export default function Finance() {
     const [showDebtNotifyModal, setShowDebtNotifyModal] = useState(false);
     const [debtNotifyTemplate, setDebtNotifyTemplate] = useState("Hurmatli {ism}, sizning {oylik} oyi uchun qarzingiz {qarz} UZS. Iltimos, to'lovni vaqtida amalga oshiring. Muassasa: {markaz}");
     const [debtNotifyChannel, setDebtNotifyChannel] = useState<'SMS' | 'TELEGRAM' | 'BOTH'>('BOTH');
+    const [debtNotifyStatusFilter, setDebtNotifyStatusFilter] = useState<'active' | 'passive' | 'all'>('active');
     const [isSendingDebtNotify, setIsSendingDebtNotify] = useState(false);
 
     const handleSendDebtNotifications = async () => {
@@ -89,7 +90,8 @@ export default function Finance() {
                     schoolId: selectedSchoolId,
                     month: billingMonth,
                     messageTemplate: debtNotifyTemplate,
-                    channel: debtNotifyChannel
+                    channel: debtNotifyChannel,
+                    statusFilter: debtNotifyStatusFilter
                 })
             });
             const data = await res.json();
@@ -164,6 +166,7 @@ export default function Finance() {
 
     // Date preset states
     const [selectedPreset, setSelectedPreset] = useState<'this_month' | 'last_30' | 'this_year' | 'all' | 'custom'>('this_month');
+    const [studentStatus, setStudentStatus] = useState<'all' | 'active' | 'inactive'>('all');
     const [startDate, setStartDate] = useState(() => {
         const d = new Date();
         d.setDate(1);
@@ -290,6 +293,12 @@ export default function Finance() {
 
     // ─── Core metrics ─────────────────────────────────────────────
     const metrics = useMemo(() => {
+        const filteredStudents = students.filter(s => {
+            if (studentStatus === 'all') return true;
+            if (studentStatus === 'active') return s.status === 'Faol';
+            return s.status !== 'Faol';
+        });
+
         const posPayments = payments.filter(p => p.amount > 0);
 
         // Previous period of equal length
@@ -319,13 +328,15 @@ export default function Finance() {
         const profTrend = lastMonthProfit ? Math.round(((thisMonthProfit - lastMonthProfit) / Math.abs(lastMonthProfit)) * 100) : 0;
 
         // Student balances
-        const debtors = students.filter(s => s.balance < 0);
+        const debtors = filteredStudents.filter(s => s.balance < 0);
         const totalDebt = debtors.reduce((s, st) => s + Math.abs(st.balance), 0);
-        const creditors = students.filter(s => s.balance > 0);
+        const creditors = filteredStudents.filter(s => s.balance > 0);
         const totalCredit = creditors.reduce((s, st) => s + st.balance, 0);
+        const zeroBalanceCount = filteredStudents.filter(s => s.balance === 0).length;
 
         // Students who haven't paid in this period (active students = in at least 1 group)
-        const activeStudentIds = new Set(groups.flatMap(g => g.studentIds || []));
+        const filteredStudentIds = new Set(filteredStudents.map(s => s.id));
+        const activeStudentIds = new Set(groups.flatMap(g => g.studentIds || []).filter(id => filteredStudentIds.has(id)));
         const paidThisMonth = new Set(posPayments.filter(p => p.date >= startDate && p.date <= endDate).map(p => p.studentId));
         const unpaidCount = [...activeStudentIds].filter(id => !paidThisMonth.has(id)).length;
 
@@ -375,9 +386,11 @@ export default function Finance() {
             thisMonthProfit, thisMonthCount, todayRevenue, allTimeRevenue, allTimeExpenses,
             allTimeProfit, avgPayment, revTrend, expTrend, profTrend,
             debtors, totalDebt, creditors, totalCredit, unpaidCount,
-            typeSlices, catBars, trendBars, trendLine, topDebtors
+            typeSlices, catBars, trendBars, trendLine, topDebtors,
+            activeStudentCount: activeStudentIds.size,
+            zeroBalanceCount
         };
-    }, [payments, expenses, students, groups, startDate, endDate, todayStr]);
+    }, [payments, expenses, students, groups, startDate, endDate, todayStr, studentStatus]);
 
     // ─── List filters ─────────────────────────────────────────────
     const filteredPayments = useMemo(() => {
@@ -559,25 +572,25 @@ export default function Finance() {
                             </p>
                             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                                 <StatCard
-                                    label="Bu oylik tushum"
+                                    label="Tushum"
                                     value={metrics.thisMonthRevenue.toLocaleString() + ' UZS'}
-                                    sub="kirim"
+                                    sub="tanlangan davr"
                                     trend={metrics.revTrend}
                                     icon={<TrendingUp size={18} />}
                                     color="emerald"
                                 />
                                 <StatCard
-                                    label="Bu oylik xarajat"
+                                    label="Xarajat"
                                     value={metrics.thisMonthExpenses.toLocaleString() + ' UZS'}
-                                    sub="chiqim"
+                                    sub="tanlangan davr"
                                     trend={metrics.expTrend !== 0 ? -metrics.expTrend : undefined}
                                     icon={<TrendingDown size={18} />}
                                     color="rose"
                                 />
                                 <StatCard
-                                    label="Bu oylik sof foyda"
+                                    label="Sof foyda"
                                     value={metrics.thisMonthProfit.toLocaleString() + ' UZS'}
-                                    sub="foyda"
+                                    sub="tanlangan davr"
                                     trend={metrics.profTrend}
                                     icon={<Wallet size={18} />}
                                     color={metrics.thisMonthProfit >= 0 ? 'sky' : 'rose'}
@@ -588,13 +601,16 @@ export default function Finance() {
                         {/* Ikkinchi qator — qo'shimcha metrikalar */}
                         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                             {[
-                                { label: "Bugungi tushum", value: metrics.todayRevenue.toLocaleString() + ' UZS', icon: <Calendar size={16} />, color: 'amber' as const },
-                                { label: "Bu oylik to'lovlar", value: metrics.thisMonthCount + ' ta', icon: <CreditCard size={16} />, color: 'violet' as const },
+                                { label: "Faol o'quvchilar", value: metrics.activeStudentCount + ' ta', icon: <Users size={16} />, color: 'amber' as const },
+                                { label: "To'lovlar soni", value: metrics.thisMonthCount + ' ta', icon: <CreditCard size={16} />, color: 'violet' as const },
                                 { label: "O'rtacha to'lov", value: metrics.avgPayment.toLocaleString() + ' UZS', icon: <ArrowUpRight size={16} />, color: 'indigo' as const },
                                 { label: "To'lamagan o'quvchilar", value: metrics.unpaidCount + ' ta', icon: <AlertCircle size={16} />, color: 'rose' as const },
                             ].map((m, i) => (
-                                <div key={i} className="bg-gray-50 dark:bg-gray-900/50 rounded-2xl border border-gray-100 dark:border-gray-700/50 p-4 flex flex-col gap-2">
-                                    <span className="text-[9px] font-black text-gray-400 uppercase tracking-widest">{m.label}</span>
+                                <div key={i} className="bg-gray-55 dark:bg-gray-900/50 rounded-2xl border border-gray-100 dark:border-gray-700/50 p-4 flex flex-col gap-2">
+                                    <div className="flex items-center gap-1.5 text-gray-400 dark:text-gray-500">
+                                        {m.icon}
+                                        <span className="text-[9px] font-black uppercase tracking-widest">{m.label}</span>
+                                    </div>
                                     <p className="text-base font-black text-gray-900 dark:text-white tabular-nums">{m.value}</p>
                                 </div>
                             ))}
@@ -627,37 +643,83 @@ export default function Finance() {
                             </div>
                         </div>
 
-                        {/* Jami ko'rsatkichlar */}
-                        <div>
-                            <p className="text-[9px] font-black text-gray-400 uppercase tracking-widest mb-4">Jami (barcha vaqt)</p>
-                            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                                <StatCard label="Jami tushum" value={metrics.allTimeRevenue.toLocaleString() + ' UZS'} sub="barcha vaqt" icon={<DollarSign size={18} />} color="emerald" />
-                                <StatCard label="Jami xarajat" value={metrics.allTimeExpenses.toLocaleString() + ' UZS'} sub="barcha vaqt" icon={<TrendingDown size={18} />} color="rose" />
-                                <StatCard label="Jami sof foyda" value={metrics.allTimeProfit.toLocaleString() + ' UZS'} sub="barcha vaqt" icon={<TrendingUp size={18} />} color={metrics.allTimeProfit >= 0 ? 'sky' : 'rose'} />
+                        {/* O'tgan oy taqqoslash */}
+                        <div className="bg-gray-50 dark:bg-gray-900/40 rounded-2xl border border-gray-100 dark:border-gray-700/50 p-5">
+                            <p className="text-[9px] font-black text-gray-400 uppercase tracking-widest mb-4">
+                                O'tgan oy taqqoslash — {MONTHS[lastMonthDate.getMonth()]} {lastMonthDate.getFullYear()}
+                            </p>
+                            <div className="grid grid-cols-3 gap-4">
+                                {[
+                                    { label: "Tushum", cur: metrics.thisMonthRevenue, prev: metrics.lastMonthRevenue, pos: true },
+                                    { label: "Xarajat", cur: metrics.thisMonthExpenses, prev: metrics.lastMonthExpenses, pos: false },
+                                    { label: "Foyda", cur: metrics.thisMonthProfit, prev: metrics.lastMonthRevenue - metrics.lastMonthExpenses, pos: true },
+                                ].map((item, i) => {
+                                    const diff = item.cur - item.prev;
+                                    const isUp = diff > 0;
+                                    return (
+                                        <div key={i} className="text-center">
+                                            <p className="text-[9px] font-black text-gray-400 uppercase tracking-widest mb-2">{item.label}</p>
+                                            <p className="text-lg font-black text-gray-900 dark:text-white tabular-nums">{item.cur.toLocaleString()}</p>
+                                            <p className="text-[9px] text-gray-400 tabular-nums mt-0.5">{item.prev.toLocaleString()} o'tgan oy</p>
+                                            {diff !== 0 && (
+                                                <span className={`inline-flex items-center gap-0.5 text-[9px] font-black mt-1 px-2 py-0.5 rounded-lg ${(item.pos ? isUp : !isUp) ? 'text-emerald-600 bg-emerald-50 dark:bg-emerald-950/30' : 'text-rose-600 bg-rose-50 dark:bg-rose-950/30'}`}>
+                                                    {isUp ? <TrendingUp size={9} /> : <TrendingDown size={9} />}
+                                                    {Math.abs(diff).toLocaleString()} UZS
+                                                </span>
+                                            )}
+                                        </div>
+                                    );
+                                })}
                             </div>
                         </div>
 
-                        {/* Asosiy 2 ta moliyaviy metrika */}
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                            <StatCard
-                                label="Umumiy talabalar qarzdorligi"
-                                value={metrics.totalDebt.toLocaleString() + ' UZS'}
-                                sub={`${metrics.debtors.length} ta qarzdor o'quvchi`}
-                                icon={<AlertCircle size={18} />}
-                                color="rose"
-                            />
-                            <StatCard
-                                label="Avans to'lovlar summasi"
-                                value={metrics.totalCredit.toLocaleString() + ' UZS'}
-                                sub={`${metrics.creditors.length} ta o'quvchi oldindan to'lagan`}
-                                icon={<ArrowUpRight size={18} />}
-                                color="emerald"
-                            />
-                        </div>
+                        {/* O'quvchilar balansi va qarzdorligi */}
+                        <div className="border-t border-gray-100 dark:border-gray-800/80 pt-6">
+                            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-4">
+                                <p className="text-[9px] font-black text-gray-400 uppercase tracking-widest">
+                                    O'quvchilar moliyaviy holati va qarzdorligi
+                                </p>
+                                <div className="flex items-center gap-1 bg-gray-55 dark:bg-gray-900 p-1 rounded-xl border border-gray-100 dark:border-gray-700/50 self-start sm:self-auto">
+                                    {[
+                                        { value: 'all', label: "Barcha o'quvchilar" },
+                                        { value: 'active', label: "Faol o'quvchilar" },
+                                        { value: 'inactive', label: "Ketgan / Nofaol" }
+                                    ].map((opt) => (
+                                        <button
+                                            key={opt.value}
+                                            type="button"
+                                            onClick={() => setStudentStatus(opt.value as any)}
+                                            className={`px-3 py-1.5 rounded-lg text-[9px] font-extrabold uppercase tracking-wider transition-all cursor-pointer ${
+                                                studentStatus === opt.value
+                                                    ? 'bg-[#1b6b6b] text-white shadow'
+                                                    : 'text-gray-400 hover:text-gray-600'
+                                            }`}
+                                        >
+                                            {opt.label}
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
 
-                        {/* O'quvchilar moliyaviy holati */}
-                        <div>
-                            <p className="text-[9px] font-black text-gray-400 uppercase tracking-widest mb-4">O'quvchilar moliyaviy holati</p>
+                            {/* Asosiy 2 ta moliyaviy metrika */}
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
+                                <StatCard
+                                    label="Umumiy talabalar qarzdorligi"
+                                    value={metrics.totalDebt.toLocaleString() + ' UZS'}
+                                    sub={`${metrics.debtors.length} ta qarzdor o'quvchi`}
+                                    icon={<AlertCircle size={18} />}
+                                    color="rose"
+                                />
+                                <StatCard
+                                    label="Avans to'lovlar summasi"
+                                    value={metrics.totalCredit.toLocaleString() + ' UZS'}
+                                    sub={`${metrics.creditors.length} ta o'quvchi oldindan to'lagan`}
+                                    icon={<ArrowUpRight size={18} />}
+                                    color="emerald"
+                                />
+                            </div>
+
+                            {/* O'quvchilar moliyaviy holati bloklari */}
                             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                                 <div className="bg-rose-50 dark:bg-rose-950/20 rounded-2xl border border-rose-100 dark:border-rose-900/40 p-4">
                                     <span className="text-[9px] font-black text-rose-500 uppercase tracking-widest block mb-1">Qarzdorlar</span>
@@ -671,7 +733,7 @@ export default function Finance() {
                                 </div>
                                 <div className="bg-gray-50 dark:bg-gray-900/50 rounded-2xl border border-gray-100 dark:border-gray-700/50 p-4">
                                     <span className="text-[9px] font-black text-gray-400 uppercase tracking-widest block mb-1">Nol balans</span>
-                                    <p className="text-2xl font-black text-gray-600 dark:text-gray-300">{students.filter(s => s.balance === 0).length} ta</p>
+                                    <p className="text-2xl font-black text-gray-600 dark:text-gray-300">{metrics.zeroBalanceCount} ta</p>
                                     <p className="text-[9px] font-bold text-gray-400 mt-1">to'langan</p>
                                 </div>
                                 <div className="bg-amber-50 dark:bg-amber-950/20 rounded-2xl border border-amber-100 dark:border-amber-900/40 p-4">
@@ -710,35 +772,7 @@ export default function Finance() {
                             </div>
                         )}
 
-                        {/* O'tgan oy taqqoslash */}
-                        <div className="bg-gray-50 dark:bg-gray-900/40 rounded-2xl border border-gray-100 dark:border-gray-700/50 p-5">
-                            <p className="text-[9px] font-black text-gray-400 uppercase tracking-widest mb-4">
-                                O'tgan oy taqqoslash — {MONTHS[lastMonthDate.getMonth()]} {lastMonthDate.getFullYear()}
-                            </p>
-                            <div className="grid grid-cols-3 gap-4">
-                                {[
-                                    { label: "Tushum", cur: metrics.thisMonthRevenue, prev: metrics.lastMonthRevenue, pos: true },
-                                    { label: "Xarajat", cur: metrics.thisMonthExpenses, prev: metrics.lastMonthExpenses, pos: false },
-                                    { label: "Foyda", cur: metrics.thisMonthProfit, prev: metrics.lastMonthRevenue - metrics.lastMonthExpenses, pos: true },
-                                ].map((item, i) => {
-                                    const diff = item.cur - item.prev;
-                                    const isUp = diff > 0;
-                                    return (
-                                        <div key={i} className="text-center">
-                                            <p className="text-[9px] font-black text-gray-400 uppercase tracking-widest mb-2">{item.label}</p>
-                                            <p className="text-lg font-black text-gray-900 dark:text-white tabular-nums">{item.cur.toLocaleString()}</p>
-                                            <p className="text-[9px] text-gray-400 tabular-nums mt-0.5">{item.prev.toLocaleString()} o'tgan oy</p>
-                                            {diff !== 0 && (
-                                                <span className={`inline-flex items-center gap-0.5 text-[9px] font-black mt-1 px-2 py-0.5 rounded-lg ${(item.pos ? isUp : !isUp) ? 'text-emerald-600 bg-emerald-50 dark:bg-emerald-950/30' : 'text-rose-600 bg-rose-50 dark:bg-rose-950/30'}`}>
-                                                    {isUp ? <TrendingUp size={9} /> : <TrendingDown size={9} />}
-                                                    {Math.abs(diff).toLocaleString()} UZS
-                                                </span>
-                                            )}
-                                        </div>
-                                    );
-                                })}
-                            </div>
-                        </div>
+
                         {/* ── Jadvallar ── */}
                         {(() => {
                             const prefix = reportFilter === 'thisMonth' ? thisMonthPrefix
@@ -1498,6 +1532,29 @@ export default function Finance() {
                         </div>
                         <div className="space-y-4">
                             <div>
+                                <label className={lbl}>O'quvchilar Turi</label>
+                                <div className="flex gap-2">
+                                    {([
+                                        { value: 'active', label: "Faol o'quvchilar" },
+                                        { value: 'passive', label: "Ketgan o'quvchilar" },
+                                        { value: 'all', label: 'Hammasi' },
+                                    ] as const).map(opt => (
+                                        <button
+                                            key={opt.value}
+                                            type="button"
+                                            onClick={() => setDebtNotifyStatusFilter(opt.value)}
+                                            className={`flex-1 py-2 rounded-xl text-[10px] font-extrabold uppercase tracking-wider border transition-all cursor-pointer ${
+                                                debtNotifyStatusFilter === opt.value
+                                                    ? 'bg-[#1b6b6b] text-white border-[#1b6b6b]'
+                                                    : 'bg-gray-50 dark:bg-gray-700 text-gray-600 dark:text-gray-300 border-gray-200 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-600'
+                                            }`}
+                                        >
+                                            {opt.label}
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
+                            <div>
                                 <label className={lbl}>Xabar Yuborish Kanali</label>
                                 <select className={inp} value={debtNotifyChannel} onChange={e => setDebtNotifyChannel(e.target.value as any)}>
                                     <option value="BOTH">Telegram Bot & SMS (Telegram yo'q bo'lsa SMS)</option>
@@ -1519,7 +1576,7 @@ export default function Finance() {
                             </div>
                             
                             <div className="bg-amber-50 dark:bg-amber-950/20 border border-amber-100 dark:border-amber-900/40 rounded-2xl p-4 text-[10px] text-amber-700 dark:text-amber-400 font-bold uppercase tracking-wider space-y-1">
-                                <p>⚠️ DIQQAT: Xabar markazga tegishli faol qarzdor o'quvchilarga (jami: {billingData?.students.filter((st: any) => st.status !== 'paid').length} ta) yuboriladi.</p>
+                                <p>⚠️ DIQQAT: Xabar {debtNotifyStatusFilter === 'passive' ? "ketgan/passiv" : debtNotifyStatusFilter === 'all' ? "barcha" : "faol"} qarzdor o'quvchilarga yuboriladi.</p>
                                 <p>SMS orqali yuborilsa, Eskiz SMS balansingizdan haq yechiladi.</p>
                             </div>
 

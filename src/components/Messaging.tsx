@@ -15,9 +15,12 @@ interface Student {
   balance: number;
   gender: string;
   telegramId?: string | null;
+  fatherName?: string | null;
   fatherPhone?: string | null;
+  motherName?: string | null;
   motherPhone?: string | null;
   groups: any[];
+  schoolId?: number;
 }
 
 interface MessageTemplate {
@@ -25,6 +28,12 @@ interface MessageTemplate {
   name: string;
   body: string;
   category: string;
+  isAuto: boolean;
+  autoType?: 'BIRTHDAY' | 'DEBT_REMINDER' | null;
+  autoChannel: 'SMS' | 'TELEGRAM' | 'BOTH';
+  autoRecipient: 'PARENT' | 'STUDENT';
+  autoConfig?: { dayOfMonth?: number; minDebt?: number } | null;
+  autoTime?: string | null;
 }
 
 interface MessageCampaign {
@@ -49,20 +58,50 @@ interface SmsLog {
   channel: string;
   campaignId?: number | null;
   sentAt: string;
+  eskizId?: string | null;
 }
 
 interface AutoRule {
   id?: number;
-  type: 'BIRTHDAY' | 'DEBT_REMINDER';
+  name: string;
+  type: string;
   enabled: boolean;
   body: string;
   channel: 'SMS' | 'TELEGRAM' | 'BOTH';
   recipientTo: 'PARENT' | 'STUDENT';
+  time: string;
   config?: {
     dayOfMonth?: number;
     minDebt?: number;
   } | null;
 }
+
+const getTriggerTypeMeta = (type: string) => {
+  switch (type) {
+    case 'BIRTHDAY':
+      return { icon: '🎂', label: "Tug'ilgan kun", color: 'bg-pink-100 dark:bg-pink-950/30 text-pink-500' };
+    case 'DEBT_REMINDER':
+      return { icon: '💸', label: 'Qarzdorlik', color: 'bg-amber-100 dark:bg-amber-950/30 text-amber-500' };
+    case 'ABSENCE_REMINDER':
+      return { icon: '🚫', label: 'Dars qoldirish', color: 'bg-rose-100 dark:bg-rose-950/30 text-rose-500' };
+    case 'LEAD_WELCOME':
+      return { icon: '📞', label: 'Yangi lid', color: 'bg-emerald-100 dark:bg-emerald-950/30 text-emerald-500' };
+    case 'GROUP_WELCOME':
+      return { icon: '🎉', label: "Guruhga qo'shilish", color: 'bg-indigo-100 dark:bg-indigo-950/30 text-indigo-500' };
+    case 'EXAM_RESULT':
+      return { icon: '📝', label: 'Imtihon natijasi', color: 'bg-blue-100 dark:bg-blue-950/30 text-blue-500' };
+    case 'PAYMENT_CONFIRM':
+      return { icon: '💰', label: "To'lov tasdig'i", color: 'bg-teal-100 dark:bg-teal-950/30 text-teal-500' };
+    case 'DAILY_SCORE':
+      return { icon: '⭐️', label: 'Kunlik baho', color: 'bg-yellow-100 dark:bg-yellow-950/30 text-yellow-500' };
+    case 'TRANSPORT_NOTIFY':
+      return { icon: '🚌', label: 'Transport', color: 'bg-cyan-100 dark:bg-cyan-950/30 text-cyan-500' };
+    case 'COURSE_GRADUATION':
+      return { icon: '🎓', label: 'Kurs bitiruvi', color: 'bg-violet-100 dark:bg-violet-950/30 text-violet-500' };
+    default:
+      return { icon: '⚙️', label: 'Boshqa', color: 'bg-slate-100 dark:bg-slate-950/30 text-slate-500' };
+  }
+};
 
 export default function Messaging() {
   const { t } = useLang();
@@ -87,26 +126,39 @@ export default function Messaging() {
 
   const [channel, setChannel] = useState<'SMS' | 'TELEGRAM' | 'BOTH'>('SMS');
   const [useSmsFallback, setUseSmsFallback] = useState(true);
-  const [recipientTo, setRecipientTo] = useState<'PARENT' | 'STUDENT'>('PARENT');
+  const [recipientTo, setRecipientTo] = useState<'PARENT' | 'STUDENT' | 'FATHER' | 'MOTHER'>('PARENT');
   const [messageText, setMessageText] = useState('');
   const [selectedTemplateId, setSelectedTemplateId] = useState<string>('');
   const [isSending, setIsSending] = useState(false);
   const [confirmModalOpen, setConfirmModalOpen] = useState(false);
   const [showRecipientListModal, setShowRecipientListModal] = useState(false);
-  const [selectedRecipientIds, setSelectedRecipientIds] = useState<Record<number, boolean>>({});
+  const [selectedRecipientIds, setSelectedRecipientIds] = useState<Record<string, boolean>>({});
 
   // Tab 2: Templates state
   const [templates, setTemplates] = useState<MessageTemplate[]>([]);
   const [templateModalOpen, setTemplateModalOpen] = useState(false);
   const [editingTemplate, setEditingTemplate] = useState<MessageTemplate | null>(null);
-  const [templateForm, setTemplateForm] = useState({ name: '', body: '', category: 'Umumiy' });
+  const [templateForm, setTemplateForm] = useState({
+    name: '',
+    body: '',
+    category: 'Umumiy'
+  });
 
   // Tab 3: Auto Rules state
-  const [rules, setRules] = useState<AutoRule[]>([
-    { type: 'BIRTHDAY', enabled: false, body: '', channel: 'BOTH', recipientTo: 'PARENT' },
-    { type: 'DEBT_REMINDER', enabled: false, body: '', channel: 'BOTH', recipientTo: 'PARENT', config: { dayOfMonth: 1, minDebt: 0 } }
-  ]);
-  const [savingRuleType, setSavingRuleType] = useState<string | null>(null);
+  const [rules, setRules] = useState<AutoRule[]>([]);
+  const [autoRuleModalOpen, setAutoRuleModalOpen] = useState(false);
+  const [editingAutoRule, setEditingAutoRule] = useState<AutoRule | null>(null);
+  const [autoRuleForm, setAutoRuleForm] = useState({
+    name: '',
+    type: 'BIRTHDAY',
+    enabled: true,
+    body: '',
+    channel: 'BOTH' as 'SMS' | 'TELEGRAM' | 'BOTH',
+    recipientTo: 'PARENT' as 'PARENT' | 'STUDENT',
+    time: '09:00',
+    minDebt: 0,
+    dayOfMonth: 1
+  });
 
   // Tab 4: History state
   const [campaigns, setCampaigns] = useState<MessageCampaign[]>([]);
@@ -114,6 +166,58 @@ export default function Messaging() {
   const [logs, setLogs] = useState<SmsLog[]>([]);
   const [searchLogQuery, setSearchLogQuery] = useState('');
   const [statusLogFilter, setStatusLogFilter] = useState('all');
+
+  // Resend and checkbox states
+  const [selectedLogIds, setSelectedLogIds] = useState<Record<number, boolean>>({});
+  const [resendingLogs, setResendingLogs] = useState(false);
+  const getTodayStr = () => {
+    const d = new Date();
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  };
+  const [resendStartDate, setResendStartDate] = useState(getTodayStr());
+  const [resendEndDate, setResendEndDate] = useState(getTodayStr());
+
+  const handleResendLogs = async (useRange = false) => {
+    setResendingLogs(true);
+    try {
+      const payload: any = {};
+      if (useRange) {
+        payload.startDate = resendStartDate;
+        payload.endDate = resendEndDate;
+      } else {
+        const selectedIds = Object.keys(selectedLogIds)
+          .filter(id => selectedLogIds[Number(id)])
+          .map(Number);
+        if (selectedIds.length === 0) {
+          alert("Qayta yuborish uchun kamida bitta xabarni tanlang!");
+          setResendingLogs(false);
+          return;
+        }
+        payload.logIds = selectedIds;
+      }
+
+      const res = await fetch('/api/sms/resend-failed', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        },
+        body: JSON.stringify(payload)
+      });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        alert(`Qayta jo'natish yakunlandi! Jami: ${data.total}, Muvaffaqiyatli: ${data.successCount}, Xato: ${data.failCount}`);
+        setSelectedLogIds({});
+        fetchLogs();
+      } else {
+        alert("Xatolik: " + (data.error || "Xabarlarni qayta jo'natib bo'lmadi"));
+      }
+    } catch (e: any) {
+      alert("Xatolik: " + e.message);
+    } finally {
+      setResendingLogs(false);
+    }
+  };
 
   // CSS Classes
   const inp = "w-full px-3.5 py-2 bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700/80 rounded-xl text-xs font-bold text-slate-800 dark:text-slate-200 placeholder:text-slate-400 outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/10 transition-all";
@@ -132,7 +236,7 @@ export default function Messaging() {
 
   const fetchTemplates = async () => {
     try {
-      const res = await fetch('/api/messaging/templates', {
+      const res = await fetch(`/api/messaging/templates?t=${Date.now()}`, {
         headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
       });
       if (res.ok) setTemplates(await res.json());
@@ -141,7 +245,7 @@ export default function Messaging() {
 
   const fetchCampaigns = async () => {
     try {
-      const res = await fetch('/api/messaging/campaigns', {
+      const res = await fetch(`/api/messaging/campaigns?t=${Date.now()}`, {
         headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
       });
       if (res.ok) setCampaigns(await res.json());
@@ -150,16 +254,11 @@ export default function Messaging() {
 
   const fetchRules = async () => {
     try {
-      const res = await fetch('/api/messaging/auto-rules', {
+      const res = await fetch(`/api/messaging/auto-rules?t=${Date.now()}`, {
         headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
       });
       if (res.ok) {
-        const data = await res.json();
-        const updatedRules = rules.map(r => {
-          const match = data.find((d: any) => d.type === r.type);
-          return match ? { ...r, ...match } : r;
-        });
-        setRules(updatedRules);
+        setRules(await res.json());
       }
     } catch (e) { console.error(e); }
   };
@@ -167,7 +266,7 @@ export default function Messaging() {
   const fetchLogs = async () => {
     try {
       setLogsLoading(true);
-      const res = await fetch('/api/sms/logs', {
+      const res = await fetch(`/api/sms/logs?t=${Date.now()}`, {
         headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
       });
       if (res.ok) setLogs(await res.json());
@@ -175,21 +274,7 @@ export default function Messaging() {
     finally { setLogsLoading(false); }
   };
 
-  const handleTestConnection = async () => {
-    try {
-      const res = await fetch('/api/sms/test-connection', {
-        headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
-      });
-      const data = await res.json();
-      if (data.success) {
-        alert("Eskiz API muvaffaqiyatli bog'landi! Token boshlanishi: " + data.token.substring(0, 10) + "...");
-      } else {
-        alert("Bog'lanishda xato: " + data.error);
-      }
-    } catch (err: any) {
-      alert("Bog'lanishda xato: " + err.message);
-    }
-  };
+
 
   const handleCheckStatus = async (id: number) => {
     try {
@@ -238,6 +323,7 @@ export default function Messaging() {
         // Aloqa kanali
         if (filters.contact === 'phone' && !item.phone) return false;
         if (filters.contact === 'telegram' && !item.telegramId) return false;
+        if (filters.contact === 'no_telegram' && item.telegramId) return false;
 
         return true;
       });
@@ -252,6 +338,7 @@ export default function Messaging() {
         // Aloqa kanali
         if (filters.contact === 'phone' && !item.phone) return false;
         if (filters.contact === 'telegram' && !item.telegramId) return false;
+        if (filters.contact === 'no_telegram' && item.telegramId) return false;
 
         return true;
       });
@@ -321,6 +408,8 @@ export default function Messaging() {
         if (!st.phone && !st.fatherPhone && !st.motherPhone) return false;
       } else if (filters.contact === 'telegram') {
         if (!st.telegramId) return false;
+      } else if (filters.contact === 'no_telegram') {
+        if (st.telegramId) return false;
       }
 
       return true;
@@ -335,22 +424,114 @@ export default function Messaging() {
   };
 
   const filteredRecipients = getFilteredRecipients();
-  const filteredRecipientsKey = filteredRecipients.map(r => r.id).join(',');
+  const filteredRecipientsKey = filteredRecipients.map(r => r.id).join(',') + recipientTo;
+
+  // Expanded recipient entries — in PARENT mode each student becomes 1-2 rows
+  type RecipientEntry = {
+    key: string;
+    studentId: number;
+    displayName: string;
+    displayPhone: string | null | undefined;
+    telegramId: string | null | undefined;
+    balance: number;
+    gender: string;
+    entryType: 'STUDENT' | 'FATHER' | 'MOTHER';
+  };
+
+  const recipientEntries: RecipientEntry[] = (() => {
+    const entries: RecipientEntry[] = [];
+    for (const st of filteredRecipients) {
+      const balance = Number(st.balance || 0);
+      if (recipientTo === 'PARENT') {
+        // Father row — only if fatherPhone exists
+        if (st.fatherPhone && st.fatherPhone.trim() !== '') {
+          entries.push({
+            key: `${st.id}-FATHER`,
+            studentId: st.id,
+            displayName: st.fatherName ? `${st.fatherName} (Otasi)` : `${st.name} (Otasi)`,
+            displayPhone: st.fatherPhone,
+            telegramId: null,
+            balance,
+            gender: 'Erkak',
+            entryType: 'FATHER',
+          });
+        }
+        // Mother row — only if motherPhone exists
+        if (st.motherPhone && st.motherPhone.trim() !== '') {
+          entries.push({
+            key: `${st.id}-MOTHER`,
+            studentId: st.id,
+            displayName: st.motherName ? `${st.motherName} (Onasi)` : `${st.name} (Onasi)`,
+            displayPhone: st.motherPhone,
+            telegramId: null,
+            balance,
+            gender: 'Ayol',
+            entryType: 'MOTHER',
+          });
+        }
+      } else if (recipientTo === 'FATHER') {
+        // Father only — only if fatherPhone exists
+        if (st.fatherPhone && st.fatherPhone.trim() !== '') {
+          entries.push({
+            key: `${st.id}`,
+            studentId: st.id,
+            displayName: st.fatherName ? `${st.fatherName} (Otasi)` : `${st.name} (Otasi)`,
+            displayPhone: st.fatherPhone,
+            telegramId: null,
+            balance,
+            gender: 'Erkak',
+            entryType: 'FATHER',
+          });
+        }
+      } else if (recipientTo === 'MOTHER') {
+        // Mother only — only if motherPhone exists
+        if (st.motherPhone && st.motherPhone.trim() !== '') {
+          entries.push({
+            key: `${st.id}`,
+            studentId: st.id,
+            displayName: st.motherName ? `${st.motherName} (Onasi)` : `${st.name} (Onasi)`,
+            displayPhone: st.motherPhone,
+            telegramId: null,
+            balance,
+            gender: 'Ayol',
+            entryType: 'MOTHER',
+          });
+        }
+      } else {
+        // Student/Teacher/Staff — standard logic
+        const displayName = st.name;
+        const displayPhone = st.phone;
+        entries.push({
+          key: `${st.id}`,
+          studentId: st.id,
+          displayName,
+          displayPhone,
+          telegramId: st.telegramId,
+          balance,
+          gender: st.gender,
+          entryType: 'STUDENT',
+        });
+      }
+    }
+    return entries;
+  })();
 
   useEffect(() => {
-    const nextMap: Record<number, boolean> = {};
-    filteredRecipients.forEach(r => {
-      nextMap[r.id] = true;
+    const nextMap: Record<string, boolean> = {};
+    recipientEntries.forEach(e => {
+      nextMap[e.key] = true;
     });
     setSelectedRecipientIds(nextMap);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [filteredRecipientsKey]);
 
-  const activeSelectedCount = filteredRecipients.filter(r => selectedRecipientIds[r.id]).length;
-  const allChecked = filteredRecipients.length > 0 && filteredRecipients.every(r => selectedRecipientIds[r.id]);
+  const activeSelectedCount = recipientEntries.filter(e => selectedRecipientIds[e.key]).length;
+  const activeSelectedTargetCount = activeSelectedCount;
+  const allChecked = recipientEntries.length > 0 && recipientEntries.every(e => selectedRecipientIds[e.key]);
   const toggleAll = (checked: boolean) => {
-    const nextMap: Record<number, boolean> = {};
-    filteredRecipients.forEach(r => {
-      nextMap[r.id] = checked;
+    const nextMap: Record<string, boolean> = {};
+    recipientEntries.forEach(e => {
+      nextMap[e.key] = checked;
     });
     setSelectedRecipientIds(nextMap);
   };
@@ -381,7 +562,8 @@ export default function Messaging() {
   // Template placeholders replacement mockup for Preview panel
   const getPersonalizedPreview = () => {
     if (activeSelectedCount === 0) return "Tanlangan qabul qiluvchilar ro'yxati bo'sh. Kamida 1 ta qabul qiluvchini tanlang.";
-    const st = filteredRecipients.find(r => selectedRecipientIds[r.id]) || filteredRecipients[0];
+    const entry = recipientEntries.find(e => selectedRecipientIds[e.key]);
+    const st = entry ? filteredRecipients.find(r => r.id === entry.studentId) || filteredRecipients[0] : filteredRecipients[0];
     const balance = Number(st.balance || 0);
     const debt = balance < 0 ? Math.abs(balance) : 0;
     const groupNames = (st.groups || [])
@@ -417,7 +599,11 @@ export default function Messaging() {
     setIsSending(true);
     setConfirmModalOpen(false);
     try {
-      const studentIds = filteredRecipients.filter(r => selectedRecipientIds[r.id]).map(r => r.id);
+      // Build per-entry send list: [{studentId, recipientTo}]
+      const sendList = recipientEntries
+        .filter(e => selectedRecipientIds[e.key])
+        .map(e => ({ studentId: e.studentId, recipientTo: e.entryType }));
+      const studentIds = [...new Set(sendList.map(e => e.studentId))];
       const res = await fetch('/api/messaging/send-batch', {
         method: 'POST',
         headers: {
@@ -426,6 +612,7 @@ export default function Messaging() {
         },
         body: JSON.stringify({
           studentIds,
+          sendList,
           audience,
           message: messageText,
           channel: channel === 'TELEGRAM' ? (useSmsFallback ? 'BOTH' : 'TELEGRAM') : channel,
@@ -450,29 +637,114 @@ export default function Messaging() {
     }
   };
 
-  // Rule Save handler
-  const handleSaveRule = async (rule: AutoRule) => {
-    setSavingRuleType(rule.type);
+  // Auto Rule Modal Form actions
+  const openAutoRuleModal = (r: AutoRule | null = null) => {
+    if (r) {
+      setEditingAutoRule(r);
+      const cfg = r.config || {};
+      setAutoRuleForm({
+        name: r.name || '',
+        type: r.type,
+        enabled: !!r.enabled,
+        body: r.body,
+        channel: r.channel,
+        recipientTo: r.recipientTo,
+        time: r.time || '09:00',
+        minDebt: cfg.minDebt || 0,
+        dayOfMonth: cfg.dayOfMonth || 1
+      });
+    } else {
+      setEditingAutoRule(null);
+      setAutoRuleForm({
+        name: '',
+        type: 'BIRTHDAY',
+        enabled: true,
+        body: '',
+        channel: 'BOTH',
+        recipientTo: 'PARENT',
+        time: '09:00',
+        minDebt: 0,
+        dayOfMonth: 1
+      });
+    }
+    setAutoRuleModalOpen(true);
+  };
+
+  const handleSaveAutoRule = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!autoRuleForm.name.trim() || !autoRuleForm.body.trim()) return;
     try {
-      const res = await fetch(`/api/messaging/auto-rules/${rule.type}`, {
+      const method = editingAutoRule ? 'PUT' : 'POST';
+      const url = editingAutoRule ? `/api/messaging/auto-rules/${editingAutoRule.id}` : '/api/messaging/auto-rules';
+      const payload = {
+        name: autoRuleForm.name,
+        type: autoRuleForm.type,
+        enabled: autoRuleForm.enabled,
+        body: autoRuleForm.body,
+        channel: autoRuleForm.channel,
+        recipientTo: autoRuleForm.recipientTo,
+        time: autoRuleForm.time,
+        config: autoRuleForm.type === 'DEBT_REMINDER' ? {
+          dayOfMonth: autoRuleForm.dayOfMonth,
+          minDebt: autoRuleForm.minDebt
+        } : null
+      };
+      const res = await fetch(url, {
+        method,
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        },
+        body: JSON.stringify(payload)
+      });
+      if (res.ok) {
+        setAutoRuleModalOpen(false);
+        fetchRules();
+      } else {
+        const err = await res.json();
+        alert("Xatolik: " + err.error);
+      }
+    } catch (err: any) {
+      alert("Xatolik yuz berdi: " + err.message);
+    }
+  };
+
+  const handleToggleRuleEnabled = async (rule: AutoRule) => {
+    try {
+      const res = await fetch(`/api/messaging/auto-rules/${rule.id}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${localStorage.getItem('token')}`
         },
-        body: JSON.stringify(rule)
+        body: JSON.stringify({ ...rule, enabled: !rule.enabled })
       });
       if (res.ok) {
-        alert("Avtomatik qoida muvaffaqiyatli saqlandi!");
         fetchRules();
       } else {
         const err = await res.json();
         alert("Xatolik: " + err.error);
       }
     } catch (e: any) {
-      alert("Xato: " + e.message);
-    } finally {
-      setSavingRuleType(null);
+      alert("Xatolik: " + e.message);
+    }
+  };
+
+  const handleDeleteRule = async (id: number) => {
+    if (!confirm("Haqiqatan ham bu avtomatik qoidani o'chirmoqchisiz?")) return;
+    try {
+      const res = await fetch(`/api/messaging/auto-rules/${id}`, {
+        method: 'DELETE',
+        headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+      });
+      if (res.ok) {
+        fetchRules();
+      } else {
+        const err = await res.json();
+        alert("Qoidani o'chirishda xatolik: " + (err.error || "Noma'lum xato"));
+      }
+    } catch (e: any) {
+      alert("Xatolik: " + e.message);
     }
   };
 
@@ -480,10 +752,18 @@ export default function Messaging() {
   const openTemplateModal = (t: MessageTemplate | null = null) => {
     if (t) {
       setEditingTemplate(t);
-      setTemplateForm({ name: t.name, body: t.body, category: t.category });
+      setTemplateForm({
+        name: t.name,
+        body: t.body,
+        category: t.category
+      });
     } else {
       setEditingTemplate(null);
-      setTemplateForm({ name: '', body: '', category: 'Umumiy' });
+      setTemplateForm({
+        name: '',
+        body: '',
+        category: 'Umumiy'
+      });
     }
     setTemplateModalOpen(true);
   };
@@ -494,13 +774,24 @@ export default function Messaging() {
     try {
       const method = editingTemplate ? 'PUT' : 'POST';
       const url = editingTemplate ? `/api/messaging/templates/${editingTemplate.id}` : '/api/messaging/templates';
+      const payload = {
+        name: templateForm.name,
+        body: templateForm.body,
+        category: templateForm.category,
+        isAuto: false,
+        autoType: null,
+        autoChannel: 'BOTH',
+        autoRecipient: 'PARENT',
+        autoTime: '09:00',
+        autoConfig: null
+      };
       const res = await fetch(url, {
         method,
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${localStorage.getItem('token')}`
         },
-        body: JSON.stringify(templateForm)
+        body: JSON.stringify(payload)
       });
       if (res.ok) {
         setTemplateModalOpen(false);
@@ -521,7 +812,12 @@ export default function Messaging() {
         method: 'DELETE',
         headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
       });
-      if (res.ok) fetchTemplates();
+      if (res.ok) {
+        fetchTemplates();
+      } else {
+        const err = await res.json();
+        alert("Shablonni o'chirishda xatolik: " + (err.error || "Noma'lum xato"));
+      }
     } catch (e: any) { alert("Xatolik: " + e.message); }
   };
 
@@ -540,6 +836,15 @@ export default function Messaging() {
   };
 
   const displayLogs = getFilteredLogs();
+  const failedLogsInDisplay = displayLogs.filter(log => log.status === 'FAILED');
+  const allFailedChecked = failedLogsInDisplay.length > 0 && failedLogsInDisplay.every(log => selectedLogIds[log.id]);
+  const toggleAllFailed = (checked: boolean) => {
+    const nextMap = { ...selectedLogIds };
+    failedLogsInDisplay.forEach(log => {
+      nextMap[log.id] = checked;
+    });
+    setSelectedLogIds(nextMap);
+  };
 
   return (
     <div className="space-y-6 pb-12 animate-in fade-in duration-300 max-w-7xl mx-auto">
@@ -618,6 +923,39 @@ export default function Messaging() {
                 </button>
               </div>
             </div>
+
+            {/* Qabul qiluvchi tomon */}
+            {audience === 'STUDENTS' && (
+              <div>
+                <label className={lbl}>Qabul qiluvchi tomon</label>
+                <div className="grid grid-cols-4 gap-1 bg-slate-55 dark:bg-slate-800/80 p-1 rounded-xl border border-slate-200 dark:border-slate-700/50">
+                  <button
+                    onClick={() => setRecipientTo('STUDENT')}
+                    className={`py-1.5 rounded-lg text-[9px] font-black uppercase tracking-wider cursor-pointer transition-all ${recipientTo === 'STUDENT' ? 'bg-white dark:bg-slate-700 text-indigo-600 dark:text-indigo-400 shadow-sm' : 'text-slate-500'}`}
+                  >
+                    O'quvchi
+                  </button>
+                  <button
+                    onClick={() => setRecipientTo('FATHER')}
+                    className={`py-1.5 rounded-lg text-[9px] font-black uppercase tracking-wider cursor-pointer transition-all ${recipientTo === 'FATHER' ? 'bg-white dark:bg-slate-700 text-indigo-600 dark:text-indigo-400 shadow-sm' : 'text-slate-500'}`}
+                  >
+                    Otasi
+                  </button>
+                  <button
+                    onClick={() => setRecipientTo('MOTHER')}
+                    className={`py-1.5 rounded-lg text-[9px] font-black uppercase tracking-wider cursor-pointer transition-all ${recipientTo === 'MOTHER' ? 'bg-white dark:bg-slate-700 text-indigo-600 dark:text-indigo-400 shadow-sm' : 'text-slate-500'}`}
+                  >
+                    Onasi
+                  </button>
+                  <button
+                    onClick={() => setRecipientTo('PARENT')}
+                    className={`py-1.5 rounded-lg text-[9px] font-black uppercase tracking-wider cursor-pointer transition-all ${recipientTo === 'PARENT' ? 'bg-white dark:bg-slate-700 text-indigo-600 dark:text-indigo-400 shadow-sm' : 'text-slate-500'}`}
+                  >
+                    Ota-ona
+                  </button>
+                </div>
+              </div>
+            )}
 
             {/* Form Fields */}
             {audience === 'STUDENTS' ? (
@@ -714,6 +1052,7 @@ export default function Messaging() {
                     <option value="all">Filtrsiz</option>
                     <option value="phone">Telefoni borlar</option>
                     <option value="telegram">TelegramId ulanganlar</option>
+                    <option value="no_telegram">Telegramga ulanmaganlar</option>
                   </select>
                 </div>
 
@@ -744,7 +1083,6 @@ export default function Messaging() {
                     <option value="Nofaol">Nofaol</option>
                   </select>
                 </div>
-
                 <div>
                   <label className={lbl}>Aloqa kanali</label>
                   <select
@@ -755,76 +1093,69 @@ export default function Messaging() {
                     <option value="all">Filtrsiz</option>
                     <option value="phone">Telefoni borlar</option>
                     <option value="telegram">TelegramId ulanganlar</option>
+                    <option value="no_telegram">Telegramga ulanmaganlar</option>
                   </select>
                 </div>
               </div>
-            ) : (
-              <div className="grid grid-cols-1 gap-4">
-                <div>
-                  <label className={lbl}>Aloqa kanali</label>
-                  <select
-                    value={filters.contact}
-                    onChange={e => setFilters({ ...filters, contact: e.target.value })}
-                    className={inp}
-                  >
-                    <option value="all">Filtrsiz</option>
-                    <option value="phone">Telefoni borlar</option>
-                    <option value="telegram">TelegramId ulanganlar</option>
-                  </select>
-                </div>
-              </div>
-            )}
+            ) : null}
 
             {/* Recipient list inline */}
             <div className="space-y-3 pt-3 border-t border-dashed border-slate-100 dark:border-slate-800">
-              <div className="flex items-center gap-2">
-                <input 
-                  type="checkbox"
-                  checked={allChecked}
-                  onChange={(e) => toggleAll(e.target.checked)}
-                  className="w-3.5 h-3.5 rounded border-slate-300 dark:border-slate-700 text-indigo-600 focus:ring-indigo-500 cursor-pointer bg-white dark:bg-slate-800"
-                />
-                <h4 className="text-[10px] font-black uppercase text-slate-400 dark:text-slate-500 tracking-wider">
-                  Tanlangan qabul qiluvchilar ({activeSelectedCount}/{filteredRecipients.length} ta)
-                </h4>
+              <div className="flex items-center justify-between gap-2">
+                <div className="flex items-center gap-2">
+                  <input
+                    type="checkbox"
+                    checked={allChecked}
+                    onChange={(e) => toggleAll(e.target.checked)}
+                    className="w-3.5 h-3.5 rounded border-slate-300 dark:border-slate-700 text-indigo-600 focus:ring-indigo-500 cursor-pointer bg-white dark:bg-slate-800"
+                  />
+                  <span className="text-[10px] font-black uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                    Barchasi
+                  </span>
+                </div>
+                <span className="text-[10px] font-black tabular-nums text-indigo-500">
+                  {activeSelectedTargetCount} ta xabar / {filteredRecipients.length} ta o'quvchi
+                </span>
               </div>
 
-              {filteredRecipients.length > 0 ? (
+              {recipientEntries.length > 0 ? (
                 <div className="max-h-[280px] overflow-y-auto divide-y divide-slate-100/80 dark:divide-slate-800/80 pr-1 border border-slate-100 dark:border-slate-800 rounded-2xl p-2 bg-slate-50/40 dark:bg-slate-950/20">
-                  {filteredRecipients.map(st => {
-                    const balance = Number(st.balance || 0);
-                    const isDebtor = balance < 0;
+                  {recipientEntries.map(entry => {
+                    const isDebtor = entry.balance < 0;
                     return (
-                      <div key={st.id} className="py-2.5 flex items-center justify-between text-[11px] hover:bg-white dark:hover:bg-slate-800/40 px-2 rounded-xl transition-all">
+                      <div key={entry.key} className="py-2.5 flex items-center justify-between text-[11px] hover:bg-white dark:hover:bg-slate-800/40 px-2 rounded-xl transition-all">
                         <div className="flex items-center gap-2.5">
-                          <input 
+                          <input
                             type="checkbox"
-                            checked={!!selectedRecipientIds[st.id]}
+                            checked={!!selectedRecipientIds[entry.key]}
                             onChange={(e) => {
                               setSelectedRecipientIds(prev => ({
                                 ...prev,
-                                [st.id]: e.target.checked
+                                [entry.key]: e.target.checked
                               }));
                             }}
                             className="w-3.5 h-3.5 rounded border-slate-300 dark:border-slate-700 text-indigo-600 focus:ring-indigo-500 cursor-pointer bg-white dark:bg-slate-800"
                           />
-                          <div className={`w-6 h-6 rounded-full flex items-center justify-center text-[9px] font-black uppercase ${st.gender === 'Ayol' ? 'bg-pink-100 dark:bg-pink-950/30 text-pink-500' : 'bg-indigo-100 dark:bg-indigo-950/30 text-indigo-500'
-                            }`}>
-                            {st.name.charAt(0)}
+                          <div className={`w-6 h-6 rounded-full flex items-center justify-center text-[9px] font-black uppercase ${entry.gender === 'Ayol' ? 'bg-pink-100 dark:bg-pink-950/30 text-pink-500' : 'bg-indigo-100 dark:bg-indigo-950/30 text-indigo-500'}`}>
+                            {entry.displayName.charAt(0)}
                           </div>
                           <div>
-                            <p className="font-bold text-slate-800 dark:text-slate-200">{st.name}</p>
-                            <p className="text-[9px] font-bold text-slate-400 dark:text-slate-500 tabular-nums">
-                              {resolveRecipientPhone(st, recipientTo) || 'Raqam kiritilmagan'}
+                            <p className="font-bold text-slate-800 dark:text-slate-200">
+                              {entry.displayName}
+                            </p>
+                            <p className="text-[9px] font-bold tabular-nums">
+                              {entry.displayPhone
+                                ? <span className="text-slate-450 dark:text-slate-500">{entry.displayPhone}</span>
+                                : <span className="text-rose-500">Raqam yo'q</span>}
                             </p>
                           </div>
                         </div>
 
                         <div className="flex items-center gap-2 text-right">
-                          <span className={`text-[9px] font-bold tabular-nums ${isDebtor ? 'text-rose-500' : balance > 0 ? 'text-emerald-500' : 'text-slate-450'}`}>
-                            {balance.toLocaleString()} s.
+                          <span className={`text-[9px] font-bold tabular-nums ${isDebtor ? 'text-rose-500' : entry.balance > 0 ? 'text-emerald-500' : 'text-slate-450'}`}>
+                            {entry.balance.toLocaleString()} s.
                           </span>
-                          {st.telegramId ? (
+                          {entry.telegramId ? (
                             <span className="text-[8px] font-black uppercase tracking-wider px-1.5 py-0.5 rounded bg-sky-50 dark:bg-sky-950/25 text-sky-500 border border-sky-100/40 dark:border-sky-900/25">TG</span>
                           ) : (
                             <span className="text-[8px] font-black uppercase tracking-wider px-1.5 py-0.5 rounded bg-purple-50 dark:bg-purple-950/25 text-purple-500 border border-purple-100/40 dark:border-purple-900/25">SMS</span>
@@ -887,37 +1218,7 @@ export default function Messaging() {
                 )}
               </div>
 
-              {audience === 'STUDENTS' && (
-                <div>
-                  <label className={lbl}>Qabul qiluvchi tomon</label>
-                  <div className="grid grid-cols-4 gap-1.5 bg-slate-55 dark:bg-slate-800/80 p-1 rounded-xl border border-slate-200 dark:border-slate-700/50">
-                    <button
-                      onClick={() => setRecipientTo('STUDENT')}
-                      className={`py-1.5 rounded-lg text-[9px] font-black uppercase tracking-wider cursor-pointer transition-all ${recipientTo === 'STUDENT' ? 'bg-white dark:bg-slate-700 text-indigo-600 dark:text-indigo-400 shadow-sm' : 'text-slate-500'}`}
-                    >
-                      O'quvchi
-                    </button>
-                    <button
-                      onClick={() => setRecipientTo('FATHER')}
-                      className={`py-1.5 rounded-lg text-[9px] font-black uppercase tracking-wider cursor-pointer transition-all ${recipientTo === 'FATHER' ? 'bg-white dark:bg-slate-700 text-indigo-600 dark:text-indigo-400 shadow-sm' : 'text-slate-500'}`}
-                    >
-                      Otasi
-                    </button>
-                    <button
-                      onClick={() => setRecipientTo('MOTHER')}
-                      className={`py-1.5 rounded-lg text-[9px] font-black uppercase tracking-wider cursor-pointer transition-all ${recipientTo === 'MOTHER' ? 'bg-white dark:bg-slate-700 text-indigo-600 dark:text-indigo-400 shadow-sm' : 'text-slate-500'}`}
-                    >
-                      Onasi
-                    </button>
-                    <button
-                      onClick={() => setRecipientTo('PARENT')}
-                      className={`py-1.5 rounded-lg text-[9px] font-black uppercase tracking-wider cursor-pointer transition-all ${recipientTo === 'PARENT' ? 'bg-white dark:bg-slate-700 text-indigo-600 dark:text-indigo-400 shadow-sm' : 'text-slate-500'}`}
-                    >
-                      Ota-ona
-                    </button>
-                  </div>
-                </div>
-              )}
+
             </div>
 
 
@@ -1029,8 +1330,8 @@ export default function Messaging() {
                     {t.body}
                   </p>
                 </div>
-                <div className="text-[9px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest pt-2 border-t border-dashed border-slate-100 dark:border-slate-800">
-                  O'zgaruvchilar bor
+                <div className="text-[9px] font-black uppercase tracking-widest pt-2 border-t border-dashed border-slate-100 dark:border-slate-800 text-slate-400 dark:text-slate-500">
+                  <span>O'zgaruvchilar: {"{ism}"}, {"{qarz}"}, {"{balans}"}, {"{guruh}"}, {"{markaz}"}</span>
                 </div>
               </div>
             ))}
@@ -1047,146 +1348,87 @@ export default function Messaging() {
       {/* ===== TAB 3: AUTO RULES ===== */}
       {activeTab === 'auto' && (
         <div className="space-y-6">
-          <div>
-            <h2 className="text-xs font-black uppercase tracking-widest text-slate-800 dark:text-slate-200">Avtomatik yuborish qoidalari</h2>
-            <p className="text-[10px] font-bold text-slate-400 mt-0.5">Tizim belgilangan kunlik qoidalar bo'yicha fonda SMS yoki Telegram tabriknoma va eslatmalarini jo'natadi</p>
+          <div className="flex justify-between items-center">
+            <div>
+              <h2 className="text-xs font-black uppercase tracking-widest text-slate-800 dark:text-slate-200">Avtomatik yuborish qoidalari</h2>
+              <p className="text-[10px] font-bold text-slate-400 mt-0.5">Tizim belgilangan kunlik qoidalar bo'yicha fonda SMS yoki Telegram tabriknoma va eslatmalarini jo'natadi</p>
+            </div>
+            <button onClick={() => openAutoRuleModal(null)} className={btnPrimary}>
+              <Plus size={14} />
+              Yangi qoida yaratish
+            </button>
           </div>
 
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            {rules.map((rule, idx) => {
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {rules.map(rule => {
+              const meta = getTriggerTypeMeta(rule.type);
               const isBirthday = rule.type === 'BIRTHDAY';
+              const isDebt = rule.type === 'DEBT_REMINDER';
               return (
-                <div key={rule.type} className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-100 dark:border-slate-800 shadow-sm p-6 space-y-6">
-                  {/* Card Title */}
-                  <div className="flex items-center justify-between border-b border-dashed border-slate-100 dark:border-slate-800 pb-4">
-                    <div className="flex items-center gap-3">
-                      <div className={`w-8 h-8 rounded-xl flex items-center justify-center ${isBirthday ? 'bg-pink-50 dark:bg-pink-950/20 text-pink-500' : 'bg-amber-50 dark:bg-amber-950/20 text-amber-500'}`}>
-                        {isBirthday ? '🎂' : '💸'}
+                <div key={rule.id} className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-100 dark:border-slate-800 shadow-sm p-6 flex flex-col justify-between space-y-4 hover:shadow-md transition-all group">
+                  <div className="space-y-3">
+                    {/* Header */}
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <div className={`w-6 h-6 rounded-lg flex items-center justify-center text-[10px] ${meta.color}`}>
+                          {meta.icon}
+                        </div>
+                        <span className="text-[9px] font-black uppercase tracking-widest px-2 py-0.5 bg-slate-55 dark:bg-slate-800 text-slate-500 dark:text-slate-450 border border-slate-100 dark:border-slate-700">
+                          {meta.label}
+                        </span>
                       </div>
-                      <div>
-                        <h3 className="text-xs font-black uppercase tracking-wider text-slate-800 dark:text-white">
-                          {isBirthday ? 'Tug\'ilgan kun tabrigi' : 'Qarzdorlik eslatmasi'}
-                        </h3>
-                        <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">
-                          {isBirthday ? 'BIRTHDAY RULE' : 'DEBT REMINDER RULE'}
-                        </p>
+                      <div className="flex items-center gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <button onClick={() => openAutoRuleModal(rule)} className="p-1 text-slate-400 hover:text-indigo-500 transition-colors cursor-pointer">
+                          <Edit size={13} />
+                        </button>
+                        <button onClick={() => handleDeleteRule(rule.id!)} className="p-1 text-slate-400 hover:text-rose-500 transition-colors cursor-pointer">
+                          <Trash2 size={13} />
+                        </button>
                       </div>
                     </div>
-                    {/* Toggle switch */}
+
+                    <h3 className="text-xs font-black text-slate-855 dark:text-white uppercase tracking-wide">{rule.name}</h3>
+
+                    {/* Meta info block */}
+                    <div className="grid grid-cols-2 gap-2 text-[10px] font-semibold text-slate-500 dark:text-slate-400 bg-slate-50 dark:bg-slate-950/20 p-2.5 rounded-xl border border-slate-100 dark:border-slate-800">
+                      <div>Kanal: <span className="font-bold text-slate-700 dark:text-slate-300">{rule.channel}</span></div>
+                      <div>Vaqt: <span className="font-bold text-slate-700 dark:text-slate-300">{rule.time || '09:00'}</span></div>
+                      <div className="col-span-2">Kimga: <span className="font-bold text-slate-700 dark:text-slate-300">{rule.recipientTo === 'PARENT' ? 'Ota-onasi' : 'O\'quvchi'}</span></div>
+                      {isDebt && rule.config && (
+                        <>
+                          <div>Kun: <span className="font-bold text-slate-700 dark:text-slate-300">{rule.config.dayOfMonth || 1}</span></div>
+                          <div>Min qarz: <span className="font-bold text-rose-500">{(rule.config.minDebt || 0).toLocaleString()} UZS</span></div>
+                        </>
+                      )}
+                    </div>
+
+                    {/* Body text */}
+                    <p className="text-[11px] text-slate-500 dark:text-slate-400 whitespace-pre-wrap leading-relaxed line-clamp-3">
+                      {rule.body}
+                    </p>
+                  </div>
+
+                  {/* Switch toggle at the bottom */}
+                  <div className="flex items-center justify-between pt-2 border-t border-dashed border-slate-100 dark:border-slate-800">
+                    <span className="text-[9px] font-black uppercase tracking-widest text-slate-400 dark:text-slate-500">
+                      Holati: {rule.enabled ? <span className="text-emerald-500">Faol</span> : <span className="text-slate-400">O'chirilgan</span>}
+                    </span>
                     <button
-                      onClick={() => {
-                        const updated = [...rules];
-                        updated[idx].enabled = !rule.enabled;
-                        setRules(updated);
-                      }}
-                      className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out outline-none ${rule.enabled ? 'bg-indigo-600' : 'bg-slate-200 dark:bg-slate-700'}`}
+                      onClick={() => handleToggleRuleEnabled(rule)}
+                      className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out outline-none ${rule.enabled ? 'bg-indigo-600' : 'bg-slate-200 dark:bg-slate-700'}`}
                     >
-                      <span className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${rule.enabled ? 'translate-x-5' : 'translate-x-0'}`} />
-                    </button>
-                  </div>
-
-                  {/* Channel selectors */}
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <label className={lbl}>Jo'natish kanali</label>
-                      <select
-                        value={rule.channel}
-                        onChange={e => {
-                          const updated = [...rules];
-                          updated[idx].channel = e.target.value as any;
-                          setRules(updated);
-                        }}
-                        className={inp}
-                      >
-                        <option value="SMS">Faqat SMS</option>
-                        <option value="TELEGRAM">Faqat Telegram</option>
-                        <option value="BOTH">Telegram va SMS</option>
-                      </select>
-                    </div>
-
-                    <div>
-                      <label className={lbl}>Qabul qiluvchi</label>
-                      <select
-                        value={rule.recipientTo}
-                        onChange={e => {
-                          const updated = [...rules];
-                          updated[idx].recipientTo = e.target.value as any;
-                          setRules(updated);
-                        }}
-                        className={inp}
-                      >
-                        <option value="PARENT">Ota-onasi</option>
-                        <option value="STUDENT">O'quvchining o'zi</option>
-                      </select>
-                    </div>
-                  </div>
-
-                  {/* Rule Specific Settings */}
-                  {!isBirthday && rule.config && (
-                    <div className="grid grid-cols-2 gap-4 bg-slate-55 dark:bg-slate-800/40 p-4 rounded-2xl border border-slate-100 dark:border-slate-700/50">
-                      <div>
-                        <label className={lbl}>Oylik jo'natish kuni</label>
-                        <input
-                          type="number"
-                          min={1}
-                          max={31}
-                          value={rule.config.dayOfMonth || 1}
-                          onChange={e => {
-                            const updated = [...rules];
-                            updated[idx].config = { ...rule.config, dayOfMonth: Number(e.target.value) };
-                            setRules(updated);
-                          }}
-                          className={inp}
-                        />
-                      </div>
-                      <div>
-                        <label className={lbl}>Minimal qarz summasi</label>
-                        <input
-                          type="number"
-                          value={rule.config.minDebt || 0}
-                          onChange={e => {
-                            const updated = [...rules];
-                            updated[idx].config = { ...rule.config, minDebt: Number(e.target.value) };
-                            setRules(updated);
-                          }}
-                          className={inp}
-                        />
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Rule body text */}
-                  <div>
-                    <label className={lbl}>Xabar shabloni matni</label>
-                    <textarea
-                      value={rule.body}
-                      onChange={e => {
-                        const updated = [...rules];
-                        updated[idx].body = e.target.value;
-                        setRules(updated);
-                      }}
-                      rows={4}
-                      placeholder="Qolip matnini kiriting..."
-                      className="w-full px-4 py-3 bg-slate-55 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 rounded-2xl text-xs font-semibold text-slate-800 dark:text-slate-200 placeholder:text-slate-400 outline-none focus:border-indigo-500 transition-all resize-none"
-                    />
-                    <div className="text-[9px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest mt-1.5">
-                      O'zgaruvchilar: `{"{ism}"}`, `{"{qarz}"}`, `{"{balans}"}`, `{"{guruh}"}`, `{"{markaz}"}`
-                    </div>
-                  </div>
-
-                  {/* Save button */}
-                  <div className="flex justify-end pt-2">
-                    <button
-                      onClick={() => handleSaveRule(rule)}
-                      disabled={savingRuleType === rule.type}
-                      className={btnPrimary}
-                    >
-                      {savingRuleType === rule.type ? 'Saqlanmoqda...' : 'Qoidani saqlash'}
+                      <span className={`pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${rule.enabled ? 'translate-x-4' : 'translate-x-0'}`} />
                     </button>
                   </div>
                 </div>
               );
             })}
+            {rules.length === 0 && (
+              <div className="col-span-full bg-white dark:bg-slate-900 rounded-3xl border border-slate-100 dark:border-slate-800 p-16 text-center">
+                <Zap className="w-8 h-8 text-slate-200 dark:text-slate-750 mx-auto mb-3" />
+                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Hozircha avtomatik qoidalar yaratilmagan</p>
+              </div>
+            )}
           </div>
         </div>
       )}
@@ -1268,13 +1510,6 @@ export default function Messaging() {
 
                 <div className="flex items-center gap-2">
                   <button
-                    onClick={handleTestConnection}
-                    className="flex items-center gap-1 px-3 py-1.5 bg-[#1b6b6b] hover:bg-[#155252] text-white rounded-lg text-[9px] font-black uppercase tracking-wider transition-all active:scale-95 cursor-pointer"
-                  >
-                    <Zap size={12} />
-                    Ulanishni tekshirish
-                  </button>
-                  <button
                     onClick={fetchLogs}
                     className="p-1.5 bg-slate-55 dark:bg-slate-800 border border-slate-100 dark:border-slate-700 text-slate-450 hover:text-indigo-500 rounded-lg transition-colors cursor-pointer"
                     disabled={logsLoading}
@@ -1311,11 +1546,60 @@ export default function Messaging() {
                 </div>
               </div>
 
+              {/* Resend actions bar */}
+              <div className="p-4 bg-indigo-50/40 dark:bg-indigo-950/10 border-b border-indigo-100 dark:border-indigo-900/40 flex flex-wrap items-center gap-4">
+                <span className="text-[10px] font-black uppercase tracking-wider text-slate-500 dark:text-slate-400">Xatoliklarni qayta jo'natish:</span>
+                {Object.values(selectedLogIds).filter(Boolean).length > 0 ? (
+                  <button
+                    onClick={() => handleResendLogs(false)}
+                    disabled={resendingLogs}
+                    className="flex items-center gap-1.5 px-3.5 py-1.5 bg-rose-600 hover:bg-rose-700 text-white rounded-xl text-[10px] font-black uppercase tracking-wider transition-all cursor-pointer shadow-sm active:scale-95"
+                  >
+                    <RefreshCw size={12} className={resendingLogs ? 'animate-spin' : ''} />
+                    Tanlanganlarni jo'natish ({Object.values(selectedLogIds).filter(Boolean).length})
+                  </button>
+                ) : (
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase">Sana bo'yicha:</span>
+                    <input
+                      type="date"
+                      value={resendStartDate}
+                      onChange={e => setResendStartDate(e.target.value)}
+                      className="px-2.5 py-1 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-[10px] font-bold text-slate-800 dark:text-slate-200 outline-none focus:border-indigo-500"
+                    />
+                    <span className="text-[10px] font-bold text-slate-400">{"->"}</span>
+                    <input
+                      type="date"
+                      value={resendEndDate}
+                      onChange={e => setResendEndDate(e.target.value)}
+                      className="px-2.5 py-1 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-[10px] font-bold text-slate-800 dark:text-slate-200 outline-none focus:border-indigo-500"
+                    />
+                    <button
+                      onClick={() => handleResendLogs(true)}
+                      disabled={resendingLogs}
+                      className="flex items-center gap-1.5 px-3.5 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-[10px] font-black uppercase tracking-wider transition-all cursor-pointer shadow-sm active:scale-95"
+                    >
+                      <Send size={12} />
+                      Ushbu oraliqdagi barcha xatolarni jo'natish
+                    </button>
+                  </div>
+                )}
+              </div>
+
               {/* Table wrapper */}
               <div className="overflow-x-auto">
                 <table className="w-full text-left border-collapse min-w-[700px]">
                   <thead>
                     <tr className="bg-slate-55 dark:bg-slate-850 border-b border-slate-100 dark:border-slate-800">
+                      <th className="p-3 w-8">
+                        <input
+                          type="checkbox"
+                          checked={allFailedChecked}
+                          onChange={(e) => toggleAllFailed(e.target.checked)}
+                          className="w-3.5 h-3.5 rounded border-slate-300 dark:border-slate-700 text-indigo-600 focus:ring-indigo-500 cursor-pointer bg-white dark:bg-slate-800"
+                          disabled={failedLogsInDisplay.length === 0}
+                        />
+                      </th>
                       <th className="p-3 text-[9px] font-black text-slate-400 uppercase tracking-widest">Sana</th>
                       <th className="p-3 text-[9px] font-black text-slate-400 uppercase tracking-widest">Qabul qiluvchi</th>
                       <th className="p-3 text-[9px] font-black text-slate-400 uppercase tracking-widest">Kanal</th>
@@ -1326,6 +1610,21 @@ export default function Messaging() {
                   <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
                     {displayLogs.map(log => (
                       <tr key={log.id} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/20 transition-all text-slate-700 dark:text-slate-300">
+                        <td className="p-3 w-8">
+                          {log.status === 'FAILED' && (
+                            <input
+                              type="checkbox"
+                              checked={!!selectedLogIds[log.id]}
+                              onChange={(e) => {
+                                setSelectedLogIds(prev => ({
+                                  ...prev,
+                                  [log.id]: e.target.checked
+                                }));
+                              }}
+                              className="w-3.5 h-3.5 rounded border-slate-300 dark:border-slate-700 text-indigo-600 focus:ring-indigo-500 cursor-pointer bg-white dark:bg-slate-800"
+                            />
+                          )}
+                        </td>
                         <td className="p-3">
                           <div className="flex flex-col">
                             <span className="text-[10px] font-bold text-slate-850 dark:text-white tabular-nums">
@@ -1389,7 +1688,7 @@ export default function Messaging() {
                     ))}
                     {displayLogs.length === 0 && (
                       <tr>
-                        <td colSpan={5} className="p-16 text-center text-slate-400">
+                        <td colSpan={6} className="p-16 text-center text-slate-400">
                           Hech qanday jurnal yozuvi topilmadi.
                         </td>
                       </tr>
@@ -1518,12 +1817,168 @@ export default function Messaging() {
                 className="w-full px-3 py-2 bg-slate-55 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-semibold text-slate-800 dark:text-slate-200 outline-none focus:border-indigo-500 transition-all resize-none"
               />
               <div className="text-[9px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest mt-1">
-                O'zgaruvchilar: `{"{ism}"}`, `{"{qarz}"}`, `{"{balans}"}`, `{"{guruh}"}`, `{"{markaz}"}`
+                O'zgaruvchilar: {"{ism}"}, {"{qarz}"}, {"{balans}"}, {"{guruh}"}, {"{markaz}"}
               </div>
             </div>
 
             <div className="flex items-center justify-end gap-3 pt-2">
               <button type="button" onClick={() => setTemplateModalOpen(false)} className={btnSecondary}>
+                Bekor qilish
+              </button>
+              <button type="submit" className={btnPrimary}>
+                Saqlash
+              </button>
+            </div>
+          </form>
+        </div>
+      )}
+
+      {/* ===== MODAL: CREATE/EDIT AUTO RULE ===== */}
+      {autoRuleModalOpen && (
+        <div className="fixed inset-0 z-[1000] flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-slate-900/50 backdrop-blur-sm" onClick={() => setAutoRuleModalOpen(false)} />
+          <form onSubmit={handleSaveAutoRule} className="relative bg-white dark:bg-slate-900 rounded-3xl max-w-md w-full p-6 space-y-4 shadow-2xl border border-slate-100 dark:border-slate-800 animate-in zoom-in-95 duration-200">
+            <h3 className="text-sm font-black uppercase tracking-wide text-slate-900 dark:text-white">
+              {editingAutoRule ? 'Avtomatik qoidani tahrirlash' : 'Yangi avtomatik qoida yaratish'}
+            </h3>
+
+            <div>
+              <label className={lbl}>Qoida nomi *</label>
+              <input
+                type="text"
+                required
+                placeholder="Masalan: 15-kunlik qarz eslatmasi"
+                value={autoRuleForm.name}
+                onChange={e => setAutoRuleForm({ ...autoRuleForm, name: e.target.value })}
+                className={inp}
+              />
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className={lbl}>Trigger turi *</label>
+                <select
+                  value={autoRuleForm.type}
+                  onChange={e => setAutoRuleForm({ ...autoRuleForm, type: e.target.value })}
+                  className={inp}
+                >
+                  <option value="BIRTHDAY">🎂 Tug'ilgan kun tabrigi</option>
+                  <option value="DEBT_REMINDER">💸 Qarzdorlik eslatmasi</option>
+                  <option value="ABSENCE_REMINDER">🚫 Dars qoldirganlik eslatmasi</option>
+                  <option value="LEAD_WELCOME">📞 Yangi lid tabrigi</option>
+                  <option value="GROUP_WELCOME">🎉 Yangi guruhga qo'shilish tabrigi</option>
+                  <option value="EXAM_RESULT">📝 Imtihon natijalari e'loni</option>
+                  <option value="PAYMENT_CONFIRM">💰 To'lov tasdiqlanishi tabrigi</option>
+                  <option value="DAILY_SCORE">⭐️ Kunlik baholash hisoboti</option>
+                  <option value="TRANSPORT_NOTIFY">🚌 Transport xabarnomasi</option>
+                  <option value="COURSE_GRADUATION">🎓 Kursni bitirganlik tabrigi</option>
+                </select>
+              </div>
+
+              <div>
+                <label className={lbl}>Jo'natish vaqti *</label>
+                <select
+                  value={autoRuleForm.time}
+                  onChange={e => setAutoRuleForm({ ...autoRuleForm, time: e.target.value })}
+                  className={inp}
+                >
+                  {Array.from({ length: 24 }).map((_, h) => {
+                    const hourStr = `${String(h).padStart(2, '0')}:00`;
+                    return <option key={hourStr} value={hourStr}>{hourStr}</option>;
+                  })}
+                </select>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className={lbl}>Jo'natish kanali *</label>
+                <select
+                  value={autoRuleForm.channel}
+                  onChange={e => setAutoRuleForm({ ...autoRuleForm, channel: e.target.value as any })}
+                  className={inp}
+                >
+                  <option value="BOTH">Telegram va SMS</option>
+                  <option value="SMS">Faqat SMS</option>
+                  <option value="TELEGRAM">Faqat Telegram</option>
+                </select>
+              </div>
+
+              <div>
+                <label className={lbl}>Qabul qiluvchi *</label>
+                <select
+                  value={autoRuleForm.recipientTo}
+                  onChange={e => setAutoRuleForm({ ...autoRuleForm, recipientTo: e.target.value as any })}
+                  className={inp}
+                >
+                  <option value="PARENT">Ota-onasi</option>
+                  <option value="STUDENT">O'quvchi</option>
+                </select>
+              </div>
+            </div>
+
+            {autoRuleForm.type === 'DEBT_REMINDER' && (
+              <div className="grid grid-cols-2 gap-3 bg-slate-55 dark:bg-slate-850 p-3 rounded-xl border border-slate-200/50 dark:border-slate-700/50">
+                <div>
+                  <label className={lbl}>Oylik jo'natish kuni (1-31)</label>
+                  <input
+                    type="number"
+                    min={1}
+                    max={31}
+                    value={autoRuleForm.dayOfMonth}
+                    onChange={e => setAutoRuleForm({ ...autoRuleForm, dayOfMonth: Number(e.target.value) })}
+                    className={inp}
+                  />
+                </div>
+                <div>
+                  <label className={lbl}>Minimal qarz summasi</label>
+                  <input
+                    type="number"
+                    value={autoRuleForm.minDebt}
+                    onChange={e => setAutoRuleForm({ ...autoRuleForm, minDebt: Number(e.target.value) })}
+                    className={inp}
+                  />
+                </div>
+              </div>
+            )}
+
+            <div>
+              <div className="flex justify-between items-center mb-1">
+                <label className={lbl}>Qoida xabari matni *</label>
+                {templates.length > 0 && (
+                  <select
+                    onChange={e => {
+                      if (!e.target.value) return;
+                      const selected = templates.find(t => String(t.id) === e.target.value);
+                      if (selected) {
+                        setAutoRuleForm(prev => ({ ...prev, body: selected.body }));
+                      }
+                      e.target.value = "";
+                    }}
+                    className="text-[9px] font-bold bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-350 border border-slate-200 dark:border-slate-750 px-2 py-0.5 rounded outline-none cursor-pointer animate-in fade-in"
+                  >
+                    <option value="">Shablondan nusxalash...</option>
+                    {templates.map(t => (
+                      <option key={t.id} value={t.id}>{t.name}</option>
+                    ))}
+                  </select>
+                )}
+              </div>
+              <textarea
+                required
+                rows={4}
+                placeholder="Hurmatli {ism}, ..."
+                value={autoRuleForm.body}
+                onChange={e => setAutoRuleForm({ ...autoRuleForm, body: e.target.value })}
+                className="w-full px-3 py-2 bg-slate-55 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-semibold text-slate-800 dark:text-slate-200 outline-none focus:border-indigo-500 transition-all resize-none"
+              />
+              <div className="text-[9px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest mt-1">
+                O'zgaruvchilar: {"{ism}"}, {"{qarz}"}, {"{balans}"}, {"{guruh}"}, {"{markaz}"}, {"{imtihon_nomi}"}, {"{imtihon_ball}"}, {"{imtihon_foiz}"}, {"{to_lov_summa}"}, {"{bahosi}"}
+              </div>
+            </div>
+
+            <div className="flex items-center justify-end gap-3 pt-2">
+              <button type="button" onClick={() => setAutoRuleModalOpen(false)} className={btnSecondary}>
                 Bekor qilish
               </button>
               <button type="submit" className={btnPrimary}>

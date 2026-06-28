@@ -328,13 +328,20 @@ model SmsLog {
 }
 
 model MessageTemplate {
-  id        Int      @id @default(autoincrement())
-  name      String
-  body      String
-  category  String   @default("Umumiy") // Qarzdorlik | Tug'ilgan kun | Eslatma | Umumiy
-  schoolId  Int
-  school    School   @relation(fields: [schoolId], references: [id])
-  createdAt DateTime @default(now())
+  id            Int      @id @default(autoincrement())
+  name          String
+  body          String
+  category      String   @default("Umumiy") // Qarzdorlik | Tug'ilgan kun | Eslatma | Umumiy
+  isAuto        Boolean  @default(false)
+  autoType      String?  // BIRTHDAY | DEBT_REMINDER
+  autoChannel   String   @default("BOTH")   // SMS | TELEGRAM | BOTH
+  autoRecipient String   @default("PARENT") // PARENT | STUDENT
+  autoConfig    Json?
+  autoTime      String?  @default("09:00")  // e.g. "09:00"
+  lastRunDate   String?
+  schoolId      Int
+  school        School   @relation(fields: [schoolId], references: [id])
+  createdAt     DateTime @default(now())
 
   @@index([schoolId])
 }
@@ -356,18 +363,19 @@ model MessageCampaign {
 }
 
 model AutoMessageRule {
-  id          Int      @id @default(autoincrement())
-  type        String   // BIRTHDAY | DEBT_REMINDER
-  enabled     Boolean  @default(false)
-  body        String
-  channel     String   @default("BOTH")   // SMS | TELEGRAM | BOTH
-  recipientTo String   @default("PARENT") // PARENT | STUDENT
-  config      Json?
-  lastRunDate String?
-  schoolId    Int
-  school      School   @relation(fields: [schoolId], references: [id])
+  id            Int      @id @default(autoincrement())
+  name          String   @default("Avtomatik qoida")
+  type          String   // BIRTHDAY | DEBT_REMINDER
+  enabled       Boolean  @default(false)
+  body          String   @db.Text
+  channel       String   @default("BOTH")   // SMS | TELEGRAM | BOTH
+  recipientTo   String   @default("PARENT") // PARENT | STUDENT
+  config        Json?
+  time          String   @default("09:00")  // e.g. "09:00"
+  lastRunDate   String?
+  schoolId      Int
+  school        School   @relation(fields: [schoolId], references: [id])
 
-  @@unique([schoolId, type])
   @@index([schoolId])
 }
 
