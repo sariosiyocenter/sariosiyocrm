@@ -23,6 +23,8 @@ model Student {
   photo      String?
   rating     Float?
   telegramId String?   @unique
+  fatherTelegramId String?
+  motherTelegramId String?
   fatherName  String?
   fatherPhone String?
   motherName  String?

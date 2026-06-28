@@ -42,15 +42,34 @@ const getGuestMenu = () => Markup.keyboard([
 // Helper to find user by telegramId and schoolId
 const findUser = async (tid, schoolId) => {
     const tidStr = String(tid);
-    const whereClause = schoolId ? { telegramId: tidStr, schoolId } : { telegramId: tidStr };
+    const scWhere = schoolId ? { schoolId } : {};
 
-    const student = await prisma.student.findFirst({ where: whereClause });
+    // 1. Try to find student where student.telegramId === tidStr
+    const student = await prisma.student.findFirst({ 
+        where: { telegramId: tidStr, ...scWhere } 
+    });
     if (student) return { type: 'student', data: student };
 
-    const teacher = await prisma.teacher.findFirst({ where: whereClause });
+    // 2. Try to find student where student.fatherTelegramId === tidStr
+    const fatherStudent = await prisma.student.findFirst({ 
+        where: { fatherTelegramId: tidStr, ...scWhere } 
+    });
+    if (fatherStudent) return { type: 'parent_father', data: fatherStudent };
+
+    // 3. Try to find student where student.motherTelegramId === tidStr
+    const motherStudent = await prisma.student.findFirst({ 
+        where: { motherTelegramId: tidStr, ...scWhere } 
+    });
+    if (motherStudent) return { type: 'parent_mother', data: motherStudent };
+
+    const teacher = await prisma.teacher.findFirst({ 
+        where: { telegramId: tidStr, ...scWhere } 
+    });
     if (teacher) return { type: 'teacher', data: teacher };
 
-    const user = await prisma.user.findFirst({ where: whereClause });
+    const user = await prisma.user.findFirst({ 
+        where: { telegramId: tidStr, ...scWhere } 
+    });
     if (user) {
         if (user.role === 'DRIVER') return { type: 'driver', data: user };
         return { type: 'admin', data: user };
@@ -69,12 +88,25 @@ export const setupBotHandlers = (botInstance, schoolId) => {
         const user = await findUser(ctx.from.id, schoolId);
         if (user) {
             let menu;
-            if (user.type === 'student') menu = getStudentMenu();
-            else if (user.type === 'teacher') menu = getTeacherMenu();
-            else if (user.type === 'admin') menu = getAdminMenu();
-            else if (user.type === 'driver') menu = getDriverMenu();
+            let greeting = `Xush kelibsiz, ${user.data.name}!`;
 
-            return ctx.reply(`Xush kelibsiz, ${user.data.name}!`, menu);
+            if (user.type === 'student') {
+                menu = getStudentMenu();
+            } else if (user.type === 'parent_father') {
+                menu = getStudentMenu();
+                greeting = `Xush kelibsiz! Siz o'quvchi ${user.data.name} ning otasi (${user.data.fatherName || ''}) sifatida ulandingiz.`;
+            } else if (user.type === 'parent_mother') {
+                menu = getStudentMenu();
+                greeting = `Xush kelibsiz! Siz o'quvchi ${user.data.name} ning onasi (${user.data.motherName || ''}) sifatida ulandingiz.`;
+            } else if (user.type === 'teacher') {
+                menu = getTeacherMenu();
+            } else if (user.type === 'admin') {
+                menu = getAdminMenu();
+            } else if (user.type === 'driver') {
+                menu = getDriverMenu();
+            }
+
+            return ctx.reply(greeting, menu);
         }
 
         ctx.reply(
@@ -87,12 +119,14 @@ export const setupBotHandlers = (botInstance, schoolId) => {
 
     const logoutHandler = async (ctx) => {
         const tidStr = String(ctx.from.id);
-        const whereClause = schoolId ? { telegramId: tidStr, schoolId } : { telegramId: tidStr };
+        const scWhere = schoolId ? { schoolId } : {};
 
         await Promise.all([
-            prisma.student.updateMany({ where: whereClause, data: { telegramId: null } }),
-            prisma.teacher.updateMany({ where: whereClause, data: { telegramId: null } }),
-            prisma.user.updateMany({ where: whereClause, data: { telegramId: null } })
+            prisma.student.updateMany({ where: { telegramId: tidStr, ...scWhere }, data: { telegramId: null } }),
+            prisma.student.updateMany({ where: { fatherTelegramId: tidStr, ...scWhere }, data: { fatherTelegramId: null } }),
+            prisma.student.updateMany({ where: { motherTelegramId: tidStr, ...scWhere }, data: { motherTelegramId: null } }),
+            prisma.teacher.updateMany({ where: { telegramId: tidStr, ...scWhere }, data: { telegramId: null } }),
+            prisma.user.updateMany({ where: { telegramId: tidStr, ...scWhere }, data: { telegramId: null } })
         ]);
         ctx.reply("Hisobingiz botdan uzildi. Endi qaytadan ro'yxatdan o'tishingiz mumkin ( /start bosib).", Markup.keyboard([
             [Markup.button.contactRequest('📱 Telefon raqamni yuborish')]
@@ -107,20 +141,33 @@ export const setupBotHandlers = (botInstance, schoolId) => {
         const tid = String(ctx.from.id);
         const phoneSuffix = phone.slice(-9);
 
-        // Try to find as student
-        let student = await prisma.student.findFirst({ 
-            where: { 
-                OR: [
-                    { phone: { contains: phoneSuffix } },
-                    { fatherPhone: { contains: phoneSuffix } },
-                    { motherPhone: { contains: phoneSuffix } }
-                ],
-                schoolId 
-            } 
+        // 1. Try to find student where phone matches phoneSuffix
+        let student = await prisma.student.findFirst({
+            where: { phone: { contains: phoneSuffix }, schoolId }
         });
         if (student) {
             await prisma.student.update({ where: { id: student.id }, data: { telegramId: tid } });
-            return ctx.reply(`Siz o'quvchi / ota-ona sifatida ro'yxatdan o'tdingiz: ${student.name}`, getStudentMenu());
+            return ctx.reply(`Siz o'quvchi sifatida ro'yxatdan o'tdingiz: ${student.name}`, getStudentMenu());
+        }
+
+        // 2. Try to find student where fatherPhone matches phoneSuffix
+        let fatherStudent = await prisma.student.findFirst({
+            where: { fatherPhone: { contains: phoneSuffix }, schoolId }
+        });
+        if (fatherStudent) {
+            await prisma.student.update({ where: { id: fatherStudent.id }, data: { fatherTelegramId: tid } });
+            const pName = fatherStudent.fatherName ? ` (${fatherStudent.fatherName})` : '';
+            return ctx.reply(`Siz ota sifatida ro'yxatdan o'tdingiz: ${fatherStudent.name} ning otasi${pName}`, getStudentMenu());
+        }
+
+        // 3. Try to find student where motherPhone matches phoneSuffix
+        let motherStudent = await prisma.student.findFirst({
+            where: { motherPhone: { contains: phoneSuffix }, schoolId }
+        });
+        if (motherStudent) {
+            await prisma.student.update({ where: { id: motherStudent.id }, data: { motherTelegramId: tid } });
+            const pName = motherStudent.motherName ? ` (${motherStudent.motherName})` : '';
+            return ctx.reply(`Siz ona sifatida ro'yxatdan o'tdingiz: ${motherStudent.name} ning onasi${pName}`, getStudentMenu());
         }
 
         // Try to find as teacher
@@ -148,7 +195,7 @@ export const setupBotHandlers = (botInstance, schoolId) => {
     // Student Handlers
     botInstance.hears('📅 Dars Jadvali', async (ctx) => {
         const user = await findUser(ctx.from.id, schoolId);
-        if (!user || user.type !== 'student') return;
+        if (!user || (user.type !== 'student' && !user.type.startsWith('parent_'))) return;
 
         const student = await prisma.student.findUnique({
             where: { id: user.data.id },
@@ -170,7 +217,7 @@ export const setupBotHandlers = (botInstance, schoolId) => {
 
     botInstance.hears('💳 To\'lovlar', async (ctx) => {
         const user = await findUser(ctx.from.id, schoolId);
-        if (!user || user.type !== 'student') return;
+        if (!user || (user.type !== 'student' && !user.type.startsWith('parent_'))) return;
 
         const student = await prisma.student.findUnique({
             where: { id: user.data.id },
@@ -193,7 +240,7 @@ export const setupBotHandlers = (botInstance, schoolId) => {
 
     botInstance.hears('✅ Davomat', async (ctx) => {
         const user = await findUser(ctx.from.id, schoolId);
-        if (!user || user.type !== 'student') return;
+        if (!user || (user.type !== 'student' && !user.type.startsWith('parent_'))) return;
 
         const attendances = await prisma.attendance.findMany({
             where: { studentId: user.data.id, schoolId },
@@ -215,7 +262,7 @@ export const setupBotHandlers = (botInstance, schoolId) => {
 
     botInstance.hears('📊 Baholar', async (ctx) => {
         const user = await findUser(ctx.from.id, schoolId);
-        if (!user || user.type !== 'student') return;
+        if (!user || (user.type !== 'student' && !user.type.startsWith('parent_'))) return;
 
         const scores = await prisma.score.findMany({
             where: { studentId: user.data.id, schoolId },
@@ -241,11 +288,26 @@ export const setupBotHandlers = (botInstance, schoolId) => {
         const user = await findUser(ctx.from.id, schoolId);
         if (!user) return;
 
+        let roleLabel = 'O\'quvchi';
+        if (user.type === 'parent_father') roleLabel = 'Ota';
+        else if (user.type === 'parent_mother') roleLabel = 'Ona';
+        else if (user.type === 'teacher') roleLabel = 'O\'qituvchi';
+        else if (user.type === 'driver') roleLabel = 'Haydovchi';
+        else if (user.type === 'admin') roleLabel = 'Xodim';
+
         let msg = `👤 Mening Profilim:\n\n`;
         msg += `🆔 ID: ${user.data.id}\n`;
         msg += `NAME: ${user.data.name}\n`;
-        msg += `📞 TEL: ${user.data.phone}\n`;
-        msg += `🎭 ROL: ${user.type === 'admin' ? 'Xodim' : (user.type === 'teacher' ? 'O\'qituvchi' : (user.type === 'driver' ? 'Haydovchi' : 'O\'quvchi'))}\n`;
+        if (user.type === 'parent_father') {
+            msg += `📞 TEL: ${user.data.fatherPhone || user.data.phone}\n`;
+            msg += `👨‍👦 O'quvchi: ${user.data.name}\n`;
+        } else if (user.type === 'parent_mother') {
+            msg += `📞 TEL: ${user.data.motherPhone || user.data.phone}\n`;
+            msg += `👩‍👦 O'quvchi: ${user.data.name}\n`;
+        } else {
+            msg += `📞 TEL: ${user.data.phone}\n`;
+        }
+        msg += `🎭 ROL: ${roleLabel}\n`;
 
         ctx.reply(msg);
     });
@@ -396,15 +458,23 @@ export const setupBotHandlers = (botInstance, schoolId) => {
 
                 // Optional: notify student/parent if telegramId exists
                 const student = await prisma.student.findFirst({ where: { id: sId, schoolId } });
-                if (student && student.telegramId) {
+                if (student) {
                     const icon = status === 'Keldi' ? '✅' : '❌';
-                    botInstance.telegram.sendMessage(student.telegramId, 
-                        `${icon} Davomat xabarnomasi:\n\n` +
-                        `👤 O'quvchi: ${student.name}\n` +
-                        `📌 Holat: ${status}\n` +
-                        `📅 Sana: ${today}\n` +
-                        `📚 Guruh: ${group.name}`
-                    ).catch(e => console.error('Notify student error:', e));
+                    const msg = `${icon} Davomat xabarnomasi:\n\n` +
+                                `👤 O'quvchi: ${student.name}\n` +
+                                `📌 Holat: ${status}\n` +
+                                `📅 Sana: ${today}\n` +
+                                `📚 Guruh: ${group.name}`;
+
+                    if (student.telegramId) {
+                        botInstance.telegram.sendMessage(student.telegramId, msg).catch(e => console.error('Notify student error:', e));
+                    }
+                    if (student.fatherTelegramId) {
+                        botInstance.telegram.sendMessage(student.fatherTelegramId, msg).catch(e => console.error('Notify father error:', e));
+                    }
+                    if (student.motherTelegramId) {
+                        botInstance.telegram.sendMessage(student.motherTelegramId, msg).catch(e => console.error('Notify mother error:', e));
+                    }
                 }
             }
 

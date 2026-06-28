@@ -499,9 +499,13 @@ export default function Students() {
         } else if (filters.missingInfo === 'photo') {
             matchesMissingInfo = !s.photo || s.photo.trim() === '';
         } else if (filters.missingInfo === 'no_telegram') {
-            matchesMissingInfo = !s.telegramId || s.telegramId.trim() === '';
+            matchesMissingInfo = (!s.telegramId || s.telegramId.trim() === '') &&
+                                 (!s.fatherTelegramId || s.fatherTelegramId.trim() === '') &&
+                                 (!s.motherTelegramId || s.motherTelegramId.trim() === '');
         } else if (filters.missingInfo === 'parent_no_telegram') {
-            matchesMissingInfo = (!s.telegramId || s.telegramId.trim() === '') && !!(s.fatherPhone || s.motherPhone);
+            const fatherMissing = !!s.fatherPhone && (!s.fatherTelegramId || s.fatherTelegramId.trim() === '');
+            const motherMissing = !!s.motherPhone && (!s.motherTelegramId || s.motherTelegramId.trim() === '');
+            matchesMissingInfo = fatherMissing || motherMissing;
         }
 
         return matchesSearch && matchesStatus && matchesGroup && matchesBalance && matchesDate && matchesOrgType && matchesMuassasa && matchesRegion && matchesDistrict && matchesLocation && matchesMissingInfo;
@@ -643,8 +647,8 @@ export default function Students() {
                                 <option value="fatherPhone">{t('defect_father_phone').replace('{count}', String(students.filter(s => !s.fatherPhone || s.fatherPhone.trim() === '').length))}</option>
                                 <option value="studentSchool">{t('defect_school').replace('{count}', String(students.filter(s => !s.studentSchool || s.studentSchool.trim() === '').length))}</option>
                                 <option value="photo">{t('defect_photo').replace('{count}', String(students.filter(s => !s.photo || s.photo.trim() === '').length))}</option>
-                                <option value="no_telegram">{t('defect_no_telegram').replace('{count}', String(students.filter(s => !s.telegramId || s.telegramId.trim() === '').length))}</option>
-                                <option value="parent_no_telegram">{t('defect_parent_no_telegram').replace('{count}', String(students.filter(s => (!s.telegramId || s.telegramId.trim() === '') && (s.fatherPhone || s.motherPhone)).length))}</option>
+                                <option value="no_telegram">{t('defect_no_telegram').replace('{count}', String(students.filter(s => (!s.telegramId || s.telegramId.trim() === '') && (!s.fatherTelegramId || s.fatherTelegramId.trim() === '') && (!s.motherTelegramId || s.motherTelegramId.trim() === '')).length))}</option>
+                                <option value="parent_no_telegram">{t('defect_parent_no_telegram').replace('{count}', String(students.filter(s => (!!s.fatherPhone && (!s.fatherTelegramId || s.fatherTelegramId.trim() === '')) || (!!s.motherPhone && (!s.motherTelegramId || s.motherTelegramId.trim() === ''))).length))}</option>
                             </select>
                         </div>
                         <div className="flex items-end">

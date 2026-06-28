@@ -407,9 +407,25 @@ export default function Messaging() {
       if (filters.contact === 'phone') {
         if (!st.phone && !st.fatherPhone && !st.motherPhone) return false;
       } else if (filters.contact === 'telegram') {
-        if (!st.telegramId) return false;
+        if (recipientTo === 'PARENT') {
+          if (!st.fatherTelegramId && !st.motherTelegramId) return false;
+        } else if (recipientTo === 'FATHER') {
+          if (!st.fatherTelegramId) return false;
+        } else if (recipientTo === 'MOTHER') {
+          if (!st.motherTelegramId) return false;
+        } else {
+          if (!st.telegramId) return false;
+        }
       } else if (filters.contact === 'no_telegram') {
-        if (st.telegramId) return false;
+        if (recipientTo === 'PARENT') {
+          if (st.fatherTelegramId || st.motherTelegramId) return false;
+        } else if (recipientTo === 'FATHER') {
+          if (st.fatherTelegramId) return false;
+        } else if (recipientTo === 'MOTHER') {
+          if (st.motherTelegramId) return false;
+        } else {
+          if (st.telegramId) return false;
+        }
       }
 
       return true;
@@ -450,7 +466,7 @@ export default function Messaging() {
             studentId: st.id,
             displayName: st.fatherName ? `${st.fatherName} (Otasi)` : `${st.name} (Otasi)`,
             displayPhone: st.fatherPhone,
-            telegramId: null,
+            telegramId: st.fatherTelegramId,
             balance,
             gender: 'Erkak',
             entryType: 'FATHER',
@@ -463,7 +479,7 @@ export default function Messaging() {
             studentId: st.id,
             displayName: st.motherName ? `${st.motherName} (Onasi)` : `${st.name} (Onasi)`,
             displayPhone: st.motherPhone,
-            telegramId: null,
+            telegramId: st.motherTelegramId,
             balance,
             gender: 'Ayol',
             entryType: 'MOTHER',
@@ -477,7 +493,7 @@ export default function Messaging() {
             studentId: st.id,
             displayName: st.fatherName ? `${st.fatherName} (Otasi)` : `${st.name} (Otasi)`,
             displayPhone: st.fatherPhone,
-            telegramId: null,
+            telegramId: st.fatherTelegramId,
             balance,
             gender: 'Erkak',
             entryType: 'FATHER',
@@ -491,7 +507,7 @@ export default function Messaging() {
             studentId: st.id,
             displayName: st.motherName ? `${st.motherName} (Onasi)` : `${st.name} (Onasi)`,
             displayPhone: st.motherPhone,
-            telegramId: null,
+            telegramId: st.motherTelegramId,
             balance,
             gender: 'Ayol',
             entryType: 'MOTHER',

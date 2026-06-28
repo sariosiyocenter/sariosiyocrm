@@ -663,7 +663,7 @@ app.put('/api/students/:id', authenticate, async (req, res, next) => {
       'balance','photo','rating','gender','fatherName','fatherPhone','motherName','motherPhone',
       'studentSchool','privilegeType','certCategory','certSubject','certType','certScore',
       'customPrices','orgType','region','district','transportId','statusChangedAt',
-      'leaveReason','certificates','telegramId'
+      'leaveReason','certificates','telegramId','fatherTelegramId','motherTelegramId'
     ];
     const data = {};
     for (const key of ALLOWED_STUDENT_FIELDS) {
@@ -2323,16 +2323,23 @@ app.post('/api/attendances', authenticate, async (req, res, next) => {
     // Telegram Notification
     try {
       const student = await prisma.student.findUnique({ where: { id: parseInt(data.studentId) } });
-      if (student && student.telegramId) {
+      if (student) {
         const schoolBot = await getTelegramBot(student.schoolId);
         if (schoolBot) {
           const icon = attendance.status === 'Keldi' ? '✅' : (attendance.status === 'Kelmapdi' ? '❌' : '⚠️');
-          schoolBot.telegram.sendMessage(student.telegramId, 
-            `${icon} Davomat xabarnomasi:\n\n` +
-            `👤 O'quvchi: ${student.name}\n` +
-            `📌 Holat: ${attendance.status}\n` +
-            `📅 Sana: ${attendance.date}`
-          ).catch(e => console.error('Telegram error:', e));
+          const msg = `${icon} Davomat xabarnomasi:\n\n` +
+                      `👤 O'quvchi: ${student.name}\n` +
+                      `📌 Holat: ${attendance.status}\n` +
+                      `📅 Sana: ${attendance.date}`;
+          if (student.telegramId) {
+            schoolBot.telegram.sendMessage(student.telegramId, msg).catch(e => console.error('Telegram error:', e));
+          }
+          if (student.fatherTelegramId) {
+            schoolBot.telegram.sendMessage(student.fatherTelegramId, msg).catch(e => console.error('Telegram error:', e));
+          }
+          if (student.motherTelegramId) {
+            schoolBot.telegram.sendMessage(student.motherTelegramId, msg).catch(e => console.error('Telegram error:', e));
+          }
         }
       }
     } catch (e) {
@@ -2427,17 +2434,24 @@ app.post('/api/attendances/batch', authenticate, async (req, res, next) => {
       if (shouldNotify) {
         try {
           const student = await prisma.student.findUnique({ where: { id: record.studentId } });
-          if (student && student.telegramId) {
+          if (student) {
             const schoolBot = await getTelegramBot(student.schoolId);
             if (schoolBot) {
               const icon = record.status === 'Keldi' ? '✅' : (record.status === 'Kelmapdi' ? '❌' : '⚠️');
-              schoolBot.telegram.sendMessage(student.telegramId, 
-                `${icon} Davomat xabarnomasi:\n\n` +
-                `👤 O'quvchi: ${student.name}\n` +
-                `📌 Holat: ${record.status}\n` +
-                `📅 Sana: ${date}\n` +
-                `📚 Guruh: ${group ? group.name : ''}`
-              ).catch(e => console.error('[Telegram Batch Notify] Error sending message:', e));
+              const msg = `${icon} Davomat xabarnomasi:\n\n` +
+                          `👤 O'quvchi: ${student.name}\n` +
+                          `📌 Holat: ${record.status}\n` +
+                          `📅 Sana: ${date}\n` +
+                          `📚 Guruh: ${group ? group.name : ''}`;
+              if (student.telegramId) {
+                schoolBot.telegram.sendMessage(student.telegramId, msg).catch(e => console.error('[Telegram Batch Notify] Error sending message:', e));
+              }
+              if (student.fatherTelegramId) {
+                schoolBot.telegram.sendMessage(student.fatherTelegramId, msg).catch(e => console.error('[Telegram Batch Notify] Error sending message:', e));
+              }
+              if (student.motherTelegramId) {
+                schoolBot.telegram.sendMessage(student.motherTelegramId, msg).catch(e => console.error('[Telegram Batch Notify] Error sending message:', e));
+              }
             }
           }
         } catch (e) {
@@ -3176,16 +3190,29 @@ async function sendToOne({ student, message, channel, recipientTo, type, schoolI
 
   // Telegram
   if (channel === 'TELEGRAM' || channel === 'BOTH') {
-    if (student.telegramId) {
+    const tids = [];
+    if (recipientTo === 'PARENT') {
+      if (student.fatherTelegramId) tids.push({ id: student.fatherTelegramId, name: `${student.name} (Otasi)` });
+      if (student.motherTelegramId) tids.push({ id: student.motherTelegramId, name: `${student.name} (Onasi)` });
+    } else if (recipientTo === 'STUDENT') {
+      if (student.telegramId) tids.push({ id: student.telegramId, name: student.name });
+    } else {
+      // BOTH or not specified
+      if (student.telegramId) tids.push({ id: student.telegramId, name: student.name });
+      if (student.fatherTelegramId) tids.push({ id: student.fatherTelegramId, name: `${student.name} (Otasi)` });
+      if (student.motherTelegramId) tids.push({ id: student.motherTelegramId, name: `${student.name} (Onasi)` });
+    }
+
+    for (const target of tids) {
       attempted = true;
       try {
         const schoolBot = await getTelegramBot(schoolId);
         if (schoolBot) {
-          await schoolBot.telegram.sendMessage(student.telegramId, message);
+          await schoolBot.telegram.sendMessage(target.id, message);
           anySuccess = true;
           await prisma.smsLog.create({
             data: {
-              toPhone: String(student.telegramId), toName: student.name, message,
+              toPhone: String(target.id), toName: target.name, message,
               status: 'SENT', type, studentId: student.id,
               channel: 'TELEGRAM', campaignId: campaignId || null, schoolId
             }
@@ -3194,7 +3221,7 @@ async function sendToOne({ student, message, channel, recipientTo, type, schoolI
       } catch (tgErr) {
         await prisma.smsLog.create({
           data: {
-            toPhone: String(student.telegramId), toName: student.name, message,
+            toPhone: String(target.id), toName: target.name, message,
             status: 'FAILED', type, studentId: student.id, errorMsg: tgErr.message,
             channel: 'TELEGRAM', campaignId: campaignId || null, schoolId
           }
@@ -4184,23 +4211,30 @@ app.post('/api/billing/notify-debtors', authenticate, async (req, res, next) => 
       let sent = false;
 
       // Telegram
-      if ((channel === 'TELEGRAM' || channel === 'BOTH') && student.telegramId && schoolBot) {
-        try {
-          await schoolBot.telegram.sendMessage(student.telegramId, formattedMessage);
-          sent = true;
-          await prisma.smsLog.create({
-            data: {
-              toPhone: String(student.telegramId),
-              message: formattedMessage,
-              status: 'SENT',
-              type: 'BILLING_DEBT',
-              studentId: student.id,
-              channel: 'TELEGRAM',
-              schoolId: sid
-            }
-          });
-        } catch (tgErr) {
-          console.error(`[Debt Notify TG] Failed for ${student.name}:`, tgErr.message);
+      const tids = [];
+      if (student.telegramId) tids.push({ id: student.telegramId, name: student.name });
+      if (student.fatherTelegramId) tids.push({ id: student.fatherTelegramId, name: `${student.name} (Otasi)` });
+      if (student.motherTelegramId) tids.push({ id: student.motherTelegramId, name: `${student.name} (Onasi)` });
+
+      if ((channel === 'TELEGRAM' || channel === 'BOTH') && tids.length > 0 && schoolBot) {
+        for (const target of tids) {
+          try {
+            await schoolBot.telegram.sendMessage(target.id, formattedMessage);
+            sent = true;
+            await prisma.smsLog.create({
+              data: {
+                toPhone: String(target.id),
+                message: formattedMessage,
+                status: 'SENT',
+                type: 'BILLING_DEBT',
+                studentId: student.id,
+                channel: 'TELEGRAM',
+                schoolId: sid
+              }
+            });
+          } catch (tgErr) {
+            console.error(`[Debt Notify TG] Failed for ${student.name} (to ${target.name}):`, tgErr.message);
+          }
         }
       }
 

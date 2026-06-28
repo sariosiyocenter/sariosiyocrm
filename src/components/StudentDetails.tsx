@@ -138,6 +138,9 @@ export default function StudentDetails() {
         orgType: '',
         region: '',
         district: '',
+        telegramId: '',
+        fatherTelegramId: '',
+        motherTelegramId: '',
         certificates: [] as Array<{ category: 'Milliy' | 'Xalqaro'; subject?: string; type?: string; score?: string }>
     });
 
@@ -206,6 +209,9 @@ export default function StudentDetails() {
             orgType: student.orgType || '',
             region: student.region || '',
             district: student.district || '',
+            telegramId: student.telegramId || '',
+            fatherTelegramId: student.fatherTelegramId || '',
+            motherTelegramId: student.motherTelegramId || '',
             certificates: parsedCerts || []
         });
         setIsEditing(true);
@@ -246,6 +252,19 @@ export default function StudentDetails() {
                 return updated;
             })
         }));
+    };
+
+    const handleDisconnectTelegram = async (role: 'student' | 'father' | 'mother') => {
+        if (!window.confirm("Rostdan ham Telegram ulanishini o'chirmoqchimisiz?")) return;
+        try {
+            const data: any = {};
+            if (role === 'student') data.telegramId = null;
+            if (role === 'father') data.fatherTelegramId = null;
+            if (role === 'mother') data.motherTelegramId = null;
+            await updateStudent(student!.id, data);
+        } catch (err) {
+            console.error("Disconnect Telegram failed", err);
+        }
     };
 
     const handleSaveEdit = async () => {
@@ -493,9 +512,15 @@ export default function StudentDetails() {
                         <div className="px-6 pb-6 space-y-3 border-t border-dashed border-gray-100 dark:border-gray-700/50 pt-4">
                             {isEditing ? (
                                 <div className="space-y-4">
-                                    <div>
-                                        <label className={labelCls}>{t('student_phone')}</label>
-                                        <input type="tel" value={editForm.phone} onChange={e => setEditForm({...editForm, phone: e.target.value})} className={inputCls} />
+                                    <div className="grid grid-cols-2 gap-2">
+                                        <div>
+                                            <label className={labelCls}>{t('student_phone')}</label>
+                                            <input type="tel" value={editForm.phone} onChange={e => setEditForm({...editForm, phone: e.target.value})} className={inputCls} />
+                                        </div>
+                                        <div>
+                                            <label className={labelCls}>Telegram ID</label>
+                                            <input type="text" value={editForm.telegramId} onChange={e => setEditForm({...editForm, telegramId: e.target.value})} className={inputCls} placeholder="ID (masalan: 12345678)" />
+                                        </div>
                                     </div>
                                     <div>
                                         <label className={labelCls}>{t('birth_date')}</label>
@@ -565,7 +590,7 @@ export default function StudentDetails() {
                                             </select>
                                         </div>
                                     </div>
-                                    <div className="grid grid-cols-2 gap-2">
+                                    <div className="grid grid-cols-3 gap-2">
                                         <div>
                                             <label className={labelCls}>{t('father_name')}</label>
                                             <input type="text" value={editForm.fatherName} onChange={e => setEditForm({...editForm, fatherName: e.target.value})} className={inputCls} />
@@ -574,8 +599,12 @@ export default function StudentDetails() {
                                             <label className={labelCls}>{t('father_phone')}</label>
                                             <input type="tel" value={editForm.fatherPhone} onChange={e => setEditForm({...editForm, fatherPhone: e.target.value})} className={inputCls} />
                                         </div>
+                                        <div>
+                                            <label className={labelCls}>Otasi TG ID</label>
+                                            <input type="text" value={editForm.fatherTelegramId} onChange={e => setEditForm({...editForm, fatherTelegramId: e.target.value})} className={inputCls} placeholder="ID" />
+                                        </div>
                                     </div>
-                                    <div className="grid grid-cols-2 gap-2">
+                                    <div className="grid grid-cols-3 gap-2">
                                         <div>
                                             <label className={labelCls}>{t('mother_name')}</label>
                                             <input type="text" value={editForm.motherName} onChange={e => setEditForm({...editForm, motherName: e.target.value})} className={inputCls} />
@@ -583,6 +612,10 @@ export default function StudentDetails() {
                                         <div>
                                             <label className={labelCls}>{t('mother_phone')}</label>
                                             <input type="tel" value={editForm.motherPhone} onChange={e => setEditForm({...editForm, motherPhone: e.target.value})} className={inputCls} />
+                                        </div>
+                                        <div>
+                                            <label className={labelCls}>Onasi TG ID</label>
+                                            <input type="text" value={editForm.motherTelegramId} onChange={e => setEditForm({...editForm, motherTelegramId: e.target.value})} className={inputCls} placeholder="ID" />
                                         </div>
                                     </div>
                                     <div>
@@ -793,6 +826,22 @@ export default function StudentDetails() {
                                         <h3 className="text-[9px] font-black text-[#1b6b6b] uppercase tracking-widest">{t('lead_details_title')}</h3>
                                     </div>
                                     <InfoRow icon={<Phone className="w-3.5 h-3.5" />} label={t('student_phone')} value={student.phone} />
+                                    {student.telegramId ? (
+                                        <div className="flex items-center gap-2 pl-12 -mt-1.5 mb-2">
+                                            <span className="text-[9px] font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/20 px-2 py-0.5 rounded border border-emerald-100 dark:border-emerald-900/40">
+                                                TG ulangan: {student.telegramId}
+                                            </span>
+                                            <button onClick={() => handleDisconnectTelegram('student')} className="text-rose-500 hover:text-rose-600 text-[8px] font-black uppercase tracking-wider cursor-pointer">
+                                                [Uzish]
+                                            </button>
+                                        </div>
+                                    ) : (
+                                        <div className="pl-12 -mt-1.5 mb-2">
+                                            <span className="text-[9px] font-bold text-gray-400">
+                                                TG ulangan emas
+                                            </span>
+                                        </div>
+                                    )}
                                     <InfoRow 
                                         icon={<Bus className="w-3.5 h-3.5" />} 
                                         label={t('transport')} 
@@ -803,22 +852,50 @@ export default function StudentDetails() {
                                     <div className="space-y-2">
                                         <InfoRow icon={<Users className="w-3.5 h-3.5" />} label={t('father')} value={student.fatherName || "-"} />
                                         {student.fatherPhone && (
-                                            <div className="flex items-center gap-1.5 pl-12 -mt-1">
-                                                <span className="text-[10px] font-bold text-gray-550 tabular-nums">{student.fatherPhone}</span>
-                                                <button onClick={() => handleSendSms(student.fatherPhone!, 'manual')} className="p-1 text-[#1b6b6b] hover:bg-teal-50 rounded transition-all cursor-pointer">
-                                                    <Sparkles size={11} />
-                                                </button>
+                                            <div className="flex items-center justify-between pl-12 -mt-1">
+                                                <div className="flex items-center gap-1.5">
+                                                    <span className="text-[10px] font-bold text-gray-550 tabular-nums">{student.fatherPhone}</span>
+                                                    <button onClick={() => handleSendSms(student.fatherPhone!, 'manual')} className="p-1 text-[#1b6b6b] hover:bg-teal-50 rounded transition-all cursor-pointer">
+                                                        <Sparkles size={11} />
+                                                    </button>
+                                                </div>
+                                                {student.fatherTelegramId ? (
+                                                    <div className="flex items-center gap-2 mr-2">
+                                                        <span className="text-[8px] font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/20 px-1.5 py-0.5 rounded border border-emerald-100 dark:border-emerald-900/40">
+                                                            TG: {student.fatherTelegramId}
+                                                        </span>
+                                                        <button onClick={() => handleDisconnectTelegram('father')} className="text-rose-500 hover:text-rose-600 text-[8px] font-black uppercase tracking-wider cursor-pointer">
+                                                            Uzish
+                                                        </button>
+                                                    </div>
+                                                ) : (
+                                                    <span className="text-[8px] font-bold text-gray-400 italic mr-2">TG ulanmagan</span>
+                                                )}
                                             </div>
                                         )}
                                     </div>
                                     <div className="space-y-2">
                                         <InfoRow icon={<Users className="w-3.5 h-3.5" />} label={t('mother')} value={student.motherName || "-"} />
                                         {student.motherPhone && (
-                                            <div className="flex items-center gap-1.5 pl-12 -mt-1">
-                                                <span className="text-[10px] font-bold text-gray-550 tabular-nums">{student.motherPhone}</span>
-                                                <button onClick={() => handleSendSms(student.motherPhone!, 'manual')} className="p-1 text-[#1b6b6b] hover:bg-teal-50 rounded transition-all cursor-pointer">
-                                                    <Sparkles size={11} />
-                                                </button>
+                                            <div className="flex items-center justify-between pl-12 -mt-1">
+                                                <div className="flex items-center gap-1.5">
+                                                    <span className="text-[10px] font-bold text-gray-550 tabular-nums">{student.motherPhone}</span>
+                                                    <button onClick={() => handleSendSms(student.motherPhone!, 'manual')} className="p-1 text-[#1b6b6b] hover:bg-teal-50 rounded transition-all cursor-pointer">
+                                                        <Sparkles size={11} />
+                                                    </button>
+                                                </div>
+                                                {student.motherTelegramId ? (
+                                                    <div className="flex items-center gap-2 mr-2">
+                                                        <span className="text-[8px] font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/20 px-1.5 py-0.5 rounded border border-emerald-100 dark:border-emerald-900/40">
+                                                            TG: {student.motherTelegramId}
+                                                        </span>
+                                                        <button onClick={() => handleDisconnectTelegram('mother')} className="text-rose-500 hover:text-rose-600 text-[8px] font-black uppercase tracking-wider cursor-pointer">
+                                                            Uzish
+                                                        </button>
+                                                    </div>
+                                                ) : (
+                                                    <span className="text-[8px] font-bold text-gray-400 italic mr-2">TG ulanmagan</span>
+                                                )}
                                             </div>
                                         )}
                                     </div>
