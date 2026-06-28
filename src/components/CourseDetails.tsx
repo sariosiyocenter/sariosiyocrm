@@ -1074,12 +1074,11 @@ export default function CourseDetails() {
                     onUnmatch={(studentId) => saveAttendance(studentId, 'Kelmapdi')}
                     onClose={(markedIds) => {
                         setIsFaceAttendanceOpen(false);
-                        if (markedIds.length > 0) {
-                            groupStudents.forEach(s => {
-                                const alreadyHas = attendances.find(a => a.groupId === group.id && a.date === selectedDate && a.studentId === s.id);
-                                if (!alreadyHas) saveAttendance(s.id, 'Kelmapdi');
-                            });
-                        }
+                        // Mark everyone NOT detected by Face ID as absent (override any previous record)
+                        const markedSet = new Set(markedIds);
+                        groupStudents.forEach(s => {
+                            if (!markedSet.has(s.id)) saveAttendance(s.id, 'Kelmapdi');
+                        });
                     }}
                 />
             )}
