@@ -1071,6 +1071,7 @@ export default function CourseDetails() {
                         })
                     )}
                     onMatch={(studentId) => saveAttendance(studentId, 'Keldi')}
+                    onUnmatch={(studentId) => saveAttendance(studentId, 'Kelmapdi')}
                     onClose={(markedIds) => {
                         setIsFaceAttendanceOpen(false);
                         if (markedIds.length > 0) {

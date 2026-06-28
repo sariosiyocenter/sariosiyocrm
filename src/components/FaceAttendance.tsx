@@ -14,10 +14,11 @@ interface Props {
     students: StudentInfo[];
     attendanceStatus: Record<number, string>;
     onMatch: (studentId: number) => void;
+    onUnmatch: (studentId: number) => void;
     onClose: (markedIds: number[]) => void;
 }
 
-export default function FaceAttendance({ students, attendanceStatus, onMatch, onClose }: Props) {
+export default function FaceAttendance({ students, attendanceStatus, onMatch, onUnmatch, onClose }: Props) {
     const videoRef = useRef<HTMLVideoElement>(null);
     const canvasRef = useRef<HTMLCanvasElement>(null);
     const streamRef = useRef<MediaStream | null>(null);
@@ -28,7 +29,7 @@ export default function FaceAttendance({ students, attendanceStatus, onMatch, on
     const [loadMsg, setLoadMsg] = useState('Modellar yuklanmoqda...');
     const [lastMatched, setLastMatched] = useState<StudentInfo | null>(null);
     const [labeledDescriptors, setLabeledDescriptors] = useState<faceapi.LabeledFaceDescriptors[]>([]);
-    const [presentCount, setPresentCount] = useState(0);
+    const [markedSet, setMarkedSet] = useState<Set<number>>(new Set());
 
     const enrolledStudents = students.filter(s => s.customPrices?.faceDescriptor);
     const totalEnrolled = enrolledStudents.length;
@@ -130,9 +131,9 @@ export default function FaceAttendance({ students, attendanceStatus, onMatch, on
                 // Auto-mark if not already marked in this session
                 if (!markedRef.current.has(studentId) && attendanceStatus[studentId] !== 'Keldi') {
                     markedRef.current.add(studentId);
+                    setMarkedSet(new Set(markedRef.current));
                     onMatch(studentId);
                     setLastMatched(student);
-                    setPresentCount(c => c + 1);
                     setTimeout(() => setLastMatched(null), 2500);
                 }
             }
@@ -146,8 +147,14 @@ export default function FaceAttendance({ students, attendanceStatus, onMatch, on
         return () => { if (intervalRef.current) clearInterval(intervalRef.current); };
     }, [phase, detect]);
 
-    const markedThisSession = students.filter(s => markedRef.current.has(s.id));
-    const alreadyPresent = students.filter(s => attendanceStatus[s.id] === 'Keldi' && !markedRef.current.has(s.id));
+    const markedThisSession = students.filter(s => markedSet.has(s.id));
+    const alreadyPresent = students.filter(s => attendanceStatus[s.id] === 'Keldi' && !markedSet.has(s.id));
+
+    const removeMarked = (studentId: number) => {
+        markedRef.current.delete(studentId);
+        setMarkedSet(new Set(markedRef.current));
+        onUnmatch(studentId);
+    };
 
     return (
         <div className="fixed inset-0 z-[300] bg-black flex flex-col">
@@ -167,7 +174,7 @@ export default function FaceAttendance({ students, attendanceStatus, onMatch, on
                 <div className="flex items-center gap-3">
                     <div className="flex items-center gap-1.5 bg-emerald-500/20 px-3 py-1.5 rounded-xl border border-emerald-500/30">
                         <UserCheck size={13} className="text-emerald-400" />
-                        <span className="text-emerald-300 text-xs font-black tabular-nums">{markedThisSession.length + alreadyPresent.length}/{students.length}</span>
+                        <span className="text-emerald-300 text-xs font-black tabular-nums">{markedThisSession.length}/{totalEnrolled}</span>
                     </div>
                     <button onClick={() => onClose(Array.from(markedRef.current))} className="w-9 h-9 flex items-center justify-center rounded-xl bg-gray-800 hover:bg-gray-700 transition-colors cursor-pointer">
                         <X size={16} className="text-white" />
@@ -229,26 +236,40 @@ export default function FaceAttendance({ students, attendanceStatus, onMatch, on
 
             {/* Present list + Finish button */}
             <div className="bg-gray-950 border-t border-gray-800">
-                {/* Students who passed */}
-                <div className="px-5 pt-3 pb-2" style={{ maxHeight: '120px', overflowY: 'auto' }}>
-                    <p className="text-gray-500 text-[9px] font-black uppercase tracking-widest mb-2">
-                        Face ID dan o'tganlar — {markedThisSession.length + alreadyPresent.length} ta
-                    </p>
-                    {markedThisSession.length === 0 && alreadyPresent.length === 0 ? (
-                        <p className="text-gray-700 text-[9px] font-bold uppercase tracking-widest text-center py-1">Hali hech kim aniqlanmadi...</p>
-                    ) : (
-                        <div className="flex flex-wrap gap-1.5">
-                            {markedThisSession.map(s => (
-                                <span key={s.id} className="flex items-center gap-1 text-[9px] font-black uppercase tracking-wide text-emerald-300 bg-emerald-950/60 border border-emerald-500/40 px-2.5 py-1 rounded-lg">
-                                    <CheckCircle2 size={10} className="text-emerald-400" /> {s.name}
-                                </span>
-                            ))}
-                            {alreadyPresent.map(s => (
-                                <span key={s.id} className="flex items-center gap-1 text-[9px] font-bold uppercase tracking-wide text-gray-400 bg-gray-900/40 border border-gray-800 px-2.5 py-1 rounded-lg">
-                                    <CheckCircle2 size={10} className="text-gray-500" /> {s.name}
-                                </span>
-                            ))}
+                <div className="px-5 pt-3 pb-2" style={{ maxHeight: '130px', overflowY: 'auto' }}>
+                    {/* Face ID detected this session */}
+                    {markedThisSession.length > 0 && (
+                        <div className="mb-2">
+                            <p className="text-emerald-500 text-[9px] font-black uppercase tracking-widest mb-1.5">
+                                ✓ Face ID aniqladi — {markedThisSession.length} ta
+                            </p>
+                            <div className="flex flex-wrap gap-1.5">
+                                {markedThisSession.map(s => (
+                                    <span key={s.id} className="flex items-center gap-1 text-[9px] font-black uppercase tracking-wide text-emerald-300 bg-emerald-950/60 border border-emerald-500/40 pl-2.5 pr-1 py-1 rounded-lg">
+                                        <CheckCircle2 size={10} className="text-emerald-400" /> {s.name}
+                                        <button onClick={() => removeMarked(s.id)} className="ml-1 text-emerald-600 hover:text-rose-400 transition-colors cursor-pointer">
+                                            <X size={10} />
+                                        </button>
+                                    </span>
+                                ))}
+                            </div>
                         </div>
+                    )}
+                    {/* Already marked before Face ID */}
+                    {alreadyPresent.length > 0 && (
+                        <div>
+                            <p className="text-gray-600 text-[9px] font-bold uppercase tracking-widest mb-1.5">Oldin belgilangan — {alreadyPresent.length} ta</p>
+                            <div className="flex flex-wrap gap-1.5">
+                                {alreadyPresent.map(s => (
+                                    <span key={s.id} className="flex items-center gap-1 text-[9px] font-bold uppercase tracking-wide text-gray-500 bg-gray-900/40 border border-gray-800 px-2.5 py-1 rounded-lg">
+                                        {s.name}
+                                    </span>
+                                ))}
+                            </div>
+                        </div>
+                    )}
+                    {markedThisSession.length === 0 && alreadyPresent.length === 0 && (
+                        <p className="text-gray-700 text-[9px] font-bold uppercase tracking-widest text-center py-1">Hali hech kim aniqlanmadi...</p>
                     )}
                 </div>
 
@@ -259,7 +280,7 @@ export default function FaceAttendance({ students, attendanceStatus, onMatch, on
                         className="w-full py-3.5 bg-emerald-500 hover:bg-emerald-400 active:bg-emerald-600 text-white text-sm font-black uppercase tracking-widest rounded-2xl shadow-lg shadow-emerald-500/20 transition-all flex items-center justify-center gap-2 cursor-pointer"
                     >
                         <CheckCircle2 size={16} />
-                        Tugatish — {markedThisSession.length + alreadyPresent.length} ta qatnashdi
+                        Tugatish — {markedThisSession.length} ta Face ID dan o'tdi
                     </button>
                 </div>
             </div>
