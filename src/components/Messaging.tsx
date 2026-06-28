@@ -646,7 +646,9 @@ export default function Messaging() {
       });
       const data = await res.json();
       if (res.ok && data.success) {
-        alert("Kampaniya muvaffaqiyatli boshlandi! Xabarlar orqa fonda (background) yuborilmoqda.");
+        const sent = data.sentCount ?? 0;
+        const failed = data.failedCount ?? 0;
+        alert(`✅ ${sent} ta xabar yuborildi${failed > 0 ? `, ${failed} ta yuborilmadi` : ''}.`);
         setMessageText('');
         setSelectedTemplateId('');
         fetchCampaigns();

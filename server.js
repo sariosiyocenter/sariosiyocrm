@@ -3208,6 +3208,14 @@ function fillTemplate(body, student, groupsForStudent, school) {
 }
 
 // Bitta o'quvchiga tanlangan kanal(lar) orqali yuborish
+// Reject a promise if it doesn't settle within `ms` — keeps batches fast
+function withTimeout(promise, ms, label = 'timeout') {
+  return Promise.race([
+    promise,
+    new Promise((_, reject) => setTimeout(() => reject(new Error(label)), ms))
+  ]);
+}
+
 async function sendToOne({ student, message, channel, recipientTo, type, schoolId, campaignId }) {
   let anySuccess = false;
   let attempted = false;
@@ -3227,12 +3235,12 @@ async function sendToOne({ student, message, channel, recipientTo, type, schoolI
       if (student.motherTelegramId) tids.push({ id: student.motherTelegramId, name: `${student.name} (Onasi)` });
     }
 
+    const schoolBot = tids.length > 0 ? await getTelegramBot(schoolId) : null;
     for (const target of tids) {
       attempted = true;
       try {
-        const schoolBot = await getTelegramBot(schoolId);
         if (schoolBot) {
-          await schoolBot.telegram.sendMessage(target.id, message);
+          await withTimeout(schoolBot.telegram.sendMessage(target.id, message), 4000, 'Telegram timeout');
           anySuccess = true;
           await prisma.smsLog.create({
             data: {
@@ -3345,55 +3353,49 @@ app.post('/api/messaging/send-batch', authenticate, async (req, res, next) => {
       data: { message, channel: ch, recipientTo: to, filtersJson: filters || null, totalCount, schoolId }
     });
 
-    // Respond immediately — data is ready, only sending happens in background
-    res.json({ success: true, campaign, sentCount: 0, failedCount: 0, total: totalCount });
-
-    // Background: only sending (no DB queries needed)
-    (async () => {
-      let sentCount = 0, failedCount = 0;
-      try {
-        if (audience === 'STUDENTS' && Array.isArray(sendList) && sendList.length > 0) {
-
-          const concurrencyLimit = 10;
-          for (let i = 0; i < sendList.length; i += concurrencyLimit) {
-            const chunk = sendList.slice(i, i + concurrencyLimit);
-            await Promise.all(chunk.map(async (entry) => {
-              const student = studentsMap[Number(entry.studentId)];
-              if (!student) return;
-              const personalized = fillTemplate(message, student, groupsMap[student.id] || [], school);
-              const r = await sendToOne({
-                student,
-                message: personalized,
-                channel: ch,
-                recipientTo: entry.recipientTo,
-                type: 'MANUAL',
-                schoolId,
-                campaignId: campaign.id
-              });
-              if (r.success) sentCount++; else failedCount++;
-            }));
-          }
-        } else {
-          const concurrencyLimit = 10;
-          for (let i = 0; i < recipients.length; i += concurrencyLimit) {
-            const chunk = recipients.slice(i, i + concurrencyLimit);
-            await Promise.all(chunk.map(async (recipient) => {
-              const personalized = fillTemplate(message, recipient, groupsMap[recipient.id] || [], school);
-              const targetTo = (audience === 'TEACHERS' || audience === 'STAFF') ? 'STUDENT' : to;
-              const r = await sendToOne({ student: recipient, message: personalized, channel: ch, recipientTo: targetTo, type: 'MANUAL', schoolId, campaignId: campaign.id });
-              if (r.success) sentCount++; else failedCount++;
-            }));
-          }
-        }
-      } catch (bgErr) {
-        console.error('[Background Campaign Error]:', bgErr);
-      } finally {
-        await prisma.messageCampaign.update({
-          where: { id: campaign.id },
-          data: { sentCount, failedCount }
-        }).catch(err => console.error('Failed to update final campaign counts:', err));
+    // Build a flat list of send tasks
+    const tasks = [];
+    if (audience === 'STUDENTS' && Array.isArray(sendList) && sendList.length > 0) {
+      for (const entry of sendList) {
+        const student = studentsMap[Number(entry.studentId)];
+        if (!student) continue;
+        tasks.push({ student, recipientTo: entry.recipientTo, groups: groupsMap[student.id] || [] });
       }
-    })();
+    } else {
+      const targetTo = (audience === 'TEACHERS' || audience === 'STAFF') ? 'STUDENT' : to;
+      for (const recipient of recipients) {
+        tasks.push({ student: recipient, recipientTo: targetTo, groups: groupsMap[recipient.id] || [] });
+      }
+    }
+
+    // Send SYNCHRONOUSLY with high concurrency — on Vercel serverless,
+    // anything after res.json() is frozen, so we must finish sending first.
+    // 25-wide concurrency keeps even ~100 recipients well under 5s.
+    let sentCount = 0, failedCount = 0;
+    const concurrencyLimit = 25;
+    for (let i = 0; i < tasks.length; i += concurrencyLimit) {
+      const chunk = tasks.slice(i, i + concurrencyLimit);
+      await Promise.all(chunk.map(async (task) => {
+        const personalized = fillTemplate(message, task.student, task.groups, school);
+        const r = await sendToOne({
+          student: task.student,
+          message: personalized,
+          channel: ch,
+          recipientTo: task.recipientTo,
+          type: 'MANUAL',
+          schoolId,
+          campaignId: campaign.id
+        });
+        if (r.success) sentCount++; else failedCount++;
+      }));
+    }
+
+    await prisma.messageCampaign.update({
+      where: { id: campaign.id },
+      data: { sentCount, failedCount }
+    }).catch(err => console.error('Failed to update campaign counts:', err));
+
+    res.json({ success: true, campaign, sentCount, failedCount, total: totalCount });
   } catch (err) { next(err); }
 });
 
