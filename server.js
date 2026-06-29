@@ -142,8 +142,7 @@ app.post('/api/auth/login', async (req, res, next) => {
     if (saEmail && saPass && email === saEmail && password === saPass) {
       const token = jwt.sign(
         { id: 0, email: saEmail, role: 'SUPERADMIN', schoolId: null },
-        JWT_SECRET,
-        { expiresIn: '365d' }
+        JWT_SECRET
       );
       return res.json({
         token,
@@ -176,7 +175,7 @@ app.post('/api/auth/login', async (req, res, next) => {
       }
     }
 
-    const token = jwt.sign({ id: user.id, email: user.email, role: user.role, schoolId: user.schoolId }, JWT_SECRET, { expiresIn: '365d' });
+    const token = jwt.sign({ id: user.id, email: user.email, role: user.role, schoolId: user.schoolId }, JWT_SECRET);
     res.json({ token, user: { id: user.id, email: user.email, name: user.name, role: user.role, schoolId: user.schoolId } });
   } catch (error) { next(error); }
 });
