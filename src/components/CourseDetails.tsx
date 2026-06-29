@@ -4,7 +4,7 @@ import { useCRM } from '../context/CRMContext';
 import {
     Users, Calendar, Clock, BookOpen, Plus, TrendingUp,
     XCircle, ArrowLeft, Search, ClipboardCheck, ChevronRight, Presentation, Check, Sparkles,
-    CreditCard, DollarSign, Wallet
+    CreditCard, DollarSign, Wallet, Trash2
 } from 'lucide-react';
 import AttendanceMatrix from './AttendanceMatrix';
 import GroupAttendanceCalendar from './GroupAttendanceCalendar';
@@ -13,7 +13,7 @@ import FaceAttendance from './FaceAttendance';
 export default function CourseDetails() {
     const { id } = useParams<{ id: string }>();
     const navigate = useNavigate();
-    const { groups, students, teachers, courses, rooms, attendances, payments, addBatchAttendance, addAttendance, updateDayTopic, addStudentToGroup, removeStudentFromGroup, updateGroup, updateCourse, showNotification, topics, addTopic, updateTopic, addPayment, syllabuses } = useCRM();
+    const { groups, students, teachers, courses, rooms, attendances, payments, addBatchAttendance, addAttendance, updateDayTopic, addStudentToGroup, removeStudentFromGroup, updateGroup, updateCourse, deleteGroup, showNotification, topics, addTopic, updateTopic, addPayment, syllabuses } = useCRM();
     const [isEditingInfo, setIsEditingInfo] = useState(false);
     const [editForm, setEditForm] = useState({
         teacherId: 0,
@@ -288,11 +288,28 @@ export default function CourseDetails() {
 
     return (
         <div className="space-y-6 animate-in fade-in duration-500">
-            {/* Back Button */}
-            <button onClick={() => navigate('/courses')} className="flex items-center gap-2 text-gray-400 dark:text-gray-500 hover:text-[#1b6b6b] transition-all text-[10px] font-extrabold uppercase tracking-widest group cursor-pointer">
-                <ArrowLeft size={14} className="group-hover:-translate-x-1 transition-transform" />
-                Orqaga
-            </button>
+            {/* Back Button + Delete */}
+            <div className="flex items-center justify-between">
+                <button onClick={() => navigate('/courses')} className="flex items-center gap-2 text-gray-400 dark:text-gray-500 hover:text-[#1b6b6b] transition-all text-[10px] font-extrabold uppercase tracking-widest group cursor-pointer">
+                    <ArrowLeft size={14} className="group-hover:-translate-x-1 transition-transform" />
+                    Orqaga
+                </button>
+                <button
+                    onClick={async () => {
+                        if (!confirm(`"${group.name}" guruhini o'chirishni tasdiqlaysizmi? Bu amalni ortga qaytarib bo'lmaydi.`)) return;
+                        try {
+                            await deleteGroup(group.id);
+                            navigate('/courses');
+                        } catch {
+                            showNotification("Guruhni o'chirishda xatolik yuz berdi", "error");
+                        }
+                    }}
+                    className="flex items-center gap-1.5 px-3 py-1.5 text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/20 rounded-xl transition-all text-[10px] font-extrabold uppercase tracking-widest cursor-pointer"
+                >
+                    <Trash2 size={13} />
+                    Guruhni o'chirish
+                </button>
+            </div>
 
             <div className="bg-white dark:bg-gray-800 rounded-3xl border border-gray-100 dark:border-gray-700/50 shadow-sm overflow-hidden">
                 <div className="bg-teal-50/20 dark:bg-teal-950/10 p-6 md:p-8 border-b border-gray-100 dark:border-gray-700/50">

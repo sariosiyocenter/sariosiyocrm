@@ -2195,14 +2195,41 @@ app.delete('/api/schools/:id', authenticate, async (req, res, next) => {
       }
     }
 
-    // Cascade delete related records to avoid database foreign key violations
+    // Cascade delete — correct order to satisfy all FK constraints
     await prisma.$transaction([
-      prisma.student.deleteMany({ where: { schoolId } }),
-      prisma.teacher.deleteMany({ where: { schoolId } }),
-      prisma.group.deleteMany({ where: { schoolId } }),
-      prisma.lead.deleteMany({ where: { schoolId } }),
+      // 1. Null out optional cross-FK references to avoid circular dependency
+      prisma.transport.updateMany({ where: { schoolId }, data: { driverId: null } }),
+      prisma.route.updateMany({ where: { schoolId }, data: { driverId: null, transportId: null } }),
+      prisma.student.updateMany({ where: { schoolId }, data: { transportId: null } }),
+      // 2. Delete leaf records that reference students / teachers / groups
+      prisma.deliveryLog.deleteMany({ where: { schoolId } }),
+      prisma.attendance.deleteMany({ where: { schoolId } }),
+      prisma.score.deleteMany({ where: { schoolId } }),
+      prisma.examAssignment.deleteMany({ where: { schoolId } }),
+      prisma.examResult.deleteMany({ where: { schoolId } }),
+      prisma.teacherAttendance.deleteMany({ where: { schoolId } }),
+      prisma.staffAttendance.deleteMany({ where: { schoolId } }),
+      prisma.salaryPayment.deleteMany({ where: { schoolId } }),
       prisma.payment.deleteMany({ where: { schoolId } }),
+      // 3. Delete other school-level records
+      prisma.smsLog.deleteMany({ where: { schoolId } }),
+      prisma.question.deleteMany({ where: { schoolId } }),
+      prisma.messageTemplate.deleteMany({ where: { schoolId } }),
+      prisma.messageCampaign.deleteMany({ where: { schoolId } }),
+      prisma.autoMessageRule.deleteMany({ where: { schoolId } }),
+      prisma.applyToken.deleteMany({ where: { schoolId } }),
+      prisma.expense.deleteMany({ where: { schoolId } }),
+      // 4. Delete entities in FK-safe order
+      prisma.exam.deleteMany({ where: { schoolId } }),
+      prisma.route.deleteMany({ where: { schoolId } }),
+      prisma.transport.deleteMany({ where: { schoolId } }),
+      prisma.lead.deleteMany({ where: { schoolId } }),
+      prisma.student.deleteMany({ where: { schoolId } }),
+      prisma.group.deleteMany({ where: { schoolId } }),
+      prisma.teacher.deleteMany({ where: { schoolId } }),
+      prisma.topic.deleteMany({ where: { schoolId } }),
       prisma.course.deleteMany({ where: { schoolId } }),
+      prisma.syllabus.deleteMany({ where: { schoolId } }),
       prisma.room.deleteMany({ where: { schoolId } }),
       prisma.setting.deleteMany({ where: { schoolId } }),
       prisma.user.deleteMany({ where: { schoolId } }),
@@ -3195,6 +3222,7 @@ function fillTemplate(body, student, groupsForStudent, school) {
 
   return String(body || '')
     .replace(/\{ism\}/gi, student.name || '')
+    .replace(/@name/gi, student.name || '')
     .replace(/\{qarz\}/gi, debt.toLocaleString())
     .replace(/\{balans\}/gi, balance.toLocaleString())
     .replace(/\{guruh\}/gi, groupNames)
