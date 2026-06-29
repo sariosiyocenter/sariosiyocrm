@@ -1007,6 +1007,23 @@ app.put('/api/groups/:id', authenticate, async (req, res, next) => {
   }
 });
 
+app.delete('/api/groups/:id', authenticate, async (req, res, next) => {
+  try {
+    const groupId = parseInt(req.params.id);
+    if (isNaN(groupId)) return res.status(400).json({ error: "Noto'g'ri ID" });
+
+    await prisma.$transaction([
+      prisma.examAssignment.deleteMany({ where: { groupId } }),
+      prisma.attendance.deleteMany({ where: { groupId } }),
+      prisma.score.deleteMany({ where: { groupId } }),
+      prisma.group.update({ where: { id: groupId }, data: { students: { set: [] } } }),
+      prisma.group.delete({ where: { id: groupId } }),
+    ]);
+
+    res.json({ success: true });
+  } catch (error) { next(error); }
+});
+
 // Leads
 app.get('/api/leads', authenticate, async (req, res, next) => {
   try {
