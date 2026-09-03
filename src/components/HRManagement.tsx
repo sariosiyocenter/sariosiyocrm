@@ -46,7 +46,7 @@ const inp = "w-full px-4 py-3 bg-gray-50 dark:bg-gray-900/50 border border-gray-
 const lbl = "block text-[10px] font-extrabold uppercase tracking-widest text-gray-400 mb-2";
 
 export default function HRManagement() {
-    const { teachers, selectedSchoolId, user: currentUser, token } = useCRM();
+    const { teachers, selectedSchoolId, user: currentUser, token, showNotification } = useCRM();
     const { t } = useLang();
     const navigate = useNavigate();
 
@@ -101,7 +101,7 @@ export default function HRManagement() {
                 })
             });
             if (res.ok) { setIsAddOpen(false); setNewUser({ role: 'RECEPTIONIST' }); fetchUsers(); }
-            else { const d = await res.json(); alert(d.error || "Xatolik yuz berdi"); }
+            else { const d = await res.json(); showNotification(d.error || "Xatolik yuz berdi", 'error'); }
         } catch (err) { console.error('Add user failed', err); }
     };
 
@@ -121,7 +121,7 @@ export default function HRManagement() {
                     }),
                 });
                 if (res.ok) { setIsEditOpen(false); setEditingUser(null); window.location.reload(); }
-                else { const d = await res.json(); alert(d.error || "Xatolik yuz berdi"); }
+                else { const d = await res.json(); showNotification(d.error || "Xatolik yuz berdi", 'error'); }
             } else {
                 const body: any = {
                     name:       editingUser.name,
@@ -140,7 +140,7 @@ export default function HRManagement() {
                     body: JSON.stringify(body)
                 });
                 if (res.ok) { setIsEditOpen(false); setEditingUser(null); fetchUsers(); }
-                else { const d = await res.json(); alert(d.error || "Xatolik yuz berdi"); }
+                else { const d = await res.json(); showNotification(d.error || "Xatolik yuz berdi", 'error'); }
             }
         } catch (err) { console.error('Edit user failed', err); }
     };
@@ -397,6 +397,7 @@ function UserModal({
     currentUserRole?: string; showPassword: boolean;
 }) {
     const { t } = useLang();
+    const { showNotification } = useCRM();
     const fileRef     = useRef<HTMLInputElement>(null);
     const [isCameraOpen, setIsCameraOpen] = useState(false);
     const [isRemovingBg, setIsRemovingBg] = useState(false);
@@ -416,10 +417,10 @@ function UserModal({
             if (data.success) {
                 onChange({ ...user, photo: data.image });
             } else {
-                alert('Xatolik: ' + (data.error || 'Noma\'lum xatolik'));
+                showNotification('Xatolik: ' + (data.error || 'Noma\'lum xatolik'), 'error');
             }
         } catch {
-            alert('Xatolik yuz berdi');
+            showNotification('Xatolik yuz berdi', 'error');
         } finally {
             setIsRemovingBg(false);
         }

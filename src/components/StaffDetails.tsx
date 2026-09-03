@@ -380,10 +380,10 @@ export default function StaffDetails() {
                 });
                 setStaffUser((p: any) => ({ ...p, photo: data.image }));
             } else {
-                alert('Xatolik: ' + (data.error || 'Noma\'lum xatolik'));
+                showNotification('Xatolik: ' + (data.error || 'Noma\'lum xatolik'), 'error');
             }
         } catch {
-            alert('Xatolik yuz berdi');
+            showNotification('Xatolik yuz berdi', 'error');
         } finally {
             setIsRemovingBg(false);
         }

@@ -135,8 +135,8 @@ export default function Finance() {
             });
             const data = await res.json();
             if (res.ok) await loadBillingStatus();
-            else alert(data.error || 'Xatolik yuz berdi');
-        } catch { alert('Server bilan aloqa yo\'q'); } finally { setBillingProcessing(false); }
+            else showNotification(data.error || 'Xatolik yuz berdi', 'error');
+        } catch { showNotification('Server bilan aloqa yo\'q', 'info'); } finally { setBillingProcessing(false); }
     };
 
     const billingMonthLabel = (m: string) => {

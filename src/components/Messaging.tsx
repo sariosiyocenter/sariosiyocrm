@@ -111,7 +111,7 @@ const getTriggerTypeMeta = (type: string) => {
 
 export default function Messaging() {
   const { t } = useLang();
-  const { students, groups, courses, selectedSchoolId, schools, teachers, users } = useCRM();
+  const { students, groups, courses, selectedSchoolId, schools, teachers, users, showNotification } = useCRM();
 
   const [activeTab, setActiveTab] = useState<'new' | 'templates' | 'auto' | 'history'>('new');
   const [loading, setLoading] = useState(false);
@@ -195,7 +195,7 @@ export default function Messaging() {
           .filter(id => selectedLogIds[Number(id)])
           .map(Number);
         if (selectedIds.length === 0) {
-          alert("Qayta yuborish uchun kamida bitta xabarni tanlang!");
+          showNotification("Qayta yuborish uchun kamida bitta xabarni tanlang!", 'error');
           setResendingLogs(false);
           return;
         }
@@ -212,14 +212,14 @@ export default function Messaging() {
       });
       const data = await res.json();
       if (res.ok && data.success) {
-        alert(`Qayta jo'natish yakunlandi! Jami: ${data.total}, Muvaffaqiyatli: ${data.successCount}, Xato: ${data.failCount}`);
+        showNotification(`Qayta jo'natish yakunlandi! Jami: ${data.total}, Muvaffaqiyatli: ${data.successCount}, Xato: ${data.failCount}`, data.failCount > 0 ? 'info' : 'success');
         setSelectedLogIds({});
         fetchLogs();
       } else {
-        alert("Xatolik: " + (data.error || "Xabarlarni qayta jo'natib bo'lmadi"));
+        showNotification("Xatolik: " + (data.error || "Xabarlarni qayta jo'natib bo'lmadi"), 'error');
       }
     } catch (e: any) {
-      alert("Xatolik: " + e.message);
+      showNotification("Xatolik: " + e.message, 'error');
     } finally {
       setResendingLogs(false);
     }
@@ -290,17 +290,17 @@ export default function Messaging() {
       const updatedLog = await res.json();
       setLogs(prev => prev.map(log => log.id === id ? updatedLog : log));
       if (updatedLog.status === 'SENT') {
-        alert("Xabar yetkazildi!");
+        showNotification("Xabar yetkazildi!", 'success');
       } else {
         try {
           const err = JSON.parse(updatedLog.errorMsg || '{}');
-          alert("Holat: " + (err.message || updatedLog.status));
+          showNotification("Holat: " + (err.message || updatedLog.status), 'info');
         } catch (e) {
-          alert("Holat: " + updatedLog.status);
+          showNotification("Holat: " + updatedLog.status, 'info');
         }
       }
     } catch (err: any) {
-      alert("Statusni tekshirishda xatolik: " + err.message);
+      showNotification("Statusni tekshirishda xatolik: " + err.message, 'error');
     }
   };
 
@@ -650,16 +650,16 @@ export default function Messaging() {
       if (res.ok && data.success) {
         const sent = data.sentCount ?? 0;
         const failed = data.failedCount ?? 0;
-        alert(`✅ ${sent} ta xabar yuborildi${failed > 0 ? `, ${failed} ta yuborilmadi` : ''}.`);
+        showNotification(`✅ ${sent} ta xabar yuborildi${failed > 0 ? `, ${failed} ta yuborilmadi` : ''}.`, 'error');
         setMessageText('');
         setSelectedTemplateId('');
         fetchCampaigns();
         fetchLogs();
       } else {
-        alert("Xato: " + (data.error || "Kampaniyani yuborib bo'lmadi"));
+        showNotification("Xato: " + (data.error || "Kampaniyani yuborib bo'lmadi"), 'error');
       }
     } catch (e: any) {
-      alert("Xatolik yuz berdi: " + e.message);
+      showNotification("Xatolik yuz berdi: " + e.message, 'error');
     } finally {
       setIsSending(false);
     }
@@ -730,10 +730,10 @@ export default function Messaging() {
         fetchRules();
       } else {
         const err = await res.json();
-        alert("Xatolik: " + err.error);
+        showNotification("Xatolik: " + err.error, 'error');
       }
     } catch (err: any) {
-      alert("Xatolik yuz berdi: " + err.message);
+      showNotification("Xatolik yuz berdi: " + err.message, 'error');
     }
   };
 
@@ -751,10 +751,10 @@ export default function Messaging() {
         fetchRules();
       } else {
         const err = await res.json();
-        alert("Xatolik: " + err.error);
+        showNotification("Xatolik: " + err.error, 'error');
       }
     } catch (e: any) {
-      alert("Xatolik: " + e.message);
+      showNotification("Xatolik: " + e.message, 'error');
     }
   };
 
@@ -769,10 +769,10 @@ export default function Messaging() {
         fetchRules();
       } else {
         const err = await res.json();
-        alert("Qoidani o'chirishda xatolik: " + (err.error || "Noma'lum xato"));
+        showNotification("Qoidani o'chirishda xatolik: " + (err.error || "Noma'lum xato"), 'error');
       }
     } catch (e: any) {
-      alert("Xatolik: " + e.message);
+      showNotification("Xatolik: " + e.message, 'error');
     }
   };
 
@@ -826,10 +826,10 @@ export default function Messaging() {
         fetchTemplates();
       } else {
         const err = await res.json();
-        alert("Xatolik: " + err.error);
+        showNotification("Xatolik: " + err.error, 'error');
       }
     } catch (err: any) {
-      alert("Xatolik yuz berdi: " + err.message);
+      showNotification("Xatolik yuz berdi: " + err.message, 'error');
     }
   };
 
@@ -844,9 +844,9 @@ export default function Messaging() {
         fetchTemplates();
       } else {
         const err = await res.json();
-        alert("Shablonni o'chirishda xatolik: " + (err.error || "Noma'lum xato"));
+        showNotification("Shablonni o'chirishda xatolik: " + (err.error || "Noma'lum xato"), 'error');
       }
-    } catch (e: any) { alert("Xatolik: " + e.message); }
+    } catch (e: any) { showNotification("Xatolik: " + e.message, 'error'); }
   };
 
   // History Tab: Filter logs by selected campaign ID

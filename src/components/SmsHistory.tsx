@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Search, Mail, Clock, CheckCircle, XCircle, Filter, RefreshCw, Zap } from 'lucide-react';
+import { useCRM } from '../context/CRMContext';
 
 interface SmsLog {
     id: number;
@@ -12,6 +13,7 @@ interface SmsLog {
 }
 
 export default function SmsHistory() {
+    const { showNotification } = useCRM();
     const [logs, setLogs] = useState<SmsLog[]>([]);
     const [loading, setLoading] = useState(true);
     const [search, setSearch] = useState('');
@@ -26,12 +28,12 @@ export default function SmsHistory() {
             });
             const data = await res.json();
             if (data.success) {
-                alert("Eskiz API muvaffaqiyatli bog'landi!");
+                showNotification("Eskiz API muvaffaqiyatli bog'landi!", 'success');
             } else {
-                alert("Xatolik: " + data.error);
+                showNotification("Xatolik: " + data.error, 'error');
             }
         } catch (err) {
-            alert("Ulanishda xatolik yuz berdi");
+            showNotification("Ulanishda xatolik yuz berdi", 'error');
         } finally {
             setLoading(false);
             fetchLogs();
@@ -65,17 +67,17 @@ export default function SmsHistory() {
             setLogs(prev => prev.map(log => log.id === id ? updatedLog : log));
             
             if (updatedLog.status === 'SENT') {
-                alert("Xabar muvaffaqiyatli yetkazildi!");
+                showNotification("Xabar muvaffaqiyatli yetkazildi!", 'success');
             } else {
                 try {
                     const err = JSON.parse(updatedLog.errorMsg || '{}');
-                    alert("Status: " + (err.data?.status || err.message || updatedLog.status));
+                    showNotification("Status: " + (err.data?.status || err.message || updatedLog.status), 'info');
                 } catch (e) {
-                    alert("Status: " + updatedLog.status);
+                    showNotification("Status: " + updatedLog.status, 'info');
                 }
             }
         } catch (err) {
-            alert("Statusni tekshirishda xatolik yuz berdi");
+            showNotification("Statusni tekshirishda xatolik yuz berdi", 'error');
         }
     };
 

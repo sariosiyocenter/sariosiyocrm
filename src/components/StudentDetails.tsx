@@ -105,7 +105,7 @@ export default function StudentDetails() {
             navigate('/students');
         } catch (err) {
             console.error("Delete failed", err);
-            alert(t('error_occurred'));
+            showNotification(t('error_occurred'), 'error');
         }
     };
 
@@ -305,13 +305,13 @@ export default function StudentDetails() {
             const data = await response.json();
             if (data.success) {
                 await updateStudent(student.id, { photo: data.image });
-                alert(t('bg_cleared_success'));
+                showNotification(t('bg_cleared_success'), 'info');
             } else {
-                alert(t('error_occurred') + ": " + data.error);
+                showNotification(t('error_occurred') + ": " + data.error, 'error');
             }
         } catch (err) {
             console.error("BG Removal failed", err);
-            alert(t('error_occurred'));
+            showNotification(t('error_occurred'), 'error');
         } finally {
             setIsRemovingBg(false);
         }
@@ -330,7 +330,7 @@ export default function StudentDetails() {
     };
     const handleSendSms = (phone: string, type: string) => {
         if (!phone) {
-            alert(t('phone_not_found'));
+            showNotification(t('phone_not_found'), 'info');
             return;
         }
         setSmsData({ phone, type });
@@ -356,13 +356,13 @@ export default function StudentDetails() {
             const data = await response.json();
             
             if (data.success) {
-                alert(t('sms_sent_success') || "SMS muvaffaqiyatli yuborildi");
+                showNotification(t('sms_sent_success') || "SMS muvaffaqiyatli yuborildi", 'success');
             } else {
-                alert(t('error_occurred') + ": " + (data.error || data.message || "Noma'lum xatolik"));
+                showNotification(t('error_occurred') + ": " + (data.error || data.message || "Noma'lum xatolik"), 'error');
             }
         } catch (err: any) {
             console.error("SMS xatoligi:", err);
-            alert(t('error_occurred') + ": " + err.message);
+            showNotification(t('error_occurred') + ": " + err.message, 'error');
         }
     };
 
@@ -1711,7 +1711,7 @@ export default function StudentDetails() {
                                     onClick={async () => {
                                         const val = Number(customPriceVal);
                                         if (isNaN(val) || val < 0) {
-                                            alert("Noto'g'ri qiymat kiritildi");
+                                            showNotification("Noto'g'ri qiymat kiritildi", 'error');
                                             return;
                                         }
                                         const cp: Record<string, any> = { ...(student.customPrices || {}), [editingGroupPrice.groupId]: val };

@@ -80,7 +80,7 @@ const UZB_REGIONS: Record<string, string[]> = {
 };
 
 export default function Students() {
-    const { students, groups, teachers, transports, addStudent, deleteStudent, importStudents, selectedSchoolId } = useCRM();
+    const { students, groups, teachers, transports, addStudent, deleteStudent, importStudents, selectedSchoolId, showNotification } = useCRM();
     const { t } = useLang();
     const navigate = useNavigate();
     const [isModalOpen, setIsModalOpen] = useState(false);
@@ -234,7 +234,7 @@ export default function Students() {
             setStudentToDelete(null);
         } catch (err) {
             console.error("Delete student failed", err);
-            alert("O'chirishda xatolik yuz berdi");
+            showNotification("O'chirishda xatolik yuz berdi", 'error');
         }
     };
 
@@ -289,7 +289,7 @@ export default function Students() {
     const handleExport = () => {
         try {
             if (filteredStudents.length === 0) {
-                alert("Eksport qilish uchun o'quvchilar mavjud emas!");
+                showNotification("Eksport qilish uchun o'quvchilar mavjud emas!", 'info');
                 return;
             }
 
@@ -339,7 +339,7 @@ export default function Students() {
             XLSX.writeFile(workbook, `Sariosiyo_CRM_Oquvchilar_${new Date().toISOString().split('T')[0]}.xlsx`);
         } catch (err) {
             console.error("Export failed", err);
-            alert("Eksport qilishda xatolik yuz berdi");
+            showNotification("Eksport qilishda xatolik yuz berdi", 'error');
         }
     };
 
@@ -360,7 +360,7 @@ export default function Students() {
                     const rawData = XLSX.utils.sheet_to_json<any>(worksheet);
 
                     if (rawData.length === 0) {
-                        alert("Fayl ichida ma'lumot topilmadi!");
+                        showNotification("Fayl ichida ma'lumot topilmadi!", 'error');
                         setIsImporting(false);
                         return;
                     }
@@ -404,7 +404,7 @@ export default function Students() {
                     }).filter(s => s.name && s.phone);
 
                     if (mappedStudents.length === 0) {
-                        alert("Import qilish uchun yaroqli ma'lumot topilmadi! (F.I.SH. va Telefon ustunlari bo'lishi shart)");
+                        showNotification("Import qilish uchun yaroqli ma'lumot topilmadi! (F.I.SH. va Telefon ustunlari bo'lishi shart)", 'error');
                         setIsImporting(false);
                         return;
                     }
@@ -414,7 +414,7 @@ export default function Students() {
                     }
                 } catch (err: any) {
                     console.error("Error parsing excel", err);
-                    alert("Faylni o'qishda xatolik: " + err.message);
+                    showNotification("Faylni o'qishda xatolik: " + err.message, 'error');
                 } finally {
                     setIsImporting(false);
                 }
@@ -422,7 +422,7 @@ export default function Students() {
             reader.readAsBinaryString(file);
         } catch (err: any) {
             console.error("FileReader error", err);
-            alert("FileReader ishga tushirishda xatolik: " + err.message);
+            showNotification("FileReader ishga tushirishda xatolik: " + err.message, 'error');
             setIsImporting(false);
         }
     };
@@ -444,11 +444,11 @@ export default function Students() {
             if (data.success) {
                 setNewStudent({ ...newStudent, photo: data.image });
             } else {
-                alert("Xatolik: " + data.error);
+                showNotification("Xatolik: " + data.error, 'error');
             }
         } catch (err) {
             console.error("BG Removal failed", err);
-            alert("Xatolik yuz berdi");
+            showNotification("Xatolik yuz berdi", 'error');
         } finally {
             setIsRemovingBg(false);
         }
