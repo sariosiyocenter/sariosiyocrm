@@ -676,7 +676,51 @@ export default function Students() {
 
             {/* Table layout */}
             <div className="bg-white dark:bg-gray-800 rounded-3xl border border-gray-100 dark:border-gray-700/50 shadow-sm overflow-hidden">
-                <div className="overflow-x-auto custom-scrollbar">
+
+                {/* Phone layout. The table below needs 900px, which is two and a half
+                    screens of sideways scrolling on a 360px phone, so small screens get
+                    cards carrying the same fields instead. */}
+                <div className="md:hidden divide-y divide-gray-50 dark:divide-gray-700/50">
+                    {visibleStudents.map(student => {
+                        const balance = student.balance || 0;
+                        return (
+                            <button key={student.id} onClick={() => navigate(`/students/${student.id}`)}
+                                className="w-full flex items-center gap-3 p-4 text-left hover:bg-gray-50/80 dark:hover:bg-gray-900/40 transition-colors cursor-pointer">
+                                <div className="w-11 h-11 rounded-xl bg-gray-55 dark:bg-gray-900 border border-gray-100 dark:border-gray-700 flex items-center justify-center text-[#1b6b6b] font-bold text-xs overflow-hidden shrink-0">
+                                    {student.photo
+                                        ? <img src={student.photo} alt={student.name} loading="lazy" decoding="async" className="w-full h-full object-cover" />
+                                        : student.name.charAt(0).toUpperCase()}
+                                </div>
+                                <div className="flex-1 min-w-0">
+                                    <p className="text-xs font-bold text-gray-900 dark:text-white uppercase truncate">{student.name}</p>
+                                    <p className="text-[11px] text-gray-400 tabular-nums mt-0.5">{student.phone || "telefon yo'q"}</p>
+                                </div>
+                                <div className="text-right shrink-0">
+                                    <p className={`text-xs font-black tabular-nums ${balance < 0 ? 'text-rose-500' : 'text-emerald-600'}`}>
+                                        {balance.toLocaleString()}
+                                    </p>
+                                    <p className="text-[9px] font-bold text-gray-400 uppercase tracking-widest mt-0.5">
+                                        {balance < 0 ? 'qarz' : 'balans'}
+                                    </p>
+                                </div>
+                            </button>
+                        );
+                    })}
+                    {visibleStudents.length === 0 && (
+                        <div className="py-14 px-6 text-center">
+                            <p className="text-sm font-bold text-gray-700 dark:text-gray-200">
+                                {students.length === 0 ? "Hali o'quvchi qo'shilmagan" : "Hech narsa topilmadi"}
+                            </p>
+                            <p className="text-xs text-gray-400 mt-1">
+                                {students.length === 0
+                                    ? "Yuqoridagi tugma orqali birinchi o'quvchini qo'shing."
+                                    : `${students.length} ta o'quvchi ichidan mos keladigani yo'q.`}
+                            </p>
+                        </div>
+                    )}
+                </div>
+
+                <div className="hidden md:block overflow-x-auto custom-scrollbar">
                     <table className="w-full text-left border-collapse min-w-[900px]">
                         <thead>
                             <tr className="bg-gray-50/50 dark:bg-gray-900/50 border-b border-gray-100 dark:border-gray-700">
