@@ -6,6 +6,7 @@ import {
 } from 'lucide-react';
 import { useCRM, THEMES } from '../context/CRMContext';
 import { useLang } from '../context/LanguageContext';
+import { compressAndUpload } from '../lib/image';
 
 type SectionId = 'profil' | 'xonalar' | 'filiallar' | 'ruxsatlar' | 'dizayn';
 
@@ -118,7 +119,12 @@ export default function Settings() {
         const file = e.target.files?.[0];
         if (!file) return;
         const reader = new FileReader();
-        reader.onload = ev => setProfileForm(p => ({ ...p, logo: ev.target?.result as string }));
+        // The logo is stored as a URL, not inline — it loads with the app for every
+        // user, so an uncompressed data URL here weighs on every single page load.
+        reader.onload = async ev => {
+            const url = await compressAndUpload(ev.target?.result as string, file.name, 512, 512);
+            setProfileForm(p => ({ ...p, logo: url }));
+        };
         reader.readAsDataURL(file);
     };
 

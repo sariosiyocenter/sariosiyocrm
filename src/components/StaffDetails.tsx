@@ -7,7 +7,7 @@ import {
 } from 'lucide-react';
 import { useCRM } from '../context/CRMContext';
 import { useParams, useNavigate } from 'react-router-dom';
-import { compressImage } from '../lib/image';
+import { compressImage, compressAndUpload } from '../lib/image';
 import PhotoCapture from './PhotoCapture';
 import { useLang } from '../context/LanguageContext';
 
@@ -343,8 +343,8 @@ export default function StaffDetails() {
         if (!file) return;
         const reader = new FileReader();
         reader.onload = async ev => {
-            const c = await compressImage(ev.target?.result as string);
-            setEditData((p: any) => ({ ...p, photo: c }));
+            const url = await compressAndUpload(ev.target?.result as string, file.name);
+            setEditData((p: any) => ({ ...p, photo: url }));
         };
         reader.readAsDataURL(file);
     };

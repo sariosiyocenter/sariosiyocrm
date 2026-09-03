@@ -40,3 +40,39 @@ export function compressImage(base64Str: string, maxWidth = 640, maxHeight = 640
         };
     });
 }
+
+/**
+ * Compresses an image and stores it in Supabase Storage, returning its public URL.
+ *
+ * Prefer this over keeping the data URL. A base64 image saved straight into a row
+ * travels inside every /api/init response for every user on every app load — three
+ * such images once accounted for 829 KB of a 1215 KB payload. A URL costs ~100 bytes
+ * and the browser caches the file itself.
+ *
+ * Falls back to the compressed data URL if the upload fails, so a save never blocks
+ * on the network.
+ */
+export async function compressAndUpload(
+    base64Str: string,
+    filename = 'image.jpg',
+    maxWidth = 640,
+    maxHeight = 640
+): Promise<string> {
+    const compressed = await compressImage(base64Str, maxWidth, maxHeight);
+    try {
+        const token = localStorage.getItem('token');
+        const res = await fetch('/api/upload', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                ...(token ? { Authorization: `Bearer ${token}` } : {}),
+            },
+            body: JSON.stringify({ data: compressed, filename }),
+        });
+        if (!res.ok) return compressed;
+        const { url } = await res.json();
+        return url || compressed;
+    } catch {
+        return compressed;
+    }
+}

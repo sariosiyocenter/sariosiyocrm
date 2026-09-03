@@ -7,7 +7,7 @@ import {
 import { useCRM } from '../context/CRMContext';
 import { useLang } from '../context/LanguageContext';
 import { useNavigate } from 'react-router-dom';
-import { compressImage } from '../lib/image';
+import { compressImage, compressAndUpload } from '../lib/image';
 import PhotoCapture from './PhotoCapture';
 
 
@@ -430,15 +430,15 @@ function UserModal({
         if (!file) return;
         const reader = new FileReader();
         reader.onload = async (ev) => {
-            const compressed = await compressImage(ev.target?.result as string);
-            onChange({ ...user, photo: compressed });
+            const url = await compressAndUpload(ev.target?.result as string, file.name);
+            onChange({ ...user, photo: url });
         };
         reader.readAsDataURL(file);
     };
 
     const handleCapture = async (base64: string) => {
-        const compressed = await compressImage(base64);
-        onChange({ ...user, photo: compressed });
+        const url = await compressAndUpload(base64, 'camera.jpg');
+        onChange({ ...user, photo: url });
         setIsCameraOpen(false);
     };
 
