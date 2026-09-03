@@ -3,6 +3,9 @@ import express from 'express';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
 import prisma from './lib/prisma.js';
+import { JWT_SECRET, TOKEN_TTL, attendanceWindowStart, redactBody, isAdmin, stripSettingSecrets } from './lib/config.js';
+import { authenticate, requireRole, STAFF_MANAGERS } from './middleware/auth.js';
+import { claimBillingRun, releaseBillingRun, processMonthlyBilling } from './services/billing.js';
 import jwt from 'jsonwebtoken';
 import bot, { startBot, notifyAdmins, getTelegramBot } from './src/bot/bot.js';
 import bcrypt from 'bcryptjs';
@@ -30,28 +33,6 @@ if (process.env.TELEGRAM_BOT_TOKEN && !process.env.VERCEL) {
 
 const app = express();
 const PORT = process.env.PORT || 3000;
-// A missing secret in production would silently sign tokens with a public string,
-// letting anyone forge an admin session — so fail loudly instead.
-if (!process.env.JWT_SECRET && process.env.NODE_ENV === 'production') {
-  throw new Error('JWT_SECRET muhit o\'zgaruvchisi o\'rnatilmagan — server ishga tushmaydi.');
-}
-const JWT_SECRET = process.env.JWT_SECRET || 'dev_only_insecure_secret';
-
-// Sessions last three months. Tokens used to be signed with no expiry at all, which
-// meant a leaked one — or a former employee's — stayed valid forever.
-const TOKEN_TTL = '90d';
-
-// How far back /api/init carries attendance. Only the marking screen needs same-day data
-// on arrival; the group matrix, the calendar and a student's profile all fetch their own
-// history from /api/attendances, so this stays deliberately small — with a full year
-// imported, every extra week here costs roughly 100 KB on every app load.
-const ATTENDANCE_WINDOW_DAYS = 14;
-function ATTENDANCE_WINDOW_START() {
-  const d = new Date();
-  d.setDate(d.getDate() - ATTENDANCE_WINDOW_DAYS);
-  return d.toISOString().split('T')[0];
-}
-
 // Vercel terminates TLS upstream; without this the rate limiter sees one shared IP.
 app.set('trust proxy', 1);
 
@@ -100,116 +81,6 @@ app.use((req, res, next) => {
   }
   next();
 });
-
-// SUPERADMIN oversees every organization; SELLER works the SaaS funnel, not school data.
-const CROSS_SCHOOL_ROLES = ['SUPERADMIN', 'SELLER'];
-
-// The schoolId a request wants to act on. Routes take it from the query string,
-// the body, or a :schoolId path param depending on the verb.
-function requestedSchoolId(req) {
-  const raw = req.query?.schoolId ?? req.body?.schoolId ?? req.params?.schoolId;
-  if (raw === undefined || raw === null || raw === '') return null;
-  const id = parseInt(raw);
-  return isNaN(id) ? null : id;
-}
-
-// Which schools this user may touch. Staff may move between branches of their own
-// organization (the branch switcher in the UI), but never into another customer's data.
-async function allowedSchoolIds(user) {
-  if (!user?.schoolId) return [];
-  const own = await prisma.school.findUnique({
-    where: { id: user.schoolId },
-    select: { organizationId: true }
-  });
-  if (!own?.organizationId) return [user.schoolId];
-  const siblings = await prisma.school.findMany({
-    where: { organizationId: own.organizationId },
-    select: { id: true }
-  });
-  return siblings.map(s => s.id);
-}
-
-async function canAccessSchool(user, schoolId) {
-  if (CROSS_SCHOOL_ROLES.includes(user?.role)) return true;
-  if (schoolId === null) return true;              // request is not school-scoped
-  if (user?.schoolId === schoolId) return true;    // own branch — no lookup needed
-  return (await allowedSchoolIds(user)).includes(schoolId);
-}
-
-// Routes addressed by record id (/api/students/42) carry no schoolId, so the tenancy
-// check has to come from the record itself. Anything not in this map is left alone.
-const OWNED_RESOURCES = {
-  students: 'student', teachers: 'teacher', groups: 'group', leads: 'lead',
-  payments: 'payment', expenses: 'expense', transports: 'transport', courses: 'course',
-  topics: 'topic', syllabuses: 'syllabus', rooms: 'room', exams: 'exam',
-  questions: 'question', scores: 'score', attendances: 'attendance', routes: 'route',
-  'salary-payments': 'salaryPayment', 'delivery-logs': 'deliveryLog',
-  'exam-results': 'examResult', 'staff-attendance': 'staffAttendance', users: 'user',
-};
-
-// Returns an error message when the addressed record belongs to another customer.
-async function recordAccessError(req) {
-  const parts = req.path.split('/').filter(Boolean);   // ['api','students','42', ...]
-  if (parts[0] !== 'api' || parts.length < 3) return null;
-
-  const id = parseInt(parts[2]);
-  if (isNaN(id) || String(id) !== parts[2]) return null;
-
-  // A school id addresses the tenant directly rather than a row inside one.
-  if (parts[1] === 'schools') {
-    return (await canAccessSchool(req.user, id)) ? null : 'Bu filialga ruxsatingiz yo\'q';
-  }
-
-  const model = OWNED_RESOURCES[parts[1]];
-  if (!model) return null;
-
-  const record = await prisma[model].findUnique({ where: { id }, select: { schoolId: true } });
-  if (!record) return null;                    // let the handler answer 404 in its own words
-  if (record.schoolId === null) return null;   // rows not bound to a school (e.g. superadmin users)
-  return (await canAccessSchool(req.user, record.schoolId)) ? null : 'Bu yozuvga ruxsatingiz yo\'q';
-}
-
-// Middleware to authenticate JWT and confirm the caller may act on the school it named.
-// Every protected route passes through here, so the tenancy check lives in one place
-// instead of being repeated (and forgotten) at each handler.
-const authenticate = (req, res, next) => {
-  const authHeader = req.headers['authorization'];
-  const token = authHeader && authHeader.split(' ')[1];
-
-  if (!token) return res.status(401).json({ error: 'Token required' });
-
-  jwt.verify(token, JWT_SECRET, async (err, user) => {
-    if (err) return res.status(403).json({ error: 'Invalid token' });
-
-    // Tokens issued before sessions had an expiry never run out on their own.
-    // Rejecting them once sends those users back through login for a fresh 90-day token.
-    if (!user?.exp) {
-      return res.status(401).json({ error: 'Sessiya eskirgan, qaytadan kiring' });
-    }
-
-    req.user = user;
-    try {
-      const wanted = requestedSchoolId(req);
-      if (!(await canAccessSchool(user, wanted))) {
-        return res.status(403).json({ error: 'Bu filial ma\'lumotlariga ruxsatingiz yo\'q' });
-      }
-      const recordError = await recordAccessError(req);
-      if (recordError) return res.status(403).json({ error: recordError });
-
-      req.schoolScope = wanted ?? user.schoolId ?? null;
-      next();
-    } catch (e) { next(e); }
-  });
-};
-
-// Route-level role gate. SUPERADMIN passes everywhere by definition.
-function requireRole(...roles) {
-  return (req, res, next) => {
-    if (req.user?.role === 'SUPERADMIN' || roles.includes(req.user?.role)) return next();
-    return res.status(403).json({ error: 'Bu amal uchun ruxsatingiz yo\'q' });
-  };
-}
-const STAFF_MANAGERS = ['ADMIN', 'MANAGER'];
 
 // Basic API to verify backend status
 app.get('/api/status', async (req, res) => {
@@ -2167,7 +2038,7 @@ app.get('/api/init', authenticate, async (req, res, next) => {
       // without bound — 255 students marked daily is ~38k rows a year — and /api/init is a
       // single response that Vercel caps at 4.5 MB. Older records are fetched per student
       // or per group from /api/attendances when a detail screen actually needs them.
-      prisma.attendance.findMany({ where: { ...whereQuery, date: { gte: ATTENDANCE_WINDOW_START() } } }),
+      prisma.attendance.findMany({ where: { ...whereQuery, date: { gte: attendanceWindowStart() } } }),
       prisma.score.findMany({ where: whereQuery }),
       prisma.teacherAttendance.findMany({ where: whereQuery }),
       prisma.expense.findMany({ where: whereQuery }),
@@ -2391,35 +2262,12 @@ app.delete('/api/schools/:id', authenticate, async (req, res, next) => {
 });
 
 
-// Never write credentials to the log file — a stack trace is not worth a plaintext password.
-const SENSITIVE_KEYS = ['password', 'eskizPassword', 'telegram', 'token', 'newPassword', 'oldPassword'];
-function redactBody(body) {
-  if (!body || typeof body !== 'object') return body;
-  const clone = {};
-  for (const [k, v] of Object.entries(body)) {
-    clone[k] = SENSITIVE_KEYS.includes(k) ? '[REDACTED]' : v;
-  }
-  return clone;
-}
-
 // The error handler used to sit right here, roughly 2000 lines before the last route.
 // Express only reaches an error handler registered *after* the layer that failed, so
 // every route below fell through to Express's default HTML 500 — which the frontend
 // could not parse as JSON. It now lives at the end of the file, after all routes.
 
 // Settings
-// Settings rows hold SMS/Telegram credentials. Only an admin has a reason to see them,
-// so everyone else gets a boolean flag instead of the secret itself.
-function stripSettingSecrets(settings) {
-  if (!settings) return settings;
-  const { eskizPassword, telegram, ...safe } = settings;
-  return { ...safe, eskizPasswordSet: !!eskizPassword, telegramSet: !!telegram };
-}
-
-function isAdmin(user) {
-  return user && (user.role === 'ADMIN' || user.role === 'SUPERADMIN');
-}
-
 app.get('/api/settings', authenticate, async (req, res, next) => {
   try {
     const { schoolId } = req.query;
@@ -4293,83 +4141,7 @@ app.post('/api/upload', authenticate, async (req, res, next) => {
 
 // ==================== BILLING MODULE ====================
 
-// Claims the right to bill one (school, month). Returns false when another request
-// already holds the claim, so concurrent callers cannot charge the same month twice.
-async function claimBillingRun(schoolId, month) {
-  try {
-    await prisma.billingRun.create({ data: { schoolId, month } });
-    return true;
-  } catch (err) {
-    if (err.code === 'P2002') return false;   // unique violation — someone else won
-    throw err;
-  }
-}
-
-// Recalculation deliberately re-bills a month, so the old claim has to go first.
-async function releaseBillingRun(schoolId, month) {
-  await prisma.billingRun.deleteMany({ where: { schoolId, month } });
-}
-
-async function processMonthlyBilling(schoolId, month) {
-  const [year, monthNum] = month.split('-').map(Number);
-  if (!Number.isInteger(year) || !Number.isInteger(monthNum) || monthNum < 1 || monthNum > 12) {
-    throw new Error(`Noto'g'ri oy formati: ${month} (kutilgan "YYYY-MM")`);
-  }
-  const lastDay = new Date(year, monthNum, 0).getDate();
-  const dateStr = `${year}-${String(monthNum).padStart(2, '0')}-${lastDay}`;
-  const monthNames = ['Yanvar','Fevral','Mart','Aprel','May','Iyun','Iyul','Avgust','Sentabr','Oktabr','Noyabr','Dekabr'];
-  const monthLabel = `${monthNames[monthNum - 1]} ${year}`;
-
-  const existing = await prisma.payment.findFirst({
-    where: { schoolId, type: 'Oylik', date: { startsWith: month } }
-  });
-  if (existing) return { alreadyDone: true, month };
-
-  const groups = await prisma.group.findMany({
-    where: { schoolId },
-    include: { course: true, students: { where: { status: { in: ['Faol', 'Sinov'] } } } }
-  });
-
-  // Work out every charge first, then write once. The previous version issued two
-  // queries per student per group — around 530 sequential round trips to Singapore for
-  // 266 students, slow enough to risk a function timeout, and a crash halfway through
-  // left some students charged and others not.
-  const results = [];
-  const charges = [];
-  const totalPerStudent = new Map();
-
-  for (const group of groups) {
-    for (const student of group.students) {
-      const customPrices = (student.customPrices && typeof student.customPrices === 'object') ? student.customPrices : {};
-      const customPrice = customPrices[group.id];
-      const price = customPrice !== undefined ? customPrice : group.course.price;
-      if (!price || price <= 0) continue;
-
-      charges.push({
-        studentId: student.id,
-        amount: -price,
-        type: 'Oylik',
-        date: dateStr,
-        description: `[OYLIK HISOB] ${group.course.name} — ${monthLabel}`,
-        schoolId
-      });
-      totalPerStudent.set(student.id, (totalPerStudent.get(student.id) || 0) + price);
-      results.push({ studentId: student.id, groupId: group.id, amount: price });
-    }
-  }
-
-  if (charges.length) {
-    // One transaction: either the whole month is billed or none of it is.
-    await prisma.$transaction([
-      prisma.payment.createMany({ data: charges }),
-      ...[...totalPerStudent].map(([studentId, total]) =>
-        prisma.student.update({ where: { id: studentId }, data: { balance: { decrement: total } } })
-      ),
-    ]);
-  }
-
-  return { processed: results.length, total: results.reduce((s, r) => s + r.amount, 0), month };
-}
+// Oylik hisob-kitob mantiqi services/billing.js ga ko'chirildi.
 
 app.post('/api/billing/process-month', authenticate, requireRole('ADMIN'), async (req, res, next) => {
   try {
