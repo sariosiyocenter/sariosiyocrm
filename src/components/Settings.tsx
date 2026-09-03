@@ -2,13 +2,16 @@ import React, { useState, useRef } from 'react';
 import {
     Building2, Plus, ChevronDown, ChevronRight, ShieldCheck, Trash2, Save, X,
     Layout, MapPin, Bus, BookOpen, DoorOpen, Globe, Phone, Clock, Camera,
-    Instagram, Send, Shield, ToggleLeft, ToggleRight, Pencil
+    Instagram, Send, Shield, ToggleLeft, ToggleRight, Pencil,
+    Zap, Lock, Link2, ExternalLink, MessageSquare
 } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import { useCRM, THEMES } from '../context/CRMContext';
 import { useLang } from '../context/LanguageContext';
 import { compressAndUpload } from '../lib/image';
 
-type SectionId = 'profil' | 'xonalar' | 'filiallar' | 'ruxsatlar' | 'dizayn';
+type SectionId = 'profil' | 'xonalar' | 'filiallar' | 'ruxsatlar' | 'dizayn'
+    | 'integratsiyalar' | 'avtomatlashtirish' | 'xavfsizlik';
 
 const DEFAULT_PERMISSIONS: Record<string, Record<string, boolean>> = {
     ADMIN:        { dashboard: true,  students: true,  teachers: true,  groups: true,  finance: true,  exams: true,  leads: true,  hr: true,  reports: true,  settings: true  },
@@ -63,6 +66,57 @@ export default function Settings() {
     });
     const [permSaved, setPermSaved] = useState(false);
     React.useEffect(() => { setProfileForm({ ...settings }); }, [settings]);
+
+    const navigate = useNavigate();
+
+    // Avtomatik qoidalar Xabarlar modulida boshqariladi. Bu yerda faqat ularning
+    // holati ko'rsatiladi — ikkinchi nusxa yaratilmaydi.
+    const [autoRules, setAutoRules] = useState<any[] | null>(null);
+    const [autoRulesError, setAutoRulesError] = useState<string | null>(null);
+
+    React.useEffect(() => {
+        if (activeSection !== 'avtomatlashtirish' || autoRules !== null) return;
+        let active = true;
+        (async () => {
+            try {
+                const res = await fetch('/api/messaging/auto-rules', {
+                    headers: { Authorization: `Bearer ${token}` }
+                });
+                if (!res.ok) throw new Error('Qoidalarni yuklab bo\'lmadi');
+                const data = await res.json();
+                if (active) setAutoRules(Array.isArray(data) ? data : []);
+            } catch (err: any) {
+                if (active) { setAutoRules([]); setAutoRulesError(err.message); }
+            }
+        })();
+        return () => { active = false; };
+    }, [activeSection, autoRules, token]);
+
+    const [pwForm, setPwForm] = useState({ oldPassword: '', newPassword: '', confirm: '' });
+    const [pwState, setPwState] = useState<{ busy: boolean; error?: string; ok?: boolean }>({ busy: false });
+
+    const handleChangePassword = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (pwForm.newPassword !== pwForm.confirm) {
+            setPwState({ busy: false, error: 'Yangi parollar mos kelmadi' });
+            return;
+        }
+        setPwState({ busy: true });
+        try {
+            const res = await fetch('/api/auth/change-password', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+                body: JSON.stringify({ oldPassword: pwForm.oldPassword, newPassword: pwForm.newPassword })
+            });
+            const data = await res.json();
+            if (!res.ok) throw new Error(data.error || 'Xatolik');
+            setPwForm({ oldPassword: '', newPassword: '', confirm: '' });
+            setPwState({ busy: false, ok: true });
+            setTimeout(() => setPwState(st => (st.ok ? { busy: false } : st)), 3000);
+        } catch (err: any) {
+            setPwState({ busy: false, error: err.message });
+        }
+    };
 
     const [botInfo, setBotInfo] = useState<{ username?: string; first_name?: string; loading: boolean; error?: string } | null>(null);
 
@@ -161,6 +215,7 @@ export default function Settings() {
             items: [
                 { id: 'profil' as SectionId, label: t('settings_profile'), icon: <Globe size={14} /> },
                 { id: 'dizayn' as SectionId, label: t('settings_design'), icon: <Layout size={14} /> },
+                { id: 'integratsiyalar' as SectionId, label: 'Integratsiyalar', icon: <Link2 size={14} /> },
             ]
         },
         {
@@ -173,9 +228,16 @@ export default function Settings() {
             id: 'ceo', label: t('settings_section_admin'), icon: <ShieldCheck size={16} />,
             items: [
                 { id: 'filiallar' as SectionId, label: t('settings_branches'), icon: <Building2 size={14} />, count: schools?.length },
+                { id: 'avtomatlashtirish' as SectionId, label: 'Avtomatlashtirish', icon: <Zap size={14} /> },
                 ...(isAdmin ? [{ id: 'ruxsatlar' as SectionId, label: t('settings_perms'), icon: <Shield size={14} /> }] : []),
             ]
         }] : []),
+        {
+            id: 'hisob', label: 'Hisobim', icon: <Lock size={16} />,
+            items: [
+                { id: 'xavfsizlik' as SectionId, label: 'Xavfsizlik', icon: <Lock size={14} /> },
+            ]
+        },
     ];
 
     const renderContent = () => {
@@ -222,45 +284,10 @@ export default function Settings() {
                         <label className={lbl}>{t('work_hours_label')}</label>
                         <input type="text" placeholder="09:00 - 21:00" className={inp} value={profileForm?.workingHours || ''} onChange={e => setProfileForm(p => ({ ...p, workingHours: e.target.value }))} />
                     </div>
-                    <div>
-                        <label className={lbl}>Telegram Bot Token</label>
-                        <input type="text" placeholder="123456789:ABCdefGhI..." className={inp} value={profileForm?.telegram || ''} onChange={e => setProfileForm(p => ({ ...p, telegram: e.target.value }))} />
-                        {botInfo && (
-                            <div className="mt-1.5 text-[11px] font-bold">
-                                {botInfo.loading && <span className="text-gray-400">Tekshirilmoqda...</span>}
-                                {botInfo.error && <span className="text-rose-500">⚠️ {botInfo.error}</span>}
-                                {botInfo.username && (
-                                    <div className="flex items-center gap-1.5 text-emerald-600 dark:text-emerald-400">
-                                        <span className="flex h-2 w-2 relative">
-                                            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-                                            <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
-                                        </span>
-                                        <span>Bot ulangan:</span>
-                                        <a href={`https://t.me/${botInfo.username}`} target="_blank" rel="noopener noreferrer" className="underline font-black hover:text-emerald-700 dark:hover:text-emerald-350 transition-colors">
-                                            @{botInfo.username} ({botInfo.first_name})
-                                        </a>
-                                    </div>
-                                )}
-                            </div>
-                        )}
-                    </div>
-                    <div>
-                        <label className={lbl}>Instagram Profil Linki</label>
-                        <input type="text" placeholder="https://instagram.com/..." className={inp} value={profileForm?.instagram || ''} onChange={e => setProfileForm(p => ({ ...p, instagram: e.target.value }))} />
-                    </div>
-                    <div>
-                        <label className={lbl}>Eskiz SMS Email</label>
-                        <input type="email" placeholder="example@gmail.com" className={inp} value={profileForm?.eskizEmail || ''} onChange={e => setProfileForm(p => ({ ...p, eskizEmail: e.target.value }))} />
-                    </div>
-                    <div>
-                        <label className={lbl}>Eskiz SMS Parol (API Key)</label>
-                        <input type="password" placeholder="••••••••" className={inp} value={profileForm?.eskizPassword || ''} onChange={e => setProfileForm(p => ({ ...p, eskizPassword: e.target.value }))} />
-                    </div>
-                    <div>
-                        <label className={lbl}>Eskiz SMS Sender (Massa nom yoki 3700)</label>
-                        <input type="text" placeholder="4546 yoki MarkazNomi" className={inp} value={profileForm?.eskizFrom || ''} onChange={e => setProfileForm(p => ({ ...p, eskizFrom: e.target.value }))} />
-                    </div>
                 </div>
+                <p className="text-[11px] font-bold text-gray-400 uppercase tracking-wider">
+                    Telegram bot, SMS va Instagram sozlamalari — "Integratsiyalar" bo'limida.
+                </p>
                 <div className="flex justify-end pt-4 border-t border-dashed border-gray-150 dark:border-gray-700/50">
                     <button type="submit" disabled={isSaving}
                         className="px-6 py-3 bg-[#1b6b6b] hover:bg-[#155252] disabled:opacity-50 text-white rounded-2xl text-xs font-extrabold uppercase tracking-widest flex items-center gap-2 shadow-lg shadow-[#1b6b6b]/20 transition-all cursor-pointer">
@@ -272,6 +299,224 @@ export default function Settings() {
         </div>
     );
 
+
+        if (activeSection === 'integratsiyalar') return (
+            <form onSubmit={handleSaveProfile} className="space-y-8">
+                <div>
+                    <h2 className="text-xs font-black text-gray-900 dark:text-white uppercase tracking-wider">Integratsiyalar</h2>
+                    <p className="text-[11px] font-bold text-gray-400 uppercase tracking-wider mt-0.5">Tashqi xizmatlar bilan ulanish kalitlari</p>
+                </div>
+
+                {/* Telegram bot */}
+                <div className="p-5 bg-gray-55 dark:bg-gray-900/30 border border-gray-100 dark:border-gray-700/50 rounded-2xl space-y-4">
+                    <div className="flex items-center justify-between gap-3">
+                        <div className="flex items-center gap-3">
+                            <div className="w-9 h-9 rounded-xl bg-sky-50 text-sky-600 border border-sky-100 dark:bg-sky-950/20 dark:text-sky-400 dark:border-sky-900/40 flex items-center justify-center">
+                                <Send size={16} />
+                            </div>
+                            <div>
+                                <p className="text-xs font-black text-gray-900 dark:text-white uppercase tracking-wide">Telegram bot</p>
+                                <p className="text-[11px] font-bold text-gray-400 uppercase tracking-wider mt-0.5">Ota-onalarga xabar va davomat bildirishnomalari</p>
+                            </div>
+                        </div>
+                        <span className={`px-2.5 py-1 rounded-lg text-[10px] font-black uppercase tracking-wider border shrink-0 ${botInfo?.username
+                            ? 'bg-emerald-50 text-emerald-600 border-emerald-100 dark:bg-emerald-950/20 dark:text-emerald-400 dark:border-emerald-900/40'
+                            : botInfo?.error
+                                ? 'bg-rose-50 text-rose-500 border-rose-100 dark:bg-rose-950/20 dark:text-rose-400 dark:border-rose-900/40'
+                                : 'bg-gray-100 text-gray-400 border-gray-200 dark:bg-gray-900 dark:border-gray-700'}`}>
+                            {botInfo?.loading ? 'Tekshirilmoqda' : botInfo?.username ? 'Ulangan' : botInfo?.error ? 'Xato' : 'Ulanmagan'}
+                        </span>
+                    </div>
+                    <div>
+                        <label className={lbl}>Bot Token</label>
+                        <input type="text" placeholder="123456789:ABCdefGhI..." className={inp} value={profileForm?.telegram || ''} onChange={e => setProfileForm(p => ({ ...p, telegram: e.target.value }))} />
+                        {botInfo && (
+                            <div className="mt-1.5 text-[11px] font-bold">
+                                {botInfo.error && <span className="text-rose-500">⚠️ {botInfo.error}</span>}
+                                {botInfo.username && (
+                                    <a href={`https://t.me/${botInfo.username}`} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1.5 text-emerald-600 dark:text-emerald-400 underline font-black hover:text-emerald-700 dark:hover:text-emerald-350 transition-colors">
+                                        @{botInfo.username} ({botInfo.first_name})
+                                        <ExternalLink size={11} />
+                                    </a>
+                                )}
+                            </div>
+                        )}
+                    </div>
+                </div>
+
+                {/* Eskiz SMS */}
+                <div className="p-5 bg-gray-55 dark:bg-gray-900/30 border border-gray-100 dark:border-gray-700/50 rounded-2xl space-y-4">
+                    <div className="flex items-center justify-between gap-3">
+                        <div className="flex items-center gap-3">
+                            <div className="w-9 h-9 rounded-xl bg-violet-50 text-violet-600 border border-violet-100 dark:bg-violet-950/20 dark:text-violet-400 dark:border-violet-900/40 flex items-center justify-center">
+                                <MessageSquare size={16} />
+                            </div>
+                            <div>
+                                <p className="text-xs font-black text-gray-900 dark:text-white uppercase tracking-wide">Eskiz SMS</p>
+                                <p className="text-[11px] font-bold text-gray-400 uppercase tracking-wider mt-0.5">To'lov eslatmalari va SMS xabarnomalar</p>
+                            </div>
+                        </div>
+                        <span className={`px-2.5 py-1 rounded-lg text-[10px] font-black uppercase tracking-wider border shrink-0 ${profileForm?.eskizEmail && profileForm?.eskizPassword
+                            ? 'bg-emerald-50 text-emerald-600 border-emerald-100 dark:bg-emerald-950/20 dark:text-emerald-400 dark:border-emerald-900/40'
+                            : 'bg-gray-100 text-gray-400 border-gray-200 dark:bg-gray-900 dark:border-gray-700'}`}>
+                            {profileForm?.eskizEmail && profileForm?.eskizPassword ? 'Kalitlar kiritilgan' : 'Ulanmagan'}
+                        </span>
+                    </div>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div>
+                            <label className={lbl}>Email</label>
+                            <input type="email" placeholder="example@gmail.com" className={inp} value={profileForm?.eskizEmail || ''} onChange={e => setProfileForm(p => ({ ...p, eskizEmail: e.target.value }))} />
+                        </div>
+                        <div>
+                            <label className={lbl}>Parol (API Key)</label>
+                            <input type="password" placeholder="••••••••" className={inp} value={profileForm?.eskizPassword || ''} onChange={e => setProfileForm(p => ({ ...p, eskizPassword: e.target.value }))} />
+                        </div>
+                        <div className="sm:col-span-2">
+                            <label className={lbl}>Sender (massa nom yoki 3700)</label>
+                            <input type="text" placeholder="4546 yoki MarkazNomi" className={inp} value={profileForm?.eskizFrom || ''} onChange={e => setProfileForm(p => ({ ...p, eskizFrom: e.target.value }))} />
+                        </div>
+                    </div>
+                </div>
+
+                {/* Instagram */}
+                <div className="p-5 bg-gray-55 dark:bg-gray-900/30 border border-gray-100 dark:border-gray-700/50 rounded-2xl space-y-4">
+                    <div className="flex items-center gap-3">
+                        <div className="w-9 h-9 rounded-xl bg-rose-50 text-rose-500 border border-rose-100 dark:bg-rose-950/20 dark:text-rose-400 dark:border-rose-900/40 flex items-center justify-center">
+                            <Instagram size={16} />
+                        </div>
+                        <div>
+                            <p className="text-xs font-black text-gray-900 dark:text-white uppercase tracking-wide">Instagram</p>
+                            <p className="text-[11px] font-bold text-gray-400 uppercase tracking-wider mt-0.5">Landing sahifadagi havola</p>
+                        </div>
+                    </div>
+                    <div>
+                        <label className={lbl}>Profil linki</label>
+                        <input type="text" placeholder="https://instagram.com/..." className={inp} value={profileForm?.instagram || ''} onChange={e => setProfileForm(p => ({ ...p, instagram: e.target.value }))} />
+                    </div>
+                </div>
+
+                <div className="flex justify-end pt-4 border-t border-dashed border-gray-150 dark:border-gray-700/50">
+                    <button type="submit" disabled={isSaving}
+                        className="px-6 py-3 bg-[#1b6b6b] hover:bg-[#155252] disabled:opacity-50 text-white rounded-2xl text-xs font-extrabold uppercase tracking-widest flex items-center gap-2 shadow-lg shadow-[#1b6b6b]/20 transition-all cursor-pointer">
+                        <Save size={14} />{isSaving ? t('saving') : t('save')}
+                    </button>
+                </div>
+            </form>
+        );
+
+        if (activeSection === 'avtomatlashtirish') return (
+            <div className="space-y-6">
+                <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
+                    <div>
+                        <h2 className="text-xs font-black text-gray-900 dark:text-white uppercase tracking-wider">Avtomatlashtirish</h2>
+                        <p className="text-[11px] font-bold text-gray-400 uppercase tracking-wider mt-0.5">CRM o'zi bajaradigan ishlar</p>
+                    </div>
+                    <button onClick={() => navigate('/messaging')}
+                        className="flex items-center gap-2 px-4 py-2.5 bg-[#1b6b6b] hover:bg-[#155252] text-white rounded-xl text-[11px] font-extrabold uppercase tracking-wider shadow-lg shadow-[#1b6b6b]/20 transition-all cursor-pointer shrink-0">
+                        <Zap size={13} /> Qoidalarni boshqarish
+                    </button>
+                </div>
+
+                <p className="text-[11px] font-bold text-gray-400 leading-relaxed">
+                    Avtomatik qoidalar Xabarlar modulida yaratiladi va tahrirlanadi — bu yerda ularning joriy holati ko'rinadi.
+                </p>
+
+                {autoRules === null ? (
+                    <p className="text-center py-10 text-[11px] text-gray-400 font-bold uppercase tracking-wider">Yuklanmoqda…</p>
+                ) : autoRulesError ? (
+                    <p className="text-center py-10 text-[11px] text-rose-500 font-bold">{autoRulesError}</p>
+                ) : autoRules.length === 0 ? (
+                    <div className="py-10 text-center">
+                        <Zap size={28} className="mx-auto text-gray-200 dark:text-gray-700 mb-3" />
+                        <p className="text-sm font-bold text-gray-700 dark:text-gray-200">Avtomatik qoidalar yo'q</p>
+                        <p className="text-xs text-gray-400 mt-1">To'lov eslatmasi yoki tug'ilgan kun tabrigini Xabarlar modulidan qo'shing.</p>
+                    </div>
+                ) : (
+                    <div className="bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700/50 rounded-2xl overflow-hidden shadow-sm divide-y divide-gray-55 dark:divide-gray-700/50">
+                        {autoRules.map((rule: any) => (
+                            <button key={rule.id} onClick={() => navigate('/messaging')}
+                                className="w-full flex items-center gap-4 px-5 py-4 text-left hover:bg-gray-55/60 dark:hover:bg-gray-900/30 transition-colors cursor-pointer">
+                                <div className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 border ${rule.enabled
+                                    ? 'bg-teal-50 text-[#1b6b6b] border-teal-100 dark:bg-teal-950/20 dark:text-teal-400 dark:border-teal-900/40'
+                                    : 'bg-gray-55 text-gray-400 border-gray-100 dark:bg-gray-900 dark:border-gray-700'}`}>
+                                    <Zap size={15} />
+                                </div>
+                                <div className="min-w-0 flex-1">
+                                    <p className="text-xs font-black text-gray-900 dark:text-white uppercase tracking-wide truncate">{rule.name}</p>
+                                    <p className="text-[11px] font-bold text-gray-400 uppercase tracking-wider mt-0.5 tabular-nums">
+                                        {rule.type === 'DEBT_REMINDER' ? 'Qarzdorlik eslatmasi' : rule.type === 'BIRTHDAY' ? "Tug'ilgan kun tabrigi" : rule.type}
+                                        {rule.time ? ` · ${rule.time}` : ''}
+                                        {rule.channel ? ` · ${rule.channel}` : ''}
+                                    </p>
+                                </div>
+                                <span className={`px-2.5 py-1 rounded-lg text-[10px] font-black uppercase tracking-wider border shrink-0 ${rule.enabled
+                                    ? 'bg-emerald-50 text-emerald-600 border-emerald-100 dark:bg-emerald-950/20 dark:text-emerald-400 dark:border-emerald-900/40'
+                                    : 'bg-gray-100 text-gray-400 border-gray-200 dark:bg-gray-900 dark:border-gray-700'}`}>
+                                    {rule.enabled ? 'Yoqilgan' : "O'chirilgan"}
+                                </span>
+                                <ChevronRight size={14} className="text-gray-300 shrink-0" />
+                            </button>
+                        ))}
+                    </div>
+                )}
+            </div>
+        );
+
+        if (activeSection === 'xavfsizlik') return (
+            <div className="space-y-8">
+                <div>
+                    <h2 className="text-xs font-black text-gray-900 dark:text-white uppercase tracking-wider">Xavfsizlik</h2>
+                    <p className="text-[11px] font-bold text-gray-400 uppercase tracking-wider mt-0.5">Hisob ma'lumotlari va parol</p>
+                </div>
+
+                <div className="p-5 bg-gray-55 dark:bg-gray-900/30 border border-gray-100 dark:border-gray-700/50 rounded-2xl space-y-3">
+                    <div className="flex items-center justify-between gap-3">
+                        <span className="text-[11px] font-bold text-gray-400 uppercase tracking-wider">Email</span>
+                        <span className="text-xs font-bold text-gray-900 dark:text-white truncate">{currentUser?.email || '—'}</span>
+                    </div>
+                    <div className="flex items-center justify-between gap-3">
+                        <span className="text-[11px] font-bold text-gray-400 uppercase tracking-wider">Rol</span>
+                        <span className="text-xs font-bold text-gray-900 dark:text-white">{ROLE_LABELS[currentUser?.role || ''] || currentUser?.role || '—'}</span>
+                    </div>
+                    <div className="flex items-center justify-between gap-3">
+                        <span className="text-[11px] font-bold text-gray-400 uppercase tracking-wider">Filial</span>
+                        <span className="text-xs font-bold text-gray-900 dark:text-white truncate">
+                            {schools?.find(sc => sc.id === currentUser?.schoolId)?.name || '—'}
+                        </span>
+                    </div>
+                </div>
+
+                <form onSubmit={handleChangePassword} className="space-y-4">
+                    <h3 className="text-xs font-black text-gray-900 dark:text-white uppercase tracking-wider">Parolni o'zgartirish</h3>
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                        <div>
+                            <label className={lbl}>Joriy parol</label>
+                            <input type="password" required autoComplete="current-password" className={inp}
+                                value={pwForm.oldPassword} onChange={e => setPwForm(f => ({ ...f, oldPassword: e.target.value }))} />
+                        </div>
+                        <div>
+                            <label className={lbl}>Yangi parol</label>
+                            <input type="password" required minLength={6} autoComplete="new-password" className={inp}
+                                value={pwForm.newPassword} onChange={e => setPwForm(f => ({ ...f, newPassword: e.target.value }))} />
+                        </div>
+                        <div>
+                            <label className={lbl}>Yangi parol (takror)</label>
+                            <input type="password" required minLength={6} autoComplete="new-password" className={inp}
+                                value={pwForm.confirm} onChange={e => setPwForm(f => ({ ...f, confirm: e.target.value }))} />
+                        </div>
+                    </div>
+                    <p className="text-[11px] font-bold text-gray-400">Parol kamida 6 ta belgidan iborat bo'lsin.</p>
+                    {pwState.error && <p className="text-[11px] font-bold text-rose-500">⚠️ {pwState.error}</p>}
+                    {pwState.ok && <p className="text-[11px] font-bold text-emerald-600 dark:text-emerald-400">✓ Parol yangilandi</p>}
+                    <div className="flex justify-end pt-4 border-t border-dashed border-gray-150 dark:border-gray-700/50">
+                        <button type="submit" disabled={pwState.busy}
+                            className="px-6 py-3 bg-[#1b6b6b] hover:bg-[#155252] disabled:opacity-50 text-white rounded-2xl text-xs font-extrabold uppercase tracking-widest flex items-center gap-2 shadow-lg shadow-[#1b6b6b]/20 transition-all cursor-pointer">
+                            <Lock size={14} />{pwState.busy ? t('saving') : 'Parolni yangilash'}
+                        </button>
+                    </div>
+                </form>
+            </div>
+        );
 
         if (activeSection === 'xonalar') return (
             <ListSection

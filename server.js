@@ -240,6 +240,31 @@ app.get('/api/auth/me', authenticate, async (req, res, next) => {
   } catch (error) { next(error); }
 });
 
+// Har bir xodim o'z parolini o'zgartira oladi. /api/users/:id faqat ADMIN/MANAGER
+// uchun ochiq, shuning uchun bu alohida yo'l — eski parolni tekshirib almashtiradi.
+app.post('/api/auth/change-password', authenticate, async (req, res, next) => {
+  try {
+    if (req.user.role === 'SUPERADMIN') {
+      return res.status(400).json({ error: 'Super admin paroli bazada saqlanmaydi' });
+    }
+    const { oldPassword, newPassword } = req.body;
+    if (!oldPassword || !newPassword) return res.status(400).json({ error: 'Eski va yangi parol kerak' });
+    if (String(newPassword).length < 6) return res.status(400).json({ error: "Yangi parol kamida 6 ta belgidan iborat bo'lsin" });
+
+    const user = await prisma.user.findUnique({ where: { id: req.user.id } });
+    if (!user) return res.status(404).json({ error: 'Foydalanuvchi topilmadi' });
+    if (!(await bcrypt.compare(oldPassword, user.password))) {
+      return res.status(400).json({ error: "Eski parol noto'g'ri" });
+    }
+
+    await prisma.user.update({
+      where: { id: user.id },
+      data: { password: await bcrypt.hash(newPassword, 10) }
+    });
+    res.json({ success: true });
+  } catch (error) { next(error); }
+});
+
 // --- User Management (Admin only) ---
 app.get('/api/users', authenticate, async (req, res, next) => {
   try {
@@ -724,7 +749,7 @@ app.put('/api/students/:id', authenticate, async (req, res, next) => {
     // Whitelist only known Student schema fields
     const ALLOWED_STUDENT_FIELDS = [
       'name','phone','birthDate','address','location','status','joinedDate',
-      'balance','photo','rating','gender','fatherName','fatherPhone','motherName','motherPhone',
+      'balance','photo','rating','comment','gender','fatherName','fatherPhone','motherName','motherPhone',
       'studentSchool','privilegeType','certCategory','certSubject','certType','certScore',
       'customPrices','orgType','region','district','transportId','statusChangedAt',
       'leaveReason','certificates','telegramId','fatherTelegramId','motherTelegramId'
