@@ -3,7 +3,7 @@ import express from 'express';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
 import prisma from './lib/prisma.js';
-import { JWT_SECRET, TOKEN_TTL, attendanceWindowStart, redactBody, isAdmin, stripSettingSecrets } from './lib/config.js';
+import { JWT_SECRET, TOKEN_TTL, attendanceWindowStart, redactBody, isAdmin, stripSettingSecrets, cronRequestRejected } from './lib/config.js';
 import { authenticate, requireRole, STAFF_MANAGERS } from './middleware/auth.js';
 import { claimBillingRun, releaseBillingRun, processMonthlyBilling } from './services/billing.js';
 import jwt from 'jsonwebtoken';
@@ -36,10 +36,35 @@ const PORT = process.env.PORT || 3000;
 // Vercel terminates TLS upstream; without this the rate limiter sees one shared IP.
 app.set('trust proxy', 1);
 
+// Content Security Policy.
+//
+// Scripts are restricted to this origin plus the two CDNs index.html loads with SRI
+// hashes, so an injected <script src> to anywhere else is blocked. Styles still need
+// 'unsafe-inline': the SPA renders inline <style> blocks for print layouts and the
+// theme picker injects a <style> element at runtime. Images allow the Supabase bucket
+// that stores photos, and data: for the ones still held inline.
+const SUPABASE_ORIGIN = (() => {
+  try { return new URL(process.env.SUPABASE_URL).origin; } catch { return ''; }
+})();
+
 app.use(helmet({
-  // The SPA ships inline <style> blocks and pulls photos from Supabase, so CSP and COEP
-  // need their own tightening pass — the remaining headers (HSTS, noSniff, frameguard) apply now.
-  contentSecurityPolicy: false,
+  contentSecurityPolicy: {
+    useDefaults: false,
+    directives: {
+      defaultSrc: ["'self'"],
+      scriptSrc: ["'self'", 'https://unpkg.com', 'https://cdn.jsdelivr.net'],
+      styleSrc: ["'self'", "'unsafe-inline'", 'https://fonts.googleapis.com', 'https://unpkg.com'],
+      fontSrc: ["'self'", 'https://fonts.gstatic.com', 'data:'],
+      imgSrc: ["'self'", 'data:', 'blob:', SUPABASE_ORIGIN, 'https://unpkg.com', 'https://*.tile.openstreetmap.org'].filter(Boolean),
+      // The settings screen verifies the Telegram bot token straight from the browser.
+      connectSrc: ["'self'", SUPABASE_ORIGIN, 'https://api.telegram.org'].filter(Boolean),
+      mediaSrc: ["'self'", 'blob:', 'data:'],
+      objectSrc: ["'none'"],
+      frameAncestors: ["'self'"],
+      baseUri: ["'self'"],
+      formAction: ["'self'"],
+    },
+  },
   crossOriginEmbedderPolicy: false,
   crossOriginResourcePolicy: { policy: 'cross-origin' },
 }));
@@ -794,22 +819,40 @@ app.get('/api/teachers', authenticate, async (req, res, next) => {
     res.json(teachers);
   } catch (error) { next(error); }
 });
-app.post('/api/teachers', authenticate, async (req, res, next) => {
+// Only these columns may be written from a request. Pay fields in particular were
+// previously reachable by spreading the whole body, so any signed-in member of staff
+// could rewrite a teacher's salary or revenue share.
+const TEACHER_FIELDS = ['name', 'phone', 'salary', 'sharePercentage', 'lessonFee',
+  'salaryType', 'birthDate', 'hiredDate', 'photo', 'status', 'telegramId'];
+
+function pickTeacherFields(body) {
+  const data = {};
+  for (const key of TEACHER_FIELDS) {
+    if (body[key] !== undefined) data[key] = body[key];
+  }
+  for (const num of ['salary', 'sharePercentage', 'lessonFee']) {
+    if (data[num] !== undefined) data[num] = parseFloat(data[num]) || 0;
+  }
+  return data;
+}
+
+app.post('/api/teachers', authenticate, requireRole(...STAFF_MANAGERS), async (req, res, next) => {
   try {
-    const { schoolId, ...data } = req.body;
+    const { schoolId } = req.body;
     if (!schoolId) return res.status(400).json({ error: 'schoolId required' });
-    if (data.salary) data.salary = parseFloat(data.salary);
-    if (data.sharePercentage) data.sharePercentage = parseFloat(data.sharePercentage);
-    if (data.lessonFee) data.lessonFee = parseFloat(data.lessonFee);
+    const data = pickTeacherFields(req.body);
     if (!data.salaryType) data.salaryType = 'FIXED';
     const teacher = await prisma.teacher.create({ data: { ...data, schoolId: parseInt(schoolId) } });
     res.json(teacher);
   } catch (error) { next(error); }
 });
-app.put('/api/teachers/:id', authenticate, async (req, res, next) => {
+app.put('/api/teachers/:id', authenticate, requireRole(...STAFF_MANAGERS), async (req, res, next) => {
   try {
     const { id } = req.params;
-    const teacher = await prisma.teacher.update({ where: { id: parseInt(id) }, data: req.body });
+    const teacher = await prisma.teacher.update({
+      where: { id: parseInt(id) },
+      data: pickTeacherFields(req.body),
+    });
     res.json(teacher);
   } catch (error) { next(error); }
 });
@@ -949,7 +992,7 @@ app.post('/api/groups/:id/students', authenticate, async (req, res, next) => {
 });
 
 // Atomic endpoint: disconnect a single student from a group
-app.delete('/api/groups/:id/students/:studentId', authenticate, async (req, res, next) => {
+app.delete('/api/groups/:id/students/:studentId', authenticate, requireRole(...STAFF_MANAGERS), async (req, res, next) => {
   try {
     const groupId = parseInt(req.params.id);
     const studentId = parseInt(req.params.studentId);
@@ -1231,7 +1274,7 @@ app.put('/api/leads/:id', authenticate, async (req, res, next) => {
   } catch (error) { next(error); }
 });
 
-app.delete('/api/leads/:id', authenticate, async (req, res, next) => {
+app.delete('/api/leads/:id', authenticate, requireRole(...STAFF_MANAGERS), async (req, res, next) => {
   try {
     const { id } = req.params;
     await prisma.lead.delete({ where: { id: parseInt(id) } });
@@ -1273,7 +1316,7 @@ app.get('/api/expenses', authenticate, async (req, res, next) => {
   } catch (error) { next(error); }
 });
 
-app.post('/api/expenses', authenticate, async (req, res, next) => {
+app.post('/api/expenses', authenticate, requireRole(...STAFF_MANAGERS), async (req, res, next) => {
   try {
     const { schoolId, amount, category, date, description } = req.body;
     const parsedSchoolId = parseInt(schoolId);
@@ -1316,7 +1359,7 @@ app.get('/api/courses', authenticate, async (req, res, next) => {
     res.json(await prisma.course.findMany({ where: { schoolId: parseInt(schoolId) } }));
   } catch (error) { next(error); }
 });
-app.post('/api/courses', authenticate, async (req, res, next) => {
+app.post('/api/courses', authenticate, requireRole(...STAFF_MANAGERS), async (req, res, next) => {
   try {
     const { schoolId, ...data } = req.body;
     if (!schoolId) return res.status(400).json({ error: 'schoolId required' });
@@ -1327,7 +1370,7 @@ app.post('/api/courses', authenticate, async (req, res, next) => {
     res.json(await prisma.course.create({ data: { ...data, schoolId: parseInt(schoolId) } }));
   } catch (error) { next(error); }
 });
-app.put('/api/courses/:id', authenticate, async (req, res, next) => {
+app.put('/api/courses/:id', authenticate, requireRole(...STAFF_MANAGERS), async (req, res, next) => {
   try {
     const data = {};
     if (req.body.name !== undefined) data.name = req.body.name;
@@ -1338,7 +1381,7 @@ app.put('/api/courses/:id', authenticate, async (req, res, next) => {
     res.json(await prisma.course.update({ where: { id: parseInt(req.params.id) }, data }));
   } catch (error) { next(error); }
 });
-app.delete('/api/courses/:id', authenticate, async (req, res, next) => {
+app.delete('/api/courses/:id', authenticate, requireRole(...STAFF_MANAGERS), async (req, res, next) => {
   try {
     const cId = parseInt(req.params.id);
     // Detach all groups from this course before deleting (set courseId to a placeholder)
@@ -1371,13 +1414,18 @@ app.get('/api/topics', authenticate, async (req, res, next) => {
 
 app.post('/api/topics', authenticate, async (req, res, next) => {
   try {
-    const { schoolId, title, description, order, syllabusId } = req.body;
+    const { schoolId, title, description, order, syllabusId,
+            moduleName, hours, materials, status } = req.body;
     if (!schoolId || !title) return res.status(400).json({ error: 'Missing required fields' });
     const topic = await prisma.topic.create({
       data: {
         title,
         description: description || null,
         order: order ? parseInt(order) : 1,
+        moduleName: moduleName || null,
+        hours: hours ? parseInt(hours) : null,
+        materials: materials || null,
+        status: status || null,
         syllabusId: syllabusId ? parseInt(syllabusId) : null,
         schoolId: parseInt(schoolId)
       }
@@ -1389,12 +1437,17 @@ app.post('/api/topics', authenticate, async (req, res, next) => {
 app.put('/api/topics/:id', authenticate, async (req, res, next) => {
   try {
     const { id } = req.params;
-    const { title, description, order, syllabusId } = req.body;
+    const { title, description, order, syllabusId,
+            moduleName, hours, materials, status } = req.body;
     const data = {};
     if (title !== undefined) data.title = title;
     if (description !== undefined) data.description = description;
     if (order !== undefined) data.order = parseInt(order);
     if (syllabusId !== undefined) data.syllabusId = syllabusId ? parseInt(syllabusId) : null;
+    if (moduleName !== undefined) data.moduleName = moduleName || null;
+    if (hours !== undefined) data.hours = hours === null || hours === '' ? null : parseInt(hours);
+    if (materials !== undefined) data.materials = materials || null;
+    if (status !== undefined) data.status = status || null;
 
     const topic = await prisma.topic.update({
       where: { id: parseInt(id) },
@@ -1404,7 +1457,7 @@ app.put('/api/topics/:id', authenticate, async (req, res, next) => {
   } catch (error) { next(error); }
 });
 
-app.delete('/api/topics/:id', authenticate, async (req, res, next) => {
+app.delete('/api/topics/:id', authenticate, requireRole(...STAFF_MANAGERS), async (req, res, next) => {
   try {
     const { id } = req.params;
     await prisma.topic.delete({ where: { id: parseInt(id) } });
@@ -1458,7 +1511,7 @@ app.put('/api/syllabuses/:id', authenticate, async (req, res, next) => {
   } catch (error) { next(error); }
 });
 
-app.delete('/api/syllabuses/:id', authenticate, async (req, res, next) => {
+app.delete('/api/syllabuses/:id', authenticate, requireRole(...STAFF_MANAGERS), async (req, res, next) => {
   try {
     const { id } = req.params;
     await prisma.syllabus.delete({ where: { id: parseInt(id) } });
@@ -1475,7 +1528,7 @@ app.get('/api/rooms', authenticate, async (req, res, next) => {
   } catch (error) { next(error); }
 });
 
-app.post('/api/rooms', authenticate, async (req, res, next) => {
+app.post('/api/rooms', authenticate, requireRole(...STAFF_MANAGERS), async (req, res, next) => {
   try {
     const { schoolId, ...data } = req.body;
     if (!schoolId) return res.status(400).json({ error: 'schoolId required' });
@@ -1484,7 +1537,7 @@ app.post('/api/rooms', authenticate, async (req, res, next) => {
   } catch (error) { next(error); }
 });
 
-app.delete('/api/rooms/:id', authenticate, async (req, res, next) => {
+app.delete('/api/rooms/:id', authenticate, requireRole(...STAFF_MANAGERS), async (req, res, next) => {
   try {
     await prisma.room.delete({ where: { id: parseInt(req.params.id) } });
     res.json({ success: true });
@@ -2523,7 +2576,7 @@ app.post('/api/attendances/batch', authenticate, async (req, res, next) => {
   } catch (error) { next(error); }
 });
 
-app.delete('/api/attendances/batch', authenticate, async (req, res, next) => {
+app.delete('/api/attendances/batch', authenticate, requireRole(...STAFF_MANAGERS), async (req, res, next) => {
   try {
     const { schoolId, groupId, date } = req.query;
     if (!schoolId || !groupId || !date) return res.status(400).json({ error: 'Missing parameters' });
@@ -2633,7 +2686,7 @@ app.put('/api/transports/:id', authenticate, async (req, res, next) => {
     res.json(transport);
   } catch (error) { next(error); }
 });
-app.delete('/api/transports/:id', authenticate, async (req, res, next) => {
+app.delete('/api/transports/:id', authenticate, requireRole(...STAFF_MANAGERS), async (req, res, next) => {
   try {
     const id = parseInt(req.params.id);
     await prisma.student.updateMany({ where: { transportId: id }, data: { transportId: null } });
@@ -2698,7 +2751,7 @@ app.put('/api/routes/:id', authenticate, async (req, res, next) => {
   } catch (error) { next(error); }
 });
 
-app.delete('/api/routes/:id', authenticate, async (req, res, next) => {
+app.delete('/api/routes/:id', authenticate, requireRole(...STAFF_MANAGERS), async (req, res, next) => {
   try {
     await prisma.route.delete({ where: { id: parseInt(req.params.id) } });
     res.json({ success: true });
@@ -3127,7 +3180,7 @@ app.post('/api/sms/send', authenticate, requireRole(...STAFF_MANAGERS), async (r
 });
 
 // API: Davomatga kelmagan o'quvchilarga SMS yuborish
-app.post('/api/sms/attendance', authenticate, async (req, res, next) => {
+app.post('/api/sms/attendance', authenticate, requireRole(...STAFF_MANAGERS), async (req, res, next) => {
   try {
     const { date, groupId } = req.body;
     if (!date || !groupId) return res.status(400).json({ error: 'date va groupId kerak' });
@@ -3498,7 +3551,7 @@ app.put('/api/messaging/templates/:id', authenticate, async (req, res, next) => 
   } catch (err) { next(err); }
 });
 
-app.delete('/api/messaging/templates/:id', authenticate, async (req, res, next) => {
+app.delete('/api/messaging/templates/:id', authenticate, requireRole(...STAFF_MANAGERS), async (req, res, next) => {
   try {
     await prisma.messageTemplate.delete({ where: { id: parseInt(req.params.id) } });
     res.json({ success: true });
@@ -3526,7 +3579,7 @@ app.get('/api/messaging/auto-rules', authenticate, async (req, res, next) => {
   } catch (err) { next(err); }
 });
 
-app.post('/api/messaging/auto-rules', authenticate, async (req, res, next) => {
+app.post('/api/messaging/auto-rules', authenticate, requireRole(...STAFF_MANAGERS), async (req, res, next) => {
   try {
     const { name, type, enabled, body, channel, recipientTo, config, time } = req.body;
     if (!name || !type || !body) return res.status(400).json({ error: 'name, type, va body kerak' });
@@ -3547,7 +3600,7 @@ app.post('/api/messaging/auto-rules', authenticate, async (req, res, next) => {
   } catch (err) { next(err); }
 });
 
-app.put('/api/messaging/auto-rules/:id', authenticate, async (req, res, next) => {
+app.put('/api/messaging/auto-rules/:id', authenticate, requireRole(...STAFF_MANAGERS), async (req, res, next) => {
   try {
     const { name, type, enabled, body, channel, recipientTo, config, time } = req.body;
     const ruleId = parseInt(req.params.id);
@@ -3569,7 +3622,7 @@ app.put('/api/messaging/auto-rules/:id', authenticate, async (req, res, next) =>
   } catch (err) { next(err); }
 });
 
-app.delete('/api/messaging/auto-rules/:id', authenticate, async (req, res, next) => {
+app.delete('/api/messaging/auto-rules/:id', authenticate, requireRole(...STAFF_MANAGERS), async (req, res, next) => {
   try {
     await prisma.autoMessageRule.delete({
       where: { id: parseInt(req.params.id) }
@@ -3771,11 +3824,8 @@ async function runAutoProcessJobs() {
 // Vercel cron: kunlik/soatlik avtomatik xabarlar
 app.get('/api/messaging/auto-process', async (req, res, next) => {
   try {
-    const authHeader = req.headers['authorization'];
-    const isLocalhost = req.ip === '127.0.0.1' || req.ip === '::1' || req.hostname === 'localhost';
-    if (!isLocalhost && process.env.CRON_SECRET && authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
-      return res.status(401).json({ error: 'Unauthorized' });
-    }
+    const cronError = cronRequestRejected(req);
+    if (cronError) return res.status(401).json({ error: cronError });
     const results = await runAutoProcessJobs();
     res.json({ success: true, ...results });
   } catch (err) { next(err); }
@@ -3802,7 +3852,7 @@ if (!process.env.VERCEL) {
 }
 
 // API: Failed SMS/Telegram loglarni qaytadan jo'natish
-app.post('/api/sms/resend-failed', authenticate, async (req, res, next) => {
+app.post('/api/sms/resend-failed', authenticate, requireRole(...STAFF_MANAGERS), async (req, res, next) => {
   try {
     const { logIds, startDate, endDate } = req.body;
     const schoolId = req.user.schoolId;
@@ -3941,7 +3991,7 @@ app.put('/api/questions/:id', authenticate, async (req, res, next) => {
   } catch (err) { next(err); }
 });
 
-app.delete('/api/questions/:id', authenticate, async (req, res, next) => {
+app.delete('/api/questions/:id', authenticate, requireRole(...STAFF_MANAGERS), async (req, res, next) => {
   try {
     await prisma.question.delete({ where: { id: parseInt(req.params.id) } });
     res.json({ success: true });
@@ -3991,7 +4041,7 @@ app.put('/api/exams/:id', authenticate, async (req, res, next) => {
   } catch (err) { next(err); }
 });
 
-app.delete('/api/exams/:id', authenticate, async (req, res, next) => {
+app.delete('/api/exams/:id', authenticate, requireRole(...STAFF_MANAGERS), async (req, res, next) => {
   try {
     await prisma.exam.delete({ where: { id: parseInt(req.params.id) } });
     res.json({ success: true });
@@ -4104,12 +4154,32 @@ app.post('/api/exam-results', authenticate, async (req, res, next) => {
   } catch (err) { next(err); }
 });
 
-app.delete('/api/exam-results/:id', authenticate, async (req, res, next) => {
+app.delete('/api/exam-results/:id', authenticate, requireRole(...STAFF_MANAGERS), async (req, res, next) => {
   try {
     await prisma.examResult.delete({ where: { id: parseInt(req.params.id) } });
     res.json({ success: true });
   } catch (err) { next(err); }
 });
+
+// Only these image types may be stored. The extension used to come straight from the
+// caller's filename and became the stored object's content type, so any string at all
+// could be uploaded into a publicly readable bucket.
+const ALLOWED_UPLOADS = {
+  jpg: 'image/jpeg', jpeg: 'image/jpeg', png: 'image/png',
+  webp: 'image/webp', gif: 'image/gif',
+};
+
+// First bytes of each format. The declared extension is a claim; this is the evidence.
+function sniffImageType(buf) {
+  if (buf.length < 12) return null;
+  if (buf[0] === 0xFF && buf[1] === 0xD8 && buf[2] === 0xFF) return 'jpg';
+  if (buf.slice(0, 8).equals(Buffer.from([0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A]))) return 'png';
+  if (buf.slice(0, 3).toString('ascii') === 'GIF') return 'gif';
+  if (buf.slice(0, 4).toString('ascii') === 'RIFF' && buf.slice(8, 12).toString('ascii') === 'WEBP') return 'webp';
+  return null;
+}
+
+const MAX_UPLOAD_BYTES = 3 * 1024 * 1024;
 
 // Upload endpoint — Supabase Storage
 app.post('/api/upload', authenticate, async (req, res, next) => {
@@ -4117,11 +4187,21 @@ app.post('/api/upload', authenticate, async (req, res, next) => {
     const { data, filename } = req.body; // data: base64 string, filename: original name
     if (!data || !filename) return res.status(400).json({ error: 'data va filename required' });
 
-    const ext = filename.split('.').pop() || 'jpg';
-    const uniqueName = `q_${Date.now()}_${Math.random().toString(36).slice(2)}.${ext}`;
-    const base64Data = data.replace(/^data:image\/[\w+]+;base64,/, '');
+    const base64Data = String(data).replace(/^data:image\/[\w+]+;base64,/, '');
     const buffer = Buffer.from(base64Data, 'base64');
-    const mimeType = `image/${ext === 'jpg' ? 'jpeg' : ext}`;
+
+    if (buffer.length === 0) return res.status(400).json({ error: 'Fayl bo\'sh' });
+    if (buffer.length > MAX_UPLOAD_BYTES) {
+      return res.status(413).json({ error: 'Fayl juda katta (eng ko\'pi 3 MB)' });
+    }
+
+    // Trust the bytes, not the name.
+    const ext = sniffImageType(buffer);
+    if (!ext) {
+      return res.status(400).json({ error: 'Faqat rasm yuklash mumkin (JPG, PNG, WEBP, GIF)' });
+    }
+    const mimeType = ALLOWED_UPLOADS[ext];
+    const uniqueName = `q_${Date.now()}_${Math.random().toString(36).slice(2)}.${ext}`;
 
     const { error: uploadError } = await supabaseAdmin.storage
       .from('uploads')
@@ -4243,7 +4323,7 @@ app.get('/api/billing/status', authenticate, async (req, res, next) => {
   } catch (err) { next(err); }
 });
 
-app.post('/api/billing/notify-debtors', authenticate, async (req, res, next) => {
+app.post('/api/billing/notify-debtors', authenticate, requireRole(...STAFF_MANAGERS), async (req, res, next) => {
   try {
     const { schoolId, month, messageTemplate, channel, statusFilter } = req.body;
     if (!schoolId || !month || !messageTemplate || !channel) {
@@ -4358,10 +4438,8 @@ app.post('/api/billing/notify-debtors', authenticate, async (req, res, next) => 
 
 app.get('/api/billing/auto-process', async (req, res, next) => {
   try {
-    const authHeader = req.headers['authorization'];
-    if (process.env.CRON_SECRET && authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
-      return res.status(401).json({ error: 'Unauthorized' });
-    }
+    const cronError = cronRequestRejected(req);
+    if (cronError) return res.status(401).json({ error: cronError });
     const schools = await prisma.school.findMany({ select: { id: true, name: true } });
     const now = new Date();
     const month = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
