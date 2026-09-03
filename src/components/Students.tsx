@@ -3,7 +3,7 @@ import { Search, Plus, FileSpreadsheet, MoreVertical, X, Image as ImageIcon, Map
 import { useCRM } from '../context/CRMContext';
 import { useConfirm } from './ConfirmDialog';
 import { useLang } from '../context/LanguageContext';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import PhotoCapture from './PhotoCapture';
 import MapPicker from './MapPicker';
 import { compressImage } from '../lib/image';
@@ -206,10 +206,12 @@ export default function Students() {
             .catch(err => console.error("Havolani nusxalashda xatolik:", err));
     };
 
+    // Yuqori paneldagi "N qarzdor" tugmasi bu yerga ?filter=debt bilan olib keladi.
+    const [searchParams] = useSearchParams();
     const [filters, setFilters] = useState({
         status: '',
         groupId: '',
-        balanceStatus: 'all',
+        balanceStatus: searchParams.get('filter') === 'debt' ? 'debt' : 'all',
         dateRange: 'all',
         orgType: '',
         muassasaSearch: '',
@@ -218,6 +220,13 @@ export default function Students() {
         location: '',
         missingInfo: ''
     });
+
+    // Ro'yxat allaqachon ochiq bo'lsa komponent qayta yaratilmaydi, shuning uchun
+    // manzildagi filtrni alohida kuzatamiz.
+    React.useEffect(() => {
+        const wanted = searchParams.get('filter') === 'debt' ? 'debt' : null;
+        if (wanted) setFilters(f => (f.balanceStatus === wanted ? f : { ...f, balanceStatus: wanted }));
+    }, [searchParams]);
 
     const [activeMenu, setActiveMenu] = useState<{
         id: number;

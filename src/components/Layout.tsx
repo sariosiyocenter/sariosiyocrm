@@ -60,6 +60,8 @@ export default function Layout({ children, onLogout }: LayoutProps) {
   };
 
   const results = getSearchResults();
+
+  const debtorCount = (students || []).filter(s => (s.balance || 0) < 0).length;
   
   const handleResultClick = (path: string) => {
     navigate(path);
@@ -213,6 +215,18 @@ export default function Layout({ children, onLogout }: LayoutProps) {
 
           {/* Right controls */}
           <div className="flex items-center gap-2">
+            {/* Qarzdorlar — direktor birinchi qaraydigan raqam, shuning uchun
+                menyudan izlamasdan yuqori panelda turadi. */}
+            {user?.role !== 'SUPERADMIN' && user?.role !== 'SELLER' && debtorCount > 0 && (
+              <button
+                onClick={() => navigate('/students?filter=debt')}
+                title="Qarzdor o'quvchilar ro'yxati"
+                className="hidden sm:flex items-center gap-2 pl-2.5 pr-3 py-2 rounded-lg border border-rose-200 dark:border-rose-900/50 bg-rose-50 dark:bg-rose-950/20 text-rose-600 dark:text-rose-400 hover:bg-rose-500 hover:border-rose-500 hover:text-white transition-colors cursor-pointer"
+              >
+                <span className="w-1.5 h-1.5 rounded-full bg-rose-500 shrink-0" />
+                <span className="text-xs font-bold tabular-nums whitespace-nowrap">{debtorCount} qarzdor</span>
+              </button>
+            )}
             {/* Language switcher — dropdown like branch selector */}
             <div className="relative">
               <Globe className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400 pointer-events-none" />

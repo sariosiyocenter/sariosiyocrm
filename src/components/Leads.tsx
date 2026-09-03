@@ -169,6 +169,48 @@ export default function Leads() {
     return lead.status === status && matchesSearch && matchesCourse && matchesSource && matchesDate;
   });
 
+  // Manba chiplari uchun sanoq. Manba filtrining o'zi hisobga olinmaydi, aks holda
+  // chip bosilgach qolgan chiplar nolga tushib qolardi.
+  const sourceCounts = (() => {
+    const lowerQ = searchQuery.toLowerCase();
+    const visible = leads.filter(lead => {
+      const matchesSearch =
+        (lead.name || '').toLowerCase().includes(lowerQ) ||
+        (lead.phone || '').includes(searchQuery) ||
+        (lead.course || '').toLowerCase().includes(lowerQ);
+      const matchesCourse = !filters.course || lead.course === filters.course;
+      return matchesSearch && matchesCourse;
+    });
+    const counts = new Map<string, number>();
+    visible.forEach(l => counts.set(l.source || '—', (counts.get(l.source || '—') || 0) + 1));
+    return {
+      total: visible.length,
+      list: [...counts.entries()].sort((a, b) => b[1] - a[1]),
+    };
+  })();
+
+  /** Bosqichdagi lidlarning taxminiy qiymati — kurs narxlari yig'indisi. */
+  const stagePotential = (stageLeads: Lead[]) =>
+    stageLeads.reduce((sum, l) => sum + (courses.find(c => c.name === l.course)?.price || 0), 0);
+
+  const formatSum = (n: number) =>
+    n >= 1_000_000 ? (n / 1_000_000).toFixed(1).replace('.0', '') + ' mln' : n.toLocaleString();
+
+  /** Lid ustunda necha kundan beri turgani — sovib qolganini ko'rsatish uchun. */
+  const daysSince = (iso: string | Date) => {
+    const d = new Date(iso);
+    if (isNaN(d.getTime())) return null;
+    const days = Math.floor((Date.now() - d.getTime()) / 86400000);
+    return days < 0 ? 0 : days;
+  };
+
+  /** Lidni ketma-ketlikdagi keyingi bosqichga o'tkazadi. */
+  const advanceStage = (lead: Lead) => {
+    const idx = STAGES.findIndex(st => st.name === lead.status);
+    const next = STAGES[idx + 1];
+    if (next) handleStatusChange(lead.id, next.name);
+  };
+
   const handleAddLead = (e: React.FormEvent) => {
     e.preventDefault();
     addLead({ 
@@ -307,6 +349,31 @@ export default function Leads() {
           </div>
         </div>
 
+        {/* Manba bo'yicha tez filtr. Pastdagi "Filtrlar" paneli joyida qoladi —
+            bu qator o'sha paneldagi manba tanlovi bilan bitta holatni bo'lishadi. */}
+        <div className="px-6 pb-4 flex items-center gap-2 overflow-x-auto no-scrollbar">
+          <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest shrink-0 mr-1">{t('by_source')}</span>
+          <button
+            onClick={() => setFilters({ ...filters, source: '' })}
+            className={`px-3 py-1.5 rounded-xl text-[11px] font-extrabold uppercase tracking-wider border transition-all cursor-pointer shrink-0 tabular-nums ${!filters.source
+              ? 'bg-[#1b6b6b] border-[#1b6b6b] text-white shadow'
+              : 'bg-gray-55 dark:bg-gray-900/50 border-gray-100 dark:border-gray-700 text-gray-400 hover:text-[#1b6b6b] hover:border-[#1b6b6b]'}`}
+          >
+            {t('all')} · {sourceCounts.total}
+          </button>
+          {sourceCounts.list.map(([src, count]) => (
+            <button
+              key={src}
+              onClick={() => setFilters({ ...filters, source: filters.source === src ? '' : src })}
+              className={`px-3 py-1.5 rounded-xl text-[11px] font-extrabold uppercase tracking-wider border transition-all cursor-pointer shrink-0 tabular-nums ${filters.source === src
+                ? 'bg-[#1b6b6b] border-[#1b6b6b] text-white shadow'
+                : 'bg-gray-55 dark:bg-gray-900/50 border-gray-100 dark:border-gray-700 text-gray-400 hover:text-[#1b6b6b] hover:border-[#1b6b6b]'}`}
+            >
+              {src} · {count}
+            </button>
+          ))}
+        </div>
+
         {showFilters && (
           <div className="px-6 pb-5 pt-4 border-t border-gray-50 dark:border-gray-700/50 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
             <div>
@@ -361,6 +428,9 @@ export default function Leads() {
       </div>
 
       {/* Board Layout */}
+      <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider text-right">
+        Kartani ushlab boshqa ustunga tashlang
+      </p>
       <div className="flex gap-6 overflow-x-auto pb-4 items-start custom-scrollbar">
         {STAGES.map((stage) => {
           const stageLeads = getLeadsByStatus(stage.name);
@@ -377,14 +447,21 @@ export default function Leads() {
               }}
               className="w-[300px] shrink-0 bg-gray-50/50 dark:bg-gray-900/10 border border-gray-100/50 dark:border-gray-800/30 rounded-3xl p-4 flex flex-col max-h-[80vh] min-h-[500px]"
             >
-              <div className="flex items-center justify-between mb-4 px-1.5">
-                <div className="flex items-center gap-2">
-                  <div className={`w-2.5 h-2.5 rounded-full ${stage.color}`} />
-                  <h3 className="font-extrabold text-gray-900 dark:text-gray-100 text-xs uppercase tracking-widest">{getStageLabel(stage.name)}</h3>
-                  <span className="bg-white dark:bg-gray-850 border border-gray-100 dark:border-gray-700 text-gray-500 dark:text-gray-400 text-[11px] font-bold px-2 py-0.5 rounded-lg">
+              <div className="mb-4 px-1.5 space-y-1">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <div className={`w-2.5 h-2.5 rounded-full ${stage.color}`} />
+                    <h3 className="font-extrabold text-gray-900 dark:text-gray-100 text-xs uppercase tracking-widest">{getStageLabel(stage.name)}</h3>
+                  </div>
+                  <span className="bg-white dark:bg-gray-850 border border-gray-100 dark:border-gray-700 text-gray-500 dark:text-gray-400 text-[11px] font-bold px-2 py-0.5 rounded-lg tabular-nums">
                     {stageLeads.length}
                   </span>
                 </div>
+                {stageLeads.length > 0 && (
+                  <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider tabular-nums">
+                    Potentsial: {formatSum(stagePotential(stageLeads))}
+                  </p>
+                )}
               </div>
 
               <div className="space-y-3 overflow-y-auto flex-1 custom-scrollbar pr-1">
@@ -399,7 +476,7 @@ export default function Leads() {
                       setSelectedLead(lead);
                       setIsConverting(false);
                     }}
-                    className="bg-white dark:bg-gray-800 p-4 rounded-2xl border border-gray-100 dark:border-gray-755 shadow-sm hover:shadow-md hover:border-gray-200 dark:hover:border-gray-700 transition-all duration-200 cursor-pointer"
+                    className="group/card bg-white dark:bg-gray-800 p-4 rounded-2xl border border-gray-100 dark:border-gray-755 shadow-sm hover:shadow-md hover:border-gray-200 dark:hover:border-gray-700 transition-all duration-200 cursor-pointer"
                   >
                     <div className="flex items-center justify-between mb-2">
                       <span className={`text-[10px] font-bold px-2 py-0.5 rounded-lg border uppercase tracking-wider ${stage.lightBgc}`}>
@@ -422,6 +499,40 @@ export default function Leads() {
                           <Calendar size={10} />
                           {new Date(lead.createdAt).toLocaleDateString()}
                         </span>
+                      </div>
+
+                      {/* Lidning yoshi va tez amallar. Uzoq turib qolgan lid qizil
+                          bo'lib ko'rinadi — "To'lov qildi" bosqichi bundan mustasno. */}
+                      <div className="flex items-center justify-between pt-2">
+                        {(() => {
+                          const age = daysSince(lead.createdAt);
+                          if (age === null) return <span />;
+                          const stale = age >= 3 && stage.name !== "To'lov qildi";
+                          return (
+                            <span className={`text-[10px] font-bold normal-case tracking-normal tabular-nums ${stale ? 'text-rose-500' : 'text-gray-400 dark:text-gray-600'}`}>
+                              {age === 0 ? 'Bugun' : age === 1 ? '1 kun' : `${age} kundan beri`}
+                            </span>
+                          );
+                        })()}
+                        <div className="flex items-center gap-1 opacity-0 group-hover/card:opacity-100 transition-opacity">
+                          <a
+                            href={lead.phone ? `tel:${lead.phone.replace(/\s/g, '')}` : undefined}
+                            onClick={e => e.stopPropagation()}
+                            title="Qo'ng'iroq qilish"
+                            className="w-7 h-7 flex items-center justify-center rounded-lg bg-gray-55 dark:bg-gray-900 border border-gray-100 dark:border-gray-700 text-[#1b6b6b] hover:bg-[#1b6b6b] hover:text-white transition-all"
+                          >
+                            <Phone size={12} />
+                          </a>
+                          {STAGES.findIndex(st => st.name === lead.status) < STAGES.length - 1 && (
+                            <button
+                              onClick={e => { e.stopPropagation(); advanceStage(lead); }}
+                              title="Keyingi bosqichga o'tkazish"
+                              className="w-7 h-7 flex items-center justify-center rounded-lg bg-gray-55 dark:bg-gray-900 border border-gray-100 dark:border-gray-700 text-[#1b6b6b] hover:bg-[#1b6b6b] hover:text-white transition-all cursor-pointer"
+                            >
+                              <ArrowRight size={12} />
+                            </button>
+                          )}
+                        </div>
                       </div>
                     </div>
                   </div>
