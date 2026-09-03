@@ -37,6 +37,10 @@ if (!process.env.JWT_SECRET && process.env.NODE_ENV === 'production') {
 }
 const JWT_SECRET = process.env.JWT_SECRET || 'dev_only_insecure_secret';
 
+// Sessions last three months. Tokens used to be signed with no expiry at all, which
+// meant a leaked one — or a former employee's — stayed valid forever.
+const TOKEN_TTL = '90d';
+
 // Vercel terminates TLS upstream; without this the rate limiter sees one shared IP.
 app.set('trust proxy', 1);
 
@@ -165,6 +169,13 @@ const authenticate = (req, res, next) => {
 
   jwt.verify(token, JWT_SECRET, async (err, user) => {
     if (err) return res.status(403).json({ error: 'Invalid token' });
+
+    // Tokens issued before sessions had an expiry never run out on their own.
+    // Rejecting them once sends those users back through login for a fresh 90-day token.
+    if (!user?.exp) {
+      return res.status(401).json({ error: 'Sessiya eskirgan, qaytadan kiring' });
+    }
+
     req.user = user;
     try {
       const wanted = requestedSchoolId(req);
@@ -266,7 +277,8 @@ app.post('/api/auth/login', loginLimiter, async (req, res, next) => {
     if (saEmail && saPass && email === saEmail && password === saPass) {
       const token = jwt.sign(
         { id: 0, email: saEmail, role: 'SUPERADMIN', schoolId: null },
-        JWT_SECRET
+        JWT_SECRET,
+        { expiresIn: TOKEN_TTL }
       );
       return res.json({
         token,
@@ -299,7 +311,11 @@ app.post('/api/auth/login', loginLimiter, async (req, res, next) => {
       }
     }
 
-    const token = jwt.sign({ id: user.id, email: user.email, role: user.role, schoolId: user.schoolId }, JWT_SECRET);
+    const token = jwt.sign(
+      { id: user.id, email: user.email, role: user.role, schoolId: user.schoolId },
+      JWT_SECRET,
+      { expiresIn: TOKEN_TTL }
+    );
     res.json({ token, user: { id: user.id, email: user.email, name: user.name, role: user.role, schoolId: user.schoolId } });
   } catch (error) { next(error); }
 });
