@@ -553,8 +553,8 @@ export default function Finance() {
                                         className="pl-8 pr-4 py-2 bg-gray-55 dark:bg-gray-900 border border-gray-100 dark:border-gray-700 rounded-xl text-[10px] font-bold text-gray-900 dark:text-white outline-none focus:border-[#1b6b6b] w-40 transition-all"
                                     />
                                     {listSearch && (
-                                        <button onClick={() => setListSearch('')} className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-300 hover:text-gray-500 cursor-pointer">
-                                            <X size={11} />
+                                        <button aria-label="Yopish" onClick={() => setListSearch('')} className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-300 hover:text-gray-500 cursor-pointer">
+                                            <X size={18} />
                                         </button>
                                     )}
                                 </div>
@@ -1269,7 +1269,7 @@ ${e.description || e.category} — ${Number(e.amount).toLocaleString()} so'm`)) 
                                         <h3 className="text-lg font-black text-gray-900 dark:text-white uppercase tracking-tight">Yangi Kirim</h3>
                                         <p className="text-[10px] font-bold text-[#1b6b6b] uppercase tracking-widest mt-0.5">To'lov qabul qilish</p>
                                     </div>
-                                    <button onClick={closePaymentModal} className="w-9 h-9 flex items-center justify-center text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700 rounded-xl cursor-pointer"><X size={18} /></button>
+                                    <button onClick={closePaymentModal} className="w-9 h-9 flex items-center justify-center text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700 rounded-xl cursor-pointer" aria-label="Yopish"><X size={18} /></button>
                                 </div>
                                 <form onSubmit={async (e) => {
                                     e.preventDefault();
@@ -1433,7 +1433,7 @@ ${e.description || e.category} — ${Number(e.amount).toLocaleString()} so'm`)) 
                                 <h3 className="text-lg font-black text-gray-900 dark:text-white uppercase tracking-tight">Yangi Chiqim</h3>
                                 <p className="text-[10px] font-bold text-rose-600 uppercase tracking-widest mt-0.5">Xarajat kiritish</p>
                             </div>
-                            <button onClick={() => setIsExpenseModalOpen(false)} className="w-9 h-9 flex items-center justify-center text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700 rounded-xl cursor-pointer"><X size={18} /></button>
+                            <button aria-label="Yopish" onClick={() => setIsExpenseModalOpen(false)} className="w-9 h-9 flex items-center justify-center text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700 rounded-xl cursor-pointer"><X size={18} /></button>
                         </div>
                         <form onSubmit={(e) => {
                             e.preventDefault();
@@ -1540,7 +1540,7 @@ ${e.description || e.category} — ${Number(e.amount).toLocaleString()} so'm`)) 
                                 <h3 className="text-sm font-black text-gray-900 dark:text-white uppercase tracking-tight text-[#1b6b6b]">Qarzdorlarga Xabar Yuborish</h3>
                                 <p className="text-[9px] font-bold text-gray-400 uppercase tracking-widest mt-0.5">Oylik hisob-kitob bo'yicha</p>
                             </div>
-                            <button onClick={() => setShowDebtNotifyModal(false)} className="w-9 h-9 flex items-center justify-center text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700 rounded-xl cursor-pointer"><X size={18} /></button>
+                            <button aria-label="Yopish" onClick={() => setShowDebtNotifyModal(false)} className="w-9 h-9 flex items-center justify-center text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700 rounded-xl cursor-pointer"><X size={18} /></button>
                         </div>
                         <div className="space-y-4">
                             <div>

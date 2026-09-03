@@ -181,11 +181,11 @@ export default function ExamsList() {
                                         </span>
                                     </td>
                                     <td className="p-4 text-center">
-                                        <button
+                                        <button aria-label="Yopish"
                                             onClick={(e) => handleDelete(exam.id, e)}
                                             className="w-8 h-8 flex items-center justify-center rounded-lg text-gray-300 hover:text-rose-600 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors cursor-pointer"
                                         >
-                                            <X size={16} />
+                                            <X size={18} />
                                         </button>
                                     </td>
                                 </tr>

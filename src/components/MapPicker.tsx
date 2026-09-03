@@ -72,7 +72,7 @@ export default function MapPicker({ onSelect, onClose, initialLocation }: MapPic
                         </h2>
                         <p className="text-[10px] font-bold text-gray-400 dark:text-gray-500 mt-1 uppercase tracking-widest leading-none pt-1">Xarita orqali o'quvchi yashash joyini belgilang</p>
                     </div>
-                    <button onClick={onClose} className="w-10 h-10 flex items-center justify-center hover:bg-white dark:hover:bg-gray-700 rounded-2xl text-gray-400 hover:text-gray-900 dark:hover:text-white transition-all shadow-sm border border-transparent hover:border-gray-100 dark:hover:border-gray-600">
+                    <button onClick={onClose} className="w-10 h-10 flex items-center justify-center hover:bg-white dark:hover:bg-gray-700 rounded-2xl text-gray-400 hover:text-gray-900 dark:hover:text-white transition-all shadow-sm border border-transparent hover:border-gray-100 dark:hover:border-gray-600" aria-label="Yopish">
                         <X size={22} />
                     </button>
                 </div>

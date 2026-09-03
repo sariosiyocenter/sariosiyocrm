@@ -1003,7 +1003,7 @@ export default function SuperAdmin() {
                 <h3 className="text-lg font-black text-gray-900 dark:text-white uppercase tracking-tight">Yangi Tashkilot</h3>
                 <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mt-0.5">O'quv markaz yoki tashkilot</p>
               </div>
-              <button onClick={() => setOrgModalOpen(false)} className="w-9 h-9 flex items-center justify-center text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700 rounded-xl cursor-pointer">
+              <button aria-label="Yopish" onClick={() => setOrgModalOpen(false)} className="w-9 h-9 flex items-center justify-center text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700 rounded-xl cursor-pointer">
                 <X size={18} />
               </button>
             </div>
@@ -1114,7 +1114,7 @@ export default function SuperAdmin() {
                 <h3 className="text-lg font-black text-gray-900 dark:text-white uppercase tracking-tight">Tashkilot va Admin Sozlamalari</h3>
                 <p className="text-[10px] font-bold text-[#1b6b6b] uppercase tracking-widest mt-0.5">{selectedOrg.name} tahrirlash</p>
               </div>
-              <button onClick={() => setSubModalOpen(false)} className="w-9 h-9 flex items-center justify-center text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700 rounded-xl cursor-pointer">
+              <button aria-label="Yopish" onClick={() => setSubModalOpen(false)} className="w-9 h-9 flex items-center justify-center text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700 rounded-xl cursor-pointer">
                 <X size={18} />
               </button>
             </div>
@@ -1264,7 +1264,7 @@ export default function SuperAdmin() {
                 </h3>
                 <p className="text-[10px] font-bold text-indigo-600 uppercase tracking-widest mt-0.5">CRM Xarid qilish istagida bo'lgan mijoz</p>
               </div>
-              <button onClick={() => setLeadModalOpen(false)} className="w-9 h-9 flex items-center justify-center text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700 rounded-xl cursor-pointer">
+              <button aria-label="Yopish" onClick={() => setLeadModalOpen(false)} className="w-9 h-9 flex items-center justify-center text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700 rounded-xl cursor-pointer">
                 <X size={18} />
               </button>
             </div>
@@ -1361,7 +1361,7 @@ export default function SuperAdmin() {
                 <h3 className="text-lg font-black text-gray-900 dark:text-white uppercase tracking-tight">Yangi Sotuvchi Agent</h3>
                 <p className="text-[10px] font-bold text-violet-600 uppercase tracking-widest mt-0.5">CRM Tizimini sotadigan xodim</p>
               </div>
-              <button onClick={() => setSellerModalOpen(false)} className="w-9 h-9 flex items-center justify-center text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700 rounded-xl cursor-pointer">
+              <button aria-label="Yopish" onClick={() => setSellerModalOpen(false)} className="w-9 h-9 flex items-center justify-center text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700 rounded-xl cursor-pointer">
                 <X size={18} />
               </button>
             </div>

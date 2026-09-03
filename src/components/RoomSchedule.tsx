@@ -433,7 +433,7 @@ export default function RoomSchedule() {
                                     <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">{selectedRoom.capacity} kishilik • {getGroupsForRoomAndDay(selectedRoom.id, true).length + getGroupsForRoomAndDay(selectedRoom.id, false).length} ta dars</p>
                                 </div>
                             </div>
-                            <button onClick={() => { setSelectedRoom(null); setEditingGroup(null); }}
+                            <button aria-label="Yopish" onClick={() => { setSelectedRoom(null); setEditingGroup(null); }}
                                 className="w-9 h-9 flex items-center justify-center text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-750 rounded-xl cursor-pointer transition-colors">
                                 <X size={18} />
                             </button>

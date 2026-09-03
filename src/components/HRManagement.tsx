@@ -451,7 +451,7 @@ function UserModal({
                         <h3 className="text-lg font-black text-gray-900 dark:text-white uppercase tracking-tight">{title}</h3>
                         <p className="text-[10px] font-bold text-[#1b6b6b] uppercase tracking-widest mt-0.5">{subtitle}</p>
                     </div>
-                    <button onClick={onClose} className="w-9 h-9 flex items-center justify-center text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-xl cursor-pointer"><X size={18} /></button>
+                    <button onClick={onClose} className="w-9 h-9 flex items-center justify-center text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-xl cursor-pointer" aria-label="Yopish"><X size={18} /></button>
                 </div>
 
                 <form onSubmit={onSubmit} className="space-y-4">

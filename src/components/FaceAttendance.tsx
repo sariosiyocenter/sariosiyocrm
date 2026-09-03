@@ -247,8 +247,8 @@ export default function FaceAttendance({ students, attendanceStatus, onMatch, on
                                 {markedThisSession.map(s => (
                                     <span key={s.id} className="flex items-center gap-1 text-[9px] font-black uppercase tracking-wide text-emerald-300 bg-emerald-950/60 border border-emerald-500/40 pl-2.5 pr-1 py-1 rounded-lg">
                                         <CheckCircle2 size={10} className="text-emerald-400" /> {s.name}
-                                        <button onClick={() => removeMarked(s.id)} className="ml-1 text-emerald-600 hover:text-rose-400 transition-colors cursor-pointer">
-                                            <X size={10} />
+                                        <button aria-label="Yopish" onClick={() => removeMarked(s.id)} className="ml-1 text-emerald-600 hover:text-rose-400 transition-colors cursor-pointer">
+                                            <X size={18} />
                                         </button>
                                     </span>
                                 ))}

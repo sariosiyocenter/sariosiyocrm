@@ -505,7 +505,7 @@ Unga biriktirilgan o'quvchilar bo'shatiladi.`)) deleteTransport(item.id); }} cla
                                 <h3 className="text-lg font-black text-gray-900 dark:text-white uppercase tracking-tight">{editingTransport ? t('edit_transport') : t('new_transport')}</h3>
                                 <p className="text-[10px] font-bold text-[#1b6b6b] uppercase tracking-widest mt-0.5">{t('fleet_subtitle')}</p>
                             </div>
-                            <button onClick={() => setIsTransportModalOpen(false)} className="w-9 h-9 flex items-center justify-center text-gray-400 hover:bg-gray-55 dark:hover:bg-gray-700 rounded-xl cursor-pointer"><X size={18} /></button>
+                            <button aria-label="Yopish" onClick={() => setIsTransportModalOpen(false)} className="w-9 h-9 flex items-center justify-center text-gray-400 hover:bg-gray-55 dark:hover:bg-gray-700 rounded-xl cursor-pointer"><X size={18} /></button>
                         </div>
                         <form onSubmit={handleTransportSubmit} className="space-y-4">
                             <div>
@@ -571,7 +571,7 @@ Unga biriktirilgan o'quvchilar bo'shatiladi.`)) deleteTransport(item.id); }} cla
                                 <h3 className="text-lg font-black text-gray-900 dark:text-white uppercase tracking-tight">{editingRoute ? t('edit_route') : t('new_route')}</h3>
                                 <p className="text-[10px] font-bold text-[#1b6b6b] uppercase tracking-widest mt-0.5">{t('route_subtitle')}</p>
                             </div>
-                            <button onClick={() => setIsRouteModalOpen(false)} className="w-9 h-9 flex items-center justify-center text-gray-400 hover:bg-gray-55 dark:hover:bg-gray-700 rounded-xl cursor-pointer"><X size={18} /></button>
+                            <button aria-label="Yopish" onClick={() => setIsRouteModalOpen(false)} className="w-9 h-9 flex items-center justify-center text-gray-400 hover:bg-gray-55 dark:hover:bg-gray-700 rounded-xl cursor-pointer"><X size={18} /></button>
                         </div>
                         <form onSubmit={handleRouteSubmit} className="space-y-4">
                             <div>
@@ -632,7 +632,7 @@ Unga biriktirilgan o'quvchilar bo'shatiladi.`)) deleteTransport(item.id); }} cla
                                 <h3 className="text-lg font-black text-gray-900 dark:text-white uppercase tracking-tight">{t('add_student')}</h3>
                                 <p className="text-[10px] font-bold text-[#1b6b6b] uppercase tracking-widest mt-0.5">{t('assign_to_route')}</p>
                             </div>
-                            <button onClick={() => setIsStudentSelectorOpen(false)} className="w-9 h-9 flex items-center justify-center text-gray-400 hover:bg-gray-55 dark:hover:bg-gray-700 rounded-xl cursor-pointer"><X size={18} /></button>
+                            <button aria-label="Yopish" onClick={() => setIsStudentSelectorOpen(false)} className="w-9 h-9 flex items-center justify-center text-gray-400 hover:bg-gray-55 dark:hover:bg-gray-700 rounded-xl cursor-pointer"><X size={18} /></button>
                         </div>
                         <div className="relative mb-4 shrink-0">
                             <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400" size={14} />

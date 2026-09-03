@@ -276,11 +276,11 @@ export default function QuestionEditor() {
                             {imagePreview ? (
                                 <div className="relative rounded-2xl overflow-hidden border border-gray-100 dark:border-gray-700 group">
                                     <img src={imagePreview} alt="Savol rasmi" className="max-h-48 w-full object-contain bg-gray-55 dark:bg-gray-900" />
-                                    <button
+                                    <button aria-label="Yopish"
                                         onClick={() => { setImagePreview(null); setQ(prev => ({ ...prev, imageUrl: '' })); }}
                                         className="absolute top-3 right-3 w-8 h-8 bg-rose-500 text-white rounded-xl flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer"
                                     >
-                                        <X size={14} />
+                                        <X size={18} />
                                     </button>
                                 </div>
                             ) : (

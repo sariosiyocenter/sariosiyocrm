@@ -173,8 +173,8 @@ export default function QuestionsList() {
                                 <h2 className="text-[10px] font-black text-gray-900 dark:text-white uppercase tracking-widest">Excel Import Tekshiruvi</h2>
                                 <p className="text-[9px] font-bold text-gray-400 mt-1 uppercase tracking-widest">Jami {importPreview.total} ta qator</p>
                             </div>
-                            <button onClick={() => setImportPreview(null)} className="p-1 text-gray-400 hover:text-gray-650 rounded-lg cursor-pointer">
-                                <X size={16} />
+                            <button aria-label="Yopish" onClick={() => setImportPreview(null)} className="p-1 text-gray-400 hover:text-gray-650 rounded-lg cursor-pointer">
+                                <X size={18} />
                             </button>
                         </div>
 

@@ -333,7 +333,7 @@ export default function Courses() {
                                 <h3 className="text-lg font-black text-gray-900 dark:text-white uppercase tracking-tight">{t('new_group_title')}</h3>
                                 <p className="text-[10px] font-bold text-[#1b6b6b] uppercase tracking-widest mt-0.5">{t('group_details_subtitle')}</p>
                             </div>
-                            <button onClick={() => setIsModalOpen(false)} className="w-9 h-9 flex items-center justify-center text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700 rounded-xl cursor-pointer"><X size={18} /></button>
+                            <button aria-label="Yopish" onClick={() => setIsModalOpen(false)} className="w-9 h-9 flex items-center justify-center text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700 rounded-xl cursor-pointer"><X size={18} /></button>
                         </div>
                         <form onSubmit={handleAddGroup} className="space-y-4">
                             <div>

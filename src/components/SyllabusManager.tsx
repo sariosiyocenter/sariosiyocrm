@@ -243,11 +243,11 @@ export default function SyllabusManager() {
                 <h2 className="text-sm font-black text-gray-900 dark:text-white uppercase tracking-wider">
                   {editingSyllabus ? "Dasturni tahrirlash" : "Yangi o'quv dasturi yaratish"}
                 </h2>
-                <button 
+                <button aria-label="Yopish" 
                   onClick={() => setIsSyllabusModalOpen(false)}
                   className="w-8 h-8 rounded-xl bg-gray-55 dark:bg-gray-700/50 flex items-center justify-center text-gray-400 hover:text-gray-900 dark:hover:text-white transition-all cursor-pointer"
                 >
-                  <X size={16} />
+                  <X size={18} />
                 </button>
               </div>
 
@@ -464,11 +464,11 @@ export default function SyllabusManager() {
               <h2 className="text-sm font-black text-gray-900 dark:text-white uppercase tracking-wider">
                 {editingTopic ? "Mavzuni tahrirlash" : "Yangi mavzu/dars qo'shish"}
               </h2>
-              <button 
+              <button aria-label="Yopish" 
                 onClick={() => setIsTopicModalOpen(false)}
                 className="w-8 h-8 rounded-xl bg-gray-55 dark:bg-gray-700/50 flex items-center justify-center text-gray-400 hover:text-gray-900 dark:hover:text-white transition-all cursor-pointer"
               >
-                <X size={16} />
+                <X size={18} />
               </button>
             </div>
 

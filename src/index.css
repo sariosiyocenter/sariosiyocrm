@@ -14,7 +14,7 @@
   font-family: 'Inter', system-ui, -apple-system, sans-serif;
 }
 
-button, 
+button,
 a,
 [role="button"],
 .cursor-pointer,
@@ -25,6 +25,30 @@ input[type="button"],
 input[type="reset"],
 label[for] {
   cursor: pointer;
+}
+
+/* Keyboard focus.
+   The components use `outline-none` in ~126 places to drop the browser's default ring,
+   but most never put anything back, so tabbing through the app moved an invisible
+   cursor. :focus-visible only fires for keyboard (and other non-pointer) focus, so this
+   restores a ring for keyboard users without putting one around every clicked button. */
+:where(button, a, [role="button"], select, textarea, input, summary, [tabindex]):focus-visible {
+  outline: 2px solid #1b6b6b;
+  outline-offset: 2px;
+  border-radius: 6px;
+}
+
+.dark :where(button, a, [role="button"], select, textarea, input, summary, [tabindex]):focus-visible {
+  outline-color: #58aaa6;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
 }
 
 body {

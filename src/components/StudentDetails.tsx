@@ -1668,7 +1668,7 @@ export default function StudentDetails() {
                                 <h3 className="text-sm font-black text-gray-900 dark:text-white uppercase tracking-tight">Maxsus narx</h3>
                                 <p className="text-[9px] font-bold text-[#1b6b6b] uppercase tracking-widest mt-0.5">{editingGroupPrice.name}</p>
                             </div>
-                            <button onClick={() => setEditingGroupPrice(null)} className="w-8 h-8 flex items-center justify-center text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-750 rounded-xl cursor-pointer"><X size={16} /></button>
+                            <button aria-label="Yopish" onClick={() => setEditingGroupPrice(null)} className="w-8 h-8 flex items-center justify-center text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-750 rounded-xl cursor-pointer"><X size={18} /></button>
                         </div>
                         <div className="space-y-4">
                             <div>

@@ -77,6 +77,7 @@ export default function Layout({ children, onLogout }: LayoutProps) {
           <div className="flex items-center gap-4">
             {/* Mobile menu button */}
             <button
+              aria-label="Menyuni ochish"
               className="lg:hidden w-9 h-9 flex items-center justify-center text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors"
               onClick={() => setMobileMenuOpen(true)}
             >
@@ -229,6 +230,7 @@ export default function Layout({ children, onLogout }: LayoutProps) {
             <button
               onClick={toggleDarkMode}
               className="w-9 h-9 flex items-center justify-center text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors"
+              aria-label={darkMode ? "Yorug' rejimga o'tish" : "Qorong'u rejimga o'tish"}
               title={darkMode ? 'Yorug\' rejim' : 'Qorong\'u rejim'}
             >
               {darkMode ? <Sun size={18} /> : <Moon size={18} />}
@@ -240,6 +242,7 @@ export default function Layout({ children, onLogout }: LayoutProps) {
             <button
               onClick={onLogout}
               className="w-9 h-9 flex items-center justify-center text-slate-400 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-900/20 rounded-lg transition-colors"
+              aria-label="Tizimdan chiqish"
               title="Chiqish"
             >
               <LogOut size={18} />
@@ -319,7 +322,7 @@ export default function Layout({ children, onLogout }: LayoutProps) {
           <div className="absolute left-0 top-0 bottom-0 w-[280px] bg-white dark:bg-slate-900 shadow-2xl flex flex-col animate-in slide-in-from-left duration-200">
             <div className="p-5 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
               <span className="text-base font-bold text-slate-900 dark:text-white">Menyu</span>
-              <button onClick={() => setMobileMenuOpen(false)} className="w-8 h-8 flex items-center justify-center text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg">
+              <button aria-label="Menyuni yopish" onClick={() => setMobileMenuOpen(false)} className="w-8 h-8 flex items-center justify-center text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg">
                 <X size={18} />
               </button>
             </div>

@@ -873,7 +873,7 @@ export default function Students() {
                                     <h3 className="text-lg font-black text-gray-900 dark:text-white uppercase tracking-tight">{t('new_student_title')}</h3>
                                     <p className="text-[10px] font-bold text-[#1b6b6b] uppercase tracking-widest mt-0.5">{t('student_details_subtitle')}</p>
                                 </div>
-                                <button type="button" onClick={() => setIsModalOpen(false)} className="w-9 h-9 flex items-center justify-center text-gray-400 hover:bg-gray-55 dark:hover:bg-gray-700 rounded-xl cursor-pointer">
+                                <button aria-label="Yopish" type="button" onClick={() => setIsModalOpen(false)} className="w-9 h-9 flex items-center justify-center text-gray-400 hover:bg-gray-55 dark:hover:bg-gray-700 rounded-xl cursor-pointer">
                                     <X size={18} />
                                 </button>
                             </div>
@@ -1315,8 +1315,8 @@ export default function Students() {
                     <div className="relative bg-white dark:bg-gray-800 rounded-[2rem] border border-gray-100 dark:border-gray-700/50 shadow-2xl w-full max-w-sm p-8 text-center">
                         <div className="flex items-center justify-between mb-6 pb-4 border-b border-gray-150 dark:border-gray-700/50">
                             <h3 className="text-sm font-black text-gray-900 dark:text-white uppercase tracking-tight">{t('reception_link')}</h3>
-                            <button onClick={() => setIsLinkModalOpen(false)} className="w-8 h-8 flex items-center justify-center text-gray-400 hover:bg-gray-55 dark:hover:bg-gray-700 rounded-lg cursor-pointer">
-                                <X size={16} />
+                            <button aria-label="Yopish" onClick={() => setIsLinkModalOpen(false)} className="w-8 h-8 flex items-center justify-center text-gray-400 hover:bg-gray-55 dark:hover:bg-gray-700 rounded-lg cursor-pointer">
+                                <X size={18} />
                             </button>
                         </div>
                         <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest leading-relaxed mb-2">

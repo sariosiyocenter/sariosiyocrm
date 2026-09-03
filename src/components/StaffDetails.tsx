@@ -807,7 +807,7 @@ export default function StaffDetails() {
                                                                 <span className="text-[9px] font-bold text-emerald-600 dark:text-emerald-400">{b.label}</span>
                                                                 <div className="flex items-center gap-2">
                                                                     <span className="text-[9px] font-black text-emerald-600 dark:text-emerald-400">+{b.amount.toLocaleString()}</span>
-                                                                    <button onClick={() => setBonuses(bs => bs.filter((_,j) => j!==i))} className="text-gray-400 hover:text-rose-500 cursor-pointer"><X size={11} /></button>
+                                                                    <button aria-label="Yopish" onClick={() => setBonuses(bs => bs.filter((_,j) => j!==i))} className="text-gray-400 hover:text-rose-500 cursor-pointer"><X size={18} /></button>
                                                                 </div>
                                                             </div>
                                                         ))}
@@ -826,7 +826,7 @@ export default function StaffDetails() {
                                                                 <span className="text-[9px] font-bold text-rose-600 dark:text-rose-400">{f.label}</span>
                                                                 <div className="flex items-center gap-2">
                                                                     <span className="text-[9px] font-black text-rose-600 dark:text-rose-400">-{f.amount.toLocaleString()}</span>
-                                                                    <button onClick={() => setFines(fs => fs.filter((_,j) => j!==i))} className="text-gray-400 hover:text-rose-500 cursor-pointer"><X size={11} /></button>
+                                                                    <button aria-label="Yopish" onClick={() => setFines(fs => fs.filter((_,j) => j!==i))} className="text-gray-400 hover:text-rose-500 cursor-pointer"><X size={18} /></button>
                                                                 </div>
                                                             </div>
                                                         ))}
@@ -1105,8 +1105,8 @@ export default function StaffDetails() {
                                 <h3 className="text-sm font-black text-gray-900 dark:text-white uppercase tracking-tight">{attPicker}</h3>
                                 <p className="text-[9px] font-bold text-gray-400 uppercase tracking-widest mt-0.5">Davomat holati</p>
                             </div>
-                            <button onClick={() => setAttPicker(null)} className="w-8 h-8 flex items-center justify-center text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-xl cursor-pointer">
-                                <X size={16} />
+                            <button aria-label="Yopish" onClick={() => setAttPicker(null)} className="w-8 h-8 flex items-center justify-center text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-xl cursor-pointer">
+                                <X size={18} />
                             </button>
                         </div>
                         <div className="grid grid-cols-3 gap-3">
@@ -1147,7 +1147,7 @@ export default function StaffDetails() {
                                 <h3 className="text-lg font-black text-gray-900 dark:text-white uppercase tracking-tight">Tahrirlash</h3>
                                 <p className="text-[10px] font-bold text-[#1b6b6b] uppercase tracking-widest mt-0.5">Ma'lumotlarni yangilash</p>
                             </div>
-                            <button onClick={() => setIsEditOpen(false)} className="w-9 h-9 flex items-center justify-center text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-xl cursor-pointer"><X size={18} /></button>
+                            <button aria-label="Yopish" onClick={() => setIsEditOpen(false)} className="w-9 h-9 flex items-center justify-center text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-xl cursor-pointer"><X size={18} /></button>
                         </div>
                         <form onSubmit={handleSaveEdit} className="space-y-4">
                             <div className="flex items-center gap-4">

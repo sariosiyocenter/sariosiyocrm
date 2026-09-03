@@ -202,7 +202,7 @@ export default function Teachers() {
                                 <h3 className="text-lg font-black text-gray-900 dark:text-white uppercase tracking-tight">{t('new_teacher_title')}</h3>
                                 <p className="text-[10px] font-bold text-violet-600 uppercase tracking-widest mt-0.5">{t('teacher_details_subtitle')}</p>
                             </div>
-                            <button onClick={() => setIsModalOpen(false)} className="w-9 h-9 flex items-center justify-center text-gray-400 hover:bg-gray-55 dark:hover:bg-gray-700 rounded-xl cursor-pointer"><X size={18} /></button>
+                            <button aria-label="Yopish" onClick={() => setIsModalOpen(false)} className="w-9 h-9 flex items-center justify-center text-gray-400 hover:bg-gray-55 dark:hover:bg-gray-700 rounded-xl cursor-pointer"><X size={18} /></button>
                         </div>
                         <form onSubmit={handleAddTeacher} className="space-y-4">
                             <div className="grid grid-cols-2 gap-4">

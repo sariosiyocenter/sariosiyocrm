@@ -447,7 +447,7 @@ export default function Leads() {
                 <h3 className="text-lg font-black text-gray-900 dark:text-white uppercase tracking-tight">{t('new_lead_title')}</h3>
                 <p className="text-[10px] font-bold text-[#1b6b6b] uppercase tracking-widest mt-0.5">{t('lead_details_subtitle')}</p>
               </div>
-              <button onClick={() => setIsModalOpen(false)} className="w-9 h-9 flex items-center justify-center text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700 rounded-xl cursor-pointer"><X size={18} /></button>
+              <button aria-label="Yopish" onClick={() => setIsModalOpen(false)} className="w-9 h-9 flex items-center justify-center text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700 rounded-xl cursor-pointer"><X size={18} /></button>
             </div>
             <form onSubmit={handleAddLead} className="space-y-4">
               <div>
@@ -629,7 +629,7 @@ export default function Leads() {
                 <h3 className="text-base font-black text-gray-900 dark:text-white uppercase tracking-tight">{t('lead_details_title')}</h3>
                 <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mt-0.5">{t('registered_at')}{new Date(selectedLead.createdAt).toLocaleString()}</p>
               </div>
-              <button onClick={() => setSelectedLead(null)} className="w-9 h-9 flex items-center justify-center text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700 rounded-xl cursor-pointer"><X size={18} /></button>
+              <button aria-label="Yopish" onClick={() => setSelectedLead(null)} className="w-9 h-9 flex items-center justify-center text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700 rounded-xl cursor-pointer"><X size={18} /></button>
             </div>
 
             {!isConverting ? (
