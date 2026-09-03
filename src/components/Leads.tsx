@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { MoreHorizontal, Plus, Search, Filter, Phone, Calendar, ArrowRight, X, Sparkles, SlidersHorizontal, Trash2, UserPlus, GraduationCap, MapPin, Award, BookOpen, Clock, Building } from 'lucide-react';
+import { MoreHorizontal, Plus, Search, Filter, Phone, Calendar, ArrowRight, X, SlidersHorizontal, Trash2, UserPlus, GraduationCap, MapPin, Award, BookOpen, Clock, Building } from 'lucide-react';
 import { useCRM } from '../context/CRMContext';
 import { useConfirm } from './ConfirmDialog';
 import { useLang } from '../context/LanguageContext';
@@ -311,48 +311,45 @@ export default function Leads() {
 
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div className="bg-white dark:bg-gray-800 rounded-3xl border border-gray-100 dark:border-gray-700/50 shadow-sm overflow-hidden">
-        <div className="px-6 py-5 flex flex-col md:flex-row md:items-center justify-between gap-4">
-          <div className="flex items-center gap-4">
-            <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-[#1b6b6b] to-[#2e9c9c] flex items-center justify-center shadow-sm shadow-[#1b6b6b]/20">
-              <Sparkles size={22} className="text-white" />
-            </div>
-            <div>
-              <h1 className="text-lg font-black text-gray-900 dark:text-white tracking-tight font-display">{t('leads_title')}</h1>
-              <p className="text-[11px] font-bold text-gray-400 uppercase tracking-wider mt-0.5">
-                {t('leads_subtitle')} • {leads.length}
-              </p>
-            </div>
+      {/* Sarlavha. Avval kartochka ichida, gradientli ikonka kvadrati bilan
+          turardi — ikonka hech qanday ma'no qo'shmasdi, kartochka esa sarlavhani
+          sahifadan ajratib qo'yardi. */}
+      <div className="flex flex-col lg:flex-row lg:items-start justify-between gap-4">
+          <div>
+            <h1 className="text-[26px] font-bold text-gray-900 dark:text-white tracking-tight leading-tight">{t('leads_title')}</h1>
+            <p className="text-[13px] text-gray-500 dark:text-gray-400 mt-1">
+              {t('leads_subtitle')} · <span className="num">{leads.length}</span>
+            </p>
           </div>
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2 shrink-0">
             <div className="relative">
               <Search size={14} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400" />
               <input
                 type="text" placeholder={t('search_placeholder_students')}
                 value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-9 pr-4 py-2.5 bg-gray-55 dark:bg-gray-900/50 border border-gray-100 dark:border-gray-700 rounded-xl text-xs font-bold text-gray-900 dark:text-white outline-none focus:border-[#1b6b6b] transition-all w-52"
+                className="pl-9 pr-4 py-2.5 bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700 rounded-xl text-[13px] text-gray-900 dark:text-white outline-none focus:border-[#1b6b6b] transition-colors w-52"
               />
             </div>
             <button
               onClick={() => setShowFilters(!showFilters)}
-              className={`w-10 h-10 flex items-center justify-center rounded-xl border transition-all cursor-pointer ${showFilters ? 'bg-[#1b6b6b] border-[#1b6b6b] text-white' : 'bg-gray-55 dark:bg-gray-900/50 border-gray-100 dark:border-gray-700 text-gray-400 hover:border-[#1b6b6b] hover:text-[#1b6b6b]'}`}
+              className={`w-10 h-10 flex items-center justify-center rounded-xl border transition-colors cursor-pointer shrink-0 ${showFilters ? 'bg-[#1b6b6b] border-[#1b6b6b] text-white' : 'bg-white dark:bg-gray-800 border-gray-100 dark:border-gray-700 text-gray-400 hover:border-[#1b6b6b] hover:text-[#1b6b6b]'}`}
             >
               <SlidersHorizontal size={15} />
             </button>
             <button
               onClick={() => setIsModalOpen(true)}
-              className="flex items-center gap-2 px-4 py-2.5 bg-[#1b6b6b] hover:bg-[#155252] text-white rounded-xl text-xs font-extrabold shadow-sm shadow-[#1b6b6b]/20 transition-all cursor-pointer"
+              className="flex items-center gap-2 px-4 py-2.5 bg-[#1b6b6b] hover:bg-[#155252] text-white rounded-xl text-[13px] font-semibold shadow-sm shadow-[#1b6b6b]/20 transition-colors cursor-pointer shrink-0"
             >
               <Plus size={14} /> {t('add')}
             </button>
           </div>
-        </div>
+      </div>
 
-        {/* Manba bo'yicha tez filtr. Pastdagi "Filtrlar" paneli joyida qoladi —
-            bu qator o'sha paneldagi manba tanlovi bilan bitta holatni bo'lishadi. */}
-        <div className="px-6 pb-4 flex items-center gap-2 overflow-x-auto no-scrollbar">
-          <span className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider shrink-0 mr-1">{t('by_source')}</span>
+      {/* Manba bo'yicha tez filtr. Pastdagi "Filtrlar" paneli joyida qoladi —
+          bu qator o'sha paneldagi manba tanlovi bilan bitta holatni bo'lishadi. */}
+      <div>
+        <div className="flex items-center gap-2 overflow-x-auto no-scrollbar">
+          <span className="text-[12px] text-gray-400 shrink-0 mr-1">{t('by_source')}</span>
           <button
             onClick={() => setFilters({ ...filters, source: '' })}
             className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[11px] font-semibold border transition-colors cursor-pointer shrink-0 ${!filters.source
@@ -377,7 +374,7 @@ export default function Leads() {
         </div>
 
         {showFilters && (
-          <div className="px-6 pb-5 pt-4 border-t border-gray-50 dark:border-gray-700/50 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          <div className="mt-4 p-5 bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700/50 rounded-2xl grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
             <div>
               <label className={lbl}>{t('by_course')}</label>
               <select
@@ -455,10 +452,10 @@ export default function Leads() {
               <div className="px-3 pt-3 pb-2 flex items-baseline justify-between gap-2">
                 <div className="flex items-baseline gap-2 min-w-0">
                   <h3 className="font-semibold text-gray-900 dark:text-gray-100 text-[13px] truncate">{getStageLabel(stage.name)}</h3>
-                  <span className="text-[11px] font-medium text-gray-400 tabular-nums shrink-0">{stageLeads.length}</span>
+                  <span className="num text-[11px] font-medium text-gray-400 shrink-0">{stageLeads.length}</span>
                 </div>
                 {stageLeads.length > 0 && (
-                  <span className="text-[11px] font-medium text-gray-400 dark:text-gray-500 tabular-nums shrink-0">
+                  <span className="num text-[11px] font-medium text-gray-400 dark:text-gray-500 shrink-0">
                     {formatSum(stagePotential(stageLeads))}
                   </span>
                 )}
@@ -484,7 +481,7 @@ export default function Leads() {
 
                     <div className="text-[11px] text-gray-400">
                       {lead.phone && (
-                        <p className="text-[12px] text-gray-500 dark:text-gray-400 tabular-nums truncate">{lead.phone}</p>
+                        <p className="num text-[12px] text-gray-500 dark:text-gray-400 truncate">{lead.phone}</p>
                       )}
 
                       {/* Manba nomlari juda uzun bo'lishi mumkin ("Bir martalik QR

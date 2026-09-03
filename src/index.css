@@ -1,4 +1,8 @@
 @import url('https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&display=swap');
+/* Raqamlar uchun alohida shrift. Summalar, foizlar, telefon va sanalar mono
+   shriftda tursa, ustunlar bir chiziqda tekislanadi va panel "boshqaruv paneli"
+   ko'rinishini oladi — matn shriftidagi raqamlar bunday tekislanmaydi. */
+@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&display=swap');
 
 @import "tailwindcss";
 
@@ -73,6 +77,16 @@
      cho'zib, uzun o'zbek so'zlarini sig'masdan qoldirardi. */
   --tracking-wider: 0.035em;
   --tracking-widest: 0.06em;
+
+  --font-mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+
+/* Raqamli qiymatlar uchun: <span className="num">500 000</span>.
+   Faqat sof raqamga qo'yiladi — ichida gap bo'lgan matnga emas. */
+.num {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums lining-nums;
+  letter-spacing: -0.02em;
 }
 
 @variant dark (&:is(.dark, .dark *));

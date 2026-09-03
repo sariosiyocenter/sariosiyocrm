@@ -352,7 +352,7 @@ export default function CourseDetails() {
                     <div className="flex items-center gap-2.5 flex-wrap">
                         <h1 className="text-xl font-semibold text-gray-900 dark:text-white tracking-tight">{group.name}</h1>
                         <span className="px-2 py-0.5 rounded-md bg-emerald-50 text-emerald-600 border border-emerald-100 dark:bg-emerald-950/20 dark:text-emerald-400 dark:border-emerald-900/40 text-[11px] font-medium">Faol</span>
-                        <span className="text-[11px] font-medium text-gray-400 tabular-nums">#{group.id}</span>
+                        <span className="num text-[11px] font-medium text-gray-400">#{group.id}</span>
                     </div>
 
                     {isEditingInfo ? (
@@ -403,29 +403,24 @@ export default function CourseDetails() {
                                     label="O'quvchilar"
                                     value={groupStudents.length}
                                     subValue="Guruhdagi jami"
-                                    icon={<Users className="text-[#1b6b6b]" size={16} />}
-                                    color="teal"
                                 />
                                 <StatCardV3
                                     label="Davomat"
-                                    value={groupAttendanceRate === null ? '—' : `${groupAttendanceRate}%`}
+                                    value={groupAttendanceRate === null ? '—' : groupAttendanceRate}
+                                    unit={groupAttendanceRate === null ? undefined : '%'}
                                     subValue={groupAttendances.length ? `${groupAttendances.length} ta yozuv asosida` : "Yo'qlama qilinmagan"}
-                                    icon={<ClipboardCheck className="text-emerald-500" size={16} />}
-                                    color="emerald"
                                 />
                                 <StatCardV3
                                     label="Darslar"
                                     value={lessonsThisMonth}
                                     subValue="Shu oyda o'tildi"
-                                    icon={<Presentation className="text-violet-500" size={16} />}
-                                    color="violet"
                                 />
                                 <StatCardV3
                                     label="Qarzdorlik"
                                     value={groupDebt > 0 ? shortSum(groupDebt) : '0'}
+                                    tone={groupDebt > 0 ? 'bad' : 'good'}
                                     subValue={debtorCount ? `${debtorCount} ta o'quvchi` : 'Qarzdor yo\'q'}
-                                    icon={<CreditCard className="text-rose-500" size={16} />}
-                                    color="rose"
+                                    subTone={debtorCount ? 'bad' : undefined}
                                 />
                             </div>
 
@@ -463,7 +458,7 @@ export default function CourseDetails() {
                                                         const payStatus = getPayStatus(s.balance);
                                                         return (
                                                             <tr key={s.id} className="group hover:bg-gray-55/70 dark:hover:bg-gray-900/30 transition-colors">
-                                                                <td className="py-2.5 pr-3 text-[11px] font-medium text-gray-400 tabular-nums align-middle">
+                                                                <td className="num py-2.5 pr-3 text-[11px] text-gray-400 align-middle">
                                                                     {String(idx + 1).padStart(2, '0')}
                                                                 </td>
                                                                 <td className="py-2.5 pr-3 align-middle">
@@ -473,11 +468,11 @@ export default function CourseDetails() {
                                                                         </div>
                                                                         <div className="min-w-0">
                                                                             <p className="text-[13px] font-medium text-gray-900 dark:text-white truncate group-hover:text-[#1b6b6b] transition-colors">{s.name}</p>
-                                                                            <p className="text-[11px] text-gray-400 tabular-nums truncate">{s.phone}</p>
+                                                                            <p className="num text-[11px] text-gray-400 truncate">{s.phone}</p>
                                                                         </div>
                                                                     </div>
                                                                 </td>
-                                                                <td className={`py-2.5 px-3 text-right text-[13px] font-medium tabular-nums align-middle ${s.balance >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-500'}`}>
+                                                                <td className={`num py-2.5 px-3 text-right text-[13px] font-medium align-middle ${s.balance >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-500'}`}>
                                                                     {s.balance.toLocaleString()}
                                                                 </td>
                                                                 <td className="py-2.5 px-3 text-center align-middle">
@@ -1170,28 +1165,33 @@ export default function CourseDetails() {
     );
 }
 
-function StatCardV3({ label, value, subValue, icon, color }: any) {
-    const colorClasses = {
-        emerald: 'bg-emerald-50 border-emerald-100 dark:bg-emerald-950/20 dark:border-emerald-900/40',
-        rose: 'bg-rose-50 border-rose-100 dark:bg-rose-950/20 dark:border-rose-900/40',
-        teal: 'bg-teal-50 border-teal-100 dark:bg-teal-950/20 dark:border-teal-900/40',
-        amber: 'bg-amber-50 border-amber-100 dark:bg-amber-950/20 dark:border-amber-900/40'
-    }[color] || 'bg-gray-50 dark:bg-gray-900 border-gray-100 dark:border-gray-700/50';
+function StatCardV3({ label, value, unit, subValue, tone, subTone }: any) {
+    // Avval qiymat yonida 36px rangli ikonka kvadrati turardi. U kartochkaning
+    // yarmini egallar, lekin hech qanday ma'no qo'shmasdi — rangning o'zi
+    // allaqachon holatni bildiradi. Endi rang raqamning ustida.
+    const valueTone = {
+        good: 'text-emerald-500',
+        warn: 'text-amber-500',
+        bad: 'text-rose-500',
+        brand: 'text-[#1b6b6b] dark:text-teal-400',
+    }[tone as string] || 'text-gray-900 dark:text-white';
+
+    const subToneCls = {
+        good: 'text-emerald-500',
+        warn: 'text-amber-500',
+        bad: 'text-rose-500',
+    }[subTone as string] || 'text-gray-400 dark:text-gray-500';
 
     return (
-        <div className="bg-white dark:bg-gray-800 p-5 rounded-2xl border border-gray-100 dark:border-gray-700/50 shadow-sm transition-colors hover:border-gray-200 dark:hover:border-gray-700">
-            <div className="flex items-start justify-between gap-3">
-                <div className="min-w-0">
-                    <span className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider">{label}</span>
-                    <h5 className="text-2xl font-bold text-gray-900 dark:text-white tracking-tight leading-none tabular-nums mt-1.5" title={value}>{value}</h5>
-                    {/* Avval bu yerda o'suv strelkasi turardi — hech qanday o'sish
-                        hisoblanmagani uchun u faqat bezak edi. */}
-                    <span className="text-[11px] font-medium text-gray-400 dark:text-gray-500 block mt-2 truncate">{subValue}</span>
-                </div>
-                <div className={`w-9 h-9 rounded-xl flex items-center justify-center border shrink-0 ${colorClasses}`}>
-                    {icon}
-                </div>
+        <div className="bg-white dark:bg-gray-800 px-5 py-4 rounded-2xl border border-gray-100 dark:border-gray-700/50 transition-colors hover:border-gray-200 dark:hover:border-gray-700">
+            <span className="text-[12px] text-gray-500 dark:text-gray-400">{label}</span>
+            <div className="mt-1.5 flex items-baseline gap-1">
+                <span className={`num text-[30px] font-bold leading-none ${valueTone}`} title={String(value)}>{value}</span>
+                {unit && <span className="num text-[13px] font-medium text-gray-400 dark:text-gray-500">{unit}</span>}
             </div>
+            {subValue && (
+                <span className={`text-[11px] block mt-2 truncate ${subToneCls}`}>{subValue}</span>
+            )}
         </div>
     );
 }
