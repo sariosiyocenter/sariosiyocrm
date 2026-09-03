@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import {
     Users2, Plus, X, Trash2, Pencil,
-    Phone, Mail, DollarSign, Banknote,
+    Banknote,
     GraduationCap, ExternalLink, Camera, Wrench, Eye, Sparkles
 } from 'lucide-react';
 import { useCRM } from '../context/CRMContext';
@@ -47,7 +47,7 @@ const inp = "w-full px-4 py-3 bg-gray-50 dark:bg-gray-900/50 border border-gray-
 const lbl = "block text-[11px] font-extrabold uppercase tracking-wider text-gray-400 mb-2";
 
 export default function HRManagement() {
-    const { teachers, selectedSchoolId, user: currentUser, token, showNotification } = useCRM();
+    const { teachers, groups, selectedSchoolId, user: currentUser, token, showNotification } = useCRM();
     const confirm = useConfirm();
     const { t } = useLang();
     const navigate = useNavigate();
@@ -264,95 +264,98 @@ export default function HRManagement() {
                             <p className="text-[11px] font-bold text-gray-400 uppercase tracking-wider">{t('no_staff_found')}</p>
                         </div>
                     ) : (
-                        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
-                            {filteredUsers.map((u) => {
-                                const isLegacy = u._source === 'teacher';
-                                const profilePath = isLegacy ? `/teachers/${u._tid}` : `/hr/${u.id}`;
-                                return (
-                                    <div key={u.id} className="bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700/50 rounded-2xl p-4 hover:border-gray-200 dark:hover:border-gray-700 transition-colors group relative">
-                                        <div>
-                                            {/* Avatar ism bilan yonma-yon. Avval u alohida
-                                                qatorda turardi va ostida katta bo'shliq
-                                                qolardi. */}
-                                            <div className="flex items-start gap-3">
-                                                <div className="w-11 h-11 rounded-xl overflow-hidden shrink-0">
-                                                    {u.photo ? (
-                                                        <img src={u.photo} alt={u.name} className="w-full h-full object-cover" />
-                                                    ) : (
-                                                        <div className={`w-full h-full bg-gradient-to-br ${ROLE_AVATAR_COLORS[u.role] || 'from-gray-400 to-gray-600'} flex items-center justify-center text-white font-black text-sm`}>
-                                                            {u.name?.charAt(0).toUpperCase()}
+                        // Kartochka o'rniga jadval: xodimlar ro'yxatida ismlarni va
+                        // oyliklarni yonma-yon solishtirish kerak bo'ladi, kartochkalarda
+                        // esa har biri alohida qutida turib, ekranga ikki barobar kam
+                        // qator sig'ardi.
+                        <div className="bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700/50 rounded-2xl overflow-hidden">
+                            <div className="overflow-x-auto">
+                                <table className="w-full border-collapse text-left min-w-[720px]">
+                                    <thead>
+                                        <tr className="border-b border-gray-100 dark:border-gray-700/50">
+                                            <th className="px-5 py-3 text-[11px] font-medium text-gray-400">Xodim</th>
+                                            <th className="px-3 py-3 text-[11px] font-medium text-gray-400">Lavozim</th>
+                                            <th className="px-3 py-3 text-[11px] font-medium text-gray-400">Rol</th>
+                                            <th className="px-3 py-3 text-[11px] font-medium text-gray-400 text-right">Guruh</th>
+                                            <th className="px-3 py-3 text-[11px] font-medium text-gray-400 text-right">Oylik</th>
+                                            <th className="px-5 py-3 w-28" />
+                                        </tr>
+                                    </thead>
+                                    <tbody className="divide-y divide-gray-55 dark:divide-gray-700/40">
+                                        {filteredUsers.map((u) => {
+                                            const isLegacy = u._source === 'teacher';
+                                            const profilePath = isLegacy ? `/teachers/${u._tid}` : `/hr/${u.id}`;
+                                            const groupCount = (groups || []).filter(g => g.teacherId === (isLegacy ? u._tid : u.teacherId)).length;
+                                            return (
+                                                <tr key={u.id} className="group hover:bg-gray-55/70 dark:hover:bg-gray-900/30 transition-colors">
+                                                    <td className="px-5 py-3 align-middle">
+                                                        <div className="flex items-center gap-3 cursor-pointer min-w-0" onClick={() => navigate(profilePath)}>
+                                                            <div className="w-9 h-9 rounded-lg overflow-hidden shrink-0">
+                                                                {u.photo ? (
+                                                                    <img src={u.photo} alt={u.name} className="w-full h-full object-cover object-top" />
+                                                                ) : (
+                                                                    <div className={`w-full h-full bg-gradient-to-br ${ROLE_AVATAR_COLORS[u.role] || 'from-gray-400 to-gray-600'} flex items-center justify-center text-white font-semibold text-[12px]`}>
+                                                                        {u.name?.charAt(0).toUpperCase()}
+                                                                    </div>
+                                                                )}
+                                                            </div>
+                                                            <div className="min-w-0">
+                                                                <p className="text-[13px] font-medium text-gray-900 dark:text-white truncate group-hover:text-[#1b6b6b] transition-colors">{u.name}</p>
+                                                                {u.phone && <p className="num text-[11px] text-gray-400 truncate">{u.phone}</p>}
+                                                            </div>
                                                         </div>
-                                                    )}
-                                                </div>
-                                                <div className="min-w-0 flex-1">
-                                                    <h4 className="text-[13px] font-semibold text-gray-900 dark:text-white truncate">{u.name}</h4>
-                                                    {u.position && (
-                                                        <p className="text-[11px] text-gray-400 truncate">{u.position}</p>
-                                                    )}
-                                                    <span className={`inline-block mt-1.5 px-2 py-0.5 rounded-md text-[10px] font-semibold border ${ROLE_COLORS[u.role] || 'bg-gray-50 text-gray-400 border-gray-100'}`}>
-                                                        {getRoleLabel(u.role)}
-                                                    </span>
-                                                </div>
-                                                {isAdminOrManager && (
-                                                    <div className="flex items-center gap-0.5 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
-                                                        <button onClick={() => { setEditingUser({ ...u, password: '' }); setIsEditOpen(true); }}
-                                                            className="w-7 h-7 rounded-lg text-gray-400 hover:text-[#1b6b6b] hover:bg-gray-50 dark:hover:bg-gray-900 flex items-center justify-center transition-colors cursor-pointer">
-                                                            <Pencil size={13} />
-                                                        </button>
-                                                        {isAdmin && (
-                                                            <button
-                                                                onClick={() => isLegacy ? handleDeleteTeacher(u._tid) : handleDeleteUser(u.id)}
-                                                                className="w-7 h-7 rounded-lg text-rose-400 hover:text-rose-600 hover:bg-rose-55/20 flex items-center justify-center transition-colors cursor-pointer">
-                                                                <Trash2 size={13} />
+                                                    </td>
+                                                    <td className="px-3 py-3 text-[12px] text-gray-500 dark:text-gray-400 align-middle">{u.position || '—'}</td>
+                                                    <td className="px-3 py-3 align-middle">
+                                                        <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-md border whitespace-nowrap ${ROLE_COLORS[u.role] || 'bg-gray-50 text-gray-400 border-gray-100'}`}>
+                                                            {getRoleLabel(u.role)}
+                                                        </span>
+                                                    </td>
+                                                    <td className="num px-3 py-3 text-[13px] text-right text-gray-700 dark:text-gray-200 align-middle">
+                                                        {groupCount || '—'}
+                                                    </td>
+                                                    <td className="num px-3 py-3 text-[13px] text-right text-gray-700 dark:text-gray-200 align-middle">
+                                                        {u.salary > 0 ? u.salary.toLocaleString() : '—'}
+                                                    </td>
+                                                    <td className="px-5 py-3 align-middle">
+                                                        <div className="flex items-center justify-end gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
+                                                            {isAdminOrManager && (
+                                                                <button
+                                                                    onClick={(e) => { e.stopPropagation(); navigate(`/finance?openExpense=1&staffId=${isLegacy ? u._tid : u.id}&staffName=${encodeURIComponent(u.name)}`); }}
+                                                                    title="Ish haqqi berish"
+                                                                    className="w-7 h-7 flex items-center justify-center rounded-lg text-gray-400 hover:text-white hover:bg-rose-500 transition-colors cursor-pointer"
+                                                                >
+                                                                    <Banknote size={13} />
+                                                                </button>
+                                                            )}
+                                                            {isAdminOrManager && (
+                                                                <button onClick={() => { setEditingUser({ ...u, password: '' }); setIsEditOpen(true); }}
+                                                                    title="Tahrirlash"
+                                                                    className="w-7 h-7 rounded-lg text-gray-400 hover:text-[#1b6b6b] hover:bg-gray-100 dark:hover:bg-gray-900 flex items-center justify-center transition-colors cursor-pointer">
+                                                                    <Pencil size={13} />
+                                                                </button>
+                                                            )}
+                                                            <button onClick={() => navigate(profilePath)}
+                                                                title={t('view_profile')}
+                                                                className="w-7 h-7 rounded-lg text-gray-400 hover:text-[#1b6b6b] hover:bg-gray-100 dark:hover:bg-gray-900 flex items-center justify-center transition-colors cursor-pointer">
+                                                                <Eye size={13} />
                                                             </button>
-                                                        )}
-                                                    </div>
-                                                )}
-                                            </div>
-                                        </div>
-                                        <div className="mt-3 pt-3 border-t border-gray-100 dark:border-gray-700/50 space-y-1">
-                                            {u.phone && (
-                                                <div className="flex items-center gap-2 text-gray-400">
-                                                    <Phone size={11} />
-                                                    <span className="text-[11px] font-bold text-gray-600 dark:text-gray-300">{u.phone}</span>
-                                                </div>
-                                            )}
-                                            {!isLegacy && u.role !== 'TECH_STAFF' && u.email && (
-                                                <div className="flex items-center gap-2 text-gray-400">
-                                                    <Mail size={11} />
-                                                    <span className="text-[11px] font-bold text-gray-600 dark:text-gray-300 truncate max-w-[160px]">{u.email}</span>
-                                                </div>
-                                            )}
-                                            {u.salary > 0 && (
-                                                <div className="flex items-center gap-2 text-gray-400">
-                                                    <DollarSign size={11} />
-                                                    <span className="text-[11px] font-bold text-gray-600 dark:text-gray-300">{u.salary.toLocaleString()} UZS</span>
-                                                </div>
-                                            )}
-                                        </div>
-                                        {/* Ikkita to'liq kenglikdagi tugma ustma-ust
-                                            turardi va kartochkani ikki barobar cho'zardi. */}
-                                        <div className="mt-3 flex items-center gap-2">
-                                            <button
-                                                onClick={() => navigate(profilePath)}
-                                                className="flex-1 flex items-center justify-center gap-1.5 py-2 bg-[#1b6b6b]/5 border border-[#1b6b6b]/15 text-[#1b6b6b] dark:text-teal-400 rounded-lg text-[11px] font-semibold hover:bg-[#1b6b6b] hover:text-white hover:border-[#1b6b6b] transition-colors cursor-pointer">
-                                                <Eye size={12} />
-                                                {t('view_profile')}
-                                            </button>
-                                            {isAdminOrManager && (
-                                                <button
-                                                    onClick={(e) => { e.stopPropagation(); navigate(`/finance?openExpense=1&staffId=${isLegacy ? u._tid : u.id}&staffName=${encodeURIComponent(u.name)}`); }}
-                                                    title="Ish haqqi berish"
-                                                    className="flex items-center justify-center gap-1.5 px-3 py-2 border border-rose-100 dark:border-rose-900/30 text-rose-600 dark:text-rose-400 rounded-lg text-[11px] font-semibold hover:bg-rose-600 hover:text-white hover:border-rose-600 transition-colors cursor-pointer shrink-0"
-                                                >
-                                                    <Banknote size={12} />
-                                                    Ish haqqi
-                                                </button>
-                                            )}
-                                        </div>
-                                    </div>
-                                );
-                            })}
+                                                            {isAdmin && (
+                                                                <button
+                                                                    onClick={() => isLegacy ? handleDeleteTeacher(u._tid) : handleDeleteUser(u.id)}
+                                                                    title="O'chirish"
+                                                                    className="w-7 h-7 rounded-lg text-gray-400 hover:text-white hover:bg-rose-500 flex items-center justify-center transition-colors cursor-pointer">
+                                                                    <Trash2 size={13} />
+                                                                </button>
+                                                            )}
+                                                        </div>
+                                                    </td>
+                                                </tr>
+                                            );
+                                        })}
+                                    </tbody>
+                                </table>
+                            </div>
                         </div>
                     )}
                 </div>

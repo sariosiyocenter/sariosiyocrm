@@ -21,7 +21,7 @@ export function StatCard({ label, value, sub, trend, icon, color = 'sky' }: Stat
         gray: 'bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400',
     };
     return (
-        <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 p-6 shadow-sm flex flex-col gap-3">
+        <div className="bg-white dark:bg-[#151c2c] rounded-2xl border border-slate-100 dark:border-[#232d42] p-5 shadow-sm hover:shadow-md transition-shadow flex flex-col gap-3">
             <div className="flex items-center justify-between">
                 <span className="text-[11px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-wider">{label}</span>
                 <div className={`w-9 h-9 rounded-xl flex items-center justify-center ${colorMap[color] || colorMap.sky}`}>
@@ -220,7 +220,7 @@ export function SectionHeader({ title, sub, action }: { title: string; sub?: str
 // ─── Report Card Wrapper ──────────────────────────────────────
 export function ReportCard({ children, className = '' }: { children: React.ReactNode; className?: string }) {
     return (
-        <div className={`bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 p-6 shadow-sm ${className}`}>
+        <div className={`bg-white dark:bg-[#151c2c] rounded-2xl border border-slate-100 dark:border-[#232d42] p-6 shadow-sm ${className}`}>
             {children}
         </div>
     );

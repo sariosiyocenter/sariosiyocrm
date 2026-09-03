@@ -68,10 +68,10 @@
      tegmasdan, shkalaning o'zi bir pog'ona pasaytirildi: yozuvlar o'z o'rnida
      qoladi, lekin ko'z bir joyga tikiladi. */
   --font-weight-medium: 500;
-  --font-weight-semibold: 600;
-  --font-weight-bold: 650;
-  --font-weight-extrabold: 700;
-  --font-weight-black: 780;
+  --font-weight-semibold: 500;
+  --font-weight-bold: 600;
+  --font-weight-extrabold: 600;
+  --font-weight-black: 700;
 
   /* Bosh harfli yozuvlarda harflar orasi ham keng edi, bu qatorlarni
      cho'zib, uzun o'zbek so'zlarini sig'masdan qoldirardi. */
@@ -141,7 +141,7 @@ body {
 
 .dark body,
 body.dark {
-  background-color: #0f172a;
+  background-color: #0a0f18;
   color: #e2e8f0;
 }
 

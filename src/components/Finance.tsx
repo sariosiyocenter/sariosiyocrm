@@ -12,7 +12,7 @@ import { useLang } from '../context/LanguageContext';
 import { Payment, Expense } from '../types';
 import { StatCard, BarChart, DonutChart, LineChart } from './reports/shared';
 
-const inp = "w-full px-4 py-3 bg-gray-50 dark:bg-gray-900/50 border border-gray-100 dark:border-gray-700 rounded-2xl text-xs font-bold text-gray-900 dark:text-white focus:border-[#1b6b6b] focus:ring-4 focus:ring-[#1b6b6b]/10 outline-none transition-all";
+const inp = "w-full px-4 py-3 bg-slate-50 dark:bg-[#1a2232] border border-slate-200 dark:border-[#232d42] rounded-xl text-sm font-semibold text-slate-900 dark:text-white focus:border-brand focus:ring-2 focus:ring-brand/20 outline-none transition-all";
 const lbl = "block text-[11px] font-extrabold uppercase tracking-wider text-gray-400 mb-2";
 
 const MONTHS = ['Yan','Fev','Mar','Apr','May','Iyun','Iyul','Avg','Sen','Okt','Noy','Dek'];

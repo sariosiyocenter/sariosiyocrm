@@ -10,7 +10,7 @@ const lbl = "block text-[11px] font-extrabold uppercase tracking-wider text-gray
 export default function Courses() {
     const {
         groups, teachers, rooms, addGroup, showNotification, courses, syllabuses,
-        addCourse
+        addCourse, students, attendances, topics
     } = useCRM();
     const { t } = useLang();
     const navigate = useNavigate();
@@ -147,6 +147,28 @@ export default function Courses() {
     };
 
     const getTeacherName = (id: number) => teachers.find(t => t.id === id)?.name || t('unknown_teacher');
+
+    /** Kartochkadagi uchta ko'rsatkich va to'ldirilish. Hech biri o'ylab
+     *  topilmaydi: ma'lumot bo'lmasa "—" qaytadi. */
+    const getGroupStats = (group: any) => {
+        const ids: number[] = group.studentIds || [];
+        const members = (students || []).filter(st => ids.includes(st.id));
+        const capacity = rooms.find(r => r.id === group.room)?.capacity || null;
+
+        const paidCount = members.filter(st => (st.balance || 0) >= 0).length;
+        const payRate = members.length ? Math.round((paidCount / members.length) * 100) : null;
+
+        const att = (attendances || []).filter(a => a.groupId === group.id);
+        const attRate = att.length
+            ? Math.round((att.filter(a => a.status === 'Keldi').length / att.length) * 100)
+            : null;
+
+        const syllabusId = group.syllabusId || courses.find(c => c.id === group.courseId)?.syllabusId;
+        const totalTopics = syllabusId ? (topics || []).filter(tp => tp.syllabusId === syllabusId).length : 0;
+        const doneTopics = new Set(att.map(a => a.topicId).filter(Boolean)).size;
+
+        return { members: members.length, capacity, payRate, attRate, doneTopics, totalTopics };
+    };
     const getCoursePrice = (courseId: number) => {
         const c = courses.find(c => c.id === courseId);
         return c ? c.price : 0;
@@ -270,50 +292,75 @@ export default function Courses() {
                         const priceVal = getCoursePrice(group.courseId);
                         return (
                             <div key={group.id} onClick={() => navigate(`/courses/${group.id}`)}
-                                className="group bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700/50 shadow-sm hover:shadow-xl hover:border-[#1b6b6b]/40 dark:hover:border-[#1b6b6b]/40 hover:-translate-y-0.5 transition-all duration-300 cursor-pointer p-5 flex flex-col">
+                                className="group bg-white dark:bg-[#151c2c] rounded-2xl border border-slate-100 dark:border-[#232d42] shadow-sm hover:shadow-md hover:border-brand/40 transition-all duration-300 cursor-pointer p-5 flex flex-col">
                                 <div className="flex items-start justify-between mb-4">
-                                    <div className="w-12 h-12 rounded-2xl bg-[#1b6b6b]/10 dark:bg-[#1b6b6b]/20 flex items-center justify-center text-[#1b6b6b] font-black text-lg group-hover:scale-105 transition-transform overflow-hidden shrink-0">
-                                        <Layers size={22} />
+                                    <div className="w-11 h-11 rounded-xl bg-brand/10 dark:bg-brand/20 flex items-center justify-center text-brand font-bold text-lg group-hover:scale-105 transition-transform overflow-hidden shrink-0">
+                                        <Layers size={20} />
                                     </div>
-                                    <span className="text-[11px] font-bold uppercase tracking-wider px-2.5 py-1 rounded-lg border bg-emerald-50 text-emerald-600 border-emerald-100 dark:bg-emerald-950/20 dark:text-emerald-400 dark:border-emerald-900/40">
+                                    <div className="min-w-0 flex-1">
+                                        <h3 className="text-[14px] font-semibold text-gray-900 dark:text-white truncate group-hover:text-[#1b6b6b] transition-colors">{group.name}</h3>
+                                        <p className="text-[11px] text-gray-400 truncate">
+                                            {getTeacherName(group.teacherId)}
+                                        </p>
+                                    </div>
+                                    <span className="text-[11px] font-medium px-2 py-0.5 rounded-md border bg-emerald-50 text-emerald-600 border-emerald-100 dark:bg-emerald-950/20 dark:text-emerald-400 dark:border-emerald-900/40 shrink-0">
                                         {t('status_active')}
                                     </span>
                                 </div>
 
-                                <div className="flex-1 mb-4">
-                                    <h3 className="font-black text-gray-900 dark:text-white uppercase tracking-tight group-hover:text-[#1b6b6b] transition-colors line-clamp-1">{group.name}</h3>
-                                    {priceVal > 0 && (
-                                        <div className="flex items-center gap-1 text-[12px] font-bold text-gray-950 dark:text-gray-100 mt-1">
-                                            <DollarSign size={12} className="text-[#1b6b6b]" />
-                                            <span>{priceVal.toLocaleString()} UZS</span>
-                                        </div>
-                                    )}
+                                <div className="flex items-center gap-x-3 gap-y-1 flex-wrap mt-3 text-[11px] text-gray-400">
+                                    <span className="num">{startTime || '—'}</span>
+                                    <span>{group.days === 'TOQ' ? t('odd_days') : group.days === 'JUFT' ? t('even_days') : t('every_day')}</span>
+                                    {group.room ? <span>{rooms.find(r => r.id === group.room)?.name || `#${group.room}`}</span> : null}
+                                    {priceVal > 0 && <span className="num ml-auto text-[#1b6b6b] dark:text-teal-400">{priceVal.toLocaleString()}</span>}
                                 </div>
 
-                                <div className="grid grid-cols-2 gap-4 py-3 border-y border-dashed border-gray-100 dark:border-gray-700 mb-3 text-[11px] font-bold uppercase text-gray-400 tracking-wider">
-                                    <div>
-                                        <span className="block text-[10px] text-gray-400 mb-0.5">{t('group_teacher')}</span>
-                                        <span className="text-gray-900 dark:text-white truncate block">{getTeacherName(group.teacherId)}</span>
-                                    </div>
-                                    <div className="text-right">
-                                        <span className="block text-[10px] text-gray-400 mb-0.5">{t('time')}</span>
-                                        <span className="text-gray-900 dark:text-white truncate block tabular-nums">
-                                            {startTime} • {group.days === 'TOQ' ? t('odd_days') : group.days === 'JUFT' ? t('even_days') : t('every_day')}
-                                        </span>
-                                    </div>
-                                </div>
+                                {/* To'ldirilish va uchta ko'rsatkich — kartochkani
+                                    ochmasdan guruhning ahvolini ko'rish uchun. */}
+                                {(() => {
+                                    const st = getGroupStats(group);
+                                    const fillPct = st.capacity ? Math.min(100, Math.round((st.members / st.capacity) * 100)) : null;
+                                    const barTone = fillPct === null ? 'bg-gray-300 dark:bg-gray-600'
+                                        : fillPct >= 90 ? 'bg-emerald-500'
+                                        : fillPct >= 60 ? 'bg-[#1b6b6b]'
+                                        : 'bg-amber-400';
+                                    return (
+                                        <>
+                                            <div className="mt-3 pt-3 border-t border-gray-100 dark:border-gray-700/50">
+                                                <div className="flex items-center justify-between text-[11px]">
+                                                    <span className="text-gray-400">To'ldirilish</span>
+                                                    <span className="num text-gray-700 dark:text-gray-200">
+                                                        {st.members}{st.capacity ? ` / ${st.capacity}` : ''}
+                                                    </span>
+                                                </div>
+                                                <div className="mt-1.5 h-1.5 rounded-full bg-gray-100 dark:bg-gray-700 overflow-hidden">
+                                                    <div className={`h-full rounded-full ${barTone}`} style={{ width: `${fillPct ?? 6}%` }} />
+                                                </div>
+                                            </div>
 
-                                <div className="flex items-center justify-between pt-2">
-                                    <div className="flex items-center gap-2">
-                                        <Users size={14} className="text-[#1b6b6b]" />
-                                        <span className="text-xs font-black text-gray-900 dark:text-white tabular-nums">
-                                            {t('students_count').replace('{count}', (group.studentIds || []).length.toString())}
-                                        </span>
-                                    </div>
-                                    <div className="w-7 h-7 flex items-center justify-center rounded-lg bg-gray-55 dark:bg-gray-900/50 group-hover:bg-[#1b6b6b] group-hover:text-white text-gray-400 transition-all">
-                                        <ChevronRight size={16} />
-                                    </div>
-                                </div>
+                                            <div className="grid grid-cols-3 gap-2 mt-3">
+                                                <div>
+                                                    <span className="block text-[10px] text-gray-400">{t('payments_tab')}</span>
+                                                    <span className={`num text-[13px] font-semibold ${st.payRate === null ? 'text-gray-400' : st.payRate >= 80 ? 'text-emerald-500' : st.payRate >= 50 ? 'text-amber-500' : 'text-rose-500'}`}>
+                                                        {st.payRate === null ? '—' : `${st.payRate}%`}
+                                                    </span>
+                                                </div>
+                                                <div>
+                                                    <span className="block text-[10px] text-gray-400">{t('attendance')}</span>
+                                                    <span className={`num text-[13px] font-semibold ${st.attRate === null ? 'text-gray-400' : st.attRate >= 85 ? 'text-emerald-500' : st.attRate >= 70 ? 'text-amber-500' : 'text-rose-500'}`}>
+                                                        {st.attRate === null ? '—' : `${st.attRate}%`}
+                                                    </span>
+                                                </div>
+                                                <div>
+                                                    <span className="block text-[10px] text-gray-400">{t('topic_label')}</span>
+                                                    <span className="num text-[13px] font-semibold text-gray-700 dark:text-gray-200">
+                                                        {st.totalTopics ? `${st.doneTopics}/${st.totalTopics}` : '—'}
+                                                    </span>
+                                                </div>
+                                            </div>
+                                        </>
+                                    );
+                                })()}
                             </div>
                         );
                     })}
