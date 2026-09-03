@@ -4292,7 +4292,14 @@ async function processMonthlyBilling(schoolId, month) {
     include: { course: true, students: { where: { status: { in: ['Faol', 'Sinov'] } } } }
   });
 
+  // Work out every charge first, then write once. The previous version issued two
+  // queries per student per group — around 530 sequential round trips to Singapore for
+  // 266 students, slow enough to risk a function timeout, and a crash halfway through
+  // left some students charged and others not.
   const results = [];
+  const charges = [];
+  const totalPerStudent = new Map();
+
   for (const group of groups) {
     for (const student of group.students) {
       const customPrices = (student.customPrices && typeof student.customPrices === 'object') ? student.customPrices : {};
@@ -4300,20 +4307,29 @@ async function processMonthlyBilling(schoolId, month) {
       const price = customPrice !== undefined ? customPrice : group.course.price;
       if (!price || price <= 0) continue;
 
-      await prisma.payment.create({
-        data: {
-          studentId: student.id,
-          amount: -price,
-          type: 'Oylik',
-          date: dateStr,
-          description: `[OYLIK HISOB] ${group.course.name} — ${monthLabel}`,
-          schoolId
-        }
+      charges.push({
+        studentId: student.id,
+        amount: -price,
+        type: 'Oylik',
+        date: dateStr,
+        description: `[OYLIK HISOB] ${group.course.name} — ${monthLabel}`,
+        schoolId
       });
-      await prisma.student.update({ where: { id: student.id }, data: { balance: { decrement: price } } });
+      totalPerStudent.set(student.id, (totalPerStudent.get(student.id) || 0) + price);
       results.push({ studentId: student.id, groupId: group.id, amount: price });
     }
   }
+
+  if (charges.length) {
+    // One transaction: either the whole month is billed or none of it is.
+    await prisma.$transaction([
+      prisma.payment.createMany({ data: charges }),
+      ...[...totalPerStudent].map(([studentId, total]) =>
+        prisma.student.update({ where: { id: studentId }, data: { balance: { decrement: total } } })
+      ),
+    ]);
+  }
+
   return { processed: results.length, total: results.reduce((s, r) => s + r.amount, 0), month };
 }
 
