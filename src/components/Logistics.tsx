@@ -13,7 +13,7 @@ import { Transport, DeliveryLog, Route } from '../types';
 type TabType = 'flot' | 'marshrutlar' | 'yetkazish';
 
 const inp = "w-full px-4 py-3 bg-gray-50 dark:bg-gray-900/50 border border-gray-100 dark:border-gray-700 rounded-2xl text-xs font-bold text-gray-900 dark:text-white focus:border-[#1b6b6b] focus:ring-4 focus:ring-[#1b6b6b]/10 outline-none transition-all";
-const lbl = "block text-[11px] font-extrabold uppercase tracking-widest text-gray-400 mb-2";
+const lbl = "block text-[11px] font-extrabold uppercase tracking-wider text-gray-400 mb-2";
 
 export default function LogisticsHub() {
     const { t } = useLang();
@@ -150,7 +150,7 @@ export default function LogisticsHub() {
                         </div>
                         <div>
                             <h1 className="text-lg font-black text-gray-900 dark:text-white uppercase tracking-tight">{t('logistics_title')}</h1>
-                            <p className="text-[11px] font-bold text-gray-400 uppercase tracking-widest mt-0.5">
+                            <p className="text-[11px] font-bold text-gray-400 uppercase tracking-wider mt-0.5">
                                 {t('logistics_subtitle')}
                             </p>
                         </div>
@@ -219,16 +219,16 @@ Unga biriktirilgan o'quvchilar bo'shatiladi.`)) deleteTransport(item.id); }} cla
                                     </div>
                                     <div>
                                         <h3 className="text-xs font-black text-gray-900 dark:text-white uppercase tracking-wide">{item.name}</h3>
-                                        <p className="text-[11px] font-bold text-gray-400 uppercase tracking-widest mt-1">{item.model} • {item.number}</p>
+                                        <p className="text-[11px] font-bold text-gray-400 uppercase tracking-wider mt-1">{item.model} • {item.number}</p>
                                     </div>
                                 </div>
                                 <div className="mt-4 pt-4 border-t border-dashed border-gray-100 dark:border-gray-700/50 grid grid-cols-2 gap-4">
                                     <div>
-                                        <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest block mb-0.5">{t('driver')}</span>
+                                        <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider block mb-0.5">{t('driver')}</span>
                                         <span className="text-xs font-bold text-gray-700 dark:text-gray-200 uppercase tracking-tight">{item.driverName || t('unknown_teacher')}</span>
                                     </div>
                                     <div>
-                                        <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest block mb-0.5">{t('capacity')}</span>
+                                        <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider block mb-0.5">{t('capacity')}</span>
                                         <span className="text-xs font-bold text-gray-700 dark:text-gray-200 tabular-nums">{t('capacity_unit').replace('{count}', String(item.capacity))}</span>
                                     </div>
                                 </div>
@@ -252,7 +252,7 @@ Unga biriktirilgan o'quvchilar bo'shatiladi.`)) deleteTransport(item.id); }} cla
                     <div className="lg:col-span-4 space-y-4">
                         <div className="bg-white dark:bg-gray-800 rounded-3xl border border-gray-100 dark:border-gray-700/50 p-6 shadow-sm">
                             <div className="flex justify-between items-center mb-6">
-                                <span className="text-[11px] font-black uppercase text-gray-400 tracking-wider">{t('routes')}</span>
+                                <span className="text-[11px] font-bold uppercase text-gray-400 tracking-wider">{t('routes')}</span>
                                 <button 
                                     onClick={() => { resetRouteForm(); setIsRouteModalOpen(true); }}
                                     className="w-8 h-8 rounded-lg bg-[#1b6b6b] text-white flex items-center justify-center shadow transition-all cursor-pointer"
@@ -309,7 +309,7 @@ Unga biriktirilgan o'quvchilar bo'shatiladi.`)) deleteTransport(item.id); }} cla
                                     </div>
                                 ))}
                                 {routes.length === 0 && (
-                                    <p className="text-center py-8 text-[11px] text-gray-400 font-bold uppercase tracking-widest">{t('no_routes_found')}</p>
+                                    <p className="text-center py-8 text-[11px] text-gray-400 font-bold uppercase tracking-wider">{t('no_routes_found')}</p>
                                 )}
                             </div>
                         </div>
@@ -324,18 +324,18 @@ Unga biriktirilgan o'quvchilar bo'shatiladi.`)) deleteTransport(item.id); }} cla
                                         <h3 className="text-sm font-black text-gray-900 dark:text-white uppercase tracking-tight">
                                             {editingRoute.name}
                                         </h3>
-                                        <span className="text-[11px] font-bold text-[#1b6b6b] uppercase tracking-widest mt-0.5">{t('start_time')}: {editingRoute.startTime || t('not_marked')}</span>
+                                        <span className="text-[11px] font-bold text-[#1b6b6b] uppercase tracking-wider mt-0.5">{t('start_time')}: {editingRoute.startTime || t('not_marked')}</span>
                                     </div>
                                     <div className="flex gap-2">
                                         <button 
                                             onClick={() => setIsRouteModalOpen(true)}
-                                            className="px-3.5 py-2 bg-gray-50 dark:bg-gray-900 hover:bg-gray-100 border border-gray-100 dark:border-gray-750 text-gray-700 dark:text-white rounded-xl text-[11px] font-extrabold uppercase tracking-widest transition-all cursor-pointer"
+                                            className="px-3.5 py-2 bg-gray-50 dark:bg-gray-900 hover:bg-gray-100 border border-gray-100 dark:border-gray-750 text-gray-700 dark:text-white rounded-xl text-[11px] font-extrabold uppercase tracking-wider transition-all cursor-pointer"
                                         >
                                             {t('edit')}
                                         </button>
                                         <button 
                                             onClick={() => setIsStudentSelectorOpen(true)}
-                                            className="px-3.5 py-2 bg-[#1b6b6b] hover:bg-[#155252] text-white rounded-xl text-[11px] font-extrabold uppercase tracking-widest shadow-lg shadow-[#1b6b6b]/20 transition-all cursor-pointer"
+                                            className="px-3.5 py-2 bg-[#1b6b6b] hover:bg-[#155252] text-white rounded-xl text-[11px] font-extrabold uppercase tracking-wider shadow-lg shadow-[#1b6b6b]/20 transition-all cursor-pointer"
                                         >
                                             {t('add_student')}
                                         </button>
@@ -389,13 +389,13 @@ Unga biriktirilgan o'quvchilar bo'shatiladi.`)) deleteTransport(item.id); }} cla
                                         );
                                     })}
                                     {editingRoute.studentIds.length === 0 && (
-                                        <p className="text-center py-12 text-[11px] text-gray-400 font-bold uppercase tracking-widest">{t('no_students_in_route')}</p>
+                                        <p className="text-center py-12 text-[11px] text-gray-400 font-bold uppercase tracking-wider">{t('no_students_in_route')}</p>
                                     )}
                                 </div>
                             </div>
                         ) : (
                             <div className="bg-white dark:bg-gray-800 rounded-3xl border border-gray-100 dark:border-gray-700/50 p-12 text-center shadow-sm">
-                                <p className="text-[11px] font-bold text-gray-400 uppercase tracking-widest">{t('select_route_prompt')}</p>
+                                <p className="text-[11px] font-bold text-gray-400 uppercase tracking-wider">{t('select_route_prompt')}</p>
                             </div>
                         )}
                     </div>
@@ -407,7 +407,7 @@ Unga biriktirilgan o'quvchilar bo'shatiladi.`)) deleteTransport(item.id); }} cla
                     {/* Select Transport & Date */}
                     <div className="lg:col-span-1 space-y-4">
                         <div className="bg-white dark:bg-gray-800 rounded-3xl border border-gray-100 dark:border-gray-700/50 p-5 shadow-sm">
-                            <span className="text-[11px] font-black uppercase text-gray-400 tracking-wider block mb-4">{t('transport_selection')}</span>
+                            <span className="text-[11px] font-bold uppercase text-gray-400 tracking-wider block mb-4">{t('transport_selection')}</span>
                             <div className="space-y-2">
                                 {transports.map(t => (
                                     <button
@@ -428,7 +428,7 @@ Unga biriktirilgan o'quvchilar bo'shatiladi.`)) deleteTransport(item.id); }} cla
 
                         <div className="flex items-center justify-between bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700/50 p-3 shadow-sm">
                             <button onClick={() => { const d = new Date(selectedDate); d.setDate(d.getDate() - 1); setSelectedDate(d.toISOString().split('T')[0]); }} className="w-8 h-8 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center justify-center transition-colors cursor-pointer"><ChevronLeft size={16} /></button>
-                            <span className="text-[11px] font-extrabold uppercase text-gray-700 dark:text-gray-200 tracking-widest">{selectedDate}</span>
+                            <span className="text-[11px] font-extrabold uppercase text-gray-700 dark:text-gray-200 tracking-wider">{selectedDate}</span>
                             <button onClick={() => { const d = new Date(selectedDate); d.setDate(d.getDate() + 1); setSelectedDate(d.toISOString().split('T')[0]); }} className="w-8 h-8 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center justify-center transition-colors cursor-pointer"><ChevronRight size={16} /></button>
                         </div>
                     </div>
@@ -449,7 +449,7 @@ Unga biriktirilgan o'quvchilar bo'shatiladi.`)) deleteTransport(item.id); }} cla
                                             </div>
                                             <div className="text-left">
                                                 <h4 className="text-xs font-black text-gray-900 dark:text-white uppercase tracking-wide">{route.name}</h4>
-                                                <span className="text-[11px] font-bold text-gray-400 uppercase tracking-widest block mt-0.5">{route.studentIds.length} {t('student').toLowerCase()}</span>
+                                                <span className="text-[11px] font-bold text-gray-400 uppercase tracking-wider block mt-0.5">{route.studentIds.length} {t('student').toLowerCase()}</span>
                                             </div>
                                         </div>
                                         <ChevronDown size={16} className={`text-gray-400 transition-transform ${expandedRouteId === route.id ? 'rotate-180' : ''}`} />
@@ -505,7 +505,7 @@ Unga biriktirilgan o'quvchilar bo'shatiladi.`)) deleteTransport(item.id); }} cla
                         <div className="flex items-center justify-between mb-6 pb-4 border-b border-gray-50 dark:border-gray-700/50">
                             <div>
                                 <h3 className="text-lg font-black text-gray-900 dark:text-white uppercase tracking-tight">{editingTransport ? t('edit_transport') : t('new_transport')}</h3>
-                                <p className="text-[11px] font-bold text-[#1b6b6b] uppercase tracking-widest mt-0.5">{t('fleet_subtitle')}</p>
+                                <p className="text-[11px] font-bold text-[#1b6b6b] uppercase tracking-wider mt-0.5">{t('fleet_subtitle')}</p>
                             </div>
                             <button aria-label="Yopish" onClick={() => setIsTransportModalOpen(false)} className="w-9 h-9 flex items-center justify-center text-gray-400 hover:bg-gray-55 dark:hover:bg-gray-700 rounded-xl cursor-pointer"><X size={18} /></button>
                         </div>
@@ -571,7 +571,7 @@ Unga biriktirilgan o'quvchilar bo'shatiladi.`)) deleteTransport(item.id); }} cla
                         <div className="flex items-center justify-between mb-6 pb-4 border-b border-gray-50 dark:border-gray-700/50">
                             <div>
                                 <h3 className="text-lg font-black text-gray-900 dark:text-white uppercase tracking-tight">{editingRoute ? t('edit_route') : t('new_route')}</h3>
-                                <p className="text-[11px] font-bold text-[#1b6b6b] uppercase tracking-widest mt-0.5">{t('route_subtitle')}</p>
+                                <p className="text-[11px] font-bold text-[#1b6b6b] uppercase tracking-wider mt-0.5">{t('route_subtitle')}</p>
                             </div>
                             <button aria-label="Yopish" onClick={() => setIsRouteModalOpen(false)} className="w-9 h-9 flex items-center justify-center text-gray-400 hover:bg-gray-55 dark:hover:bg-gray-700 rounded-xl cursor-pointer"><X size={18} /></button>
                         </div>
@@ -632,7 +632,7 @@ Unga biriktirilgan o'quvchilar bo'shatiladi.`)) deleteTransport(item.id); }} cla
                         <div className="flex items-center justify-between mb-6 pb-4 border-b border-gray-50 dark:border-gray-700/50 shrink-0">
                             <div>
                                 <h3 className="text-lg font-black text-gray-900 dark:text-white uppercase tracking-tight">{t('add_student')}</h3>
-                                <p className="text-[11px] font-bold text-[#1b6b6b] uppercase tracking-widest mt-0.5">{t('assign_to_route')}</p>
+                                <p className="text-[11px] font-bold text-[#1b6b6b] uppercase tracking-wider mt-0.5">{t('assign_to_route')}</p>
                             </div>
                             <button aria-label="Yopish" onClick={() => setIsStudentSelectorOpen(false)} className="w-9 h-9 flex items-center justify-center text-gray-400 hover:bg-gray-55 dark:hover:bg-gray-700 rounded-xl cursor-pointer"><X size={18} /></button>
                         </div>

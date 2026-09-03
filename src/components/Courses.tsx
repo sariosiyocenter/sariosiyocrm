@@ -5,7 +5,7 @@ import { useLang } from '../context/LanguageContext';
 import { useNavigate } from 'react-router-dom';
 
 const inp = "w-full px-4 py-3 bg-gray-55 dark:bg-gray-900/50 border border-gray-100 dark:border-gray-750 rounded-2xl text-xs font-bold text-gray-900 dark:text-white focus:border-[#1b6b6b] focus:ring-4 focus:ring-[#1b6b6b]/10 outline-none transition-all";
-const lbl = "block text-[11px] font-extrabold uppercase tracking-widest text-gray-400 mb-2";
+const lbl = "block text-[11px] font-extrabold uppercase tracking-wider text-gray-400 mb-2";
 
 export default function Courses() {
     const { 
@@ -188,7 +188,7 @@ export default function Courses() {
                         </div>
                         <div>
                             <h1 className="text-lg font-black text-gray-900 dark:text-white uppercase tracking-tight">{t('groups_title')}</h1>
-                            <p className="text-[11px] font-bold text-gray-400 uppercase tracking-widest mt-0.5">
+                            <p className="text-[11px] font-bold text-gray-400 uppercase tracking-wider mt-0.5">
                                 {groups.length} • {t('group_schedule')}
                             </p>
                         </div>
@@ -278,7 +278,7 @@ export default function Courses() {
                                     <div className="w-12 h-12 rounded-2xl bg-[#1b6b6b]/10 dark:bg-[#1b6b6b]/20 flex items-center justify-center text-[#1b6b6b] font-black text-lg group-hover:scale-105 transition-transform overflow-hidden shrink-0">
                                         <Layers size={22} />
                                     </div>
-                                    <span className="text-[11px] font-black uppercase tracking-wider px-2.5 py-1 rounded-lg border bg-emerald-50 text-emerald-600 border-emerald-100 dark:bg-emerald-950/20 dark:text-emerald-400 dark:border-emerald-900/40">
+                                    <span className="text-[11px] font-bold uppercase tracking-wider px-2.5 py-1 rounded-lg border bg-emerald-50 text-emerald-600 border-emerald-100 dark:bg-emerald-950/20 dark:text-emerald-400 dark:border-emerald-900/40">
                                         {t('status_active')}
                                     </span>
                                 </div>
@@ -331,7 +331,7 @@ export default function Courses() {
                         <div className="flex items-center justify-between mb-6 pb-4 border-b border-gray-55 dark:border-gray-700/50">
                             <div>
                                 <h3 className="text-lg font-black text-gray-900 dark:text-white uppercase tracking-tight">{t('new_group_title')}</h3>
-                                <p className="text-[11px] font-bold text-[#1b6b6b] uppercase tracking-widest mt-0.5">{t('group_details_subtitle')}</p>
+                                <p className="text-[11px] font-bold text-[#1b6b6b] uppercase tracking-wider mt-0.5">{t('group_details_subtitle')}</p>
                             </div>
                             <button aria-label="Yopish" onClick={() => setIsModalOpen(false)} className="w-9 h-9 flex items-center justify-center text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700 rounded-xl cursor-pointer"><X size={18} /></button>
                         </div>

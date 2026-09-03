@@ -10,7 +10,7 @@ import { compressImage } from '../lib/image';
 import * as XLSX from 'xlsx';
 
 const inp = "w-full px-4 py-3 bg-gray-50 dark:bg-gray-900/50 border border-gray-100 dark:border-gray-700 rounded-2xl text-xs font-bold text-gray-900 dark:text-white focus:border-[#1b6b6b] focus:ring-4 focus:ring-[#1b6b6b]/10 outline-none transition-all";
-const lbl = "block text-[11px] font-extrabold uppercase tracking-widest text-gray-400 mb-2";
+const lbl = "block text-[11px] font-extrabold uppercase tracking-wider text-gray-400 mb-2";
 
 const UZB_REGIONS: Record<string, string[]> = {
   "Surxondaryo": [
@@ -538,7 +538,7 @@ export default function Students() {
                         </div>
                         <div>
                             <h1 className="text-lg font-black text-gray-900 dark:text-white uppercase tracking-tight">{t('students_title')}</h1>
-                            <p className="text-[11px] font-bold text-gray-400 uppercase tracking-widest mt-0.5">
+                            <p className="text-[11px] font-bold text-gray-400 uppercase tracking-wider mt-0.5">
                                 {t('students_count_summary').replace('{total}', String(students.length)).replace('{found}', String(filteredStudents.length))}
                             </p>
                         </div>
@@ -707,7 +707,7 @@ export default function Students() {
                                     <p className={`text-xs font-black tabular-nums ${balance < 0 ? 'text-rose-500' : 'text-emerald-600'}`}>
                                         {balance.toLocaleString()}
                                     </p>
-                                    <p className="text-[11px] font-bold text-gray-400 uppercase tracking-widest mt-0.5">
+                                    <p className="text-[11px] font-bold text-gray-400 uppercase tracking-wider mt-0.5">
                                         {balance < 0 ? 'qarz' : 'balans'}
                                     </p>
                                 </div>
@@ -732,11 +732,11 @@ export default function Students() {
                     <table className="w-full text-left border-collapse min-w-[900px]">
                         <thead>
                             <tr className="bg-gray-50/50 dark:bg-gray-900/50 border-b border-gray-100 dark:border-gray-700">
-                                <th className="p-4 text-[11px] font-bold text-gray-400 uppercase tracking-widest text-center">ID</th>
-                                <th className="p-4 text-[11px] font-bold text-gray-400 uppercase tracking-widest">{t('student')}</th>
-                                <th className="p-4 text-[11px] font-bold text-gray-400 uppercase tracking-widest text-center">{t('student_phone')}</th>
-                                <th className="p-4 text-[11px] font-bold text-gray-400 uppercase tracking-widest">{t('student_groups')}</th>
-                                <th className="p-4 text-[11px] font-bold text-gray-400 uppercase tracking-widest text-right">{t('student_balance')}</th>
+                                <th className="p-4 text-[11px] font-bold text-gray-400 uppercase tracking-wider text-center">ID</th>
+                                <th className="p-4 text-[11px] font-bold text-gray-400 uppercase tracking-wider">{t('student')}</th>
+                                <th className="p-4 text-[11px] font-bold text-gray-400 uppercase tracking-wider text-center">{t('student_phone')}</th>
+                                <th className="p-4 text-[11px] font-bold text-gray-400 uppercase tracking-wider">{t('student_groups')}</th>
+                                <th className="p-4 text-[11px] font-bold text-gray-400 uppercase tracking-wider text-right">{t('student_balance')}</th>
                                 <th className="p-4 w-12 text-center"></th>
                             </tr>
                         </thead>
@@ -770,7 +770,7 @@ export default function Students() {
                                                     {g.name}
                                                 </span>
                                             ))}
-                                            {(student.groups || []).length === 0 && <span className="text-[11px] font-bold text-gray-400 uppercase tracking-widest italic">{t('no_group')}</span>}
+                                            {(student.groups || []).length === 0 && <span className="text-[11px] font-bold text-gray-400 uppercase tracking-wider italic">{t('no_group')}</span>}
                                         </div>
                                     </td>
                                     <td className="p-4 text-right">
@@ -853,14 +853,14 @@ export default function Students() {
                             <button
                                 onClick={() => setPage(p => Math.max(1, p - 1))}
                                 disabled={currentPage === 1}
-                                className="px-3 py-1.5 rounded-lg text-[12px] font-extrabold uppercase tracking-widest bg-gray-50 dark:bg-gray-900 text-gray-600 dark:text-gray-300 disabled:opacity-40 disabled:cursor-not-allowed hover:bg-gray-100 dark:hover:bg-gray-700 cursor-pointer transition-colors">
+                                className="px-3 py-1.5 rounded-lg text-[12px] font-extrabold uppercase tracking-wider bg-gray-50 dark:bg-gray-900 text-gray-600 dark:text-gray-300 disabled:opacity-40 disabled:cursor-not-allowed hover:bg-gray-100 dark:hover:bg-gray-700 cursor-pointer transition-colors">
                                 Oldingi
                             </button>
                             <span className="text-[12px] font-bold text-gray-500 tabular-nums px-1">{currentPage} / {pageCount}</span>
                             <button
                                 onClick={() => setPage(p => Math.min(pageCount, p + 1))}
                                 disabled={currentPage === pageCount}
-                                className="px-3 py-1.5 rounded-lg text-[12px] font-extrabold uppercase tracking-widest bg-gray-50 dark:bg-gray-900 text-gray-600 dark:text-gray-300 disabled:opacity-40 disabled:cursor-not-allowed hover:bg-gray-100 dark:hover:bg-gray-700 cursor-pointer transition-colors">
+                                className="px-3 py-1.5 rounded-lg text-[12px] font-extrabold uppercase tracking-wider bg-gray-50 dark:bg-gray-900 text-gray-600 dark:text-gray-300 disabled:opacity-40 disabled:cursor-not-allowed hover:bg-gray-100 dark:hover:bg-gray-700 cursor-pointer transition-colors">
                                 Keyingi
                             </button>
                         </div>
@@ -879,7 +879,7 @@ export default function Students() {
                             <div className="flex items-center justify-between mb-6 pb-4 border-b border-gray-50 dark:border-gray-700/50">
                                 <div className="text-left">
                                     <h3 className="text-lg font-black text-gray-900 dark:text-white uppercase tracking-tight">{t('new_student_title')}</h3>
-                                    <p className="text-[11px] font-bold text-[#1b6b6b] uppercase tracking-widest mt-0.5">{t('student_details_subtitle')}</p>
+                                    <p className="text-[11px] font-bold text-[#1b6b6b] uppercase tracking-wider mt-0.5">{t('student_details_subtitle')}</p>
                                 </div>
                                 <button aria-label="Yopish" type="button" onClick={() => setIsModalOpen(false)} className="w-9 h-9 flex items-center justify-center text-gray-400 hover:bg-gray-55 dark:hover:bg-gray-700 rounded-xl cursor-pointer">
                                     <X size={18} />
@@ -976,7 +976,7 @@ export default function Students() {
                                     </div>
                                 </div>
                                 <button type="button" onClick={() => setIsMapOpen(true)}
-                                    className={`w-full py-2.5 rounded-xl border flex items-center justify-center gap-2 text-[11px] font-bold uppercase tracking-widest cursor-pointer transition-all ${newStudent.location ? 'bg-[#1b6b6b]/10 text-[#1b6b6b] border-[#1b6b6b]' : 'bg-gray-55 dark:bg-gray-900 border-gray-100 hover:bg-gray-100'}`}>
+                                    className={`w-full py-2.5 rounded-xl border flex items-center justify-center gap-2 text-[11px] font-bold uppercase tracking-wider cursor-pointer transition-all ${newStudent.location ? 'bg-[#1b6b6b]/10 text-[#1b6b6b] border-[#1b6b6b]' : 'bg-gray-55 dark:bg-gray-900 border-gray-100 hover:bg-gray-100'}`}>
                                     <MapPin size={14} /> {newStudent.location ? t('marked_on_map') : t('select_from_map')}
                                 </button>
                                 <div>
@@ -1083,7 +1083,7 @@ export default function Students() {
 
                                         {/* Dynamic multi-certificates array */}
                                         <div className="border-t border-dashed border-gray-150 dark:border-gray-700/50 pt-3 mt-3 space-y-3">
-                                            <span className="block text-[11px] font-black uppercase text-[#1b6b6b] tracking-wider text-left">Qo'shimcha Sertifikatlar</span>
+                                            <span className="block text-[11px] font-bold uppercase text-[#1b6b6b] tracking-wider text-left">Qo'shimcha Sertifikatlar</span>
                                             {newStudent.certificates.map((cert, index) => (
                                                 <div key={index} className="p-3 bg-white dark:bg-slate-800 rounded-xl border border-gray-100 dark:border-gray-700 space-y-3 relative">
                                                     <button 
@@ -1161,7 +1161,7 @@ export default function Students() {
                                             <button
                                                 type="button"
                                                 onClick={addCertificate}
-                                                className="w-full py-2.5 bg-white dark:bg-slate-800 border border-dashed border-gray-200 dark:border-gray-700 rounded-xl text-[11px] font-black uppercase tracking-widest text-[#1b6b6b] hover:bg-teal-50/10 dark:hover:bg-teal-900/10 transition-colors flex items-center justify-center gap-1.5 cursor-pointer"
+                                                className="w-full py-2.5 bg-white dark:bg-slate-800 border border-dashed border-gray-200 dark:border-gray-700 rounded-xl text-[11px] font-bold uppercase tracking-wider text-[#1b6b6b] hover:bg-teal-50/10 dark:hover:bg-teal-900/10 transition-colors flex items-center justify-center gap-1.5 cursor-pointer"
                                             >
                                                 <Plus size={13} />
                                                 Sertifikat qo'shish
@@ -1171,7 +1171,7 @@ export default function Students() {
                                 )}
 
                                 <div className="border-t border-dashed border-gray-150 dark:border-gray-700/50 pt-4 mt-4 space-y-3">
-                                    <span className="block text-[11px] font-black uppercase text-[#1b6b6b] tracking-wider text-left">Kursga qo'shish</span>
+                                    <span className="block text-[11px] font-bold uppercase text-[#1b6b6b] tracking-wider text-left">Kursga qo'shish</span>
                                     {groups.length === 0 ? (
                                         <p className="text-[11px] text-gray-400 italic">Kurslar mavjud emas</p>
                                     ) : (
@@ -1203,7 +1203,7 @@ export default function Students() {
                                 </div>
 
                                 <div className="border-t border-dashed border-gray-150 dark:border-gray-700/50 pt-4 mt-4 space-y-4">
-                                    <span className="block text-[11px] font-black uppercase text-[#1b6b6b] tracking-wider text-left">{t('parent_info')}</span>
+                                    <span className="block text-[11px] font-bold uppercase text-[#1b6b6b] tracking-wider text-left">{t('parent_info')}</span>
                                     <div className="grid grid-cols-2 gap-4">
                                         <div>
                                             <label className={lbl}>{t('father_name')}</label>
@@ -1228,7 +1228,7 @@ export default function Students() {
 
 
                                 <div className="border-t border-dashed border-gray-150 dark:border-gray-700/50 pt-4 mt-4 space-y-4">
-                                    <span className="block text-[11px] font-black uppercase text-[#1b6b6b] tracking-wider text-left">{t('photo_label')}</span>
+                                    <span className="block text-[11px] font-bold uppercase text-[#1b6b6b] tracking-wider text-left">{t('photo_label')}</span>
                                     <div className="flex items-center gap-4">
                                         <div className="w-20 h-20 rounded-2xl bg-gray-55 dark:bg-gray-900 border border-gray-100 flex items-center justify-center overflow-hidden shrink-0 shadow-inner">
                                             {newStudent.photo ? <img src={newStudent.photo} alt="Preview" className="w-full h-full object-cover" /> : <ImageIcon size={24} className="text-gray-300" />}
@@ -1256,7 +1256,7 @@ export default function Students() {
                                             </div>
                                             {newStudent.photo && (
                                                 <button type="button" onClick={handleRemoveBg} disabled={isRemovingBg}
-                                                    className="w-full py-2 bg-violet-50 text-violet-600 dark:bg-violet-950/20 dark:text-violet-400 rounded-xl border border-violet-100 dark:border-violet-900 text-[11px] font-black uppercase tracking-wider disabled:opacity-50 cursor-pointer">
+                                                    className="w-full py-2 bg-violet-50 text-violet-600 dark:bg-violet-950/20 dark:text-violet-400 rounded-xl border border-violet-100 dark:border-violet-900 text-[11px] font-bold uppercase tracking-wider disabled:opacity-50 cursor-pointer">
                                                     {t('clear_bg')}
                                                 </button>
                                             )}
@@ -1303,14 +1303,14 @@ export default function Students() {
                     <div className="absolute inset-0 bg-gray-900/60 backdrop-blur-sm" onClick={() => setStudentToDelete(null)} />
                     <div className="relative bg-white dark:bg-gray-800 rounded-3xl p-6 shadow-2xl max-w-sm w-full text-center border border-gray-100 dark:border-gray-700">
                         <h4 className="text-sm font-black text-gray-900 dark:text-white uppercase tracking-tight mb-2">{t('delete_confirm_title')}</h4>
-                        <p className="text-[11px] font-bold text-gray-400 uppercase tracking-widest leading-relaxed mb-6">
+                        <p className="text-[11px] font-bold text-gray-400 uppercase tracking-wider leading-relaxed mb-6">
                             {t('delete_confirm_desc').replace('{name}', studentToDelete.name)}
                         </p>
                         <div className="flex gap-3">
-                            <button onClick={() => setStudentToDelete(null)} className="flex-1 py-2.5 bg-gray-100 text-gray-600 text-[11px] font-extrabold uppercase tracking-widest rounded-xl cursor-pointer">
+                            <button onClick={() => setStudentToDelete(null)} className="flex-1 py-2.5 bg-gray-100 text-gray-600 text-[11px] font-extrabold uppercase tracking-wider rounded-xl cursor-pointer">
                                 {t('cancel')}
                             </button>
-                            <button onClick={confirmDeleteStudent} className="flex-1 py-2.5 bg-rose-600 text-white text-[11px] font-extrabold uppercase tracking-widest rounded-xl cursor-pointer">
+                            <button onClick={confirmDeleteStudent} className="flex-1 py-2.5 bg-rose-600 text-white text-[11px] font-extrabold uppercase tracking-wider rounded-xl cursor-pointer">
                                 {t('delete')}
                             </button>
                         </div>
@@ -1327,7 +1327,7 @@ export default function Students() {
                                 <X size={18} />
                             </button>
                         </div>
-                        <p className="text-[11px] font-bold text-gray-400 uppercase tracking-widest leading-relaxed mb-2">
+                        <p className="text-[11px] font-bold text-gray-400 uppercase tracking-wider leading-relaxed mb-2">
                             {t('reception_link_desc')}
                         </p>
                         <p className="text-[11px] font-bold text-amber-500 leading-relaxed mb-6 normal-case">
@@ -1346,7 +1346,7 @@ export default function Students() {
 
                         <div className="space-y-4">
                             <div className="flex items-center gap-2 bg-gray-55 dark:bg-gray-900/50 p-3 rounded-2xl border border-gray-100 dark:border-gray-750">
-                                <span className="text-[11px] font-black text-[#1b6b6b] uppercase tracking-wider shrink-0">{t('link')}:</span>
+                                <span className="text-[11px] font-bold text-[#1b6b6b] uppercase tracking-wider shrink-0">{t('link')}:</span>
                                 <input
                                     readOnly
                                     type="text"
@@ -1381,11 +1381,11 @@ export default function Students() {
                         className="bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700 rounded-xl shadow-xl py-1 w-32 z-50 text-left animate-in slide-in-from-top-1 duration-150"
                     >
                         <button onClick={() => { setActiveMenu(null); navigate(`/students/${activeMenu.id}`); }}
-                            className="w-full text-left px-4 py-2 text-[11px] font-bold text-gray-700 dark:text-gray-200 hover:bg-gray-55 dark:hover:bg-gray-700 uppercase tracking-widest cursor-pointer">
+                            className="w-full text-left px-4 py-2 text-[11px] font-bold text-gray-700 dark:text-gray-200 hover:bg-gray-55 dark:hover:bg-gray-700 uppercase tracking-wider cursor-pointer">
                             {t('details')}
                         </button>
                         <button onClick={() => { setActiveMenu(null); handleDeleteStudent(activeMenu.id, students.find(s => s.id === activeMenu.id)?.name || ''); }}
-                            className="w-full text-left px-4 py-2 text-[11px] font-bold text-rose-600 dark:text-rose-450 hover:bg-rose-50 dark:hover:bg-rose-950/30 uppercase tracking-widest cursor-pointer">
+                            className="w-full text-left px-4 py-2 text-[11px] font-bold text-rose-600 dark:text-rose-450 hover:bg-rose-50 dark:hover:bg-rose-950/30 uppercase tracking-wider cursor-pointer">
                             {t('delete')}
                         </button>
                     </div>

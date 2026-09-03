@@ -72,19 +72,19 @@ export default function GroupAttendanceCalendar({ group, attendances, selectedDa
                 className="flex items-center gap-3 px-4 py-3 hover:bg-emerald-50 dark:hover:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 rounded-xl transition-all"
             >
                 <div className="w-5 h-5 bg-emerald-500 rounded-lg flex items-center justify-center text-white"><CalendarIcon size={12} strokeWidth={3} /></div>
-                <span className="text-[11px] font-bold uppercase tracking-widest leading-none">Dars o'tildi</span>
+                <span className="text-[11px] font-bold uppercase tracking-wider leading-none">Dars o'tildi</span>
             </button>
             <button 
                 onClick={() => handleBatchStatus(date, 'Dars bo\'lmadi')}
                 className="flex items-center gap-3 px-4 py-3 hover:bg-rose-50 dark:hover:bg-rose-900/30 text-rose-600 dark:text-rose-400 rounded-xl transition-all"
             >
                 <div className="w-5 h-5 bg-rose-500 rounded-lg flex items-center justify-center text-white"><XCircle size={12} strokeWidth={3} /></div>
-                <span className="text-[11px] font-bold uppercase tracking-widest leading-none">Dars bo'lmadi</span>
+                <span className="text-[11px] font-bold uppercase tracking-wider leading-none">Dars bo'lmadi</span>
             </button>
             <div className="h-px bg-gray-50 dark:bg-gray-700 my-1 px-2" />
             <button onClick={() => setActivePopover(null)} className="flex items-center gap-3 px-4 py-2 hover:bg-gray-50 dark:hover:bg-gray-700 text-gray-400 rounded-xl transition-all">
                 <XCircle size={14} />
-                <span className="text-[11px] font-bold uppercase tracking-widest">Yopish</span>
+                <span className="text-[11px] font-bold uppercase tracking-wider">Yopish</span>
             </button>
         </div>
     );
@@ -104,7 +104,7 @@ export default function GroupAttendanceCalendar({ group, attendances, selectedDa
 
             <div className="grid grid-cols-7 gap-1 max-w-sm mx-auto w-full flex-grow">
                 {['Du', 'Se', 'Ch', 'Pa', 'Ju', 'Sh', 'Ya'].map(d => (
-                    <div key={d} className="text-center text-[10px] font-extrabold text-gray-300 dark:text-gray-600 uppercase tracking-widest pb-1.5">{d}</div>
+                    <div key={d} className="text-center text-[10px] font-extrabold text-gray-300 dark:text-gray-600 uppercase tracking-wider pb-1.5">{d}</div>
                 ))}
                 {Array(blanks).fill(0).map((_, i) => <div key={`b-${i}`} />)}
                 {Array(daysInMonth).fill(0).map((_, i) => {
@@ -166,7 +166,7 @@ function StatusLink({ color, label }: { color: string, label: string }) {
     return (
         <div className="flex items-center gap-2">
             <div className={`w-2 h-2 rounded-full ${color}`} />
-            <span className="text-[11px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-widest">{label}</span>
+            <span className="text-[11px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-wider">{label}</span>
         </div>
     );
 }

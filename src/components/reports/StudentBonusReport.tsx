@@ -85,7 +85,7 @@ export default function StudentBonusReport({ startDate, endDate }: { startDate?:
                 <SectionHeader
                     title="Barcha talabalar ballari"
                     action={
-                        <button onClick={handleExport} className="flex items-center gap-2 px-4 py-2 bg-amber-500 text-white rounded-xl text-[11px] font-extrabold uppercase tracking-widest hover:bg-amber-400 transition-all">
+                        <button onClick={handleExport} className="flex items-center gap-2 px-4 py-2 bg-amber-500 text-white rounded-xl text-[11px] font-extrabold uppercase tracking-wider hover:bg-amber-400 transition-all">
                             <Download size={14} /> CSV
                         </button>
                     }

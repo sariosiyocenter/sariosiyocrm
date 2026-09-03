@@ -14,7 +14,7 @@ const STAGES = [
 ] as const;
 
 const inp = "w-full px-4 py-3 bg-gray-50 dark:bg-gray-900/50 border border-gray-100 dark:border-gray-700 rounded-2xl text-xs font-bold text-gray-900 dark:text-white focus:border-[#1b6b6b] focus:ring-4 focus:ring-[#1b6b6b]/10 outline-none transition-all";
-const lbl = "block text-[11px] font-extrabold uppercase tracking-widest text-gray-400 mb-2";
+const lbl = "block text-[11px] font-extrabold uppercase tracking-wider text-gray-400 mb-2";
 
 const UZB_REGIONS: Record<string, string[]> = {
   "Surxondaryo": [
@@ -278,7 +278,7 @@ export default function Leads() {
             </div>
             <div>
               <h1 className="text-lg font-black text-gray-900 dark:text-white uppercase tracking-tight font-display">{t('leads_title')}</h1>
-              <p className="text-[11px] font-bold text-gray-400 uppercase tracking-widest mt-0.5">
+              <p className="text-[11px] font-bold text-gray-400 uppercase tracking-wider mt-0.5">
                 {t('leads_subtitle')} • {leads.length}
               </p>
             </div>
@@ -381,7 +381,7 @@ export default function Leads() {
                 <div className="flex items-center gap-2">
                   <div className={`w-2.5 h-2.5 rounded-full ${stage.color}`} />
                   <h3 className="font-extrabold text-gray-900 dark:text-gray-100 text-xs uppercase tracking-widest">{getStageLabel(stage.name)}</h3>
-                  <span className="bg-white dark:bg-gray-850 border border-gray-100 dark:border-gray-700 text-gray-500 dark:text-gray-400 text-[11px] font-black px-2 py-0.5 rounded-lg">
+                  <span className="bg-white dark:bg-gray-850 border border-gray-100 dark:border-gray-700 text-gray-500 dark:text-gray-400 text-[11px] font-bold px-2 py-0.5 rounded-lg">
                     {stageLeads.length}
                   </span>
                 </div>
@@ -402,13 +402,13 @@ export default function Leads() {
                     className="bg-white dark:bg-gray-800 p-4 rounded-2xl border border-gray-100 dark:border-gray-755 shadow-sm hover:shadow-md hover:border-gray-200 dark:hover:border-gray-700 transition-all duration-200 cursor-pointer"
                   >
                     <div className="flex items-center justify-between mb-2">
-                      <span className={`text-[10px] font-black px-2 py-0.5 rounded-lg border uppercase tracking-wider ${stage.lightBgc}`}>
+                      <span className={`text-[10px] font-bold px-2 py-0.5 rounded-lg border uppercase tracking-wider ${stage.lightBgc}`}>
                         {lead.course}
                       </span>
                     </div>
                     <h4 className="font-bold text-gray-900 dark:text-white text-xs mb-3 line-clamp-1 uppercase tracking-tight">{lead.name}</h4>
                     
-                    <div className="space-y-2 text-[11px] text-gray-400 font-bold uppercase tracking-widest">
+                    <div className="space-y-2 text-[11px] text-gray-400 font-bold uppercase tracking-wider">
                       <div className="flex items-center gap-2 bg-gray-55 dark:bg-gray-900/50 p-2 rounded-xl border border-gray-100/30 dark:border-gray-700/30">
                         <Phone size={12} className="text-[#1b6b6b]" />
                         <span className="tabular-nums text-gray-900 dark:text-white">{lead.phone}</span>
@@ -429,7 +429,7 @@ export default function Leads() {
 
                 <button
                   onClick={() => setIsModalOpen(true)}
-                  className="w-full flex items-center justify-center gap-2 py-3 bg-white/40 dark:bg-gray-800/40 border border-dashed border-gray-200 dark:border-gray-700 rounded-2xl text-gray-400 hover:text-[#1b6b6b] hover:border-[#1b6b6b] hover:bg-white dark:hover:bg-gray-800 transition-all text-[11px] font-black uppercase tracking-widest cursor-pointer"
+                  className="w-full flex items-center justify-center gap-2 py-3 bg-white/40 dark:bg-gray-800/40 border border-dashed border-gray-200 dark:border-gray-700 rounded-2xl text-gray-400 hover:text-[#1b6b6b] hover:border-[#1b6b6b] hover:bg-white dark:hover:bg-gray-800 transition-all text-[11px] font-bold uppercase tracking-wider cursor-pointer"
                 >
                   <Plus size={14} /> {t('add')}
                 </button>
@@ -447,7 +447,7 @@ export default function Leads() {
             <div className="flex items-center justify-between mb-6 pb-4 border-b border-gray-50 dark:border-gray-700/50">
               <div>
                 <h3 className="text-lg font-black text-gray-900 dark:text-white uppercase tracking-tight">{t('new_lead_title')}</h3>
-                <p className="text-[11px] font-bold text-[#1b6b6b] uppercase tracking-widest mt-0.5">{t('lead_details_subtitle')}</p>
+                <p className="text-[11px] font-bold text-[#1b6b6b] uppercase tracking-wider mt-0.5">{t('lead_details_subtitle')}</p>
               </div>
               <button aria-label="Yopish" onClick={() => setIsModalOpen(false)} className="w-9 h-9 flex items-center justify-center text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700 rounded-xl cursor-pointer"><X size={18} /></button>
             </div>
@@ -629,7 +629,7 @@ export default function Leads() {
             <div className="flex items-center justify-between mb-6 pb-4 border-b border-gray-50 dark:border-gray-700/50">
               <div>
                 <h3 className="text-base font-black text-gray-900 dark:text-white uppercase tracking-tight">{t('lead_details_title')}</h3>
-                <p className="text-[11px] font-bold text-gray-400 uppercase tracking-widest mt-0.5">{t('registered_at')}{new Date(selectedLead.createdAt).toLocaleString()}</p>
+                <p className="text-[11px] font-bold text-gray-400 uppercase tracking-wider mt-0.5">{t('registered_at')}{new Date(selectedLead.createdAt).toLocaleString()}</p>
               </div>
               <button aria-label="Yopish" onClick={() => setSelectedLead(null)} className="w-9 h-9 flex items-center justify-center text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700 rounded-xl cursor-pointer"><X size={18} /></button>
             </div>
@@ -771,7 +771,7 @@ export default function Leads() {
                         district: selectedLead.district || ''
                       });
                     }}
-                    className="flex items-center gap-1.5 px-4 py-2.5 bg-[#1b6b6b] hover:bg-[#155252] text-white rounded-xl text-[11px] font-black uppercase tracking-widest cursor-pointer shadow-md transition-all"
+                    className="flex items-center gap-1.5 px-4 py-2.5 bg-[#1b6b6b] hover:bg-[#155252] text-white rounded-xl text-[11px] font-bold uppercase tracking-wider cursor-pointer shadow-md transition-all"
                   >
                     <UserPlus size={14} /> {t('convert')}
                   </button>
@@ -782,14 +782,14 @@ export default function Leads() {
                   <button
                     type="button"
                     onClick={() => handleDeleteLead(selectedLead.id)}
-                    className="flex items-center gap-1.5 text-rose-500 hover:text-rose-600 text-[11px] font-black uppercase tracking-wider cursor-pointer"
+                    className="flex items-center gap-1.5 text-rose-500 hover:text-rose-600 text-[11px] font-bold uppercase tracking-wider cursor-pointer"
                   >
                     <Trash2 size={14} /> {t('delete_lead')}
                   </button>
                   <button
                     type="button"
                     onClick={() => setSelectedLead(null)}
-                    className="px-5 py-2.5 bg-gray-100 dark:bg-gray-750 text-gray-700 dark:text-white text-[11px] font-black uppercase tracking-widest rounded-xl cursor-pointer hover:bg-gray-200"
+                    className="px-5 py-2.5 bg-gray-100 dark:bg-gray-750 text-gray-700 dark:text-white text-[11px] font-bold uppercase tracking-wider rounded-xl cursor-pointer hover:bg-gray-200"
                   >
                     {t('close')}
                   </button>
@@ -885,7 +885,7 @@ export default function Leads() {
                 </div>
 
                 <div className="border-t border-dashed border-gray-100 dark:border-gray-700/50 pt-4 mt-4 space-y-4">
-                  <span className="block text-[11px] font-black uppercase text-[#1b6b6b] tracking-wider">{t('parents_info_optional')}</span>
+                  <span className="block text-[11px] font-bold uppercase text-[#1b6b6b] tracking-wider">{t('parents_info_optional')}</span>
                   <div className="grid grid-cols-2 gap-4">
                     <div>
                       <label className={lbl}>{t('father_name')}</label>

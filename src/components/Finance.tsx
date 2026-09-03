@@ -13,7 +13,7 @@ import { Payment, Expense } from '../types';
 import { StatCard, BarChart, DonutChart, LineChart } from './reports/shared';
 
 const inp = "w-full px-4 py-3 bg-gray-50 dark:bg-gray-900/50 border border-gray-100 dark:border-gray-700 rounded-2xl text-xs font-bold text-gray-900 dark:text-white focus:border-[#1b6b6b] focus:ring-4 focus:ring-[#1b6b6b]/10 outline-none transition-all";
-const lbl = "block text-[11px] font-extrabold uppercase tracking-widest text-gray-400 mb-2";
+const lbl = "block text-[11px] font-extrabold uppercase tracking-wider text-gray-400 mb-2";
 
 const MONTHS = ['Yan','Fev','Mar','Apr','May','Iyun','Iyul','Avg','Sen','Okt','Noy','Dek'];
 const PRESET_CATS = ['Ish haqi', 'Ijara', 'Kommunal', 'Marketing', 'Boshqa'];
@@ -442,7 +442,7 @@ export default function Finance() {
                         </div>
                         <div>
                             <h1 className="text-lg font-black text-gray-900 dark:text-white uppercase tracking-tight">{t('finance_title')}</h1>
-                            <p className="text-[11px] font-bold text-gray-400 uppercase tracking-widest mt-0.5">
+                            <p className="text-[11px] font-bold text-gray-400 uppercase tracking-wider mt-0.5">
                                 {t('stat_revenue')} & {t('stat_expenses')}
                             </p>
                         </div>
@@ -570,7 +570,7 @@ export default function Finance() {
                     <div className="p-6 space-y-8">
                         {/* Bu oy asosiy 3 ta metrika */}
                         <div>
-                            <p className="text-[11px] font-black text-gray-400 uppercase tracking-widest mb-4">
+                            <p className="text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-4">
                                 Muddat: {dateLabel}
                             </p>
                             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
@@ -612,7 +612,7 @@ export default function Finance() {
                                 <div key={i} className="bg-gray-55 dark:bg-gray-900/50 rounded-2xl border border-gray-100 dark:border-gray-700/50 p-4 flex flex-col gap-2">
                                     <div className="flex items-center gap-1.5 text-gray-400 dark:text-gray-500">
                                         {m.icon}
-                                        <span className="text-[11px] font-black uppercase tracking-widest">{m.label}</span>
+                                        <span className="text-[11px] font-bold uppercase tracking-wider">{m.label}</span>
                                     </div>
                                     <p className="text-base font-black text-gray-900 dark:text-white tabular-nums">{m.value}</p>
                                 </div>
@@ -621,7 +621,7 @@ export default function Finance() {
 
                         {/* Oylik tushum trendi */}
                         <div className="bg-gray-50 dark:bg-gray-900/40 rounded-2xl border border-gray-100 dark:border-gray-700/50 p-5">
-                            <p className="text-[11px] font-black text-gray-400 uppercase tracking-widest mb-4">Oylik tushum trendi (so'nggi 6 oy)</p>
+                            <p className="text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-4">Oylik tushum trendi (so'nggi 6 oy)</p>
                             {metrics.trendLine.length >= 2
                                 ? <LineChart data={metrics.trendLine} color="#1b6b6b" height={160} />
                                 : <BarChart data={metrics.trendBars} height={160} />
@@ -631,14 +631,14 @@ export default function Finance() {
                         {/* To'lov usullari + Xarajat kategoriyalari */}
                         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
                             <div className="bg-gray-50 dark:bg-gray-900/40 rounded-2xl border border-gray-100 dark:border-gray-700/50 p-5">
-                                <p className="text-[11px] font-black text-gray-400 uppercase tracking-widest mb-4">Bu oy to'lov usullari</p>
+                                <p className="text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-4">Bu oy to'lov usullari</p>
                                 {metrics.typeSlices.length > 0
                                     ? <DonutChart slices={metrics.typeSlices} size={140} />
                                     : <p className="text-[11px] text-gray-400 font-bold text-center py-8">Bu oy to'lovlar yo'q</p>
                                 }
                             </div>
                             <div className="bg-gray-50 dark:bg-gray-900/40 rounded-2xl border border-gray-100 dark:border-gray-700/50 p-5">
-                                <p className="text-[11px] font-black text-gray-400 uppercase tracking-widest mb-4">Bu oy xarajat kategoriyalari</p>
+                                <p className="text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-4">Bu oy xarajat kategoriyalari</p>
                                 {metrics.catBars.length > 0
                                     ? <BarChart data={metrics.catBars} horizontal />
                                     : <p className="text-[11px] text-gray-400 font-bold text-center py-8">Bu oy xarajatlar yo'q</p>
@@ -648,7 +648,7 @@ export default function Finance() {
 
                         {/* O'tgan oy taqqoslash */}
                         <div className="bg-gray-50 dark:bg-gray-900/40 rounded-2xl border border-gray-100 dark:border-gray-700/50 p-5">
-                            <p className="text-[11px] font-black text-gray-400 uppercase tracking-widest mb-4">
+                            <p className="text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-4">
                                 O'tgan oy taqqoslash — {MONTHS[lastMonthDate.getMonth()]} {lastMonthDate.getFullYear()}
                             </p>
                             <div className="grid grid-cols-3 gap-4">
@@ -661,11 +661,11 @@ export default function Finance() {
                                     const isUp = diff > 0;
                                     return (
                                         <div key={i} className="text-center">
-                                            <p className="text-[11px] font-black text-gray-400 uppercase tracking-widest mb-2">{item.label}</p>
+                                            <p className="text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-2">{item.label}</p>
                                             <p className="text-lg font-black text-gray-900 dark:text-white tabular-nums">{item.cur.toLocaleString()}</p>
                                             <p className="text-[11px] text-gray-400 tabular-nums mt-0.5">{item.prev.toLocaleString()} o'tgan oy</p>
                                             {diff !== 0 && (
-                                                <span className={`inline-flex items-center gap-0.5 text-[11px] font-black mt-1 px-2 py-0.5 rounded-lg ${(item.pos ? isUp : !isUp) ? 'text-emerald-600 bg-emerald-50 dark:bg-emerald-950/30' : 'text-rose-600 bg-rose-50 dark:bg-rose-950/30'}`}>
+                                                <span className={`inline-flex items-center gap-0.5 text-[11px] font-bold mt-1 px-2 py-0.5 rounded-lg ${(item.pos ? isUp : !isUp) ? 'text-emerald-600 bg-emerald-50 dark:bg-emerald-950/30' : 'text-rose-600 bg-rose-50 dark:bg-rose-950/30'}`}>
                                                     {isUp ? <TrendingUp size={9} /> : <TrendingDown size={9} />}
                                                     {Math.abs(diff).toLocaleString()} UZS
                                                 </span>
@@ -679,7 +679,7 @@ export default function Finance() {
                         {/* O'quvchilar balansi va qarzdorligi */}
                         <div className="border-t border-gray-100 dark:border-gray-800/80 pt-6">
                             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-4">
-                                <p className="text-[11px] font-black text-gray-400 uppercase tracking-widest">
+                                <p className="text-[11px] font-bold text-gray-400 uppercase tracking-wider">
                                     O'quvchilar moliyaviy holati va qarzdorligi
                                 </p>
                                 <div className="flex items-center gap-1 bg-gray-55 dark:bg-gray-900 p-1 rounded-xl border border-gray-100 dark:border-gray-700/50 self-start sm:self-auto">
@@ -725,22 +725,22 @@ export default function Finance() {
                             {/* O'quvchilar moliyaviy holati bloklari */}
                             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                                 <div className="bg-rose-50 dark:bg-rose-950/20 rounded-2xl border border-rose-100 dark:border-rose-900/40 p-4">
-                                    <span className="text-[11px] font-black text-rose-500 uppercase tracking-widest block mb-1">Qarzdorlar</span>
+                                    <span className="text-[11px] font-bold text-rose-500 uppercase tracking-wider block mb-1">Qarzdorlar</span>
                                     <p className="text-2xl font-black text-rose-600 dark:text-rose-400">{metrics.debtors.length} ta</p>
                                     <p className="text-[11px] font-bold text-rose-400 mt-1 tabular-nums">{metrics.totalDebt.toLocaleString()} UZS</p>
                                 </div>
                                 <div className="bg-emerald-50 dark:bg-emerald-950/20 rounded-2xl border border-emerald-100 dark:border-emerald-900/40 p-4">
-                                    <span className="text-[11px] font-black text-emerald-500 uppercase tracking-widest block mb-1">Musbat balans</span>
+                                    <span className="text-[11px] font-bold text-emerald-500 uppercase tracking-wider block mb-1">Musbat balans</span>
                                     <p className="text-2xl font-black text-emerald-600 dark:text-emerald-400">{metrics.creditors.length} ta</p>
                                     <p className="text-[11px] font-bold text-emerald-400 mt-1 tabular-nums">{metrics.totalCredit.toLocaleString()} UZS</p>
                                 </div>
                                 <div className="bg-gray-50 dark:bg-gray-900/50 rounded-2xl border border-gray-100 dark:border-gray-700/50 p-4">
-                                    <span className="text-[11px] font-black text-gray-400 uppercase tracking-widest block mb-1">Nol balans</span>
+                                    <span className="text-[11px] font-bold text-gray-400 uppercase tracking-wider block mb-1">Nol balans</span>
                                     <p className="text-2xl font-black text-gray-600 dark:text-gray-300">{metrics.zeroBalanceCount} ta</p>
                                     <p className="text-[11px] font-bold text-gray-400 mt-1">to'langan</p>
                                 </div>
                                 <div className="bg-amber-50 dark:bg-amber-950/20 rounded-2xl border border-amber-100 dark:border-amber-900/40 p-4">
-                                    <span className="text-[11px] font-black text-amber-500 uppercase tracking-widest block mb-1">Bu oy to'lamagan</span>
+                                    <span className="text-[11px] font-bold text-amber-500 uppercase tracking-wider block mb-1">Bu oy to'lamagan</span>
                                     <p className="text-2xl font-black text-amber-600 dark:text-amber-400">{metrics.unpaidCount} ta</p>
                                     <p className="text-[11px] font-bold text-amber-400 mt-1">faol o'quvchi</p>
                                 </div>
@@ -750,7 +750,7 @@ export default function Finance() {
                         {/* Top qarzdorlar */}
                         {metrics.topDebtors.length > 0 && (
                             <div>
-                                <p className="text-[11px] font-black text-gray-400 uppercase tracking-widest mb-4">Eng ko'p qarzdorlar (top 5)</p>
+                                <p className="text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-4">Eng ko'p qarzdorlar (top 5)</p>
                                 <div className="space-y-2">
                                     {metrics.topDebtors.map((st, i) => (
                                         <div
@@ -759,7 +759,7 @@ export default function Finance() {
                                             className="flex items-center justify-between px-4 py-3 bg-rose-50/60 dark:bg-rose-950/10 border border-rose-100 dark:border-rose-900/30 rounded-xl hover:bg-rose-50 dark:hover:bg-rose-950/20 cursor-pointer transition-all group"
                                         >
                                             <div className="flex items-center gap-3">
-                                                <span className="text-[11px] font-black text-rose-300 w-5">{i + 1}.</span>
+                                                <span className="text-[11px] font-bold text-rose-300 w-5">{i + 1}.</span>
                                                 <div>
                                                     <p className="text-xs font-bold text-gray-900 dark:text-white uppercase">{st.name}</p>
                                                     {st.phone && <p className="text-[11px] text-gray-400 font-bold mt-0.5">{st.phone}</p>}
@@ -810,14 +810,14 @@ export default function Finance() {
                                     <div className="bg-gray-50 dark:bg-gray-900/40 rounded-2xl border border-gray-100 dark:border-gray-700/50 overflow-hidden">
                                         <div className="px-5 py-4 flex flex-col sm:flex-row sm:items-center gap-3 border-b border-gray-100 dark:border-gray-700/50">
                                             <div className="flex-1">
-                                                <p className="text-[11px] font-black text-gray-400 uppercase tracking-widest">To'lovlar ro'yxati</p>
+                                                <p className="text-[11px] font-bold text-gray-400 uppercase tracking-wider">To'lovlar ro'yxati</p>
                                                 <p className="text-[11px] font-bold text-[#1b6b6b] mt-0.5">{filterLabel} — {rPayments.length} ta yozuv • Jami: {rPayTotal.toLocaleString()} UZS</p>
                                             </div>
                                             <div className="flex items-center gap-2">
                                                 <div className="flex items-center gap-1 bg-white dark:bg-gray-800 p-1 rounded-xl border border-gray-100 dark:border-gray-700">
                                                     {(['thisMonth','lastMonth','all'] as const).map(f => (
                                                         <button key={f} onClick={() => { setReportFilter(f); setPayPage(0); setBalPage(0); }}
-                                                            className={`px-3 py-1 rounded-lg text-[11px] font-black uppercase tracking-wider transition-all cursor-pointer ${reportFilter === f ? 'bg-[#1b6b6b] text-white shadow' : 'text-gray-400 hover:text-gray-600'}`}>
+                                                            className={`px-3 py-1 rounded-lg text-[11px] font-bold uppercase tracking-wider transition-all cursor-pointer ${reportFilter === f ? 'bg-[#1b6b6b] text-white shadow' : 'text-gray-400 hover:text-gray-600'}`}>
                                                             {f === 'thisMonth' ? 'Bu oy' : f === 'lastMonth' ? "O'tgan oy" : 'Hammasi'}
                                                         </button>
                                                     ))}
@@ -826,7 +826,7 @@ export default function Finance() {
                                                     const s = students.find(st => st.id === p.studentId);
                                                     return { "O'quvchi": s?.name || '', "Summa (UZS)": p.amount, "Turi": p.type, "Sana": p.date, "Izoh": p.description || '' };
                                                 }))}
-                                                    className="flex items-center gap-1 px-3 py-1.5 bg-[#1b6b6b] hover:bg-[#155252] text-white text-[11px] font-black uppercase tracking-wider rounded-xl transition-all cursor-pointer">
+                                                    className="flex items-center gap-1 px-3 py-1.5 bg-[#1b6b6b] hover:bg-[#155252] text-white text-[11px] font-bold uppercase tracking-wider rounded-xl transition-all cursor-pointer">
                                                     <ArrowUpRight size={11} /> CSV
                                                 </button>
                                             </div>
@@ -836,13 +836,13 @@ export default function Finance() {
                                                 <thead>
                                                     <tr className="border-b border-gray-100 dark:border-gray-700/50">
                                                         {["O'QUVCHI", "SUMMA", "TURI", "SANA", "IZOH"].map(h => (
-                                                            <th key={h} className="py-3 px-4 text-[11px] font-black text-gray-400 uppercase tracking-widest whitespace-nowrap">{h}</th>
+                                                            <th key={h} className="py-3 px-4 text-[11px] font-bold text-gray-400 uppercase tracking-wider whitespace-nowrap">{h}</th>
                                                         ))}
                                                     </tr>
                                                 </thead>
                                                 <tbody className="divide-y divide-gray-100 dark:divide-gray-700/30">
                                                     {pagePayments.length === 0 ? (
-                                                        <tr><td colSpan={5} className="py-10 text-center text-[11px] font-bold text-gray-400 uppercase tracking-widest">To'lovlar topilmadi</td></tr>
+                                                        <tr><td colSpan={5} className="py-10 text-center text-[11px] font-bold text-gray-400 uppercase tracking-wider">To'lovlar topilmadi</td></tr>
                                                     ) : pagePayments.map(p => {
                                                         const s = students.find(st => st.id === p.studentId);
                                                         return (
@@ -850,7 +850,7 @@ export default function Finance() {
                                                                 className="hover:bg-white dark:hover:bg-gray-800/50 cursor-pointer transition-colors">
                                                                 <td className="py-3 px-4 text-xs font-bold text-gray-900 dark:text-white">{s?.name || 'Noma\'lum'}</td>
                                                                 <td className="py-3 px-4 text-xs font-black text-emerald-600 tabular-nums">+{p.amount.toLocaleString()} UZS</td>
-                                                                <td className="py-3 px-4"><span className="px-2 py-0.5 bg-gray-100 dark:bg-gray-700 text-[11px] font-black uppercase tracking-wider rounded-lg text-gray-600 dark:text-gray-300">{p.type}</span></td>
+                                                                <td className="py-3 px-4"><span className="px-2 py-0.5 bg-gray-100 dark:bg-gray-700 text-[11px] font-bold uppercase tracking-wider rounded-lg text-gray-600 dark:text-gray-300">{p.type}</span></td>
                                                                 <td className="py-3 px-4 text-[11px] font-bold text-gray-500 tabular-nums">{p.date}</td>
                                                                 <td className="py-3 px-4 text-[11px] text-gray-400">{p.description || '—'}</td>
                                                             </tr>
@@ -861,13 +861,13 @@ export default function Finance() {
                                         </div>
                                         {pTotalPages > 1 && (
                                             <div className="flex items-center justify-between px-5 py-3 border-t border-gray-100 dark:border-gray-700/50">
-                                                <span className="text-[11px] font-black text-gray-400 uppercase tracking-widest">{rPayments.length} ta yozuv</span>
+                                                <span className="text-[11px] font-bold text-gray-400 uppercase tracking-wider">{rPayments.length} ta yozuv</span>
                                                 <div className="flex items-center gap-2">
                                                     <button onClick={() => setPayPage(p => Math.max(0, p - 1))} disabled={pPage === 0}
-                                                        className="px-3 py-1 text-[11px] font-black uppercase tracking-wider border border-gray-200 dark:border-gray-700 rounded-lg disabled:opacity-30 hover:bg-gray-100 dark:hover:bg-gray-700 cursor-pointer transition-all">Oldin</button>
-                                                    <span className="text-[11px] font-black text-gray-600 dark:text-gray-300">{pPage + 1}/{pTotalPages}</span>
+                                                        className="px-3 py-1 text-[11px] font-bold uppercase tracking-wider border border-gray-200 dark:border-gray-700 rounded-lg disabled:opacity-30 hover:bg-gray-100 dark:hover:bg-gray-700 cursor-pointer transition-all">Oldin</button>
+                                                    <span className="text-[11px] font-bold text-gray-600 dark:text-gray-300">{pPage + 1}/{pTotalPages}</span>
                                                     <button onClick={() => setPayPage(p => Math.min(pTotalPages - 1, p + 1))} disabled={pPage === pTotalPages - 1}
-                                                        className="px-3 py-1 text-[11px] font-black uppercase tracking-wider border border-gray-200 dark:border-gray-700 rounded-lg disabled:opacity-30 hover:bg-gray-100 dark:hover:bg-gray-700 cursor-pointer transition-all">Keyin</button>
+                                                        className="px-3 py-1 text-[11px] font-bold uppercase tracking-wider border border-gray-200 dark:border-gray-700 rounded-lg disabled:opacity-30 hover:bg-gray-100 dark:hover:bg-gray-700 cursor-pointer transition-all">Keyin</button>
                                                 </div>
                                             </div>
                                         )}
@@ -877,14 +877,14 @@ export default function Finance() {
                                     <div className="bg-gray-50 dark:bg-gray-900/40 rounded-2xl border border-gray-100 dark:border-gray-700/50 overflow-hidden">
                                         <div className="px-5 py-4 flex items-center justify-between border-b border-gray-100 dark:border-gray-700/50">
                                             <div>
-                                                <p className="text-[11px] font-black text-gray-400 uppercase tracking-widest">Barcha talabalar balansi</p>
+                                                <p className="text-[11px] font-bold text-gray-400 uppercase tracking-wider">Barcha talabalar balansi</p>
                                                 <p className="text-[11px] font-bold text-[#1b6b6b] mt-0.5">{allStudents.length} ta o'quvchi</p>
                                             </div>
                                             <button onClick={() => downloadCSV('talabalar_balansi.csv', allStudents.map(s => {
                                                 const lp = lastPayMap[s.id];
                                                 return { "Ism Familiya": s.name, "Status": s.status, "Balans (UZS)": s.balance, "So'nggi to'lov": lp?.date || '—', "Summa": lp ? lp.amount : 0 };
                                             }))}
-                                                className="flex items-center gap-1 px-3 py-1.5 bg-[#1b6b6b] hover:bg-[#155252] text-white text-[11px] font-black uppercase tracking-wider rounded-xl transition-all cursor-pointer">
+                                                className="flex items-center gap-1 px-3 py-1.5 bg-[#1b6b6b] hover:bg-[#155252] text-white text-[11px] font-bold uppercase tracking-wider rounded-xl transition-all cursor-pointer">
                                                 <ArrowUpRight size={11} /> CSV
                                             </button>
                                         </div>
@@ -893,20 +893,20 @@ export default function Finance() {
                                                 <thead>
                                                     <tr className="border-b border-gray-100 dark:border-gray-700/50">
                                                         {["ISM FAMILIYA", "STATUS", "BALANS (UZS)", "SO'NGGI TO'LOV", "SUMMA"].map(h => (
-                                                            <th key={h} className="py-3 px-4 text-[11px] font-black text-gray-400 uppercase tracking-widest whitespace-nowrap">{h}</th>
+                                                            <th key={h} className="py-3 px-4 text-[11px] font-bold text-gray-400 uppercase tracking-wider whitespace-nowrap">{h}</th>
                                                         ))}
                                                     </tr>
                                                 </thead>
                                                 <tbody className="divide-y divide-gray-100 dark:divide-gray-700/30">
                                                     {pageStudents.length === 0 ? (
-                                                        <tr><td colSpan={5} className="py-10 text-center text-[11px] font-bold text-gray-400 uppercase tracking-widest">O'quvchilar topilmadi</td></tr>
+                                                        <tr><td colSpan={5} className="py-10 text-center text-[11px] font-bold text-gray-400 uppercase tracking-wider">O'quvchilar topilmadi</td></tr>
                                                     ) : pageStudents.map(s => {
                                                         const lp = lastPayMap[s.id];
                                                         return (
                                                             <tr key={s.id} onClick={() => navigate(`/students/${s.id}`)}
                                                                 className="hover:bg-white dark:hover:bg-gray-800/50 cursor-pointer transition-colors">
                                                                 <td className="py-3 px-4 text-xs font-bold text-gray-900 dark:text-white">{s.name}</td>
-                                                                <td className="py-3 px-4"><span className={`px-2 py-0.5 text-[11px] font-black uppercase tracking-wider rounded-lg ${s.status === 'Faol' ? 'bg-emerald-50 text-emerald-600 dark:bg-emerald-950/20 dark:text-emerald-400' : 'bg-gray-100 text-gray-500 dark:bg-gray-700 dark:text-gray-400'}`}>{s.status}</span></td>
+                                                                <td className="py-3 px-4"><span className={`px-2 py-0.5 text-[11px] font-bold uppercase tracking-wider rounded-lg ${s.status === 'Faol' ? 'bg-emerald-50 text-emerald-600 dark:bg-emerald-950/20 dark:text-emerald-400' : 'bg-gray-100 text-gray-500 dark:bg-gray-700 dark:text-gray-400'}`}>{s.status}</span></td>
                                                                 <td className={`py-3 px-4 text-xs font-black tabular-nums ${s.balance < 0 ? 'text-rose-600' : s.balance > 0 ? 'text-emerald-600' : 'text-gray-500'}`}>{s.balance.toLocaleString()}</td>
                                                                 <td className="py-3 px-4 text-[11px] font-bold text-gray-500 tabular-nums">{lp?.date || '—'}</td>
                                                                 <td className="py-3 px-4 text-[11px] font-bold text-gray-600 dark:text-gray-300 tabular-nums">{lp ? lp.amount.toLocaleString() + ' UZS' : '—'}</td>
@@ -918,13 +918,13 @@ export default function Finance() {
                                         </div>
                                         {bTotalPages > 1 && (
                                             <div className="flex items-center justify-between px-5 py-3 border-t border-gray-100 dark:border-gray-700/50">
-                                                <span className="text-[11px] font-black text-gray-400 uppercase tracking-widest">{allStudents.length} ta o'quvchi</span>
+                                                <span className="text-[11px] font-bold text-gray-400 uppercase tracking-wider">{allStudents.length} ta o'quvchi</span>
                                                 <div className="flex items-center gap-2">
                                                     <button onClick={() => setBalPage(p => Math.max(0, p - 1))} disabled={bPage === 0}
-                                                        className="px-3 py-1 text-[11px] font-black uppercase tracking-wider border border-gray-200 dark:border-gray-700 rounded-lg disabled:opacity-30 hover:bg-gray-100 dark:hover:bg-gray-700 cursor-pointer transition-all">Oldin</button>
-                                                    <span className="text-[11px] font-black text-gray-600 dark:text-gray-300">{bPage + 1}/{bTotalPages}</span>
+                                                        className="px-3 py-1 text-[11px] font-bold uppercase tracking-wider border border-gray-200 dark:border-gray-700 rounded-lg disabled:opacity-30 hover:bg-gray-100 dark:hover:bg-gray-700 cursor-pointer transition-all">Oldin</button>
+                                                    <span className="text-[11px] font-bold text-gray-600 dark:text-gray-300">{bPage + 1}/{bTotalPages}</span>
                                                     <button onClick={() => setBalPage(p => Math.min(bTotalPages - 1, p + 1))} disabled={bPage === bTotalPages - 1}
-                                                        className="px-3 py-1 text-[11px] font-black uppercase tracking-wider border border-gray-200 dark:border-gray-700 rounded-lg disabled:opacity-30 hover:bg-gray-100 dark:hover:bg-gray-700 cursor-pointer transition-all">Keyin</button>
+                                                        className="px-3 py-1 text-[11px] font-bold uppercase tracking-wider border border-gray-200 dark:border-gray-700 rounded-lg disabled:opacity-30 hover:bg-gray-100 dark:hover:bg-gray-700 cursor-pointer transition-all">Keyin</button>
                                                 </div>
                                             </div>
                                         )}
@@ -942,7 +942,7 @@ export default function Finance() {
                         <div className="flex items-center justify-between gap-4">
                             <div>
                                 <h3 className="text-base font-black text-gray-900 dark:text-white uppercase tracking-tight">Oylik hisob-kitob kitobi</h3>
-                                <p className="text-[11px] font-bold text-gray-400 uppercase tracking-widest mt-0.5">Moliyaviy nazorat paneli</p>
+                                <p className="text-[11px] font-bold text-gray-400 uppercase tracking-wider mt-0.5">Moliyaviy nazorat paneli</p>
                             </div>
                             <div className="flex items-center gap-2 bg-gray-50 dark:bg-gray-900/60 p-1.5 rounded-2xl border border-gray-100 dark:border-gray-700/50">
                                 <button onClick={prevBillingMonth} className="w-8 h-8 flex items-center justify-center rounded-xl border border-gray-200 dark:border-gray-700 hover:bg-gray-100 dark:hover:bg-gray-800 transition-all cursor-pointer">
@@ -959,7 +959,7 @@ export default function Finance() {
  
                         {/* Billing status badge */}
                         {billingData && (
-                            <div className={`flex items-center gap-2 px-4 py-3 rounded-2xl border text-[11px] font-black uppercase tracking-widest ${billingData.billingDone ? 'bg-emerald-50 dark:bg-emerald-950/20 border-emerald-100 dark:border-emerald-900/40 text-emerald-700 dark:text-emerald-400' : 'bg-gray-50 dark:bg-gray-950/20 border-gray-100 dark:border-gray-900/40 text-gray-500'}`}>
+                            <div className={`flex items-center gap-2 px-4 py-3 rounded-2xl border text-[11px] font-bold uppercase tracking-wider ${billingData.billingDone ? 'bg-emerald-50 dark:bg-emerald-950/20 border-emerald-100 dark:border-emerald-900/40 text-emerald-700 dark:text-emerald-400' : 'bg-gray-50 dark:bg-gray-950/20 border-gray-100 dark:border-gray-900/40 text-gray-500'}`}>
                                 {billingData.billingDone
                                     ? <><CheckCircle2 size={14} /> {billingMonthLabel(billingMonth)} — oylik hisob-kitob avtomatik o'tkazilgan</>
                                     : <><AlertCircle size={14} /> {billingMonthLabel(billingMonth)} — kelgusi oy uchun hisob-kitob hali boshlanmagan</>
@@ -986,7 +986,7 @@ export default function Finance() {
                         {billingLoading && !billingData && (
                             <div className="py-16 text-center">
                                 <RefreshCw size={24} className="animate-spin text-violet-400 mx-auto mb-2" />
-                                <p className="text-[11px] font-bold text-gray-400 uppercase tracking-widest">Ma'lumot yuklanmoqda...</p>
+                                <p className="text-[11px] font-bold text-gray-400 uppercase tracking-wider">Ma'lumot yuklanmoqda...</p>
                             </div>
                         )}
 
@@ -995,7 +995,7 @@ export default function Finance() {
                             <div className="bg-gray-50 dark:bg-gray-900/40 rounded-2xl border border-gray-100 dark:border-gray-700/50 overflow-hidden">
                                 <div className="px-5 py-4 flex flex-col sm:flex-row sm:items-center gap-3 border-b border-gray-100 dark:border-gray-700/50">
                                     <div className="flex-1">
-                                        <p className="text-[11px] font-black text-gray-400 uppercase tracking-widest">O'quvchilar to'lov holati</p>
+                                        <p className="text-[11px] font-bold text-gray-400 uppercase tracking-wider">O'quvchilar to'lov holati</p>
                                         <p className="text-[11px] font-bold text-violet-600 mt-0.5">{billingData.students.length} ta faol o'quvchi</p>
                                     </div>
                                     <div className="flex items-center gap-1 bg-white dark:bg-gray-800 p-1 rounded-xl border border-gray-100 dark:border-gray-700">
@@ -1014,7 +1014,7 @@ export default function Finance() {
                                         <thead>
                                             <tr className="border-b border-gray-100 dark:border-gray-700/50">
                                                 {["O'QUVCHI", "GURUHLAR", "KUTILGAN", "TO'LANGAN", "BALANS", "HOLAT"].map(h => (
-                                                    <th key={h} className="py-3 px-4 text-[11px] font-black text-gray-400 uppercase tracking-widest whitespace-nowrap">{h}</th>
+                                                    <th key={h} className="py-3 px-4 text-[11px] font-bold text-gray-400 uppercase tracking-wider whitespace-nowrap">{h}</th>
                                                 ))}
                                             </tr>
                                         </thead>
@@ -1031,7 +1031,7 @@ export default function Finance() {
                                                         <td className="py-3 px-4">
                                                             <div className="flex flex-wrap gap-1">
                                                                 {st.groups.map((g: any) => (
-                                                                    <span key={g.groupId} className="px-1.5 py-0.5 bg-violet-50 dark:bg-violet-950/20 text-[10px] font-black uppercase tracking-wider text-violet-600 dark:text-violet-400 rounded-md">
+                                                                    <span key={g.groupId} className="px-1.5 py-0.5 bg-violet-50 dark:bg-violet-950/20 text-[10px] font-bold uppercase tracking-wider text-violet-600 dark:text-violet-400 rounded-md">
                                                                         {g.groupName}
                                                                     </span>
                                                                 ))}
@@ -1043,7 +1043,7 @@ export default function Finance() {
                                                             {st.balance.toLocaleString()} UZS
                                                         </td>
                                                         <td className="py-3 px-4">
-                                                            <span className={`px-2 py-1 text-[10px] font-black uppercase tracking-widest rounded-lg ${st.status === 'paid' ? 'bg-emerald-50 text-emerald-600 dark:bg-emerald-950/20 dark:text-emerald-400' : st.status === 'partial' ? 'bg-amber-50 text-amber-600 dark:bg-amber-950/20 dark:text-amber-400' : 'bg-rose-50 text-rose-600 dark:bg-rose-950/20 dark:text-rose-400'}`}>
+                                                            <span className={`px-2 py-1 text-[10px] font-bold uppercase tracking-wider rounded-lg ${st.status === 'paid' ? 'bg-emerald-50 text-emerald-600 dark:bg-emerald-950/20 dark:text-emerald-400' : st.status === 'partial' ? 'bg-amber-50 text-amber-600 dark:bg-amber-950/20 dark:text-amber-400' : 'bg-rose-50 text-rose-600 dark:bg-rose-950/20 dark:text-rose-400'}`}>
                                                                 {st.status === 'paid' ? "To'lagan" : st.status === 'partial' ? 'Qisman' : "To'lamagan"}
                                                             </span>
                                                         </td>
@@ -1058,7 +1058,7 @@ export default function Finance() {
                         {/* Groups breakdown */}
                         {billingData && billingData.groups.length > 0 && (
                             <div>
-                                <p className="text-[11px] font-black text-gray-400 uppercase tracking-widest mb-4">Guruhlar bo'yicha breakdown</p>
+                                <p className="text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-4">Guruhlar bo'yicha breakdown</p>
                                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                                     {billingData.groups.filter(g => g.totalStudents > 0).map((g: any) => (
                                         <div key={g.groupId} className="bg-gray-50 dark:bg-gray-900/40 rounded-2xl border border-gray-100 dark:border-gray-700/50 p-4">
@@ -1067,7 +1067,7 @@ export default function Finance() {
                                                     <p className="text-xs font-black text-gray-900 dark:text-white">{g.groupName}</p>
                                                     <p className="text-[11px] text-gray-400 font-bold mt-0.5">{g.courseName}</p>
                                                 </div>
-                                                <span className="text-[11px] font-black text-violet-600 bg-violet-50 dark:bg-violet-950/20 px-2 py-0.5 rounded-lg">{g.totalStudents} o'quvchi</span>
+                                                <span className="text-[11px] font-bold text-violet-600 bg-violet-50 dark:bg-violet-950/20 px-2 py-0.5 rounded-lg">{g.totalStudents} o'quvchi</span>
                                             </div>
                                             <div className="grid grid-cols-2 gap-2 text-[11px]">
                                                 <div className="bg-emerald-50 dark:bg-emerald-950/20 rounded-xl px-3 py-2">
@@ -1093,7 +1093,7 @@ export default function Finance() {
                         {billingData && billingData.students.filter((st: any) => st.status !== 'paid').length > 0 && (
                             <div className="flex justify-end">
                                 <button
-                                    className="flex items-center gap-2 px-5 py-3 bg-[#1b6b6b] hover:bg-[#155252] text-white rounded-xl text-[11px] font-black uppercase tracking-widest transition-all cursor-pointer shadow-lg shadow-[#1b6b6b]/20"
+                                    className="flex items-center gap-2 px-5 py-3 bg-[#1b6b6b] hover:bg-[#155252] text-white rounded-xl text-[11px] font-bold uppercase tracking-wider transition-all cursor-pointer shadow-lg shadow-[#1b6b6b]/20"
                                     onClick={() => setShowDebtNotifyModal(true)}
                                 >
                                     <MessageSquare size={14} />
@@ -1105,8 +1105,8 @@ export default function Finance() {
                         {!billingData && !billingLoading && (
                             <div className="py-16 text-center">
                                 <Calendar size={32} className="text-gray-300 mx-auto mb-3" />
-                                <p className="text-[11px] font-bold text-gray-400 uppercase tracking-widest">Ma'lumot yuklanmadi</p>
-                                <button onClick={loadBillingStatus} className="mt-3 text-[11px] font-black text-violet-600 hover:underline cursor-pointer uppercase tracking-widest">Qayta urinish</button>
+                                <p className="text-[11px] font-bold text-gray-400 uppercase tracking-wider">Ma'lumot yuklanmadi</p>
+                                <button onClick={loadBillingStatus} className="mt-3 text-[11px] font-bold text-violet-600 hover:underline cursor-pointer uppercase tracking-wider">Qayta urinish</button>
                             </div>
                         )}
                     </div>
@@ -1115,16 +1115,16 @@ export default function Finance() {
                 {/* Summary row — only for payments/expenses */}
                 {(activeTab === 'payments' || activeTab === 'expenses') && (
                     <div className="px-6 py-3 border-b border-gray-50 dark:border-gray-700/30 flex items-center gap-4">
-                        <span className="text-[11px] font-black text-gray-400 uppercase tracking-widest">{dateLabel}</span>
+                        <span className="text-[11px] font-bold text-gray-400 uppercase tracking-wider">{dateLabel}</span>
                         {activeTab === 'payments' ? (
                             <>
-                                <span className="text-[11px] font-black text-gray-400">{filteredPayments.length} ta to'lov</span>
-                                <span className="text-[11px] font-black text-emerald-600 tabular-nums ml-auto">+{filteredRevenue.toLocaleString()} UZS</span>
+                                <span className="text-[11px] font-bold text-gray-400">{filteredPayments.length} ta to'lov</span>
+                                <span className="text-[11px] font-bold text-emerald-600 tabular-nums ml-auto">+{filteredRevenue.toLocaleString()} UZS</span>
                             </>
                         ) : (
                             <>
-                                <span className="text-[11px] font-black text-gray-400">{filteredExpenses.length} ta xarajat</span>
-                                <span className="text-[11px] font-black text-rose-600 tabular-nums ml-auto">-{filteredExpenditure.toLocaleString()} UZS</span>
+                                <span className="text-[11px] font-bold text-gray-400">{filteredExpenses.length} ta xarajat</span>
+                                <span className="text-[11px] font-bold text-rose-600 tabular-nums ml-auto">-{filteredExpenditure.toLocaleString()} UZS</span>
                             </>
                         )}
                     </div>
@@ -1135,7 +1135,7 @@ export default function Finance() {
                     <div className="divide-y divide-gray-50 dark:divide-gray-700/30 max-h-[520px] overflow-y-auto">
                         {activeTab === 'payments' ? (
                             filteredPayments.length === 0 ? (
-                                <p className="text-center py-12 text-[11px] text-gray-400 font-bold uppercase tracking-widest">To'lovlar topilmadi</p>
+                                <p className="text-center py-12 text-[11px] text-gray-400 font-bold uppercase tracking-wider">To'lovlar topilmadi</p>
                             ) : filteredPayments.map(p => {
                                 const student = students.find(s => s.id === p.studentId);
                                 return (
@@ -1160,7 +1160,7 @@ export default function Finance() {
                             })
                         ) : (
                             filteredExpenses.length === 0 ? (
-                                <p className="text-center py-12 text-[11px] text-gray-400 font-bold uppercase tracking-widest">Xarajatlar topilmadi</p>
+                                <p className="text-center py-12 text-[11px] text-gray-400 font-bold uppercase tracking-wider">Xarajatlar topilmadi</p>
                             ) : filteredExpenses.map(e => (
                                 <div key={e.id} className="flex items-center justify-between px-6 py-3.5 hover:bg-gray-50/70 dark:hover:bg-gray-900/40 transition-all">
                                     <div className="flex items-center gap-3 min-w-0">
@@ -1171,7 +1171,7 @@ export default function Finance() {
                                             <p className="text-xs font-bold text-gray-900 dark:text-white uppercase truncate">
                                                 {e.category}
                                                 {e.category === 'Ish haqi' && (e as any).staffName && (
-                                                    <span className="ml-1.5 text-[11px] font-black text-rose-500 normal-case tracking-normal">
+                                                    <span className="ml-1.5 text-[11px] font-bold text-rose-500 normal-case tracking-normal">
                                                         — {(e as any).staffName}
                                                     </span>
                                                 )}
@@ -1204,7 +1204,7 @@ ${e.description || e.category} — ${Number(e.amount).toLocaleString()} so'm`)) 
                             <div className="space-y-6">
                                 <div className="text-center space-y-1">
                                     <h3 className="text-sm font-black uppercase tracking-widest text-[#1b6b6b] dark:text-teal-400">SARIOSIYO CENTER</h3>
-                                    <p className="text-[11px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-widest">TO'LOV CHEKI (RECEIPT)</p>
+                                    <p className="text-[11px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-wider">TO'LOV CHEKI (RECEIPT)</p>
                                 </div>
                                 <div className="bg-gray-50 dark:bg-gray-900/30 p-6 rounded-3xl border border-gray-100 dark:border-gray-750 font-mono text-xs text-gray-800 dark:text-gray-300 space-y-4 shadow-inner">
                                     <div className="border-b border-dashed border-gray-300 dark:border-gray-700 pb-3 space-y-1">
@@ -1249,7 +1249,7 @@ ${e.description || e.category} — ${Number(e.amount).toLocaleString()} so'm`)) 
                                             </span>
                                         </div>
                                     </div>
-                                    <div className="border-t border-dashed border-gray-300 dark:border-gray-700 pt-3 text-center text-[11px] text-gray-400 uppercase tracking-widest font-bold">
+                                    <div className="border-t border-dashed border-gray-300 dark:border-gray-700 pt-3 text-center text-[11px] text-gray-400 uppercase tracking-wider font-bold">
                                         To'lovingiz uchun rahmat!
                                     </div>
                                 </div>
@@ -1269,7 +1269,7 @@ ${e.description || e.category} — ${Number(e.amount).toLocaleString()} so'm`)) 
                                 <div className="flex items-center justify-between mb-6 pb-4 border-b border-gray-50 dark:border-gray-700/50">
                                     <div>
                                         <h3 className="text-lg font-black text-gray-900 dark:text-white uppercase tracking-tight">Yangi Kirim</h3>
-                                        <p className="text-[11px] font-bold text-[#1b6b6b] uppercase tracking-widest mt-0.5">To'lov qabul qilish</p>
+                                        <p className="text-[11px] font-bold text-[#1b6b6b] uppercase tracking-wider mt-0.5">To'lov qabul qilish</p>
                                     </div>
                                     <button onClick={closePaymentModal} className="w-9 h-9 flex items-center justify-center text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700 rounded-xl cursor-pointer" aria-label="Yopish"><X size={18} /></button>
                                 </div>
@@ -1325,23 +1325,23 @@ ${e.description || e.category} — ${Number(e.amount).toLocaleString()} so'm`)) 
                                         <div className="p-4 bg-gray-50 dark:bg-gray-900/50 rounded-2xl border border-gray-100 dark:border-gray-800/80 relative space-y-3">
                                             <button type="button"
                                                 onClick={() => { setSelectedStudent(null); setNewPayment({ ...newPayment, studentId: 0 }); }}
-                                                className="absolute top-3.5 right-3.5 text-[11px] text-rose-500 font-black uppercase tracking-wider hover:underline cursor-pointer bg-white dark:bg-gray-800 px-2.5 py-1 rounded-lg border border-gray-100 dark:border-gray-700">
+                                                className="absolute top-3.5 right-3.5 text-[11px] text-rose-500 font-bold uppercase tracking-wider hover:underline cursor-pointer bg-white dark:bg-gray-800 px-2.5 py-1 rounded-lg border border-gray-100 dark:border-gray-700">
                                                 O'zgartirish
                                             </button>
                                             <div>
-                                                <span className="text-[10px] font-black text-[#1b6b6b] uppercase tracking-widest block">Tanlangan o'quvchi</span>
+                                                <span className="text-[10px] font-bold text-[#1b6b6b] uppercase tracking-wider block">Tanlangan o'quvchi</span>
                                                 <h4 className="text-xs font-bold text-gray-900 dark:text-white mt-0.5">{selectedStudent.name}</h4>
                                                 {selectedStudent.phone && <p className="text-[11px] text-gray-400 font-bold mt-0.5">{selectedStudent.phone}</p>}
                                             </div>
                                             <div className="grid grid-cols-2 gap-3 pt-2 border-t border-dashed border-gray-200 dark:border-gray-700/50">
                                                 <div>
-                                                    <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest block">Joriy Balans</span>
-                                                    <span className={`text-[12px] font-black block mt-0.5 tabular-nums ${selectedStudent.balance >= 0 ? 'text-emerald-600' : 'text-rose-600'}`}>
+                                                    <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider block">Joriy Balans</span>
+                                                    <span className={`text-[12px] font-bold block mt-0.5 tabular-nums ${selectedStudent.balance >= 0 ? 'text-emerald-600' : 'text-rose-600'}`}>
                                                         {selectedStudent.balance.toLocaleString()} UZS
                                                     </span>
                                                 </div>
                                                 <div>
-                                                    <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest block">Oxirgi to'lov</span>
+                                                    <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider block">Oxirgi to'lov</span>
                                                     {(() => {
                                                         const sp = payments.filter(p => p.studentId === selectedStudent.id && p.amount > 0);
                                                         const lp = sp.length > 0 ? sp[sp.length - 1] : null;
@@ -1352,7 +1352,7 @@ ${e.description || e.category} — ${Number(e.amount).toLocaleString()} so'm`)) 
                                                 </div>
                                             </div>
                                             <div className="pt-2 border-t border-dashed border-gray-200 dark:border-gray-700/50">
-                                                <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest block">Kurslar</span>
+                                                <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider block">Kurslar</span>
                                                 {(() => {
                                                     const sg = groups.filter(g => (g.studentIds || []).includes(selectedStudent.id));
                                                     return sg.length > 0 ? (
@@ -1360,7 +1360,7 @@ ${e.description || e.category} — ${Number(e.amount).toLocaleString()} so'm`)) 
                                                             {sg.map(g => {
                                                                 const cn = courses.find(c => c.id === g.courseId)?.name || '';
                                                                 return (
-                                                                    <span key={g.id} className="px-2 py-0.5 bg-white dark:bg-gray-800 text-[10px] font-black uppercase tracking-wider text-[#1b6b6b] border border-teal-100/50 dark:border-teal-900/40 rounded-md">
+                                                                    <span key={g.id} className="px-2 py-0.5 bg-white dark:bg-gray-800 text-[10px] font-bold uppercase tracking-wider text-[#1b6b6b] border border-teal-100/50 dark:border-teal-900/40 rounded-md">
                                                                         {g.name}{cn && ` (${cn})`}
                                                                     </span>
                                                                 );
@@ -1381,7 +1381,7 @@ ${e.description || e.category} — ${Number(e.amount).toLocaleString()} so'm`)) 
                                             {[300000, 400000, 500000, 600000, 800000].map(amt => (
                                                 <button key={amt} type="button"
                                                     onClick={() => setNewPayment({ ...newPayment, amount: amt })}
-                                                    className={`px-3 py-1.5 text-[11px] font-black uppercase tracking-wider border rounded-xl transition-all cursor-pointer ${newPayment.amount === amt ? 'bg-[#1b6b6b] border-[#1b6b6b] text-white shadow-sm' : 'bg-gray-50 dark:bg-gray-900/30 dark:border-gray-800 hover:bg-gray-100 text-gray-500 dark:text-gray-400'}`}>
+                                                    className={`px-3 py-1.5 text-[11px] font-bold uppercase tracking-wider border rounded-xl transition-all cursor-pointer ${newPayment.amount === amt ? 'bg-[#1b6b6b] border-[#1b6b6b] text-white shadow-sm' : 'bg-gray-50 dark:bg-gray-900/30 dark:border-gray-800 hover:bg-gray-100 text-gray-500 dark:text-gray-400'}`}>
                                                     {amt.toLocaleString()}
                                                 </button>
                                             ))}
@@ -1433,7 +1433,7 @@ ${e.description || e.category} — ${Number(e.amount).toLocaleString()} so'm`)) 
                         <div className="flex items-center justify-between mb-6 pb-4 border-b border-gray-50 dark:border-gray-700/50">
                             <div>
                                 <h3 className="text-lg font-black text-gray-900 dark:text-white uppercase tracking-tight">Yangi Chiqim</h3>
-                                <p className="text-[11px] font-bold text-rose-600 uppercase tracking-widest mt-0.5">Xarajat kiritish</p>
+                                <p className="text-[11px] font-bold text-rose-600 uppercase tracking-wider mt-0.5">Xarajat kiritish</p>
                             </div>
                             <button aria-label="Yopish" onClick={() => setIsExpenseModalOpen(false)} className="w-9 h-9 flex items-center justify-center text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700 rounded-xl cursor-pointer"><X size={18} /></button>
                         </div>
@@ -1540,7 +1540,7 @@ ${e.description || e.category} — ${Number(e.amount).toLocaleString()} so'm`)) 
                         <div className="flex items-center justify-between mb-6 pb-4 border-b border-gray-50 dark:border-gray-700/50">
                             <div>
                                 <h3 className="text-sm font-black text-gray-900 dark:text-white uppercase tracking-tight text-[#1b6b6b]">Qarzdorlarga Xabar Yuborish</h3>
-                                <p className="text-[11px] font-bold text-gray-400 uppercase tracking-widest mt-0.5">Oylik hisob-kitob bo'yicha</p>
+                                <p className="text-[11px] font-bold text-gray-400 uppercase tracking-wider mt-0.5">Oylik hisob-kitob bo'yicha</p>
                             </div>
                             <button aria-label="Yopish" onClick={() => setShowDebtNotifyModal(false)} className="w-9 h-9 flex items-center justify-center text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700 rounded-xl cursor-pointer"><X size={18} /></button>
                         </div>

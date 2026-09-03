@@ -1352,7 +1352,7 @@ function OMRDemo({ lang, t }: { lang: 'uz' | 'en'; t: (s: string) => any }) {
             <span className="absolute bottom-2 right-2 w-3 h-3 bg-black"></span>
 
             <div className="text-center mb-2">
-              <div className="text-[11px] font-bold tracking-widest text-black/60">QUANTUM · OMR</div>
+              <div className="text-[11px] font-bold tracking-wider text-black/60">QUANTUM · OMR</div>
               <div className="text-[11px] font-bold">{lang==='en'?'TEST SHEET · 20 questions':"TEST VARAQA · 20 savol"}</div>
             </div>
 

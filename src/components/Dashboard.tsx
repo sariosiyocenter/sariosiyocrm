@@ -150,10 +150,10 @@ export default function Dashboard() {
     }, [leads, startDate, endDate]);
 
     const stats = [
-        { label: t('stat_active_students'), value: students.filter(s => s.status === 'Faol').length, icon: GraduationCap, accent: '#1b6b6b', path: '/students' },
-        { label: t('stat_groups'), value: groups.length, icon: Users, accent: '#6366f1', path: '/courses' },
-        { label: t('stat_teachers'), value: teachers.filter(t => t.status === 'Faol').length, icon: BookOpen, accent: '#f59e0b', path: '/teachers' },
-        { label: t('stat_new_leads'), value: periodNewLeads, icon: Target, accent: '#ec4899', path: '/leads' },
+        { label: t('stat_active_students'), value: students.filter(s => s.status === 'Faol').length, icon: GraduationCap, accent: 'var(--brand-color)', path: '/students' },
+        { label: t('stat_groups'), value: groups.length, icon: Users, accent: 'var(--brand-color)', path: '/courses' },
+        { label: t('stat_teachers'), value: teachers.filter(t => t.status === 'Faol').length, icon: BookOpen, accent: 'var(--brand-color)', path: '/teachers' },
+        { label: t('stat_new_leads'), value: periodNewLeads, icon: Target, accent: 'var(--brand-color)', path: '/leads' },
     ];
 
     const PRIMARY_REPORTS = [
@@ -193,7 +193,7 @@ export default function Dashboard() {
                         </div>
                         <div>
                             <h1 className="text-lg font-black text-gray-900 dark:text-white uppercase tracking-tight">{t('dashboard_title')}</h1>
-                            <p className="text-[11px] font-bold text-gray-400 uppercase tracking-widest mt-0.5">
+                            <p className="text-[11px] font-bold text-gray-400 uppercase tracking-wider mt-0.5">
                                 {t('dashboard_subtitle')}
                             </p>
                         </div>
@@ -253,7 +253,7 @@ export default function Dashboard() {
                             className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700/50 p-5 hover:shadow-lg hover:border-gray-250 transition-all cursor-pointer group flex items-center justify-between"
                         >
                             <div>
-                                <span className="text-[11px] font-extrabold text-gray-400 uppercase tracking-widest block mb-1">{stat.label}</span>
+                                <span className="text-[11px] font-extrabold text-gray-400 uppercase tracking-wider block mb-1">{stat.label}</span>
                                 <h4 className="text-2xl font-black text-gray-900 dark:text-white tracking-tight tabular-nums">{stat.value}</h4>
                             </div>
                             <div
@@ -295,7 +295,7 @@ export default function Dashboard() {
                             ].map((item, i) => (
                                 <div key={i} className="bg-gray-55 dark:bg-gray-900/60 rounded-2xl p-4 border border-gray-100 dark:border-gray-700/50">
                                     <div className="flex items-center justify-between mb-2">
-                                        <span className="text-[11px] font-bold text-gray-400 uppercase tracking-widest">{item.label}</span>
+                                        <span className="text-[11px] font-bold text-gray-400 uppercase tracking-wider">{item.label}</span>
                                         <item.icon size={14} className={item.positive ? 'text-emerald-500' : 'text-rose-500'} />
                                     </div>
                                     <div className="flex items-end justify-between">
@@ -317,8 +317,8 @@ export default function Dashboard() {
                         {/* Chart Area */}
                         <div className="bg-gray-55 dark:bg-gray-900/40 rounded-2xl p-5 border border-gray-100 dark:border-gray-700/50">
                             <div className="flex items-center justify-between mb-5">
-                                <span className="text-[11px] font-bold text-gray-400 uppercase tracking-widest">So'nggi 6 oy (mln so'm)</span>
-                                <span className="text-[11px] font-black text-[#1b6b6b] uppercase tracking-wider tabular-nums">Jami: {total6Months.toFixed(1)}M</span>
+                                <span className="text-[11px] font-bold text-gray-400 uppercase tracking-wider">So'nggi 6 oy (mln so'm)</span>
+                                <span className="text-[11px] font-bold text-[#1b6b6b] uppercase tracking-wider tabular-nums">Jami: {total6Months.toFixed(1)}M</span>
                             </div>
                             <div className="h-[150px] flex items-end gap-4">
                                 {chartDataValues.map((val, i) => (
@@ -330,7 +330,7 @@ export default function Dashboard() {
                                             className="w-full bg-[#1b6b6b] rounded-lg hover:bg-[#2e9c9c] transition-colors cursor-pointer min-h-[4px]"
                                             style={{ height: `${(val / maxVal) * 110}px` }}
                                         />
-                                        <span className="text-[11px] font-bold text-gray-400 uppercase tracking-widest">{chartLabels[i]}</span>
+                                        <span className="text-[11px] font-bold text-gray-400 uppercase tracking-wider">{chartLabels[i]}</span>
                                     </div>
                                 ))}
                             </div>
@@ -368,7 +368,7 @@ export default function Dashboard() {
                                     </div>
                                     <div className="flex-1 min-w-0">
                                         <p className="text-xs font-bold text-gray-900 dark:text-white truncate uppercase tracking-tight">{item.title}</p>
-                                        <p className="text-[11px] text-gray-400 font-bold block mt-0.5 uppercase tracking-widest">{item.desc}</p>
+                                        <p className="text-[11px] text-gray-400 font-bold block mt-0.5 uppercase tracking-wider">{item.desc}</p>
                                     </div>
                                     <ChevronRight size={14} className="text-gray-300 group-hover:text-gray-500 transition-colors" />
                                 </div>
@@ -389,7 +389,7 @@ export default function Dashboard() {
                                 <div key={i}>
                                     <div className="flex items-center justify-between mb-1.5">
                                         <span className="text-[11px] font-bold text-gray-700 dark:text-gray-300 truncate max-w-[130px] uppercase tracking-wide">{course.name}</span>
-                                        <span className="text-[11px] font-black text-[#1b6b6b] tabular-nums">{(course.revenue / 1000000).toFixed(1)}M UZS</span>
+                                        <span className="text-[11px] font-bold text-[#1b6b6b] tabular-nums">{(course.revenue / 1000000).toFixed(1)}M UZS</span>
                                     </div>
                                     <div className="h-1.5 w-full bg-gray-50 dark:bg-gray-700 rounded-full overflow-hidden">
                                         <div
@@ -397,11 +397,11 @@ export default function Dashboard() {
                                             style={{ width: `${(course.revenue / (topCourseStats[0]?.revenue || 1)) * 100}%` }}
                                         />
                                     </div>
-                                    <p className="text-[11px] font-bold text-gray-400 uppercase tracking-widest mt-1">{course.students} ta o'quvchi</p>
+                                    <p className="text-[11px] font-bold text-gray-400 uppercase tracking-wider mt-1">{course.students} ta o'quvchi</p>
                                 </div>
                             ))}
                             {topCourseStats.length === 0 && (
-                                <p className="text-[11px] text-gray-400 font-bold text-center py-4 uppercase tracking-widest">Ma'lumotlar yo'q</p>
+                                <p className="text-[11px] text-gray-400 font-bold text-center py-4 uppercase tracking-wider">Ma'lumotlar yo'q</p>
                             )}
                         </div>
                     </div>
@@ -416,7 +416,7 @@ export default function Dashboard() {
                             <BarChart3 size={16} className="text-[#1b6b6b]" />
                             {t('reports_title')}
                         </h3>
-                        <p className="text-[11px] font-bold text-gray-400 uppercase tracking-widest mt-0.5">Markaz tahliliy ko'rsatkichlari (Tanlangan muddat uchun)</p>
+                        <p className="text-[11px] font-bold text-gray-400 uppercase tracking-wider mt-0.5">Markaz tahliliy ko'rsatkichlari (Tanlangan muddat uchun)</p>
                     </div>
                     {/* Secondary Tabs for Reports */}
                     <div className="flex overflow-x-auto no-scrollbar flex-nowrap gap-1 bg-gray-100/80 dark:bg-gray-950/40 p-1 rounded-xl border border-gray-200/40 dark:border-gray-800/40 max-w-full">

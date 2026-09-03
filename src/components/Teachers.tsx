@@ -11,7 +11,7 @@ const salaryColors: Record<string, string> = {
 };
 
 const inp = "w-full px-4 py-3 bg-gray-50 dark:bg-gray-900/50 border border-gray-100 dark:border-gray-700 rounded-2xl text-xs font-bold text-gray-900 dark:text-white focus:border-[#1b6b6b] focus:ring-4 focus:ring-[#1b6b6b]/10 outline-none transition-all";
-const lbl = "block text-[11px] font-extrabold uppercase tracking-widest text-gray-400 mb-2";
+const lbl = "block text-[11px] font-extrabold uppercase tracking-wider text-gray-400 mb-2";
 
 export default function Teachers() {
     const { teachers, addTeacher, showNotification } = useCRM();
@@ -80,7 +80,7 @@ export default function Teachers() {
                         </div>
                         <div>
                             <h1 className="text-lg font-black text-gray-900 dark:text-white uppercase tracking-tight">{t('teachers_title')}</h1>
-                            <p className="text-[11px] font-bold text-gray-400 uppercase tracking-widest mt-0.5">
+                            <p className="text-[11px] font-bold text-gray-400 uppercase tracking-wider mt-0.5">
                                 {t('teachers_count_summary').replace('{total}', teachers.length.toString()).replace('{active}', activeCount.toString())}
                             </p>
                         </div>
@@ -117,7 +117,7 @@ export default function Teachers() {
                             { label: t('date'), key: 'dateRange', opts: [['all', t('all')], ['today', 'Bugun'], ['week', 'Hafta'], ['month', 'Oy']] },
                         ].map(f => (
                             <div key={f.key}>
-                                <label className="text-[11px] font-extrabold text-gray-400 uppercase tracking-widest block mb-1.5">{f.label}</label>
+                                <label className="text-[11px] font-extrabold text-gray-400 uppercase tracking-wider block mb-1.5">{f.label}</label>
                                 <select value={(filters as any)[f.key]} onChange={e => setFilters({ ...filters, [f.key]: e.target.value })}
                                     className="w-full px-3 py-2 bg-gray-55 dark:bg-gray-900/50 border border-gray-100 dark:border-gray-700 rounded-xl text-[11px] font-bold text-gray-700 dark:text-white outline-none focus:border-violet-400 transition-all cursor-pointer">
                                     {f.opts.map(([v, l]) => <option key={v} value={v}>{l}</option>)}
@@ -166,7 +166,7 @@ export default function Teachers() {
                                         : teacher.name.charAt(0).toUpperCase()
                                     }
                                 </div>
-                                <span className={`text-[11px] font-black uppercase tracking-wider px-2.5 py-1 rounded-lg border ${teacher.status === 'Faol' ? 'bg-emerald-50 text-emerald-600 border-emerald-100 dark:bg-emerald-950/20 dark:text-emerald-400 dark:border-emerald-900/40' : 'bg-gray-50 text-gray-400 border-gray-100 dark:bg-gray-900/50 dark:border-gray-700'}`}>
+                                <span className={`text-[11px] font-bold uppercase tracking-wider px-2.5 py-1 rounded-lg border ${teacher.status === 'Faol' ? 'bg-emerald-50 text-emerald-600 border-emerald-100 dark:bg-emerald-950/20 dark:text-emerald-400 dark:border-emerald-900/40' : 'bg-gray-50 text-gray-400 border-gray-100 dark:bg-gray-900/50 dark:border-gray-700'}`}>
                                     {teacher.status}
                                 </span>
                             </div>
@@ -179,7 +179,7 @@ export default function Teachers() {
                             </div>
 
                             <div className="flex items-center justify-between pt-3 border-t border-gray-50 dark:border-gray-700/50">
-                                <span className={`text-[11px] font-black uppercase tracking-wider px-2.5 py-1 rounded-lg border ${salaryColors[teacher.salaryType] || salaryColors.FIXED}`}>
+                                <span className={`text-[11px] font-bold uppercase tracking-wider px-2.5 py-1 rounded-lg border ${salaryColors[teacher.salaryType] || salaryColors.FIXED}`}>
                                     {salaryTypeLabels[teacher.salaryType] || 'Fiks'}
                                 </span>
                                 <p className="text-sm font-black text-gray-900 dark:text-white tabular-nums">
@@ -200,7 +200,7 @@ export default function Teachers() {
                         <div className="flex items-center justify-between mb-6 pb-4 border-b border-gray-50 dark:border-gray-700/50">
                             <div>
                                 <h3 className="text-lg font-black text-gray-900 dark:text-white uppercase tracking-tight">{t('new_teacher_title')}</h3>
-                                <p className="text-[11px] font-bold text-violet-600 uppercase tracking-widest mt-0.5">{t('teacher_details_subtitle')}</p>
+                                <p className="text-[11px] font-bold text-violet-600 uppercase tracking-wider mt-0.5">{t('teacher_details_subtitle')}</p>
                             </div>
                             <button aria-label="Yopish" onClick={() => setIsModalOpen(false)} className="w-9 h-9 flex items-center justify-center text-gray-400 hover:bg-gray-55 dark:hover:bg-gray-700 rounded-xl cursor-pointer"><X size={18} /></button>
                         </div>
@@ -220,7 +220,7 @@ export default function Teachers() {
                                 <div className="flex gap-2">
                                     {(['FIXED', 'KPI', 'FIXED_KPI'] as const).map(type => (
                                         <button key={type} type="button" onClick={() => setNewTeacher({ ...newTeacher, salaryType: type })}
-                                            className={`flex-1 py-2.5 rounded-xl text-[11px] font-extrabold uppercase tracking-widest border transition-all cursor-pointer ${newTeacher.salaryType === type ? 'bg-[#1b6b6b] border-[#1b6b6b] text-white' : 'bg-gray-55 dark:bg-gray-900/50 border-gray-100 dark:border-gray-700 text-gray-500 hover:border-[#1b6b6b]/30'}`}>
+                                            className={`flex-1 py-2.5 rounded-xl text-[11px] font-extrabold uppercase tracking-wider border transition-all cursor-pointer ${newTeacher.salaryType === type ? 'bg-[#1b6b6b] border-[#1b6b6b] text-white' : 'bg-gray-55 dark:bg-gray-900/50 border-gray-100 dark:border-gray-700 text-gray-500 hover:border-[#1b6b6b]/30'}`}>
                                             {salaryTypeLabels[type]}
                                         </button>
                                     ))}

@@ -118,7 +118,7 @@ export default function CenterStatsReport({ startDate, endDate }: { startDate?: 
                     {stats.dept.length > 0 ? (
                         <BarChart data={stats.dept} horizontal />
                     ) : (
-                        <div className="h-[180px] flex items-center justify-center text-[11px] font-bold text-gray-400 uppercase tracking-widest">Ma'lumot mavjud emas</div>
+                        <div className="h-[180px] flex items-center justify-center text-[11px] font-bold text-gray-400 uppercase tracking-wider">Ma'lumot mavjud emas</div>
                     )}
                 </ReportCard>
                 
@@ -126,22 +126,22 @@ export default function CenterStatsReport({ startDate, endDate }: { startDate?: 
                     <ReportCard className="flex flex-col items-center justify-center text-center">
                         <Users className="text-sky-500 mb-2" size={24} />
                         <p className="text-2xl font-black text-gray-900 dark:text-white tabular-nums">{students.length}</p>
-                        <p className="text-[11px] font-bold text-gray-400 uppercase tracking-widest">Jami O'quvchi</p>
+                        <p className="text-[11px] font-bold text-gray-400 uppercase tracking-wider">Jami O'quvchi</p>
                     </ReportCard>
                     <ReportCard className="flex flex-col items-center justify-center text-center">
                         <Briefcase className="text-emerald-500 mb-2" size={24} />
                         <p className="text-2xl font-black text-gray-900 dark:text-white tabular-nums">{teachers.length}</p>
-                        <p className="text-[11px] font-bold text-gray-400 uppercase tracking-widest">Ustozlar</p>
+                        <p className="text-[11px] font-bold text-gray-400 uppercase tracking-wider">Ustozlar</p>
                     </ReportCard>
                     <ReportCard className="flex flex-col items-center justify-center text-center">
                         <Activity className="text-violet-500 mb-2" size={24} />
                         <p className="text-2xl font-black text-gray-900 dark:text-white tabular-nums">{groups.length}</p>
-                        <p className="text-[11px] font-bold text-gray-400 uppercase tracking-widest">Kurslar</p>
+                        <p className="text-[11px] font-bold text-gray-400 uppercase tracking-wider">Kurslar</p>
                     </ReportCard>
                     <ReportCard className="flex flex-col items-center justify-center text-center">
                         <Target className="text-amber-500 mb-2" size={24} />
                         <p className="text-2xl font-black text-gray-900 dark:text-white tabular-nums">{leads.length}</p>
-                        <p className="text-[11px] font-bold text-gray-400 uppercase tracking-widest">Leadlar</p>
+                        <p className="text-[11px] font-bold text-gray-400 uppercase tracking-wider">Leadlar</p>
                     </ReportCard>
                 </div>
             </div>

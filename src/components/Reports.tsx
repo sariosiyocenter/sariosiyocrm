@@ -90,7 +90,7 @@ export default function Reports() {
                     <div className="w-16 h-16 bg-gray-50 dark:bg-gray-900 border border-gray-100 dark:border-gray-750 rounded-2xl flex items-center justify-center text-gray-300 dark:text-gray-700 mb-6">
                         <FileText size={28} />
                     </div>
-                    <p className="text-[11px] font-extrabold text-gray-400 dark:text-gray-500 uppercase tracking-widest">{t('report_select_hint')}</p>
+                    <p className="text-[11px] font-extrabold text-gray-400 dark:text-gray-500 uppercase tracking-wider">{t('report_select_hint')}</p>
                 </div>
             );
         }
@@ -107,7 +107,7 @@ export default function Reports() {
                         </div>
                         <div>
                             <h1 className="text-lg font-black text-gray-900 dark:text-white uppercase tracking-tight">{t('reports_title')}</h1>
-                            <p className="text-[11px] font-bold text-gray-400 uppercase tracking-widest mt-0.5">
+                            <p className="text-[11px] font-bold text-gray-400 uppercase tracking-wider mt-0.5">
                                 {t('reports_subtitle')}
                             </p>
                         </div>
@@ -170,7 +170,7 @@ export default function Reports() {
                         <div className={`p-1.5 rounded-lg ${activeReport === report.id ? 'bg-white/20 text-white [&_svg]:!text-white' : 'bg-white dark:bg-gray-800'}`}>
                             {report.icon}
                         </div>
-                        <span className="text-[11px] font-extrabold uppercase tracking-widest">
+                        <span className="text-[11px] font-extrabold uppercase tracking-wider">
                             {report.label}
                         </span>
                     </button>

@@ -94,7 +94,7 @@ export default function Layout({ children, onLogout }: LayoutProps) {
               </div>
               <div className="flex flex-col leading-none">
                 <span className="text-[13px] font-bold text-slate-900 dark:text-white tracking-tight group-hover:text-brand dark:group-hover:text-brand transition-colors">{settings?.orgName || 'Quantum Edu'}</span>
-                <span className="text-[11px] font-semibold tracking-widest uppercase mt-0.5" style={{ color: BRAND }}>CRM System</span>
+                <span className="text-[11px] font-semibold tracking-wider uppercase mt-0.5" style={{ color: BRAND }}>CRM System</span>
               </div>
             </Link>
 
