@@ -5,6 +5,7 @@ import { dirname, join } from 'path';
 import prisma from './lib/prisma.js';
 import { JWT_SECRET, TOKEN_TTL, attendanceWindowStart, redactBody, isAdmin, stripSettingSecrets, cronRequestRejected } from './lib/config.js';
 import { authenticate, requireRole, STAFF_MANAGERS } from './middleware/auth.js';
+import { encryptSecret, decryptSecret } from './lib/secrets.js';
 import { claimBillingRun, releaseBillingRun, processMonthlyBilling } from './services/billing.js';
 import jwt from 'jsonwebtoken';
 import bot, { startBot, notifyAdmins, getTelegramBot } from './src/bot/bot.js';
@@ -2346,6 +2347,9 @@ app.put('/api/settings', authenticate, async (req, res, next) => {
     for (const key of ['eskizPassword', 'telegram']) {
       if (data[key] !== undefined && String(data[key]).trim() === '') delete data[key];
     }
+    // Stored encrypted when SETTINGS_KEY is configured, so a leaked database does not
+    // hand over the SMS account. Without the key this is a no-op and behaviour is unchanged.
+    if (data.eskizPassword !== undefined) data.eskizPassword = encryptSecret(data.eskizPassword);
 
     const oldSettings = await prisma.setting.findUnique({ where: { schoolId: parseInt(schoolId) } });
 
@@ -3009,7 +3013,8 @@ async function getEskizToken(schoolId) {
     const settings = await prisma.setting.findUnique({ where: { schoolId } });
     if (settings && settings.eskizEmail && settings.eskizPassword) {
       email = settings.eskizEmail.trim();
-      password = settings.eskizPassword.trim();
+      // Reads plaintext rows written before encryption existed, and encrypted ones after.
+      password = decryptSecret(settings.eskizPassword).trim();
     }
   }
 
