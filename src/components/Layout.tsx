@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import {
   Users, GraduationCap, Target, Settings,
   LayoutDashboard, Wallet, Search, Sun, Moon, LogOut, X, ChevronRight, User, MapPin,
-  CheckCircle2, AlertCircle, Info, Menu, BarChart3, Bus, FileText, Shield, Atom, Users2, Globe, BookOpen, MessageSquare
+  CheckCircle2, AlertCircle, AlertTriangle, Info, Menu, BarChart3, Bus, FileText, Shield, Atom, Users2, Globe, BookOpen, MessageSquare
 } from 'lucide-react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useCRM } from '../context/CRMContext';
@@ -20,7 +20,7 @@ const BRAND_LIGHT = '#eef2ff';   // indigo-50
 const BRAND_DARK_TEXT = '#a5b4fc'; // indigo-300 for dark mode text
 
 export default function Layout({ children, onLogout }: LayoutProps) {
-  const { user, schools, selectedSchoolId, setSelectedSchoolId, students, leads, groups, teachers, courses, darkMode, toggleDarkMode, notification, settings } = useCRM();
+  const { user, schools, selectedSchoolId, setSelectedSchoolId, students, leads, groups, teachers, courses, darkMode, toggleDarkMode, notification, settings, error, checkAuth } = useCRM();
   const { lang, setLang, t } = useLang();
   const location = useLocation();
   const navigate = useNavigate();
@@ -273,6 +273,24 @@ export default function Layout({ children, onLogout }: LayoutProps) {
 
       {/* Main Content */}
       <main className="flex-1 max-w-[1600px] w-full mx-auto px-4 lg:px-6 py-4">
+        {/* A failed load used to be invisible: the screen simply came up empty and staff
+            concluded the records had been deleted. Say what happened and offer a retry. */}
+        {error && (
+          <div role="alert" className="mb-4 flex flex-wrap items-center gap-3 rounded-2xl border border-red-200 dark:border-red-900/50 bg-red-50 dark:bg-red-950/40 px-4 py-3">
+            <AlertTriangle size={18} className="text-red-600 dark:text-red-400 shrink-0" />
+            <div className="flex-1 min-w-[200px]">
+              <p className="text-sm font-bold text-red-800 dark:text-red-200">Ma'lumotlarni yuklab bo'lmadi</p>
+              <p className="text-xs text-red-700/80 dark:text-red-300/80 mt-0.5">
+                Ro'yxat bo'sh ko'rinishi mumkin — bu ma'lumot o'chirilgani emas, aloqa uzilgani. {error}
+              </p>
+            </div>
+            <button
+              onClick={() => checkAuth()}
+              className="px-4 py-2 rounded-xl bg-red-600 hover:bg-red-700 text-white text-xs font-extrabold uppercase tracking-widest cursor-pointer transition-colors">
+              Qayta urinish
+            </button>
+          </div>
+        )}
         {children}
       </main>
 

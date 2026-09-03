@@ -144,6 +144,7 @@ export default function Students() {
     const [isRemovingBg, setIsRemovingBg] = useState(false);
     const [isImporting, setIsImporting] = useState(false);
     const [search, setSearch] = useState('');
+    const [page, setPage] = useState(1);
     
     // Link creation states
     const [isLinkModalOpen, setIsLinkModalOpen] = useState(false);
@@ -462,7 +463,9 @@ export default function Students() {
         });
     }
 
-    const filteredStudents = students.filter(s => {
+    // Memoised: with 266 students and eleven filters, re-running this on every render
+    // (including every keystroke elsewhere on the page) was visible as input lag.
+    const filteredStudents = React.useMemo(() => students.filter(s => {
         const lowerSearch = search.toLowerCase();
         const matchesSearch = (s.name || '').toLowerCase().includes(lowerSearch) ||
                (s.phone || '').toLowerCase().includes(lowerSearch) ||
@@ -509,7 +512,16 @@ export default function Students() {
         }
 
         return matchesSearch && matchesStatus && matchesGroup && matchesBalance && matchesDate && matchesOrgType && matchesMuassasa && matchesRegion && matchesDistrict && matchesLocation && matchesMissingInfo;
-    });
+    }), [students, search, filters]);
+
+    // The table used to render every match at once — 266 rows, each with a photo.
+    const PER_PAGE = 50;
+    const pageCount = Math.max(1, Math.ceil(filteredStudents.length / PER_PAGE));
+    const currentPage = Math.min(page, pageCount);
+    const visibleStudents = filteredStudents.slice((currentPage - 1) * PER_PAGE, currentPage * PER_PAGE);
+
+    // Any change to the filters should put the reader back at the first page.
+    React.useEffect(() => { setPage(1); }, [search, filters]);
 
     return (
         <div className="space-y-6">
@@ -677,7 +689,7 @@ export default function Students() {
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-gray-50 dark:divide-gray-700/50">
-                            {filteredStudents.map((student) => (
+                            {visibleStudents.map((student) => (
                                 <tr key={student.id} className="hover:bg-gray-50/80 dark:hover:bg-gray-900/40 transition-all cursor-pointer group"
                                     onClick={() => navigate(`/students/${student.id}`)}>
                                     <td className="p-4 text-[10px] font-extrabold text-gray-400 text-center tabular-nums">#{student.id}</td>
@@ -685,7 +697,7 @@ export default function Students() {
                                         <div className="flex items-center gap-3">
                                             <div className="w-10 h-10 rounded-xl bg-gray-55 dark:bg-gray-900 border border-gray-100 dark:border-gray-700 flex items-center justify-center text-[#1b6b6b] font-bold text-xs shadow-inner overflow-hidden shrink-0 group-hover:scale-105 transition-transform">
                                                 {student.photo ? (
-                                                    <img src={student.photo} alt={student.name} className="w-full h-full object-cover" />
+                                                    <img src={student.photo} alt={student.name} loading="lazy" decoding="async" className="w-full h-full object-cover" />
                                                 ) : student.name.charAt(0).toUpperCase()}
                                             </div>
                                             <div>
@@ -755,9 +767,53 @@ export default function Students() {
                                     </td>
                                 </tr>
                             ))}
+                            {visibleStudents.length === 0 && (
+                                <tr>
+                                    <td colSpan={6} className="py-16">
+                                        <div className="flex flex-col items-center gap-3 text-center">
+                                            <div className="w-14 h-14 rounded-2xl bg-gray-55 dark:bg-gray-900 border border-gray-100 dark:border-gray-700 flex items-center justify-center">
+                                                <Search size={20} className="text-gray-300 dark:text-gray-600" />
+                                            </div>
+                                            <div>
+                                                <p className="text-sm font-bold text-gray-700 dark:text-gray-200">
+                                                    {students.length === 0 ? "Hali o'quvchi qo'shilmagan" : "Hech narsa topilmadi"}
+                                                </p>
+                                                <p className="text-xs text-gray-400 mt-1">
+                                                    {students.length === 0
+                                                        ? "Yuqoridagi tugma orqali birinchi o'quvchini qo'shing."
+                                                        : `${students.length} ta o'quvchi ichidan qidiruv va filtrlarga mos keladigani yo'q.`}
+                                                </p>
+                                            </div>
+                                        </div>
+                                    </td>
+                                </tr>
+                            )}
                         </tbody>
                     </table>
                 </div>
+
+                {filteredStudents.length > PER_PAGE && (
+                    <div className="flex items-center justify-between gap-4 px-6 py-4 border-t border-gray-50 dark:border-gray-700/50">
+                        <p className="text-[11px] font-bold text-gray-400 tabular-nums">
+                            {(currentPage - 1) * PER_PAGE + 1}–{Math.min(currentPage * PER_PAGE, filteredStudents.length)} / {filteredStudents.length} ta
+                        </p>
+                        <div className="flex items-center gap-2">
+                            <button
+                                onClick={() => setPage(p => Math.max(1, p - 1))}
+                                disabled={currentPage === 1}
+                                className="px-3 py-1.5 rounded-lg text-[11px] font-extrabold uppercase tracking-widest bg-gray-50 dark:bg-gray-900 text-gray-600 dark:text-gray-300 disabled:opacity-40 disabled:cursor-not-allowed hover:bg-gray-100 dark:hover:bg-gray-700 cursor-pointer transition-colors">
+                                Oldingi
+                            </button>
+                            <span className="text-[11px] font-bold text-gray-500 tabular-nums px-1">{currentPage} / {pageCount}</span>
+                            <button
+                                onClick={() => setPage(p => Math.min(pageCount, p + 1))}
+                                disabled={currentPage === pageCount}
+                                className="px-3 py-1.5 rounded-lg text-[11px] font-extrabold uppercase tracking-widest bg-gray-50 dark:bg-gray-900 text-gray-600 dark:text-gray-300 disabled:opacity-40 disabled:cursor-not-allowed hover:bg-gray-100 dark:hover:bg-gray-700 cursor-pointer transition-colors">
+                                Keyingi
+                            </button>
+                        </div>
+                    </div>
+                )}
             </div>
             {isModalOpen && (
                 <div className="fixed inset-0 z-[200] overflow-y-auto">

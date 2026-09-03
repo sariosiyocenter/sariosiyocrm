@@ -54,7 +54,7 @@ const lbl = "block text-[10px] font-extrabold uppercase tracking-widest text-gra
 export default function StaffDetails() {
     const { id } = useParams<{ id: string }>();
     const navigate = useNavigate();
-    const { teachers, token, user: currentUser } = useCRM();
+    const { teachers, token, user: currentUser, showNotification } = useCRM();
     const { t } = useLang();
 
     const getRoleLabel = (role: string) => {
@@ -422,13 +422,24 @@ export default function StaffDetails() {
     };
 
     const deleteSalaryPayment = async (pid: number) => {
+        // A salary record used to vanish on a single click, and the row was dropped from
+        // the table whether or not the server accepted the delete — it came back on the
+        // next refresh, which reads as the app losing data.
+        const record = salaryPayments.find(p => p.id === pid);
+        const label = record ? `${record.month} — ${Number(record.amount).toLocaleString()} so'm` : 'ushbu yozuv';
+        if (!window.confirm(`Oylik to'lov yozuvi o'chirilsinmi?\n\n${label}\n\nBu amalni orqaga qaytarib bo'lmaydi.`)) return;
+
         try {
-            await fetch(`/api/salary-payments/${pid}`, {
+            const res = await fetch(`/api/salary-payments/${pid}`, {
                 method: 'DELETE',
                 headers: { Authorization: `Bearer ${token}` },
             });
+            if (!res.ok) throw new Error(`Server ${res.status}`);
             setSalaryPayments(prev => prev.filter(p => p.id !== pid));
-        } catch { /* ignore */ }
+            showNotification("Oylik to'lov yozuvi o'chirildi", 'success');
+        } catch (err: any) {
+            showNotification("O'chirib bo'lmadi: " + (err?.message || "aloqa xatosi"), 'error');
+        }
     };
 
     const saveSalaryInline = async () => {

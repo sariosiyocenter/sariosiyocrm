@@ -208,7 +208,11 @@ export default function LogisticsHub() {
                                         </div>
                                         <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                                             <button onClick={() => { setEditingTransport(item); setTransportFormData(item); setIsTransportModalOpen(true); }} className="w-7 h-7 rounded-lg text-gray-400 hover:text-[#1b6b6b] hover:bg-gray-50 dark:hover:bg-gray-950 flex items-center justify-center transition-colors cursor-pointer"><Edit2 size={13} /></button>
-                                            <button onClick={() => deleteTransport(item.id)} className="w-7 h-7 rounded-lg text-rose-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/20 flex items-center justify-center transition-colors cursor-pointer"><Trash2 size={13} /></button>
+                                            <button onClick={() => { if (window.confirm(`Transport o'chirilsinmi?
+
+${item.name}
+
+Unga biriktirilgan o'quvchilar bo'shatiladi.`)) deleteTransport(item.id); }} className="w-7 h-7 rounded-lg text-rose-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/20 flex items-center justify-center transition-colors cursor-pointer"><Trash2 size={13} /></button>
                                         </div>
                                     </div>
                                     <div>

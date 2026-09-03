@@ -93,7 +93,6 @@ export default function Dashboard() {
         .filter(s => s.balance < 0)
         .reduce((acc, s) => acc + Math.abs(s.balance), 0);
     
-    const debtTrend = -5.1; 
 
     const monthNames = [t('month_jan'), t('month_feb'), t('month_mar'), t('month_apr'), t('month_may'), t('month_jun'), t('month_jul'), t('month_aug'), t('month_sep'), t('month_oct'), t('month_nov'), t('month_dec')];
     const last6Months = Array.from({ length: 6 }, (_, i) => {
@@ -286,9 +285,13 @@ export default function Dashboard() {
                         {/* Summary Cards */}
                         <div className="grid grid-cols-3 gap-4 mb-6">
                             {[
+                                // Only income has a real period-over-period figure. "Expected" is a
+                                // projection with nothing to compare against, and debt is a running
+                                // balance we keep no history of — both used to show invented
+                                // percentages, so they now show no trend rather than a false one.
                                 { label: t('income'), value: `${(periodIncome / 1000000).toFixed(1)}M`, trend: `${incomeTrend > 0 ? '+' : ''}${incomeTrend.toFixed(1)}%`, positive: incomeTrend >= 0, icon: TrendingUp },
-                                { label: t('expected'), value: `${(monthlyExpected / 1000000).toFixed(1)}M`, trend: '+2.4%', positive: true, icon: Clock },
-                                { label: t('debt'), value: `${(totalDebt / 1000000).toFixed(1)}M`, trend: `${debtTrend > 0 ? '+' : ''}${debtTrend.toFixed(1)}%`, positive: debtTrend <= 0, icon: TrendingDown },
+                                { label: t('expected'), value: `${(monthlyExpected / 1000000).toFixed(1)}M`, trend: null, positive: true, icon: Clock },
+                                { label: t('debt'), value: `${(totalDebt / 1000000).toFixed(1)}M`, trend: null, positive: totalDebt === 0, icon: TrendingDown },
                             ].map((item, i) => (
                                 <div key={i} className="bg-gray-55 dark:bg-gray-900/60 rounded-2xl p-4 border border-gray-100 dark:border-gray-700/50">
                                     <div className="flex items-center justify-between mb-2">
@@ -297,13 +300,15 @@ export default function Dashboard() {
                                     </div>
                                     <div className="flex items-end justify-between">
                                         <span className="text-lg font-black text-gray-900 dark:text-white tabular-nums">{item.value}</span>
-                                        <span className={`text-[8px] font-black px-1.5 py-0.5 rounded-md ${
-                                            item.positive 
-                                                ? 'text-emerald-600 bg-emerald-50 dark:text-emerald-400 dark:bg-emerald-950/20' 
-                                                : 'text-rose-600 bg-rose-50 dark:text-rose-400 dark:bg-rose-950/20'
-                                        }`}>
-                                            {item.trend}
-                                        </span>
+                                        {item.trend && (
+                                            <span className={`text-[8px] font-black px-1.5 py-0.5 rounded-md ${
+                                                item.positive
+                                                    ? 'text-emerald-600 bg-emerald-50 dark:text-emerald-400 dark:bg-emerald-950/20'
+                                                    : 'text-rose-600 bg-rose-50 dark:text-rose-400 dark:bg-rose-950/20'
+                                            }`}>
+                                                {item.trend}
+                                            </span>
+                                        )}
                                     </div>
                                 </div>
                             ))}

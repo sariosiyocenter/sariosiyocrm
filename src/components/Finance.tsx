@@ -155,6 +155,7 @@ export default function Finance() {
     };
 
     const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
+    const [isSavingPayment, setIsSavingPayment] = useState(false);
     const [isExpenseModalOpen, setIsExpenseModalOpen] = useState(false);
     const [expenseCustomCat, setExpenseCustomCat] = useState('');
 
@@ -1178,7 +1179,9 @@ export default function Finance() {
                                     </div>
                                     <div className="flex items-center gap-3 shrink-0">
                                         <span className="text-xs font-black text-rose-600 tabular-nums">-{e.amount.toLocaleString()} UZS</span>
-                                        <button onClick={() => deleteExpense(e.id)} className="w-7 h-7 rounded-lg text-gray-300 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/20 flex items-center justify-center transition-colors cursor-pointer">
+                                        <button onClick={() => { if (window.confirm(`Harajat o'chirilsinmi?
+
+${e.description || e.category} — ${Number(e.amount).toLocaleString()} so'm`)) deleteExpense(e.id); }} className="w-7 h-7 rounded-lg text-gray-300 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/20 flex items-center justify-center transition-colors cursor-pointer">
                                             <Trash2 size={13} />
                                         </button>
                                     </div>
@@ -1270,15 +1273,24 @@ export default function Finance() {
                                 </div>
                                 <form onSubmit={async (e) => {
                                     e.preventDefault();
-                                    if (!selectedStudent) return;
-                                    const created = await addPayment({
-                                        studentId: selectedStudent.id,
-                                        amount: newPayment.amount,
-                                        type: newPayment.type,
-                                        description: newPayment.description || '',
-                                        date: newPayment.date
-                                    });
-                                    setCreatedPaymentForReceipt(created);
+                                    // Guard against a second submit: on a slow phone the first tap can
+                                    // still be in flight, and two taps used to mean two payments.
+                                    if (!selectedStudent || isSavingPayment) return;
+                                    setIsSavingPayment(true);
+                                    try {
+                                        const created = await addPayment({
+                                            studentId: selectedStudent.id,
+                                            amount: newPayment.amount,
+                                            type: newPayment.type,
+                                            description: newPayment.description || '',
+                                            date: newPayment.date
+                                        });
+                                        setCreatedPaymentForReceipt(created);
+                                    } catch (err: any) {
+                                        showNotification("To'lovni saqlab bo'lmadi: " + (err?.message || "noma'lum xatolik"), 'error');
+                                    } finally {
+                                        setIsSavingPayment(false);
+                                    }
                                 }} className="space-y-4">
                                     {!selectedStudent ? (
                                         <div className="relative">
@@ -1399,9 +1411,9 @@ export default function Finance() {
                                             className="flex-1 py-3 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-white text-xs font-extrabold uppercase tracking-widest rounded-2xl transition-all cursor-pointer hover:bg-gray-200 dark:hover:bg-gray-600">
                                             {t('cancel')}
                                         </button>
-                                        <button type="submit" disabled={!selectedStudent}
-                                            className="flex-1 py-3 bg-[#1b6b6b] hover:bg-[#155252] disabled:opacity-50 text-white text-xs font-extrabold uppercase tracking-widest rounded-2xl shadow-lg shadow-[#1b6b6b]/20 transition-all cursor-pointer">
-                                            {t('save')}
+                                        <button type="submit" disabled={!selectedStudent || isSavingPayment}
+                                            className="flex-1 py-3 bg-[#1b6b6b] hover:bg-[#155252] disabled:opacity-50 disabled:cursor-not-allowed text-white text-xs font-extrabold uppercase tracking-widest rounded-2xl shadow-lg shadow-[#1b6b6b]/20 transition-all cursor-pointer">
+                                            {isSavingPayment ? 'Saqlanmoqda…' : t('save')}
                                         </button>
                                     </div>
                                 </form>
