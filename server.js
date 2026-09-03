@@ -2,7 +2,7 @@ import 'dotenv/config';
 import express from 'express';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
-import { PrismaClient } from '@prisma/client';
+import prisma from './lib/prisma.js';
 import jwt from 'jsonwebtoken';
 import bot, { startBot, notifyAdmins, getTelegramBot } from './src/bot/bot.js';
 import bcrypt from 'bcryptjs';
@@ -28,7 +28,6 @@ if (process.env.TELEGRAM_BOT_TOKEN && !process.env.VERCEL) {
   console.warn('TELEGRAM_BOT_TOKEN mavjud emas. Bot ishga tushmadi.');
 }
 
-const prisma = new PrismaClient();
 const app = express();
 const PORT = process.env.PORT || 3000;
 // A missing secret in production would silently sign tokens with a public string,
@@ -1405,42 +1404,10 @@ app.delete('/api/expenses/:id', authenticate, requireRole(...STAFF_MANAGERS), as
 });
 
 // Transports
-app.get('/api/transports', authenticate, async (req, res, next) => {
-  try {
-    const { schoolId } = req.query;
-    if (!schoolId) return res.status(400).json({ error: 'schoolId required' });
-    const transports = await prisma.transport.findMany({ where: { schoolId: parseInt(schoolId) } });
-    res.json(transports);
-  } catch (error) { next(error); }
-});
-
-app.post('/api/transports', authenticate, async (req, res, next) => {
-  try {
-    const { schoolId, ...data } = req.body;
-    if (!schoolId) return res.status(400).json({ error: 'schoolId required' });
-    if (data.capacity) data.capacity = parseInt(data.capacity);
-    const transport = await prisma.transport.create({ data: { ...data, schoolId: parseInt(schoolId) } });
-    res.json(transport);
-  } catch (error) { next(error); }
-});
-
-app.put('/api/transports/:id', authenticate, async (req, res, next) => {
-  try {
-    const { id } = req.params;
-    const data = { ...req.body };
-    if (data.capacity) data.capacity = parseInt(data.capacity);
-    if (data.schoolId) data.schoolId = parseInt(data.schoolId);
-    const transport = await prisma.transport.update({ where: { id: parseInt(id) }, data });
-    res.json(transport);
-  } catch (error) { next(error); }
-});
-
-app.delete('/api/transports/:id', authenticate, async (req, res, next) => {
-  try {
-    await prisma.transport.delete({ where: { id: parseInt(req.params.id) } });
-    res.json({ success: true });
-  } catch (error) { next(error); }
-});
+// NOTE: /api/transports lived here twice. This earlier copy shadowed the fuller one
+// further down (it omitted the driver relation and deleted a transport without first
+// detaching its students and delivery logs, so DELETE failed on a foreign key).
+// The later definition is now the only one — see the transport block below.
 
 // Specific Types API
 // Specific Types API
@@ -2404,27 +2371,10 @@ function redactBody(body) {
   return clone;
 }
 
-// Global Error Handler
-app.use((err, req, res, next) => {
-  console.error('Server Error:', err);
-  try {
-    import('fs').then(fs => {
-      const logMsg = `\n[${new Date().toISOString()}] ERROR on ${req.method} ${req.url}\n` +
-                     `Body: ${JSON.stringify(redactBody(req.body))}\n` +
-                     `Error: ${err.message}\n` +
-                     `Stack: ${err.stack}\n` +
-                     `-------------------------------------------\n`;
-      fs.appendFileSync('error.log', logMsg);
-    }).catch(e => console.error('Dynamic import of fs failed:', e));
-  } catch (e) {
-    console.error('Failed to log error to file:', e);
-  }
-  // Internal details (Prisma queries, column names, stack) stay server-side.
-  res.status(500).json({
-    error: 'Serverda xatolik yuz berdi',
-    ...(process.env.NODE_ENV !== 'production' ? { message: err.message, code: err.code } : {})
-  });
-});
+// The error handler used to sit right here, roughly 2000 lines before the last route.
+// Express only reaches an error handler registered *after* the layer that failed, so
+// every route below fell through to Express's default HTML 500 — which the frontend
+// could not parse as JSON. It now lives at the end of the file, after all routes.
 
 // Settings
 // Settings rows hold SMS/Telegram credentials. Only an admin has a reason to see them,
@@ -4586,6 +4536,29 @@ app.use('/api', (req, res) => {
 // Handle React Router SPA fallback
 app.get('*', (req, res) => {
   res.sendFile(join(__dirname, 'dist', 'index.html'));
+});
+
+// Global error handler — must be registered after every route so that all of them
+// reach it. Anything that throws now answers JSON instead of Express's default HTML.
+app.use((err, req, res, next) => {
+  console.error('Server Error:', err);
+  try {
+    import('fs').then(fs => {
+      const logMsg = `\n[${new Date().toISOString()}] ERROR on ${req.method} ${req.url}\n` +
+                     `Body: ${JSON.stringify(redactBody(req.body))}\n` +
+                     `Error: ${err.message}\n` +
+                     `Stack: ${err.stack}\n` +
+                     `-------------------------------------------\n`;
+      fs.appendFileSync('error.log', logMsg);
+    }).catch(e => console.error('Dynamic import of fs failed:', e));
+  } catch (e) {
+    console.error('Failed to log error to file:', e);
+  }
+  // Internal details (Prisma queries, column names, stack) stay server-side.
+  res.status(500).json({
+    error: 'Serverda xatolik yuz berdi',
+    ...(process.env.NODE_ENV !== 'production' ? { message: err.message, code: err.code } : {})
+  });
 });
 
 // Global error handlers

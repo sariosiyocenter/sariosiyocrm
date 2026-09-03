@@ -1,7 +1,6 @@
 import { Telegraf, Markup } from 'telegraf';
-import { PrismaClient } from '@prisma/client';
+import prisma from '../../lib/prisma.js';
 
-const prisma = new PrismaClient();
 const bot = new Telegraf(process.env.TELEGRAM_BOT_TOKEN || 'fake_token_for_init');
 
 // In-memory state tracking
