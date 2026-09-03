@@ -193,7 +193,7 @@ export default function Dashboard() {
                         </div>
                         <div>
                             <h1 className="text-lg font-black text-gray-900 dark:text-white uppercase tracking-tight">{t('dashboard_title')}</h1>
-                            <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mt-0.5">
+                            <p className="text-[11px] font-bold text-gray-400 uppercase tracking-widest mt-0.5">
                                 {t('dashboard_subtitle')}
                             </p>
                         </div>
@@ -210,7 +210,7 @@ export default function Dashboard() {
                                         key={type}
                                         type="button"
                                         onClick={() => handlePreset(type as any)}
-                                        className={`px-3 py-1.5 rounded-lg text-[9px] font-extrabold uppercase tracking-wider transition-all cursor-pointer ${
+                                        className={`px-3 py-1.5 rounded-lg text-[11px] font-extrabold uppercase tracking-wider transition-all cursor-pointer ${
                                             selectedPreset === type
                                                 ? 'bg-[#1b6b6b] text-white shadow'
                                                 : 'text-gray-400 hover:text-gray-600'
@@ -230,7 +230,7 @@ export default function Dashboard() {
                                 onChange={(e) => { setStartDate(e.target.value); setSelectedPreset('custom'); }}
                                 className="bg-gray-55 dark:bg-gray-900 px-3 py-1.5 rounded-xl border border-gray-100 dark:border-gray-700 text-xs font-bold text-gray-800 dark:text-gray-200 outline-none focus:border-[#1b6b6b] w-32 cursor-pointer"
                             />
-                            <span className="text-gray-400 dark:text-gray-500 font-extrabold text-[9px] uppercase tracking-wider">{t('date_to')}</span>
+                            <span className="text-gray-400 dark:text-gray-500 font-extrabold text-[11px] uppercase tracking-wider">{t('date_to')}</span>
                             <input
                                 type="date"
                                 value={endDate}
@@ -253,7 +253,7 @@ export default function Dashboard() {
                             className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700/50 p-5 hover:shadow-lg hover:border-gray-250 transition-all cursor-pointer group flex items-center justify-between"
                         >
                             <div>
-                                <span className="text-[9px] font-extrabold text-gray-400 uppercase tracking-widest block mb-1">{stat.label}</span>
+                                <span className="text-[11px] font-extrabold text-gray-400 uppercase tracking-widest block mb-1">{stat.label}</span>
                                 <h4 className="text-2xl font-black text-gray-900 dark:text-white tracking-tight tabular-nums">{stat.value}</h4>
                             </div>
                             <div
@@ -277,7 +277,7 @@ export default function Dashboard() {
                                 <TrendingUp size={16} className="text-[#1b6b6b]" />
                                 {t('finance_title')}
                             </h3>
-                            <button onClick={() => navigate('/finance')} className="flex items-center gap-1 text-[10px] font-extrabold uppercase text-[#1b6b6b] hover:text-[#155252] transition-colors cursor-pointer">
+                            <button onClick={() => navigate('/finance')} className="flex items-center gap-1 text-[11px] font-extrabold uppercase text-[#1b6b6b] hover:text-[#155252] transition-colors cursor-pointer">
                                 {t('rep_stats')} <ArrowUpRight size={12} />
                             </button>
                         </div>
@@ -295,13 +295,13 @@ export default function Dashboard() {
                             ].map((item, i) => (
                                 <div key={i} className="bg-gray-55 dark:bg-gray-900/60 rounded-2xl p-4 border border-gray-100 dark:border-gray-700/50">
                                     <div className="flex items-center justify-between mb-2">
-                                        <span className="text-[9px] font-bold text-gray-400 uppercase tracking-widest">{item.label}</span>
+                                        <span className="text-[11px] font-bold text-gray-400 uppercase tracking-widest">{item.label}</span>
                                         <item.icon size={14} className={item.positive ? 'text-emerald-500' : 'text-rose-500'} />
                                     </div>
                                     <div className="flex items-end justify-between">
                                         <span className="text-lg font-black text-gray-900 dark:text-white tabular-nums">{item.value}</span>
                                         {item.trend && (
-                                            <span className={`text-[8px] font-black px-1.5 py-0.5 rounded-md ${
+                                            <span className={`text-[10px] font-black px-1.5 py-0.5 rounded-md ${
                                                 item.positive
                                                     ? 'text-emerald-600 bg-emerald-50 dark:text-emerald-400 dark:bg-emerald-950/20'
                                                     : 'text-rose-600 bg-rose-50 dark:text-rose-400 dark:bg-rose-950/20'
@@ -317,20 +317,20 @@ export default function Dashboard() {
                         {/* Chart Area */}
                         <div className="bg-gray-55 dark:bg-gray-900/40 rounded-2xl p-5 border border-gray-100 dark:border-gray-700/50">
                             <div className="flex items-center justify-between mb-5">
-                                <span className="text-[9px] font-bold text-gray-400 uppercase tracking-widest">So'nggi 6 oy (mln so'm)</span>
-                                <span className="text-[9px] font-black text-[#1b6b6b] uppercase tracking-wider tabular-nums">Jami: {total6Months.toFixed(1)}M</span>
+                                <span className="text-[11px] font-bold text-gray-400 uppercase tracking-widest">So'nggi 6 oy (mln so'm)</span>
+                                <span className="text-[11px] font-black text-[#1b6b6b] uppercase tracking-wider tabular-nums">Jami: {total6Months.toFixed(1)}M</span>
                             </div>
                             <div className="h-[150px] flex items-end gap-4">
                                 {chartDataValues.map((val, i) => (
                                     <div key={i} className="flex-1 flex flex-col items-center gap-2 group/bar relative">
-                                        <div className="absolute -top-7 left-1/2 -translate-x-1/2 bg-gray-900 dark:bg-gray-700 text-white text-[9px] px-2 py-1 rounded-md opacity-0 group-hover/bar:opacity-100 transition-opacity whitespace-nowrap z-10 font-bold">
+                                        <div className="absolute -top-7 left-1/2 -translate-x-1/2 bg-gray-900 dark:bg-gray-700 text-white text-[11px] px-2 py-1 rounded-md opacity-0 group-hover/bar:opacity-100 transition-opacity whitespace-nowrap z-10 font-bold">
                                             {val.toFixed(1)} mln
                                         </div>
                                         <div 
                                             className="w-full bg-[#1b6b6b] rounded-lg hover:bg-[#2e9c9c] transition-colors cursor-pointer min-h-[4px]"
                                             style={{ height: `${(val / maxVal) * 110}px` }}
                                         />
-                                        <span className="text-[9px] font-bold text-gray-400 uppercase tracking-widest">{chartLabels[i]}</span>
+                                        <span className="text-[11px] font-bold text-gray-400 uppercase tracking-widest">{chartLabels[i]}</span>
                                     </div>
                                 ))}
                             </div>
@@ -368,7 +368,7 @@ export default function Dashboard() {
                                     </div>
                                     <div className="flex-1 min-w-0">
                                         <p className="text-xs font-bold text-gray-900 dark:text-white truncate uppercase tracking-tight">{item.title}</p>
-                                        <p className="text-[9px] text-gray-400 font-bold block mt-0.5 uppercase tracking-widest">{item.desc}</p>
+                                        <p className="text-[11px] text-gray-400 font-bold block mt-0.5 uppercase tracking-widest">{item.desc}</p>
                                     </div>
                                     <ChevronRight size={14} className="text-gray-300 group-hover:text-gray-500 transition-colors" />
                                 </div>
@@ -388,8 +388,8 @@ export default function Dashboard() {
                             {topCourseStats.map((course, i) => (
                                 <div key={i}>
                                     <div className="flex items-center justify-between mb-1.5">
-                                        <span className="text-[10px] font-bold text-gray-700 dark:text-gray-300 truncate max-w-[130px] uppercase tracking-wide">{course.name}</span>
-                                        <span className="text-[10px] font-black text-[#1b6b6b] tabular-nums">{(course.revenue / 1000000).toFixed(1)}M UZS</span>
+                                        <span className="text-[11px] font-bold text-gray-700 dark:text-gray-300 truncate max-w-[130px] uppercase tracking-wide">{course.name}</span>
+                                        <span className="text-[11px] font-black text-[#1b6b6b] tabular-nums">{(course.revenue / 1000000).toFixed(1)}M UZS</span>
                                     </div>
                                     <div className="h-1.5 w-full bg-gray-50 dark:bg-gray-700 rounded-full overflow-hidden">
                                         <div
@@ -397,11 +397,11 @@ export default function Dashboard() {
                                             style={{ width: `${(course.revenue / (topCourseStats[0]?.revenue || 1)) * 100}%` }}
                                         />
                                     </div>
-                                    <p className="text-[9px] font-bold text-gray-400 uppercase tracking-widest mt-1">{course.students} ta o'quvchi</p>
+                                    <p className="text-[11px] font-bold text-gray-400 uppercase tracking-widest mt-1">{course.students} ta o'quvchi</p>
                                 </div>
                             ))}
                             {topCourseStats.length === 0 && (
-                                <p className="text-[10px] text-gray-400 font-bold text-center py-4 uppercase tracking-widest">Ma'lumotlar yo'q</p>
+                                <p className="text-[11px] text-gray-400 font-bold text-center py-4 uppercase tracking-widest">Ma'lumotlar yo'q</p>
                             )}
                         </div>
                     </div>
@@ -416,7 +416,7 @@ export default function Dashboard() {
                             <BarChart3 size={16} className="text-[#1b6b6b]" />
                             {t('reports_title')}
                         </h3>
-                        <p className="text-[9px] font-bold text-gray-400 uppercase tracking-widest mt-0.5">Markaz tahliliy ko'rsatkichlari (Tanlangan muddat uchun)</p>
+                        <p className="text-[11px] font-bold text-gray-400 uppercase tracking-widest mt-0.5">Markaz tahliliy ko'rsatkichlari (Tanlangan muddat uchun)</p>
                     </div>
                     {/* Secondary Tabs for Reports */}
                     <div className="flex overflow-x-auto no-scrollbar flex-nowrap gap-1 bg-gray-100/80 dark:bg-gray-950/40 p-1 rounded-xl border border-gray-200/40 dark:border-gray-800/40 max-w-full">
@@ -427,7 +427,7 @@ export default function Dashboard() {
                                     setActiveReportTab(r.id);
                                     setIsDropdownOpen(false);
                                 }}
-                                className={`flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-wider transition-all duration-200 cursor-pointer whitespace-nowrap transform active:scale-95 ${
+                                className={`flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-lg text-[11px] font-black uppercase tracking-wider transition-all duration-200 cursor-pointer whitespace-nowrap transform active:scale-95 ${
                                     activeReportTab === r.id
                                         ? 'bg-white dark:bg-gray-800 text-[#1b6b6b] dark:text-emerald-400 shadow-sm border border-gray-200/50 dark:border-gray-700/50 scale-[1.01]'
                                         : 'text-gray-400 dark:text-gray-500 hover:text-gray-700 dark:hover:text-gray-300'
@@ -442,7 +442,7 @@ export default function Dashboard() {
                         <div className="relative">
                             <button
                                 onClick={() => setIsDropdownOpen(!isDropdownOpen)}
-                                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-wider transition-all duration-200 cursor-pointer whitespace-nowrap transform active:scale-95 ${
+                                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[11px] font-black uppercase tracking-wider transition-all duration-200 cursor-pointer whitespace-nowrap transform active:scale-95 ${
                                     SECONDARY_REPORTS.some(r => r.id === activeReportTab)
                                         ? 'bg-white dark:bg-gray-800 text-[#1b6b6b] dark:text-emerald-400 shadow-sm border border-gray-200/50 dark:border-gray-700/50 scale-[1.01]'
                                         : 'text-gray-400 dark:text-gray-500 hover:text-gray-700 dark:hover:text-gray-300'
@@ -472,7 +472,7 @@ export default function Dashboard() {
                                                     setActiveReportTab(r.id);
                                                     setIsDropdownOpen(false);
                                                 }}
-                                                className={`flex items-center gap-2 w-full px-3 py-2 rounded-lg text-[9px] font-black uppercase tracking-wider text-left transition-all duration-150 ${
+                                                className={`flex items-center gap-2 w-full px-3 py-2 rounded-lg text-[11px] font-black uppercase tracking-wider text-left transition-all duration-150 ${
                                                     activeReportTab === r.id
                                                         ? 'bg-gray-50 dark:bg-gray-700/50 text-[#1b6b6b] dark:text-emerald-400'
                                                         : 'text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-750/30 hover:text-gray-900 dark:hover:text-white'

@@ -169,7 +169,7 @@ export default function PublicApply() {
             <div className="min-h-screen bg-gradient-to-tr from-gray-50 to-gray-100 dark:from-gray-900 dark:to-gray-950 flex items-center justify-center p-4">
                 <div className="flex flex-col items-center gap-3">
                     <div className="w-10 h-10 border-[3px] border-[var(--brand-color,#1b6b6b)] border-t-transparent rounded-full animate-spin" />
-                    <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Ma'lumotlar yuklanmoqda...</p>
+                    <p className="text-[11px] font-black text-gray-400 uppercase tracking-widest">Ma'lumotlar yuklanmoqda...</p>
                 </div>
             </div>
         );
@@ -183,15 +183,15 @@ export default function PublicApply() {
                         <Building2 size={24} />
                     </div>
                     <h2 className="text-sm font-black text-gray-900 dark:text-white uppercase tracking-wider">Xatolik</h2>
-                    <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mt-2">{error || 'Filial topilmadi'}</p>
+                    <p className="text-[11px] font-bold text-gray-400 uppercase tracking-widest mt-2">{error || 'Filial topilmadi'}</p>
                 </div>
             </div>
         );
     }
 
     const inp = "w-full pl-10 pr-4 py-3.5 bg-gray-55 dark:bg-gray-900 border border-gray-100 dark:border-gray-700/50 rounded-2xl text-xs font-bold text-gray-950 dark:text-white focus:border-[var(--brand-color,#1b6b6b)] focus:ring-4 focus:ring-[var(--brand-color,#1b6b6b)]/10 outline-none transition-all";
-    const lbl = "block text-[10px] font-extrabold uppercase tracking-widest text-gray-400 mb-2";
-    const secTitle = "block text-[10px] font-black uppercase text-[#1b6b6b] tracking-widest border-b border-dashed border-gray-150 dark:border-gray-750 pb-2 mb-4 mt-6 first:mt-0";
+    const lbl = "block text-[11px] font-extrabold uppercase tracking-widest text-gray-400 mb-2";
+    const secTitle = "block text-[11px] font-black uppercase text-[#1b6b6b] tracking-widest border-b border-dashed border-gray-150 dark:border-gray-750 pb-2 mb-4 mt-6 first:mt-0";
 
     return (
         <div className="min-h-screen bg-gradient-to-tr from-gray-50 to-gray-100 dark:from-gray-900 dark:to-gray-950 flex items-center justify-center p-4 py-12">
@@ -209,7 +209,7 @@ export default function PublicApply() {
                         </div>
                         <div className="text-left">
                             <h1 className="text-md font-black uppercase tracking-tight leading-tight">{schoolInfo.orgName}</h1>
-                            <p className="text-[9px] font-bold text-white/70 uppercase tracking-widest mt-1">Online ariza topshirish</p>
+                            <p className="text-[11px] font-bold text-white/70 uppercase tracking-widest mt-1">Online ariza topshirish</p>
                         </div>
                     </div>
                 </div>
@@ -222,7 +222,7 @@ export default function PublicApply() {
                                 <CheckCircle2 size={40} className="animate-bounce" />
                             </div>
                             <h2 className="text-sm font-black text-gray-900 dark:text-white uppercase tracking-wider mb-2">Arizangiz qabul qilindi!</h2>
-                            <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest leading-relaxed">
+                            <p className="text-[11px] font-bold text-gray-400 uppercase tracking-widest leading-relaxed">
                                 Tez orada administratorlarimiz siz bilan bog'lanishadi va kursga qo'shishadi.
                             </p>
                         </div>
@@ -319,7 +319,7 @@ export default function PublicApply() {
                                     </div>
                                     <div className="flex-1 space-y-2 text-left">
                                         <div className="flex gap-2">
-                                            <label className="flex-1 flex items-center justify-center gap-1.5 py-2.5 border border-gray-150 dark:border-gray-700 rounded-xl cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-900 text-[10px] font-bold uppercase tracking-wider text-gray-500">
+                                            <label className="flex-1 flex items-center justify-center gap-1.5 py-2.5 border border-gray-150 dark:border-gray-700 rounded-xl cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-900 text-[11px] font-bold uppercase tracking-wider text-gray-500">
                                                 <input type="file" className="hidden" accept="image/*" onChange={async (e) => {
                                                     const file = e.target.files?.[0];
                                                     if (file) {
@@ -334,13 +334,13 @@ export default function PublicApply() {
                                                 Fayldan
                                             </label>
                                             <button type="button" onClick={() => setIsPhotoModalOpen(true)}
-                                                className="flex-1 flex items-center justify-center gap-1.5 py-2.5 border border-gray-150 dark:border-gray-700 rounded-xl hover:bg-gray-55 dark:hover:bg-gray-900 text-[10px] font-bold uppercase tracking-wider text-gray-500 cursor-pointer">
+                                                className="flex-1 flex items-center justify-center gap-1.5 py-2.5 border border-gray-150 dark:border-gray-700 rounded-xl hover:bg-gray-55 dark:hover:bg-gray-900 text-[11px] font-bold uppercase tracking-wider text-gray-500 cursor-pointer">
                                                 Kamera
                                             </button>
                                         </div>
                                         {form.photo && (
                                             <button type="button" onClick={() => setForm({ ...form, photo: '' })}
-                                                className="w-full py-1.5 bg-red-50 text-red-600 dark:bg-red-950/20 dark:text-red-400 rounded-xl border border-red-100 dark:border-red-900/40 text-[9px] font-black uppercase tracking-wider cursor-pointer">
+                                                className="w-full py-1.5 bg-red-50 text-red-600 dark:bg-red-950/20 dark:text-red-400 rounded-xl border border-red-100 dark:border-red-900/40 text-[11px] font-black uppercase tracking-wider cursor-pointer">
                                                 Rasmni o'chirish
                                             </button>
                                         )}
@@ -429,7 +429,7 @@ export default function PublicApply() {
                                 <button
                                     type="button"
                                     onClick={addCertificate}
-                                    className="w-full py-3 bg-gray-55 dark:bg-gray-900 border border-dashed border-gray-200 dark:border-gray-750 rounded-2xl text-[10px] font-black uppercase tracking-widest text-[#1b6b6b] hover:bg-teal-50/10 dark:hover:bg-teal-900/10 transition-colors flex items-center justify-center gap-1.5 cursor-pointer"
+                                    className="w-full py-3 bg-gray-55 dark:bg-gray-900 border border-dashed border-gray-200 dark:border-gray-750 rounded-2xl text-[11px] font-black uppercase tracking-widest text-[#1b6b6b] hover:bg-teal-50/10 dark:hover:bg-teal-900/10 transition-colors flex items-center justify-center gap-1.5 cursor-pointer"
                                 >
                                     <Plus size={14} />
                                     Sertifikat qo'shish
@@ -566,7 +566,7 @@ export default function PublicApply() {
                             <button
                                 type="submit"
                                 disabled={isSubmitting}
-                                className="w-full mt-4 py-4 bg-gradient-to-tr from-[var(--brand-color,#1b6b6b)] to-[var(--brand-color,#1b6b6b)]/95 hover:shadow-lg hover:shadow-[var(--brand-color,#1b6b6b)]/20 active:scale-[0.98] text-white rounded-2xl text-[10px] font-black uppercase tracking-widest flex items-center justify-center gap-2 transition-all cursor-pointer disabled:opacity-50"
+                                className="w-full mt-4 py-4 bg-gradient-to-tr from-[var(--brand-color,#1b6b6b)] to-[var(--brand-color,#1b6b6b)]/95 hover:shadow-lg hover:shadow-[var(--brand-color,#1b6b6b)]/20 active:scale-[0.98] text-white rounded-2xl text-[11px] font-black uppercase tracking-widest flex items-center justify-center gap-2 transition-all cursor-pointer disabled:opacity-50"
                             >
                                 {isSubmitting ? "Yuborilmoqda..." : "Ro'yxatdan o'tish"}
                                 <ChevronRight size={14} />

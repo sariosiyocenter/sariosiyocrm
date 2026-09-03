@@ -165,7 +165,7 @@ export default function FaceAttendance({ students, attendanceStatus, onMatch, on
                     </div>
                     <div>
                         <p className="text-white text-sm font-black uppercase tracking-tight">Face ID Yo'qlama</p>
-                        <p className="text-gray-400 text-[9px] font-bold uppercase tracking-widest">
+                        <p className="text-gray-400 text-[11px] font-bold uppercase tracking-widest">
                             {totalEnrolled}/{students.length} o'quvchi ro'yxatda
                         </p>
                     </div>
@@ -185,7 +185,7 @@ export default function FaceAttendance({ students, attendanceStatus, onMatch, on
             {totalEnrolled === 0 && phase === 'ready' && (
                 <div className="flex items-center gap-3 px-5 py-2.5 bg-amber-500/10 border-b border-amber-500/20">
                     <Users size={13} className="text-amber-400 shrink-0" />
-                    <p className="text-amber-300 text-[10px] font-bold">
+                    <p className="text-amber-300 text-[11px] font-bold">
                         Hech bir o'quvchi yuz ro'yxatidan o'tmagan — avval har bir o'quvchi sahifasida <span className="text-white">"Face ID ro'yxatdan o'tkazish"</span> tugmasini bosing
                     </p>
                 </div>
@@ -237,15 +237,15 @@ export default function FaceAttendance({ students, attendanceStatus, onMatch, on
             <div className="bg-gray-950 border-t border-gray-800">
                 <div className="px-5 pt-3 pb-2" style={{ maxHeight: '130px', overflowY: 'auto' }}>
                     {markedThisSession.length === 0 ? (
-                        <p className="text-gray-700 text-[9px] font-bold uppercase tracking-widest text-center py-1">Hali hech kim aniqlanmadi...</p>
+                        <p className="text-gray-700 text-[11px] font-bold uppercase tracking-widest text-center py-1">Hali hech kim aniqlanmadi...</p>
                     ) : (
                         <div>
-                            <p className="text-emerald-500 text-[9px] font-black uppercase tracking-widest mb-1.5">
+                            <p className="text-emerald-500 text-[11px] font-black uppercase tracking-widest mb-1.5">
                                 Qatnashdi — {markedThisSession.length} ta
                             </p>
                             <div className="flex flex-wrap gap-1.5">
                                 {markedThisSession.map(s => (
-                                    <span key={s.id} className="flex items-center gap-1 text-[9px] font-black uppercase tracking-wide text-emerald-300 bg-emerald-950/60 border border-emerald-500/40 pl-2.5 pr-1 py-1 rounded-lg">
+                                    <span key={s.id} className="flex items-center gap-1 text-[11px] font-black uppercase tracking-wide text-emerald-300 bg-emerald-950/60 border border-emerald-500/40 pl-2.5 pr-1 py-1 rounded-lg">
                                         <CheckCircle2 size={10} className="text-emerald-400" /> {s.name}
                                         <button aria-label="Yopish" onClick={() => removeMarked(s.id)} className="ml-1 text-emerald-600 hover:text-rose-400 transition-colors cursor-pointer">
                                             <X size={18} />

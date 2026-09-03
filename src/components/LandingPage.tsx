@@ -734,7 +734,7 @@ function DashboardMockup({ lang }: { lang: 'uz' | 'en' }) {
         <span className="w-2.5 h-2.5 rounded-full bg-[#ff5f57]"></span>
         <span className="w-2.5 h-2.5 rounded-full bg-[#febc2e]"></span>
         <span className="w-2.5 h-2.5 rounded-full bg-[#28c840]"></span>
-        <div className="ml-4 px-3 py-1 rounded-md bg-[var(--surface-2)] text-[11px] text-[var(--text-faint)] font-mono">
+        <div className="ml-4 px-3 py-1 rounded-md bg-[var(--surface-2)] text-[12px] text-[var(--text-faint)] font-mono">
           quantum.uz/dashboard
         </div>
         <div className="ml-auto flex items-center gap-2 text-[var(--text-faint)]">
@@ -771,7 +771,7 @@ function DashboardMockup({ lang }: { lang: 'uz' | 'en' }) {
         <main className="p-4 flex flex-col gap-4">
           <div className="flex items-end justify-between">
             <div>
-              <div className="text-[11px] uppercase tracking-wider text-[var(--text-faint)]">{L.title}</div>
+              <div className="text-[12px] uppercase tracking-wider text-[var(--text-faint)]">{L.title}</div>
               <div className="font-display font-bold text-lg">{L.overview}</div>
             </div>
             <div className="flex items-center gap-2">
@@ -791,19 +791,19 @@ function DashboardMockup({ lang }: { lang: 'uz' | 'en' }) {
             <div className="glass rounded-xl p-3 text-left">
               <div className="flex items-center justify-between mb-1">
                 <div>
-                  <div className="text-[11px] text-[var(--text-faint)]">{L.weekFlow}</div>
+                  <div className="text-[12px] text-[var(--text-faint)]">{L.weekFlow}</div>
                   <div className="text-[12px] text-emerald-400 font-medium">{L.growth}</div>
                 </div>
                 <div className="flex gap-1">
                   {["7D","30D","90D"].map((t,i) => (
-                    <span key={t} className={"px-2 py-0.5 rounded-md text-[10px] " + (i===1 ? "bg-[var(--surface-2)] text-[var(--text)]" : "text-[var(--text-faint)]")}>{t}</span>
+                    <span key={t} className={"px-2 py-0.5 rounded-md text-[11px] " + (i===1 ? "bg-[var(--surface-2)] text-[var(--text)]" : "text-[var(--text-faint)]")}>{t}</span>
                   ))}
                 </div>
               </div>
               <AreaChart data={series} />
             </div>
             <div className="glass rounded-xl p-3 text-left">
-              <div className="text-[11px] text-[var(--text-faint)] mb-2">{L.newLeads}</div>
+              <div className="text-[12px] text-[var(--text-faint)] mb-2">{L.newLeads}</div>
               <div className="flex flex-col gap-2">
                 {stages.map((s) => (
                   <div key={s.k} className="flex items-center gap-2">
@@ -822,21 +822,21 @@ function DashboardMockup({ lang }: { lang: 'uz' | 'en' }) {
           {/* Payments feed */}
           <div className="glass rounded-xl text-left">
             <div className="px-3 py-2 border-b border-[var(--border)] flex items-center justify-between">
-              <div className="text-[11px] text-[var(--text-faint)]">{L.payments}</div>
-              <span className="text-[10px] text-[var(--text-faint)]">{lang==='en'?'Auto-reconciled':'Avtomatik tasdiqlangan'}</span>
+              <div className="text-[12px] text-[var(--text-faint)]">{L.payments}</div>
+              <span className="text-[11px] text-[var(--text-faint)]">{lang==='en'?'Auto-reconciled':'Avtomatik tasdiqlangan'}</span>
             </div>
             <div className="divide-y divide-[var(--border)]">
               {paymentsList.map((p, i) => (
                 <div key={i} className="px-3 py-2 flex items-center gap-3 text-[11.5px]">
-                  <div className="w-6 h-6 rounded-full bg-[var(--surface-2)] flex items-center justify-center text-[10px] font-medium text-[var(--text-dim)]">
+                  <div className="w-6 h-6 rounded-full bg-[var(--surface-2)] flex items-center justify-center text-[11px] font-medium text-[var(--text-dim)]">
                     {p.name[0]}
                   </div>
                   <div className="flex-1 min-w-0">
                     <div className="truncate">{p.name}</div>
                     <div className="text-[var(--text-faint)] truncate text-[10.5px]">{p.group}</div>
                   </div>
-                  <div className="font-mono">{fmt(p.amt)} <span className="text-[var(--text-faint)] text-[10px]">{L.sum}</span></div>
-                  <span className={"px-2 py-0.5 rounded-md text-[10px] " +
+                  <div className="font-mono">{fmt(p.amt)} <span className="text-[var(--text-faint)] text-[11px]">{L.sum}</span></div>
+                  <span className={"px-2 py-0.5 rounded-md text-[11px] " +
                     (p.ok ? "bg-emerald-500/15 text-emerald-400" : "bg-amber-500/15 text-amber-400")}>
                     {p.ok ? L.paid : L.pending}
                   </span>
@@ -854,8 +854,8 @@ function DashboardMockup({ lang }: { lang: 'uz' | 'en' }) {
           <Icon name="check" size={16} className="text-white" />
         </div>
         <div>
-          <div className="text-[11px] font-medium">{lang==='en'?'Payment received':'To\'lov qabul qilindi'}</div>
-          <div className="text-[10px] text-[var(--text-faint)]">+ 1 200 000 {L.sum} · Click</div>
+          <div className="text-[12px] font-medium">{lang==='en'?'Payment received':'To\'lov qabul qilindi'}</div>
+          <div className="text-[11px] text-[var(--text-faint)]">+ 1 200 000 {L.sum} · Click</div>
         </div>
       </div>
 
@@ -865,8 +865,8 @@ function DashboardMockup({ lang }: { lang: 'uz' | 'en' }) {
           <Icon name="sparkles" size={16} className="text-white" />
         </div>
         <div>
-          <div className="text-[11px] font-medium">{lang==='en'?'OMR scanned · 42 sheets':'OMR skanerlandi · 42 varaq'}</div>
-          <div className="text-[10px] text-[var(--text-faint)]">{lang==='en'?'Avg score 84%':'O\'rtacha 84%'}</div>
+          <div className="text-[12px] font-medium">{lang==='en'?'OMR scanned · 42 sheets':'OMR skanerlandi · 42 varaq'}</div>
+          <div className="text-[11px] text-[var(--text-faint)]">{lang==='en'?'Avg score 84%':'O\'rtacha 84%'}</div>
         </div>
       </div>
     </div>
@@ -876,7 +876,7 @@ function DashboardMockup({ lang }: { lang: 'uz' | 'en' }) {
 function KPI({ label, value, unit, delta, trend }: { label: string; value: string; unit?: string; delta: string; trend: string }) {
   return (
     <div className="glass rounded-xl p-3">
-      <div className="text-[11px] text-[var(--text-faint)]">{label}</div>
+      <div className="text-[12px] text-[var(--text-faint)]">{label}</div>
       <div className="flex items-baseline gap-1 mt-1">
         <div className="font-display font-bold text-[20px] tabular-nums">{value}</div>
         {unit && <div className="text-[10.5px] text-[var(--text-faint)]">{unit}</div>}
@@ -920,7 +920,7 @@ const PreviewTabs = ({ lang, t }: { lang: 'uz' | 'en'; t: (s: string) => any }) 
           <span className="w-2.5 h-2.5 rounded-full bg-[#ff5f57]"></span>
           <span className="w-2.5 h-2.5 rounded-full bg-[#febc2e]"></span>
           <span className="w-2.5 h-2.5 rounded-full bg-[#28c840]"></span>
-          <div className="ml-4 px-3 py-1 rounded-md bg-[var(--surface-2)] text-[11px] text-[var(--text-faint)] font-mono">
+          <div className="ml-4 px-3 py-1 rounded-md bg-[var(--surface-2)] text-[12px] text-[var(--text-faint)] font-mono">
             quantum.uz/{active}
           </div>
         </div>
@@ -960,7 +960,7 @@ function ScheduleView({ lang }: { lang: 'uz' | 'en' }) {
     <div className="p-5 text-left">
       <div className="flex flex-wrap items-center gap-3 mb-4">
         <div>
-          <div className="text-[11px] uppercase tracking-wider text-[var(--text-faint)]">{lang==='en'?'Schedule':'Dars jadvali'}</div>
+          <div className="text-[12px] uppercase tracking-wider text-[var(--text-faint)]">{lang==='en'?'Schedule':'Dars jadvali'}</div>
           <div className="font-display font-bold text-xl">{lang==='en'?'Week 47 · Nov':"47-hafta · Noyabr"}</div>
         </div>
         <div className="ml-auto flex items-center gap-2 text-sm">
@@ -972,7 +972,7 @@ function ScheduleView({ lang }: { lang: 'uz' | 'en' }) {
         </div>
       </div>
 
-      <div className="grid border border-[var(--border)] rounded-xl overflow-hidden text-[11px]"
+      <div className="grid border border-[var(--border)] rounded-xl overflow-hidden text-[12px]"
            style={{ gridTemplateColumns: "60px repeat(7, 1fr)" }}>
         <div className="bg-[var(--surface)]"></div>
         {days.map((d, i) => (
@@ -983,7 +983,7 @@ function ScheduleView({ lang }: { lang: 'uz' | 'en' }) {
 
         {hours.map((h, hi) => (
           <Fragment key={hi}>
-            <div className="px-2 py-3 text-[var(--text-faint)] text-[10px] border-t border-[var(--border)] font-mono">{h}</div>
+            <div className="px-2 py-3 text-[var(--text-faint)] text-[11px] border-t border-[var(--border)] font-mono">{h}</div>
             {days.map((_, di) => (
               <div key={di} className="relative border-t border-l border-[var(--border)]" style={{ height: 38 }}>
                 {lessons.filter(l => l.day === di && l.h === hi).map((l, i) => (
@@ -1027,7 +1027,7 @@ function FinanceView({ lang }: { lang: 'uz' | 'en' }) {
     <div className="p-5 text-left">
       <div className="flex flex-wrap items-center gap-3 mb-4">
         <div>
-          <div className="text-[11px] uppercase tracking-wider text-[var(--text-faint)]">{lang==='en'?'Finance':"Moliya"}</div>
+          <div className="text-[12px] uppercase tracking-wider text-[var(--text-faint)]">{lang==='en'?'Finance':"Moliya"}</div>
           <div className="font-display font-bold text-xl">{lang==='en'?"Cash flow":"Pul oqimi"}</div>
         </div>
         <div className="ml-auto flex gap-2">
@@ -1047,10 +1047,10 @@ function FinanceView({ lang }: { lang: 'uz' | 'en' }) {
         <div className="glass rounded-xl p-4">
           <div className="flex items-center justify-between mb-3">
             <div>
-              <div className="text-[11px] text-[var(--text-faint)]">{lang==='en'?'Revenue by month':"Oylar bo'yicha daromad"}</div>
+              <div className="text-[12px] text-[var(--text-faint)]">{lang==='en'?'Revenue by month':"Oylar bo'yicha daromad"}</div>
               <div className="text-sm text-emerald-400">+24.6% YoY</div>
             </div>
-            <div className="font-mono text-[10px] text-[var(--text-faint)]">{lang==='en'?'in millions UZS':"mln so'm"}</div>
+            <div className="font-mono text-[11px] text-[var(--text-faint)]">{lang==='en'?'in millions UZS':"mln so'm"}</div>
           </div>
           <div className="flex items-end gap-2 h-44">
             {series.map((v, i) => (
@@ -1069,16 +1069,16 @@ function FinanceView({ lang }: { lang: 'uz' | 'en' }) {
 
         <div className="glass rounded-xl p-4">
           <div className="flex items-center justify-between mb-3">
-            <div className="text-[11px] text-[var(--text-faint)]">{lang==='en'?'Debtors':"Qarzdorlar"}</div>
-            <span className="text-[10px] text-amber-400">5 / 34</span>
+            <div className="text-[12px] text-[var(--text-faint)]">{lang==='en'?'Debtors':"Qarzdorlar"}</div>
+            <span className="text-[11px] text-amber-400">5 / 34</span>
           </div>
           <div className="flex flex-col gap-2.5">
             {debts.map((d, i) => (
-              <div key={i} className="flex items-center gap-2 text-[11px]">
-                <div className="w-6 h-6 rounded-full bg-[var(--surface-2)] flex items-center justify-center text-[10px] text-[var(--text-dim)]">{d.name[0]}</div>
+              <div key={i} className="flex items-center gap-2 text-[12px]">
+                <div className="w-6 h-6 rounded-full bg-[var(--surface-2)] flex items-center justify-center text-[11px] text-[var(--text-dim)]">{d.name[0]}</div>
                 <div className="flex-1 min-w-0">
                   <div className="truncate">{d.name}</div>
-                  <div className="text-[var(--text-faint)] text-[10px] truncate">{d.group}</div>
+                  <div className="text-[var(--text-faint)] text-[11px] truncate">{d.group}</div>
                 </div>
                 <div className="text-right">
                   <div className="font-mono">{fmt(d.amt)}</div>
@@ -1096,7 +1096,7 @@ function FinanceView({ lang }: { lang: 'uz' | 'en' }) {
 function KPIBig({ label, val, unit, delta }: { label: string; val: string; unit?: string; delta: string }) {
   return (
     <div className="glass rounded-xl p-3 text-left">
-      <div className="text-[11px] text-[var(--text-faint)]">{label}</div>
+      <div className="text-[12px] text-[var(--text-faint)]">{label}</div>
       <div className="flex items-baseline gap-1 mt-1">
         <div className="font-display font-bold text-[22px] tabular-nums">{val}</div>
         {unit && <div className="text-[10.5px] text-[var(--text-faint)]">{unit}</div>}
@@ -1153,7 +1153,7 @@ function LeadsView({ lang }: { lang: 'uz' | 'en' }) {
     <div className="p-5 text-left">
       <div className="flex flex-wrap items-center gap-3 mb-4">
         <div>
-          <div className="text-[11px] uppercase tracking-wider text-[var(--text-faint)]">{lang==='en'?'Pipeline':"Voronka"}</div>
+          <div className="text-[12px] uppercase tracking-wider text-[var(--text-faint)]">{lang==='en'?'Pipeline':"Voronka"}</div>
           <div className="font-display font-bold text-xl">{lang==='en'?'68 leads in pipeline':"Voronkada 68 lid"}</div>
         </div>
       </div>
@@ -1164,15 +1164,15 @@ function LeadsView({ lang }: { lang: 'uz' | 'en' }) {
             <div className="flex items-center justify-between px-1 pb-2 mb-2 border-b border-[var(--border)]">
               <div className="flex items-center gap-1.5">
                 <span className="w-2 h-2 rounded-full" style={{ background: c.c }}></span>
-                <span className="text-[11px] font-medium">{c.k}</span>
+                <span className="text-[12px] font-medium">{c.k}</span>
               </div>
-              <span className="text-[10px] text-[var(--text-faint)] font-mono">{c.n}</span>
+              <span className="text-[11px] text-[var(--text-faint)] font-mono">{c.n}</span>
             </div>
             <div className="flex flex-col gap-2">
               {c.leads.map((l, i) => (
                 <div key={i} className="rounded-lg p-2 bg-[var(--surface-2)] border border-[var(--border)] hover:border-[var(--accent)] cursor-pointer">
-                  <div className="text-[11px] font-medium truncate">{l.name}</div>
-                  <div className="text-[10px] text-[var(--text-faint)] truncate mt-0.5">{l.course}</div>
+                  <div className="text-[12px] font-medium truncate">{l.name}</div>
+                  <div className="text-[11px] text-[var(--text-faint)] truncate mt-0.5">{l.course}</div>
                   <div className="flex items-center justify-between mt-1.5">
                     <span className="text-[9.5px] px-1.5 py-0.5 rounded bg-[var(--surface)] text-[var(--text-dim)]">{l.src}</span>
                     <span className="text-[9.5px] text-[var(--text-faint)] font-mono">{l.age}</span>
@@ -1235,7 +1235,7 @@ function ReportsView({ lang }: { lang: 'uz' | 'en' }) {
     <div className="p-5 text-left">
       <div className="flex flex-wrap items-center gap-3 mb-4">
         <div>
-          <div className="text-[11px] uppercase tracking-wider text-[var(--text-faint)]">{lang==='en'?'Reports':"Hisobotlar"}</div>
+          <div className="text-[12px] uppercase tracking-wider text-[var(--text-faint)]">{lang==='en'?'Reports':"Hisobotlar"}</div>
           <div className="font-display font-bold text-xl">{lang==='en'?'Retention & acquisition':"Retention va lidlar"}</div>
         </div>
       </div>
@@ -1244,11 +1244,11 @@ function ReportsView({ lang }: { lang: 'uz' | 'en' }) {
         <div className="glass rounded-xl p-4">
           <div className="flex items-center justify-between mb-3">
             <div>
-              <div className="text-[11px] text-[var(--text-faint)]">{lang==='en'?'Cohort retention':"Kogorta retention"}</div>
+              <div className="text-[12px] text-[var(--text-faint)]">{lang==='en'?'Cohort retention':"Kogorta retention"}</div>
               <div className="text-sm text-emerald-400">{lang==='en'?'Avg 6-mo: 80%':"O'rtacha 6 oy: 80%"}</div>
             </div>
           </div>
-          <div className="grid gap-1 text-[10px]" style={{ gridTemplateColumns: "80px repeat(6, 1fr)" }}>
+          <div className="grid gap-1 text-[11px]" style={{ gridTemplateColumns: "80px repeat(6, 1fr)" }}>
             <div></div>
             {months.map((m) => <div key={m} className="text-center text-[var(--text-faint)] font-mono">M+{months.indexOf(m)}</div>)}
             {cohorts.map((row, ci) => (
@@ -1271,7 +1271,7 @@ function ReportsView({ lang }: { lang: 'uz' | 'en' }) {
         </div>
 
         <div className="glass rounded-xl p-4">
-          <div className="text-[11px] text-[var(--text-faint)] mb-2">{lang==='en'?'Lead sources':"Lid manbalari"}</div>
+          <div className="text-[12px] text-[var(--text-faint)] mb-2">{lang==='en'?'Lead sources':"Lid manbalari"}</div>
           <div className="flex items-center gap-4">
             <svg viewBox="0 0 100 100" width="120" height="120">
               {segs.map((s, i) => {
@@ -1289,7 +1289,7 @@ function ReportsView({ lang }: { lang: 'uz' | 'en' }) {
             </svg>
             <div className="flex-1 flex flex-col gap-1.5">
               {sources.map((s) => (
-                <div key={s.name} className="flex items-center gap-2 text-[11px]">
+                <div key={s.name} className="flex items-center gap-2 text-[12px]">
                   <span className="w-2 h-2 rounded-full" style={{ background: s.color }}></span>
                   <span className="flex-1 text-[var(--text-dim)]">{s.name}</span>
                   <span className="font-mono">{s.v}</span>
@@ -1352,8 +1352,8 @@ function OMRDemo({ lang, t }: { lang: 'uz' | 'en'; t: (s: string) => any }) {
             <span className="absolute bottom-2 right-2 w-3 h-3 bg-black"></span>
 
             <div className="text-center mb-2">
-              <div className="text-[9px] font-bold tracking-widest text-black/60">QUANTUM · OMR</div>
-              <div className="text-[10px] font-bold">{lang==='en'?'TEST SHEET · 20 questions':"TEST VARAQA · 20 savol"}</div>
+              <div className="text-[11px] font-bold tracking-widest text-black/60">QUANTUM · OMR</div>
+              <div className="text-[11px] font-bold">{lang==='en'?'TEST SHEET · 20 questions':"TEST VARAQA · 20 savol"}</div>
             </div>
 
             <div className="grid grid-cols-2 gap-x-3 gap-y-1 mt-1">
@@ -1361,7 +1361,7 @@ function OMRDemo({ lang, t }: { lang: 'uz' | 'en'; t: (s: string) => any }) {
                 const filled = phase >= 1 && i < (phase === 1 ? Math.min(questions, 20) : questions);
                 const matched = student[i] === correct[i];
                 return (
-                  <div key={i} className="flex items-center gap-1.5 text-[9px]">
+                  <div key={i} className="flex items-center gap-1.5 text-[11px]">
                     <span className="w-3 text-right font-bold text-black/70">{i+1}.</span>
                     {["A","B","C","D"].map((opt) => {
                       const isStudent = student[i] === opt;
@@ -1426,7 +1426,7 @@ function OMRDemo({ lang, t }: { lang: 'uz' | 'en'; t: (s: string) => any }) {
             <div className="absolute top-6 right-3 px-1.5 py-0.5 rounded-md bg-black/50 text-white text-[7px] font-mono backdrop-blur-sm">
               {phase >= 2 ? "20 / 20" : phase === 1 ? "scan..." : "live"}
             </div>
-            <div className="absolute bottom-3 left-1/2 -translate-x-1/2 px-2.5 py-1 rounded-full text-[8px] font-medium whitespace-nowrap"
+            <div className="absolute bottom-3 left-1/2 -translate-x-1/2 px-2.5 py-1 rounded-full text-[10px] font-medium whitespace-nowrap"
                  style={{
                    background: phase >= 2 ? "rgba(16,185,129,0.25)" : phase >= 1 ? "rgba(168,85,247,0.25)" : "rgba(99,102,241,0.25)",
                    color: phase >= 2 ? "#34d399" : phase >= 1 ? "#c4b5fd" : "#a5b4fc",
@@ -1460,7 +1460,7 @@ function OMRDemo({ lang, t }: { lang: 'uz' | 'en'; t: (s: string) => any }) {
         <div>
           <div className="flex items-center justify-between mb-3">
             <div>
-              <div className="text-[11px] uppercase tracking-wider text-[var(--text-faint)]">{lang==='en'?'Live results':"Jonli natijalar"}</div>
+              <div className="text-[12px] uppercase tracking-wider text-[var(--text-faint)]">{lang==='en'?'Live results':"Jonli natijalar"}</div>
               <div className="font-display font-bold text-lg">{lang==='en'?'IELTS Mock · Group 204':"IELTS Mock · 204-guruh"}</div>
             </div>
             <span className="chip">
@@ -1471,16 +1471,16 @@ function OMRDemo({ lang, t }: { lang: 'uz' | 'en'; t: (s: string) => any }) {
 
           <div className="rounded-xl p-4 mb-3 relative overflow-hidden"
                style={{ background: "linear-gradient(135deg, var(--accent-soft), transparent)", border: "1px solid var(--border-strong)" }}>
-            <div className="text-[11px] text-[var(--text-faint)]">{lang==='en'?'Avg score':"O'rtacha ball"}</div>
+            <div className="text-[12px] text-[var(--text-faint)]">{lang==='en'?'Avg score':"O'rtacha ball"}</div>
             <div className="flex items-baseline gap-2">
               <span className="font-display font-bold text-4xl gradient-text">17.2</span>
               <span className="text-[var(--text-faint)]">/ 20</span>
               <span className="ml-auto text-emerald-400 text-sm font-mono">86%</span>
             </div>
-            <div className="mt-2 text-[11px] text-[var(--text-dim)]">{t('omr.compare')}</div>
+            <div className="mt-2 text-[12px] text-[var(--text-dim)]">{t('omr.compare')}</div>
           </div>
 
-          <div className="text-[11px] text-[var(--text-faint)] mb-2">{lang==='en'?'Ranking':"Reyting"}</div>
+          <div className="text-[12px] text-[var(--text-faint)] mb-2">{lang==='en'?'Ranking':"Reyting"}</div>
           <div className="flex flex-col gap-1.5">
             {students.map((s, i) => {
               const visible = phase === 2 ? i < students.length : phase === 1 ? i < Math.min(3, students.length) : 0;
@@ -1492,7 +1492,7 @@ function OMRDemo({ lang, t }: { lang: 'uz' | 'en'; t: (s: string) => any }) {
                       border: "1px solid var(--border)",
                       transitionDelay: `${i*0.08}s`,
                     }}>
-                  <span className={"w-6 h-6 rounded-full flex items-center justify-center text-[11px] font-bold " +
+                  <span className={"w-6 h-6 rounded-full flex items-center justify-center text-[12px] font-bold " +
                       (s.rank === 1 ? "bg-gradient-to-br from-[var(--accent)] to-[var(--accent-2)] text-white" : "bg-[var(--surface-2)] text-[var(--text-dim)]")}>
                     {s.rank}
                   </span>
@@ -1504,9 +1504,9 @@ function OMRDemo({ lang, t }: { lang: 'uz' | 'en'; t: (s: string) => any }) {
           </div>
         </div>
 
-        <div className="pt-4 flex items-center gap-2 text-[11px]">
+        <div className="pt-4 flex items-center gap-2 text-[12px]">
           <span className="chip"><Icon name="zap" size={12} className="text-[var(--accent-2)]" /> {t('omr.saved')}</span>
-          <button className="ml-auto inline-flex items-center gap-2 px-3 py-1.5 rounded-lg text-[11px] bg-[var(--surface-2)] border border-[var(--border)] cursor-pointer">
+          <button className="ml-auto inline-flex items-center gap-2 px-3 py-1.5 rounded-lg text-[12px] bg-[var(--surface-2)] border border-[var(--border)] cursor-pointer">
             <Icon name="download" size={12} /> Excel
           </button>
         </div>
@@ -1559,7 +1559,7 @@ function TrialModal({ t, lang, plan, onClose }: TrialModalProps) {
             </div>
 
             <div className="flex flex-col gap-1.5">
-              <label className="text-[11px] font-bold text-[var(--text-dim)] uppercase tracking-wider">{lang === 'en' ? 'Full Name' : 'F.I.Sh.'}</label>
+              <label className="text-[12px] font-bold text-[var(--text-dim)] uppercase tracking-wider">{lang === 'en' ? 'Full Name' : 'F.I.Sh.'}</label>
               <input 
                 type="text" 
                 required
@@ -1571,7 +1571,7 @@ function TrialModal({ t, lang, plan, onClose }: TrialModalProps) {
             </div>
 
             <div className="flex flex-col gap-1.5">
-              <label className="text-[11px] font-bold text-[var(--text-dim)] uppercase tracking-wider">{lang === 'en' ? 'Phone Number' : 'Telefon raqami'}</label>
+              <label className="text-[12px] font-bold text-[var(--text-dim)] uppercase tracking-wider">{lang === 'en' ? 'Phone Number' : 'Telefon raqami'}</label>
               <input 
                 type="tel" 
                 required
@@ -1583,7 +1583,7 @@ function TrialModal({ t, lang, plan, onClose }: TrialModalProps) {
             </div>
 
             <div className="flex flex-col gap-1.5">
-              <label className="text-[11px] font-bold text-[var(--text-dim)] uppercase tracking-wider">{lang === 'en' ? 'Learning Center Name' : 'O\'quv markazi nomi'}</label>
+              <label className="text-[12px] font-bold text-[var(--text-dim)] uppercase tracking-wider">{lang === 'en' ? 'Learning Center Name' : 'O\'quv markazi nomi'}</label>
               <input 
                 type="text" 
                 required
@@ -1595,7 +1595,7 @@ function TrialModal({ t, lang, plan, onClose }: TrialModalProps) {
             </div>
 
             <div className="flex flex-col gap-1.5">
-              <label className="text-[11px] font-bold text-[var(--text-dim)] uppercase tracking-wider">{lang === 'en' ? 'Select Plan' : 'Tarifni tanlang'}</label>
+              <label className="text-[12px] font-bold text-[var(--text-dim)] uppercase tracking-wider">{lang === 'en' ? 'Select Plan' : 'Tarifni tanlang'}</label>
               <select 
                 value={selPlan}
                 onChange={e => setSelPlan(e.target.value)}
@@ -1919,7 +1919,7 @@ function Features({ t }: { t: (s: string) => any }) {
                     <Icon name={it.icon} size={20} className="text-[var(--accent)]" />
                   </div>
                   {it.tag && (
-                    <span className="px-2 py-0.5 rounded-md bg-[var(--accent-soft)] text-[10px] font-bold text-[var(--accent)] uppercase tracking-wider">
+                    <span className="px-2 py-0.5 rounded-md bg-[var(--accent-soft)] text-[11px] font-bold text-[var(--accent)] uppercase tracking-wider">
                       {it.tag}
                     </span>
                   )}
@@ -2029,7 +2029,7 @@ function Pricing({ t, onOpenModal }: PricingProps) {
             <button onClick={() => setYearly(true)}
                     className={"px-4 py-2 rounded-lg text-xs font-semibold flex items-center gap-1.5 cursor-pointer " + (yearly ? "bg-[var(--bg-2)] text-[var(--text)] border border-[var(--border-strong)]" : "text-[var(--text-dim)]")}>
               {t('pricing.yearly')}
-              <span className="px-1.5 py-0.5 rounded-md bg-emerald-500/15 text-emerald-400 text-[9px] font-bold uppercase tracking-wider">{t('pricing.save')}</span>
+              <span className="px-1.5 py-0.5 rounded-md bg-emerald-500/15 text-emerald-400 text-[11px] font-bold uppercase tracking-wider">{t('pricing.save')}</span>
             </button>
           </div>
         </div>
@@ -2200,7 +2200,7 @@ function Footer({ t }: { t: (s: string) => any }) {
           {/* Links */}
           {cols.map((c, i) => (
             <div key={i} className="flex flex-col gap-3">
-              <div className="text-[11px] font-bold uppercase tracking-wider text-[var(--text-faint)]">{c.title}</div>
+              <div className="text-[12px] font-bold uppercase tracking-wider text-[var(--text-faint)]">{c.title}</div>
               <div className="flex flex-col gap-1.5">
                 {c.links.map((lnk: string, j: number) => (
                   <a key={j} href="#" className="text-xs text-[var(--text-dim)] hover:text-[var(--text)] transition-colors">
@@ -2213,7 +2213,7 @@ function Footer({ t }: { t: (s: string) => any }) {
         </div>
 
         <div className="border-t border-[var(--border)] pt-8 flex flex-col md:flex-row items-center justify-between gap-4">
-          <span className="text-[11px] text-[var(--text-faint)]">{t('footer.rights')}</span>
+          <span className="text-[12px] text-[var(--text-faint)]">{t('footer.rights')}</span>
           <div className="flex gap-4">
             <a href="#" className="text-[var(--text-faint)] hover:text-[var(--text)] transition-colors"><Icon name="instagram" size={16} /></a>
             <a href="#" className="text-[var(--text-faint)] hover:text-[var(--text)] transition-colors"><Icon name="send" size={16} /></a>

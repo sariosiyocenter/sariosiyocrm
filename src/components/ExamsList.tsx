@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Search, Plus, X, Calendar, Clock, BookOpen, ScanLine, FileText } from 'lucide-react';
 import { useCRM } from '../context/CRMContext';
+import { useConfirm } from './ConfirmDialog';
 import { useLang } from '../context/LanguageContext';
 import { useNavigate } from 'react-router-dom';
 import QuestionsList from './QuestionsList';
@@ -8,6 +9,7 @@ import Scanner from './Scanner';
 
 export default function ExamsList() {
     const { exams, deleteExam } = useCRM();
+    const confirm = useConfirm();
     const { t } = useLang();
     const navigate = useNavigate();
 
@@ -16,7 +18,7 @@ export default function ExamsList() {
 
     const handleDelete = async (id: number, e: React.MouseEvent) => {
         e.stopPropagation();
-        if (window.confirm(t('delete_exam_confirm'))) {
+        if (await confirm(t('delete_exam_confirm'))) {
             await deleteExam(id);
         }
     };
@@ -32,21 +34,21 @@ export default function ExamsList() {
                 <div className="flex border-b border-gray-100 dark:border-gray-700/50 bg-white dark:bg-gray-800 rounded-2xl overflow-hidden p-1 shadow-sm gap-1">
                     <button
                         onClick={() => setActiveTab('exams')}
-                        className="flex items-center gap-2 px-6 py-3.5 rounded-xl text-[10px] font-extrabold uppercase tracking-widest transition-all text-gray-400 hover:text-gray-900 dark:hover:text-white cursor-pointer"
+                        className="flex items-center gap-2 px-6 py-3.5 rounded-xl text-[11px] font-extrabold uppercase tracking-widest transition-all text-gray-400 hover:text-gray-900 dark:hover:text-white cursor-pointer"
                     >
                         <FileText size={14} />
                         {t('exam_tab_exams')}
                     </button>
                     <button
                         onClick={() => setActiveTab('questions')}
-                        className="flex items-center gap-2 px-6 py-3.5 rounded-xl text-[10px] font-extrabold uppercase tracking-widest transition-all bg-teal-50 dark:bg-teal-950/20 text-[#1b6b6b] cursor-pointer"
+                        className="flex items-center gap-2 px-6 py-3.5 rounded-xl text-[11px] font-extrabold uppercase tracking-widest transition-all bg-teal-50 dark:bg-teal-950/20 text-[#1b6b6b] cursor-pointer"
                     >
                         <BookOpen size={14} />
                         {t('exam_tab_questions')}
                     </button>
                     <button
                         onClick={() => setActiveTab('scanner')}
-                        className="flex items-center gap-2 px-6 py-3.5 rounded-xl text-[10px] font-extrabold uppercase tracking-widest transition-all text-gray-400 hover:text-gray-900 dark:hover:text-white cursor-pointer"
+                        className="flex items-center gap-2 px-6 py-3.5 rounded-xl text-[11px] font-extrabold uppercase tracking-widest transition-all text-gray-400 hover:text-gray-900 dark:hover:text-white cursor-pointer"
                     >
                         <ScanLine size={14} />
                         {t('exam_tab_scanner')}
@@ -67,21 +69,21 @@ export default function ExamsList() {
             <div className="flex border-b border-gray-100 dark:border-gray-700/50 bg-white dark:bg-gray-800 rounded-2xl overflow-hidden p-1 shadow-sm gap-1">
                 <button
                     onClick={() => setActiveTab('exams')}
-                    className="flex items-center gap-2 px-6 py-3.5 rounded-xl text-[10px] font-extrabold uppercase tracking-widest transition-all bg-teal-50 dark:bg-teal-950/20 text-[#1b6b6b] cursor-pointer"
+                    className="flex items-center gap-2 px-6 py-3.5 rounded-xl text-[11px] font-extrabold uppercase tracking-widest transition-all bg-teal-50 dark:bg-teal-950/20 text-[#1b6b6b] cursor-pointer"
                 >
                     <FileText size={14} />
                     {t('exam_tab_exams')}
                 </button>
                 <button
                     onClick={() => setActiveTab('questions')}
-                    className="flex items-center gap-2 px-6 py-3.5 rounded-xl text-[10px] font-extrabold uppercase tracking-widest transition-all text-gray-400 hover:text-gray-900 dark:hover:text-white cursor-pointer"
+                    className="flex items-center gap-2 px-6 py-3.5 rounded-xl text-[11px] font-extrabold uppercase tracking-widest transition-all text-gray-400 hover:text-gray-900 dark:hover:text-white cursor-pointer"
                 >
                     <BookOpen size={14} />
                     {t('exam_tab_questions')}
                 </button>
                 <button
                     onClick={() => setActiveTab('scanner')}
-                    className="flex items-center gap-2 px-6 py-3.5 rounded-xl text-[10px] font-extrabold uppercase tracking-widest transition-all text-gray-400 hover:text-gray-900 dark:hover:text-white cursor-pointer"
+                    className="flex items-center gap-2 px-6 py-3.5 rounded-xl text-[11px] font-extrabold uppercase tracking-widest transition-all text-gray-400 hover:text-gray-900 dark:hover:text-white cursor-pointer"
                 >
                     <ScanLine size={14} />
                     {t('exam_tab_scanner')}
@@ -97,7 +99,7 @@ export default function ExamsList() {
                         </div>
                         <div>
                             <h1 className="text-sm font-black text-gray-900 dark:text-white uppercase tracking-tight">{t('exams_title')}</h1>
-                            <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mt-0.5">{t('exams_list_subtitle')}</p>
+                            <p className="text-[11px] font-bold text-gray-400 uppercase tracking-widest mt-0.5">{t('exams_list_subtitle')}</p>
                         </div>
                     </div>
                     <div className="flex flex-col sm:flex-row items-center gap-3 w-full md:w-auto">
@@ -113,7 +115,7 @@ export default function ExamsList() {
                         </div>
                         <button
                             onClick={() => navigate('/exams/new')}
-                            className="w-full sm:w-auto flex items-center justify-center gap-2 px-6 py-2.5 bg-[#1b6b6b] hover:bg-[#155252] text-white rounded-2xl text-[10px] font-extrabold uppercase tracking-widest shadow-lg shadow-[#1b6b6b]/20 active:scale-95 transition-all cursor-pointer"
+                            className="w-full sm:w-auto flex items-center justify-center gap-2 px-6 py-2.5 bg-[#1b6b6b] hover:bg-[#155252] text-white rounded-2xl text-[11px] font-extrabold uppercase tracking-widest shadow-lg shadow-[#1b6b6b]/20 active:scale-95 transition-all cursor-pointer"
                         >
                             <Plus size={14} />
                             {t('add_exam')}
@@ -128,11 +130,11 @@ export default function ExamsList() {
                     <table className="w-full text-left border-collapse min-w-[800px]">
                         <thead>
                             <tr className="bg-gray-55 dark:bg-gray-900 border-b border-gray-100 dark:border-gray-700/50">
-                                <th className="p-4 text-[9px] font-black text-gray-400 uppercase tracking-widest w-20 text-center">ID</th>
-                                <th className="p-4 text-[9px] font-black text-gray-400 uppercase tracking-widest">{t('exam_col_name')}</th>
-                                <th className="p-4 text-[9px] font-black text-gray-400 uppercase tracking-widest text-center">{t('exam_col_date')}</th>
-                                <th className="p-4 text-[9px] font-black text-gray-400 uppercase tracking-widest text-center">{t('exam_col_questions')}</th>
-                                <th className="p-4 text-[9px] font-black text-gray-400 uppercase tracking-widest text-right">{t('status')}</th>
+                                <th className="p-4 text-[11px] font-black text-gray-400 uppercase tracking-widest w-20 text-center">ID</th>
+                                <th className="p-4 text-[11px] font-black text-gray-400 uppercase tracking-widest">{t('exam_col_name')}</th>
+                                <th className="p-4 text-[11px] font-black text-gray-400 uppercase tracking-widest text-center">{t('exam_col_date')}</th>
+                                <th className="p-4 text-[11px] font-black text-gray-400 uppercase tracking-widest text-center">{t('exam_col_questions')}</th>
+                                <th className="p-4 text-[11px] font-black text-gray-400 uppercase tracking-widest text-right">{t('status')}</th>
                                 <th className="p-4 w-12 text-center"></th>
                             </tr>
                         </thead>
@@ -141,7 +143,7 @@ export default function ExamsList() {
                                 <tr key={exam.id} className="hover:bg-gray-50/30 transition-colors cursor-pointer group"
                                     onClick={() => navigate(`/exams/${exam.id}`)}
                                 >
-                                    <td className="p-4 text-[10px] font-bold text-gray-400 text-center tabular-nums">#{exam.id.toString().substring(0,4)}</td>
+                                    <td className="p-4 text-[11px] font-bold text-gray-400 text-center tabular-nums">#{exam.id.toString().substring(0,4)}</td>
                                     <td className="p-4">
                                         <div className="flex items-center gap-3">
                                             <div className="w-9 h-9 rounded-xl bg-teal-50 dark:bg-teal-950/20 border border-teal-100 dark:border-teal-900/40 flex items-center justify-center text-[#1b6b6b] shrink-0">
@@ -149,30 +151,30 @@ export default function ExamsList() {
                                             </div>
                                             <div>
                                                 <p className="text-xs font-black text-gray-900 dark:text-white group-hover:text-[#1b6b6b] transition-colors uppercase tracking-tight">{exam.name}</p>
-                                                <p className="text-[9px] font-bold text-gray-400 mt-0.5">{exam.blocks?.length || 0} ta fan</p>
+                                                <p className="text-[11px] font-bold text-gray-400 mt-0.5">{exam.blocks?.length || 0} ta fan</p>
                                             </div>
                                         </div>
                                     </td>
                                     <td className="p-4 text-center">
                                         <div className="flex flex-col items-center gap-1">
-                                            <span className="text-[10px] font-bold text-gray-650 dark:text-gray-300 bg-gray-55 dark:bg-gray-900 px-2.5 py-1 rounded-md border border-gray-100 dark:border-gray-700 inline-flex items-center gap-1.5 uppercase tracking-wide">
+                                            <span className="text-[11px] font-bold text-gray-650 dark:text-gray-300 bg-gray-55 dark:bg-gray-900 px-2.5 py-1 rounded-md border border-gray-100 dark:border-gray-700 inline-flex items-center gap-1.5 uppercase tracking-wide">
                                                 <Calendar size={12} className="text-gray-400" /> {exam.date}
                                             </span>
-                                            <span className="text-[9px] font-bold text-gray-400 uppercase tracking-widest">
+                                            <span className="text-[11px] font-bold text-gray-400 uppercase tracking-widest">
                                                 {exam.duration} daqiqa
                                             </span>
                                         </div>
                                     </td>
                                     <td className="p-4 text-center">
                                         <div className="flex flex-col items-center">
-                                            <span className="inline-flex items-center justify-center px-2 py-0.5 rounded bg-teal-50 dark:bg-teal-950/20 text-[#1b6b6b] border border-teal-100 dark:border-teal-900/40 text-[9px] font-black uppercase tracking-wider">
+                                            <span className="inline-flex items-center justify-center px-2 py-0.5 rounded bg-teal-50 dark:bg-teal-950/20 text-[#1b6b6b] border border-teal-100 dark:border-teal-900/40 text-[11px] font-black uppercase tracking-wider">
                                                 {exam.totalQuestions || 0} ta
                                             </span>
-                                            <span className="text-[9px] font-bold text-gray-400 mt-1 uppercase tracking-widest">{exam.maxScore || 0} ball</span>
+                                            <span className="text-[11px] font-bold text-gray-400 mt-1 uppercase tracking-widest">{exam.maxScore || 0} ball</span>
                                         </div>
                                     </td>
                                     <td className="p-4 text-right">
-                                        <span className={`px-2.5 py-1 rounded-md text-[9px] font-black border uppercase tracking-wider ${
+                                        <span className={`px-2.5 py-1 rounded-md text-[11px] font-black border uppercase tracking-wider ${
                                             exam.status === 'Tugallangan' ? 'bg-emerald-50 text-emerald-600 border-emerald-100 dark:bg-emerald-950/20 dark:text-emerald-400' :
                                             exam.status === 'Yaqinlashmoqda' ? 'bg-sky-50 text-sky-600 border-sky-100 dark:bg-sky-950/20 dark:text-sky-400' :
                                             'bg-gray-55 text-gray-400 border-gray-100'
@@ -194,7 +196,7 @@ export default function ExamsList() {
                                 <tr>
                                     <td colSpan={6} className="p-16 text-center">
                                         <BookOpen className="w-10 h-10 text-gray-300 mx-auto mb-3" />
-                                        <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">{t('no_exams_found')}</p>
+                                        <p className="text-[11px] font-bold text-gray-400 uppercase tracking-widest">{t('no_exams_found')}</p>
                                     </td>
                                 </tr>
                             )}

@@ -5,6 +5,7 @@ import './index.css';
 import { BrowserRouter } from 'react-router-dom';
 import { CRMProvider } from './context/CRMContext';
 import { LanguageProvider } from './context/LanguageContext';
+import { ConfirmProvider } from './components/ConfirmDialog';
 
 // Auto-reload when JS chunks are stale after a new deployment
 window.addEventListener('unhandledrejection', (e: PromiseRejectionEvent) => {
@@ -24,7 +25,9 @@ createRoot(document.getElementById('root')!).render(
     <BrowserRouter>
       <LanguageProvider>
         <CRMProvider>
-          <App />
+          <ConfirmProvider>
+            <App />
+          </ConfirmProvider>
         </CRMProvider>
       </LanguageProvider>
     </BrowserRouter>

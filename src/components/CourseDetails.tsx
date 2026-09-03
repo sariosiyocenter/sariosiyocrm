@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useCRM } from '../context/CRMContext';
+import { useConfirm } from './ConfirmDialog';
 import {
     Users, Calendar, Clock, BookOpen, Plus, TrendingUp,
     XCircle, ArrowLeft, Search, ClipboardCheck, ChevronRight, Presentation, Check, Sparkles,
@@ -14,6 +15,7 @@ export default function CourseDetails() {
     const { id } = useParams<{ id: string }>();
     const navigate = useNavigate();
     const { groups, students, teachers, courses, rooms, attendances, payments, addBatchAttendance, addAttendance, updateDayTopic, addStudentToGroup, removeStudentFromGroup, updateGroup, updateCourse, deleteGroup, showNotification, topics, addTopic, updateTopic, addPayment, syllabuses, loadAttendanceFor } = useCRM();
+    const confirm = useConfirm();
     const [isEditingInfo, setIsEditingInfo] = useState(false);
     const [editForm, setEditForm] = useState({
         teacherId: 0,
@@ -77,7 +79,7 @@ export default function CourseDetails() {
     };
 
     const handleSendAttendanceSms = async () => {
-        if (!window.confirm("Kelmagan o'quvchilar ota-onalariga SMS yuborilsinmi?")) return;
+        if (!await confirm("Kelmagan o'quvchilar ota-onalariga SMS yuborilsinmi?")) return;
         
         try {
             const token = localStorage.getItem('token');
@@ -289,20 +291,20 @@ export default function CourseDetails() {
 
     const availableStudents = students.filter(s => !(group.studentIds || []).includes(s.id) && s.name.toLowerCase().includes(studentSearch.toLowerCase()));
 
-    const labelCls = "block text-[10px] font-extrabold uppercase tracking-widest text-gray-400 mb-2";
+    const labelCls = "block text-[11px] font-extrabold uppercase tracking-widest text-gray-400 mb-2";
     const inputCls = "w-full px-4 py-3 bg-gray-55 dark:bg-gray-900/50 border border-gray-100 dark:border-gray-700 rounded-2xl text-xs font-bold text-gray-900 dark:text-white focus:border-[#1b6b6b] focus:ring-4 focus:ring-[#1b6b6b]/10 outline-none transition-all";
 
     return (
         <div className="space-y-6 animate-in fade-in duration-500">
             {/* Back Button + Delete */}
             <div className="flex items-center justify-between">
-                <button onClick={() => navigate('/courses')} className="flex items-center gap-2 text-gray-400 dark:text-gray-500 hover:text-[#1b6b6b] transition-all text-[10px] font-extrabold uppercase tracking-widest group cursor-pointer">
+                <button onClick={() => navigate('/courses')} className="flex items-center gap-2 text-gray-400 dark:text-gray-500 hover:text-[#1b6b6b] transition-all text-[11px] font-extrabold uppercase tracking-widest group cursor-pointer">
                     <ArrowLeft size={14} className="group-hover:-translate-x-1 transition-transform" />
                     Orqaga
                 </button>
                 <button
                     onClick={async () => {
-                        if (!confirm(`"${group.name}" guruhini o'chirishni tasdiqlaysizmi? Bu amalni ortga qaytarib bo'lmaydi.`)) return;
+                        if (!await confirm(`"${group.name}" guruhini o'chirishni tasdiqlaysizmi? Bu amalni ortga qaytarib bo'lmaydi.`)) return;
                         try {
                             await deleteGroup(group.id);
                             navigate('/courses');
@@ -310,7 +312,7 @@ export default function CourseDetails() {
                             showNotification("Guruhni o'chirishda xatolik yuz berdi", "error");
                         }
                     }}
-                    className="flex items-center gap-1.5 px-3 py-1.5 text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/20 rounded-xl transition-all text-[10px] font-extrabold uppercase tracking-widest cursor-pointer"
+                    className="flex items-center gap-1.5 px-3 py-1.5 text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/20 rounded-xl transition-all text-[11px] font-extrabold uppercase tracking-widest cursor-pointer"
                 >
                     <Trash2 size={13} />
                     Guruhni o'chirish
@@ -322,13 +324,13 @@ export default function CourseDetails() {
                     <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
                         <div>
                             <div className="flex items-center gap-3 mb-3">
-                                <span className="px-2 py-0.5 rounded bg-emerald-50 text-emerald-600 border border-emerald-100 dark:bg-emerald-950/20 dark:text-emerald-400 dark:border-emerald-900/40 text-[8px] font-black uppercase tracking-wider">Kurs faol</span>
-                                <span className="text-[9px] font-bold text-gray-400 uppercase tracking-widest">ID: #{group.id}</span>
+                                <span className="px-2 py-0.5 rounded bg-emerald-50 text-emerald-600 border border-emerald-100 dark:bg-emerald-950/20 dark:text-emerald-400 dark:border-emerald-900/40 text-[10px] font-black uppercase tracking-wider">Kurs faol</span>
+                                <span className="text-[11px] font-bold text-gray-400 uppercase tracking-widest">ID: #{group.id}</span>
                             </div>
                             <h1 className="text-xl font-black text-gray-900 dark:text-white uppercase tracking-tight">{group.name}</h1>
                             {course?.name && course.name !== 'birinchi' && (
                                 <div className="flex items-center gap-3 mt-3">
-                                    <span className="flex items-center gap-1.5 px-3 py-1.5 bg-white dark:bg-gray-950 rounded-xl border border-gray-100 dark:border-gray-800 text-[10px] font-bold text-gray-600 dark:text-gray-300">
+                                    <span className="flex items-center gap-1.5 px-3 py-1.5 bg-white dark:bg-gray-950 rounded-xl border border-gray-100 dark:border-gray-800 text-[11px] font-bold text-gray-600 dark:text-gray-300">
                                         <BookOpen size={13} className="text-[#1b6b6b]" />
                                         {course.name}
                                     </span>
@@ -355,7 +357,7 @@ export default function CourseDetails() {
                                         <Presentation size={22} />
                                     </div>
                                     <div>
-                                        <span className="text-[9px] font-bold text-gray-400 block mb-0.5 uppercase tracking-widest">O'qituvchi</span>
+                                        <span className="text-[11px] font-bold text-gray-400 block mb-0.5 uppercase tracking-widest">O'qituvchi</span>
                                         <span className="text-sm font-black text-gray-900 dark:text-white uppercase tracking-tight">{teacher?.name}</span>
                                     </div>
                                 </>
@@ -400,9 +402,9 @@ export default function CourseDetails() {
                             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                                 <div className="lg:col-span-2 space-y-6">
                                     <div className="flex items-center justify-between pb-2 border-b border-gray-55 dark:border-gray-700/50">
-                                        <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">O'quvchilar</span>
+                                        <span className="text-[11px] font-black text-gray-400 uppercase tracking-widest">O'quvchilar</span>
                                         <button onClick={() => setIsAddStudentModalOpen(true)} 
-                                            className="px-4 py-2.5 bg-[#1b6b6b] hover:bg-[#155252] text-white rounded-xl text-[10px] font-extrabold uppercase tracking-widest shadow-lg shadow-[#1b6b6b]/20 active:scale-95 transition-all flex items-center gap-1.5 group cursor-pointer">
+                                            className="px-4 py-2.5 bg-[#1b6b6b] hover:bg-[#155252] text-white rounded-xl text-[11px] font-extrabold uppercase tracking-widest shadow-lg shadow-[#1b6b6b]/20 active:scale-95 transition-all flex items-center gap-1.5 group cursor-pointer">
                                             <Plus size={14} />
                                             Qo'shish
                                         </button>
@@ -418,12 +420,12 @@ export default function CourseDetails() {
                                                     </div>
                                                     <div className="min-w-0">
                                                         <p className="text-xs font-black text-gray-900 dark:text-white truncate uppercase tracking-tight group-hover:text-[#1b6b6b] transition-colors">{s.name}</p>
-                                                        <p className="text-[9px] font-bold text-gray-405 mt-0.5">{s.phone}</p>
+                                                        <p className="text-[11px] font-bold text-gray-405 mt-0.5">{s.phone}</p>
                                                     </div>
                                                 </div>
                                                 <div className="flex items-center gap-1.5 shrink-0">
                                                     {payStatus && (
-                                                        <span className={`text-[8px] font-black px-2 py-1 rounded-md border uppercase tracking-wider ${
+                                                        <span className={`text-[10px] font-black px-2 py-1 rounded-md border uppercase tracking-wider ${
                                                             payStatus === 'full' ? 'text-emerald-600 bg-emerald-50 border-emerald-100 dark:bg-emerald-950/20 dark:text-emerald-400' :
                                                             payStatus === 'partial' ? 'text-amber-600 bg-amber-50 border-amber-100 dark:bg-amber-950/20 dark:text-amber-400' :
                                                             'text-rose-600 bg-rose-50 border-rose-100 dark:bg-rose-950/20 dark:text-rose-400'
@@ -431,7 +433,7 @@ export default function CourseDetails() {
                                                             {payStatus === 'full' ? "To'liq" : payStatus === 'partial' ? 'Qisman' : 'Qarzdor'}
                                                         </span>
                                                     )}
-                                                    <span className={`text-[9px] font-black px-2.5 py-1 rounded-md border ${s.balance >= 0 ? 'text-emerald-600 bg-emerald-50 border-emerald-100 dark:bg-emerald-950/20 dark:text-emerald-400' : 'text-rose-600 bg-rose-50 border-rose-100 dark:bg-rose-950/20 dark:text-rose-400'}`}>
+                                                    <span className={`text-[11px] font-black px-2.5 py-1 rounded-md border ${s.balance >= 0 ? 'text-emerald-600 bg-emerald-50 border-emerald-100 dark:bg-emerald-950/20 dark:text-emerald-400' : 'text-rose-600 bg-rose-50 border-rose-100 dark:bg-rose-950/20 dark:text-rose-400'}`}>
                                                         {s.balance.toLocaleString()}
                                                     </span>
                                                     <button
@@ -453,17 +455,17 @@ export default function CourseDetails() {
                                             );
                                         })}
                                         {groupStudents.length === 0 && (
-                                            <p className="col-span-full py-12 text-center text-[10px] text-gray-400 font-bold uppercase tracking-widest">Bu kursda o'quvchilar yo'q</p>
+                                            <p className="col-span-full py-12 text-center text-[11px] text-gray-400 font-bold uppercase tracking-widest">Bu kursda o'quvchilar yo'q</p>
                                         )}
                                     </div>
                                 </div>
                                 <div className="space-y-6">
                                     <div className="flex items-center justify-between pb-2 border-b border-gray-55 dark:border-gray-700/50">
-                                        <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Ma'lumotlar</span>
+                                        <span className="text-[11px] font-black text-gray-400 uppercase tracking-widest">Ma'lumotlar</span>
                                         {!isEditingInfo ? (
                                             <button 
                                                 onClick={handleStartEdit}
-                                                className="text-[9px] font-black text-[#1b6b6b] uppercase tracking-widest hover:underline cursor-pointer"
+                                                className="text-[11px] font-black text-[#1b6b6b] uppercase tracking-widest hover:underline cursor-pointer"
                                             >
                                                 O'zgartirish
                                             </button>
@@ -471,13 +473,13 @@ export default function CourseDetails() {
                                             <div className="flex gap-2.5">
                                                 <button 
                                                     onClick={handleSaveInfo}
-                                                    className="text-[9px] font-black text-emerald-600 uppercase tracking-widest hover:underline cursor-pointer"
+                                                    className="text-[11px] font-black text-emerald-600 uppercase tracking-widest hover:underline cursor-pointer"
                                                 >
                                                     Saqlash
                                                 </button>
                                                 <button 
                                                     onClick={() => setIsEditingInfo(false)}
-                                                    className="text-[9px] font-black text-rose-600 uppercase tracking-widest hover:underline cursor-pointer"
+                                                    className="text-[11px] font-black text-rose-600 uppercase tracking-widest hover:underline cursor-pointer"
                                                 >
                                                     Bekor
                                                 </button>
@@ -575,12 +577,12 @@ export default function CourseDetails() {
                                 <div>
                                     <h3 className="text-xs font-black text-gray-900 dark:text-white uppercase tracking-tight">Davomat belgilash</h3>
                                     {!isDayValid(group.days, selectedDate) ? (
-                                        <p className="text-[9px] font-bold text-amber-600 dark:text-amber-400 mt-1 uppercase tracking-widest flex items-center gap-1">
+                                        <p className="text-[11px] font-bold text-amber-600 dark:text-amber-400 mt-1 uppercase tracking-widest flex items-center gap-1">
                                             <XCircle size={12} />
                                             Bugun kurs kuni emas ({group.days})
                                         </p>
                                     ) : (
-                                        <p className="text-[9px] font-bold text-gray-400 mt-1 uppercase tracking-widest flex items-center gap-1">
+                                        <p className="text-[11px] font-bold text-gray-400 mt-1 uppercase tracking-widest flex items-center gap-1">
                                             <Calendar size={12} className="text-[#1b6b6b]" />
                                             {getDayName(selectedDate)}
                                         </p>
@@ -598,7 +600,7 @@ export default function CourseDetails() {
                                         </button>
                                         
                                         <input type="date" value={selectedDate} onChange={e => setSelectedDate(e.target.value)}
-                                            className={`px-3 py-1.5 bg-transparent text-[10px] font-black uppercase tracking-wider outline-none border-none cursor-pointer ${!isDayValid(group.days, selectedDate) ? 'text-amber-600' : 'text-gray-900 dark:text-white'}`} />
+                                            className={`px-3 py-1.5 bg-transparent text-[11px] font-black uppercase tracking-wider outline-none border-none cursor-pointer ${!isDayValid(group.days, selectedDate) ? 'text-amber-600' : 'text-gray-900 dark:text-white'}`} />
 
                                         <button 
                                             onClick={() => setSelectedDate(prev => getValidDate(prev, group.days, 'next'))}
@@ -619,7 +621,7 @@ export default function CourseDetails() {
                                                 setSelectedTopicId(newId);
                                                 updateDayTopic(group.id, selectedDate, newId ? Number(newId) : null);
                                             }}
-                                            className="bg-transparent text-[10px] font-black uppercase tracking-wider outline-none border-none cursor-pointer text-gray-750 dark:text-white max-w-[200px]"
+                                            className="bg-transparent text-[11px] font-black uppercase tracking-wider outline-none border-none cursor-pointer text-gray-750 dark:text-white max-w-[200px]"
                                         >
                                             <option value="">-- Dars mavzusi --</option>
                                             {courseTopics.map(t => (
@@ -632,7 +634,7 @@ export default function CourseDetails() {
                                     <div className="flex items-center gap-2 w-full sm:w-auto shrink-0">
                                         <button
                                             onClick={handleSendAttendanceSms}
-                                            className="px-4 py-2 bg-amber-50 dark:bg-amber-950/20 text-amber-600 dark:text-amber-400 border border-amber-100 dark:border-amber-900/40 rounded-xl text-[10px] font-extrabold uppercase tracking-widest hover:bg-amber-600 hover:text-white transition-all flex items-center gap-1.5 group cursor-pointer"
+                                            className="px-4 py-2 bg-amber-50 dark:bg-amber-950/20 text-amber-600 dark:text-amber-400 border border-amber-100 dark:border-amber-900/40 rounded-xl text-[11px] font-extrabold uppercase tracking-widest hover:bg-amber-600 hover:text-white transition-all flex items-center gap-1.5 group cursor-pointer"
                                             title="Kelmaganlarga SMS yuborish"
                                         >
                                             <Sparkles size={13} className="group-hover:animate-pulse" />
@@ -646,18 +648,18 @@ export default function CourseDetails() {
                                 {/* Students checklist for selected Date */}
                                 <div className="lg:col-span-1 bg-white dark:bg-gray-800 p-4 rounded-3xl border border-gray-100 dark:border-gray-700 shadow-sm space-y-4">
                                     <div className="flex items-center justify-between pb-2 border-b border-gray-50 dark:border-gray-700">
-                                        <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Dars yo'qlamasi ({selectedDate})</span>
+                                        <span className="text-[11px] font-black text-gray-400 uppercase tracking-widest">Dars yo'qlamasi ({selectedDate})</span>
                                         <div className="flex items-center gap-2">
-                                            <span className="text-[9px] font-bold text-gray-450">{groupStudents.length} ta o'quvchi</span>
+                                            <span className="text-[11px] font-bold text-gray-450">{groupStudents.length} ta o'quvchi</span>
                                             <button
                                                 onClick={() => addBatchAttendance(group.id, selectedDate, groupStudents.map(s => ({ studentId: s.id, status: 'Keldi' })), selectedTopicId ? Number(selectedTopicId) : undefined)}
-                                                className="px-2.5 py-1 rounded-lg text-[8px] font-black uppercase tracking-wider bg-emerald-50 text-emerald-600 border border-emerald-100 hover:bg-emerald-500 hover:text-white hover:border-emerald-500 dark:bg-emerald-950/20 dark:text-emerald-400 dark:border-emerald-900/40 transition-all cursor-pointer"
+                                                className="px-2.5 py-1 rounded-lg text-[10px] font-black uppercase tracking-wider bg-emerald-50 text-emerald-600 border border-emerald-100 hover:bg-emerald-500 hover:text-white hover:border-emerald-500 dark:bg-emerald-950/20 dark:text-emerald-400 dark:border-emerald-900/40 transition-all cursor-pointer"
                                             >
                                                 Hammasi keldi
                                             </button>
                                             <button
                                                 onClick={() => setIsFaceAttendanceOpen(true)}
-                                                className="px-2.5 py-1 rounded-lg text-[8px] font-black uppercase tracking-wider bg-violet-50 text-violet-600 border border-violet-100 hover:bg-violet-500 hover:text-white hover:border-violet-500 dark:bg-violet-950/20 dark:text-violet-400 dark:border-violet-900/40 transition-all cursor-pointer"
+                                                className="px-2.5 py-1 rounded-lg text-[10px] font-black uppercase tracking-wider bg-violet-50 text-violet-600 border border-violet-100 hover:bg-violet-500 hover:text-white hover:border-violet-500 dark:bg-violet-950/20 dark:text-violet-400 dark:border-violet-900/40 transition-all cursor-pointer"
                                             >
                                                 Face ID
                                             </button>
@@ -670,23 +672,23 @@ export default function CourseDetails() {
                                                 <div key={s.id} className={`flex items-center justify-between px-3 py-2 rounded-xl border transition-all ${status ? 'bg-white dark:bg-gray-900 border-gray-100 dark:border-gray-700' : 'bg-gray-50 dark:bg-gray-900/40 border-dashed border-gray-200 dark:border-gray-700/50'}`}>
                                                     <div className="flex items-center gap-2 min-w-0">
                                                         <div className={`w-1.5 h-5 rounded-full shrink-0 ${status === 'Keldi' ? 'bg-emerald-400' : status === 'Kelmapdi' ? 'bg-rose-400' : status === 'Sababli' ? 'bg-sky-400' : status === 'Kechikdi' ? 'bg-orange-400' : 'bg-gray-200 dark:bg-gray-700'}`} />
-                                                        <span className="text-[10px] font-black text-gray-900 dark:text-white uppercase tracking-tight truncate max-w-[100px]">{s.name}</span>
+                                                        <span className="text-[11px] font-black text-gray-900 dark:text-white uppercase tracking-tight truncate max-w-[100px]">{s.name}</span>
                                                     </div>
                                                     <div className="flex items-center gap-0.5 shrink-0">
                                                         <button onClick={() => saveAttendance(s.id, 'Keldi')}
-                                                            className={`px-2 py-1 rounded-lg text-[8px] font-black uppercase tracking-wider transition-all cursor-pointer ${status === 'Keldi' ? 'bg-emerald-500 text-white' : 'bg-gray-100 dark:bg-gray-800 text-gray-400 hover:text-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-950/20'}`}>
+                                                            className={`px-2 py-1 rounded-lg text-[10px] font-black uppercase tracking-wider transition-all cursor-pointer ${status === 'Keldi' ? 'bg-emerald-500 text-white' : 'bg-gray-100 dark:bg-gray-800 text-gray-400 hover:text-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-950/20'}`}>
                                                             Keldi
                                                         </button>
                                                         <button onClick={() => saveAttendance(s.id, 'Kelmapdi')}
-                                                            className={`px-2 py-1 rounded-lg text-[8px] font-black uppercase tracking-wider transition-all cursor-pointer ${status === 'Kelmapdi' ? 'bg-rose-500 text-white' : 'bg-gray-100 dark:bg-gray-800 text-gray-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/20'}`}>
+                                                            className={`px-2 py-1 rounded-lg text-[10px] font-black uppercase tracking-wider transition-all cursor-pointer ${status === 'Kelmapdi' ? 'bg-rose-500 text-white' : 'bg-gray-100 dark:bg-gray-800 text-gray-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/20'}`}>
                                                             Yo'q
                                                         </button>
                                                         <button onClick={() => saveAttendance(s.id, 'Sababli')}
-                                                            className={`px-2 py-1 rounded-lg text-[8px] font-black uppercase tracking-wider transition-all cursor-pointer ${status === 'Sababli' ? 'bg-sky-500 text-white' : 'bg-gray-100 dark:bg-gray-800 text-gray-400 hover:text-sky-600 hover:bg-sky-50 dark:hover:bg-sky-950/20'}`}>
+                                                            className={`px-2 py-1 rounded-lg text-[10px] font-black uppercase tracking-wider transition-all cursor-pointer ${status === 'Sababli' ? 'bg-sky-500 text-white' : 'bg-gray-100 dark:bg-gray-800 text-gray-400 hover:text-sky-600 hover:bg-sky-50 dark:hover:bg-sky-950/20'}`}>
                                                             Sababli
                                                         </button>
                                                         <button onClick={() => saveAttendance(s.id, 'Kechikdi')}
-                                                            className={`px-2 py-1 rounded-lg text-[8px] font-black uppercase tracking-wider transition-all cursor-pointer ${status === 'Kechikdi' ? 'bg-orange-400 text-white' : 'bg-gray-100 dark:bg-gray-800 text-gray-400 hover:text-orange-500 hover:bg-orange-50 dark:hover:bg-orange-950/20'}`}>
+                                                            className={`px-2 py-1 rounded-lg text-[10px] font-black uppercase tracking-wider transition-all cursor-pointer ${status === 'Kechikdi' ? 'bg-orange-400 text-white' : 'bg-gray-100 dark:bg-gray-800 text-gray-400 hover:text-orange-500 hover:bg-orange-50 dark:hover:bg-orange-950/20'}`}>
                                                             Kech
                                                         </button>
                                                     </div>
@@ -694,7 +696,7 @@ export default function CourseDetails() {
                                             );
                                         })}
                                         {groupStudents.length === 0 && (
-                                            <p className="py-12 text-center text-[10px] text-gray-400 font-bold uppercase tracking-widest italic">Bu kursda o'quvchilar yo'q</p>
+                                            <p className="py-12 text-center text-[11px] text-gray-400 font-bold uppercase tracking-widest italic">Bu kursda o'quvchilar yo'q</p>
                                         )}
                                     </div>
                                 </div>
@@ -713,7 +715,7 @@ export default function CourseDetails() {
 
                             {/* Full width Matrix below the upper grid */}
                             <div className="space-y-3">
-                                <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest block pb-1 border-b border-gray-50 dark:border-gray-700">Davomat Matritsasi</span>
+                                <span className="text-[11px] font-black text-gray-400 uppercase tracking-widest block pb-1 border-b border-gray-50 dark:border-gray-700">Davomat Matritsasi</span>
                                 <AttendanceMatrix group={group} students={groupStudents} attendances={attendances} />
                             </div>
                         </div>
@@ -762,7 +764,7 @@ export default function CourseDetails() {
                                 <div className="flex items-center gap-3">
                                     <h3 className="text-sm font-bold text-gray-700 dark:text-gray-300">To'lovlar holati</h3>
                                     {monthIsClosed && (
-                                        <span className="text-[8px] font-black uppercase tracking-wider px-2 py-0.5 bg-violet-50 text-violet-600 border border-violet-100 dark:bg-violet-950/20 dark:text-violet-400 dark:border-violet-900/40 rounded-md">
+                                        <span className="text-[10px] font-black uppercase tracking-wider px-2 py-0.5 bg-violet-50 text-violet-600 border border-violet-100 dark:bg-violet-950/20 dark:text-violet-400 dark:border-violet-900/40 rounded-md">
                                             Yopilgan
                                         </span>
                                     )}
@@ -780,29 +782,29 @@ export default function CourseDetails() {
                             {price > 0 && (
                             <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
                                 <div className="bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700/50 rounded-2xl p-4 space-y-1">
-                                    <span className="text-[9px] font-bold text-gray-400 uppercase tracking-widest">Kurs narxi</span>
+                                    <span className="text-[11px] font-bold text-gray-400 uppercase tracking-widest">Kurs narxi</span>
                                     <p className="text-sm font-black text-gray-900 dark:text-white tabular-nums">{price.toLocaleString()}</p>
-                                    <p className="text-[9px] font-bold text-gray-400 uppercase">UZS / oy</p>
+                                    <p className="text-[11px] font-bold text-gray-400 uppercase">UZS / oy</p>
                                 </div>
                                 <div className="bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700/50 rounded-2xl p-4 space-y-1">
-                                    <span className="text-[9px] font-bold text-gray-400 uppercase tracking-widest">Bu oy tushum</span>
+                                    <span className="text-[11px] font-bold text-gray-400 uppercase tracking-widest">Bu oy tushum</span>
                                     <p className="text-sm font-black text-gray-900 dark:text-white tabular-nums">{totalIncoming.toLocaleString()}</p>
-                                    <p className="text-[9px] font-bold text-gray-400 uppercase">/ {totalExpected.toLocaleString()} UZS</p>
+                                    <p className="text-[11px] font-bold text-gray-400 uppercase">/ {totalExpected.toLocaleString()} UZS</p>
                                 </div>
                                 <div className="bg-emerald-50 dark:bg-emerald-950/20 border border-emerald-100 dark:border-emerald-900/40 rounded-2xl p-4 space-y-1">
-                                    <span className="text-[9px] font-bold text-emerald-600 dark:text-emerald-400 uppercase tracking-widest">To'liq</span>
+                                    <span className="text-[11px] font-bold text-emerald-600 dark:text-emerald-400 uppercase tracking-widest">To'liq</span>
                                     <p className="text-sm font-black text-emerald-700 dark:text-emerald-300 tabular-nums">{fullPaid}</p>
-                                    <p className="text-[9px] font-bold text-emerald-600/70 uppercase">ta o'quvchi</p>
+                                    <p className="text-[11px] font-bold text-emerald-600/70 uppercase">ta o'quvchi</p>
                                 </div>
                                 <div className="bg-amber-50 dark:bg-amber-950/20 border border-amber-100 dark:border-amber-900/40 rounded-2xl p-4 space-y-1">
-                                    <span className="text-[9px] font-bold text-amber-600 dark:text-amber-400 uppercase tracking-widest">Qisman</span>
+                                    <span className="text-[11px] font-bold text-amber-600 dark:text-amber-400 uppercase tracking-widest">Qisman</span>
                                     <p className="text-sm font-black text-amber-700 dark:text-amber-300 tabular-nums">{partial}</p>
-                                    <p className="text-[9px] font-bold text-amber-600/70 uppercase">ta o'quvchi</p>
+                                    <p className="text-[11px] font-bold text-amber-600/70 uppercase">ta o'quvchi</p>
                                 </div>
                                 <div className="bg-rose-50 dark:bg-rose-950/20 border border-rose-100 dark:border-rose-900/40 rounded-2xl p-4 space-y-1">
-                                    <span className="text-[9px] font-bold text-rose-600 dark:text-rose-400 uppercase tracking-widest">Qarzdor</span>
+                                    <span className="text-[11px] font-bold text-rose-600 dark:text-rose-400 uppercase tracking-widest">Qarzdor</span>
                                     <p className="text-sm font-black text-rose-700 dark:text-rose-300 tabular-nums">{debtors}</p>
-                                    <p className="text-[9px] font-bold text-rose-600/70 uppercase">ta o'quvchi</p>
+                                    <p className="text-[11px] font-bold text-rose-600/70 uppercase">ta o'quvchi</p>
                                 </div>
                             </div>
                             )}
@@ -813,11 +815,11 @@ export default function CourseDetails() {
                                     <table className="w-full text-left border-collapse min-w-[600px]">
                                         <thead>
                                             <tr className="bg-gray-55 dark:bg-gray-900 border-b border-gray-100 dark:border-gray-700/50">
-                                                <th className="p-4 text-[9px] font-black text-gray-400 uppercase tracking-widest">O'quvchi</th>
-                                                {price > 0 && <th className="p-4 text-[9px] font-black text-gray-400 uppercase tracking-widest text-right">Kurs narxi</th>}
-                                                <th className="p-4 text-[9px] font-black text-gray-400 uppercase tracking-widest text-right">Bu oy to'lov</th>
-                                                {price > 0 && <th className="p-4 text-[9px] font-black text-gray-400 uppercase tracking-widest text-right">Farq</th>}
-                                                <th className="p-4 text-[9px] font-black text-gray-400 uppercase tracking-widest text-center">Status</th>
+                                                <th className="p-4 text-[11px] font-black text-gray-400 uppercase tracking-widest">O'quvchi</th>
+                                                {price > 0 && <th className="p-4 text-[11px] font-black text-gray-400 uppercase tracking-widest text-right">Kurs narxi</th>}
+                                                <th className="p-4 text-[11px] font-black text-gray-400 uppercase tracking-widest text-right">Bu oy to'lov</th>
+                                                {price > 0 && <th className="p-4 text-[11px] font-black text-gray-400 uppercase tracking-widest text-right">Farq</th>}
+                                                <th className="p-4 text-[11px] font-black text-gray-400 uppercase tracking-widest text-center">Status</th>
                                                 <th className="p-4 w-12 text-center"></th>
                                             </tr>
                                         </thead>
@@ -840,34 +842,34 @@ export default function CourseDetails() {
                                                             </div>
                                                             <div>
                                                                 <p className="text-xs font-black text-gray-900 dark:text-white uppercase tracking-tight group-hover:text-[#1b6b6b] transition-colors">{s.name}</p>
-                                                                <p className="text-[9px] font-bold text-gray-400 mt-0.5">{s.phone}</p>
+                                                                <p className="text-[11px] font-bold text-gray-400 mt-0.5">{s.phone}</p>
                                                             </div>
                                                         </div>
                                                     </td>
                                                     {price > 0 && (
                                                         <td className="p-4 text-right">
-                                                            <span className="text-[10px] font-black text-gray-600 dark:text-gray-300 tabular-nums">
+                                                            <span className="text-[11px] font-black text-gray-600 dark:text-gray-300 tabular-nums">
                                                                 {finalPrice.toLocaleString()} UZS
                                                                 {studentCustomPrice !== undefined && (
-                                                                    <span className="block text-[8px] text-[#1b6b6b] font-bold lowercase tracking-tight">(maxsus)</span>
+                                                                    <span className="block text-[10px] text-[#1b6b6b] font-bold lowercase tracking-tight">(maxsus)</span>
                                                                 )}
                                                             </span>
                                                         </td>
                                                     )}
                                                     <td className="p-4 text-right">
-                                                        <span className={`text-[10px] font-black tabular-nums ${monthlyIncoming > 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-gray-400'}`}>
+                                                        <span className={`text-[11px] font-black tabular-nums ${monthlyIncoming > 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-gray-400'}`}>
                                                             {monthlyIncoming.toLocaleString()} UZS
                                                         </span>
                                                     </td>
                                                     {price > 0 && (
                                                         <td className="p-4 text-right">
-                                                            <span className={`text-[10px] font-black tabular-nums ${diff >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'}`}>
+                                                            <span className={`text-[11px] font-black tabular-nums ${diff >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'}`}>
                                                                 {diff >= 0 ? '+' : ''}{diff.toLocaleString()} UZS
                                                             </span>
                                                         </td>
                                                     )}
                                                     <td className="p-4 text-center">
-                                                        <span className={`text-[8px] font-black px-2.5 py-1 rounded-md border uppercase tracking-wider ${
+                                                        <span className={`text-[10px] font-black px-2.5 py-1 rounded-md border uppercase tracking-wider ${
                                                             payStatus === 'full' || payStatus === 'prepaid'
                                                                 ? 'text-emerald-600 bg-emerald-50 border-emerald-100 dark:bg-emerald-950/20 dark:text-emerald-400 dark:border-emerald-900/40' :
                                                             payStatus === 'partial'
@@ -898,7 +900,7 @@ export default function CourseDetails() {
                                                 <tr>
                                                     <td colSpan={6} className="p-16 text-center">
                                                         <Wallet className="w-10 h-10 text-gray-300 mx-auto mb-3" />
-                                                        <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Bu kursda o'quvchilar yo'q</p>
+                                                        <p className="text-[11px] font-bold text-gray-400 uppercase tracking-widest">Bu kursda o'quvchilar yo'q</p>
                                                     </td>
                                                 </tr>
                                             )}
@@ -924,7 +926,7 @@ export default function CourseDetails() {
                         <div className="flex items-center justify-between mb-6 pb-4 border-b border-gray-50 dark:border-gray-700/50">
                             <div>
                                 <h3 className="text-lg font-black text-gray-900 dark:text-white uppercase tracking-tight">O'quvchi qo'shish</h3>
-                                <p className="text-[10px] font-bold text-[#1b6b6b] uppercase tracking-widest mt-0.5">Kursga biriktirish</p>
+                                <p className="text-[11px] font-bold text-[#1b6b6b] uppercase tracking-widest mt-0.5">Kursga biriktirish</p>
                             </div>
                             <button onClick={() => setIsAddStudentModalOpen(false)} className="w-9 h-9 flex items-center justify-center text-gray-400 hover:bg-gray-55 dark:hover:bg-gray-700 rounded-xl cursor-pointer"><XCircle size={18} /></button>
                         </div>
@@ -950,7 +952,7 @@ export default function CourseDetails() {
                                     </button>
                                 ))}
                                 {availableStudents.length === 0 && (
-                                    <p className="py-12 text-center text-[9px] text-gray-450 font-bold uppercase tracking-widest">O'quvchi topilmadi</p>
+                                    <p className="py-12 text-center text-[11px] text-gray-450 font-bold uppercase tracking-widest">O'quvchi topilmadi</p>
                                 )}
                             </div>
                         </div>
@@ -966,7 +968,7 @@ export default function CourseDetails() {
                         <div className="flex items-center justify-between mb-6 pb-4 border-b border-gray-50 dark:border-gray-700/50">
                             <div>
                                 <h3 className="text-lg font-black text-gray-900 dark:text-white uppercase tracking-tight">To'lov qabul qilish</h3>
-                                <p className="text-[10px] font-bold text-[#1b6b6b] uppercase tracking-widest mt-0.5">
+                                <p className="text-[11px] font-bold text-[#1b6b6b] uppercase tracking-widest mt-0.5">
                                     {students.find(s => s.id === selectedStudentForPayment)?.name}
                                 </p>
                             </div>
@@ -974,7 +976,7 @@ export default function CourseDetails() {
                         </div>
                         {course?.price && (
                             <div className="mb-4 p-3 bg-teal-50 dark:bg-teal-950/20 border border-teal-100 dark:border-teal-900/40 rounded-xl flex items-center justify-between">
-                                <span className="text-[9px] font-black text-gray-400 uppercase tracking-widest">Kurs narxi</span>
+                                <span className="text-[11px] font-black text-gray-400 uppercase tracking-widest">Kurs narxi</span>
                                 <span className="text-sm font-black text-[#1b6b6b]">{course.price.toLocaleString()} UZS</span>
                             </div>
                         )}
@@ -991,11 +993,11 @@ export default function CourseDetails() {
                                 {course?.price && (
                                     <div className="flex gap-2 mt-2">
                                         <button type="button" onClick={() => setPaymentAmount(String(course.price))}
-                                            className="flex-1 py-1.5 bg-gray-100 dark:bg-gray-700 rounded-lg text-[9px] font-black uppercase tracking-widest text-gray-600 dark:text-gray-300 hover:bg-teal-50 hover:text-[#1b6b6b] transition-all cursor-pointer">
+                                            className="flex-1 py-1.5 bg-gray-100 dark:bg-gray-700 rounded-lg text-[11px] font-black uppercase tracking-widest text-gray-600 dark:text-gray-300 hover:bg-teal-50 hover:text-[#1b6b6b] transition-all cursor-pointer">
                                             To'liq ({course.price.toLocaleString()})
                                         </button>
                                         <button type="button" onClick={() => setPaymentAmount(String(Math.round(course.price / 2)))}
-                                            className="flex-1 py-1.5 bg-gray-100 dark:bg-gray-700 rounded-lg text-[9px] font-black uppercase tracking-widest text-gray-600 dark:text-gray-300 hover:bg-amber-50 hover:text-amber-600 transition-all cursor-pointer">
+                                            className="flex-1 py-1.5 bg-gray-100 dark:bg-gray-700 rounded-lg text-[11px] font-black uppercase tracking-widest text-gray-600 dark:text-gray-300 hover:bg-amber-50 hover:text-amber-600 transition-all cursor-pointer">
                                             Yarmi ({Math.round(course.price / 2).toLocaleString()})
                                         </button>
                                     </div>
@@ -1007,7 +1009,7 @@ export default function CourseDetails() {
                                     {(['Naqd', 'Karta', 'Click', 'Payme'] as const).map(type => (
                                         <button key={type} type="button"
                                             onClick={() => setPaymentType(type as any)}
-                                            className={`py-2 rounded-xl text-[10px] font-black uppercase tracking-widest border transition-all cursor-pointer ${paymentType === type ? 'bg-[#1b6b6b] text-white border-[#1b6b6b]' : 'bg-gray-55 dark:bg-gray-900 text-gray-600 dark:text-gray-300 border-gray-100 dark:border-gray-700 hover:border-[#1b6b6b]'}`}>
+                                            className={`py-2 rounded-xl text-[11px] font-black uppercase tracking-widest border transition-all cursor-pointer ${paymentType === type ? 'bg-[#1b6b6b] text-white border-[#1b6b6b]' : 'bg-gray-55 dark:bg-gray-900 text-gray-600 dark:text-gray-300 border-gray-100 dark:border-gray-700 hover:border-[#1b6b6b]'}`}>
                                             {type}
                                         </button>
                                     ))}
@@ -1019,7 +1021,7 @@ export default function CourseDetails() {
                             </div>
                             <button onClick={handleAddPayment}
                                 disabled={!paymentAmount || Number(paymentAmount) <= 0}
-                                className="w-full py-3 bg-[#1b6b6b] hover:bg-[#155252] disabled:opacity-50 text-white rounded-xl font-bold uppercase tracking-widest text-[10px] shadow-lg shadow-[#1b6b6b]/20 transition-all cursor-pointer flex items-center justify-center gap-1.5">
+                                className="w-full py-3 bg-[#1b6b6b] hover:bg-[#155252] disabled:opacity-50 text-white rounded-xl font-bold uppercase tracking-widest text-[11px] shadow-lg shadow-[#1b6b6b]/20 transition-all cursor-pointer flex items-center justify-center gap-1.5">
                                 <Check size={14} />
                                 To'lovni tasdiqlash
                             </button>
@@ -1038,7 +1040,7 @@ export default function CourseDetails() {
                                 <h3 className="text-lg font-black text-gray-900 dark:text-white uppercase tracking-tight">
                                     {editingTopic ? "Mavzuni tahrirlash" : "Mavzu qo'shish"}
                                 </h3>
-                                <p className="text-[10px] font-bold text-[#1b6b6b] uppercase tracking-widest mt-0.5">Kurs dasturi</p>
+                                <p className="text-[11px] font-bold text-[#1b6b6b] uppercase tracking-widest mt-0.5">Kurs dasturi</p>
                             </div>
                             <button onClick={() => { setIsTopicModalOpen(false); setEditingTopic(null); }} className="w-9 h-9 flex items-center justify-center text-gray-400 hover:bg-gray-55 dark:hover:bg-gray-700 rounded-xl cursor-pointer">
                                 <XCircle size={18} />
@@ -1075,7 +1077,7 @@ export default function CourseDetails() {
                                     className={inputCls + " min-h-[80px] resize-none"} 
                                 />
                             </div>
-                            <button type="submit" className="w-full py-3 bg-[#1b6b6b] hover:bg-[#155252] text-white rounded-xl font-bold uppercase tracking-widest text-[10px] shadow-lg shadow-[#1b6b6b]/20 transition-all cursor-pointer flex items-center justify-center gap-1.5">
+                            <button type="submit" className="w-full py-3 bg-[#1b6b6b] hover:bg-[#155252] text-white rounded-xl font-bold uppercase tracking-widest text-[11px] shadow-lg shadow-[#1b6b6b]/20 transition-all cursor-pointer flex items-center justify-center gap-1.5">
                                 <Check size={14} />
                                 Saqlash
                             </button>
@@ -1122,7 +1124,7 @@ function StatCardV3({ label, value, subValue, icon, color }: any) {
         <div className="bg-white dark:bg-gray-800 p-5 rounded-2xl border border-gray-100 dark:border-gray-700/50 shadow-sm transition-all hover:-translate-y-0.5">
             <div className="flex items-start justify-between">
                 <div className="space-y-1">
-                    <span className="text-[9px] font-bold text-gray-400 uppercase tracking-widest">{label}</span>
+                    <span className="text-[11px] font-bold text-gray-400 uppercase tracking-widest">{label}</span>
                     <h5 className="text-lg font-black text-gray-900 dark:text-white tracking-tight leading-none tabular-nums" title={value}>{value}</h5>
                 </div>
                 <div className={`w-10 h-10 rounded-xl flex items-center justify-center border ${colorClasses}`}>
@@ -1130,7 +1132,7 @@ function StatCardV3({ label, value, subValue, icon, color }: any) {
                 </div>
             </div>
             <div className="pt-3 mt-3 border-t border-dashed border-gray-100 dark:border-gray-700/50">
-                <span className="text-[9px] font-bold text-gray-400 flex items-center gap-1 uppercase tracking-widest leading-none">
+                <span className="text-[11px] font-bold text-gray-400 flex items-center gap-1 uppercase tracking-widest leading-none">
                     <TrendingUp size={12} className="text-[#1b6b6b]" />
                     {subValue}
                 </span>
@@ -1141,7 +1143,7 @@ function StatCardV3({ label, value, subValue, icon, color }: any) {
 
 function TabButton({ label, icon, active, onClick }: any) {
     return (
-        <button onClick={onClick} className={`px-6 py-4 text-[10px] font-extrabold uppercase tracking-widest flex items-center gap-2 transition-all relative shrink-0 cursor-pointer ${active ? 'text-[#1b6b6b] bg-white dark:bg-gray-800' : 'text-gray-400 hover:text-gray-900 dark:hover:text-white'}`}>
+        <button onClick={onClick} className={`px-6 py-4 text-[11px] font-extrabold uppercase tracking-widest flex items-center gap-2 transition-all relative shrink-0 cursor-pointer ${active ? 'text-[#1b6b6b] bg-white dark:bg-gray-800' : 'text-gray-400 hover:text-gray-900 dark:hover:text-white'}`}>
             {icon}
             {label}
             {active && <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-[#1b6b6b] rounded-t-full" />}
@@ -1156,7 +1158,7 @@ function InfoItem({ icon, label, value }: any) {
                 {icon}
             </div>
             <div>
-                <span className="text-[9px] font-bold text-gray-400 uppercase tracking-widest leading-none block">{label}</span>
+                <span className="text-[11px] font-bold text-gray-400 uppercase tracking-widest leading-none block">{label}</span>
                 <span className="text-xs font-bold text-gray-900 dark:text-white uppercase tracking-tight mt-0.5 block">{value}</span>
             </div>
         </div>

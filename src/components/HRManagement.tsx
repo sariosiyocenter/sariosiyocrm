@@ -5,6 +5,7 @@ import {
     GraduationCap, ExternalLink, Camera, Wrench, Eye, Sparkles
 } from 'lucide-react';
 import { useCRM } from '../context/CRMContext';
+import { useConfirm } from './ConfirmDialog';
 import { useLang } from '../context/LanguageContext';
 import { useNavigate } from 'react-router-dom';
 import { compressImage, compressAndUpload } from '../lib/image';
@@ -43,10 +44,11 @@ const ROLE_AVATAR_COLORS: Record<string, string> = {
 
 
 const inp = "w-full px-4 py-3 bg-gray-50 dark:bg-gray-900/50 border border-gray-100 dark:border-gray-700 rounded-2xl text-xs font-bold text-gray-900 dark:text-white focus:border-[#1b6b6b] focus:ring-4 focus:ring-[#1b6b6b]/10 outline-none transition-all";
-const lbl = "block text-[10px] font-extrabold uppercase tracking-widest text-gray-400 mb-2";
+const lbl = "block text-[11px] font-extrabold uppercase tracking-widest text-gray-400 mb-2";
 
 export default function HRManagement() {
     const { teachers, selectedSchoolId, user: currentUser, token, showNotification } = useCRM();
+    const confirm = useConfirm();
     const { t } = useLang();
     const navigate = useNavigate();
 
@@ -146,7 +148,7 @@ export default function HRManagement() {
     };
 
     const handleDeleteUser = async (id: number) => {
-        if (!window.confirm("Xodimni o'chirmoqchimisiz?")) return;
+        if (!await confirm("Xodimni o'chirmoqchimisiz?")) return;
         try {
             const res = await fetch(`/api/users/${id}`, { method: 'DELETE', headers: { 'Authorization': `Bearer ${token}` } });
             if (res.ok) fetchUsers();
@@ -154,7 +156,7 @@ export default function HRManagement() {
     };
 
     const handleDeleteTeacher = async (tid: number) => {
-        if (!window.confirm("O'qituvchini o'chirmoqchimisiz?")) return;
+        if (!await confirm("O'qituvchini o'chirmoqchimisiz?")) return;
         try {
             await fetch(`/api/teachers/${tid}`, { method: 'DELETE', headers: { Authorization: `Bearer ${token}` } });
             // CRMContext teachers refresh is not available here, so force page reload
@@ -195,7 +197,7 @@ export default function HRManagement() {
                         </div>
                         <div>
                             <h1 className="text-lg font-black text-gray-900 dark:text-white uppercase tracking-tight">{t('hr_title')}</h1>
-                            <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mt-0.5">
+                            <p className="text-[11px] font-bold text-gray-400 uppercase tracking-widest mt-0.5">
                                 {t('hr_subtitle')}
                             </p>
                         </div>
@@ -227,7 +229,7 @@ export default function HRManagement() {
                                     }`}
                                 >
                                     <div>
-                                        <span className="text-[9px] font-extrabold text-gray-400 uppercase tracking-widest block mb-1 leading-tight">{label}</span>
+                                        <span className="text-[11px] font-extrabold text-gray-400 uppercase tracking-widest block mb-1 leading-tight">{label}</span>
                                         <h4 className="text-lg font-black text-gray-900 dark:text-white tabular-nums">{count}</h4>
                                     </div>
                                     <div className={`w-8 h-8 rounded-lg flex items-center justify-center border text-xs font-extrabold transition-all ${
@@ -244,7 +246,7 @@ export default function HRManagement() {
                                 className="bg-gray-55 dark:bg-gray-900 border border-dashed border-gray-200 dark:border-gray-700 rounded-2xl p-4 flex items-center justify-center transition-all cursor-pointer hover:border-rose-300 hover:bg-rose-50 dark:hover:bg-rose-950/10 text-gray-400 hover:text-rose-500 gap-1"
                             >
                                 <X size={12} />
-                                <span className="text-[9px] font-extrabold uppercase tracking-widest">{t('filter')}</span>
+                                <span className="text-[11px] font-extrabold uppercase tracking-widest">{t('filter')}</span>
                             </button>
                         )}
                     </div>
@@ -252,7 +254,7 @@ export default function HRManagement() {
                     {/* Role filter indicator */}
                     {selectedRole && (
                         <div className="flex items-center gap-2">
-                            <span className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[9px] font-extrabold border uppercase tracking-widest ${ROLE_COLORS[selectedRole] || ''}`}>
+                            <span className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[11px] font-extrabold border uppercase tracking-widest ${ROLE_COLORS[selectedRole] || ''}`}>
                                 {getRoleLabel(selectedRole)} — {filteredUsers.length}
                             </span>
                         </div>
@@ -262,7 +264,7 @@ export default function HRManagement() {
                         <div className="py-20 text-center text-[#1b6b6b] text-xs font-bold uppercase tracking-widest">{t('loading')}</div>
                     ) : filteredUsers.length === 0 ? (
                         <div className="py-20 text-center bg-white dark:bg-gray-800 rounded-3xl border border-gray-100 dark:border-gray-700/50">
-                            <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">{t('no_staff_found')}</p>
+                            <p className="text-[11px] font-bold text-gray-400 uppercase tracking-widest">{t('no_staff_found')}</p>
                         </div>
                     ) : (
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -302,9 +304,9 @@ export default function HRManagement() {
                                             <div>
                                                 <h4 className="text-xs font-black text-gray-900 dark:text-white uppercase tracking-wide">{u.name}</h4>
                                                 {u.position && (
-                                                    <p className="text-[9px] font-bold text-gray-400 mt-0.5">{u.position}</p>
+                                                    <p className="text-[11px] font-bold text-gray-400 mt-0.5">{u.position}</p>
                                                 )}
-                                                <span className={`inline-block mt-1.5 px-2.5 py-0.5 rounded-md text-[8px] font-black border uppercase tracking-wider ${ROLE_COLORS[u.role] || 'bg-gray-50 text-gray-400 border-gray-100'}`}>
+                                                <span className={`inline-block mt-1.5 px-2.5 py-0.5 rounded-md text-[10px] font-black border uppercase tracking-wider ${ROLE_COLORS[u.role] || 'bg-gray-50 text-gray-400 border-gray-100'}`}>
                                                     {getRoleLabel(u.role)}
                                                 </span>
                                             </div>
@@ -313,19 +315,19 @@ export default function HRManagement() {
                                             {u.phone && (
                                                 <div className="flex items-center gap-2 text-gray-400">
                                                     <Phone size={11} />
-                                                    <span className="text-[10px] font-bold text-gray-600 dark:text-gray-300">{u.phone}</span>
+                                                    <span className="text-[11px] font-bold text-gray-600 dark:text-gray-300">{u.phone}</span>
                                                 </div>
                                             )}
                                             {!isLegacy && u.role !== 'TECH_STAFF' && u.email && (
                                                 <div className="flex items-center gap-2 text-gray-400">
                                                     <Mail size={11} />
-                                                    <span className="text-[10px] font-bold text-gray-600 dark:text-gray-300 truncate max-w-[160px]">{u.email}</span>
+                                                    <span className="text-[11px] font-bold text-gray-600 dark:text-gray-300 truncate max-w-[160px]">{u.email}</span>
                                                 </div>
                                             )}
                                             {u.salary > 0 && (
                                                 <div className="flex items-center gap-2 text-gray-400">
                                                     <DollarSign size={11} />
-                                                    <span className="text-[10px] font-bold text-gray-600 dark:text-gray-300">{u.salary.toLocaleString()} UZS</span>
+                                                    <span className="text-[11px] font-bold text-gray-600 dark:text-gray-300">{u.salary.toLocaleString()} UZS</span>
                                                 </div>
                                             )}
                                         </div>
@@ -333,7 +335,7 @@ export default function HRManagement() {
                                         {isAdminOrManager && (
                                             <button
                                                 onClick={(e) => { e.stopPropagation(); navigate(`/finance?openExpense=1&staffId=${isLegacy ? u._tid : u.id}&staffName=${encodeURIComponent(u.name)}`); }}
-                                                className="mt-2 w-full flex items-center justify-center gap-2 py-2 bg-rose-50 dark:bg-rose-950/20 border border-rose-100 dark:border-rose-900/30 text-rose-600 dark:text-rose-400 rounded-xl text-[9px] font-extrabold uppercase tracking-widest hover:bg-rose-600 hover:text-white hover:border-rose-600 transition-all cursor-pointer"
+                                                className="mt-2 w-full flex items-center justify-center gap-2 py-2 bg-rose-50 dark:bg-rose-950/20 border border-rose-100 dark:border-rose-900/30 text-rose-600 dark:text-rose-400 rounded-xl text-[11px] font-extrabold uppercase tracking-widest hover:bg-rose-600 hover:text-white hover:border-rose-600 transition-all cursor-pointer"
                                             >
                                                 <Banknote size={11} />
                                                 Ish haqqi berish
@@ -342,7 +344,7 @@ export default function HRManagement() {
                                         {/* Profile link */}
                                         <button
                                             onClick={() => navigate(profilePath)}
-                                            className="mt-3 w-full flex items-center justify-center gap-2 py-2 bg-[#1b6b6b]/5 border border-[#1b6b6b]/15 text-[#1b6b6b] dark:text-teal-400 rounded-xl text-[9px] font-extrabold uppercase tracking-widest hover:bg-[#1b6b6b] hover:text-white hover:border-[#1b6b6b] transition-all cursor-pointer">
+                                            className="mt-3 w-full flex items-center justify-center gap-2 py-2 bg-[#1b6b6b]/5 border border-[#1b6b6b]/15 text-[#1b6b6b] dark:text-teal-400 rounded-xl text-[11px] font-extrabold uppercase tracking-widest hover:bg-[#1b6b6b] hover:text-white hover:border-[#1b6b6b] transition-all cursor-pointer">
                                             <Eye size={11} />
                                             {t('view_profile')}
                                         </button>
@@ -383,7 +385,7 @@ export default function HRManagement() {
 function InfoRow({ label, value }: { label: string; value: string }) {
     return (
         <div className="flex justify-between items-center py-2.5 border-b border-gray-50 dark:border-gray-700/50">
-            <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">{label}</span>
+            <span className="text-[11px] font-bold text-gray-400 uppercase tracking-widest">{label}</span>
             <span className="text-xs font-extrabold text-gray-900 dark:text-white uppercase tracking-tight">{value}</span>
         </div>
     );
@@ -450,7 +452,7 @@ function UserModal({
                 <div className="flex items-center justify-between mb-6 pb-4 border-b border-gray-50 dark:border-gray-700/50">
                     <div>
                         <h3 className="text-lg font-black text-gray-900 dark:text-white uppercase tracking-tight">{title}</h3>
-                        <p className="text-[10px] font-bold text-[#1b6b6b] uppercase tracking-widest mt-0.5">{subtitle}</p>
+                        <p className="text-[11px] font-bold text-[#1b6b6b] uppercase tracking-widest mt-0.5">{subtitle}</p>
                     </div>
                     <button onClick={onClose} className="w-9 h-9 flex items-center justify-center text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-xl cursor-pointer" aria-label="Yopish"><X size={18} /></button>
                 </div>
@@ -466,23 +468,23 @@ function UserModal({
                         <div className="flex flex-col gap-2">
                             <div className="flex gap-2">
                                 <button type="button" onClick={() => setIsCameraOpen(true)}
-                                    className="flex items-center gap-1.5 px-3 py-2 bg-[#1b6b6b]/10 hover:bg-[#1b6b6b] text-[#1b6b6b] hover:text-white border border-[#1b6b6b]/20 rounded-xl text-[9px] font-extrabold uppercase tracking-widest cursor-pointer transition-all">
+                                    className="flex items-center gap-1.5 px-3 py-2 bg-[#1b6b6b]/10 hover:bg-[#1b6b6b] text-[#1b6b6b] hover:text-white border border-[#1b6b6b]/20 rounded-xl text-[11px] font-extrabold uppercase tracking-widest cursor-pointer transition-all">
                                     <Camera size={11} /> {t('camera')}
                                 </button>
                                 <button type="button" onClick={() => fileRef.current?.click()}
-                                    className="flex items-center gap-1.5 px-3 py-2 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 text-gray-600 dark:text-gray-300 border border-gray-200 dark:border-gray-600 rounded-xl text-[9px] font-extrabold uppercase tracking-widest cursor-pointer transition-all">
+                                    className="flex items-center gap-1.5 px-3 py-2 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 text-gray-600 dark:text-gray-300 border border-gray-200 dark:border-gray-600 rounded-xl text-[11px] font-extrabold uppercase tracking-widest cursor-pointer transition-all">
                                     {t('upload_from_file')}
                                 </button>
                             </div>
                             {user.photo && (
                                 <div className="flex flex-col gap-1.5">
                                     <button type="button" onClick={handleRemoveBg} disabled={isRemovingBg}
-                                        className="flex items-center gap-1.5 px-3 py-2 bg-violet-50 dark:bg-violet-950/20 text-violet-600 dark:text-violet-400 border border-violet-100 dark:border-violet-900/30 rounded-xl text-[9px] font-extrabold uppercase tracking-widest hover:bg-violet-600 hover:text-white transition-all disabled:opacity-50 cursor-pointer">
+                                        className="flex items-center gap-1.5 px-3 py-2 bg-violet-50 dark:bg-violet-950/20 text-violet-600 dark:text-violet-400 border border-violet-100 dark:border-violet-900/30 rounded-xl text-[11px] font-extrabold uppercase tracking-widest hover:bg-violet-600 hover:text-white transition-all disabled:opacity-50 cursor-pointer">
                                         <Sparkles size={11} className={isRemovingBg ? 'animate-spin' : ''} />
                                         {isRemovingBg ? t('clearing_bg') : t('clear_bg')}
                                     </button>
                                     <button type="button" onClick={() => onChange({ ...user, photo: '' })}
-                                        className="text-[9px] font-bold text-rose-500 uppercase tracking-widest cursor-pointer hover:underline text-left">
+                                        className="text-[11px] font-bold text-rose-500 uppercase tracking-widest cursor-pointer hover:underline text-left">
                                         {t('delete_photo')}
                                     </button>
                                 </div>
@@ -552,7 +554,7 @@ function UserModal({
                     {isTechStaff && (
                         <div className="flex items-center gap-2 px-4 py-3 bg-orange-50 dark:bg-orange-950/20 border border-orange-100 dark:border-orange-900/30 rounded-2xl">
                             <Wrench size={14} className="text-orange-500 shrink-0" />
-                            <p className="text-[10px] font-bold text-orange-600 dark:text-orange-400">
+                            <p className="text-[11px] font-bold text-orange-600 dark:text-orange-400">
                                 {t('tech_staff_no_login_warning')}
                             </p>
                         </div>

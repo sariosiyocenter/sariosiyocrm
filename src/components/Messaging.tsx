@@ -4,6 +4,7 @@ import {
   XCircle, Clock, Filter, Plus, Trash2, Edit, AlertCircle, HelpCircle, User, Info, Check, MessageSquare
 } from 'lucide-react';
 import { useCRM } from '../context/CRMContext';
+import { useConfirm } from './ConfirmDialog';
 import { useLang } from '../context/LanguageContext';
 
 interface Student {
@@ -112,6 +113,7 @@ const getTriggerTypeMeta = (type: string) => {
 export default function Messaging() {
   const { t } = useLang();
   const { students, groups, courses, selectedSchoolId, schools, teachers, users, showNotification } = useCRM();
+    const confirm = useConfirm();
 
   const [activeTab, setActiveTab] = useState<'new' | 'templates' | 'auto' | 'history'>('new');
   const [loading, setLoading] = useState(false);
@@ -227,11 +229,11 @@ export default function Messaging() {
 
   // CSS Classes
   const inp = "w-full px-3.5 py-2 bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700/80 rounded-xl text-xs font-bold text-slate-800 dark:text-slate-200 placeholder:text-slate-400 outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/10 transition-all";
-  const lbl = "block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5";
+  const lbl = "block text-[11px] font-black text-slate-400 uppercase tracking-widest mb-1.5";
   const btnPrimary = "flex items-center justify-center gap-1.5 px-4 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-black uppercase tracking-wider shadow-lg shadow-indigo-600/20 transition-all active:scale-95 cursor-pointer disabled:opacity-50";
   const btnSecondary = "flex items-center justify-center gap-1.5 px-4 py-2.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-350 hover:bg-slate-50 dark:hover:bg-slate-750 rounded-xl text-xs font-black uppercase tracking-wider transition-all active:scale-95 cursor-pointer";
   const btnDanger = "flex items-center justify-center gap-1.5 px-4 py-2.5 bg-rose-600 hover:bg-rose-700 text-white rounded-xl text-xs font-black uppercase tracking-wider shadow-lg shadow-rose-600/20 transition-all active:scale-95 cursor-pointer";
-  const btnOutline = "flex items-center justify-center gap-1 px-2.5 py-1.5 border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 rounded-lg text-[10px] font-black text-slate-500 dark:text-slate-450 uppercase tracking-wider transition-all cursor-pointer";
+  const btnOutline = "flex items-center justify-center gap-1 px-2.5 py-1.5 border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 rounded-lg text-[11px] font-black text-slate-500 dark:text-slate-450 uppercase tracking-wider transition-all cursor-pointer";
 
   useEffect(() => {
     fetchTemplates();
@@ -759,7 +761,7 @@ export default function Messaging() {
   };
 
   const handleDeleteRule = async (id: number) => {
-    if (!confirm("Haqiqatan ham bu avtomatik qoidani o'chirmoqchisiz?")) return;
+    if (!await confirm("Haqiqatan ham bu avtomatik qoidani o'chirmoqchisiz?")) return;
     try {
       const res = await fetch(`/api/messaging/auto-rules/${id}`, {
         method: 'DELETE',
@@ -834,7 +836,7 @@ export default function Messaging() {
   };
 
   const handleDeleteTemplate = async (id: number) => {
-    if (!confirm("Haqiqatan ham bu shablonni o'chirmoqchisiz?")) return;
+    if (!await confirm("Haqiqatan ham bu shablonni o'chirmoqchisiz?")) return;
     try {
       const res = await fetch(`/api/messaging/templates/${id}`, {
         method: 'DELETE',
@@ -883,7 +885,7 @@ export default function Messaging() {
             <MessageSquare className="w-5 h-5 text-indigo-500" />
             {t('nav_messaging')}
           </h1>
-          <p className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest mt-0.5">
+          <p className="text-[11px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest mt-0.5">
             O'quvchilar va ota-onalarga ommaviy SMS va Telegram xabarnomalar moduli
           </p>
         </div>
@@ -892,25 +894,25 @@ export default function Messaging() {
         <div className="flex items-center gap-1.5 bg-slate-55 dark:bg-slate-800/60 p-1 rounded-2xl border border-slate-100 dark:border-slate-700/50">
           <button
             onClick={() => setActiveTab('new')}
-            className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all cursor-pointer ${activeTab === 'new' ? 'bg-white dark:bg-slate-700 text-indigo-600 dark:text-indigo-400 shadow-sm' : 'text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200'}`}
+            className={`px-4 py-2 rounded-xl text-[11px] font-black uppercase tracking-wider transition-all cursor-pointer ${activeTab === 'new' ? 'bg-white dark:bg-slate-700 text-indigo-600 dark:text-indigo-400 shadow-sm' : 'text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200'}`}
           >
             Yangi xabar
           </button>
           <button
             onClick={() => setActiveTab('templates')}
-            className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all cursor-pointer ${activeTab === 'templates' ? 'bg-white dark:bg-slate-700 text-indigo-600 dark:text-indigo-400 shadow-sm' : 'text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200'}`}
+            className={`px-4 py-2 rounded-xl text-[11px] font-black uppercase tracking-wider transition-all cursor-pointer ${activeTab === 'templates' ? 'bg-white dark:bg-slate-700 text-indigo-600 dark:text-indigo-400 shadow-sm' : 'text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200'}`}
           >
             Shablonlar
           </button>
           <button
             onClick={() => setActiveTab('auto')}
-            className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all cursor-pointer ${activeTab === 'auto' ? 'bg-white dark:bg-slate-700 text-indigo-600 dark:text-indigo-400 shadow-sm' : 'text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200'}`}
+            className={`px-4 py-2 rounded-xl text-[11px] font-black uppercase tracking-wider transition-all cursor-pointer ${activeTab === 'auto' ? 'bg-white dark:bg-slate-700 text-indigo-600 dark:text-indigo-400 shadow-sm' : 'text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200'}`}
           >
             Avtomatik
           </button>
           <button
             onClick={() => setActiveTab('history')}
-            className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all cursor-pointer ${activeTab === 'history' ? 'bg-white dark:bg-slate-700 text-indigo-600 dark:text-indigo-400 shadow-sm' : 'text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200'}`}
+            className={`px-4 py-2 rounded-xl text-[11px] font-black uppercase tracking-wider transition-all cursor-pointer ${activeTab === 'history' ? 'bg-white dark:bg-slate-700 text-indigo-600 dark:text-indigo-400 shadow-sm' : 'text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200'}`}
           >
             Tarix
           </button>
@@ -933,19 +935,19 @@ export default function Messaging() {
               <div className="grid grid-cols-3 gap-2 bg-slate-55 dark:bg-slate-800/80 p-1 rounded-xl border border-slate-200 dark:border-slate-700/50 mb-3">
                 <button
                   onClick={() => setAudience('STUDENTS')}
-                  className={`py-1.5 rounded-lg text-[9px] font-black uppercase tracking-wider cursor-pointer transition-all ${audience === 'STUDENTS' ? 'bg-white dark:bg-slate-700 text-indigo-650 dark:text-indigo-400 shadow-sm' : 'text-slate-500'}`}
+                  className={`py-1.5 rounded-lg text-[11px] font-black uppercase tracking-wider cursor-pointer transition-all ${audience === 'STUDENTS' ? 'bg-white dark:bg-slate-700 text-indigo-650 dark:text-indigo-400 shadow-sm' : 'text-slate-500'}`}
                 >
                   O'quvchilar
                 </button>
                 <button
                   onClick={() => setAudience('TEACHERS')}
-                  className={`py-1.5 rounded-lg text-[9px] font-black uppercase tracking-wider cursor-pointer transition-all ${audience === 'TEACHERS' ? 'bg-white dark:bg-slate-700 text-indigo-650 dark:text-indigo-400 shadow-sm' : 'text-slate-500'}`}
+                  className={`py-1.5 rounded-lg text-[11px] font-black uppercase tracking-wider cursor-pointer transition-all ${audience === 'TEACHERS' ? 'bg-white dark:bg-slate-700 text-indigo-650 dark:text-indigo-400 shadow-sm' : 'text-slate-500'}`}
                 >
                   O'qituvchilar
                 </button>
                 <button
                   onClick={() => setAudience('STAFF')}
-                  className={`py-1.5 rounded-lg text-[9px] font-black uppercase tracking-wider cursor-pointer transition-all ${audience === 'STAFF' ? 'bg-white dark:bg-slate-700 text-indigo-650 dark:text-indigo-400 shadow-sm' : 'text-slate-500'}`}
+                  className={`py-1.5 rounded-lg text-[11px] font-black uppercase tracking-wider cursor-pointer transition-all ${audience === 'STAFF' ? 'bg-white dark:bg-slate-700 text-indigo-650 dark:text-indigo-400 shadow-sm' : 'text-slate-500'}`}
                 >
                   Xodimlar
                 </button>
@@ -959,25 +961,25 @@ export default function Messaging() {
                 <div className="grid grid-cols-4 gap-1 bg-slate-55 dark:bg-slate-800/80 p-1 rounded-xl border border-slate-200 dark:border-slate-700/50">
                   <button
                     onClick={() => setRecipientTo('STUDENT')}
-                    className={`py-1.5 rounded-lg text-[9px] font-black uppercase tracking-wider cursor-pointer transition-all ${recipientTo === 'STUDENT' ? 'bg-white dark:bg-slate-700 text-indigo-600 dark:text-indigo-400 shadow-sm' : 'text-slate-500'}`}
+                    className={`py-1.5 rounded-lg text-[11px] font-black uppercase tracking-wider cursor-pointer transition-all ${recipientTo === 'STUDENT' ? 'bg-white dark:bg-slate-700 text-indigo-600 dark:text-indigo-400 shadow-sm' : 'text-slate-500'}`}
                   >
                     O'quvchi
                   </button>
                   <button
                     onClick={() => setRecipientTo('FATHER')}
-                    className={`py-1.5 rounded-lg text-[9px] font-black uppercase tracking-wider cursor-pointer transition-all ${recipientTo === 'FATHER' ? 'bg-white dark:bg-slate-700 text-indigo-600 dark:text-indigo-400 shadow-sm' : 'text-slate-500'}`}
+                    className={`py-1.5 rounded-lg text-[11px] font-black uppercase tracking-wider cursor-pointer transition-all ${recipientTo === 'FATHER' ? 'bg-white dark:bg-slate-700 text-indigo-600 dark:text-indigo-400 shadow-sm' : 'text-slate-500'}`}
                   >
                     Otasi
                   </button>
                   <button
                     onClick={() => setRecipientTo('MOTHER')}
-                    className={`py-1.5 rounded-lg text-[9px] font-black uppercase tracking-wider cursor-pointer transition-all ${recipientTo === 'MOTHER' ? 'bg-white dark:bg-slate-700 text-indigo-600 dark:text-indigo-400 shadow-sm' : 'text-slate-500'}`}
+                    className={`py-1.5 rounded-lg text-[11px] font-black uppercase tracking-wider cursor-pointer transition-all ${recipientTo === 'MOTHER' ? 'bg-white dark:bg-slate-700 text-indigo-600 dark:text-indigo-400 shadow-sm' : 'text-slate-500'}`}
                   >
                     Onasi
                   </button>
                   <button
                     onClick={() => setRecipientTo('PARENT')}
-                    className={`py-1.5 rounded-lg text-[9px] font-black uppercase tracking-wider cursor-pointer transition-all ${recipientTo === 'PARENT' ? 'bg-white dark:bg-slate-700 text-indigo-600 dark:text-indigo-400 shadow-sm' : 'text-slate-500'}`}
+                    className={`py-1.5 rounded-lg text-[11px] font-black uppercase tracking-wider cursor-pointer transition-all ${recipientTo === 'PARENT' ? 'bg-white dark:bg-slate-700 text-indigo-600 dark:text-indigo-400 shadow-sm' : 'text-slate-500'}`}
                   >
                     Ota-ona
                   </button>
@@ -1140,11 +1142,11 @@ export default function Messaging() {
                     onChange={(e) => toggleAll(e.target.checked)}
                     className="w-3.5 h-3.5 rounded border-slate-300 dark:border-slate-700 text-indigo-600 focus:ring-indigo-500 cursor-pointer bg-white dark:bg-slate-800"
                   />
-                  <span className="text-[10px] font-black uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                  <span className="text-[11px] font-black uppercase tracking-wider text-slate-500 dark:text-slate-400">
                     Barchasi
                   </span>
                 </div>
-                <span className="text-[10px] font-black tabular-nums text-indigo-500">
+                <span className="text-[11px] font-black tabular-nums text-indigo-500">
                   {activeSelectedTargetCount} ta xabar / {filteredRecipients.length} ta o'quvchi
                 </span>
               </div>
@@ -1154,7 +1156,7 @@ export default function Messaging() {
                   {recipientEntries.map(entry => {
                     const isDebtor = entry.balance < 0;
                     return (
-                      <div key={entry.key} className="py-2.5 flex items-center justify-between text-[11px] hover:bg-white dark:hover:bg-slate-800/40 px-2 rounded-xl transition-all">
+                      <div key={entry.key} className="py-2.5 flex items-center justify-between text-[12px] hover:bg-white dark:hover:bg-slate-800/40 px-2 rounded-xl transition-all">
                         <div className="flex items-center gap-2.5">
                           <input
                             type="checkbox"
@@ -1167,14 +1169,14 @@ export default function Messaging() {
                             }}
                             className="w-3.5 h-3.5 rounded border-slate-300 dark:border-slate-700 text-indigo-600 focus:ring-indigo-500 cursor-pointer bg-white dark:bg-slate-800"
                           />
-                          <div className={`w-6 h-6 rounded-full flex items-center justify-center text-[9px] font-black uppercase ${entry.gender === 'Ayol' ? 'bg-pink-100 dark:bg-pink-950/30 text-pink-500' : 'bg-indigo-100 dark:bg-indigo-950/30 text-indigo-500'}`}>
+                          <div className={`w-6 h-6 rounded-full flex items-center justify-center text-[11px] font-black uppercase ${entry.gender === 'Ayol' ? 'bg-pink-100 dark:bg-pink-950/30 text-pink-500' : 'bg-indigo-100 dark:bg-indigo-950/30 text-indigo-500'}`}>
                             {entry.displayName.charAt(0)}
                           </div>
                           <div>
                             <p className="font-bold text-slate-800 dark:text-slate-200">
                               {entry.displayName}
                             </p>
-                            <p className="text-[9px] font-bold tabular-nums">
+                            <p className="text-[11px] font-bold tabular-nums">
                               {entry.displayPhone
                                 ? <span className="text-slate-450 dark:text-slate-500">{entry.displayPhone}</span>
                                 : <span className="text-rose-500">Raqam yo'q</span>}
@@ -1183,13 +1185,13 @@ export default function Messaging() {
                         </div>
 
                         <div className="flex items-center gap-2 text-right">
-                          <span className={`text-[9px] font-bold tabular-nums ${isDebtor ? 'text-rose-500' : entry.balance > 0 ? 'text-emerald-500' : 'text-slate-450'}`}>
+                          <span className={`text-[11px] font-bold tabular-nums ${isDebtor ? 'text-rose-500' : entry.balance > 0 ? 'text-emerald-500' : 'text-slate-450'}`}>
                             {entry.balance.toLocaleString()} s.
                           </span>
                           {entry.telegramId ? (
-                            <span className="text-[8px] font-black uppercase tracking-wider px-1.5 py-0.5 rounded bg-sky-50 dark:bg-sky-950/25 text-sky-500 border border-sky-100/40 dark:border-sky-900/25">TG</span>
+                            <span className="text-[10px] font-black uppercase tracking-wider px-1.5 py-0.5 rounded bg-sky-50 dark:bg-sky-950/25 text-sky-500 border border-sky-100/40 dark:border-sky-900/25">TG</span>
                           ) : (
-                            <span className="text-[8px] font-black uppercase tracking-wider px-1.5 py-0.5 rounded bg-purple-50 dark:bg-purple-950/25 text-purple-500 border border-purple-100/40 dark:border-purple-900/25">SMS</span>
+                            <span className="text-[10px] font-black uppercase tracking-wider px-1.5 py-0.5 rounded bg-purple-50 dark:bg-purple-950/25 text-purple-500 border border-purple-100/40 dark:border-purple-900/25">SMS</span>
                           )}
                         </div>
                       </div>
@@ -1197,7 +1199,7 @@ export default function Messaging() {
                   })}
                 </div>
               ) : (
-                <div className="border border-slate-100 dark:border-slate-800 rounded-2xl p-6 text-center bg-slate-50/40 dark:bg-slate-950/20 text-[10px] font-bold uppercase tracking-wider text-slate-405 dark:text-slate-505">
+                <div className="border border-slate-100 dark:border-slate-800 rounded-2xl p-6 text-center bg-slate-50/40 dark:bg-slate-950/20 text-[11px] font-bold uppercase tracking-wider text-slate-405 dark:text-slate-505">
                   Filtr bo'yicha o'quvchi topilmadi
                 </div>
               )}
@@ -1218,14 +1220,14 @@ export default function Messaging() {
                   <button
                     type="button"
                     onClick={() => setChannel('SMS')}
-                    className={`py-1.5 rounded-lg text-[9px] font-black uppercase tracking-wider cursor-pointer transition-all ${channel === 'SMS' ? 'bg-white dark:bg-slate-700 text-indigo-600 dark:text-indigo-400 shadow-sm' : 'text-slate-500'}`}
+                    className={`py-1.5 rounded-lg text-[11px] font-black uppercase tracking-wider cursor-pointer transition-all ${channel === 'SMS' ? 'bg-white dark:bg-slate-700 text-indigo-600 dark:text-indigo-400 shadow-sm' : 'text-slate-500'}`}
                   >
                     SMS
                   </button>
                   <button
                     type="button"
                     onClick={() => setChannel(useSmsFallback ? 'BOTH' : 'TELEGRAM')}
-                    className={`py-1.5 rounded-lg text-[9px] font-black uppercase tracking-wider cursor-pointer transition-all ${channel !== 'SMS' ? 'bg-white dark:bg-slate-700 text-indigo-600 dark:text-indigo-400 shadow-sm' : 'text-slate-500'}`}
+                    className={`py-1.5 rounded-lg text-[11px] font-black uppercase tracking-wider cursor-pointer transition-all ${channel !== 'SMS' ? 'bg-white dark:bg-slate-700 text-indigo-600 dark:text-indigo-400 shadow-sm' : 'text-slate-500'}`}
                   >
                     Telegram
                   </button>
@@ -1242,7 +1244,7 @@ export default function Messaging() {
                       }}
                       className="w-3.5 h-3.5 rounded border-slate-300 dark:border-slate-700 text-indigo-600 focus:ring-indigo-500 cursor-pointer bg-white dark:bg-slate-800"
                     />
-                    <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wide">
+                    <span className="text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wide">
                       Telegramdan ro'yxatdan o'tmaganlarga SMS yuborilsin
                     </span>
                   </label>
@@ -1273,11 +1275,11 @@ export default function Messaging() {
             <div>
               <label className={lbl}>O'zgaruvchi qo'shish</label>
               <div className="flex flex-wrap gap-2">
-                <button type="button" onClick={() => insertVariable('{ism}')} className="px-2.5 py-1.5 bg-slate-100 dark:bg-slate-800 text-[10px] font-bold text-slate-700 dark:text-slate-300 rounded-lg hover:bg-indigo-50 dark:hover:bg-indigo-950 border border-slate-200 dark:border-slate-700 transition-all cursor-pointer">ism</button>
-                <button type="button" onClick={() => insertVariable('{qarz}')} className="px-2.5 py-1.5 bg-slate-100 dark:bg-slate-800 text-[10px] font-bold text-slate-700 dark:text-slate-300 rounded-lg hover:bg-indigo-50 dark:hover:bg-indigo-950 border border-slate-200 dark:border-slate-700 transition-all cursor-pointer">qarz</button>
-                <button type="button" onClick={() => insertVariable('{balans}')} className="px-2.5 py-1.5 bg-slate-100 dark:bg-slate-800 text-[10px] font-bold text-slate-700 dark:text-slate-300 rounded-lg hover:bg-indigo-50 dark:hover:bg-indigo-950 border border-slate-200 dark:border-slate-700 transition-all cursor-pointer">balans</button>
-                <button type="button" onClick={() => insertVariable('{guruh}')} className="px-2.5 py-1.5 bg-slate-100 dark:bg-slate-800 text-[10px] font-bold text-slate-700 dark:text-slate-300 rounded-lg hover:bg-indigo-50 dark:hover:bg-indigo-950 border border-slate-200 dark:border-slate-700 transition-all cursor-pointer">guruh</button>
-                <button type="button" onClick={() => insertVariable('{markaz}')} className="px-2.5 py-1.5 bg-slate-100 dark:bg-slate-800 text-[10px] font-bold text-slate-700 dark:text-slate-300 rounded-lg hover:bg-indigo-50 dark:hover:bg-indigo-950 border border-slate-200 dark:border-slate-700 transition-all cursor-pointer">markaz</button>
+                <button type="button" onClick={() => insertVariable('{ism}')} className="px-2.5 py-1.5 bg-slate-100 dark:bg-slate-800 text-[11px] font-bold text-slate-700 dark:text-slate-300 rounded-lg hover:bg-indigo-50 dark:hover:bg-indigo-950 border border-slate-200 dark:border-slate-700 transition-all cursor-pointer">ism</button>
+                <button type="button" onClick={() => insertVariable('{qarz}')} className="px-2.5 py-1.5 bg-slate-100 dark:bg-slate-800 text-[11px] font-bold text-slate-700 dark:text-slate-300 rounded-lg hover:bg-indigo-50 dark:hover:bg-indigo-950 border border-slate-200 dark:border-slate-700 transition-all cursor-pointer">qarz</button>
+                <button type="button" onClick={() => insertVariable('{balans}')} className="px-2.5 py-1.5 bg-slate-100 dark:bg-slate-800 text-[11px] font-bold text-slate-700 dark:text-slate-300 rounded-lg hover:bg-indigo-50 dark:hover:bg-indigo-950 border border-slate-200 dark:border-slate-700 transition-all cursor-pointer">balans</button>
+                <button type="button" onClick={() => insertVariable('{guruh}')} className="px-2.5 py-1.5 bg-slate-100 dark:bg-slate-800 text-[11px] font-bold text-slate-700 dark:text-slate-300 rounded-lg hover:bg-indigo-50 dark:hover:bg-indigo-950 border border-slate-200 dark:border-slate-700 transition-all cursor-pointer">guruh</button>
+                <button type="button" onClick={() => insertVariable('{markaz}')} className="px-2.5 py-1.5 bg-slate-100 dark:bg-slate-800 text-[11px] font-bold text-slate-700 dark:text-slate-300 rounded-lg hover:bg-indigo-50 dark:hover:bg-indigo-950 border border-slate-200 dark:border-slate-700 transition-all cursor-pointer">markaz</button>
               </div>
             </div>
 
@@ -1293,7 +1295,7 @@ export default function Messaging() {
               />
 
               {/* Length statistics */}
-              <div className="flex justify-between items-center mt-2 px-1 text-[9px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest">
+              <div className="flex justify-between items-center mt-2 px-1 text-[11px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest">
                 <span>Kodlash: {charInfo.isUnicode ? 'Unicode (Kirill)' : 'GSM-7 (Lotin)'}</span>
                 <span>Belgilar: {charInfo.length} / SMS qismlari: {charInfo.parts}</span>
               </div>
@@ -1301,7 +1303,7 @@ export default function Messaging() {
 
             {/* Live Preview Box */}
             <div className="bg-slate-55 dark:bg-slate-800/40 p-4 rounded-2xl border border-dashed border-slate-200 dark:border-slate-700">
-              <div className="flex items-center gap-1.5 text-[9px] font-black text-slate-400 uppercase tracking-widest mb-2">
+              <div className="flex items-center gap-1.5 text-[11px] font-black text-slate-400 uppercase tracking-widest mb-2">
                 <FileText size={12} />
                 <span>Birinchi o'quvchida shablon ko'rinishi (Preview)</span>
               </div>
@@ -1331,7 +1333,7 @@ export default function Messaging() {
           <div className="flex justify-between items-center">
             <div>
               <h2 className="text-xs font-black uppercase tracking-widest text-slate-800 dark:text-slate-200">Shablonlar kutubxonasi</h2>
-              <p className="text-[10px] font-bold text-slate-400 mt-0.5">Xabarlar yozishda vaqtni tejash uchun tayyor andozalar</p>
+              <p className="text-[11px] font-bold text-slate-400 mt-0.5">Xabarlar yozishda vaqtni tejash uchun tayyor andozalar</p>
             </div>
             <button onClick={() => openTemplateModal(null)} className={btnPrimary}>
               <Plus size={14} />
@@ -1344,7 +1346,7 @@ export default function Messaging() {
               <div key={t.id} className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-100 dark:border-slate-800 shadow-sm p-6 flex flex-col justify-between space-y-4 hover:shadow-md transition-all group">
                 <div className="space-y-2">
                   <div className="flex items-center justify-between">
-                    <span className="text-[9px] font-black uppercase tracking-widest px-2 py-1 rounded bg-indigo-50 dark:bg-indigo-950/40 text-indigo-500 dark:text-indigo-400 border border-indigo-100 dark:border-indigo-900/30">
+                    <span className="text-[11px] font-black uppercase tracking-widest px-2 py-1 rounded bg-indigo-50 dark:bg-indigo-950/40 text-indigo-500 dark:text-indigo-400 border border-indigo-100 dark:border-indigo-900/30">
                       {t.category}
                     </span>
                     <div className="flex items-center gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity">
@@ -1357,11 +1359,11 @@ export default function Messaging() {
                     </div>
                   </div>
                   <h3 className="text-xs font-bold text-slate-850 dark:text-white">{t.name}</h3>
-                  <p className="text-[11px] text-slate-500 dark:text-slate-400 whitespace-pre-wrap leading-relaxed line-clamp-4">
+                  <p className="text-[12px] text-slate-500 dark:text-slate-400 whitespace-pre-wrap leading-relaxed line-clamp-4">
                     {t.body}
                   </p>
                 </div>
-                <div className="text-[9px] font-black uppercase tracking-widest pt-2 border-t border-dashed border-slate-100 dark:border-slate-800 text-slate-400 dark:text-slate-500">
+                <div className="text-[11px] font-black uppercase tracking-widest pt-2 border-t border-dashed border-slate-100 dark:border-slate-800 text-slate-400 dark:text-slate-500">
                   <span>O'zgaruvchilar: {"{ism}"}, {"{qarz}"}, {"{balans}"}, {"{guruh}"}, {"{markaz}"}</span>
                 </div>
               </div>
@@ -1369,7 +1371,7 @@ export default function Messaging() {
             {templates.length === 0 && (
               <div className="col-span-full bg-white dark:bg-slate-900 rounded-3xl border border-slate-100 dark:border-slate-800 p-16 text-center">
                 <FileText className="w-8 h-8 text-slate-200 dark:text-slate-750 mx-auto mb-3" />
-                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Hozircha shablonlar yaratilmagan</p>
+                <p className="text-[11px] font-black text-slate-400 uppercase tracking-widest">Hozircha shablonlar yaratilmagan</p>
               </div>
             )}
           </div>
@@ -1382,7 +1384,7 @@ export default function Messaging() {
           <div className="flex justify-between items-center">
             <div>
               <h2 className="text-xs font-black uppercase tracking-widest text-slate-800 dark:text-slate-200">Avtomatik yuborish qoidalari</h2>
-              <p className="text-[10px] font-bold text-slate-400 mt-0.5">Tizim belgilangan kunlik qoidalar bo'yicha fonda SMS yoki Telegram tabriknoma va eslatmalarini jo'natadi</p>
+              <p className="text-[11px] font-bold text-slate-400 mt-0.5">Tizim belgilangan kunlik qoidalar bo'yicha fonda SMS yoki Telegram tabriknoma va eslatmalarini jo'natadi</p>
             </div>
             <button onClick={() => openAutoRuleModal(null)} className={btnPrimary}>
               <Plus size={14} />
@@ -1401,10 +1403,10 @@ export default function Messaging() {
                     {/* Header */}
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2">
-                        <div className={`w-6 h-6 rounded-lg flex items-center justify-center text-[10px] ${meta.color}`}>
+                        <div className={`w-6 h-6 rounded-lg flex items-center justify-center text-[11px] ${meta.color}`}>
                           {meta.icon}
                         </div>
-                        <span className="text-[9px] font-black uppercase tracking-widest px-2 py-0.5 bg-slate-55 dark:bg-slate-800 text-slate-500 dark:text-slate-450 border border-slate-100 dark:border-slate-700">
+                        <span className="text-[11px] font-black uppercase tracking-widest px-2 py-0.5 bg-slate-55 dark:bg-slate-800 text-slate-500 dark:text-slate-450 border border-slate-100 dark:border-slate-700">
                           {meta.label}
                         </span>
                       </div>
@@ -1421,7 +1423,7 @@ export default function Messaging() {
                     <h3 className="text-xs font-black text-slate-855 dark:text-white uppercase tracking-wide">{rule.name}</h3>
 
                     {/* Meta info block */}
-                    <div className="grid grid-cols-2 gap-2 text-[10px] font-semibold text-slate-500 dark:text-slate-400 bg-slate-50 dark:bg-slate-950/20 p-2.5 rounded-xl border border-slate-100 dark:border-slate-800">
+                    <div className="grid grid-cols-2 gap-2 text-[11px] font-semibold text-slate-500 dark:text-slate-400 bg-slate-50 dark:bg-slate-950/20 p-2.5 rounded-xl border border-slate-100 dark:border-slate-800">
                       <div>Kanal: <span className="font-bold text-slate-700 dark:text-slate-300">{rule.channel}</span></div>
                       <div>Vaqt: <span className="font-bold text-slate-700 dark:text-slate-300">{rule.time || '09:00'}</span></div>
                       <div className="col-span-2">Kimga: <span className="font-bold text-slate-700 dark:text-slate-300">{rule.recipientTo === 'PARENT' ? 'Ota-onasi' : 'O\'quvchi'}</span></div>
@@ -1434,14 +1436,14 @@ export default function Messaging() {
                     </div>
 
                     {/* Body text */}
-                    <p className="text-[11px] text-slate-500 dark:text-slate-400 whitespace-pre-wrap leading-relaxed line-clamp-3">
+                    <p className="text-[12px] text-slate-500 dark:text-slate-400 whitespace-pre-wrap leading-relaxed line-clamp-3">
                       {rule.body}
                     </p>
                   </div>
 
                   {/* Switch toggle at the bottom */}
                   <div className="flex items-center justify-between pt-2 border-t border-dashed border-slate-100 dark:border-slate-800">
-                    <span className="text-[9px] font-black uppercase tracking-widest text-slate-400 dark:text-slate-500">
+                    <span className="text-[11px] font-black uppercase tracking-widest text-slate-400 dark:text-slate-500">
                       Holati: {rule.enabled ? <span className="text-emerald-500">Faol</span> : <span className="text-slate-400">O'chirilgan</span>}
                     </span>
                     <button
@@ -1457,7 +1459,7 @@ export default function Messaging() {
             {rules.length === 0 && (
               <div className="col-span-full bg-white dark:bg-slate-900 rounded-3xl border border-slate-100 dark:border-slate-800 p-16 text-center">
                 <Zap className="w-8 h-8 text-slate-200 dark:text-slate-750 mx-auto mb-3" />
-                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Hozircha avtomatik qoidalar yaratilmagan</p>
+                <p className="text-[11px] font-black text-slate-400 uppercase tracking-widest">Hozircha avtomatik qoidalar yaratilmagan</p>
               </div>
             )}
           </div>
@@ -1470,19 +1472,19 @@ export default function Messaging() {
           {/* Header statistics */}
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-6">
             <div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-100 dark:border-slate-800 p-5 shadow-sm">
-              <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Jami loglar</span>
+              <span className="text-[11px] font-black text-slate-400 uppercase tracking-widest">Jami loglar</span>
               <p className="text-xl font-black text-slate-800 dark:text-white mt-1 tabular-nums">{logs.length}</p>
             </div>
             <div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-100 dark:border-slate-800 p-5 shadow-sm">
-              <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Muvaffaqiyatli</span>
+              <span className="text-[11px] font-black text-slate-400 uppercase tracking-widest">Muvaffaqiyatli</span>
               <p className="text-xl font-black text-emerald-500 mt-1 tabular-nums">{logs.filter(l => l.status === 'SENT').length}</p>
             </div>
             <div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-100 dark:border-slate-800 p-5 shadow-sm">
-              <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Xatolik yuz bergan</span>
+              <span className="text-[11px] font-black text-slate-400 uppercase tracking-widest">Xatolik yuz bergan</span>
               <p className="text-xl font-black text-rose-500 mt-1 tabular-nums">{logs.filter(l => l.status === 'FAILED').length}</p>
             </div>
             <div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-100 dark:border-slate-800 p-5 shadow-sm">
-              <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Kutilmoqda (Pending)</span>
+              <span className="text-[11px] font-black text-slate-400 uppercase tracking-widest">Kutilmoqda (Pending)</span>
               <p className="text-xl font-black text-amber-500 mt-1 tabular-nums">{logs.filter(l => l.status === 'PENDING').length}</p>
             </div>
           </div>
@@ -1493,7 +1495,7 @@ export default function Messaging() {
               <div className="flex justify-between items-center border-b border-dashed border-slate-100 dark:border-slate-800 pb-3">
                 <h3 className="text-xs font-black uppercase tracking-wider text-slate-800 dark:text-slate-200">Ommaviy kampaniyalar</h3>
                 {selectedCampaignId !== null && (
-                  <button onClick={() => setSelectedCampaignId(null)} className="text-[9px] font-black text-rose-500 uppercase tracking-widest hover:underline cursor-pointer">Filtrni ochish</button>
+                  <button onClick={() => setSelectedCampaignId(null)} className="text-[11px] font-black text-rose-500 uppercase tracking-widest hover:underline cursor-pointer">Filtrni ochish</button>
                 )}
               </div>
 
@@ -1504,14 +1506,14 @@ export default function Messaging() {
                     onClick={() => setSelectedCampaignId(c.id)}
                     className={`p-3.5 rounded-2xl border transition-all cursor-pointer ${selectedCampaignId === c.id ? 'bg-indigo-50/50 dark:bg-indigo-950/20 border-indigo-200 dark:border-indigo-900/60 shadow-sm' : 'bg-slate-55 dark:bg-slate-800/40 border-slate-100 dark:border-slate-800/60 hover:bg-slate-100/50 dark:hover:bg-slate-750'}`}
                   >
-                    <div className="flex justify-between items-center text-[9px] font-black text-slate-400 uppercase tracking-widest">
+                    <div className="flex justify-between items-center text-[11px] font-black text-slate-400 uppercase tracking-widest">
                       <span>{new Date(c.createdAt).toLocaleDateString()}</span>
                       <span className="bg-indigo-50 dark:bg-indigo-900/40 px-1.5 py-0.5 rounded text-indigo-650">{c.channel}</span>
                     </div>
-                    <p className="text-[11px] text-slate-700 dark:text-slate-350 font-semibold mt-1.5 line-clamp-2 leading-relaxed">
+                    <p className="text-[12px] text-slate-700 dark:text-slate-350 font-semibold mt-1.5 line-clamp-2 leading-relaxed">
                       {c.message}
                     </p>
-                    <div className="flex items-center gap-3 mt-2.5 pt-2 border-t border-dashed border-slate-200/50 dark:border-slate-700/50 text-[10px] font-bold text-slate-500 tabular-nums">
+                    <div className="flex items-center gap-3 mt-2.5 pt-2 border-t border-dashed border-slate-200/50 dark:border-slate-700/50 text-[11px] font-bold text-slate-500 tabular-nums">
                       <span>Jami: {c.totalCount}</span>
                       <span className="text-emerald-550">Yuborildi: {c.sentCount}</span>
                       <span className="text-rose-550">Xato: {c.failedCount}</span>
@@ -1533,7 +1535,7 @@ export default function Messaging() {
                 <div className="flex items-center gap-3">
                   <h3 className="text-xs font-black uppercase tracking-wider text-slate-800 dark:text-slate-200">Xabar yuborish jurnali</h3>
                   {selectedCampaignId !== null && (
-                    <span className="text-[9px] font-black uppercase tracking-widest px-2 py-0.5 bg-indigo-50 dark:bg-indigo-950/40 text-indigo-500 dark:text-indigo-400 border border-indigo-100 dark:border-indigo-900/30">
+                    <span className="text-[11px] font-black uppercase tracking-widest px-2 py-0.5 bg-indigo-50 dark:bg-indigo-950/40 text-indigo-500 dark:text-indigo-400 border border-indigo-100 dark:border-indigo-900/30">
                       Kampaniya #{selectedCampaignId}
                     </span>
                   )}
@@ -1567,7 +1569,7 @@ export default function Messaging() {
                   <select
                     value={statusLogFilter}
                     onChange={e => setStatusLogFilter(e.target.value)}
-                    className="px-3 py-1.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-[10px] font-bold uppercase tracking-widest outline-none focus:border-indigo-500 text-slate-900 dark:text-white cursor-pointer"
+                    className="px-3 py-1.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-[11px] font-bold uppercase tracking-widest outline-none focus:border-indigo-500 text-slate-900 dark:text-white cursor-pointer"
                   >
                     <option value="all">Barcha holatlar</option>
                     <option value="sent">Muvaffaqiyatli</option>
@@ -1579,36 +1581,36 @@ export default function Messaging() {
 
               {/* Resend actions bar */}
               <div className="p-4 bg-indigo-50/40 dark:bg-indigo-950/10 border-b border-indigo-100 dark:border-indigo-900/40 flex flex-wrap items-center gap-4">
-                <span className="text-[10px] font-black uppercase tracking-wider text-slate-500 dark:text-slate-400">Xatoliklarni qayta jo'natish:</span>
+                <span className="text-[11px] font-black uppercase tracking-wider text-slate-500 dark:text-slate-400">Xatoliklarni qayta jo'natish:</span>
                 {Object.values(selectedLogIds).filter(Boolean).length > 0 ? (
                   <button
                     onClick={() => handleResendLogs(false)}
                     disabled={resendingLogs}
-                    className="flex items-center gap-1.5 px-3.5 py-1.5 bg-rose-600 hover:bg-rose-700 text-white rounded-xl text-[10px] font-black uppercase tracking-wider transition-all cursor-pointer shadow-sm active:scale-95"
+                    className="flex items-center gap-1.5 px-3.5 py-1.5 bg-rose-600 hover:bg-rose-700 text-white rounded-xl text-[11px] font-black uppercase tracking-wider transition-all cursor-pointer shadow-sm active:scale-95"
                   >
                     <RefreshCw size={12} className={resendingLogs ? 'animate-spin' : ''} />
                     Tanlanganlarni jo'natish ({Object.values(selectedLogIds).filter(Boolean).length})
                   </button>
                 ) : (
                   <div className="flex flex-wrap items-center gap-2">
-                    <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase">Sana bo'yicha:</span>
+                    <span className="text-[11px] font-bold text-slate-400 dark:text-slate-500 uppercase">Sana bo'yicha:</span>
                     <input
                       type="date"
                       value={resendStartDate}
                       onChange={e => setResendStartDate(e.target.value)}
-                      className="px-2.5 py-1 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-[10px] font-bold text-slate-800 dark:text-slate-200 outline-none focus:border-indigo-500"
+                      className="px-2.5 py-1 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-[11px] font-bold text-slate-800 dark:text-slate-200 outline-none focus:border-indigo-500"
                     />
-                    <span className="text-[10px] font-bold text-slate-400">{"->"}</span>
+                    <span className="text-[11px] font-bold text-slate-400">{"->"}</span>
                     <input
                       type="date"
                       value={resendEndDate}
                       onChange={e => setResendEndDate(e.target.value)}
-                      className="px-2.5 py-1 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-[10px] font-bold text-slate-800 dark:text-slate-200 outline-none focus:border-indigo-500"
+                      className="px-2.5 py-1 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-[11px] font-bold text-slate-800 dark:text-slate-200 outline-none focus:border-indigo-500"
                     />
                     <button
                       onClick={() => handleResendLogs(true)}
                       disabled={resendingLogs}
-                      className="flex items-center gap-1.5 px-3.5 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-[10px] font-black uppercase tracking-wider transition-all cursor-pointer shadow-sm active:scale-95"
+                      className="flex items-center gap-1.5 px-3.5 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-[11px] font-black uppercase tracking-wider transition-all cursor-pointer shadow-sm active:scale-95"
                     >
                       <Send size={12} />
                       Ushbu oraliqdagi barcha xatolarni jo'natish
@@ -1631,11 +1633,11 @@ export default function Messaging() {
                           disabled={failedLogsInDisplay.length === 0}
                         />
                       </th>
-                      <th className="p-3 text-[9px] font-black text-slate-400 uppercase tracking-widest">Sana</th>
-                      <th className="p-3 text-[9px] font-black text-slate-400 uppercase tracking-widest">Qabul qiluvchi</th>
-                      <th className="p-3 text-[9px] font-black text-slate-400 uppercase tracking-widest">Kanal</th>
-                      <th className="p-3 text-[9px] font-black text-slate-400 uppercase tracking-widest">Xabar matni</th>
-                      <th className="p-3 text-[9px] font-black text-slate-400 uppercase tracking-widest text-center">Holat</th>
+                      <th className="p-3 text-[11px] font-black text-slate-400 uppercase tracking-widest">Sana</th>
+                      <th className="p-3 text-[11px] font-black text-slate-400 uppercase tracking-widest">Qabul qiluvchi</th>
+                      <th className="p-3 text-[11px] font-black text-slate-400 uppercase tracking-widest">Kanal</th>
+                      <th className="p-3 text-[11px] font-black text-slate-400 uppercase tracking-widest">Xabar matni</th>
+                      <th className="p-3 text-[11px] font-black text-slate-400 uppercase tracking-widest text-center">Holat</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
@@ -1658,27 +1660,27 @@ export default function Messaging() {
                         </td>
                         <td className="p-3">
                           <div className="flex flex-col">
-                            <span className="text-[10px] font-bold text-slate-850 dark:text-white tabular-nums">
+                            <span className="text-[11px] font-bold text-slate-850 dark:text-white tabular-nums">
                               {new Date(log.sentAt).toLocaleDateString()}
                             </span>
-                            <span className="text-[9px] font-bold text-slate-400 dark:text-slate-500 tabular-nums">
+                            <span className="text-[11px] font-bold text-slate-400 dark:text-slate-500 tabular-nums">
                               {new Date(log.sentAt).toLocaleTimeString()}
                             </span>
                           </div>
                         </td>
                         <td className="p-3">
                           <div className="flex flex-col gap-0.5">
-                            <span className="text-[10px] font-bold text-slate-850 dark:text-white">{log.toName || 'Noma\'lum'}</span>
-                            <span className="text-[9px] font-bold text-slate-400 dark:text-slate-500 tabular-nums">{log.toPhone}</span>
+                            <span className="text-[11px] font-bold text-slate-850 dark:text-white">{log.toName || 'Noma\'lum'}</span>
+                            <span className="text-[11px] font-bold text-slate-400 dark:text-slate-500 tabular-nums">{log.toPhone}</span>
                           </div>
                         </td>
                         <td className="p-3">
-                          <span className={`text-[9px] font-black uppercase tracking-widest px-1.5 py-0.5 rounded ${log.channel === 'TELEGRAM' ? 'bg-sky-50 dark:bg-sky-950/20 text-sky-500' : 'bg-purple-50 dark:bg-purple-950/20 text-purple-500'}`}>
+                          <span className={`text-[11px] font-black uppercase tracking-widest px-1.5 py-0.5 rounded ${log.channel === 'TELEGRAM' ? 'bg-sky-50 dark:bg-sky-950/20 text-sky-500' : 'bg-purple-50 dark:bg-purple-950/20 text-purple-500'}`}>
                             {log.channel}
                           </span>
                         </td>
                         <td className="p-3">
-                          <p className="text-[11px] text-slate-650 dark:text-slate-350 max-w-sm line-clamp-2 leading-relaxed" title={log.message}>
+                          <p className="text-[12px] text-slate-650 dark:text-slate-350 max-w-sm line-clamp-2 leading-relaxed" title={log.message}>
                             {log.message}
                           </p>
                         </td>
@@ -1687,7 +1689,7 @@ export default function Messaging() {
                             {log.status === 'SENT' ? (
                               <div className="inline-flex items-center gap-1 text-emerald-500 bg-emerald-50 dark:bg-emerald-950/20 px-2 py-0.5 rounded border border-emerald-100 dark:border-emerald-900/30">
                                 <CheckCircle size={10} />
-                                <span className="text-[8px] font-black uppercase tracking-widest">OK</span>
+                                <span className="text-[10px] font-black uppercase tracking-widest">OK</span>
                               </div>
                             ) : log.status === 'FAILED' ? (
                               <div
@@ -1695,12 +1697,12 @@ export default function Messaging() {
                                 title={log.errorMsg || 'Xatolik'}
                               >
                                 <XCircle size={10} />
-                                <span className="text-[8px] font-black uppercase tracking-widest">XATO</span>
+                                <span className="text-[10px] font-black uppercase tracking-widest">XATO</span>
                               </div>
                             ) : (
                               <div className="inline-flex items-center gap-1 text-amber-500 bg-amber-50 dark:bg-amber-955/20 px-2 py-0.5 rounded border border-amber-100 dark:border-amber-900/30">
                                 <Clock size={10} />
-                                <span className="text-[8px] font-black uppercase tracking-widest">KUTISH</span>
+                                <span className="text-[10px] font-black uppercase tracking-widest">KUTISH</span>
                               </div>
                             )}
 
@@ -1770,7 +1772,7 @@ export default function Messaging() {
           <div className="relative bg-white dark:bg-slate-900 rounded-3xl max-w-lg w-full p-6 space-y-4 shadow-2xl border border-slate-100 dark:border-slate-800 animate-in zoom-in-95 duration-200">
             <div className="flex justify-between items-center border-b border-dashed border-slate-100 dark:border-slate-800 pb-3">
               <h3 className="text-sm font-black uppercase tracking-wide text-slate-900 dark:text-white">Qabul qiluvchilar ro'yxati</h3>
-              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest tabular-nums">{activeSelectedCount}/{filteredRecipients.length} ta</span>
+              <span className="text-[11px] font-bold text-slate-400 uppercase tracking-widest tabular-nums">{activeSelectedCount}/{filteredRecipients.length} ta</span>
             </div>
 
             <div className="max-h-[300px] overflow-y-auto divide-y divide-slate-100 dark:divide-slate-800 pr-1">
@@ -1778,15 +1780,15 @@ export default function Messaging() {
                 <div key={st.id} className="py-2.5 flex items-center justify-between text-xs">
                   <div>
                     <p className="font-bold text-slate-850 dark:text-white">{st.name}</p>
-                    <p className="text-[10px] font-semibold text-slate-400 mt-0.5 tabular-nums">
+                    <p className="text-[11px] font-semibold text-slate-400 mt-0.5 tabular-nums">
                       Tel: {resolveRecipientPhone(st, recipientTo) || 'Raqam kiritilmagan'}
                     </p>
                   </div>
                   <div className="flex items-center gap-1.5">
                     {st.telegramId ? (
-                      <span className="text-[9px] font-black uppercase tracking-widest px-1.5 py-0.5 rounded bg-sky-50 dark:bg-sky-950/20 text-sky-500 border border-sky-100 dark:border-sky-900/30">Telegram</span>
+                      <span className="text-[11px] font-black uppercase tracking-widest px-1.5 py-0.5 rounded bg-sky-50 dark:bg-sky-950/20 text-sky-500 border border-sky-100 dark:border-sky-900/30">Telegram</span>
                     ) : (
-                      <span className="text-[9px] font-black uppercase tracking-widest px-1.5 py-0.5 rounded bg-purple-50 dark:bg-purple-950/20 text-purple-500 border border-purple-100 dark:border-purple-900/30">SMS Faqat</span>
+                      <span className="text-[11px] font-black uppercase tracking-widest px-1.5 py-0.5 rounded bg-purple-50 dark:bg-purple-950/20 text-purple-500 border border-purple-100 dark:border-purple-900/30">SMS Faqat</span>
                     )}
                   </div>
                 </div>
@@ -1847,7 +1849,7 @@ export default function Messaging() {
                 onChange={e => setTemplateForm({ ...templateForm, body: e.target.value })}
                 className="w-full px-3 py-2 bg-slate-55 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-semibold text-slate-800 dark:text-slate-200 outline-none focus:border-indigo-500 transition-all resize-none"
               />
-              <div className="text-[9px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest mt-1">
+              <div className="text-[11px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest mt-1">
                 O'zgaruvchilar: {"{ism}"}, {"{qarz}"}, {"{balans}"}, {"{guruh}"}, {"{markaz}"}
               </div>
             </div>
@@ -1988,7 +1990,7 @@ export default function Messaging() {
                       }
                       e.target.value = "";
                     }}
-                    className="text-[9px] font-bold bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-350 border border-slate-200 dark:border-slate-750 px-2 py-0.5 rounded outline-none cursor-pointer animate-in fade-in"
+                    className="text-[11px] font-bold bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-350 border border-slate-200 dark:border-slate-750 px-2 py-0.5 rounded outline-none cursor-pointer animate-in fade-in"
                   >
                     <option value="">Shablondan nusxalash...</option>
                     {templates.map(t => (
@@ -2005,7 +2007,7 @@ export default function Messaging() {
                 onChange={e => setAutoRuleForm({ ...autoRuleForm, body: e.target.value })}
                 className="w-full px-3 py-2 bg-slate-55 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-semibold text-slate-800 dark:text-slate-200 outline-none focus:border-indigo-500 transition-all resize-none"
               />
-              <div className="text-[9px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest mt-1">
+              <div className="text-[11px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest mt-1">
                 O'zgaruvchilar: {"{ism}"}, {"{qarz}"}, {"{balans}"}, {"{guruh}"}, {"{markaz}"}, {"{imtihon_nomi}"}, {"{imtihon_ball}"}, {"{imtihon_foiz}"}, {"{to_lov_summa}"}, {"{bahosi}"}
               </div>
             </div>

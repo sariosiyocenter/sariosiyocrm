@@ -94,7 +94,7 @@ export default function Layout({ children, onLogout }: LayoutProps) {
               </div>
               <div className="flex flex-col leading-none">
                 <span className="text-[13px] font-bold text-slate-900 dark:text-white tracking-tight group-hover:text-indigo-500 dark:group-hover:text-indigo-400 transition-colors">{settings?.orgName || 'Quantum Edu'}</span>
-                <span className="text-[10px] font-semibold tracking-widest uppercase mt-0.5" style={{ color: BRAND }}>CRM System</span>
+                <span className="text-[11px] font-semibold tracking-widest uppercase mt-0.5" style={{ color: BRAND }}>CRM System</span>
               </div>
             </Link>
 
@@ -145,7 +145,7 @@ export default function Layout({ children, onLogout }: LayoutProps) {
                     <div className="divide-y divide-slate-100 dark:divide-slate-700/50">
                       {results.students.length > 0 && (
                         <div className="p-2">
-                          <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider px-3 py-2">O'quvchilar</p>
+                          <p className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider px-3 py-2">O'quvchilar</p>
                           {results.students.map(s => (
                             <div key={s.id} onClick={() => handleResultClick(`/students/${s.id}`)} className="flex items-center gap-3 px-3 py-2.5 hover:bg-indigo-50 dark:hover:bg-indigo-950/40 rounded-lg cursor-pointer transition-colors group">
                               <div className="w-8 h-8 rounded-lg bg-indigo-100 dark:bg-indigo-900/40 text-indigo-600 dark:text-indigo-400 flex items-center justify-center text-xs font-bold shrink-0">{s.name.charAt(0)}</div>
@@ -159,7 +159,7 @@ export default function Layout({ children, onLogout }: LayoutProps) {
                       )}
                       {results.leads.length > 0 && (
                         <div className="p-2">
-                          <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider px-3 py-2">Lidlar</p>
+                          <p className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider px-3 py-2">Lidlar</p>
                           {results.leads.map(l => (
                             <div key={l.id} onClick={() => handleResultClick('/leads')} className="flex items-center gap-3 px-3 py-2.5 hover:bg-amber-50 dark:hover:bg-amber-950/40 rounded-lg cursor-pointer transition-colors">
                               <div className="w-8 h-8 rounded-lg bg-amber-100 dark:bg-amber-900/40 text-amber-600 dark:text-amber-400 flex items-center justify-center shrink-0"><Target size={16}/></div>
@@ -173,7 +173,7 @@ export default function Layout({ children, onLogout }: LayoutProps) {
                       )}
                       {results.groups.length > 0 && (
                         <div className="p-2">
-                          <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider px-3 py-2">{t('stat_groups')}</p>
+                          <p className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider px-3 py-2">{t('stat_groups')}</p>
                           {results.groups.map(g => (
                             <div key={g.id} onClick={() => handleResultClick(`/courses/${g.id}`)} className="flex items-center gap-3 px-3 py-2.5 hover:bg-teal-50 dark:hover:bg-teal-950/40 rounded-lg cursor-pointer transition-colors">
                               <div className="w-8 h-8 rounded-lg bg-teal-100 dark:bg-teal-900/40 text-teal-600 dark:text-teal-400 flex items-center justify-center shrink-0"><Users size={16}/></div>
@@ -192,7 +192,7 @@ export default function Layout({ children, onLogout }: LayoutProps) {
                       )}
                       {results.teachers.length > 0 && (
                         <div className="p-2">
-                          <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider px-3 py-2">Ustozlar</p>
+                          <p className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider px-3 py-2">Ustozlar</p>
                           {results.teachers.map(t => (
                             <div key={t.id} onClick={() => handleResultClick(`/teachers/${t.id}`)} className="flex items-center gap-3 px-3 py-2.5 hover:bg-violet-50 dark:hover:bg-violet-950/40 rounded-lg cursor-pointer transition-colors">
                               <div className="w-8 h-8 rounded-lg bg-violet-100 dark:bg-violet-900/40 text-violet-600 dark:text-violet-400 flex items-center justify-center shrink-0"><GraduationCap size={16}/></div>

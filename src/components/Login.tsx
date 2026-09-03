@@ -71,7 +71,7 @@ export default function Login() {
           <h1 className="font-display font-bold text-3xl tracking-tight bg-gradient-to-r from-white via-indigo-200 to-purple-300 bg-clip-text text-transparent">
             Quantum Edu
           </h1>
-          <p className="text-[11px] text-indigo-400/80 font-bold uppercase tracking-[0.25em] mt-2">
+          <p className="text-[12px] text-indigo-400/80 font-bold uppercase tracking-[0.25em] mt-2">
             Tizimga kirish
           </p>
         </div>
@@ -88,7 +88,7 @@ export default function Login() {
             )}
 
             <div className="space-y-1.5 text-left">
-              <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-400">
+              <label className="block text-[12px] font-bold uppercase tracking-wider text-slate-400">
                 Email manzil
               </label>
               <div className="relative">
@@ -106,7 +106,7 @@ export default function Login() {
             </div>
 
             <div className="space-y-1.5 text-left">
-              <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-400">
+              <label className="block text-[12px] font-bold uppercase tracking-wider text-slate-400">
                 Maxfiy parol
               </label>
               <div className="relative">
@@ -145,7 +145,7 @@ export default function Login() {
         </div>
 
         <div className="text-center mt-8">
-          <p className="text-[11px] text-slate-600 tracking-wider font-medium">
+          <p className="text-[12px] text-slate-600 tracking-wider font-medium">
             © 2026 Quantum Edu. Barcha huquqlar himoyalangan.
           </p>
         </div>

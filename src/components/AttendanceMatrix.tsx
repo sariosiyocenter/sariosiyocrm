@@ -90,11 +90,11 @@ export default function AttendanceMatrix({ group, students, attendances, selecte
                         <tr>
                             {/* Name column header */}
                             <th className="sticky left-0 z-30 bg-gray-50 dark:bg-gray-800/80 px-4 py-3 text-left border-b border-r border-gray-100 dark:border-gray-700 min-w-[160px]">
-                                <span className="text-[9px] font-bold text-gray-400 uppercase tracking-widest">O'quvchi</span>
+                                <span className="text-[11px] font-bold text-gray-400 uppercase tracking-widest">O'quvchi</span>
                             </th>
                             {/* % column */}
                             <th className="bg-gray-50 dark:bg-gray-800/80 px-3 py-3 border-b border-r border-gray-100 dark:border-gray-700 min-w-[52px]">
-                                <span className="text-[9px] font-bold text-gray-400 uppercase tracking-widest block text-center">%</span>
+                                <span className="text-[11px] font-bold text-gray-400 uppercase tracking-widest block text-center">%</span>
                             </th>
                             {/* Date columns */}
                             {lessonDates.map(date => {
@@ -104,7 +104,7 @@ export default function AttendanceMatrix({ group, students, attendances, selecte
                                     <th key={date} className={`px-1 py-2 border-b border-gray-100 dark:border-gray-800 min-w-[44px] ${highlight ? 'bg-emerald-50 dark:bg-emerald-950/30 border-b-2 border-b-emerald-400' : 'bg-gray-50/50 dark:bg-gray-800/50'}`}>
                                         <div className="flex flex-col items-center gap-0.5">
                                             <span className={`text-[7px] font-black uppercase tracking-widest ${highlight ? 'text-emerald-600 dark:text-emerald-400' : 'text-gray-400'}`}>{day}</span>
-                                            <span className={`text-[9px] font-black ${highlight ? 'text-emerald-700 dark:text-emerald-300' : 'text-gray-500 dark:text-gray-400'}`}>{dateNum}</span>
+                                            <span className={`text-[11px] font-black ${highlight ? 'text-emerald-700 dark:text-emerald-300' : 'text-gray-500 dark:text-gray-400'}`}>{dateNum}</span>
                                         </div>
                                     </th>
                                 );
@@ -119,12 +119,12 @@ export default function AttendanceMatrix({ group, students, attendances, selecte
                                 <tr key={student.id} className={`${rowBg} hover:bg-emerald-50/20 dark:hover:bg-emerald-950/10 transition-colors`}>
                                     {/* Name */}
                                     <td className={`sticky left-0 z-20 ${rowBg} px-4 py-2.5 border-r border-b border-gray-100 dark:border-gray-800`}>
-                                        <p className="text-[10px] font-black text-gray-900 dark:text-white uppercase tracking-tight truncate max-w-[140px]">{student.name}</p>
+                                        <p className="text-[11px] font-black text-gray-900 dark:text-white uppercase tracking-tight truncate max-w-[140px]">{student.name}</p>
                                     </td>
                                     {/* % */}
                                     <td className="px-2 py-2.5 border-r border-b border-gray-100 dark:border-gray-800 text-center">
                                         {pct !== null && (
-                                            <span className={`text-[10px] font-black tabular-nums ${pct >= 80 ? 'text-emerald-500' : pct >= 60 ? 'text-amber-500' : 'text-rose-500'}`}>
+                                            <span className={`text-[11px] font-black tabular-nums ${pct >= 80 ? 'text-emerald-500' : pct >= 60 ? 'text-amber-500' : 'text-rose-500'}`}>
                                                 {pct}%
                                             </span>
                                         )}
@@ -146,14 +146,14 @@ export default function AttendanceMatrix({ group, students, attendances, selecte
                                             cellClass = 'border border-dashed border-gray-200 dark:border-gray-700 opacity-30';
                                         } else if (!att) {
                                             cellClass = 'border border-gray-200 dark:border-gray-700 hover:bg-gray-100 dark:hover:bg-gray-700/60 hover:border-gray-400 dark:hover:border-gray-500';
-                                            content = <span className="text-gray-300 dark:text-gray-600 text-[10px] font-bold">—</span>;
+                                            content = <span className="text-gray-300 dark:text-gray-600 text-[11px] font-bold">—</span>;
                                         } else if (resolvedStatusObj) {
                                             cellClass = `${resolvedStatusObj.color} text-white`;
-                                            content = <span className="text-[9px] font-black">{resolvedStatusObj.short}</span>;
+                                            content = <span className="text-[11px] font-black">{resolvedStatusObj.short}</span>;
                                         } else if (att) {
                                             // unknown/legacy status — treat as unrecorded so user can re-set
                                             cellClass = 'border border-gray-200 dark:border-gray-700 hover:bg-gray-100 dark:hover:bg-gray-700/60 hover:border-gray-400 dark:hover:border-gray-500';
-                                            content = <span className="text-gray-300 dark:text-gray-600 text-[10px] font-bold">—</span>;
+                                            content = <span className="text-gray-300 dark:text-gray-600 text-[11px] font-bold">—</span>;
                                         }
 
                                         return (
@@ -184,7 +184,7 @@ export default function AttendanceMatrix({ group, students, attendances, selecte
                         })}
                         {students.length === 0 && (
                             <tr>
-                                <td colSpan={lessonDates.length + 2} className="py-12 text-center text-[10px] font-bold text-gray-400 uppercase tracking-widest">
+                                <td colSpan={lessonDates.length + 2} className="py-12 text-center text-[11px] font-bold text-gray-400 uppercase tracking-widest">
                                     Bu kursda o'quvchilar yo'q
                                 </td>
                             </tr>
@@ -200,14 +200,14 @@ export default function AttendanceMatrix({ group, students, attendances, selecte
                         <div className={`w-4 h-4 rounded-md flex items-center justify-center text-white ${s.color}`}>
                             <span className="text-[7px] font-black">{s.short}</span>
                         </div>
-                        <span className="text-[8px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-wider">{s.label}</span>
+                        <span className="text-[10px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-wider">{s.label}</span>
                     </div>
                 ))}
                 <div className="flex items-center gap-1.5">
                     <div className="w-4 h-4 rounded-md border border-gray-200 dark:border-gray-700 flex items-center justify-center">
                         <span className="text-[7px] font-black text-gray-300">—</span>
                     </div>
-                    <span className="text-[8px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-wider">Belgilanmagan</span>
+                    <span className="text-[10px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-wider">Belgilanmagan</span>
                 </div>
             </div>
 
@@ -226,13 +226,13 @@ export default function AttendanceMatrix({ group, students, attendances, selecte
                                 className={`flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all cursor-pointer ${s.light} ${s.text}`}
                             >
                                 <div className={`w-5 h-5 ${s.color} rounded-lg flex items-center justify-center text-white`}>{s.icon}</div>
-                                <span className="text-[10px] font-bold uppercase tracking-widest">{s.label}</span>
+                                <span className="text-[11px] font-bold uppercase tracking-widest">{s.label}</span>
                             </button>
                         ))}
                         <div className="h-px bg-gray-100 dark:bg-gray-700 my-0.5" />
                         <button onClick={() => setActivePopover(null)} className="flex items-center gap-3 px-3 py-2 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-700 text-gray-400 transition-all cursor-pointer">
                             <XCircle size={14} />
-                            <span className="text-[9px] font-bold uppercase tracking-widest">Yopish</span>
+                            <span className="text-[11px] font-bold uppercase tracking-widest">Yopish</span>
                         </button>
                     </div>
                 </>

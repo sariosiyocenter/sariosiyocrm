@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useCRM } from '../context/CRMContext';
+import { useConfirm } from './ConfirmDialog';
 import { Organization } from '../types';
 import {
   Building2, Users, GraduationCap, Wallet, Plus,
@@ -33,6 +34,7 @@ interface Seller {
 
 export default function SuperAdmin() {
   const { user, token, showNotification } = useCRM();
+    const confirm = useConfirm();
   const navigate = useNavigate();
 
   const isSuper = user?.role === 'SUPERADMIN';
@@ -186,7 +188,7 @@ export default function SuperAdmin() {
   };
 
   const handleDeleteOrg = async (id: number, name: string) => {
-    if (!window.confirm(`"${name}" tashkilotini va unga tegishli BARCHA filiallar, o'quvchilar va ma'lumotlarni o'chirib tashlamoqchimisiz?`)) return;
+    if (!await confirm(`"${name}" tashkilotini va unga tegishli BARCHA filiallar, o'quvchilar va ma'lumotlarni o'chirib tashlamoqchimisiz?`)) return;
     try {
       const res = await fetch(`/api/organizations/${id}`, {
         method: 'DELETE',
@@ -330,7 +332,7 @@ export default function SuperAdmin() {
   };
 
   const handleDeleteLead = async (id: number) => {
-    if (!window.confirm('Ushbu lidni o\'chirib tashlamoqchimisiz?')) return;
+    if (!await confirm('Ushbu lidni o\'chirib tashlamoqchimisiz?')) return;
     try {
       const res = await fetch(`/api/saas-leads/${id}`, {
         method: 'DELETE',
@@ -514,7 +516,7 @@ export default function SuperAdmin() {
             <div className="space-y-8">
               {/* Group 1: Biznes va Obuna */}
               <div className="space-y-3">
-                <h3 className="text-[10px] font-black text-gray-400 dark:text-gray-500 uppercase tracking-widest flex items-center gap-2">
+                <h3 className="text-[11px] font-black text-gray-400 dark:text-gray-500 uppercase tracking-widest flex items-center gap-2">
                   <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span> Biznes va Obuna Metrikalari
                 </h3>
                 <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
@@ -526,7 +528,7 @@ export default function SuperAdmin() {
                     { label: 'Sotuvchilar (Agentlar)', value: totalSellers + ' ta', icon: Users2, color: 'text-rose-600 bg-rose-50 dark:bg-rose-950/20 dark:text-rose-400' },
                   ].map((m, i) => (
                     <div key={i} className="bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700/50 rounded-2xl p-4 flex flex-col justify-between h-[100px] shadow-sm hover:shadow transition-all duration-300">
-                      <span className="text-[9px] font-black text-gray-400 dark:text-gray-500 uppercase tracking-wider leading-tight">{m.label}</span>
+                      <span className="text-[11px] font-black text-gray-400 dark:text-gray-500 uppercase tracking-wider leading-tight">{m.label}</span>
                       <div className="flex items-end justify-between mt-1.5">
                         <span className="text-sm font-black text-gray-900 dark:text-white leading-none tracking-tight">{m.value}</span>
                         <div className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0 ${m.color}`}>
@@ -540,7 +542,7 @@ export default function SuperAdmin() {
 
               {/* Group 2: Sotuv Lidleari Boshqaruvi */}
               <div className="space-y-3">
-                <h3 className="text-[10px] font-black text-gray-400 dark:text-gray-500 uppercase tracking-widest flex items-center gap-2">
+                <h3 className="text-[11px] font-black text-gray-400 dark:text-gray-500 uppercase tracking-widest flex items-center gap-2">
                   <span className="w-1.5 h-1.5 rounded-full bg-indigo-500"></span> Sotuv va Lidlar Metrikalari
                 </h3>
                 <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-4">
@@ -553,7 +555,7 @@ export default function SuperAdmin() {
                     { label: 'Lead Conversion Rate', value: leadWonRate, icon: GraduationCap, color: 'text-violet-600 bg-violet-50 dark:bg-violet-950/20 dark:text-violet-400' },
                   ].map((m, i) => (
                     <div key={i} className="bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700/50 rounded-2xl p-4 flex flex-col justify-between h-[100px] shadow-sm hover:shadow transition-all duration-300">
-                      <span className="text-[9px] font-black text-gray-400 dark:text-gray-500 uppercase tracking-wider leading-tight">{m.label}</span>
+                      <span className="text-[11px] font-black text-gray-400 dark:text-gray-500 uppercase tracking-wider leading-tight">{m.label}</span>
                       <div className="flex items-end justify-between mt-1.5">
                         <span className="text-sm font-black text-gray-900 dark:text-white leading-none tracking-tight">{m.value}</span>
                         <div className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0 ${m.color}`}>
@@ -567,7 +569,7 @@ export default function SuperAdmin() {
 
               {/* Group 3: Tashkilotlar Holati */}
               <div className="space-y-3">
-                <h3 className="text-[10px] font-black text-gray-400 dark:text-gray-500 uppercase tracking-widest flex items-center gap-2">
+                <h3 className="text-[11px] font-black text-gray-400 dark:text-gray-500 uppercase tracking-widest flex items-center gap-2">
                   <span className="w-1.5 h-1.5 rounded-full bg-sky-500"></span> Tashkilotlar Holati Metrikalari
                 </h3>
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
@@ -578,7 +580,7 @@ export default function SuperAdmin() {
                     { label: 'Muzlatilganlar', value: frozenOrgs + ' ta', icon: Building2, color: 'text-rose-600 bg-rose-50 dark:bg-rose-950/20 dark:text-rose-400' },
                   ].map((m, i) => (
                     <div key={i} className="bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700/50 rounded-2xl p-4 flex flex-col justify-between h-[100px] shadow-sm hover:shadow transition-all duration-300">
-                      <span className="text-[9px] font-black text-gray-400 dark:text-gray-500 uppercase tracking-wider leading-tight">{m.label}</span>
+                      <span className="text-[11px] font-black text-gray-400 dark:text-gray-500 uppercase tracking-wider leading-tight">{m.label}</span>
                       <div className="flex items-end justify-between mt-1.5">
                         <span className="text-sm font-black text-gray-900 dark:text-white leading-none tracking-tight">{m.value}</span>
                         <div className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0 ${m.color}`}>
@@ -592,7 +594,7 @@ export default function SuperAdmin() {
 
               {/* Group 4: Platformadan Foydalanish */}
               <div className="space-y-3">
-                <h3 className="text-[10px] font-black text-gray-400 dark:text-gray-500 uppercase tracking-widest flex items-center gap-2">
+                <h3 className="text-[11px] font-black text-gray-400 dark:text-gray-500 uppercase tracking-widest flex items-center gap-2">
                   <span className="w-1.5 h-1.5 rounded-full bg-violet-500"></span> Platforma Foydalanish Metrikalari
                 </h3>
                 <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
@@ -604,7 +606,7 @@ export default function SuperAdmin() {
                     { label: 'Jami Foydalanuvchilar', value: totalPlatformUsers.toLocaleString() + ' ta', icon: Users2, color: 'text-rose-600 bg-rose-50 dark:bg-rose-950/20 dark:text-rose-400' },
                   ].map((m, i) => (
                     <div key={i} className="bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700/50 rounded-2xl p-4 flex flex-col justify-between h-[100px] shadow-sm hover:shadow transition-all duration-300">
-                      <span className="text-[9px] font-black text-gray-400 dark:text-gray-500 uppercase tracking-wider leading-tight">{m.label}</span>
+                      <span className="text-[11px] font-black text-gray-400 dark:text-gray-500 uppercase tracking-wider leading-tight">{m.label}</span>
                       <div className="flex items-end justify-between mt-1.5">
                         <span className="text-sm font-black text-gray-900 dark:text-white leading-none tracking-tight">{m.value}</span>
                         <div className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0 ${m.color}`}>
@@ -626,7 +628,7 @@ export default function SuperAdmin() {
           {/* Org list */}
           <div>
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
-              <h2 className="text-[10px] font-extrabold text-gray-400 uppercase tracking-widest">
+              <h2 className="text-[11px] font-extrabold text-gray-400 uppercase tracking-widest">
                 Tashkilotlar ro'yxati ({filteredOrgs.length})
               </h2>
               <div className="flex items-center gap-3">
@@ -686,13 +688,13 @@ export default function SuperAdmin() {
                         </div>
                         <div className="space-y-1">
                           <div className="flex items-center gap-2">
-                            <span className="text-[9px] font-extrabold text-[#1b6b6b] dark:text-[#2b9b9b] uppercase tracking-widest">Tashkilot #{org.id}</span>
-                            <span className={`px-2 py-0.5 rounded-full text-[8px] font-black border uppercase tracking-wider ${statusColors[org.status || 'Sinov']}`}>
+                            <span className="text-[11px] font-extrabold text-[#1b6b6b] dark:text-[#2b9b9b] uppercase tracking-widest">Tashkilot #{org.id}</span>
+                            <span className={`px-2 py-0.5 rounded-full text-[10px] font-black border uppercase tracking-wider ${statusColors[org.status || 'Sinov']}`}>
                               {org.status || 'Sinov'}
                             </span>
                           </div>
                           <h3 className="font-black text-gray-900 dark:text-white uppercase tracking-tight text-base group-hover:text-[#1b6b6b] transition-colors">{org.name}</h3>
-                          <div className="flex flex-wrap gap-x-3 gap-y-1 text-[11px] text-gray-400 font-bold items-center">
+                          <div className="flex flex-wrap gap-x-3 gap-y-1 text-[12px] text-gray-400 font-bold items-center">
                             {org.address && (
                               <div className="flex items-center gap-1">
                                 <MapPin size={11} className="text-gray-400" />
@@ -707,20 +709,20 @@ export default function SuperAdmin() {
                             )}
                             {(org as any).adminEmail && (
                               <div className="flex items-center gap-1 text-slate-500 dark:text-slate-400">
-                                <span className="font-extrabold text-[9px] bg-slate-100 dark:bg-slate-800 px-1.5 py-0.5 rounded text-gray-500 dark:text-gray-400">Admin:</span>
+                                <span className="font-extrabold text-[11px] bg-slate-100 dark:bg-slate-800 px-1.5 py-0.5 rounded text-gray-500 dark:text-gray-400">Admin:</span>
                                 <span className="text-[#1b6b6b] dark:text-[#2b9b9b]">{(org as any).adminEmail}</span>
-                                {(org as any).adminPhone && <span className="text-[10px] opacity-75">({(org as any).adminPhone})</span>}
+                                {(org as any).adminPhone && <span className="text-[11px] opacity-75">({(org as any).adminPhone})</span>}
                               </div>
                             )}
                           </div>
                           {org.expiresAt && (
-                             <div className="text-[10px] text-gray-400 dark:text-gray-500 font-black uppercase tracking-wider flex items-center gap-1">
+                             <div className="text-[11px] text-gray-400 dark:text-gray-500 font-black uppercase tracking-wider flex items-center gap-1">
                                <Calendar size={12} className="text-gray-400" />
                                {new Date(org.createdAt).toLocaleDateString()} → {new Date(org.expiresAt).toLocaleDateString()}
                              </div>
                            )}
                            {!org.expiresAt && org.createdAt && (
-                             <div className="text-[10px] text-gray-400 dark:text-gray-500 font-black uppercase tracking-wider flex items-center gap-1">
+                             <div className="text-[11px] text-gray-400 dark:text-gray-500 font-black uppercase tracking-wider flex items-center gap-1">
                                <Calendar size={12} className="text-gray-400" />
                                Boshlangan: {new Date(org.createdAt).toLocaleDateString()}
                              </div>
@@ -737,7 +739,7 @@ export default function SuperAdmin() {
                           { label: 'Xodim', value: org.userCount || 0, color: 'bg-amber-50/70 text-amber-600 border-amber-100/50 dark:bg-amber-950/20 dark:text-amber-400 dark:border-amber-900/30' },
                         ].map((s, i) => (
                           <div key={i} className={`rounded-2xl px-5 py-2.5 border text-center min-w-[85px] flex flex-col justify-center ${s.color}`}>
-                            <div className="text-[9px] font-extrabold uppercase tracking-wider opacity-70 leading-none">{s.label}</div>
+                            <div className="text-[11px] font-extrabold uppercase tracking-wider opacity-70 leading-none">{s.label}</div>
                             <div className="text-sm font-black mt-1 leading-none">{s.value}</div>
                           </div>
                         ))}
@@ -842,7 +844,7 @@ export default function SuperAdmin() {
                   >
                     <div>
                       <div className="flex items-center justify-between mb-4">
-                        <span className={`px-2.5 py-0.5 rounded-full text-[9px] font-black border uppercase tracking-wider ${statusColors[lead.status]}`}>
+                        <span className={`px-2.5 py-0.5 rounded-full text-[11px] font-black border uppercase tracking-wider ${statusColors[lead.status]}`}>
                           {lead.status}
                         </span>
                         <div className="flex gap-1">
@@ -885,14 +887,14 @@ export default function SuperAdmin() {
                       </div>
 
                       {lead.notes && (
-                        <div className="bg-gray-50 dark:bg-gray-900/50 rounded-xl p-3 mb-4 text-[11px] font-bold text-gray-500 dark:text-gray-400 border border-gray-100/55 dark:border-gray-800">
-                          <div className="text-[9px] font-black text-gray-400 uppercase tracking-wider mb-1">Izoh / Eslatma:</div>
+                        <div className="bg-gray-50 dark:bg-gray-900/50 rounded-xl p-3 mb-4 text-[12px] font-bold text-gray-500 dark:text-gray-400 border border-gray-100/55 dark:border-gray-800">
+                          <div className="text-[11px] font-black text-gray-400 uppercase tracking-wider mb-1">Izoh / Eslatma:</div>
                           {lead.notes}
                         </div>
                       )}
                     </div>
 
-                    <div className="border-t border-gray-50 dark:border-gray-700/50 pt-4 flex items-center justify-between text-[10px] font-extrabold uppercase tracking-widest text-gray-400">
+                    <div className="border-t border-gray-50 dark:border-gray-700/50 pt-4 flex items-center justify-between text-[11px] font-extrabold uppercase tracking-widest text-gray-400">
                       <span>Sotuvchi agent:</span>
                       <span className="text-indigo-600 dark:text-indigo-400 font-black">
                         {lead.seller ? lead.seller.name : 'Biriktirilmagan'}
@@ -936,7 +938,7 @@ export default function SuperAdmin() {
                       <div className="w-10 h-10 rounded-xl bg-violet-50 dark:bg-violet-950/20 text-violet-600 dark:text-violet-400 flex items-center justify-center shrink-0">
                         <Users2 size={20} />
                       </div>
-                      <span className="px-2.5 py-0.5 bg-violet-50 dark:bg-violet-950/40 border border-violet-100 dark:border-violet-900/50 text-violet-600 dark:text-violet-400 rounded-full text-[9px] font-black uppercase tracking-wider">
+                      <span className="px-2.5 py-0.5 bg-violet-50 dark:bg-violet-950/40 border border-violet-100 dark:border-violet-900/50 text-violet-600 dark:text-violet-400 rounded-full text-[11px] font-black uppercase tracking-wider">
                         Agent
                       </span>
                     </div>
@@ -964,16 +966,16 @@ export default function SuperAdmin() {
                   <div className="border-t border-gray-50 dark:border-gray-700/50 pt-4 space-y-3">
                     <div className="grid grid-cols-2 gap-2 text-center">
                       <div className="bg-gray-50 dark:bg-gray-900/50 rounded-xl p-2 border border-gray-100/50 dark:border-gray-700/20">
-                        <div className="text-[8px] font-extrabold text-gray-400 uppercase tracking-wider">Jami Lidlar</div>
+                        <div className="text-[10px] font-extrabold text-gray-400 uppercase tracking-wider">Jami Lidlar</div>
                         <div className="text-sm font-black text-gray-800 dark:text-white">{sel.totalLeads}</div>
                       </div>
                       <div className="bg-emerald-50/50 dark:bg-emerald-950/10 rounded-xl p-2 border border-emerald-100/30 dark:border-emerald-900/10">
-                        <div className="text-[8px] font-extrabold text-emerald-600/80 dark:text-emerald-400/80 uppercase tracking-wider">Sotildi</div>
+                        <div className="text-[10px] font-extrabold text-emerald-600/80 dark:text-emerald-400/80 uppercase tracking-wider">Sotildi</div>
                         <div className="text-sm font-black text-emerald-600 dark:text-emerald-400">{sel.convertedLeads}</div>
                       </div>
                     </div>
 
-                    <div className="flex items-center justify-between text-[10px] font-extrabold uppercase tracking-widest text-gray-400">
+                    <div className="flex items-center justify-between text-[11px] font-extrabold uppercase tracking-widest text-gray-400">
                       <span>Konversiya:</span>
                       <div className="flex items-center gap-2">
                         <span className="text-violet-600 dark:text-violet-400 font-black">{sel.conversionRate}%</span>
@@ -1001,7 +1003,7 @@ export default function SuperAdmin() {
             <div className="flex items-center justify-between mb-6 pb-4 border-b border-gray-50 dark:border-gray-700/50">
               <div>
                 <h3 className="text-lg font-black text-gray-900 dark:text-white uppercase tracking-tight">Yangi Tashkilot</h3>
-                <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mt-0.5">O'quv markaz yoki tashkilot</p>
+                <p className="text-[11px] font-bold text-gray-400 uppercase tracking-widest mt-0.5">O'quv markaz yoki tashkilot</p>
               </div>
               <button aria-label="Yopish" onClick={() => setOrgModalOpen(false)} className="w-9 h-9 flex items-center justify-center text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700 rounded-xl cursor-pointer">
                 <X size={18} />
@@ -1011,12 +1013,12 @@ export default function SuperAdmin() {
             <form onSubmit={handleCreateOrg} className="space-y-5">
               {/* Tashkilot ma'lumotlari */}
               <div className="space-y-3">
-                <h4 className="text-[10px] font-black text-[#1b6b6b] uppercase tracking-widest flex items-center gap-2">
+                <h4 className="text-[11px] font-black text-[#1b6b6b] uppercase tracking-widest flex items-center gap-2">
                   <Building2 size={13} /> Tashkilot Ma'lumotlari
                 </h4>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                   <div className="md:col-span-2">
-                    <label className="block text-[10px] font-extrabold uppercase tracking-widest text-gray-400 mb-2">Tashkilot Nomi *</label>
+                    <label className="block text-[11px] font-extrabold uppercase tracking-widest text-gray-400 mb-2">Tashkilot Nomi *</label>
                     <input
                       type="text" required
                       placeholder="Masalan: Sariosiyo O'quv Markazi"
@@ -1025,7 +1027,7 @@ export default function SuperAdmin() {
                     />
                   </div>
                   <div>
-                    <label className="block text-[10px] font-extrabold uppercase tracking-widest text-gray-400 mb-2">Manzil</label>
+                    <label className="block text-[11px] font-extrabold uppercase tracking-widest text-gray-400 mb-2">Manzil</label>
                     <input
                       type="text"
                       placeholder="Masalan: Toshkent sh., Chilonzor"
@@ -1034,7 +1036,7 @@ export default function SuperAdmin() {
                     />
                   </div>
                   <div>
-                    <label className="block text-[10px] font-extrabold uppercase tracking-widest text-gray-400 mb-2">Telefon</label>
+                    <label className="block text-[11px] font-extrabold uppercase tracking-widest text-gray-400 mb-2">Telefon</label>
                     <input
                       type="text"
                       placeholder="+998 90 123 45 67"
@@ -1043,7 +1045,7 @@ export default function SuperAdmin() {
                     />
                   </div>
                   <div>
-                    <label className="block text-[10px] font-extrabold uppercase tracking-widest text-gray-400 mb-2">Filial Limiti</label>
+                    <label className="block text-[11px] font-extrabold uppercase tracking-widest text-gray-400 mb-2">Filial Limiti</label>
                     <input
                       type="number" min={1} max={50}
                       value={orgMaxSchools} onChange={e => setOrgMaxSchools(Number(e.target.value))}
@@ -1055,12 +1057,12 @@ export default function SuperAdmin() {
 
               {/* Admin ma'lumotlari */}
               <div className="space-y-3 pt-4 border-t border-gray-100 dark:border-gray-700/50">
-                <h4 className="text-[10px] font-black text-indigo-600 dark:text-indigo-400 uppercase tracking-widest flex items-center gap-2">
+                <h4 className="text-[11px] font-black text-indigo-600 dark:text-indigo-400 uppercase tracking-widest flex items-center gap-2">
                   <UserPlus size={13} /> Admin Hisobi *
                 </h4>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                   <div className="md:col-span-2">
-                    <label className="block text-[10px] font-extrabold uppercase tracking-widest text-gray-400 mb-2">Admin Ismi</label>
+                    <label className="block text-[11px] font-extrabold uppercase tracking-widest text-gray-400 mb-2">Admin Ismi</label>
                     <input
                       type="text"
                       placeholder="Sardor Rahimov"
@@ -1069,7 +1071,7 @@ export default function SuperAdmin() {
                     />
                   </div>
                   <div>
-                    <label className="block text-[10px] font-extrabold uppercase tracking-widest text-gray-400 mb-2">Email *</label>
+                    <label className="block text-[11px] font-extrabold uppercase tracking-widest text-gray-400 mb-2">Email *</label>
                     <input
                       type="email" required
                       placeholder="admin@sariosiyo.uz"
@@ -1078,7 +1080,7 @@ export default function SuperAdmin() {
                     />
                   </div>
                   <div>
-                    <label className="block text-[10px] font-extrabold uppercase tracking-widest text-gray-400 mb-2">Parol *</label>
+                    <label className="block text-[11px] font-extrabold uppercase tracking-widest text-gray-400 mb-2">Parol *</label>
                     <input
                       type="password" required
                       placeholder="••••••••"
@@ -1112,7 +1114,7 @@ export default function SuperAdmin() {
             <div className="flex items-center justify-between mb-6 pb-4 border-b border-gray-50 dark:border-gray-700/50">
               <div>
                 <h3 className="text-lg font-black text-gray-900 dark:text-white uppercase tracking-tight">Tashkilot va Admin Sozlamalari</h3>
-                <p className="text-[10px] font-bold text-[#1b6b6b] uppercase tracking-widest mt-0.5">{selectedOrg.name} tahrirlash</p>
+                <p className="text-[11px] font-bold text-[#1b6b6b] uppercase tracking-widest mt-0.5">{selectedOrg.name} tahrirlash</p>
               </div>
               <button aria-label="Yopish" onClick={() => setSubModalOpen(false)} className="w-9 h-9 flex items-center justify-center text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700 rounded-xl cursor-pointer">
                 <X size={18} />
@@ -1122,10 +1124,10 @@ export default function SuperAdmin() {
             <form onSubmit={handleUpdateSubscription} className="space-y-6">
               {/* Section 1: Organization Details */}
               <div className="space-y-4">
-                <h4 className="text-[10px] font-black text-gray-400 uppercase tracking-wider pb-1 border-b border-gray-50 dark:border-gray-700/30">Tashkilot Ma'lumotlari</h4>
+                <h4 className="text-[11px] font-black text-gray-400 uppercase tracking-wider pb-1 border-b border-gray-50 dark:border-gray-700/30">Tashkilot Ma'lumotlari</h4>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-[10px] font-extrabold uppercase tracking-widest text-gray-400 mb-2">Tashkilot Nomi *</label>
+                    <label className="block text-[11px] font-extrabold uppercase tracking-widest text-gray-400 mb-2">Tashkilot Nomi *</label>
                     <input
                       type="text" required
                       value={subName}
@@ -1134,7 +1136,7 @@ export default function SuperAdmin() {
                     />
                   </div>
                   <div>
-                    <label className="block text-[10px] font-extrabold uppercase tracking-widest text-gray-400 mb-2">Telefon Raqami</label>
+                    <label className="block text-[11px] font-extrabold uppercase tracking-widest text-gray-400 mb-2">Telefon Raqami</label>
                     <input
                       type="text"
                       value={subPhone}
@@ -1144,7 +1146,7 @@ export default function SuperAdmin() {
                   </div>
                 </div>
                 <div>
-                  <label className="block text-[10px] font-extrabold uppercase tracking-widest text-gray-400 mb-2">Manzil</label>
+                  <label className="block text-[11px] font-extrabold uppercase tracking-widest text-gray-400 mb-2">Manzil</label>
                   <input
                     type="text"
                     value={subAddress}
@@ -1156,10 +1158,10 @@ export default function SuperAdmin() {
 
               {/* Section 2: Subscription Details */}
               <div className="space-y-4">
-                <h4 className="text-[10px] font-black text-gray-400 uppercase tracking-wider pb-1 border-b border-gray-50 dark:border-gray-700/30">Obuna Sozlamalari</h4>
+                <h4 className="text-[11px] font-black text-gray-400 uppercase tracking-wider pb-1 border-b border-gray-50 dark:border-gray-700/30">Obuna Sozlamalari</h4>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   <div>
-                    <label className="block text-[10px] font-extrabold uppercase tracking-widest text-gray-400 mb-2">Holati</label>
+                    <label className="block text-[11px] font-extrabold uppercase tracking-widest text-gray-400 mb-2">Holati</label>
                     <select
                       value={subStatus}
                       onChange={e => setSubStatus(e.target.value)}
@@ -1171,7 +1173,7 @@ export default function SuperAdmin() {
                     </select>
                   </div>
                   <div>
-                    <label className="block text-[10px] font-extrabold uppercase tracking-widest text-gray-400 mb-2">Ruxsat Muddati (Expires At)</label>
+                    <label className="block text-[11px] font-extrabold uppercase tracking-widest text-gray-400 mb-2">Ruxsat Muddati (Expires At)</label>
                     <input
                       type="date"
                       value={subExpiresAt}
@@ -1180,7 +1182,7 @@ export default function SuperAdmin() {
                     />
                   </div>
                   <div>
-                    <label className="block text-[10px] font-extrabold uppercase tracking-widest text-gray-400 mb-2">Maksimal Filial Limiti</label>
+                    <label className="block text-[11px] font-extrabold uppercase tracking-widest text-gray-400 mb-2">Maksimal Filial Limiti</label>
                     <input
                       type="number" required min={1}
                       value={subMaxSchools}
@@ -1193,10 +1195,10 @@ export default function SuperAdmin() {
 
               {/* Section 3: Admin Details */}
               <div className="space-y-4">
-                <h4 className="text-[10px] font-black text-gray-400 uppercase tracking-wider pb-1 border-b border-gray-50 dark:border-gray-700/30">Admin Akkaunti Ma'lumotlari</h4>
+                <h4 className="text-[11px] font-black text-gray-400 uppercase tracking-wider pb-1 border-b border-gray-50 dark:border-gray-700/30">Admin Akkaunti Ma'lumotlari</h4>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-[10px] font-extrabold uppercase tracking-widest text-gray-400 mb-2">Admin Ismi *</label>
+                    <label className="block text-[11px] font-extrabold uppercase tracking-widest text-gray-400 mb-2">Admin Ismi *</label>
                     <input
                       type="text" required
                       value={subAdminName}
@@ -1205,7 +1207,7 @@ export default function SuperAdmin() {
                     />
                   </div>
                   <div>
-                    <label className="block text-[10px] font-extrabold uppercase tracking-widest text-gray-400 mb-2">Admin Telefoni</label>
+                    <label className="block text-[11px] font-extrabold uppercase tracking-widest text-gray-400 mb-2">Admin Telefoni</label>
                     <input
                       type="text"
                       value={subAdminPhone}
@@ -1216,7 +1218,7 @@ export default function SuperAdmin() {
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-[10px] font-extrabold uppercase tracking-widest text-gray-400 mb-2">Admin Email (Login) *</label>
+                    <label className="block text-[11px] font-extrabold uppercase tracking-widest text-gray-400 mb-2">Admin Email (Login) *</label>
                     <input
                       type="email" required
                       value={subAdminEmail}
@@ -1225,7 +1227,7 @@ export default function SuperAdmin() {
                     />
                   </div>
                   <div>
-                    <label className="block text-[10px] font-extrabold uppercase tracking-widest text-gray-400 mb-2">Yangi Parol (O'zgartirish uchun to'ldiring)</label>
+                    <label className="block text-[11px] font-extrabold uppercase tracking-widest text-gray-400 mb-2">Yangi Parol (O'zgartirish uchun to'ldiring)</label>
                     <input
                       type="password"
                       placeholder="Faqat o'zgartirish uchun..."
@@ -1262,7 +1264,7 @@ export default function SuperAdmin() {
                 <h3 className="text-lg font-black text-gray-900 dark:text-white uppercase tracking-tight">
                   {selectedLead ? 'Lidni Tahrirlash' : 'Yangi Lid'}
                 </h3>
-                <p className="text-[10px] font-bold text-indigo-600 uppercase tracking-widest mt-0.5">CRM Xarid qilish istagida bo'lgan mijoz</p>
+                <p className="text-[11px] font-bold text-indigo-600 uppercase tracking-widest mt-0.5">CRM Xarid qilish istagida bo'lgan mijoz</p>
               </div>
               <button aria-label="Yopish" onClick={() => setLeadModalOpen(false)} className="w-9 h-9 flex items-center justify-center text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700 rounded-xl cursor-pointer">
                 <X size={18} />
@@ -1271,7 +1273,7 @@ export default function SuperAdmin() {
 
             <form onSubmit={handleSaveLead} className="space-y-4">
               <div>
-                <label className="block text-[10px] font-extrabold uppercase tracking-widest text-gray-400 mb-2">Mijoz Ismi *</label>
+                <label className="block text-[11px] font-extrabold uppercase tracking-widest text-gray-400 mb-2">Mijoz Ismi *</label>
                 <input
                   type="text" required
                   placeholder="Masalan: Jamshid Aliyev"
@@ -1280,7 +1282,7 @@ export default function SuperAdmin() {
                 />
               </div>
               <div>
-                <label className="block text-[10px] font-extrabold uppercase tracking-widest text-gray-400 mb-2">Telefon Raqami *</label>
+                <label className="block text-[11px] font-extrabold uppercase tracking-widest text-gray-400 mb-2">Telefon Raqami *</label>
                 <input
                   type="text" required
                   placeholder="Masalan: +998 90 999 88 77"
@@ -1289,7 +1291,7 @@ export default function SuperAdmin() {
                 />
               </div>
               <div>
-                <label className="block text-[10px] font-extrabold uppercase tracking-widest text-gray-400 mb-2">O'quv Markaz Nomi</label>
+                <label className="block text-[11px] font-extrabold uppercase tracking-widest text-gray-400 mb-2">O'quv Markaz Nomi</label>
                 <input
                   type="text"
                   placeholder="Masalan: Quantum Academy"
@@ -1299,7 +1301,7 @@ export default function SuperAdmin() {
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-[10px] font-extrabold uppercase tracking-widest text-gray-400 mb-2">Holati</label>
+                  <label className="block text-[11px] font-extrabold uppercase tracking-widest text-gray-400 mb-2">Holati</label>
                   <select
                     value={leadStatus}
                     onChange={e => setLeadStatus(e.target.value)}
@@ -1313,7 +1315,7 @@ export default function SuperAdmin() {
                 </div>
                 {isSuper && (
                   <div>
-                    <label className="block text-[10px] font-extrabold uppercase tracking-widest text-gray-400 mb-2">Sotuvchi Agent</label>
+                    <label className="block text-[11px] font-extrabold uppercase tracking-widest text-gray-400 mb-2">Sotuvchi Agent</label>
                     <select
                       value={leadSellerId}
                       onChange={e => setLeadSellerId(e.target.value)}
@@ -1328,7 +1330,7 @@ export default function SuperAdmin() {
                 )}
               </div>
               <div>
-                <label className="block text-[10px] font-extrabold uppercase tracking-widest text-gray-400 mb-2">Eslatmalar / Izohlar</label>
+                <label className="block text-[11px] font-extrabold uppercase tracking-widest text-gray-400 mb-2">Eslatmalar / Izohlar</label>
                 <textarea
                   placeholder="Uchrashuv vaqti yoki alohida istaklar..."
                   value={leadNotes} onChange={e => setLeadNotes(e.target.value)}
@@ -1359,7 +1361,7 @@ export default function SuperAdmin() {
             <div className="flex items-center justify-between mb-6 pb-4 border-b border-gray-50 dark:border-gray-700/50">
               <div>
                 <h3 className="text-lg font-black text-gray-900 dark:text-white uppercase tracking-tight">Yangi Sotuvchi Agent</h3>
-                <p className="text-[10px] font-bold text-violet-600 uppercase tracking-widest mt-0.5">CRM Tizimini sotadigan xodim</p>
+                <p className="text-[11px] font-bold text-violet-600 uppercase tracking-widest mt-0.5">CRM Tizimini sotadigan xodim</p>
               </div>
               <button aria-label="Yopish" onClick={() => setSellerModalOpen(false)} className="w-9 h-9 flex items-center justify-center text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700 rounded-xl cursor-pointer">
                 <X size={18} />
@@ -1368,7 +1370,7 @@ export default function SuperAdmin() {
 
             <form onSubmit={handleCreateSeller} className="space-y-4">
               <div>
-                <label className="block text-[10px] font-extrabold uppercase tracking-widest text-gray-400 mb-2">Ism Familiya *</label>
+                <label className="block text-[11px] font-extrabold uppercase tracking-widest text-gray-400 mb-2">Ism Familiya *</label>
                 <input
                   type="text" required
                   placeholder="Masalan: Sardor Komilov"
@@ -1377,7 +1379,7 @@ export default function SuperAdmin() {
                 />
               </div>
               <div>
-                <label className="block text-[10px] font-extrabold uppercase tracking-widest text-gray-400 mb-2">Email *</label>
+                <label className="block text-[11px] font-extrabold uppercase tracking-widest text-gray-400 mb-2">Email *</label>
                 <input
                   type="email" required
                   placeholder="sardor@saraosiyo.uz"
@@ -1386,7 +1388,7 @@ export default function SuperAdmin() {
                 />
               </div>
               <div>
-                <label className="block text-[10px] font-extrabold uppercase tracking-widest text-gray-400 mb-2">Telefon</label>
+                <label className="block text-[11px] font-extrabold uppercase tracking-widest text-gray-400 mb-2">Telefon</label>
                 <input
                   type="text"
                   placeholder="+998 93 111 22 33"
@@ -1395,7 +1397,7 @@ export default function SuperAdmin() {
                 />
               </div>
               <div>
-                <label className="block text-[10px] font-extrabold uppercase tracking-widest text-gray-400 mb-2">Parol *</label>
+                <label className="block text-[11px] font-extrabold uppercase tracking-widest text-gray-400 mb-2">Parol *</label>
                 <input
                   type="password" required
                   placeholder="••••••••"

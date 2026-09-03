@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Search, Plus, FileSpreadsheet, MoreVertical, X, Image as ImageIcon, MapPin, GraduationCap, QrCode, Trash2 } from 'lucide-react';
 import { useCRM } from '../context/CRMContext';
+import { useConfirm } from './ConfirmDialog';
 import { useLang } from '../context/LanguageContext';
 import { useNavigate } from 'react-router-dom';
 import PhotoCapture from './PhotoCapture';
@@ -9,7 +10,7 @@ import { compressImage } from '../lib/image';
 import * as XLSX from 'xlsx';
 
 const inp = "w-full px-4 py-3 bg-gray-50 dark:bg-gray-900/50 border border-gray-100 dark:border-gray-700 rounded-2xl text-xs font-bold text-gray-900 dark:text-white focus:border-[#1b6b6b] focus:ring-4 focus:ring-[#1b6b6b]/10 outline-none transition-all";
-const lbl = "block text-[10px] font-extrabold uppercase tracking-widest text-gray-400 mb-2";
+const lbl = "block text-[11px] font-extrabold uppercase tracking-widest text-gray-400 mb-2";
 
 const UZB_REGIONS: Record<string, string[]> = {
   "Surxondaryo": [
@@ -81,6 +82,7 @@ const UZB_REGIONS: Record<string, string[]> = {
 
 export default function Students() {
     const { students, groups, teachers, transports, addStudent, deleteStudent, importStudents, selectedSchoolId, showNotification } = useCRM();
+    const confirm = useConfirm();
     const { t } = useLang();
     const navigate = useNavigate();
     const [isModalOpen, setIsModalOpen] = useState(false);
@@ -409,7 +411,7 @@ export default function Students() {
                         return;
                     }
 
-                    if (window.confirm(`${mappedStudents.length} ta o'quvchini import qilishni tasdiqlaysizmi?`)) {
+                    if (await confirm(`${mappedStudents.length} ta o'quvchini import qilishni tasdiqlaysizmi?`)) {
                         await importStudents(mappedStudents);
                     }
                 } catch (err: any) {
@@ -536,7 +538,7 @@ export default function Students() {
                         </div>
                         <div>
                             <h1 className="text-lg font-black text-gray-900 dark:text-white uppercase tracking-tight">{t('students_title')}</h1>
-                            <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mt-0.5">
+                            <p className="text-[11px] font-bold text-gray-400 uppercase tracking-widest mt-0.5">
                                 {t('students_count_summary').replace('{total}', String(students.length)).replace('{found}', String(filteredStudents.length))}
                             </p>
                         </div>
@@ -588,7 +590,7 @@ export default function Students() {
                         <div>
                             <label className={lbl}>{t('filter_status')}</label>
                             <select value={filters.status} onChange={e => setFilters({...filters, status: e.target.value})}
-                                className="w-full px-3 py-2 bg-gray-50 dark:bg-gray-900/50 border border-gray-100 dark:border-gray-700 rounded-xl text-[10px] font-bold text-gray-700 dark:text-white outline-none focus:border-[#1b6b6b] transition-all cursor-pointer">
+                                className="w-full px-3 py-2 bg-gray-50 dark:bg-gray-900/50 border border-gray-100 dark:border-gray-700 rounded-xl text-[11px] font-bold text-gray-700 dark:text-white outline-none focus:border-[#1b6b6b] transition-all cursor-pointer">
                                 <option value="">{t('all')}</option>
                                 <option value="Faol">{t('status_active')}</option>
                                 <option value="Passiv">{t('status_passive')}</option>
@@ -599,7 +601,7 @@ export default function Students() {
                         <div>
                             <label className={lbl}>{t('filter_group')}</label>
                             <select value={filters.groupId} onChange={e => setFilters({...filters, groupId: e.target.value})}
-                                className="w-full px-3 py-2 bg-gray-50 dark:bg-gray-900/50 border border-gray-100 dark:border-gray-700 rounded-xl text-[10px] font-bold text-gray-700 dark:text-white outline-none focus:border-[#1b6b6b] transition-all cursor-pointer">
+                                className="w-full px-3 py-2 bg-gray-50 dark:bg-gray-900/50 border border-gray-100 dark:border-gray-700 rounded-xl text-[11px] font-bold text-gray-700 dark:text-white outline-none focus:border-[#1b6b6b] transition-all cursor-pointer">
                                 <option value="">{t('all')}</option>
                                 {groups.map(g => <option key={g.id} value={g.id}>{g.name}</option>)}
                             </select>
@@ -607,7 +609,7 @@ export default function Students() {
                         <div>
                             <label className={lbl}>{t('filter_balance')}</label>
                             <select value={filters.balanceStatus} onChange={e => setFilters({...filters, balanceStatus: e.target.value})}
-                                className="w-full px-3 py-2 bg-gray-50 dark:bg-gray-900/50 border border-gray-100 dark:border-gray-700 rounded-xl text-[10px] font-bold text-gray-700 dark:text-white outline-none focus:border-[#1b6b6b] transition-all cursor-pointer">
+                                className="w-full px-3 py-2 bg-gray-50 dark:bg-gray-900/50 border border-gray-100 dark:border-gray-700 rounded-xl text-[11px] font-bold text-gray-700 dark:text-white outline-none focus:border-[#1b6b6b] transition-all cursor-pointer">
                                 <option value="all">{t('all')}</option>
                                 <option value="debt">{t('debtors')}</option>
                                 <option value="positive">{t('paid_students')}</option>
@@ -616,7 +618,7 @@ export default function Students() {
                         <div>
                             <label className={lbl}>Muassasa turi</label>
                             <select value={filters.orgType} onChange={e => setFilters({...filters, orgType: e.target.value})}
-                                className="w-full px-3 py-2 bg-gray-50 dark:bg-gray-900/50 border border-gray-100 dark:border-gray-700 rounded-xl text-[10px] font-bold text-gray-700 dark:text-white outline-none focus:border-[#1b6b6b] transition-all cursor-pointer">
+                                className="w-full px-3 py-2 bg-gray-50 dark:bg-gray-900/50 border border-gray-100 dark:border-gray-700 rounded-xl text-[11px] font-bold text-gray-700 dark:text-white outline-none focus:border-[#1b6b6b] transition-all cursor-pointer">
                                 <option value="">Barchasi</option>
                                 <option value="Maktab">Maktab</option>
                                 <option value="Prezident maktabi">Prezident maktabi</option>
@@ -632,13 +634,13 @@ export default function Students() {
                                 value={filters.muassasaSearch}
                                 onChange={e => setFilters({...filters, muassasaSearch: e.target.value})}
                                 placeholder="Masalan: 42-maktab"
-                                className="w-full px-3 py-2 bg-gray-50 dark:bg-gray-900/50 border border-gray-100 dark:border-gray-700 rounded-xl text-[10px] font-bold text-gray-700 dark:text-white outline-none focus:border-[#1b6b6b] transition-all"
+                                className="w-full px-3 py-2 bg-gray-50 dark:bg-gray-900/50 border border-gray-100 dark:border-gray-700 rounded-xl text-[11px] font-bold text-gray-700 dark:text-white outline-none focus:border-[#1b6b6b] transition-all"
                             />
                         </div>
                         <div>
                             <label className={lbl}>Viloyat</label>
                             <select value={filters.region} onChange={e => setFilters({...filters, region: e.target.value, district: ''})}
-                                className="w-full px-3 py-2 bg-gray-50 dark:bg-gray-900/50 border border-gray-100 dark:border-gray-700 rounded-xl text-[10px] font-bold text-gray-700 dark:text-white outline-none focus:border-[#1b6b6b] transition-all cursor-pointer">
+                                className="w-full px-3 py-2 bg-gray-50 dark:bg-gray-900/50 border border-gray-100 dark:border-gray-700 rounded-xl text-[11px] font-bold text-gray-700 dark:text-white outline-none focus:border-[#1b6b6b] transition-all cursor-pointer">
                                 <option value="">Barchasi</option>
                                 {Object.keys(UZB_REGIONS).map(r => <option key={r} value={r}>{r}</option>)}
                             </select>
@@ -647,7 +649,7 @@ export default function Students() {
                             <label className={lbl}>Tuman</label>
                             <select value={filters.district} onChange={e => setFilters({...filters, district: e.target.value})}
                                 disabled={!filters.region}
-                                className="w-full px-3 py-2 bg-gray-50 dark:bg-gray-900/50 border border-gray-100 dark:border-gray-700 rounded-xl text-[10px] font-bold text-gray-700 dark:text-white outline-none focus:border-[#1b6b6b] transition-all cursor-pointer disabled:opacity-50">
+                                className="w-full px-3 py-2 bg-gray-50 dark:bg-gray-900/50 border border-gray-100 dark:border-gray-700 rounded-xl text-[11px] font-bold text-gray-700 dark:text-white outline-none focus:border-[#1b6b6b] transition-all cursor-pointer disabled:opacity-50">
                                 <option value="">Barchasi</option>
                                 {filters.region && UZB_REGIONS[filters.region]?.map(d => <option key={d} value={d}>{d}</option>)}
                             </select>
@@ -655,7 +657,7 @@ export default function Students() {
                         <div>
                             <label className={`${lbl} text-rose-500`}>{t('filter_defects')}</label>
                             <select value={filters.missingInfo} onChange={e => setFilters({...filters, missingInfo: e.target.value})}
-                                className="w-full px-3 py-2 bg-rose-50 dark:bg-rose-950/20 border border-rose-100 dark:border-rose-900 rounded-xl text-[10px] font-bold text-rose-700 dark:text-rose-400 outline-none focus:border-rose-500 transition-all cursor-pointer">
+                                className="w-full px-3 py-2 bg-rose-50 dark:bg-rose-950/20 border border-rose-100 dark:border-rose-900 rounded-xl text-[11px] font-bold text-rose-700 dark:text-rose-400 outline-none focus:border-rose-500 transition-all cursor-pointer">
                                 <option value="">{t('all')}</option>
                                 <option value="fatherName">{t('defect_father_name').replace('{count}', String(students.filter(s => !s.fatherName || s.fatherName.trim() === '').length))}</option>
                                 <option value="fatherPhone">{t('defect_father_phone').replace('{count}', String(students.filter(s => !s.fatherPhone || s.fatherPhone.trim() === '').length))}</option>
@@ -668,7 +670,7 @@ export default function Students() {
                         <div className="flex items-end">
                             <button
                                 onClick={() => { setSearch(''); setFilters({status: '', groupId: '', balanceStatus: 'all', dateRange: 'all', orgType: '', muassasaSearch: '', region: '', district: '', location: '', missingInfo: ''}); }}
-                                className="w-full py-2 text-[10px] font-extrabold uppercase text-rose-500 hover:text-rose-600 flex items-center justify-center gap-1.5 cursor-pointer">
+                                className="w-full py-2 text-[11px] font-extrabold uppercase text-rose-500 hover:text-rose-600 flex items-center justify-center gap-1.5 cursor-pointer">
                                 <X size={12} /> {t('filter_clear')}
                             </button>
                         </div>
@@ -695,13 +697,13 @@ export default function Students() {
                                 </div>
                                 <div className="flex-1 min-w-0">
                                     <p className="text-xs font-bold text-gray-900 dark:text-white uppercase truncate">{student.name}</p>
-                                    <p className="text-[11px] text-gray-400 tabular-nums mt-0.5">{student.phone || "telefon yo'q"}</p>
+                                    <p className="text-[12px] text-gray-400 tabular-nums mt-0.5">{student.phone || "telefon yo'q"}</p>
                                 </div>
                                 <div className="text-right shrink-0">
                                     <p className={`text-xs font-black tabular-nums ${balance < 0 ? 'text-rose-500' : 'text-emerald-600'}`}>
                                         {balance.toLocaleString()}
                                     </p>
-                                    <p className="text-[9px] font-bold text-gray-400 uppercase tracking-widest mt-0.5">
+                                    <p className="text-[11px] font-bold text-gray-400 uppercase tracking-widest mt-0.5">
                                         {balance < 0 ? 'qarz' : 'balans'}
                                     </p>
                                 </div>
@@ -726,11 +728,11 @@ export default function Students() {
                     <table className="w-full text-left border-collapse min-w-[900px]">
                         <thead>
                             <tr className="bg-gray-50/50 dark:bg-gray-900/50 border-b border-gray-100 dark:border-gray-700">
-                                <th className="p-4 text-[10px] font-bold text-gray-400 uppercase tracking-widest text-center">ID</th>
-                                <th className="p-4 text-[10px] font-bold text-gray-400 uppercase tracking-widest">{t('student')}</th>
-                                <th className="p-4 text-[10px] font-bold text-gray-400 uppercase tracking-widest text-center">{t('student_phone')}</th>
-                                <th className="p-4 text-[10px] font-bold text-gray-400 uppercase tracking-widest">{t('student_groups')}</th>
-                                <th className="p-4 text-[10px] font-bold text-gray-400 uppercase tracking-widest text-right">{t('student_balance')}</th>
+                                <th className="p-4 text-[11px] font-bold text-gray-400 uppercase tracking-widest text-center">ID</th>
+                                <th className="p-4 text-[11px] font-bold text-gray-400 uppercase tracking-widest">{t('student')}</th>
+                                <th className="p-4 text-[11px] font-bold text-gray-400 uppercase tracking-widest text-center">{t('student_phone')}</th>
+                                <th className="p-4 text-[11px] font-bold text-gray-400 uppercase tracking-widest">{t('student_groups')}</th>
+                                <th className="p-4 text-[11px] font-bold text-gray-400 uppercase tracking-widest text-right">{t('student_balance')}</th>
                                 <th className="p-4 w-12 text-center"></th>
                             </tr>
                         </thead>
@@ -738,7 +740,7 @@ export default function Students() {
                             {visibleStudents.map((student) => (
                                 <tr key={student.id} className="hover:bg-gray-50/80 dark:hover:bg-gray-900/40 transition-all cursor-pointer group"
                                     onClick={() => navigate(`/students/${student.id}`)}>
-                                    <td className="p-4 text-[10px] font-extrabold text-gray-400 text-center tabular-nums">#{student.id}</td>
+                                    <td className="p-4 text-[11px] font-extrabold text-gray-400 text-center tabular-nums">#{student.id}</td>
                                     <td className="p-4">
                                         <div className="flex items-center gap-3">
                                             <div className="w-10 h-10 rounded-xl bg-gray-55 dark:bg-gray-900 border border-gray-100 dark:border-gray-700 flex items-center justify-center text-[#1b6b6b] font-bold text-xs shadow-inner overflow-hidden shrink-0 group-hover:scale-105 transition-transform">
@@ -748,28 +750,28 @@ export default function Students() {
                                             </div>
                                             <div>
                                                 <p className="text-xs font-bold text-gray-900 dark:text-white uppercase tracking-tight group-hover:text-[#1b6b6b] transition-colors">{student.name}</p>
-                                                <span className="text-[9px] text-gray-400 font-bold block mt-0.5 uppercase tracking-wider">{t('date')}: {student.joinedDate}</span>
+                                                <span className="text-[11px] text-gray-400 font-bold block mt-0.5 uppercase tracking-wider">{t('date')}: {student.joinedDate}</span>
                                             </div>
                                         </div>
                                     </td>
                                     <td className="p-4 text-center">
-                                        <span className="text-[10px] font-bold text-gray-900 dark:text-white bg-gray-50 dark:bg-gray-900/50 px-2.5 py-1 rounded-lg border border-gray-100 dark:border-gray-700 tabular-nums">
+                                        <span className="text-[11px] font-bold text-gray-900 dark:text-white bg-gray-50 dark:bg-gray-900/50 px-2.5 py-1 rounded-lg border border-gray-100 dark:border-gray-700 tabular-nums">
                                             {student.phone}
                                         </span>
                                     </td>
                                     <td className="p-4">
                                         <div className="flex flex-wrap gap-1">
                                             {getStudentGroups(student.groups || []).map(g => (
-                                                <span key={g.id} className="px-2 py-0.5 bg-[#1b6b6b]/10 text-[#1b6b6b] rounded-md text-[9px] font-extrabold uppercase tracking-wide">
+                                                <span key={g.id} className="px-2 py-0.5 bg-[#1b6b6b]/10 text-[#1b6b6b] rounded-md text-[11px] font-extrabold uppercase tracking-wide">
                                                     {g.name}
                                                 </span>
                                             ))}
-                                            {(student.groups || []).length === 0 && <span className="text-[9px] font-bold text-gray-400 uppercase tracking-widest italic">{t('no_group')}</span>}
+                                            {(student.groups || []).length === 0 && <span className="text-[11px] font-bold text-gray-400 uppercase tracking-widest italic">{t('no_group')}</span>}
                                         </div>
                                     </td>
                                     <td className="p-4 text-right">
                                         <div className="flex flex-col items-end gap-1">
-                                            <span className={`px-2 py-0.5 rounded-md text-[8px] font-black border uppercase tracking-wider ${
+                                            <span className={`px-2 py-0.5 rounded-md text-[10px] font-black border uppercase tracking-wider ${
                                                 student.status === 'Faol' ? 'bg-emerald-50 text-emerald-600 border-emerald-100 dark:bg-emerald-950/20 dark:text-emerald-400' :
                                                 student.status === 'Sinov' ? 'bg-amber-50 text-amber-600 border-amber-100 dark:bg-amber-950/20 dark:text-amber-400' :
                                                 student.status === 'Muzlatilgan' ? 'bg-sky-50 text-sky-650 border-sky-100 dark:bg-sky-950/20 dark:text-sky-455' :
@@ -840,21 +842,21 @@ export default function Students() {
 
                 {filteredStudents.length > PER_PAGE && (
                     <div className="flex items-center justify-between gap-4 px-6 py-4 border-t border-gray-50 dark:border-gray-700/50">
-                        <p className="text-[11px] font-bold text-gray-400 tabular-nums">
+                        <p className="text-[12px] font-bold text-gray-400 tabular-nums">
                             {(currentPage - 1) * PER_PAGE + 1}–{Math.min(currentPage * PER_PAGE, filteredStudents.length)} / {filteredStudents.length} ta
                         </p>
                         <div className="flex items-center gap-2">
                             <button
                                 onClick={() => setPage(p => Math.max(1, p - 1))}
                                 disabled={currentPage === 1}
-                                className="px-3 py-1.5 rounded-lg text-[11px] font-extrabold uppercase tracking-widest bg-gray-50 dark:bg-gray-900 text-gray-600 dark:text-gray-300 disabled:opacity-40 disabled:cursor-not-allowed hover:bg-gray-100 dark:hover:bg-gray-700 cursor-pointer transition-colors">
+                                className="px-3 py-1.5 rounded-lg text-[12px] font-extrabold uppercase tracking-widest bg-gray-50 dark:bg-gray-900 text-gray-600 dark:text-gray-300 disabled:opacity-40 disabled:cursor-not-allowed hover:bg-gray-100 dark:hover:bg-gray-700 cursor-pointer transition-colors">
                                 Oldingi
                             </button>
-                            <span className="text-[11px] font-bold text-gray-500 tabular-nums px-1">{currentPage} / {pageCount}</span>
+                            <span className="text-[12px] font-bold text-gray-500 tabular-nums px-1">{currentPage} / {pageCount}</span>
                             <button
                                 onClick={() => setPage(p => Math.min(pageCount, p + 1))}
                                 disabled={currentPage === pageCount}
-                                className="px-3 py-1.5 rounded-lg text-[11px] font-extrabold uppercase tracking-widest bg-gray-50 dark:bg-gray-900 text-gray-600 dark:text-gray-300 disabled:opacity-40 disabled:cursor-not-allowed hover:bg-gray-100 dark:hover:bg-gray-700 cursor-pointer transition-colors">
+                                className="px-3 py-1.5 rounded-lg text-[12px] font-extrabold uppercase tracking-widest bg-gray-50 dark:bg-gray-900 text-gray-600 dark:text-gray-300 disabled:opacity-40 disabled:cursor-not-allowed hover:bg-gray-100 dark:hover:bg-gray-700 cursor-pointer transition-colors">
                                 Keyingi
                             </button>
                         </div>
@@ -873,7 +875,7 @@ export default function Students() {
                             <div className="flex items-center justify-between mb-6 pb-4 border-b border-gray-50 dark:border-gray-700/50">
                                 <div className="text-left">
                                     <h3 className="text-lg font-black text-gray-900 dark:text-white uppercase tracking-tight">{t('new_student_title')}</h3>
-                                    <p className="text-[10px] font-bold text-[#1b6b6b] uppercase tracking-widest mt-0.5">{t('student_details_subtitle')}</p>
+                                    <p className="text-[11px] font-bold text-[#1b6b6b] uppercase tracking-widest mt-0.5">{t('student_details_subtitle')}</p>
                                 </div>
                                 <button aria-label="Yopish" type="button" onClick={() => setIsModalOpen(false)} className="w-9 h-9 flex items-center justify-center text-gray-400 hover:bg-gray-55 dark:hover:bg-gray-700 rounded-xl cursor-pointer">
                                     <X size={18} />
@@ -970,7 +972,7 @@ export default function Students() {
                                     </div>
                                 </div>
                                 <button type="button" onClick={() => setIsMapOpen(true)}
-                                    className={`w-full py-2.5 rounded-xl border flex items-center justify-center gap-2 text-[10px] font-bold uppercase tracking-widest cursor-pointer transition-all ${newStudent.location ? 'bg-[#1b6b6b]/10 text-[#1b6b6b] border-[#1b6b6b]' : 'bg-gray-55 dark:bg-gray-900 border-gray-100 hover:bg-gray-100'}`}>
+                                    className={`w-full py-2.5 rounded-xl border flex items-center justify-center gap-2 text-[11px] font-bold uppercase tracking-widest cursor-pointer transition-all ${newStudent.location ? 'bg-[#1b6b6b]/10 text-[#1b6b6b] border-[#1b6b6b]' : 'bg-gray-55 dark:bg-gray-900 border-gray-100 hover:bg-gray-100'}`}>
                                     <MapPin size={14} /> {newStudent.location ? t('marked_on_map') : t('select_from_map')}
                                 </button>
                                 <div>
@@ -994,7 +996,7 @@ export default function Students() {
                                                             certType: updated.includes('Sertifikat') ? newStudent.certType : ''
                                                         });
                                                     }}
-                                                    className={`px-3 py-1.5 rounded-xl text-[10px] font-bold uppercase tracking-wide border-2 transition-all cursor-pointer ${
+                                                    className={`px-3 py-1.5 rounded-xl text-[11px] font-bold uppercase tracking-wide border-2 transition-all cursor-pointer ${
                                                         checked
                                                             ? 'bg-[#1b6b6b] text-white border-[#1b6b6b] shadow-lg shadow-[#1b6b6b]/30'
                                                             : 'bg-transparent text-gray-400 dark:text-gray-500 border-gray-300 dark:border-gray-600 hover:border-[#1b6b6b] hover:text-[#1b6b6b]'
@@ -1077,7 +1079,7 @@ export default function Students() {
 
                                         {/* Dynamic multi-certificates array */}
                                         <div className="border-t border-dashed border-gray-150 dark:border-gray-700/50 pt-3 mt-3 space-y-3">
-                                            <span className="block text-[9px] font-black uppercase text-[#1b6b6b] tracking-wider text-left">Qo'shimcha Sertifikatlar</span>
+                                            <span className="block text-[11px] font-black uppercase text-[#1b6b6b] tracking-wider text-left">Qo'shimcha Sertifikatlar</span>
                                             {newStudent.certificates.map((cert, index) => (
                                                 <div key={index} className="p-3 bg-white dark:bg-slate-800 rounded-xl border border-gray-100 dark:border-gray-700 space-y-3 relative">
                                                     <button 
@@ -1155,7 +1157,7 @@ export default function Students() {
                                             <button
                                                 type="button"
                                                 onClick={addCertificate}
-                                                className="w-full py-2.5 bg-white dark:bg-slate-800 border border-dashed border-gray-200 dark:border-gray-700 rounded-xl text-[9px] font-black uppercase tracking-widest text-[#1b6b6b] hover:bg-teal-50/10 dark:hover:bg-teal-900/10 transition-colors flex items-center justify-center gap-1.5 cursor-pointer"
+                                                className="w-full py-2.5 bg-white dark:bg-slate-800 border border-dashed border-gray-200 dark:border-gray-700 rounded-xl text-[11px] font-black uppercase tracking-widest text-[#1b6b6b] hover:bg-teal-50/10 dark:hover:bg-teal-900/10 transition-colors flex items-center justify-center gap-1.5 cursor-pointer"
                                             >
                                                 <Plus size={13} />
                                                 Sertifikat qo'shish
@@ -1165,9 +1167,9 @@ export default function Students() {
                                 )}
 
                                 <div className="border-t border-dashed border-gray-150 dark:border-gray-700/50 pt-4 mt-4 space-y-3">
-                                    <span className="block text-[9px] font-black uppercase text-[#1b6b6b] tracking-wider text-left">Kursga qo'shish</span>
+                                    <span className="block text-[11px] font-black uppercase text-[#1b6b6b] tracking-wider text-left">Kursga qo'shish</span>
                                     {groups.length === 0 ? (
-                                        <p className="text-[10px] text-gray-400 italic">Kurslar mavjud emas</p>
+                                        <p className="text-[11px] text-gray-400 italic">Kurslar mavjud emas</p>
                                     ) : (
                                         <div className="flex flex-wrap gap-2">
                                             {groups.map(g => {
@@ -1182,7 +1184,7 @@ export default function Students() {
                                                                 : [...newStudent.selectedGroupIds, g.id];
                                                             setNewStudent({...newStudent, selectedGroupIds: updated});
                                                         }}
-                                                        className={`px-3 py-1.5 rounded-xl text-[10px] font-bold border-2 transition-all cursor-pointer ${
+                                                        className={`px-3 py-1.5 rounded-xl text-[11px] font-bold border-2 transition-all cursor-pointer ${
                                                             selected
                                                                 ? 'bg-[#1b6b6b] text-white border-[#1b6b6b] shadow-lg shadow-[#1b6b6b]/30'
                                                                 : 'bg-transparent text-gray-400 dark:text-gray-500 border-gray-300 dark:border-gray-600 hover:border-[#1b6b6b] hover:text-[#1b6b6b]'
@@ -1197,7 +1199,7 @@ export default function Students() {
                                 </div>
 
                                 <div className="border-t border-dashed border-gray-150 dark:border-gray-700/50 pt-4 mt-4 space-y-4">
-                                    <span className="block text-[9px] font-black uppercase text-[#1b6b6b] tracking-wider text-left">{t('parent_info')}</span>
+                                    <span className="block text-[11px] font-black uppercase text-[#1b6b6b] tracking-wider text-left">{t('parent_info')}</span>
                                     <div className="grid grid-cols-2 gap-4">
                                         <div>
                                             <label className={lbl}>{t('father_name')}</label>
@@ -1222,14 +1224,14 @@ export default function Students() {
 
 
                                 <div className="border-t border-dashed border-gray-150 dark:border-gray-700/50 pt-4 mt-4 space-y-4">
-                                    <span className="block text-[9px] font-black uppercase text-[#1b6b6b] tracking-wider text-left">{t('photo_label')}</span>
+                                    <span className="block text-[11px] font-black uppercase text-[#1b6b6b] tracking-wider text-left">{t('photo_label')}</span>
                                     <div className="flex items-center gap-4">
                                         <div className="w-20 h-20 rounded-2xl bg-gray-55 dark:bg-gray-900 border border-gray-100 flex items-center justify-center overflow-hidden shrink-0 shadow-inner">
                                             {newStudent.photo ? <img src={newStudent.photo} alt="Preview" className="w-full h-full object-cover" /> : <ImageIcon size={24} className="text-gray-300" />}
                                         </div>
                                         <div className="flex-1 space-y-2">
                                             <div className="flex gap-2">
-                                                 <label className="flex-1 flex items-center justify-center gap-1.5 py-2 border border-gray-100 dark:border-gray-700 rounded-xl cursor-pointer hover:bg-gray-50 text-[10px] font-bold uppercase tracking-wider">
+                                                 <label className="flex-1 flex items-center justify-center gap-1.5 py-2 border border-gray-100 dark:border-gray-700 rounded-xl cursor-pointer hover:bg-gray-50 text-[11px] font-bold uppercase tracking-wider">
                                                      <input type="file" className="hidden" accept="image/*" onChange={(e) => {
                                                          const file = e.target.files?.[0];
                                                          if (file) {
@@ -1244,13 +1246,13 @@ export default function Students() {
                                                      {t('photo_from_file')}
                                                  </label>
                                                 <button type="button" onClick={() => setIsPhotoModalOpen(true)}
-                                                    className="flex-1 flex items-center justify-center gap-1.5 py-2 border border-gray-100 dark:border-gray-700 rounded-xl hover:bg-gray-55 text-[10px] font-bold uppercase tracking-wider cursor-pointer">
+                                                    className="flex-1 flex items-center justify-center gap-1.5 py-2 border border-gray-100 dark:border-gray-700 rounded-xl hover:bg-gray-55 text-[11px] font-bold uppercase tracking-wider cursor-pointer">
                                                     {t('photo_camera')}
                                                 </button>
                                             </div>
                                             {newStudent.photo && (
                                                 <button type="button" onClick={handleRemoveBg} disabled={isRemovingBg}
-                                                    className="w-full py-2 bg-violet-50 text-violet-600 dark:bg-violet-950/20 dark:text-violet-400 rounded-xl border border-violet-100 dark:border-violet-900 text-[9px] font-black uppercase tracking-wider disabled:opacity-50 cursor-pointer">
+                                                    className="w-full py-2 bg-violet-50 text-violet-600 dark:bg-violet-950/20 dark:text-violet-400 rounded-xl border border-violet-100 dark:border-violet-900 text-[11px] font-black uppercase tracking-wider disabled:opacity-50 cursor-pointer">
                                                     {t('clear_bg')}
                                                 </button>
                                             )}
@@ -1297,14 +1299,14 @@ export default function Students() {
                     <div className="absolute inset-0 bg-gray-900/60 backdrop-blur-sm" onClick={() => setStudentToDelete(null)} />
                     <div className="relative bg-white dark:bg-gray-800 rounded-3xl p-6 shadow-2xl max-w-sm w-full text-center border border-gray-100 dark:border-gray-700">
                         <h4 className="text-sm font-black text-gray-900 dark:text-white uppercase tracking-tight mb-2">{t('delete_confirm_title')}</h4>
-                        <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest leading-relaxed mb-6">
+                        <p className="text-[11px] font-bold text-gray-400 uppercase tracking-widest leading-relaxed mb-6">
                             {t('delete_confirm_desc').replace('{name}', studentToDelete.name)}
                         </p>
                         <div className="flex gap-3">
-                            <button onClick={() => setStudentToDelete(null)} className="flex-1 py-2.5 bg-gray-100 text-gray-600 text-[10px] font-extrabold uppercase tracking-widest rounded-xl cursor-pointer">
+                            <button onClick={() => setStudentToDelete(null)} className="flex-1 py-2.5 bg-gray-100 text-gray-600 text-[11px] font-extrabold uppercase tracking-widest rounded-xl cursor-pointer">
                                 {t('cancel')}
                             </button>
-                            <button onClick={confirmDeleteStudent} className="flex-1 py-2.5 bg-rose-600 text-white text-[10px] font-extrabold uppercase tracking-widest rounded-xl cursor-pointer">
+                            <button onClick={confirmDeleteStudent} className="flex-1 py-2.5 bg-rose-600 text-white text-[11px] font-extrabold uppercase tracking-widest rounded-xl cursor-pointer">
                                 {t('delete')}
                             </button>
                         </div>
@@ -1321,10 +1323,10 @@ export default function Students() {
                                 <X size={18} />
                             </button>
                         </div>
-                        <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest leading-relaxed mb-2">
+                        <p className="text-[11px] font-bold text-gray-400 uppercase tracking-widest leading-relaxed mb-2">
                             {t('reception_link_desc')}
                         </p>
-                        <p className="text-[9px] font-bold text-amber-500 leading-relaxed mb-6 normal-case">
+                        <p className="text-[11px] font-bold text-amber-500 leading-relaxed mb-6 normal-case">
                             {t('reception_link_rotate')}
                         </p>
 
@@ -1340,17 +1342,17 @@ export default function Students() {
 
                         <div className="space-y-4">
                             <div className="flex items-center gap-2 bg-gray-55 dark:bg-gray-900/50 p-3 rounded-2xl border border-gray-100 dark:border-gray-750">
-                                <span className="text-[9px] font-black text-[#1b6b6b] uppercase tracking-wider shrink-0">{t('link')}:</span>
+                                <span className="text-[11px] font-black text-[#1b6b6b] uppercase tracking-wider shrink-0">{t('link')}:</span>
                                 <input
                                     readOnly
                                     type="text"
                                     value={applyUrl || t('loading')}
-                                    className="bg-transparent border-none text-[10px] font-extrabold text-gray-700 dark:text-white outline-none w-full select-all"
+                                    className="bg-transparent border-none text-[11px] font-extrabold text-gray-700 dark:text-white outline-none w-full select-all"
                                 />
                             </div>
                             <button
                                 onClick={copyLinkToClipboard}
-                                className={`w-full py-3.5 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all cursor-pointer ${
+                                className={`w-full py-3.5 rounded-2xl text-[11px] font-black uppercase tracking-widest transition-all cursor-pointer ${
                                     copySuccess 
                                         ? 'bg-emerald-600 text-white shadow-lg shadow-emerald-500/10' 
                                         : 'bg-[#1b6b6b] hover:bg-[#155252] text-white shadow-lg shadow-[#1b6b6b]/15'
@@ -1375,11 +1377,11 @@ export default function Students() {
                         className="bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700 rounded-xl shadow-xl py-1 w-32 z-50 text-left animate-in slide-in-from-top-1 duration-150"
                     >
                         <button onClick={() => { setActiveMenu(null); navigate(`/students/${activeMenu.id}`); }}
-                            className="w-full text-left px-4 py-2 text-[10px] font-bold text-gray-700 dark:text-gray-200 hover:bg-gray-55 dark:hover:bg-gray-700 uppercase tracking-widest cursor-pointer">
+                            className="w-full text-left px-4 py-2 text-[11px] font-bold text-gray-700 dark:text-gray-200 hover:bg-gray-55 dark:hover:bg-gray-700 uppercase tracking-widest cursor-pointer">
                             {t('details')}
                         </button>
                         <button onClick={() => { setActiveMenu(null); handleDeleteStudent(activeMenu.id, students.find(s => s.id === activeMenu.id)?.name || ''); }}
-                            className="w-full text-left px-4 py-2 text-[10px] font-bold text-rose-600 dark:text-rose-450 hover:bg-rose-50 dark:hover:bg-rose-950/30 uppercase tracking-widest cursor-pointer">
+                            className="w-full text-left px-4 py-2 text-[11px] font-bold text-rose-600 dark:text-rose-450 hover:bg-rose-50 dark:hover:bg-rose-950/30 uppercase tracking-widest cursor-pointer">
                             {t('delete')}
                         </button>
                     </div>

@@ -192,7 +192,7 @@ export default function Scanner({ onClose }: { onClose?: () => void }) {
                         </div>
                         <button
                             onClick={startQRScan}
-                            className="px-12 py-4 bg-teal-600 text-white rounded-[1.5rem] text-[10px] font-black uppercase tracking-[0.2em] shadow-2xl shadow-teal-500/20 hover:bg-teal-500 transition-all"
+                            className="px-12 py-4 bg-teal-600 text-white rounded-[1.5rem] text-[11px] font-black uppercase tracking-[0.2em] shadow-2xl shadow-teal-500/20 hover:bg-teal-500 transition-all"
                         >
                             Kamerani Yoqish
                         </button>
@@ -214,7 +214,7 @@ export default function Scanner({ onClose }: { onClose?: () => void }) {
                                 <div className="absolute top-1/2 w-full h-0.5 bg-teal-500/60 animate-pulse" />
                             </div>
                         </div>
-                        <p className="absolute bottom-8 text-[10px] font-black text-white/60 uppercase tracking-widest">QR kodni ramkaga joylang</p>
+                        <p className="absolute bottom-8 text-[11px] font-black text-white/60 uppercase tracking-widest">QR kodni ramkaga joylang</p>
                     </div>
                 )}
 
@@ -228,7 +228,7 @@ export default function Scanner({ onClose }: { onClose?: () => void }) {
                             </div>
                             <div>
                                 <p className="text-white font-black text-sm">{scanCtx.studentName}</p>
-                                <p className="text-teal-400 text-[10px] font-bold uppercase tracking-widest">
+                                <p className="text-teal-400 text-[11px] font-bold uppercase tracking-widest">
                                     {scanCtx.examName} · Variant {scanCtx.variantCode}
                                 </p>
                             </div>
@@ -236,7 +236,7 @@ export default function Scanner({ onClose }: { onClose?: () => void }) {
 
                         {/* Bubble grid */}
                         <div className="bg-gray-900 rounded-2xl border border-gray-800 overflow-hidden">
-                            <div className="grid grid-cols-5 bg-gray-800/50 px-4 py-2 text-[9px] font-black text-gray-400 uppercase tracking-widest">
+                            <div className="grid grid-cols-5 bg-gray-800/50 px-4 py-2 text-[11px] font-black text-gray-400 uppercase tracking-widest">
                                 <span>#</span><span className="text-center">A</span><span className="text-center">B</span><span className="text-center">C</span><span className="text-center">D</span>
                             </div>
                             <div className="max-h-[50vh] overflow-y-auto divide-y divide-gray-800/50">
@@ -262,14 +262,14 @@ export default function Scanner({ onClose }: { onClose?: () => void }) {
                         </div>
 
                         {/* Progress */}
-                        <p className="text-center text-[10px] font-bold text-gray-500 uppercase tracking-widest">
+                        <p className="text-center text-[11px] font-bold text-gray-500 uppercase tracking-widest">
                             {Object.values(answers).filter(Boolean).length} / {scanCtx.variantQuestions.length} javob berildi
                         </p>
 
                         <button
                             onClick={submitAnswers}
                             disabled={!allAnswered}
-                            className="w-full py-4 bg-teal-600 text-white rounded-2xl text-[10px] font-black uppercase tracking-[0.2em] hover:bg-teal-500 disabled:opacity-40 disabled:cursor-not-allowed transition-all flex items-center justify-center gap-2"
+                            className="w-full py-4 bg-teal-600 text-white rounded-2xl text-[11px] font-black uppercase tracking-[0.2em] hover:bg-teal-500 disabled:opacity-40 disabled:cursor-not-allowed transition-all flex items-center justify-center gap-2"
                         >
                             Natijani Saqlash <ChevronRight size={16} />
                         </button>
@@ -293,17 +293,17 @@ export default function Scanner({ onClose }: { onClose?: () => void }) {
                             <CheckCircle className="w-12 h-12 text-teal-400" />
                         </div>
                         <div>
-                            <p className="text-teal-400 text-[10px] font-black uppercase tracking-widest mb-1">Muvaffaqiyatli saqlandi</p>
+                            <p className="text-teal-400 text-[11px] font-black uppercase tracking-widest mb-1">Muvaffaqiyatli saqlandi</p>
                             <p className="text-white font-black text-xl">{savedResult.studentName}</p>
                         </div>
 
                         <div className="bg-gray-900 border border-gray-800 rounded-2xl p-8 w-full space-y-4">
                             <div className="flex justify-between items-center">
-                                <span className="text-gray-400 text-[10px] font-black uppercase tracking-widest">Ball</span>
+                                <span className="text-gray-400 text-[11px] font-black uppercase tracking-widest">Ball</span>
                                 <span className="text-white text-2xl font-black">{savedResult.score}</span>
                             </div>
                             <div className="flex justify-between items-center">
-                                <span className="text-gray-400 text-[10px] font-black uppercase tracking-widest">Foiz</span>
+                                <span className="text-gray-400 text-[11px] font-black uppercase tracking-widest">Foiz</span>
                                 <span className={`text-xl font-black ${savedResult.percentage >= 50 ? 'text-teal-400' : 'text-rose-400'}`}>
                                     {savedResult.percentage}%
                                 </span>
@@ -313,13 +313,13 @@ export default function Scanner({ onClose }: { onClose?: () => void }) {
                         <div className="flex flex-col w-full gap-3">
                             <button
                                 onClick={resetScanner}
-                                className="w-full py-4 bg-teal-600 text-white rounded-2xl text-[10px] font-black uppercase tracking-[0.2em] hover:bg-teal-500 transition-all"
+                                className="w-full py-4 bg-teal-600 text-white rounded-2xl text-[11px] font-black uppercase tracking-[0.2em] hover:bg-teal-500 transition-all"
                             >
                                 Keyingi Varaqa
                             </button>
                             <button
                                 onClick={handleClose}
-                                className="w-full py-4 bg-white/10 text-white rounded-2xl text-[10px] font-black uppercase tracking-[0.2em] hover:bg-white/20 transition-all"
+                                className="w-full py-4 bg-white/10 text-white rounded-2xl text-[11px] font-black uppercase tracking-[0.2em] hover:bg-white/20 transition-all"
                             >
                                 Skanerni Yopish
                             </button>

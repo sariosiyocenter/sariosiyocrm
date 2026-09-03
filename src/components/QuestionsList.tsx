@@ -1,6 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { Search, Plus, Filter, FileUp, Trash2, X, AlertCircle, CheckCircle, XCircle } from 'lucide-react';
 import { useCRM } from '../context/CRMContext';
+import { useConfirm } from './ConfirmDialog';
 import { useNavigate } from 'react-router-dom';
 import * as XLSX from 'xlsx';
 
@@ -64,6 +65,7 @@ function normalizeRow(raw: any): { data: ImportRow | null; errors: ImportError[]
 
 export default function QuestionsList() {
     const { questions, deleteQuestion, showNotification, token, selectedSchoolId } = useCRM();
+    const confirm = useConfirm();
     const navigate = useNavigate();
 
     const [search, setSearch] = useState('');
@@ -170,8 +172,8 @@ export default function QuestionsList() {
                     <div className="relative bg-white dark:bg-gray-800 rounded-3xl shadow-xl w-full max-w-md p-6 space-y-4 border border-gray-100 dark:border-gray-700/50">
                         <div className="flex items-start justify-between border-b border-gray-100 dark:border-gray-700/50 pb-3">
                             <div>
-                                <h2 className="text-[10px] font-black text-gray-900 dark:text-white uppercase tracking-widest">Excel Import Tekshiruvi</h2>
-                                <p className="text-[9px] font-bold text-gray-400 mt-1 uppercase tracking-widest">Jami {importPreview.total} ta qator</p>
+                                <h2 className="text-[11px] font-black text-gray-900 dark:text-white uppercase tracking-widest">Excel Import Tekshiruvi</h2>
+                                <p className="text-[11px] font-bold text-gray-400 mt-1 uppercase tracking-widest">Jami {importPreview.total} ta qator</p>
                             </div>
                             <button aria-label="Yopish" onClick={() => setImportPreview(null)} className="p-1 text-gray-400 hover:text-gray-650 rounded-lg cursor-pointer">
                                 <X size={18} />
@@ -183,14 +185,14 @@ export default function QuestionsList() {
                                 <CheckCircle className="w-5 h-5 text-emerald-500 shrink-0" />
                                 <div>
                                     <p className="text-sm font-black text-emerald-600 dark:text-emerald-400">{importPreview.valid.length}</p>
-                                    <p className="text-[8px] text-emerald-500 uppercase tracking-widest font-black">To'g'ri</p>
+                                    <p className="text-[10px] text-emerald-500 uppercase tracking-widest font-black">To'g'ri</p>
                                 </div>
                             </div>
                             <div className="flex-1 bg-rose-50 dark:bg-rose-955/20 rounded-xl p-3 border border-rose-100 dark:border-rose-900/40 flex items-center gap-2">
                                 <XCircle className="w-5 h-5 text-rose-500 shrink-0" />
                                 <div>
                                     <p className="text-sm font-black text-rose-600 dark:text-rose-400">{importPreview.errors.length}</p>
-                                    <p className="text-[8px] text-rose-500 uppercase tracking-widest font-black">Xatolik</p>
+                                    <p className="text-[10px] text-rose-500 uppercase tracking-widest font-black">Xatolik</p>
                                 </div>
                             </div>
                         </div>
@@ -198,7 +200,7 @@ export default function QuestionsList() {
                         {importPreview.errors.length > 0 && (
                             <div className="bg-rose-50 dark:bg-rose-950/10 rounded-2xl p-3 max-h-32 overflow-y-auto border border-rose-100 dark:border-rose-900/20 space-y-1">
                                 {importPreview.errors.map((err, i) => (
-                                    <p key={i} className="text-[10px] text-rose-600 dark:text-rose-400 font-bold uppercase">
+                                    <p key={i} className="text-[11px] text-rose-600 dark:text-rose-400 font-bold uppercase">
                                         <span>Qator {err.row}:</span> {err.message}
                                     </p>
                                 ))}
@@ -208,14 +210,14 @@ export default function QuestionsList() {
                         <div className="flex gap-2 pt-3 border-t border-dashed border-gray-100 dark:border-gray-700/50">
                             <button
                                 onClick={() => setImportPreview(null)}
-                                className="flex-1 py-2.5 rounded-xl border border-gray-100 dark:border-gray-700 text-[9px] font-black uppercase tracking-widest text-gray-500 hover:bg-gray-55 cursor-pointer transition-all"
+                                className="flex-1 py-2.5 rounded-xl border border-gray-100 dark:border-gray-700 text-[11px] font-black uppercase tracking-widest text-gray-500 hover:bg-gray-55 cursor-pointer transition-all"
                             >
                                 Bekor
                             </button>
                             <button
                                 onClick={confirmImport}
                                 disabled={isImporting || importPreview.valid.length === 0}
-                                className="flex-1 py-2.5 rounded-xl bg-[#1b6b6b] hover:bg-[#155252] text-white text-[9px] font-black uppercase tracking-widest disabled:opacity-50 disabled:cursor-not-allowed transition-all cursor-pointer"
+                                className="flex-1 py-2.5 rounded-xl bg-[#1b6b6b] hover:bg-[#155252] text-white text-[11px] font-black uppercase tracking-widest disabled:opacity-50 disabled:cursor-not-allowed transition-all cursor-pointer"
                             >
                                 {isImporting ? 'Yuklanmoqda...' : `Import (${importPreview.valid.length})`}
                             </button>
@@ -249,14 +251,14 @@ export default function QuestionsList() {
                     </div>
 
                     <div className="flex items-center gap-2">
-                        <label className="cursor-pointer px-4 py-2.5 bg-amber-50 dark:bg-amber-955/20 text-amber-600 dark:text-amber-405 border border-amber-100 dark:border-amber-900/40 rounded-xl text-[9px] font-black uppercase tracking-widest hover:bg-amber-100 transition-colors flex items-center gap-1.5">
+                        <label className="cursor-pointer px-4 py-2.5 bg-amber-50 dark:bg-amber-955/20 text-amber-600 dark:text-amber-405 border border-amber-100 dark:border-amber-900/40 rounded-xl text-[11px] font-black uppercase tracking-widest hover:bg-amber-100 transition-colors flex items-center gap-1.5">
                             <FileUp size={14} />
                             {isImporting ? 'Kutilmoqda...' : 'Excel Import'}
                             <input type="file" className="hidden" accept=".xlsx, .xls" onChange={handleImportExcel} disabled={isImporting} />
                         </label>
                         <button 
                             onClick={() => navigate('/questions/new')}
-                            className="px-4 py-2.5 bg-[#1b6b6b] hover:bg-[#155252] text-white rounded-xl text-[9px] font-black uppercase tracking-widest transition-colors flex items-center gap-1.5 cursor-pointer shadow-lg shadow-[#1b6b6b]/20"
+                            className="px-4 py-2.5 bg-[#1b6b6b] hover:bg-[#155252] text-white rounded-xl text-[11px] font-black uppercase tracking-widest transition-colors flex items-center gap-1.5 cursor-pointer shadow-lg shadow-[#1b6b6b]/20"
                         >
                             <Plus size={14} />
                             Savol Qo'shish
@@ -267,33 +269,33 @@ export default function QuestionsList() {
                 {showFilters && (
                     <div className="mt-4 pt-4 grid grid-cols-1 md:grid-cols-3 gap-4 border-t border-dashed border-gray-105 dark:border-gray-700/50 animate-in slide-in-from-top duration-300">
                         <div>
-                            <label className="text-[9px] font-black text-gray-400 block mb-1.5 uppercase tracking-widest">Fan</label>
+                            <label className="text-[11px] font-black text-gray-400 block mb-1.5 uppercase tracking-widest">Fan</label>
                             <select 
                                 value={filters.subject}
                                 onChange={e => setFilters({...filters, subject: e.target.value})}
-                                className="w-full px-3 py-2 bg-gray-55 dark:bg-gray-900 border border-gray-100 dark:border-gray-700 rounded-xl text-[10px] font-bold uppercase tracking-widest text-gray-900 dark:text-white outline-none focus:border-teal-500 cursor-pointer"
+                                className="w-full px-3 py-2 bg-gray-55 dark:bg-gray-900 border border-gray-100 dark:border-gray-700 rounded-xl text-[11px] font-bold uppercase tracking-widest text-gray-900 dark:text-white outline-none focus:border-teal-500 cursor-pointer"
                             >
                                 <option value="">Barcha fanlar</option>
                                 {subjects.map(s => <option key={s} value={s}>{s}</option>)}
                             </select>
                         </div>
                         <div>
-                            <label className="text-[9px] font-black text-gray-400 block mb-1.5 uppercase tracking-widest">Mavzu</label>
+                            <label className="text-[11px] font-black text-gray-400 block mb-1.5 uppercase tracking-widest">Mavzu</label>
                             <select 
                                 value={filters.topic}
                                 onChange={e => setFilters({...filters, topic: e.target.value})}
-                                className="w-full px-3 py-2 bg-gray-55 dark:bg-gray-900 border border-gray-100 dark:border-gray-700 rounded-xl text-[10px] font-bold uppercase tracking-widest text-gray-900 dark:text-white outline-none focus:border-teal-500 cursor-pointer"
+                                className="w-full px-3 py-2 bg-gray-55 dark:bg-gray-900 border border-gray-100 dark:border-gray-700 rounded-xl text-[11px] font-bold uppercase tracking-widest text-gray-900 dark:text-white outline-none focus:border-teal-500 cursor-pointer"
                             >
                                 <option value="">Barcha mavzular</option>
                                 {topics.map(t => <option key={t} value={t}>{t}</option>)}
                             </select>
                         </div>
                         <div>
-                            <label className="text-[9px] font-black text-gray-400 block mb-1.5 uppercase tracking-widest">Qiyinlik Darajasi</label>
+                            <label className="text-[11px] font-black text-gray-400 block mb-1.5 uppercase tracking-widest">Qiyinlik Darajasi</label>
                             <select 
                                 value={filters.difficulty}
                                 onChange={e => setFilters({...filters, difficulty: e.target.value})}
-                                className="w-full px-3 py-2 bg-gray-55 dark:bg-gray-900 border border-gray-100 dark:border-gray-700 rounded-xl text-[10px] font-bold uppercase tracking-widest text-gray-900 dark:text-white outline-none focus:border-teal-500 cursor-pointer"
+                                className="w-full px-3 py-2 bg-gray-55 dark:bg-gray-900 border border-gray-100 dark:border-gray-700 rounded-xl text-[11px] font-bold uppercase tracking-widest text-gray-900 dark:text-white outline-none focus:border-teal-500 cursor-pointer"
                             >
                                 <option value="">Barcha darajalar</option>
                                 <option value="1">Oson</option>
@@ -311,18 +313,18 @@ export default function QuestionsList() {
                     <table className="w-full text-left border-collapse min-w-[800px]">
                         <thead>
                             <tr className="bg-gray-55 dark:bg-gray-900 border-b border-gray-100 dark:border-gray-700/50">
-                                <th className="p-4 text-[9px] font-black text-gray-400 uppercase tracking-widest w-20 text-center">ID</th>
-                                <th className="p-4 text-[9px] font-black text-gray-400 uppercase tracking-widest">Savol Matni</th>
-                                <th className="p-4 text-[9px] font-black text-gray-400 uppercase tracking-widest">Fan & Mavzu</th>
-                                <th className="p-4 text-[9px] font-black text-gray-400 uppercase tracking-widest text-center">Daraja</th>
-                                <th className="p-4 text-[9px] font-black text-gray-400 uppercase tracking-widest text-center">To'g'ri</th>
+                                <th className="p-4 text-[11px] font-black text-gray-400 uppercase tracking-widest w-20 text-center">ID</th>
+                                <th className="p-4 text-[11px] font-black text-gray-400 uppercase tracking-widest">Savol Matni</th>
+                                <th className="p-4 text-[11px] font-black text-gray-400 uppercase tracking-widest">Fan & Mavzu</th>
+                                <th className="p-4 text-[11px] font-black text-gray-400 uppercase tracking-widest text-center">Daraja</th>
+                                <th className="p-4 text-[11px] font-black text-gray-400 uppercase tracking-widest text-center">To'g'ri</th>
                                 <th className="p-4 w-20 text-center"></th>
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-gray-100 dark:divide-gray-800">
                             {filteredQuestions.map((q) => (
                                 <tr key={q.id} className="hover:bg-gray-50/50 dark:hover:bg-teal-950/20 transition-all cursor-pointer group" onClick={() => navigate(`/questions/${q.id}/edit`)}>
-                                    <td className="p-4 text-[10px] font-bold text-gray-400 text-center tabular-nums">#{q.id.toString().substring(0,4)}</td>
+                                    <td className="p-4 text-[11px] font-bold text-gray-400 text-center tabular-nums">#{q.id.toString().substring(0,4)}</td>
                                     <td className="p-4">
                                         <p className="text-xs font-bold text-gray-900 dark:text-white line-clamp-1 max-w-[400px]">
                                             {stripHtml(q.text)}
@@ -330,12 +332,12 @@ export default function QuestionsList() {
                                     </td>
                                     <td className="p-4">
                                         <div className="flex flex-col gap-0.5">
-                                            <span className="text-[10px] font-black text-[#1b6b6b] uppercase tracking-wide">{q.subject}</span>
-                                            <span className="text-[9px] font-bold text-gray-400 uppercase tracking-widest">{q.topic || 'Mavzusiz'}</span>
+                                            <span className="text-[11px] font-black text-[#1b6b6b] uppercase tracking-wide">{q.subject}</span>
+                                            <span className="text-[11px] font-bold text-gray-400 uppercase tracking-widest">{q.topic || 'Mavzusiz'}</span>
                                         </div>
                                     </td>
                                     <td className="p-4 text-center">
-                                        <span className={`px-2.5 py-0.5 rounded text-[9px] font-black border uppercase tracking-wider ${
+                                        <span className={`px-2.5 py-0.5 rounded text-[11px] font-black border uppercase tracking-wider ${
                                             q.difficulty === 1 ? 'bg-emerald-50 dark:bg-emerald-950/20 text-emerald-600 dark:text-emerald-400 border-emerald-100 dark:border-emerald-900/20' :
                                             q.difficulty === 2 ? 'bg-amber-50 dark:bg-amber-955/20 text-amber-600 dark:text-amber-400 border-amber-100 dark:border-amber-900/20' :
                                             'bg-rose-50 dark:bg-rose-955/20 text-rose-600 dark:text-rose-455 border-rose-100 dark:border-rose-900/20'
@@ -351,9 +353,9 @@ export default function QuestionsList() {
                                     <td className="p-4 text-center">
                                         <div className="flex items-center justify-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                                             <button 
-                                                onClick={(e) => {
+                                                onClick={async (e) => {
                                                     e.stopPropagation();
-                                                    if(window.confirm('O\'chirishni xohlaysizmi?')) deleteQuestion(q.id);
+                                                    if(await confirm('O\'chirishni xohlaysizmi?')) deleteQuestion(q.id);
                                                 }}
                                                 className="w-8 h-8 flex items-center justify-center rounded-lg text-gray-400 hover:text-rose-500 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors cursor-pointer"
                                             >
@@ -367,7 +369,7 @@ export default function QuestionsList() {
                                 <tr>
                                     <td colSpan={6} className="p-16 text-center">
                                         <AlertCircle className="w-8 h-8 text-gray-300 dark:text-gray-700 mx-auto mb-3" />
-                                        <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Hozircha savollar topilmadi</p>
+                                        <p className="text-[11px] font-bold text-gray-400 uppercase tracking-widest">Hozircha savollar topilmadi</p>
                                     </td>
                                 </tr>
                             )}

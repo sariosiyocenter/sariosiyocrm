@@ -57,7 +57,7 @@ export default function StudentBonusReport({ startDate, endDate }: { startDate?:
                         <div className="space-y-3 mt-2">
                             {topStudents.map((s, i) => (
                                 <div key={s.id} className="flex items-center gap-3">
-                                    <span className={`w-7 h-7 rounded-xl flex items-center justify-center text-[11px] font-extrabold shrink-0 ${i === 0 ? 'bg-amber-100 text-amber-600 dark:bg-amber-900/30' : i === 1 ? 'bg-gray-100 text-gray-600 dark:bg-gray-700' : 'bg-orange-50 text-orange-400 dark:bg-orange-900/20'}`}>{i + 1}</span>
+                                    <span className={`w-7 h-7 rounded-xl flex items-center justify-center text-[12px] font-extrabold shrink-0 ${i === 0 ? 'bg-amber-100 text-amber-600 dark:bg-amber-900/30' : i === 1 ? 'bg-gray-100 text-gray-600 dark:bg-gray-700' : 'bg-orange-50 text-orange-400 dark:bg-orange-900/20'}`}>{i + 1}</span>
                                     <ProgressBar label={s.name} value={s.totalScore} max={topStudents[0].totalScore || 1} color={i === 0 ? '#f59e0b' : '#0ea5e9'} sub={`${s.totalScore} ball`} />
                                 </div>
                             ))}
@@ -85,7 +85,7 @@ export default function StudentBonusReport({ startDate, endDate }: { startDate?:
                 <SectionHeader
                     title="Barcha talabalar ballari"
                     action={
-                        <button onClick={handleExport} className="flex items-center gap-2 px-4 py-2 bg-amber-500 text-white rounded-xl text-[10px] font-extrabold uppercase tracking-widest hover:bg-amber-400 transition-all">
+                        <button onClick={handleExport} className="flex items-center gap-2 px-4 py-2 bg-amber-500 text-white rounded-xl text-[11px] font-extrabold uppercase tracking-widest hover:bg-amber-400 transition-all">
                             <Download size={14} /> CSV
                         </button>
                     }
@@ -96,7 +96,7 @@ export default function StudentBonusReport({ startDate, endDate }: { startDate?:
                         { key: 'count', label: 'Baholashlar soni' },
                         { key: 'totalScore', label: 'Jami ball', render: r => <span className="text-amber-600 dark:text-amber-400 font-extrabold">{r.totalScore}</span> },
                         { key: 'avgScore', label: "O'rtacha ball", render: r => r.avgScore || '-' },
-                        { key: 'status', label: 'Status', render: r => <span className={`px-2 py-0.5 rounded-lg text-[10px] font-bold uppercase ${r.status === 'Faol' ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400' : 'bg-gray-100 text-gray-500 dark:bg-gray-700 dark:text-gray-400'}`}>{r.status}</span> },
+                        { key: 'status', label: 'Status', render: r => <span className={`px-2 py-0.5 rounded-lg text-[11px] font-bold uppercase ${r.status === 'Faol' ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400' : 'bg-gray-100 text-gray-500 dark:bg-gray-700 dark:text-gray-400'}`}>{r.status}</span> },
                     ]}
                     rows={sorted}
                 />

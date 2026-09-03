@@ -23,7 +23,7 @@ const ROLE_LABELS: Record<string, string> = {
 };
 
 const inp = "w-full px-4 py-3 bg-gray-55 dark:bg-gray-900/50 border border-gray-100 dark:border-gray-700 rounded-2xl text-xs font-bold text-gray-900 dark:text-white focus:border-[#1b6b6b] focus:ring-4 focus:ring-[#1b6b6b]/10 outline-none transition-all";
-const lbl = "block text-[10px] font-extrabold uppercase tracking-widest text-gray-400 mb-2";
+const lbl = "block text-[11px] font-extrabold uppercase tracking-widest text-gray-400 mb-2";
 
 export default function Settings() {
     const { settings, updateSettings, rooms, schools,
@@ -184,7 +184,7 @@ export default function Settings() {
                 <form onSubmit={handleSaveProfile} className="space-y-6">
                 <div>
                     <h2 className="text-xs font-black text-gray-900 dark:text-white uppercase tracking-wider">{t('org_profile_title')}</h2>
-                    <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mt-0.5">{t('org_profile_subtitle')}</p>
+                    <p className="text-[11px] font-bold text-gray-400 uppercase tracking-widest mt-0.5">{t('org_profile_subtitle')}</p>
                 </div>
                 <div className="flex items-center gap-6">
                     <div className="relative group">
@@ -202,7 +202,7 @@ export default function Settings() {
                     </div>
                     <div>
                         <p className="text-xs font-black text-gray-900 dark:text-white uppercase tracking-wide">{profileForm?.orgName || t('org_name')}</p>
-                        <p className="text-[9px] font-bold text-gray-400 uppercase tracking-widest mt-0.5">{t('logo_upload_hint')}</p>
+                        <p className="text-[11px] font-bold text-gray-400 uppercase tracking-widest mt-0.5">{t('logo_upload_hint')}</p>
                     </div>
                 </div>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -226,7 +226,7 @@ export default function Settings() {
                         <label className={lbl}>Telegram Bot Token</label>
                         <input type="text" placeholder="123456789:ABCdefGhI..." className={inp} value={profileForm?.telegram || ''} onChange={e => setProfileForm(p => ({ ...p, telegram: e.target.value }))} />
                         {botInfo && (
-                            <div className="mt-1.5 text-[10px] font-bold">
+                            <div className="mt-1.5 text-[11px] font-bold">
                                 {botInfo.loading && <span className="text-gray-400">Tekshirilmoqda...</span>}
                                 {botInfo.error && <span className="text-rose-500">⚠️ {botInfo.error}</span>}
                                 {botInfo.username && (
@@ -304,16 +304,16 @@ export default function Settings() {
             <div className="space-y-6">
                 <div>
                     <h2 className="text-xs font-black text-gray-900 dark:text-white uppercase tracking-wider">{t('permissions_title')}</h2>
-                    <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mt-0.5">{t('permissions_subtitle')}</p>
+                    <p className="text-[11px] font-bold text-gray-400 uppercase tracking-widest mt-0.5">{t('permissions_subtitle')}</p>
                 </div>
                 <div className="bg-white dark:bg-gray-800 rounded-3xl border border-gray-100 dark:border-gray-700/50 overflow-hidden shadow-sm">
                     <div className="overflow-x-auto custom-scrollbar">
                         <table className="w-full min-w-[600px] border-collapse text-left">
                             <thead>
                                 <tr className="border-b border-gray-100 dark:border-gray-700/50 bg-gray-50/50 dark:bg-gray-900/20">
-                                    <th className="p-4 text-[9px] font-black text-gray-400 uppercase tracking-widest min-w-[150px]">{t('module_label')}</th>
+                                    <th className="p-4 text-[11px] font-black text-gray-400 uppercase tracking-widest min-w-[150px]">{t('module_label')}</th>
                                     {Object.keys(permissions).map(role => (
-                                        <th key={role} className="p-4 text-center text-[9px] font-black text-gray-400 uppercase tracking-widest">
+                                        <th key={role} className="p-4 text-center text-[11px] font-black text-gray-400 uppercase tracking-widest">
                                             {ROLE_LABELS[role] || role}
                                         </th>
                                     ))}
@@ -363,7 +363,7 @@ export default function Settings() {
             <div className="space-y-6 animate-in fade-in duration-300">
                 <div>
                     <h2 className="text-xs font-black text-gray-900 dark:text-white uppercase tracking-wider">{t('design_palette_title')}</h2>
-                    <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mt-0.5">{t('design_palette_subtitle')}</p>
+                    <p className="text-[11px] font-bold text-gray-400 uppercase tracking-widest mt-0.5">{t('design_palette_subtitle')}</p>
                 </div>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     {THEMES.map(theme => {
@@ -392,7 +392,7 @@ export default function Settings() {
                                 </div>
                                 <div className="flex items-center gap-3">
                                     <div
-                                        className="px-3 py-1.5 rounded-xl text-[9px] font-extrabold uppercase tracking-wider text-white shadow-sm transition-all"
+                                        className="px-3 py-1.5 rounded-xl text-[11px] font-extrabold uppercase tracking-wider text-white shadow-sm transition-all"
                                         style={{ background: `linear-gradient(135deg, ${theme.gradientStart}, ${theme.gradientEnd})` }}
                                     >
                                         Palitra
@@ -426,7 +426,7 @@ export default function Settings() {
                         </div>
                         <div>
                             <h1 className="text-lg font-black text-gray-900 dark:text-white uppercase tracking-tight">{t('settings_title')}</h1>
-                            <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mt-0.5">
+                            <p className="text-[11px] font-bold text-gray-400 uppercase tracking-widest mt-0.5">
                                 {t('settings_subtitle')}
                             </p>
                         </div>
@@ -444,7 +444,7 @@ export default function Settings() {
                                     className="w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-gray-400 hover:text-gray-600 dark:hover:text-gray-250 transition-all cursor-pointer">
                                     <div className="flex items-center gap-2">
                                         <span className="text-[#1b6b6b]">{group.icon}</span>
-                                        <span className="text-[10px] font-black uppercase tracking-widest">{group.label}</span>
+                                        <span className="text-[11px] font-black uppercase tracking-widest">{group.label}</span>
                                     </div>
                                     {openGroups[group.id]
                                         ? <ChevronDown size={12} />
@@ -458,10 +458,10 @@ export default function Settings() {
                                                 className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl transition-all text-left cursor-pointer ${activeSection === item.id ? 'bg-[#1b6b6b]/5 text-[#1b6b6b] border border-[#1b6b6b]/10' : 'text-gray-500 hover:text-gray-900 dark:hover:text-white'}`}>
                                                 <div className="flex items-center gap-2">
                                                     {item.icon}
-                                                    <span className="text-[9px] font-extrabold uppercase tracking-widest">{item.label}</span>
+                                                    <span className="text-[11px] font-extrabold uppercase tracking-widest">{item.label}</span>
                                                 </div>
                                                 {'count' in item && item.count !== undefined && (
-                                                    <span className="text-[8px] font-black bg-gray-50 dark:bg-gray-900 px-2 py-0.5 rounded-lg text-gray-500">{item.count}</span>
+                                                    <span className="text-[10px] font-black bg-gray-50 dark:bg-gray-900 px-2 py-0.5 rounded-lg text-gray-500">{item.count}</span>
                                                 )}
                                             </button>
                                         ))}
@@ -486,7 +486,7 @@ export default function Settings() {
                         <div className="flex items-center justify-between mb-6 pb-4 border-b border-gray-50 dark:border-gray-700/50">
                             <div>
                                 <h3 className="text-lg font-black text-gray-900 dark:text-white uppercase tracking-tight">{addModalTitle}</h3>
-                                <p className="text-[10px] font-bold text-[#1b6b6b] uppercase tracking-widest mt-0.5">{t('add_data_subtitle')}</p>
+                                <p className="text-[11px] font-bold text-[#1b6b6b] uppercase tracking-widest mt-0.5">{t('add_data_subtitle')}</p>
                             </div>
                             <button aria-label="Yopish" onClick={() => setIsAddModalOpen(false)} className="w-9 h-9 flex items-center justify-center text-gray-400 hover:bg-gray-55 dark:hover:bg-gray-700 rounded-xl cursor-pointer"><X size={18} /></button>
                         </div>
@@ -534,7 +534,7 @@ function ListSection({ title, subtitle, icon, onAdd, items, emptyText, renderIte
             <div className="flex items-center justify-between">
                 <div>
                     <h2 className="text-xs font-black text-gray-900 dark:text-white uppercase tracking-wider">{title}</h2>
-                    <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mt-0.5">{subtitle}</p>
+                    <p className="text-[11px] font-bold text-gray-400 uppercase tracking-widest mt-0.5">{subtitle}</p>
                 </div>
                 <button onClick={onAdd}
                     className="flex items-center gap-2 px-4 py-2.5 bg-[#1b6b6b] hover:bg-[#155252] text-white rounded-xl text-xs font-extrabold uppercase tracking-widest shadow-lg shadow-[#1b6b6b]/20 transition-all cursor-pointer">
@@ -544,7 +544,7 @@ function ListSection({ title, subtitle, icon, onAdd, items, emptyText, renderIte
             {items.length === 0 ? (
                 <div className="py-16 flex flex-col items-center justify-center text-center">
                     <div className="w-12 h-12 bg-gray-50 dark:bg-gray-900 border border-gray-100 dark:border-gray-700/50 rounded-2xl flex items-center justify-center mb-3 text-gray-400">{icon}</div>
-                    <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">{emptyText}</p>
+                    <p className="text-[11px] font-bold text-gray-400 uppercase tracking-widest">{emptyText}</p>
                 </div>
             ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
@@ -573,7 +573,7 @@ function ItemCard({ icon, iconBg, title, subtitle, onDelete }: {
             </div>
             <div>
                 <p className="text-xs font-black text-gray-900 dark:text-white uppercase tracking-wide">{title}</p>
-                <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mt-1">{subtitle}</p>
+                <p className="text-[11px] font-bold text-gray-400 uppercase tracking-widest mt-1">{subtitle}</p>
             </div>
         </div>
     );

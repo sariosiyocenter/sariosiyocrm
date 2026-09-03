@@ -97,12 +97,12 @@ export default function SmsHistory() {
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white dark:bg-gray-800 p-6 rounded-3xl border border-gray-100 dark:border-gray-700/50 shadow-sm">
                 <div>
                     <h1 className="text-sm font-black text-gray-900 dark:text-white uppercase tracking-tight">SMS Tarixi</h1>
-                    <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mt-0.5">Yuborilgan barcha xabarlar monitoringi</p>
+                    <p className="text-[11px] font-bold text-gray-400 uppercase tracking-widest mt-0.5">Yuborilgan barcha xabarlar monitoringi</p>
                 </div>
                 <div className="flex items-center gap-3">
                     <button 
                         onClick={handleTestConnection}
-                        className="flex items-center gap-1.5 px-4 py-2.5 bg-[#1b6b6b] hover:bg-[#155252] text-white rounded-xl text-[9px] font-black uppercase tracking-widest shadow-lg shadow-[#1b6b6b]/20 transition-all active:scale-95 disabled:opacity-50 cursor-pointer"
+                        className="flex items-center gap-1.5 px-4 py-2.5 bg-[#1b6b6b] hover:bg-[#155252] text-white rounded-xl text-[11px] font-black uppercase tracking-widest shadow-lg shadow-[#1b6b6b]/20 transition-all active:scale-95 disabled:opacity-50 cursor-pointer"
                         disabled={loading}
                     >
                         <Zap size={14} />
@@ -134,7 +134,7 @@ export default function SmsHistory() {
                         <select 
                             value={filter}
                             onChange={e => setFilter(e.target.value)}
-                            className="px-3 py-2 bg-gray-55 dark:bg-gray-905 border border-gray-100 dark:border-gray-700 rounded-xl text-[10px] font-bold uppercase tracking-widest outline-none focus:border-[#1b6b6b] text-gray-900 dark:text-white cursor-pointer"
+                            className="px-3 py-2 bg-gray-55 dark:bg-gray-905 border border-gray-100 dark:border-gray-700 rounded-xl text-[11px] font-bold uppercase tracking-widest outline-none focus:border-[#1b6b6b] text-gray-900 dark:text-white cursor-pointer"
                         >
                             <option value="all">Barchasi</option>
                             <option value="sent">Yuborilgan</option>
@@ -148,11 +148,11 @@ export default function SmsHistory() {
                     <table className="w-full text-left border-collapse min-w-[800px]">
                         <thead>
                             <tr className="bg-gray-55 dark:bg-gray-900 border-b border-gray-100 dark:border-gray-700/50">
-                                <th className="p-4 text-[9px] font-black text-gray-400 uppercase tracking-widest">Sana</th>
-                                <th className="p-4 text-[9px] font-black text-gray-400 uppercase tracking-widest">Qabul qiluvchi</th>
-                                <th className="p-4 text-[9px] font-black text-gray-400 uppercase tracking-widest">Xabar</th>
-                                <th className="p-4 text-[9px] font-black text-gray-400 uppercase tracking-widest">Tur</th>
-                                <th className="p-4 text-[9px] font-black text-gray-400 uppercase tracking-widest text-center">Holat</th>
+                                <th className="p-4 text-[11px] font-black text-gray-400 uppercase tracking-widest">Sana</th>
+                                <th className="p-4 text-[11px] font-black text-gray-400 uppercase tracking-widest">Qabul qiluvchi</th>
+                                <th className="p-4 text-[11px] font-black text-gray-400 uppercase tracking-widest">Xabar</th>
+                                <th className="p-4 text-[11px] font-black text-gray-400 uppercase tracking-widest">Tur</th>
+                                <th className="p-4 text-[11px] font-black text-gray-400 uppercase tracking-widest text-center">Holat</th>
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-gray-100 dark:divide-gray-800">
@@ -160,16 +160,16 @@ export default function SmsHistory() {
                                 <tr key={log.id} className="hover:bg-gray-50/50 dark:hover:bg-teal-950/20 transition-all">
                                     <td className="p-4">
                                         <div className="flex flex-col gap-0.5">
-                                            <span className="text-[10px] font-bold text-gray-900 dark:text-white tabular-nums">
+                                            <span className="text-[11px] font-bold text-gray-900 dark:text-white tabular-nums">
                                                 {new Date(log.sentAt).toLocaleDateString()}
                                             </span>
-                                            <span className="text-[9px] font-bold text-gray-400 tabular-nums">
+                                            <span className="text-[11px] font-bold text-gray-400 tabular-nums">
                                                 {new Date(log.sentAt).toLocaleTimeString()}
                                             </span>
                                         </div>
                                     </td>
                                     <td className="p-4">
-                                        <span className="text-[10px] font-bold text-gray-900 dark:text-white tabular-nums bg-gray-55 dark:bg-gray-900 px-2.5 py-1 rounded-lg border border-gray-100 dark:border-gray-700">
+                                        <span className="text-[11px] font-bold text-gray-900 dark:text-white tabular-nums bg-gray-55 dark:bg-gray-900 px-2.5 py-1 rounded-lg border border-gray-100 dark:border-gray-700">
                                             {log.toPhone}
                                         </span>
                                     </td>
@@ -179,7 +179,7 @@ export default function SmsHistory() {
                                         </p>
                                     </td>
                                     <td className="p-4">
-                                        <span className="text-[9px] font-black text-gray-400 uppercase tracking-widest">
+                                        <span className="text-[11px] font-black text-gray-400 uppercase tracking-widest">
                                             {log.type}
                                         </span>
                                     </td>
@@ -188,7 +188,7 @@ export default function SmsHistory() {
                                             {log.status === 'SENT' ? (
                                                 <div className="inline-flex items-center gap-1.5 text-emerald-500 bg-emerald-50 dark:bg-emerald-950/20 px-2.5 py-1 rounded-lg border border-emerald-100 dark:border-emerald-900/40">
                                                     <CheckCircle size={12} />
-                                                    <span className="text-[8px] font-black uppercase tracking-widest">Yuborildi</span>
+                                                    <span className="text-[10px] font-black uppercase tracking-widest">Yuborildi</span>
                                                 </div>
                                             ) : log.status === 'FAILED' ? (
                                                 <div 
@@ -203,12 +203,12 @@ export default function SmsHistory() {
                                                     })()}
                                                 >
                                                     <XCircle size={12} />
-                                                    <span className="text-[8px] font-black uppercase tracking-widest">Xato</span>
+                                                    <span className="text-[10px] font-black uppercase tracking-widest">Xato</span>
                                                 </div>
                                             ) : (
                                                 <div className="inline-flex items-center gap-1.5 text-amber-500 bg-amber-50 dark:bg-amber-955/20 px-2.5 py-1 rounded-lg border border-amber-100 dark:border-amber-900/40">
                                                     <Clock size={12} />
-                                                    <span className="text-[8px] font-black uppercase tracking-widest">Kutilmoqda</span>
+                                                    <span className="text-[10px] font-black uppercase tracking-widest">Kutilmoqda</span>
                                                 </div>
                                             )}
 
@@ -227,7 +227,7 @@ export default function SmsHistory() {
                                 <tr>
                                     <td colSpan={5} className="p-16 text-center">
                                         <Mail className="w-8 h-8 text-gray-200 dark:text-gray-700 mx-auto mb-3" />
-                                        <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Hech qanday log topilmadi</p>
+                                        <p className="text-[11px] font-bold text-gray-400 uppercase tracking-widest">Hech qanday log topilmadi</p>
                                     </td>
                                 </tr>
                             )}
