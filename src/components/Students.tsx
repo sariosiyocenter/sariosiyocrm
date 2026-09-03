@@ -14,68 +14,68 @@ const lbl = "block text-[11px] font-extrabold uppercase tracking-wider text-gray
 
 const UZB_REGIONS: Record<string, string[]> = {
   "Surxondaryo": [
-    "Sariosiyo", "Denov", "Uzun", "Sho'rchi", "Termiz", "Qumqo'rg'on", 
-    "Jarqo'rg'on", "Sherobod", "Boysun", "Muzrabot", "Angor", "Qiziriq", 
+    "Sariosiyo", "Denov", "Uzun", "Sho'rchi", "Termiz", "Qumqo'rg'on",
+    "Jarqo'rg'on", "Sherobod", "Boysun", "Muzrabot", "Angor", "Qiziriq",
     "Oltinsoy", "Bandixon"
   ],
   "Toshkent shahri": [
-    "Yunusobod", "Chilonzor", "Mirzo Ulug'bek", "Yashnobod", "Mirobod", 
-    "Uchtepa", "Shayxontohur", "Olmazor", "Sergeli", "Yakkasaroy", 
+    "Yunusobod", "Chilonzor", "Mirzo Ulug'bek", "Yashnobod", "Mirobod",
+    "Uchtepa", "Shayxontohur", "Olmazor", "Sergeli", "Yakkasaroy",
     "Bektemir", "Yangihayot"
   ],
   "Toshkent viloyati": [
-    "Chirchiq", "Angren", "Olmaliq", "Bekobod", "Keles", "Zangiota", 
-    "Qibray", "Bo'stonliq", "Parkent", "Piskent", "O'rtachirchiq", 
+    "Chirchiq", "Angren", "Olmaliq", "Bekobod", "Keles", "Zangiota",
+    "Qibray", "Bo'stonliq", "Parkent", "Piskent", "O'rtachirchiq",
     "Yuqorichirchiq", "Quyichirchiq", "Oqqo'rg'on", "Bo'ka", "Yangiyo'l"
   ],
   "Samarqand": [
-    "Samarqand shahri", "Bulung'ur", "Ishtixon", "Jomboy", "Kattaqo'rg'on", 
-    "Narpay", "Nurobod", "Oqdaryo", "Payariq", "Pastdarg'om", "Paxtachi", 
+    "Samarqand shahri", "Bulung'ur", "Ishtixon", "Jomboy", "Kattaqo'rg'on",
+    "Narpay", "Nurobod", "Oqdaryo", "Payariq", "Pastdarg'om", "Paxtachi",
     "Toyloq", "Qo'shrabot", "Urgut"
   ],
   "Farg'ona": [
-    "Farg'ona shahri", "Marg'ilon", "Qo'qon", "Bog'dod", "Beshariq", 
-    "Buvayda", "Dang'ara", "Quva", "Rishton", "Toshloq", "Uchko'prik", 
+    "Farg'ona shahri", "Marg'ilon", "Qo'qon", "Bog'dod", "Beshariq",
+    "Buvayda", "Dang'ara", "Quva", "Rishton", "Toshloq", "Uchko'prik",
     "O'zbekiston", "Yozyovon", "So'x"
   ],
   "Andijon": [
-    "Andijon shahri", "Asaka", "Baliqchi", "Buloqboshi", "Bo'ston", 
-    "Jalaquduq", "Izboskan", "Marhamat", "Oltinko'l", "Paxtaobod", 
+    "Andijon shahri", "Asaka", "Baliqchi", "Buloqboshi", "Bo'ston",
+    "Jalaquduq", "Izboskan", "Marhamat", "Oltinko'l", "Paxtaobod",
     "Ulug'nor", "Xo'jaobod", "Shahrixon", "Qo'rg'ontepa"
   ],
   "Namangan": [
-    "Namangan shahri", "Kosonsoy", "Mingbuloq", "Pop", "To'raqo'rg'on", 
+    "Namangan shahri", "Kosonsoy", "Mingbuloq", "Pop", "To'raqo'rg'on",
     "Uychi", "Uchqo'rg'on", "Chortoq", "Chust", "Yangiqo'rg'on", "Davlatobod"
   ],
   "Qashqadaryo": [
-    "Karshi shahri", "Dehqonobod", "Kamashi", "Kasbi", "Kitob", 
-    "Koson", "Ko'kdala", "Mirishkor", "Muborak", "Nishon", 
+    "Karshi shahri", "Dehqonobod", "Kamashi", "Kasbi", "Kitob",
+    "Koson", "Ko'kdala", "Mirishkor", "Muborak", "Nishon",
     "Chiroqchi", "Shahrisabz", "Yakkabog'"
   ],
   "Buxoro": [
-    "Buxoro shahri", "Gijduvon", "Jondor", "Kogon", "Kofirnihon", 
-    "Qorako'l", "Qoravulbozor", "Olot", "Peshku", "Romitan", 
+    "Buxoro shahri", "Gijduvon", "Jondor", "Kogon", "Kofirnihon",
+    "Qorako'l", "Qoravulbozor", "Olot", "Peshku", "Romitan",
     "Shofirkon", "Vobkent"
   ],
   "Xorazm": [
-    "Urganch shahri", "Xiva", "Bog'ot", "Gurlan", "Qo'shko'pir", 
+    "Urganch shahri", "Xiva", "Bog'ot", "Gurlan", "Qo'shko'pir",
     "Shovot", "Toza bozor", "Xonqa", "Hazorasp", "Yangiariq", "Yangibozor"
   ],
   "Navoiy": [
-    "Navoiy shahri", "Karmana", "Konimex", "Nurota", "Qiziltepa", 
+    "Navoiy shahri", "Karmana", "Konimex", "Nurota", "Qiziltepa",
     "Tomdi", "Uchquduq", "Xatirchi"
   ],
   "Jizzax": [
-    "Jizzax shahri", "Arnasoy", "Baxmal", "Do'stlik", "Forish", 
+    "Jizzax shahri", "Arnasoy", "Baxmal", "Do'stlik", "Forish",
     "G'allaorol", "Sharof Rashidov", "Mirzacho'l", "Paxtakor", "Yangiobod"
   ],
   "Sirdaryo": [
-    "Guliston shahri", "Shirin", "Yangiyer", "Boyovut", "Oqoltin", 
+    "Guliston shahri", "Shirin", "Yangiyer", "Boyovut", "Oqoltin",
     "Sardoba", "Sayxunobod", "Sirdaryo tumani", "Xovost"
   ],
   "Qoraqalpog'iston": [
-    "Nukus shahri", "Amudaryo", "Beruniy", "Chimboy", "Ellikqala", 
-    "Kegeyli", "Mo'ynoq", "Qonliko'l", "Qo'ng'irot", "Shumanay", 
+    "Nukus shahri", "Amudaryo", "Beruniy", "Chimboy", "Ellikqala",
+    "Kegeyli", "Mo'ynoq", "Qonliko'l", "Qo'ng'irot", "Shumanay",
     "Taxtako'pir", "To'rtko'l", "Xo'jayli"
   ]
 };
@@ -147,7 +147,7 @@ export default function Students() {
     const [isImporting, setIsImporting] = useState(false);
     const [search, setSearch] = useState('');
     const [page, setPage] = useState(1);
-    
+
     // Link creation states
     const [isLinkModalOpen, setIsLinkModalOpen] = useState(false);
     const [qrCodeDataUrl, setQrCodeDataUrl] = useState('');
@@ -334,7 +334,7 @@ export default function Students() {
             const worksheet = XLSX.utils.json_to_sheet(exportData);
             const workbook = XLSX.utils.book_new();
             XLSX.utils.book_append_sheet(workbook, worksheet, "O'quvchilar");
-            
+
             const maxW = exportData.reduce((w, row) => {
                 Object.keys(row).forEach((key, colIdx) => {
                     const cellVal = String(row[key as keyof typeof row] || '');
@@ -481,7 +481,7 @@ export default function Students() {
         const matchesSearch = (s.name || '').toLowerCase().includes(lowerSearch) ||
                (s.phone || '').toLowerCase().includes(lowerSearch) ||
                (s.studentSchool || '').toLowerCase().includes(lowerSearch);
-        
+
         const matchesStatus = !filters.status || s.status === filters.status;
         const matchesGroup = !filters.groupId || (s.groups || []).includes(Number(filters.groupId));
         const matchesOrgType = !filters.orgType || s.orgType === filters.orgType;
@@ -489,7 +489,7 @@ export default function Students() {
         const matchesRegion = !filters.region || s.region === filters.region;
         const matchesDistrict = !filters.district || s.district === filters.district;
         const matchesLocation = !filters.location || s.location === filters.location;
-        
+
         let matchesBalance = true;
         if (filters.balanceStatus === 'debt') matchesBalance = (s.balance || 0) < 0;
         else if (filters.balanceStatus === 'positive') matchesBalance = (s.balance || 0) >= 0;
@@ -539,15 +539,12 @@ export default function Students() {
     return (
         <div className="space-y-6">
             {/* Header */}
-            <div className="bg-white dark:bg-gray-800 rounded-3xl border border-gray-100 dark:border-gray-700/50 shadow-sm overflow-hidden">
-                <div className="px-6 py-5 flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+            <div>
+                <div className="flex flex-col lg:flex-row lg:items-start justify-between gap-4">
                     <div className="flex items-center gap-4">
-                        <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-[#1b6b6b] to-[#2e9c9c] flex items-center justify-center shadow-sm shadow-[#1b6b6b]/20">
-                            <GraduationCap size={22} className="text-white" />
-                        </div>
                         <div>
-                            <h1 className="text-lg font-black text-gray-900 dark:text-white tracking-tight">{t('students_title')}</h1>
-                            <p className="text-[11px] font-bold text-gray-400 uppercase tracking-wider mt-0.5">
+                            <h1 className="text-[26px] font-bold text-gray-900 dark:text-white tracking-tight leading-tight">{t('students_title')}</h1>
+                            <p className="text-[13px] text-gray-500 dark:text-gray-400 mt-1">
                                 {t('students_count_summary').replace('{total}', String(students.length)).replace('{found}', String(filteredStudents.length))}
                             </p>
                         </div>
@@ -793,9 +790,9 @@ export default function Students() {
                                                 student.status === 'Sertifikatli' ? 'bg-brand/10 text-brand border-brand/20 dark:bg-brand/20 dark:text-brand' :
                                                 'bg-gray-55 text-gray-400 border-gray-100 dark:bg-gray-900/50'
                                             }`}>
-                                                {student.status === 'Faol' ? t('status_active') : 
-                                                 student.status === 'Arxiv' ? t('status_archive') : 
-                                                 student.status === 'Sinov' ? t('status_test') : 
+                                                {student.status === 'Faol' ? t('status_active') :
+                                                 student.status === 'Arxiv' ? t('status_archive') :
+                                                 student.status === 'Sinov' ? t('status_test') :
                                                  student.status === 'Muzlatilgan' ? t('status_frozen') :
                                                  student.status === 'Passiv' ? t('status_passive') :
                                                  student.status === 'Bitiruvchi' ? t('status_graduated') :
@@ -880,7 +877,7 @@ export default function Students() {
                 <div className="fixed inset-0 z-[200] overflow-y-auto">
                     {/* Backdrop */}
                     <div className="fixed inset-0 bg-gray-900/60 backdrop-blur-sm" onClick={() => setIsModalOpen(false)} />
-                    
+
                     {/* Centering Wrapper */}
                     <div className="flex min-h-full items-center justify-center p-4">
                         {/* Modal Panel */}
@@ -1026,14 +1023,14 @@ export default function Students() {
                                     <div className="space-y-3 p-3 bg-gray-55 dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800">
                                         <div>
                                             <label className={lbl}>Sertifikat toifasi</label>
-                                            <select 
-                                                value={newStudent.certCategory} 
+                                            <select
+                                                value={newStudent.certCategory}
                                                 onChange={e => setNewStudent({
-                                                    ...newStudent, 
+                                                    ...newStudent,
                                                     certCategory: e.target.value,
                                                     certSubject: e.target.value === 'Milliy' ? newStudent.certSubject || 'Matematika' : '',
                                                     certType: e.target.value === 'Xalqaro' ? newStudent.certType || 'IELTS' : ''
-                                                })} 
+                                                })}
                                                 className={inp}
                                             >
                                                 <option value="Milliy">Milliy sertifikat</option>
@@ -1044,9 +1041,9 @@ export default function Students() {
                                         {newStudent.certCategory === 'Milliy' && (
                                             <div>
                                                 <label className={lbl}>Sertifikat fani</label>
-                                                <select 
-                                                    value={newStudent.certSubject} 
-                                                    onChange={e => setNewStudent({...newStudent, certSubject: e.target.value})} 
+                                                <select
+                                                    value={newStudent.certSubject}
+                                                    onChange={e => setNewStudent({...newStudent, certSubject: e.target.value})}
                                                     className={inp}
                                                 >
                                                     <option value="">Tanlang...</option>
@@ -1095,14 +1092,14 @@ export default function Students() {
                                             <span className="block text-[11px] font-bold uppercase text-[#1b6b6b] tracking-wider text-left">Qo'shimcha Sertifikatlar</span>
                                             {newStudent.certificates.map((cert, index) => (
                                                 <div key={index} className="p-3 bg-white dark:bg-slate-800 rounded-xl border border-gray-100 dark:border-gray-700 space-y-3 relative">
-                                                    <button 
-                                                        type="button" 
+                                                    <button
+                                                        type="button"
                                                         onClick={() => removeCertificate(index)}
                                                         className="absolute top-2 right-2 text-gray-400 hover:text-red-500 transition-colors"
                                                     >
                                                         <Trash2 size={13} />
                                                     </button>
-                                                    
+
                                                     <div>
                                                         <label className={lbl}>Sertifikat toifasi</label>
                                                         <select
@@ -1166,7 +1163,7 @@ export default function Students() {
                                                     </div>
                                                 </div>
                                             ))}
-                                            
+
                                             <button
                                                 type="button"
                                                 onClick={addCertificate}
@@ -1300,7 +1297,7 @@ export default function Students() {
             )}
 
             {isMapOpen && (
-                <MapPicker 
+                <MapPicker
                     initialLocation={newStudent.location}
                     onSelect={(loc) => setNewStudent({ ...newStudent, location: loc })}
                     onClose={() => setIsMapOpen(false)}
@@ -1366,8 +1363,8 @@ export default function Students() {
                             <button
                                 onClick={copyLinkToClipboard}
                                 className={`w-full py-3.5 rounded-2xl text-[11px] font-black uppercase tracking-widest transition-all cursor-pointer ${
-                                    copySuccess 
-                                        ? 'bg-emerald-600 text-white shadow-lg shadow-emerald-500/10' 
+                                    copySuccess
+                                        ? 'bg-emerald-600 text-white shadow-lg shadow-emerald-500/10'
                                         : 'bg-[#1b6b6b] hover:bg-[#155252] text-white shadow-lg shadow-[#1b6b6b]/15'
                                 }`}
                             >
@@ -1381,10 +1378,10 @@ export default function Students() {
             {activeMenu && (
                 <>
                     <div className="fixed inset-0 z-40 cursor-pointer" onClick={() => setActiveMenu(null)} />
-                    <div 
-                        style={{ 
-                            position: 'fixed', 
-                            top: `${activeMenu.coords.top + 4}px`, 
+                    <div
+                        style={{
+                            position: 'fixed',
+                            top: `${activeMenu.coords.top + 4}px`,
                             left: `${activeMenu.coords.left - 128}px`,
                         }}
                         className="bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700 rounded-xl shadow-xl py-1 w-32 z-50 text-left animate-in slide-in-from-top-1 duration-150"

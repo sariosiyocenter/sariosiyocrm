@@ -189,15 +189,12 @@ export default function HRManagement() {
     return (
         <div className="space-y-6 animate-in fade-in duration-500">
             {/* Header */}
-            <div className="bg-white dark:bg-gray-800 rounded-3xl border border-gray-100 dark:border-gray-700/50 shadow-sm overflow-hidden">
-                <div className="px-6 py-5 flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <div>
+                <div className="flex flex-col md:flex-row md:items-start justify-between gap-4">
                     <div className="flex items-center gap-4">
-                        <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-[#1b6b6b] to-[#2e9c9c] flex items-center justify-center shadow-sm shadow-[#1b6b6b]/20">
-                            <Users2 size={22} className="text-white" />
-                        </div>
                         <div>
-                            <h1 className="text-lg font-black text-gray-900 dark:text-white tracking-tight">{t('hr_title')}</h1>
-                            <p className="text-[11px] font-bold text-gray-400 uppercase tracking-wider mt-0.5">
+                            <h1 className="text-[26px] font-bold text-gray-900 dark:text-white tracking-tight leading-tight">{t('hr_title')}</h1>
+                            <p className="text-[13px] text-gray-500 dark:text-gray-400 mt-1">
                                 {t('hr_subtitle')}
                             </p>
                         </div>

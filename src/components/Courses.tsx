@@ -8,13 +8,13 @@ const inp = "w-full px-4 py-3 bg-gray-55 dark:bg-gray-900/50 border border-gray-
 const lbl = "block text-[11px] font-extrabold uppercase tracking-wider text-gray-400 mb-2";
 
 export default function Courses() {
-    const { 
-        groups, teachers, rooms, addGroup, showNotification, courses, syllabuses, 
+    const {
+        groups, teachers, rooms, addGroup, showNotification, courses, syllabuses,
         addCourse
     } = useCRM();
     const { t } = useLang();
     const navigate = useNavigate();
-    
+
     // Modals / forms state for Courses
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [isAdding, setIsAdding] = useState(false);
@@ -26,15 +26,15 @@ export default function Courses() {
         roomId: '',
         timeOfDay: 'all'
     });
-    const [newGroup, setNewGroup] = useState({ 
-        name: '', 
+    const [newGroup, setNewGroup] = useState({
+        name: '',
         price: '',
-        teacherId: 0, 
-        startTime: '', 
-        endTime: '', 
-        days: 'TOQ', 
-        room: '', 
-        syllabusId: '' as number | '' 
+        teacherId: 0,
+        startTime: '',
+        endTime: '',
+        days: 'TOQ',
+        room: '',
+        syllabusId: '' as number | ''
     });
 
     // Auto-calculate 2 hours for Course schedule
@@ -43,9 +43,9 @@ export default function Courses() {
             const [h, m] = newGroup.startTime.split(':').map(Number);
             const endH = (h + 2) % 24;
             const endM = m;
-            setNewGroup(prev => ({ 
-                ...prev, 
-                endTime: `${endH.toString().padStart(2, '0')}:${endM.toString().padStart(2, '0')}` 
+            setNewGroup(prev => ({
+                ...prev,
+                endTime: `${endH.toString().padStart(2, '0')}:${endM.toString().padStart(2, '0')}`
             }));
         }
     }, [newGroup.startTime]);
@@ -102,7 +102,7 @@ export default function Courses() {
             // Find or create Course template
             let courseId: number;
             const existingCourse = courses.find(
-                c => c.name.toLowerCase() === newGroup.name.trim().toLowerCase() && 
+                c => c.name.toLowerCase() === newGroup.name.trim().toLowerCase() &&
                      c.price === Number(newGroup.price.trim()) &&
                      c.syllabusId === Number(newGroup.syllabusId)
             );
@@ -128,15 +128,15 @@ export default function Courses() {
                 syllabusId: Number(newGroup.syllabusId)
             });
             setIsModalOpen(false);
-            setNewGroup({ 
-                name: '', 
-                price: '', 
-                teacherId: 0, 
-                startTime: '', 
-                endTime: '', 
-                days: 'TOQ', 
-                room: '', 
-                syllabusId: '' 
+            setNewGroup({
+                name: '',
+                price: '',
+                teacherId: 0,
+                startTime: '',
+                endTime: '',
+                days: 'TOQ',
+                room: '',
+                syllabusId: ''
             });
             showNotification(t('group_added_success'), "success");
         } catch (err) {
@@ -158,7 +158,7 @@ export default function Courses() {
 
         const matchesTeacher = !filters.teacherId || g.teacherId === Number(filters.teacherId);
         const matchesRoom = !filters.roomId || g.room === Number(filters.roomId);
-        
+
         let matchesDay = true;
         if (filters.dayType !== 'all') {
             matchesDay = g.days === filters.dayType;
@@ -180,15 +180,12 @@ export default function Courses() {
     return (
         <div className="space-y-6">
             {/* Courses Header & Filters */}
-            <div className="bg-white dark:bg-gray-800 rounded-3xl border border-gray-100 dark:border-gray-700/50 shadow-sm overflow-hidden">
-                <div className="px-6 py-5 flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <div>
+                <div className="flex flex-col md:flex-row md:items-start justify-between gap-4">
                     <div className="flex items-center gap-4">
-                        <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-[#1b6b6b] to-[#2e9c9c] flex items-center justify-center shadow-sm shadow-[#1b6b6b]/20">
-                            <Layers size={22} className="text-white" />
-                        </div>
                         <div>
-                            <h1 className="text-lg font-black text-gray-900 dark:text-white tracking-tight">{t('groups_title')}</h1>
-                            <p className="text-[11px] font-bold text-gray-400 uppercase tracking-wider mt-0.5">
+                            <h1 className="text-[26px] font-bold text-gray-900 dark:text-white tracking-tight leading-tight">{t('groups_title')}</h1>
+                            <p className="text-[13px] text-gray-500 dark:text-gray-400 mt-1">
                                 {groups.length} • {t('group_schedule')}
                             </p>
                         </div>
@@ -218,7 +215,7 @@ export default function Courses() {
                 </div>
 
                 {showFilters && (
-                    <div className="px-6 pb-5 pt-4 border-t border-gray-55 dark:border-gray-700/50 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                    <div className="mt-4 p-5 bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700/50 rounded-2xl grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                         <div>
                             <label className={lbl}>{t('group_teacher')}</label>
                             <select value={filters.teacherId} onChange={e => setFilters({...filters, teacherId: e.target.value})}

@@ -506,8 +506,11 @@ export default function StudentDetails() {
                         {/* Muqova. Avval butun kartochka enini egallagan to'q brend
                             slabi edi — qorong'u rejimda juda qichqirib turardi.
                             Endi past va yumshoq gradient. */}
-                        <div className="h-24 relative overflow-hidden bg-gradient-to-br from-[#1b6b6b] to-[#2e9c9c]">
-                            <div className="absolute inset-0 bg-gradient-to-t from-black/25 to-transparent" />
+                        {/* overflow-hidden bo'lmasligi kerak: avatar muqovadan pastga chiqib turadi
+                            va u yerda qirqilib qolardi. Burchaklarni tashqi kartochka
+                            allaqachon kesib turibdi. */}
+                        <div className="h-24 relative bg-gradient-to-br from-[#1b6b6b] to-[#2e9c9c]">
+                            <div className="absolute inset-0 overflow-hidden bg-gradient-to-t from-black/25 to-transparent" />
                             <div className="absolute -bottom-10 left-1/2 -translate-x-1/2 rounded-[1.4rem] bg-white dark:bg-gray-800 p-1 shadow-lg">
                                 <div className="group/avatar relative w-24 h-24 rounded-[1.15rem] bg-gray-55 dark:bg-gray-900 border border-gray-100 dark:border-gray-700/50 flex items-center justify-center text-[#1b6b6b] font-bold text-3xl overflow-hidden">
                                     {student.photo ? (

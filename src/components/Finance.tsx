@@ -434,15 +434,12 @@ export default function Finance() {
     return (
         <div className="space-y-6 animate-in fade-in duration-500">
             {/* Header */}
-            <div className="bg-white dark:bg-gray-800 rounded-3xl border border-gray-100 dark:border-gray-700/50 shadow-sm overflow-hidden">
-                <div className="px-6 py-5 flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <div>
+                <div className="flex flex-col md:flex-row md:items-start justify-between gap-4">
                     <div className="flex items-center gap-4">
-                        <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-[#1b6b6b] to-[#2e9c9c] flex items-center justify-center shadow-sm shadow-[#1b6b6b]/20">
-                            <DollarSign size={22} className="text-white" />
-                        </div>
                         <div>
-                            <h1 className="text-lg font-black text-gray-900 dark:text-white tracking-tight">{t('finance_title')}</h1>
-                            <p className="text-[11px] font-bold text-gray-400 uppercase tracking-wider mt-0.5">
+                            <h1 className="text-[26px] font-bold text-gray-900 dark:text-white tracking-tight leading-tight">{t('finance_title')}</h1>
+                            <p className="text-[13px] text-gray-500 dark:text-gray-400 mt-1">
                                 {t('stat_revenue')} & {t('stat_expenses')}
                             </p>
                         </div>
@@ -956,7 +953,7 @@ export default function Finance() {
                                 </button>
                             </div>
                         </div>
- 
+
                         {/* Billing status badge */}
                         {billingData && (
                             <div className={`flex items-center gap-2 px-4 py-3 rounded-2xl border text-[11px] font-bold uppercase tracking-wider ${billingData.billingDone ? 'bg-emerald-50 dark:bg-emerald-950/20 border-emerald-100 dark:border-emerald-900/40 text-emerald-700 dark:text-emerald-400' : 'bg-gray-50 dark:bg-gray-950/20 border-gray-100 dark:border-gray-900/40 text-gray-500'}`}>
@@ -1588,7 +1585,7 @@ ${e.description || e.category} — ${Number(e.amount).toLocaleString()} so'm`)) 
                                     placeholder="Masalan: Hurmatli {ism}, sizning {oylik} oyi uchun qarzingiz {qarz} UZS..."
                                 />
                             </div>
-                            
+
                             <div className="bg-amber-50 dark:bg-amber-950/20 border border-amber-100 dark:border-amber-900/40 rounded-2xl p-4 text-[11px] text-amber-700 dark:text-amber-400 font-bold uppercase tracking-wider space-y-1">
                                 <p>⚠️ DIQQAT: Xabar {debtNotifyStatusFilter === 'passive' ? "ketgan/passiv" : debtNotifyStatusFilter === 'all' ? "barcha" : "faol"} qarzdor o'quvchilarga yuboriladi.</p>
                                 <p>SMS orqali yuborilsa, Eskiz SMS balansingizdan haq yechiladi.</p>
