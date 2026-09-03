@@ -87,16 +87,23 @@ export default function Layout({ children, onLogout }: LayoutProps) {
             </button>
 
             {/* Logo */}
+            {/* Belgi tinchlantirildi: doimiy "pulse" animatsiyasi diqqatni
+                o'g'irlar edi, "CRM SYSTEM" yozuvi esa brend rangida bo'lgani uchun
+                markaz nomi bilan raqobatlashardi. Endi nom asosiy, tag yozuv sokin. */}
             <Link to="/" className="flex items-center gap-2.5 group">
-              <div className="w-9 h-9 rounded-xl overflow-hidden bg-gradient-to-br from-brand to-brand-accent flex items-center justify-center shadow-lg shadow-brand/10 group-hover:scale-105 transition-transform duration-200 shrink-0">
+              <div className="w-10 h-10 rounded-xl overflow-hidden bg-gradient-to-br from-brand to-brand-accent flex items-center justify-center ring-1 ring-black/5 dark:ring-white/10 shadow-sm group-hover:shadow-md transition-shadow duration-200 shrink-0">
                 {settings?.logo
                   ? <img src={settings.logo} className="w-full h-full object-cover" alt="logo" />
-                  : <Atom size={20} className="text-white animate-pulse" />
+                  : <Atom size={21} className="text-white" />
                 }
               </div>
-              <div className="flex flex-col leading-none">
-                <span className="text-[13px] font-bold text-slate-900 dark:text-white tracking-tight group-hover:text-brand dark:group-hover:text-brand transition-colors">{settings?.orgName || 'Quantum Edu'}</span>
-                <span className="text-[11px] font-semibold tracking-wider uppercase mt-0.5" style={{ color: BRAND }}>CRM System</span>
+              <div className="hidden sm:flex flex-col leading-tight min-w-0">
+                <span className="text-[14px] font-semibold text-slate-900 dark:text-white tracking-tight truncate group-hover:text-brand dark:group-hover:text-brand transition-colors">
+                  {settings?.orgName || 'Quantum Edu'}
+                </span>
+                <span className="text-[11px] font-medium text-slate-400 dark:text-slate-500 tracking-wide">
+                  O'quv markazi CRM
+                </span>
               </div>
             </Link>
 
@@ -233,7 +240,7 @@ export default function Layout({ children, onLogout }: LayoutProps) {
               <select
                 value={lang}
                 onChange={e => setLang(e.target.value as 'uz' | 'ru' | 'en')}
-                className="pl-8 pr-6 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-xs font-bold text-slate-700 dark:text-slate-300 outline-none focus:ring-2 focus:ring-brand/20 focus:border-brand transition-all cursor-pointer appearance-none uppercase tracking-widest"
+                className="pl-8 pr-6 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-xs font-bold text-slate-700 dark:text-slate-300 outline-none focus:ring-2 focus:ring-brand/20 focus:border-brand transition-all cursor-pointer appearance-none"
               >
                 <option value="uz">UZ</option>
                 <option value="ru">RU</option>
@@ -273,10 +280,10 @@ export default function Layout({ children, onLogout }: LayoutProps) {
               <button
                 key={item.path}
                 onClick={() => navigate(item.path)}
-                className={`flex items-center gap-2 px-3.5 py-2 rounded-lg text-xs font-semibold transition-all whitespace-nowrap
+                className={`flex items-center gap-2 px-3.5 py-2 rounded-lg text-[13px] font-medium transition-colors whitespace-nowrap
                   ${isActive
-                    ? 'bg-brand/10 dark:bg-brand/20 text-brand dark:text-brand'
-                    : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-50 dark:hover:bg-slate-800'
+                    ? 'bg-brand/10 dark:bg-brand/20 text-brand dark:text-brand font-semibold'
+                    : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800'
                   }
                 `}
               >
@@ -303,7 +310,7 @@ export default function Layout({ children, onLogout }: LayoutProps) {
             </div>
             <button
               onClick={() => retryLoad()}
-              className="px-4 py-2 rounded-xl bg-red-600 hover:bg-red-700 text-white text-xs font-extrabold uppercase tracking-widest cursor-pointer transition-colors">
+              className="px-4 py-2 rounded-xl bg-red-600 hover:bg-red-700 text-white text-xs font-extrabold cursor-pointer transition-colors">
               Qayta urinish
             </button>
           </div>

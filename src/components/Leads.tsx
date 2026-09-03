@@ -18,68 +18,68 @@ const lbl = "block text-[11px] font-extrabold uppercase tracking-wider text-gray
 
 const UZB_REGIONS: Record<string, string[]> = {
   "Surxondaryo": [
-    "Sariosiyo", "Denov", "Uzun", "Sho'rchi", "Termiz", "Qumqo'rg'on", 
-    "Jarqo'rg'on", "Sherobod", "Boysun", "Muzrabot", "Angor", "Qiziriq", 
+    "Sariosiyo", "Denov", "Uzun", "Sho'rchi", "Termiz", "Qumqo'rg'on",
+    "Jarqo'rg'on", "Sherobod", "Boysun", "Muzrabot", "Angor", "Qiziriq",
     "Oltinsoy", "Bandixon"
   ],
   "Toshkent shahri": [
-    "Yunusobod", "Chilonzor", "Mirzo Ulug'bek", "Yashnobod", "Mirobod", 
-    "Uchtepa", "Shayxontohur", "Olmazor", "Sergeli", "Yakkasaroy", 
+    "Yunusobod", "Chilonzor", "Mirzo Ulug'bek", "Yashnobod", "Mirobod",
+    "Uchtepa", "Shayxontohur", "Olmazor", "Sergeli", "Yakkasaroy",
     "Bektemir", "Yangihayot"
   ],
   "Toshkent viloyati": [
-    "Chirchiq", "Angren", "Olmaliq", "Bekobod", "Keles", "Zangiota", 
-    "Qibray", "Bo'stonliq", "Parkent", "Piskent", "O'rtachirchiq", 
+    "Chirchiq", "Angren", "Olmaliq", "Bekobod", "Keles", "Zangiota",
+    "Qibray", "Bo'stonliq", "Parkent", "Piskent", "O'rtachirchiq",
     "Yuqorichirchiq", "Quyichirchiq", "Oqqo'rg'on", "Bo'ka", "Yangiyo'l"
   ],
   "Samarqand": [
-    "Samarqand shahri", "Bulung'ur", "Ishtixon", "Jomboy", "Kattaqo'rg'on", 
-    "Narpay", "Nurobod", "Oqdaryo", "Payariq", "Pastdarg'om", "Paxtachi", 
+    "Samarqand shahri", "Bulung'ur", "Ishtixon", "Jomboy", "Kattaqo'rg'on",
+    "Narpay", "Nurobod", "Oqdaryo", "Payariq", "Pastdarg'om", "Paxtachi",
     "Toyloq", "Qo'shrabot", "Urgut"
   ],
   "Farg'ona": [
-    "Farg'ona shahri", "Marg'ilon", "Qo'qon", "Bog'dod", "Beshariq", 
-    "Buvayda", "Dang'ara", "Quva", "Rishton", "Toshloq", "Uchko'prik", 
+    "Farg'ona shahri", "Marg'ilon", "Qo'qon", "Bog'dod", "Beshariq",
+    "Buvayda", "Dang'ara", "Quva", "Rishton", "Toshloq", "Uchko'prik",
     "O'zbekiston", "Yozyovon", "So'x"
   ],
   "Andijon": [
-    "Andijon shahri", "Asaka", "Baliqchi", "Buloqboshi", "Bo'ston", 
-    "Jalaquduq", "Izboskan", "Marhamat", "Oltinko'l", "Paxtaobod", 
+    "Andijon shahri", "Asaka", "Baliqchi", "Buloqboshi", "Bo'ston",
+    "Jalaquduq", "Izboskan", "Marhamat", "Oltinko'l", "Paxtaobod",
     "Ulug'nor", "Xo'jaobod", "Shahrixon", "Qo'rg'ontepa"
   ],
   "Namangan": [
-    "Namangan shahri", "Kosonsoy", "Mingbuloq", "Pop", "To'raqo'rg'on", 
+    "Namangan shahri", "Kosonsoy", "Mingbuloq", "Pop", "To'raqo'rg'on",
     "Uychi", "Uchqo'rg'on", "Chortoq", "Chust", "Yangiqo'rg'on", "Davlatobod"
   ],
   "Qashqadaryo": [
-    "Karshi shahri", "Dehqonobod", "Kamashi", "Kasbi", "Kitob", 
-    "Koson", "Ko'kdala", "Mirishkor", "Muborak", "Nishon", 
+    "Karshi shahri", "Dehqonobod", "Kamashi", "Kasbi", "Kitob",
+    "Koson", "Ko'kdala", "Mirishkor", "Muborak", "Nishon",
     "Chiroqchi", "Shahrisabz", "Yakkabog'"
   ],
   "Buxoro": [
-    "Buxoro shahri", "Gijduvon", "Jondor", "Kogon", "Kofirnihon", 
-    "Qorako'l", "Qoravulbozor", "Olot", "Peshku", "Romitan", 
+    "Buxoro shahri", "Gijduvon", "Jondor", "Kogon", "Kofirnihon",
+    "Qorako'l", "Qoravulbozor", "Olot", "Peshku", "Romitan",
     "Shofirkon", "Vobkent"
   ],
   "Xorazm": [
-    "Urganch shahri", "Xiva", "Bog'ot", "Gurlan", "Qo'shko'pir", 
+    "Urganch shahri", "Xiva", "Bog'ot", "Gurlan", "Qo'shko'pir",
     "Shovot", "Toza bozor", "Xonqa", "Hazorasp", "Yangiariq", "Yangibozor"
   ],
   "Navoiy": [
-    "Navoiy shahri", "Karmana", "Konimex", "Nurota", "Qiziltepa", 
+    "Navoiy shahri", "Karmana", "Konimex", "Nurota", "Qiziltepa",
     "Tomdi", "Uchquduq", "Xatirchi"
   ],
   "Jizzax": [
-    "Jizzax shahri", "Arnasoy", "Baxmal", "Do'stlik", "Forish", 
+    "Jizzax shahri", "Arnasoy", "Baxmal", "Do'stlik", "Forish",
     "G'allaorol", "Sharof Rashidov", "Mirzacho'l", "Paxtakor", "Yangiobod"
   ],
   "Sirdaryo": [
-    "Guliston shahri", "Shirin", "Yangiyer", "Boyovut", "Oqoltin", 
+    "Guliston shahri", "Shirin", "Yangiyer", "Boyovut", "Oqoltin",
     "Sardoba", "Sayxunobod", "Sirdaryo tumani", "Xovost"
   ],
   "Qoraqalpog'iston": [
-    "Nukus shahri", "Amudaryo", "Beruniy", "Chimboy", "Ellikqala", 
-    "Kegeyli", "Mo'ynoq", "Qonliko'l", "Qo'ng'irot", "Shumanay", 
+    "Nukus shahri", "Amudaryo", "Beruniy", "Chimboy", "Ellikqala",
+    "Kegeyli", "Mo'ynoq", "Qonliko'l", "Qo'ng'irot", "Shumanay",
     "Taxtako'pir", "To'rtko'l", "Xo'jayli"
   ]
 };
@@ -88,7 +88,7 @@ export default function Leads() {
   const { leads, courses, groups, updateLead, addLead, deleteLead, addStudent } = useCRM();
     const confirm = useConfirm();
   const { t } = useLang();
-  
+
   const getStageLabel = (name: string) => {
     if (name === 'Yangi') return t('lead_status_new');
     if (name === "Bog'lanilmadi") return t('lead_status_no_contact');
@@ -100,10 +100,10 @@ export default function Leads() {
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [showFilters, setShowFilters] = useState(false);
-  const [newLead, setNewLead] = useState({ 
-    name: '', 
-    phone: '', 
-    course: '', 
+  const [newLead, setNewLead] = useState({
+    name: '',
+    phone: '',
+    course: '',
     source: 'Instagram',
     privilegeType: 'None',
     certCategory: '',
@@ -115,7 +115,7 @@ export default function Leads() {
     district: ''
   });
   const [searchQuery, setSearchQuery] = useState('');
-  
+
   // Selected lead details & conversion state
   const [selectedLead, setSelectedLead] = useState<Lead | null>(null);
   const [isConverting, setIsConverting] = useState(false);
@@ -143,14 +143,14 @@ export default function Leads() {
 
   const getLeadsByStatus = (status: string) => leads.filter(lead => {
     const lowerQ = searchQuery.toLowerCase();
-    const matchesSearch = 
-      (lead.name || '').toLowerCase().includes(lowerQ) || 
+    const matchesSearch =
+      (lead.name || '').toLowerCase().includes(lowerQ) ||
       (lead.phone || '').includes(searchQuery) ||
       (lead.course || '').toLowerCase().includes(lowerQ);
-    
+
     const matchesCourse = !filters.course || lead.course === filters.course;
     const matchesSource = !filters.source || lead.source === filters.source;
-    
+
     let matchesDate = true;
     if (filters.dateRange !== 'all') {
       const leadDate = new Date(lead.createdAt);
@@ -213,17 +213,17 @@ export default function Leads() {
 
   const handleAddLead = (e: React.FormEvent) => {
     e.preventDefault();
-    addLead({ 
-      ...newLead, 
-      status: 'Yangi', 
-      course: newLead.course || (courses.length > 0 ? courses[0].name : ''), 
-      createdAt: new Date().toISOString() 
+    addLead({
+      ...newLead,
+      status: 'Yangi',
+      course: newLead.course || (courses.length > 0 ? courses[0].name : ''),
+      createdAt: new Date().toISOString()
     });
     setIsModalOpen(false);
-    setNewLead({ 
-      name: '', phone: '', course: '', source: 'Instagram', 
+    setNewLead({
+      name: '', phone: '', course: '', source: 'Instagram',
       privilegeType: 'None', certCategory: '', certSubject: '', certType: '',
-      studentSchool: '', orgType: '', region: '', district: '' 
+      studentSchool: '', orgType: '', region: '', district: ''
     });
   };
 
@@ -255,7 +255,7 @@ export default function Leads() {
 
     try {
       const studentGroups = conversionData.groupId ? [parseInt(conversionData.groupId)] : [];
-      
+
       // Create student
       await addStudent({
         name: selectedLead.name,
@@ -285,7 +285,7 @@ export default function Leads() {
 
       // Remove the converted lead
       await deleteLead(selectedLead.id);
-      
+
       // Reset state and close modal
       setSelectedLead(null);
       setIsConverting(false);
@@ -315,11 +315,11 @@ export default function Leads() {
       <div className="bg-white dark:bg-gray-800 rounded-3xl border border-gray-100 dark:border-gray-700/50 shadow-sm overflow-hidden">
         <div className="px-6 py-5 flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div className="flex items-center gap-4">
-            <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-[#1b6b6b] to-[#2e9c9c] flex items-center justify-center shadow-lg shadow-[#1b6b6b]/20">
+            <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-[#1b6b6b] to-[#2e9c9c] flex items-center justify-center shadow-sm shadow-[#1b6b6b]/20">
               <Sparkles size={22} className="text-white" />
             </div>
             <div>
-              <h1 className="text-lg font-black text-gray-900 dark:text-white uppercase tracking-tight font-display">{t('leads_title')}</h1>
+              <h1 className="text-lg font-black text-gray-900 dark:text-white tracking-tight font-display">{t('leads_title')}</h1>
               <p className="text-[11px] font-bold text-gray-400 uppercase tracking-wider mt-0.5">
                 {t('leads_subtitle')} • {leads.length}
               </p>
@@ -342,7 +342,7 @@ export default function Leads() {
             </button>
             <button
               onClick={() => setIsModalOpen(true)}
-              className="flex items-center gap-2 px-4 py-2.5 bg-[#1b6b6b] hover:bg-[#155252] text-white rounded-xl text-xs font-extrabold uppercase tracking-widest shadow-lg shadow-[#1b6b6b]/20 transition-all cursor-pointer"
+              className="flex items-center gap-2 px-4 py-2.5 bg-[#1b6b6b] hover:bg-[#155252] text-white rounded-xl text-xs font-extrabold shadow-sm shadow-[#1b6b6b]/20 transition-all cursor-pointer"
             >
               <Plus size={14} /> {t('add')}
             </button>
@@ -352,24 +352,26 @@ export default function Leads() {
         {/* Manba bo'yicha tez filtr. Pastdagi "Filtrlar" paneli joyida qoladi —
             bu qator o'sha paneldagi manba tanlovi bilan bitta holatni bo'lishadi. */}
         <div className="px-6 pb-4 flex items-center gap-2 overflow-x-auto no-scrollbar">
-          <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest shrink-0 mr-1">{t('by_source')}</span>
+          <span className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider shrink-0 mr-1">{t('by_source')}</span>
           <button
             onClick={() => setFilters({ ...filters, source: '' })}
-            className={`px-3 py-1.5 rounded-xl text-[11px] font-extrabold uppercase tracking-wider border transition-all cursor-pointer shrink-0 tabular-nums ${!filters.source
-              ? 'bg-[#1b6b6b] border-[#1b6b6b] text-white shadow'
-              : 'bg-gray-55 dark:bg-gray-900/50 border-gray-100 dark:border-gray-700 text-gray-400 hover:text-[#1b6b6b] hover:border-[#1b6b6b]'}`}
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[11px] font-semibold border transition-colors cursor-pointer shrink-0 ${!filters.source
+              ? 'bg-[#1b6b6b] border-[#1b6b6b] text-white'
+              : 'bg-gray-55 dark:bg-gray-900/50 border-gray-100 dark:border-gray-700 text-gray-500 dark:text-gray-400 hover:text-[#1b6b6b] hover:border-[#1b6b6b]'}`}
           >
-            {t('all')} · {sourceCounts.total}
+            {t('all')} <span className="tabular-nums opacity-60">{sourceCounts.total}</span>
           </button>
           {sourceCounts.list.map(([src, count]) => (
             <button
               key={src}
               onClick={() => setFilters({ ...filters, source: filters.source === src ? '' : src })}
-              className={`px-3 py-1.5 rounded-xl text-[11px] font-extrabold uppercase tracking-wider border transition-all cursor-pointer shrink-0 tabular-nums ${filters.source === src
-                ? 'bg-[#1b6b6b] border-[#1b6b6b] text-white shadow'
-                : 'bg-gray-55 dark:bg-gray-900/50 border-gray-100 dark:border-gray-700 text-gray-400 hover:text-[#1b6b6b] hover:border-[#1b6b6b]'}`}
+              title={src}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[11px] font-semibold border transition-colors cursor-pointer shrink-0 max-w-[200px] ${filters.source === src
+                ? 'bg-[#1b6b6b] border-[#1b6b6b] text-white'
+                : 'bg-gray-55 dark:bg-gray-900/50 border-gray-100 dark:border-gray-700 text-gray-500 dark:text-gray-400 hover:text-[#1b6b6b] hover:border-[#1b6b6b]'}`}
             >
-              {src} · {count}
+              <span className="truncate">{src}</span>
+              <span className="tabular-nums opacity-60 shrink-0">{count}</span>
             </button>
           ))}
         </div>
@@ -378,7 +380,7 @@ export default function Leads() {
           <div className="px-6 pb-5 pt-4 border-t border-gray-50 dark:border-gray-700/50 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
             <div>
               <label className={lbl}>{t('by_course')}</label>
-              <select 
+              <select
                 value={filters.course}
                 onChange={e => setFilters({...filters, course: e.target.value})}
                 className="w-full px-3 py-2 bg-gray-55 dark:bg-gray-900/50 border border-gray-100 dark:border-gray-700 rounded-xl text-[11px] font-bold text-gray-700 dark:text-white outline-none focus:border-[#1b6b6b] transition-all cursor-pointer"
@@ -389,7 +391,7 @@ export default function Leads() {
             </div>
             <div>
               <label className={lbl}>{t('by_source')}</label>
-              <select 
+              <select
                 value={filters.source}
                 onChange={e => setFilters({...filters, source: e.target.value})}
                 className="w-full px-3 py-2 bg-gray-55 dark:bg-gray-900/50 border border-gray-100 dark:border-gray-700 rounded-xl text-[11px] font-bold text-gray-700 dark:text-white outline-none focus:border-[#1b6b6b] transition-all cursor-pointer"
@@ -404,7 +406,7 @@ export default function Leads() {
             </div>
             <div>
               <label className={lbl}>{t('by_time')}</label>
-              <select 
+              <select
                 value={filters.dateRange}
                 onChange={e => setFilters({...filters, dateRange: e.target.value})}
                 className="w-full px-3 py-2 bg-gray-55 dark:bg-gray-900/50 border border-gray-100 dark:border-gray-700 rounded-xl text-[11px] font-bold text-gray-700 dark:text-white outline-none focus:border-[#1b6b6b] transition-all cursor-pointer"
@@ -416,7 +418,7 @@ export default function Leads() {
               </select>
             </div>
             <div className="flex items-end">
-              <button 
+              <button
                 onClick={() => setFilters({course: '', source: '', dateRange: 'all'})}
                 className="w-full py-2.5 text-[11px] font-extrabold uppercase text-rose-500 hover:text-rose-600 flex items-center justify-center gap-1.5 cursor-pointer"
               >
@@ -428,15 +430,15 @@ export default function Leads() {
       </div>
 
       {/* Board Layout */}
-      <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider text-right">
+      <p className="text-[11px] font-medium text-gray-400 dark:text-gray-500 text-right">
         Kartani ushlab boshqa ustunga tashlang
       </p>
       <div className="flex gap-6 overflow-x-auto pb-4 items-start custom-scrollbar">
         {STAGES.map((stage) => {
           const stageLeads = getLeadsByStatus(stage.name);
           return (
-            <div 
-              key={stage.id} 
+            <div
+              key={stage.id}
               onDragOver={(e) => e.preventDefault()}
               onDrop={(e) => {
                 const leadIdStr = e.dataTransfer.getData("leadId");
@@ -449,16 +451,16 @@ export default function Leads() {
             >
               <div className="mb-4 px-1.5 space-y-1">
                 <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <div className={`w-2.5 h-2.5 rounded-full ${stage.color}`} />
-                    <h3 className="font-extrabold text-gray-900 dark:text-gray-100 text-xs uppercase tracking-widest">{getStageLabel(stage.name)}</h3>
+                  <div className="flex items-center gap-2 min-w-0">
+                    <div className={`w-2 h-2 rounded-full shrink-0 ${stage.color}`} />
+                    <h3 className="font-semibold text-gray-900 dark:text-gray-100 text-[13px] truncate">{getStageLabel(stage.name)}</h3>
                   </div>
-                  <span className="bg-white dark:bg-gray-850 border border-gray-100 dark:border-gray-700 text-gray-500 dark:text-gray-400 text-[11px] font-bold px-2 py-0.5 rounded-lg tabular-nums">
+                  <span className="bg-white dark:bg-gray-850 border border-gray-100 dark:border-gray-700 text-gray-500 dark:text-gray-400 text-[11px] font-semibold px-2 py-0.5 rounded-lg tabular-nums shrink-0">
                     {stageLeads.length}
                   </span>
                 </div>
                 {stageLeads.length > 0 && (
-                  <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider tabular-nums">
+                  <p className="text-[11px] font-medium text-gray-400 dark:text-gray-500 tabular-nums">
                     Potentsial: {formatSum(stagePotential(stageLeads))}
                   </p>
                 )}
@@ -466,8 +468,8 @@ export default function Leads() {
 
               <div className="space-y-3 overflow-y-auto flex-1 custom-scrollbar pr-1">
                 {stageLeads.map((lead) => (
-                  <div 
-                    key={lead.id} 
+                  <div
+                    key={lead.id}
                     draggable
                     onDragStart={(e) => {
                       e.dataTransfer.setData("leadId", lead.id.toString());
@@ -478,58 +480,67 @@ export default function Leads() {
                     }}
                     className="group/card bg-white dark:bg-gray-800 p-4 rounded-2xl border border-gray-100 dark:border-gray-755 shadow-sm hover:shadow-md hover:border-gray-200 dark:hover:border-gray-700 transition-all duration-200 cursor-pointer"
                   >
-                    <div className="flex items-center justify-between mb-2">
-                      <span className={`text-[10px] font-bold px-2 py-0.5 rounded-lg border uppercase tracking-wider ${stage.lightBgc}`}>
-                        {lead.course}
-                      </span>
+                    {/* Ism eng muhim ma'lumot, shuning uchun kartaning tepasida.
+                        Kurs nomi "birinchi" bo'lsa — bu joy to'ldirgichi, ko'rsatilmaydi. */}
+                    <div className="flex items-start justify-between gap-2">
+                      <h4 className="font-semibold text-gray-900 dark:text-white text-[13px] leading-snug line-clamp-2">{lead.name}</h4>
+                      <span className={`w-1.5 h-1.5 rounded-full mt-1.5 shrink-0 ${stage.color}`} />
                     </div>
-                    <h4 className="font-bold text-gray-900 dark:text-white text-xs mb-3 line-clamp-1 uppercase tracking-tight">{lead.name}</h4>
-                    
-                    <div className="space-y-2 text-[11px] text-gray-400 font-bold uppercase tracking-wider">
-                      <div className="flex items-center gap-2 bg-gray-55 dark:bg-gray-900/50 p-2 rounded-xl border border-gray-100/30 dark:border-gray-700/30">
-                        <Phone size={12} className="text-[#1b6b6b]" />
-                        <span className="tabular-nums text-gray-900 dark:text-white">{lead.phone}</span>
-                      </div>
-                      
-                      <div className="flex items-center justify-between pt-2 border-t border-dashed border-gray-50 dark:border-gray-700">
-                        <span className="bg-[#1b6b6b]/10 text-[#1b6b6b] px-2 py-0.5 rounded-md text-[10px] font-extrabold">
-                          {lead.source}
-                        </span>
-                        <span className="text-gray-400 dark:text-gray-600 text-[10px] flex items-center gap-1">
-                          <Calendar size={10} />
-                          {new Date(lead.createdAt).toLocaleDateString()}
-                        </span>
+
+                    <div className="text-[11px] text-gray-400">
+                      {lead.phone && (
+                        <p className="text-[12px] font-medium text-gray-500 dark:text-gray-400 tabular-nums mt-1">{lead.phone}</p>
+                      )}
+
+                      {/* Manba nomlari juda uzun bo'lishi mumkin ("Bir martalik QR
+                          havola - vaqt: ertalab") — avval ular kartani uch qatorga
+                          cho'zib yuborardi, endi bir qatorga kesiladi. */}
+                      <div className="flex items-center gap-1.5 mt-3 flex-wrap">
+                        {lead.course && lead.course !== 'birinchi' && (
+                          <span className={`max-w-full truncate text-[10px] font-semibold px-2 py-0.5 rounded-md border ${stage.lightBgc}`}>
+                            {lead.course}
+                          </span>
+                        )}
+                        {lead.source && (
+                          <span
+                            title={lead.source}
+                            className="max-w-[140px] truncate text-[10px] font-semibold px-2 py-0.5 rounded-md bg-gray-55 dark:bg-gray-900 text-gray-500 dark:text-gray-400 border border-gray-100 dark:border-gray-700"
+                          >
+                            {lead.source}
+                          </span>
+                        )}
                       </div>
 
-                      {/* Lidning yoshi va tez amallar. Uzoq turib qolgan lid qizil
-                          bo'lib ko'rinadi — "To'lov qildi" bosqichi bundan mustasno. */}
-                      <div className="flex items-center justify-between pt-2">
+                      {/* Pastki qator: lid necha kundan beri turibdi, o'ngda tez
+                          amallar. Amallar avval faqat hover'da ko'rinardi — sensorli
+                          ekranda ular umuman topilmasdi, endi doim turadi. */}
+                      <div className="flex items-center justify-between gap-2 mt-3 pt-2.5 border-t border-gray-100 dark:border-gray-700/50">
                         {(() => {
                           const age = daysSince(lead.createdAt);
                           if (age === null) return <span />;
                           const stale = age >= 3 && stage.name !== "To'lov qildi";
                           return (
-                            <span className={`text-[10px] font-bold normal-case tracking-normal tabular-nums ${stale ? 'text-rose-500' : 'text-gray-400 dark:text-gray-600'}`}>
-                              {age === 0 ? 'Bugun' : age === 1 ? '1 kun' : `${age} kundan beri`}
+                            <span className={`text-[11px] font-medium tabular-nums truncate ${stale ? 'text-rose-500' : 'text-gray-400 dark:text-gray-500'}`}>
+                              {age === 0 ? 'Bugun' : age === 1 ? 'Kecha' : `${age} kundan beri`}
                             </span>
                           );
                         })()}
-                        <div className="flex items-center gap-1 opacity-0 group-hover/card:opacity-100 transition-opacity">
+                        <div className="flex items-center gap-0.5 shrink-0 opacity-70 group-hover/card:opacity-100 transition-opacity">
                           <a
                             href={lead.phone ? `tel:${lead.phone.replace(/\s/g, '')}` : undefined}
                             onClick={e => e.stopPropagation()}
                             title="Qo'ng'iroq qilish"
-                            className="w-7 h-7 flex items-center justify-center rounded-lg bg-gray-55 dark:bg-gray-900 border border-gray-100 dark:border-gray-700 text-[#1b6b6b] hover:bg-[#1b6b6b] hover:text-white transition-all"
+                            className="w-7 h-7 flex items-center justify-center rounded-lg text-gray-400 hover:bg-[#1b6b6b] hover:text-white transition-colors"
                           >
-                            <Phone size={12} />
+                            <Phone size={13} />
                           </a>
                           {STAGES.findIndex(st => st.name === lead.status) < STAGES.length - 1 && (
                             <button
                               onClick={e => { e.stopPropagation(); advanceStage(lead); }}
                               title="Keyingi bosqichga o'tkazish"
-                              className="w-7 h-7 flex items-center justify-center rounded-lg bg-gray-55 dark:bg-gray-900 border border-gray-100 dark:border-gray-700 text-[#1b6b6b] hover:bg-[#1b6b6b] hover:text-white transition-all cursor-pointer"
+                              className="w-7 h-7 flex items-center justify-center rounded-lg text-gray-400 hover:bg-[#1b6b6b] hover:text-white transition-colors cursor-pointer"
                             >
-                              <ArrowRight size={12} />
+                              <ArrowRight size={13} />
                             </button>
                           )}
                         </div>
@@ -540,7 +551,7 @@ export default function Leads() {
 
                 <button
                   onClick={() => setIsModalOpen(true)}
-                  className="w-full flex items-center justify-center gap-2 py-3 bg-white/40 dark:bg-gray-800/40 border border-dashed border-gray-200 dark:border-gray-700 rounded-2xl text-gray-400 hover:text-[#1b6b6b] hover:border-[#1b6b6b] hover:bg-white dark:hover:bg-gray-800 transition-all text-[11px] font-bold uppercase tracking-wider cursor-pointer"
+                  className="w-full flex items-center justify-center gap-2 py-2.5 border border-dashed border-gray-200 dark:border-gray-700 rounded-2xl text-gray-400 hover:text-[#1b6b6b] hover:border-[#1b6b6b] transition-colors text-[12px] font-medium cursor-pointer"
                 >
                   <Plus size={14} /> {t('add')}
                 </button>
@@ -557,7 +568,7 @@ export default function Leads() {
           <div className="relative bg-white dark:bg-gray-800 rounded-[2rem] border border-gray-100 dark:border-gray-700/50 shadow-2xl w-full max-w-md p-8">
             <div className="flex items-center justify-between mb-6 pb-4 border-b border-gray-50 dark:border-gray-700/50">
               <div>
-                <h3 className="text-lg font-black text-gray-900 dark:text-white uppercase tracking-tight">{t('new_lead_title')}</h3>
+                <h3 className="text-lg font-black text-gray-900 dark:text-white tracking-tight">{t('new_lead_title')}</h3>
                 <p className="text-[11px] font-bold text-[#1b6b6b] uppercase tracking-wider mt-0.5">{t('lead_details_subtitle')}</p>
               </div>
               <button aria-label="Yopish" onClick={() => setIsModalOpen(false)} className="w-9 h-9 flex items-center justify-center text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700 rounded-xl cursor-pointer"><X size={18} /></button>
@@ -589,9 +600,9 @@ export default function Leads() {
               </div>
               <div>
                 <label className={lbl}>Ta'lim muassasasi turi</label>
-                <select 
-                  className={inp} 
-                  value={newLead.orgType} 
+                <select
+                  className={inp}
+                  value={newLead.orgType}
                   onChange={e => setNewLead({ ...newLead, orgType: e.target.value })}
                 >
                   <option value="">Tanlang...</option>
@@ -609,9 +620,9 @@ export default function Leads() {
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className={lbl}>Viloyat</label>
-                  <select 
-                    className={inp} 
-                    value={newLead.region} 
+                  <select
+                    className={inp}
+                    value={newLead.region}
                     onChange={e => setNewLead({ ...newLead, region: e.target.value, district: '' })}
                   >
                     <option value="">Tanlang...</option>
@@ -622,9 +633,9 @@ export default function Leads() {
                 </div>
                 <div>
                   <label className={lbl}>Tuman</label>
-                  <select 
-                    className={inp} 
-                    value={newLead.district} 
+                  <select
+                    className={inp}
+                    value={newLead.district}
                     onChange={e => setNewLead({ ...newLead, district: e.target.value })}
                     disabled={!newLead.region}
                   >
@@ -637,11 +648,11 @@ export default function Leads() {
               </div>
               <div>
                 <label className={lbl}>Imtiyoz turi</label>
-                <select 
-                  className={inp} 
-                  value={newLead.privilegeType} 
-                  onChange={e => setNewLead({ 
-                    ...newLead, 
+                <select
+                  className={inp}
+                  value={newLead.privilegeType}
+                  onChange={e => setNewLead({
+                    ...newLead,
                     privilegeType: e.target.value,
                     certCategory: e.target.value === 'Sertifikat' ? newLead.certCategory || 'Milliy' : '',
                     certSubject: e.target.value === 'Sertifikat' ? newLead.certSubject : '',
@@ -660,11 +671,11 @@ export default function Leads() {
                 <div className="space-y-3 p-3 bg-gray-55 dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800">
                   <div>
                     <label className={lbl}>Sertifikat toifasi</label>
-                    <select 
-                      className={inp} 
-                      value={newLead.certCategory} 
-                      onChange={e => setNewLead({ 
-                        ...newLead, 
+                    <select
+                      className={inp}
+                      value={newLead.certCategory}
+                      onChange={e => setNewLead({
+                        ...newLead,
                         certCategory: e.target.value,
                         certSubject: e.target.value === 'Milliy' ? newLead.certSubject || 'Matematika' : '',
                         certType: e.target.value === 'Xalqaro' ? newLead.certType || 'IELTS' : ''
@@ -678,9 +689,9 @@ export default function Leads() {
                   {newLead.certCategory === 'Milliy' && (
                     <div>
                       <label className={lbl}>Sertifikat fani</label>
-                      <select 
-                        className={inp} 
-                        value={newLead.certSubject} 
+                      <select
+                        className={inp}
+                        value={newLead.certSubject}
                         onChange={e => setNewLead({ ...newLead, certSubject: e.target.value })}
                       >
                         <option value="">Tanlang...</option>
@@ -700,9 +711,9 @@ export default function Leads() {
                   {newLead.certCategory === 'Xalqaro' && (
                     <div>
                       <label className={lbl}>Sertifikat turi</label>
-                      <select 
-                        className={inp} 
-                        value={newLead.certType} 
+                      <select
+                        className={inp}
+                        value={newLead.certType}
                         onChange={e => setNewLead({ ...newLead, certType: e.target.value })}
                       >
                         <option value="">Tanlang...</option>
@@ -718,11 +729,11 @@ export default function Leads() {
 
               <div className="flex gap-3 pt-2">
                 <button type="button" onClick={() => setIsModalOpen(false)}
-                  className="flex-1 py-3 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-white text-xs font-extrabold uppercase tracking-widest rounded-2xl transition-all cursor-pointer hover:bg-gray-200 dark:hover:bg-gray-600">
+                  className="flex-1 py-3 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-white text-xs font-extrabold rounded-2xl transition-all cursor-pointer hover:bg-gray-200 dark:hover:bg-gray-600">
                   {t('cancel')}
                 </button>
                 <button type="submit"
-                  className="flex-1 py-3 bg-[#1b6b6b] hover:bg-[#155252] text-white text-xs font-extrabold uppercase tracking-widest rounded-2xl shadow-lg shadow-[#1b6b6b]/20 transition-all cursor-pointer">
+                  className="flex-1 py-3 bg-[#1b6b6b] hover:bg-[#155252] text-white text-xs font-extrabold rounded-2xl shadow-sm shadow-[#1b6b6b]/20 transition-all cursor-pointer">
                   {t('save')}
                 </button>
               </div>
@@ -736,10 +747,10 @@ export default function Leads() {
         <div className="fixed inset-0 z-[200] flex items-start sm:items-center justify-center overflow-y-auto p-4">
           <div className="absolute inset-0 bg-gray-900/60 backdrop-blur-sm" onClick={() => setSelectedLead(null)} />
           <div className="relative bg-white dark:bg-gray-800 rounded-[2rem] border border-gray-100 dark:border-gray-700/50 shadow-2xl w-full max-w-lg p-8 overflow-y-auto max-h-[90vh] custom-scrollbar">
-            
+
             <div className="flex items-center justify-between mb-6 pb-4 border-b border-gray-50 dark:border-gray-700/50">
               <div>
-                <h3 className="text-base font-black text-gray-900 dark:text-white uppercase tracking-tight">{t('lead_details_title')}</h3>
+                <h3 className="text-base font-black text-gray-900 dark:text-white tracking-tight">{t('lead_details_title')}</h3>
                 <p className="text-[11px] font-bold text-gray-400 uppercase tracking-wider mt-0.5">{t('registered_at')}{new Date(selectedLead.createdAt).toLocaleString()}</p>
               </div>
               <button aria-label="Yopish" onClick={() => setSelectedLead(null)} className="w-9 h-9 flex items-center justify-center text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700 rounded-xl cursor-pointer"><X size={18} /></button>
@@ -855,7 +866,7 @@ export default function Leads() {
                 {/* Conversion Prompt */}
                 <div className="p-4 rounded-2xl bg-[#1b6b6b]/5 border border-[#1b6b6b]/20 flex items-center justify-between">
                   <div>
-                    <h4 className="text-xs font-black text-gray-900 dark:text-white uppercase tracking-tight">{t('convert_to_student')}</h4>
+                    <h4 className="text-xs font-black text-gray-900 dark:text-white tracking-tight">{t('convert_to_student')}</h4>
                     <p className="text-[11px] text-gray-500 mt-0.5">{t('convert_to_student_hint')}</p>
                   </div>
                   <button
@@ -921,9 +932,9 @@ export default function Leads() {
                   </div>
                   <div>
                     <label className={lbl}>Ta'lim muassasasi turi</label>
-                    <select 
-                      className={inp} 
-                      value={conversionData.orgType} 
+                    <select
+                      className={inp}
+                      value={conversionData.orgType}
                       onChange={e => setConversionData({ ...conversionData, orgType: e.target.value })}
                     >
                       <option value="">Tanlang...</option>
@@ -944,9 +955,9 @@ export default function Leads() {
                   <div className="grid grid-cols-2 gap-2">
                     <div>
                       <label className={lbl}>Viloyat</label>
-                      <select 
-                        className={inp} 
-                        value={conversionData.region} 
+                      <select
+                        className={inp}
+                        value={conversionData.region}
                         onChange={e => setConversionData({ ...conversionData, region: e.target.value, district: '' })}
                       >
                         <option value="">Tanlang...</option>
@@ -957,9 +968,9 @@ export default function Leads() {
                     </div>
                     <div>
                       <label className={lbl}>Tuman</label>
-                      <select 
-                        className={inp} 
-                        value={conversionData.district} 
+                      <select
+                        className={inp}
+                        value={conversionData.district}
                         onChange={e => setConversionData({ ...conversionData, district: e.target.value })}
                         disabled={!conversionData.region}
                       >
@@ -1021,11 +1032,11 @@ export default function Leads() {
 
                 <div className="flex gap-3 pt-4 border-t border-gray-55 dark:border-gray-700/50">
                   <button type="button" onClick={() => setIsConverting(false)}
-                    className="flex-1 py-3 bg-gray-100 dark:bg-gray-750 text-gray-700 dark:text-white text-xs font-extrabold uppercase tracking-widest rounded-2xl transition-all cursor-pointer hover:bg-gray-200">
+                    className="flex-1 py-3 bg-gray-100 dark:bg-gray-750 text-gray-700 dark:text-white text-xs font-extrabold rounded-2xl transition-all cursor-pointer hover:bg-gray-200">
                     {t('back')}
                   </button>
                   <button type="submit"
-                    className="flex-1 py-3 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-extrabold uppercase tracking-widest rounded-2xl shadow-lg shadow-emerald-650/20 transition-all cursor-pointer">
+                    className="flex-1 py-3 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-extrabold rounded-2xl shadow-lg shadow-emerald-650/20 transition-all cursor-pointer">
                     {t('confirm_convert')}
                   </button>
                 </div>

@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import {
     ArrowLeft, Phone, Calendar, MapPin, BookOpen, CreditCard, ReceiptText,
-    Clock, CheckCircle, XCircle, Plus, Award, ClipboardCheck, Users, Layers, ChevronRight, TrendingUp, Save, Edit, Bus, Sparkles, Image as ImageIcon, Camera, X, Send, Trash2, Star
+    Clock, CheckCircle, XCircle, Plus, Award, ClipboardCheck, Users, Layers, ChevronRight, Save, Edit, Bus, Sparkles, Image as ImageIcon, Camera, X, Send, Trash2, Star
 } from 'lucide-react';
 import { useCRM } from '../context/CRMContext';
 import { useConfirm } from './ConfirmDialog';
@@ -167,7 +167,7 @@ export default function StudentDetails() {
                 <div className="w-20 h-20 bg-gray-55 dark:bg-gray-700 rounded-full flex items-center justify-center mb-4 border border-gray-100 dark:border-gray-650">
                     <Users className="w-8 h-8 text-gray-300 dark:text-gray-500" />
                 </div>
-                <p className="text-gray-405 dark:text-gray-500 font-bold uppercase tracking-widest text-xs">{t('student_not_found')}</p>
+                <p className="text-gray-405 dark:text-gray-500 font-bold text-xs">{t('student_not_found')}</p>
                 <button onClick={() => navigate('/students')} className="mt-6 text-[#1b6b6b] font-bold uppercase tracking-wider text-[11px] hover:underline px-6 py-2 bg-teal-50 dark:bg-teal-900/30 rounded-xl transition-all">{t('back_to_list')}</button>
             </div>
         );
@@ -494,7 +494,7 @@ export default function StudentDetails() {
     return (
         <div className="space-y-6 animate-in fade-in duration-500">
             {/* Back Button */}
-            <button onClick={() => navigate(-1)} className="flex items-center gap-2 text-gray-400 dark:text-gray-500 hover:text-[#1b6b6b] transition-all text-[11px] font-extrabold uppercase tracking-wider group cursor-pointer">
+            <button onClick={() => navigate(-1)} className="flex items-center gap-2 text-gray-400 dark:text-gray-500 hover:text-[#1b6b6b] transition-colors text-[12px] font-semibold group cursor-pointer">
                 <ArrowLeft size={14} className="group-hover:-translate-x-1 transition-transform" />
                 {t('back')}
             </button>
@@ -503,18 +503,37 @@ export default function StudentDetails() {
                 {/* Left Profile Card */}
                 <div className="lg:col-span-1 space-y-6">
                     <div className="bg-white dark:bg-gray-800 rounded-3xl border border-gray-100 dark:border-gray-700/50 shadow-sm overflow-hidden">
-                        <div className="h-40 bg-[#1b6b6b] relative">
-                            <div className="absolute -bottom-22 left-1/2 -translate-x-1/2 rounded-[2.2rem] bg-white dark:bg-gray-800 p-1 shadow-lg">
-                                <div className="w-44 h-44 rounded-[2rem] bg-gray-55 dark:bg-gray-900 border border-gray-100 dark:border-gray-700/50 flex items-center justify-center text-[#1b6b6b] font-black text-5xl overflow-hidden shadow-inner">
+                        {/* Muqova. Avval butun kartochka enini egallagan to'q brend
+                            slabi edi — qorong'u rejimda juda qichqirib turardi.
+                            Endi past va yumshoq gradient. */}
+                        <div className="h-24 relative overflow-hidden bg-gradient-to-br from-[#1b6b6b] to-[#2e9c9c]">
+                            <div className="absolute inset-0 bg-gradient-to-t from-black/25 to-transparent" />
+                            <div className="absolute -bottom-10 left-1/2 -translate-x-1/2 rounded-[1.4rem] bg-white dark:bg-gray-800 p-1 shadow-lg">
+                                <div className="group/avatar relative w-24 h-24 rounded-[1.15rem] bg-gray-55 dark:bg-gray-900 border border-gray-100 dark:border-gray-700/50 flex items-center justify-center text-[#1b6b6b] font-bold text-3xl overflow-hidden">
                                     {student.photo ? (
                                         <img src={student.photo} alt={student.name} className="w-full h-full object-cover" />
                                     ) : (
                                         student.name.charAt(0).toUpperCase()
                                     )}
+                                    {/* Rasm amallari alohida tugmalar emas, avatarning
+                                        ustida — chap ustundagi tugmalar uyumi kamaydi. */}
+                                    <div className="absolute inset-0 bg-gray-950/70 opacity-0 group-hover/avatar:opacity-100 transition-opacity flex items-center justify-center gap-1.5">
+                                        <label className="w-7 h-7 rounded-lg bg-white/15 hover:bg-white/30 text-white flex items-center justify-center cursor-pointer transition-colors" title={t('upload')}>
+                                            <input type="file" className="hidden" accept="image/*" onChange={handlePhotoUpload} />
+                                            <ImageIcon size={13} />
+                                        </label>
+                                        <button
+                                            onClick={() => setIsPhotoModalOpen(true)}
+                                            title={t('take_photo')}
+                                            className="w-7 h-7 rounded-lg bg-white/15 hover:bg-white/30 text-white flex items-center justify-center cursor-pointer transition-colors"
+                                        >
+                                            <Camera size={13} />
+                                        </button>
+                                    </div>
                                 </div>
                             </div>
                         </div>
-                        <div className="pt-26 pb-6 px-6 text-center">
+                        <div className="pt-14 pb-5 px-6 text-center">
                             {isEditing ? (
                                 <div className="space-y-3">
                                     <div>
@@ -557,14 +576,17 @@ export default function StudentDetails() {
                                 </div>
                             ) : (
                                 <>
+                                    {/* Uzun o'zbek ismlari bosh harflarda o'qilmaydi,
+                                        shuning uchun oddiy yozuvda qoldirildi. */}
                                     <div className="flex items-center justify-center gap-1.5">
-                                        <h2 className="text-sm font-black text-gray-900 dark:text-white uppercase tracking-tight">{student.name}</h2>
-                                        <button onClick={handleStartEdit} className="text-gray-300 hover:text-[#1b6b6b] cursor-pointer">
+                                        <h2 className="text-[15px] font-bold text-gray-900 dark:text-white tracking-tight leading-snug">{student.name}</h2>
+                                        <button onClick={handleStartEdit} title={t('edit')} className="text-gray-300 dark:text-gray-600 hover:text-[#1b6b6b] cursor-pointer shrink-0">
                                             <Edit size={12} />
                                         </button>
                                     </div>
-                                    <p className="text-[11px] font-bold text-gray-400 uppercase tracking-wider mt-1">ID: #{student.id}</p>
-                                    <div className="mt-4 flex justify-center">
+                                    <div className="mt-2 flex items-center justify-center gap-2">
+                                        <span className="text-[11px] font-semibold text-gray-400 tabular-nums">#{student.id}</span>
+                                        <span className="w-1 h-1 rounded-full bg-gray-300 dark:bg-gray-650" />
                                         <span className={`px-2.5 py-0.5 rounded-md text-[10px] font-black border uppercase tracking-wider ${
                                             student.status === 'Faol' ? 'bg-emerald-50 text-emerald-600 border-emerald-100 dark:bg-emerald-950/20 dark:text-emerald-400' :
                                             student.status === 'Sinov' ? 'bg-amber-50 text-amber-600 border-amber-100 dark:bg-amber-950/20 dark:text-amber-400' :
@@ -588,10 +610,10 @@ export default function StudentDetails() {
                             )}
                         </div>
 
-                        <div className="px-6 pb-6 space-y-4 border-t border-dashed border-gray-100 dark:border-gray-700/50 pt-4">
+                        <div className="px-6 pb-5 space-y-3 border-t border-gray-100 dark:border-gray-700/50 pt-4">
                             <div className={`p-4 rounded-2xl border ${student.balance >= 0 ? 'bg-emerald-50/50 border-emerald-100 dark:bg-emerald-950/20 dark:border-emerald-900/40 text-emerald-600' : 'bg-rose-50/50 border-rose-100 dark:bg-rose-950/20 dark:border-rose-900/40 text-rose-600'} flex flex-col items-center`}>
-                                <span className="text-[10px] font-bold text-gray-405 uppercase tracking-wider mb-1">{t('filter_balance')}</span>
-                                <span className="text-lg font-black tracking-tight tabular-nums">{student.balance.toLocaleString()} <span className="text-[11px] font-extrabold opacity-60">UZS</span></span>
+                                <span className="text-[10px] font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-1">{t('filter_balance')}</span>
+                                <span className="text-xl font-bold tracking-tight tabular-nums">{student.balance.toLocaleString()} <span className="text-[11px] font-semibold opacity-60">UZS</span></span>
                                 {debtDays !== null && (
                                     <span className="text-[10px] font-bold text-rose-500 dark:text-rose-400 mt-1 tabular-nums">
                                         {debtDays} kundan beri muddati o'tgan
@@ -604,7 +626,7 @@ export default function StudentDetails() {
                             <div className="flex items-center gap-2">
                                 <button
                                     onClick={() => setShowPaymentModal(true)}
-                                    className="flex-1 py-3 bg-[#1b6b6b] hover:bg-[#155252] text-white rounded-xl text-[11px] font-extrabold uppercase tracking-wider shadow-lg shadow-[#1b6b6b]/20 active:scale-95 transition-all cursor-pointer"
+                                    className="flex-1 py-3 bg-[#1b6b6b] hover:bg-[#155252] text-white rounded-xl text-[11px] font-extrabold uppercase tracking-wider shadow-sm shadow-[#1b6b6b]/20 active:scale-95 transition-all cursor-pointer"
                                 >
                                     {t('add_payment')}
                                 </button>
@@ -627,27 +649,11 @@ export default function StudentDetails() {
                                 </button>
                             </div>
 
-                            <div className="grid grid-cols-2 gap-2">
-                                <label className="relative flex items-center justify-center gap-1.5 py-2.5 bg-gray-55 dark:bg-gray-900 border border-dashed border-gray-200 dark:border-gray-700 rounded-xl cursor-pointer hover:bg-white transition-all group">
-                                    <input type="file" className="hidden" accept="image/*" onChange={handlePhotoUpload} />
-                                    <ImageIcon size={14} className="text-gray-400 group-hover:text-[#1b6b6b]" />
-                                    <span className="text-[11px] font-extrabold text-gray-400 uppercase tracking-wider">{t('upload')}</span>
-                                </label>
-                                
-                                <button 
-                                    onClick={() => setIsPhotoModalOpen(true)}
-                                    className="flex items-center justify-center gap-1.5 py-2.5 bg-gray-55 dark:bg-gray-900 border border-dashed border-gray-200 dark:border-gray-700 rounded-xl hover:bg-white transition-all cursor-pointer"
-                                >
-                                    <Camera size={14} className="text-gray-400" />
-                                    <span className="text-[11px] font-extrabold text-gray-400 uppercase tracking-wider">{t('take_photo')}</span>
-                                </button>
-                            </div>
-                            
                             {student.photo && (
                                 <button
                                     onClick={handleRemoveBg}
                                     disabled={isRemovingBg}
-                                    className="w-full flex items-center justify-center gap-1.5 py-3 bg-violet-50 text-violet-600 border border-violet-100 dark:bg-violet-950/20 dark:text-violet-400 rounded-xl text-[11px] font-extrabold uppercase tracking-wider hover:bg-violet-600 hover:text-white transition-all disabled:opacity-50 cursor-pointer"
+                                    className="w-full flex items-center justify-center gap-1.5 py-2 text-gray-400 hover:text-[#1b6b6b] text-[11px] font-semibold transition-colors disabled:opacity-50 cursor-pointer"
                                 >
                                     <Sparkles size={12} className={isRemovingBg ? 'animate-spin' : ''} />
                                     {isRemovingBg ? t('clearing') : t('clear_bg_btn')}
@@ -966,7 +972,7 @@ export default function StudentDetails() {
                                         <button 
                                             onClick={handleSaveEdit} 
                                             disabled={isSaving}
-                                            className="flex-1 py-3 bg-[#1b6b6b] hover:bg-[#155252] text-white rounded-xl text-[11px] font-extrabold uppercase shadow-lg shadow-[#1b6b6b]/20 active:scale-95 transition-all cursor-pointer disabled:opacity-50"
+                                            className="flex-1 py-3 bg-[#1b6b6b] hover:bg-[#155252] text-white rounded-xl text-[11px] font-extrabold uppercase shadow-sm shadow-[#1b6b6b]/20 active:scale-95 transition-all cursor-pointer disabled:opacity-50"
                                         >
                                             {t('save')}
                                         </button>
@@ -977,10 +983,11 @@ export default function StudentDetails() {
                                 </div>
                             ) : (
                                 <>
-                                    <div className="flex items-center gap-2 mb-2 px-1">
-                                        <div className="w-1.5 h-1.5 rounded-full bg-[#1b6b6b]" />
-                                        <h3 className="text-[11px] font-bold text-[#1b6b6b] uppercase tracking-wider">{t('lead_details_title')}</h3>
-                                    </div>
+                                    {/* Avval bu yerda "Lid ma'lumotlari" deb turardi —
+                                        o'quvchi profilida noto'g'ri sarlavha. */}
+                                    <h3 className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider mb-1 px-0.5">
+                                        Aloqa ma'lumotlari
+                                    </h3>
                                     <InfoRow icon={<Phone className="w-3.5 h-3.5" />} label={t('student_phone')} value={student.phone} />
                                     {student.telegramId ? (
                                         <div className="flex items-center justify-end gap-2 -mt-1 mb-1.5">
@@ -1209,7 +1216,7 @@ export default function StudentDetails() {
                                                                         <BookOpen size={18} />
                                                                     </div>
                                                                     <div>
-                                                                        <h5 className="text-xs font-black text-gray-900 dark:text-white group-hover:text-[#1b6b6b] uppercase tracking-tight">{group.name}</h5>
+                                                                        <h5 className="text-xs font-black text-gray-900 dark:text-white group-hover:text-[#1b6b6b] tracking-tight">{group.name}</h5>
                                                                         <p className="text-[11px] font-bold text-gray-400 mt-0.5">{group.courseName ? `${group.courseName} • ` : ''}{group.teacherName}</p>
                                                                     </div>
                                                                 </div>
@@ -1313,7 +1320,7 @@ export default function StudentDetails() {
                                                         <button
                                                             onClick={handleSaveNote}
                                                             disabled={isSavingNote}
-                                                            className="px-5 py-2.5 bg-[#1b6b6b] hover:bg-[#155252] disabled:opacity-50 text-white rounded-xl text-[11px] font-extrabold uppercase tracking-wider shadow-lg shadow-[#1b6b6b]/20 transition-all cursor-pointer"
+                                                            className="px-5 py-2.5 bg-[#1b6b6b] hover:bg-[#155252] disabled:opacity-50 text-white rounded-xl text-[11px] font-extrabold uppercase tracking-wider shadow-sm shadow-[#1b6b6b]/20 transition-all cursor-pointer"
                                                         >
                                                             {t('save')}
                                                         </button>
@@ -1418,7 +1425,7 @@ export default function StudentDetails() {
                                                             return (
                                                                 <tr key={a.id} className="hover:bg-gray-55/30 transition-colors">
                                                                     <td className="p-3">
-                                                                        <p className="text-[12px] font-bold text-gray-900 dark:text-white uppercase tracking-tight">{a.date}</p>
+                                                                        <p className="text-[12px] font-bold text-gray-900 dark:text-white tracking-tight">{a.date}</p>
                                                                         <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mt-0.5">{groupObj?.name || '-'}</p>
                                                                         {a.status === 'Sababli' && (
                                                                             <span className="inline-block mt-0.5 text-[7px] font-black uppercase tracking-wider px-1.5 py-0.5 rounded bg-amber-50 text-amber-600 border border-amber-100 dark:bg-amber-950/20 dark:text-amber-400 dark:border-amber-900/40">Sababli</span>
@@ -1475,13 +1482,13 @@ export default function StudentDetails() {
                                 <div className="space-y-6 animate-in fade-in duration-300">
                                     <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-5 bg-gray-55 dark:bg-gray-900/40 border border-gray-100 dark:border-gray-700/50 rounded-2xl">
                                         <div>
-                                            <h4 className="text-xs font-black text-gray-900 dark:text-white uppercase tracking-tight">{t('transactions_history')}</h4>
+                                            <h4 className="text-xs font-black text-gray-900 dark:text-white tracking-tight">{t('transactions_history')}</h4>
                                             <p className="text-[11px] font-bold text-gray-400 uppercase tracking-wider mt-1 tabular-nums">
                                                 Jami to'langan {totalPaid.toLocaleString()} so'm · {studentPayments.length} operatsiya
                                             </p>
                                         </div>
                                         <button onClick={() => setShowPaymentModal(true)}
-                                            className="px-6 py-2.5 bg-[#1b6b6b] hover:bg-[#155252] text-white rounded-xl text-[11px] font-extrabold uppercase tracking-wider shadow-lg shadow-[#1b6b6b]/20 active:scale-95 transition-all text-center cursor-pointer">
+                                            className="px-6 py-2.5 bg-[#1b6b6b] hover:bg-[#155252] text-white rounded-xl text-[11px] font-extrabold uppercase tracking-wider shadow-sm shadow-[#1b6b6b]/20 active:scale-95 transition-all text-center cursor-pointer">
                                             {t('add_payment')}
                                         </button>
                                     </div>
@@ -1535,10 +1542,10 @@ export default function StudentDetails() {
                                 <div className="space-y-6 animate-in fade-in duration-300">
                                     <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-5 bg-gray-55 dark:bg-gray-900/40 border border-gray-100 dark:border-gray-700/50 rounded-2xl">
                                         <div>
-                                            <h4 className="text-xs font-black text-gray-900 dark:text-white uppercase tracking-tight">{t('student_groups')}</h4>
+                                            <h4 className="text-xs font-black text-gray-900 dark:text-white tracking-tight">{t('student_groups')}</h4>
                                         </div>
                                         <button onClick={() => setShowGroupModal(true)}
-                                            className="px-6 py-2.5 bg-[#1b6b6b] hover:bg-[#155252] text-white rounded-xl text-[11px] font-extrabold uppercase tracking-wider shadow-lg shadow-[#1b6b6b]/20 active:scale-95 transition-all text-center cursor-pointer">
+                                            className="px-6 py-2.5 bg-[#1b6b6b] hover:bg-[#155252] text-white rounded-xl text-[11px] font-extrabold uppercase tracking-wider shadow-sm shadow-[#1b6b6b]/20 active:scale-95 transition-all text-center cursor-pointer">
                                             {t('add_to_group')}
                                         </button>
                                     </div>
@@ -1548,7 +1555,7 @@ export default function StudentDetails() {
                                                 className="group bg-gray-55 dark:bg-gray-900/30 p-5 rounded-2xl border border-transparent hover:border-gray-100 dark:hover:border-gray-700/50 transition-all cursor-pointer flex flex-col justify-between">
                                                 <div className="flex items-start justify-between mb-4">
                                                     <div>
-                                                        <h5 className="text-xs font-black text-gray-900 dark:text-white group-hover:text-[#1b6b6b] transition-colors uppercase tracking-tight">{group.name}</h5>
+                                                        <h5 className="text-xs font-black text-gray-900 dark:text-white group-hover:text-[#1b6b6b] transition-colors tracking-tight">{group.name}</h5>
                                                         {group.courseName && <p className="text-[11px] font-bold text-gray-400 mt-0.5">{group.courseName}</p>}
                                                     </div>
                                                     <div className="w-9 h-9 bg-white dark:bg-gray-800 rounded-xl flex items-center justify-center text-[#1b6b6b] shrink-0 shadow-sm border border-gray-100 dark:border-gray-700/50">
@@ -1737,7 +1744,7 @@ export default function StudentDetails() {
                                                             return (
                                                                 <tr key={a.id} className="hover:bg-gray-55/30 transition-colors">
                                                                     <td className="p-3">
-                                                                        <p className="text-[12px] font-bold text-gray-900 dark:text-white uppercase tracking-tight">{a.date}</p>
+                                                                        <p className="text-[12px] font-bold text-gray-900 dark:text-white tracking-tight">{a.date}</p>
                                                                         <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mt-0.5">{groupObj?.name || '-'}</p>
                                                                     </td>
                                                                     <td className="p-3">
@@ -1849,14 +1856,14 @@ export default function StudentDetails() {
                                 <div className="space-y-6 animate-in fade-in duration-300">
                                     <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-5 bg-gray-55 dark:bg-gray-900/40 border border-gray-100 dark:border-gray-700/50 rounded-2xl">
                                         <div>
-                                            <h4 className="text-xs font-black text-gray-900 dark:text-white uppercase tracking-tight">Bonus ballar</h4>
+                                            <h4 className="text-xs font-black text-gray-900 dark:text-white tracking-tight">Bonus ballar</h4>
                                             <p className="text-[11px] font-bold text-gray-400 uppercase tracking-wider mt-1 tabular-nums">
                                                 Jami {studentScores.reduce((s, x) => s + (x.value || 0), 0)} ball · {studentScores.length} ta yozuv
                                             </p>
                                         </div>
                                         <button onClick={() => setShowScoreModal(true)}
                                             disabled={studentGroups.length === 0}
-                                            className="px-6 py-2.5 bg-[#1b6b6b] hover:bg-[#155252] disabled:opacity-40 disabled:cursor-not-allowed text-white rounded-xl text-[11px] font-extrabold uppercase tracking-wider shadow-lg shadow-[#1b6b6b]/20 active:scale-95 transition-all cursor-pointer">
+                                            className="px-6 py-2.5 bg-[#1b6b6b] hover:bg-[#155252] disabled:opacity-40 disabled:cursor-not-allowed text-white rounded-xl text-[11px] font-extrabold uppercase tracking-wider shadow-sm shadow-[#1b6b6b]/20 active:scale-95 transition-all cursor-pointer">
                                             Ball qo'shish
                                         </button>
                                     </div>
@@ -1949,7 +1956,7 @@ export default function StudentDetails() {
                         className="relative bg-white dark:bg-gray-800 rounded-[2rem] border border-gray-100 dark:border-gray-700/50 shadow-2xl w-full max-w-md p-8 space-y-4 my-auto">
                         <div className="flex items-center justify-between pb-4 border-b border-gray-50 dark:border-gray-700/50">
                             <div>
-                                <h3 className="text-lg font-black text-gray-900 dark:text-white uppercase tracking-tight">Ball qo'shish</h3>
+                                <h3 className="text-lg font-black text-gray-900 dark:text-white tracking-tight">Ball qo'shish</h3>
                                 <p className="text-[11px] font-bold text-[#1b6b6b] uppercase tracking-wider mt-0.5">{student.name}</p>
                             </div>
                             <button type="button" aria-label="Yopish" onClick={() => setShowScoreModal(false)}
@@ -1990,11 +1997,11 @@ export default function StudentDetails() {
 
                         <div className="flex gap-3 pt-2">
                             <button type="button" onClick={() => setShowScoreModal(false)}
-                                className="flex-1 py-3 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-white text-xs font-extrabold uppercase tracking-widest rounded-2xl cursor-pointer hover:bg-gray-200 dark:hover:bg-gray-600 transition-all">
+                                className="flex-1 py-3 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-white text-xs font-extrabold rounded-2xl cursor-pointer hover:bg-gray-200 dark:hover:bg-gray-600 transition-all">
                                 {t('cancel')}
                             </button>
                             <button type="submit" disabled={isSavingScore}
-                                className="flex-1 py-3 bg-[#1b6b6b] hover:bg-[#155252] disabled:opacity-50 disabled:cursor-not-allowed text-white text-xs font-extrabold uppercase tracking-widest rounded-2xl shadow-lg shadow-[#1b6b6b]/20 cursor-pointer transition-all">
+                                className="flex-1 py-3 bg-[#1b6b6b] hover:bg-[#155252] disabled:opacity-50 disabled:cursor-not-allowed text-white text-xs font-extrabold rounded-2xl shadow-sm shadow-[#1b6b6b]/20 cursor-pointer transition-all">
                                 {isSavingScore ? 'Saqlanmoqda…' : t('save')}
                             </button>
                         </div>
@@ -2039,7 +2046,7 @@ export default function StudentDetails() {
                         <div className="w-16 h-16 bg-rose-50 rounded-2xl flex items-center justify-center mx-auto mb-4 text-rose-600 border border-rose-100 dark:bg-rose-950/20 dark:text-rose-400 dark:border-rose-900/40">
                             <X size={24} />
                         </div>
-                        <h3 className="text-base font-black text-gray-900 dark:text-white uppercase tracking-tight">{t('delete_student')}</h3>
+                        <h3 className="text-base font-black text-gray-900 dark:text-white tracking-tight">{t('delete_student')}</h3>
                         <p className="text-[11px] font-bold text-gray-400 mt-2 uppercase tracking-wider leading-relaxed">
                             {t('delete_student_confirm').replace('{name}', student.name)}
                         </p>
@@ -2067,7 +2074,7 @@ export default function StudentDetails() {
                     <div className="relative bg-white dark:bg-gray-800 w-full max-w-sm rounded-[2rem] p-8 shadow-2xl overflow-hidden border border-gray-100 dark:border-gray-700/50">
                         <div className="flex items-center justify-between mb-6 pb-4 border-b border-gray-50 dark:border-gray-700/50">
                             <div>
-                                <h3 className="text-sm font-black text-gray-900 dark:text-white uppercase tracking-tight">Maxsus narx</h3>
+                                <h3 className="text-sm font-black text-gray-900 dark:text-white tracking-tight">Maxsus narx</h3>
                                 <p className="text-[11px] font-bold text-[#1b6b6b] uppercase tracking-wider mt-0.5">{editingGroupPrice.name}</p>
                             </div>
                             <button aria-label="Yopish" onClick={() => setEditingGroupPrice(null)} className="w-8 h-8 flex items-center justify-center text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-750 rounded-xl cursor-pointer"><X size={18} /></button>
@@ -2149,21 +2156,18 @@ function StatCardV3({ label, value, subValue, icon, color }: any) {
     }[color] || 'bg-gray-55 dark:bg-gray-900 border-gray-100 dark:border-gray-700/50';
 
     return (
-        <div className="bg-white dark:bg-gray-800 p-5 rounded-2xl border border-gray-100 dark:border-gray-700/50 shadow-sm transition-all hover:-translate-y-0.5">
-            <div className="flex items-start justify-between">
-                <div className="space-y-1">
-                    <span className="text-[11px] font-bold text-gray-400 uppercase tracking-wider">{label}</span>
-                    <h5 className="text-lg font-black text-gray-900 dark:text-white tracking-tight leading-none tabular-nums" title={value}>{value}</h5>
+        <div className="bg-white dark:bg-gray-800 p-5 rounded-2xl border border-gray-100 dark:border-gray-700/50 shadow-sm transition-colors hover:border-gray-200 dark:hover:border-gray-700">
+            <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0">
+                    <span className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider">{label}</span>
+                    {/* Avval qiymat ostida o'suv strelkasi turardi, lekin hech qanday
+                        o'sish hisoblanmaydi — u faqat bezak edi. */}
+                    <h5 className="text-2xl font-bold text-gray-900 dark:text-white tracking-tight tabular-nums mt-1.5 leading-none" title={value}>{value}</h5>
+                    <span className="text-[11px] font-medium text-gray-400 dark:text-gray-500 block mt-2 truncate">{subValue}</span>
                 </div>
-                <div className={`w-10 h-10 rounded-xl flex items-center justify-center border ${colorClasses}`}>
+                <div className={`w-9 h-9 rounded-xl flex items-center justify-center border shrink-0 ${colorClasses}`}>
                     {icon}
                 </div>
-            </div>
-            <div className="pt-3 mt-3 border-t border-dashed border-gray-100 dark:border-gray-700/50">
-                <span className="text-[11px] font-bold text-gray-400 flex items-center gap-1 uppercase tracking-wider leading-none">
-                    <TrendingUp size={12} className="text-[#1b6b6b]" />
-                    {subValue}
-                </span>
             </div>
         </div>
     );
@@ -2244,7 +2248,7 @@ function PaymentAddModal({ studentId, onClose, onAdd }: { studentId: number; onC
                             }
                         `}} />
                         <div className="text-center space-y-1">
-                            <h3 className="text-sm font-black uppercase tracking-widest text-[#1b6b6b] dark:text-teal-400">SARIOSIYO CENTER</h3>
+                            <h3 className="text-sm font-black text-[#1b6b6b] dark:text-teal-400">SARIOSIYO CENTER</h3>
                             <p className="text-[11px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-wider">TO'LOV CHEKI (RECEIPT)</p>
                         </div>
                         
@@ -2314,14 +2318,14 @@ function PaymentAddModal({ studentId, onClose, onAdd }: { studentId: number; onC
                             <button
                                 type="button"
                                 onClick={() => window.print()}
-                                className="flex-1 py-3 bg-[#1b6b6b] hover:bg-[#155252] text-white text-xs font-extrabold uppercase tracking-widest rounded-2xl transition-all cursor-pointer shadow-lg shadow-[#1b6b6b]/20 text-center"
+                                className="flex-1 py-3 bg-[#1b6b6b] hover:bg-[#155252] text-white text-xs font-extrabold rounded-2xl transition-all cursor-pointer shadow-sm shadow-[#1b6b6b]/20 text-center"
                             >
                                 Chop etish (Print)
                             </button>
                             <button
                                 type="button"
                                 onClick={onClose}
-                                className="flex-1 py-3 bg-gray-150 dark:bg-gray-700 text-gray-700 dark:text-white text-xs font-extrabold uppercase tracking-widest rounded-2xl transition-all cursor-pointer hover:bg-gray-200 dark:hover:bg-gray-650"
+                                className="flex-1 py-3 bg-gray-150 dark:bg-gray-700 text-gray-700 dark:text-white text-xs font-extrabold rounded-2xl transition-all cursor-pointer hover:bg-gray-200 dark:hover:bg-gray-650"
                             >
                                 Yopish (Close)
                             </button>
@@ -2331,7 +2335,7 @@ function PaymentAddModal({ studentId, onClose, onAdd }: { studentId: number; onC
                     <>
                         <div className="p-6 flex items-center justify-between border-b border-gray-100 dark:border-gray-700/50 bg-gray-55 dark:bg-gray-900/50">
                             <div>
-                                <h3 className="text-lg font-bold text-gray-900 dark:text-white uppercase tracking-tight">To'lov Qo'shish</h3>
+                                <h3 className="text-lg font-bold text-gray-900 dark:text-white tracking-tight">To'lov Qo'shish</h3>
                                 <p className="text-[11px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-wider mt-0.5">Yangi tranzaksiya kiritish</p>
                             </div>
                             <button onClick={onClose} className="w-9 h-9 flex items-center justify-center text-gray-400 hover:bg-white dark:hover:bg-gray-700 rounded-xl cursor-pointer"><XCircle size={18} /></button>
@@ -2418,7 +2422,7 @@ function PaymentAddModal({ studentId, onClose, onAdd }: { studentId: number; onC
                                 <div className="grid grid-cols-3 gap-2">
                                     {['Naqd', 'Karta', "O'tkazma"].map(t => (
                                         <button key={t} type="button" onClick={() => setType(t)}
-                                            className={`py-2.5 rounded-xl text-xs font-bold uppercase tracking-widest transition-all border cursor-pointer ${type === t ? 'bg-[#1b6b6b] border-[#1b6b6b] text-white shadow-lg shadow-[#1b6b6b]/20 scale-102' : 'bg-white dark:bg-gray-800 border-gray-100 dark:border-gray-700 text-gray-400 dark:text-gray-500 hover:bg-gray-50'}`}>
+                                            className={`py-2.5 rounded-xl text-xs font-bold transition-all border cursor-pointer ${type === t ? 'bg-[#1b6b6b] border-[#1b6b6b] text-white shadow-sm shadow-[#1b6b6b]/20 scale-102' : 'bg-white dark:bg-gray-800 border-gray-100 dark:border-gray-700 text-gray-400 dark:text-gray-500 hover:bg-gray-50'}`}>
                                             {t}
                                         </button>
                                     ))}
@@ -2426,7 +2430,7 @@ function PaymentAddModal({ studentId, onClose, onAdd }: { studentId: number; onC
                             </div>
                             
                             <div className="pt-4 border-t border-dashed border-gray-100 dark:border-gray-700/50">
-                                <button type="submit" className="w-full py-3 bg-[#1b6b6b] hover:bg-[#155252] text-white rounded-xl font-bold text-[11px] uppercase tracking-wider transition-all flex items-center justify-center gap-1.5 shadow-lg shadow-[#1b6b6b]/20 cursor-pointer">
+                                <button type="submit" className="w-full py-3 bg-[#1b6b6b] hover:bg-[#155252] text-white rounded-xl font-bold text-[11px] uppercase tracking-wider transition-all flex items-center justify-center gap-1.5 shadow-sm shadow-[#1b6b6b]/20 cursor-pointer">
                                     <Save size={14} />
                                     Saqlash va Chek chiqarish
                                 </button>
@@ -2447,7 +2451,7 @@ function GroupAddModal({ studentId, currentGroups, availableGroups, onClose, onA
             <div className="relative bg-white dark:bg-gray-800 w-full max-w-sm rounded-[2rem] shadow-2xl overflow-hidden border border-gray-100 dark:border-gray-700/50" onClick={e => e.stopPropagation()}>
                 <div className="p-6 flex items-center justify-between border-b border-gray-100 dark:border-gray-700/50 bg-gray-55 dark:bg-gray-900/50">
                     <div>
-                        <h3 className="text-lg font-bold text-gray-900 dark:text-white uppercase tracking-tight">Kursga Qo'shish</h3>
+                        <h3 className="text-lg font-bold text-gray-900 dark:text-white tracking-tight">Kursga Qo'shish</h3>
                         <p className="text-[11px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-wider mt-0.5">Yangi kurs tanlash</p>
                     </div>
                     <button onClick={onClose} className="w-9 h-9 flex items-center justify-center text-gray-400 hover:bg-white dark:hover:bg-gray-700 rounded-xl cursor-pointer"><XCircle size={18} /></button>
@@ -2460,7 +2464,7 @@ function GroupAddModal({ studentId, currentGroups, availableGroups, onClose, onA
                             <button key={g.id} onClick={() => { onAdd(g.id); onClose(); }}
                                 className="w-full flex items-center justify-between p-3.5 bg-white dark:bg-gray-905 border border-gray-100 dark:border-gray-750 hover:border-teal-300 rounded-2xl transition-all group cursor-pointer text-left">
                                 <div>
-                                    <p className="text-xs font-black text-gray-900 dark:text-white group-hover:text-[#1b6b6b] transition-colors uppercase tracking-tight">{g.name}</p>
+                                    <p className="text-xs font-black text-gray-900 dark:text-white group-hover:text-[#1b6b6b] transition-colors tracking-tight">{g.name}</p>
                                     <p className="text-[11px] font-bold text-gray-400 mt-0.5 uppercase tracking-wider">{g.days} • {g.startTime}</p>
                                 </div>
                                 <div className="w-8 h-8 rounded-lg flex items-center justify-center bg-gray-55 dark:bg-gray-800 text-gray-405 group-hover:text-white group-hover:bg-[#1b6b6b] transition-all">
@@ -2495,7 +2499,7 @@ function AttendanceAddModal({ studentId, studentGroups, onClose, onAdd }: any) {
             <div className="relative bg-white dark:bg-gray-800 w-full max-w-sm rounded-[2rem] shadow-2xl overflow-hidden border border-gray-100 dark:border-gray-700/50" onClick={e => e.stopPropagation()}>
                 <div className="p-6 flex items-center justify-between border-b border-gray-100 dark:border-gray-700/50 bg-gray-55 dark:bg-gray-900/50">
                     <div>
-                        <h3 className="text-lg font-bold text-gray-900 dark:text-white uppercase tracking-tight">Yo'qlama</h3>
+                        <h3 className="text-lg font-bold text-gray-900 dark:text-white tracking-tight">Yo'qlama</h3>
                         <p className="text-[11px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-wider mt-0.5">Davomat qilish</p>
                     </div>
                     <button onClick={onClose} className="w-9 h-9 flex items-center justify-center text-gray-400 hover:bg-white dark:hover:bg-gray-700 rounded-xl cursor-pointer"><XCircle size={18} /></button>
@@ -2513,14 +2517,14 @@ function AttendanceAddModal({ studentId, studentGroups, onClose, onAdd }: any) {
                         <div className="grid grid-cols-3 gap-2">
                             {['Keldi', 'Kelmapdi', 'Sababli'].map(s => (
                                 <button key={s} type="button" onClick={() => setStatus(s)}
-                                    className={`py-2.5 rounded-xl text-[11px] font-bold uppercase tracking-wider transition-all border cursor-pointer ${status === s ? 'bg-[#1b6b6b] border-[#1b6b6b] text-white shadow-lg shadow-[#1b6b6b]/20 scale-105' : 'bg-white dark:bg-gray-800 border-gray-100 dark:border-gray-700 text-gray-400 dark:text-gray-500 hover:bg-gray-50'}`}>
+                                    className={`py-2.5 rounded-xl text-[11px] font-bold uppercase tracking-wider transition-all border cursor-pointer ${status === s ? 'bg-[#1b6b6b] border-[#1b6b6b] text-white shadow-sm shadow-[#1b6b6b]/20 scale-105' : 'bg-white dark:bg-gray-800 border-gray-100 dark:border-gray-700 text-gray-400 dark:text-gray-500 hover:bg-gray-50'}`}>
                                     {s}
                                 </button>
                             ))}
                         </div>
                     </div>
                     <div className="pt-4 border-t border-dashed border-gray-100 dark:border-gray-700/50">
-                        <button type="submit" className="w-full py-3 bg-[#1b6b6b] hover:bg-[#155252] text-white rounded-xl font-bold text-[11px] uppercase tracking-wider transition-all flex items-center justify-center gap-1.5 shadow-lg shadow-[#1b6b6b]/20 cursor-pointer">
+                        <button type="submit" className="w-full py-3 bg-[#1b6b6b] hover:bg-[#155252] text-white rounded-xl font-bold text-[11px] uppercase tracking-wider transition-all flex items-center justify-center gap-1.5 shadow-sm shadow-[#1b6b6b]/20 cursor-pointer">
                             <Save size={14} />
                             Saqlash
                         </button>
@@ -2562,7 +2566,7 @@ function SmsSendModal({ phone, studentName, onClose, onConfirm }: { phone: strin
             <div className="relative bg-white dark:bg-gray-800 w-full max-w-md rounded-[2rem] shadow-2xl overflow-hidden border border-gray-100 dark:border-gray-700/50" onClick={e => e.stopPropagation()}>
                 <div className="p-6 flex items-center justify-between border-b border-gray-100 dark:border-gray-700/50 bg-gray-55 dark:bg-gray-900/50">
                     <div>
-                        <h3 className="text-lg font-bold text-gray-900 dark:text-white uppercase tracking-tight text-[#1b6b6b]">SMS Yuborish</h3>
+                        <h3 className="text-lg font-bold text-gray-900 dark:text-white tracking-tight text-[#1b6b6b]">SMS Yuborish</h3>
                         <p className="text-[11px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-wider mt-0.5">Qabul qiluvchi: {phone}</p>
                     </div>
                     <button onClick={onClose} className="w-9 h-9 flex items-center justify-center text-gray-405 hover:bg-white dark:hover:bg-gray-700 rounded-xl cursor-pointer"><XCircle size={18} /></button>
@@ -2632,7 +2636,7 @@ function InfoRow({ icon, label, value }: { icon?: React.ReactNode; label: string
 
 function TabButton({ label, icon, active, onClick }: any) {
     return (
-        <button onClick={onClick} className={`px-6 py-4 text-[11px] font-extrabold uppercase tracking-wider flex items-center gap-2 transition-all relative shrink-0 cursor-pointer ${active ? 'text-[#1b6b6b] bg-white dark:bg-gray-800' : 'text-gray-400 hover:text-gray-900 dark:hover:text-white'}`}>
+        <button onClick={onClick} className={`px-5 py-3.5 text-[12px] font-semibold flex items-center gap-2 transition-colors relative shrink-0 cursor-pointer ${active ? 'text-[#1b6b6b] bg-white dark:bg-gray-800' : 'text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'}`}>
             {icon}
             {label}
             {active && <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-[#1b6b6b] rounded-t-full" />}

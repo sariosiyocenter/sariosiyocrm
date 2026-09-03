@@ -3,7 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { useCRM } from '../context/CRMContext';
 import { useConfirm } from './ConfirmDialog';
 import {
-    Users, Calendar, Clock, BookOpen, Plus, TrendingUp,
+    Users, Calendar, Clock, BookOpen, Plus,
     XCircle, ArrowLeft, Search, ClipboardCheck, ChevronRight, Presentation, Check, Sparkles,
     CreditCard, DollarSign, Wallet, Trash2
 } from 'lucide-react';
@@ -336,7 +336,7 @@ export default function CourseDetails() {
                                 <span className="px-2 py-0.5 rounded bg-emerald-50 text-emerald-600 border border-emerald-100 dark:bg-emerald-950/20 dark:text-emerald-400 dark:border-emerald-900/40 text-[10px] font-bold uppercase tracking-wider">Kurs faol</span>
                                 <span className="text-[11px] font-bold text-gray-400 uppercase tracking-wider">ID: #{group.id}</span>
                             </div>
-                            <h1 className="text-xl font-black text-gray-900 dark:text-white uppercase tracking-tight">{group.name}</h1>
+                            <h1 className="text-xl font-black text-gray-900 dark:text-white tracking-tight">{group.name}</h1>
                             {course?.name && course.name !== 'birinchi' && (
                                 <div className="flex items-center gap-3 mt-3">
                                     <span className="flex items-center gap-1.5 px-3 py-1.5 bg-white dark:bg-gray-950 rounded-xl border border-gray-100 dark:border-gray-800 text-[11px] font-bold text-gray-600 dark:text-gray-300">
@@ -367,7 +367,7 @@ export default function CourseDetails() {
                                     </div>
                                     <div>
                                         <span className="text-[11px] font-bold text-gray-400 block mb-0.5 uppercase tracking-wider">O'qituvchi</span>
-                                        <span className="text-sm font-black text-gray-900 dark:text-white uppercase tracking-tight">{teacher?.name}</span>
+                                        <span className="text-sm font-black text-gray-900 dark:text-white tracking-tight">{teacher?.name}</span>
                                     </div>
                                 </>
                             )}
@@ -413,7 +413,7 @@ export default function CourseDetails() {
                                     <div className="flex items-center justify-between pb-2 border-b border-gray-55 dark:border-gray-700/50">
                                         <span className="text-[11px] font-bold text-gray-400 uppercase tracking-wider">O'quvchilar</span>
                                         <button onClick={() => setIsAddStudentModalOpen(true)} 
-                                            className="px-4 py-2.5 bg-[#1b6b6b] hover:bg-[#155252] text-white rounded-xl text-[11px] font-extrabold uppercase tracking-wider shadow-lg shadow-[#1b6b6b]/20 active:scale-95 transition-all flex items-center gap-1.5 group cursor-pointer">
+                                            className="px-4 py-2.5 bg-[#1b6b6b] hover:bg-[#155252] text-white rounded-xl text-[11px] font-extrabold uppercase tracking-wider shadow-sm shadow-[#1b6b6b]/20 active:scale-95 transition-all flex items-center gap-1.5 group cursor-pointer">
                                             <Plus size={14} />
                                             Qo'shish
                                         </button>
@@ -428,7 +428,7 @@ export default function CourseDetails() {
                                                         {s.name.charAt(0)}
                                                     </div>
                                                     <div className="min-w-0">
-                                                        <p className="text-xs font-black text-gray-900 dark:text-white truncate uppercase tracking-tight group-hover:text-[#1b6b6b] transition-colors">{s.name}</p>
+                                                        <p className="text-xs font-black text-gray-900 dark:text-white truncate tracking-tight group-hover:text-[#1b6b6b] transition-colors">{s.name}</p>
                                                         <p className="text-[11px] font-bold text-gray-405 mt-0.5">{s.phone}</p>
                                                     </div>
                                                 </div>
@@ -584,7 +584,7 @@ export default function CourseDetails() {
                         <div className="space-y-6 animate-in duration-300">
                             <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 p-5 bg-gray-55 dark:bg-gray-900/40 border border-gray-100 dark:border-gray-700/50 rounded-2xl relative overflow-hidden">
                                 <div>
-                                    <h3 className="text-xs font-black text-gray-900 dark:text-white uppercase tracking-tight">Davomat belgilash</h3>
+                                    <h3 className="text-xs font-black text-gray-900 dark:text-white tracking-tight">Davomat belgilash</h3>
                                     {!isDayValid(group.days, selectedDate) ? (
                                         <p className="text-[11px] font-bold text-amber-600 dark:text-amber-400 mt-1 uppercase tracking-wider flex items-center gap-1">
                                             <XCircle size={12} />
@@ -850,7 +850,7 @@ export default function CourseDetails() {
                                                                 {s.name.charAt(0)}
                                                             </div>
                                                             <div>
-                                                                <p className="text-xs font-black text-gray-900 dark:text-white uppercase tracking-tight group-hover:text-[#1b6b6b] transition-colors">{s.name}</p>
+                                                                <p className="text-xs font-black text-gray-900 dark:text-white tracking-tight group-hover:text-[#1b6b6b] transition-colors">{s.name}</p>
                                                                 <p className="text-[11px] font-bold text-gray-400 mt-0.5">{s.phone}</p>
                                                             </div>
                                                         </div>
@@ -934,7 +934,7 @@ export default function CourseDetails() {
                     <div className="relative bg-white dark:bg-gray-800 rounded-[2rem] border border-gray-100 dark:border-gray-700/50 shadow-2xl w-full max-w-sm p-8">
                         <div className="flex items-center justify-between mb-6 pb-4 border-b border-gray-50 dark:border-gray-700/50">
                             <div>
-                                <h3 className="text-lg font-black text-gray-900 dark:text-white uppercase tracking-tight">O'quvchi qo'shish</h3>
+                                <h3 className="text-lg font-black text-gray-900 dark:text-white tracking-tight">O'quvchi qo'shish</h3>
                                 <p className="text-[11px] font-bold text-[#1b6b6b] uppercase tracking-wider mt-0.5">Kursga biriktirish</p>
                             </div>
                             <button onClick={() => setIsAddStudentModalOpen(false)} className="w-9 h-9 flex items-center justify-center text-gray-400 hover:bg-gray-55 dark:hover:bg-gray-700 rounded-xl cursor-pointer"><XCircle size={18} /></button>
@@ -953,7 +953,7 @@ export default function CourseDetails() {
                                             <div className="w-9 h-9 bg-teal-50 dark:bg-teal-950/20 rounded-lg flex items-center justify-center text-[#1b6b6b] font-bold text-xs">
                                                 {s.name.charAt(0)}
                                             </div>
-                                            <span className="text-xs font-bold text-gray-900 dark:text-white group-hover:text-[#1b6b6b] transition-colors uppercase tracking-tight">{s.name}</span>
+                                            <span className="text-xs font-bold text-gray-900 dark:text-white group-hover:text-[#1b6b6b] transition-colors tracking-tight">{s.name}</span>
                                         </div>
                                         <div className="w-8 h-8 rounded-lg flex items-center justify-center text-gray-300 hover:text-[#1b6b6b]">
                                             <Plus size={16} />
@@ -976,7 +976,7 @@ export default function CourseDetails() {
                     <div className="relative bg-white dark:bg-gray-800 rounded-[2rem] border border-gray-100 dark:border-gray-700/50 shadow-2xl w-full max-w-sm p-8">
                         <div className="flex items-center justify-between mb-6 pb-4 border-b border-gray-50 dark:border-gray-700/50">
                             <div>
-                                <h3 className="text-lg font-black text-gray-900 dark:text-white uppercase tracking-tight">To'lov qabul qilish</h3>
+                                <h3 className="text-lg font-black text-gray-900 dark:text-white tracking-tight">To'lov qabul qilish</h3>
                                 <p className="text-[11px] font-bold text-[#1b6b6b] uppercase tracking-wider mt-0.5">
                                     {students.find(s => s.id === selectedStudentForPayment)?.name}
                                 </p>
@@ -1030,7 +1030,7 @@ export default function CourseDetails() {
                             </div>
                             <button onClick={handleAddPayment}
                                 disabled={!paymentAmount || Number(paymentAmount) <= 0}
-                                className="w-full py-3 bg-[#1b6b6b] hover:bg-[#155252] disabled:opacity-50 text-white rounded-xl font-bold uppercase tracking-wider text-[11px] shadow-lg shadow-[#1b6b6b]/20 transition-all cursor-pointer flex items-center justify-center gap-1.5">
+                                className="w-full py-3 bg-[#1b6b6b] hover:bg-[#155252] disabled:opacity-50 text-white rounded-xl font-bold uppercase tracking-wider text-[11px] shadow-sm shadow-[#1b6b6b]/20 transition-all cursor-pointer flex items-center justify-center gap-1.5">
                                 <Check size={14} />
                                 To'lovni tasdiqlash
                             </button>
@@ -1046,7 +1046,7 @@ export default function CourseDetails() {
                     <div className="relative bg-white dark:bg-gray-800 rounded-[2rem] border border-gray-100 dark:border-gray-700/50 shadow-2xl w-full max-w-sm p-8">
                         <div className="flex items-center justify-between mb-6 pb-4 border-b border-gray-50 dark:border-gray-700/50">
                             <div>
-                                <h3 className="text-lg font-black text-gray-900 dark:text-white uppercase tracking-tight">
+                                <h3 className="text-lg font-black text-gray-900 dark:text-white tracking-tight">
                                     {editingTopic ? "Mavzuni tahrirlash" : "Mavzu qo'shish"}
                                 </h3>
                                 <p className="text-[11px] font-bold text-[#1b6b6b] uppercase tracking-wider mt-0.5">Kurs dasturi</p>
@@ -1086,7 +1086,7 @@ export default function CourseDetails() {
                                     className={inputCls + " min-h-[80px] resize-none"} 
                                 />
                             </div>
-                            <button type="submit" className="w-full py-3 bg-[#1b6b6b] hover:bg-[#155252] text-white rounded-xl font-bold uppercase tracking-wider text-[11px] shadow-lg shadow-[#1b6b6b]/20 transition-all cursor-pointer flex items-center justify-center gap-1.5">
+                            <button type="submit" className="w-full py-3 bg-[#1b6b6b] hover:bg-[#155252] text-white rounded-xl font-bold uppercase tracking-wider text-[11px] shadow-sm shadow-[#1b6b6b]/20 transition-all cursor-pointer flex items-center justify-center gap-1.5">
                                 <Check size={14} />
                                 Saqlash
                             </button>
@@ -1130,21 +1130,18 @@ function StatCardV3({ label, value, subValue, icon, color }: any) {
     }[color] || 'bg-gray-50 dark:bg-gray-900 border-gray-100 dark:border-gray-700/50';
 
     return (
-        <div className="bg-white dark:bg-gray-800 p-5 rounded-2xl border border-gray-100 dark:border-gray-700/50 shadow-sm transition-all hover:-translate-y-0.5">
-            <div className="flex items-start justify-between">
-                <div className="space-y-1">
-                    <span className="text-[11px] font-bold text-gray-400 uppercase tracking-wider">{label}</span>
-                    <h5 className="text-lg font-black text-gray-900 dark:text-white tracking-tight leading-none tabular-nums" title={value}>{value}</h5>
+        <div className="bg-white dark:bg-gray-800 p-5 rounded-2xl border border-gray-100 dark:border-gray-700/50 shadow-sm transition-colors hover:border-gray-200 dark:hover:border-gray-700">
+            <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0">
+                    <span className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider">{label}</span>
+                    <h5 className="text-2xl font-bold text-gray-900 dark:text-white tracking-tight leading-none tabular-nums mt-1.5" title={value}>{value}</h5>
+                    {/* Avval bu yerda o'suv strelkasi turardi — hech qanday o'sish
+                        hisoblanmagani uchun u faqat bezak edi. */}
+                    <span className="text-[11px] font-medium text-gray-400 dark:text-gray-500 block mt-2 truncate">{subValue}</span>
                 </div>
-                <div className={`w-10 h-10 rounded-xl flex items-center justify-center border ${colorClasses}`}>
+                <div className={`w-9 h-9 rounded-xl flex items-center justify-center border shrink-0 ${colorClasses}`}>
                     {icon}
                 </div>
-            </div>
-            <div className="pt-3 mt-3 border-t border-dashed border-gray-100 dark:border-gray-700/50">
-                <span className="text-[11px] font-bold text-gray-400 flex items-center gap-1 uppercase tracking-wider leading-none">
-                    <TrendingUp size={12} className="text-[#1b6b6b]" />
-                    {subValue}
-                </span>
             </div>
         </div>
     );
@@ -1152,7 +1149,7 @@ function StatCardV3({ label, value, subValue, icon, color }: any) {
 
 function TabButton({ label, icon, active, onClick }: any) {
     return (
-        <button onClick={onClick} className={`px-6 py-4 text-[11px] font-extrabold uppercase tracking-wider flex items-center gap-2 transition-all relative shrink-0 cursor-pointer ${active ? 'text-[#1b6b6b] bg-white dark:bg-gray-800' : 'text-gray-400 hover:text-gray-900 dark:hover:text-white'}`}>
+        <button onClick={onClick} className={`px-5 py-3.5 text-[12px] font-semibold flex items-center gap-2 transition-colors relative shrink-0 cursor-pointer ${active ? 'text-[#1b6b6b] bg-white dark:bg-gray-800' : 'text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'}`}>
             {icon}
             {label}
             {active && <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-[#1b6b6b] rounded-t-full" />}
@@ -1168,7 +1165,7 @@ function InfoItem({ icon, label, value }: any) {
             </div>
             <div>
                 <span className="text-[11px] font-bold text-gray-400 uppercase tracking-wider leading-none block">{label}</span>
-                <span className="text-xs font-bold text-gray-900 dark:text-white uppercase tracking-tight mt-0.5 block">{value}</span>
+                <span className="text-xs font-bold text-gray-900 dark:text-white tracking-tight mt-0.5 block">{value}</span>
             </div>
         </div>
     );
