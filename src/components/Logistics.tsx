@@ -202,7 +202,7 @@ export default function LogisticsHub() {
 
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                         {transports.filter(t => t.name.toLowerCase().includes(searchTerm.toLowerCase())).map(item => (
-                            <div key={item.id} className="bg-white dark:bg-gray-800 rounded-3xl border border-gray-100 dark:border-gray-700/50 p-6 shadow-sm hover:shadow-md transition-all group relative flex flex-col justify-between min-h-[200px]">
+                            <div key={item.id} className="bg-white dark:bg-gray-800 rounded-3xl border border-gray-100 dark:border-gray-700/50 p-4 hover:border-gray-200 dark:hover:border-gray-700 transition-colors group relative">
                                 <div>
                                     <div className="flex justify-between items-start mb-4">
                                         <div className="w-10 h-10 rounded-xl bg-gray-55 dark:bg-gray-900 border border-gray-100 dark:border-gray-700 flex items-center justify-center text-[#1b6b6b]">

@@ -430,13 +430,13 @@ export default function Leads() {
       </div>
 
       {/* Board Layout */}
-      <p className="text-[11px] font-medium text-gray-400 dark:text-gray-500 text-right">
-        Kartani ushlab boshqa ustunga tashlang
-      </p>
-      <div className="flex gap-6 overflow-x-auto pb-4 items-start custom-scrollbar">
+      <div className="flex gap-3 overflow-x-auto pb-4 items-start custom-scrollbar">
         {STAGES.map((stage) => {
           const stageLeads = getLeadsByStatus(stage.name);
           return (
+            /* Ustun avval 300px keng va min-h-[500px] edi: bitta kartali bosqichda
+               pastda yarim ekran bo'sh joy qolar, beshinchi ustun esa ekranga
+               sig'masdi. Endi eni torroq va balandligi kontentga qarab. */
             <div
               key={stage.id}
               onDragOver={(e) => e.preventDefault()}
@@ -447,26 +447,24 @@ export default function Leads() {
                   if (!isNaN(leadId)) handleStatusChange(leadId, stage.name);
                 }
               }}
-              className="w-[300px] shrink-0 bg-gray-50/50 dark:bg-gray-900/10 border border-gray-100/50 dark:border-gray-800/30 rounded-3xl p-4 flex flex-col max-h-[80vh] min-h-[500px]"
+              className="w-[264px] shrink-0 rounded-2xl bg-gray-55/70 dark:bg-gray-900/25 border border-gray-100 dark:border-gray-800/50 flex flex-col max-h-[76vh] overflow-hidden"
             >
-              <div className="mb-4 px-1.5 space-y-1">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2 min-w-0">
-                    <div className={`w-2 h-2 rounded-full shrink-0 ${stage.color}`} />
-                    <h3 className="font-semibold text-gray-900 dark:text-gray-100 text-[13px] truncate">{getStageLabel(stage.name)}</h3>
-                  </div>
-                  <span className="bg-white dark:bg-gray-850 border border-gray-100 dark:border-gray-700 text-gray-500 dark:text-gray-400 text-[11px] font-semibold px-2 py-0.5 rounded-lg tabular-nums shrink-0">
-                    {stageLeads.length}
-                  </span>
+              {/* Bosqich rangi ustun tepasida ingichka chiziq bo'lib turadi —
+                  sarlavhadagi nuqta bilan ikki marta takrorlanmasin uchun. */}
+              <div className={`h-0.5 w-full ${stage.color}`} />
+              <div className="px-3 pt-3 pb-2 flex items-baseline justify-between gap-2">
+                <div className="flex items-baseline gap-2 min-w-0">
+                  <h3 className="font-semibold text-gray-900 dark:text-gray-100 text-[13px] truncate">{getStageLabel(stage.name)}</h3>
+                  <span className="text-[11px] font-medium text-gray-400 tabular-nums shrink-0">{stageLeads.length}</span>
                 </div>
                 {stageLeads.length > 0 && (
-                  <p className="text-[11px] font-medium text-gray-400 dark:text-gray-500 tabular-nums">
-                    Potentsial: {formatSum(stagePotential(stageLeads))}
-                  </p>
+                  <span className="text-[11px] font-medium text-gray-400 dark:text-gray-500 tabular-nums shrink-0">
+                    {formatSum(stagePotential(stageLeads))}
+                  </span>
                 )}
               </div>
 
-              <div className="space-y-3 overflow-y-auto flex-1 custom-scrollbar pr-1">
+              <div className="px-3 pb-3 space-y-2 overflow-y-auto flex-1 custom-scrollbar">
                 {stageLeads.map((lead) => (
                   <div
                     key={lead.id}
@@ -478,43 +476,42 @@ export default function Leads() {
                       setSelectedLead(lead);
                       setIsConverting(false);
                     }}
-                    className="group/card bg-white dark:bg-gray-800 p-4 rounded-2xl border border-gray-100 dark:border-gray-755 shadow-sm hover:shadow-md hover:border-gray-200 dark:hover:border-gray-700 transition-all duration-200 cursor-pointer"
+                    className="group/card bg-white dark:bg-gray-800 px-3 py-2.5 rounded-xl border border-gray-100 dark:border-gray-755 hover:border-[#1b6b6b]/40 dark:hover:border-[#1b6b6b]/50 transition-colors cursor-pointer"
                   >
                     {/* Ism eng muhim ma'lumot, shuning uchun kartaning tepasida.
                         Kurs nomi "birinchi" bo'lsa — bu joy to'ldirgichi, ko'rsatilmaydi. */}
-                    <div className="flex items-start justify-between gap-2">
-                      <h4 className="font-semibold text-gray-900 dark:text-white text-[13px] leading-snug line-clamp-2">{lead.name}</h4>
-                      <span className={`w-1.5 h-1.5 rounded-full mt-1.5 shrink-0 ${stage.color}`} />
-                    </div>
+                    <h4 className="font-semibold text-gray-900 dark:text-white text-[13px] leading-snug truncate">{lead.name}</h4>
 
                     <div className="text-[11px] text-gray-400">
                       {lead.phone && (
-                        <p className="text-[12px] font-medium text-gray-500 dark:text-gray-400 tabular-nums mt-1">{lead.phone}</p>
+                        <p className="text-[12px] text-gray-500 dark:text-gray-400 tabular-nums truncate">{lead.phone}</p>
                       )}
 
                       {/* Manba nomlari juda uzun bo'lishi mumkin ("Bir martalik QR
                           havola - vaqt: ertalab") — avval ular kartani uch qatorga
                           cho'zib yuborardi, endi bir qatorga kesiladi. */}
-                      <div className="flex items-center gap-1.5 mt-3 flex-wrap">
-                        {lead.course && lead.course !== 'birinchi' && (
-                          <span className={`max-w-full truncate text-[10px] font-semibold px-2 py-0.5 rounded-md border ${stage.lightBgc}`}>
-                            {lead.course}
-                          </span>
-                        )}
-                        {lead.source && (
-                          <span
-                            title={lead.source}
-                            className="max-w-[140px] truncate text-[10px] font-semibold px-2 py-0.5 rounded-md bg-gray-55 dark:bg-gray-900 text-gray-500 dark:text-gray-400 border border-gray-100 dark:border-gray-700"
-                          >
-                            {lead.source}
-                          </span>
-                        )}
-                      </div>
+                      {(lead.source || (lead.course && lead.course !== 'birinchi')) && (
+                        <div className="flex items-center gap-1 mt-2 flex-nowrap overflow-hidden">
+                          {lead.course && lead.course !== 'birinchi' && (
+                            <span className={`shrink-0 max-w-[45%] truncate text-[10px] font-medium px-1.5 py-0.5 rounded border ${stage.lightBgc}`}>
+                              {lead.course}
+                            </span>
+                          )}
+                          {lead.source && (
+                            <span
+                              title={lead.source}
+                              className="min-w-0 truncate text-[10px] font-medium px-1.5 py-0.5 rounded bg-gray-55 dark:bg-gray-900 text-gray-500 dark:text-gray-400 border border-gray-100 dark:border-gray-700"
+                            >
+                              {lead.source}
+                            </span>
+                          )}
+                        </div>
+                      )}
 
                       {/* Pastki qator: lid necha kundan beri turibdi, o'ngda tez
                           amallar. Amallar avval faqat hover'da ko'rinardi — sensorli
                           ekranda ular umuman topilmasdi, endi doim turadi. */}
-                      <div className="flex items-center justify-between gap-2 mt-3 pt-2.5 border-t border-gray-100 dark:border-gray-700/50">
+                      <div className="flex items-center justify-between gap-2 mt-2 pt-2 border-t border-gray-100 dark:border-gray-700/50">
                         {(() => {
                           const age = daysSince(lead.createdAt);
                           if (age === null) return <span />;
@@ -551,9 +548,9 @@ export default function Leads() {
 
                 <button
                   onClick={() => setIsModalOpen(true)}
-                  className="w-full flex items-center justify-center gap-2 py-2.5 border border-dashed border-gray-200 dark:border-gray-700 rounded-2xl text-gray-400 hover:text-[#1b6b6b] hover:border-[#1b6b6b] transition-colors text-[12px] font-medium cursor-pointer"
+                  className="w-full flex items-center justify-center gap-1.5 py-2 rounded-xl text-gray-400 hover:text-[#1b6b6b] hover:bg-white dark:hover:bg-gray-800 transition-colors text-[12px] font-medium cursor-pointer"
                 >
-                  <Plus size={14} /> {t('add')}
+                  <Plus size={13} /> {t('add')}
                 </button>
               </div>
             </div>

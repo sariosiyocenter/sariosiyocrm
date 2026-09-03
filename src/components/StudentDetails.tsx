@@ -501,7 +501,7 @@ export default function StudentDetails() {
 
             <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 items-start">
                 {/* Left Profile Card */}
-                <div className="lg:col-span-1 space-y-6">
+                <div className="lg:col-span-1 space-y-4">
                     <div className="bg-white dark:bg-gray-800 rounded-3xl border border-gray-100 dark:border-gray-700/50 shadow-sm overflow-hidden">
                         {/* Muqova. Avval butun kartochka enini egallagan to'q brend
                             slabi edi — qorong'u rejimda juda qichqirib turardi.
@@ -511,7 +511,7 @@ export default function StudentDetails() {
                             <div className="absolute -bottom-10 left-1/2 -translate-x-1/2 rounded-[1.4rem] bg-white dark:bg-gray-800 p-1 shadow-lg">
                                 <div className="group/avatar relative w-24 h-24 rounded-[1.15rem] bg-gray-55 dark:bg-gray-900 border border-gray-100 dark:border-gray-700/50 flex items-center justify-center text-[#1b6b6b] font-bold text-3xl overflow-hidden">
                                     {student.photo ? (
-                                        <img src={student.photo} alt={student.name} className="w-full h-full object-cover" />
+                                        <img src={student.photo} alt={student.name} className="w-full h-full object-cover object-top" />
                                     ) : (
                                         student.name.charAt(0).toUpperCase()
                                     )}
@@ -671,7 +671,7 @@ export default function StudentDetails() {
 
                         </div>
 
-                        <div className="px-6 pb-6 space-y-3 border-t border-dashed border-gray-100 dark:border-gray-700/50 pt-4">
+                        <div className="px-6 pb-5 space-y-1 border-t border-gray-100 dark:border-gray-700/50 pt-3">
                             {isEditing ? (
                                 <div className="space-y-4">
                                     <div className="grid grid-cols-2 gap-2">
@@ -1185,7 +1185,7 @@ export default function StudentDetails() {
                         />
                     </div>
 
-                    <div className="bg-white dark:bg-gray-800 rounded-3xl border border-gray-100 dark:border-gray-700/50 shadow-sm overflow-hidden min-h-[500px]">
+                    <div className="bg-white dark:bg-gray-800 rounded-3xl border border-gray-100 dark:border-gray-700/50 shadow-sm overflow-hidden">
                         <div className="flex px-4 bg-gray-55 dark:bg-gray-900/50 border-b border-gray-100 dark:border-gray-700/50 gap-2 overflow-x-auto scrollbar-hide">
                             <TabButton label={t('general')} icon={<Layers className="w-3.5 h-3.5" />} active={activeTab === 'umumiy'} onClick={() => setActiveTab('umumiy')} />
                             <TabButton label={t('stat_groups')} icon={<Users className="w-3.5 h-3.5" />} active={activeTab === 'courses'} onClick={() => setActiveTab('courses')} />

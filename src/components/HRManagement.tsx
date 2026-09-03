@@ -267,16 +267,18 @@ export default function HRManagement() {
                             <p className="text-[11px] font-bold text-gray-400 uppercase tracking-wider">{t('no_staff_found')}</p>
                         </div>
                     ) : (
-                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
                             {filteredUsers.map((u) => {
                                 const isLegacy = u._source === 'teacher';
                                 const profilePath = isLegacy ? `/teachers/${u._tid}` : `/hr/${u.id}`;
                                 return (
-                                    <div key={u.id} className="bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700/50 rounded-3xl p-6 hover:shadow-md transition-all group relative flex flex-col justify-between min-h-[180px]">
+                                    <div key={u.id} className="bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700/50 rounded-2xl p-4 hover:border-gray-200 dark:hover:border-gray-700 transition-colors group relative">
                                         <div>
-                                            <div className="flex items-start justify-between mb-4">
-                                                {/* Avatar / Photo */}
-                                                <div className="w-12 h-12 rounded-2xl overflow-hidden shrink-0">
+                                            {/* Avatar ism bilan yonma-yon. Avval u alohida
+                                                qatorda turardi va ostida katta bo'shliq
+                                                qolardi. */}
+                                            <div className="flex items-start gap-3">
+                                                <div className="w-11 h-11 rounded-xl overflow-hidden shrink-0">
                                                     {u.photo ? (
                                                         <img src={u.photo} alt={u.name} className="w-full h-full object-cover" />
                                                     ) : (
@@ -285,8 +287,17 @@ export default function HRManagement() {
                                                         </div>
                                                     )}
                                                 </div>
+                                                <div className="min-w-0 flex-1">
+                                                    <h4 className="text-[13px] font-semibold text-gray-900 dark:text-white truncate">{u.name}</h4>
+                                                    {u.position && (
+                                                        <p className="text-[11px] text-gray-400 truncate">{u.position}</p>
+                                                    )}
+                                                    <span className={`inline-block mt-1.5 px-2 py-0.5 rounded-md text-[10px] font-semibold border ${ROLE_COLORS[u.role] || 'bg-gray-50 text-gray-400 border-gray-100'}`}>
+                                                        {getRoleLabel(u.role)}
+                                                    </span>
+                                                </div>
                                                 {isAdminOrManager && (
-                                                    <div className="flex items-center gap-1">
+                                                    <div className="flex items-center gap-0.5 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
                                                         <button onClick={() => { setEditingUser({ ...u, password: '' }); setIsEditOpen(true); }}
                                                             className="w-7 h-7 rounded-lg text-gray-400 hover:text-[#1b6b6b] hover:bg-gray-50 dark:hover:bg-gray-900 flex items-center justify-center transition-colors cursor-pointer">
                                                             <Pencil size={13} />
@@ -301,17 +312,8 @@ export default function HRManagement() {
                                                     </div>
                                                 )}
                                             </div>
-                                            <div>
-                                                <h4 className="text-xs font-black text-gray-900 dark:text-white tracking-wide">{u.name}</h4>
-                                                {u.position && (
-                                                    <p className="text-[11px] font-bold text-gray-400 mt-0.5">{u.position}</p>
-                                                )}
-                                                <span className={`inline-block mt-1.5 px-2.5 py-0.5 rounded-md text-[10px] font-bold border uppercase tracking-wider ${ROLE_COLORS[u.role] || 'bg-gray-50 text-gray-400 border-gray-100'}`}>
-                                                    {getRoleLabel(u.role)}
-                                                </span>
-                                            </div>
                                         </div>
-                                        <div className="mt-4 pt-3 border-t border-dashed border-gray-100 dark:border-gray-700/50 space-y-1">
+                                        <div className="mt-3 pt-3 border-t border-gray-100 dark:border-gray-700/50 space-y-1">
                                             {u.phone && (
                                                 <div className="flex items-center gap-2 text-gray-400">
                                                     <Phone size={11} />
@@ -331,23 +333,26 @@ export default function HRManagement() {
                                                 </div>
                                             )}
                                         </div>
-                                        {/* Salary payment quick button — Admin/Manager only */}
-                                        {isAdminOrManager && (
+                                        {/* Ikkita to'liq kenglikdagi tugma ustma-ust
+                                            turardi va kartochkani ikki barobar cho'zardi. */}
+                                        <div className="mt-3 flex items-center gap-2">
                                             <button
-                                                onClick={(e) => { e.stopPropagation(); navigate(`/finance?openExpense=1&staffId=${isLegacy ? u._tid : u.id}&staffName=${encodeURIComponent(u.name)}`); }}
-                                                className="mt-2 w-full flex items-center justify-center gap-2 py-2 bg-rose-50 dark:bg-rose-950/20 border border-rose-100 dark:border-rose-900/30 text-rose-600 dark:text-rose-400 rounded-xl text-[11px] font-extrabold uppercase tracking-wider hover:bg-rose-600 hover:text-white hover:border-rose-600 transition-all cursor-pointer"
-                                            >
-                                                <Banknote size={11} />
-                                                Ish haqqi berish
+                                                onClick={() => navigate(profilePath)}
+                                                className="flex-1 flex items-center justify-center gap-1.5 py-2 bg-[#1b6b6b]/5 border border-[#1b6b6b]/15 text-[#1b6b6b] dark:text-teal-400 rounded-lg text-[11px] font-semibold hover:bg-[#1b6b6b] hover:text-white hover:border-[#1b6b6b] transition-colors cursor-pointer">
+                                                <Eye size={12} />
+                                                {t('view_profile')}
                                             </button>
-                                        )}
-                                        {/* Profile link */}
-                                        <button
-                                            onClick={() => navigate(profilePath)}
-                                            className="mt-3 w-full flex items-center justify-center gap-2 py-2 bg-[#1b6b6b]/5 border border-[#1b6b6b]/15 text-[#1b6b6b] dark:text-teal-400 rounded-xl text-[11px] font-extrabold uppercase tracking-wider hover:bg-[#1b6b6b] hover:text-white hover:border-[#1b6b6b] transition-all cursor-pointer">
-                                            <Eye size={11} />
-                                            {t('view_profile')}
-                                        </button>
+                                            {isAdminOrManager && (
+                                                <button
+                                                    onClick={(e) => { e.stopPropagation(); navigate(`/finance?openExpense=1&staffId=${isLegacy ? u._tid : u.id}&staffName=${encodeURIComponent(u.name)}`); }}
+                                                    title="Ish haqqi berish"
+                                                    className="flex items-center justify-center gap-1.5 px-3 py-2 border border-rose-100 dark:border-rose-900/30 text-rose-600 dark:text-rose-400 rounded-lg text-[11px] font-semibold hover:bg-rose-600 hover:text-white hover:border-rose-600 transition-colors cursor-pointer shrink-0"
+                                                >
+                                                    <Banknote size={12} />
+                                                    Ish haqqi
+                                                </button>
+                                            )}
+                                        </div>
                                     </div>
                                 );
                             })}

@@ -55,6 +55,22 @@ export default function CourseDetails() {
     const course = courses.find(c => c.id === group.courseId);
     const groupStudents = students.filter(s => (group.studentIds || []).includes(s.id));
 
+    // "Davomat" va "Amaliy darslar" raqamlari kodda 94% va 12 deb qo'lda yozib
+    // qo'yilgan edi — ya'ni har qanday guruh uchun bir xil soxta qiymat
+    // ko'rsatardi. Endi ikkalasi ham shu guruhning o'z yozuvlaridan olinadi.
+    const groupAttendances = (attendances || []).filter(a => a.groupId === group.id);
+    const groupAttendanceRate = groupAttendances.length
+        ? Math.round((groupAttendances.filter(a => a.status === 'Keldi').length / groupAttendances.length) * 100)
+        : null;
+    const monthPrefix = new Date().toISOString().slice(0, 7);
+    const lessonsThisMonth = new Set(
+        groupAttendances.filter(a => (a.date || '').startsWith(monthPrefix)).map(a => a.date)
+    ).size;
+    const groupDebt = groupStudents.reduce((sum, st) => sum + (st.balance < 0 ? -st.balance : 0), 0);
+    const debtorCount = groupStudents.filter(st => st.balance < 0).length;
+    const shortSum = (n: number) =>
+        n >= 1000000 ? (n / 1000000).toFixed(1).replace('.0', '') + ' mln' : n.toLocaleString();
+
 
     // The attendance matrix and calendar span far more than the recent window loaded at
     // startup, so fetch this group's full history once the page opens.
@@ -80,7 +96,7 @@ export default function CourseDetails() {
 
     const handleSendAttendanceSms = async () => {
         if (!await confirm("Kelmagan o'quvchilar ota-onalariga SMS yuborilsinmi?")) return;
-        
+
         try {
             const token = localStorage.getItem('token');
             const response = await fetch('/api/sms/attendance', {
@@ -114,7 +130,7 @@ export default function CourseDetails() {
     const courseObj = (courses || []).find(c => c.id === group.courseId);
     const activeSyllabusId = group.syllabusId || courseObj?.syllabusId;
     const activeSyllabus = activeSyllabusId ? (syllabuses || []).find(s => s.id === activeSyllabusId) : null;
-    const courseTopics = activeSyllabus 
+    const courseTopics = activeSyllabus
         ? (topics || []).filter(t => t.syllabusId === activeSyllabus.id).sort((a, b) => a.order - b.order)
         : [];
 
@@ -245,7 +261,7 @@ export default function CourseDetails() {
     const getValidDate = (dateStr: string, pattern: string, direction: 'prev' | 'next' | 'stay' = 'stay'): string => {
         const [year, month, day] = dateStr.split('-').map(Number);
         let date = new Date(year, month - 1, day);
-        
+
         const isMatch = (d: Date) => {
             const dw = d.getDay();
             if (pattern === 'TOQ') return [1, 3, 5].includes(dw);
@@ -257,7 +273,7 @@ export default function CourseDetails() {
 
         let attempts = 0;
         const step = direction === 'prev' ? -1 : 1;
-        
+
         if (direction === 'stay') {
             let nextD = new Date(date);
             let prevD = new Date(date);
@@ -329,50 +345,48 @@ export default function CourseDetails() {
             </div>
 
             <div className="bg-white dark:bg-gray-800 rounded-3xl border border-gray-100 dark:border-gray-700/50 shadow-sm overflow-hidden">
-                <div className="bg-teal-50/20 dark:bg-teal-950/10 p-6 md:p-8 border-b border-gray-100 dark:border-gray-700/50">
-                    <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
-                        <div>
-                            <div className="flex items-center gap-3 mb-3">
-                                <span className="px-2 py-0.5 rounded bg-emerald-50 text-emerald-600 border border-emerald-100 dark:bg-emerald-950/20 dark:text-emerald-400 dark:border-emerald-900/40 text-[10px] font-bold uppercase tracking-wider">Kurs faol</span>
-                                <span className="text-[11px] font-bold text-gray-400 uppercase tracking-wider">ID: #{group.id}</span>
-                            </div>
-                            <h1 className="text-xl font-black text-gray-900 dark:text-white tracking-tight">{group.name}</h1>
-                            {course?.name && course.name !== 'birinchi' && (
-                                <div className="flex items-center gap-3 mt-3">
-                                    <span className="flex items-center gap-1.5 px-3 py-1.5 bg-white dark:bg-gray-950 rounded-xl border border-gray-100 dark:border-gray-800 text-[11px] font-bold text-gray-600 dark:text-gray-300">
-                                        <BookOpen size={13} className="text-[#1b6b6b]" />
-                                        {course.name}
-                                    </span>
-                                </div>
-                            )}
-                        </div>
-                        <div className="flex items-center gap-4 bg-white dark:bg-gray-950 p-4 rounded-2xl border border-gray-100 dark:border-gray-800 shrink-0">
-                            {isEditingInfo ? (
-                                <div className="flex flex-col gap-1.5 min-w-[200px]">
-                                    <label className={labelCls}>O'qituvchi</label>
-                                    <select 
-                                        value={editForm.teacherId}
-                                        onChange={e => setEditForm({ ...editForm, teacherId: Number(e.target.value) })}
-                                        className={inputCls}
-                                    >
-                                        {teachers.map(t => (
-                                            <option key={t.id} value={t.id}>{t.name}</option>
-                                        ))}
-                                    </select>
-                                </div>
-                            ) : (
-                                <>
-                                    <div className="w-12 h-12 bg-teal-50 dark:bg-teal-950/20 rounded-xl flex items-center justify-center text-[#1b6b6b] border border-teal-100 dark:border-teal-900/40 shrink-0">
-                                        <Presentation size={22} />
-                                    </div>
-                                    <div>
-                                        <span className="text-[11px] font-bold text-gray-400 block mb-0.5 uppercase tracking-wider">O'qituvchi</span>
-                                        <span className="text-sm font-black text-gray-900 dark:text-white tracking-tight">{teacher?.name}</span>
-                                    </div>
-                                </>
-                            )}
-                        </div>
+                {/* Sarlavha. Avval o'ng tomonda "O'QITUVCHI / BELGILANMAGAN" degan
+                    alohida quti turardi va u guruh nomidan kuchliroq ko'rinardi.
+                    Endi ustoz, jadval, xona va narx — nom ostidagi bitta qatorda. */}
+                <div className="p-6 md:p-7 border-b border-gray-100 dark:border-gray-700/50">
+                    <div className="flex items-center gap-2.5 flex-wrap">
+                        <h1 className="text-xl font-semibold text-gray-900 dark:text-white tracking-tight">{group.name}</h1>
+                        <span className="px-2 py-0.5 rounded-md bg-emerald-50 text-emerald-600 border border-emerald-100 dark:bg-emerald-950/20 dark:text-emerald-400 dark:border-emerald-900/40 text-[11px] font-medium">Faol</span>
+                        <span className="text-[11px] font-medium text-gray-400 tabular-nums">#{group.id}</span>
                     </div>
+
+                    {isEditingInfo ? (
+                        <div className="flex flex-col gap-1.5 mt-4 max-w-xs">
+                            <label className={labelCls}>O'qituvchi</label>
+                            <select
+                                value={editForm.teacherId}
+                                onChange={e => setEditForm({ ...editForm, teacherId: Number(e.target.value) })}
+                                className={inputCls}
+                            >
+                                {teachers.map(t => (
+                                    <option key={t.id} value={t.id}>{t.name}</option>
+                                ))}
+                            </select>
+                        </div>
+                    ) : (
+                        <div className="flex items-center gap-x-5 gap-y-1 flex-wrap mt-2 text-[13px] text-gray-500 dark:text-gray-400">
+                            <span>
+                                Ustoz: <span className="font-medium text-gray-800 dark:text-gray-200">{teacher?.name || 'Belgilanmagan'}</span>
+                            </span>
+                            {group.schedule && (
+                                <span className="tabular-nums">
+                                    {group.days === 'TOQ' ? 'Toq kunlar' : group.days === 'JUFT' ? 'Juft kunlar' : 'Har kuni'} · {group.schedule}
+                                </span>
+                            )}
+                            {group.room ? <span>{rooms.find(r => r.id === group.room)?.name || `#${group.room}`}</span> : null}
+                            {course?.name && course.name !== 'birinchi' && <span>{course.name}</span>}
+                            {course?.price ? (
+                                <span className="tabular-nums">
+                                    Narx: <span className="font-medium text-gray-800 dark:text-gray-200">{course.price.toLocaleString()}</span> so'm/oy
+                                </span>
+                            ) : null}
+                        </div>
+                    )}
                 </div>
 
                 <div className="flex px-4 bg-gray-55 dark:bg-gray-900/50 border-b border-gray-100 dark:border-gray-700/50 gap-2">
@@ -381,98 +395,133 @@ export default function CourseDetails() {
                     <TabButton label="To'lovlar" icon={<CreditCard size={14} />} active={activeTab === 'tolovlar'} onClick={() => setActiveTab('tolovlar')} />
                 </div>
 
-                <div className="p-6">
+                <div className="p-5">
                     {activeTab === 'umumiy' && (
-                        <div className="space-y-8 animate-in fade-in duration-300">
-                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                                <StatCardV3 
-                                    label="O'quvchilar" 
+                        <div className="space-y-5 animate-in fade-in duration-300">
+                            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+                                <StatCardV3
+                                    label="O'quvchilar"
                                     value={groupStudents.length}
-                                    subValue="Jami faol"
-                                    icon={<Users className="text-[#1b6b6b]" size={16} />} 
+                                    subValue="Guruhdagi jami"
+                                    icon={<Users className="text-[#1b6b6b]" size={16} />}
                                     color="teal"
                                 />
-                                <StatCardV3 
-                                    label="Davomat" 
-                                    value="94%"
-                                    subValue="O'rtacha ko'rsatkich"
-                                    icon={<ClipboardCheck className="text-emerald-500" size={16} />} 
+                                <StatCardV3
+                                    label="Davomat"
+                                    value={groupAttendanceRate === null ? '—' : `${groupAttendanceRate}%`}
+                                    subValue={groupAttendances.length ? `${groupAttendances.length} ta yozuv asosida` : "Yo'qlama qilinmagan"}
+                                    icon={<ClipboardCheck className="text-emerald-500" size={16} />}
                                     color="emerald"
                                 />
-                                <StatCardV3 
-                                    label="Amaliy Darslar" 
-                                    value="12"
-                                    subValue="Ushbu oyda"
-                                    icon={<Presentation className="text-rose-500" size={16} />} 
+                                <StatCardV3
+                                    label="Darslar"
+                                    value={lessonsThisMonth}
+                                    subValue="Shu oyda o'tildi"
+                                    icon={<Presentation className="text-violet-500" size={16} />}
+                                    color="violet"
+                                />
+                                <StatCardV3
+                                    label="Qarzdorlik"
+                                    value={groupDebt > 0 ? shortSum(groupDebt) : '0'}
+                                    subValue={debtorCount ? `${debtorCount} ta o'quvchi` : 'Qarzdor yo\'q'}
+                                    icon={<CreditCard className="text-rose-500" size={16} />}
                                     color="rose"
                                 />
                             </div>
 
-                            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                                <div className="lg:col-span-2 space-y-6">
+                            <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
+                                <div className="lg:col-span-2 space-y-4">
                                     <div className="flex items-center justify-between pb-2 border-b border-gray-55 dark:border-gray-700/50">
                                         <span className="text-[11px] font-bold text-gray-400 uppercase tracking-wider">O'quvchilar</span>
-                                        <button onClick={() => setIsAddStudentModalOpen(true)} 
+                                        <button onClick={() => setIsAddStudentModalOpen(true)}
                                             className="px-4 py-2.5 bg-[#1b6b6b] hover:bg-[#155252] text-white rounded-xl text-[11px] font-extrabold uppercase tracking-wider shadow-sm shadow-[#1b6b6b]/20 active:scale-95 transition-all flex items-center gap-1.5 group cursor-pointer">
                                             <Plus size={14} />
                                             Qo'shish
                                         </button>
                                     </div>
-                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                                        {groupStudents.map(s => {
-                                            const payStatus = getPayStatus(s.balance);
-                                            return (
-                                            <div key={s.id} className="group bg-gray-55 dark:bg-gray-900/30 p-4 rounded-2xl border border-transparent hover:border-gray-100 dark:hover:border-gray-700/50 transition-all flex items-center justify-between">
-                                                <div className="flex items-center gap-3 cursor-pointer min-w-0" onClick={() => navigate(`/students/${s.id}`)}>
-                                                    <div className="w-10 h-10 bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700/50 rounded-xl flex items-center justify-center text-[#1b6b6b] font-bold text-sm shrink-0">
-                                                        {s.name.charAt(0)}
-                                                    </div>
-                                                    <div className="min-w-0">
-                                                        <p className="text-xs font-black text-gray-900 dark:text-white truncate tracking-tight group-hover:text-[#1b6b6b] transition-colors">{s.name}</p>
-                                                        <p className="text-[11px] font-bold text-gray-405 mt-0.5">{s.phone}</p>
-                                                    </div>
-                                                </div>
-                                                <div className="flex items-center gap-1.5 shrink-0">
-                                                    {payStatus && (
-                                                        <span className={`text-[10px] font-black px-2 py-1 rounded-md border uppercase tracking-wider ${
-                                                            payStatus === 'full' ? 'text-emerald-600 bg-emerald-50 border-emerald-100 dark:bg-emerald-950/20 dark:text-emerald-400' :
-                                                            payStatus === 'partial' ? 'text-amber-600 bg-amber-50 border-amber-100 dark:bg-amber-950/20 dark:text-amber-400' :
-                                                            'text-rose-600 bg-rose-50 border-rose-100 dark:bg-rose-950/20 dark:text-rose-400'
-                                                        }`}>
-                                                            {payStatus === 'full' ? "To'liq" : payStatus === 'partial' ? 'Qisman' : 'Qarzdor'}
-                                                        </span>
-                                                    )}
-                                                    <span className={`text-[11px] font-bold px-2.5 py-1 rounded-md border ${s.balance >= 0 ? 'text-emerald-600 bg-emerald-50 border-emerald-100 dark:bg-emerald-950/20 dark:text-emerald-400' : 'text-rose-600 bg-rose-50 border-rose-100 dark:bg-rose-950/20 dark:text-rose-400'}`}>
-                                                        {s.balance.toLocaleString()}
-                                                    </span>
-                                                    <button
-                                                        onClick={e => { e.stopPropagation(); openPaymentModal(s.id); }}
-                                                        title="To'lov qo'shish"
-                                                        className="w-7 h-7 flex items-center justify-center rounded-lg text-gray-300 hover:text-emerald-500 hover:bg-emerald-50 dark:hover:bg-emerald-950/20 transition-all cursor-pointer"
-                                                    >
-                                                        <CreditCard size={13} />
-                                                    </button>
-                                                    <button
-                                                        onClick={e => { e.stopPropagation(); removeStudentFromGroup(group.id, s.id); }}
-                                                        title="Kursdan chiqarish"
-                                                        className="w-7 h-7 flex items-center justify-center rounded-lg text-gray-300 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/20 transition-all cursor-pointer"
-                                                    >
-                                                        <XCircle size={15} />
-                                                    </button>
-                                                </div>
-                                            </div>
-                                            );
-                                        })}
-                                        {groupStudents.length === 0 && (
-                                            <p className="col-span-full py-12 text-center text-[11px] text-gray-400 font-bold uppercase tracking-wider">Bu kursda o'quvchilar yo'q</p>
-                                        )}
-                                    </div>
+                                    {/* Avval bu ro'yxat ikki ustunli kartochka gridi edi:
+                                        kartaning eni tor bo'lgani uchun ismlar
+                                        "ABDUHAYEVA SHAHNOZ..." bo'lib kesilardi va bir
+                                        o'quvchi ikki qatorni egallardi. Jadvalda ism
+                                        to'liq sig'adi va qatorlarni solishtirish oson. */}
+                                    {groupStudents.length === 0 ? (
+                                        <p className="py-12 text-center text-[12px] text-gray-400">Bu kursda o'quvchilar yo'q</p>
+                                    ) : (
+                                        <div className="overflow-x-auto">
+                                            <table className="w-full border-collapse text-left min-w-[520px]">
+                                                <thead>
+                                                    <tr className="border-b border-gray-100 dark:border-gray-700/50">
+                                                        <th className="py-2 pr-3 text-[10px] font-semibold text-gray-400 uppercase tracking-wider w-8">#</th>
+                                                        <th className="py-2 pr-3 text-[10px] font-semibold text-gray-400 uppercase tracking-wider">O'quvchi</th>
+                                                        <th className="py-2 px-3 text-[10px] font-semibold text-gray-400 uppercase tracking-wider text-right">Balans</th>
+                                                        <th className="py-2 px-3 text-[10px] font-semibold text-gray-400 uppercase tracking-wider text-center">Holat</th>
+                                                        <th className="py-2 pl-3 w-20" />
+                                                    </tr>
+                                                </thead>
+                                                <tbody className="divide-y divide-gray-55 dark:divide-gray-700/40">
+                                                    {groupStudents.map((s, idx) => {
+                                                        const payStatus = getPayStatus(s.balance);
+                                                        return (
+                                                            <tr key={s.id} className="group hover:bg-gray-55/70 dark:hover:bg-gray-900/30 transition-colors">
+                                                                <td className="py-2.5 pr-3 text-[11px] font-medium text-gray-400 tabular-nums align-middle">
+                                                                    {String(idx + 1).padStart(2, '0')}
+                                                                </td>
+                                                                <td className="py-2.5 pr-3 align-middle">
+                                                                    <div className="flex items-center gap-3 cursor-pointer min-w-0" onClick={() => navigate(`/students/${s.id}`)}>
+                                                                        <div className="w-8 h-8 bg-gray-55 dark:bg-gray-900 border border-gray-100 dark:border-gray-700/50 rounded-lg flex items-center justify-center text-[#1b6b6b] font-semibold text-[11px] shrink-0">
+                                                                            {s.name.charAt(0)}
+                                                                        </div>
+                                                                        <div className="min-w-0">
+                                                                            <p className="text-[13px] font-medium text-gray-900 dark:text-white truncate group-hover:text-[#1b6b6b] transition-colors">{s.name}</p>
+                                                                            <p className="text-[11px] text-gray-400 tabular-nums truncate">{s.phone}</p>
+                                                                        </div>
+                                                                    </div>
+                                                                </td>
+                                                                <td className={`py-2.5 px-3 text-right text-[13px] font-medium tabular-nums align-middle ${s.balance >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-500'}`}>
+                                                                    {s.balance.toLocaleString()}
+                                                                </td>
+                                                                <td className="py-2.5 px-3 text-center align-middle">
+                                                                    {payStatus && (
+                                                                        <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-md border whitespace-nowrap ${
+                                                                            payStatus === 'full' ? 'text-emerald-600 bg-emerald-50 border-emerald-100 dark:bg-emerald-950/20 dark:text-emerald-400 dark:border-emerald-900/40' :
+                                                                            payStatus === 'partial' ? 'text-amber-600 bg-amber-50 border-amber-100 dark:bg-amber-950/20 dark:text-amber-400 dark:border-amber-900/40' :
+                                                                            'text-rose-600 bg-rose-50 border-rose-100 dark:bg-rose-950/20 dark:text-rose-400 dark:border-rose-900/40'
+                                                                        }`}>
+                                                                            {payStatus === 'full' ? "To'liq" : payStatus === 'partial' ? 'Qisman' : 'Qarzdor'}
+                                                                        </span>
+                                                                    )}
+                                                                </td>
+                                                                <td className="py-2.5 pl-3 align-middle">
+                                                                    <div className="flex items-center justify-end gap-0.5 opacity-70 group-hover:opacity-100 transition-opacity">
+                                                                        <button
+                                                                            onClick={e => { e.stopPropagation(); openPaymentModal(s.id); }}
+                                                                            title="To'lov qo'shish"
+                                                                            className="w-7 h-7 flex items-center justify-center rounded-lg text-gray-400 hover:text-white hover:bg-emerald-500 transition-colors cursor-pointer"
+                                                                        >
+                                                                            <CreditCard size={13} />
+                                                                        </button>
+                                                                        <button
+                                                                            onClick={e => { e.stopPropagation(); removeStudentFromGroup(group.id, s.id); }}
+                                                                            title="Kursdan chiqarish"
+                                                                            className="w-7 h-7 flex items-center justify-center rounded-lg text-gray-400 hover:text-white hover:bg-rose-500 transition-colors cursor-pointer"
+                                                                        >
+                                                                            <XCircle size={14} />
+                                                                        </button>
+                                                                    </div>
+                                                                </td>
+                                                            </tr>
+                                                        );
+                                                    })}
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                    )}
                                 </div>
-                                <div className="space-y-6">
+                                <div className="space-y-3">
                                     <div className="flex items-center justify-between pb-2 border-b border-gray-55 dark:border-gray-700/50">
                                         <span className="text-[11px] font-bold text-gray-400 uppercase tracking-wider">Ma'lumotlar</span>
                                         {!isEditingInfo ? (
-                                            <button 
+                                            <button
                                                 onClick={handleStartEdit}
                                                 className="text-[11px] font-bold text-[#1b6b6b] uppercase tracking-wider hover:underline cursor-pointer"
                                             >
@@ -480,13 +529,13 @@ export default function CourseDetails() {
                                             </button>
                                         ) : (
                                             <div className="flex gap-2.5">
-                                                <button 
+                                                <button
                                                     onClick={handleSaveInfo}
                                                     className="text-[11px] font-bold text-emerald-600 uppercase tracking-wider hover:underline cursor-pointer"
                                                 >
                                                     Saqlash
                                                 </button>
-                                                <button 
+                                                <button
                                                     onClick={() => setIsEditingInfo(false)}
                                                     className="text-[11px] font-bold text-rose-600 uppercase tracking-wider hover:underline cursor-pointer"
                                                 >
@@ -500,7 +549,7 @@ export default function CourseDetails() {
                                             <>
                                                 <div>
                                                     <label className={labelCls}>Kunlar</label>
-                                                    <select 
+                                                    <select
                                                         value={editForm.days}
                                                         onChange={e => setEditForm({ ...editForm, days: e.target.value })}
                                                         className={inputCls}
@@ -513,15 +562,15 @@ export default function CourseDetails() {
                                                 <div>
                                                     <label className={labelCls}>Vaqt</label>
                                                     <div className="flex items-center gap-2">
-                                                        <input 
-                                                            type="time" 
+                                                        <input
+                                                            type="time"
                                                             value={editForm.startTime}
                                                             onChange={e => setEditForm({ ...editForm, startTime: e.target.value })}
                                                             className={inputCls}
                                                         />
                                                         <span className="text-gray-300">-</span>
-                                                        <input 
-                                                            type="time" 
+                                                        <input
+                                                            type="time"
                                                             value={editForm.endTime}
                                                             onChange={e => setEditForm({ ...editForm, endTime: e.target.value })}
                                                             className={inputCls}
@@ -567,11 +616,11 @@ export default function CourseDetails() {
                                             </>
                                         ) : (
                                             <>
-                                                <InfoItem icon={<Calendar size={16} />} label="Kunlar" value={group.days === 'TOQ' ? 'Toq kunlar' : group.days === 'JUFT' ? 'Juft kunlar' : 'Har kuni'} />
-                                                <InfoItem icon={<Clock size={16} />} label="Vaqt" value={group.schedule} />
-                                                <InfoItem icon={<Presentation size={16} />} label="Xona" value={rooms.find(r => r.id === group.room)?.name || `#${group.room || '-'}`} />
-                                                <InfoItem icon={<DollarSign size={16} />} label="Kurs narxi" value={course?.price ? `${course.price.toLocaleString()} UZS` : "Belgilanmagan"} />
-                                                <InfoItem icon={<BookOpen size={16} />} label="O'quv programmasi" value={activeSyllabus ? activeSyllabus.name : "Kurs mavzulari (Dastursiz)"} />
+                                                <InfoItem icon={<Calendar size={13} />} label="Kunlar" value={group.days === 'TOQ' ? 'Toq kunlar' : group.days === 'JUFT' ? 'Juft kunlar' : 'Har kuni'} />
+                                                <InfoItem icon={<Clock size={13} />} label="Vaqt" value={group.schedule} />
+                                                <InfoItem icon={<Presentation size={13} />} label="Xona" value={rooms.find(r => r.id === group.room)?.name || `#${group.room || '-'}`} />
+                                                <InfoItem icon={<DollarSign size={13} />} label="Kurs narxi" value={course?.price ? `${course.price.toLocaleString()} UZS` : "Belgilanmagan"} />
+                                                <InfoItem icon={<BookOpen size={13} />} label="O'quv programmasi" value={activeSyllabus ? activeSyllabus.name : "Kurs mavzulari (Dastursiz)"} />
                                             </>
                                         )}
                                     </div>
@@ -600,18 +649,18 @@ export default function CourseDetails() {
                                 <div className="flex flex-col sm:flex-row items-center gap-3 w-full lg:w-auto">
                                     {/* Date navigation */}
                                     <div className="flex items-center gap-2 bg-white dark:bg-gray-800 p-1.5 rounded-xl border border-gray-100 dark:border-gray-700 shadow-sm w-full sm:w-auto justify-between">
-                                        <button 
+                                        <button
                                             onClick={() => setSelectedDate(prev => getValidDate(prev, group.days, 'prev'))}
                                             className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-gray-50 text-gray-450 hover:text-[#1b6b6b] transition-all cursor-pointer"
                                             title="Oldingi dars"
                                         >
                                             <ArrowLeft size={16} />
                                         </button>
-                                        
+
                                         <input type="date" value={selectedDate} onChange={e => setSelectedDate(e.target.value)}
                                             className={`px-3 py-1.5 bg-transparent text-[11px] font-bold uppercase tracking-wider outline-none border-none cursor-pointer ${!isDayValid(group.days, selectedDate) ? 'text-amber-600' : 'text-gray-900 dark:text-white'}`} />
 
-                                        <button 
+                                        <button
                                             onClick={() => setSelectedDate(prev => getValidDate(prev, group.days, 'next'))}
                                             className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-gray-50 text-gray-450 hover:text-[#1b6b6b] transition-all cursor-pointer"
                                             title="Keyingi dars"
@@ -623,7 +672,7 @@ export default function CourseDetails() {
                                     {/* Topic Selector */}
                                     <div className="flex items-center gap-2 bg-white dark:bg-gray-800 p-1.5 rounded-xl border border-gray-100 dark:border-gray-700 shadow-sm w-full sm:w-auto">
                                         <BookOpen size={14} className="text-[#1b6b6b] ml-2 shrink-0" />
-                                        <select 
+                                        <select
                                             value={selectedTopicId}
                                             onChange={e => {
                                                 const newId = e.target.value ? Number(e.target.value) : '';
@@ -712,9 +761,9 @@ export default function CourseDetails() {
 
                                 {/* Historical Calendar */}
                                 <div className="lg:col-span-2">
-                                    <GroupAttendanceCalendar 
-                                        group={group} 
-                                        attendances={attendances} 
+                                    <GroupAttendanceCalendar
+                                        group={group}
+                                        attendances={attendances}
                                         selectedDate={selectedDate}
                                         onSelectDate={setSelectedDate}
                                         students={groupStudents}
@@ -1058,32 +1107,32 @@ export default function CourseDetails() {
                         <form onSubmit={handleSaveTopic} className="space-y-4">
                             <div>
                                 <label className={labelCls}>Tartib raqami</label>
-                                <input 
-                                    type="number" 
-                                    required 
-                                    value={topicForm.order} 
-                                    onChange={e => setTopicForm({ ...topicForm, order: Number(e.target.value) })} 
-                                    className={inputCls} 
+                                <input
+                                    type="number"
+                                    required
+                                    value={topicForm.order}
+                                    onChange={e => setTopicForm({ ...topicForm, order: Number(e.target.value) })}
+                                    className={inputCls}
                                 />
                             </div>
                             <div>
                                 <label className={labelCls}>Mavzu nomi</label>
-                                <input 
-                                    type="text" 
-                                    required 
-                                    placeholder="Masalan: JavaScript Kirish" 
-                                    value={topicForm.title} 
-                                    onChange={e => setTopicForm({ ...topicForm, title: e.target.value })} 
-                                    className={inputCls} 
+                                <input
+                                    type="text"
+                                    required
+                                    placeholder="Masalan: JavaScript Kirish"
+                                    value={topicForm.title}
+                                    onChange={e => setTopicForm({ ...topicForm, title: e.target.value })}
+                                    className={inputCls}
                                 />
                             </div>
                             <div>
                                 <label className={labelCls}>Tavsif (ixtiyoriy)</label>
-                                <textarea 
-                                    placeholder="Mavzu mazmuni haqida..." 
-                                    value={topicForm.description} 
-                                    onChange={e => setTopicForm({ ...topicForm, description: e.target.value })} 
-                                    className={inputCls + " min-h-[80px] resize-none"} 
+                                <textarea
+                                    placeholder="Mavzu mazmuni haqida..."
+                                    value={topicForm.description}
+                                    onChange={e => setTopicForm({ ...topicForm, description: e.target.value })}
+                                    className={inputCls + " min-h-[80px] resize-none"}
                                 />
                             </div>
                             <button type="submit" className="w-full py-3 bg-[#1b6b6b] hover:bg-[#155252] text-white rounded-xl font-bold uppercase tracking-wider text-[11px] shadow-sm shadow-[#1b6b6b]/20 transition-all cursor-pointer flex items-center justify-center gap-1.5">
@@ -1158,15 +1207,18 @@ function TabButton({ label, icon, active, onClick }: any) {
 }
 
 function InfoItem({ icon, label, value }: any) {
+    // Avval har bir qator 36px ikonka kvadrati va ikki qatorli matndan iborat edi —
+    // besh maydon uchun ~300px balandlik. Endi bitta qatorda: chapda nomi, o'ngda
+    // qiymati; ikonka esa mayda va sokin.
     return (
-        <div className="flex items-center gap-3">
-            <div className="w-9 h-9 bg-teal-50 dark:bg-teal-950/20 border border-teal-100 dark:border-teal-900/40 rounded-xl flex items-center justify-center text-[#1b6b6b]">
-                {icon}
-            </div>
-            <div>
-                <span className="text-[11px] font-bold text-gray-400 uppercase tracking-wider leading-none block">{label}</span>
-                <span className="text-xs font-bold text-gray-900 dark:text-white tracking-tight mt-0.5 block">{value}</span>
-            </div>
+        <div className="flex items-center justify-between gap-3 py-1.5">
+            <span className="flex items-center gap-2 text-[11px] font-medium text-gray-400 shrink-0">
+                <span className="text-gray-300 dark:text-gray-600 shrink-0">{icon}</span>
+                {label}
+            </span>
+            <span className="text-[12px] font-medium text-gray-900 dark:text-white text-right truncate min-w-0" title={value}>
+                {value || '—'}
+            </span>
         </div>
     );
 }

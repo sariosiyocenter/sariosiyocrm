@@ -178,7 +178,7 @@ export default function Reports() {
             </div>
 
             {/* Report Body */}
-            <div className="bg-white dark:bg-gray-800 rounded-3xl border border-gray-100 dark:border-gray-700/50 shadow-sm overflow-hidden min-h-[400px]">
+            <div className="bg-white dark:bg-gray-800 rounded-3xl border border-gray-100 dark:border-gray-700/50 shadow-sm overflow-hidden">
                 {renderReportContent()}
             </div>
         </div>

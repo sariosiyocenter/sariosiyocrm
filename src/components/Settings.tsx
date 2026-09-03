@@ -718,7 +718,7 @@ export default function Settings() {
                 </div>
 
                 {/* Content */}
-                <div className="lg:col-span-3 bg-white dark:bg-gray-800 rounded-3xl border border-gray-100 dark:border-gray-700/50 p-6 min-h-[400px] shadow-sm">
+                <div className="lg:col-span-3 bg-white dark:bg-gray-800 rounded-3xl border border-gray-100 dark:border-gray-700/50 p-5 shadow-sm">
                     {renderContent()}
                 </div>
             </div>

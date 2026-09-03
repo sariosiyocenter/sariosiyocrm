@@ -117,7 +117,7 @@ export default function TeacherDetails() {
 
                 {/* Right Tab Content */}
                 <div className="lg:col-span-3 space-y-6">
-                    <div className="bg-white dark:bg-gray-800 rounded-3xl border border-gray-100 dark:border-gray-700/50 shadow-sm overflow-hidden min-h-[500px]">
+                    <div className="bg-white dark:bg-gray-800 rounded-3xl border border-gray-100 dark:border-gray-700/50 shadow-sm overflow-hidden">
                         <div className="flex px-4 bg-gray-55 dark:bg-gray-900/50 border-b border-gray-100 dark:border-gray-700/50 gap-2">
                             <TabButton label="Umumiy" icon={<Layers size={14} />} active={activeTab === 'umumiy'} onClick={() => setActiveTab('umumiy')} />
                             <TabButton label="Oylik hisobi" icon={<Wallet size={14} />} active={activeTab === 'oylik'} onClick={() => setActiveTab('oylik')} />

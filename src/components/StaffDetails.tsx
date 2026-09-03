@@ -577,7 +577,7 @@ export default function StaffDetails() {
 
                 {/* Right tabs */}
                 <div className="lg:col-span-3 space-y-6">
-                    <div className="bg-white dark:bg-gray-800 rounded-3xl border border-gray-100 dark:border-gray-700/50 shadow-sm overflow-hidden min-h-[500px]">
+                    <div className="bg-white dark:bg-gray-800 rounded-3xl border border-gray-100 dark:border-gray-700/50 shadow-sm overflow-hidden">
                         <div className="flex px-4 bg-gray-50 dark:bg-gray-900/50 border-b border-gray-100 dark:border-gray-700/50 gap-2">
                             {tabs.map(tab => (
                                 <button key={tab.id} onClick={() => setActiveTab(tab.id)}
