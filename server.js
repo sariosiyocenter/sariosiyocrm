@@ -87,17 +87,97 @@ app.use((req, res, next) => {
   next();
 });
 
-// Middleware to authenticate JWT
+// SUPERADMIN oversees every organization; SELLER works the SaaS funnel, not school data.
+const CROSS_SCHOOL_ROLES = ['SUPERADMIN', 'SELLER'];
+
+// The schoolId a request wants to act on. Routes take it from the query string,
+// the body, or a :schoolId path param depending on the verb.
+function requestedSchoolId(req) {
+  const raw = req.query?.schoolId ?? req.body?.schoolId ?? req.params?.schoolId;
+  if (raw === undefined || raw === null || raw === '') return null;
+  const id = parseInt(raw);
+  return isNaN(id) ? null : id;
+}
+
+// Which schools this user may touch. Staff may move between branches of their own
+// organization (the branch switcher in the UI), but never into another customer's data.
+async function allowedSchoolIds(user) {
+  if (!user?.schoolId) return [];
+  const own = await prisma.school.findUnique({
+    where: { id: user.schoolId },
+    select: { organizationId: true }
+  });
+  if (!own?.organizationId) return [user.schoolId];
+  const siblings = await prisma.school.findMany({
+    where: { organizationId: own.organizationId },
+    select: { id: true }
+  });
+  return siblings.map(s => s.id);
+}
+
+async function canAccessSchool(user, schoolId) {
+  if (CROSS_SCHOOL_ROLES.includes(user?.role)) return true;
+  if (schoolId === null) return true;              // request is not school-scoped
+  if (user?.schoolId === schoolId) return true;    // own branch — no lookup needed
+  return (await allowedSchoolIds(user)).includes(schoolId);
+}
+
+// Routes addressed by record id (/api/students/42) carry no schoolId, so the tenancy
+// check has to come from the record itself. Anything not in this map is left alone.
+const OWNED_RESOURCES = {
+  students: 'student', teachers: 'teacher', groups: 'group', leads: 'lead',
+  payments: 'payment', expenses: 'expense', transports: 'transport', courses: 'course',
+  topics: 'topic', syllabuses: 'syllabus', rooms: 'room', exams: 'exam',
+  questions: 'question', scores: 'score', attendances: 'attendance', routes: 'route',
+  'salary-payments': 'salaryPayment', 'delivery-logs': 'deliveryLog',
+  'exam-results': 'examResult', 'staff-attendance': 'staffAttendance', users: 'user',
+};
+
+// Returns an error message when the addressed record belongs to another customer.
+async function recordAccessError(req) {
+  const parts = req.path.split('/').filter(Boolean);   // ['api','students','42', ...]
+  if (parts[0] !== 'api' || parts.length < 3) return null;
+
+  const id = parseInt(parts[2]);
+  if (isNaN(id) || String(id) !== parts[2]) return null;
+
+  // A school id addresses the tenant directly rather than a row inside one.
+  if (parts[1] === 'schools') {
+    return (await canAccessSchool(req.user, id)) ? null : 'Bu filialga ruxsatingiz yo\'q';
+  }
+
+  const model = OWNED_RESOURCES[parts[1]];
+  if (!model) return null;
+
+  const record = await prisma[model].findUnique({ where: { id }, select: { schoolId: true } });
+  if (!record) return null;                    // let the handler answer 404 in its own words
+  if (record.schoolId === null) return null;   // rows not bound to a school (e.g. superadmin users)
+  return (await canAccessSchool(req.user, record.schoolId)) ? null : 'Bu yozuvga ruxsatingiz yo\'q';
+}
+
+// Middleware to authenticate JWT and confirm the caller may act on the school it named.
+// Every protected route passes through here, so the tenancy check lives in one place
+// instead of being repeated (and forgotten) at each handler.
 const authenticate = (req, res, next) => {
   const authHeader = req.headers['authorization'];
   const token = authHeader && authHeader.split(' ')[1];
 
   if (!token) return res.status(401).json({ error: 'Token required' });
 
-  jwt.verify(token, JWT_SECRET, (err, user) => {
+  jwt.verify(token, JWT_SECRET, async (err, user) => {
     if (err) return res.status(403).json({ error: 'Invalid token' });
     req.user = user;
-    next();
+    try {
+      const wanted = requestedSchoolId(req);
+      if (!(await canAccessSchool(user, wanted))) {
+        return res.status(403).json({ error: 'Bu filial ma\'lumotlariga ruxsatingiz yo\'q' });
+      }
+      const recordError = await recordAccessError(req);
+      if (recordError) return res.status(403).json({ error: recordError });
+
+      req.schoolScope = wanted ?? user.schoolId ?? null;
+      next();
+    } catch (e) { next(e); }
   });
 };
 
@@ -4487,6 +4567,12 @@ app.get('/api/billing/auto-process', async (req, res, next) => {
 // Serve static React files
 app.use('/uploads', express.static(join(__dirname, 'public', 'uploads')));
 app.use(express.static(join(__dirname, 'dist')));
+
+// An unknown API path used to fall through to the SPA and answer 200 with index.html,
+// so callers got HTML where they expected JSON and failed in confusing ways.
+app.use('/api', (req, res) => {
+  res.status(404).json({ error: 'Bunday manzil topilmadi' });
+});
 
 // Handle React Router SPA fallback
 app.get('*', (req, res) => {
