@@ -70,6 +70,7 @@ interface CRMContextType extends CRMState {
     updateSyllabus: (id: number, syllabus: Partial<Syllabus>) => Promise<void>;
     deleteSyllabus: (id: number) => Promise<void>;
     addScore: (score: Omit<Score, 'id' | 'schoolId'>) => Promise<void>;
+    loadAttendanceFor: (filter: { studentId?: number; groupId?: number }) => Promise<void>;
     addTeacherAttendance: (attendance: Omit<TeacherAttendance, 'id' | 'schoolId'>) => Promise<void>;
     addExpense: (expense: Omit<Expense, 'id' | 'schoolId'>) => Promise<void>;
     deleteExpense: (id: number) => Promise<void>;
@@ -927,6 +928,33 @@ export const CRMProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         }
     };
 
+    /**
+     * Pulls the full attendance history for one student or group into state.
+     *
+     * The app only loads recent attendance at startup, because the table grows by tens of
+     * thousands of rows a year and the startup response has a hard size limit. Screens that
+     * show a full history call this on mount; records merge by id, so nothing is duplicated
+     * and already-loaded rows stay put.
+     */
+    const loadAttendanceFor = async (filter: { studentId?: number; groupId?: number }) => {
+        if (!state.selectedSchoolId) return;
+        const params = new URLSearchParams({ schoolId: String(state.selectedSchoolId) });
+        if (filter.studentId) params.set('studentId', String(filter.studentId));
+        if (filter.groupId) params.set('groupId', String(filter.groupId));
+        try {
+            const rows: Attendance[] = await apiCall(`attendances?${params.toString()}`, 'GET');
+            if (!Array.isArray(rows)) return;
+            setState(prev => {
+                const byId = new Map(prev.attendances.map(a => [a.id, a]));
+                for (const row of rows) byId.set(row.id, row);
+                return { ...prev, attendances: Array.from(byId.values()) };
+            });
+        } catch {
+            // A failed history fetch leaves the recent window in place rather than
+            // blanking the screen the user is already looking at.
+        }
+    };
+
     const addScore = async (score: Omit<Score, 'id' | 'schoolId'>) => {
         const newScore = await apiCall('scores', 'POST', score);
         setState(prev => ({ ...prev, scores: [...prev.scores, newScore] }));
@@ -1121,7 +1149,7 @@ export const CRMProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             addCourse, updateCourse, deleteCourse,
             addRoom, deleteRoom,
             addSchool, deleteSchool,
-            addAttendance, updateAttendance, addBatchAttendance, deleteBatchAttendance, updateDayTopic, addScore,
+            addAttendance, updateAttendance, addBatchAttendance, deleteBatchAttendance, updateDayTopic, addScore, loadAttendanceFor,
             addTopic, updateTopic, deleteTopic,
             addSyllabus, updateSyllabus, deleteSyllabus,
             addTeacherAttendance,

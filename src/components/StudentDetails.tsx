@@ -82,7 +82,7 @@ export default function StudentDetails() {
     const { id } = useParams<{ id: string }>();
     const navigate = useNavigate();
     const { t } = useLang();
-    const { students, groups, teachers, courses, payments, attendances, transports, addPayment, addAttendance, updateStudent, addStudentToGroup, deleteStudent, topics, updateAttendance, showNotification } = useCRM();
+    const { students, groups, teachers, courses, payments, attendances, transports, addPayment, addAttendance, updateStudent, addStudentToGroup, deleteStudent, topics, updateAttendance, showNotification, loadAttendanceFor } = useCRM();
     const [activeTab, setActiveTab] = useState('umumiy');
     const [showPaymentModal, setShowPaymentModal] = useState(false);
     const [showGroupModal, setShowGroupModal] = useState(false);
@@ -145,6 +145,12 @@ export default function StudentDetails() {
     });
 
     const student = students.find(s => s.id === Number(id));
+
+    // Startup only carries recent attendance, so pull this student's full history —
+    // the profile shows every lesson they have attended, not just the last few weeks.
+    React.useEffect(() => {
+        if (student?.id) loadAttendanceFor({ studentId: student.id });
+    }, [student?.id]);
 
     if (!student) {
         return (

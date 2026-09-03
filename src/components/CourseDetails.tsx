@@ -13,7 +13,7 @@ import FaceAttendance from './FaceAttendance';
 export default function CourseDetails() {
     const { id } = useParams<{ id: string }>();
     const navigate = useNavigate();
-    const { groups, students, teachers, courses, rooms, attendances, payments, addBatchAttendance, addAttendance, updateDayTopic, addStudentToGroup, removeStudentFromGroup, updateGroup, updateCourse, deleteGroup, showNotification, topics, addTopic, updateTopic, addPayment, syllabuses } = useCRM();
+    const { groups, students, teachers, courses, rooms, attendances, payments, addBatchAttendance, addAttendance, updateDayTopic, addStudentToGroup, removeStudentFromGroup, updateGroup, updateCourse, deleteGroup, showNotification, topics, addTopic, updateTopic, addPayment, syllabuses, loadAttendanceFor } = useCRM();
     const [isEditingInfo, setIsEditingInfo] = useState(false);
     const [editForm, setEditForm] = useState({
         teacherId: 0,
@@ -53,6 +53,12 @@ export default function CourseDetails() {
     const course = courses.find(c => c.id === group.courseId);
     const groupStudents = students.filter(s => (group.studentIds || []).includes(s.id));
 
+
+    // The attendance matrix and calendar span far more than the recent window loaded at
+    // startup, so fetch this group's full history once the page opens.
+    React.useEffect(() => {
+        if (group.id) loadAttendanceFor({ groupId: group.id });
+    }, [group.id]);
 
     // Auto-load topic for selected date
     React.useEffect(() => {

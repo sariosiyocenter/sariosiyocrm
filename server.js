@@ -41,6 +41,15 @@ const JWT_SECRET = process.env.JWT_SECRET || 'dev_only_insecure_secret';
 // meant a leaked one — or a former employee's — stayed valid forever.
 const TOKEN_TTL = '90d';
 
+// How far back /api/init carries attendance. Long enough for the marking screen and the
+// month calendar; everything older is fetched on demand. Dates are stored as "YYYY-MM-DD".
+const ATTENDANCE_WINDOW_DAYS = 75;
+function ATTENDANCE_WINDOW_START() {
+  const d = new Date();
+  d.setDate(d.getDate() - ATTENDANCE_WINDOW_DAYS);
+  return d.toISOString().split('T')[0];
+}
+
 // Vercel terminates TLS upstream; without this the rate limiter sees one shared IP.
 app.set('trust proxy', 1);
 
@@ -2152,7 +2161,11 @@ app.get('/api/init', authenticate, async (req, res, next) => {
       prisma.course.findMany({ where: whereQuery }),
       prisma.room.findMany({ where: whereQuery }),
       prisma.setting.findFirst({ where: { schoolId: { in: targetSchoolIds } } }),
-      prisma.attendance.findMany({ where: whereQuery }),
+      // Only the recent window loads with the app. Attendance is the one table that grows
+      // without bound — 255 students marked daily is ~38k rows a year — and /api/init is a
+      // single response that Vercel caps at 4.5 MB. Older records are fetched per student
+      // or per group from /api/attendances when a detail screen actually needs them.
+      prisma.attendance.findMany({ where: { ...whereQuery, date: { gte: ATTENDANCE_WINDOW_START() } } }),
       prisma.score.findMany({ where: whereQuery }),
       prisma.teacherAttendance.findMany({ where: whereQuery }),
       prisma.expense.findMany({ where: whereQuery }),
