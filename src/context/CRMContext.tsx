@@ -70,7 +70,7 @@ interface CRMContextType extends CRMState {
     updateSyllabus: (id: number, syllabus: Partial<Syllabus>) => Promise<void>;
     deleteSyllabus: (id: number) => Promise<void>;
     addScore: (score: Omit<Score, 'id' | 'schoolId'>) => Promise<void>;
-    loadAttendanceFor: (filter: { studentId?: number; groupId?: number }) => Promise<void>;
+    loadAttendanceFor: (filter: { studentId?: number; groupId?: number; sinceDays?: number }) => Promise<void>;
     addTeacherAttendance: (attendance: Omit<TeacherAttendance, 'id' | 'schoolId'>) => Promise<void>;
     addExpense: (expense: Omit<Expense, 'id' | 'schoolId'>) => Promise<void>;
     deleteExpense: (id: number) => Promise<void>;
@@ -936,11 +936,16 @@ export const CRMProvider: React.FC<{ children: React.ReactNode }> = ({ children 
      * show a full history call this on mount; records merge by id, so nothing is duplicated
      * and already-loaded rows stay put.
      */
-    const loadAttendanceFor = async (filter: { studentId?: number; groupId?: number }) => {
+    const loadAttendanceFor = async (filter: { studentId?: number; groupId?: number; sinceDays?: number }) => {
         if (!state.selectedSchoolId) return;
         const params = new URLSearchParams({ schoolId: String(state.selectedSchoolId) });
         if (filter.studentId) params.set('studentId', String(filter.studentId));
         if (filter.groupId) params.set('groupId', String(filter.groupId));
+        if (filter.sinceDays) {
+            const from = new Date();
+            from.setDate(from.getDate() - filter.sinceDays);
+            params.set('from', from.toISOString().split('T')[0]);
+        }
         try {
             const rows: Attendance[] = await apiCall(`attendances?${params.toString()}`, 'GET');
             if (!Array.isArray(rows)) return;

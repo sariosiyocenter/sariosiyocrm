@@ -400,6 +400,11 @@ model Attendance {
   school    School   @relation(fields: [schoolId], references: [id])
 
   @@index([schoolId])
+  // Attendance is the largest table and is always read by one of these three shapes:
+  // the recent window at startup, one group's grid, or one student's history.
+  @@index([schoolId, date])
+  @@index([groupId, date])
+  @@index([studentId])
 }
 
 model Topic {

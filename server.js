@@ -41,9 +41,11 @@ const JWT_SECRET = process.env.JWT_SECRET || 'dev_only_insecure_secret';
 // meant a leaked one — or a former employee's — stayed valid forever.
 const TOKEN_TTL = '90d';
 
-// How far back /api/init carries attendance. Long enough for the marking screen and the
-// month calendar; everything older is fetched on demand. Dates are stored as "YYYY-MM-DD".
-const ATTENDANCE_WINDOW_DAYS = 75;
+// How far back /api/init carries attendance. Only the marking screen needs same-day data
+// on arrival; the group matrix, the calendar and a student's profile all fetch their own
+// history from /api/attendances, so this stays deliberately small — with a full year
+// imported, every extra week here costs roughly 100 KB on every app load.
+const ATTENDANCE_WINDOW_DAYS = 14;
 function ATTENDANCE_WINDOW_START() {
   const d = new Date();
   d.setDate(d.getDate() - ATTENDANCE_WINDOW_DAYS);
@@ -2475,12 +2477,19 @@ app.put('/api/settings', authenticate, async (req, res, next) => {
 // Attendances
 app.get('/api/attendances', authenticate, async (req, res, next) => {
   try {
-    const { schoolId, studentId, groupId } = req.query;
+    const { schoolId, studentId, groupId, from, to } = req.query;
     if (!schoolId) return res.status(400).json({ error: 'schoolId required' });
 
     let where = { schoolId: parseInt(schoolId) };
     if (studentId) where.studentId = parseInt(studentId);
     if (groupId) where.groupId = parseInt(groupId);
+    // A group's full history runs to thousands of rows. Screens that render only a few
+    // weeks pass a date range rather than pulling everything.
+    if (from || to) {
+      where.date = {};
+      if (from) where.date.gte = String(from);
+      if (to) where.date.lte = String(to);
+    }
 
     const attendances = await prisma.attendance.findMany({ where });
     res.json(attendances);

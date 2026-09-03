@@ -57,7 +57,7 @@ export default function CourseDetails() {
     // The attendance matrix and calendar span far more than the recent window loaded at
     // startup, so fetch this group's full history once the page opens.
     React.useEffect(() => {
-        if (group.id) loadAttendanceFor({ groupId: group.id });
+        if (group.id) loadAttendanceFor({ groupId: group.id, sinceDays: 120 });
     }, [group.id]);
 
     // Auto-load topic for selected date
