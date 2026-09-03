@@ -4255,8 +4255,28 @@ app.post('/api/upload', authenticate, async (req, res, next) => {
 
 // ==================== BILLING MODULE ====================
 
+// Claims the right to bill one (school, month). Returns false when another request
+// already holds the claim, so concurrent callers cannot charge the same month twice.
+async function claimBillingRun(schoolId, month) {
+  try {
+    await prisma.billingRun.create({ data: { schoolId, month } });
+    return true;
+  } catch (err) {
+    if (err.code === 'P2002') return false;   // unique violation — someone else won
+    throw err;
+  }
+}
+
+// Recalculation deliberately re-bills a month, so the old claim has to go first.
+async function releaseBillingRun(schoolId, month) {
+  await prisma.billingRun.deleteMany({ where: { schoolId, month } });
+}
+
 async function processMonthlyBilling(schoolId, month) {
   const [year, monthNum] = month.split('-').map(Number);
+  if (!Number.isInteger(year) || !Number.isInteger(monthNum) || monthNum < 1 || monthNum > 12) {
+    throw new Error(`Noto'g'ri oy formati: ${month} (kutilgan "YYYY-MM")`);
+  }
   const lastDay = new Date(year, monthNum, 0).getDate();
   const dateStr = `${year}-${String(monthNum).padStart(2, '0')}-${lastDay}`;
   const monthNames = ['Yanvar','Fevral','Mart','Aprel','May','Iyun','Iyul','Avgust','Sentabr','Oktabr','Noyabr','Dekabr'];
@@ -4324,6 +4344,8 @@ app.post('/api/billing/recalculate-month', authenticate, requireRole('ADMIN'), a
       await prisma.payment.deleteMany({ where: { id: { in: monthPayments.map(p => p.id) } } });
     }
 
+    await releaseBillingRun(sid, month);
+    await claimBillingRun(sid, month);
     const result = await processMonthlyBilling(sid, month);
     res.json({ recalculated: monthPayments.length, ...result });
   } catch (err) { next(err); }
@@ -4347,8 +4369,13 @@ app.get('/api/billing/status', authenticate, async (req, res, next) => {
     const now = new Date();
     const currentMonthStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
 
+    // Billing runs lazily: the first view of a month charges it. Two staff opening the
+    // finance screen at once used to run it twice and charge every student twice over,
+    // so the run is claimed first and only the winner bills.
     if (!billingDone && month <= currentMonthStr) {
-      await processMonthlyBilling(sid, month);
+      if (await claimBillingRun(sid, month)) {
+        await processMonthlyBilling(sid, month);
+      }
       allPayments = await prisma.payment.findMany({ where: { schoolId: sid } });
       positiveThisMonth = allPayments.filter(p => p.amount > 0 && p.date.startsWith(month));
       billingDone = true;

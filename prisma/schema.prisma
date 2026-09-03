@@ -624,6 +624,19 @@ model ExamResult {
   @@index([examId, schoolId])
 }
 
+// One row per (school, month) that monthly billing has been started for.
+// The unique constraint is the lock: two requests arriving at the same time race to
+// insert, one wins, and the loser skips billing instead of charging everyone twice.
+model BillingRun {
+  id        Int      @id @default(autoincrement())
+  schoolId  Int
+  month     String   // "2026-09"
+  createdAt DateTime @default(now())
+
+  @@unique([schoolId, month])
+  @@index([schoolId])
+}
+
 model SaaSLead {
   id          Int      @id @default(autoincrement())
   name        String
