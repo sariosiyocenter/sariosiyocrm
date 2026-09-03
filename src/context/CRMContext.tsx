@@ -66,7 +66,7 @@ interface CRMContextType extends CRMState {
     addTopic: (topic: Omit<Topic, 'id' | 'schoolId'>) => Promise<void>;
     updateTopic: (id: number, topic: Partial<Topic>) => Promise<void>;
     deleteTopic: (id: number) => Promise<void>;
-    addSyllabus: (syllabus: Omit<Syllabus, 'id' | 'schoolId'>) => Promise<void>;
+    addSyllabus: (syllabus: Omit<Syllabus, 'id' | 'schoolId'>) => Promise<Syllabus>;
     updateSyllabus: (id: number, syllabus: Partial<Syllabus>) => Promise<void>;
     deleteSyllabus: (id: number) => Promise<void>;
     addScore: (score: Omit<Score, 'id' | 'schoolId'>) => Promise<void>;
@@ -877,11 +877,14 @@ export const CRMProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         }
     };
 
-    const addSyllabus = async (syllabus: Omit<Syllabus, 'id' | 'schoolId'>) => {
+    // Returns the created record so callers that need its id (e.g. duplicating a
+    // syllabus together with its topics) don't have to hunt for it in state.
+    const addSyllabus = async (syllabus: Omit<Syllabus, 'id' | 'schoolId'>): Promise<Syllabus> => {
         try {
             const newSyllabus = await apiCall('syllabuses', 'POST', syllabus);
             setState(prev => ({ ...prev, syllabuses: [...prev.syllabuses, newSyllabus] }));
             showNotification("Yangi o'quv dasturi muvaffaqiyatli qo'shildi", "success");
+            return newSyllabus;
         } catch (err: any) {
             showNotification("Dastur qo'shishda xatolik: " + err.message, "error");
             throw err;

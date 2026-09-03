@@ -213,11 +213,20 @@ export interface Attendance {
     schoolId: number;
 }
 
+export type TopicStatus = 'Rejada' | 'Jarayonda' | 'Tugallangan';
+
 export interface Topic {
     id: number;
     title: string;
-    description?: string;
+    description?: string | null;
     order: number;
+    /** Modul nomi. Bo'sh bo'lsa mavzu "Boshqa mavzular" guruhida ko'rinadi. */
+    moduleName?: string | null;
+    /** Akademik soat. */
+    hours?: number | null;
+    /** "PDF,Video,Test" ko'rinishidagi belgilar. */
+    materials?: string | null;
+    status?: TopicStatus | string | null;
     syllabusId?: number | null;
     schoolId: number;
 }

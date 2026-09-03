@@ -412,6 +412,14 @@ model Topic {
   title       String
   description String?
   order       Int      @default(1)
+
+  // O'quv reja tuzilmasi. Hammasi ixtiyoriy: moduli yo'q eski mavzular
+  // interfeysda "1-modul" ostida ko'rinadi, ma'lumot yo'qolmaydi.
+  moduleName  String?  // masalan "Tenglama va tengsizliklar"
+  hours       Int?     // akademik soat
+  materials   String?  // "PDF,Video,Test" ko'rinishidagi belgilar ro'yxati
+  status      String?  // Rejada | Jarayonda | Tugallangan
+
   syllabusId  Int?
   syllabus    Syllabus? @relation(fields: [syllabusId], references: [id], onDelete: Cascade)
   schoolId    Int
