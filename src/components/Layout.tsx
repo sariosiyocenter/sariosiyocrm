@@ -41,7 +41,7 @@ export default function Layout({ children, onLogout }: LayoutProps) {
     { label: t('nav_settings'),  icon: Settings,        path: '/settings' },
   ];
 
-  const navItems = user?.role === 'SUPERADMIN' 
+  const navItems = user?.role === 'SUPERADMIN'
     ? [{ label: 'Super Admin', icon: Shield, path: '/superadmin' }]
     : user?.role === 'SELLER'
       ? [{ label: 'Sotuvchi Dashboard', icon: Target, path: '/superadmin' }]
@@ -62,20 +62,68 @@ export default function Layout({ children, onLogout }: LayoutProps) {
   const results = getSearchResults();
 
   const debtorCount = (students || []).filter(s => (s.balance || 0) < 0).length;
-  
+
   const handleResultClick = (path: string) => {
     navigate(path);
     setSearchQuery('');
   };
 
   return (
-    <div className="min-h-screen bg-slate-100 dark:bg-[#0f172a] transition-colors duration-200 flex flex-col">
-      
+    <div className="min-h-screen bg-slate-100 dark:bg-[#0f172a] transition-colors duration-200 flex">
+      {/* ===== CHAP PANEL =====
+          Avval navigatsiya yuqorida gorizontal qator edi va 11 ta bo'lim uni
+          to'ldirib yuborardi. Chap panelda har bir bo'lim o'z joyida turadi va
+          butun sahifa balandligi bo'ylab ko'rinib turadi. */}
+      <aside className="hidden lg:flex w-[92px] shrink-0 flex-col sticky top-0 h-screen border-r border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900">
+        <Link to="/" title={settings?.orgName || 'Quantum Edu'} className="h-[60px] flex items-center justify-center border-b border-slate-100 dark:border-slate-800 shrink-0">
+          <div className="w-10 h-10 rounded-xl overflow-hidden bg-gradient-to-br from-brand to-brand-accent flex items-center justify-center ring-1 ring-black/5 dark:ring-white/10 shadow-sm">
+            {settings?.logo
+              ? <img src={settings.logo} className="w-full h-full object-cover" alt="logo" />
+              : <Atom size={21} className="text-white" />
+            }
+          </div>
+        </Link>
+
+        <nav className="flex-1 overflow-y-auto no-scrollbar py-3 px-2 space-y-1">
+          {navItems.map((item) => {
+            const isActive = location.pathname === item.path;
+            const Icon = item.icon;
+            return (
+              <button
+                key={item.path}
+                onClick={() => navigate(item.path)}
+                title={item.label}
+                className={`w-full flex flex-col items-center gap-1.5 px-1 py-2.5 rounded-xl transition-colors cursor-pointer ${isActive
+                  ? 'bg-brand/10 dark:bg-brand/20 text-brand dark:text-brand'
+                  : 'text-slate-400 dark:text-slate-500 hover:text-slate-800 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800'}`}
+              >
+                <Icon size={19} />
+                <span className={`text-[10px] leading-tight text-center line-clamp-2 ${isActive ? 'font-semibold' : 'font-medium'}`}>
+                  {item.label}
+                </span>
+              </button>
+            );
+          })}
+        </nav>
+
+        <button
+          onClick={onLogout}
+          title="Chiqish"
+          className="m-2 mb-3 flex flex-col items-center gap-1.5 py-2.5 rounded-xl text-slate-400 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-900/20 transition-colors cursor-pointer shrink-0"
+        >
+          <LogOut size={18} />
+          <span className="text-[10px] font-medium">Chiqish</span>
+        </button>
+      </aside>
+
+      <div className="flex-1 min-w-0 flex flex-col">
+
+
       {/* ===== HEADER ===== */}
-      <header className="sticky top-0 z-50 border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-sm">
-        
+      <header className="sticky top-0 z-50 border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900">
+
         {/* Top Bar */}
-        <div className="h-[60px] flex items-center justify-between px-4 lg:px-6 border-b border-slate-100 dark:border-slate-800">
+        <div className="h-[60px] flex items-center justify-between px-4 lg:px-6">
           <div className="flex items-center gap-4">
             {/* Mobile menu button */}
             <button
@@ -87,29 +135,26 @@ export default function Layout({ children, onLogout }: LayoutProps) {
             </button>
 
             {/* Logo */}
-            {/* Belgi tinchlantirildi: doimiy "pulse" animatsiyasi diqqatni
-                o'g'irlar edi, "CRM SYSTEM" yozuvi esa brend rangida bo'lgani uchun
-                markaz nomi bilan raqobatlashardi. Endi nom asosiy, tag yozuv sokin. */}
-            <Link to="/" className="flex items-center gap-2.5 group">
-              <div className="w-10 h-10 rounded-xl overflow-hidden bg-gradient-to-br from-brand to-brand-accent flex items-center justify-center ring-1 ring-black/5 dark:ring-white/10 shadow-sm group-hover:shadow-md transition-shadow duration-200 shrink-0">
+            {/* Kichik ekranda chap panel yashiringan, shuning uchun belgi shu yerda. */}
+            <Link to="/" className="lg:hidden flex items-center shrink-0">
+              <div className="w-9 h-9 rounded-xl overflow-hidden bg-gradient-to-br from-brand to-brand-accent flex items-center justify-center">
                 {settings?.logo
                   ? <img src={settings.logo} className="w-full h-full object-cover" alt="logo" />
-                  : <Atom size={21} className="text-white" />
+                  : <Atom size={19} className="text-white" />
                 }
-              </div>
-              <div className="hidden sm:flex flex-col leading-tight min-w-0">
-                <span className="text-[14px] font-semibold text-slate-900 dark:text-white tracking-tight truncate group-hover:text-brand dark:group-hover:text-brand transition-colors">
-                  {settings?.orgName || 'Quantum Edu'}
-                </span>
-                <span className="text-[11px] font-medium text-slate-400 dark:text-slate-500 tracking-wide">
-                  O'quv markazi CRM
-                </span>
               </div>
             </Link>
 
+            <div className="hidden lg:flex flex-col leading-tight min-w-0">
+              <span className="text-[14px] font-semibold text-slate-900 dark:text-white tracking-tight truncate">
+                {settings?.orgName || 'Quantum Edu'}
+              </span>
+              <span className="text-[11px] font-medium text-slate-400 dark:text-slate-500">O'quv markazi CRM</span>
+            </div>
+
             {/* Branch selector */}
             {user?.role !== 'SUPERADMIN' && user?.role !== 'SELLER' && (
-              <div className="hidden lg:flex items-center ml-3 pl-4 border-l border-slate-200 dark:border-slate-700">
+              <div className="hidden lg:flex items-center pl-4 border-l border-slate-200 dark:border-slate-700">
                 <div className="relative">
                   <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400" />
                   <select
@@ -260,43 +305,13 @@ export default function Layout({ children, onLogout }: LayoutProps) {
             <div className="w-9 h-9 rounded-lg flex items-center justify-center text-sm font-bold text-white" style={{ background: BRAND }}>
               {user?.name?.charAt(0) || 'A'}
             </div>
-            <button
-              onClick={onLogout}
-              className="w-9 h-9 flex items-center justify-center text-slate-400 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-900/20 rounded-lg transition-colors"
-              aria-label="Tizimdan chiqish"
-              title="Chiqish"
-            >
-              <LogOut size={18} />
-            </button>
           </div>
         </div>
 
-        {/* Navigation Bar */}
-        <div className="h-[48px] bg-white dark:bg-slate-900 flex items-center px-4 lg:px-6 gap-1 overflow-x-auto no-scrollbar">
-          {navItems.map((item) => {
-            const isActive = location.pathname === item.path;
-            const Icon = item.icon;
-            return (
-              <button
-                key={item.path}
-                onClick={() => navigate(item.path)}
-                className={`flex items-center gap-2 px-3.5 py-2 rounded-lg text-[13px] font-medium transition-colors whitespace-nowrap
-                  ${isActive
-                    ? 'bg-brand/10 dark:bg-brand/20 text-brand dark:text-brand font-semibold'
-                    : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800'
-                  }
-                `}
-              >
-                <Icon size={15} />
-                {item.label}
-              </button>
-            );
-          })}
-        </div>
       </header>
 
       {/* Main Content */}
-      <main className="flex-1 max-w-[1600px] w-full mx-auto px-4 lg:px-6 py-4">
+      <main className="flex-1 w-full max-w-[1600px] mx-auto px-4 lg:px-6 py-5">
         {/* A failed load used to be invisible: the screen simply came up empty and staff
             concluded the records had been deleted. Say what happened and offer a retry. */}
         {error && (
@@ -317,6 +332,8 @@ export default function Layout({ children, onLogout }: LayoutProps) {
         )}
         {children}
       </main>
+
+      </div>
 
       {/* Toast Notification */}
       {notification && (
