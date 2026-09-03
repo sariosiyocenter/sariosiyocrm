@@ -245,7 +245,7 @@ export const CRMProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         setState(prev => ({ ...prev, selectedSchoolId: id }));
     };
 
-    const fetchData = async (overrideToken?: string, overrideSchoolId?: number, roleOverride?: UserRole) => {
+    const fetchData = async (overrideToken?: string, overrideSchoolId?: number, roleOverride?: UserRole, keepShell = false) => {
         const currentToken = overrideToken || token;
         const currentSchoolId = overrideSchoolId !== undefined ? overrideSchoolId : state.selectedSchoolId;
         const activeRole = roleOverride || user?.role;
@@ -253,7 +253,10 @@ export const CRMProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         if (!currentToken) return;
 
         try {
-            setLoading(true);
+            // `loading` unmounts the whole app down to a full-page spinner, which is right
+            // for the first load but jarring when a reload happens under a screen the user
+            // is already on — switching branch, for one. Those pass keepShell.
+            if (!keepShell) setLoading(true);
 
             // SUPERADMIN — data organizations sahifasida o'zi yuklanadi
             if (activeRole === 'SUPERADMIN') {
@@ -435,7 +438,8 @@ export const CRMProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
     useEffect(() => {
         if (state.selectedSchoolId !== null && user) {
-            fetchData(undefined, undefined, user.role);
+            // Keep the current screen on screen while the new branch's data arrives.
+            fetchData(undefined, undefined, user.role, true);
         }
     }, [state.selectedSchoolId]);
 

@@ -23,7 +23,11 @@ export function LanguageProvider({ children }: { children: ReactNode }) {
     setLangState(l);
   };
 
-  const t = (key: TKey): string => translations[lang][key] as string;
+  // A key missing from the active language used to render as an empty string, so a
+  // button or label simply disappeared. Fall back to Uzbek — the language every key is
+  // written in first — and to the key itself, which at least stays visible and traceable.
+  const t = (key: TKey): string =>
+    (translations[lang]?.[key] as string) ?? (translations.uz?.[key] as string) ?? key;
 
   return (
     <LanguageContext.Provider value={{ lang, setLang, t }}>
