@@ -14,10 +14,10 @@ interface LayoutProps {
 }
 
 // Brand color token — easy to change globally
-const BRAND = '#6366f1';         // indigo-500
-const BRAND_HOVER = '#4f46e5';   // indigo-600
-const BRAND_LIGHT = '#eef2ff';   // indigo-50
-const BRAND_DARK_TEXT = '#a5b4fc'; // indigo-300 for dark mode text
+const BRAND = 'var(--brand-color)';
+const BRAND_HOVER = 'var(--brand-hover)';
+const BRAND_LIGHT = 'var(--brand-light)';
+const BRAND_DARK_TEXT = 'var(--brand-color)';
 
 export default function Layout({ children, onLogout }: LayoutProps) {
   const { user, schools, selectedSchoolId, setSelectedSchoolId, students, leads, groups, teachers, courses, darkMode, toggleDarkMode, notification, settings, error, retryLoad } = useCRM();
@@ -86,14 +86,14 @@ export default function Layout({ children, onLogout }: LayoutProps) {
 
             {/* Logo */}
             <Link to="/" className="flex items-center gap-2.5 group">
-              <div className="w-9 h-9 rounded-xl overflow-hidden bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center shadow-lg shadow-indigo-500/10 group-hover:scale-105 transition-transform duration-200 shrink-0">
+              <div className="w-9 h-9 rounded-xl overflow-hidden bg-gradient-to-br from-brand to-brand-accent flex items-center justify-center shadow-lg shadow-brand/10 group-hover:scale-105 transition-transform duration-200 shrink-0">
                 {settings?.logo
                   ? <img src={settings.logo} className="w-full h-full object-cover" alt="logo" />
                   : <Atom size={20} className="text-white animate-pulse" />
                 }
               </div>
               <div className="flex flex-col leading-none">
-                <span className="text-[13px] font-bold text-slate-900 dark:text-white tracking-tight group-hover:text-indigo-500 dark:group-hover:text-indigo-400 transition-colors">{settings?.orgName || 'Quantum Edu'}</span>
+                <span className="text-[13px] font-bold text-slate-900 dark:text-white tracking-tight group-hover:text-brand dark:group-hover:text-brand transition-colors">{settings?.orgName || 'Quantum Edu'}</span>
                 <span className="text-[11px] font-semibold tracking-widest uppercase mt-0.5" style={{ color: BRAND }}>CRM System</span>
               </div>
             </Link>
@@ -106,7 +106,7 @@ export default function Layout({ children, onLogout }: LayoutProps) {
                   <select
                     value={selectedSchoolId === null ? '' : selectedSchoolId}
                     onChange={(e) => setSelectedSchoolId(Number(e.target.value))}
-                    className="pl-9 pr-8 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-xs font-medium text-slate-700 dark:text-slate-300 outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-400 transition-all cursor-pointer appearance-none min-w-[160px]"
+                    className="pl-9 pr-8 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-xs font-medium text-slate-700 dark:text-slate-300 outline-none focus:ring-2 focus:ring-brand/20 focus:border-brand transition-all cursor-pointer appearance-none min-w-[160px]"
                   >
                     <option value="" disabled>Filialni tanlang</option>
                     {user?.role === 'ADMIN' && (
@@ -131,7 +131,7 @@ export default function Layout({ children, onLogout }: LayoutProps) {
                 placeholder="O'quvchi, ustoz yoki kurs qidiring..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 focus:border-indigo-400 focus:ring-2 focus:ring-indigo-500/20 rounded-xl pl-10 pr-4 py-2 text-sm text-slate-700 dark:text-slate-300 placeholder:text-slate-400 outline-none transition-all"
+                className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 focus:border-brand focus:ring-2 focus:ring-brand/20 rounded-xl pl-10 pr-4 py-2 text-sm text-slate-700 dark:text-slate-300 placeholder:text-slate-400 outline-none transition-all"
               />
               {/* Search results dropdown */}
               {results && (
@@ -147,8 +147,8 @@ export default function Layout({ children, onLogout }: LayoutProps) {
                         <div className="p-2">
                           <p className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider px-3 py-2">O'quvchilar</p>
                           {results.students.map(s => (
-                            <div key={s.id} onClick={() => handleResultClick(`/students/${s.id}`)} className="flex items-center gap-3 px-3 py-2.5 hover:bg-indigo-50 dark:hover:bg-indigo-950/40 rounded-lg cursor-pointer transition-colors group">
-                              <div className="w-8 h-8 rounded-lg bg-indigo-100 dark:bg-indigo-900/40 text-indigo-600 dark:text-indigo-400 flex items-center justify-center text-xs font-bold shrink-0">{s.name.charAt(0)}</div>
+                            <div key={s.id} onClick={() => handleResultClick(`/students/${s.id}`)} className="flex items-center gap-3 px-3 py-2.5 hover:bg-brand/5 dark:hover:bg-brand/15 rounded-lg cursor-pointer transition-colors group">
+                              <div className="w-8 h-8 rounded-lg bg-brand/10 dark:bg-brand/40 text-brand dark:text-brand flex items-center justify-center text-xs font-bold shrink-0">{s.name.charAt(0)}</div>
                               <div>
                                 <p className="text-sm font-medium text-slate-800 dark:text-white">{s.name}</p>
                                 <p className="text-xs text-slate-400">{s.phone}</p>
@@ -219,7 +219,7 @@ export default function Layout({ children, onLogout }: LayoutProps) {
               <select
                 value={lang}
                 onChange={e => setLang(e.target.value as 'uz' | 'ru' | 'en')}
-                className="pl-8 pr-6 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-xs font-bold text-slate-700 dark:text-slate-300 outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-400 transition-all cursor-pointer appearance-none uppercase tracking-widest"
+                className="pl-8 pr-6 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-xs font-bold text-slate-700 dark:text-slate-300 outline-none focus:ring-2 focus:ring-brand/20 focus:border-brand transition-all cursor-pointer appearance-none uppercase tracking-widest"
               >
                 <option value="uz">UZ</option>
                 <option value="ru">RU</option>
@@ -261,7 +261,7 @@ export default function Layout({ children, onLogout }: LayoutProps) {
                 onClick={() => navigate(item.path)}
                 className={`flex items-center gap-2 px-3.5 py-2 rounded-lg text-xs font-semibold transition-all whitespace-nowrap
                   ${isActive
-                    ? 'bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400'
+                    ? 'bg-brand/10 dark:bg-brand/20 text-brand dark:text-brand'
                     : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-50 dark:hover:bg-slate-800'
                   }
                 `}
@@ -336,7 +336,7 @@ export default function Layout({ children, onLogout }: LayoutProps) {
                     onClick={() => { navigate(item.path); setMobileMenuOpen(false); }}
                     className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all
                       ${isActive
-                        ? 'bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400'
+                        ? 'bg-brand/10 dark:bg-brand/20 text-brand dark:text-brand'
                         : 'text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800'
                       }
                     `}

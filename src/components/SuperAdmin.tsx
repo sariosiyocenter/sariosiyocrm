@@ -457,7 +457,7 @@ export default function SuperAdmin() {
           {activeTab === 'leads' && (
             <button
               onClick={() => handleOpenLeadModal(null)}
-              className="inline-flex items-center justify-center gap-2 px-6 py-3.5 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-extrabold uppercase tracking-widest rounded-2xl shadow-lg shadow-indigo-500/20 transition-all hover:scale-105 cursor-pointer"
+              className="inline-flex items-center justify-center gap-2 px-6 py-3.5 bg-brand-dark hover:bg-brand-dark text-white text-xs font-extrabold uppercase tracking-widest rounded-2xl shadow-lg shadow-brand/20 transition-all hover:scale-105 cursor-pointer"
             >
               <Plus size={15} />
               Yangi Lid Qo'shish
@@ -543,11 +543,11 @@ export default function SuperAdmin() {
               {/* Group 2: Sotuv Lidleari Boshqaruvi */}
               <div className="space-y-3">
                 <h3 className="text-[11px] font-black text-gray-400 dark:text-gray-500 uppercase tracking-widest flex items-center gap-2">
-                  <span className="w-1.5 h-1.5 rounded-full bg-indigo-500"></span> Sotuv va Lidlar Metrikalari
+                  <span className="w-1.5 h-1.5 rounded-full bg-brand"></span> Sotuv va Lidlar Metrikalari
                 </h3>
                 <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-4">
                   {[
-                    { label: 'Jami Lidlar', value: totalLeadsCount + ' ta', icon: ClipboardList, color: 'text-indigo-600 bg-indigo-50 dark:bg-indigo-950/20 dark:text-indigo-400' },
+                    { label: 'Jami Lidlar', value: totalLeadsCount + ' ta', icon: ClipboardList, color: 'text-brand bg-brand/10 dark:bg-brand/20 dark:text-brand' },
                     { label: 'Yangi Lidlar', value: newLeadsCount + ' ta', icon: ClipboardList, color: 'text-amber-600 bg-amber-50 dark:bg-amber-950/20 dark:text-amber-400' },
                     { label: 'Bog\'lanilgan', value: contactedLeadsCount + ' ta', icon: Phone, color: 'text-sky-600 bg-sky-50 dark:bg-sky-950/20 dark:text-sky-400' },
                     { label: 'Sotilgan (Won)', value: wonLeadsCount + ' ta', icon: Wallet, color: 'text-emerald-600 bg-emerald-50 dark:bg-emerald-950/20 dark:text-emerald-400' },
@@ -801,7 +801,7 @@ export default function SuperAdmin() {
                   onClick={() => setLeadFilterStatus(st)}
                   className={`px-4 py-2.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
                     leadFilterStatus === st
-                      ? 'bg-indigo-600 text-white shadow-md shadow-indigo-500/10'
+                      ? 'bg-brand-dark text-white shadow-md shadow-brand/10'
                       : 'bg-gray-50 dark:bg-gray-900/50 text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 border border-gray-100 dark:border-gray-700'
                   }`}
                 >
@@ -814,7 +814,7 @@ export default function SuperAdmin() {
           {/* Lead list */}
           {fetchingLeads ? (
             <div className="py-20 flex items-center justify-center">
-              <div className="w-8 h-8 border-[3px] border-indigo-600 border-t-transparent rounded-full animate-spin" />
+              <div className="w-8 h-8 border-[3px] border-brand border-t-transparent rounded-full animate-spin" />
             </div>
           ) : filteredLeads.length === 0 ? (
             <div className="bg-white dark:bg-gray-800 rounded-3xl border border-gray-100 dark:border-gray-700/50 shadow-sm p-16 text-center">
@@ -822,7 +822,7 @@ export default function SuperAdmin() {
               <p className="text-gray-400 font-bold text-sm">Sotuv lidlari topilmadi</p>
               <button
                 onClick={() => handleOpenLeadModal(null)}
-                className="mt-4 inline-flex items-center gap-2 px-5 py-2.5 bg-indigo-600 text-white text-xs font-extrabold uppercase tracking-widest rounded-xl cursor-pointer"
+                className="mt-4 inline-flex items-center gap-2 px-5 py-2.5 bg-brand-dark text-white text-xs font-extrabold uppercase tracking-widest rounded-xl cursor-pointer"
               >
                 <Plus size={13} /> Birinchi lidni qo'shing
               </button>
@@ -850,7 +850,7 @@ export default function SuperAdmin() {
                         <div className="flex gap-1">
                           <button
                             onClick={() => handleOpenLeadModal(lead)}
-                            className="w-7 h-7 flex items-center justify-center text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 dark:hover:bg-indigo-950/20 rounded-lg transition-all cursor-pointer"
+                            className="w-7 h-7 flex items-center justify-center text-gray-400 hover:text-brand hover:bg-brand/10 dark:hover:bg-brand/20 rounded-lg transition-all cursor-pointer"
                             title="Tahrirlash"
                           >
                             <Edit3 size={12} />
@@ -896,7 +896,7 @@ export default function SuperAdmin() {
 
                     <div className="border-t border-gray-50 dark:border-gray-700/50 pt-4 flex items-center justify-between text-[11px] font-extrabold uppercase tracking-widest text-gray-400">
                       <span>Sotuvchi agent:</span>
-                      <span className="text-indigo-600 dark:text-indigo-400 font-black">
+                      <span className="text-brand dark:text-brand font-black">
                         {lead.seller ? lead.seller.name : 'Biriktirilmagan'}
                       </span>
                     </div>
@@ -1057,7 +1057,7 @@ export default function SuperAdmin() {
 
               {/* Admin ma'lumotlari */}
               <div className="space-y-3 pt-4 border-t border-gray-100 dark:border-gray-700/50">
-                <h4 className="text-[11px] font-black text-indigo-600 dark:text-indigo-400 uppercase tracking-widest flex items-center gap-2">
+                <h4 className="text-[11px] font-black text-brand dark:text-brand uppercase tracking-widest flex items-center gap-2">
                   <UserPlus size={13} /> Admin Hisobi *
                 </h4>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
@@ -1067,7 +1067,7 @@ export default function SuperAdmin() {
                       type="text"
                       placeholder="Sardor Rahimov"
                       value={orgAdminName} onChange={e => setOrgAdminName(e.target.value)}
-                      className="w-full px-4 py-3 bg-gray-50 dark:bg-gray-900/50 border border-gray-100 dark:border-gray-700 rounded-2xl text-xs font-bold text-gray-900 dark:text-white focus:border-indigo-500 outline-none transition-all"
+                      className="w-full px-4 py-3 bg-gray-50 dark:bg-gray-900/50 border border-gray-100 dark:border-gray-700 rounded-2xl text-xs font-bold text-gray-900 dark:text-white focus:border-brand outline-none transition-all"
                     />
                   </div>
                   <div>
@@ -1076,7 +1076,7 @@ export default function SuperAdmin() {
                       type="email" required
                       placeholder="admin@sariosiyo.uz"
                       value={orgAdminEmail} onChange={e => setOrgAdminEmail(e.target.value)}
-                      className="w-full px-4 py-3 bg-gray-50 dark:bg-gray-900/50 border border-gray-100 dark:border-gray-700 rounded-2xl text-xs font-bold text-gray-900 dark:text-white focus:border-indigo-500 outline-none transition-all"
+                      className="w-full px-4 py-3 bg-gray-50 dark:bg-gray-900/50 border border-gray-100 dark:border-gray-700 rounded-2xl text-xs font-bold text-gray-900 dark:text-white focus:border-brand outline-none transition-all"
                     />
                   </div>
                   <div>
@@ -1085,7 +1085,7 @@ export default function SuperAdmin() {
                       type="password" required
                       placeholder="••••••••"
                       value={orgAdminPassword} onChange={e => setOrgAdminPassword(e.target.value)}
-                      className="w-full px-4 py-3 bg-gray-50 dark:bg-gray-900/50 border border-gray-100 dark:border-gray-700 rounded-2xl text-xs font-bold text-gray-900 dark:text-white focus:border-indigo-500 outline-none transition-all"
+                      className="w-full px-4 py-3 bg-gray-50 dark:bg-gray-900/50 border border-gray-100 dark:border-gray-700 rounded-2xl text-xs font-bold text-gray-900 dark:text-white focus:border-brand outline-none transition-all"
                     />
                   </div>
                 </div>
@@ -1264,7 +1264,7 @@ export default function SuperAdmin() {
                 <h3 className="text-lg font-black text-gray-900 dark:text-white uppercase tracking-tight">
                   {selectedLead ? 'Lidni Tahrirlash' : 'Yangi Lid'}
                 </h3>
-                <p className="text-[11px] font-bold text-indigo-600 uppercase tracking-widest mt-0.5">CRM Xarid qilish istagida bo'lgan mijoz</p>
+                <p className="text-[11px] font-bold text-brand uppercase tracking-widest mt-0.5">CRM Xarid qilish istagida bo'lgan mijoz</p>
               </div>
               <button aria-label="Yopish" onClick={() => setLeadModalOpen(false)} className="w-9 h-9 flex items-center justify-center text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700 rounded-xl cursor-pointer">
                 <X size={18} />
@@ -1278,7 +1278,7 @@ export default function SuperAdmin() {
                   type="text" required
                   placeholder="Masalan: Jamshid Aliyev"
                   value={leadName} onChange={e => setLeadName(e.target.value)}
-                  className="w-full px-4 py-3 bg-gray-50 dark:bg-gray-900/50 border border-gray-100 dark:border-gray-700 rounded-2xl text-xs font-bold text-gray-900 dark:text-white focus:border-indigo-500 outline-none transition-all"
+                  className="w-full px-4 py-3 bg-gray-50 dark:bg-gray-900/50 border border-gray-100 dark:border-gray-700 rounded-2xl text-xs font-bold text-gray-900 dark:text-white focus:border-brand outline-none transition-all"
                 />
               </div>
               <div>
@@ -1287,7 +1287,7 @@ export default function SuperAdmin() {
                   type="text" required
                   placeholder="Masalan: +998 90 999 88 77"
                   value={leadPhone} onChange={e => setLeadPhone(e.target.value)}
-                  className="w-full px-4 py-3 bg-gray-50 dark:bg-gray-900/50 border border-gray-100 dark:border-gray-700 rounded-2xl text-xs font-bold text-gray-900 dark:text-white focus:border-indigo-500 outline-none transition-all"
+                  className="w-full px-4 py-3 bg-gray-50 dark:bg-gray-900/50 border border-gray-100 dark:border-gray-700 rounded-2xl text-xs font-bold text-gray-900 dark:text-white focus:border-brand outline-none transition-all"
                 />
               </div>
               <div>
@@ -1296,7 +1296,7 @@ export default function SuperAdmin() {
                   type="text"
                   placeholder="Masalan: Quantum Academy"
                   value={leadCenter} onChange={e => setLeadCenter(e.target.value)}
-                  className="w-full px-4 py-3 bg-gray-50 dark:bg-gray-900/50 border border-gray-100 dark:border-gray-700 rounded-2xl text-xs font-bold text-gray-900 dark:text-white focus:border-indigo-500 outline-none transition-all"
+                  className="w-full px-4 py-3 bg-gray-50 dark:bg-gray-900/50 border border-gray-100 dark:border-gray-700 rounded-2xl text-xs font-bold text-gray-900 dark:text-white focus:border-brand outline-none transition-all"
                 />
               </div>
               <div className="grid grid-cols-2 gap-4">
@@ -1305,7 +1305,7 @@ export default function SuperAdmin() {
                   <select
                     value={leadStatus}
                     onChange={e => setLeadStatus(e.target.value)}
-                    className="w-full px-4 py-3 bg-gray-50 dark:bg-gray-900/50 border border-gray-100 dark:border-gray-700 rounded-2xl text-xs font-bold text-gray-900 dark:text-white focus:border-indigo-500 outline-none transition-all"
+                    className="w-full px-4 py-3 bg-gray-50 dark:bg-gray-900/50 border border-gray-100 dark:border-gray-700 rounded-2xl text-xs font-bold text-gray-900 dark:text-white focus:border-brand outline-none transition-all"
                   >
                     <option value="Yangi">Yangi</option>
                     <option value="Bog'lanildi">Bog'lanildi</option>
@@ -1319,7 +1319,7 @@ export default function SuperAdmin() {
                     <select
                       value={leadSellerId}
                       onChange={e => setLeadSellerId(e.target.value)}
-                      className="w-full px-4 py-3 bg-gray-50 dark:bg-gray-900/50 border border-gray-100 dark:border-gray-700 rounded-2xl text-xs font-bold text-gray-900 dark:text-white focus:border-indigo-500 outline-none transition-all"
+                      className="w-full px-4 py-3 bg-gray-50 dark:bg-gray-900/50 border border-gray-100 dark:border-gray-700 rounded-2xl text-xs font-bold text-gray-900 dark:text-white focus:border-brand outline-none transition-all"
                     >
                       <option value="">Tanlanmagan</option>
                       {sellers.map(s => (
@@ -1335,7 +1335,7 @@ export default function SuperAdmin() {
                   placeholder="Uchrashuv vaqti yoki alohida istaklar..."
                   value={leadNotes} onChange={e => setLeadNotes(e.target.value)}
                   rows={3}
-                  className="w-full px-4 py-3 bg-gray-50 dark:bg-gray-900/50 border border-gray-100 dark:border-gray-700 rounded-2xl text-xs font-bold text-gray-900 dark:text-white focus:border-indigo-500 outline-none transition-all resize-none"
+                  className="w-full px-4 py-3 bg-gray-50 dark:bg-gray-900/50 border border-gray-100 dark:border-gray-700 rounded-2xl text-xs font-bold text-gray-900 dark:text-white focus:border-brand outline-none transition-all resize-none"
                 />
               </div>
               <div className="flex gap-3 pt-2">
@@ -1344,7 +1344,7 @@ export default function SuperAdmin() {
                   Bekor
                 </button>
                 <button type="submit" disabled={savingLead}
-                  className="flex-1 py-3 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-extrabold uppercase tracking-widest rounded-2xl shadow-lg shadow-indigo-500/20 transition-all disabled:opacity-50 cursor-pointer">
+                  className="flex-1 py-3 bg-brand-dark hover:bg-brand-dark text-white text-xs font-extrabold uppercase tracking-widest rounded-2xl shadow-lg shadow-brand/20 transition-all disabled:opacity-50 cursor-pointer">
                   {savingLead ? 'Saqlanmoqda...' : 'Saqlash'}
                 </button>
               </div>

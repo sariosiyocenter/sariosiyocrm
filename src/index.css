@@ -2,10 +2,14 @@
 
 @import "tailwindcss";
 
+/* The brand colour is chosen in Settings and injected at runtime as --color-brand.
+   These defaults are the first theme ("Sokin Zumrad"), so the first paint already
+   matches the app instead of flashing indigo before the theme script runs. */
 @theme {
-  --color-brand: #6366f1;
-  --color-brand-dark: #4f46e5;
-  --color-brand-light: #eef2ff;
+  --color-brand: #1b6b6b;
+  --color-brand-dark: #155252;
+  --color-brand-light: #f0f8f8;
+  --color-brand-accent: #2e9c9c;
 }
 
 @variant dark (&:is(.dark, .dark *));

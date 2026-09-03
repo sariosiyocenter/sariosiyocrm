@@ -543,17 +543,21 @@ export default function Students() {
                             </p>
                         </div>
                     </div>
-                    <div className="flex flex-wrap items-center gap-3">
+                    {/* Adding a student is the primary action here; export, import and the
+                        QR link are occasional tools. They used to be four filled buttons in
+                        four unrelated colours, all shouting equally — now only the primary
+                        one is filled, and the rest read as the secondary actions they are. */}
+                    <div className="flex flex-wrap items-center gap-2">
                         <button
                             onClick={handleExport}
-                            className="flex items-center gap-2 px-3 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-extrabold uppercase tracking-widest transition-all cursor-pointer"
+                            className="flex items-center gap-2 px-3 py-2.5 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300 hover:border-brand hover:text-brand rounded-xl text-xs font-bold uppercase tracking-wider transition-all cursor-pointer"
                         >
                             <FileSpreadsheet size={14} /> {t('export')}
                         </button>
-                        <button 
+                        <button
                             onClick={() => document.getElementById('import-excel-input')?.click()}
                             disabled={isImporting}
-                            className="flex items-center gap-2 px-3 py-2.5 bg-violet-600 hover:bg-violet-500 text-white rounded-xl text-xs font-extrabold uppercase tracking-widest transition-all cursor-pointer disabled:opacity-50"
+                            className="flex items-center gap-2 px-3 py-2.5 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300 hover:border-brand hover:text-brand rounded-xl text-xs font-bold uppercase tracking-wider transition-all cursor-pointer disabled:opacity-50"
                         >
                             <FileSpreadsheet size={14} /> {t('import')}
                         </button>
@@ -561,14 +565,14 @@ export default function Students() {
                         {selectedSchoolId !== 0 && (
                             <button
                                 onClick={() => setIsLinkModalOpen(true)}
-                                className="flex items-center gap-2 px-3.5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-extrabold uppercase tracking-widest shadow-lg shadow-blue-600/20 transition-all cursor-pointer"
+                                className="flex items-center gap-2 px-3 py-2.5 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300 hover:border-brand hover:text-brand rounded-xl text-xs font-bold uppercase tracking-wider transition-all cursor-pointer"
                             >
                                 <QrCode size={14} /> {t('create_link')}
                             </button>
                         )}
                         <button
                             onClick={() => setIsModalOpen(true)}
-                            className="flex items-center gap-2 px-4 py-2.5 bg-[#1b6b6b] hover:bg-[#155252] text-white rounded-xl text-xs font-extrabold uppercase tracking-widest shadow-lg shadow-[#1b6b6b]/20 transition-all cursor-pointer"
+                            className="flex items-center gap-2 px-4 py-2.5 ml-1 bg-brand hover:bg-brand-dark text-white rounded-xl text-xs font-extrabold uppercase tracking-wider shadow-lg shadow-brand/20 transition-all cursor-pointer"
                         >
                             <Plus size={14} /> {t('add')}
                         </button>
@@ -777,7 +781,7 @@ export default function Students() {
                                                 student.status === 'Muzlatilgan' ? 'bg-sky-50 text-sky-650 border-sky-100 dark:bg-sky-950/20 dark:text-sky-455' :
                                                 student.status === 'Passiv' ? 'bg-rose-50 text-rose-600 border-rose-100 dark:bg-rose-950/20 dark:text-rose-400' :
                                                 student.status === 'Bitiruvchi' ? 'bg-purple-50 text-purple-600 border-purple-100 dark:bg-purple-950/20 dark:text-purple-400' :
-                                                student.status === 'Sertifikatli' ? 'bg-indigo-50 text-indigo-600 border-indigo-100 dark:bg-indigo-950/20 dark:text-indigo-400' :
+                                                student.status === 'Sertifikatli' ? 'bg-brand/10 text-brand border-brand/20 dark:bg-brand/20 dark:text-brand' :
                                                 'bg-gray-55 text-gray-400 border-gray-100 dark:bg-gray-900/50'
                                             }`}>
                                                 {student.status === 'Faol' ? t('status_active') : 

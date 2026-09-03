@@ -24,14 +24,14 @@ export default function Reports() {
     const { students, payments } = useCRM();
     const { t } = useLang();
     const REPORT_TYPES = [
-        { id: 'payments', label: t('rep_payments'), icon: <CreditCard className="w-4 h-4 text-indigo-500" /> },
+        { id: 'payments', label: t('rep_payments'), icon: <CreditCard className="w-4 h-4 text-brand" /> },
         { id: 'students_payment', label: t('rep_students_payment'), icon: <Users className="w-4 h-4 text-emerald-500" /> },
         { id: 'room_occupancy', label: t('rep_room_occupancy'), icon: <Calendar className="w-4 h-4 text-sky-500" /> },
         { id: 'left_students', label: t('rep_left_students'), icon: <UserMinus className="w-4 h-4 text-rose-500" /> },
         { id: 'staff_attendance', label: t('rep_staff_attendance'), icon: <BarChart3 className="w-4 h-4 text-blue-500" /> },
         { id: 'bonuses', label: t('rep_bonuses'), icon: <TrendingUp className="w-4 h-4 text-amber-500" /> },
         { id: 'leads', label: t('rep_leads'), icon: <Target className="w-4 h-4 text-purple-500" /> },
-        { id: 'students_general', label: t('rep_students_general'), icon: <Users className="w-4 h-4 text-indigo-500" /> },
+        { id: 'students_general', label: t('rep_students_general'), icon: <Users className="w-4 h-4 text-brand" /> },
         { id: 'graduates', label: t('rep_graduates'), icon: <GraduationCap className="w-4 h-4 text-emerald-500" /> },
         { id: 'stats', label: t('rep_stats'), icon: <FileText className="w-4 h-4 text-gray-500" /> },
     ];

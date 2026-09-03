@@ -17,7 +17,7 @@ export function StatCard({ label, value, sub, trend, icon, color = 'sky' }: Stat
         rose: 'bg-rose-50 dark:bg-rose-900/30 text-rose-600 dark:text-rose-400',
         amber: 'bg-amber-50 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400',
         violet: 'bg-violet-50 dark:bg-violet-900/30 text-violet-600 dark:text-violet-400',
-        indigo: 'bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400',
+        indigo: 'bg-brand/10 dark:bg-brand/30 text-brand dark:text-brand',
         gray: 'bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400',
     };
     return (

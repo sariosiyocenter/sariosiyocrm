@@ -90,7 +90,7 @@ const getTriggerTypeMeta = (type: string) => {
     case 'LEAD_WELCOME':
       return { icon: '📞', label: 'Yangi lid', color: 'bg-emerald-100 dark:bg-emerald-950/30 text-emerald-500' };
     case 'GROUP_WELCOME':
-      return { icon: '🎉', label: "Guruhga qo'shilish", color: 'bg-indigo-100 dark:bg-indigo-950/30 text-indigo-500' };
+      return { icon: '🎉', label: "Guruhga qo'shilish", color: 'bg-brand/15 dark:bg-brand/30 text-brand' };
     case 'EXAM_RESULT':
       return { icon: '📝', label: 'Imtihon natijasi', color: 'bg-blue-100 dark:bg-blue-950/30 text-blue-500' };
     case 'PAYMENT_CONFIRM':
@@ -228,9 +228,9 @@ export default function Messaging() {
   };
 
   // CSS Classes
-  const inp = "w-full px-3.5 py-2 bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700/80 rounded-xl text-xs font-bold text-slate-800 dark:text-slate-200 placeholder:text-slate-400 outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/10 transition-all";
+  const inp = "w-full px-3.5 py-2 bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700/80 rounded-xl text-xs font-bold text-slate-800 dark:text-slate-200 placeholder:text-slate-400 outline-none focus:border-brand focus:ring-2 focus:ring-brand/10 transition-all";
   const lbl = "block text-[11px] font-black text-slate-400 uppercase tracking-widest mb-1.5";
-  const btnPrimary = "flex items-center justify-center gap-1.5 px-4 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-black uppercase tracking-wider shadow-lg shadow-indigo-600/20 transition-all active:scale-95 cursor-pointer disabled:opacity-50";
+  const btnPrimary = "flex items-center justify-center gap-1.5 px-4 py-2.5 bg-brand-dark hover:bg-brand-dark text-white rounded-xl text-xs font-black uppercase tracking-wider shadow-lg shadow-brand/20 transition-all active:scale-95 cursor-pointer disabled:opacity-50";
   const btnSecondary = "flex items-center justify-center gap-1.5 px-4 py-2.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-350 hover:bg-slate-50 dark:hover:bg-slate-750 rounded-xl text-xs font-black uppercase tracking-wider transition-all active:scale-95 cursor-pointer";
   const btnDanger = "flex items-center justify-center gap-1.5 px-4 py-2.5 bg-rose-600 hover:bg-rose-700 text-white rounded-xl text-xs font-black uppercase tracking-wider shadow-lg shadow-rose-600/20 transition-all active:scale-95 cursor-pointer";
   const btnOutline = "flex items-center justify-center gap-1 px-2.5 py-1.5 border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 rounded-lg text-[11px] font-black text-slate-500 dark:text-slate-450 uppercase tracking-wider transition-all cursor-pointer";
@@ -882,7 +882,7 @@ export default function Messaging() {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white dark:bg-slate-900 p-6 rounded-3xl border border-slate-100 dark:border-slate-800 shadow-sm">
         <div>
           <h1 className="text-sm font-black text-slate-900 dark:text-white uppercase tracking-tight flex items-center gap-2">
-            <MessageSquare className="w-5 h-5 text-indigo-500" />
+            <MessageSquare className="w-5 h-5 text-brand" />
             {t('nav_messaging')}
           </h1>
           <p className="text-[11px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest mt-0.5">
@@ -894,25 +894,25 @@ export default function Messaging() {
         <div className="flex items-center gap-1.5 bg-slate-55 dark:bg-slate-800/60 p-1 rounded-2xl border border-slate-100 dark:border-slate-700/50">
           <button
             onClick={() => setActiveTab('new')}
-            className={`px-4 py-2 rounded-xl text-[11px] font-black uppercase tracking-wider transition-all cursor-pointer ${activeTab === 'new' ? 'bg-white dark:bg-slate-700 text-indigo-600 dark:text-indigo-400 shadow-sm' : 'text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200'}`}
+            className={`px-4 py-2 rounded-xl text-[11px] font-black uppercase tracking-wider transition-all cursor-pointer ${activeTab === 'new' ? 'bg-white dark:bg-slate-700 text-brand dark:text-brand shadow-sm' : 'text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200'}`}
           >
             Yangi xabar
           </button>
           <button
             onClick={() => setActiveTab('templates')}
-            className={`px-4 py-2 rounded-xl text-[11px] font-black uppercase tracking-wider transition-all cursor-pointer ${activeTab === 'templates' ? 'bg-white dark:bg-slate-700 text-indigo-600 dark:text-indigo-400 shadow-sm' : 'text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200'}`}
+            className={`px-4 py-2 rounded-xl text-[11px] font-black uppercase tracking-wider transition-all cursor-pointer ${activeTab === 'templates' ? 'bg-white dark:bg-slate-700 text-brand dark:text-brand shadow-sm' : 'text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200'}`}
           >
             Shablonlar
           </button>
           <button
             onClick={() => setActiveTab('auto')}
-            className={`px-4 py-2 rounded-xl text-[11px] font-black uppercase tracking-wider transition-all cursor-pointer ${activeTab === 'auto' ? 'bg-white dark:bg-slate-700 text-indigo-600 dark:text-indigo-400 shadow-sm' : 'text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200'}`}
+            className={`px-4 py-2 rounded-xl text-[11px] font-black uppercase tracking-wider transition-all cursor-pointer ${activeTab === 'auto' ? 'bg-white dark:bg-slate-700 text-brand dark:text-brand shadow-sm' : 'text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200'}`}
           >
             Avtomatik
           </button>
           <button
             onClick={() => setActiveTab('history')}
-            className={`px-4 py-2 rounded-xl text-[11px] font-black uppercase tracking-wider transition-all cursor-pointer ${activeTab === 'history' ? 'bg-white dark:bg-slate-700 text-indigo-600 dark:text-indigo-400 shadow-sm' : 'text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200'}`}
+            className={`px-4 py-2 rounded-xl text-[11px] font-black uppercase tracking-wider transition-all cursor-pointer ${activeTab === 'history' ? 'bg-white dark:bg-slate-700 text-brand dark:text-brand shadow-sm' : 'text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200'}`}
           >
             Tarix
           </button>
@@ -925,7 +925,7 @@ export default function Messaging() {
           {/* Left panel: Filters (4 Cols) */}
           <div className="lg:col-span-5 bg-white dark:bg-slate-900 rounded-3xl border border-slate-100 dark:border-slate-800 shadow-sm p-6 space-y-5">
             <div className="flex items-center gap-2 border-b border-dashed border-slate-100 dark:border-slate-800 pb-3">
-              <Filter className="w-4 h-4 text-indigo-500" />
+              <Filter className="w-4 h-4 text-brand" />
               <h2 className="text-xs font-black uppercase tracking-wider text-slate-800 dark:text-slate-200">Qabul qiluvchi filtrlari</h2>
             </div>
 
@@ -935,19 +935,19 @@ export default function Messaging() {
               <div className="grid grid-cols-3 gap-2 bg-slate-55 dark:bg-slate-800/80 p-1 rounded-xl border border-slate-200 dark:border-slate-700/50 mb-3">
                 <button
                   onClick={() => setAudience('STUDENTS')}
-                  className={`py-1.5 rounded-lg text-[11px] font-black uppercase tracking-wider cursor-pointer transition-all ${audience === 'STUDENTS' ? 'bg-white dark:bg-slate-700 text-indigo-650 dark:text-indigo-400 shadow-sm' : 'text-slate-500'}`}
+                  className={`py-1.5 rounded-lg text-[11px] font-black uppercase tracking-wider cursor-pointer transition-all ${audience === 'STUDENTS' ? 'bg-white dark:bg-slate-700 text-brand dark:text-brand shadow-sm' : 'text-slate-500'}`}
                 >
                   O'quvchilar
                 </button>
                 <button
                   onClick={() => setAudience('TEACHERS')}
-                  className={`py-1.5 rounded-lg text-[11px] font-black uppercase tracking-wider cursor-pointer transition-all ${audience === 'TEACHERS' ? 'bg-white dark:bg-slate-700 text-indigo-650 dark:text-indigo-400 shadow-sm' : 'text-slate-500'}`}
+                  className={`py-1.5 rounded-lg text-[11px] font-black uppercase tracking-wider cursor-pointer transition-all ${audience === 'TEACHERS' ? 'bg-white dark:bg-slate-700 text-brand dark:text-brand shadow-sm' : 'text-slate-500'}`}
                 >
                   O'qituvchilar
                 </button>
                 <button
                   onClick={() => setAudience('STAFF')}
-                  className={`py-1.5 rounded-lg text-[11px] font-black uppercase tracking-wider cursor-pointer transition-all ${audience === 'STAFF' ? 'bg-white dark:bg-slate-700 text-indigo-650 dark:text-indigo-400 shadow-sm' : 'text-slate-500'}`}
+                  className={`py-1.5 rounded-lg text-[11px] font-black uppercase tracking-wider cursor-pointer transition-all ${audience === 'STAFF' ? 'bg-white dark:bg-slate-700 text-brand dark:text-brand shadow-sm' : 'text-slate-500'}`}
                 >
                   Xodimlar
                 </button>
@@ -961,25 +961,25 @@ export default function Messaging() {
                 <div className="grid grid-cols-4 gap-1 bg-slate-55 dark:bg-slate-800/80 p-1 rounded-xl border border-slate-200 dark:border-slate-700/50">
                   <button
                     onClick={() => setRecipientTo('STUDENT')}
-                    className={`py-1.5 rounded-lg text-[11px] font-black uppercase tracking-wider cursor-pointer transition-all ${recipientTo === 'STUDENT' ? 'bg-white dark:bg-slate-700 text-indigo-600 dark:text-indigo-400 shadow-sm' : 'text-slate-500'}`}
+                    className={`py-1.5 rounded-lg text-[11px] font-black uppercase tracking-wider cursor-pointer transition-all ${recipientTo === 'STUDENT' ? 'bg-white dark:bg-slate-700 text-brand dark:text-brand shadow-sm' : 'text-slate-500'}`}
                   >
                     O'quvchi
                   </button>
                   <button
                     onClick={() => setRecipientTo('FATHER')}
-                    className={`py-1.5 rounded-lg text-[11px] font-black uppercase tracking-wider cursor-pointer transition-all ${recipientTo === 'FATHER' ? 'bg-white dark:bg-slate-700 text-indigo-600 dark:text-indigo-400 shadow-sm' : 'text-slate-500'}`}
+                    className={`py-1.5 rounded-lg text-[11px] font-black uppercase tracking-wider cursor-pointer transition-all ${recipientTo === 'FATHER' ? 'bg-white dark:bg-slate-700 text-brand dark:text-brand shadow-sm' : 'text-slate-500'}`}
                   >
                     Otasi
                   </button>
                   <button
                     onClick={() => setRecipientTo('MOTHER')}
-                    className={`py-1.5 rounded-lg text-[11px] font-black uppercase tracking-wider cursor-pointer transition-all ${recipientTo === 'MOTHER' ? 'bg-white dark:bg-slate-700 text-indigo-600 dark:text-indigo-400 shadow-sm' : 'text-slate-500'}`}
+                    className={`py-1.5 rounded-lg text-[11px] font-black uppercase tracking-wider cursor-pointer transition-all ${recipientTo === 'MOTHER' ? 'bg-white dark:bg-slate-700 text-brand dark:text-brand shadow-sm' : 'text-slate-500'}`}
                   >
                     Onasi
                   </button>
                   <button
                     onClick={() => setRecipientTo('PARENT')}
-                    className={`py-1.5 rounded-lg text-[11px] font-black uppercase tracking-wider cursor-pointer transition-all ${recipientTo === 'PARENT' ? 'bg-white dark:bg-slate-700 text-indigo-600 dark:text-indigo-400 shadow-sm' : 'text-slate-500'}`}
+                    className={`py-1.5 rounded-lg text-[11px] font-black uppercase tracking-wider cursor-pointer transition-all ${recipientTo === 'PARENT' ? 'bg-white dark:bg-slate-700 text-brand dark:text-brand shadow-sm' : 'text-slate-500'}`}
                   >
                     Ota-ona
                   </button>
@@ -1140,13 +1140,13 @@ export default function Messaging() {
                     type="checkbox"
                     checked={allChecked}
                     onChange={(e) => toggleAll(e.target.checked)}
-                    className="w-3.5 h-3.5 rounded border-slate-300 dark:border-slate-700 text-indigo-600 focus:ring-indigo-500 cursor-pointer bg-white dark:bg-slate-800"
+                    className="w-3.5 h-3.5 rounded border-slate-300 dark:border-slate-700 text-brand focus:ring-brand cursor-pointer bg-white dark:bg-slate-800"
                   />
                   <span className="text-[11px] font-black uppercase tracking-wider text-slate-500 dark:text-slate-400">
                     Barchasi
                   </span>
                 </div>
-                <span className="text-[11px] font-black tabular-nums text-indigo-500">
+                <span className="text-[11px] font-black tabular-nums text-brand">
                   {activeSelectedTargetCount} ta xabar / {filteredRecipients.length} ta o'quvchi
                 </span>
               </div>
@@ -1167,9 +1167,9 @@ export default function Messaging() {
                                 [entry.key]: e.target.checked
                               }));
                             }}
-                            className="w-3.5 h-3.5 rounded border-slate-300 dark:border-slate-700 text-indigo-600 focus:ring-indigo-500 cursor-pointer bg-white dark:bg-slate-800"
+                            className="w-3.5 h-3.5 rounded border-slate-300 dark:border-slate-700 text-brand focus:ring-brand cursor-pointer bg-white dark:bg-slate-800"
                           />
-                          <div className={`w-6 h-6 rounded-full flex items-center justify-center text-[11px] font-black uppercase ${entry.gender === 'Ayol' ? 'bg-pink-100 dark:bg-pink-950/30 text-pink-500' : 'bg-indigo-100 dark:bg-indigo-950/30 text-indigo-500'}`}>
+                          <div className={`w-6 h-6 rounded-full flex items-center justify-center text-[11px] font-black uppercase ${entry.gender === 'Ayol' ? 'bg-pink-100 dark:bg-pink-950/30 text-pink-500' : 'bg-brand/15 dark:bg-brand/30 text-brand'}`}>
                             {entry.displayName.charAt(0)}
                           </div>
                           <div>
@@ -1209,7 +1209,7 @@ export default function Messaging() {
           {/* Right panel: Campaign Builder (7 Cols) */}
           <div className="lg:col-span-7 bg-white dark:bg-slate-900 rounded-3xl border border-slate-100 dark:border-slate-800 shadow-sm p-6 space-y-6">
             <div className="flex items-center gap-2 border-b border-dashed border-slate-100 dark:border-slate-800 pb-3">
-              <Send className="w-4 h-4 text-indigo-500" />
+              <Send className="w-4 h-4 text-brand" />
               <h2 className="text-xs font-black uppercase tracking-wider text-slate-800 dark:text-slate-200">Xabar yuborish paneli</h2>
             </div>
 
@@ -1220,14 +1220,14 @@ export default function Messaging() {
                   <button
                     type="button"
                     onClick={() => setChannel('SMS')}
-                    className={`py-1.5 rounded-lg text-[11px] font-black uppercase tracking-wider cursor-pointer transition-all ${channel === 'SMS' ? 'bg-white dark:bg-slate-700 text-indigo-600 dark:text-indigo-400 shadow-sm' : 'text-slate-500'}`}
+                    className={`py-1.5 rounded-lg text-[11px] font-black uppercase tracking-wider cursor-pointer transition-all ${channel === 'SMS' ? 'bg-white dark:bg-slate-700 text-brand dark:text-brand shadow-sm' : 'text-slate-500'}`}
                   >
                     SMS
                   </button>
                   <button
                     type="button"
                     onClick={() => setChannel(useSmsFallback ? 'BOTH' : 'TELEGRAM')}
-                    className={`py-1.5 rounded-lg text-[11px] font-black uppercase tracking-wider cursor-pointer transition-all ${channel !== 'SMS' ? 'bg-white dark:bg-slate-700 text-indigo-600 dark:text-indigo-400 shadow-sm' : 'text-slate-500'}`}
+                    className={`py-1.5 rounded-lg text-[11px] font-black uppercase tracking-wider cursor-pointer transition-all ${channel !== 'SMS' ? 'bg-white dark:bg-slate-700 text-brand dark:text-brand shadow-sm' : 'text-slate-500'}`}
                   >
                     Telegram
                   </button>
@@ -1242,7 +1242,7 @@ export default function Messaging() {
                         setUseSmsFallback(checked);
                         setChannel(checked ? 'BOTH' : 'TELEGRAM');
                       }}
-                      className="w-3.5 h-3.5 rounded border-slate-300 dark:border-slate-700 text-indigo-600 focus:ring-indigo-500 cursor-pointer bg-white dark:bg-slate-800"
+                      className="w-3.5 h-3.5 rounded border-slate-300 dark:border-slate-700 text-brand focus:ring-brand cursor-pointer bg-white dark:bg-slate-800"
                     />
                     <span className="text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wide">
                       Telegramdan ro'yxatdan o'tmaganlarga SMS yuborilsin
@@ -1275,11 +1275,11 @@ export default function Messaging() {
             <div>
               <label className={lbl}>O'zgaruvchi qo'shish</label>
               <div className="flex flex-wrap gap-2">
-                <button type="button" onClick={() => insertVariable('{ism}')} className="px-2.5 py-1.5 bg-slate-100 dark:bg-slate-800 text-[11px] font-bold text-slate-700 dark:text-slate-300 rounded-lg hover:bg-indigo-50 dark:hover:bg-indigo-950 border border-slate-200 dark:border-slate-700 transition-all cursor-pointer">ism</button>
-                <button type="button" onClick={() => insertVariable('{qarz}')} className="px-2.5 py-1.5 bg-slate-100 dark:bg-slate-800 text-[11px] font-bold text-slate-700 dark:text-slate-300 rounded-lg hover:bg-indigo-50 dark:hover:bg-indigo-950 border border-slate-200 dark:border-slate-700 transition-all cursor-pointer">qarz</button>
-                <button type="button" onClick={() => insertVariable('{balans}')} className="px-2.5 py-1.5 bg-slate-100 dark:bg-slate-800 text-[11px] font-bold text-slate-700 dark:text-slate-300 rounded-lg hover:bg-indigo-50 dark:hover:bg-indigo-950 border border-slate-200 dark:border-slate-700 transition-all cursor-pointer">balans</button>
-                <button type="button" onClick={() => insertVariable('{guruh}')} className="px-2.5 py-1.5 bg-slate-100 dark:bg-slate-800 text-[11px] font-bold text-slate-700 dark:text-slate-300 rounded-lg hover:bg-indigo-50 dark:hover:bg-indigo-950 border border-slate-200 dark:border-slate-700 transition-all cursor-pointer">guruh</button>
-                <button type="button" onClick={() => insertVariable('{markaz}')} className="px-2.5 py-1.5 bg-slate-100 dark:bg-slate-800 text-[11px] font-bold text-slate-700 dark:text-slate-300 rounded-lg hover:bg-indigo-50 dark:hover:bg-indigo-950 border border-slate-200 dark:border-slate-700 transition-all cursor-pointer">markaz</button>
+                <button type="button" onClick={() => insertVariable('{ism}')} className="px-2.5 py-1.5 bg-slate-100 dark:bg-slate-800 text-[11px] font-bold text-slate-700 dark:text-slate-300 rounded-lg hover:bg-brand/10 dark:hover:bg-brand border border-slate-200 dark:border-slate-700 transition-all cursor-pointer">ism</button>
+                <button type="button" onClick={() => insertVariable('{qarz}')} className="px-2.5 py-1.5 bg-slate-100 dark:bg-slate-800 text-[11px] font-bold text-slate-700 dark:text-slate-300 rounded-lg hover:bg-brand/10 dark:hover:bg-brand border border-slate-200 dark:border-slate-700 transition-all cursor-pointer">qarz</button>
+                <button type="button" onClick={() => insertVariable('{balans}')} className="px-2.5 py-1.5 bg-slate-100 dark:bg-slate-800 text-[11px] font-bold text-slate-700 dark:text-slate-300 rounded-lg hover:bg-brand/10 dark:hover:bg-brand border border-slate-200 dark:border-slate-700 transition-all cursor-pointer">balans</button>
+                <button type="button" onClick={() => insertVariable('{guruh}')} className="px-2.5 py-1.5 bg-slate-100 dark:bg-slate-800 text-[11px] font-bold text-slate-700 dark:text-slate-300 rounded-lg hover:bg-brand/10 dark:hover:bg-brand border border-slate-200 dark:border-slate-700 transition-all cursor-pointer">guruh</button>
+                <button type="button" onClick={() => insertVariable('{markaz}')} className="px-2.5 py-1.5 bg-slate-100 dark:bg-slate-800 text-[11px] font-bold text-slate-700 dark:text-slate-300 rounded-lg hover:bg-brand/10 dark:hover:bg-brand border border-slate-200 dark:border-slate-700 transition-all cursor-pointer">markaz</button>
               </div>
             </div>
 
@@ -1291,7 +1291,7 @@ export default function Messaging() {
                 onChange={e => setMessageText(e.target.value)}
                 rows={5}
                 placeholder="Xabar matnini bu yerga yozing..."
-                className="w-full px-4 py-3 bg-slate-55 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 rounded-2xl text-xs font-semibold text-slate-800 dark:text-slate-200 placeholder:text-slate-400 outline-none focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 transition-all resize-none"
+                className="w-full px-4 py-3 bg-slate-55 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 rounded-2xl text-xs font-semibold text-slate-800 dark:text-slate-200 placeholder:text-slate-400 outline-none focus:border-brand focus:ring-4 focus:ring-brand/10 transition-all resize-none"
               />
 
               {/* Length statistics */}
@@ -1346,11 +1346,11 @@ export default function Messaging() {
               <div key={t.id} className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-100 dark:border-slate-800 shadow-sm p-6 flex flex-col justify-between space-y-4 hover:shadow-md transition-all group">
                 <div className="space-y-2">
                   <div className="flex items-center justify-between">
-                    <span className="text-[11px] font-black uppercase tracking-widest px-2 py-1 rounded bg-indigo-50 dark:bg-indigo-950/40 text-indigo-500 dark:text-indigo-400 border border-indigo-100 dark:border-indigo-900/30">
+                    <span className="text-[11px] font-black uppercase tracking-widest px-2 py-1 rounded bg-brand/10 dark:bg-brand/40 text-brand dark:text-brand border border-brand/20 dark:border-brand/30">
                       {t.category}
                     </span>
                     <div className="flex items-center gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity">
-                      <button onClick={() => openTemplateModal(t)} className="p-1 text-slate-400 hover:text-indigo-500 transition-colors cursor-pointer">
+                      <button onClick={() => openTemplateModal(t)} className="p-1 text-slate-400 hover:text-brand transition-colors cursor-pointer">
                         <Edit size={13} />
                       </button>
                       <button onClick={() => handleDeleteTemplate(t.id)} className="p-1 text-slate-400 hover:text-rose-500 transition-colors cursor-pointer">
@@ -1411,7 +1411,7 @@ export default function Messaging() {
                         </span>
                       </div>
                       <div className="flex items-center gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity">
-                        <button onClick={() => openAutoRuleModal(rule)} className="p-1 text-slate-400 hover:text-indigo-500 transition-colors cursor-pointer">
+                        <button onClick={() => openAutoRuleModal(rule)} className="p-1 text-slate-400 hover:text-brand transition-colors cursor-pointer">
                           <Edit size={13} />
                         </button>
                         <button onClick={() => handleDeleteRule(rule.id!)} className="p-1 text-slate-400 hover:text-rose-500 transition-colors cursor-pointer">
@@ -1448,7 +1448,7 @@ export default function Messaging() {
                     </span>
                     <button
                       onClick={() => handleToggleRuleEnabled(rule)}
-                      className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out outline-none ${rule.enabled ? 'bg-indigo-600' : 'bg-slate-200 dark:bg-slate-700'}`}
+                      className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out outline-none ${rule.enabled ? 'bg-brand-dark' : 'bg-slate-200 dark:bg-slate-700'}`}
                     >
                       <span className={`pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${rule.enabled ? 'translate-x-4' : 'translate-x-0'}`} />
                     </button>
@@ -1504,11 +1504,11 @@ export default function Messaging() {
                   <div
                     key={c.id}
                     onClick={() => setSelectedCampaignId(c.id)}
-                    className={`p-3.5 rounded-2xl border transition-all cursor-pointer ${selectedCampaignId === c.id ? 'bg-indigo-50/50 dark:bg-indigo-950/20 border-indigo-200 dark:border-indigo-900/60 shadow-sm' : 'bg-slate-55 dark:bg-slate-800/40 border-slate-100 dark:border-slate-800/60 hover:bg-slate-100/50 dark:hover:bg-slate-750'}`}
+                    className={`p-3.5 rounded-2xl border transition-all cursor-pointer ${selectedCampaignId === c.id ? 'bg-brand/10/50 dark:bg-brand/20 border-brand/30 dark:border-brand/60 shadow-sm' : 'bg-slate-55 dark:bg-slate-800/40 border-slate-100 dark:border-slate-800/60 hover:bg-slate-100/50 dark:hover:bg-slate-750'}`}
                   >
                     <div className="flex justify-between items-center text-[11px] font-black text-slate-400 uppercase tracking-widest">
                       <span>{new Date(c.createdAt).toLocaleDateString()}</span>
-                      <span className="bg-indigo-50 dark:bg-indigo-900/40 px-1.5 py-0.5 rounded text-indigo-650">{c.channel}</span>
+                      <span className="bg-brand/10 dark:bg-brand/40 px-1.5 py-0.5 rounded text-brand">{c.channel}</span>
                     </div>
                     <p className="text-[12px] text-slate-700 dark:text-slate-350 font-semibold mt-1.5 line-clamp-2 leading-relaxed">
                       {c.message}
@@ -1535,7 +1535,7 @@ export default function Messaging() {
                 <div className="flex items-center gap-3">
                   <h3 className="text-xs font-black uppercase tracking-wider text-slate-800 dark:text-slate-200">Xabar yuborish jurnali</h3>
                   {selectedCampaignId !== null && (
-                    <span className="text-[11px] font-black uppercase tracking-widest px-2 py-0.5 bg-indigo-50 dark:bg-indigo-950/40 text-indigo-500 dark:text-indigo-400 border border-indigo-100 dark:border-indigo-900/30">
+                    <span className="text-[11px] font-black uppercase tracking-widest px-2 py-0.5 bg-brand/10 dark:bg-brand/40 text-brand dark:text-brand border border-brand/20 dark:border-brand/30">
                       Kampaniya #{selectedCampaignId}
                     </span>
                   )}
@@ -1544,7 +1544,7 @@ export default function Messaging() {
                 <div className="flex items-center gap-2">
                   <button
                     onClick={fetchLogs}
-                    className="p-1.5 bg-slate-55 dark:bg-slate-800 border border-slate-100 dark:border-slate-700 text-slate-450 hover:text-indigo-500 rounded-lg transition-colors cursor-pointer"
+                    className="p-1.5 bg-slate-55 dark:bg-slate-800 border border-slate-100 dark:border-slate-700 text-slate-450 hover:text-brand rounded-lg transition-colors cursor-pointer"
                     disabled={logsLoading}
                   >
                     <RefreshCw size={14} className={logsLoading ? 'animate-spin' : ''} />
@@ -1561,7 +1561,7 @@ export default function Messaging() {
                     placeholder="Qidiruv (telefon, xabar matni)..."
                     value={searchLogQuery}
                     onChange={(e) => setSearchLogQuery(e.target.value)}
-                    className="w-full pl-9 pr-4 py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold text-slate-900 dark:text-white placeholder:text-slate-400 focus:border-indigo-500 outline-none transition-all"
+                    className="w-full pl-9 pr-4 py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold text-slate-900 dark:text-white placeholder:text-slate-400 focus:border-brand outline-none transition-all"
                   />
                 </div>
                 <div className="flex items-center gap-3 w-full md:w-auto justify-end">
@@ -1569,7 +1569,7 @@ export default function Messaging() {
                   <select
                     value={statusLogFilter}
                     onChange={e => setStatusLogFilter(e.target.value)}
-                    className="px-3 py-1.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-[11px] font-bold uppercase tracking-widest outline-none focus:border-indigo-500 text-slate-900 dark:text-white cursor-pointer"
+                    className="px-3 py-1.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-[11px] font-bold uppercase tracking-widest outline-none focus:border-brand text-slate-900 dark:text-white cursor-pointer"
                   >
                     <option value="all">Barcha holatlar</option>
                     <option value="sent">Muvaffaqiyatli</option>
@@ -1580,7 +1580,7 @@ export default function Messaging() {
               </div>
 
               {/* Resend actions bar */}
-              <div className="p-4 bg-indigo-50/40 dark:bg-indigo-950/10 border-b border-indigo-100 dark:border-indigo-900/40 flex flex-wrap items-center gap-4">
+              <div className="p-4 bg-brand/10/40 dark:bg-brand/10 border-b border-brand/20 dark:border-brand/40 flex flex-wrap items-center gap-4">
                 <span className="text-[11px] font-black uppercase tracking-wider text-slate-500 dark:text-slate-400">Xatoliklarni qayta jo'natish:</span>
                 {Object.values(selectedLogIds).filter(Boolean).length > 0 ? (
                   <button
@@ -1598,19 +1598,19 @@ export default function Messaging() {
                       type="date"
                       value={resendStartDate}
                       onChange={e => setResendStartDate(e.target.value)}
-                      className="px-2.5 py-1 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-[11px] font-bold text-slate-800 dark:text-slate-200 outline-none focus:border-indigo-500"
+                      className="px-2.5 py-1 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-[11px] font-bold text-slate-800 dark:text-slate-200 outline-none focus:border-brand"
                     />
                     <span className="text-[11px] font-bold text-slate-400">{"->"}</span>
                     <input
                       type="date"
                       value={resendEndDate}
                       onChange={e => setResendEndDate(e.target.value)}
-                      className="px-2.5 py-1 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-[11px] font-bold text-slate-800 dark:text-slate-200 outline-none focus:border-indigo-500"
+                      className="px-2.5 py-1 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-[11px] font-bold text-slate-800 dark:text-slate-200 outline-none focus:border-brand"
                     />
                     <button
                       onClick={() => handleResendLogs(true)}
                       disabled={resendingLogs}
-                      className="flex items-center gap-1.5 px-3.5 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-[11px] font-black uppercase tracking-wider transition-all cursor-pointer shadow-sm active:scale-95"
+                      className="flex items-center gap-1.5 px-3.5 py-1.5 bg-brand-dark hover:bg-brand-dark text-white rounded-xl text-[11px] font-black uppercase tracking-wider transition-all cursor-pointer shadow-sm active:scale-95"
                     >
                       <Send size={12} />
                       Ushbu oraliqdagi barcha xatolarni jo'natish
@@ -1629,7 +1629,7 @@ export default function Messaging() {
                           type="checkbox"
                           checked={allFailedChecked}
                           onChange={(e) => toggleAllFailed(e.target.checked)}
-                          className="w-3.5 h-3.5 rounded border-slate-300 dark:border-slate-700 text-indigo-600 focus:ring-indigo-500 cursor-pointer bg-white dark:bg-slate-800"
+                          className="w-3.5 h-3.5 rounded border-slate-300 dark:border-slate-700 text-brand focus:ring-brand cursor-pointer bg-white dark:bg-slate-800"
                           disabled={failedLogsInDisplay.length === 0}
                         />
                       </th>
@@ -1654,7 +1654,7 @@ export default function Messaging() {
                                   [log.id]: e.target.checked
                                 }));
                               }}
-                              className="w-3.5 h-3.5 rounded border-slate-300 dark:border-slate-700 text-indigo-600 focus:ring-indigo-500 cursor-pointer bg-white dark:bg-slate-800"
+                              className="w-3.5 h-3.5 rounded border-slate-300 dark:border-slate-700 text-brand focus:ring-brand cursor-pointer bg-white dark:bg-slate-800"
                             />
                           )}
                         </td>
@@ -1709,7 +1709,7 @@ export default function Messaging() {
                             {log.channel === 'SMS' && log.eskizId && (
                               <button
                                 onClick={() => handleCheckStatus(log.id)}
-                                className="p-1 text-slate-400 hover:text-indigo-500 dark:hover:text-indigo-400 hover:bg-slate-50 dark:hover:bg-slate-800 rounded transition-all cursor-pointer"
+                                className="p-1 text-slate-400 hover:text-brand dark:hover:text-brand hover:bg-slate-50 dark:hover:bg-slate-800 rounded transition-all cursor-pointer"
                                 title="Eskiz holatini tekshirish"
                               >
                                 <RefreshCw size={10} />
@@ -1847,7 +1847,7 @@ export default function Messaging() {
                 placeholder="Hurmatli {ism}, ..."
                 value={templateForm.body}
                 onChange={e => setTemplateForm({ ...templateForm, body: e.target.value })}
-                className="w-full px-3 py-2 bg-slate-55 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-semibold text-slate-800 dark:text-slate-200 outline-none focus:border-indigo-500 transition-all resize-none"
+                className="w-full px-3 py-2 bg-slate-55 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-semibold text-slate-800 dark:text-slate-200 outline-none focus:border-brand transition-all resize-none"
               />
               <div className="text-[11px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest mt-1">
                 O'zgaruvchilar: {"{ism}"}, {"{qarz}"}, {"{balans}"}, {"{guruh}"}, {"{markaz}"}
@@ -2005,7 +2005,7 @@ export default function Messaging() {
                 placeholder="Hurmatli {ism}, ..."
                 value={autoRuleForm.body}
                 onChange={e => setAutoRuleForm({ ...autoRuleForm, body: e.target.value })}
-                className="w-full px-3 py-2 bg-slate-55 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-semibold text-slate-800 dark:text-slate-200 outline-none focus:border-indigo-500 transition-all resize-none"
+                className="w-full px-3 py-2 bg-slate-55 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-semibold text-slate-800 dark:text-slate-200 outline-none focus:border-brand transition-all resize-none"
               />
               <div className="text-[11px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest mt-1">
                 O'zgaruvchilar: {"{ism}"}, {"{qarz}"}, {"{balans}"}, {"{guruh}"}, {"{markaz}"}, {"{imtihon_nomi}"}, {"{imtihon_ball}"}, {"{imtihon_foiz}"}, {"{to_lov_summa}"}, {"{bahosi}"}
