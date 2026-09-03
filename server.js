@@ -181,6 +181,15 @@ const authenticate = (req, res, next) => {
   });
 };
 
+// Route-level role gate. SUPERADMIN passes everywhere by definition.
+function requireRole(...roles) {
+  return (req, res, next) => {
+    if (req.user?.role === 'SUPERADMIN' || roles.includes(req.user?.role)) return next();
+    return res.status(403).json({ error: 'Bu amal uchun ruxsatingiz yo\'q' });
+  };
+}
+const STAFF_MANAGERS = ['ADMIN', 'MANAGER'];
+
 // Basic API to verify backend status
 app.get('/api/status', async (req, res) => {
   try {
@@ -858,7 +867,7 @@ app.put('/api/students/:id', authenticate, async (req, res, next) => {
     next(error);
   }
 });
-app.delete('/api/students/:id', authenticate, async (req, res, next) => {
+app.delete('/api/students/:id', authenticate, requireRole(...STAFF_MANAGERS), async (req, res, next) => {
   try {
     const sid = parseInt(req.params.id);
     if (isNaN(sid)) return res.status(400).json({ error: 'Noto\u2019g\u2019ri ID' });
@@ -907,7 +916,7 @@ app.put('/api/teachers/:id', authenticate, async (req, res, next) => {
     res.json(teacher);
   } catch (error) { next(error); }
 });
-app.delete('/api/teachers/:id', authenticate, async (req, res, next) => {
+app.delete('/api/teachers/:id', authenticate, requireRole(...STAFF_MANAGERS), async (req, res, next) => {
   try {
     const { id } = req.params;
     await prisma.teacher.delete({ where: { id: parseInt(id) } });
@@ -1123,7 +1132,7 @@ app.put('/api/groups/:id', authenticate, async (req, res, next) => {
   }
 });
 
-app.delete('/api/groups/:id', authenticate, async (req, res, next) => {
+app.delete('/api/groups/:id', authenticate, requireRole(...STAFF_MANAGERS), async (req, res, next) => {
   try {
     const groupId = parseInt(req.params.id);
     if (isNaN(groupId)) return res.status(400).json({ error: "Noto'g'ri ID" });
@@ -1387,7 +1396,7 @@ app.post('/api/expenses', authenticate, async (req, res, next) => {
   } catch (error) { next(error); }
 });
 
-app.delete('/api/expenses/:id', authenticate, async (req, res, next) => {
+app.delete('/api/expenses/:id', authenticate, requireRole(...STAFF_MANAGERS), async (req, res, next) => {
   try {
     const { id } = req.params;
     await prisma.expense.delete({ where: { id: parseInt(id) } });
@@ -3247,7 +3256,7 @@ async function sendSms(phone, message, type, studentId, schoolId, campaignId = n
 }
 
 // API: Bitta SMS yuborish (qo'lda)
-app.post('/api/sms/send', authenticate, async (req, res, next) => {
+app.post('/api/sms/send', authenticate, requireRole(...STAFF_MANAGERS), async (req, res, next) => {
   try {
     let { phone, message, type, studentId } = req.body;
     if (!message) return res.status(400).json({ error: 'Xabar matni kerak' });
@@ -3514,7 +3523,7 @@ async function getStudentGroupsMap(schoolId) {
 }
 
 // Ommaviy yuborish
-app.post('/api/messaging/send-batch', authenticate, async (req, res, next) => {
+app.post('/api/messaging/send-batch', authenticate, requireRole(...STAFF_MANAGERS), async (req, res, next) => {
   try {
     const { studentIds, sendList, audience, message, channel, recipientTo, filters } = req.body;
     const schoolId = req.user.schoolId;
@@ -4338,7 +4347,7 @@ async function processMonthlyBilling(schoolId, month) {
   return { processed: results.length, total: results.reduce((s, r) => s + r.amount, 0), month };
 }
 
-app.post('/api/billing/process-month', authenticate, async (req, res, next) => {
+app.post('/api/billing/process-month', authenticate, requireRole('ADMIN'), async (req, res, next) => {
   try {
     const { schoolId, month } = req.body;
     if (!schoolId || !month) return res.status(400).json({ error: 'schoolId and month required' });
@@ -4347,7 +4356,7 @@ app.post('/api/billing/process-month', authenticate, async (req, res, next) => {
   } catch (err) { next(err); }
 });
 
-app.post('/api/billing/recalculate-month', authenticate, async (req, res, next) => {
+app.post('/api/billing/recalculate-month', authenticate, requireRole('ADMIN'), async (req, res, next) => {
   try {
     const { schoolId, month } = req.body;
     if (!schoolId || !month) return res.status(400).json({ error: 'schoolId and month required' });
