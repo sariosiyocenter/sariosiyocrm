@@ -92,7 +92,7 @@ export default function GroupAttendanceCalendar({ group, attendances, selectedDa
     return (
         <div className="bg-white dark:bg-gray-900/40 rounded-3xl border border-gray-100 dark:border-gray-800 p-5 shadow-sm transition-all h-full flex flex-col relative overflow-visible">
             <div className="flex items-center justify-between mb-4 px-2">
-                <h4 className="text-xs font-bold text-gray-900 dark:text-white uppercase tracking-tight flex items-center gap-2">
+                <h4 className="text-xs font-bold text-gray-900 dark:text-white tracking-tight flex items-center gap-2">
                     <CalendarIcon size={14} className="text-sky-500" />
                     {monthName}
                 </h4>

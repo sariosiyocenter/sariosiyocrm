@@ -96,13 +96,13 @@ export default function SmsHistory() {
             {/* Header */}
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white dark:bg-gray-800 p-6 rounded-3xl border border-gray-100 dark:border-gray-700/50 shadow-sm">
                 <div>
-                    <h1 className="text-sm font-black text-gray-900 dark:text-white uppercase tracking-tight">SMS Tarixi</h1>
+                    <h1 className="text-sm font-black text-gray-900 dark:text-white tracking-tight">SMS Tarixi</h1>
                     <p className="text-[11px] font-bold text-gray-400 uppercase tracking-wider mt-0.5">Yuborilgan barcha xabarlar monitoringi</p>
                 </div>
                 <div className="flex items-center gap-3">
                     <button 
                         onClick={handleTestConnection}
-                        className="flex items-center gap-1.5 px-4 py-2.5 bg-[#1b6b6b] hover:bg-[#155252] text-white rounded-xl text-[11px] font-bold uppercase tracking-wider shadow-lg shadow-[#1b6b6b]/20 transition-all active:scale-95 disabled:opacity-50 cursor-pointer"
+                        className="flex items-center gap-1.5 px-4 py-2.5 bg-[#1b6b6b] hover:bg-[#155252] text-white rounded-xl text-[11px] font-bold uppercase tracking-wider shadow-sm shadow-[#1b6b6b]/20 transition-all active:scale-95 disabled:opacity-50 cursor-pointer"
                         disabled={loading}
                     >
                         <Zap size={14} />

@@ -156,7 +156,7 @@ export default function ExamBuilder() {
                         <ArrowLeft size={18} className="group-hover:-translate-x-0.5 transition-transform" />
                     </button>
                     <div>
-                        <h1 className="text-sm font-black text-gray-900 dark:text-white uppercase tracking-tight">Imtihon Konstruktori</h1>
+                        <h1 className="text-sm font-black text-gray-900 dark:text-white tracking-tight">Imtihon Konstruktori</h1>
                         <p className="text-[11px] font-bold text-gray-400 uppercase tracking-wider mt-0.5">Mavzular bo'yicha savollarni saralash va qoidalar yaratish</p>
                     </div>
                 </div>
@@ -164,7 +164,7 @@ export default function ExamBuilder() {
                 <button 
                     onClick={handleSave}
                     disabled={isSaving}
-                    className="px-6 py-2.5 bg-[#1b6b6b] hover:bg-[#155252] text-white rounded-xl text-[11px] font-extrabold uppercase tracking-wider shadow-lg shadow-[#1b6b6b]/20 active:scale-95 transition-all flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
+                    className="px-6 py-2.5 bg-[#1b6b6b] hover:bg-[#155252] text-white rounded-xl text-[11px] font-extrabold uppercase tracking-wider shadow-sm shadow-[#1b6b6b]/20 active:scale-95 transition-all flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
                 >
                     <Save size={14} />
                     {isSaving ? "Saqlanmoqda..." : "Imtihonni Saqlash"}
@@ -181,7 +181,7 @@ export default function ExamBuilder() {
                                 <BookOpen size={18} />
                             </div>
                             <div>
-                                <h2 className="text-xs font-black text-gray-900 dark:text-white uppercase tracking-tight">Asosiy Ma'lumotlar</h2>
+                                <h2 className="text-xs font-black text-gray-900 dark:text-white tracking-tight">Asosiy Ma'lumotlar</h2>
                                 <p className="text-[11px] font-bold text-gray-450 uppercase tracking-wider">Imtihon parametrlari</p>
                             </div>
                         </div>
@@ -251,7 +251,7 @@ export default function ExamBuilder() {
                 {/* Right Column: Rule Builder */}
                 <div className="xl:col-span-2 space-y-6">
                     <div className="flex items-center justify-between">
-                        <h2 className="text-xs font-black text-gray-900 dark:text-white uppercase tracking-tight flex items-center gap-2">
+                        <h2 className="text-xs font-black text-gray-900 dark:text-white tracking-tight flex items-center gap-2">
                             <Layers className="text-[#1b6b6b]" size={18} />
                             Imtihon Qoidalari
                         </h2>
@@ -374,7 +374,7 @@ export default function ExamBuilder() {
                     {blocks.length === 0 && (
                         <div className="p-12 border border-dashed border-gray-200 dark:border-gray-700 rounded-3xl flex flex-col items-center justify-center text-center">
                             <Layers className="w-10 h-10 text-gray-300 mb-4" />
-                            <p className="text-xs font-bold text-gray-500 uppercase tracking-widest">Hozircha fanlar yo'q. Birinchi blokni qo'shing.</p>
+                            <p className="text-xs font-bold text-gray-500">Hozircha fanlar yo'q. Birinchi blokni qo'shing.</p>
                         </div>
                     )}
                 </div>

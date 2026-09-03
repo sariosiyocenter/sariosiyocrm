@@ -183,11 +183,11 @@ export default function Courses() {
             <div className="bg-white dark:bg-gray-800 rounded-3xl border border-gray-100 dark:border-gray-700/50 shadow-sm overflow-hidden">
                 <div className="px-6 py-5 flex flex-col md:flex-row md:items-center justify-between gap-4">
                     <div className="flex items-center gap-4">
-                        <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-[#1b6b6b] to-[#2e9c9c] flex items-center justify-center shadow-lg shadow-[#1b6b6b]/20">
+                        <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-[#1b6b6b] to-[#2e9c9c] flex items-center justify-center shadow-sm shadow-[#1b6b6b]/20">
                             <Layers size={22} className="text-white" />
                         </div>
                         <div>
-                            <h1 className="text-lg font-black text-gray-900 dark:text-white uppercase tracking-tight">{t('groups_title')}</h1>
+                            <h1 className="text-lg font-black text-gray-900 dark:text-white tracking-tight">{t('groups_title')}</h1>
                             <p className="text-[11px] font-bold text-gray-400 uppercase tracking-wider mt-0.5">
                                 {groups.length} • {t('group_schedule')}
                             </p>
@@ -210,7 +210,7 @@ export default function Courses() {
                         </button>
                         <button
                             onClick={() => setIsModalOpen(true)}
-                            className="flex items-center gap-2 px-4 py-2.5 bg-[#1b6b6b] hover:bg-[#155252] text-white rounded-xl text-xs font-extrabold uppercase tracking-widest shadow-lg shadow-[#1b6b6b]/20 transition-all cursor-pointer"
+                            className="flex items-center gap-2 px-4 py-2.5 bg-[#1b6b6b] hover:bg-[#155252] text-white rounded-xl text-xs font-extrabold shadow-sm shadow-[#1b6b6b]/20 transition-all cursor-pointer"
                         >
                             <Plus size={14} /> {t('add')}
                         </button>
@@ -261,7 +261,7 @@ export default function Courses() {
                     <Layers size={40} className="mx-auto text-gray-200 dark:text-gray-600 mb-3" />
                     <p className="text-sm font-bold text-gray-400">{t('no_groups_found')}</p>
                     <button onClick={() => setIsModalOpen(true)}
-                        className="mt-4 inline-flex items-center gap-2 px-5 py-2.5 bg-[#1b6b6b] text-white text-xs font-extrabold uppercase tracking-widest rounded-xl cursor-pointer">
+                        className="mt-4 inline-flex items-center gap-2 px-5 py-2.5 bg-[#1b6b6b] text-white text-xs font-extrabold rounded-xl cursor-pointer">
                         <Plus size={13} /> {t('new_group_title')}
                     </button>
                 </div>
@@ -330,7 +330,7 @@ export default function Courses() {
                     <div className="relative bg-white dark:bg-gray-800 rounded-[2rem] border border-gray-100 dark:border-gray-700/50 shadow-2xl w-full max-w-lg p-8 max-h-[90vh] overflow-y-auto">
                         <div className="flex items-center justify-between mb-6 pb-4 border-b border-gray-55 dark:border-gray-700/50">
                             <div>
-                                <h3 className="text-lg font-black text-gray-900 dark:text-white uppercase tracking-tight">{t('new_group_title')}</h3>
+                                <h3 className="text-lg font-black text-gray-900 dark:text-white tracking-tight">{t('new_group_title')}</h3>
                                 <p className="text-[11px] font-bold text-[#1b6b6b] uppercase tracking-wider mt-0.5">{t('group_details_subtitle')}</p>
                             </div>
                             <button aria-label="Yopish" onClick={() => setIsModalOpen(false)} className="w-9 h-9 flex items-center justify-center text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700 rounded-xl cursor-pointer"><X size={18} /></button>
@@ -389,11 +389,11 @@ export default function Courses() {
                             </div>
                             <div className="flex gap-3 pt-2">
                                 <button type="button" onClick={() => setIsModalOpen(false)}
-                                    className="flex-1 py-3 bg-gray-100 dark:bg-gray-755 text-gray-700 dark:text-white text-xs font-extrabold uppercase tracking-widest rounded-2xl transition-all cursor-pointer hover:bg-gray-200 dark:hover:bg-gray-700">
+                                    className="flex-1 py-3 bg-gray-100 dark:bg-gray-755 text-gray-700 dark:text-white text-xs font-extrabold rounded-2xl transition-all cursor-pointer hover:bg-gray-200 dark:hover:bg-gray-700">
                                     {t('cancel')}
                                 </button>
                                 <button type="submit" disabled={isAdding}
-                                    className="flex-1 py-3 bg-[#1b6b6b] hover:bg-[#155252] text-white text-xs font-extrabold uppercase tracking-widest rounded-2xl shadow-lg shadow-[#1b6b6b]/20 transition-all cursor-pointer disabled:opacity-50">
+                                    className="flex-1 py-3 bg-[#1b6b6b] hover:bg-[#155252] text-white text-xs font-extrabold rounded-2xl shadow-sm shadow-[#1b6b6b]/20 transition-all cursor-pointer disabled:opacity-50">
                                     {isAdding ? t('saving') : t('save')}
                                 </button>
                             </div>

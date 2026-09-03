@@ -80,7 +80,7 @@ export default function TeacherDetails() {
                             </div>
                         </div>
                         <div className="pt-14 pb-6 px-6 text-center">
-                            <h2 className="text-sm font-black text-gray-900 dark:text-white uppercase tracking-tight">{teacher.name}</h2>
+                            <h2 className="text-sm font-black text-gray-900 dark:text-white tracking-tight">{teacher.name}</h2>
                             <p className="text-[11px] font-bold text-gray-400 uppercase tracking-wider mt-1">ID: #{teacher.id}</p>
                             <div className="mt-4 flex justify-center">
                                 <span className={`px-2.5 py-0.5 rounded-md text-[10px] font-bold border uppercase tracking-wider ${teacher.status === 'Faol' ? 'bg-emerald-50 text-emerald-600 border-emerald-100 dark:bg-emerald-950/20 dark:text-emerald-400' : 'bg-gray-55 text-gray-400 border-gray-100 dark:bg-gray-900/50'}`}>
@@ -95,7 +95,7 @@ export default function TeacherDetails() {
                         </div>
                     </div>
 
-                    <div className="bg-[#1b6b6b] rounded-3xl p-6 text-white shadow-lg shadow-[#1b6b6b]/20 relative overflow-hidden">
+                    <div className="bg-[#1b6b6b] rounded-3xl p-6 text-white shadow-sm shadow-[#1b6b6b]/20 relative overflow-hidden">
                         <span className="text-[11px] font-bold text-teal-100 uppercase tracking-wider block mb-4">Maosh Hisobi</span>
                         <div className="space-y-4">
                             <div>
@@ -173,7 +173,7 @@ export default function TeacherDetails() {
                                                                 <Presentation size={18} />
                                                             </div>
                                                             <div>
-                                                                <h5 className="text-xs font-black text-gray-900 dark:text-white group-hover:text-[#1b6b6b] transition-colors uppercase tracking-tight">{group.name}</h5>
+                                                                <h5 className="text-xs font-black text-gray-900 dark:text-white group-hover:text-[#1b6b6b] transition-colors tracking-tight">{group.name}</h5>
                                                                 <p className="text-[11px] font-bold text-gray-400 mt-0.5 uppercase tracking-wider">{group.days}</p>
                                                             </div>
                                                         </div>
@@ -202,7 +202,7 @@ export default function TeacherDetails() {
                             {activeTab === 'oylik' && (
                                 <div className="space-y-6 animate-in fade-in duration-300">
                                     <div className="bg-gray-50/50 dark:bg-gray-900/40 p-4 border border-gray-100 dark:border-gray-700/50 rounded-2xl">
-                                        <h4 className="text-xs font-black text-gray-900 dark:text-white uppercase tracking-tight">Oylik hisob-kitobi</h4>
+                                        <h4 className="text-xs font-black text-gray-900 dark:text-white tracking-tight">Oylik hisob-kitobi</h4>
                                     </div>
                                     
                                     <div className="border border-gray-100 dark:border-gray-700/50 rounded-3xl p-6 bg-white dark:bg-gray-800/50 shadow-sm">
@@ -244,11 +244,11 @@ export default function TeacherDetails() {
                                 <div className="space-y-6 animate-in fade-in duration-300">
                                     <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-5 bg-gray-55 dark:bg-gray-900/40 border border-gray-100 dark:border-gray-700/50 rounded-2xl">
                                         <div>
-                                            <h3 className="text-xs font-black text-gray-900 dark:text-white uppercase tracking-tight">Ishga kelishi</h3>
+                                            <h3 className="text-xs font-black text-gray-900 dark:text-white tracking-tight">Ishga kelishi</h3>
                                             <p className="text-[11px] font-bold text-gray-450 uppercase tracking-wider mt-1">{new Date().toLocaleDateString('uz-UZ', { month: 'long' })} oyi</p>
                                         </div>
                                         <button onClick={() => setShowAttendanceModal(true)} 
-                                            className="px-4 py-2 bg-[#1b6b6b] hover:bg-[#155252] text-white rounded-xl text-[11px] font-extrabold uppercase tracking-wider transition-all cursor-pointer shadow-lg shadow-[#1b6b6b]/20">
+                                            className="px-4 py-2 bg-[#1b6b6b] hover:bg-[#155252] text-white rounded-xl text-[11px] font-extrabold uppercase tracking-wider transition-all cursor-pointer shadow-sm shadow-[#1b6b6b]/20">
                                             Davomat belgilash
                                         </button>
                                     </div>
@@ -275,7 +275,7 @@ export default function TeacherDetails() {
                                             <tbody className="divide-y divide-gray-100 dark:divide-gray-800">
                                                 {currentMonthAttendances.map(a => (
                                                     <tr key={a.id} className="hover:bg-gray-50/50 dark:hover:bg-gray-750/30 transition-colors">
-                                                        <td className="p-4 text-xs font-bold text-gray-900 dark:text-white uppercase tracking-tight">{a.date}</td>
+                                                        <td className="p-4 text-xs font-bold text-gray-900 dark:text-white tracking-tight">{a.date}</td>
                                                         <td className="p-4">
                                                             <div className="flex justify-center">
                                                                 <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-lg text-[11px] font-bold border uppercase tracking-wider ${a.status === 'Keldi' ? 'bg-emerald-50 text-emerald-600 border-emerald-100 dark:bg-emerald-950/20 dark:text-emerald-400' : 'bg-rose-50 text-rose-600 border-rose-100 dark:bg-rose-950/20 dark:text-rose-400'}`}>
@@ -305,7 +305,7 @@ export default function TeacherDetails() {
                     <div className="relative bg-white dark:bg-gray-800 rounded-[2rem] border border-gray-100 dark:border-gray-700/50 shadow-2xl w-full max-w-sm p-8">
                         <div className="flex items-center justify-between mb-6 pb-4 border-b border-gray-50 dark:border-gray-700/50">
                             <div>
-                                <h3 className="text-lg font-black text-gray-900 dark:text-white uppercase tracking-tight">Davomat</h3>
+                                <h3 className="text-lg font-black text-gray-900 dark:text-white tracking-tight">Davomat</h3>
                                 <p className="text-[11px] font-bold text-[#1b6b6b] uppercase tracking-wider mt-0.5">Bugungi sana uchun</p>
                             </div>
                             <button onClick={() => setShowAttendanceModal(false)} className="w-9 h-9 flex items-center justify-center text-gray-400 hover:bg-gray-55 dark:hover:bg-gray-700 rounded-xl cursor-pointer"><XCircle size={18} /></button>
@@ -384,7 +384,7 @@ function DetailRow({ icon, label, value }: { icon: React.ReactNode; label: strin
             </div>
             <div>
                 <span className="text-[11px] font-bold text-gray-400 uppercase tracking-wider leading-none block">{label}</span>
-                <span className="text-xs font-bold text-gray-900 dark:text-white uppercase tracking-tight mt-0.5 block">{value}</span>
+                <span className="text-xs font-bold text-gray-900 dark:text-white tracking-tight mt-0.5 block">{value}</span>
             </div>
         </div>
     );

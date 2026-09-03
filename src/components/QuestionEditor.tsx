@@ -133,7 +133,7 @@ export default function QuestionEditor() {
                         <ArrowLeft size={18} />
                     </button>
                     <div>
-                        <h1 className="text-sm font-black text-gray-900 dark:text-white uppercase tracking-tight">
+                        <h1 className="text-sm font-black text-gray-900 dark:text-white tracking-tight">
                             {isEditMode ? 'Savolni Tahrirlash' : 'Savol Qo\'shish'}
                         </h1>
                         <p className="text-[11px] font-bold text-gray-400 uppercase tracking-wider mt-0.5">
@@ -169,7 +169,7 @@ export default function QuestionEditor() {
                     <button
                         onClick={() => handleSave(false)}
                         disabled={isSaving}
-                        className="px-6 py-2.5 bg-[#1b6b6b] hover:bg-[#155252] text-white rounded-xl text-[11px] font-extrabold uppercase tracking-wider hover:bg-teal-550 shadow-lg shadow-[#1b6b6b]/20 flex items-center gap-1.5 cursor-pointer"
+                        className="px-6 py-2.5 bg-[#1b6b6b] hover:bg-[#155252] text-white rounded-xl text-[11px] font-extrabold uppercase tracking-wider hover:bg-teal-550 shadow-sm shadow-[#1b6b6b]/20 flex items-center gap-1.5 cursor-pointer"
                     >
                         <Save size={14} />
                         {isSaving ? 'Saqlanmoqda...' : isEditMode ? 'Yangilash' : 'Saqlash & Chiqish'}
@@ -187,7 +187,7 @@ export default function QuestionEditor() {
                                 <BookOpen size={18} />
                             </div>
                             <div>
-                                <h3 className="text-xs font-black text-gray-900 dark:text-white uppercase tracking-tight">Fan Sozlamalari</h3>
+                                <h3 className="text-xs font-black text-gray-900 dark:text-white tracking-tight">Fan Sozlamalari</h3>
                                 <p className="text-[11px] font-bold text-gray-400 uppercase tracking-wider mt-0.5">Barcha savollarga taalluqli</p>
                             </div>
                         </div>
@@ -250,7 +250,7 @@ export default function QuestionEditor() {
                                         <Tag size={12} className="text-[#1b6b6b]" />
                                         <span className="text-[11px] font-bold text-[#1b6b6b] uppercase tracking-wider">Joriy sozlama</span>
                                     </div>
-                                    <p className="text-xs font-black text-gray-900 dark:text-white uppercase tracking-tight">{subject}</p>
+                                    <p className="text-xs font-black text-gray-900 dark:text-white tracking-tight">{subject}</p>
                                     <p className="text-[11px] font-bold text-gray-400 uppercase tracking-wider mt-0.5">{topic}</p>
                                 </div>
                             )}
@@ -351,7 +351,7 @@ export default function QuestionEditor() {
                         <button
                             onClick={() => handleSave(false)}
                             disabled={isSaving}
-                            className="flex-1 py-3 bg-[#1b6b6b] text-white rounded-xl text-[11px] font-extrabold uppercase tracking-wider hover:bg-teal-500 transition-all shadow-lg shadow-[#1b6b6b]/20 flex items-center justify-center gap-1.5 cursor-pointer"
+                            className="flex-1 py-3 bg-[#1b6b6b] text-white rounded-xl text-[11px] font-extrabold uppercase tracking-wider hover:bg-teal-500 transition-all shadow-sm shadow-[#1b6b6b]/20 flex items-center justify-center gap-1.5 cursor-pointer"
                         >
                             <Save size={14} />
                             {isSaving ? 'Saqlanmoqda...' : isEditMode ? 'Yangilash' : 'Saqlash & Chiqish'}

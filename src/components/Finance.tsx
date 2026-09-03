@@ -437,11 +437,11 @@ export default function Finance() {
             <div className="bg-white dark:bg-gray-800 rounded-3xl border border-gray-100 dark:border-gray-700/50 shadow-sm overflow-hidden">
                 <div className="px-6 py-5 flex flex-col md:flex-row md:items-center justify-between gap-4">
                     <div className="flex items-center gap-4">
-                        <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-[#1b6b6b] to-[#2e9c9c] flex items-center justify-center shadow-lg shadow-[#1b6b6b]/20">
+                        <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-[#1b6b6b] to-[#2e9c9c] flex items-center justify-center shadow-sm shadow-[#1b6b6b]/20">
                             <DollarSign size={22} className="text-white" />
                         </div>
                         <div>
-                            <h1 className="text-lg font-black text-gray-900 dark:text-white uppercase tracking-tight">{t('finance_title')}</h1>
+                            <h1 className="text-lg font-black text-gray-900 dark:text-white tracking-tight">{t('finance_title')}</h1>
                             <p className="text-[11px] font-bold text-gray-400 uppercase tracking-wider mt-0.5">
                                 {t('stat_revenue')} & {t('stat_expenses')}
                             </p>
@@ -450,13 +450,13 @@ export default function Finance() {
                     <div className="flex items-center gap-3">
                         <button
                             onClick={() => setIsPaymentModalOpen(true)}
-                            className="flex items-center gap-2 px-4 py-2.5 bg-[#1b6b6b] hover:bg-[#155252] text-white rounded-xl text-xs font-extrabold uppercase tracking-widest shadow-lg shadow-[#1b6b6b]/20 transition-all cursor-pointer"
+                            className="flex items-center gap-2 px-4 py-2.5 bg-[#1b6b6b] hover:bg-[#155252] text-white rounded-xl text-xs font-extrabold shadow-sm shadow-[#1b6b6b]/20 transition-all cursor-pointer"
                         >
                             <Plus size={14} /> {t('add_payment')}
                         </button>
                         <button
                             onClick={() => setIsExpenseModalOpen(true)}
-                            className="flex items-center gap-2 px-4 py-2.5 bg-rose-600 hover:bg-rose-700 text-white rounded-xl text-xs font-extrabold uppercase tracking-widest shadow-lg shadow-rose-600/20 transition-all cursor-pointer"
+                            className="flex items-center gap-2 px-4 py-2.5 bg-rose-600 hover:bg-rose-700 text-white rounded-xl text-xs font-extrabold shadow-lg shadow-rose-600/20 transition-all cursor-pointer"
                         >
                             <Plus size={14} /> {t('add_expense')}
                         </button>
@@ -761,7 +761,7 @@ export default function Finance() {
                                             <div className="flex items-center gap-3">
                                                 <span className="text-[11px] font-bold text-rose-300 w-5">{i + 1}.</span>
                                                 <div>
-                                                    <p className="text-xs font-bold text-gray-900 dark:text-white uppercase">{st.name}</p>
+                                                    <p className="text-xs font-bold text-gray-900 dark:text-white">{st.name}</p>
                                                     {st.phone && <p className="text-[11px] text-gray-400 font-bold mt-0.5">{st.phone}</p>}
                                                 </div>
                                             </div>
@@ -941,7 +941,7 @@ export default function Finance() {
                         {/* Month selector header */}
                         <div className="flex items-center justify-between gap-4">
                             <div>
-                                <h3 className="text-base font-black text-gray-900 dark:text-white uppercase tracking-tight">Oylik hisob-kitob kitobi</h3>
+                                <h3 className="text-base font-black text-gray-900 dark:text-white tracking-tight">Oylik hisob-kitob kitobi</h3>
                                 <p className="text-[11px] font-bold text-gray-400 uppercase tracking-wider mt-0.5">Moliyaviy nazorat paneli</p>
                             </div>
                             <div className="flex items-center gap-2 bg-gray-50 dark:bg-gray-900/60 p-1.5 rounded-2xl border border-gray-100 dark:border-gray-700/50">
@@ -949,7 +949,7 @@ export default function Finance() {
                                     <ChevronLeft size={14} className="text-gray-500" />
                                 </button>
                                 <div className="text-center min-w-[110px]">
-                                    <p className="text-xs font-black text-gray-900 dark:text-white uppercase tracking-wider">{billingMonthLabel(billingMonth)}</p>
+                                    <p className="text-xs font-black text-gray-900 dark:text-white">{billingMonthLabel(billingMonth)}</p>
                                 </div>
                                 <button onClick={nextBillingMonth} className="w-8 h-8 flex items-center justify-center rounded-xl border border-gray-200 dark:border-gray-700 hover:bg-gray-100 dark:hover:bg-gray-800 transition-all cursor-pointer">
                                     <ChevronRight size={14} className="text-gray-500" />
@@ -1093,7 +1093,7 @@ export default function Finance() {
                         {billingData && billingData.students.filter((st: any) => st.status !== 'paid').length > 0 && (
                             <div className="flex justify-end">
                                 <button
-                                    className="flex items-center gap-2 px-5 py-3 bg-[#1b6b6b] hover:bg-[#155252] text-white rounded-xl text-[11px] font-bold uppercase tracking-wider transition-all cursor-pointer shadow-lg shadow-[#1b6b6b]/20"
+                                    className="flex items-center gap-2 px-5 py-3 bg-[#1b6b6b] hover:bg-[#155252] text-white rounded-xl text-[11px] font-bold uppercase tracking-wider transition-all cursor-pointer shadow-sm shadow-[#1b6b6b]/20"
                                     onClick={() => setShowDebtNotifyModal(true)}
                                 >
                                     <MessageSquare size={14} />
@@ -1147,7 +1147,7 @@ export default function Finance() {
                                                 <DollarSign size={14} className="text-emerald-600 dark:text-emerald-400" />
                                             </div>
                                             <div className="min-w-0">
-                                                <p className="text-xs font-bold text-gray-900 dark:text-white uppercase truncate">{student?.name || "Noma'lum"}</p>
+                                                <p className="text-xs font-bold text-gray-900 dark:text-white truncate">{student?.name || "Noma'lum"}</p>
                                                 <span className="text-[11px] text-gray-400 font-bold block mt-0.5 uppercase tracking-wide">{p.date} • {p.type}</span>
                                             </div>
                                         </div>
@@ -1168,7 +1168,7 @@ export default function Finance() {
                                             <TrendingDown size={14} className="text-rose-500 dark:text-rose-400" />
                                         </div>
                                         <div className="min-w-0">
-                                            <p className="text-xs font-bold text-gray-900 dark:text-white uppercase truncate">
+                                            <p className="text-xs font-bold text-gray-900 dark:text-white truncate">
                                                 {e.category}
                                                 {e.category === 'Ish haqi' && (e as any).staffName && (
                                                     <span className="ml-1.5 text-[11px] font-bold text-rose-500 normal-case tracking-normal">
@@ -1203,7 +1203,7 @@ ${e.description || e.category} — ${Number(e.amount).toLocaleString()} so'm`)) 
                         {createdPaymentForReceipt ? (
                             <div className="space-y-6">
                                 <div className="text-center space-y-1">
-                                    <h3 className="text-sm font-black uppercase tracking-widest text-[#1b6b6b] dark:text-teal-400">SARIOSIYO CENTER</h3>
+                                    <h3 className="text-sm font-black text-[#1b6b6b] dark:text-teal-400">SARIOSIYO CENTER</h3>
                                     <p className="text-[11px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-wider">TO'LOV CHEKI (RECEIPT)</p>
                                 </div>
                                 <div className="bg-gray-50 dark:bg-gray-900/30 p-6 rounded-3xl border border-gray-100 dark:border-gray-750 font-mono text-xs text-gray-800 dark:text-gray-300 space-y-4 shadow-inner">
@@ -1255,11 +1255,11 @@ ${e.description || e.category} — ${Number(e.amount).toLocaleString()} so'm`)) 
                                 </div>
                                 <div className="flex gap-3">
                                     <button type="button" onClick={() => handlePrintReceipt(createdPaymentForReceipt, selectedStudent)}
-                                        className="flex-1 py-3 bg-[#1b6b6b] hover:bg-[#155252] text-white text-xs font-extrabold uppercase tracking-widest rounded-2xl transition-all cursor-pointer shadow-lg shadow-[#1b6b6b]/20 text-center">
+                                        className="flex-1 py-3 bg-[#1b6b6b] hover:bg-[#155252] text-white text-xs font-extrabold rounded-2xl transition-all cursor-pointer shadow-sm shadow-[#1b6b6b]/20 text-center">
                                         Chop etish (Print)
                                     </button>
                                     <button type="button" onClick={closePaymentModal}
-                                        className="flex-1 py-3 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-white text-xs font-extrabold uppercase tracking-widest rounded-2xl transition-all cursor-pointer hover:bg-gray-200">
+                                        className="flex-1 py-3 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-white text-xs font-extrabold rounded-2xl transition-all cursor-pointer hover:bg-gray-200">
                                         Yopish
                                     </button>
                                 </div>
@@ -1268,7 +1268,7 @@ ${e.description || e.category} — ${Number(e.amount).toLocaleString()} so'm`)) 
                             <>
                                 <div className="flex items-center justify-between mb-6 pb-4 border-b border-gray-50 dark:border-gray-700/50">
                                     <div>
-                                        <h3 className="text-lg font-black text-gray-900 dark:text-white uppercase tracking-tight">Yangi Kirim</h3>
+                                        <h3 className="text-lg font-black text-gray-900 dark:text-white tracking-tight">Yangi Kirim</h3>
                                         <p className="text-[11px] font-bold text-[#1b6b6b] uppercase tracking-wider mt-0.5">To'lov qabul qilish</p>
                                     </div>
                                     <button onClick={closePaymentModal} className="w-9 h-9 flex items-center justify-center text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700 rounded-xl cursor-pointer" aria-label="Yopish"><X size={18} /></button>
@@ -1394,7 +1394,7 @@ ${e.description || e.category} — ${Number(e.amount).toLocaleString()} so'm`)) 
                                             {['Naqd', 'Karta', "O'tkazma"].map(tType => (
                                                 <button key={tType} type="button"
                                                     onClick={() => setNewPayment({ ...newPayment, type: tType as any })}
-                                                    className={`py-2.5 rounded-xl text-xs font-extrabold uppercase tracking-widest transition-all border cursor-pointer ${newPayment.type === tType ? 'bg-[#1b6b6b] border-[#1b6b6b] text-white shadow-lg shadow-[#1b6b6b]/20' : 'bg-white dark:bg-gray-850 border-gray-100 dark:border-gray-700 text-gray-400 dark:text-gray-500 hover:bg-gray-50'}`}>
+                                                    className={`py-2.5 rounded-xl text-xs font-extrabold transition-all border cursor-pointer ${newPayment.type === tType ? 'bg-[#1b6b6b] border-[#1b6b6b] text-white shadow-sm shadow-[#1b6b6b]/20' : 'bg-white dark:bg-gray-850 border-gray-100 dark:border-gray-700 text-gray-400 dark:text-gray-500 hover:bg-gray-50'}`}>
                                                     {tType}
                                                 </button>
                                             ))}
@@ -1410,11 +1410,11 @@ ${e.description || e.category} — ${Number(e.amount).toLocaleString()} so'm`)) 
 
                                     <div className="flex gap-3 pt-4 border-t border-gray-50 dark:border-gray-700/50">
                                         <button type="button" onClick={closePaymentModal}
-                                            className="flex-1 py-3 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-white text-xs font-extrabold uppercase tracking-widest rounded-2xl transition-all cursor-pointer hover:bg-gray-200 dark:hover:bg-gray-600">
+                                            className="flex-1 py-3 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-white text-xs font-extrabold rounded-2xl transition-all cursor-pointer hover:bg-gray-200 dark:hover:bg-gray-600">
                                             {t('cancel')}
                                         </button>
                                         <button type="submit" disabled={!selectedStudent || isSavingPayment}
-                                            className="flex-1 py-3 bg-[#1b6b6b] hover:bg-[#155252] disabled:opacity-50 disabled:cursor-not-allowed text-white text-xs font-extrabold uppercase tracking-widest rounded-2xl shadow-lg shadow-[#1b6b6b]/20 transition-all cursor-pointer">
+                                            className="flex-1 py-3 bg-[#1b6b6b] hover:bg-[#155252] disabled:opacity-50 disabled:cursor-not-allowed text-white text-xs font-extrabold rounded-2xl shadow-sm shadow-[#1b6b6b]/20 transition-all cursor-pointer">
                                             {isSavingPayment ? 'Saqlanmoqda…' : t('save')}
                                         </button>
                                     </div>
@@ -1432,7 +1432,7 @@ ${e.description || e.category} — ${Number(e.amount).toLocaleString()} so'm`)) 
                     <div className="relative bg-white dark:bg-gray-800 rounded-[2rem] border border-gray-100 dark:border-gray-700/50 shadow-2xl w-full max-w-md p-8">
                         <div className="flex items-center justify-between mb-6 pb-4 border-b border-gray-50 dark:border-gray-700/50">
                             <div>
-                                <h3 className="text-lg font-black text-gray-900 dark:text-white uppercase tracking-tight">Yangi Chiqim</h3>
+                                <h3 className="text-lg font-black text-gray-900 dark:text-white tracking-tight">Yangi Chiqim</h3>
                                 <p className="text-[11px] font-bold text-rose-600 uppercase tracking-wider mt-0.5">Xarajat kiritish</p>
                             </div>
                             <button aria-label="Yopish" onClick={() => setIsExpenseModalOpen(false)} className="w-9 h-9 flex items-center justify-center text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700 rounded-xl cursor-pointer"><X size={18} /></button>
@@ -1519,11 +1519,11 @@ ${e.description || e.category} — ${Number(e.amount).toLocaleString()} so'm`)) 
                             </div>
                             <div className="flex gap-3 pt-2">
                                 <button type="button" onClick={() => setIsExpenseModalOpen(false)}
-                                    className="flex-1 py-3 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-white text-xs font-extrabold uppercase tracking-widest rounded-2xl transition-all cursor-pointer hover:bg-gray-200 dark:hover:bg-gray-600">
+                                    className="flex-1 py-3 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-white text-xs font-extrabold rounded-2xl transition-all cursor-pointer hover:bg-gray-200 dark:hover:bg-gray-600">
                                     {t('cancel')}
                                 </button>
                                 <button type="submit"
-                                    className="flex-1 py-3 bg-rose-600 hover:bg-rose-700 text-white text-xs font-extrabold uppercase tracking-widest rounded-2xl shadow-lg shadow-rose-600/20 transition-all cursor-pointer">
+                                    className="flex-1 py-3 bg-rose-600 hover:bg-rose-700 text-white text-xs font-extrabold rounded-2xl shadow-lg shadow-rose-600/20 transition-all cursor-pointer">
                                     {t('save')}
                                 </button>
                             </div>
@@ -1539,7 +1539,7 @@ ${e.description || e.category} — ${Number(e.amount).toLocaleString()} so'm`)) 
                     <div className="relative bg-white dark:bg-gray-800 rounded-[2rem] border border-gray-100 dark:border-gray-700/50 shadow-2xl w-full max-w-lg p-8">
                         <div className="flex items-center justify-between mb-6 pb-4 border-b border-gray-50 dark:border-gray-700/50">
                             <div>
-                                <h3 className="text-sm font-black text-gray-900 dark:text-white uppercase tracking-tight text-[#1b6b6b]">Qarzdorlarga Xabar Yuborish</h3>
+                                <h3 className="text-sm font-black text-gray-900 dark:text-white tracking-tight text-[#1b6b6b]">Qarzdorlarga Xabar Yuborish</h3>
                                 <p className="text-[11px] font-bold text-gray-400 uppercase tracking-wider mt-0.5">Oylik hisob-kitob bo'yicha</p>
                             </div>
                             <button aria-label="Yopish" onClick={() => setShowDebtNotifyModal(false)} className="w-9 h-9 flex items-center justify-center text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700 rounded-xl cursor-pointer"><X size={18} /></button>
@@ -1596,11 +1596,11 @@ ${e.description || e.category} — ${Number(e.amount).toLocaleString()} so'm`)) 
 
                             <div className="flex gap-3 pt-2">
                                 <button type="button" onClick={() => setShowDebtNotifyModal(false)} disabled={isSendingDebtNotify}
-                                    className="flex-1 py-3 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-white text-xs font-extrabold uppercase tracking-widest rounded-2xl transition-all cursor-pointer hover:bg-gray-200 dark:hover:bg-gray-600">
+                                    className="flex-1 py-3 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-white text-xs font-extrabold rounded-2xl transition-all cursor-pointer hover:bg-gray-200 dark:hover:bg-gray-600">
                                     {t('cancel')}
                                 </button>
                                 <button type="button" onClick={handleSendDebtNotifications} disabled={isSendingDebtNotify}
-                                    className="flex-1 py-3 bg-[#1b6b6b] hover:bg-[#155252] text-white text-xs font-extrabold uppercase tracking-widest rounded-2xl shadow-lg shadow-[#1b6b6b]/20 transition-all cursor-pointer flex items-center justify-center gap-2">
+                                    className="flex-1 py-3 bg-[#1b6b6b] hover:bg-[#155252] text-white text-xs font-extrabold rounded-2xl shadow-sm shadow-[#1b6b6b]/20 transition-all cursor-pointer flex items-center justify-center gap-2">
                                     {isSendingDebtNotify ? (
                                         <>
                                             <RefreshCw size={12} className="animate-spin" /> Yuborilmoqda...

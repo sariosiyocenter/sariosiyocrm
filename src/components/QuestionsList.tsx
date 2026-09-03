@@ -258,7 +258,7 @@ export default function QuestionsList() {
                         </label>
                         <button 
                             onClick={() => navigate('/questions/new')}
-                            className="px-4 py-2.5 bg-[#1b6b6b] hover:bg-[#155252] text-white rounded-xl text-[11px] font-bold uppercase tracking-wider transition-colors flex items-center gap-1.5 cursor-pointer shadow-lg shadow-[#1b6b6b]/20"
+                            className="px-4 py-2.5 bg-[#1b6b6b] hover:bg-[#155252] text-white rounded-xl text-[11px] font-bold uppercase tracking-wider transition-colors flex items-center gap-1.5 cursor-pointer shadow-sm shadow-[#1b6b6b]/20"
                         >
                             <Plus size={14} />
                             Savol Qo'shish

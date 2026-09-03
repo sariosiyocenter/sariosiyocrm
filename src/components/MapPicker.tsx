@@ -66,7 +66,7 @@ export default function MapPicker({ onSelect, onClose, initialLocation }: MapPic
             <div className="bg-white dark:bg-gray-800 w-full max-w-4xl rounded-[2.5rem] shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200 border border-gray-100 dark:border-gray-700 min-h-[500px] h-[80vh] flex flex-col" onClick={e => e.stopPropagation()}>
                 <div className="px-10 py-6 flex items-center justify-between border-b border-gray-50 dark:border-gray-700 bg-gray-50/50 dark:bg-gray-900/50">
                     <div>
-                        <h2 className="text-xl font-bold text-gray-900 dark:text-white uppercase tracking-tight flex items-center gap-3">
+                        <h2 className="text-xl font-bold text-gray-900 dark:text-white tracking-tight flex items-center gap-3">
                             <MapPin className="text-sky-500" />
                             Manzilni belgilash
                         </h2>

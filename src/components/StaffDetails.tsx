@@ -228,7 +228,7 @@ export default function StaffDetails() {
     }, [activeTab, staffUser?.id, token, payMonth, payYear]);
 
     if (loading) {
-        return <div className="py-20 text-center text-[#1b6b6b] text-xs font-bold uppercase tracking-widest">{t('loading')}</div>;
+        return <div className="py-20 text-center text-[#1b6b6b] text-xs font-bold">{t('loading')}</div>;
     }
     if (!staffUser) {
         return (
@@ -532,7 +532,7 @@ export default function StaffDetails() {
 
                         {/* Name / role */}
                         <div className="pt-24 pb-6 px-6 text-center">
-                            <h2 className="text-sm font-black text-gray-900 dark:text-white uppercase tracking-tight">{staffUser.name}</h2>
+                            <h2 className="text-sm font-black text-gray-900 dark:text-white tracking-tight">{staffUser.name}</h2>
                             {staffUser.position && (
                                 <p className="text-[11px] font-bold text-gray-400 mt-1">{staffUser.position}</p>
                             )}
@@ -562,7 +562,7 @@ export default function StaffDetails() {
                     </div>
 
                     {/* Salary card */}
-                    <div className="bg-[#1b6b6b] rounded-3xl p-6 text-white shadow-lg shadow-[#1b6b6b]/20 relative overflow-hidden">
+                    <div className="bg-[#1b6b6b] rounded-3xl p-6 text-white shadow-sm shadow-[#1b6b6b]/20 relative overflow-hidden">
                         <span className="text-[11px] font-bold text-teal-100 uppercase tracking-wider block mb-3">{t('base_salary_short')}</span>
                         <div className="flex items-baseline gap-1">
                             <span className="text-2xl font-black tracking-tight tabular-nums">{baseSalary.toLocaleString()}</span>
@@ -622,7 +622,7 @@ export default function StaffDetails() {
                                                     <GraduationCap size={18} />
                                                 </div>
                                                 <div>
-                                                    <p className="text-xs font-black text-[#1b6b6b] group-hover:text-white uppercase tracking-wide transition-all">{linkedTeacher.name}</p>
+                                                    <p className="text-xs font-black text-[#1b6b6b] group-hover:text-white tracking-wide transition-all">{linkedTeacher.name}</p>
                                                     <p className="text-[11px] font-bold text-teal-600 dark:text-teal-400 group-hover:text-teal-100 mt-0.5 uppercase tracking-wider">{t('view_teacher_profile')}</p>
                                                 </div>
                                             </button>
@@ -719,7 +719,7 @@ export default function StaffDetails() {
                                                     <CheckCircle2 size={20} className="text-white" />
                                                 </div>
                                                 <div>
-                                                    <p className="text-xs font-black text-emerald-700 dark:text-emerald-400 uppercase tracking-wide">
+                                                    <p className="text-xs font-black text-emerald-700 dark:text-emerald-400 tracking-wide">
                                                         {getMonthName(payMonth)} {payYear} — {t('salary_paid')} ✓
                                                     </p>
                                                     <p className="text-[11px] font-bold text-emerald-600 dark:text-emerald-500 mt-0.5 uppercase tracking-wider">
@@ -843,7 +843,7 @@ export default function StaffDetails() {
                                                 {/* Summary + pay button */}
                                                 <div className="bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700/50 rounded-3xl p-6 flex flex-col justify-between">
                                                     <div>
-                                                        <h3 className="text-xs font-black text-[#1b6b6b] uppercase tracking-wider mb-5">
+                                                        <h3 className="text-xs font-black text-[#1b6b6b] mb-5">
                                                             {getMonthName(payMonth)} {payYear} — {t('bill')}
                                                         </h3>
                                                         <div className="space-y-3">
@@ -876,7 +876,7 @@ export default function StaffDetails() {
                                                     {!payConfirm ? (
                                                         <button
                                                             onClick={() => setPayConfirm(true)}
-                                                            className="mt-6 w-full py-3 bg-[#1b6b6b] hover:bg-[#155252] text-white rounded-2xl text-xs font-extrabold uppercase tracking-widest flex items-center justify-center gap-2 shadow-lg shadow-[#1b6b6b]/20 transition-all cursor-pointer">
+                                                            className="mt-6 w-full py-3 bg-[#1b6b6b] hover:bg-[#155252] text-white rounded-2xl text-xs font-extrabold flex items-center justify-center gap-2 shadow-sm shadow-[#1b6b6b]/20 transition-all cursor-pointer">
                                                             <Banknote size={14} /> {t('pay_salary_btn')}
                                                         </button>
                                                     ) : (
@@ -1104,7 +1104,7 @@ export default function StaffDetails() {
                     <div className="relative bg-white dark:bg-gray-800 rounded-[2rem] border border-gray-100 dark:border-gray-700/50 shadow-2xl w-full max-w-xs p-6">
                         <div className="flex items-center justify-between mb-5 pb-3 border-b border-gray-50 dark:border-gray-700/50">
                             <div>
-                                <h3 className="text-sm font-black text-gray-900 dark:text-white uppercase tracking-tight">{attPicker}</h3>
+                                <h3 className="text-sm font-black text-gray-900 dark:text-white tracking-tight">{attPicker}</h3>
                                 <p className="text-[11px] font-bold text-gray-400 uppercase tracking-wider mt-0.5">Davomat holati</p>
                             </div>
                             <button aria-label="Yopish" onClick={() => setAttPicker(null)} className="w-8 h-8 flex items-center justify-center text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-xl cursor-pointer">
@@ -1146,7 +1146,7 @@ export default function StaffDetails() {
                     <div className="relative bg-white dark:bg-gray-800 rounded-[2rem] border border-gray-100 dark:border-gray-700/50 shadow-2xl w-full max-w-md p-8 max-h-[90vh] overflow-y-auto custom-scrollbar">
                         <div className="flex items-center justify-between mb-6 pb-4 border-b border-gray-50 dark:border-gray-700/50">
                             <div>
-                                <h3 className="text-lg font-black text-gray-900 dark:text-white uppercase tracking-tight">Tahrirlash</h3>
+                                <h3 className="text-lg font-black text-gray-900 dark:text-white tracking-tight">Tahrirlash</h3>
                                 <p className="text-[11px] font-bold text-[#1b6b6b] uppercase tracking-wider mt-0.5">Ma'lumotlarni yangilash</p>
                             </div>
                             <button aria-label="Yopish" onClick={() => setIsEditOpen(false)} className="w-9 h-9 flex items-center justify-center text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-xl cursor-pointer"><X size={18} /></button>
@@ -1170,8 +1170,8 @@ export default function StaffDetails() {
                             <div><label className={lbl}>Vazifa / Mutaxassislik</label><input type="text" className={inp} value={editData.position||''} onChange={e => setEditData((p:any)=>({...p,position:e.target.value}))} /></div>
                             <div><label className={lbl}>Yangi Parol (ixtiyoriy)</label><input type="password" placeholder="O'zgartirish uchun to'ldiring" className={inp} value={editData.password||''} onChange={e => setEditData((p:any)=>({...p,password:e.target.value}))} /></div>
                             <div className="flex gap-3 pt-4 border-t border-dashed border-gray-100 dark:border-gray-700/50">
-                                <button type="button" onClick={() => setIsEditOpen(false)} className="flex-1 py-3 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-white text-xs font-extrabold uppercase tracking-widest rounded-2xl cursor-pointer hover:bg-gray-200">Bekor</button>
-                                <button type="submit" className="flex-1 py-3 bg-[#1b6b6b] hover:bg-[#155252] text-white text-xs font-extrabold uppercase tracking-widest rounded-2xl shadow-lg shadow-[#1b6b6b]/20 cursor-pointer">Saqlash</button>
+                                <button type="button" onClick={() => setIsEditOpen(false)} className="flex-1 py-3 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-white text-xs font-extrabold rounded-2xl cursor-pointer hover:bg-gray-200">Bekor</button>
+                                <button type="submit" className="flex-1 py-3 bg-[#1b6b6b] hover:bg-[#155252] text-white text-xs font-extrabold rounded-2xl shadow-sm shadow-[#1b6b6b]/20 cursor-pointer">Saqlash</button>
                             </div>
                         </form>
                     </div>

@@ -164,7 +164,7 @@ export default function FaceAttendance({ students, attendanceStatus, onMatch, on
                         <Camera size={16} className="text-emerald-400" />
                     </div>
                     <div>
-                        <p className="text-white text-sm font-black uppercase tracking-tight">Face ID Yo'qlama</p>
+                        <p className="text-white text-sm font-black tracking-tight">Face ID Yo'qlama</p>
                         <p className="text-gray-400 text-[11px] font-bold uppercase tracking-wider">
                             {totalEnrolled}/{students.length} o'quvchi ro'yxatda
                         </p>
@@ -261,7 +261,7 @@ export default function FaceAttendance({ students, attendanceStatus, onMatch, on
                 <div className="px-5 pb-5 pt-2">
                     <button
                         onClick={() => onClose(Array.from(markedRef.current))}
-                        className="w-full py-3.5 bg-emerald-500 hover:bg-emerald-400 active:bg-emerald-600 text-white text-sm font-black uppercase tracking-widest rounded-2xl shadow-lg shadow-emerald-500/20 transition-all flex items-center justify-center gap-2 cursor-pointer"
+                        className="w-full py-3.5 bg-emerald-500 hover:bg-emerald-400 active:bg-emerald-600 text-white text-sm font-black rounded-2xl shadow-lg shadow-emerald-500/20 transition-all flex items-center justify-center gap-2 cursor-pointer"
                     >
                         <CheckCircle2 size={16} />
                         Tugatish — {markedThisSession.length} ta Face ID dan o'tdi

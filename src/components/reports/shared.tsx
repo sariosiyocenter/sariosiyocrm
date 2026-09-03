@@ -209,7 +209,7 @@ export function SectionHeader({ title, sub, action }: { title: string; sub?: str
     return (
         <div className="flex items-center justify-between mb-5">
             <div>
-                <h3 className="text-sm font-extrabold text-gray-900 dark:text-white uppercase tracking-tight">{title}</h3>
+                <h3 className="text-sm font-extrabold text-gray-900 dark:text-white tracking-tight">{title}</h3>
                 {sub && <p className="text-[11px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-wider mt-0.5">{sub}</p>}
             </div>
             {action}

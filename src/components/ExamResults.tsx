@@ -130,7 +130,7 @@ export default function ExamResults() {
             {/* Header */}
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white dark:bg-gray-800 p-6 rounded-3xl border border-gray-100 dark:border-gray-700/50 shadow-sm">
                 <div>
-                    <h1 className="text-sm font-black text-gray-900 dark:text-white uppercase tracking-tight">Imtihon Natijalari</h1>
+                    <h1 className="text-sm font-black text-gray-900 dark:text-white tracking-tight">Imtihon Natijalari</h1>
                     <p className="text-[11px] font-bold text-gray-400 uppercase tracking-wider mt-0.5">Statistika va tahlillar</p>
                 </div>
 
@@ -243,7 +243,7 @@ export default function ExamResults() {
                                                             <div className="w-8 h-8 rounded-xl bg-teal-50 dark:bg-teal-950/20 border border-teal-100 dark:border-teal-900/40 flex items-center justify-center text-[#1b6b6b] font-black text-xs">
                                                                 {student?.name?.[0] || '?'}
                                                             </div>
-                                                            <span className="text-xs font-black text-gray-900 dark:text-white uppercase tracking-tight">{student?.name || `ID: ${result.studentId}`}</span>
+                                                            <span className="text-xs font-black text-gray-900 dark:text-white tracking-tight">{student?.name || `ID: ${result.studentId}`}</span>
                                                         </div>
                                                     </td>
                                                     <td className="p-4 text-[11px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">

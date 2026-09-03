@@ -64,7 +64,7 @@ export function ConfirmProvider({ children }: { children: React.ReactNode }) {
               <AlertTriangle size={20} />
             </div>
 
-            <h3 className="text-base font-black uppercase tracking-tight text-gray-900 dark:text-white">
+            <h3 className="text-base font-black tracking-tight text-gray-900 dark:text-white">
               {open.title || 'Tasdiqlang'}
             </h3>
             <p className="mt-2 whitespace-pre-line text-sm text-gray-500 dark:text-gray-400">
@@ -75,7 +75,7 @@ export function ConfirmProvider({ children }: { children: React.ReactNode }) {
               <button
                 type="button"
                 onClick={() => answer(false)}
-                className="flex-1 rounded-2xl bg-gray-100 py-3 text-xs font-extrabold uppercase tracking-widest text-gray-700 transition-all hover:bg-gray-200 dark:bg-gray-700 dark:text-white dark:hover:bg-gray-600 cursor-pointer"
+                className="flex-1 rounded-2xl bg-gray-100 py-3 text-xs font-extrabold text-gray-700 transition-all hover:bg-gray-200 dark:bg-gray-700 dark:text-white dark:hover:bg-gray-600 cursor-pointer"
               >
                 {open.cancelLabel || 'Bekor qilish'}
               </button>
@@ -83,7 +83,7 @@ export function ConfirmProvider({ children }: { children: React.ReactNode }) {
                 type="button"
                 autoFocus
                 onClick={() => answer(true)}
-                className={`flex-1 rounded-2xl py-3 text-xs font-extrabold uppercase tracking-widest text-white shadow-lg transition-all cursor-pointer ${
+                className={`flex-1 rounded-2xl py-3 text-xs font-extrabold text-white shadow-lg transition-all cursor-pointer ${
                   open.danger === false
                     ? 'bg-[#1b6b6b] hover:bg-[#155252] shadow-[#1b6b6b]/20'
                     : 'bg-rose-600 hover:bg-rose-700 shadow-rose-600/20'

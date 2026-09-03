@@ -302,14 +302,14 @@ export default function SyllabusManager() {
       {/* Sahifa sarlavhasi */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-xl font-black text-gray-900 dark:text-white uppercase tracking-tight">O'quv programmasi</h1>
+          <h1 className="text-xl font-black text-gray-900 dark:text-white tracking-tight">O'quv programmasi</h1>
           <p className="text-xs text-gray-400 font-bold mt-1 tabular-nums">
             {syllabuses.length} ta fan dasturi · {(topics || []).filter(t => t.syllabusId != null).length} mavzu · materiallar bazasi
           </p>
         </div>
         <button
           onClick={() => handleOpenSyllabusModal()}
-          className="flex items-center gap-2 px-5 py-3 bg-[#1b6b6b] hover:bg-[#155252] text-white rounded-2xl text-[11px] font-bold uppercase tracking-wider shadow-lg shadow-[#1b6b6b]/20 active:scale-95 transition-all self-start sm:self-auto cursor-pointer"
+          className="flex items-center gap-2 px-5 py-3 bg-[#1b6b6b] hover:bg-[#155252] text-white rounded-2xl text-[11px] font-bold uppercase tracking-wider shadow-sm shadow-[#1b6b6b]/20 active:scale-95 transition-all self-start sm:self-auto cursor-pointer"
         >
           <Plus size={14} />
           Dastur yaratish
@@ -319,11 +319,11 @@ export default function SyllabusManager() {
       {syllabuses.length === 0 ? (
         <div className="bg-white dark:bg-gray-800 rounded-3xl border border-gray-100 dark:border-gray-700/50 p-12 text-center max-w-lg mx-auto">
           <BookOpen size={48} className="text-gray-300 dark:text-gray-600 mx-auto mb-4" />
-          <h3 className="text-sm font-black text-gray-900 dark:text-white uppercase tracking-wider">O'quv programmalari yo'q</h3>
+          <h3 className="text-sm font-black text-gray-900 dark:text-white">O'quv programmalari yo'q</h3>
           <p className="text-xs text-gray-400 font-bold mt-2">Hali hech qanday o'quv programmasi yaratilmagan. Darslar ketma-ketligi va o'quv qo'llanmalarini shakllantirish uchun yangi o'quv dasturini qo'shing.</p>
           <button
             onClick={() => handleOpenSyllabusModal()}
-            className="mt-6 inline-flex items-center gap-2 px-5 py-3 bg-[#1b6b6b] hover:bg-[#155252] text-white rounded-2xl text-[11px] font-bold uppercase tracking-wider shadow-lg shadow-[#1b6b6b]/20 active:scale-95 transition-all cursor-pointer"
+            className="mt-6 inline-flex items-center gap-2 px-5 py-3 bg-[#1b6b6b] hover:bg-[#155252] text-white rounded-2xl text-[11px] font-bold uppercase tracking-wider shadow-sm shadow-[#1b6b6b]/20 active:scale-95 transition-all cursor-pointer"
           >
             <Plus size={14} />
             Dastur yaratish
@@ -372,7 +372,7 @@ export default function SyllabusManager() {
               <div className="bg-white dark:bg-gray-800 rounded-3xl border border-gray-100 dark:border-gray-700/50 shadow-sm overflow-hidden">
                 <div className="p-6 flex flex-col md:flex-row md:items-start justify-between gap-4 border-b border-gray-55 dark:border-gray-700/50">
                   <div className="min-w-0">
-                    <h2 className="text-base font-black text-gray-900 dark:text-white uppercase tracking-tight">{activeSyllabus.name}</h2>
+                    <h2 className="text-base font-black text-gray-900 dark:text-white tracking-tight">{activeSyllabus.name}</h2>
                     <p className="text-[11px] font-bold text-gray-400 uppercase tracking-wider mt-1 tabular-nums">
                       {syllabusTopics.length} mavzu
                       {totalHours > 0 && <> · {totalHours} akademik soat</>}
@@ -405,7 +405,7 @@ export default function SyllabusManager() {
                     </button>
                     <button
                       onClick={() => handleOpenTopicModal()}
-                      className="flex items-center gap-2 px-5 py-2.5 bg-[#1b6b6b] hover:bg-[#155252] text-white rounded-xl text-[11px] font-bold uppercase tracking-wider shadow-lg shadow-[#1b6b6b]/20 transition-all cursor-pointer"
+                      className="flex items-center gap-2 px-5 py-2.5 bg-[#1b6b6b] hover:bg-[#155252] text-white rounded-xl text-[11px] font-bold uppercase tracking-wider shadow-sm shadow-[#1b6b6b]/20 transition-all cursor-pointer"
                     >
                       <Plus size={13} />
                       Mavzu
@@ -539,7 +539,7 @@ export default function SyllabusManager() {
             {/* Biriktirilgan guruhlar */}
             {activeSyllabus && (
               <div className="bg-white dark:bg-gray-800 p-6 rounded-3xl border border-gray-100 dark:border-gray-700/50 shadow-sm space-y-4">
-                <h3 className="text-xs font-black text-gray-900 dark:text-white uppercase tracking-wider border-b border-gray-55 dark:border-gray-700/50 pb-3 flex items-center gap-2">
+                <h3 className="text-xs font-black text-gray-900 dark:text-white border-b border-gray-55 dark:border-gray-700/50 pb-3 flex items-center gap-2">
                   <Layers size={13} className="text-[#1b6b6b]" />
                   Biriktirilgan guruhlar
                 </h3>
@@ -550,7 +550,7 @@ export default function SyllabusManager() {
                     {linkedGroups.map(g => (
                       <div key={g.id} className="flex items-center justify-between p-3 bg-gray-55 dark:bg-gray-900/20 rounded-2xl border border-transparent hover:border-gray-100 dark:hover:border-gray-700/50 transition-all">
                         <div className="min-w-0">
-                          <span className="text-xs font-black text-gray-800 dark:text-white block uppercase tracking-tight truncate">{g.name}</span>
+                          <span className="text-xs font-black text-gray-800 dark:text-white block tracking-tight truncate">{g.name}</span>
                           <span className="text-[11px] text-gray-400 font-bold block mt-0.5">{g.schedule} • {g.days}</span>
                         </div>
                         <a
@@ -575,7 +575,7 @@ export default function SyllabusManager() {
         <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-start sm:items-center justify-center overflow-y-auto p-4 z-50 animate-in fade-in duration-200">
           <div className="bg-white dark:bg-gray-800 rounded-3xl w-full max-w-lg overflow-hidden border border-gray-100 dark:border-gray-700 shadow-2xl animate-in zoom-in-95 duration-200">
             <div className="p-6 border-b border-gray-100 dark:border-gray-700/50 flex items-center justify-between">
-              <h2 className="text-sm font-black text-gray-900 dark:text-white uppercase tracking-wider">
+              <h2 className="text-sm font-black text-gray-900 dark:text-white">
                 {editingSyllabus ? "Dasturni tahrirlash" : "Yangi o'quv dasturi yaratish"}
               </h2>
               <button aria-label="Yopish"
@@ -619,7 +619,7 @@ export default function SyllabusManager() {
                 </button>
                 <button
                   type="submit"
-                  className="flex items-center gap-2 px-6 py-3 bg-[#1b6b6b] hover:bg-[#155252] text-white rounded-2xl text-[11px] font-bold uppercase tracking-wider shadow-lg shadow-[#1b6b6b]/20 transition-all cursor-pointer"
+                  className="flex items-center gap-2 px-6 py-3 bg-[#1b6b6b] hover:bg-[#155252] text-white rounded-2xl text-[11px] font-bold uppercase tracking-wider shadow-sm shadow-[#1b6b6b]/20 transition-all cursor-pointer"
                 >
                   <Save size={14} />
                   Saqlash
@@ -635,7 +635,7 @@ export default function SyllabusManager() {
         <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-start sm:items-center justify-center overflow-y-auto p-4 z-50 animate-in fade-in duration-200">
           <div className="bg-white dark:bg-gray-800 rounded-3xl w-full max-w-lg overflow-hidden border border-gray-100 dark:border-gray-700 shadow-2xl animate-in zoom-in-95 duration-200">
             <div className="p-6 border-b border-gray-100 dark:border-gray-700/50 flex items-center justify-between">
-              <h2 className="text-sm font-black text-gray-900 dark:text-white uppercase tracking-wider">
+              <h2 className="text-sm font-black text-gray-900 dark:text-white">
                 {editingTopic ? "Mavzuni tahrirlash" : "Yangi mavzu/dars qo'shish"}
               </h2>
               <button aria-label="Yopish"
@@ -763,7 +763,7 @@ export default function SyllabusManager() {
                 </button>
                 <button
                   type="submit"
-                  className="flex items-center gap-2 px-6 py-3 bg-[#1b6b6b] hover:bg-[#155252] text-white rounded-2xl text-[11px] font-bold uppercase tracking-wider shadow-lg shadow-[#1b6b6b]/20 transition-all cursor-pointer"
+                  className="flex items-center gap-2 px-6 py-3 bg-[#1b6b6b] hover:bg-[#155252] text-white rounded-2xl text-[11px] font-bold uppercase tracking-wider shadow-sm shadow-[#1b6b6b]/20 transition-all cursor-pointer"
                 >
                   <Save size={14} />
                   Saqlash

@@ -188,11 +188,11 @@ export default function Dashboard() {
             <div className="bg-white dark:bg-gray-800 rounded-3xl border border-gray-100 dark:border-gray-700/50 shadow-sm overflow-hidden">
                 <div className="px-6 py-5 flex flex-col lg:flex-row lg:items-center justify-between gap-4">
                     <div className="flex items-center gap-4">
-                        <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-[#1b6b6b] to-[#2e9c9c] flex items-center justify-center shadow-lg shadow-[#1b6b6b]/20">
+                        <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-[#1b6b6b] to-[#2e9c9c] flex items-center justify-center shadow-sm shadow-[#1b6b6b]/20">
                             <LayoutDashboard size={22} className="text-white" />
                         </div>
                         <div>
-                            <h1 className="text-lg font-black text-gray-900 dark:text-white uppercase tracking-tight">{t('dashboard_title')}</h1>
+                            <h1 className="text-lg font-black text-gray-900 dark:text-white tracking-tight">{t('dashboard_title')}</h1>
                             <p className="text-[11px] font-bold text-gray-400 uppercase tracking-wider mt-0.5">
                                 {t('dashboard_subtitle')}
                             </p>
@@ -273,7 +273,7 @@ export default function Dashboard() {
                 <div className="xl:col-span-2 space-y-6">
                     <div className="bg-white dark:bg-gray-800 rounded-3xl border border-gray-100 dark:border-gray-700/50 p-6 shadow-sm">
                         <div className="flex items-center justify-between mb-6">
-                            <h3 className="text-xs font-black text-gray-900 dark:text-white uppercase tracking-wider flex items-center gap-2">
+                            <h3 className="text-xs font-black text-gray-900 dark:text-white flex items-center gap-2">
                                 <TrendingUp size={16} className="text-[#1b6b6b]" />
                                 {t('finance_title')}
                             </h3>
@@ -343,7 +343,7 @@ export default function Dashboard() {
                     {/* Attention list */}
                     <div className="bg-white dark:bg-gray-800 rounded-3xl border border-gray-100 dark:border-gray-700/50 p-5 shadow-sm">
                         <div className="flex items-center justify-between mb-4">
-                            <h3 className="text-xs font-black text-gray-900 dark:text-white uppercase tracking-wider flex items-center gap-2">
+                            <h3 className="text-xs font-black text-gray-900 dark:text-white flex items-center gap-2">
                                 <Activity size={16} className="text-rose-500" />
                                 {t('attention_title')}
                             </h3>
@@ -367,7 +367,7 @@ export default function Dashboard() {
                                         <item.icon size={16} />
                                     </div>
                                     <div className="flex-1 min-w-0">
-                                        <p className="text-xs font-bold text-gray-900 dark:text-white truncate uppercase tracking-tight">{item.title}</p>
+                                        <p className="text-xs font-bold text-gray-900 dark:text-white truncate tracking-tight">{item.title}</p>
                                         <p className="text-[11px] text-gray-400 font-bold block mt-0.5 uppercase tracking-wider">{item.desc}</p>
                                     </div>
                                     <ChevronRight size={14} className="text-gray-300 group-hover:text-gray-500 transition-colors" />
@@ -379,7 +379,7 @@ export default function Dashboard() {
                     {/* Top Courses */}
                     <div className="bg-white dark:bg-gray-800 rounded-3xl border border-gray-100 dark:border-gray-700/50 p-5 shadow-sm">
                         <div className="flex items-center justify-between mb-4">
-                            <h3 className="text-xs font-black text-gray-900 dark:text-white uppercase tracking-wider flex items-center gap-2">
+                            <h3 className="text-xs font-black text-gray-900 dark:text-white flex items-center gap-2">
                                 <BarChart3 size={16} className="text-[#1b6b6b]" />
                                 Top Kurslar
                             </h3>
@@ -412,7 +412,7 @@ export default function Dashboard() {
             <div className="bg-white dark:bg-gray-800 rounded-3xl border border-gray-100 dark:border-gray-700/50 p-6 shadow-sm">
                 <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-4 border-b border-gray-50 dark:border-gray-700/50 pb-4 mb-6">
                     <div>
-                        <h3 className="text-xs font-black text-gray-900 dark:text-white uppercase tracking-wider flex items-center gap-2">
+                        <h3 className="text-xs font-black text-gray-900 dark:text-white flex items-center gap-2">
                             <BarChart3 size={16} className="text-[#1b6b6b]" />
                             {t('reports_title')}
                         </h3>

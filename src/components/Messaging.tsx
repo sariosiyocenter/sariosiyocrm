@@ -230,9 +230,9 @@ export default function Messaging() {
   // CSS Classes
   const inp = "w-full px-3.5 py-2 bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700/80 rounded-xl text-xs font-bold text-slate-800 dark:text-slate-200 placeholder:text-slate-400 outline-none focus:border-brand focus:ring-2 focus:ring-brand/10 transition-all";
   const lbl = "block text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1.5";
-  const btnPrimary = "flex items-center justify-center gap-1.5 px-4 py-2.5 bg-brand-dark hover:bg-brand-dark text-white rounded-xl text-xs font-black uppercase tracking-wider shadow-lg shadow-brand/20 transition-all active:scale-95 cursor-pointer disabled:opacity-50";
-  const btnSecondary = "flex items-center justify-center gap-1.5 px-4 py-2.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-350 hover:bg-slate-50 dark:hover:bg-slate-750 rounded-xl text-xs font-black uppercase tracking-wider transition-all active:scale-95 cursor-pointer";
-  const btnDanger = "flex items-center justify-center gap-1.5 px-4 py-2.5 bg-rose-600 hover:bg-rose-700 text-white rounded-xl text-xs font-black uppercase tracking-wider shadow-lg shadow-rose-600/20 transition-all active:scale-95 cursor-pointer";
+  const btnPrimary = "flex items-center justify-center gap-1.5 px-4 py-2.5 bg-brand-dark hover:bg-brand-dark text-white rounded-xl text-xs font-black shadow-sm shadow-brand/20 transition-all active:scale-95 cursor-pointer disabled:opacity-50";
+  const btnSecondary = "flex items-center justify-center gap-1.5 px-4 py-2.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-350 hover:bg-slate-50 dark:hover:bg-slate-750 rounded-xl text-xs font-black transition-all active:scale-95 cursor-pointer";
+  const btnDanger = "flex items-center justify-center gap-1.5 px-4 py-2.5 bg-rose-600 hover:bg-rose-700 text-white rounded-xl text-xs font-black shadow-lg shadow-rose-600/20 transition-all active:scale-95 cursor-pointer";
   const btnOutline = "flex items-center justify-center gap-1 px-2.5 py-1.5 border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 rounded-lg text-[11px] font-bold text-slate-500 dark:text-slate-450 uppercase tracking-wider transition-all cursor-pointer";
 
   useEffect(() => {
@@ -881,7 +881,7 @@ export default function Messaging() {
       {/* ===== HEADER ===== */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white dark:bg-slate-900 p-6 rounded-3xl border border-slate-100 dark:border-slate-800 shadow-sm">
         <div>
-          <h1 className="text-sm font-black text-slate-900 dark:text-white uppercase tracking-tight flex items-center gap-2">
+          <h1 className="text-sm font-black text-slate-900 dark:text-white tracking-tight flex items-center gap-2">
             <MessageSquare className="w-5 h-5 text-brand" />
             {t('nav_messaging')}
           </h1>
@@ -926,7 +926,7 @@ export default function Messaging() {
           <div className="lg:col-span-5 bg-white dark:bg-slate-900 rounded-3xl border border-slate-100 dark:border-slate-800 shadow-sm p-6 space-y-5">
             <div className="flex items-center gap-2 border-b border-dashed border-slate-100 dark:border-slate-800 pb-3">
               <Filter className="w-4 h-4 text-brand" />
-              <h2 className="text-xs font-black uppercase tracking-wider text-slate-800 dark:text-slate-200">Qabul qiluvchi filtrlari</h2>
+              <h2 className="text-xs font-black text-slate-800 dark:text-slate-200">Qabul qiluvchi filtrlari</h2>
             </div>
 
             {/* Audience selection */}
@@ -1210,7 +1210,7 @@ export default function Messaging() {
           <div className="lg:col-span-7 bg-white dark:bg-slate-900 rounded-3xl border border-slate-100 dark:border-slate-800 shadow-sm p-6 space-y-6">
             <div className="flex items-center gap-2 border-b border-dashed border-slate-100 dark:border-slate-800 pb-3">
               <Send className="w-4 h-4 text-brand" />
-              <h2 className="text-xs font-black uppercase tracking-wider text-slate-800 dark:text-slate-200">Xabar yuborish paneli</h2>
+              <h2 className="text-xs font-black text-slate-800 dark:text-slate-200">Xabar yuborish paneli</h2>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -1332,7 +1332,7 @@ export default function Messaging() {
         <div className="space-y-6">
           <div className="flex justify-between items-center">
             <div>
-              <h2 className="text-xs font-black uppercase tracking-widest text-slate-800 dark:text-slate-200">Shablonlar kutubxonasi</h2>
+              <h2 className="text-xs font-black text-slate-800 dark:text-slate-200">Shablonlar kutubxonasi</h2>
               <p className="text-[11px] font-bold text-slate-400 mt-0.5">Xabarlar yozishda vaqtni tejash uchun tayyor andozalar</p>
             </div>
             <button onClick={() => openTemplateModal(null)} className={btnPrimary}>
@@ -1383,7 +1383,7 @@ export default function Messaging() {
         <div className="space-y-6">
           <div className="flex justify-between items-center">
             <div>
-              <h2 className="text-xs font-black uppercase tracking-widest text-slate-800 dark:text-slate-200">Avtomatik yuborish qoidalari</h2>
+              <h2 className="text-xs font-black text-slate-800 dark:text-slate-200">Avtomatik yuborish qoidalari</h2>
               <p className="text-[11px] font-bold text-slate-400 mt-0.5">Tizim belgilangan kunlik qoidalar bo'yicha fonda SMS yoki Telegram tabriknoma va eslatmalarini jo'natadi</p>
             </div>
             <button onClick={() => openAutoRuleModal(null)} className={btnPrimary}>
@@ -1420,7 +1420,7 @@ export default function Messaging() {
                       </div>
                     </div>
 
-                    <h3 className="text-xs font-black text-slate-855 dark:text-white uppercase tracking-wide">{rule.name}</h3>
+                    <h3 className="text-xs font-black text-slate-855 dark:text-white tracking-wide">{rule.name}</h3>
 
                     {/* Meta info block */}
                     <div className="grid grid-cols-2 gap-2 text-[11px] font-semibold text-slate-500 dark:text-slate-400 bg-slate-50 dark:bg-slate-950/20 p-2.5 rounded-xl border border-slate-100 dark:border-slate-800">
@@ -1493,7 +1493,7 @@ export default function Messaging() {
             {/* Campaign History list (5 Cols) */}
             <div className="lg:col-span-4 bg-white dark:bg-slate-900 rounded-3xl border border-slate-100 dark:border-slate-800 shadow-sm p-6 space-y-4">
               <div className="flex justify-between items-center border-b border-dashed border-slate-100 dark:border-slate-800 pb-3">
-                <h3 className="text-xs font-black uppercase tracking-wider text-slate-800 dark:text-slate-200">Ommaviy kampaniyalar</h3>
+                <h3 className="text-xs font-black text-slate-800 dark:text-slate-200">Ommaviy kampaniyalar</h3>
                 {selectedCampaignId !== null && (
                   <button onClick={() => setSelectedCampaignId(null)} className="text-[11px] font-bold text-rose-500 uppercase tracking-wider hover:underline cursor-pointer">Filtrni ochish</button>
                 )}
@@ -1533,7 +1533,7 @@ export default function Messaging() {
               {/* Header actions */}
               <div className="p-5 flex flex-col md:flex-row gap-4 justify-between items-center border-b border-dashed border-slate-100 dark:border-slate-800">
                 <div className="flex items-center gap-3">
-                  <h3 className="text-xs font-black uppercase tracking-wider text-slate-800 dark:text-slate-200">Xabar yuborish jurnali</h3>
+                  <h3 className="text-xs font-black text-slate-800 dark:text-slate-200">Xabar yuborish jurnali</h3>
                   {selectedCampaignId !== null && (
                     <span className="text-[11px] font-bold uppercase tracking-wider px-2 py-0.5 bg-brand/10 dark:bg-brand/40 text-brand dark:text-brand border border-brand/20 dark:border-brand/30">
                       Kampaniya #{selectedCampaignId}
@@ -1740,7 +1740,7 @@ export default function Messaging() {
           <div className="absolute inset-0 bg-slate-900/50 backdrop-blur-sm" onClick={() => setConfirmModalOpen(false)} />
           <div className="relative bg-white dark:bg-slate-900 rounded-3xl max-w-md w-full p-6 space-y-6 shadow-2xl border border-slate-100 dark:border-slate-800 animate-in zoom-in-95 duration-200">
             <div className="space-y-2">
-              <h3 className="text-sm font-black uppercase tracking-wide text-slate-900 dark:text-white">Kampaniyani tasdiqlaysizmi?</h3>
+              <h3 className="text-sm font-black tracking-wide text-slate-900 dark:text-white">Kampaniyani tasdiqlaysizmi?</h3>
               <p className="text-xs text-slate-500 leading-normal">
                 Ushbu xabar **{activeSelectedCount} ta** o'quvchi/ota-onaga **{channel === 'BOTH' || (channel === 'TELEGRAM' && useSmsFallback) ? 'Telegram va SMS' : channel}** kanali orqali yuboriladi. SMS jo'natish xizmati Eskiz hisobidan mablag' yechadi.
               </p>
@@ -1771,7 +1771,7 @@ export default function Messaging() {
           <div className="absolute inset-0 bg-slate-900/50 backdrop-blur-sm" onClick={() => setShowRecipientListModal(false)} />
           <div className="relative bg-white dark:bg-slate-900 rounded-3xl max-w-lg w-full p-6 space-y-4 shadow-2xl border border-slate-100 dark:border-slate-800 animate-in zoom-in-95 duration-200">
             <div className="flex justify-between items-center border-b border-dashed border-slate-100 dark:border-slate-800 pb-3">
-              <h3 className="text-sm font-black uppercase tracking-wide text-slate-900 dark:text-white">Qabul qiluvchilar ro'yxati</h3>
+              <h3 className="text-sm font-black tracking-wide text-slate-900 dark:text-white">Qabul qiluvchilar ro'yxati</h3>
               <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider tabular-nums">{activeSelectedCount}/{filteredRecipients.length} ta</span>
             </div>
 
@@ -1809,7 +1809,7 @@ export default function Messaging() {
         <div className="fixed inset-0 z-[1000] flex items-start sm:items-center justify-center overflow-y-auto p-4">
           <div className="absolute inset-0 bg-slate-900/50 backdrop-blur-sm" onClick={() => setTemplateModalOpen(false)} />
           <form onSubmit={handleSaveTemplate} className="relative bg-white dark:bg-slate-900 rounded-3xl max-w-md w-full p-6 space-y-4 shadow-2xl border border-slate-100 dark:border-slate-800 animate-in zoom-in-95 duration-200">
-            <h3 className="text-sm font-black uppercase tracking-wide text-slate-900 dark:text-white">
+            <h3 className="text-sm font-black tracking-wide text-slate-900 dark:text-white">
               {editingTemplate ? 'Shablonni tahrirlash' : 'Yangi shablon yaratish'}
             </h3>
 
@@ -1871,7 +1871,7 @@ export default function Messaging() {
         <div className="fixed inset-0 z-[1000] flex items-start sm:items-center justify-center overflow-y-auto p-4">
           <div className="absolute inset-0 bg-slate-900/50 backdrop-blur-sm" onClick={() => setAutoRuleModalOpen(false)} />
           <form onSubmit={handleSaveAutoRule} className="relative bg-white dark:bg-slate-900 rounded-3xl max-w-md w-full p-6 space-y-4 shadow-2xl border border-slate-100 dark:border-slate-800 animate-in zoom-in-95 duration-200">
-            <h3 className="text-sm font-black uppercase tracking-wide text-slate-900 dark:text-white">
+            <h3 className="text-sm font-black tracking-wide text-slate-900 dark:text-white">
               {editingAutoRule ? 'Avtomatik qoidani tahrirlash' : 'Yangi avtomatik qoida yaratish'}
             </h3>
 

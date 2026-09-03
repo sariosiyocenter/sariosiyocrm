@@ -245,7 +245,7 @@ export default function Settings() {
             <div className="space-y-8">
                 <form onSubmit={handleSaveProfile} className="space-y-6">
                 <div>
-                    <h2 className="text-xs font-black text-gray-900 dark:text-white uppercase tracking-wider">{t('org_profile_title')}</h2>
+                    <h2 className="text-xs font-black text-gray-900 dark:text-white">{t('org_profile_title')}</h2>
                     <p className="text-[11px] font-bold text-gray-400 uppercase tracking-wider mt-0.5">{t('org_profile_subtitle')}</p>
                 </div>
                 <div className="flex items-center gap-6">
@@ -263,7 +263,7 @@ export default function Settings() {
                         <input ref={logoInputRef} type="file" accept="image/*" className="hidden" onChange={handleLogoChange} />
                     </div>
                     <div>
-                        <p className="text-xs font-black text-gray-900 dark:text-white uppercase tracking-wide">{profileForm?.orgName || t('org_name')}</p>
+                        <p className="text-xs font-black text-gray-900 dark:text-white tracking-wide">{profileForm?.orgName || t('org_name')}</p>
                         <p className="text-[11px] font-bold text-gray-400 uppercase tracking-wider mt-0.5">{t('logo_upload_hint')}</p>
                     </div>
                 </div>
@@ -290,7 +290,7 @@ export default function Settings() {
                 </p>
                 <div className="flex justify-end pt-4 border-t border-dashed border-gray-150 dark:border-gray-700/50">
                     <button type="submit" disabled={isSaving}
-                        className="px-6 py-3 bg-[#1b6b6b] hover:bg-[#155252] disabled:opacity-50 text-white rounded-2xl text-xs font-extrabold uppercase tracking-widest flex items-center gap-2 shadow-lg shadow-[#1b6b6b]/20 transition-all cursor-pointer">
+                        className="px-6 py-3 bg-[#1b6b6b] hover:bg-[#155252] disabled:opacity-50 text-white rounded-2xl text-xs font-extrabold flex items-center gap-2 shadow-sm shadow-[#1b6b6b]/20 transition-all cursor-pointer">
                         <Save size={14} />{isSaving ? t('saving') : t('save')}
                     </button>
                 </div>
@@ -303,7 +303,7 @@ export default function Settings() {
         if (activeSection === 'integratsiyalar') return (
             <form onSubmit={handleSaveProfile} className="space-y-8">
                 <div>
-                    <h2 className="text-xs font-black text-gray-900 dark:text-white uppercase tracking-wider">Integratsiyalar</h2>
+                    <h2 className="text-xs font-black text-gray-900 dark:text-white">Integratsiyalar</h2>
                     <p className="text-[11px] font-bold text-gray-400 uppercase tracking-wider mt-0.5">Tashqi xizmatlar bilan ulanish kalitlari</p>
                 </div>
 
@@ -315,7 +315,7 @@ export default function Settings() {
                                 <Send size={16} />
                             </div>
                             <div>
-                                <p className="text-xs font-black text-gray-900 dark:text-white uppercase tracking-wide">Telegram bot</p>
+                                <p className="text-xs font-black text-gray-900 dark:text-white tracking-wide">Telegram bot</p>
                                 <p className="text-[11px] font-bold text-gray-400 uppercase tracking-wider mt-0.5">Ota-onalarga xabar va davomat bildirishnomalari</p>
                             </div>
                         </div>
@@ -352,7 +352,7 @@ export default function Settings() {
                                 <MessageSquare size={16} />
                             </div>
                             <div>
-                                <p className="text-xs font-black text-gray-900 dark:text-white uppercase tracking-wide">Eskiz SMS</p>
+                                <p className="text-xs font-black text-gray-900 dark:text-white tracking-wide">Eskiz SMS</p>
                                 <p className="text-[11px] font-bold text-gray-400 uppercase tracking-wider mt-0.5">To'lov eslatmalari va SMS xabarnomalar</p>
                             </div>
                         </div>
@@ -385,7 +385,7 @@ export default function Settings() {
                             <Instagram size={16} />
                         </div>
                         <div>
-                            <p className="text-xs font-black text-gray-900 dark:text-white uppercase tracking-wide">Instagram</p>
+                            <p className="text-xs font-black text-gray-900 dark:text-white tracking-wide">Instagram</p>
                             <p className="text-[11px] font-bold text-gray-400 uppercase tracking-wider mt-0.5">Landing sahifadagi havola</p>
                         </div>
                     </div>
@@ -397,7 +397,7 @@ export default function Settings() {
 
                 <div className="flex justify-end pt-4 border-t border-dashed border-gray-150 dark:border-gray-700/50">
                     <button type="submit" disabled={isSaving}
-                        className="px-6 py-3 bg-[#1b6b6b] hover:bg-[#155252] disabled:opacity-50 text-white rounded-2xl text-xs font-extrabold uppercase tracking-widest flex items-center gap-2 shadow-lg shadow-[#1b6b6b]/20 transition-all cursor-pointer">
+                        className="px-6 py-3 bg-[#1b6b6b] hover:bg-[#155252] disabled:opacity-50 text-white rounded-2xl text-xs font-extrabold flex items-center gap-2 shadow-sm shadow-[#1b6b6b]/20 transition-all cursor-pointer">
                         <Save size={14} />{isSaving ? t('saving') : t('save')}
                     </button>
                 </div>
@@ -408,11 +408,11 @@ export default function Settings() {
             <div className="space-y-6">
                 <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
                     <div>
-                        <h2 className="text-xs font-black text-gray-900 dark:text-white uppercase tracking-wider">Avtomatlashtirish</h2>
+                        <h2 className="text-xs font-black text-gray-900 dark:text-white">Avtomatlashtirish</h2>
                         <p className="text-[11px] font-bold text-gray-400 uppercase tracking-wider mt-0.5">CRM o'zi bajaradigan ishlar</p>
                     </div>
                     <button onClick={() => navigate('/messaging')}
-                        className="flex items-center gap-2 px-4 py-2.5 bg-[#1b6b6b] hover:bg-[#155252] text-white rounded-xl text-[11px] font-extrabold uppercase tracking-wider shadow-lg shadow-[#1b6b6b]/20 transition-all cursor-pointer shrink-0">
+                        className="flex items-center gap-2 px-4 py-2.5 bg-[#1b6b6b] hover:bg-[#155252] text-white rounded-xl text-[11px] font-extrabold uppercase tracking-wider shadow-sm shadow-[#1b6b6b]/20 transition-all cursor-pointer shrink-0">
                         <Zap size={13} /> Qoidalarni boshqarish
                     </button>
                 </div>
@@ -442,7 +442,7 @@ export default function Settings() {
                                     <Zap size={15} />
                                 </div>
                                 <div className="min-w-0 flex-1">
-                                    <p className="text-xs font-black text-gray-900 dark:text-white uppercase tracking-wide truncate">{rule.name}</p>
+                                    <p className="text-xs font-black text-gray-900 dark:text-white tracking-wide truncate">{rule.name}</p>
                                     <p className="text-[11px] font-bold text-gray-400 uppercase tracking-wider mt-0.5 tabular-nums">
                                         {rule.type === 'DEBT_REMINDER' ? 'Qarzdorlik eslatmasi' : rule.type === 'BIRTHDAY' ? "Tug'ilgan kun tabrigi" : rule.type}
                                         {rule.time ? ` · ${rule.time}` : ''}
@@ -465,7 +465,7 @@ export default function Settings() {
         if (activeSection === 'xavfsizlik') return (
             <div className="space-y-8">
                 <div>
-                    <h2 className="text-xs font-black text-gray-900 dark:text-white uppercase tracking-wider">Xavfsizlik</h2>
+                    <h2 className="text-xs font-black text-gray-900 dark:text-white">Xavfsizlik</h2>
                     <p className="text-[11px] font-bold text-gray-400 uppercase tracking-wider mt-0.5">Hisob ma'lumotlari va parol</p>
                 </div>
 
@@ -487,7 +487,7 @@ export default function Settings() {
                 </div>
 
                 <form onSubmit={handleChangePassword} className="space-y-4">
-                    <h3 className="text-xs font-black text-gray-900 dark:text-white uppercase tracking-wider">Parolni o'zgartirish</h3>
+                    <h3 className="text-xs font-black text-gray-900 dark:text-white">Parolni o'zgartirish</h3>
                     <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                         <div>
                             <label className={lbl}>Joriy parol</label>
@@ -510,7 +510,7 @@ export default function Settings() {
                     {pwState.ok && <p className="text-[11px] font-bold text-emerald-600 dark:text-emerald-400">✓ Parol yangilandi</p>}
                     <div className="flex justify-end pt-4 border-t border-dashed border-gray-150 dark:border-gray-700/50">
                         <button type="submit" disabled={pwState.busy}
-                            className="px-6 py-3 bg-[#1b6b6b] hover:bg-[#155252] disabled:opacity-50 text-white rounded-2xl text-xs font-extrabold uppercase tracking-widest flex items-center gap-2 shadow-lg shadow-[#1b6b6b]/20 transition-all cursor-pointer">
+                            className="px-6 py-3 bg-[#1b6b6b] hover:bg-[#155252] disabled:opacity-50 text-white rounded-2xl text-xs font-extrabold flex items-center gap-2 shadow-sm shadow-[#1b6b6b]/20 transition-all cursor-pointer">
                             <Lock size={14} />{pwState.busy ? t('saving') : 'Parolni yangilash'}
                         </button>
                     </div>
@@ -548,7 +548,7 @@ export default function Settings() {
         if (activeSection === 'ruxsatlar') return (
             <div className="space-y-6">
                 <div>
-                    <h2 className="text-xs font-black text-gray-900 dark:text-white uppercase tracking-wider">{t('permissions_title')}</h2>
+                    <h2 className="text-xs font-black text-gray-900 dark:text-white">{t('permissions_title')}</h2>
                     <p className="text-[11px] font-bold text-gray-400 uppercase tracking-wider mt-0.5">{t('permissions_subtitle')}</p>
                 </div>
                 <div className="bg-white dark:bg-gray-800 rounded-3xl border border-gray-100 dark:border-gray-700/50 overflow-hidden shadow-sm">
@@ -567,7 +567,7 @@ export default function Settings() {
                             <tbody className="divide-y divide-gray-100 dark:divide-gray-700/50">
                                 {MODULES.map(mod => (
                                     <tr key={mod.key} className="hover:bg-gray-50/40 dark:hover:bg-gray-700/10 transition-colors">
-                                        <td className="p-4 text-xs font-black text-gray-900 dark:text-white uppercase tracking-wide">{mod.label}</td>
+                                        <td className="p-4 text-xs font-black text-gray-900 dark:text-white tracking-wide">{mod.label}</td>
                                         {Object.keys(permissions).map(role => {
                                             const on = permissions[role]?.[mod.key] ?? false;
                                             const isLocked = role === 'ADMIN';
@@ -597,7 +597,7 @@ export default function Settings() {
                 </div>
                 <div className="flex justify-end pt-4 border-t border-dashed border-gray-150 dark:border-gray-700/50">
                     <button onClick={handleSavePermissions}
-                        className={`px-6 py-3 rounded-2xl text-xs font-extrabold uppercase tracking-widest flex items-center gap-2 transition-all cursor-pointer ${permSaved ? 'bg-emerald-600 text-white' : 'bg-[#1b6b6b] hover:bg-[#155252] text-white shadow-lg shadow-[#1b6b6b]/20'}`}>
+                        className={`px-6 py-3 rounded-2xl text-xs font-extrabold flex items-center gap-2 transition-all cursor-pointer ${permSaved ? 'bg-emerald-600 text-white' : 'bg-[#1b6b6b] hover:bg-[#155252] text-white shadow-sm shadow-[#1b6b6b]/20'}`}>
                         <Save size={14} />{permSaved ? t('saved_success') : t('save')}
                     </button>
                 </div>
@@ -607,7 +607,7 @@ export default function Settings() {
         if (activeSection === 'dizayn') return (
             <div className="space-y-6 animate-in fade-in duration-300">
                 <div>
-                    <h2 className="text-xs font-black text-gray-900 dark:text-white uppercase tracking-wider">{t('design_palette_title')}</h2>
+                    <h2 className="text-xs font-black text-gray-900 dark:text-white">{t('design_palette_title')}</h2>
                     <p className="text-[11px] font-bold text-gray-400 uppercase tracking-wider mt-0.5">{t('design_palette_subtitle')}</p>
                 </div>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -626,7 +626,7 @@ export default function Settings() {
                                 }`}
                             >
                                 <div className="space-y-2">
-                                    <p className="text-xs font-black text-gray-900 dark:text-white uppercase tracking-wide group-hover:text-[var(--brand-color)] transition-colors">
+                                    <p className="text-xs font-black text-gray-900 dark:text-white tracking-wide group-hover:text-[var(--brand-color)] transition-colors">
                                         {theme.name}
                                     </p>
                                     <div className="flex items-center gap-1.5">
@@ -666,11 +666,11 @@ export default function Settings() {
             <div className="bg-white dark:bg-gray-800 rounded-3xl border border-gray-100 dark:border-gray-700/50 shadow-sm overflow-hidden">
                 <div className="px-6 py-5 flex flex-col md:flex-row md:items-center justify-between gap-4">
                     <div className="flex items-center gap-4">
-                        <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-[#1b6b6b] to-[#2e9c9c] flex items-center justify-center shadow-lg shadow-[#1b6b6b]/20">
+                        <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-[#1b6b6b] to-[#2e9c9c] flex items-center justify-center shadow-sm shadow-[#1b6b6b]/20">
                             <Building2 size={22} className="text-white" />
                         </div>
                         <div>
-                            <h1 className="text-lg font-black text-gray-900 dark:text-white uppercase tracking-tight">{t('settings_title')}</h1>
+                            <h1 className="text-lg font-black text-gray-900 dark:text-white tracking-tight">{t('settings_title')}</h1>
                             <p className="text-[11px] font-bold text-gray-400 uppercase tracking-wider mt-0.5">
                                 {t('settings_subtitle')}
                             </p>
@@ -730,7 +730,7 @@ export default function Settings() {
                     <div className="relative bg-white dark:bg-gray-800 rounded-[2rem] border border-gray-100 dark:border-gray-700/50 shadow-2xl w-full max-w-md p-8">
                         <div className="flex items-center justify-between mb-6 pb-4 border-b border-gray-50 dark:border-gray-700/50">
                             <div>
-                                <h3 className="text-lg font-black text-gray-900 dark:text-white uppercase tracking-tight">{addModalTitle}</h3>
+                                <h3 className="text-lg font-black text-gray-900 dark:text-white tracking-tight">{addModalTitle}</h3>
                                 <p className="text-[11px] font-bold text-[#1b6b6b] uppercase tracking-wider mt-0.5">{t('add_data_subtitle')}</p>
                             </div>
                             <button aria-label="Yopish" onClick={() => setIsAddModalOpen(false)} className="w-9 h-9 flex items-center justify-center text-gray-400 hover:bg-gray-55 dark:hover:bg-gray-700 rounded-xl cursor-pointer"><X size={18} /></button>
@@ -754,11 +754,11 @@ export default function Settings() {
                             )}
                             <div className="flex gap-3 pt-4 border-t border-dashed border-gray-150 dark:border-gray-700/50">
                                 <button type="button" onClick={() => setIsAddModalOpen(false)}
-                                    className="flex-1 py-3 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-white text-xs font-extrabold uppercase tracking-widest rounded-2xl transition-all cursor-pointer hover:bg-gray-200 dark:hover:bg-gray-600">
+                                    className="flex-1 py-3 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-white text-xs font-extrabold rounded-2xl transition-all cursor-pointer hover:bg-gray-200 dark:hover:bg-gray-600">
                                     {t('cancel')}
                                 </button>
                                 <button type="submit"
-                                    className="flex-1 py-3 bg-[#1b6b6b] hover:bg-[#155252] text-white text-xs font-extrabold uppercase tracking-widest rounded-2xl shadow-lg shadow-[#1b6b6b]/20 transition-all cursor-pointer">
+                                    className="flex-1 py-3 bg-[#1b6b6b] hover:bg-[#155252] text-white text-xs font-extrabold rounded-2xl shadow-sm shadow-[#1b6b6b]/20 transition-all cursor-pointer">
                                     {t('save')}
                                 </button>
                             </div>
@@ -778,11 +778,11 @@ function ListSection({ title, subtitle, icon, onAdd, items, emptyText, renderIte
         <div className="space-y-6">
             <div className="flex items-center justify-between">
                 <div>
-                    <h2 className="text-xs font-black text-gray-900 dark:text-white uppercase tracking-wider">{title}</h2>
+                    <h2 className="text-xs font-black text-gray-900 dark:text-white">{title}</h2>
                     <p className="text-[11px] font-bold text-gray-400 uppercase tracking-wider mt-0.5">{subtitle}</p>
                 </div>
                 <button onClick={onAdd}
-                    className="flex items-center gap-2 px-4 py-2.5 bg-[#1b6b6b] hover:bg-[#155252] text-white rounded-xl text-xs font-extrabold uppercase tracking-widest shadow-lg shadow-[#1b6b6b]/20 transition-all cursor-pointer">
+                    className="flex items-center gap-2 px-4 py-2.5 bg-[#1b6b6b] hover:bg-[#155252] text-white rounded-xl text-xs font-extrabold shadow-sm shadow-[#1b6b6b]/20 transition-all cursor-pointer">
                     <Plus size={14} />Qo'shish
                 </button>
             </div>
@@ -817,7 +817,7 @@ function ItemCard({ icon, iconBg, title, subtitle, onDelete }: {
                 </button>
             </div>
             <div>
-                <p className="text-xs font-black text-gray-900 dark:text-white uppercase tracking-wide">{title}</p>
+                <p className="text-xs font-black text-gray-900 dark:text-white tracking-wide">{title}</p>
                 <p className="text-[11px] font-bold text-gray-400 uppercase tracking-wider mt-1">{subtitle}</p>
             </div>
         </div>

@@ -178,7 +178,7 @@ export default function RoomSchedule() {
                             <Calendar size={20} />
                         </div>
                         <div>
-                            <h3 className="text-sm font-extrabold text-gray-900 dark:text-white uppercase tracking-tight">Jadval Xaritasi (Timetable)</h3>
+                            <h3 className="text-sm font-extrabold text-gray-900 dark:text-white tracking-tight">Jadval Xaritasi (Timetable)</h3>
                             <p className="text-[11px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-wider">Xonalar bandligi jadvali</p>
                         </div>
                     </div>
@@ -265,7 +265,7 @@ export default function RoomSchedule() {
                                                         <MapPin size={16} />
                                                     </div>
                                                     <div>
-                                                        <p className="text-xs font-black text-gray-900 dark:text-white uppercase tracking-tight">{room.name}</p>
+                                                        <p className="text-xs font-black text-gray-900 dark:text-white tracking-tight">{room.name}</p>
                                                         <p className="text-[11px] font-bold text-gray-450 uppercase tracking-wider">{room.capacity} o'rin</p>
                                                     </div>
                                                 </button>
@@ -348,7 +348,7 @@ export default function RoomSchedule() {
                                                     <MapPin size={16} />
                                                 </div>
                                                 <div>
-                                                    <p className="text-xs font-black text-gray-900 dark:text-white uppercase tracking-tight">{room.name}</p>
+                                                    <p className="text-xs font-black text-gray-900 dark:text-white tracking-tight">{room.name}</p>
                                                     <p className="text-[11px] font-bold text-gray-450 uppercase tracking-wider">{room.capacity} o'rin</p>
                                                 </div>
                                             </button>
@@ -429,7 +429,7 @@ export default function RoomSchedule() {
                                     <MapPin size={18} />
                                 </div>
                                 <div>
-                                    <h3 className="text-sm font-black text-gray-900 dark:text-white uppercase tracking-tight">{selectedRoom.name}</h3>
+                                    <h3 className="text-sm font-black text-gray-900 dark:text-white tracking-tight">{selectedRoom.name}</h3>
                                     <p className="text-[11px] font-bold text-gray-400 uppercase tracking-wider">{selectedRoom.capacity} kishilik • {getGroupsForRoomAndDay(selectedRoom.id, true).length + getGroupsForRoomAndDay(selectedRoom.id, false).length} ta dars</p>
                                 </div>
                             </div>
@@ -464,7 +464,7 @@ export default function RoomSchedule() {
                                                 <div className={`w-2 h-2 rounded-full mt-1.5 flex-shrink-0 ${isCurrentlyOn ? 'bg-rose-500 animate-ping' : color.dot}`} />
                                                 <div className="min-w-0">
                                                     <div className="flex items-center gap-2">
-                                                        <p className={`text-xs font-black uppercase tracking-tight ${color.text}`}>{g.name}</p>
+                                                        <p className={`text-xs font-black tracking-tight ${color.text}`}>{g.name}</p>
                                                         {isCurrentlyOn && (
                                                             <span className="px-1.5 py-0.5 bg-rose-500/10 border border-rose-500/30 text-rose-550 rounded text-[7px] font-black uppercase tracking-widest animate-pulse">
                                                                 Hozir Darsda

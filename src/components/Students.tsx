@@ -542,11 +542,11 @@ export default function Students() {
             <div className="bg-white dark:bg-gray-800 rounded-3xl border border-gray-100 dark:border-gray-700/50 shadow-sm overflow-hidden">
                 <div className="px-6 py-5 flex flex-col lg:flex-row lg:items-center justify-between gap-4">
                     <div className="flex items-center gap-4">
-                        <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-[#1b6b6b] to-[#2e9c9c] flex items-center justify-center shadow-lg shadow-[#1b6b6b]/20">
+                        <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-[#1b6b6b] to-[#2e9c9c] flex items-center justify-center shadow-sm shadow-[#1b6b6b]/20">
                             <GraduationCap size={22} className="text-white" />
                         </div>
                         <div>
-                            <h1 className="text-lg font-black text-gray-900 dark:text-white uppercase tracking-tight">{t('students_title')}</h1>
+                            <h1 className="text-lg font-black text-gray-900 dark:text-white tracking-tight">{t('students_title')}</h1>
                             <p className="text-[11px] font-bold text-gray-400 uppercase tracking-wider mt-0.5">
                                 {t('students_count_summary').replace('{total}', String(students.length)).replace('{found}', String(filteredStudents.length))}
                             </p>
@@ -559,14 +559,14 @@ export default function Students() {
                     <div className="flex flex-wrap items-center gap-2">
                         <button
                             onClick={handleExport}
-                            className="flex items-center gap-2 px-3 py-2.5 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300 hover:border-brand hover:text-brand rounded-xl text-xs font-bold uppercase tracking-wider transition-all cursor-pointer"
+                            className="flex items-center gap-2 px-3 py-2.5 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300 hover:border-brand hover:text-brand rounded-xl text-xs font-bold transition-all cursor-pointer"
                         >
                             <FileSpreadsheet size={14} /> {t('export')}
                         </button>
                         <button
                             onClick={() => document.getElementById('import-excel-input')?.click()}
                             disabled={isImporting}
-                            className="flex items-center gap-2 px-3 py-2.5 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300 hover:border-brand hover:text-brand rounded-xl text-xs font-bold uppercase tracking-wider transition-all cursor-pointer disabled:opacity-50"
+                            className="flex items-center gap-2 px-3 py-2.5 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300 hover:border-brand hover:text-brand rounded-xl text-xs font-bold transition-all cursor-pointer disabled:opacity-50"
                         >
                             <FileSpreadsheet size={14} /> {t('import')}
                         </button>
@@ -574,14 +574,14 @@ export default function Students() {
                         {selectedSchoolId !== 0 && (
                             <button
                                 onClick={() => setIsLinkModalOpen(true)}
-                                className="flex items-center gap-2 px-3 py-2.5 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300 hover:border-brand hover:text-brand rounded-xl text-xs font-bold uppercase tracking-wider transition-all cursor-pointer"
+                                className="flex items-center gap-2 px-3 py-2.5 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300 hover:border-brand hover:text-brand rounded-xl text-xs font-bold transition-all cursor-pointer"
                             >
                                 <QrCode size={14} /> {t('create_link')}
                             </button>
                         )}
                         <button
                             onClick={() => setIsModalOpen(true)}
-                            className="flex items-center gap-2 px-4 py-2.5 ml-1 bg-brand hover:bg-brand-dark text-white rounded-xl text-xs font-extrabold uppercase tracking-wider shadow-lg shadow-brand/20 transition-all cursor-pointer"
+                            className="flex items-center gap-2 px-4 py-2.5 ml-1 bg-brand hover:bg-brand-dark text-white rounded-xl text-xs font-extrabold shadow-sm shadow-brand/20 transition-all cursor-pointer"
                         >
                             <Plus size={14} /> {t('add')}
                         </button>
@@ -709,7 +709,7 @@ export default function Students() {
                                         : student.name.charAt(0).toUpperCase()}
                                 </div>
                                 <div className="flex-1 min-w-0">
-                                    <p className="text-xs font-bold text-gray-900 dark:text-white uppercase truncate">{student.name}</p>
+                                    <p className="text-xs font-bold text-gray-900 dark:text-white truncate">{student.name}</p>
                                     <p className="text-[12px] text-gray-400 tabular-nums mt-0.5">{student.phone || "telefon yo'q"}</p>
                                 </div>
                                 <div className="text-right shrink-0">
@@ -762,7 +762,7 @@ export default function Students() {
                                                 ) : student.name.charAt(0).toUpperCase()}
                                             </div>
                                             <div>
-                                                <p className="text-xs font-bold text-gray-900 dark:text-white uppercase tracking-tight group-hover:text-[#1b6b6b] transition-colors">{student.name}</p>
+                                                <p className="text-xs font-bold text-gray-900 dark:text-white tracking-tight group-hover:text-[#1b6b6b] transition-colors">{student.name}</p>
                                                 <span className="text-[11px] text-gray-400 font-bold block mt-0.5 uppercase tracking-wider">{t('date')}: {student.joinedDate}</span>
                                             </div>
                                         </div>
@@ -862,14 +862,14 @@ export default function Students() {
                             <button
                                 onClick={() => setPage(p => Math.max(1, p - 1))}
                                 disabled={currentPage === 1}
-                                className="px-3 py-1.5 rounded-lg text-[12px] font-extrabold uppercase tracking-wider bg-gray-50 dark:bg-gray-900 text-gray-600 dark:text-gray-300 disabled:opacity-40 disabled:cursor-not-allowed hover:bg-gray-100 dark:hover:bg-gray-700 cursor-pointer transition-colors">
+                                className="px-3 py-1.5 rounded-lg text-[12px] font-extrabold bg-gray-50 dark:bg-gray-900 text-gray-600 dark:text-gray-300 disabled:opacity-40 disabled:cursor-not-allowed hover:bg-gray-100 dark:hover:bg-gray-700 cursor-pointer transition-colors">
                                 Oldingi
                             </button>
                             <span className="text-[12px] font-bold text-gray-500 tabular-nums px-1">{currentPage} / {pageCount}</span>
                             <button
                                 onClick={() => setPage(p => Math.min(pageCount, p + 1))}
                                 disabled={currentPage === pageCount}
-                                className="px-3 py-1.5 rounded-lg text-[12px] font-extrabold uppercase tracking-wider bg-gray-50 dark:bg-gray-900 text-gray-600 dark:text-gray-300 disabled:opacity-40 disabled:cursor-not-allowed hover:bg-gray-100 dark:hover:bg-gray-700 cursor-pointer transition-colors">
+                                className="px-3 py-1.5 rounded-lg text-[12px] font-extrabold bg-gray-50 dark:bg-gray-900 text-gray-600 dark:text-gray-300 disabled:opacity-40 disabled:cursor-not-allowed hover:bg-gray-100 dark:hover:bg-gray-700 cursor-pointer transition-colors">
                                 Keyingi
                             </button>
                         </div>
@@ -887,7 +887,7 @@ export default function Students() {
                         <div className="relative bg-white dark:bg-gray-800 rounded-[2rem] border border-gray-100 dark:border-gray-700/50 shadow-2xl w-full max-w-lg p-8 transform transition-all">
                             <div className="flex items-center justify-between mb-6 pb-4 border-b border-gray-50 dark:border-gray-700/50">
                                 <div className="text-left">
-                                    <h3 className="text-lg font-black text-gray-900 dark:text-white uppercase tracking-tight">{t('new_student_title')}</h3>
+                                    <h3 className="text-lg font-black text-gray-900 dark:text-white tracking-tight">{t('new_student_title')}</h3>
                                     <p className="text-[11px] font-bold text-[#1b6b6b] uppercase tracking-wider mt-0.5">{t('student_details_subtitle')}</p>
                                 </div>
                                 <button aria-label="Yopish" type="button" onClick={() => setIsModalOpen(false)} className="w-9 h-9 flex items-center justify-center text-gray-400 hover:bg-gray-55 dark:hover:bg-gray-700 rounded-xl cursor-pointer">
@@ -915,7 +915,7 @@ export default function Students() {
                                         {(['Erkak', 'Ayol'] as const).map(g => (
                                             <button key={g} type="button"
                                                 onClick={() => setNewStudent({ ...newStudent, gender: g })}
-                                                className={`py-2.5 rounded-xl text-xs font-extrabold uppercase tracking-widest transition-all border cursor-pointer ${newStudent.gender === g ? 'bg-[#1b6b6b] border-[#1b6b6b] text-white shadow' : 'bg-gray-50 dark:bg-gray-900/30 border-gray-100 dark:border-gray-700 text-gray-400 hover:text-gray-600'}`}>
+                                                className={`py-2.5 rounded-xl text-xs font-extrabold transition-all border cursor-pointer ${newStudent.gender === g ? 'bg-[#1b6b6b] border-[#1b6b6b] text-white shadow' : 'bg-gray-50 dark:bg-gray-900/30 border-gray-100 dark:border-gray-700 text-gray-400 hover:text-gray-600'}`}>
                                                 {g === 'Erkak' ? '♂ Erkak' : '♀ Ayol'}
                                             </button>
                                         ))}
@@ -1275,11 +1275,11 @@ export default function Students() {
 
                                 <div className="flex gap-3 pt-4 border-t border-dashed border-gray-150 dark:border-gray-700/50">
                                     <button type="button" onClick={() => setIsModalOpen(false)}
-                                        className="flex-1 py-3 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-white text-xs font-extrabold uppercase tracking-widest rounded-2xl transition-all cursor-pointer hover:bg-gray-200 dark:hover:bg-gray-600">
+                                        className="flex-1 py-3 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-white text-xs font-extrabold rounded-2xl transition-all cursor-pointer hover:bg-gray-200 dark:hover:bg-gray-600">
                                         {t('cancel')}
                                     </button>
                                     <button type="submit" disabled={isAdding}
-                                        className="flex-1 py-3 bg-[#1b6b6b] hover:bg-[#155252] text-white text-xs font-extrabold uppercase tracking-widest rounded-2xl shadow-lg shadow-[#1b6b6b]/20 transition-all cursor-pointer disabled:opacity-50">
+                                        className="flex-1 py-3 bg-[#1b6b6b] hover:bg-[#155252] text-white text-xs font-extrabold rounded-2xl shadow-sm shadow-[#1b6b6b]/20 transition-all cursor-pointer disabled:opacity-50">
                                         {isAdding ? t('saving') : t('save')}
                                     </button>
                                 </div>
@@ -1311,7 +1311,7 @@ export default function Students() {
                 <div className="fixed inset-0 z-[250] flex items-start sm:items-center justify-center overflow-y-auto p-4">
                     <div className="absolute inset-0 bg-gray-900/60 backdrop-blur-sm" onClick={() => setStudentToDelete(null)} />
                     <div className="relative bg-white dark:bg-gray-800 rounded-3xl p-6 shadow-2xl max-w-sm w-full text-center border border-gray-100 dark:border-gray-700">
-                        <h4 className="text-sm font-black text-gray-900 dark:text-white uppercase tracking-tight mb-2">{t('delete_confirm_title')}</h4>
+                        <h4 className="text-sm font-black text-gray-900 dark:text-white tracking-tight mb-2">{t('delete_confirm_title')}</h4>
                         <p className="text-[11px] font-bold text-gray-400 uppercase tracking-wider leading-relaxed mb-6">
                             {t('delete_confirm_desc').replace('{name}', studentToDelete.name)}
                         </p>
@@ -1331,7 +1331,7 @@ export default function Students() {
                     <div className="absolute inset-0 bg-gray-900/60 backdrop-blur-sm" onClick={() => setIsLinkModalOpen(false)} />
                     <div className="relative bg-white dark:bg-gray-800 rounded-[2rem] border border-gray-100 dark:border-gray-700/50 shadow-2xl w-full max-w-sm p-8 text-center">
                         <div className="flex items-center justify-between mb-6 pb-4 border-b border-gray-150 dark:border-gray-700/50">
-                            <h3 className="text-sm font-black text-gray-900 dark:text-white uppercase tracking-tight">{t('reception_link')}</h3>
+                            <h3 className="text-sm font-black text-gray-900 dark:text-white tracking-tight">{t('reception_link')}</h3>
                             <button aria-label="Yopish" onClick={() => setIsLinkModalOpen(false)} className="w-8 h-8 flex items-center justify-center text-gray-400 hover:bg-gray-55 dark:hover:bg-gray-700 rounded-lg cursor-pointer">
                                 <X size={18} />
                             </button>

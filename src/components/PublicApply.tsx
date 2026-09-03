@@ -182,7 +182,7 @@ export default function PublicApply() {
                     <div className="w-14 h-14 bg-red-50 dark:bg-red-950/20 text-red-500 rounded-2xl flex items-center justify-center mx-auto mb-4 border border-red-100 dark:border-red-900/40">
                         <Building2 size={24} />
                     </div>
-                    <h2 className="text-sm font-black text-gray-900 dark:text-white uppercase tracking-wider">Xatolik</h2>
+                    <h2 className="text-sm font-black text-gray-900 dark:text-white">Xatolik</h2>
                     <p className="text-[11px] font-bold text-gray-400 uppercase tracking-wider mt-2">{error || 'Filial topilmadi'}</p>
                 </div>
             </div>
@@ -221,7 +221,7 @@ export default function PublicApply() {
                             <div className="w-20 h-20 bg-emerald-50 dark:bg-emerald-950/20 border border-emerald-100 dark:border-emerald-900/40 text-emerald-500 rounded-3xl flex items-center justify-center mx-auto mb-6 shadow-lg shadow-emerald-500/10">
                                 <CheckCircle2 size={40} className="animate-bounce" />
                             </div>
-                            <h2 className="text-sm font-black text-gray-900 dark:text-white uppercase tracking-wider mb-2">Arizangiz qabul qilindi!</h2>
+                            <h2 className="text-sm font-black text-gray-900 dark:text-white mb-2">Arizangiz qabul qilindi!</h2>
                             <p className="text-[11px] font-bold text-gray-400 uppercase tracking-wider leading-relaxed">
                                 Tez orada administratorlarimiz siz bilan bog'lanishadi va kursga qo'shishadi.
                             </p>
@@ -287,7 +287,7 @@ export default function PublicApply() {
                                         {(['Erkak', 'Ayol'] as const).map(g => (
                                             <button key={g} type="button"
                                                 onClick={() => setForm({ ...form, gender: g })}
-                                                className={`py-3 rounded-xl text-xs font-extrabold uppercase tracking-widest transition-all border cursor-pointer ${form.gender === g ? 'bg-[#1b6b6b] border-[#1b6b6b] text-white shadow' : 'bg-gray-50 border-gray-200 text-gray-400 hover:text-gray-600'}`}>
+                                                className={`py-3 rounded-xl text-xs font-extrabold transition-all border cursor-pointer ${form.gender === g ? 'bg-[#1b6b6b] border-[#1b6b6b] text-white shadow' : 'bg-gray-50 border-gray-200 text-gray-400 hover:text-gray-600'}`}>
                                                 {g === 'Erkak' ? '♂ Erkak' : '♀ Ayol'}
                                             </button>
                                         ))}

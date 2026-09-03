@@ -36,7 +36,7 @@ export default function ExamDetail() {
         return (
             <div className="flex flex-col items-center justify-center py-24 bg-white dark:bg-gray-800 rounded-3xl border border-gray-100 dark:border-gray-700/50 shadow-sm transition-colors">
                 <AlertCircle className="w-12 h-12 text-gray-300 dark:text-gray-600 mb-4" />
-                <p className="text-gray-455 dark:text-gray-500 font-bold uppercase tracking-widest text-xs">Imtihon topilmadi</p>
+                <p className="text-gray-455 dark:text-gray-500 font-bold text-xs">Imtihon topilmadi</p>
                 <button onClick={() => navigate('/exams')} className="mt-6 text-[#1b6b6b] font-bold uppercase tracking-wider text-[11px] hover:underline px-6 py-2 bg-teal-50 dark:bg-teal-900/30 rounded-xl transition-all">Orqaga qaytish</button>
             </div>
         );
@@ -148,7 +148,7 @@ export default function ExamDetail() {
                         <ArrowLeft size={18} />
                     </button>
                     <div>
-                        <h1 className="text-sm font-black text-gray-900 dark:text-white uppercase tracking-tight">{exam.name}</h1>
+                        <h1 className="text-sm font-black text-gray-900 dark:text-white tracking-tight">{exam.name}</h1>
                         <p className="text-[11px] font-bold text-gray-400 uppercase tracking-wider mt-0.5">Imtihon tafsilotlari va javob varaqalari</p>
                     </div>
                 </div>
@@ -215,7 +215,7 @@ export default function ExamDetail() {
                         <button
                             onClick={handleBulkOMR}
                             disabled={!!bulkProgress}
-                            className="w-full py-3 bg-[#1b6b6b] hover:bg-[#155252] text-white rounded-xl text-[11px] font-bold uppercase tracking-wider transition-all shadow-lg shadow-[#1b6b6b]/20 flex items-center justify-center gap-1.5 active:scale-95 disabled:opacity-50 cursor-pointer"
+                            className="w-full py-3 bg-[#1b6b6b] hover:bg-[#155252] text-white rounded-xl text-[11px] font-bold uppercase tracking-wider transition-all shadow-sm shadow-[#1b6b6b]/20 flex items-center justify-center gap-1.5 active:scale-95 disabled:opacity-50 cursor-pointer"
                         >
                             <Printer size={14} />
                             {bulkProgress ? 'TAYYORLANMOQDA...' : 'OMMAVIY CHOP ETISH'}
@@ -258,7 +258,7 @@ export default function ExamDetail() {
                 {/* Right: Variants */}
                 <div className="lg:col-span-2 space-y-6">
                     <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                        <h2 className="text-xs font-black text-gray-900 dark:text-white uppercase tracking-tight flex items-center gap-2">
+                        <h2 className="text-xs font-black text-gray-900 dark:text-white tracking-tight flex items-center gap-2">
                             <Layers className="text-[#1b6b6b]" size={18} />
                             Variantlar
                         </h2>

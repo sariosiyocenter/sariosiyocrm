@@ -145,11 +145,11 @@ export default function LogisticsHub() {
             <div className="bg-white dark:bg-gray-800 rounded-3xl border border-gray-100 dark:border-gray-700/50 shadow-sm overflow-hidden">
                 <div className="px-6 py-5 flex flex-col md:flex-row md:items-center justify-between gap-4">
                     <div className="flex items-center gap-4">
-                        <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-[#1b6b6b] to-[#2e9c9c] flex items-center justify-center shadow-lg shadow-[#1b6b6b]/20">
+                        <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-[#1b6b6b] to-[#2e9c9c] flex items-center justify-center shadow-sm shadow-[#1b6b6b]/20">
                             <Navigation size={22} className="text-white" />
                         </div>
                         <div>
-                            <h1 className="text-lg font-black text-gray-900 dark:text-white uppercase tracking-tight">{t('logistics_title')}</h1>
+                            <h1 className="text-lg font-black text-gray-900 dark:text-white tracking-tight">{t('logistics_title')}</h1>
                             <p className="text-[11px] font-bold text-gray-400 uppercase tracking-wider mt-0.5">
                                 {t('logistics_subtitle')}
                             </p>
@@ -194,7 +194,7 @@ export default function LogisticsHub() {
                         </div>
                         <button 
                             onClick={() => { resetTransportForm(); setIsTransportModalOpen(true); }}
-                            className="flex items-center gap-2 px-4 py-2.5 bg-[#1b6b6b] hover:bg-[#155252] text-white rounded-xl text-xs font-extrabold uppercase tracking-widest shadow-lg shadow-[#1b6b6b]/20 transition-all cursor-pointer"
+                            className="flex items-center gap-2 px-4 py-2.5 bg-[#1b6b6b] hover:bg-[#155252] text-white rounded-xl text-xs font-extrabold shadow-sm shadow-[#1b6b6b]/20 transition-all cursor-pointer"
                         >
                             <Plus size={14} /> {t('add')}
                         </button>
@@ -218,14 +218,14 @@ Unga biriktirilgan o'quvchilar bo'shatiladi.`)) deleteTransport(item.id); }} cla
                                         </div>
                                     </div>
                                     <div>
-                                        <h3 className="text-xs font-black text-gray-900 dark:text-white uppercase tracking-wide">{item.name}</h3>
+                                        <h3 className="text-xs font-black text-gray-900 dark:text-white tracking-wide">{item.name}</h3>
                                         <p className="text-[11px] font-bold text-gray-400 uppercase tracking-wider mt-1">{item.model} • {item.number}</p>
                                     </div>
                                 </div>
                                 <div className="mt-4 pt-4 border-t border-dashed border-gray-100 dark:border-gray-700/50 grid grid-cols-2 gap-4">
                                     <div>
                                         <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider block mb-0.5">{t('driver')}</span>
-                                        <span className="text-xs font-bold text-gray-700 dark:text-gray-200 uppercase tracking-tight">{item.driverName || t('unknown_teacher')}</span>
+                                        <span className="text-xs font-bold text-gray-700 dark:text-gray-200 tracking-tight">{item.driverName || t('unknown_teacher')}</span>
                                     </div>
                                     <div>
                                         <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider block mb-0.5">{t('capacity')}</span>
@@ -284,7 +284,7 @@ Unga biriktirilgan o'quvchilar bo'shatiladi.`)) deleteTransport(item.id); }} cla
                                     >
                                         <div className="flex justify-between items-start">
                                             <div>
-                                                <h3 className="text-xs font-black text-gray-900 dark:text-white uppercase tracking-tight">
+                                                <h3 className="text-xs font-black text-gray-900 dark:text-white tracking-tight">
                                                     {route.name}
                                                 </h3>
                                                 <span className="text-[11px] text-gray-400 font-bold block mt-0.5 uppercase tracking-wide">
@@ -321,7 +321,7 @@ Unga biriktirilgan o'quvchilar bo'shatiladi.`)) deleteTransport(item.id); }} cla
                             <div className="bg-white dark:bg-gray-800 rounded-3xl border border-gray-100 dark:border-gray-700/50 p-6 shadow-sm animate-in fade-in duration-300">
                                 <div className="flex justify-between items-start mb-6 pb-4 border-b border-gray-50 dark:border-gray-700/50">
                                     <div>
-                                        <h3 className="text-sm font-black text-gray-900 dark:text-white uppercase tracking-tight">
+                                        <h3 className="text-sm font-black text-gray-900 dark:text-white tracking-tight">
                                             {editingRoute.name}
                                         </h3>
                                         <span className="text-[11px] font-bold text-[#1b6b6b] uppercase tracking-wider mt-0.5">{t('start_time')}: {editingRoute.startTime || t('not_marked')}</span>
@@ -335,7 +335,7 @@ Unga biriktirilgan o'quvchilar bo'shatiladi.`)) deleteTransport(item.id); }} cla
                                         </button>
                                         <button 
                                             onClick={() => setIsStudentSelectorOpen(true)}
-                                            className="px-3.5 py-2 bg-[#1b6b6b] hover:bg-[#155252] text-white rounded-xl text-[11px] font-extrabold uppercase tracking-wider shadow-lg shadow-[#1b6b6b]/20 transition-all cursor-pointer"
+                                            className="px-3.5 py-2 bg-[#1b6b6b] hover:bg-[#155252] text-white rounded-xl text-[11px] font-extrabold uppercase tracking-wider shadow-sm shadow-[#1b6b6b]/20 transition-all cursor-pointer"
                                         >
                                             {t('add_student')}
                                         </button>
@@ -353,7 +353,7 @@ Unga biriktirilgan o'quvchilar bo'shatiladi.`)) deleteTransport(item.id); }} cla
                                                         {index + 1}
                                                     </div>
                                                     <div>
-                                                        <h4 className="text-xs font-black text-gray-900 dark:text-white uppercase tracking-tight">{student.name}</h4>
+                                                        <h4 className="text-xs font-black text-gray-900 dark:text-white tracking-tight">{student.name}</h4>
                                                         <div className="flex items-center gap-2 mt-0.5">
                                                             <span className="text-[11px] text-gray-400 font-bold uppercase tracking-wide flex items-center gap-0.5"><MapPin size={9} /> {student.address || '—'}</span>
                                                             <span className="text-[11px] text-gray-400 font-bold uppercase tracking-wide flex items-center gap-0.5"><Phone size={9} /> {student.phone}</span>
@@ -420,7 +420,7 @@ Unga biriktirilgan o'quvchilar bo'shatiladi.`)) deleteTransport(item.id); }} cla
                                         }`}
                                     >
                                         <Bus size={16} />
-                                        <span className="text-xs font-black uppercase tracking-tight truncate">{t.name}</span>
+                                        <span className="text-xs font-black tracking-tight truncate">{t.name}</span>
                                     </button>
                                 ))}
                             </div>
@@ -448,7 +448,7 @@ Unga biriktirilgan o'quvchilar bo'shatiladi.`)) deleteTransport(item.id); }} cla
                                                 <Navigation size={16} />
                                             </div>
                                             <div className="text-left">
-                                                <h4 className="text-xs font-black text-gray-900 dark:text-white uppercase tracking-wide">{route.name}</h4>
+                                                <h4 className="text-xs font-black text-gray-900 dark:text-white tracking-wide">{route.name}</h4>
                                                 <span className="text-[11px] font-bold text-gray-400 uppercase tracking-wider block mt-0.5">{route.studentIds.length} {t('student').toLowerCase()}</span>
                                             </div>
                                         </div>
@@ -464,7 +464,7 @@ Unga biriktirilgan o'quvchilar bo'shatiladi.`)) deleteTransport(item.id); }} cla
                                                 return (
                                                     <div key={student.id} className="p-3 bg-gray-55/50 dark:bg-gray-900/40 rounded-2xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
                                                         <div>
-                                                            <h5 className="text-xs font-black text-gray-900 dark:text-white uppercase tracking-tight">{student.name}</h5>
+                                                            <h5 className="text-xs font-black text-gray-900 dark:text-white tracking-tight">{student.name}</h5>
                                                             <span className="text-[11px] text-gray-400 font-bold block mt-0.5 uppercase tracking-wide">{student.address || t('no_address')}</span>
                                                         </div>
                                                         <div className="flex items-center gap-1.5 w-full sm:w-auto">
@@ -504,7 +504,7 @@ Unga biriktirilgan o'quvchilar bo'shatiladi.`)) deleteTransport(item.id); }} cla
                     <div className="relative bg-white dark:bg-gray-800 rounded-[2rem] border border-gray-100 dark:border-gray-700/50 shadow-2xl w-full max-w-md p-8">
                         <div className="flex items-center justify-between mb-6 pb-4 border-b border-gray-50 dark:border-gray-700/50">
                             <div>
-                                <h3 className="text-lg font-black text-gray-900 dark:text-white uppercase tracking-tight">{editingTransport ? t('edit_transport') : t('new_transport')}</h3>
+                                <h3 className="text-lg font-black text-gray-900 dark:text-white tracking-tight">{editingTransport ? t('edit_transport') : t('new_transport')}</h3>
                                 <p className="text-[11px] font-bold text-[#1b6b6b] uppercase tracking-wider mt-0.5">{t('fleet_subtitle')}</p>
                             </div>
                             <button aria-label="Yopish" onClick={() => setIsTransportModalOpen(false)} className="w-9 h-9 flex items-center justify-center text-gray-400 hover:bg-gray-55 dark:hover:bg-gray-700 rounded-xl cursor-pointer"><X size={18} /></button>
@@ -551,11 +551,11 @@ Unga biriktirilgan o'quvchilar bo'shatiladi.`)) deleteTransport(item.id); }} cla
                             </div>
                             <div className="flex gap-3 pt-4 border-t border-dashed border-gray-150 dark:border-gray-700/50">
                                 <button type="button" onClick={() => setIsTransportModalOpen(false)}
-                                    className="flex-1 py-3 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-white text-xs font-extrabold uppercase tracking-widest rounded-2xl transition-all cursor-pointer hover:bg-gray-200 dark:hover:bg-gray-600">
+                                    className="flex-1 py-3 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-white text-xs font-extrabold rounded-2xl transition-all cursor-pointer hover:bg-gray-200 dark:hover:bg-gray-600">
                                     {t('cancel')}
                                 </button>
                                 <button type="submit"
-                                    className="flex-1 py-3 bg-[#1b6b6b] hover:bg-[#155252] text-white text-xs font-extrabold uppercase tracking-widest rounded-2xl shadow-lg shadow-[#1b6b6b]/20 transition-all cursor-pointer">
+                                    className="flex-1 py-3 bg-[#1b6b6b] hover:bg-[#155252] text-white text-xs font-extrabold rounded-2xl shadow-sm shadow-[#1b6b6b]/20 transition-all cursor-pointer">
                                     {t('save')}
                                 </button>
                             </div>
@@ -570,7 +570,7 @@ Unga biriktirilgan o'quvchilar bo'shatiladi.`)) deleteTransport(item.id); }} cla
                     <div className="relative bg-white dark:bg-gray-800 rounded-[2rem] border border-gray-100 dark:border-gray-700/50 shadow-2xl w-full max-w-md p-8">
                         <div className="flex items-center justify-between mb-6 pb-4 border-b border-gray-50 dark:border-gray-700/50">
                             <div>
-                                <h3 className="text-lg font-black text-gray-900 dark:text-white uppercase tracking-tight">{editingRoute ? t('edit_route') : t('new_route')}</h3>
+                                <h3 className="text-lg font-black text-gray-900 dark:text-white tracking-tight">{editingRoute ? t('edit_route') : t('new_route')}</h3>
                                 <p className="text-[11px] font-bold text-[#1b6b6b] uppercase tracking-wider mt-0.5">{t('route_subtitle')}</p>
                             </div>
                             <button aria-label="Yopish" onClick={() => setIsRouteModalOpen(false)} className="w-9 h-9 flex items-center justify-center text-gray-400 hover:bg-gray-55 dark:hover:bg-gray-700 rounded-xl cursor-pointer"><X size={18} /></button>
@@ -612,11 +612,11 @@ Unga biriktirilgan o'quvchilar bo'shatiladi.`)) deleteTransport(item.id); }} cla
                             </div>
                             <div className="flex gap-3 pt-4 border-t border-dashed border-gray-150 dark:border-gray-700/50">
                                 <button type="button" onClick={() => setIsRouteModalOpen(false)}
-                                    className="flex-1 py-3 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-white text-xs font-extrabold uppercase tracking-widest rounded-2xl transition-all cursor-pointer hover:bg-gray-200 dark:hover:bg-gray-600">
+                                    className="flex-1 py-3 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-white text-xs font-extrabold rounded-2xl transition-all cursor-pointer hover:bg-gray-200 dark:hover:bg-gray-600">
                                     {t('cancel')}
                                 </button>
                                 <button type="submit"
-                                    className="flex-1 py-3 bg-[#1b6b6b] hover:bg-[#155252] text-white text-xs font-extrabold uppercase tracking-widest rounded-2xl shadow-lg shadow-[#1b6b6b]/20 transition-all cursor-pointer">
+                                    className="flex-1 py-3 bg-[#1b6b6b] hover:bg-[#155252] text-white text-xs font-extrabold rounded-2xl shadow-sm shadow-[#1b6b6b]/20 transition-all cursor-pointer">
                                     {t('save')}
                                 </button>
                             </div>
@@ -631,7 +631,7 @@ Unga biriktirilgan o'quvchilar bo'shatiladi.`)) deleteTransport(item.id); }} cla
                     <div className="relative bg-white dark:bg-gray-800 rounded-[2rem] border border-gray-100 dark:border-gray-700/50 shadow-2xl w-full max-w-md p-8 max-h-[80vh] flex flex-col">
                         <div className="flex items-center justify-between mb-6 pb-4 border-b border-gray-50 dark:border-gray-700/50 shrink-0">
                             <div>
-                                <h3 className="text-lg font-black text-gray-900 dark:text-white uppercase tracking-tight">{t('add_student')}</h3>
+                                <h3 className="text-lg font-black text-gray-900 dark:text-white tracking-tight">{t('add_student')}</h3>
                                 <p className="text-[11px] font-bold text-[#1b6b6b] uppercase tracking-wider mt-0.5">{t('assign_to_route')}</p>
                             </div>
                             <button aria-label="Yopish" onClick={() => setIsStudentSelectorOpen(false)} className="w-9 h-9 flex items-center justify-center text-gray-400 hover:bg-gray-55 dark:hover:bg-gray-700 rounded-xl cursor-pointer"><X size={18} /></button>
@@ -660,7 +660,7 @@ Unga biriktirilgan o'quvchilar bo'shatiladi.`)) deleteTransport(item.id); }} cla
                                         className="w-full flex items-center justify-between p-3 bg-gray-50/50 dark:bg-gray-900/40 hover:bg-[#1b6b6b]/5 border border-transparent hover:border-gray-100 rounded-2xl transition-all cursor-pointer text-left"
                                     >
                                         <div>
-                                            <p className="text-xs font-black text-gray-900 dark:text-white uppercase tracking-tight">{student.name}</p>
+                                            <p className="text-xs font-black text-gray-900 dark:text-white tracking-tight">{student.name}</p>
                                             <span className="text-[11px] text-gray-400 font-bold block mt-0.5 uppercase tracking-wide">{student.phone}</span>
                                         </div>
                                         <Plus size={16} className="text-gray-400" />

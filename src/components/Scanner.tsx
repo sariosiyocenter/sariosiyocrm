@@ -164,7 +164,7 @@ export default function Scanner({ onClose }: { onClose?: () => void }) {
                 <button onClick={handleClose} className="text-white hover:bg-white/10 p-2 rounded-xl transition-all">
                     <ArrowLeft size={22} />
                 </button>
-                <h2 className="text-white font-black uppercase tracking-widest text-xs">Natija Skaneri</h2>
+                <h2 className="text-white font-black text-xs">Natija Skaneri</h2>
                 <div className="w-10" />
             </div>
 
@@ -185,8 +185,8 @@ export default function Scanner({ onClose }: { onClose?: () => void }) {
                             <QrCode className="w-10 h-10 text-teal-400" />
                         </div>
                         <div>
-                            <h3 className="text-white font-black text-xl uppercase tracking-widest mb-2">Javob Varaqasini Skaner Qilish</h3>
-                            <p className="text-gray-400 text-xs uppercase font-bold tracking-tight max-w-xs mx-auto">
+                            <h3 className="text-white font-black text-xl mb-2">Javob Varaqasini Skaner Qilish</h3>
+                            <p className="text-gray-400 text-xs font-bold tracking-tight max-w-xs mx-auto">
                                 Varaqadagi QR kodni kameraga ko'rsating. Sistema o'quvchi va variantni avtomatik aniqlaydi.
                             </p>
                         </div>
@@ -282,7 +282,7 @@ export default function Scanner({ onClose }: { onClose?: () => void }) {
                         <div className="w-16 h-16 bg-teal-500/20 rounded-2xl flex items-center justify-center animate-pulse">
                             <QrCode className="w-8 h-8 text-teal-400" />
                         </div>
-                        <p className="text-white font-black uppercase tracking-widest text-sm">Saqlanmoqda...</p>
+                        <p className="text-white font-black text-sm">Saqlanmoqda...</p>
                     </div>
                 )}
 

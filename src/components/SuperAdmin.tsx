@@ -426,7 +426,7 @@ export default function SuperAdmin() {
   if (!isSuper && !isSeller) {
     return (
       <div className="flex flex-col items-center justify-center py-20">
-        <div className="text-red-500 font-extrabold text-lg uppercase tracking-widest">Ruxsat etilmagan</div>
+        <div className="text-red-500 font-extrabold text-lg">Ruxsat etilmagan</div>
         <p className="text-gray-500 text-sm mt-2">Bu sahifaga faqat Super Admin yoki Sotuvchi kira oladi.</p>
       </div>
     );
@@ -437,10 +437,10 @@ export default function SuperAdmin() {
       {/* Header */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-black text-gray-900 dark:text-white uppercase tracking-tight">
+          <h1 className="text-2xl font-black text-gray-900 dark:text-white tracking-tight">
             {isSuper ? 'Super Admin Boshqaruvi' : 'Sotuvchi Dashboard'}
           </h1>
-          <p className="text-xs font-bold text-gray-400 dark:text-gray-500 uppercase tracking-widest mt-1">
+          <p className="text-xs font-bold text-gray-400 dark:text-gray-500 mt-1">
             {isSuper ? 'Platformadagi barcha tashkilotlar, lidlar va sotuvchilarni nazorat qilish' : 'Sizga biriktirilgan sotuv lidlarini boshqarish'}
           </p>
         </div>
@@ -448,7 +448,7 @@ export default function SuperAdmin() {
           {activeTab === 'orgs' && isSuper && (
             <button
               onClick={() => setOrgModalOpen(true)}
-              className="inline-flex items-center justify-center gap-2 px-6 py-3.5 bg-[#1b6b6b] hover:bg-[#155252] text-white text-xs font-extrabold uppercase tracking-widest rounded-2xl shadow-lg shadow-[#1b6b6b]/20 transition-all hover:scale-105 cursor-pointer"
+              className="inline-flex items-center justify-center gap-2 px-6 py-3.5 bg-[#1b6b6b] hover:bg-[#155252] text-white text-xs font-extrabold rounded-2xl shadow-sm shadow-[#1b6b6b]/20 transition-all hover:scale-105 cursor-pointer"
             >
               <Plus size={15} />
               Yangi Tashkilot
@@ -457,7 +457,7 @@ export default function SuperAdmin() {
           {activeTab === 'leads' && (
             <button
               onClick={() => handleOpenLeadModal(null)}
-              className="inline-flex items-center justify-center gap-2 px-6 py-3.5 bg-brand-dark hover:bg-brand-dark text-white text-xs font-extrabold uppercase tracking-widest rounded-2xl shadow-lg shadow-brand/20 transition-all hover:scale-105 cursor-pointer"
+              className="inline-flex items-center justify-center gap-2 px-6 py-3.5 bg-brand-dark hover:bg-brand-dark text-white text-xs font-extrabold rounded-2xl shadow-sm shadow-brand/20 transition-all hover:scale-105 cursor-pointer"
             >
               <Plus size={15} />
               Yangi Lid Qo'shish
@@ -466,7 +466,7 @@ export default function SuperAdmin() {
           {activeTab === 'sellers' && isSuper && (
             <button
               onClick={() => setSellerModalOpen(true)}
-              className="inline-flex items-center justify-center gap-2 px-6 py-3.5 bg-violet-600 hover:bg-violet-700 text-white text-xs font-extrabold uppercase tracking-widest rounded-2xl shadow-lg shadow-violet-500/20 transition-all hover:scale-105 cursor-pointer"
+              className="inline-flex items-center justify-center gap-2 px-6 py-3.5 bg-violet-600 hover:bg-violet-700 text-white text-xs font-extrabold rounded-2xl shadow-lg shadow-violet-500/20 transition-all hover:scale-105 cursor-pointer"
             >
               <UserPlus size={15} />
               Yangi Sotuvchi
@@ -490,7 +490,7 @@ export default function SuperAdmin() {
               <button
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id as any)}
-                className={`flex items-center gap-2 px-6 py-3 text-xs font-extrabold uppercase tracking-widest border-b-2 transition-all cursor-pointer ${
+                className={`flex items-center gap-2 px-6 py-3 text-xs font-extrabold border-b-2 transition-all cursor-pointer ${
                   active
                     ? 'border-[#1b6b6b] text-[#1b6b6b] dark:text-[#2eb8b8]'
                     : 'border-transparent text-gray-400 hover:text-gray-600 dark:hover:text-gray-300'
@@ -509,7 +509,7 @@ export default function SuperAdmin() {
         <div className="space-y-8">
           {/* SaaS Business Metrics Dashboard */}
           <div className="space-y-6 bg-gray-50/40 dark:bg-gray-900/30 p-6 rounded-[2rem] border border-gray-100 dark:border-gray-800">
-            <h2 className="text-xs font-black text-gray-900 dark:text-white uppercase tracking-wider mb-2">
+            <h2 className="text-xs font-black text-gray-900 dark:text-white mb-2">
               SaaS Tizimi Ko'rsatkichlari (KPIs)
             </h2>
             
@@ -662,7 +662,7 @@ export default function SuperAdmin() {
                 <p className="text-gray-400 font-bold text-sm">Hozircha tashkilot topilmadi</p>
                 <button
                   onClick={() => setOrgModalOpen(true)}
-                  className="mt-4 inline-flex items-center gap-2 px-5 py-2.5 bg-[#1b6b6b] text-white text-xs font-extrabold uppercase tracking-widest rounded-xl cursor-pointer"
+                  className="mt-4 inline-flex items-center gap-2 px-5 py-2.5 bg-[#1b6b6b] text-white text-xs font-extrabold rounded-xl cursor-pointer"
                 >
                   <Plus size={13} /> Yangi tashkilot yarating
                 </button>
@@ -693,7 +693,7 @@ export default function SuperAdmin() {
                               {org.status || 'Sinov'}
                             </span>
                           </div>
-                          <h3 className="font-black text-gray-900 dark:text-white uppercase tracking-tight text-base group-hover:text-[#1b6b6b] transition-colors">{org.name}</h3>
+                          <h3 className="font-black text-gray-900 dark:text-white tracking-tight text-base group-hover:text-[#1b6b6b] transition-colors">{org.name}</h3>
                           <div className="flex flex-wrap gap-x-3 gap-y-1 text-[12px] text-gray-400 font-bold items-center">
                             {org.address && (
                               <div className="flex items-center gap-1">
@@ -822,7 +822,7 @@ export default function SuperAdmin() {
               <p className="text-gray-400 font-bold text-sm">Sotuv lidlari topilmadi</p>
               <button
                 onClick={() => handleOpenLeadModal(null)}
-                className="mt-4 inline-flex items-center gap-2 px-5 py-2.5 bg-brand-dark text-white text-xs font-extrabold uppercase tracking-widest rounded-xl cursor-pointer"
+                className="mt-4 inline-flex items-center gap-2 px-5 py-2.5 bg-brand-dark text-white text-xs font-extrabold rounded-xl cursor-pointer"
               >
                 <Plus size={13} /> Birinchi lidni qo'shing
               </button>
@@ -865,7 +865,7 @@ export default function SuperAdmin() {
                         </div>
                       </div>
 
-                      <h3 className="font-black text-gray-900 dark:text-white uppercase tracking-tight text-base leading-tight mb-2">
+                      <h3 className="font-black text-gray-900 dark:text-white tracking-tight text-base leading-tight mb-2">
                         {lead.name}
                       </h3>
 
@@ -921,7 +921,7 @@ export default function SuperAdmin() {
               <p className="text-gray-400 font-bold text-sm">Hozircha sotuvchi agentlar yo'q</p>
               <button
                 onClick={() => setSellerModalOpen(true)}
-                className="mt-4 inline-flex items-center gap-2 px-5 py-2.5 bg-violet-600 text-white text-xs font-extrabold uppercase tracking-widest rounded-xl cursor-pointer"
+                className="mt-4 inline-flex items-center gap-2 px-5 py-2.5 bg-violet-600 text-white text-xs font-extrabold rounded-xl cursor-pointer"
               >
                 <Plus size={13} /> Birinchi agentni qo'shing
               </button>
@@ -943,7 +943,7 @@ export default function SuperAdmin() {
                       </span>
                     </div>
 
-                    <h3 className="font-black text-gray-900 dark:text-white uppercase tracking-tight text-base leading-tight mb-1">
+                    <h3 className="font-black text-gray-900 dark:text-white tracking-tight text-base leading-tight mb-1">
                       {sel.name}
                     </h3>
                     <p className="text-xs font-bold text-gray-400 mb-4">{sel.email}</p>
@@ -1002,7 +1002,7 @@ export default function SuperAdmin() {
           <div className="relative bg-white dark:bg-gray-800 rounded-[2rem] border border-gray-100 dark:border-gray-700/50 shadow-2xl w-full max-w-xl p-8 max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between mb-6 pb-4 border-b border-gray-50 dark:border-gray-700/50">
               <div>
-                <h3 className="text-lg font-black text-gray-900 dark:text-white uppercase tracking-tight">Yangi Tashkilot</h3>
+                <h3 className="text-lg font-black text-gray-900 dark:text-white tracking-tight">Yangi Tashkilot</h3>
                 <p className="text-[11px] font-bold text-gray-400 uppercase tracking-wider mt-0.5">O'quv markaz yoki tashkilot</p>
               </div>
               <button aria-label="Yopish" onClick={() => setOrgModalOpen(false)} className="w-9 h-9 flex items-center justify-center text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700 rounded-xl cursor-pointer">
@@ -1093,11 +1093,11 @@ export default function SuperAdmin() {
 
               <div className="flex gap-3 pt-2">
                 <button type="button" onClick={() => setOrgModalOpen(false)}
-                  className="flex-1 py-3 bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-700 dark:text-white text-xs font-extrabold uppercase tracking-widest rounded-2xl transition-all cursor-pointer">
+                  className="flex-1 py-3 bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-700 dark:text-white text-xs font-extrabold rounded-2xl transition-all cursor-pointer">
                   Bekor
                 </button>
                 <button type="submit" disabled={creatingOrg}
-                  className="flex-1 py-3 bg-[#1b6b6b] hover:bg-[#155252] text-white text-xs font-extrabold uppercase tracking-widest rounded-2xl shadow-lg shadow-[#1b6b6b]/20 transition-all disabled:opacity-50 cursor-pointer">
+                  className="flex-1 py-3 bg-[#1b6b6b] hover:bg-[#155252] text-white text-xs font-extrabold rounded-2xl shadow-sm shadow-[#1b6b6b]/20 transition-all disabled:opacity-50 cursor-pointer">
                   {creatingOrg ? 'Yaratilmoqda...' : 'Yaratish'}
                 </button>
               </div>
@@ -1113,7 +1113,7 @@ export default function SuperAdmin() {
           <div className="relative bg-white dark:bg-gray-800 rounded-[2rem] border border-gray-100 dark:border-gray-700/50 shadow-2xl w-full max-w-2xl p-8 max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between mb-6 pb-4 border-b border-gray-50 dark:border-gray-700/50">
               <div>
-                <h3 className="text-lg font-black text-gray-900 dark:text-white uppercase tracking-tight">Tashkilot va Admin Sozlamalari</h3>
+                <h3 className="text-lg font-black text-gray-900 dark:text-white tracking-tight">Tashkilot va Admin Sozlamalari</h3>
                 <p className="text-[11px] font-bold text-[#1b6b6b] uppercase tracking-wider mt-0.5">{selectedOrg.name} tahrirlash</p>
               </div>
               <button aria-label="Yopish" onClick={() => setSubModalOpen(false)} className="w-9 h-9 flex items-center justify-center text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700 rounded-xl cursor-pointer">
@@ -1241,11 +1241,11 @@ export default function SuperAdmin() {
 
               <div className="flex gap-3 pt-4 border-t border-gray-50 dark:border-gray-700/50">
                 <button type="button" onClick={() => setSubModalOpen(false)}
-                  className="flex-1 py-3 bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-700 dark:text-white text-xs font-extrabold uppercase tracking-widest rounded-2xl transition-all cursor-pointer">
+                  className="flex-1 py-3 bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-700 dark:text-white text-xs font-extrabold rounded-2xl transition-all cursor-pointer">
                   Bekor
                 </button>
                 <button type="submit" disabled={updatingSub}
-                  className="flex-1 py-3 bg-[#1b6b6b] hover:bg-[#155252] text-white text-xs font-extrabold uppercase tracking-widest rounded-2xl shadow-lg shadow-[#1b6b6b]/20 transition-all disabled:opacity-50 cursor-pointer">
+                  className="flex-1 py-3 bg-[#1b6b6b] hover:bg-[#155252] text-white text-xs font-extrabold rounded-2xl shadow-sm shadow-[#1b6b6b]/20 transition-all disabled:opacity-50 cursor-pointer">
                   {updatingSub ? 'Saqlanmoqda...' : 'Saqlash'}
                 </button>
               </div>
@@ -1261,7 +1261,7 @@ export default function SuperAdmin() {
           <div className="relative bg-white dark:bg-gray-800 rounded-[2rem] border border-gray-100 dark:border-gray-700/50 shadow-2xl w-full max-w-md p-8">
             <div className="flex items-center justify-between mb-6 pb-4 border-b border-gray-50 dark:border-gray-700/50">
               <div>
-                <h3 className="text-lg font-black text-gray-900 dark:text-white uppercase tracking-tight">
+                <h3 className="text-lg font-black text-gray-900 dark:text-white tracking-tight">
                   {selectedLead ? 'Lidni Tahrirlash' : 'Yangi Lid'}
                 </h3>
                 <p className="text-[11px] font-bold text-brand uppercase tracking-wider mt-0.5">CRM Xarid qilish istagida bo'lgan mijoz</p>
@@ -1340,11 +1340,11 @@ export default function SuperAdmin() {
               </div>
               <div className="flex gap-3 pt-2">
                 <button type="button" onClick={() => setLeadModalOpen(false)}
-                  className="flex-1 py-3 bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-700 dark:text-white text-xs font-extrabold uppercase tracking-widest rounded-2xl transition-all cursor-pointer">
+                  className="flex-1 py-3 bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-700 dark:text-white text-xs font-extrabold rounded-2xl transition-all cursor-pointer">
                   Bekor
                 </button>
                 <button type="submit" disabled={savingLead}
-                  className="flex-1 py-3 bg-brand-dark hover:bg-brand-dark text-white text-xs font-extrabold uppercase tracking-widest rounded-2xl shadow-lg shadow-brand/20 transition-all disabled:opacity-50 cursor-pointer">
+                  className="flex-1 py-3 bg-brand-dark hover:bg-brand-dark text-white text-xs font-extrabold rounded-2xl shadow-sm shadow-brand/20 transition-all disabled:opacity-50 cursor-pointer">
                   {savingLead ? 'Saqlanmoqda...' : 'Saqlash'}
                 </button>
               </div>
@@ -1360,7 +1360,7 @@ export default function SuperAdmin() {
           <div className="relative bg-white dark:bg-gray-800 rounded-[2rem] border border-gray-100 dark:border-gray-700/50 shadow-2xl w-full max-w-md p-8">
             <div className="flex items-center justify-between mb-6 pb-4 border-b border-gray-50 dark:border-gray-700/50">
               <div>
-                <h3 className="text-lg font-black text-gray-900 dark:text-white uppercase tracking-tight">Yangi Sotuvchi Agent</h3>
+                <h3 className="text-lg font-black text-gray-900 dark:text-white tracking-tight">Yangi Sotuvchi Agent</h3>
                 <p className="text-[11px] font-bold text-violet-600 uppercase tracking-wider mt-0.5">CRM Tizimini sotadigan xodim</p>
               </div>
               <button aria-label="Yopish" onClick={() => setSellerModalOpen(false)} className="w-9 h-9 flex items-center justify-center text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700 rounded-xl cursor-pointer">
@@ -1407,11 +1407,11 @@ export default function SuperAdmin() {
               </div>
               <div className="flex gap-3 pt-2">
                 <button type="button" onClick={() => setSellerModalOpen(false)}
-                  className="flex-1 py-3 bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-700 dark:text-white text-xs font-extrabold uppercase tracking-widest rounded-2xl transition-all cursor-pointer">
+                  className="flex-1 py-3 bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-700 dark:text-white text-xs font-extrabold rounded-2xl transition-all cursor-pointer">
                   Bekor
                 </button>
                 <button type="submit" disabled={creatingSeller}
-                  className="flex-1 py-3 bg-violet-600 hover:bg-violet-700 text-white text-xs font-extrabold uppercase tracking-widest rounded-2xl shadow-lg shadow-violet-500/20 transition-all disabled:opacity-50 cursor-pointer">
+                  className="flex-1 py-3 bg-violet-600 hover:bg-violet-700 text-white text-xs font-extrabold rounded-2xl shadow-lg shadow-violet-500/20 transition-all disabled:opacity-50 cursor-pointer">
                   {creatingSeller ? 'Yaratilmoqda...' : 'Yaratish'}
                 </button>
               </div>

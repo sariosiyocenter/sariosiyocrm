@@ -192,11 +192,11 @@ export default function HRManagement() {
             <div className="bg-white dark:bg-gray-800 rounded-3xl border border-gray-100 dark:border-gray-700/50 shadow-sm overflow-hidden">
                 <div className="px-6 py-5 flex flex-col md:flex-row md:items-center justify-between gap-4">
                     <div className="flex items-center gap-4">
-                        <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-[#1b6b6b] to-[#2e9c9c] flex items-center justify-center shadow-lg shadow-[#1b6b6b]/20">
+                        <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-[#1b6b6b] to-[#2e9c9c] flex items-center justify-center shadow-sm shadow-[#1b6b6b]/20">
                             <Users2 size={22} className="text-white" />
                         </div>
                         <div>
-                            <h1 className="text-lg font-black text-gray-900 dark:text-white uppercase tracking-tight">{t('hr_title')}</h1>
+                            <h1 className="text-lg font-black text-gray-900 dark:text-white tracking-tight">{t('hr_title')}</h1>
                             <p className="text-[11px] font-bold text-gray-400 uppercase tracking-wider mt-0.5">
                                 {t('hr_subtitle')}
                             </p>
@@ -204,7 +204,7 @@ export default function HRManagement() {
                     </div>
                     {isAdminOrManager && (
                         <button onClick={() => { setNewUser({ role: 'RECEPTIONIST' }); setIsAddOpen(true); }}
-                            className="flex items-center gap-2 px-4 py-2.5 bg-[#1b6b6b] hover:bg-[#155252] text-white rounded-xl text-xs font-extrabold uppercase tracking-widest shadow-lg shadow-[#1b6b6b]/20 transition-all cursor-pointer">
+                            className="flex items-center gap-2 px-4 py-2.5 bg-[#1b6b6b] hover:bg-[#155252] text-white rounded-xl text-xs font-extrabold shadow-sm shadow-[#1b6b6b]/20 transition-all cursor-pointer">
                             <Plus size={14} /> {t('new_staff')}
                         </button>
                     )}
@@ -261,7 +261,7 @@ export default function HRManagement() {
                     )}
 
                     {loadingUsers ? (
-                        <div className="py-20 text-center text-[#1b6b6b] text-xs font-bold uppercase tracking-widest">{t('loading')}</div>
+                        <div className="py-20 text-center text-[#1b6b6b] text-xs font-bold">{t('loading')}</div>
                     ) : filteredUsers.length === 0 ? (
                         <div className="py-20 text-center bg-white dark:bg-gray-800 rounded-3xl border border-gray-100 dark:border-gray-700/50">
                             <p className="text-[11px] font-bold text-gray-400 uppercase tracking-wider">{t('no_staff_found')}</p>
@@ -302,7 +302,7 @@ export default function HRManagement() {
                                                 )}
                                             </div>
                                             <div>
-                                                <h4 className="text-xs font-black text-gray-900 dark:text-white uppercase tracking-wide">{u.name}</h4>
+                                                <h4 className="text-xs font-black text-gray-900 dark:text-white tracking-wide">{u.name}</h4>
                                                 {u.position && (
                                                     <p className="text-[11px] font-bold text-gray-400 mt-0.5">{u.position}</p>
                                                 )}
@@ -386,7 +386,7 @@ function InfoRow({ label, value }: { label: string; value: string }) {
     return (
         <div className="flex justify-between items-center py-2.5 border-b border-gray-50 dark:border-gray-700/50">
             <span className="text-[11px] font-bold text-gray-400 uppercase tracking-wider">{label}</span>
-            <span className="text-xs font-extrabold text-gray-900 dark:text-white uppercase tracking-tight">{value}</span>
+            <span className="text-xs font-extrabold text-gray-900 dark:text-white tracking-tight">{value}</span>
         </div>
     );
 }
@@ -451,7 +451,7 @@ function UserModal({
             <div className="relative bg-white dark:bg-gray-800 rounded-[2rem] border border-gray-100 dark:border-gray-700/50 shadow-2xl w-full max-w-lg p-8 max-h-[90vh] overflow-y-auto custom-scrollbar">
                 <div className="flex items-center justify-between mb-6 pb-4 border-b border-gray-50 dark:border-gray-700/50">
                     <div>
-                        <h3 className="text-lg font-black text-gray-900 dark:text-white uppercase tracking-tight">{title}</h3>
+                        <h3 className="text-lg font-black text-gray-900 dark:text-white tracking-tight">{title}</h3>
                         <p className="text-[11px] font-bold text-[#1b6b6b] uppercase tracking-wider mt-0.5">{subtitle}</p>
                     </div>
                     <button onClick={onClose} className="w-9 h-9 flex items-center justify-center text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-xl cursor-pointer" aria-label="Yopish"><X size={18} /></button>
@@ -562,11 +562,11 @@ function UserModal({
 
                     <div className="flex gap-3 pt-4 border-t border-dashed border-gray-100 dark:border-gray-700/50">
                         <button type="button" onClick={onClose}
-                            className="flex-1 py-3 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-white text-xs font-extrabold uppercase tracking-widest rounded-2xl transition-all cursor-pointer hover:bg-gray-200 dark:hover:bg-gray-600">
+                            className="flex-1 py-3 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-white text-xs font-extrabold rounded-2xl transition-all cursor-pointer hover:bg-gray-200 dark:hover:bg-gray-600">
                             {t('cancel')}
                         </button>
                         <button type="submit"
-                            className="flex-1 py-3 bg-[#1b6b6b] hover:bg-[#155252] text-white text-xs font-extrabold uppercase tracking-widest rounded-2xl shadow-lg shadow-[#1b6b6b]/20 transition-all cursor-pointer">
+                            className="flex-1 py-3 bg-[#1b6b6b] hover:bg-[#155252] text-white text-xs font-extrabold rounded-2xl shadow-sm shadow-[#1b6b6b]/20 transition-all cursor-pointer">
                             {t('save')}
                         </button>
                     </div>

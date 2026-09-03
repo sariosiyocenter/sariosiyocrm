@@ -76,7 +76,7 @@ export default function OrgDetail() {
       <div>
         <button
           onClick={() => navigate('/')}
-          className="inline-flex items-center gap-2 text-xs font-extrabold text-gray-400 hover:text-[#1b6b6b] uppercase tracking-widest transition-colors mb-5"
+          className="inline-flex items-center gap-2 text-xs font-extrabold text-gray-400 hover:text-[#1b6b6b] transition-colors mb-5"
         >
           <ArrowLeft size={14} />
           Tashkilotlarga qaytish
@@ -86,12 +86,12 @@ export default function OrgDetail() {
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
             {/* Org Info */}
             <div className="flex items-center gap-5">
-              <div className="w-16 h-16 rounded-2xl bg-[#1b6b6b] flex items-center justify-center shrink-0 shadow-lg shadow-[#1b6b6b]/20">
+              <div className="w-16 h-16 rounded-2xl bg-[#1b6b6b] flex items-center justify-center shrink-0 shadow-sm shadow-[#1b6b6b]/20">
                 <Building2 size={28} className="text-white" />
               </div>
               <div>
                 <div className="text-[11px] font-extrabold text-[#1b6b6b] uppercase tracking-wider mb-1">Tashkilot #{org.id}</div>
-                <h1 className="text-2xl font-black text-gray-900 dark:text-white uppercase tracking-tight">{org.name}</h1>
+                <h1 className="text-2xl font-black text-gray-900 dark:text-white tracking-tight">{org.name}</h1>
                 <div className="flex flex-wrap gap-3 mt-1.5">
                   {org.address && (
                     <div className="flex items-center gap-1 text-xs text-gray-400 font-bold">
@@ -130,7 +130,7 @@ export default function OrgDetail() {
       <div className="bg-white dark:bg-gray-800 rounded-[2rem] border border-gray-100 dark:border-gray-700/50 shadow-sm overflow-hidden">
         <div className="px-8 py-5 border-b border-gray-50 dark:border-gray-700/50 flex items-center gap-3">
           <GitBranch size={15} className="text-[#1b6b6b]" />
-          <span className="text-xs font-extrabold text-gray-900 dark:text-white uppercase tracking-widest">
+          <span className="text-xs font-extrabold text-gray-900 dark:text-white">
             Filiallar ({org.schools.length})
           </span>
           <span className="text-[11px] text-gray-400 font-bold">— tashkilot admini boshqaradi</span>
@@ -158,7 +158,7 @@ export default function OrgDetail() {
                     </div>
                   </td>
                   <td className="px-4 py-5">
-                    <div className="font-extrabold text-gray-900 dark:text-white uppercase tracking-tight text-sm">{branch.name}</div>
+                    <div className="font-extrabold text-gray-900 dark:text-white tracking-tight text-sm">{branch.name}</div>
                     {branch.address && (
                       <div className="flex items-center gap-1 mt-1 text-xs text-gray-400 font-bold">
                         <MapPin size={11} className="text-[#1b6b6b]" />

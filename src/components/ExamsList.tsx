@@ -98,7 +98,7 @@ export default function ExamsList() {
                             <FileText size={20} />
                         </div>
                         <div>
-                            <h1 className="text-sm font-black text-gray-900 dark:text-white uppercase tracking-tight">{t('exams_title')}</h1>
+                            <h1 className="text-sm font-black text-gray-900 dark:text-white tracking-tight">{t('exams_title')}</h1>
                             <p className="text-[11px] font-bold text-gray-400 uppercase tracking-wider mt-0.5">{t('exams_list_subtitle')}</p>
                         </div>
                     </div>
@@ -115,7 +115,7 @@ export default function ExamsList() {
                         </div>
                         <button
                             onClick={() => navigate('/exams/new')}
-                            className="w-full sm:w-auto flex items-center justify-center gap-2 px-6 py-2.5 bg-[#1b6b6b] hover:bg-[#155252] text-white rounded-2xl text-[11px] font-extrabold uppercase tracking-wider shadow-lg shadow-[#1b6b6b]/20 active:scale-95 transition-all cursor-pointer"
+                            className="w-full sm:w-auto flex items-center justify-center gap-2 px-6 py-2.5 bg-[#1b6b6b] hover:bg-[#155252] text-white rounded-2xl text-[11px] font-extrabold uppercase tracking-wider shadow-sm shadow-[#1b6b6b]/20 active:scale-95 transition-all cursor-pointer"
                         >
                             <Plus size={14} />
                             {t('add_exam')}
@@ -150,7 +150,7 @@ export default function ExamsList() {
                                                 <BookOpen size={16} />
                                             </div>
                                             <div>
-                                                <p className="text-xs font-black text-gray-900 dark:text-white group-hover:text-[#1b6b6b] transition-colors uppercase tracking-tight">{exam.name}</p>
+                                                <p className="text-xs font-black text-gray-900 dark:text-white group-hover:text-[#1b6b6b] transition-colors tracking-tight">{exam.name}</p>
                                                 <p className="text-[11px] font-bold text-gray-400 mt-0.5">{exam.blocks?.length || 0} ta fan</p>
                                             </div>
                                         </div>
