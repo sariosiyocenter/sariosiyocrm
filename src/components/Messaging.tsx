@@ -650,7 +650,7 @@ export default function Messaging() {
       if (res.ok && data.success) {
         const sent = data.sentCount ?? 0;
         const failed = data.failedCount ?? 0;
-        showNotification(`✅ ${sent} ta xabar yuborildi${failed > 0 ? `, ${failed} ta yuborilmadi` : ''}.`, 'error');
+        showNotification(`✅ ${sent} ta xabar yuborildi${failed > 0 ? `, ${failed} ta yuborilmadi` : ''}.`, failed > 0 ? 'info' : 'success');
         setMessageText('');
         setSelectedTemplateId('');
         fetchCampaigns();

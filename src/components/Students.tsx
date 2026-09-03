@@ -520,8 +520,10 @@ export default function Students() {
     const currentPage = Math.min(page, pageCount);
     const visibleStudents = filteredStudents.slice((currentPage - 1) * PER_PAGE, currentPage * PER_PAGE);
 
-    // Any change to the filters should put the reader back at the first page.
-    React.useEffect(() => { setPage(1); }, [search, filters]);
+    // Back to page one whenever the result set changes — filters, but also the list
+    // itself shrinking (switching branch now keeps this screen mounted, so a stale page
+    // number would otherwise survive into a shorter list).
+    React.useEffect(() => { setPage(1); }, [search, filters, filteredStudents.length]);
 
     return (
         <div className="space-y-6">

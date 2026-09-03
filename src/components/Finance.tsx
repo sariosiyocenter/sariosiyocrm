@@ -136,7 +136,7 @@ export default function Finance() {
             const data = await res.json();
             if (res.ok) await loadBillingStatus();
             else showNotification(data.error || 'Xatolik yuz berdi', 'error');
-        } catch { showNotification('Server bilan aloqa yo\'q', 'info'); } finally { setBillingProcessing(false); }
+        } catch { showNotification('Server bilan aloqa yo\'q', 'error'); } finally { setBillingProcessing(false); }
     };
 
     const billingMonthLabel = (m: string) => {

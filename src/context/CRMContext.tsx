@@ -71,6 +71,7 @@ interface CRMContextType extends CRMState {
     deleteSyllabus: (id: number) => Promise<void>;
     addScore: (score: Omit<Score, 'id' | 'schoolId'>) => Promise<void>;
     loadAttendanceFor: (filter: { studentId?: number; groupId?: number; sinceDays?: number }) => Promise<void>;
+    retryLoad: () => Promise<void>;
     addTeacherAttendance: (attendance: Omit<TeacherAttendance, 'id' | 'schoolId'>) => Promise<void>;
     addExpense: (expense: Omit<Expense, 'id' | 'schoolId'>) => Promise<void>;
     deleteExpense: (id: number) => Promise<void>;
@@ -407,6 +408,10 @@ export const CRMProvider: React.FC<{ children: React.ReactNode }> = ({ children 
                             deliveryLogs:       [],
                             selectedSchoolId:   userData.schoolId
                         }));
+                        // This fast path fills state without going through fetchData, so it
+                        // has to clear the error banner itself — otherwise a successful
+                        // reload still shows "could not load".
+                        setError(null);
                     } else {
                         await fetchData(token, userData.schoolId || undefined, userData.role);
                     }
@@ -940,6 +945,18 @@ export const CRMProvider: React.FC<{ children: React.ReactNode }> = ({ children 
      * show a full history call this on mount; records merge by id, so nothing is duplicated
      * and already-loaded rows stay put.
      */
+    /**
+     * Re-fetches the current school's data after a failed load.
+     *
+     * Deliberately not checkAuth(): that treats any rejected request as a bad session and
+     * logs the user out, and the retry button is pressed exactly when the network is
+     * flaky — so retrying through checkAuth would end the session instead of recovering.
+     * fetchData records the failure in `error` and leaves the session alone.
+     */
+    const retryLoad = async () => {
+        await fetchData(undefined, undefined, user?.role, true);
+    };
+
     const loadAttendanceFor = async (filter: { studentId?: number; groupId?: number; sinceDays?: number }) => {
         if (!state.selectedSchoolId) return;
         const params = new URLSearchParams({ schoolId: String(state.selectedSchoolId) });
@@ -1158,7 +1175,7 @@ export const CRMProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             addCourse, updateCourse, deleteCourse,
             addRoom, deleteRoom,
             addSchool, deleteSchool,
-            addAttendance, updateAttendance, addBatchAttendance, deleteBatchAttendance, updateDayTopic, addScore, loadAttendanceFor,
+            addAttendance, updateAttendance, addBatchAttendance, deleteBatchAttendance, updateDayTopic, addScore, loadAttendanceFor, retryLoad,
             addTopic, updateTopic, deleteTopic,
             addSyllabus, updateSyllabus, deleteSyllabus,
             addTeacherAttendance,

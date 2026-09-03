@@ -20,7 +20,7 @@ const BRAND_LIGHT = '#eef2ff';   // indigo-50
 const BRAND_DARK_TEXT = '#a5b4fc'; // indigo-300 for dark mode text
 
 export default function Layout({ children, onLogout }: LayoutProps) {
-  const { user, schools, selectedSchoolId, setSelectedSchoolId, students, leads, groups, teachers, courses, darkMode, toggleDarkMode, notification, settings, error, checkAuth } = useCRM();
+  const { user, schools, selectedSchoolId, setSelectedSchoolId, students, leads, groups, teachers, courses, darkMode, toggleDarkMode, notification, settings, error, retryLoad } = useCRM();
   const { lang, setLang, t } = useLang();
   const location = useLocation();
   const navigate = useNavigate();
@@ -288,7 +288,7 @@ export default function Layout({ children, onLogout }: LayoutProps) {
               </p>
             </div>
             <button
-              onClick={() => checkAuth()}
+              onClick={() => retryLoad()}
               className="px-4 py-2 rounded-xl bg-red-600 hover:bg-red-700 text-white text-xs font-extrabold uppercase tracking-widest cursor-pointer transition-colors">
               Qayta urinish
             </button>
