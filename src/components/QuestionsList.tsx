@@ -165,7 +165,7 @@ export default function QuestionsList() {
         <div className="space-y-6 animate-in fade-in duration-500 max-w-7xl mx-auto">
             {/* Import Preview Modal */}
             {importPreview && (
-                <div className="fixed inset-0 z-[250] flex items-center justify-center p-4">
+                <div className="fixed inset-0 z-[250] flex items-start sm:items-center justify-center overflow-y-auto p-4">
                     <div className="absolute inset-0 bg-gray-905/65 backdrop-blur-sm" />
                     <div className="relative bg-white dark:bg-gray-800 rounded-3xl shadow-xl w-full max-w-md p-6 space-y-4 border border-gray-100 dark:border-gray-700/50">
                         <div className="flex items-start justify-between border-b border-gray-100 dark:border-gray-700/50 pb-3">

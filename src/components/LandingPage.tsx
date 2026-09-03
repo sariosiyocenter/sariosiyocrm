@@ -1539,7 +1539,7 @@ function TrialModal({ t, lang, plan, onClose }: TrialModalProps) {
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/75 backdrop-blur-md p-4 animate-in fade-in duration-300">
+    <div className="fixed inset-0 z-50 flex items-start sm:items-center justify-center overflow-y-auto bg-slate-950/75 backdrop-blur-md p-4 animate-in fade-in duration-300">
       <div className="relative w-full max-w-md bg-[var(--bg-2)] border border-[var(--border-strong)] rounded-3xl p-7 shadow-2xl pulse-border flex flex-col gap-4 animate-in zoom-in-95 duration-200">
         
         {/* Close Button */}

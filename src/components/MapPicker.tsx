@@ -62,7 +62,7 @@ export default function MapPicker({ onSelect, onClose, initialLocation }: MapPic
     };
 
     return (
-        <div className="fixed inset-0 z-[300] flex items-center justify-center p-4 bg-gray-900/60 backdrop-blur-md animate-in fade-in duration-300" onClick={onClose}>
+        <div className="fixed inset-0 z-[300] flex items-start sm:items-center justify-center overflow-y-auto p-4 bg-gray-900/60 backdrop-blur-md animate-in fade-in duration-300" onClick={onClose}>
             <div className="bg-white dark:bg-gray-800 w-full max-w-4xl rounded-[2.5rem] shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200 border border-gray-100 dark:border-gray-700 min-h-[500px] h-[80vh] flex flex-col" onClick={e => e.stopPropagation()}>
                 <div className="px-10 py-6 flex items-center justify-between border-b border-gray-50 dark:border-gray-700 bg-gray-50/50 dark:bg-gray-900/50">
                     <div>

@@ -237,7 +237,7 @@ export default function SyllabusManager() {
 
         {/* Syllabus Add/Edit Modal */}
         {isSyllabusModalOpen && (
-          <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 z-50 animate-in fade-in duration-200">
+          <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-start sm:items-center justify-center overflow-y-auto p-4 z-50 animate-in fade-in duration-200">
             <div className="bg-white dark:bg-gray-800 rounded-3xl w-full max-w-lg overflow-hidden border border-gray-100 dark:border-gray-700 shadow-2xl animate-in zoom-in-95 duration-200">
               <div className="p-6 border-b border-gray-100 dark:border-gray-700/50 flex items-center justify-between">
                 <h2 className="text-sm font-black text-gray-900 dark:text-white uppercase tracking-wider">
@@ -458,7 +458,7 @@ export default function SyllabusManager() {
 
       {/* Topic Add/Edit Modal */}
       {isTopicModalOpen && (
-        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 z-50 animate-in fade-in duration-200">
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-start sm:items-center justify-center overflow-y-auto p-4 z-50 animate-in fade-in duration-200">
           <div className="bg-white dark:bg-gray-800 rounded-3xl w-full max-w-lg overflow-hidden border border-gray-100 dark:border-gray-700 shadow-2xl animate-in zoom-in-95 duration-200">
             <div className="p-6 border-b border-gray-100 dark:border-gray-700/50 flex items-center justify-between">
               <h2 className="text-sm font-black text-gray-900 dark:text-white uppercase tracking-wider">

@@ -1734,7 +1734,7 @@ export default function Messaging() {
 
       {/* ===== MODAL: CONFIRM SEND BATCH ===== */}
       {confirmModalOpen && (
-        <div className="fixed inset-0 z-[1000] flex items-center justify-center p-4">
+        <div className="fixed inset-0 z-[1000] flex items-start sm:items-center justify-center overflow-y-auto p-4">
           <div className="absolute inset-0 bg-slate-900/50 backdrop-blur-sm" onClick={() => setConfirmModalOpen(false)} />
           <div className="relative bg-white dark:bg-slate-900 rounded-3xl max-w-md w-full p-6 space-y-6 shadow-2xl border border-slate-100 dark:border-slate-800 animate-in zoom-in-95 duration-200">
             <div className="space-y-2">
@@ -1765,7 +1765,7 @@ export default function Messaging() {
 
       {/* ===== MODAL: RECIPIENT LIST ===== */}
       {showRecipientListModal && (
-        <div className="fixed inset-0 z-[1000] flex items-center justify-center p-4">
+        <div className="fixed inset-0 z-[1000] flex items-start sm:items-center justify-center overflow-y-auto p-4">
           <div className="absolute inset-0 bg-slate-900/50 backdrop-blur-sm" onClick={() => setShowRecipientListModal(false)} />
           <div className="relative bg-white dark:bg-slate-900 rounded-3xl max-w-lg w-full p-6 space-y-4 shadow-2xl border border-slate-100 dark:border-slate-800 animate-in zoom-in-95 duration-200">
             <div className="flex justify-between items-center border-b border-dashed border-slate-100 dark:border-slate-800 pb-3">
@@ -1804,7 +1804,7 @@ export default function Messaging() {
 
       {/* ===== MODAL: CREATE/EDIT TEMPLATE ===== */}
       {templateModalOpen && (
-        <div className="fixed inset-0 z-[1000] flex items-center justify-center p-4">
+        <div className="fixed inset-0 z-[1000] flex items-start sm:items-center justify-center overflow-y-auto p-4">
           <div className="absolute inset-0 bg-slate-900/50 backdrop-blur-sm" onClick={() => setTemplateModalOpen(false)} />
           <form onSubmit={handleSaveTemplate} className="relative bg-white dark:bg-slate-900 rounded-3xl max-w-md w-full p-6 space-y-4 shadow-2xl border border-slate-100 dark:border-slate-800 animate-in zoom-in-95 duration-200">
             <h3 className="text-sm font-black uppercase tracking-wide text-slate-900 dark:text-white">
@@ -1866,7 +1866,7 @@ export default function Messaging() {
 
       {/* ===== MODAL: CREATE/EDIT AUTO RULE ===== */}
       {autoRuleModalOpen && (
-        <div className="fixed inset-0 z-[1000] flex items-center justify-center p-4">
+        <div className="fixed inset-0 z-[1000] flex items-start sm:items-center justify-center overflow-y-auto p-4">
           <div className="absolute inset-0 bg-slate-900/50 backdrop-blur-sm" onClick={() => setAutoRuleModalOpen(false)} />
           <form onSubmit={handleSaveAutoRule} className="relative bg-white dark:bg-slate-900 rounded-3xl max-w-md w-full p-6 space-y-4 shadow-2xl border border-slate-100 dark:border-slate-800 animate-in zoom-in-95 duration-200">
             <h3 className="text-sm font-black uppercase tracking-wide text-slate-900 dark:text-white">
