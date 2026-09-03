@@ -50,7 +50,7 @@ function moduleStatus(topics: Topic[]): typeof STATUSES[number] {
 const STATUS_STYLES: Record<string, string> = {
   Tugallangan: 'bg-emerald-50 text-emerald-600 border-emerald-100 dark:bg-emerald-950/20 dark:text-emerald-400 dark:border-emerald-900/40',
   Jarayonda: 'bg-amber-50 text-amber-600 border-amber-100 dark:bg-amber-950/20 dark:text-amber-400 dark:border-amber-900/40',
-  Rejada: 'bg-gray-55 text-gray-400 border-gray-100 dark:bg-gray-900/50 dark:text-gray-400 dark:border-gray-700/50',
+  Rejada: 'bg-gray-55 text-gray-400 border-gray-100 dark:bg-[#0b111a]/50 dark:text-gray-400 dark:border-[#232d42]/50',
 };
 
 const MATERIAL_STYLES: Record<string, string> = {
@@ -295,7 +295,7 @@ export default function SyllabusManager() {
   };
 
   const labelCls = "block text-[11px] font-extrabold uppercase tracking-wider text-gray-400 mb-2";
-  const inputCls = "w-full px-4 py-3 bg-gray-55 dark:bg-gray-900 border border-gray-100 dark:border-gray-700 rounded-2xl text-xs font-bold text-gray-900 dark:text-white focus:border-[#1b6b6b] focus:ring-4 focus:ring-[#1b6b6b]/10 outline-none transition-all";
+  const inputCls = "w-full px-4 py-3 bg-gray-55 dark:bg-[#0b111a] border border-gray-100 dark:border-[#232d42] rounded-2xl text-xs font-bold text-gray-900 dark:text-white focus:border-[#1b6b6b] focus:ring-4 focus:ring-[#1b6b6b]/10 outline-none transition-all";
 
   return (
     <div className="space-y-6 animate-in fade-in duration-500">
@@ -317,7 +317,7 @@ export default function SyllabusManager() {
       </div>
 
       {syllabuses.length === 0 ? (
-        <div className="bg-white dark:bg-gray-800 rounded-3xl border border-gray-100 dark:border-gray-700/50 p-12 text-center max-w-lg mx-auto">
+        <div className="bg-white dark:bg-[#151c2c] rounded-3xl border border-gray-100 dark:border-[#232d42]/50 p-12 text-center max-w-lg mx-auto">
           <BookOpen size={48} className="text-gray-300 dark:text-gray-600 mx-auto mb-4" />
           <h3 className="text-sm font-black text-gray-900 dark:text-white">O'quv programmalari yo'q</h3>
           <p className="text-xs text-gray-400 font-bold mt-2">Hali hech qanday o'quv programmasi yaratilmagan. Darslar ketma-ketligi va o'quv qo'llanmalarini shakllantirish uchun yangi o'quv dasturini qo'shing.</p>
@@ -332,7 +332,7 @@ export default function SyllabusManager() {
       ) : (
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 items-start">
           {/* Chap panel: fanlar ro'yxati */}
-          <div className="lg:col-span-1 bg-white dark:bg-gray-800 rounded-3xl border border-gray-100 dark:border-gray-700/50 p-3 shadow-sm">
+          <div className="lg:col-span-1 bg-white dark:bg-[#151c2c] rounded-3xl border border-gray-100 dark:border-[#232d42]/50 p-3 shadow-sm">
             <p className="text-[11px] font-extrabold text-gray-400 uppercase tracking-wider px-3 py-2">Fanlar</p>
             <div className="space-y-1">
               {syllabuses.map(s => {
@@ -349,7 +349,7 @@ export default function SyllabusManager() {
                   >
                     <div className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 text-[11px] font-black uppercase ${isActive
                       ? 'bg-[#1b6b6b] text-white'
-                      : 'bg-gray-55 dark:bg-gray-900 text-gray-400 border border-gray-100 dark:border-gray-700/50'}`}>
+                      : 'bg-gray-55 dark:bg-[#0b111a] text-gray-400 border border-gray-100 dark:border-[#232d42]/50'}`}>
                       {s.name.slice(0, 2)}
                     </div>
                     <div className="min-w-0">
@@ -369,8 +369,8 @@ export default function SyllabusManager() {
           {/* O'ng panel: tanlangan dastur */}
           <div className="lg:col-span-3 space-y-6">
             {activeSyllabus && (
-              <div className="bg-white dark:bg-gray-800 rounded-3xl border border-gray-100 dark:border-gray-700/50 shadow-sm overflow-hidden">
-                <div className="p-6 flex flex-col md:flex-row md:items-start justify-between gap-4 border-b border-gray-55 dark:border-gray-700/50">
+              <div className="bg-white dark:bg-[#151c2c] rounded-3xl border border-gray-100 dark:border-[#232d42]/50 shadow-sm overflow-hidden">
+                <div className="p-6 flex flex-col md:flex-row md:items-start justify-between gap-4 border-b border-gray-55 dark:border-[#232d42]/50">
                   <div className="min-w-0">
                     <h2 className="text-base font-black text-gray-900 dark:text-white tracking-tight">{activeSyllabus.name}</h2>
                     <p className="text-[11px] font-bold text-gray-400 uppercase tracking-wider mt-1 tabular-nums">
@@ -384,14 +384,14 @@ export default function SyllabusManager() {
                     <button
                       onClick={handleDuplicateSyllabus}
                       disabled={isDuplicating}
-                      className="flex items-center gap-2 px-4 py-2.5 bg-gray-55 dark:bg-gray-900 text-gray-600 dark:text-gray-300 rounded-xl text-[11px] font-bold uppercase tracking-wider border border-gray-100 dark:border-gray-700 hover:bg-gray-100 dark:hover:bg-gray-700 transition-all cursor-pointer disabled:opacity-50"
+                      className="flex items-center gap-2 px-4 py-2.5 bg-gray-55 dark:bg-[#0b111a] text-gray-600 dark:text-gray-300 rounded-xl text-[11px] font-bold uppercase tracking-wider border border-gray-100 dark:border-[#232d42] hover:bg-gray-100 dark:hover:bg-gray-700 transition-all cursor-pointer disabled:opacity-50"
                     >
                       <Copy size={13} />
                       {isDuplicating ? 'Nusxalanmoqda…' : 'Nusxa olish'}
                     </button>
                     <button
                       onClick={() => handleOpenSyllabusModal(activeSyllabus)}
-                      className="flex items-center gap-2 px-4 py-2.5 bg-gray-55 dark:bg-gray-900 text-gray-600 dark:text-gray-300 rounded-xl text-[11px] font-bold uppercase tracking-wider border border-gray-100 dark:border-gray-700 hover:bg-gray-100 dark:hover:bg-gray-700 transition-all cursor-pointer"
+                      className="flex items-center gap-2 px-4 py-2.5 bg-gray-55 dark:bg-[#0b111a] text-gray-600 dark:text-gray-300 rounded-xl text-[11px] font-bold uppercase tracking-wider border border-gray-100 dark:border-[#232d42] hover:bg-gray-100 dark:hover:bg-gray-700 transition-all cursor-pointer"
                     >
                       <Edit size={13} />
                       Tahrirlash
@@ -414,7 +414,7 @@ export default function SyllabusManager() {
                 </div>
 
                 {activeSyllabus.materials && (
-                  <div className="px-6 py-4 bg-gray-55/50 dark:bg-gray-900/25 border-b border-gray-55 dark:border-gray-700/50">
+                  <div className="px-6 py-4 bg-gray-55/50 dark:bg-[#0b111a]/25 border-b border-gray-55 dark:border-[#232d42]/50">
                     <span className="text-[10px] font-extrabold text-[#1b6b6b] uppercase tracking-wider block mb-1">O'quv qo'llanmalari</span>
                     <p className="text-[12px] text-gray-600 dark:text-gray-350 leading-relaxed font-semibold">{activeSyllabus.materials}</p>
                   </div>
@@ -441,7 +441,7 @@ export default function SyllabusManager() {
                       return (
                         <div key={mod.name}>
                           {/* Modul sarlavhasi */}
-                          <div className="flex items-center justify-between gap-3 px-6 py-3.5 bg-gray-55/40 dark:bg-gray-900/20">
+                          <div className="flex items-center justify-between gap-3 px-6 py-3.5 bg-gray-55/40 dark:bg-[#0b111a]/20">
                             <div className="flex items-center gap-3 min-w-0">
                               <span className="w-6 h-6 rounded-lg bg-[#1b6b6b]/10 text-[#1b6b6b] dark:bg-[#1b6b6b]/25 dark:text-teal-300 flex items-center justify-center text-[11px] font-black shrink-0 tabular-nums">
                                 {modIdx + 1}
@@ -538,8 +538,8 @@ export default function SyllabusManager() {
 
             {/* Biriktirilgan guruhlar */}
             {activeSyllabus && (
-              <div className="bg-white dark:bg-gray-800 p-6 rounded-3xl border border-gray-100 dark:border-gray-700/50 shadow-sm space-y-4">
-                <h3 className="text-xs font-black text-gray-900 dark:text-white border-b border-gray-55 dark:border-gray-700/50 pb-3 flex items-center gap-2">
+              <div className="bg-white dark:bg-[#151c2c] p-6 rounded-3xl border border-gray-100 dark:border-[#232d42]/50 shadow-sm space-y-4">
+                <h3 className="text-xs font-black text-gray-900 dark:text-white border-b border-gray-55 dark:border-[#232d42]/50 pb-3 flex items-center gap-2">
                   <Layers size={13} className="text-[#1b6b6b]" />
                   Biriktirilgan guruhlar
                 </h3>
@@ -548,14 +548,14 @@ export default function SyllabusManager() {
                 ) : (
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     {linkedGroups.map(g => (
-                      <div key={g.id} className="flex items-center justify-between p-3 bg-gray-55 dark:bg-gray-900/20 rounded-2xl border border-transparent hover:border-gray-100 dark:hover:border-gray-700/50 transition-all">
+                      <div key={g.id} className="flex items-center justify-between p-3 bg-gray-55 dark:bg-[#0b111a]/20 rounded-2xl border border-transparent hover:border-gray-100 dark:hover:border-gray-700/50 transition-all">
                         <div className="min-w-0">
                           <span className="text-xs font-black text-gray-800 dark:text-white block tracking-tight truncate">{g.name}</span>
                           <span className="text-[11px] text-gray-400 font-bold block mt-0.5">{g.schedule} • {g.days}</span>
                         </div>
                         <a
                           href={`/courses/${g.id}`}
-                          className="p-2 bg-white dark:bg-gray-850 hover:bg-teal-50 dark:hover:bg-teal-950/20 text-gray-400 hover:text-[#1b6b6b] border border-gray-100 dark:border-gray-700 rounded-xl transition-all cursor-pointer shrink-0"
+                          className="p-2 bg-white dark:bg-gray-850 hover:bg-teal-50 dark:hover:bg-teal-950/20 text-gray-400 hover:text-[#1b6b6b] border border-gray-100 dark:border-[#232d42] rounded-xl transition-all cursor-pointer shrink-0"
                           title="Guruhga o'tish"
                         >
                           <ExternalLink size={13} />
@@ -573,8 +573,8 @@ export default function SyllabusManager() {
       {/* Dastur qo'shish / tahrirlash */}
       {isSyllabusModalOpen && (
         <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-start sm:items-center justify-center overflow-y-auto p-4 z-50 animate-in fade-in duration-200">
-          <div className="bg-white dark:bg-gray-800 rounded-3xl w-full max-w-lg overflow-hidden border border-gray-100 dark:border-gray-700 shadow-2xl animate-in zoom-in-95 duration-200">
-            <div className="p-6 border-b border-gray-100 dark:border-gray-700/50 flex items-center justify-between">
+          <div className="bg-white dark:bg-[#151c2c] rounded-3xl w-full max-w-lg overflow-hidden border border-gray-100 dark:border-[#232d42] shadow-2xl animate-in zoom-in-95 duration-200">
+            <div className="p-6 border-b border-gray-100 dark:border-[#232d42]/50 flex items-center justify-between">
               <h2 className="text-sm font-black text-gray-900 dark:text-white">
                 {editingSyllabus ? "Dasturni tahrirlash" : "Yangi o'quv dasturi yaratish"}
               </h2>
@@ -609,7 +609,7 @@ export default function SyllabusManager() {
                 />
               </div>
 
-              <div className="flex justify-end gap-3 pt-4 border-t border-gray-100 dark:border-gray-700/50">
+              <div className="flex justify-end gap-3 pt-4 border-t border-gray-100 dark:border-[#232d42]/50">
                 <button
                   type="button"
                   onClick={() => setIsSyllabusModalOpen(false)}
@@ -633,8 +633,8 @@ export default function SyllabusManager() {
       {/* Mavzu qo'shish / tahrirlash */}
       {isTopicModalOpen && (
         <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-start sm:items-center justify-center overflow-y-auto p-4 z-50 animate-in fade-in duration-200">
-          <div className="bg-white dark:bg-gray-800 rounded-3xl w-full max-w-lg overflow-hidden border border-gray-100 dark:border-gray-700 shadow-2xl animate-in zoom-in-95 duration-200">
-            <div className="p-6 border-b border-gray-100 dark:border-gray-700/50 flex items-center justify-between">
+          <div className="bg-white dark:bg-[#151c2c] rounded-3xl w-full max-w-lg overflow-hidden border border-gray-100 dark:border-[#232d42] shadow-2xl animate-in zoom-in-95 duration-200">
+            <div className="p-6 border-b border-gray-100 dark:border-[#232d42]/50 flex items-center justify-between">
               <h2 className="text-sm font-black text-gray-900 dark:text-white">
                 {editingTopic ? "Mavzuni tahrirlash" : "Yangi mavzu/dars qo'shish"}
               </h2>
@@ -715,7 +715,7 @@ export default function SyllabusManager() {
                         }))}
                         className={`px-3 py-2 rounded-xl text-[11px] font-extrabold uppercase tracking-wider border transition-all cursor-pointer ${on
                           ? 'bg-[#1b6b6b] border-[#1b6b6b] text-white shadow'
-                          : 'bg-gray-55 dark:bg-gray-900/30 border-gray-100 dark:border-gray-700 text-gray-400 hover:text-gray-600'}`}
+                          : 'bg-gray-55 dark:bg-[#0b111a]/30 border-gray-100 dark:border-[#232d42] text-gray-400 hover:text-gray-600'}`}
                       >
                         {kind}
                       </button>
@@ -734,7 +734,7 @@ export default function SyllabusManager() {
                       onClick={() => setTopicForm(f => ({ ...f, status: st }))}
                       className={`py-2 rounded-xl text-[11px] font-extrabold uppercase tracking-wider border transition-all cursor-pointer ${topicForm.status === st
                         ? 'bg-[#1b6b6b] border-[#1b6b6b] text-white shadow'
-                        : 'bg-gray-55 dark:bg-gray-900/30 border-gray-100 dark:border-gray-700 text-gray-400 hover:text-gray-600'}`}
+                        : 'bg-gray-55 dark:bg-[#0b111a]/30 border-gray-100 dark:border-[#232d42] text-gray-400 hover:text-gray-600'}`}
                     >
                       {st}
                     </button>
@@ -753,7 +753,7 @@ export default function SyllabusManager() {
                 />
               </div>
 
-              <div className="flex justify-end gap-3 pt-4 border-t border-gray-100 dark:border-gray-700/50">
+              <div className="flex justify-end gap-3 pt-4 border-t border-gray-100 dark:border-[#232d42]/50">
                 <button
                   type="button"
                   onClick={() => setIsTopicModalOpen(false)}

@@ -169,8 +169,8 @@ export default function QuestionsList() {
             {importPreview && (
                 <div className="fixed inset-0 z-[250] flex items-start sm:items-center justify-center overflow-y-auto p-4">
                     <div className="absolute inset-0 bg-gray-905/65 backdrop-blur-sm" />
-                    <div className="relative bg-white dark:bg-gray-800 rounded-3xl shadow-xl w-full max-w-md p-6 space-y-4 border border-gray-100 dark:border-gray-700/50">
-                        <div className="flex items-start justify-between border-b border-gray-100 dark:border-gray-700/50 pb-3">
+                    <div className="relative bg-white dark:bg-[#151c2c] rounded-3xl shadow-xl w-full max-w-md p-6 space-y-4 border border-gray-100 dark:border-[#232d42]/50">
+                        <div className="flex items-start justify-between border-b border-gray-100 dark:border-[#232d42]/50 pb-3">
                             <div>
                                 <h2 className="text-[11px] font-bold text-gray-900 dark:text-white uppercase tracking-wider">Excel Import Tekshiruvi</h2>
                                 <p className="text-[11px] font-bold text-gray-400 mt-1 uppercase tracking-wider">Jami {importPreview.total} ta qator</p>
@@ -207,10 +207,10 @@ export default function QuestionsList() {
                             </div>
                         )}
 
-                        <div className="flex gap-2 pt-3 border-t border-dashed border-gray-100 dark:border-gray-700/50">
+                        <div className="flex gap-2 pt-3 border-t border-dashed border-gray-100 dark:border-[#232d42]/50">
                             <button
                                 onClick={() => setImportPreview(null)}
-                                className="flex-1 py-2.5 rounded-xl border border-gray-100 dark:border-gray-700 text-[11px] font-bold uppercase tracking-wider text-gray-500 hover:bg-gray-55 cursor-pointer transition-all"
+                                className="flex-1 py-2.5 rounded-xl border border-gray-100 dark:border-[#232d42] text-[11px] font-bold uppercase tracking-wider text-gray-500 hover:bg-gray-55 cursor-pointer transition-all"
                             >
                                 Bekor
                             </button>
@@ -227,7 +227,7 @@ export default function QuestionsList() {
             )}
 
             {/* Header / Filter Toolbar */}
-            <div className="bg-white dark:bg-gray-800 rounded-3xl border border-gray-100 dark:border-gray-700/50 shadow-sm p-4">
+            <div className="bg-white dark:bg-[#151c2c] rounded-3xl border border-gray-100 dark:border-[#232d42]/50 shadow-sm p-4">
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                     <div className="flex items-center gap-2 flex-1 max-w-md">
                         <div className="relative flex-1">
@@ -237,13 +237,13 @@ export default function QuestionsList() {
                                 placeholder="Savollarni qidirish..."
                                 value={search}
                                 onChange={(e) => setSearch(e.target.value)}
-                                className="w-full pl-10 pr-4 py-2.5 bg-gray-55 dark:bg-gray-905 border border-gray-100 dark:border-gray-700 rounded-2xl text-xs font-bold text-gray-900 dark:text-white placeholder:text-gray-400 focus:border-[#1b6b6b] focus:ring-4 focus:ring-[#1b6b6b]/10 outline-none transition-all"
+                                className="w-full pl-10 pr-4 py-2.5 bg-gray-55 dark:bg-gray-905 border border-gray-100 dark:border-[#232d42] rounded-2xl text-xs font-bold text-gray-900 dark:text-white placeholder:text-gray-400 focus:border-[#1b6b6b] focus:ring-4 focus:ring-[#1b6b6b]/10 outline-none transition-all"
                             />
                         </div>
                         <button 
                             onClick={() => setShowFilters(!showFilters)}
                             className={`w-10 h-10 flex items-center justify-center rounded-2xl border transition-colors cursor-pointer ${
-                                showFilters ? 'bg-teal-50 border-teal-200 text-[#1b6b6b] dark:bg-teal-950/20' : 'bg-white dark:bg-gray-800 border-gray-100 dark:border-gray-700 text-gray-400 hover:text-gray-650'
+                                showFilters ? 'bg-teal-50 border-teal-200 text-[#1b6b6b] dark:bg-teal-950/20' : 'bg-white dark:bg-[#151c2c] border-gray-100 dark:border-[#232d42] text-gray-400 hover:text-gray-650'
                             }`}
                         >
                             <Filter size={16} />
@@ -267,13 +267,13 @@ export default function QuestionsList() {
                 </div>
 
                 {showFilters && (
-                    <div className="mt-4 pt-4 grid grid-cols-1 md:grid-cols-3 gap-4 border-t border-dashed border-gray-105 dark:border-gray-700/50 animate-in slide-in-from-top duration-300">
+                    <div className="mt-4 pt-4 grid grid-cols-1 md:grid-cols-3 gap-4 border-t border-dashed border-gray-105 dark:border-[#232d42]/50 animate-in slide-in-from-top duration-300">
                         <div>
                             <label className="text-[11px] font-bold text-gray-400 block mb-1.5 uppercase tracking-wider">Fan</label>
                             <select 
                                 value={filters.subject}
                                 onChange={e => setFilters({...filters, subject: e.target.value})}
-                                className="w-full px-3 py-2 bg-gray-55 dark:bg-gray-900 border border-gray-100 dark:border-gray-700 rounded-xl text-[11px] font-bold uppercase tracking-wider text-gray-900 dark:text-white outline-none focus:border-teal-500 cursor-pointer"
+                                className="w-full px-3 py-2 bg-gray-55 dark:bg-[#0b111a] border border-gray-100 dark:border-[#232d42] rounded-xl text-[11px] font-bold uppercase tracking-wider text-gray-900 dark:text-white outline-none focus:border-teal-500 cursor-pointer"
                             >
                                 <option value="">Barcha fanlar</option>
                                 {subjects.map(s => <option key={s} value={s}>{s}</option>)}
@@ -284,7 +284,7 @@ export default function QuestionsList() {
                             <select 
                                 value={filters.topic}
                                 onChange={e => setFilters({...filters, topic: e.target.value})}
-                                className="w-full px-3 py-2 bg-gray-55 dark:bg-gray-900 border border-gray-100 dark:border-gray-700 rounded-xl text-[11px] font-bold uppercase tracking-wider text-gray-900 dark:text-white outline-none focus:border-teal-500 cursor-pointer"
+                                className="w-full px-3 py-2 bg-gray-55 dark:bg-[#0b111a] border border-gray-100 dark:border-[#232d42] rounded-xl text-[11px] font-bold uppercase tracking-wider text-gray-900 dark:text-white outline-none focus:border-teal-500 cursor-pointer"
                             >
                                 <option value="">Barcha mavzular</option>
                                 {topics.map(t => <option key={t} value={t}>{t}</option>)}
@@ -295,7 +295,7 @@ export default function QuestionsList() {
                             <select 
                                 value={filters.difficulty}
                                 onChange={e => setFilters({...filters, difficulty: e.target.value})}
-                                className="w-full px-3 py-2 bg-gray-55 dark:bg-gray-900 border border-gray-100 dark:border-gray-700 rounded-xl text-[11px] font-bold uppercase tracking-wider text-gray-900 dark:text-white outline-none focus:border-teal-500 cursor-pointer"
+                                className="w-full px-3 py-2 bg-gray-55 dark:bg-[#0b111a] border border-gray-100 dark:border-[#232d42] rounded-xl text-[11px] font-bold uppercase tracking-wider text-gray-900 dark:text-white outline-none focus:border-teal-500 cursor-pointer"
                             >
                                 <option value="">Barcha darajalar</option>
                                 <option value="1">Oson</option>
@@ -308,11 +308,11 @@ export default function QuestionsList() {
             </div>
 
             {/* Questions Table */}
-            <div className="bg-white dark:bg-gray-800 rounded-3xl border border-gray-100 dark:border-gray-700/50 shadow-sm overflow-hidden">
+            <div className="bg-white dark:bg-[#151c2c] rounded-3xl border border-gray-100 dark:border-[#232d42]/50 shadow-sm overflow-hidden">
                 <div className="overflow-x-auto">
                     <table className="w-full text-left border-collapse min-w-[800px]">
                         <thead>
-                            <tr className="bg-gray-55 dark:bg-gray-900 border-b border-gray-100 dark:border-gray-700/50">
+                            <tr className="bg-gray-55 dark:bg-[#0b111a] border-b border-gray-100 dark:border-[#232d42]/50">
                                 <th className="p-4 text-[11px] font-bold text-gray-400 uppercase tracking-wider w-20 text-center">ID</th>
                                 <th className="p-4 text-[11px] font-bold text-gray-400 uppercase tracking-wider">Savol Matni</th>
                                 <th className="p-4 text-[11px] font-bold text-gray-400 uppercase tracking-wider">Fan & Mavzu</th>

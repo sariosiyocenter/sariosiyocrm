@@ -27,7 +27,7 @@ const ROLE_COLORS: Record<string, string> = {
     MANAGER:         'bg-sky-50 text-sky-600 border-sky-100 dark:bg-sky-950/20 dark:text-sky-400 dark:border-sky-900/40',
     TEACHER:         'bg-teal-50 text-[#1b6b6b] border-teal-100 dark:bg-teal-950/20 dark:text-teal-400 dark:border-teal-900/40',
     SUPPORT_TEACHER: 'bg-cyan-50 text-cyan-600 border-cyan-100 dark:bg-cyan-950/20 dark:text-cyan-400 dark:border-cyan-900/40',
-    RECEPTIONIST:    'bg-gray-50 text-gray-600 border-gray-100 dark:bg-gray-900/50 dark:text-gray-400 dark:border-gray-700/40',
+    RECEPTIONIST:    'bg-gray-50 text-gray-600 border-gray-100 dark:bg-[#0b111a]/50 dark:text-gray-400 dark:border-[#232d42]/40',
     DRIVER:          'bg-amber-50 text-amber-600 border-amber-100 dark:bg-amber-950/20 dark:text-amber-400 dark:border-amber-900/40',
     TECH_STAFF:      'bg-orange-50 text-orange-600 border-orange-100 dark:bg-orange-950/20 dark:text-orange-400 dark:border-orange-900/40',
 };
@@ -43,7 +43,7 @@ const ROLE_AVATAR_COLORS: Record<string, string> = {
 };
 
 
-const inp = "w-full px-4 py-3 bg-gray-50 dark:bg-gray-900/50 border border-gray-100 dark:border-gray-700 rounded-2xl text-xs font-bold text-gray-900 dark:text-white focus:border-[#1b6b6b] focus:ring-4 focus:ring-[#1b6b6b]/10 outline-none transition-all";
+const inp = "w-full px-4 py-3 bg-gray-50 dark:bg-[#0b111a]/50 border border-gray-100 dark:border-[#232d42] rounded-2xl text-xs font-bold text-gray-900 dark:text-white focus:border-[#1b6b6b] focus:ring-4 focus:ring-[#1b6b6b]/10 outline-none transition-all";
 const lbl = "block text-[11px] font-extrabold uppercase tracking-wider text-gray-400 mb-2";
 
 export default function HRManagement() {
@@ -219,10 +219,10 @@ export default function HRManagement() {
                                 <button
                                     key={role}
                                     onClick={() => setSelectedRole(prev => prev === role ? null : role)}
-                                    className={`bg-white dark:bg-gray-800 border rounded-2xl p-4 flex items-center justify-between transition-all cursor-pointer hover:shadow-md text-left w-full ${
+                                    className={`bg-white dark:bg-[#151c2c] border rounded-2xl p-4 flex items-center justify-between transition-all cursor-pointer hover:shadow-md text-left w-full ${
                                         isActive
                                             ? 'border-[#1b6b6b] ring-2 ring-[#1b6b6b]/20 shadow-md'
-                                            : 'border-gray-100 dark:border-gray-700/50 hover:border-[#1b6b6b]/30'
+                                            : 'border-gray-100 dark:border-[#232d42]/50 hover:border-[#1b6b6b]/30'
                                     }`}
                                 >
                                     <div>
@@ -240,7 +240,7 @@ export default function HRManagement() {
                         {selectedRole && (
                             <button
                                 onClick={() => setSelectedRole(null)}
-                                className="bg-gray-55 dark:bg-gray-900 border border-dashed border-gray-200 dark:border-gray-700 rounded-2xl p-4 flex items-center justify-center transition-all cursor-pointer hover:border-rose-300 hover:bg-rose-50 dark:hover:bg-rose-950/10 text-gray-400 hover:text-rose-500 gap-1"
+                                className="bg-gray-55 dark:bg-[#0b111a] border border-dashed border-gray-200 dark:border-[#232d42] rounded-2xl p-4 flex items-center justify-center transition-all cursor-pointer hover:border-rose-300 hover:bg-rose-50 dark:hover:bg-rose-950/10 text-gray-400 hover:text-rose-500 gap-1"
                             >
                                 <X size={12} />
                                 <span className="text-[11px] font-extrabold uppercase tracking-wider">{t('filter')}</span>
@@ -260,7 +260,7 @@ export default function HRManagement() {
                     {loadingUsers ? (
                         <div className="py-20 text-center text-[#1b6b6b] text-xs font-bold">{t('loading')}</div>
                     ) : filteredUsers.length === 0 ? (
-                        <div className="py-20 text-center bg-white dark:bg-gray-800 rounded-3xl border border-gray-100 dark:border-gray-700/50">
+                        <div className="py-20 text-center bg-white dark:bg-[#151c2c] rounded-3xl border border-gray-100 dark:border-[#232d42]/50">
                             <p className="text-[11px] font-bold text-gray-400 uppercase tracking-wider">{t('no_staff_found')}</p>
                         </div>
                     ) : (
@@ -268,11 +268,11 @@ export default function HRManagement() {
                         // oyliklarni yonma-yon solishtirish kerak bo'ladi, kartochkalarda
                         // esa har biri alohida qutida turib, ekranga ikki barobar kam
                         // qator sig'ardi.
-                        <div className="bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700/50 rounded-2xl overflow-hidden">
+                        <div className="bg-white dark:bg-[#151c2c] border border-gray-100 dark:border-[#232d42]/50 rounded-2xl overflow-hidden">
                             <div className="overflow-x-auto">
                                 <table className="w-full border-collapse text-left min-w-[720px]">
                                     <thead>
-                                        <tr className="border-b border-gray-100 dark:border-gray-700/50">
+                                        <tr className="border-b border-gray-100 dark:border-[#232d42]/50">
                                             <th className="px-5 py-3 text-[11px] font-medium text-gray-400">Xodim</th>
                                             <th className="px-3 py-3 text-[11px] font-medium text-gray-400">Lavozim</th>
                                             <th className="px-3 py-3 text-[11px] font-medium text-gray-400">Rol</th>
@@ -389,7 +389,7 @@ export default function HRManagement() {
 
 function InfoRow({ label, value }: { label: string; value: string }) {
     return (
-        <div className="flex justify-between items-center py-2.5 border-b border-gray-50 dark:border-gray-700/50">
+        <div className="flex justify-between items-center py-2.5 border-b border-gray-50 dark:border-[#232d42]/50">
             <span className="text-[11px] font-bold text-gray-400 uppercase tracking-wider">{label}</span>
             <span className="text-xs font-extrabold text-gray-900 dark:text-white tracking-tight">{value}</span>
         </div>
@@ -453,8 +453,8 @@ function UserModal({
     return (
         <div className="fixed inset-0 z-[200] flex items-start sm:items-center justify-center overflow-y-auto p-4">
             <div className="absolute inset-0 bg-gray-900/60 backdrop-blur-sm" onClick={onClose} />
-            <div className="relative bg-white dark:bg-gray-800 rounded-[2rem] border border-gray-100 dark:border-gray-700/50 shadow-2xl w-full max-w-lg p-8 max-h-[90vh] overflow-y-auto custom-scrollbar">
-                <div className="flex items-center justify-between mb-6 pb-4 border-b border-gray-50 dark:border-gray-700/50">
+            <div className="relative bg-white dark:bg-[#151c2c] rounded-[2rem] border border-gray-100 dark:border-[#232d42]/50 shadow-2xl w-full max-w-lg p-8 max-h-[90vh] overflow-y-auto custom-scrollbar">
+                <div className="flex items-center justify-between mb-6 pb-4 border-b border-gray-50 dark:border-[#232d42]/50">
                     <div>
                         <h3 className="text-lg font-black text-gray-900 dark:text-white tracking-tight">{title}</h3>
                         <p className="text-[11px] font-bold text-[#1b6b6b] uppercase tracking-wider mt-0.5">{subtitle}</p>
@@ -465,7 +465,7 @@ function UserModal({
                 <form onSubmit={onSubmit} className="space-y-4">
                     {/* Photo */}
                     <div className="flex items-center gap-4">
-                        <div className="w-16 h-16 rounded-2xl overflow-hidden border-2 border-dashed border-gray-200 dark:border-gray-600 flex items-center justify-center bg-gray-50 dark:bg-gray-900 shrink-0">
+                        <div className="w-16 h-16 rounded-2xl overflow-hidden border-2 border-dashed border-gray-200 dark:border-gray-600 flex items-center justify-center bg-gray-50 dark:bg-[#0b111a] shrink-0">
                             {user.photo
                                 ? <img src={user.photo} alt="preview" className="w-full h-full object-cover" />
                                 : <Camera size={20} className="text-gray-300" />}
@@ -565,7 +565,7 @@ function UserModal({
                         </div>
                     )}
 
-                    <div className="flex gap-3 pt-4 border-t border-dashed border-gray-100 dark:border-gray-700/50">
+                    <div className="flex gap-3 pt-4 border-t border-dashed border-gray-100 dark:border-[#232d42]/50">
                         <button type="button" onClick={onClose}
                             className="flex-1 py-3 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-white text-xs font-extrabold rounded-2xl transition-all cursor-pointer hover:bg-gray-200 dark:hover:bg-gray-600">
                             {t('cancel')}

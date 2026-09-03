@@ -142,7 +142,7 @@ export default function ExamBuilder() {
     };
 
     const labelCls = "block text-[11px] font-extrabold uppercase tracking-wider text-gray-400 mb-2";
-    const inputCls = "w-full px-4 py-3 bg-gray-55 dark:bg-gray-900/50 border border-gray-100 dark:border-gray-700 rounded-2xl text-xs font-bold text-gray-900 dark:text-white focus:border-[#1b6b6b] focus:ring-4 focus:ring-[#1b6b6b]/10 outline-none transition-all";
+    const inputCls = "w-full px-4 py-3 bg-gray-55 dark:bg-[#0b111a]/50 border border-gray-100 dark:border-[#232d42] rounded-2xl text-xs font-bold text-gray-900 dark:text-white focus:border-[#1b6b6b] focus:ring-4 focus:ring-[#1b6b6b]/10 outline-none transition-all";
 
     return (
         <div className="space-y-6 pb-12 animate-in fade-in duration-500 max-w-7xl mx-auto">
@@ -151,7 +151,7 @@ export default function ExamBuilder() {
                 <div className="flex items-center gap-4">
                     <button 
                         onClick={() => navigate('/exams')}
-                        className="w-10 h-10 bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700/50 rounded-xl flex items-center justify-center text-gray-450 hover:text-[#1b6b6b] hover:bg-gray-50 transition-all shadow-sm group cursor-pointer"
+                        className="w-10 h-10 bg-white dark:bg-[#151c2c] border border-gray-100 dark:border-[#232d42]/50 rounded-xl flex items-center justify-center text-gray-450 hover:text-[#1b6b6b] hover:bg-gray-50 transition-all shadow-sm group cursor-pointer"
                     >
                         <ArrowLeft size={18} className="group-hover:-translate-x-0.5 transition-transform" />
                     </button>
@@ -175,8 +175,8 @@ export default function ExamBuilder() {
                 
                 {/* Left Column: Basic Info */}
                 <div className="xl:col-span-1 space-y-6">
-                    <div className="bg-white dark:bg-gray-800 rounded-3xl border border-gray-100 dark:border-gray-700/50 shadow-sm p-6">
-                        <div className="flex items-center gap-3 mb-6 pb-4 border-b border-dashed border-gray-100 dark:border-gray-700/50">
+                    <div className="bg-white dark:bg-[#151c2c] rounded-3xl border border-gray-100 dark:border-[#232d42]/50 shadow-sm p-6">
+                        <div className="flex items-center gap-3 mb-6 pb-4 border-b border-dashed border-gray-100 dark:border-[#232d42]/50">
                             <div className="w-10 h-10 bg-teal-50 dark:bg-teal-950/20 border border-teal-100 dark:border-teal-900/40 rounded-xl flex items-center justify-center text-[#1b6b6b]">
                                 <BookOpen size={18} />
                             </div>
@@ -267,19 +267,19 @@ export default function ExamBuilder() {
 
                     <div className="space-y-4">
                         {blocks.map((block, index) => (
-                            <div key={block.id} className="bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700/50 rounded-3xl overflow-hidden shadow-sm transition-all">
+                            <div key={block.id} className="bg-white dark:bg-[#151c2c] border border-gray-100 dark:border-[#232d42]/50 rounded-3xl overflow-hidden shadow-sm transition-all">
                                 
                                 {/* Block Header */}
-                                <div className="bg-gray-55 dark:bg-gray-900 p-4 border-b border-gray-100 dark:border-gray-700/50 flex items-center justify-between">
+                                <div className="bg-gray-55 dark:bg-[#0b111a] p-4 border-b border-gray-100 dark:border-[#232d42]/50 flex items-center justify-between">
                                     <div className="flex flex-wrap items-center gap-3">
-                                        <div className="w-8 h-8 bg-white dark:bg-gray-850 rounded-lg flex items-center justify-center text-gray-400 font-bold text-xs shadow-sm border border-gray-100 dark:border-gray-700">
+                                        <div className="w-8 h-8 bg-white dark:bg-gray-850 rounded-lg flex items-center justify-center text-gray-400 font-bold text-xs shadow-sm border border-gray-100 dark:border-[#232d42]">
                                             {index + 1}
                                         </div>
                                         <div className="flex flex-wrap gap-3 items-center">
                                             <div className="space-y-1">
                                                 <label className="text-[10px] font-bold text-gray-405 uppercase tracking-wider ml-1">Fan Tanlang</label>
                                                 <select 
-                                                    className="px-3 py-1.5 bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700 rounded-xl text-[11px] font-bold uppercase tracking-wider focus:border-teal-500 outline-none text-gray-900 dark:text-white cursor-pointer"
+                                                    className="px-3 py-1.5 bg-white dark:bg-[#151c2c] border border-gray-100 dark:border-[#232d42] rounded-xl text-[11px] font-bold uppercase tracking-wider focus:border-teal-500 outline-none text-gray-900 dark:text-white cursor-pointer"
                                                     value={block.subject}
                                                     onChange={e => handleUpdateBlock(block.id, { subject: e.target.value })}
                                                 >
@@ -292,7 +292,7 @@ export default function ExamBuilder() {
                                             <div className="space-y-1">
                                                 <label className="text-[10px] font-bold text-gray-405 uppercase tracking-wider ml-1">Ball / Savol</label>
                                                 <input type="number" step="0.1" 
-                                                    className="w-20 px-3 py-1.5 bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700 rounded-xl text-[11px] font-bold uppercase tracking-wider focus:border-teal-500 outline-none text-amber-600"
+                                                    className="w-20 px-3 py-1.5 bg-white dark:bg-[#151c2c] border border-gray-100 dark:border-[#232d42] rounded-xl text-[11px] font-bold uppercase tracking-wider focus:border-teal-500 outline-none text-amber-600"
                                                     value={block.pointsPerQuestion || ''}
                                                     onChange={e => handleUpdateBlock(block.id, { pointsPerQuestion: Number(e.target.value) })}
                                                 />
@@ -322,11 +322,11 @@ export default function ExamBuilder() {
                                             const isError = rule.count > avail;
 
                                             return (
-                                                <div key={rIdx} className="grid grid-cols-12 gap-3 items-end bg-gray-55 dark:bg-gray-900/30 p-3.5 rounded-2xl border border-transparent hover:border-gray-100 transition-all">
+                                                <div key={rIdx} className="grid grid-cols-12 gap-3 items-end bg-gray-55 dark:bg-[#0b111a]/30 p-3.5 rounded-2xl border border-transparent hover:border-gray-100 transition-all">
                                                     <div className="col-span-5 space-y-1.5">
                                                         <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider ml-1">Mavzu</label>
                                                         <select 
-                                                            className="w-full px-3 py-2 bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700 rounded-xl text-[11px] font-bold uppercase tracking-wider focus:border-teal-500 outline-none text-gray-900 dark:text-white cursor-pointer"
+                                                            className="w-full px-3 py-2 bg-white dark:bg-[#151c2c] border border-gray-100 dark:border-[#232d42] rounded-xl text-[11px] font-bold uppercase tracking-wider focus:border-teal-500 outline-none text-gray-900 dark:text-white cursor-pointer"
                                                             value={rule.topic}
                                                             onChange={e => handleUpdateRule(block.id, rIdx, 'topic', e.target.value)}
                                                         >
@@ -339,7 +339,7 @@ export default function ExamBuilder() {
                                                     <div className="col-span-3 space-y-1.5">
                                                         <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider ml-1">Soni</label>
                                                         <input type="number" 
-                                                            className={`w-full px-3 py-2 bg-white dark:bg-gray-800 border ${isError ? 'border-rose-500 ring-2 ring-rose-500/10' : 'border-gray-100 dark:border-gray-700'} rounded-xl text-[11px] font-bold uppercase tracking-wider focus:border-teal-500 outline-none`}
+                                                            className={`w-full px-3 py-2 bg-white dark:bg-[#151c2c] border ${isError ? 'border-rose-500 ring-2 ring-rose-500/10' : 'border-gray-100 dark:border-[#232d42]'} rounded-xl text-[11px] font-bold uppercase tracking-wider focus:border-teal-500 outline-none`}
                                                             value={rule.count || ''}
                                                             onChange={e => handleUpdateRule(block.id, rIdx, 'count', Number(e.target.value))}
                                                         />
@@ -360,7 +360,7 @@ export default function ExamBuilder() {
                                         })}
 
                                         {block.topicRules.length === 0 && (
-                                            <div className="py-8 text-center border border-dashed border-gray-100 dark:border-gray-800 rounded-2xl">
+                                            <div className="py-8 text-center border border-dashed border-gray-100 dark:border-[#232d42] rounded-2xl">
                                                 <Tag className="w-6 h-6 text-gray-200 mx-auto mb-2" />
                                                 <p className="text-[11px] font-bold text-gray-400 uppercase tracking-wider">Mavzu qoidalari mavjud emas</p>
                                             </div>
@@ -372,7 +372,7 @@ export default function ExamBuilder() {
                     </div>
                     
                     {blocks.length === 0 && (
-                        <div className="p-12 border border-dashed border-gray-200 dark:border-gray-700 rounded-3xl flex flex-col items-center justify-center text-center">
+                        <div className="p-12 border border-dashed border-gray-200 dark:border-[#232d42] rounded-3xl flex flex-col items-center justify-center text-center">
                             <Layers className="w-10 h-10 text-gray-300 mb-4" />
                             <p className="text-xs font-bold text-gray-500">Hozircha fanlar yo'q. Birinchi blokni qo'shing.</p>
                         </div>

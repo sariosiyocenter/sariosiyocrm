@@ -27,7 +27,7 @@ const ROLE_COLORS: Record<string, string> = {
     MANAGER:         'bg-sky-50 text-sky-600 border-sky-100 dark:bg-sky-950/20 dark:text-sky-400',
     TEACHER:         'bg-teal-50 text-[#1b6b6b] border-teal-100 dark:bg-teal-950/20 dark:text-teal-400',
     SUPPORT_TEACHER: 'bg-cyan-50 text-cyan-600 border-cyan-100 dark:bg-cyan-950/20 dark:text-cyan-400',
-    RECEPTIONIST:    'bg-gray-50 text-gray-600 border-gray-100 dark:bg-gray-900/50 dark:text-gray-400',
+    RECEPTIONIST:    'bg-gray-50 text-gray-600 border-gray-100 dark:bg-[#0b111a]/50 dark:text-gray-400',
     DRIVER:          'bg-amber-50 text-amber-600 border-amber-100 dark:bg-amber-950/20 dark:text-amber-400',
     TECH_STAFF:      'bg-orange-50 text-orange-600 border-orange-100 dark:bg-orange-950/20 dark:text-orange-400',
 };
@@ -49,7 +49,7 @@ const WEEK_DAYS_FULL = ['Dushanba','Seshanba','Chorshanba','Payshanba','Juma','S
 // JS getDay(): 0=Sun,1=Mon,2=Tue,3=Wed,4=Thu,5=Fri,6=Sat
 const DAY_JS: Record<string,number> = { Du:1, Se:2, Ch:3, Pa:4, Ju:5, Sh:6, Ya:0 };
 
-const inp = "w-full px-4 py-3 bg-gray-50 dark:bg-gray-900/50 border border-gray-100 dark:border-gray-700 rounded-2xl text-xs font-bold text-gray-900 dark:text-white focus:border-[#1b6b6b] focus:ring-4 focus:ring-[#1b6b6b]/10 outline-none transition-all";
+const inp = "w-full px-4 py-3 bg-gray-50 dark:bg-[#0b111a]/50 border border-gray-100 dark:border-[#232d42] rounded-2xl text-xs font-bold text-gray-900 dark:text-white focus:border-[#1b6b6b] focus:ring-4 focus:ring-[#1b6b6b]/10 outline-none transition-all";
 const lbl = "block text-[11px] font-extrabold uppercase tracking-wider text-gray-400 mb-2";
 
 export default function StaffDetails() {
@@ -232,7 +232,7 @@ export default function StaffDetails() {
     }
     if (!staffUser) {
         return (
-            <div className="p-12 text-center text-gray-500 font-bold text-sm bg-white dark:bg-gray-800 rounded-3xl border border-gray-100 dark:border-gray-700/50 shadow-sm">
+            <div className="p-12 text-center text-gray-500 font-bold text-sm bg-white dark:bg-[#151c2c] rounded-3xl border border-gray-100 dark:border-[#232d42]/50 shadow-sm">
                 {t('staff_not_found')}
             </div>
         );
@@ -498,7 +498,7 @@ export default function StaffDetails() {
             <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 items-start">
                 {/* Left profile card */}
                 <div className="lg:col-span-1 space-y-5">
-                    <div className="bg-white dark:bg-gray-800 rounded-3xl border border-gray-100 dark:border-gray-700/50 shadow-sm overflow-hidden">
+                    <div className="bg-white dark:bg-[#151c2c] rounded-3xl border border-gray-100 dark:border-[#232d42]/50 shadow-sm overflow-hidden">
                         {/* Banner */}
                         <div className={`h-48 bg-gradient-to-br ${ROLE_GRADIENT[staffUser.role] || 'from-gray-400 to-gray-600'} relative`}>
                             {isAdminOrManager && (
@@ -509,8 +509,8 @@ export default function StaffDetails() {
                                 </button>
                             )}
                             {/* Avatar — centred, extends below banner */}
-                            <div className="absolute -bottom-20 left-1/2 -translate-x-1/2 rounded-2xl bg-white dark:bg-gray-800 p-2 shadow-xl group/avatar">
-                                <div className="w-40 h-40 rounded-xl overflow-hidden flex items-center justify-center bg-gray-50 dark:bg-gray-900 border border-gray-100 dark:border-gray-700/50 relative">
+                            <div className="absolute -bottom-20 left-1/2 -translate-x-1/2 rounded-2xl bg-white dark:bg-[#151c2c] p-2 shadow-xl group/avatar">
+                                <div className="w-40 h-40 rounded-xl overflow-hidden flex items-center justify-center bg-gray-50 dark:bg-[#0b111a] border border-gray-100 dark:border-[#232d42]/50 relative">
                                     {staffUser.photo ? (
                                         <img src={staffUser.photo} alt={staffUser.name} className="w-full h-full object-cover" />
                                     ) : (
@@ -553,7 +553,7 @@ export default function StaffDetails() {
                             )}
                         </div>
 
-                        <div className="px-6 pb-6 space-y-3 border-t border-dashed border-gray-100 dark:border-gray-700/50 pt-4">
+                        <div className="px-6 pb-6 space-y-3 border-t border-dashed border-gray-100 dark:border-[#232d42]/50 pt-4">
                             {staffUser.phone && <DetailRow icon={<Phone size={14} />} label={t('phone')} value={staffUser.phone} />}
                             {staffUser.role !== 'TECH_STAFF' && staffUser.email && (
                                 <DetailRow icon={<Mail size={14} />} label="Email" value={staffUser.email} />
@@ -577,11 +577,11 @@ export default function StaffDetails() {
 
                 {/* Right tabs */}
                 <div className="lg:col-span-3 space-y-6">
-                    <div className="bg-white dark:bg-gray-800 rounded-3xl border border-gray-100 dark:border-gray-700/50 shadow-sm overflow-hidden">
-                        <div className="flex px-4 bg-gray-50 dark:bg-gray-900/50 border-b border-gray-100 dark:border-gray-700/50 gap-2">
+                    <div className="bg-white dark:bg-[#151c2c] rounded-3xl border border-gray-100 dark:border-[#232d42]/50 shadow-sm overflow-hidden">
+                        <div className="flex px-4 bg-gray-50 dark:bg-[#0b111a]/50 border-b border-gray-100 dark:border-[#232d42]/50 gap-2">
                             {tabs.map(tab => (
                                 <button key={tab.id} onClick={() => setActiveTab(tab.id)}
-                                    className={`px-5 py-4 text-[11px] font-extrabold uppercase tracking-wider flex items-center gap-2 transition-all relative shrink-0 cursor-pointer ${activeTab === tab.id ? 'text-[#1b6b6b] bg-white dark:bg-gray-800' : 'text-gray-400 hover:text-gray-900 dark:hover:text-white'}`}>
+                                    className={`px-5 py-4 text-[11px] font-extrabold uppercase tracking-wider flex items-center gap-2 transition-all relative shrink-0 cursor-pointer ${activeTab === tab.id ? 'text-[#1b6b6b] bg-white dark:bg-[#151c2c]' : 'text-gray-400 hover:text-gray-900 dark:hover:text-white'}`}>
                                     {tab.icon}{tab.label}
                                     {activeTab === tab.id && <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-[#1b6b6b] rounded-t-full" />}
                                 </button>
@@ -599,7 +599,7 @@ export default function StaffDetails() {
                                     </div>
 
                                     <div className="space-y-3">
-                                        <span className="text-[11px] font-extrabold text-gray-400 uppercase tracking-wider block border-b border-gray-50 dark:border-gray-700/50 pb-2">
+                                        <span className="text-[11px] font-extrabold text-gray-400 uppercase tracking-wider block border-b border-gray-50 dark:border-[#232d42]/50 pb-2">
                                             {t('staff_info')}
                                         </span>
                                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -613,7 +613,7 @@ export default function StaffDetails() {
 
                                     {linkedTeacher && (
                                         <div>
-                                            <span className="text-[11px] font-extrabold text-gray-400 uppercase tracking-wider block border-b border-gray-50 dark:border-gray-700/50 pb-2 mb-3">
+                                            <span className="text-[11px] font-extrabold text-gray-400 uppercase tracking-wider block border-b border-gray-50 dark:border-[#232d42]/50 pb-2 mb-3">
                                                 {t('linked_teacher_profile')}
                                             </span>
                                             <button onClick={() => navigate(`/teachers/${linkedTeacher.id}`)}
@@ -701,11 +701,11 @@ export default function StaffDetails() {
                                             <Banknote size={11} /> {t('salary_calculation')}
                                         </span>
                                         <div className="flex items-center gap-2">
-                                            <button onClick={prevPayMonth} className="w-8 h-8 flex items-center justify-center rounded-xl bg-gray-50 dark:bg-gray-900 border border-gray-100 dark:border-gray-700 text-gray-500 hover:border-[#1b6b6b] hover:text-[#1b6b6b] transition-all cursor-pointer">
+                                            <button onClick={prevPayMonth} className="w-8 h-8 flex items-center justify-center rounded-xl bg-gray-50 dark:bg-[#0b111a] border border-gray-100 dark:border-[#232d42] text-gray-500 hover:border-[#1b6b6b] hover:text-[#1b6b6b] transition-all cursor-pointer">
                                                 <ChevronLeft size={14} />
                                             </button>
                                             <span className="text-xs font-black text-gray-900 dark:text-white min-w-[120px] text-center">{getMonthName(payMonth)} {payYear}</span>
-                                            <button onClick={nextPayMonth} className="w-8 h-8 flex items-center justify-center rounded-xl bg-gray-50 dark:bg-gray-900 border border-gray-100 dark:border-gray-700 text-gray-500 hover:border-[#1b6b6b] hover:text-[#1b6b6b] transition-all cursor-pointer">
+                                            <button onClick={nextPayMonth} className="w-8 h-8 flex items-center justify-center rounded-xl bg-gray-50 dark:bg-[#0b111a] border border-gray-100 dark:border-[#232d42] text-gray-500 hover:border-[#1b6b6b] hover:text-[#1b6b6b] transition-all cursor-pointer">
                                                 <ChevronRight size={14} />
                                             </button>
                                         </div>
@@ -757,14 +757,14 @@ export default function StaffDetails() {
                                                     {kpiLoading ? (
                                                         <div className="py-8 text-center text-[11px] text-gray-400 font-bold uppercase tracking-wider">{t('loading')}</div>
                                                     ) : kpiPercent === 0 ? (
-                                                        <div className="p-4 bg-gray-50 dark:bg-gray-900/50 border border-dashed border-gray-200 dark:border-gray-700 rounded-2xl text-center">
+                                                        <div className="p-4 bg-gray-50 dark:bg-[#0b111a]/50 border border-dashed border-gray-200 dark:border-[#232d42] rounded-2xl text-center">
                                                             <p className="text-[11px] text-gray-400 font-bold">{t('kpi_percent_not_set')}</p>
                                                         </div>
                                                     ) : kpiData?.groups?.length > 0 ? (
-                                                        <div className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-700/50 rounded-2xl overflow-hidden">
+                                                        <div className="bg-white dark:bg-[#0b111a] border border-gray-100 dark:border-[#232d42]/50 rounded-2xl overflow-hidden">
                                                             <table className="w-full text-left">
                                                                 <thead>
-                                                                    <tr className="bg-gray-50 dark:bg-gray-900/80 border-b border-gray-100 dark:border-gray-800">
+                                                                    <tr className="bg-gray-50 dark:bg-[#0b111a]/80 border-b border-gray-100 dark:border-[#232d42]">
                                                                         <th className="p-3 text-[11px] font-bold text-gray-400 uppercase tracking-wider">{t('group')}</th>
                                                                         <th className="p-3 text-[11px] font-bold text-gray-400 uppercase tracking-wider">{t('students')}</th>
                                                                         <th className="p-3 text-[11px] font-bold text-gray-400 uppercase tracking-wider text-right">{t('payments')}</th>
@@ -782,7 +782,7 @@ export default function StaffDetails() {
                                                                     ))}
                                                                 </tbody>
                                                                 <tfoot>
-                                                                    <tr className="border-t border-gray-100 dark:border-gray-700 bg-[#1b6b6b]/5">
+                                                                    <tr className="border-t border-gray-100 dark:border-[#232d42] bg-[#1b6b6b]/5">
                                                                         <td colSpan={2} className="p-3 text-[11px] font-extrabold text-[#1b6b6b] uppercase tracking-wider">{t('total_kpi')}</td>
                                                                         <td className="p-3 text-[11px] font-bold text-gray-600 dark:text-gray-300 text-right">{kpiData.totalPayments?.toLocaleString()}</td>
                                                                         <td className="p-3 text-[12px] font-bold text-[#1b6b6b] text-right">+{kpiAmount.toLocaleString()} UZS</td>
@@ -791,7 +791,7 @@ export default function StaffDetails() {
                                                             </table>
                                                         </div>
                                                     ) : (
-                                                        <div className="p-4 bg-gray-50 dark:bg-gray-900/50 border border-dashed border-gray-200 dark:border-gray-700 rounded-2xl text-center">
+                                                        <div className="p-4 bg-gray-50 dark:bg-[#0b111a]/50 border border-dashed border-gray-200 dark:border-[#232d42] rounded-2xl text-center">
                                                             <p className="text-[11px] text-gray-400 font-bold">{t('no_group_payments_found')}</p>
                                                         </div>
                                                     )}
@@ -841,7 +841,7 @@ export default function StaffDetails() {
                                                 </div>
 
                                                 {/* Summary + pay button */}
-                                                <div className="bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700/50 rounded-3xl p-6 flex flex-col justify-between">
+                                                <div className="bg-white dark:bg-[#151c2c] border border-gray-100 dark:border-[#232d42]/50 rounded-3xl p-6 flex flex-col justify-between">
                                                     <div>
                                                         <h3 className="text-xs font-black text-[#1b6b6b] mb-5">
                                                             {getMonthName(payMonth)} {payYear} — {t('bill')}
@@ -865,7 +865,7 @@ export default function StaffDetails() {
                                                                 <span className="text-[11px] font-bold text-rose-600 uppercase tracking-wider">{t('fine')} ({fines.length})</span>
                                                                 <span className="text-xs font-extrabold text-rose-600">-{totalFine.toLocaleString()}</span>
                                                             </div>
-                                                            <div className="pt-4 border-t border-dashed border-gray-100 dark:border-gray-700 flex justify-between items-center">
+                                                            <div className="pt-4 border-t border-dashed border-gray-100 dark:border-[#232d42] flex justify-between items-center">
                                                                 <span className="text-[11px] font-extrabold text-[#1b6b6b] uppercase tracking-wider">{t('to_be_paid')}</span>
                                                                 <span className="text-2xl font-black text-[#1b6b6b] tabular-nums">{totalSalary.toLocaleString()}</span>
                                                             </div>
@@ -903,13 +903,13 @@ export default function StaffDetails() {
                                     {/* Payment history */}
                                     {salaryPayments.length > 0 && (
                                         <div className="space-y-3">
-                                            <span className="text-[11px] font-extrabold text-gray-400 uppercase tracking-wider flex items-center gap-1.5 border-t border-dashed border-gray-100 dark:border-gray-700/50 pt-4">
+                                            <span className="text-[11px] font-extrabold text-gray-400 uppercase tracking-wider flex items-center gap-1.5 border-t border-dashed border-gray-100 dark:border-[#232d42]/50 pt-4">
                                                 <Clock size={10} /> {t('payments_history')}
                                             </span>
-                                            <div className="bg-white dark:bg-gray-800 rounded-2xl overflow-hidden border border-gray-100 dark:border-gray-700/50">
+                                            <div className="bg-white dark:bg-[#151c2c] rounded-2xl overflow-hidden border border-gray-100 dark:border-[#232d42]/50">
                                                 <table className="w-full text-left">
                                                     <thead>
-                                                        <tr className="bg-gray-50 dark:bg-gray-900 border-b border-gray-100 dark:border-gray-800">
+                                                        <tr className="bg-gray-50 dark:bg-[#0b111a] border-b border-gray-100 dark:border-[#232d42]">
                                                             <th className="p-3 text-[11px] font-bold text-gray-400 uppercase tracking-wider">{t('month')}</th>
                                                             <th className="p-3 text-[11px] font-bold text-gray-400 uppercase tracking-wider">{t('base_short')}</th>
                                                             <th className="p-3 text-[11px] font-bold text-gray-400 uppercase tracking-wider">+Bonus</th>
@@ -979,7 +979,7 @@ export default function StaffDetails() {
                                                         className={`flex flex-col items-center py-3 rounded-2xl border-2 transition-all cursor-pointer select-none ${
                                                             sel
                                                                 ? 'bg-[#1b6b6b] border-[#1b6b6b] text-white shadow-md shadow-[#1b6b6b]/25'
-                                                                : 'bg-white dark:bg-gray-800 border-gray-100 dark:border-gray-700 text-gray-400 hover:border-[#1b6b6b]/40 hover:text-gray-700'
+                                                                : 'bg-white dark:bg-[#151c2c] border-gray-100 dark:border-[#232d42] text-gray-400 hover:border-[#1b6b6b]/40 hover:text-gray-700'
                                                         }`}>
                                                         <span className="text-[12px] font-bold">{getWeekDayShort(day)}</span>
                                                         <span className="text-[10px] font-bold mt-0.5 opacity-70">{getWeekDayFull(WEEK_DAYS_FULL[i]).slice(0,3)}</span>
@@ -995,7 +995,7 @@ export default function StaffDetails() {
                                     </div>
 
                                     {/* Divider */}
-                                    <div className="border-t border-dashed border-gray-100 dark:border-gray-700/50" />
+                                    <div className="border-t border-dashed border-gray-100 dark:border-[#232d42]/50" />
 
                                     {/* Attendance calendar */}
                                     <div className="space-y-4">
@@ -1003,13 +1003,13 @@ export default function StaffDetails() {
                                         <div className="flex items-center justify-between">
                                             <span className="text-[11px] font-extrabold text-gray-400 uppercase tracking-wider">{t('attendance')}</span>
                                             <div className="flex items-center gap-2">
-                                                <button onClick={prevMonth} className="w-8 h-8 flex items-center justify-center rounded-xl bg-gray-50 dark:bg-gray-900 border border-gray-100 dark:border-gray-700 text-gray-500 hover:border-[#1b6b6b] hover:text-[#1b6b6b] transition-all cursor-pointer">
+                                                <button onClick={prevMonth} className="w-8 h-8 flex items-center justify-center rounded-xl bg-gray-50 dark:bg-[#0b111a] border border-gray-100 dark:border-[#232d42] text-gray-500 hover:border-[#1b6b6b] hover:text-[#1b6b6b] transition-all cursor-pointer">
                                                     <ChevronLeft size={14} />
                                                 </button>
                                                 <span className="text-xs font-black text-gray-900 dark:text-white min-w-[120px] text-center">
                                                     {getMonthName(selMonth)} {selYear}
                                                 </span>
-                                                <button onClick={nextMonth} className="w-8 h-8 flex items-center justify-center rounded-xl bg-gray-50 dark:bg-gray-900 border border-gray-100 dark:border-gray-700 text-gray-500 hover:border-[#1b6b6b] hover:text-[#1b6b6b] transition-all cursor-pointer">
+                                                <button onClick={nextMonth} className="w-8 h-8 flex items-center justify-center rounded-xl bg-gray-50 dark:bg-[#0b111a] border border-gray-100 dark:border-[#232d42] text-gray-500 hover:border-[#1b6b6b] hover:text-[#1b6b6b] transition-all cursor-pointer">
                                                     <ChevronRight size={14} />
                                                 </button>
                                             </div>
@@ -1023,7 +1023,7 @@ export default function StaffDetails() {
                                                     { label:t('absent'), count: absentDays,  cls:'border-rose-100 dark:border-rose-950/20 text-rose-600 dark:text-rose-400' },
                                                     { label:t('excused'), count: excusedDays, cls:'border-amber-100 dark:border-amber-950/20 text-amber-600 dark:text-amber-400' },
                                                 ].map(({ label, count, cls }) => (
-                                                    <div key={label} className={`bg-white dark:bg-gray-800 border rounded-2xl p-3 text-center ${cls}`}>
+                                                    <div key={label} className={`bg-white dark:bg-[#151c2c] border rounded-2xl p-3 text-center ${cls}`}>
                                                         <span className="text-[11px] font-extrabold uppercase tracking-wider block mb-1 opacity-70">{label}</span>
                                                         <p className="text-2xl font-black tabular-nums">{count}</p>
                                                     </div>
@@ -1032,7 +1032,7 @@ export default function StaffDetails() {
                                         )}
 
                                         {workDays.length === 0 ? (
-                                            <div className="py-10 text-center bg-gray-50 dark:bg-gray-900/40 rounded-2xl border border-dashed border-gray-200 dark:border-gray-700">
+                                            <div className="py-10 text-center bg-gray-50 dark:bg-[#0b111a]/40 rounded-2xl border border-dashed border-gray-200 dark:border-[#232d42]">
                                                 <CalendarDays size={28} className="mx-auto text-gray-300 mb-2" />
                                                 <p className="text-[11px] font-bold text-gray-400 uppercase tracking-wider">
                                                     {t('attendance_setup_warning')}
@@ -1069,7 +1069,7 @@ export default function StaffDetails() {
                                                         } else if (status === 'Sababli') {
                                                             cls += 'bg-amber-100 dark:bg-amber-950/50 border-amber-300 dark:border-amber-800 text-amber-700 dark:text-amber-400 cursor-pointer hover:opacity-80';
                                                         } else {
-                                                            cls += `bg-white dark:bg-gray-800 border-[#1b6b6b]/20 text-gray-700 dark:text-gray-200 cursor-pointer hover:border-[#1b6b6b] hover:bg-[#1b6b6b]/5 ${isToday ? 'ring-2 ring-[#1b6b6b] ring-offset-1' : ''}`;
+                                                            cls += `bg-white dark:bg-[#151c2c] border-[#1b6b6b]/20 text-gray-700 dark:text-gray-200 cursor-pointer hover:border-[#1b6b6b] hover:bg-[#1b6b6b]/5 ${isToday ? 'ring-2 ring-[#1b6b6b] ring-offset-1' : ''}`;
                                                         }
 
                                                         return (
@@ -1101,8 +1101,8 @@ export default function StaffDetails() {
             {attPicker && (
                 <div className="fixed inset-0 z-[200] flex items-start sm:items-center justify-center overflow-y-auto p-4">
                     <div className="absolute inset-0 bg-gray-900/60 backdrop-blur-sm" onClick={() => setAttPicker(null)} />
-                    <div className="relative bg-white dark:bg-gray-800 rounded-[2rem] border border-gray-100 dark:border-gray-700/50 shadow-2xl w-full max-w-xs p-6">
-                        <div className="flex items-center justify-between mb-5 pb-3 border-b border-gray-50 dark:border-gray-700/50">
+                    <div className="relative bg-white dark:bg-[#151c2c] rounded-[2rem] border border-gray-100 dark:border-[#232d42]/50 shadow-2xl w-full max-w-xs p-6">
+                        <div className="flex items-center justify-between mb-5 pb-3 border-b border-gray-50 dark:border-[#232d42]/50">
                             <div>
                                 <h3 className="text-sm font-black text-gray-900 dark:text-white tracking-tight">{attPicker}</h3>
                                 <p className="text-[11px] font-bold text-gray-400 uppercase tracking-wider mt-0.5">Davomat holati</p>
@@ -1143,8 +1143,8 @@ export default function StaffDetails() {
             {isEditOpen && (
                 <div className="fixed inset-0 z-[200] flex items-start sm:items-center justify-center overflow-y-auto p-4">
                     <div className="absolute inset-0 bg-gray-900/60 backdrop-blur-sm" onClick={() => setIsEditOpen(false)} />
-                    <div className="relative bg-white dark:bg-gray-800 rounded-[2rem] border border-gray-100 dark:border-gray-700/50 shadow-2xl w-full max-w-md p-8 max-h-[90vh] overflow-y-auto custom-scrollbar">
-                        <div className="flex items-center justify-between mb-6 pb-4 border-b border-gray-50 dark:border-gray-700/50">
+                    <div className="relative bg-white dark:bg-[#151c2c] rounded-[2rem] border border-gray-100 dark:border-[#232d42]/50 shadow-2xl w-full max-w-md p-8 max-h-[90vh] overflow-y-auto custom-scrollbar">
+                        <div className="flex items-center justify-between mb-6 pb-4 border-b border-gray-50 dark:border-[#232d42]/50">
                             <div>
                                 <h3 className="text-lg font-black text-gray-900 dark:text-white tracking-tight">Tahrirlash</h3>
                                 <p className="text-[11px] font-bold text-[#1b6b6b] uppercase tracking-wider mt-0.5">Ma'lumotlarni yangilash</p>
@@ -1153,7 +1153,7 @@ export default function StaffDetails() {
                         </div>
                         <form onSubmit={handleSaveEdit} className="space-y-4">
                             <div className="flex items-center gap-4">
-                                <div onClick={() => fileRef.current?.click()} className="w-16 h-16 rounded-2xl overflow-hidden border-2 border-dashed border-gray-200 dark:border-gray-600 cursor-pointer hover:border-[#1b6b6b] transition-colors flex items-center justify-center bg-gray-50 dark:bg-gray-900 shrink-0">
+                                <div onClick={() => fileRef.current?.click()} className="w-16 h-16 rounded-2xl overflow-hidden border-2 border-dashed border-gray-200 dark:border-gray-600 cursor-pointer hover:border-[#1b6b6b] transition-colors flex items-center justify-center bg-gray-50 dark:bg-[#0b111a] shrink-0">
                                     {editData.photo ? <img src={editData.photo} alt="preview" className="w-full h-full object-cover" /> : <Camera size={20} className="text-gray-300" />}
                                 </div>
                                 <div>
@@ -1169,7 +1169,7 @@ export default function StaffDetails() {
                             </div>
                             <div><label className={lbl}>Vazifa / Mutaxassislik</label><input type="text" className={inp} value={editData.position||''} onChange={e => setEditData((p:any)=>({...p,position:e.target.value}))} /></div>
                             <div><label className={lbl}>Yangi Parol (ixtiyoriy)</label><input type="password" placeholder="O'zgartirish uchun to'ldiring" className={inp} value={editData.password||''} onChange={e => setEditData((p:any)=>({...p,password:e.target.value}))} /></div>
-                            <div className="flex gap-3 pt-4 border-t border-dashed border-gray-100 dark:border-gray-700/50">
+                            <div className="flex gap-3 pt-4 border-t border-dashed border-gray-100 dark:border-[#232d42]/50">
                                 <button type="button" onClick={() => setIsEditOpen(false)} className="flex-1 py-3 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-white text-xs font-extrabold rounded-2xl cursor-pointer hover:bg-gray-200">Bekor</button>
                                 <button type="submit" className="flex-1 py-3 bg-[#1b6b6b] hover:bg-[#155252] text-white text-xs font-extrabold rounded-2xl shadow-sm shadow-[#1b6b6b]/20 cursor-pointer">Saqlash</button>
                             </div>
@@ -1192,7 +1192,7 @@ export default function StaffDetails() {
 function StatCard({ label, value, sub, color }: { label: string; value: string | number; sub: string; color: string }) {
     const cls = { emerald:'border-emerald-100 dark:border-emerald-950/30 text-emerald-600 dark:text-emerald-400', rose:'border-rose-100 dark:border-rose-950/30 text-rose-600 dark:text-rose-400', amber:'border-amber-100 dark:border-amber-950/30 text-amber-600 dark:text-amber-400' }[color] || 'border-gray-100 text-gray-600';
     return (
-        <div className={`bg-white dark:bg-gray-800 border rounded-2xl p-4 ${cls}`}>
+        <div className={`bg-white dark:bg-[#151c2c] border rounded-2xl p-4 ${cls}`}>
             <span className="text-[11px] font-extrabold uppercase tracking-wider block mb-1 opacity-70">{label}</span>
             <p className="text-2xl font-black tabular-nums">{value}</p>
             <p className="text-[11px] font-bold text-gray-400 mt-1 uppercase tracking-wider">{sub}</p>
@@ -1202,7 +1202,7 @@ function StatCard({ label, value, sub, color }: { label: string; value: string |
 
 function InfoBox({ label, value }: { label: string; value: string }) {
     return (
-        <div className="bg-gray-50 dark:bg-gray-900/40 rounded-xl px-4 py-3 border border-gray-100 dark:border-gray-700/50">
+        <div className="bg-gray-50 dark:bg-[#0b111a]/40 rounded-xl px-4 py-3 border border-gray-100 dark:border-[#232d42]/50">
             <span className="text-[11px] font-extrabold text-gray-400 uppercase tracking-wider block mb-0.5">{label}</span>
             <span className="text-xs font-black text-gray-900 dark:text-white">{value}</span>
         </div>

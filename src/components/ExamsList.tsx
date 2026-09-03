@@ -31,7 +31,7 @@ export default function ExamsList() {
         return (
             <div className="space-y-6 animate-in fade-in duration-500">
                 {/* Tabs Header */}
-                <div className="flex border-b border-gray-100 dark:border-gray-700/50 bg-white dark:bg-gray-800 rounded-2xl overflow-hidden p-1 shadow-sm gap-1">
+                <div className="flex border-b border-gray-100 dark:border-[#232d42]/50 bg-white dark:bg-[#151c2c] rounded-2xl overflow-hidden p-1 shadow-sm gap-1">
                     <button
                         onClick={() => setActiveTab('exams')}
                         className="flex items-center gap-2 px-6 py-3.5 rounded-xl text-[11px] font-extrabold uppercase tracking-wider transition-all text-gray-400 hover:text-gray-900 dark:hover:text-white cursor-pointer"
@@ -66,7 +66,7 @@ export default function ExamsList() {
     return (
         <div className="space-y-6 animate-in fade-in duration-500">
             {/* Tabs Header */}
-            <div className="flex border-b border-gray-100 dark:border-gray-700/50 bg-white dark:bg-gray-800 rounded-2xl overflow-hidden p-1 shadow-sm gap-1">
+            <div className="flex border-b border-gray-100 dark:border-[#232d42]/50 bg-white dark:bg-[#151c2c] rounded-2xl overflow-hidden p-1 shadow-sm gap-1">
                 <button
                     onClick={() => setActiveTab('exams')}
                     className="flex items-center gap-2 px-6 py-3.5 rounded-xl text-[11px] font-extrabold uppercase tracking-wider transition-all bg-teal-50 dark:bg-teal-950/20 text-[#1b6b6b] cursor-pointer"
@@ -91,7 +91,7 @@ export default function ExamsList() {
             </div>
 
             {/* Header */}
-            <div className="bg-white dark:bg-gray-800 rounded-3xl border border-gray-100 dark:border-gray-700/50 shadow-sm p-6">
+            <div className="bg-white dark:bg-[#151c2c] rounded-3xl border border-gray-100 dark:border-[#232d42]/50 shadow-sm p-6">
                 <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                     <div className="flex items-center gap-3">
                         <div className="w-10 h-10 rounded-xl bg-teal-50 dark:bg-teal-950/20 border border-teal-100 dark:border-teal-900/40 flex items-center justify-center text-[#1b6b6b]">
@@ -110,7 +110,7 @@ export default function ExamsList() {
                                 placeholder={t('search')}
                                 value={search}
                                 onChange={(e) => setSearch(e.target.value)}
-                                className="w-full bg-gray-55 dark:bg-gray-905 border border-gray-100 dark:border-gray-700 rounded-2xl pl-10 pr-4 py-2.5 text-xs font-bold text-gray-900 dark:text-white focus:border-[#1b6b6b] focus:ring-4 focus:ring-[#1b6b6b]/10 outline-none transition-all placeholder:text-gray-400"
+                                className="w-full bg-gray-55 dark:bg-gray-905 border border-gray-100 dark:border-[#232d42] rounded-2xl pl-10 pr-4 py-2.5 text-xs font-bold text-gray-900 dark:text-white focus:border-[#1b6b6b] focus:ring-4 focus:ring-[#1b6b6b]/10 outline-none transition-all placeholder:text-gray-400"
                             />
                         </div>
                         <button
@@ -125,11 +125,11 @@ export default function ExamsList() {
             </div>
 
             {/* Data Grid / Table */}
-            <div className="bg-white dark:bg-gray-800 rounded-3xl border border-gray-100 dark:border-gray-700/50 shadow-sm overflow-hidden">
+            <div className="bg-white dark:bg-[#151c2c] rounded-3xl border border-gray-100 dark:border-[#232d42]/50 shadow-sm overflow-hidden">
                 <div className="overflow-x-auto">
                     <table className="w-full text-left border-collapse min-w-[800px]">
                         <thead>
-                            <tr className="bg-gray-55 dark:bg-gray-900 border-b border-gray-100 dark:border-gray-700/50">
+                            <tr className="bg-gray-55 dark:bg-[#0b111a] border-b border-gray-100 dark:border-[#232d42]/50">
                                 <th className="p-4 text-[11px] font-bold text-gray-400 uppercase tracking-wider w-20 text-center">ID</th>
                                 <th className="p-4 text-[11px] font-bold text-gray-400 uppercase tracking-wider">{t('exam_col_name')}</th>
                                 <th className="p-4 text-[11px] font-bold text-gray-400 uppercase tracking-wider text-center">{t('exam_col_date')}</th>
@@ -157,7 +157,7 @@ export default function ExamsList() {
                                     </td>
                                     <td className="p-4 text-center">
                                         <div className="flex flex-col items-center gap-1">
-                                            <span className="text-[11px] font-bold text-gray-650 dark:text-gray-300 bg-gray-55 dark:bg-gray-900 px-2.5 py-1 rounded-md border border-gray-100 dark:border-gray-700 inline-flex items-center gap-1.5 uppercase tracking-wide">
+                                            <span className="text-[11px] font-bold text-gray-650 dark:text-gray-300 bg-gray-55 dark:bg-[#0b111a] px-2.5 py-1 rounded-md border border-gray-100 dark:border-[#232d42] inline-flex items-center gap-1.5 uppercase tracking-wide">
                                                 <Calendar size={12} className="text-gray-400" /> {exam.date}
                                             </span>
                                             <span className="text-[11px] font-bold text-gray-400 uppercase tracking-wider">

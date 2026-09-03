@@ -82,7 +82,7 @@ export default function OrgDetail() {
           Tashkilotlarga qaytish
         </button>
 
-        <div className="bg-white dark:bg-gray-800 rounded-[2rem] border border-gray-100 dark:border-gray-700/50 shadow-sm p-6 md:p-8">
+        <div className="bg-white dark:bg-[#151c2c] rounded-[2rem] border border-gray-100 dark:border-[#232d42]/50 shadow-sm p-6 md:p-8">
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
             {/* Org Info */}
             <div className="flex items-center gap-5">
@@ -127,8 +127,8 @@ export default function OrgDetail() {
       </div>
 
       {/* Branches Section */}
-      <div className="bg-white dark:bg-gray-800 rounded-[2rem] border border-gray-100 dark:border-gray-700/50 shadow-sm overflow-hidden">
-        <div className="px-8 py-5 border-b border-gray-50 dark:border-gray-700/50 flex items-center gap-3">
+      <div className="bg-white dark:bg-[#151c2c] rounded-[2rem] border border-gray-100 dark:border-[#232d42]/50 shadow-sm overflow-hidden">
+        <div className="px-8 py-5 border-b border-gray-50 dark:border-[#232d42]/50 flex items-center gap-3">
           <GitBranch size={15} className="text-[#1b6b6b]" />
           <span className="text-xs font-extrabold text-gray-900 dark:text-white">
             Filiallar ({org.schools.length})
@@ -139,7 +139,7 @@ export default function OrgDetail() {
         <div className="overflow-x-auto">
           <table className="w-full text-left border-collapse">
             <thead>
-              <tr className="bg-gray-50/50 dark:bg-gray-900/30">
+              <tr className="bg-gray-50/50 dark:bg-[#0b111a]/30">
                 <th className="pl-8 pr-4 py-4 text-[11px] font-extrabold text-gray-400 uppercase tracking-wider">ID</th>
                 <th className="px-4 py-4 text-[11px] font-extrabold text-gray-400 uppercase tracking-wider">Filial Nomi / Manzil</th>
                 <th className="px-4 py-4 text-[11px] font-extrabold text-gray-400 uppercase tracking-wider text-center">O'quvchilar</th>

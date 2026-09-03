@@ -17,7 +17,7 @@ export default function TeacherDetails() {
 
     if (!teacher) {
         return (
-            <div className="p-12 text-center text-gray-550 font-bold text-sm bg-white dark:bg-gray-800 rounded-3xl border border-gray-100 dark:border-gray-700/50 shadow-sm">
+            <div className="p-12 text-center text-gray-550 font-bold text-sm bg-white dark:bg-[#151c2c] rounded-3xl border border-gray-100 dark:border-[#232d42]/50 shadow-sm">
                 O'qituvchi topilmadi
             </div>
         );
@@ -67,10 +67,10 @@ export default function TeacherDetails() {
             <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 items-start">
                 {/* Left Profile Card */}
                 <div className="lg:col-span-1 space-y-6">
-                    <div className="bg-white dark:bg-gray-800 rounded-3xl border border-gray-100 dark:border-gray-700/50 shadow-sm overflow-hidden">
+                    <div className="bg-white dark:bg-[#151c2c] rounded-3xl border border-gray-100 dark:border-[#232d42]/50 shadow-sm overflow-hidden">
                         <div className="h-28 bg-[#1b6b6b] relative">
-                            <div className="absolute -bottom-10 left-1/2 -translate-x-1/2 rounded-2xl bg-white dark:bg-gray-800 p-1 shadow-md">
-                                <div className="w-20 h-20 rounded-xl bg-gray-50 dark:bg-gray-900 border border-gray-100 dark:border-gray-700/50 flex items-center justify-center text-[#1b6b6b] font-bold text-2xl">
+                            <div className="absolute -bottom-10 left-1/2 -translate-x-1/2 rounded-2xl bg-white dark:bg-[#151c2c] p-1 shadow-md">
+                                <div className="w-20 h-20 rounded-xl bg-gray-50 dark:bg-[#0b111a] border border-gray-100 dark:border-[#232d42]/50 flex items-center justify-center text-[#1b6b6b] font-bold text-2xl">
                                     {teacher.photo ? (
                                         <img src={teacher.photo} alt={teacher.name} className="w-full h-full object-cover rounded-lg" />
                                     ) : (
@@ -83,12 +83,12 @@ export default function TeacherDetails() {
                             <h2 className="text-sm font-black text-gray-900 dark:text-white tracking-tight">{teacher.name}</h2>
                             <p className="text-[11px] font-bold text-gray-400 uppercase tracking-wider mt-1">ID: #{teacher.id}</p>
                             <div className="mt-4 flex justify-center">
-                                <span className={`px-2.5 py-0.5 rounded-md text-[10px] font-bold border uppercase tracking-wider ${teacher.status === 'Faol' ? 'bg-emerald-50 text-emerald-600 border-emerald-100 dark:bg-emerald-950/20 dark:text-emerald-400' : 'bg-gray-55 text-gray-400 border-gray-100 dark:bg-gray-900/50'}`}>
+                                <span className={`px-2.5 py-0.5 rounded-md text-[10px] font-bold border uppercase tracking-wider ${teacher.status === 'Faol' ? 'bg-emerald-50 text-emerald-600 border-emerald-100 dark:bg-emerald-950/20 dark:text-emerald-400' : 'bg-gray-55 text-gray-400 border-gray-100 dark:bg-[#0b111a]/50'}`}>
                                     {teacher.status}
                                 </span>
                             </div>
                         </div>
-                        <div className="px-6 pb-6 space-y-3 border-t border-dashed border-gray-100 dark:border-gray-700/50 pt-4">
+                        <div className="px-6 pb-6 space-y-3 border-t border-dashed border-gray-100 dark:border-[#232d42]/50 pt-4">
                             <DetailRow icon={<Phone size={14} />} label="Telefon" value={teacher.phone} />
                             <DetailRow icon={<Calendar size={14} />} label="Tug'ilgan sana" value={teacher.birthDate} />
                             <DetailRow icon={<UserCheck size={14} />} label="Ish boshlagan" value={teacher.hiredDate} />
@@ -117,8 +117,8 @@ export default function TeacherDetails() {
 
                 {/* Right Tab Content */}
                 <div className="lg:col-span-3 space-y-6">
-                    <div className="bg-white dark:bg-gray-800 rounded-3xl border border-gray-100 dark:border-gray-700/50 shadow-sm overflow-hidden">
-                        <div className="flex px-4 bg-gray-55 dark:bg-gray-900/50 border-b border-gray-100 dark:border-gray-700/50 gap-2">
+                    <div className="bg-white dark:bg-[#151c2c] rounded-3xl border border-gray-100 dark:border-[#232d42]/50 shadow-sm overflow-hidden">
+                        <div className="flex px-4 bg-gray-55 dark:bg-[#0b111a]/50 border-b border-gray-100 dark:border-[#232d42]/50 gap-2">
                             <TabButton label="Umumiy" icon={<Layers size={14} />} active={activeTab === 'umumiy'} onClick={() => setActiveTab('umumiy')} />
                             <TabButton label="Oylik hisobi" icon={<Wallet size={14} />} active={activeTab === 'oylik'} onClick={() => setActiveTab('oylik')} />
                             <TabButton label="Davomat" icon={<ClipboardCheck size={14} />} active={activeTab === 'davomat'} onClick={() => setActiveTab('davomat')} />
@@ -159,17 +159,17 @@ export default function TeacherDetails() {
                                     </div>
 
                                     <div>
-                                        <div className="flex items-center justify-between mb-4 pb-2 border-b border-gray-55 dark:border-gray-700/50">
+                                        <div className="flex items-center justify-between mb-4 pb-2 border-b border-gray-55 dark:border-[#232d42]/50">
                                             <span className="text-[11px] font-bold text-gray-400 uppercase tracking-wider">Biriktirilgan Kurslar</span>
                                             <span className="text-[11px] font-extrabold text-[#1b6b6b] uppercase tracking-wider bg-[#1b6b6b]/5 px-2.5 py-0.5 rounded border border-[#1b6b6b]/10">Jami: {teacherGroups.length} ta</span>
                                         </div>
                                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                             {teacherGroups.map(group => (
                                                 <div key={group.id} onClick={() => navigate(`/courses/${group.id}`)} 
-                                                    className="group bg-gray-55/50 dark:bg-gray-900/40 p-5 rounded-2xl border border-transparent hover:border-gray-100 dark:hover:border-gray-700/50 transition-all cursor-pointer flex items-center justify-between">
+                                                    className="group bg-gray-55/50 dark:bg-[#0b111a]/40 p-5 rounded-2xl border border-transparent hover:border-gray-100 dark:hover:border-gray-700/50 transition-all cursor-pointer flex items-center justify-between">
                                                     <div className="space-y-4 w-full">
                                                         <div className="flex items-center gap-3">
-                                                            <div className="w-10 h-10 rounded-xl bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700/50 flex items-center justify-center text-[#1b6b6b] group-hover:bg-[#1b6b6b] group-hover:text-white transition-all shadow-sm">
+                                                            <div className="w-10 h-10 rounded-xl bg-white dark:bg-[#151c2c] border border-gray-100 dark:border-[#232d42]/50 flex items-center justify-center text-[#1b6b6b] group-hover:bg-[#1b6b6b] group-hover:text-white transition-all shadow-sm">
                                                                 <Presentation size={18} />
                                                             </div>
                                                             <div>
@@ -201,11 +201,11 @@ export default function TeacherDetails() {
 
                             {activeTab === 'oylik' && (
                                 <div className="space-y-6 animate-in fade-in duration-300">
-                                    <div className="bg-gray-50/50 dark:bg-gray-900/40 p-4 border border-gray-100 dark:border-gray-700/50 rounded-2xl">
+                                    <div className="bg-gray-50/50 dark:bg-[#0b111a]/40 p-4 border border-gray-100 dark:border-[#232d42]/50 rounded-2xl">
                                         <h4 className="text-xs font-black text-gray-900 dark:text-white tracking-tight">Oylik hisob-kitobi</h4>
                                     </div>
                                     
-                                    <div className="border border-gray-100 dark:border-gray-700/50 rounded-3xl p-6 bg-white dark:bg-gray-800/50 shadow-sm">
+                                    <div className="border border-gray-100 dark:border-[#232d42]/50 rounded-3xl p-6 bg-white dark:bg-[#151c2c]/50 shadow-sm">
                                         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                                             <div className="md:col-span-2 space-y-6">
                                                 <div>
@@ -218,11 +218,11 @@ export default function TeacherDetails() {
                                                     <div className="space-y-3">
                                                         <span className="text-[11px] font-bold text-gray-400 uppercase tracking-wider block">KPI TAFSILOTLARI</span>
                                                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                                                            <div className="bg-gray-55 dark:bg-gray-900/30 p-4 rounded-xl border border-gray-100 dark:border-gray-700/50">
+                                                            <div className="bg-gray-55 dark:bg-[#0b111a]/30 p-4 rounded-xl border border-gray-100 dark:border-[#232d42]/50">
                                                                 <span className="text-[10px] font-bold text-gray-400 block mb-1 uppercase tracking-wider">Kurslar tushumi</span>
                                                                 <span className="text-sm font-black text-gray-900 dark:text-white tracking-tight tabular-nums">{kpiDetails.groupRevenue.toLocaleString()} UZS</span>
                                                             </div>
-                                                            <div className="bg-gray-55 dark:bg-gray-900/30 p-4 rounded-xl border border-gray-100 dark:border-gray-700/50">
+                                                            <div className="bg-gray-55 dark:bg-[#0b111a]/30 p-4 rounded-xl border border-gray-100 dark:border-[#232d42]/50">
                                                                 <span className="text-[10px] font-bold text-gray-400 block mb-1 uppercase tracking-wider">Ulush foizi</span>
                                                                 <span className="text-sm font-black text-gray-900 dark:text-white tracking-tight tabular-nums">{kpiDetails.percentage}%</span>
                                                             </div>
@@ -242,7 +242,7 @@ export default function TeacherDetails() {
 
                             {activeTab === 'davomat' && (
                                 <div className="space-y-6 animate-in fade-in duration-300">
-                                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-5 bg-gray-55 dark:bg-gray-900/40 border border-gray-100 dark:border-gray-700/50 rounded-2xl">
+                                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-5 bg-gray-55 dark:bg-[#0b111a]/40 border border-gray-100 dark:border-[#232d42]/50 rounded-2xl">
                                         <div>
                                             <h3 className="text-xs font-black text-gray-900 dark:text-white tracking-tight">Ishga kelishi</h3>
                                             <p className="text-[11px] font-bold text-gray-450 uppercase tracking-wider mt-1">{new Date().toLocaleDateString('uz-UZ', { month: 'long' })} oyi</p>
@@ -254,20 +254,20 @@ export default function TeacherDetails() {
                                     </div>
 
                                     <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-                                        <div className="bg-white dark:bg-gray-800 rounded-xl p-4 border border-gray-100 dark:border-gray-700 shadow-sm group hover:border-emerald-300">
+                                        <div className="bg-white dark:bg-[#151c2c] rounded-xl p-4 border border-gray-100 dark:border-[#232d42] shadow-sm group hover:border-emerald-300">
                                             <span className="text-[11px] font-bold text-gray-400 mb-2 uppercase tracking-wider block group-hover:text-emerald-500 transition-colors">KELDI</span>
                                             <span className="text-xl font-black text-emerald-600 dark:text-emerald-400 tracking-tight tabular-nums">{presentDays} <span className="text-[11px] opacity-70">KUN</span></span>
                                         </div>
-                                        <div className="bg-white dark:bg-gray-800 rounded-xl p-4 border border-gray-100 dark:border-gray-700 shadow-sm group hover:border-rose-300">
+                                        <div className="bg-white dark:bg-[#151c2c] rounded-xl p-4 border border-gray-100 dark:border-[#232d42] shadow-sm group hover:border-rose-300">
                                             <span className="text-[11px] font-bold text-gray-400 mb-2 uppercase tracking-wider block group-hover:text-rose-500 transition-colors">KELMADI</span>
                                             <span className="text-xl font-black text-rose-600 dark:text-rose-400 tracking-tight tabular-nums">{absentDays} <span className="text-[11px] opacity-70">KUN</span></span>
                                         </div>
                                     </div>
 
-                                    <div className="bg-white dark:bg-gray-800 rounded-2xl overflow-hidden border border-gray-100 dark:border-gray-705">
+                                    <div className="bg-white dark:bg-[#151c2c] rounded-2xl overflow-hidden border border-gray-100 dark:border-gray-705">
                                         <table className="w-full text-left border-collapse">
                                             <thead>
-                                                <tr className="bg-gray-55 dark:bg-gray-900 border-b border-gray-100 dark:border-gray-800">
+                                                <tr className="bg-gray-55 dark:bg-[#0b111a] border-b border-gray-100 dark:border-[#232d42]">
                                                     <th className="p-4 text-[11px] font-bold text-gray-400 uppercase tracking-wider">Sana</th>
                                                     <th className="p-4 text-center text-[11px] font-bold text-gray-400 uppercase tracking-wider">Holati</th>
                                                 </tr>
@@ -302,8 +302,8 @@ export default function TeacherDetails() {
             {showAttendanceModal && (
                 <div className="fixed inset-0 z-[200] flex items-start sm:items-center justify-center overflow-y-auto p-4">
                     <div className="absolute inset-0 bg-gray-900/60 backdrop-blur-sm" onClick={() => setShowAttendanceModal(false)} />
-                    <div className="relative bg-white dark:bg-gray-800 rounded-[2rem] border border-gray-100 dark:border-gray-700/50 shadow-2xl w-full max-w-sm p-8">
-                        <div className="flex items-center justify-between mb-6 pb-4 border-b border-gray-50 dark:border-gray-700/50">
+                    <div className="relative bg-white dark:bg-[#151c2c] rounded-[2rem] border border-gray-100 dark:border-[#232d42]/50 shadow-2xl w-full max-w-sm p-8">
+                        <div className="flex items-center justify-between mb-6 pb-4 border-b border-gray-50 dark:border-[#232d42]/50">
                             <div>
                                 <h3 className="text-lg font-black text-gray-900 dark:text-white tracking-tight">Davomat</h3>
                                 <p className="text-[11px] font-bold text-[#1b6b6b] uppercase tracking-wider mt-0.5">Bugungi sana uchun</p>
@@ -353,10 +353,10 @@ function StatCardV3({ label, value, subValue, icon, color }: any) {
         rose: 'bg-rose-50 border-rose-100 dark:bg-rose-950/20 dark:border-rose-900/40',
         teal: 'bg-teal-50 border-teal-100 dark:bg-teal-950/20 dark:border-teal-900/40',
         amber: 'bg-amber-50 border-amber-100 dark:bg-amber-950/20 dark:border-amber-900/40'
-    }[color] || 'bg-gray-50 dark:bg-gray-900 border-gray-100 dark:border-gray-700/50';
+    }[color] || 'bg-gray-50 dark:bg-[#0b111a] border-gray-100 dark:border-[#232d42]/50';
 
     return (
-        <div className="bg-white dark:bg-gray-800 p-5 rounded-2xl border border-gray-100 dark:border-gray-700/50 shadow-sm transition-all hover:-translate-y-0.5">
+        <div className="bg-white dark:bg-[#151c2c] p-5 rounded-2xl border border-gray-100 dark:border-[#232d42]/50 shadow-sm transition-all hover:-translate-y-0.5">
             <div className="flex items-start justify-between">
                 <div className="space-y-1">
                     <span className="text-[11px] font-bold text-gray-400 uppercase tracking-wider">{label}</span>
@@ -366,7 +366,7 @@ function StatCardV3({ label, value, subValue, icon, color }: any) {
                     {icon}
                 </div>
             </div>
-            <div className="pt-3 mt-3 border-t border-dashed border-gray-100 dark:border-gray-700/50">
+            <div className="pt-3 mt-3 border-t border-dashed border-gray-100 dark:border-[#232d42]/50">
                 <span className="text-[11px] font-bold text-gray-400 flex items-center gap-1 uppercase tracking-wider leading-none">
                     <TrendingUp size={12} className="text-[#1b6b6b]" />
                     {subValue}
@@ -392,7 +392,7 @@ function DetailRow({ icon, label, value }: { icon: React.ReactNode; label: strin
 
 function TabButton({ label, icon, active, onClick }: any) {
     return (
-        <button onClick={onClick} className={`px-6 py-4 text-[11px] font-extrabold uppercase tracking-wider flex items-center gap-2 transition-all relative shrink-0 cursor-pointer ${active ? 'text-[#1b6b6b] bg-white dark:bg-gray-800' : 'text-gray-400 hover:text-gray-900 dark:hover:text-white'}`}>
+        <button onClick={onClick} className={`px-6 py-4 text-[11px] font-extrabold uppercase tracking-wider flex items-center gap-2 transition-all relative shrink-0 cursor-pointer ${active ? 'text-[#1b6b6b] bg-white dark:bg-[#151c2c]' : 'text-gray-400 hover:text-gray-900 dark:hover:text-white'}`}>
             {icon}
             {label}
             {active && <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-[#1b6b6b] rounded-t-full" />}

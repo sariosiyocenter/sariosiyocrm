@@ -477,7 +477,7 @@ export default function SuperAdmin() {
 
       {/* Tab Selector */}
       {isSuper && (
-        <div className="flex border-b border-gray-100 dark:border-gray-700/50 gap-2 pb-px">
+        <div className="flex border-b border-gray-100 dark:border-[#232d42]/50 gap-2 pb-px">
           {[
             { id: 'overview', label: 'Boshqaruv Paneli', icon: LayoutDashboard },
             { id: 'orgs', label: 'Tashkilotlar', icon: Building2 },
@@ -508,7 +508,7 @@ export default function SuperAdmin() {
       {activeTab === 'overview' && isSuper && (
         <div className="space-y-8">
           {/* SaaS Business Metrics Dashboard */}
-          <div className="space-y-6 bg-gray-50/40 dark:bg-gray-900/30 p-6 rounded-[2rem] border border-gray-100 dark:border-gray-800">
+          <div className="space-y-6 bg-gray-50/40 dark:bg-[#0b111a]/30 p-6 rounded-[2rem] border border-gray-100 dark:border-[#232d42]">
             <h2 className="text-xs font-black text-gray-900 dark:text-white mb-2">
               SaaS Tizimi Ko'rsatkichlari (KPIs)
             </h2>
@@ -527,7 +527,7 @@ export default function SuperAdmin() {
                     { label: 'O\'rtacha Filial Limiti', value: avgMaxSchoolsLimit + ' ta', icon: Building2, color: 'text-amber-600 bg-amber-50 dark:bg-amber-950/20 dark:text-amber-400' },
                     { label: 'Sotuvchilar (Agentlar)', value: totalSellers + ' ta', icon: Users2, color: 'text-rose-600 bg-rose-50 dark:bg-rose-950/20 dark:text-rose-400' },
                   ].map((m, i) => (
-                    <div key={i} className="bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700/50 rounded-2xl p-4 flex flex-col justify-between h-[100px] shadow-sm hover:shadow transition-all duration-300">
+                    <div key={i} className="bg-white dark:bg-[#151c2c] border border-gray-100 dark:border-[#232d42]/50 rounded-2xl p-4 flex flex-col justify-between h-[100px] shadow-sm hover:shadow transition-all duration-300">
                       <span className="text-[11px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-wider leading-tight">{m.label}</span>
                       <div className="flex items-end justify-between mt-1.5">
                         <span className="text-sm font-black text-gray-900 dark:text-white leading-none tracking-tight">{m.value}</span>
@@ -554,7 +554,7 @@ export default function SuperAdmin() {
                     { label: 'Rad etilgan (Lost)', value: lostLeadsCount + ' ta', icon: X, color: 'text-rose-600 bg-rose-50 dark:bg-rose-950/20 dark:text-rose-400' },
                     { label: 'Lead Conversion Rate', value: leadWonRate, icon: GraduationCap, color: 'text-violet-600 bg-violet-50 dark:bg-violet-950/20 dark:text-violet-400' },
                   ].map((m, i) => (
-                    <div key={i} className="bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700/50 rounded-2xl p-4 flex flex-col justify-between h-[100px] shadow-sm hover:shadow transition-all duration-300">
+                    <div key={i} className="bg-white dark:bg-[#151c2c] border border-gray-100 dark:border-[#232d42]/50 rounded-2xl p-4 flex flex-col justify-between h-[100px] shadow-sm hover:shadow transition-all duration-300">
                       <span className="text-[11px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-wider leading-tight">{m.label}</span>
                       <div className="flex items-end justify-between mt-1.5">
                         <span className="text-sm font-black text-gray-900 dark:text-white leading-none tracking-tight">{m.value}</span>
@@ -574,12 +574,12 @@ export default function SuperAdmin() {
                 </h3>
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                   {[
-                    { label: 'Jami Tashkilotlar', value: totalOrgs + ' ta', icon: Building2, color: 'text-gray-600 bg-gray-50 dark:bg-gray-800 dark:text-gray-400' },
+                    { label: 'Jami Tashkilotlar', value: totalOrgs + ' ta', icon: Building2, color: 'text-gray-600 bg-gray-50 dark:bg-[#151c2c] dark:text-gray-400' },
                     { label: 'Faol Tashkilotlar', value: activeOrgs + ' ta', icon: Building2, color: 'text-emerald-600 bg-emerald-50 dark:bg-emerald-950/20 dark:text-emerald-400' },
                     { label: 'Trial Tashkilotlar', value: trialOrgs + ' ta', icon: Building2, color: 'text-amber-600 bg-amber-50 dark:bg-amber-950/20 dark:text-amber-400' },
                     { label: 'Muzlatilganlar', value: frozenOrgs + ' ta', icon: Building2, color: 'text-rose-600 bg-rose-50 dark:bg-rose-950/20 dark:text-rose-400' },
                   ].map((m, i) => (
-                    <div key={i} className="bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700/50 rounded-2xl p-4 flex flex-col justify-between h-[100px] shadow-sm hover:shadow transition-all duration-300">
+                    <div key={i} className="bg-white dark:bg-[#151c2c] border border-gray-100 dark:border-[#232d42]/50 rounded-2xl p-4 flex flex-col justify-between h-[100px] shadow-sm hover:shadow transition-all duration-300">
                       <span className="text-[11px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-wider leading-tight">{m.label}</span>
                       <div className="flex items-end justify-between mt-1.5">
                         <span className="text-sm font-black text-gray-900 dark:text-white leading-none tracking-tight">{m.value}</span>
@@ -605,7 +605,7 @@ export default function SuperAdmin() {
                     { label: 'Jami O\'qituvchilar', value: totalPlatformTeachers.toLocaleString() + ' ta', icon: GraduationCap, color: 'text-violet-600 bg-violet-50 dark:bg-violet-950/20 dark:text-violet-400' },
                     { label: 'Jami Foydalanuvchilar', value: totalPlatformUsers.toLocaleString() + ' ta', icon: Users2, color: 'text-rose-600 bg-rose-50 dark:bg-rose-950/20 dark:text-rose-400' },
                   ].map((m, i) => (
-                    <div key={i} className="bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700/50 rounded-2xl p-4 flex flex-col justify-between h-[100px] shadow-sm hover:shadow transition-all duration-300">
+                    <div key={i} className="bg-white dark:bg-[#151c2c] border border-gray-100 dark:border-[#232d42]/50 rounded-2xl p-4 flex flex-col justify-between h-[100px] shadow-sm hover:shadow transition-all duration-300">
                       <span className="text-[11px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-wider leading-tight">{m.label}</span>
                       <div className="flex items-end justify-between mt-1.5">
                         <span className="text-sm font-black text-gray-900 dark:text-white leading-none tracking-tight">{m.value}</span>
@@ -637,12 +637,12 @@ export default function SuperAdmin() {
                   placeholder="Qidirish (nomi, manzil, telefon)..."
                   value={orgSearch}
                   onChange={(e) => setOrgSearch(e.target.value)}
-                  className="px-4 py-2.5 bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700/50 rounded-xl text-xs font-bold text-gray-900 dark:text-white outline-none w-64 shadow-sm focus:border-emerald-500 transition-all"
+                  className="px-4 py-2.5 bg-white dark:bg-[#151c2c] border border-gray-100 dark:border-[#232d42]/50 rounded-xl text-xs font-bold text-gray-900 dark:text-white outline-none w-64 shadow-sm focus:border-emerald-500 transition-all"
                 />
                 <select
                   value={orgFilterStatus}
                   onChange={(e) => setOrgFilterStatus(e.target.value as any)}
-                  className="px-4 py-2.5 bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700/50 rounded-xl text-xs font-bold text-gray-900 dark:text-white outline-none cursor-pointer shadow-sm focus:border-emerald-500 transition-all"
+                  className="px-4 py-2.5 bg-white dark:bg-[#151c2c] border border-gray-100 dark:border-[#232d42]/50 rounded-xl text-xs font-bold text-gray-900 dark:text-white outline-none cursor-pointer shadow-sm focus:border-emerald-500 transition-all"
                 >
                   <option value="ALL">Barchasi</option>
                   <option value="FAOL">Faol Tashkilotlar</option>
@@ -657,7 +657,7 @@ export default function SuperAdmin() {
                 <div className="w-8 h-8 border-[3px] border-[#1b6b6b] border-t-transparent rounded-full animate-spin" />
               </div>
             ) : filteredOrgs.length === 0 ? (
-              <div className="bg-white dark:bg-gray-800 rounded-3xl border border-gray-100 dark:border-gray-700/50 shadow-sm p-16 text-center">
+              <div className="bg-white dark:bg-[#151c2c] rounded-3xl border border-gray-100 dark:border-[#232d42]/50 shadow-sm p-16 text-center">
                 <Building2 size={40} className="mx-auto text-gray-200 dark:text-gray-600 mb-4" />
                 <p className="text-gray-400 font-bold text-sm">Hozircha tashkilot topilmadi</p>
                 <button
@@ -679,7 +679,7 @@ export default function SuperAdmin() {
                     <div
                       key={org.id}
                       onClick={() => navigate(`/org/${org.id}`)}
-                      className="group bg-white dark:bg-gray-800 rounded-3xl border border-gray-100 dark:border-gray-700/50 shadow-sm hover:shadow-xl hover:border-[#1b6b6b]/30 hover:-translate-y-0.5 transition-all duration-300 cursor-pointer overflow-hidden p-6 flex flex-col md:flex-row md:items-center md:justify-between gap-6"
+                      className="group bg-white dark:bg-[#151c2c] rounded-3xl border border-gray-100 dark:border-[#232d42]/50 shadow-sm hover:shadow-xl hover:border-[#1b6b6b]/30 hover:-translate-y-0.5 transition-all duration-300 cursor-pointer overflow-hidden p-6 flex flex-col md:flex-row md:items-center md:justify-between gap-6"
                     >
                       {/* Left: Info */}
                       <div className="flex items-center gap-5 min-w-[280px]">
@@ -747,7 +747,7 @@ export default function SuperAdmin() {
 
                       {/* Right: Actions */}
                       <div className="flex items-center gap-3 shrink-0 ml-auto md:ml-0">
-                        <div className="flex items-center gap-1.5 bg-gray-50 dark:bg-gray-900/40 p-1.5 rounded-2xl border border-gray-100 dark:border-gray-700/30">
+                        <div className="flex items-center gap-1.5 bg-gray-50 dark:bg-[#0b111a]/40 p-1.5 rounded-2xl border border-gray-100 dark:border-[#232d42]/30">
                           <button
                             onClick={e => { e.stopPropagation(); handleToggleBlockOrg(org); }}
                             className={`w-10 h-10 flex items-center justify-center rounded-xl transition-all cursor-pointer shadow-sm border ${
@@ -767,7 +767,7 @@ export default function SuperAdmin() {
                             <Settings size={16} />
                           </button>
                         </div>
-                        <div className="w-10 h-10 rounded-2xl bg-gray-50 dark:bg-gray-900/40 flex items-center justify-center border border-gray-100 dark:border-gray-700/30 group-hover:bg-[#1b6b6b]/10 group-hover:border-[#1b6b6b]/20 transition-all">
+                        <div className="w-10 h-10 rounded-2xl bg-gray-50 dark:bg-[#0b111a]/40 flex items-center justify-center border border-gray-100 dark:border-[#232d42]/30 group-hover:bg-[#1b6b6b]/10 group-hover:border-[#1b6b6b]/20 transition-all">
                           <ChevronRight size={20} className="text-gray-400 group-hover:text-[#1b6b6b] group-hover:translate-x-0.5 transition-all" />
                         </div>
                       </div>
@@ -784,14 +784,14 @@ export default function SuperAdmin() {
       {activeTab === 'leads' && (
         <div className="space-y-6">
           {/* Filters Bar */}
-          <div className="bg-white dark:bg-gray-800 rounded-3xl p-6 border border-gray-100 dark:border-gray-700/50 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <div className="bg-white dark:bg-[#151c2c] rounded-3xl p-6 border border-gray-100 dark:border-[#232d42]/50 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-4">
             <div className="flex-1 max-w-md relative">
               <input
                 type="text"
                 placeholder="Lid nomi, tel yoki markaz..."
                 value={leadSearch}
                 onChange={e => setLeadSearch(e.target.value)}
-                className="w-full pl-5 pr-4 py-3 bg-gray-50 dark:bg-gray-900/50 border border-gray-100 dark:border-gray-700 rounded-2xl text-xs font-bold text-gray-900 dark:text-white outline-none focus:border-[#1b6b6b] transition-all"
+                className="w-full pl-5 pr-4 py-3 bg-gray-50 dark:bg-[#0b111a]/50 border border-gray-100 dark:border-[#232d42] rounded-2xl text-xs font-bold text-gray-900 dark:text-white outline-none focus:border-[#1b6b6b] transition-all"
               />
             </div>
             <div className="flex gap-2">
@@ -802,7 +802,7 @@ export default function SuperAdmin() {
                   className={`px-4 py-2.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
                     leadFilterStatus === st
                       ? 'bg-brand-dark text-white shadow-md shadow-brand/10'
-                      : 'bg-gray-50 dark:bg-gray-900/50 text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 border border-gray-100 dark:border-gray-700'
+                      : 'bg-gray-50 dark:bg-[#0b111a]/50 text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 border border-gray-100 dark:border-[#232d42]'
                   }`}
                 >
                   {st === 'all' ? 'Barchasi' : st}
@@ -817,7 +817,7 @@ export default function SuperAdmin() {
               <div className="w-8 h-8 border-[3px] border-brand border-t-transparent rounded-full animate-spin" />
             </div>
           ) : filteredLeads.length === 0 ? (
-            <div className="bg-white dark:bg-gray-800 rounded-3xl border border-gray-100 dark:border-gray-700/50 shadow-sm p-16 text-center">
+            <div className="bg-white dark:bg-[#151c2c] rounded-3xl border border-gray-100 dark:border-[#232d42]/50 shadow-sm p-16 text-center">
               <ClipboardList size={40} className="mx-auto text-gray-200 dark:text-gray-600 mb-4" />
               <p className="text-gray-400 font-bold text-sm">Sotuv lidlari topilmadi</p>
               <button
@@ -840,7 +840,7 @@ export default function SuperAdmin() {
                 return (
                   <div
                     key={lead.id}
-                    className="bg-white dark:bg-gray-800 rounded-3xl border border-gray-100 dark:border-gray-700/50 p-6 shadow-sm hover:shadow-md transition-all flex flex-col justify-between"
+                    className="bg-white dark:bg-[#151c2c] rounded-3xl border border-gray-100 dark:border-[#232d42]/50 p-6 shadow-sm hover:shadow-md transition-all flex flex-col justify-between"
                   >
                     <div>
                       <div className="flex items-center justify-between mb-4">
@@ -887,14 +887,14 @@ export default function SuperAdmin() {
                       </div>
 
                       {lead.notes && (
-                        <div className="bg-gray-50 dark:bg-gray-900/50 rounded-xl p-3 mb-4 text-[12px] font-bold text-gray-500 dark:text-gray-400 border border-gray-100/55 dark:border-gray-800">
+                        <div className="bg-gray-50 dark:bg-[#0b111a]/50 rounded-xl p-3 mb-4 text-[12px] font-bold text-gray-500 dark:text-gray-400 border border-gray-100/55 dark:border-[#232d42]">
                           <div className="text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-1">Izoh / Eslatma:</div>
                           {lead.notes}
                         </div>
                       )}
                     </div>
 
-                    <div className="border-t border-gray-50 dark:border-gray-700/50 pt-4 flex items-center justify-between text-[11px] font-extrabold uppercase tracking-wider text-gray-400">
+                    <div className="border-t border-gray-50 dark:border-[#232d42]/50 pt-4 flex items-center justify-between text-[11px] font-extrabold uppercase tracking-wider text-gray-400">
                       <span>Sotuvchi agent:</span>
                       <span className="text-brand dark:text-brand font-black">
                         {lead.seller ? lead.seller.name : 'Biriktirilmagan'}
@@ -916,7 +916,7 @@ export default function SuperAdmin() {
               <div className="w-8 h-8 border-[3px] border-violet-600 border-t-transparent rounded-full animate-spin" />
             </div>
           ) : sellers.length === 0 ? (
-            <div className="bg-white dark:bg-gray-800 rounded-3xl border border-gray-100 dark:border-gray-700/50 shadow-sm p-16 text-center">
+            <div className="bg-white dark:bg-[#151c2c] rounded-3xl border border-gray-100 dark:border-[#232d42]/50 shadow-sm p-16 text-center">
               <Users2 size={40} className="mx-auto text-gray-200 dark:text-gray-600 mb-4" />
               <p className="text-gray-400 font-bold text-sm">Hozircha sotuvchi agentlar yo'q</p>
               <button
@@ -931,7 +931,7 @@ export default function SuperAdmin() {
               {sellers.map(sel => (
                 <div
                   key={sel.id}
-                  className="bg-white dark:bg-gray-800 rounded-3xl border border-gray-100 dark:border-gray-700/50 p-6 shadow-sm flex flex-col justify-between"
+                  className="bg-white dark:bg-[#151c2c] rounded-3xl border border-gray-100 dark:border-[#232d42]/50 p-6 shadow-sm flex flex-col justify-between"
                 >
                   <div>
                     <div className="flex items-center justify-between mb-4">
@@ -963,9 +963,9 @@ export default function SuperAdmin() {
                   </div>
 
                   {/* Stats Block */}
-                  <div className="border-t border-gray-50 dark:border-gray-700/50 pt-4 space-y-3">
+                  <div className="border-t border-gray-50 dark:border-[#232d42]/50 pt-4 space-y-3">
                     <div className="grid grid-cols-2 gap-2 text-center">
-                      <div className="bg-gray-50 dark:bg-gray-900/50 rounded-xl p-2 border border-gray-100/50 dark:border-gray-700/20">
+                      <div className="bg-gray-50 dark:bg-[#0b111a]/50 rounded-xl p-2 border border-gray-100/50 dark:border-[#232d42]/20">
                         <div className="text-[10px] font-extrabold text-gray-400 uppercase tracking-wider">Jami Lidlar</div>
                         <div className="text-sm font-black text-gray-800 dark:text-white">{sel.totalLeads}</div>
                       </div>
@@ -999,8 +999,8 @@ export default function SuperAdmin() {
       {orgModalOpen && (
         <div className="fixed inset-0 z-[200] flex items-start sm:items-center justify-center overflow-y-auto p-4">
           <div className="absolute inset-0 bg-gray-900/60 backdrop-blur-sm" onClick={() => setOrgModalOpen(false)} />
-          <div className="relative bg-white dark:bg-gray-800 rounded-[2rem] border border-gray-100 dark:border-gray-700/50 shadow-2xl w-full max-w-xl p-8 max-h-[90vh] overflow-y-auto">
-            <div className="flex items-center justify-between mb-6 pb-4 border-b border-gray-50 dark:border-gray-700/50">
+          <div className="relative bg-white dark:bg-[#151c2c] rounded-[2rem] border border-gray-100 dark:border-[#232d42]/50 shadow-2xl w-full max-w-xl p-8 max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between mb-6 pb-4 border-b border-gray-50 dark:border-[#232d42]/50">
               <div>
                 <h3 className="text-lg font-black text-gray-900 dark:text-white tracking-tight">Yangi Tashkilot</h3>
                 <p className="text-[11px] font-bold text-gray-400 uppercase tracking-wider mt-0.5">O'quv markaz yoki tashkilot</p>
@@ -1023,7 +1023,7 @@ export default function SuperAdmin() {
                       type="text" required
                       placeholder="Masalan: Sariosiyo O'quv Markazi"
                       value={orgName} onChange={e => setOrgName(e.target.value)}
-                      className="w-full px-4 py-3 bg-gray-50 dark:bg-gray-900/50 border border-gray-100 dark:border-gray-700 rounded-2xl text-xs font-bold text-gray-900 dark:text-white focus:border-[#1b6b6b] outline-none transition-all"
+                      className="w-full px-4 py-3 bg-gray-50 dark:bg-[#0b111a]/50 border border-gray-100 dark:border-[#232d42] rounded-2xl text-xs font-bold text-gray-900 dark:text-white focus:border-[#1b6b6b] outline-none transition-all"
                     />
                   </div>
                   <div>
@@ -1032,7 +1032,7 @@ export default function SuperAdmin() {
                       type="text"
                       placeholder="Masalan: Toshkent sh., Chilonzor"
                       value={orgAddress} onChange={e => setOrgAddress(e.target.value)}
-                      className="w-full px-4 py-3 bg-gray-50 dark:bg-gray-900/50 border border-gray-100 dark:border-gray-700 rounded-2xl text-xs font-bold text-gray-900 dark:text-white focus:border-[#1b6b6b] outline-none transition-all"
+                      className="w-full px-4 py-3 bg-gray-50 dark:bg-[#0b111a]/50 border border-gray-100 dark:border-[#232d42] rounded-2xl text-xs font-bold text-gray-900 dark:text-white focus:border-[#1b6b6b] outline-none transition-all"
                     />
                   </div>
                   <div>
@@ -1041,7 +1041,7 @@ export default function SuperAdmin() {
                       type="text"
                       placeholder="+998 90 123 45 67"
                       value={orgPhone} onChange={e => setOrgPhone(e.target.value)}
-                      className="w-full px-4 py-3 bg-gray-50 dark:bg-gray-900/50 border border-gray-100 dark:border-gray-700 rounded-2xl text-xs font-bold text-gray-900 dark:text-white focus:border-[#1b6b6b] outline-none transition-all"
+                      className="w-full px-4 py-3 bg-gray-50 dark:bg-[#0b111a]/50 border border-gray-100 dark:border-[#232d42] rounded-2xl text-xs font-bold text-gray-900 dark:text-white focus:border-[#1b6b6b] outline-none transition-all"
                     />
                   </div>
                   <div>
@@ -1049,14 +1049,14 @@ export default function SuperAdmin() {
                     <input
                       type="number" min={1} max={50}
                       value={orgMaxSchools} onChange={e => setOrgMaxSchools(Number(e.target.value))}
-                      className="w-full px-4 py-3 bg-gray-50 dark:bg-gray-900/50 border border-gray-100 dark:border-gray-700 rounded-2xl text-xs font-bold text-gray-900 dark:text-white focus:border-[#1b6b6b] outline-none transition-all"
+                      className="w-full px-4 py-3 bg-gray-50 dark:bg-[#0b111a]/50 border border-gray-100 dark:border-[#232d42] rounded-2xl text-xs font-bold text-gray-900 dark:text-white focus:border-[#1b6b6b] outline-none transition-all"
                     />
                   </div>
                 </div>
               </div>
 
               {/* Admin ma'lumotlari */}
-              <div className="space-y-3 pt-4 border-t border-gray-100 dark:border-gray-700/50">
+              <div className="space-y-3 pt-4 border-t border-gray-100 dark:border-[#232d42]/50">
                 <h4 className="text-[11px] font-bold text-brand dark:text-brand uppercase tracking-wider flex items-center gap-2">
                   <UserPlus size={13} /> Admin Hisobi *
                 </h4>
@@ -1067,7 +1067,7 @@ export default function SuperAdmin() {
                       type="text"
                       placeholder="Sardor Rahimov"
                       value={orgAdminName} onChange={e => setOrgAdminName(e.target.value)}
-                      className="w-full px-4 py-3 bg-gray-50 dark:bg-gray-900/50 border border-gray-100 dark:border-gray-700 rounded-2xl text-xs font-bold text-gray-900 dark:text-white focus:border-brand outline-none transition-all"
+                      className="w-full px-4 py-3 bg-gray-50 dark:bg-[#0b111a]/50 border border-gray-100 dark:border-[#232d42] rounded-2xl text-xs font-bold text-gray-900 dark:text-white focus:border-brand outline-none transition-all"
                     />
                   </div>
                   <div>
@@ -1076,7 +1076,7 @@ export default function SuperAdmin() {
                       type="email" required
                       placeholder="admin@sariosiyo.uz"
                       value={orgAdminEmail} onChange={e => setOrgAdminEmail(e.target.value)}
-                      className="w-full px-4 py-3 bg-gray-50 dark:bg-gray-900/50 border border-gray-100 dark:border-gray-700 rounded-2xl text-xs font-bold text-gray-900 dark:text-white focus:border-brand outline-none transition-all"
+                      className="w-full px-4 py-3 bg-gray-50 dark:bg-[#0b111a]/50 border border-gray-100 dark:border-[#232d42] rounded-2xl text-xs font-bold text-gray-900 dark:text-white focus:border-brand outline-none transition-all"
                     />
                   </div>
                   <div>
@@ -1085,7 +1085,7 @@ export default function SuperAdmin() {
                       type="password" required
                       placeholder="••••••••"
                       value={orgAdminPassword} onChange={e => setOrgAdminPassword(e.target.value)}
-                      className="w-full px-4 py-3 bg-gray-50 dark:bg-gray-900/50 border border-gray-100 dark:border-gray-700 rounded-2xl text-xs font-bold text-gray-900 dark:text-white focus:border-brand outline-none transition-all"
+                      className="w-full px-4 py-3 bg-gray-50 dark:bg-[#0b111a]/50 border border-gray-100 dark:border-[#232d42] rounded-2xl text-xs font-bold text-gray-900 dark:text-white focus:border-brand outline-none transition-all"
                     />
                   </div>
                 </div>
@@ -1110,8 +1110,8 @@ export default function SuperAdmin() {
       {subModalOpen && selectedOrg && (
         <div className="fixed inset-0 z-[200] flex items-start sm:items-center justify-center overflow-y-auto p-4">
           <div className="absolute inset-0 bg-gray-900/60 backdrop-blur-sm" onClick={() => setSubModalOpen(false)} />
-          <div className="relative bg-white dark:bg-gray-800 rounded-[2rem] border border-gray-100 dark:border-gray-700/50 shadow-2xl w-full max-w-2xl p-8 max-h-[90vh] overflow-y-auto">
-            <div className="flex items-center justify-between mb-6 pb-4 border-b border-gray-50 dark:border-gray-700/50">
+          <div className="relative bg-white dark:bg-[#151c2c] rounded-[2rem] border border-gray-100 dark:border-[#232d42]/50 shadow-2xl w-full max-w-2xl p-8 max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between mb-6 pb-4 border-b border-gray-50 dark:border-[#232d42]/50">
               <div>
                 <h3 className="text-lg font-black text-gray-900 dark:text-white tracking-tight">Tashkilot va Admin Sozlamalari</h3>
                 <p className="text-[11px] font-bold text-[#1b6b6b] uppercase tracking-wider mt-0.5">{selectedOrg.name} tahrirlash</p>
@@ -1124,7 +1124,7 @@ export default function SuperAdmin() {
             <form onSubmit={handleUpdateSubscription} className="space-y-6">
               {/* Section 1: Organization Details */}
               <div className="space-y-4">
-                <h4 className="text-[11px] font-bold text-gray-400 uppercase tracking-wider pb-1 border-b border-gray-50 dark:border-gray-700/30">Tashkilot Ma'lumotlari</h4>
+                <h4 className="text-[11px] font-bold text-gray-400 uppercase tracking-wider pb-1 border-b border-gray-50 dark:border-[#232d42]/30">Tashkilot Ma'lumotlari</h4>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
                     <label className="block text-[11px] font-extrabold uppercase tracking-wider text-gray-400 mb-2">Tashkilot Nomi *</label>
@@ -1132,7 +1132,7 @@ export default function SuperAdmin() {
                       type="text" required
                       value={subName}
                       onChange={e => setSubName(e.target.value)}
-                      className="w-full px-4 py-3 bg-gray-50 dark:bg-gray-900/50 border border-gray-100 dark:border-gray-700 rounded-2xl text-xs font-bold text-gray-900 dark:text-white outline-none focus:border-[#1b6b6b] transition-all"
+                      className="w-full px-4 py-3 bg-gray-50 dark:bg-[#0b111a]/50 border border-gray-100 dark:border-[#232d42] rounded-2xl text-xs font-bold text-gray-900 dark:text-white outline-none focus:border-[#1b6b6b] transition-all"
                     />
                   </div>
                   <div>
@@ -1141,7 +1141,7 @@ export default function SuperAdmin() {
                       type="text"
                       value={subPhone}
                       onChange={e => setSubPhone(e.target.value)}
-                      className="w-full px-4 py-3 bg-gray-50 dark:bg-gray-900/50 border border-gray-100 dark:border-gray-700 rounded-2xl text-xs font-bold text-gray-900 dark:text-white outline-none focus:border-[#1b6b6b] transition-all"
+                      className="w-full px-4 py-3 bg-gray-50 dark:bg-[#0b111a]/50 border border-gray-100 dark:border-[#232d42] rounded-2xl text-xs font-bold text-gray-900 dark:text-white outline-none focus:border-[#1b6b6b] transition-all"
                     />
                   </div>
                 </div>
@@ -1151,21 +1151,21 @@ export default function SuperAdmin() {
                     type="text"
                     value={subAddress}
                     onChange={e => setSubAddress(e.target.value)}
-                    className="w-full px-4 py-3 bg-gray-50 dark:bg-gray-900/50 border border-gray-100 dark:border-gray-700 rounded-2xl text-xs font-bold text-gray-900 dark:text-white outline-none focus:border-[#1b6b6b] transition-all"
+                    className="w-full px-4 py-3 bg-gray-50 dark:bg-[#0b111a]/50 border border-gray-100 dark:border-[#232d42] rounded-2xl text-xs font-bold text-gray-900 dark:text-white outline-none focus:border-[#1b6b6b] transition-all"
                   />
                 </div>
               </div>
 
               {/* Section 2: Subscription Details */}
               <div className="space-y-4">
-                <h4 className="text-[11px] font-bold text-gray-400 uppercase tracking-wider pb-1 border-b border-gray-50 dark:border-gray-700/30">Obuna Sozlamalari</h4>
+                <h4 className="text-[11px] font-bold text-gray-400 uppercase tracking-wider pb-1 border-b border-gray-50 dark:border-[#232d42]/30">Obuna Sozlamalari</h4>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   <div>
                     <label className="block text-[11px] font-extrabold uppercase tracking-wider text-gray-400 mb-2">Holati</label>
                     <select
                       value={subStatus}
                       onChange={e => setSubStatus(e.target.value)}
-                      className="w-full px-4 py-3 bg-gray-50 dark:bg-gray-900/50 border border-gray-100 dark:border-gray-700 rounded-2xl text-xs font-bold text-gray-900 dark:text-white outline-none focus:border-[#1b6b6b] transition-all"
+                      className="w-full px-4 py-3 bg-gray-50 dark:bg-[#0b111a]/50 border border-gray-100 dark:border-[#232d42] rounded-2xl text-xs font-bold text-gray-900 dark:text-white outline-none focus:border-[#1b6b6b] transition-all"
                     >
                       <option value="Sinov">Sinov (Trial)</option>
                       <option value="Faol">Faol (Active)</option>
@@ -1178,7 +1178,7 @@ export default function SuperAdmin() {
                       type="date"
                       value={subExpiresAt}
                       onChange={e => setSubExpiresAt(e.target.value)}
-                      className="w-full px-4 py-3 bg-gray-50 dark:bg-gray-900/50 border border-gray-100 dark:border-gray-700 rounded-2xl text-xs font-bold text-gray-900 dark:text-white outline-none focus:border-[#1b6b6b] transition-all"
+                      className="w-full px-4 py-3 bg-gray-50 dark:bg-[#0b111a]/50 border border-gray-100 dark:border-[#232d42] rounded-2xl text-xs font-bold text-gray-900 dark:text-white outline-none focus:border-[#1b6b6b] transition-all"
                     />
                   </div>
                   <div>
@@ -1187,7 +1187,7 @@ export default function SuperAdmin() {
                       type="number" required min={1}
                       value={subMaxSchools}
                       onChange={e => setSubMaxSchools(Number(e.target.value))}
-                      className="w-full px-4 py-3 bg-gray-50 dark:bg-gray-900/50 border border-gray-100 dark:border-gray-700 rounded-2xl text-xs font-bold text-gray-900 dark:text-white outline-none focus:border-[#1b6b6b] transition-all"
+                      className="w-full px-4 py-3 bg-gray-50 dark:bg-[#0b111a]/50 border border-gray-100 dark:border-[#232d42] rounded-2xl text-xs font-bold text-gray-900 dark:text-white outline-none focus:border-[#1b6b6b] transition-all"
                     />
                   </div>
                 </div>
@@ -1195,7 +1195,7 @@ export default function SuperAdmin() {
 
               {/* Section 3: Admin Details */}
               <div className="space-y-4">
-                <h4 className="text-[11px] font-bold text-gray-400 uppercase tracking-wider pb-1 border-b border-gray-50 dark:border-gray-700/30">Admin Akkaunti Ma'lumotlari</h4>
+                <h4 className="text-[11px] font-bold text-gray-400 uppercase tracking-wider pb-1 border-b border-gray-50 dark:border-[#232d42]/30">Admin Akkaunti Ma'lumotlari</h4>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
                     <label className="block text-[11px] font-extrabold uppercase tracking-wider text-gray-400 mb-2">Admin Ismi *</label>
@@ -1203,7 +1203,7 @@ export default function SuperAdmin() {
                       type="text" required
                       value={subAdminName}
                       onChange={e => setSubAdminName(e.target.value)}
-                      className="w-full px-4 py-3 bg-gray-50 dark:bg-gray-900/50 border border-gray-100 dark:border-gray-700 rounded-2xl text-xs font-bold text-gray-900 dark:text-white outline-none focus:border-[#1b6b6b] transition-all"
+                      className="w-full px-4 py-3 bg-gray-50 dark:bg-[#0b111a]/50 border border-gray-100 dark:border-[#232d42] rounded-2xl text-xs font-bold text-gray-900 dark:text-white outline-none focus:border-[#1b6b6b] transition-all"
                     />
                   </div>
                   <div>
@@ -1212,7 +1212,7 @@ export default function SuperAdmin() {
                       type="text"
                       value={subAdminPhone}
                       onChange={e => setSubAdminPhone(e.target.value)}
-                      className="w-full px-4 py-3 bg-gray-50 dark:bg-gray-900/50 border border-gray-100 dark:border-gray-700 rounded-2xl text-xs font-bold text-gray-900 dark:text-white outline-none focus:border-[#1b6b6b] transition-all"
+                      className="w-full px-4 py-3 bg-gray-50 dark:bg-[#0b111a]/50 border border-gray-100 dark:border-[#232d42] rounded-2xl text-xs font-bold text-gray-900 dark:text-white outline-none focus:border-[#1b6b6b] transition-all"
                     />
                   </div>
                 </div>
@@ -1223,7 +1223,7 @@ export default function SuperAdmin() {
                       type="email" required
                       value={subAdminEmail}
                       onChange={e => setSubAdminEmail(e.target.value)}
-                      className="w-full px-4 py-3 bg-gray-50 dark:bg-gray-900/50 border border-gray-100 dark:border-gray-700 rounded-2xl text-xs font-bold text-gray-900 dark:text-white outline-none focus:border-[#1b6b6b] transition-all"
+                      className="w-full px-4 py-3 bg-gray-50 dark:bg-[#0b111a]/50 border border-gray-100 dark:border-[#232d42] rounded-2xl text-xs font-bold text-gray-900 dark:text-white outline-none focus:border-[#1b6b6b] transition-all"
                     />
                   </div>
                   <div>
@@ -1233,13 +1233,13 @@ export default function SuperAdmin() {
                       placeholder="Faqat o'zgartirish uchun..."
                       value={subAdminPassword}
                       onChange={e => setSubAdminPassword(e.target.value)}
-                      className="w-full px-4 py-3 bg-gray-50 dark:bg-gray-900/50 border border-gray-100 dark:border-gray-700 rounded-2xl text-xs font-bold text-gray-900 dark:text-white outline-none focus:border-[#1b6b6b] transition-all"
+                      className="w-full px-4 py-3 bg-gray-50 dark:bg-[#0b111a]/50 border border-gray-100 dark:border-[#232d42] rounded-2xl text-xs font-bold text-gray-900 dark:text-white outline-none focus:border-[#1b6b6b] transition-all"
                     />
                   </div>
                 </div>
               </div>
 
-              <div className="flex gap-3 pt-4 border-t border-gray-50 dark:border-gray-700/50">
+              <div className="flex gap-3 pt-4 border-t border-gray-50 dark:border-[#232d42]/50">
                 <button type="button" onClick={() => setSubModalOpen(false)}
                   className="flex-1 py-3 bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-700 dark:text-white text-xs font-extrabold rounded-2xl transition-all cursor-pointer">
                   Bekor
@@ -1258,8 +1258,8 @@ export default function SuperAdmin() {
       {leadModalOpen && (
         <div className="fixed inset-0 z-[200] flex items-start sm:items-center justify-center overflow-y-auto p-4">
           <div className="absolute inset-0 bg-gray-900/60 backdrop-blur-sm" onClick={() => setLeadModalOpen(false)} />
-          <div className="relative bg-white dark:bg-gray-800 rounded-[2rem] border border-gray-100 dark:border-gray-700/50 shadow-2xl w-full max-w-md p-8">
-            <div className="flex items-center justify-between mb-6 pb-4 border-b border-gray-50 dark:border-gray-700/50">
+          <div className="relative bg-white dark:bg-[#151c2c] rounded-[2rem] border border-gray-100 dark:border-[#232d42]/50 shadow-2xl w-full max-w-md p-8">
+            <div className="flex items-center justify-between mb-6 pb-4 border-b border-gray-50 dark:border-[#232d42]/50">
               <div>
                 <h3 className="text-lg font-black text-gray-900 dark:text-white tracking-tight">
                   {selectedLead ? 'Lidni Tahrirlash' : 'Yangi Lid'}
@@ -1278,7 +1278,7 @@ export default function SuperAdmin() {
                   type="text" required
                   placeholder="Masalan: Jamshid Aliyev"
                   value={leadName} onChange={e => setLeadName(e.target.value)}
-                  className="w-full px-4 py-3 bg-gray-50 dark:bg-gray-900/50 border border-gray-100 dark:border-gray-700 rounded-2xl text-xs font-bold text-gray-900 dark:text-white focus:border-brand outline-none transition-all"
+                  className="w-full px-4 py-3 bg-gray-50 dark:bg-[#0b111a]/50 border border-gray-100 dark:border-[#232d42] rounded-2xl text-xs font-bold text-gray-900 dark:text-white focus:border-brand outline-none transition-all"
                 />
               </div>
               <div>
@@ -1287,7 +1287,7 @@ export default function SuperAdmin() {
                   type="text" required
                   placeholder="Masalan: +998 90 999 88 77"
                   value={leadPhone} onChange={e => setLeadPhone(e.target.value)}
-                  className="w-full px-4 py-3 bg-gray-50 dark:bg-gray-900/50 border border-gray-100 dark:border-gray-700 rounded-2xl text-xs font-bold text-gray-900 dark:text-white focus:border-brand outline-none transition-all"
+                  className="w-full px-4 py-3 bg-gray-50 dark:bg-[#0b111a]/50 border border-gray-100 dark:border-[#232d42] rounded-2xl text-xs font-bold text-gray-900 dark:text-white focus:border-brand outline-none transition-all"
                 />
               </div>
               <div>
@@ -1296,7 +1296,7 @@ export default function SuperAdmin() {
                   type="text"
                   placeholder="Masalan: Quantum Academy"
                   value={leadCenter} onChange={e => setLeadCenter(e.target.value)}
-                  className="w-full px-4 py-3 bg-gray-50 dark:bg-gray-900/50 border border-gray-100 dark:border-gray-700 rounded-2xl text-xs font-bold text-gray-900 dark:text-white focus:border-brand outline-none transition-all"
+                  className="w-full px-4 py-3 bg-gray-50 dark:bg-[#0b111a]/50 border border-gray-100 dark:border-[#232d42] rounded-2xl text-xs font-bold text-gray-900 dark:text-white focus:border-brand outline-none transition-all"
                 />
               </div>
               <div className="grid grid-cols-2 gap-4">
@@ -1305,7 +1305,7 @@ export default function SuperAdmin() {
                   <select
                     value={leadStatus}
                     onChange={e => setLeadStatus(e.target.value)}
-                    className="w-full px-4 py-3 bg-gray-50 dark:bg-gray-900/50 border border-gray-100 dark:border-gray-700 rounded-2xl text-xs font-bold text-gray-900 dark:text-white focus:border-brand outline-none transition-all"
+                    className="w-full px-4 py-3 bg-gray-50 dark:bg-[#0b111a]/50 border border-gray-100 dark:border-[#232d42] rounded-2xl text-xs font-bold text-gray-900 dark:text-white focus:border-brand outline-none transition-all"
                   >
                     <option value="Yangi">Yangi</option>
                     <option value="Bog'lanildi">Bog'lanildi</option>
@@ -1319,7 +1319,7 @@ export default function SuperAdmin() {
                     <select
                       value={leadSellerId}
                       onChange={e => setLeadSellerId(e.target.value)}
-                      className="w-full px-4 py-3 bg-gray-50 dark:bg-gray-900/50 border border-gray-100 dark:border-gray-700 rounded-2xl text-xs font-bold text-gray-900 dark:text-white focus:border-brand outline-none transition-all"
+                      className="w-full px-4 py-3 bg-gray-50 dark:bg-[#0b111a]/50 border border-gray-100 dark:border-[#232d42] rounded-2xl text-xs font-bold text-gray-900 dark:text-white focus:border-brand outline-none transition-all"
                     >
                       <option value="">Tanlanmagan</option>
                       {sellers.map(s => (
@@ -1335,7 +1335,7 @@ export default function SuperAdmin() {
                   placeholder="Uchrashuv vaqti yoki alohida istaklar..."
                   value={leadNotes} onChange={e => setLeadNotes(e.target.value)}
                   rows={3}
-                  className="w-full px-4 py-3 bg-gray-50 dark:bg-gray-900/50 border border-gray-100 dark:border-gray-700 rounded-2xl text-xs font-bold text-gray-900 dark:text-white focus:border-brand outline-none transition-all resize-none"
+                  className="w-full px-4 py-3 bg-gray-50 dark:bg-[#0b111a]/50 border border-gray-100 dark:border-[#232d42] rounded-2xl text-xs font-bold text-gray-900 dark:text-white focus:border-brand outline-none transition-all resize-none"
                 />
               </div>
               <div className="flex gap-3 pt-2">
@@ -1357,8 +1357,8 @@ export default function SuperAdmin() {
       {sellerModalOpen && isSuper && (
         <div className="fixed inset-0 z-[200] flex items-start sm:items-center justify-center overflow-y-auto p-4">
           <div className="absolute inset-0 bg-gray-900/60 backdrop-blur-sm" onClick={() => setSellerModalOpen(false)} />
-          <div className="relative bg-white dark:bg-gray-800 rounded-[2rem] border border-gray-100 dark:border-gray-700/50 shadow-2xl w-full max-w-md p-8">
-            <div className="flex items-center justify-between mb-6 pb-4 border-b border-gray-50 dark:border-gray-700/50">
+          <div className="relative bg-white dark:bg-[#151c2c] rounded-[2rem] border border-gray-100 dark:border-[#232d42]/50 shadow-2xl w-full max-w-md p-8">
+            <div className="flex items-center justify-between mb-6 pb-4 border-b border-gray-50 dark:border-[#232d42]/50">
               <div>
                 <h3 className="text-lg font-black text-gray-900 dark:text-white tracking-tight">Yangi Sotuvchi Agent</h3>
                 <p className="text-[11px] font-bold text-violet-600 uppercase tracking-wider mt-0.5">CRM Tizimini sotadigan xodim</p>
@@ -1375,7 +1375,7 @@ export default function SuperAdmin() {
                   type="text" required
                   placeholder="Masalan: Sardor Komilov"
                   value={sellerName} onChange={e => setSellerName(e.target.value)}
-                  className="w-full px-4 py-3 bg-gray-50 dark:bg-gray-900/50 border border-gray-100 dark:border-gray-700 rounded-2xl text-xs font-bold text-gray-900 dark:text-white focus:border-violet-500 outline-none transition-all"
+                  className="w-full px-4 py-3 bg-gray-50 dark:bg-[#0b111a]/50 border border-gray-100 dark:border-[#232d42] rounded-2xl text-xs font-bold text-gray-900 dark:text-white focus:border-violet-500 outline-none transition-all"
                 />
               </div>
               <div>
@@ -1384,7 +1384,7 @@ export default function SuperAdmin() {
                   type="email" required
                   placeholder="sardor@saraosiyo.uz"
                   value={sellerEmail} onChange={e => setSellerEmail(e.target.value)}
-                  className="w-full px-4 py-3 bg-gray-50 dark:bg-gray-900/50 border border-gray-100 dark:border-gray-700 rounded-2xl text-xs font-bold text-gray-900 dark:text-white focus:border-violet-500 outline-none transition-all"
+                  className="w-full px-4 py-3 bg-gray-50 dark:bg-[#0b111a]/50 border border-gray-100 dark:border-[#232d42] rounded-2xl text-xs font-bold text-gray-900 dark:text-white focus:border-violet-500 outline-none transition-all"
                 />
               </div>
               <div>
@@ -1393,7 +1393,7 @@ export default function SuperAdmin() {
                   type="text"
                   placeholder="+998 93 111 22 33"
                   value={sellerPhone} onChange={e => setSellerPhone(e.target.value)}
-                  className="w-full px-4 py-3 bg-gray-50 dark:bg-gray-900/50 border border-gray-100 dark:border-gray-700 rounded-2xl text-xs font-bold text-gray-900 dark:text-white focus:border-violet-500 outline-none transition-all"
+                  className="w-full px-4 py-3 bg-gray-50 dark:bg-[#0b111a]/50 border border-gray-100 dark:border-[#232d42] rounded-2xl text-xs font-bold text-gray-900 dark:text-white focus:border-violet-500 outline-none transition-all"
                 />
               </div>
               <div>
@@ -1402,7 +1402,7 @@ export default function SuperAdmin() {
                   type="password" required
                   placeholder="••••••••"
                   value={sellerPassword} onChange={e => setSellerPassword(e.target.value)}
-                  className="w-full px-4 py-3 bg-gray-50 dark:bg-gray-900/50 border border-gray-100 dark:border-gray-700 rounded-2xl text-xs font-bold text-gray-900 dark:text-white focus:border-violet-500 outline-none transition-all"
+                  className="w-full px-4 py-3 bg-gray-50 dark:bg-[#0b111a]/50 border border-gray-100 dark:border-[#232d42] rounded-2xl text-xs font-bold text-gray-900 dark:text-white focus:border-violet-500 outline-none transition-all"
                 />
               </div>
               <div className="flex gap-3 pt-2">

@@ -119,7 +119,7 @@ export default function QuestionEditor() {
     };
 
     const labelCls = "block text-[11px] font-extrabold uppercase tracking-wider text-gray-400 mb-2";
-    const inputCls = "w-full px-4 py-3 bg-gray-55 dark:bg-gray-900/50 border border-gray-100 dark:border-gray-700 rounded-2xl text-xs font-bold text-gray-900 dark:text-white focus:border-[#1b6b6b] focus:ring-4 focus:ring-[#1b6b6b]/10 outline-none transition-all";
+    const inputCls = "w-full px-4 py-3 bg-gray-55 dark:bg-[#0b111a]/50 border border-gray-100 dark:border-[#232d42] rounded-2xl text-xs font-bold text-gray-900 dark:text-white focus:border-[#1b6b6b] focus:ring-4 focus:ring-[#1b6b6b]/10 outline-none transition-all";
 
     return (
         <div className="max-w-7xl mx-auto pb-20 animate-in fade-in duration-500 space-y-6">
@@ -128,7 +128,7 @@ export default function QuestionEditor() {
                 <div className="flex items-center gap-4">
                     <button
                         onClick={() => navigate('/questions')}
-                        className="w-10 h-10 bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700/50 rounded-xl flex items-center justify-center text-gray-450 hover:text-[#1b6b6b] hover:bg-gray-55 transition-all shadow-sm cursor-pointer"
+                        className="w-10 h-10 bg-white dark:bg-[#151c2c] border border-gray-100 dark:border-[#232d42]/50 rounded-xl flex items-center justify-center text-gray-450 hover:text-[#1b6b6b] hover:bg-gray-55 transition-all shadow-sm cursor-pointer"
                     >
                         <ArrowLeft size={18} />
                     </button>
@@ -181,8 +181,8 @@ export default function QuestionEditor() {
 
                 {/* LEFT COLUMN: Subject/Topic/Difficulty — Persistent */}
                 <div className="xl:col-span-1 space-y-6">
-                    <div className="bg-white dark:bg-gray-800 rounded-3xl border border-gray-100 dark:border-gray-700/50 shadow-sm p-6 sticky top-4">
-                        <div className="flex items-center gap-3 mb-6 pb-4 border-b border-dashed border-gray-100 dark:border-gray-700/50">
+                    <div className="bg-white dark:bg-[#151c2c] rounded-3xl border border-gray-100 dark:border-[#232d42]/50 shadow-sm p-6 sticky top-4">
+                        <div className="flex items-center gap-3 mb-6 pb-4 border-b border-dashed border-gray-100 dark:border-[#232d42]/50">
                             <div className="w-10 h-10 bg-teal-50 dark:bg-teal-950/20 border border-teal-100 dark:border-teal-900/40 rounded-xl flex items-center justify-center text-[#1b6b6b]">
                                 <BookOpen size={18} />
                             </div>
@@ -228,7 +228,7 @@ export default function QuestionEditor() {
                             {/* Difficulty */}
                             <div>
                                 <label className={labelCls}>Qiyinlik Darajasi</label>
-                                <div className="flex items-center gap-2 bg-gray-55 dark:bg-gray-900 p-1.5 rounded-xl border border-gray-100 dark:border-gray-705">
+                                <div className="flex items-center gap-2 bg-gray-55 dark:bg-[#0b111a] p-1.5 rounded-xl border border-gray-100 dark:border-gray-705">
                                     {[1, 2, 3].map((lvl) => (
                                         <button key={lvl} type="button" onClick={() => setDifficulty(lvl)}
                                             className={`flex-1 py-2 rounded-lg text-[11px] font-black transition-all cursor-pointer ${difficulty === lvl
@@ -261,7 +261,7 @@ export default function QuestionEditor() {
                 {/* RIGHT COLUMN: Question Form */}
                 <div className="xl:col-span-2 space-y-6">
                     {/* Question Text */}
-                    <div className="bg-white dark:bg-gray-800 rounded-3xl border border-gray-100 dark:border-gray-700/50 shadow-sm p-6">
+                    <div className="bg-white dark:bg-[#151c2c] rounded-3xl border border-gray-100 dark:border-[#232d42]/50 shadow-sm p-6">
                         <label className="text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-4 block ml-1">
                             Savol Matni
                         </label>
@@ -271,13 +271,13 @@ export default function QuestionEditor() {
                         />
 
                         {/* Image Upload */}
-                        <div className="mt-6 pt-6 border-t border-dashed border-gray-100 dark:border-gray-700/50">
+                        <div className="mt-6 pt-6 border-t border-dashed border-gray-100 dark:border-[#232d42]/50">
                             <label className="text-[11px] font-bold text-gray-400 uppercase tracking-wider ml-1 mb-3 block">
                                 Savol Rasmi (ixtiyoriy)
                             </label>
                             {imagePreview ? (
-                                <div className="relative rounded-2xl overflow-hidden border border-gray-100 dark:border-gray-700 group">
-                                    <img src={imagePreview} alt="Savol rasmi" className="max-h-48 w-full object-contain bg-gray-55 dark:bg-gray-900" />
+                                <div className="relative rounded-2xl overflow-hidden border border-gray-100 dark:border-[#232d42] group">
+                                    <img src={imagePreview} alt="Savol rasmi" className="max-h-48 w-full object-contain bg-gray-55 dark:bg-[#0b111a]" />
                                     <button aria-label="Yopish"
                                         onClick={() => { setImagePreview(null); setQ(prev => ({ ...prev, imageUrl: '' })); }}
                                         className="absolute top-3 right-3 w-8 h-8 bg-rose-500 text-white rounded-xl flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer"
@@ -288,7 +288,7 @@ export default function QuestionEditor() {
                             ) : (
                                 <button
                                     onClick={() => fileInputRef.current?.click()}
-                                    className="w-full p-6 border border-dashed border-gray-200 dark:border-gray-700 rounded-2xl text-center hover:border-teal-300 transition-all group cursor-pointer"
+                                    className="w-full p-6 border border-dashed border-gray-200 dark:border-[#232d42] rounded-2xl text-center hover:border-teal-300 transition-all group cursor-pointer"
                                 >
                                     <Image size={24} className="mx-auto text-gray-300 group-hover:text-[#1b6b6b] transition-colors mb-2" />
                                     <p className="text-[11px] font-bold text-gray-400 uppercase tracking-wider">Rasm yuklash uchun bosing</p>
@@ -301,16 +301,16 @@ export default function QuestionEditor() {
                     {/* Answer Options */}
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         {(['A', 'B', 'C', 'D'] as const).map((opt) => (
-                            <div key={opt} className={`relative bg-white dark:bg-gray-800 rounded-3xl border transition-all p-5 ${
+                            <div key={opt} className={`relative bg-white dark:bg-[#151c2c] rounded-3xl border transition-all p-5 ${
                                 q.correctAnswer === opt
                                     ? 'border-[#1b6b6b] ring-4 ring-[#1b6b6b]/5'
-                                    : 'border-gray-100 dark:border-gray-700/50'
+                                    : 'border-gray-100 dark:border-[#232d42]/50'
                             }`}>
                                 <div className="flex items-center justify-between mb-3">
                                     <span className={`w-7 h-7 rounded-lg flex items-center justify-center text-xs font-black ${
                                         q.correctAnswer === opt
                                             ? 'bg-[#1b6b6b] text-white'
-                                            : 'bg-gray-55 dark:bg-gray-900 text-gray-400'
+                                            : 'bg-gray-55 dark:bg-[#0b111a] text-gray-400'
                                     }`}>
                                         {opt}
                                     </span>

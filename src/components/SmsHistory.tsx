@@ -94,7 +94,7 @@ export default function SmsHistory() {
     return (
         <div className="space-y-6 pb-12 animate-in fade-in duration-500 max-w-7xl mx-auto">
             {/* Header */}
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white dark:bg-gray-800 p-6 rounded-3xl border border-gray-100 dark:border-gray-700/50 shadow-sm">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white dark:bg-[#151c2c] p-6 rounded-3xl border border-gray-100 dark:border-[#232d42]/50 shadow-sm">
                 <div>
                     <h1 className="text-sm font-black text-gray-900 dark:text-white tracking-tight">SMS Tarixi</h1>
                     <p className="text-[11px] font-bold text-gray-400 uppercase tracking-wider mt-0.5">Yuborilgan barcha xabarlar monitoringi</p>
@@ -110,15 +110,15 @@ export default function SmsHistory() {
                     </button>
                     <button 
                         onClick={fetchLogs}
-                        className="p-2.5 bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700/50 rounded-xl text-gray-400 hover:text-[#1b6b6b] transition-all shadow-sm cursor-pointer"
+                        className="p-2.5 bg-white dark:bg-[#151c2c] border border-gray-100 dark:border-[#232d42]/50 rounded-xl text-gray-400 hover:text-[#1b6b6b] transition-all shadow-sm cursor-pointer"
                     >
                         <RefreshCw size={16} className={loading ? 'animate-spin' : ''} />
                     </button>
                 </div>
             </div>
 
-            <div className="bg-white dark:bg-gray-800 rounded-3xl border border-gray-100 dark:border-gray-700/50 shadow-sm overflow-hidden">
-                <div className="p-5 flex flex-col md:flex-row gap-4 justify-between items-center border-b border-dashed border-gray-100 dark:border-gray-700/50">
+            <div className="bg-white dark:bg-[#151c2c] rounded-3xl border border-gray-100 dark:border-[#232d42]/50 shadow-sm overflow-hidden">
+                <div className="p-5 flex flex-col md:flex-row gap-4 justify-between items-center border-b border-dashed border-gray-100 dark:border-[#232d42]/50">
                     <div className="relative w-full md:w-80">
                         <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
                         <input
@@ -126,7 +126,7 @@ export default function SmsHistory() {
                             placeholder="Qidirish (telefon yoki xabar)..."
                             value={search}
                             onChange={(e) => setSearch(e.target.value)}
-                            className="w-full pl-10 pr-4 py-2.5 bg-gray-55 dark:bg-gray-905 border border-gray-100 dark:border-gray-700 rounded-2xl text-xs font-bold text-gray-900 dark:text-white placeholder:text-gray-400 focus:border-[#1b6b6b] focus:ring-4 focus:ring-[#1b6b6b]/10 outline-none transition-all"
+                            className="w-full pl-10 pr-4 py-2.5 bg-gray-55 dark:bg-gray-905 border border-gray-100 dark:border-[#232d42] rounded-2xl text-xs font-bold text-gray-900 dark:text-white placeholder:text-gray-400 focus:border-[#1b6b6b] focus:ring-4 focus:ring-[#1b6b6b]/10 outline-none transition-all"
                         />
                     </div>
                     <div className="flex items-center gap-3">
@@ -134,7 +134,7 @@ export default function SmsHistory() {
                         <select 
                             value={filter}
                             onChange={e => setFilter(e.target.value)}
-                            className="px-3 py-2 bg-gray-55 dark:bg-gray-905 border border-gray-100 dark:border-gray-700 rounded-xl text-[11px] font-bold uppercase tracking-wider outline-none focus:border-[#1b6b6b] text-gray-900 dark:text-white cursor-pointer"
+                            className="px-3 py-2 bg-gray-55 dark:bg-gray-905 border border-gray-100 dark:border-[#232d42] rounded-xl text-[11px] font-bold uppercase tracking-wider outline-none focus:border-[#1b6b6b] text-gray-900 dark:text-white cursor-pointer"
                         >
                             <option value="all">Barchasi</option>
                             <option value="sent">Yuborilgan</option>
@@ -147,7 +147,7 @@ export default function SmsHistory() {
                 <div className="overflow-x-auto custom-scrollbar">
                     <table className="w-full text-left border-collapse min-w-[800px]">
                         <thead>
-                            <tr className="bg-gray-55 dark:bg-gray-900 border-b border-gray-100 dark:border-gray-700/50">
+                            <tr className="bg-gray-55 dark:bg-[#0b111a] border-b border-gray-100 dark:border-[#232d42]/50">
                                 <th className="p-4 text-[11px] font-bold text-gray-400 uppercase tracking-wider">Sana</th>
                                 <th className="p-4 text-[11px] font-bold text-gray-400 uppercase tracking-wider">Qabul qiluvchi</th>
                                 <th className="p-4 text-[11px] font-bold text-gray-400 uppercase tracking-wider">Xabar</th>
@@ -169,7 +169,7 @@ export default function SmsHistory() {
                                         </div>
                                     </td>
                                     <td className="p-4">
-                                        <span className="text-[11px] font-bold text-gray-900 dark:text-white tabular-nums bg-gray-55 dark:bg-gray-900 px-2.5 py-1 rounded-lg border border-gray-100 dark:border-gray-700">
+                                        <span className="text-[11px] font-bold text-gray-900 dark:text-white tabular-nums bg-gray-55 dark:bg-[#0b111a] px-2.5 py-1 rounded-lg border border-gray-100 dark:border-[#232d42]">
                                             {log.toPhone}
                                         </span>
                                     </td>
