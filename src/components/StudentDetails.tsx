@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import {
     ArrowLeft, Phone, Calendar, MapPin, BookOpen, CreditCard, ReceiptText,
-    Clock, CheckCircle, XCircle, Plus, Award, ClipboardCheck, Users, Layers, ChevronRight, TrendingUp, Save, Edit, Bus, Sparkles, Image as ImageIcon, Camera, X, Send, Trash2
+    Clock, CheckCircle, XCircle, Plus, Award, ClipboardCheck, Users, Layers, ChevronRight, TrendingUp, Save, Edit, Bus, Sparkles, Image as ImageIcon, Camera, X, Send, Trash2, Star
 } from 'lucide-react';
 import { useCRM } from '../context/CRMContext';
 import { useParams, useNavigate } from 'react-router-dom';
@@ -82,11 +82,14 @@ export default function StudentDetails() {
     const { id } = useParams<{ id: string }>();
     const navigate = useNavigate();
     const { t } = useLang();
-    const { students, groups, teachers, courses, payments, attendances, transports, addPayment, addAttendance, updateStudent, addStudentToGroup, deleteStudent, topics, updateAttendance, showNotification, loadAttendanceFor } = useCRM();
+    const { students, groups, teachers, courses, payments, attendances, scores, transports, addPayment, addAttendance, addScore, updateStudent, addStudentToGroup, deleteStudent, topics, updateAttendance, showNotification, loadAttendanceFor } = useCRM();
     const [activeTab, setActiveTab] = useState('umumiy');
     const [showPaymentModal, setShowPaymentModal] = useState(false);
     const [showGroupModal, setShowGroupModal] = useState(false);
     const [showAttendanceModal, setShowAttendanceModal] = useState(false);
+    const [showScoreModal, setShowScoreModal] = useState(false);
+    const [isSavingScore, setIsSavingScore] = useState(false);
+    const [newScore, setNewScore] = useState({ value: 5, comment: '', groupId: 0, date: new Date().toISOString().split('T')[0] });
     const [isEditing, setIsEditing] = useState(false);
     const [isSaving, setIsSaving] = useState(false);
     const [isRemovingBg, setIsRemovingBg] = useState(false);
@@ -171,6 +174,7 @@ export default function StudentDetails() {
     });
 
     const studentPayments = payments.filter(p => p.studentId === Number(id)).reverse();
+    const studentScores = (scores || []).filter(sc => sc.studentId === Number(id));
     const studentAttendances = (attendances || [])
         .filter(a => a.studentId === Number(id))
         .sort((a, b) => b.date.localeCompare(a.date));
@@ -1034,6 +1038,7 @@ export default function StudentDetails() {
                             <TabButton label={t('stat_groups')} icon={<Users className="w-3.5 h-3.5" />} active={activeTab === 'courses'} onClick={() => setActiveTab('courses')} />
                             <TabButton label={t('payments_tab')} icon={<CreditCard className="w-3.5 h-3.5" />} active={activeTab === 'tolovlar'} onClick={() => setActiveTab('tolovlar')} />
                             <TabButton label={t('attendance')} icon={<ClipboardCheck className="w-3.5 h-3.5" />} active={activeTab === 'yoqlama'} onClick={() => setActiveTab('yoqlama')} />
+                            <TabButton label="Ballar" icon={<Star className="w-3.5 h-3.5" />} active={activeTab === 'ballar'} onClick={() => setActiveTab('ballar')} />
                         </div>
 
                         <div className="p-6">
@@ -1590,6 +1595,67 @@ export default function StudentDetails() {
                                 </div>
                             )}
 
+                            {/* Bonus points. The Score table and the bonus report were already
+                                built, but nothing in the app could actually award a point. */}
+                            {activeTab === 'ballar' && (
+                                <div className="space-y-6 animate-in fade-in duration-300">
+                                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-5 bg-gray-55 dark:bg-gray-900/40 border border-gray-100 dark:border-gray-700/50 rounded-2xl">
+                                        <div>
+                                            <h4 className="text-xs font-black text-gray-900 dark:text-white uppercase tracking-tight">Bonus ballar</h4>
+                                            <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mt-1 tabular-nums">
+                                                Jami {studentScores.reduce((s, x) => s + (x.value || 0), 0)} ball · {studentScores.length} ta yozuv
+                                            </p>
+                                        </div>
+                                        <button onClick={() => setShowScoreModal(true)}
+                                            disabled={studentGroups.length === 0}
+                                            className="px-6 py-2.5 bg-[#1b6b6b] hover:bg-[#155252] disabled:opacity-40 disabled:cursor-not-allowed text-white rounded-xl text-[10px] font-extrabold uppercase tracking-widest shadow-lg shadow-[#1b6b6b]/20 active:scale-95 transition-all cursor-pointer">
+                                            Ball qo'shish
+                                        </button>
+                                    </div>
+
+                                    {studentGroups.length === 0 && (
+                                        <p className="text-[11px] font-bold text-amber-600 dark:text-amber-400">
+                                            Ball berish uchun o'quvchi kamida bitta guruhda bo'lishi kerak.
+                                        </p>
+                                    )}
+
+                                    {studentScores.length === 0 ? (
+                                        <div className="py-14 text-center">
+                                            <Star size={28} className="mx-auto text-gray-200 dark:text-gray-700 mb-3" />
+                                            <p className="text-sm font-bold text-gray-700 dark:text-gray-200">Hali ball berilmagan</p>
+                                            <p className="text-xs text-gray-400 mt-1">Berilgan ballar hisobotlardagi reytingga qo'shiladi.</p>
+                                        </div>
+                                    ) : (
+                                        <div className="overflow-x-auto">
+                                            <table className="w-full text-left border-collapse min-w-[520px]">
+                                                <thead>
+                                                    <tr className="bg-gray-50/50 dark:bg-gray-900/50 border-b border-gray-100 dark:border-gray-700">
+                                                        <th className="p-3 text-[10px] font-bold text-gray-400 uppercase tracking-widest">Sana</th>
+                                                        <th className="p-3 text-[10px] font-bold text-gray-400 uppercase tracking-widest">Guruh</th>
+                                                        <th className="p-3 text-[10px] font-bold text-gray-400 uppercase tracking-widest">Izoh</th>
+                                                        <th className="p-3 text-[10px] font-bold text-gray-400 uppercase tracking-widest text-right">Ball</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody className="divide-y divide-gray-50 dark:divide-gray-700/50">
+                                                    {[...studentScores].sort((a, b) => (b.date || '').localeCompare(a.date || '')).map(sc => (
+                                                        <tr key={sc.id}>
+                                                            <td className="p-3 text-[11px] font-bold text-gray-500 tabular-nums">{sc.date}</td>
+                                                            <td className="p-3 text-[11px] font-bold text-gray-700 dark:text-gray-300">
+                                                                {groups.find(g => g.id === sc.groupId)?.name || '—'}
+                                                            </td>
+                                                            <td className="p-3 text-[11px] text-gray-500">{sc.comment || '—'}</td>
+                                                            <td className="p-3 text-right">
+                                                                <span className="text-xs font-black text-[#1b6b6b] dark:text-teal-400 tabular-nums">+{sc.value}</span>
+                                                            </td>
+                                                        </tr>
+                                                    ))}
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                    )}
+                                </div>
+                            )}
+
                         </div>
                     </div>
                 </div>
@@ -1598,6 +1664,88 @@ export default function StudentDetails() {
             {/* Modals Cleanup */}
             {showPaymentModal && (
                 <PaymentAddModal studentId={student.id} onClose={() => setShowPaymentModal(false)} onAdd={addPayment} />
+            )}
+            {showScoreModal && (
+                <div className="fixed inset-0 z-[200] flex items-start sm:items-center justify-center overflow-y-auto p-4">
+                    <div className="fixed inset-0 bg-gray-900/60 backdrop-blur-sm" onClick={() => setShowScoreModal(false)} />
+                    <form
+                        onSubmit={async (e) => {
+                            e.preventDefault();
+                            if (isSavingScore) return;
+                            const groupId = newScore.groupId || studentGroups[0]?.id;
+                            if (!groupId) return;
+                            setIsSavingScore(true);
+                            try {
+                                await addScore({
+                                    studentId: student.id,
+                                    groupId,
+                                    date: newScore.date,
+                                    value: Number(newScore.value) || 0,
+                                    comment: newScore.comment,
+                                });
+                                showNotification("Ball qo'shildi", 'success');
+                                setShowScoreModal(false);
+                                setNewScore({ value: 5, comment: '', groupId: 0, date: new Date().toISOString().split('T')[0] });
+                            } catch (err: any) {
+                                showNotification("Ball qo'shib bo'lmadi: " + (err?.message || "xatolik"), 'error');
+                            } finally {
+                                setIsSavingScore(false);
+                            }
+                        }}
+                        className="relative bg-white dark:bg-gray-800 rounded-[2rem] border border-gray-100 dark:border-gray-700/50 shadow-2xl w-full max-w-md p-8 space-y-4 my-auto">
+                        <div className="flex items-center justify-between pb-4 border-b border-gray-50 dark:border-gray-700/50">
+                            <div>
+                                <h3 className="text-lg font-black text-gray-900 dark:text-white uppercase tracking-tight">Ball qo'shish</h3>
+                                <p className="text-[10px] font-bold text-[#1b6b6b] uppercase tracking-widest mt-0.5">{student.name}</p>
+                            </div>
+                            <button type="button" aria-label="Yopish" onClick={() => setShowScoreModal(false)}
+                                className="w-9 h-9 flex items-center justify-center text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700 rounded-xl cursor-pointer"><X size={18} /></button>
+                        </div>
+
+                        <div>
+                            <label className="block text-[10px] font-extrabold uppercase tracking-widest text-gray-400 mb-2">Ball *</label>
+                            <input type="number" inputMode="numeric" min={1} max={100} required
+                                value={newScore.value}
+                                onChange={e => setNewScore(p => ({ ...p, value: Number(e.target.value) }))}
+                                className="w-full px-4 py-3 bg-gray-55 dark:bg-gray-900/50 border border-gray-100 dark:border-gray-700 rounded-2xl text-xs font-bold text-gray-900 dark:text-white outline-none focus:border-[#1b6b6b] transition-all" />
+                        </div>
+
+                        <div>
+                            <label className="block text-[10px] font-extrabold uppercase tracking-widest text-gray-400 mb-2">Guruh</label>
+                            <select value={newScore.groupId || studentGroups[0]?.id || 0}
+                                onChange={e => setNewScore(p => ({ ...p, groupId: Number(e.target.value) }))}
+                                className="w-full px-4 py-3 bg-gray-55 dark:bg-gray-900/50 border border-gray-100 dark:border-gray-700 rounded-2xl text-xs font-bold text-gray-900 dark:text-white outline-none focus:border-[#1b6b6b] transition-all cursor-pointer">
+                                {studentGroups.map(g => <option key={g.id} value={g.id}>{g.name}</option>)}
+                            </select>
+                        </div>
+
+                        <div>
+                            <label className="block text-[10px] font-extrabold uppercase tracking-widest text-gray-400 mb-2">Sana</label>
+                            <input type="date" value={newScore.date}
+                                onChange={e => setNewScore(p => ({ ...p, date: e.target.value }))}
+                                className="w-full px-4 py-3 bg-gray-55 dark:bg-gray-900/50 border border-gray-100 dark:border-gray-700 rounded-2xl text-xs font-bold text-gray-900 dark:text-white outline-none focus:border-[#1b6b6b] transition-all" />
+                        </div>
+
+                        <div>
+                            <label className="block text-[10px] font-extrabold uppercase tracking-widest text-gray-400 mb-2">Izoh</label>
+                            <input type="text" placeholder="Nima uchun berilyapti?"
+                                value={newScore.comment}
+                                onChange={e => setNewScore(p => ({ ...p, comment: e.target.value }))}
+                                className="w-full px-4 py-3 bg-gray-55 dark:bg-gray-900/50 border border-gray-100 dark:border-gray-700 rounded-2xl text-xs font-bold text-gray-900 dark:text-white outline-none focus:border-[#1b6b6b] transition-all" />
+                        </div>
+
+                        <div className="flex gap-3 pt-2">
+                            <button type="button" onClick={() => setShowScoreModal(false)}
+                                className="flex-1 py-3 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-white text-xs font-extrabold uppercase tracking-widest rounded-2xl cursor-pointer hover:bg-gray-200 dark:hover:bg-gray-600 transition-all">
+                                {t('cancel')}
+                            </button>
+                            <button type="submit" disabled={isSavingScore}
+                                className="flex-1 py-3 bg-[#1b6b6b] hover:bg-[#155252] disabled:opacity-50 disabled:cursor-not-allowed text-white text-xs font-extrabold uppercase tracking-widest rounded-2xl shadow-lg shadow-[#1b6b6b]/20 cursor-pointer transition-all">
+                                {isSavingScore ? 'Saqlanmoqda…' : t('save')}
+                            </button>
+                        </div>
+                    </form>
+                </div>
             )}
             {showGroupModal && (
                 <GroupAddModal studentId={student.id} currentGroups={student.groups || []} availableGroups={groups}
