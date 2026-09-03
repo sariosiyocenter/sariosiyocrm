@@ -216,11 +216,20 @@ export default function CourseDetails() {
 
     const handleSaveInfo = async () => {
         try {
+            // "Not chosen" is 0 in the selects, but there is no room or teacher with id 0 —
+            // sending it produced a foreign key error and the save failed with a generic
+            // "Xatolik yuz berdi". An empty room means no room, so send null.
+            const roomId = Number(editForm.room) || null;
+            const teacherId = Number(editForm.teacherId) || null;
+            if (!teacherId) {
+                showNotification("O'qituvchini tanlang", "error");
+                return;
+            }
             await updateGroup(group.id, {
-                teacherId: Number(editForm.teacherId),
+                teacherId,
                 days: editForm.days,
                 schedule: `${editForm.startTime} - ${editForm.endTime}`,
-                room: Number(editForm.room),
+                room: roomId,
                 syllabusId: editForm.syllabusId === '' ? null : Number(editForm.syllabusId)
             });
             if (course && editForm.coursePrice !== course.price) {

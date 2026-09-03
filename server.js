@@ -1056,11 +1056,22 @@ app.put('/api/groups/:id', authenticate, async (req, res, next) => {
     if (schedule !== undefined) prismaData.schedule = schedule;
     if (days !== undefined) prismaData.days = days;
     if (syllabusId !== undefined) {
-      prismaData.syllabusId = (syllabusId === null || syllabusId === '') ? null : parseInt(syllabusId);
+      prismaData.syllabusId = (syllabusId === null || syllabusId === '') ? null : parseInt(syllabusId) || null;
     }
-    
+
+    // "Nothing selected" arrives as 0 or '' from the form. There is no room with id 0, so
+    // passing it through produced a foreign key error and a bare 500; an unset room is null.
     if (room !== undefined) {
-      prismaData.room = (room === null || room === '') ? null : parseInt(room);
+      prismaData.room = (room === null || room === '') ? null : parseInt(room) || null;
+    }
+
+    // A group must have a teacher — say so plainly instead of letting the database
+    // reject it with a constraint name the user cannot act on.
+    if (prismaData.teacherId !== undefined && (!prismaData.teacherId || isNaN(prismaData.teacherId))) {
+      return res.status(400).json({ error: 'Guruh uchun o\'qituvchi tanlanishi shart' });
+    }
+    if (prismaData.courseId !== undefined && (!prismaData.courseId || isNaN(prismaData.courseId))) {
+      return res.status(400).json({ error: 'Guruh uchun kurs tanlanishi shart' });
     }
 
     const group = await prisma.group.update({
