@@ -10,6 +10,69 @@
   --color-brand-dark: #155252;
   --color-brand-light: #f0f8f8;
   --color-brand-accent: #2e9c9c;
+
+  /* Kulrang shkala. Komponentlarda gray-55, gray-150, gray-405, gray-750,
+     gray-850 kabi oraliq pog'onalar ~370 joyda ishlatilgan, lekin Tailwind'da
+     bunday pog'onalar yo'q edi — ya'ni o'sha klasslar hech qanday rang
+     bermasdan tushib qolar edi: ichki panellar fonsiz, chegaralar ko'rinmas.
+     Shkala butunlay slate ohangida qayta yozildi, chunki sahifa foni ham
+     slate (#0f172a) — shu bilan kartochka, panel va fon bitta oilaga tushdi. */
+  --color-gray-50:  #f8fafc;
+  --color-gray-55:  #f5f7fa;
+  --color-gray-100: #f1f4f8;
+  --color-gray-105: #eef2f7;
+  --color-gray-150: #e8edf3;
+  --color-gray-200: #e2e8f0;
+  --color-gray-250: #d8e0ea;
+  --color-gray-300: #cbd5e1;
+  --color-gray-305: #c4cfdd;
+  --color-gray-350: #b3c0d1;
+  --color-gray-400: #94a3b8;
+  --color-gray-405: #8d9db4;
+  --color-gray-455: #8494ab;
+  --color-gray-500: #64748b;
+  --color-gray-550: #5b6a80;
+  --color-gray-600: #475569;
+  --color-gray-650: #3e4a5e;
+  --color-gray-700: #334155;
+  --color-gray-750: #2a3547;
+  --color-gray-755: #283344;
+  --color-gray-800: #1e293b;
+  --color-gray-850: #172033;
+  --color-gray-900: #0f172a;
+  --color-gray-950: #080d17;
+
+  /* Ranglardagi shu turdagi oraliq pog'onalar ham bir nechta joyda uchraydi. */
+  --color-slate-55:  #f5f7fa;
+  --color-slate-350: #b3c0d1;
+  --color-slate-650: #3e4a5e;
+  --color-rose-55:   #fff5f6;
+  --color-rose-455:  #f77e8e;
+  --color-rose-550:  #ea3d5c;
+  --color-rose-650:  #cc1e40;
+  --color-emerald-350: #4ee0a4;
+  --color-emerald-550: #0aa668;
+  --color-emerald-650: #06855a;
+  --color-sky-455:   #48b4f0;
+  --color-sky-650:   #0378bd;
+  --color-teal-550:  #0d9488;
+  --color-teal-650:  #0c7f7f;
+
+  /* Tipografika ohangi. Ilovada font-black 309 marta, font-extrabold 304 marta,
+     uppercase esa 1191 marta ishlatilgan — natijada sahifadagi hamma narsa bir
+     xil baland ovozda "qichqirar" va ierarxiya yo'qolar edi. Har bir faylga
+     tegmasdan, shkalaning o'zi bir pog'ona pasaytirildi: yozuvlar o'z o'rnida
+     qoladi, lekin ko'z bir joyga tikiladi. */
+  --font-weight-medium: 500;
+  --font-weight-semibold: 600;
+  --font-weight-bold: 650;
+  --font-weight-extrabold: 700;
+  --font-weight-black: 780;
+
+  /* Bosh harfli yozuvlarda harflar orasi ham keng edi, bu qatorlarni
+     cho'zib, uzun o'zbek so'zlarini sig'masdan qoldirardi. */
+  --tracking-wider: 0.035em;
+  --tracking-widest: 0.06em;
 }
 
 @variant dark (&:is(.dark, .dark *));
@@ -59,6 +122,7 @@ body {
   background-color: #f1f5f9;
   color: #1e293b;
   -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
 .dark body,
