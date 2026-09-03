@@ -15,6 +15,8 @@ interface Student {
   balance: number;
   gender: string;
   telegramId?: string | null;
+  fatherTelegramId?: string | null;
+  motherTelegramId?: string | null;
   fatherName?: string | null;
   fatherPhone?: string | null;
   motherName?: string | null;

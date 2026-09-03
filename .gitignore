@@ -25,4 +25,7 @@ test_ssr.tsx
 /test-*.js
 /users_full.json
 
+# One-off scripts — may contain tokens/credentials, never commit
+/scratch/
+
 .vercel

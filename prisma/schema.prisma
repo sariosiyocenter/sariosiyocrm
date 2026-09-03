@@ -21,6 +21,7 @@ model Student {
   joinedDate String
   balance    Float     @default(0)
   photo      String?
+  comment    String?
   rating     Float?
   telegramId String?   @unique
   fatherTelegramId String?

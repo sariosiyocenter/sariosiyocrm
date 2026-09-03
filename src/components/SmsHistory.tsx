@@ -26,7 +26,7 @@ export default function SmsHistory() {
             });
             const data = await res.json();
             if (data.success) {
-                alert("Eskiz API muvaffaqiyatli bog'landi! Token: " + data.token.substring(0, 10) + "...");
+                alert("Eskiz API muvaffaqiyatli bog'landi!");
             } else {
                 alert("Xatolik: " + data.error);
             }

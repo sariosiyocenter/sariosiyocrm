@@ -6,6 +6,8 @@ import { PrismaClient } from '@prisma/client';
 import jwt from 'jsonwebtoken';
 import bot, { startBot, notifyAdmins, getTelegramBot } from './src/bot/bot.js';
 import bcrypt from 'bcryptjs';
+import helmet from 'helmet';
+import rateLimit from 'express-rate-limit';
 // import { scheduleAttendanceNotifications } from './src/utils/scheduler.js';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -29,10 +31,44 @@ if (process.env.TELEGRAM_BOT_TOKEN && !process.env.VERCEL) {
 const prisma = new PrismaClient();
 const app = express();
 const PORT = process.env.PORT || 3000;
-const JWT_SECRET = process.env.JWT_SECRET || 'your_fallback_secret';
+// A missing secret in production would silently sign tokens with a public string,
+// letting anyone forge an admin session — so fail loudly instead.
+if (!process.env.JWT_SECRET && process.env.NODE_ENV === 'production') {
+  throw new Error('JWT_SECRET muhit o\'zgaruvchisi o\'rnatilmagan — server ishga tushmaydi.');
+}
+const JWT_SECRET = process.env.JWT_SECRET || 'dev_only_insecure_secret';
+
+// Vercel terminates TLS upstream; without this the rate limiter sees one shared IP.
+app.set('trust proxy', 1);
+
+app.use(helmet({
+  // The SPA ships inline <style> blocks and pulls photos from Supabase, so CSP and COEP
+  // need their own tightening pass — the remaining headers (HSTS, noSniff, frameguard) apply now.
+  contentSecurityPolicy: false,
+  crossOriginEmbedderPolicy: false,
+  crossOriginResourcePolicy: { policy: 'cross-origin' },
+}));
 
 app.use(express.json({ limit: '3mb' }));
 app.use(express.urlencoded({ limit: '3mb', extended: true }));
+
+// Brute-force guard: the login route was previously unlimited.
+const loginLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 10,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: 'Juda ko\'p urinish. 15 daqiqadan keyin qayta urinib ko\'ring.' },
+});
+
+// Public forms have no captcha yet; this keeps a script from flooding the leads table.
+const publicFormLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000,
+  max: 20,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: 'Juda ko\'p ariza yuborildi. Birozdan keyin qayta urinib ko\'ring.' },
+});
 
 // Lazy Cron background execution for automatic message rules (throttled to once every 10 minutes)
 let lastLazyCronRun = 0;
@@ -131,7 +167,7 @@ app.get('/api/telegram-setup', async (req, res) => {
 });
 
 // --- Auth Routes ---
-app.post('/api/auth/login', async (req, res, next) => {
+app.post('/api/auth/login', loginLimiter, async (req, res, next) => {
   try {
     const { email, password } = req.body;
     if (!email || !password) return res.status(400).json({ error: 'Email va parol kiritilishi shart' });
@@ -1047,7 +1083,7 @@ app.post('/api/leads', authenticate, async (req, res, next) => {
   } catch (error) { next(error); }
 });
 // Public endpoint for landing page form submissions (no auth required)
-app.post('/api/public/leads', async (req, res, next) => {
+app.post('/api/public/leads', publicFormLimiter, async (req, res, next) => {
   try {
     const { name, phone, course } = req.body;
     if (!name || !phone) return res.status(400).json({ error: 'Ism va telefon majburiy' });
@@ -1130,7 +1166,7 @@ app.get('/api/public/tokens/:tokenId', async (req, res, next) => {
 });
 
 // POST register lead via public apply form using unique token (directly to students module)
-app.post('/api/public/schools/:schoolId/leads', async (req, res, next) => {
+app.post('/api/public/schools/:schoolId/leads', publicFormLimiter, async (req, res, next) => {
   try {
     const schoolId = parseInt(req.params.schoolId);
     if (isNaN(schoolId)) return res.status(400).json({ error: 'Mavjud bo\'lmagan filial ID' });
@@ -2059,7 +2095,14 @@ app.get('/api/init', authenticate, async (req, res, next) => {
           driver: { select: { id: true, name: true, phone: true } }
         }
       }),
-      prisma.user.findMany({ where: whereQuery }),
+      prisma.user.findMany({
+        where: whereQuery,
+        select: {
+          id: true, email: true, name: true, phone: true, photo: true, position: true,
+          salary: true, role: true, createdAt: true, telegramId: true, schoolId: true,
+          workDays: true, kpiPercent: true
+        }
+      }),
       prisma.question.findMany({ where: whereQuery }),
       prisma.exam.findMany({ where: whereQuery }),
       prisma.examResult.findMany({ where: whereQuery }),
@@ -2084,7 +2127,10 @@ app.get('/api/init', authenticate, async (req, res, next) => {
       teachers,
       groups: mappedGroups,
       leads, payments, courses, rooms,
-      settings, attendances, scores, teacherAttendances, expenses,
+      // Admins configure SMS/Telegram from the settings screen and need the real values;
+      // every other role gets the masked copy.
+      settings: isAdmin(req.user) ? settings : stripSettingSecrets(settings),
+      attendances, scores, teacherAttendances, expenses,
       transports, routes, users, questions, exams, examResults, schools,
       topics, syllabuses
     });
@@ -2258,13 +2304,24 @@ app.delete('/api/schools/:id', authenticate, async (req, res, next) => {
 });
 
 
+// Never write credentials to the log file — a stack trace is not worth a plaintext password.
+const SENSITIVE_KEYS = ['password', 'eskizPassword', 'telegram', 'token', 'newPassword', 'oldPassword'];
+function redactBody(body) {
+  if (!body || typeof body !== 'object') return body;
+  const clone = {};
+  for (const [k, v] of Object.entries(body)) {
+    clone[k] = SENSITIVE_KEYS.includes(k) ? '[REDACTED]' : v;
+  }
+  return clone;
+}
+
 // Global Error Handler
 app.use((err, req, res, next) => {
   console.error('Server Error:', err);
   try {
     import('fs').then(fs => {
       const logMsg = `\n[${new Date().toISOString()}] ERROR on ${req.method} ${req.url}\n` +
-                     `Body: ${JSON.stringify(req.body)}\n` +
+                     `Body: ${JSON.stringify(redactBody(req.body))}\n` +
                      `Error: ${err.message}\n` +
                      `Stack: ${err.stack}\n` +
                      `-------------------------------------------\n`;
@@ -2273,14 +2330,26 @@ app.use((err, req, res, next) => {
   } catch (e) {
     console.error('Failed to log error to file:', e);
   }
+  // Internal details (Prisma queries, column names, stack) stay server-side.
   res.status(500).json({
     error: 'Serverda xatolik yuz berdi',
-    message: err.message,
-    code: err.code
+    ...(process.env.NODE_ENV !== 'production' ? { message: err.message, code: err.code } : {})
   });
 });
 
 // Settings
+// Settings rows hold SMS/Telegram credentials. Only an admin has a reason to see them,
+// so everyone else gets a boolean flag instead of the secret itself.
+function stripSettingSecrets(settings) {
+  if (!settings) return settings;
+  const { eskizPassword, telegram, ...safe } = settings;
+  return { ...safe, eskizPasswordSet: !!eskizPassword, telegramSet: !!telegram };
+}
+
+function isAdmin(user) {
+  return user && (user.role === 'ADMIN' || user.role === 'SUPERADMIN');
+}
+
 app.get('/api/settings', authenticate, async (req, res, next) => {
   try {
     const { schoolId } = req.query;
@@ -2292,14 +2361,20 @@ app.get('/api/settings', authenticate, async (req, res, next) => {
         data: { schoolId: parseInt(schoolId), orgName: "QUANTUM EDU" }
       });
     }
-    res.json(settings);
+    res.json(isAdmin(req.user) ? settings : stripSettingSecrets(settings));
   } catch (error) { next(error); }
 });
 
 app.put('/api/settings', authenticate, async (req, res, next) => {
   try {
-    const { schoolId, ...data } = req.body;
+    if (!isAdmin(req.user)) return res.status(403).json({ error: 'Faqat administrator sozlamalarni o\'zgartira oladi' });
+    const { schoolId, eskizPasswordSet, telegramSet, ...data } = req.body;
     if (!schoolId) return res.status(400).json({ error: 'schoolId required' });
+
+    // An empty secret means "unchanged" — never let a blank field wipe stored credentials.
+    for (const key of ['eskizPassword', 'telegram']) {
+      if (data[key] !== undefined && String(data[key]).trim() === '') delete data[key];
+    }
 
     const oldSettings = await prisma.setting.findUnique({ where: { schoolId: parseInt(schoolId) } });
 
@@ -3211,9 +3286,10 @@ app.get('/api/sms/check-status/:id', authenticate, async (req, res, next) => {
 // API: Eskiz token tekshirish (test)
 app.get('/api/sms/test-connection', authenticate, async (req, res, next) => {
   try {
-    const token = await getEskizToken();
+    // The token itself never leaves the server — the caller only needs to know the login worked.
+    await getEskizToken();
     res.setHeader('Cache-Control', 'no-store');
-    res.json({ success: true, message: 'Eskiz API muvaffaqiyatli bog\'landi', token });
+    res.json({ success: true, message: 'Eskiz API muvaffaqiyatli bog\'landi' });
   } catch (err) {
     res.setHeader('Cache-Control', 'no-store');
     res.status(500).json({ success: false, error: err.message });
