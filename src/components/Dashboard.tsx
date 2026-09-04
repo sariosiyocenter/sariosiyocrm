@@ -516,7 +516,13 @@ export default function Dashboard() {
                         <p className="text-[12px] text-gray-400 mt-0.5">Tanlangan muddat uchun markaz ko'rsatkichlari</p>
                     </div>
                     {/* Secondary Tabs for Reports */}
-                    <div className="flex overflow-x-auto no-scrollbar flex-nowrap gap-1 bg-gray-55 dark:bg-gray-900 p-1 rounded-xl border border-gray-100 dark:border-gray-800 max-w-full">
+                    {/* `overflow-x-auto` aylantirish uchun kerak edi, lekin brauzer
+                        bunday elementni ikkala yo'nalishda ham kesadi — shuning uchun
+                        "Boshqalar" ro'yxati tugma ostida ochilib, ko'rinmay qolardi.
+                        Endi aylantirish faqat asosiy tablarga tegishli, ro'yxat esa
+                        kesuvchi konteynerdan tashqarida. */}
+                    <div className="flex items-center gap-1 bg-gray-55 dark:bg-gray-900 p-1 rounded-xl border border-gray-100 dark:border-gray-800 max-w-full">
+                      <div className="flex overflow-x-auto no-scrollbar flex-nowrap gap-1 min-w-0">
                         {PRIMARY_REPORTS.map(r => (
                             <button
                                 key={r.id}
@@ -535,8 +541,10 @@ export default function Dashboard() {
                             </button>
                         ))}
 
+                      </div>
+
                         {/* Secondary reports dropdown button */}
-                        <div className="relative">
+                        <div className="relative shrink-0">
                             <button
                                 onClick={() => setIsDropdownOpen(!isDropdownOpen)}
                                 className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[12px] font-medium transition-colors cursor-pointer whitespace-nowrap ${
@@ -569,10 +577,10 @@ export default function Dashboard() {
                                                     setActiveReportTab(r.id);
                                                     setIsDropdownOpen(false);
                                                 }}
-                                                className={`flex items-center gap-2 w-full px-3 py-2 rounded-lg text-[11px] font-black uppercase tracking-wider text-left transition-all duration-150 ${
+                                                className={`flex items-center gap-2 w-full px-3 py-2 rounded-lg text-[12px] font-medium text-left transition-colors ${
                                                     activeReportTab === r.id
-                                                        ? 'bg-gray-50 dark:bg-gray-900 text-[#1b6b6b] dark:text-emerald-400'
-                                                        : 'text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-[#0b111a] hover:text-gray-900 dark:hover:text-white'
+                                                        ? 'bg-[#1b6b6b]/10 text-[#1b6b6b] dark:text-teal-400'
+                                                        : 'text-gray-500 dark:text-gray-400 hover:bg-gray-55 dark:hover:bg-gray-900 hover:text-gray-900 dark:hover:text-white'
                                                 }`}
                                             >
                                                 <span className="shrink-0">{r.icon}</span>
