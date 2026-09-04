@@ -25,40 +25,41 @@
   --color-brand-ust: #ffffff;
   --color-brand-fon: #ddefeb;
 
-  /* --- Kulrang shkala ------------------------------------------------------
-     Bitta sovuq slate oilasi, ikkala mavzu uchun. Qiymatlar tasdiqlangan
-     chizmadagi palitradan olingan (docs/UI_UPGRADE_PLAN.md, 1.1a):
+  /* --- Kulrang shkala, yorug' mavzu ----------------------------------------
+     Chizmadagi iliq yashil-kulrang oila. Qorong'u mavzudagi qiymatlar
+     quyida, .dark ichida — chizmada ikkala mavzu turli ohangda edi.
+     Rollar (docs/UI_UPGRADE_PLAN.md, 1.1a):
        950 — sahifa foni      900 — kartochka
        800 — asosiy chegara   700 — kuchli chegara
        400 — so'ngan matn     900 — asosiy matn (yorug' mavzuda)
      Har pog'ona ilovadagi eng ko'p ishlatiladigan roliga qarab tanlangan,
      shuning uchun 25 ming qator kodga tegmasdan butun ilova yangi palitraga
      o'tadi. */
-  --color-gray-50:  #f7f9fb;
-  --color-gray-55:  #f3f6f9;
-  --color-gray-100: #e9eef4;
-  --color-gray-105: #e6ebf2;
-  --color-gray-150: #e1e7ef;
-  --color-gray-200: #d7dfea;
-  --color-gray-250: #cdd7e4;
-  --color-gray-300: #bcc8d8;
-  --color-gray-305: #b5c2d3;
-  --color-gray-350: #a3b1c4;
-  --color-gray-400: #8b98ab;
-  --color-gray-405: #838fa3;
-  --color-gray-455: #7b8799;
-  --color-gray-450: #7f8c9f;
-  --color-gray-500: #6d7b8f;
-  --color-gray-550: #5e6b7d;
-  --color-gray-600: #4e5a6b;
-  --color-gray-650: #3e4a5a;
-  --color-gray-700: #2b323d;
-  --color-gray-750: #262d38;
-  --color-gray-755: #242b36;
-  --color-gray-800: #232a35;
-  --color-gray-850: #1c222c;
-  --color-gray-900: #171c25;
-  --color-gray-950: #0f1216;
+  --color-gray-50:  #f9fbfa;
+  --color-gray-55:  #f4f6f5;
+  --color-gray-100: #eaefec;
+  --color-gray-105: #e7ecea;
+  --color-gray-150: #e3e8e5;
+  --color-gray-200: #dbe2de;
+  --color-gray-250: #d1dad5;
+  --color-gray-300: #c2ccc7;
+  --color-gray-305: #bbc6c0;
+  --color-gray-350: #a9b5af;
+  --color-gray-400: #8a978f;
+  --color-gray-405: #82908a;
+  --color-gray-450: #7c8a83;
+  --color-gray-455: #78867f;
+  --color-gray-500: #71827b;
+  --color-gray-550: #5f6f69;
+  --color-gray-600: #4e5c56;
+  --color-gray-650: #3d4b45;
+  --color-gray-700: #2f3a35;
+  --color-gray-750: #27302c;
+  --color-gray-755: #232b28;
+  --color-gray-800: #1f2724;
+  --color-gray-850: #1a211e;
+  --color-gray-900: #16211d;
+  --color-gray-950: #0f1613;
 
   /* Ranglardagi oraliq pog'onalar ham bir nechta joyda uchraydi. */
   --color-slate-55:  #f3f6f9;
@@ -69,8 +70,8 @@
      Chizmadagi yaxshi / ogoh / xato tokenlari. Ilovada allaqachon
      emerald / amber / rose to'g'ridan-to'g'ri yozilgan, shuning uchun
      o'sha pog'onalarning o'zi tasdiqlangan qiymatlarga keltirildi. */
-  --color-emerald-350: #6bd3a3;
-  --color-emerald-400: #4fc98d;
+  --color-emerald-350: #5ce3ad;
+  --color-emerald-400: #3ddc97;
   --color-emerald-500: #1da865;
   --color-emerald-550: #17944f;
   --color-emerald-600: #17803d;
@@ -78,7 +79,7 @@
   --color-emerald-50:  #dcf1e3;
   --color-emerald-950: #14302a;
 
-  --color-amber-400: #f0ad4e;
+  --color-amber-400: #ffb547;
   --color-amber-500: #d78f10;
   --color-amber-600: #a86a00;
   --color-amber-50:  #fdf0dc;
@@ -104,17 +105,17 @@
      text-matn, border-chiziq. Har token bitta ma'noni bildiradi va mavzu
      almashganda ma'no o'zgarmaydi — komponent qaysi mavzuda ekanini
      bilishi shart emas. Bu yerdagilar yorug' mavzu; qorong'usi quyida. */
-  --color-fon:          #f3f6f9;
+  --color-fon:          #f4f6f5;
   --color-sirt:         #ffffff;
   --color-sirt-2:       #ffffff;
-  --color-ichki:        #f3f6f9;
-  --color-chiziq:       #e1e7ef;
-  --color-chiziq-kuchli:#d7dfea;
-  --color-chiziq-mayin: #e9eef4;
-  --color-matn:         #171c25;
-  --color-matn-2:       #3e4a5a;
-  --color-matn-sokin:   #6d7b8f;
-  --color-matn-xira:    #8b98ab;
+  --color-ichki:        #f4f6f5;
+  --color-chiziq:       #e3e8e5;
+  --color-chiziq-kuchli:#dbe2de;
+  --color-chiziq-mayin: #eaefec;
+  --color-matn:         #16211d;
+  --color-matn-2:       #3d4b45;
+  --color-matn-sokin:   #71827b;
+  --color-matn-xira:    #8a978f;
   --color-yaxshi:       #17803d;
   --color-yaxshi-fon:   #dcf1e3;
   --color-ogoh:         #a86a00;
@@ -155,10 +156,40 @@
    mavzuda bir xil qoladi, chunki unga `dark:` variantlari orqali murojaat
    qilinadi. */
 .dark {
+  /* Kulrang shkala, qorong'u mavzu — chizmadagi sovuq slate oilasi.
+     Tartib o'sha-o'sha: 50 eng yorug', 950 eng qorong'u. Shuning uchun
+     `dark:` variantlari (dark:bg-gray-900 kartochka, dark:border-gray-800
+     chegara, dark:text-gray-400 so'ngan matn) o'z ma'nosida qoladi. */
+  --color-gray-50:  #eef1f5;
+  --color-gray-55:  #e8ebef;
+  --color-gray-100: #dbe0e7;
+  --color-gray-105: #d5dbe3;
+  --color-gray-150: #cdd4dd;
+  --color-gray-200: #c3cad4;
+  --color-gray-250: #b3bbc7;
+  --color-gray-300: #a3acba;
+  --color-gray-305: #9ca5b3;
+  --color-gray-350: #939caa;
+  --color-gray-400: #8b93a1;
+  --color-gray-405: #838b99;
+  --color-gray-450: #7b8390;
+  --color-gray-455: #757d8a;
+  --color-gray-500: #6b7482;
+  --color-gray-550: #5c6472;
+  --color-gray-600: #4d5462;
+  --color-gray-650: #3e4552;
+  --color-gray-700: #2b323d;
+  --color-gray-750: #262d38;
+  --color-gray-755: #242b36;
+  --color-gray-800: #232a35;
+  --color-gray-850: #1c222c;
+  --color-gray-900: #171c25;
+  --color-gray-950: #0f1216;
+
   --color-fon:          #0f1216;
   --color-sirt:         #171c25;
   --color-sirt-2:       #131720;
-  --color-ichki:        #1c222c;
+  --color-ichki:        #181d26;
   --color-chiziq:       #232a35;
   --color-chiziq-kuchli:#2b323d;
   --color-chiziq-mayin: #1e242e;
@@ -166,9 +197,9 @@
   --color-matn-2:       #c3cad4;
   --color-matn-sokin:   #8b93a1;
   --color-matn-xira:    #6b7482;
-  --color-yaxshi:       #4fc98d;
+  --color-yaxshi:       #3ddc97;
   --color-yaxshi-fon:   #14302a;
-  --color-ogoh:         #f0ad4e;
+  --color-ogoh:         #ffb547;
   --color-ogoh-fon:     #32281a;
   --color-xato:         #ff5d6c;
   --color-xato-fon:     #2a1a1e;
@@ -242,8 +273,8 @@ body {
 /* Scrollbar */
 ::-webkit-scrollbar { width: 5px; height: 5px; }
 ::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb { background: #c3cfdd; border-radius: 4px; }
-::-webkit-scrollbar-thumb:hover { background: #a3b1c4; }
+::-webkit-scrollbar-thumb { background: #c8d2cc; border-radius: 4px; }
+::-webkit-scrollbar-thumb:hover { background: #a9b5af; }
 .dark ::-webkit-scrollbar-thumb { background: #2b323d; border-radius: 4px; }
 .dark ::-webkit-scrollbar-thumb:hover { background: #3b4552; }
 

@@ -3,16 +3,16 @@ import { Student, Teacher, Group, Lead, Payment, CRMState, Course, Room, School,
 import { generateVariants } from '../lib/shuffler';
 
 export const THEMES = [
-    { id: 'zumrad', name: "Sokin Zumrad", primary: '#1b6b6b', hover: '#155252', light: '#f0f8f8', gradientStart: '#1b6b6b', gradientEnd: '#2e9c9c' , bright: '#4fa9a1' },
-    { id: 'indigo', name: "Kosmik Indigo", primary: '#6366f1', hover: '#4f46e5', light: '#eef2ff', gradientStart: '#6366f1', gradientEnd: '#4f46e5' , bright: '#8a92d6' },
-    { id: 'yoqut', name: "Qirollik Yoquti", primary: '#dc2626', hover: '#b91c1c', light: '#fef2f2', gradientStart: '#dc2626', gradientEnd: '#ef4444' , bright: '#e0736c' },
-    { id: 'oltin', name: "Zafaron Oltin", primary: '#d97706', hover: '#b45309', light: '#fffbeb', gradientStart: '#d97706', gradientEnd: '#f59e0b' , bright: '#d9a154' },
-    { id: 'okean', name: "Klassik Okean", primary: '#0284c7', hover: '#0369a1', light: '#f0f9ff', gradientStart: '#0284c7', gradientEnd: '#38bdf8' , bright: '#61a6cf' },
-    { id: 'yalpiz', name: "Yalpiz Tarovati", primary: '#059669', hover: '#047857', light: '#ecfdf5', gradientStart: '#059669', gradientEnd: '#10b981' , bright: '#4fb387' },
-    { id: 'binafsha', name: "Tungi Binafsha", primary: '#7c3aed', hover: '#6d28d9', light: '#f5f3ff', gradientStart: '#7c3aed', gradientEnd: '#8b5cf6' , bright: '#9d87d4' },
-    { id: 'burgundiya', name: "Burgundiya Iffati", primary: '#db2777', hover: '#be185d', light: '#fdf2f8', gradientStart: '#db2777', gradientEnd: '#ec4899' , bright: '#d9819f' },
-    { id: 'bronza', name: "Kuzgi Bronza", primary: '#854d0e', hover: '#713f12', light: '#fefce8', gradientStart: '#854d0e', gradientEnd: '#a16207' , bright: '#c19457' },
-    { id: 'shifer', name: "Tungi Shifer", primary: '#475569', hover: '#334155', light: '#f8fafc', gradientStart: '#475569', gradientEnd: '#64748b' , bright: '#94a3b6' }
+    { id: 'zumrad', name: "Sokin Zumrad", primary: '#1b6b6b', hover: '#155252', light: '#f0f8f8', gradientStart: '#1b6b6b', gradientEnd: '#2e9c9c' , bright: '#3ddad0' },
+    { id: 'indigo', name: "Kosmik Indigo", primary: '#6366f1', hover: '#4f46e5', light: '#eef2ff', gradientStart: '#6366f1', gradientEnd: '#4f46e5' , bright: '#a5b0ff' },
+    { id: 'yoqut', name: "Qirollik Yoquti", primary: '#dc2626', hover: '#b91c1c', light: '#fef2f2', gradientStart: '#dc2626', gradientEnd: '#ef4444' , bright: '#ff7b72' },
+    { id: 'oltin', name: "Zafaron Oltin", primary: '#d97706', hover: '#b45309', light: '#fffbeb', gradientStart: '#d97706', gradientEnd: '#f59e0b' , bright: '#ffb547' },
+    { id: 'okean', name: "Klassik Okean", primary: '#0284c7', hover: '#0369a1', light: '#f0f9ff', gradientStart: '#0284c7', gradientEnd: '#38bdf8' , bright: '#5cc0f5' },
+    { id: 'yalpiz', name: "Yalpiz Tarovati", primary: '#059669', hover: '#047857', light: '#ecfdf5', gradientStart: '#059669', gradientEnd: '#10b981' , bright: '#3ddc97' },
+    { id: 'binafsha', name: "Tungi Binafsha", primary: '#7c3aed', hover: '#6d28d9', light: '#f5f3ff', gradientStart: '#7c3aed', gradientEnd: '#8b5cf6' , bright: '#b794ff' },
+    { id: 'burgundiya', name: "Burgundiya Iffati", primary: '#db2777', hover: '#be185d', light: '#fdf2f8', gradientStart: '#db2777', gradientEnd: '#ec4899' , bright: '#ff85b8' },
+    { id: 'bronza', name: "Kuzgi Bronza", primary: '#854d0e', hover: '#713f12', light: '#fefce8', gradientStart: '#854d0e', gradientEnd: '#a16207' , bright: '#d9a44a' },
+    { id: 'shifer', name: "Tungi Shifer", primary: '#475569', hover: '#334155', light: '#f8fafc', gradientStart: '#475569', gradientEnd: '#64748b' , bright: '#9fb0c6' }
 ];
 
 interface AuthenticatedUser {
