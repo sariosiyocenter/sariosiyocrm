@@ -879,7 +879,7 @@ export default function Messaging() {
   return (
     <div className="space-y-6 pb-12 animate-in fade-in duration-300 max-w-7xl mx-auto">
       {/* ===== HEADER ===== */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white dark:bg-slate-900 p-6 rounded-3xl border border-slate-100 dark:border-slate-800 shadow-sm">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white dark:bg-slate-900 p-4 rounded-2xl border border-slate-100 dark:border-slate-800 shadow-sm">
         <div>
           <h1 className="text-sm font-black text-slate-900 dark:text-white tracking-tight flex items-center gap-2">
             <MessageSquare className="w-5 h-5 text-brand" />
@@ -921,9 +921,9 @@ export default function Messaging() {
 
       {/* ===== TAB 1: NEW MESSAGE ===== */}
       {activeTab === 'new' && (
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 items-start">
           {/* Left panel: Filters (4 Cols) */}
-          <div className="lg:col-span-5 bg-white dark:bg-slate-900 rounded-3xl border border-slate-100 dark:border-slate-800 shadow-sm p-6 space-y-5">
+          <div className="lg:col-span-5 bg-white dark:bg-slate-900 rounded-2xl border border-slate-100 dark:border-slate-800 shadow-sm p-4 space-y-5">
             <div className="flex items-center gap-2 border-b border-dashed border-slate-100 dark:border-slate-800 pb-3">
               <Filter className="w-4 h-4 text-brand" />
               <h2 className="text-xs font-black text-slate-800 dark:text-slate-200">Qabul qiluvchi filtrlari</h2>
@@ -1199,7 +1199,7 @@ export default function Messaging() {
                   })}
                 </div>
               ) : (
-                <div className="border border-slate-100 dark:border-slate-800 rounded-2xl p-6 text-center bg-slate-50/40 dark:bg-slate-950/20 text-[11px] font-bold uppercase tracking-wider text-slate-405 dark:text-slate-505">
+                <div className="border border-slate-100 dark:border-slate-800 rounded-2xl p-4 text-center bg-slate-50/40 dark:bg-slate-950/20 text-[11px] font-bold uppercase tracking-wider text-slate-405 dark:text-slate-505">
                   Filtr bo'yicha o'quvchi topilmadi
                 </div>
               )}
@@ -1207,7 +1207,7 @@ export default function Messaging() {
           </div>
 
           {/* Right panel: Campaign Builder (7 Cols) */}
-          <div className="lg:col-span-7 bg-white dark:bg-slate-900 rounded-3xl border border-slate-100 dark:border-slate-800 shadow-sm p-6 space-y-6">
+          <div className="lg:col-span-7 bg-white dark:bg-slate-900 rounded-2xl border border-slate-100 dark:border-slate-800 shadow-sm p-4 space-y-6">
             <div className="flex items-center gap-2 border-b border-dashed border-slate-100 dark:border-slate-800 pb-3">
               <Send className="w-4 h-4 text-brand" />
               <h2 className="text-xs font-black text-slate-800 dark:text-slate-200">Xabar yuborish paneli</h2>
@@ -1341,9 +1341,9 @@ export default function Messaging() {
             </button>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {templates.map(t => (
-              <div key={t.id} className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-100 dark:border-slate-800 shadow-sm p-6 flex flex-col justify-between space-y-4 hover:shadow-md transition-all group">
+              <div key={t.id} className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-100 dark:border-slate-800 shadow-sm p-4 flex flex-col justify-between space-y-4 hover:shadow-md transition-all group">
                 <div className="space-y-2">
                   <div className="flex items-center justify-between">
                     <span className="text-[11px] font-bold uppercase tracking-wider px-2 py-1 rounded bg-brand/10 dark:bg-brand/40 text-brand dark:text-brand border border-brand/20 dark:border-brand/30">
@@ -1369,7 +1369,7 @@ export default function Messaging() {
               </div>
             ))}
             {templates.length === 0 && (
-              <div className="col-span-full bg-white dark:bg-slate-900 rounded-3xl border border-slate-100 dark:border-slate-800 p-16 text-center">
+              <div className="col-span-full bg-white dark:bg-slate-900 rounded-2xl border border-slate-100 dark:border-slate-800 p-16 text-center">
                 <FileText className="w-8 h-8 text-slate-200 dark:text-slate-750 mx-auto mb-3" />
                 <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Hozircha shablonlar yaratilmagan</p>
               </div>
@@ -1392,13 +1392,13 @@ export default function Messaging() {
             </button>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {rules.map(rule => {
               const meta = getTriggerTypeMeta(rule.type);
               const isBirthday = rule.type === 'BIRTHDAY';
               const isDebt = rule.type === 'DEBT_REMINDER';
               return (
-                <div key={rule.id} className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-100 dark:border-slate-800 shadow-sm p-6 flex flex-col justify-between space-y-4 hover:shadow-md transition-all group">
+                <div key={rule.id} className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-100 dark:border-slate-800 shadow-sm p-4 flex flex-col justify-between space-y-4 hover:shadow-md transition-all group">
                   <div className="space-y-3">
                     {/* Header */}
                     <div className="flex items-center justify-between">
@@ -1457,7 +1457,7 @@ export default function Messaging() {
               );
             })}
             {rules.length === 0 && (
-              <div className="col-span-full bg-white dark:bg-slate-900 rounded-3xl border border-slate-100 dark:border-slate-800 p-16 text-center">
+              <div className="col-span-full bg-white dark:bg-slate-900 rounded-2xl border border-slate-100 dark:border-slate-800 p-16 text-center">
                 <Zap className="w-8 h-8 text-slate-200 dark:text-slate-750 mx-auto mb-3" />
                 <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Hozircha avtomatik qoidalar yaratilmagan</p>
               </div>
@@ -1470,28 +1470,28 @@ export default function Messaging() {
       {activeTab === 'history' && (
         <div className="space-y-6">
           {/* Header statistics */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-6">
-            <div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-100 dark:border-slate-800 p-5 shadow-sm">
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
+            <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-100 dark:border-slate-800 p-5 shadow-sm">
               <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Jami loglar</span>
               <p className="text-xl font-black text-slate-800 dark:text-white mt-1 tabular-nums">{logs.length}</p>
             </div>
-            <div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-100 dark:border-slate-800 p-5 shadow-sm">
+            <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-100 dark:border-slate-800 p-5 shadow-sm">
               <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Muvaffaqiyatli</span>
               <p className="text-xl font-black text-emerald-500 mt-1 tabular-nums">{logs.filter(l => l.status === 'SENT').length}</p>
             </div>
-            <div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-100 dark:border-slate-800 p-5 shadow-sm">
+            <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-100 dark:border-slate-800 p-5 shadow-sm">
               <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Xatolik yuz bergan</span>
               <p className="text-xl font-black text-rose-500 mt-1 tabular-nums">{logs.filter(l => l.status === 'FAILED').length}</p>
             </div>
-            <div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-100 dark:border-slate-800 p-5 shadow-sm">
+            <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-100 dark:border-slate-800 p-5 shadow-sm">
               <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Kutilmoqda (Pending)</span>
               <p className="text-xl font-black text-amber-500 mt-1 tabular-nums">{logs.filter(l => l.status === 'PENDING').length}</p>
             </div>
           </div>
 
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 items-start">
             {/* Campaign History list (5 Cols) */}
-            <div className="lg:col-span-4 bg-white dark:bg-slate-900 rounded-3xl border border-slate-100 dark:border-slate-800 shadow-sm p-6 space-y-4">
+            <div className="lg:col-span-4 bg-white dark:bg-slate-900 rounded-2xl border border-slate-100 dark:border-slate-800 shadow-sm p-4 space-y-4">
               <div className="flex justify-between items-center border-b border-dashed border-slate-100 dark:border-slate-800 pb-3">
                 <h3 className="text-xs font-black text-slate-800 dark:text-slate-200">Ommaviy kampaniyalar</h3>
                 {selectedCampaignId !== null && (
@@ -1529,7 +1529,7 @@ export default function Messaging() {
             </div>
 
             {/* Individual logs grid (8 Cols) */}
-            <div className="lg:col-span-8 bg-white dark:bg-slate-900 rounded-3xl border border-slate-100 dark:border-slate-800 shadow-sm overflow-hidden">
+            <div className="lg:col-span-8 bg-white dark:bg-slate-900 rounded-2xl border border-slate-100 dark:border-slate-800 shadow-sm overflow-hidden">
               {/* Header actions */}
               <div className="p-5 flex flex-col md:flex-row gap-4 justify-between items-center border-b border-dashed border-slate-100 dark:border-slate-800">
                 <div className="flex items-center gap-3">
@@ -1738,7 +1738,7 @@ export default function Messaging() {
       {confirmModalOpen && (
         <div className="fixed inset-0 z-[1000] flex items-start sm:items-center justify-center overflow-y-auto p-4">
           <div className="absolute inset-0 bg-slate-900/50 backdrop-blur-sm" onClick={() => setConfirmModalOpen(false)} />
-          <div className="relative bg-white dark:bg-slate-900 rounded-3xl max-w-md w-full p-6 space-y-6 shadow-2xl border border-slate-100 dark:border-slate-800 animate-in zoom-in-95 duration-200">
+          <div className="relative bg-white dark:bg-slate-900 rounded-2xl max-w-md w-full p-4 space-y-6 shadow-2xl border border-slate-100 dark:border-slate-800 animate-in zoom-in-95 duration-200">
             <div className="space-y-2">
               <h3 className="text-sm font-black tracking-wide text-slate-900 dark:text-white">Kampaniyani tasdiqlaysizmi?</h3>
               <p className="text-xs text-slate-500 leading-normal">
@@ -1769,7 +1769,7 @@ export default function Messaging() {
       {showRecipientListModal && (
         <div className="fixed inset-0 z-[1000] flex items-start sm:items-center justify-center overflow-y-auto p-4">
           <div className="absolute inset-0 bg-slate-900/50 backdrop-blur-sm" onClick={() => setShowRecipientListModal(false)} />
-          <div className="relative bg-white dark:bg-slate-900 rounded-3xl max-w-lg w-full p-6 space-y-4 shadow-2xl border border-slate-100 dark:border-slate-800 animate-in zoom-in-95 duration-200">
+          <div className="relative bg-white dark:bg-slate-900 rounded-2xl max-w-lg w-full p-4 space-y-4 shadow-2xl border border-slate-100 dark:border-slate-800 animate-in zoom-in-95 duration-200">
             <div className="flex justify-between items-center border-b border-dashed border-slate-100 dark:border-slate-800 pb-3">
               <h3 className="text-sm font-black tracking-wide text-slate-900 dark:text-white">Qabul qiluvchilar ro'yxati</h3>
               <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider tabular-nums">{activeSelectedCount}/{filteredRecipients.length} ta</span>
@@ -1808,7 +1808,7 @@ export default function Messaging() {
       {templateModalOpen && (
         <div className="fixed inset-0 z-[1000] flex items-start sm:items-center justify-center overflow-y-auto p-4">
           <div className="absolute inset-0 bg-slate-900/50 backdrop-blur-sm" onClick={() => setTemplateModalOpen(false)} />
-          <form onSubmit={handleSaveTemplate} className="relative bg-white dark:bg-slate-900 rounded-3xl max-w-md w-full p-6 space-y-4 shadow-2xl border border-slate-100 dark:border-slate-800 animate-in zoom-in-95 duration-200">
+          <form onSubmit={handleSaveTemplate} className="relative bg-white dark:bg-slate-900 rounded-2xl max-w-md w-full p-4 space-y-4 shadow-2xl border border-slate-100 dark:border-slate-800 animate-in zoom-in-95 duration-200">
             <h3 className="text-sm font-black tracking-wide text-slate-900 dark:text-white">
               {editingTemplate ? 'Shablonni tahrirlash' : 'Yangi shablon yaratish'}
             </h3>
@@ -1870,7 +1870,7 @@ export default function Messaging() {
       {autoRuleModalOpen && (
         <div className="fixed inset-0 z-[1000] flex items-start sm:items-center justify-center overflow-y-auto p-4">
           <div className="absolute inset-0 bg-slate-900/50 backdrop-blur-sm" onClick={() => setAutoRuleModalOpen(false)} />
-          <form onSubmit={handleSaveAutoRule} className="relative bg-white dark:bg-slate-900 rounded-3xl max-w-md w-full p-6 space-y-4 shadow-2xl border border-slate-100 dark:border-slate-800 animate-in zoom-in-95 duration-200">
+          <form onSubmit={handleSaveAutoRule} className="relative bg-white dark:bg-slate-900 rounded-2xl max-w-md w-full p-4 space-y-4 shadow-2xl border border-slate-100 dark:border-slate-800 animate-in zoom-in-95 duration-200">
             <h3 className="text-sm font-black tracking-wide text-slate-900 dark:text-white">
               {editingAutoRule ? 'Avtomatik qoidani tahrirlash' : 'Yangi avtomatik qoida yaratish'}
             </h3>

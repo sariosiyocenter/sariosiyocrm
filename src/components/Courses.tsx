@@ -4,7 +4,7 @@ import { useCRM } from '../context/CRMContext';
 import { useLang } from '../context/LanguageContext';
 import { useNavigate } from 'react-router-dom';
 
-const inp = "w-full px-4 py-3 bg-gray-55 dark:bg-[#0b111a]/50 border border-gray-100 dark:border-gray-750 rounded-2xl text-xs font-bold text-gray-900 dark:text-white focus:border-[#1b6b6b] focus:ring-4 focus:ring-[#1b6b6b]/10 outline-none transition-all";
+const inp = "w-full px-4 py-3 bg-gray-55 dark:bg-gray-900/50 border border-gray-100 dark:border-gray-750 rounded-2xl text-xs font-bold text-gray-900 dark:text-white focus:border-[#1b6b6b] focus:ring-4 focus:ring-[#1b6b6b]/10 outline-none transition-all";
 const lbl = "block text-[11px] font-extrabold uppercase tracking-wider text-gray-400 mb-2";
 
 export default function Courses() {
@@ -218,12 +218,12 @@ export default function Courses() {
                             <input
                                 type="text" placeholder={t('search_group_placeholder')}
                                 value={search} onChange={e => setSearch(e.target.value)}
-                                className="pl-9 pr-4 py-2.5 bg-gray-55 dark:bg-[#0b111a]/50 border border-gray-100 dark:border-gray-750 rounded-xl text-xs font-bold text-gray-900 dark:text-white outline-none focus:border-[#1b6b6b] transition-all w-52"
+                                className="pl-9 pr-4 py-2.5 bg-gray-55 dark:bg-gray-900/50 border border-gray-100 dark:border-gray-750 rounded-xl text-xs font-bold text-gray-900 dark:text-white outline-none focus:border-[#1b6b6b] transition-all w-52"
                             />
                         </div>
                         <button
                             onClick={() => setShowFilters(!showFilters)}
-                            className={`w-10 h-10 flex items-center justify-center rounded-xl border transition-all cursor-pointer ${showFilters ? 'bg-[#1b6b6b] border-[#1b6b6b] text-white' : 'bg-gray-55 dark:bg-[#0b111a]/50 border-gray-100 dark:border-[#232d42] text-gray-400 hover:border-[#1b6b6b]'}`}
+                            className={`w-10 h-10 flex items-center justify-center rounded-xl border transition-all cursor-pointer ${showFilters ? 'bg-[#1b6b6b] border-[#1b6b6b] text-white' : 'bg-gray-55 dark:bg-gray-900/50 border-gray-100 dark:border-gray-800 text-gray-400 hover:border-[#1b6b6b]'}`}
                         >
                             <SlidersHorizontal size={15} />
                         </button>
@@ -237,11 +237,11 @@ export default function Courses() {
                 </div>
 
                 {showFilters && (
-                    <div className="mt-4 p-5 bg-white dark:bg-[#151c2c] border border-gray-100 dark:border-[#232d42]/50 rounded-2xl grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                    <div className="mt-4 p-5 bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-800/50 rounded-2xl grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                         <div>
                             <label className={lbl}>{t('group_teacher')}</label>
                             <select value={filters.teacherId} onChange={e => setFilters({...filters, teacherId: e.target.value})}
-                                className="w-full px-3 py-2 bg-gray-55 dark:bg-[#0b111a]/50 border border-gray-100 dark:border-[#232d42] rounded-xl text-[11px] font-bold text-gray-700 dark:text-white outline-none focus:border-[#1b6b6b] transition-all cursor-pointer">
+                                className="w-full px-3 py-2 bg-gray-55 dark:bg-gray-900/50 border border-gray-100 dark:border-gray-800 rounded-xl text-[11px] font-bold text-gray-700 dark:text-white outline-none focus:border-[#1b6b6b] transition-all cursor-pointer">
                                 <option value="">{t('all')}</option>
                                 {teachers.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
                             </select>
@@ -249,7 +249,7 @@ export default function Courses() {
                         <div>
                             <label className={lbl}>{t('days')}</label>
                             <select value={filters.dayType} onChange={e => setFilters({...filters, dayType: e.target.value})}
-                                className="w-full px-3 py-2 bg-gray-55 dark:bg-[#0b111a]/50 border border-gray-100 dark:border-[#232d42] rounded-xl text-[11px] font-bold text-gray-700 dark:text-white outline-none focus:border-[#1b6b6b] transition-all cursor-pointer">
+                                className="w-full px-3 py-2 bg-gray-55 dark:bg-gray-900/50 border border-gray-100 dark:border-gray-800 rounded-xl text-[11px] font-bold text-gray-700 dark:text-white outline-none focus:border-[#1b6b6b] transition-all cursor-pointer">
                                 <option value="all">{t('all')}</option>
                                 <option value="TOQ">{t('odd_days')}</option>
                                 <option value="JUFT">{t('even_days')}</option>
@@ -259,7 +259,7 @@ export default function Courses() {
                         <div>
                             <label className={lbl}>{t('group_room')}</label>
                             <select value={filters.roomId} onChange={e => setFilters({...filters, roomId: e.target.value})}
-                                className="w-full px-3 py-2 bg-gray-55 dark:bg-[#0b111a]/50 border border-gray-100 dark:border-[#232d42] rounded-xl text-[11px] font-bold text-gray-700 dark:text-white outline-none focus:border-[#1b6b6b] transition-all cursor-pointer">
+                                className="w-full px-3 py-2 bg-gray-55 dark:bg-gray-900/50 border border-gray-100 dark:border-gray-800 rounded-xl text-[11px] font-bold text-gray-700 dark:text-white outline-none focus:border-[#1b6b6b] transition-all cursor-pointer">
                                 <option value="">{t('all')}</option>
                                 {rooms.map(r => <option key={r.id} value={r.id}>{r.name}</option>)}
                             </select>
@@ -276,7 +276,7 @@ export default function Courses() {
 
             {/* Courses Grid */}
             {filteredGroups.length === 0 ? (
-                <div className="py-24 text-center bg-white dark:bg-[#151c2c] rounded-3xl border border-gray-100 dark:border-[#232d42]/50 border-dashed">
+                <div className="py-24 text-center bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-800/50 border-dashed">
                     <Layers size={40} className="mx-auto text-gray-200 dark:text-gray-600 mb-3" />
                     <p className="text-sm font-bold text-gray-400">{t('no_groups_found')}</p>
                     <button onClick={() => setIsModalOpen(true)}
@@ -292,7 +292,7 @@ export default function Courses() {
                         const priceVal = getCoursePrice(group.courseId);
                         return (
                             <div key={group.id} onClick={() => navigate(`/courses/${group.id}`)}
-                                className="group bg-white dark:bg-[#151c2c] rounded-2xl border border-slate-100 dark:border-[#232d42] shadow-sm hover:shadow-md hover:border-brand/40 transition-all duration-300 cursor-pointer p-5 flex flex-col">
+                                className="group bg-white dark:bg-gray-800 rounded-2xl border border-slate-100 dark:border-gray-800 shadow-sm hover:shadow-md hover:border-brand/40 transition-all duration-300 cursor-pointer p-5 flex flex-col">
                                 <div className="flex items-start justify-between mb-4">
                                     <div className="w-11 h-11 rounded-xl bg-brand/10 dark:bg-brand/20 flex items-center justify-center text-brand font-bold text-lg group-hover:scale-105 transition-transform overflow-hidden shrink-0">
                                         <Layers size={20} />
@@ -326,7 +326,7 @@ export default function Courses() {
                                         : 'bg-amber-400';
                                     return (
                                         <>
-                                            <div className="mt-3 pt-3 border-t border-gray-100 dark:border-[#232d42]/50">
+                                            <div className="mt-3 pt-3 border-t border-gray-100 dark:border-gray-800/50">
                                                 <div className="flex items-center justify-between text-[11px]">
                                                     <span className="text-gray-400">To'ldirilish</span>
                                                     <span className="num text-gray-700 dark:text-gray-200">
@@ -376,8 +376,8 @@ export default function Courses() {
             {isModalOpen && (
                 <div className="fixed inset-0 z-[200] flex items-start sm:items-center justify-center overflow-y-auto p-4">
                     <div className="absolute inset-0 bg-gray-900/60 backdrop-blur-sm" onClick={() => setIsModalOpen(false)} />
-                    <div className="relative bg-white dark:bg-[#151c2c] rounded-[2rem] border border-gray-100 dark:border-[#232d42]/50 shadow-2xl w-full max-w-lg p-8 max-h-[90vh] overflow-y-auto">
-                        <div className="flex items-center justify-between mb-6 pb-4 border-b border-gray-55 dark:border-[#232d42]/50">
+                    <div className="relative bg-white dark:bg-gray-800 rounded-[2rem] border border-gray-100 dark:border-gray-800/50 shadow-2xl w-full max-w-lg p-8 max-h-[90vh] overflow-y-auto">
+                        <div className="flex items-center justify-between mb-6 pb-4 border-b border-gray-55 dark:border-gray-800/50">
                             <div>
                                 <h3 className="text-lg font-black text-gray-900 dark:text-white tracking-tight">{t('new_group_title')}</h3>
                                 <p className="text-[11px] font-bold text-[#1b6b6b] uppercase tracking-wider mt-0.5">{t('group_details_subtitle')}</p>

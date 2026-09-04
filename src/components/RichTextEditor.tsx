@@ -44,8 +44,8 @@ export default function RichTextEditor({ content, onChange, placeholder }: RichT
     if (!editor) return null;
 
     return (
-        <div className="border border-gray-100 dark:border-[#232d42] rounded-2xl overflow-hidden bg-gray-50/30 dark:bg-[#0b111a]/30 focus-within:border-teal-500 focus-within:ring-4 focus-within:ring-teal-500/10 transition-all">
-            <div className="flex items-center gap-1 p-2 border-b border-gray-100 dark:border-[#232d42] bg-white dark:bg-[#151c2c]">
+        <div className="border border-gray-100 dark:border-gray-800 rounded-2xl overflow-hidden bg-gray-50/30 dark:bg-gray-900/30 focus-within:border-teal-500 focus-within:ring-4 focus-within:ring-teal-500/10 transition-all">
+            <div className="flex items-center gap-1 p-2 border-b border-gray-100 dark:border-gray-800 bg-white dark:bg-gray-800">
                 <MenuButton 
                     onClick={() => editor.chain().focus().toggleBold().run()}
                     isActive={editor.isActive('bold')}
@@ -102,7 +102,7 @@ export default function RichTextEditor({ content, onChange, placeholder }: RichT
                     <ListOrdered size={18} />
                 </MenuButton>
             </div>
-            <div className="p-4 min-h-[150px] cursor-text bg-white dark:bg-[#151c2c]/50 prose dark:prose-invert max-w-none">
+            <div className="p-4 min-h-[150px] cursor-text bg-white dark:bg-gray-800/50 prose dark:prose-invert max-w-none">
                 <EditorContent editor={editor} />
             </div>
         </div>

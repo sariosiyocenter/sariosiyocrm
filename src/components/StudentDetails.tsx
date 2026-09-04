@@ -163,7 +163,7 @@ export default function StudentDetails() {
 
     if (!student) {
         return (
-            <div className="flex flex-col items-center justify-center py-24 bg-white dark:bg-[#151c2c] rounded-3xl border border-gray-100 dark:border-[#232d42]/50 shadow-sm transition-colors">
+            <div className="flex flex-col items-center justify-center py-24 bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-800/50 shadow-sm transition-colors">
                 <div className="w-20 h-20 bg-gray-55 dark:bg-gray-700 rounded-full flex items-center justify-center mb-4 border border-gray-100 dark:border-gray-650">
                     <Users className="w-8 h-8 text-gray-300 dark:text-gray-500" />
                 </div>
@@ -489,7 +489,7 @@ export default function StudentDetails() {
     })();
 
     const labelCls = "block text-[11px] font-extrabold uppercase tracking-wider text-gray-400 mb-2";
-    const inputCls = "w-full px-4 py-3 bg-gray-55 dark:bg-[#0b111a]/50 border border-gray-100 dark:border-[#232d42] rounded-2xl text-xs font-bold text-gray-900 dark:text-white focus:border-[#1b6b6b] focus:ring-4 focus:ring-[#1b6b6b]/10 outline-none transition-all";
+    const inputCls = "w-full px-4 py-3 bg-gray-55 dark:bg-gray-900/50 border border-gray-100 dark:border-gray-800 rounded-2xl text-xs font-bold text-gray-900 dark:text-white focus:border-[#1b6b6b] focus:ring-4 focus:ring-[#1b6b6b]/10 outline-none transition-all";
 
     return (
         <div className="space-y-6 animate-in fade-in duration-500">
@@ -499,10 +499,10 @@ export default function StudentDetails() {
                 {t('back')}
             </button>
 
-            <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 items-start">
+            <div className="grid grid-cols-1 lg:grid-cols-4 gap-4 items-start">
                 {/* Left Profile Card */}
                 <div className="lg:col-span-1 space-y-4">
-                    <div className="bg-white dark:bg-[#151c2c] rounded-3xl border border-gray-100 dark:border-[#232d42]/50 shadow-sm overflow-hidden">
+                    <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-800/50 shadow-sm overflow-hidden">
                         {/* Muqova. Avval butun kartochka enini egallagan to'q brend
                             slabi edi — qorong'u rejimda juda qichqirib turardi.
                             Endi past va yumshoq gradient. */}
@@ -511,8 +511,8 @@ export default function StudentDetails() {
                             allaqachon kesib turibdi. */}
                         <div className="h-24 relative bg-gradient-to-br from-[#1b6b6b] to-[#2e9c9c]">
                             <div className="absolute inset-0 overflow-hidden bg-gradient-to-t from-black/25 to-transparent" />
-                            <div className="absolute -bottom-10 left-1/2 -translate-x-1/2 rounded-[1.4rem] bg-white dark:bg-[#151c2c] p-1 shadow-lg">
-                                <div className="group/avatar relative w-24 h-24 rounded-[1.15rem] bg-gray-55 dark:bg-[#0b111a] border border-gray-100 dark:border-[#232d42]/50 flex items-center justify-center text-[#1b6b6b] font-bold text-3xl overflow-hidden">
+                            <div className="absolute -bottom-10 left-1/2 -translate-x-1/2 rounded-[1.4rem] bg-white dark:bg-gray-800 p-1 shadow-lg">
+                                <div className="group/avatar relative w-24 h-24 rounded-[1.15rem] bg-gray-55 dark:bg-gray-900 border border-gray-100 dark:border-gray-800/50 flex items-center justify-center text-[#1b6b6b] font-bold text-3xl overflow-hidden">
                                     {student.photo ? (
                                         <img src={student.photo} alt={student.name} className="w-full h-full object-cover object-top" />
                                     ) : (
@@ -597,7 +597,7 @@ export default function StudentDetails() {
                                             student.status === 'Passiv' ? 'bg-rose-50 text-rose-600 border-rose-100 dark:bg-rose-950/20 dark:text-rose-400' :
                                             student.status === 'Bitiruvchi' ? 'bg-purple-50 text-purple-600 border-purple-100 dark:bg-purple-950/20 dark:text-purple-400' :
                                             student.status === 'Sertifikatli' ? 'bg-brand/10 text-brand border-brand/20 dark:bg-brand/20 dark:text-brand' :
-                                            'bg-gray-55 text-gray-400 border-gray-100 dark:bg-[#0b111a]/50'
+                                            'bg-gray-55 text-gray-400 border-gray-100 dark:bg-gray-900/50'
                                         }`}>
                                             {student.status === 'Faol' ? t('status_active') :
                                              student.status === 'Arxiv' ? t('status_archive') :
@@ -613,7 +613,7 @@ export default function StudentDetails() {
                             )}
                         </div>
 
-                        <div className="px-6 pb-5 space-y-3 border-t border-gray-100 dark:border-[#232d42]/50 pt-4">
+                        <div className="px-6 pb-5 space-y-3 border-t border-gray-100 dark:border-gray-800/50 pt-4">
                             <div className={`p-4 rounded-2xl border ${student.balance >= 0 ? 'bg-emerald-50/50 border-emerald-100 dark:bg-emerald-950/20 dark:border-emerald-900/40 text-emerald-600' : 'bg-rose-50/50 border-rose-100 dark:bg-rose-950/20 dark:border-rose-900/40 text-rose-600'} flex flex-col items-center`}>
                                 <span className="text-[10px] font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-1">{t('filter_balance')}</span>
                                 <span className="num text-xl font-bold tracking-tight">{student.balance.toLocaleString()} <span className="text-[11px] font-semibold opacity-60">UZS</span></span>
@@ -638,15 +638,15 @@ export default function StudentDetails() {
                                     aria-disabled={!student.phone}
                                     title={student.phone || t('phone_not_found')}
                                     className={`w-11 h-11 flex items-center justify-center rounded-xl border transition-all shrink-0 ${student.phone
-                                        ? 'bg-gray-55 dark:bg-[#0b111a] border-gray-100 dark:border-[#232d42] text-[#1b6b6b] hover:bg-[#1b6b6b] hover:text-white cursor-pointer'
-                                        : 'bg-gray-55 dark:bg-[#0b111a] border-gray-100 dark:border-[#232d42] text-gray-300 pointer-events-none'}`}
+                                        ? 'bg-gray-55 dark:bg-gray-900 border-gray-100 dark:border-gray-800 text-[#1b6b6b] hover:bg-[#1b6b6b] hover:text-white cursor-pointer'
+                                        : 'bg-gray-55 dark:bg-gray-900 border-gray-100 dark:border-gray-800 text-gray-300 pointer-events-none'}`}
                                 >
                                     <Phone size={15} />
                                 </a>
                                 <button
                                     onClick={() => handleSendSms(student.phone, 'manual')}
                                     title="SMS yuborish"
-                                    className="w-11 h-11 flex items-center justify-center rounded-xl border bg-gray-55 dark:bg-[#0b111a] border-gray-100 dark:border-[#232d42] text-[#1b6b6b] hover:bg-[#1b6b6b] hover:text-white transition-all cursor-pointer shrink-0"
+                                    className="w-11 h-11 flex items-center justify-center rounded-xl border bg-gray-55 dark:bg-gray-900 border-gray-100 dark:border-gray-800 text-[#1b6b6b] hover:bg-[#1b6b6b] hover:text-white transition-all cursor-pointer shrink-0"
                                 >
                                     <Send size={15} />
                                 </button>
@@ -674,7 +674,7 @@ export default function StudentDetails() {
 
                         </div>
 
-                        <div className="px-6 pb-5 space-y-1 border-t border-gray-100 dark:border-[#232d42]/50 pt-3">
+                        <div className="px-6 pb-5 space-y-1 border-t border-gray-100 dark:border-gray-800/50 pt-3">
                             {isEditing ? (
                                 <div className="space-y-4">
                                     <div className="grid grid-cols-2 gap-2">
@@ -697,7 +697,7 @@ export default function StudentDetails() {
                                             {(['Erkak', 'Ayol'] as const).map(g => (
                                                 <button key={g} type="button"
                                                     onClick={() => setEditForm({...editForm, gender: g})}
-                                                    className={`py-2 rounded-xl text-[11px] font-extrabold uppercase tracking-wider transition-all border cursor-pointer ${editForm.gender === g ? 'bg-[#1b6b6b] border-[#1b6b6b] text-white shadow' : 'bg-gray-50 dark:bg-[#0b111a]/30 border-gray-100 dark:border-[#232d42] text-gray-400 hover:text-gray-600'}`}>
+                                                    className={`py-2 rounded-xl text-[11px] font-extrabold uppercase tracking-wider transition-all border cursor-pointer ${editForm.gender === g ? 'bg-[#1b6b6b] border-[#1b6b6b] text-white shadow' : 'bg-gray-50 dark:bg-gray-900/30 border-gray-100 dark:border-gray-800 text-gray-400 hover:text-gray-600'}`}>
                                                     {g === 'Erkak' ? '♂ Erkak' : '♀ Ayol'}
                                                 </button>
                                             ))}
@@ -805,7 +805,7 @@ export default function StudentDetails() {
                                     </div>
 
                                     {editForm.privilegeType === 'Sertifikat' && (
-                                        <div className="space-y-3 p-3 bg-gray-55 dark:bg-[#0b111a] rounded-2xl border border-gray-100 dark:border-[#232d42]">
+                                        <div className="space-y-3 p-3 bg-gray-55 dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800">
                                             <div>
                                                 <label className={labelCls}>Sertifikat toifasi</label>
                                                 <select
@@ -878,7 +878,7 @@ export default function StudentDetails() {
                                     <div className="space-y-3 pt-2">
                                         <label className={labelCls}>Qo'shimcha Sertifikatlar</label>
                                         {editForm.certificates.map((cert, index) => (
-                                            <div key={index} className="p-4 bg-gray-55 dark:bg-[#0b111a] rounded-2xl border border-gray-100 dark:border-gray-850/50 space-y-3 relative animate-in fade-in slide-in-from-top-2 duration-250">
+                                            <div key={index} className="p-4 bg-gray-55 dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-850/50 space-y-3 relative animate-in fade-in slide-in-from-top-2 duration-250">
                                                 <button
                                                     type="button"
                                                     onClick={() => removeEditCertificate(index)}
@@ -954,7 +954,7 @@ export default function StudentDetails() {
                                         <button
                                             type="button"
                                             onClick={addEditCertificate}
-                                            className="w-full py-3 bg-gray-55 dark:bg-[#0b111a] border border-dashed border-gray-200 dark:border-[#232d42] rounded-2xl text-[11px] font-bold uppercase tracking-wider text-[#1b6b6b] hover:bg-teal-50/10 dark:hover:bg-teal-900/10 transition-colors flex items-center justify-center gap-1.5 cursor-pointer"
+                                            className="w-full py-3 bg-gray-55 dark:bg-gray-900 border border-dashed border-gray-200 dark:border-gray-800 rounded-2xl text-[11px] font-bold uppercase tracking-wider text-[#1b6b6b] hover:bg-teal-50/10 dark:hover:bg-teal-900/10 transition-colors flex items-center justify-center gap-1.5 cursor-pointer"
                                         >
                                             <Plus size={14} />
                                             Sertifikat qo'shish
@@ -1122,7 +1122,7 @@ export default function StudentDetails() {
                                                     <h4 className="text-[11px] font-bold text-[#1b6b6b] uppercase tracking-wider">Sertifikatlar</h4>
                                                 </div>
                                                 {parsedCerts.map((cert: any, idx: number) => (
-                                                    <div key={idx} className="flex items-start gap-2.5 p-3 bg-gray-55 dark:bg-[#0b111a] border border-gray-100 dark:border-[#232d42] rounded-2xl">
+                                                    <div key={idx} className="flex items-start gap-2.5 p-3 bg-gray-55 dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl">
                                                         <div className="w-7 h-7 rounded-lg bg-[#1b6b6b]/10 dark:bg-[#1b6b6b]/20 text-[#1b6b6b] flex items-center justify-center shrink-0">
                                                             <Award size={14} />
                                                         </div>
@@ -1184,8 +1184,8 @@ export default function StudentDetails() {
                         />
                     </div>
 
-                    <div className="bg-white dark:bg-[#151c2c] rounded-3xl border border-gray-100 dark:border-[#232d42] shadow-sm overflow-hidden">
-                        <div className="flex px-2 py-2 bg-gray-55 dark:bg-[#0b111a] border-b border-gray-100 dark:border-[#232d42] gap-1 overflow-x-auto scrollbar-hide items-center justify-start rounded-t-3xl">
+                    <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm overflow-hidden">
+                        <div className="flex px-2 py-2 bg-gray-55 dark:bg-gray-900 border-b border-gray-100 dark:border-gray-800 gap-1 overflow-x-auto scrollbar-hide items-center justify-start rounded-t-3xl">
                             <TabButton label={t('general')} icon={<Layers size={14} />} active={activeTab === 'umumiy'} onClick={() => setActiveTab('umumiy')} />
                             <TabButton label={t('stat_groups')} icon={<Users size={14} />} active={activeTab === 'courses'} onClick={() => setActiveTab('courses')} />
                             <TabButton label={t('payments_tab')} icon={<CreditCard size={14} />} active={activeTab === 'tolovlar'} onClick={() => setActiveTab('tolovlar')} />
@@ -1193,12 +1193,12 @@ export default function StudentDetails() {
                             <TabButton label="Ballar" icon={<Star size={14} />} active={activeTab === 'ballar'} onClick={() => setActiveTab('ballar')} />
                         </div>
 
-                        <div className="p-6">
+                        <div className="p-4">
                             {activeTab === 'umumiy' && (
                                 <div className="space-y-8 animate-in fade-in duration-300">
-                                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
                                         <div className="space-y-4">
-                                            <span className="text-[11px] font-bold text-gray-400 uppercase tracking-wider block pb-2 border-b border-gray-55 dark:border-[#232d42]/50">{t('active_groups')}</span>
+                                            <span className="text-[11px] font-bold text-gray-400 uppercase tracking-wider block pb-2 border-b border-gray-55 dark:border-gray-800/50">{t('active_groups')}</span>
                                             <div className="space-y-3">
                                                 {studentGroups.length === 0 ? (
                                                     <p className="text-center py-8 text-[11px] text-gray-400 font-bold uppercase tracking-wider">{t('no_groups_found')}</p>
@@ -1209,9 +1209,9 @@ export default function StudentDetails() {
                                                             : undefined;
                                                         return (
                                                             <div key={group.id}
-                                                                className="group bg-gray-55 dark:bg-[#0b111a]/30 p-4 rounded-2xl border border-transparent hover:border-gray-100 dark:hover:border-gray-700/50 transition-all flex items-center justify-between">
+                                                                className="group bg-gray-55 dark:bg-gray-900/30 p-4 rounded-2xl border border-transparent hover:border-gray-100 dark:hover:border-gray-700/50 transition-all flex items-center justify-between">
                                                                 <div className="flex items-center gap-3 cursor-pointer" onClick={() => navigate(`/courses/${group.id}`)}>
-                                                                    <div className="w-10 h-10 bg-white dark:bg-[#151c2c] border border-gray-100 dark:border-gray-705 rounded-xl flex items-center justify-center text-[#1b6b6b] shrink-0">
+                                                                    <div className="w-10 h-10 bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-705 rounded-xl flex items-center justify-center text-[#1b6b6b] shrink-0">
                                                                         <BookOpen size={18} />
                                                                     </div>
                                                                     <div>
@@ -1246,7 +1246,7 @@ export default function StudentDetails() {
                                                                             const existingNote = student.customPrices && typeof student.customPrices === 'object' ? (student.customPrices as Record<string, any>)['note_' + group.id] || '' : '';
                                                                             setCustomNoteVal(existingNote);
                                                                         }}
-                                                                        className="p-2 bg-white dark:bg-[#151c2c] hover:bg-[#1b6b6b]/10 dark:hover:bg-[#1b6b6b]/10 border border-gray-100 dark:border-[#232d42] hover:border-[#1b6b6b] rounded-xl text-gray-400 hover:text-[#1b6b6b] transition-all cursor-pointer"
+                                                                        className="p-2 bg-white dark:bg-gray-800 hover:bg-[#1b6b6b]/10 dark:hover:bg-[#1b6b6b]/10 border border-gray-100 dark:border-gray-800 hover:border-[#1b6b6b] rounded-xl text-gray-400 hover:text-[#1b6b6b] transition-all cursor-pointer"
                                                                         title="Maxsus narx belgilash"
                                                                     >
                                                                         <Edit size={12} />
@@ -1260,12 +1260,12 @@ export default function StudentDetails() {
                                         </div>
 
                                         <div className="space-y-4">
-                                            <span className="text-[11px] font-bold text-gray-400 uppercase tracking-wider block pb-2 border-b border-gray-55 dark:border-[#232d42]/50">{t('latest_payments')}</span>
+                                            <span className="text-[11px] font-bold text-gray-400 uppercase tracking-wider block pb-2 border-b border-gray-55 dark:border-gray-800/50">{t('latest_payments')}</span>
                                             <div className="space-y-3">
                                                 {studentPayments.slice(0, 4).map(p => {
                                                     const isDed = p.amount < 0;
                                                     return (
-                                                    <div key={p.id} className={`flex items-center justify-between p-4 rounded-2xl ${isDed ? 'bg-rose-50/60 dark:bg-rose-950/10 border border-rose-100 dark:border-rose-900/30' : 'bg-gray-55 dark:bg-[#0b111a]/30'}`}>
+                                                    <div key={p.id} className={`flex items-center justify-between p-4 rounded-2xl ${isDed ? 'bg-rose-50/60 dark:bg-rose-950/10 border border-rose-100 dark:border-rose-900/30' : 'bg-gray-55 dark:bg-gray-900/30'}`}>
                                                         <div className="flex items-center gap-3">
                                                             <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${isDed ? 'bg-rose-50 text-rose-500 border border-rose-100 dark:bg-rose-950/20 dark:text-rose-400 dark:border-rose-900/40' : 'bg-emerald-50 text-emerald-600 border border-emerald-100 dark:bg-emerald-950/20 dark:text-emerald-400 dark:border-emerald-900/40'}`}>
                                                                 {isDed ? <ReceiptText size={18} /> : <CreditCard size={18} />}
@@ -1277,7 +1277,7 @@ export default function StudentDetails() {
                                                                 <p className="text-[11px] font-bold text-gray-400 mt-0.5">{p.date}</p>
                                                             </div>
                                                         </div>
-                                                        <span className={`text-[11px] font-bold px-2.5 py-1 rounded-md border uppercase tracking-wider ${isDed ? 'text-rose-500 bg-rose-50 border-rose-100 dark:bg-rose-950/20 dark:border-rose-900/40' : 'text-gray-600 dark:text-gray-400 bg-white dark:bg-[#151c2c] border-gray-100 dark:border-[#232d42]'}`}>
+                                                        <span className={`text-[11px] font-bold px-2.5 py-1 rounded-md border uppercase tracking-wider ${isDed ? 'text-rose-500 bg-rose-50 border-rose-100 dark:bg-rose-950/20 dark:border-rose-900/40' : 'text-gray-600 dark:text-gray-400 bg-white dark:bg-gray-800 border-gray-100 dark:border-gray-800'}`}>
                                                             {isDed ? 'Oylik' : p.type === 'Naqd' ? t('type_cash') : p.type === 'Karta' ? t('type_card') : p.type === 'Peyme' ? t('type_payme') : p.type === 'Klik' ? t('type_click') : p.type}
                                                         </span>
                                                     </div>
@@ -1291,9 +1291,9 @@ export default function StudentDetails() {
                                     </div>
 
                                     {/* Izohlar va oxirgi harakatlar */}
-                                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 pt-6 border-t border-dashed border-gray-150 dark:border-[#232d42]/50">
+                                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 pt-6 border-t border-dashed border-gray-150 dark:border-gray-800/50">
                                         <div className="space-y-4">
-                                            <div className="flex items-center justify-between pb-2 border-b border-gray-55 dark:border-[#232d42]/50">
+                                            <div className="flex items-center justify-between pb-2 border-b border-gray-55 dark:border-gray-800/50">
                                                 <span className="text-[11px] font-bold text-gray-400 uppercase tracking-wider">Izohlar</span>
                                                 {!isEditingNote && (
                                                     <button
@@ -1313,7 +1313,7 @@ export default function StudentDetails() {
                                                         value={noteDraft}
                                                         onChange={e => setNoteDraft(e.target.value)}
                                                         placeholder="Ota-ona bilan suhbat, o'quvchi haqidagi kuzatuvlar, kelishuvlar..."
-                                                        className="w-full px-4 py-3 bg-gray-55 dark:bg-[#0b111a]/50 border border-gray-100 dark:border-[#232d42] rounded-2xl text-xs font-semibold text-gray-900 dark:text-white leading-relaxed focus:border-[#1b6b6b] focus:ring-4 focus:ring-[#1b6b6b]/10 outline-none transition-all resize-none"
+                                                        className="w-full px-4 py-3 bg-gray-55 dark:bg-gray-900/50 border border-gray-100 dark:border-gray-800 rounded-2xl text-xs font-semibold text-gray-900 dark:text-white leading-relaxed focus:border-[#1b6b6b] focus:ring-4 focus:ring-[#1b6b6b]/10 outline-none transition-all resize-none"
                                                     />
                                                     <div className="flex gap-2">
                                                         <button
@@ -1332,7 +1332,7 @@ export default function StudentDetails() {
                                                     </div>
                                                 </div>
                                             ) : student.comment ? (
-                                                <div className="p-4 bg-gray-55 dark:bg-[#0b111a]/30 border border-gray-100 dark:border-[#232d42]/50 rounded-2xl">
+                                                <div className="p-4 bg-gray-55 dark:bg-gray-900/30 border border-gray-100 dark:border-gray-800/50 rounded-2xl">
                                                     <p className="text-[12px] font-semibold text-gray-600 dark:text-gray-300 leading-relaxed whitespace-pre-wrap">{student.comment}</p>
                                                 </div>
                                             ) : (
@@ -1341,7 +1341,7 @@ export default function StudentDetails() {
                                         </div>
 
                                         <div className="space-y-4">
-                                            <span className="text-[11px] font-bold text-gray-400 uppercase tracking-wider block pb-2 border-b border-gray-55 dark:border-[#232d42]/50">Oxirgi harakatlar</span>
+                                            <span className="text-[11px] font-bold text-gray-400 uppercase tracking-wider block pb-2 border-b border-gray-55 dark:border-gray-800/50">Oxirgi harakatlar</span>
                                             {recentActivity.length === 0 ? (
                                                 <p className="text-center py-8 text-[11px] text-gray-400 font-bold uppercase tracking-wider">Harakatlar yo'q</p>
                                             ) : (
@@ -1353,7 +1353,7 @@ export default function StudentDetails() {
                                                                 item.tone === 'rose' ? 'bg-rose-50 text-rose-500 border-rose-100 dark:bg-rose-950/20 dark:text-rose-400 dark:border-rose-900/40' :
                                                                 item.tone === 'amber' ? 'bg-amber-50 text-amber-600 border-amber-100 dark:bg-amber-950/20 dark:text-amber-400 dark:border-amber-900/40' :
                                                                 item.tone === 'teal' ? 'bg-teal-50 text-[#1b6b6b] border-teal-100 dark:bg-teal-950/20 dark:text-teal-400 dark:border-teal-900/40' :
-                                                                'bg-gray-55 text-gray-400 border-gray-100 dark:bg-[#0b111a]/50 dark:border-[#232d42]/50'
+                                                                'bg-gray-55 text-gray-400 border-gray-100 dark:bg-gray-900/50 dark:border-gray-800/50'
                                                             }`}>
                                                                 {item.icon}
                                                             </div>
@@ -1371,7 +1371,7 @@ export default function StudentDetails() {
                                     </div>
 
                                     {/* Qoldirilgan va yopilgan mavzular section */}
-                                    <div className="space-y-4 pt-6 border-t border-dashed border-gray-150 dark:border-[#232d42]/50">
+                                    <div className="space-y-4 pt-6 border-t border-dashed border-gray-150 dark:border-gray-800/50">
                                         <div className="flex items-center justify-between">
                                             <span className="text-[11px] font-bold text-gray-400 uppercase tracking-wider">{t('missed_and_closed_topics')}</span>
                                         </div>
@@ -1379,10 +1379,10 @@ export default function StudentDetails() {
                                         {studentAttendances.filter(a => a.status === 'Kelmapdi' || a.status === 'Sababli').length === 0 ? (
                                             <p className="text-center py-8 text-[11px] text-gray-400 font-bold uppercase tracking-wider">{t('no_missed_topics')}</p>
                                         ) : (
-                                            <div className="bg-white dark:bg-[#151c2c] border border-gray-100 dark:border-[#232d42]/50 rounded-2xl overflow-hidden shadow-sm">
+                                            <div className="bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-800/50 rounded-2xl overflow-hidden shadow-sm">
                                                 <table className="w-full text-left border-collapse">
                                                     <thead>
-                                                        <tr className="bg-gray-55 dark:bg-[#0b111a] border-b border-gray-100 dark:border-[#232d42]/50">
+                                                        <tr className="bg-gray-55 dark:bg-gray-900 border-b border-gray-100 dark:border-gray-800/50">
                                                             <th className="p-3 text-[11px] font-bold text-gray-400 uppercase tracking-wider">{t('date_group')}</th>
                                                             <th className="p-3 text-[11px] font-bold text-gray-400 uppercase tracking-wider">{t('topic_label')}</th>
                                                             <th className="p-3 text-center text-[11px] font-bold text-gray-400 uppercase tracking-wider">{t('status')}</th>
@@ -1479,7 +1479,7 @@ export default function StudentDetails() {
 
                             {activeTab === 'tolovlar' && (
                                 <div className="space-y-6 animate-in fade-in duration-300">
-                                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-5 bg-gray-55 dark:bg-[#0b111a]/40 border border-gray-100 dark:border-[#232d42]/50 rounded-2xl">
+                                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-5 bg-gray-55 dark:bg-gray-900/40 border border-gray-100 dark:border-gray-800/50 rounded-2xl">
                                         <div>
                                             <h4 className="text-xs font-black text-gray-900 dark:text-white tracking-tight">{t('transactions_history')}</h4>
                                             <p className="text-[11px] font-bold text-gray-400 uppercase tracking-wider mt-1 tabular-nums">
@@ -1494,7 +1494,7 @@ export default function StudentDetails() {
                                     {studentPayments.length === 0 ? (
                                         <p className="text-center py-12 text-[11px] text-gray-400 font-bold uppercase tracking-wider">{t('no_payments_found')}</p>
                                     ) : (
-                                        <div className="bg-white dark:bg-[#151c2c] border border-gray-100 dark:border-[#232d42]/50 rounded-2xl overflow-hidden shadow-sm divide-y divide-gray-55 dark:divide-gray-700/50">
+                                        <div className="bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-800/50 rounded-2xl overflow-hidden shadow-sm divide-y divide-gray-55 dark:divide-gray-700/50">
                                             {studentPayments.map(p => {
                                                 const isDeduction = p.amount < 0;
                                                 const method = isDeduction ? 'Hisob'
@@ -1525,7 +1525,7 @@ export default function StudentDetails() {
                                                         <span className="num hidden md:block text-[11px] text-gray-400 w-24 text-right shrink-0">{p.date}</span>
                                                         <span className={`hidden sm:inline-block text-[10px] font-black px-2 py-0.5 rounded-md border uppercase tracking-wider shrink-0 ${isDeduction
                                                             ? 'text-rose-500 bg-rose-50 border-rose-100 dark:bg-rose-950/20 dark:border-rose-900/40'
-                                                            : 'text-gray-650 dark:text-gray-400 bg-gray-55 dark:bg-[#0b111a] border-gray-100 dark:border-[#232d42]'
+                                                            : 'text-gray-650 dark:text-gray-400 bg-gray-55 dark:bg-gray-900 border-gray-100 dark:border-gray-800'
                                                         }`}>
                                                             {method}
                                                         </span>
@@ -1539,7 +1539,7 @@ export default function StudentDetails() {
 
                             {activeTab === 'courses' && (
                                 <div className="space-y-6 animate-in fade-in duration-300">
-                                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-5 bg-gray-55 dark:bg-[#0b111a]/40 border border-gray-100 dark:border-[#232d42]/50 rounded-2xl">
+                                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-5 bg-gray-55 dark:bg-gray-900/40 border border-gray-100 dark:border-gray-800/50 rounded-2xl">
                                         <div>
                                             <h4 className="text-xs font-black text-gray-900 dark:text-white tracking-tight">{t('student_groups')}</h4>
                                         </div>
@@ -1551,13 +1551,13 @@ export default function StudentDetails() {
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                         {studentGroups.map(group => (
                                             <div key={group.id} onClick={() => navigate(`/courses/${group.id}`)}
-                                                className="group bg-gray-55 dark:bg-[#0b111a]/30 p-5 rounded-2xl border border-transparent hover:border-gray-100 dark:hover:border-gray-700/50 transition-all cursor-pointer flex flex-col justify-between">
+                                                className="group bg-gray-55 dark:bg-gray-900/30 p-5 rounded-2xl border border-transparent hover:border-gray-100 dark:hover:border-gray-700/50 transition-all cursor-pointer flex flex-col justify-between">
                                                 <div className="flex items-start justify-between mb-4">
                                                     <div>
                                                         <h5 className="text-xs font-black text-gray-900 dark:text-white group-hover:text-[#1b6b6b] transition-colors tracking-tight">{group.name}</h5>
                                                         {group.courseName && <p className="text-[11px] font-bold text-gray-400 mt-0.5">{group.courseName}</p>}
                                                     </div>
-                                                    <div className="w-9 h-9 bg-white dark:bg-[#151c2c] rounded-xl flex items-center justify-center text-[#1b6b6b] shrink-0 shadow-sm border border-gray-100 dark:border-[#232d42]/50">
+                                                    <div className="w-9 h-9 bg-white dark:bg-gray-800 rounded-xl flex items-center justify-center text-[#1b6b6b] shrink-0 shadow-sm border border-gray-100 dark:border-gray-800/50">
                                                         <BookOpen size={16} />
                                                     </div>
                                                 </div>
@@ -1585,7 +1585,7 @@ export default function StudentDetails() {
                                     <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 items-start">
                                         {/* Left Column: Attendance Calendar */}
                                         <div className="lg:col-span-5 space-y-4">
-                                            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 bg-gray-55 dark:bg-[#0b111a]/40 border border-gray-100 dark:border-[#232d42]/50 rounded-2xl">
+                                            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 bg-gray-55 dark:bg-gray-900/40 border border-gray-100 dark:border-gray-800/50 rounded-2xl">
                                                 <div>
                                                     <h4 className="text-[11px] font-bold text-gray-900 dark:text-white uppercase tracking-tight">{t('attendance_calendar')}</h4>
                                                 </div>
@@ -1613,7 +1613,7 @@ export default function StudentDetails() {
                                                 </div>
                                             </div>
 
-                                            <div className="bg-white dark:bg-[#151c2c] border border-gray-100 dark:border-[#232d42]/50 rounded-2xl p-4 shadow-sm">
+                                            <div className="bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-800/50 rounded-2xl p-4 shadow-sm">
                                                 <div className="grid grid-cols-7 gap-1">
                                                     {[t('day_mon'), t('day_tue'), t('day_wed'), t('day_thu'), t('day_fri'), t('day_sat'), t('day_sun')].map(day => (
                                                         <div key={day} className="text-center text-[10px] font-bold text-gray-400 uppercase tracking-wider pb-1.5">{day}</div>
@@ -1640,7 +1640,7 @@ export default function StudentDetails() {
                                                                 return dw !== 0;
                                                             });
 
-                                                            let bgColor = 'bg-gray-55 dark:bg-[#0b111a]/50';
+                                                            let bgColor = 'bg-gray-55 dark:bg-gray-900/50';
                                                             let textColor = 'text-gray-400';
 
                                                             if (att) {
@@ -1681,12 +1681,12 @@ export default function StudentDetails() {
 
                                         {/* Right Column: Detailed History Table */}
                                         <div className="lg:col-span-7 space-y-4">
-                                            <div className="flex items-center justify-between pb-1 border-b border-gray-55 dark:border-[#232d42]/50">
+                                            <div className="flex items-center justify-between pb-1 border-b border-gray-55 dark:border-gray-800/50">
                                                 <span className="text-[11px] font-bold text-gray-400 uppercase tracking-wider">{t('detailed_history')}</span>
                                                 <select
                                                     value={attendanceGroupFilter || ''}
                                                     onChange={(e) => setAttendanceGroupFilter(e.target.value ? Number(e.target.value) : null)}
-                                                    className="px-2.5 py-1 bg-gray-55 dark:bg-[#0b111a] border border-gray-100 dark:border-[#232d42]/50 rounded-lg text-[10px] font-bold uppercase tracking-wider cursor-pointer outline-none focus:ring-1 focus:ring-[#1b6b6b]/20 text-[#1b6b6b] dark:text-teal-400 font-bold"
+                                                    className="px-2.5 py-1 bg-gray-55 dark:bg-gray-900 border border-gray-100 dark:border-gray-800/50 rounded-lg text-[10px] font-bold uppercase tracking-wider cursor-pointer outline-none focus:ring-1 focus:ring-[#1b6b6b]/20 text-[#1b6b6b] dark:text-teal-400 font-bold"
                                                 >
                                                     <option value="" className="bg-white dark:bg-gray-850 text-gray-600 font-bold">{t('all_groups')}</option>
                                                     {studentGroups.map(g => (
@@ -1694,10 +1694,10 @@ export default function StudentDetails() {
                                                     ))}
                                                 </select>
                                             </div>
-                                            <div className="bg-white dark:bg-[#151c2c] border border-gray-100 dark:border-[#232d42]/50 rounded-2xl overflow-hidden shadow-sm">
+                                            <div className="bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-800/50 rounded-2xl overflow-hidden shadow-sm">
                                                 <table className="w-full text-left border-collapse">
                                                     <thead>
-                                                        <tr className="bg-gray-55 dark:bg-[#0b111a] border-b border-gray-100 dark:border-[#232d42]/50">
+                                                        <tr className="bg-gray-55 dark:bg-gray-900 border-b border-gray-100 dark:border-gray-800/50">
                                                             <th className="p-3 text-[11px] font-bold text-gray-400 uppercase tracking-wider">{t('date_group')}</th>
                                                             <th className="p-3 text-[11px] font-bold text-gray-400 uppercase tracking-wider">{t('topic_label')}</th>
                                                             <th className="p-3 text-center text-[11px] font-bold text-gray-400 uppercase tracking-wider">{t('status')}</th>
@@ -1830,11 +1830,11 @@ export default function StudentDetails() {
                                                                                         {(a.status as any) === "O'tildi" ? t('not_marked') : a.status}
                                                                                     </option>
                                                                                 )}
-                                                                                <option value="Keldi" className="bg-white dark:bg-[#151c2c] text-emerald-600 font-bold">{t('present')}</option>
-                                                                                <option value="Kelmapdi" className="bg-white dark:bg-[#151c2c] text-rose-600 font-bold">{t('absent')}</option>
-                                                                                <option value="Sababli" className="bg-white dark:bg-[#151c2c] text-amber-600 font-bold">{t('excused')}</option>
-                                                                                <option value="Kechikdi" className="bg-white dark:bg-[#151c2c] text-orange-600 font-bold">{t('late')}</option>
-                                                                                <option value="ErtaKetdi" className="bg-white dark:bg-[#151c2c] text-purple-600 font-bold">{t('early_leave')}</option>
+                                                                                <option value="Keldi" className="bg-white dark:bg-gray-800 text-emerald-600 font-bold">{t('present')}</option>
+                                                                                <option value="Kelmapdi" className="bg-white dark:bg-gray-800 text-rose-600 font-bold">{t('absent')}</option>
+                                                                                <option value="Sababli" className="bg-white dark:bg-gray-800 text-amber-600 font-bold">{t('excused')}</option>
+                                                                                <option value="Kechikdi" className="bg-white dark:bg-gray-800 text-orange-600 font-bold">{t('late')}</option>
+                                                                                <option value="ErtaKetdi" className="bg-white dark:bg-gray-800 text-purple-600 font-bold">{t('early_leave')}</option>
                                                                             </select>
                                                                         </div>
                                                                     </td>
@@ -1853,7 +1853,7 @@ export default function StudentDetails() {
                                 built, but nothing in the app could actually award a point. */}
                             {activeTab === 'ballar' && (
                                 <div className="space-y-6 animate-in fade-in duration-300">
-                                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-5 bg-gray-55 dark:bg-[#0b111a]/40 border border-gray-100 dark:border-[#232d42]/50 rounded-2xl">
+                                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-5 bg-gray-55 dark:bg-gray-900/40 border border-gray-100 dark:border-gray-800/50 rounded-2xl">
                                         <div>
                                             <h4 className="text-xs font-black text-gray-900 dark:text-white tracking-tight">Bonus ballar</h4>
                                             <p className="text-[11px] font-bold text-gray-400 uppercase tracking-wider mt-1 tabular-nums">
@@ -1880,7 +1880,7 @@ export default function StudentDetails() {
                                             <p className="text-xs text-gray-400 mt-1">Berilgan ballar hisobotlardagi reytingga qo'shiladi.</p>
                                         </div>
                                     ) : (
-                                        <div className="bg-white dark:bg-[#151c2c] border border-gray-100 dark:border-[#232d42]/50 rounded-2xl overflow-hidden shadow-sm divide-y divide-gray-55 dark:divide-gray-700/50">
+                                        <div className="bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-800/50 rounded-2xl overflow-hidden shadow-sm divide-y divide-gray-55 dark:divide-gray-700/50">
                                             {(() => {
                                                 // Ballar shkalasi kursdan kursga farq qiladi, shuning uchun
                                                 // ustunlar eng yuqori berilgan ballga nisbatan chiziladi.
@@ -1952,8 +1952,8 @@ export default function StudentDetails() {
                                 setIsSavingScore(false);
                             }
                         }}
-                        className="relative bg-white dark:bg-[#151c2c] rounded-[2rem] border border-gray-100 dark:border-[#232d42]/50 shadow-2xl w-full max-w-md p-8 space-y-4 my-auto">
-                        <div className="flex items-center justify-between pb-4 border-b border-gray-50 dark:border-[#232d42]/50">
+                        className="relative bg-white dark:bg-gray-800 rounded-[2rem] border border-gray-100 dark:border-gray-800/50 shadow-2xl w-full max-w-md p-8 space-y-4 my-auto">
+                        <div className="flex items-center justify-between pb-4 border-b border-gray-50 dark:border-gray-800/50">
                             <div>
                                 <h3 className="text-lg font-black text-gray-900 dark:text-white tracking-tight">Ball qo'shish</h3>
                                 <p className="text-[11px] font-bold text-[#1b6b6b] uppercase tracking-wider mt-0.5">{student.name}</p>
@@ -1967,14 +1967,14 @@ export default function StudentDetails() {
                             <input type="number" inputMode="numeric" min={1} max={100} required
                                 value={newScore.value}
                                 onChange={e => setNewScore(p => ({ ...p, value: Number(e.target.value) }))}
-                                className="w-full px-4 py-3 bg-gray-55 dark:bg-[#0b111a]/50 border border-gray-100 dark:border-[#232d42] rounded-2xl text-xs font-bold text-gray-900 dark:text-white outline-none focus:border-[#1b6b6b] transition-all" />
+                                className="w-full px-4 py-3 bg-gray-55 dark:bg-gray-900/50 border border-gray-100 dark:border-gray-800 rounded-2xl text-xs font-bold text-gray-900 dark:text-white outline-none focus:border-[#1b6b6b] transition-all" />
                         </div>
 
                         <div>
                             <label className="block text-[11px] font-extrabold uppercase tracking-wider text-gray-400 mb-2">Guruh</label>
                             <select value={newScore.groupId || studentGroups[0]?.id || 0}
                                 onChange={e => setNewScore(p => ({ ...p, groupId: Number(e.target.value) }))}
-                                className="w-full px-4 py-3 bg-gray-55 dark:bg-[#0b111a]/50 border border-gray-100 dark:border-[#232d42] rounded-2xl text-xs font-bold text-gray-900 dark:text-white outline-none focus:border-[#1b6b6b] transition-all cursor-pointer">
+                                className="w-full px-4 py-3 bg-gray-55 dark:bg-gray-900/50 border border-gray-100 dark:border-gray-800 rounded-2xl text-xs font-bold text-gray-900 dark:text-white outline-none focus:border-[#1b6b6b] transition-all cursor-pointer">
                                 {studentGroups.map(g => <option key={g.id} value={g.id}>{g.name}</option>)}
                             </select>
                         </div>
@@ -1983,7 +1983,7 @@ export default function StudentDetails() {
                             <label className="block text-[11px] font-extrabold uppercase tracking-wider text-gray-400 mb-2">Sana</label>
                             <input type="date" value={newScore.date}
                                 onChange={e => setNewScore(p => ({ ...p, date: e.target.value }))}
-                                className="w-full px-4 py-3 bg-gray-55 dark:bg-[#0b111a]/50 border border-gray-100 dark:border-[#232d42] rounded-2xl text-xs font-bold text-gray-900 dark:text-white outline-none focus:border-[#1b6b6b] transition-all" />
+                                className="w-full px-4 py-3 bg-gray-55 dark:bg-gray-900/50 border border-gray-100 dark:border-gray-800 rounded-2xl text-xs font-bold text-gray-900 dark:text-white outline-none focus:border-[#1b6b6b] transition-all" />
                         </div>
 
                         <div>
@@ -1991,7 +1991,7 @@ export default function StudentDetails() {
                             <input type="text" placeholder="Nima uchun berilyapti?"
                                 value={newScore.comment}
                                 onChange={e => setNewScore(p => ({ ...p, comment: e.target.value }))}
-                                className="w-full px-4 py-3 bg-gray-55 dark:bg-[#0b111a]/50 border border-gray-100 dark:border-[#232d42] rounded-2xl text-xs font-bold text-gray-900 dark:text-white outline-none focus:border-[#1b6b6b] transition-all" />
+                                className="w-full px-4 py-3 bg-gray-55 dark:bg-gray-900/50 border border-gray-100 dark:border-gray-800 rounded-2xl text-xs font-bold text-gray-900 dark:text-white outline-none focus:border-[#1b6b6b] transition-all" />
                         </div>
 
                         <div className="flex gap-3 pt-2">
@@ -2041,7 +2041,7 @@ export default function StudentDetails() {
             {showDeleteModal && (
                 <div className="fixed inset-0 z-[250] flex items-start sm:items-center justify-center overflow-y-auto p-4">
                     <div className="absolute inset-0 bg-gray-900/60 backdrop-blur-sm" onClick={() => setShowDeleteModal(false)} />
-                    <div className="relative bg-white dark:bg-[#151c2c] w-full max-w-sm rounded-[2rem] p-8 shadow-2xl overflow-hidden border border-gray-100 dark:border-[#232d42]/50 text-center">
+                    <div className="relative bg-white dark:bg-gray-800 w-full max-w-sm rounded-[2rem] p-8 shadow-2xl overflow-hidden border border-gray-100 dark:border-gray-800/50 text-center">
                         <div className="w-16 h-16 bg-rose-50 rounded-2xl flex items-center justify-center mx-auto mb-4 text-rose-600 border border-rose-100 dark:bg-rose-950/20 dark:text-rose-400 dark:border-rose-900/40">
                             <X size={24} />
                         </div>
@@ -2058,7 +2058,7 @@ export default function StudentDetails() {
                             </button>
                             <button
                                 onClick={() => setShowDeleteModal(false)}
-                                className="flex-1 py-3 bg-gray-55 dark:bg-[#0b111a] text-gray-405 rounded-xl text-[11px] font-extrabold uppercase tracking-wider transition-all active:scale-95 cursor-pointer"
+                                className="flex-1 py-3 bg-gray-55 dark:bg-gray-900 text-gray-405 rounded-xl text-[11px] font-extrabold uppercase tracking-wider transition-all active:scale-95 cursor-pointer"
                             >
                                 {t('cancel')}
                             </button>
@@ -2070,8 +2070,8 @@ export default function StudentDetails() {
             {editingGroupPrice && (
                 <div className="fixed inset-0 z-[250] flex items-start sm:items-center justify-center overflow-y-auto p-4">
                     <div className="absolute inset-0 bg-gray-900/60 backdrop-blur-sm" onClick={() => setEditingGroupPrice(null)} />
-                    <div className="relative bg-white dark:bg-[#151c2c] w-full max-w-sm rounded-[2rem] p-8 shadow-2xl overflow-hidden border border-gray-100 dark:border-[#232d42]/50">
-                        <div className="flex items-center justify-between mb-6 pb-4 border-b border-gray-50 dark:border-[#232d42]/50">
+                    <div className="relative bg-white dark:bg-gray-800 w-full max-w-sm rounded-[2rem] p-8 shadow-2xl overflow-hidden border border-gray-100 dark:border-gray-800/50">
+                        <div className="flex items-center justify-between mb-6 pb-4 border-b border-gray-50 dark:border-gray-800/50">
                             <div>
                                 <h3 className="text-sm font-black text-gray-900 dark:text-white tracking-tight">Maxsus narx</h3>
                                 <p className="text-[11px] font-bold text-[#1b6b6b] uppercase tracking-wider mt-0.5">{editingGroupPrice.name}</p>
@@ -2084,7 +2084,7 @@ export default function StudentDetails() {
                                 <input
                                     type="number"
                                     placeholder={String(editingGroupPrice.coursePrice)}
-                                    className="w-full px-4 py-3 bg-gray-55 dark:bg-[#0b111a] border border-gray-100 dark:border-[#232d42] rounded-2xl text-xs font-bold text-gray-900 dark:text-white focus:border-[#1b6b6b] focus:ring-4 focus:ring-[#1b6b6b]/10 outline-none transition-all"
+                                    className="w-full px-4 py-3 bg-gray-55 dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl text-xs font-bold text-gray-900 dark:text-white focus:border-[#1b6b6b] focus:ring-4 focus:ring-[#1b6b6b]/10 outline-none transition-all"
                                     value={customPriceVal}
                                     onChange={e => setCustomPriceVal(e.target.value)}
                                 />
@@ -2095,7 +2095,7 @@ export default function StudentDetails() {
                                 <input
                                     type="text"
                                     placeholder="Masalan: Aka-ukasi bor, Stipendiyachi..."
-                                    className="w-full px-4 py-3 bg-gray-55 dark:bg-[#0b111a] border border-gray-100 dark:border-[#232d42] rounded-2xl text-xs font-medium text-gray-900 dark:text-white focus:border-[#1b6b6b] focus:ring-4 focus:ring-[#1b6b6b]/10 outline-none transition-all"
+                                    className="w-full px-4 py-3 bg-gray-55 dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl text-xs font-medium text-gray-900 dark:text-white focus:border-[#1b6b6b] focus:ring-4 focus:ring-[#1b6b6b]/10 outline-none transition-all"
                                     value={customNoteVal}
                                     onChange={e => setCustomNoteVal(e.target.value)}
                                 />
@@ -2162,7 +2162,7 @@ function StatCardV3({ label, value, unit, subValue, tone, subTone }: any) {
     }[subTone as string] || 'text-gray-400 dark:text-gray-500';
 
     return (
-        <div className="bg-white dark:bg-[#151c2c] px-5 py-4 rounded-2xl border border-gray-100 dark:border-[#232d42]/50 transition-colors hover:border-gray-200 dark:hover:border-gray-700">
+        <div className="bg-white dark:bg-gray-800 px-5 py-4 rounded-2xl border border-gray-100 dark:border-gray-800/50 transition-colors hover:border-gray-200 dark:hover:border-gray-700">
             <span className="text-[12px] text-gray-500 dark:text-gray-400">{label}</span>
             <div className="mt-1.5 flex items-baseline gap-1">
                 <span className={`num text-[30px] font-bold leading-none ${valueTone}`} title={String(value)}>{value}</span>
@@ -2214,12 +2214,12 @@ function PaymentAddModal({ studentId, onClose, onAdd }: { studentId: number; onC
     };
 
     const labelCls = "block text-[11px] font-extrabold uppercase tracking-wider text-gray-400 mb-2";
-    const inputCls = "w-full px-4 py-3 bg-gray-55 dark:bg-[#0b111a]/50 border border-gray-100 dark:border-[#232d42] rounded-2xl text-xs font-bold text-gray-900 dark:text-white focus:border-[#1b6b6b] focus:ring-4 focus:ring-[#1b6b6b]/10 outline-none transition-all";
+    const inputCls = "w-full px-4 py-3 bg-gray-55 dark:bg-gray-900/50 border border-gray-100 dark:border-gray-800 rounded-2xl text-xs font-bold text-gray-900 dark:text-white focus:border-[#1b6b6b] focus:ring-4 focus:ring-[#1b6b6b]/10 outline-none transition-all";
 
     return (
         <div className="fixed inset-0 z-[100] flex items-start sm:items-center justify-center overflow-y-auto p-4">
             <div className="absolute inset-0 bg-gray-900/60 backdrop-blur-sm" onClick={onClose} />
-            <div className="relative bg-white dark:bg-[#151c2c] w-full max-w-md rounded-[2rem] shadow-2xl overflow-hidden border border-gray-100 dark:border-[#232d42]/50" onClick={e => e.stopPropagation()}>
+            <div className="relative bg-white dark:bg-gray-800 w-full max-w-md rounded-[2rem] shadow-2xl overflow-hidden border border-gray-100 dark:border-gray-800/50" onClick={e => e.stopPropagation()}>
 
                 {createdPaymentForReceipt ? (
                     <div className="p-8 space-y-6" id="print-receipt-container">
@@ -2254,8 +2254,8 @@ function PaymentAddModal({ studentId, onClose, onAdd }: { studentId: number; onC
                             <p className="text-[11px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-wider">TO'LOV CHEKI (RECEIPT)</p>
                         </div>
 
-                        <div className="bg-gray-50 dark:bg-[#0b111a]/30 p-6 rounded-3xl border border-gray-100 dark:border-gray-750 font-mono text-xs text-gray-800 dark:text-gray-300 space-y-4 shadow-inner">
-                            <div className="border-b border-dashed border-gray-300 dark:border-[#232d42] pb-3 space-y-1">
+                        <div className="bg-gray-50 dark:bg-gray-900/30 p-4 rounded-2xl border border-gray-100 dark:border-gray-750 font-mono text-xs text-gray-800 dark:text-gray-300 space-y-4 shadow-inner">
+                            <div className="border-b border-dashed border-gray-300 dark:border-gray-800 pb-3 space-y-1">
                                 <div className="flex justify-between">
                                     <span>Chek #</span>
                                     <span className="font-black">#{createdPaymentForReceipt.id}</span>
@@ -2294,7 +2294,7 @@ function PaymentAddModal({ studentId, onClose, onAdd }: { studentId: number; onC
                                 })()}
                             </div>
 
-                            <div className="border-t border-dashed border-gray-300 dark:border-[#232d42] pt-3 space-y-1.5">
+                            <div className="border-t border-dashed border-gray-300 dark:border-gray-800 pt-3 space-y-1.5">
                                 <div className="flex justify-between text-[13px]">
                                     <span className="font-bold">To'lov turi:</span>
                                     <span className="font-black uppercase">{createdPaymentForReceipt.type}</span>
@@ -2311,7 +2311,7 @@ function PaymentAddModal({ studentId, onClose, onAdd }: { studentId: number; onC
                                 </div>
                             </div>
 
-                            <div className="border-t border-dashed border-gray-300 dark:border-[#232d42] pt-3 text-center text-[11px] text-gray-400 uppercase tracking-wider font-bold">
+                            <div className="border-t border-dashed border-gray-300 dark:border-gray-800 pt-3 text-center text-[11px] text-gray-400 uppercase tracking-wider font-bold">
                                 To'lovingiz uchun rahmat!
                             </div>
                         </div>
@@ -2335,24 +2335,24 @@ function PaymentAddModal({ studentId, onClose, onAdd }: { studentId: number; onC
                     </div>
                 ) : (
                     <>
-                        <div className="p-6 flex items-center justify-between border-b border-gray-100 dark:border-[#232d42]/50 bg-gray-55 dark:bg-[#0b111a]/50">
+                        <div className="p-4 flex items-center justify-between border-b border-gray-100 dark:border-gray-800/50 bg-gray-55 dark:bg-gray-900/50">
                             <div>
                                 <h3 className="text-lg font-bold text-gray-900 dark:text-white tracking-tight">To'lov Qo'shish</h3>
                                 <p className="text-[11px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-wider mt-0.5">Yangi tranzaksiya kiritish</p>
                             </div>
                             <button onClick={onClose} className="w-9 h-9 flex items-center justify-center text-gray-400 hover:bg-white dark:hover:bg-gray-700 rounded-xl cursor-pointer"><XCircle size={18} /></button>
                         </div>
-                        <form onSubmit={handleSubmit} className="p-6 space-y-6">
+                        <form onSubmit={handleSubmit} className="p-4 space-y-6">
 
                             {student && (
-                                <div className="p-4 bg-gray-50 dark:bg-[#0b111a]/50 rounded-2xl border border-gray-100 dark:border-[#232d42]/80 space-y-3">
+                                <div className="p-4 bg-gray-50 dark:bg-gray-900/50 rounded-2xl border border-gray-100 dark:border-gray-800/80 space-y-3">
                                     <div>
                                         <span className="text-[10px] font-bold text-[#1b6b6b] uppercase tracking-wider block">O'quvchi</span>
                                         <h4 className="text-xs font-bold text-gray-900 dark:text-white mt-0.5">{student.name}</h4>
                                         {student.phone && <p className="text-[11px] text-gray-400 font-bold mt-0.5">{student.phone}</p>}
                                     </div>
 
-                                    <div className="grid grid-cols-2 gap-3 pt-2 border-t border-dashed border-gray-200 dark:border-[#232d42]/50">
+                                    <div className="grid grid-cols-2 gap-3 pt-2 border-t border-dashed border-gray-200 dark:border-gray-800/50">
                                         <div>
                                             <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider block">Joriy Balans</span>
                                             <span className={`text-[12px] font-bold block mt-0.5 tabular-nums ${student.balance >= 0 ? 'text-emerald-600' : 'text-rose-600'}`}>
@@ -2375,7 +2375,7 @@ function PaymentAddModal({ studentId, onClose, onAdd }: { studentId: number; onC
                                         </div>
                                     </div>
 
-                                    <div className="pt-2 border-t border-dashed border-gray-200 dark:border-[#232d42]/50">
+                                    <div className="pt-2 border-t border-dashed border-gray-200 dark:border-gray-800/50">
                                         <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider block">Kurslar</span>
                                         {(() => {
                                             const sg = groups.filter(g => g.studentIds.includes(student.id));
@@ -2384,7 +2384,7 @@ function PaymentAddModal({ studentId, onClose, onAdd }: { studentId: number; onC
                                                     {sg.map(g => {
                                                         const courseName = courses.find(c => c.id === g.courseId)?.name || '';
                                                         return (
-                                                            <span key={g.id} className="px-2 py-0.5 bg-white dark:bg-[#151c2c] text-[10px] font-bold uppercase tracking-wider text-[#1b6b6b] border border-teal-100/50 dark:border-teal-900/40 rounded-md">
+                                                            <span key={g.id} className="px-2 py-0.5 bg-white dark:bg-gray-800 text-[10px] font-bold uppercase tracking-wider text-[#1b6b6b] border border-teal-100/50 dark:border-teal-900/40 rounded-md">
                                                                 {g.name} {courseName && `(${courseName})`}
                                                             </span>
                                                         );
@@ -2410,7 +2410,7 @@ function PaymentAddModal({ studentId, onClose, onAdd }: { studentId: number; onC
                                             className={`px-3 py-1.5 text-[11px] font-black uppercase tracking-wider border rounded-xl transition-all cursor-pointer ${
                                                 Number(amount) === amt
                                                     ? 'bg-[#1b6b6b] border-[#1b6b6b] text-white shadow-sm'
-                                                    : 'bg-gray-55 dark:bg-[#0b111a]/30 dark:border-[#232d42] hover:bg-gray-100 text-gray-550 dark:text-gray-400'
+                                                    : 'bg-gray-55 dark:bg-gray-900/30 dark:border-gray-800 hover:bg-gray-100 text-gray-550 dark:text-gray-400'
                                             }`}
                                         >
                                             {amt.toLocaleString()}
@@ -2424,14 +2424,14 @@ function PaymentAddModal({ studentId, onClose, onAdd }: { studentId: number; onC
                                 <div className="grid grid-cols-3 gap-2">
                                     {['Naqd', 'Karta', "O'tkazma"].map(t => (
                                         <button key={t} type="button" onClick={() => setType(t)}
-                                            className={`py-2.5 rounded-xl text-xs font-bold transition-all border cursor-pointer ${type === t ? 'bg-[#1b6b6b] border-[#1b6b6b] text-white shadow-sm shadow-[#1b6b6b]/20 scale-102' : 'bg-white dark:bg-[#151c2c] border-gray-100 dark:border-[#232d42] text-gray-400 dark:text-gray-500 hover:bg-gray-50'}`}>
+                                            className={`py-2.5 rounded-xl text-xs font-bold transition-all border cursor-pointer ${type === t ? 'bg-[#1b6b6b] border-[#1b6b6b] text-white shadow-sm shadow-[#1b6b6b]/20 scale-102' : 'bg-white dark:bg-gray-800 border-gray-100 dark:border-gray-800 text-gray-400 dark:text-gray-500 hover:bg-gray-50'}`}>
                                             {t}
                                         </button>
                                     ))}
                                 </div>
                             </div>
 
-                            <div className="pt-4 border-t border-dashed border-gray-100 dark:border-[#232d42]/50">
+                            <div className="pt-4 border-t border-dashed border-gray-100 dark:border-gray-800/50">
                                 <button type="submit" className="w-full py-3 bg-[#1b6b6b] hover:bg-[#155252] text-white rounded-xl font-bold text-[11px] uppercase tracking-wider transition-all flex items-center justify-center gap-1.5 shadow-sm shadow-[#1b6b6b]/20 cursor-pointer">
                                     <Save size={14} />
                                     Saqlash va Chek chiqarish
@@ -2450,8 +2450,8 @@ function GroupAddModal({ studentId, currentGroups, availableGroups, onClose, onA
     return (
         <div className="fixed inset-0 z-[100] flex items-start sm:items-center justify-center overflow-y-auto p-4">
             <div className="absolute inset-0 bg-gray-900/60 backdrop-blur-sm" onClick={onClose} />
-            <div className="relative bg-white dark:bg-[#151c2c] w-full max-w-sm rounded-[2rem] shadow-2xl overflow-hidden border border-gray-100 dark:border-[#232d42]/50" onClick={e => e.stopPropagation()}>
-                <div className="p-6 flex items-center justify-between border-b border-gray-100 dark:border-[#232d42]/50 bg-gray-55 dark:bg-[#0b111a]/50">
+            <div className="relative bg-white dark:bg-gray-800 w-full max-w-sm rounded-[2rem] shadow-2xl overflow-hidden border border-gray-100 dark:border-gray-800/50" onClick={e => e.stopPropagation()}>
+                <div className="p-4 flex items-center justify-between border-b border-gray-100 dark:border-gray-800/50 bg-gray-55 dark:bg-gray-900/50">
                     <div>
                         <h3 className="text-lg font-bold text-gray-900 dark:text-white tracking-tight">Kursga Qo'shish</h3>
                         <p className="text-[11px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-wider mt-0.5">Yangi kurs tanlash</p>
@@ -2469,7 +2469,7 @@ function GroupAddModal({ studentId, currentGroups, availableGroups, onClose, onA
                                     <p className="text-xs font-black text-gray-900 dark:text-white group-hover:text-[#1b6b6b] transition-colors tracking-tight">{g.name}</p>
                                     <p className="text-[11px] font-bold text-gray-400 mt-0.5 uppercase tracking-wider">{g.days} • {g.startTime}</p>
                                 </div>
-                                <div className="w-8 h-8 rounded-lg flex items-center justify-center bg-gray-55 dark:bg-[#151c2c] text-gray-405 group-hover:text-white group-hover:bg-[#1b6b6b] transition-all">
+                                <div className="w-8 h-8 rounded-lg flex items-center justify-center bg-gray-55 dark:bg-gray-800 text-gray-405 group-hover:text-white group-hover:bg-[#1b6b6b] transition-all">
                                     <Plus size={16} />
                                 </div>
                             </button>
@@ -2493,20 +2493,20 @@ function AttendanceAddModal({ studentId, studentGroups, onClose, onAdd }: any) {
     };
 
     const labelCls = "block text-[11px] font-extrabold uppercase tracking-wider text-gray-400 mb-2";
-    const inputCls = "w-full px-4 py-3 bg-gray-55 dark:bg-[#0b111a]/50 border border-gray-100 dark:border-[#232d42] rounded-2xl text-xs font-bold text-gray-900 dark:text-white focus:border-[#1b6b6b] focus:ring-4 focus:ring-[#1b6b6b]/10 outline-none transition-all";
+    const inputCls = "w-full px-4 py-3 bg-gray-55 dark:bg-gray-900/50 border border-gray-100 dark:border-gray-800 rounded-2xl text-xs font-bold text-gray-900 dark:text-white focus:border-[#1b6b6b] focus:ring-4 focus:ring-[#1b6b6b]/10 outline-none transition-all";
 
     return (
         <div className="fixed inset-0 z-[100] flex items-start sm:items-center justify-center overflow-y-auto p-4">
             <div className="absolute inset-0 bg-gray-900/60 backdrop-blur-sm" onClick={onClose} />
-            <div className="relative bg-white dark:bg-[#151c2c] w-full max-w-sm rounded-[2rem] shadow-2xl overflow-hidden border border-gray-100 dark:border-[#232d42]/50" onClick={e => e.stopPropagation()}>
-                <div className="p-6 flex items-center justify-between border-b border-gray-100 dark:border-[#232d42]/50 bg-gray-55 dark:bg-[#0b111a]/50">
+            <div className="relative bg-white dark:bg-gray-800 w-full max-w-sm rounded-[2rem] shadow-2xl overflow-hidden border border-gray-100 dark:border-gray-800/50" onClick={e => e.stopPropagation()}>
+                <div className="p-4 flex items-center justify-between border-b border-gray-100 dark:border-gray-800/50 bg-gray-55 dark:bg-gray-900/50">
                     <div>
                         <h3 className="text-lg font-bold text-gray-900 dark:text-white tracking-tight">Yo'qlama</h3>
                         <p className="text-[11px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-wider mt-0.5">Davomat qilish</p>
                     </div>
                     <button onClick={onClose} className="w-9 h-9 flex items-center justify-center text-gray-400 hover:bg-white dark:hover:bg-gray-700 rounded-xl cursor-pointer"><XCircle size={18} /></button>
                 </div>
-                <form onSubmit={handleSubmit} className="p-6 space-y-6">
+                <form onSubmit={handleSubmit} className="p-4 space-y-6">
                     <div>
                         <label className={labelCls}>KURSNI TANLANG</label>
                         <select value={groupId} onChange={e => setGroupId(e.target.value)} required className={inputCls}>
@@ -2519,13 +2519,13 @@ function AttendanceAddModal({ studentId, studentGroups, onClose, onAdd }: any) {
                         <div className="grid grid-cols-3 gap-2">
                             {['Keldi', 'Kelmapdi', 'Sababli'].map(s => (
                                 <button key={s} type="button" onClick={() => setStatus(s)}
-                                    className={`py-2.5 rounded-xl text-[11px] font-bold uppercase tracking-wider transition-all border cursor-pointer ${status === s ? 'bg-[#1b6b6b] border-[#1b6b6b] text-white shadow-sm shadow-[#1b6b6b]/20 scale-105' : 'bg-white dark:bg-[#151c2c] border-gray-100 dark:border-[#232d42] text-gray-400 dark:text-gray-500 hover:bg-gray-50'}`}>
+                                    className={`py-2.5 rounded-xl text-[11px] font-bold uppercase tracking-wider transition-all border cursor-pointer ${status === s ? 'bg-[#1b6b6b] border-[#1b6b6b] text-white shadow-sm shadow-[#1b6b6b]/20 scale-105' : 'bg-white dark:bg-gray-800 border-gray-100 dark:border-gray-800 text-gray-400 dark:text-gray-500 hover:bg-gray-50'}`}>
                                     {s}
                                 </button>
                             ))}
                         </div>
                     </div>
-                    <div className="pt-4 border-t border-dashed border-gray-100 dark:border-[#232d42]/50">
+                    <div className="pt-4 border-t border-dashed border-gray-100 dark:border-gray-800/50">
                         <button type="submit" className="w-full py-3 bg-[#1b6b6b] hover:bg-[#155252] text-white rounded-xl font-bold text-[11px] uppercase tracking-wider transition-all flex items-center justify-center gap-1.5 shadow-sm shadow-[#1b6b6b]/20 cursor-pointer">
                             <Save size={14} />
                             Saqlash
@@ -2560,20 +2560,20 @@ function SmsSendModal({ phone, studentName, onClose, onConfirm }: { phone: strin
     };
 
     const labelCls = "block text-[11px] font-extrabold uppercase tracking-wider text-gray-400 mb-2";
-    const inputCls = "w-full px-4 py-3 bg-gray-55 dark:bg-[#0b111a]/50 border border-gray-100 dark:border-[#232d42] rounded-2xl text-xs font-bold text-gray-900 dark:text-white focus:border-[#1b6b6b] focus:ring-4 focus:ring-[#1b6b6b]/10 outline-none transition-all";
+    const inputCls = "w-full px-4 py-3 bg-gray-55 dark:bg-gray-900/50 border border-gray-100 dark:border-gray-800 rounded-2xl text-xs font-bold text-gray-900 dark:text-white focus:border-[#1b6b6b] focus:ring-4 focus:ring-[#1b6b6b]/10 outline-none transition-all";
 
     return (
         <div className="fixed inset-0 z-[110] flex items-start sm:items-center justify-center overflow-y-auto p-4">
             <div className="absolute inset-0 bg-gray-900/60 backdrop-blur-sm" onClick={onClose} />
-            <div className="relative bg-white dark:bg-[#151c2c] w-full max-w-md rounded-[2rem] shadow-2xl overflow-hidden border border-gray-100 dark:border-[#232d42]/50" onClick={e => e.stopPropagation()}>
-                <div className="p-6 flex items-center justify-between border-b border-gray-100 dark:border-[#232d42]/50 bg-gray-55 dark:bg-[#0b111a]/50">
+            <div className="relative bg-white dark:bg-gray-800 w-full max-w-md rounded-[2rem] shadow-2xl overflow-hidden border border-gray-100 dark:border-gray-800/50" onClick={e => e.stopPropagation()}>
+                <div className="p-4 flex items-center justify-between border-b border-gray-100 dark:border-gray-800/50 bg-gray-55 dark:bg-gray-900/50">
                     <div>
                         <h3 className="text-lg font-bold text-gray-900 dark:text-white tracking-tight text-[#1b6b6b]">SMS Yuborish</h3>
                         <p className="text-[11px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-wider mt-0.5">Qabul qiluvchi: {phone}</p>
                     </div>
                     <button onClick={onClose} className="w-9 h-9 flex items-center justify-center text-gray-405 hover:bg-white dark:hover:bg-gray-700 rounded-xl cursor-pointer"><XCircle size={18} /></button>
                 </div>
-                <form onSubmit={handleSubmit} className="p-6 space-y-4">
+                <form onSubmit={handleSubmit} className="p-4 space-y-4">
                     <div>
                         <label className={labelCls}>TAYYOR SHABLONLAR</label>
                         <div className="flex flex-wrap gap-2">
@@ -2590,7 +2590,7 @@ function SmsSendModal({ phone, studentName, onClose, onConfirm }: { phone: strin
                             <button
                                 type="button"
                                 onClick={() => setMessage(defaultPrefix)}
-                                className="px-2.5 py-1 text-[11px] font-bold text-gray-400 bg-gray-55 border border-gray-100 dark:bg-[#0b111a]/50 dark:border-[#232d42] rounded-lg hover:bg-gray-200 transition-colors uppercase tracking-wider cursor-pointer"
+                                className="px-2.5 py-1 text-[11px] font-bold text-gray-400 bg-gray-55 border border-gray-100 dark:bg-gray-900/50 dark:border-gray-800 rounded-lg hover:bg-gray-200 transition-colors uppercase tracking-wider cursor-pointer"
                             >
                                 Tozalash
                             </button>
@@ -2607,7 +2607,7 @@ function SmsSendModal({ phone, studentName, onClose, onConfirm }: { phone: strin
                             className={inputCls + " resize-none leading-relaxed"}
                         />
                     </div>
-                    <div className="pt-4 border-t border-dashed border-gray-100 dark:border-[#232d42]/50">
+                    <div className="pt-4 border-t border-dashed border-gray-100 dark:border-gray-800/50">
                         <button type="submit" className="w-full py-3 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl font-bold text-[11px] uppercase tracking-wider transition-all flex items-center justify-center gap-1.5 shadow-lg shadow-emerald-500/20 cursor-pointer">
                             <Send size={14} />
                             Jo'natish
@@ -2641,7 +2641,7 @@ function TabButton({ label, icon, active, onClick }: any) {
         <button
             onClick={onClick}
             className={`px-4 py-2 rounded-xl text-[12px] font-bold uppercase tracking-wider transition-all flex items-center gap-2 shrink-0 cursor-pointer ${active
-                ? 'bg-white dark:bg-[#151c2c] text-[#1b6b6b] dark:text-teal-400 shadow-sm border border-gray-200/50 dark:border-[#232d42]'
+                ? 'bg-white dark:bg-gray-800 text-[#1b6b6b] dark:text-teal-400 shadow-sm border border-gray-200/50 dark:border-gray-800'
                 : 'text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-[#151c2c]/50 border border-transparent'
                 }`}
         >

@@ -1329,7 +1329,7 @@ function OMRDemo({ lang, t }: { lang: 'uz' | 'en'; t: (s: string) => any }) {
   ];
 
   return (
-    <div className="grid lg:grid-cols-[1.1fr,1fr] gap-6 items-stretch text-left">
+    <div className="grid lg:grid-cols-[1.1fr,1fr] gap-4 items-stretch text-left">
       <div className="relative glass-strong rounded-2xl p-8 overflow-hidden min-h-[500px] flex items-center justify-center neon-ring">
         <div className="absolute inset-0 opacity-30"
              style={{
@@ -1540,7 +1540,7 @@ function TrialModal({ t, lang, plan, onClose }: TrialModalProps) {
 
   return (
     <div className="fixed inset-0 z-50 flex items-start sm:items-center justify-center overflow-y-auto bg-slate-950/75 backdrop-blur-md p-4 animate-in fade-in duration-300">
-      <div className="relative w-full max-w-md bg-[var(--bg-2)] border border-[var(--border-strong)] rounded-3xl p-7 shadow-2xl pulse-border flex flex-col gap-4 animate-in zoom-in-95 duration-200">
+      <div className="relative w-full max-w-md bg-[var(--bg-2)] border border-[var(--border-strong)] rounded-2xl p-7 shadow-2xl pulse-border flex flex-col gap-4 animate-in zoom-in-95 duration-200">
         
         {/* Close Button */}
         <button onClick={onClose} className="absolute top-4 right-4 p-1.5 text-[var(--text-dim)] hover:text-[var(--text)] hover:bg-[var(--surface-2)] rounded-lg transition-colors cursor-pointer">
@@ -1764,7 +1764,7 @@ function Nav({ t, lang, setLang, dark, setDark, onOpenModal }: NavProps) {
         </a>
 
         {/* Anchors links */}
-        <div className="hidden md:flex items-center gap-6">
+        <div className="hidden md:flex items-center gap-4">
           <a href="#features" className="text-sm text-[var(--text-dim)] hover:text-[var(--text)] transition-colors">{t('nav.features')}</a>
           <a href="#preview" className="text-sm text-[var(--text-dim)] hover:text-[var(--text)] transition-colors">{t('nav.preview')}</a>
           <a href="#pricing" className="text-sm text-[var(--text-dim)] hover:text-[var(--text)] transition-colors">{t('nav.pricing')}</a>
@@ -1909,7 +1909,7 @@ function Features({ t }: { t: (s: string) => any }) {
 
         <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-5">
           {items.map((it: any, i: number) => (
-            <div key={i} className="glass rounded-2xl p-6 relative overflow-hidden group hover:border-[var(--accent)] transition-all duration-300 text-left">
+            <div key={i} className="glass rounded-2xl p-4 relative overflow-hidden group hover:border-[var(--accent)] transition-all duration-300 text-left">
               {/* background subtle aura glow */}
               <div className="absolute -top-12 -left-12 w-24 h-24 rounded-full bg-[var(--accent-soft)] filter blur-2xl group-hover:scale-150 transition-all duration-300"></div>
               
@@ -2035,11 +2035,11 @@ function Pricing({ t, onOpenModal }: PricingProps) {
         </div>
 
         {/* cards grid */}
-        <div className="grid md:grid-cols-3 gap-6 max-w-5xl mx-auto items-stretch">
+        <div className="grid md:grid-cols-3 gap-4 max-w-5xl mx-auto items-stretch">
           {plans.map((p: any, pi: number) => {
             const popular = pi === 1; // Middle Business Plan
             return (
-              <div key={pi} className={"glass rounded-3xl p-7 flex flex-col justify-between relative overflow-hidden transition-all duration-300 text-left " +
+              <div key={pi} className={"glass rounded-2xl p-7 flex flex-col justify-between relative overflow-hidden transition-all duration-300 text-left " +
                    (popular ? "pulse-border scale-102 z-10" : "hover:border-[var(--accent)]")}
                    style={popular ? { background: "linear-gradient(180deg, var(--accent-soft), var(--bg-2))" } : {}}>
                 
@@ -2134,7 +2134,7 @@ function FinalCTA({ t, onOpenModal }: { t: (s: string) => any; onOpenModal: () =
   return (
     <section className="py-20 relative">
       <div className="max-w-5xl mx-auto px-4">
-        <div className="relative rounded-3xl overflow-hidden glass-strong p-12 text-center"
+        <div className="relative rounded-2xl overflow-hidden glass-strong p-12 text-center"
              style={{
                background: "radial-gradient(ellipse at top, var(--accent-soft), transparent 60%), var(--surface-2)",
                boxShadow: "0 30px 100px -30px var(--accent-soft), 0 0 0 1px var(--border-strong)"

@@ -38,13 +38,13 @@
   --color-gray-550: #5b6a80;
   --color-gray-600: #475569;
   --color-gray-650: #3e4a5e;
-  --color-gray-700: #334155;
-  --color-gray-750: #2a3547;
-  --color-gray-755: #283344;
-  --color-gray-800: #1e293b;
-  --color-gray-850: #172033;
-  --color-gray-900: #0f172a;
-  --color-gray-950: #080d17;
+  --color-gray-700: #30363d;
+  --color-gray-750: #21262d;
+  --color-gray-755: #1c2128;
+  --color-gray-800: #161b22;
+  --color-gray-850: #12161d;
+  --color-gray-900: #0d1117;
+  --color-gray-950: #010409;
 
   /* Ranglardagi shu turdagi oraliq pog'onalar ham bir nechta joyda uchraydi. */
   --color-slate-55:  #f5f7fa;
@@ -141,8 +141,8 @@ body {
 
 .dark body,
 body.dark {
-  background-color: #0a0f18;
-  color: #e2e8f0;
+  background-color: #0d1117;
+  color: #c9d1d9;
 }
 
 /* Scrollbar */
@@ -155,3 +155,11 @@ body.dark {
 
 .no-scrollbar::-webkit-scrollbar { display: none; }
 .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+
+
+.dark .shadow-sm,
+.dark .shadow,
+.dark .shadow-md,
+.dark .shadow-lg {
+  box-shadow: none !important;
+}

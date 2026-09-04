@@ -9,7 +9,7 @@ import MapPicker from './MapPicker';
 import { compressImage } from '../lib/image';
 import * as XLSX from 'xlsx';
 
-const inp = "w-full px-4 py-3 bg-gray-50 dark:bg-[#0b111a]/50 border border-gray-100 dark:border-[#232d42] rounded-2xl text-xs font-bold text-gray-900 dark:text-white focus:border-[#1b6b6b] focus:ring-4 focus:ring-[#1b6b6b]/10 outline-none transition-all";
+const inp = "w-full px-4 py-3 bg-gray-50 dark:bg-gray-900/50 border border-gray-100 dark:border-gray-800 rounded-2xl text-xs font-bold text-gray-900 dark:text-white focus:border-[#1b6b6b] focus:ring-4 focus:ring-[#1b6b6b]/10 outline-none transition-all";
 const lbl = "block text-[11px] font-extrabold uppercase tracking-wider text-gray-400 mb-2";
 
 const UZB_REGIONS: Record<string, string[]> = {
@@ -556,14 +556,14 @@ export default function Students() {
                     <div className="flex flex-wrap items-center gap-2">
                         <button
                             onClick={handleExport}
-                            className="flex items-center gap-2 px-3 py-2.5 bg-white dark:bg-[#0b111a] border border-gray-200 dark:border-[#232d42] text-gray-600 dark:text-gray-300 hover:border-brand hover:text-brand rounded-xl text-xs font-bold transition-all cursor-pointer"
+                            className="flex items-center gap-2 px-3 py-2.5 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 text-gray-600 dark:text-gray-300 hover:border-brand hover:text-brand rounded-xl text-xs font-bold transition-all cursor-pointer"
                         >
                             <FileSpreadsheet size={14} /> {t('export')}
                         </button>
                         <button
                             onClick={() => document.getElementById('import-excel-input')?.click()}
                             disabled={isImporting}
-                            className="flex items-center gap-2 px-3 py-2.5 bg-white dark:bg-[#0b111a] border border-gray-200 dark:border-[#232d42] text-gray-600 dark:text-gray-300 hover:border-brand hover:text-brand rounded-xl text-xs font-bold transition-all cursor-pointer disabled:opacity-50"
+                            className="flex items-center gap-2 px-3 py-2.5 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 text-gray-600 dark:text-gray-300 hover:border-brand hover:text-brand rounded-xl text-xs font-bold transition-all cursor-pointer disabled:opacity-50"
                         >
                             <FileSpreadsheet size={14} /> {t('import')}
                         </button>
@@ -571,7 +571,7 @@ export default function Students() {
                         {selectedSchoolId !== 0 && (
                             <button
                                 onClick={() => setIsLinkModalOpen(true)}
-                                className="flex items-center gap-2 px-3 py-2.5 bg-white dark:bg-[#0b111a] border border-gray-200 dark:border-[#232d42] text-gray-600 dark:text-gray-300 hover:border-brand hover:text-brand rounded-xl text-xs font-bold transition-all cursor-pointer"
+                                className="flex items-center gap-2 px-3 py-2.5 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 text-gray-600 dark:text-gray-300 hover:border-brand hover:text-brand rounded-xl text-xs font-bold transition-all cursor-pointer"
                             >
                                 <QrCode size={14} /> {t('create_link')}
                             </button>
@@ -585,7 +585,7 @@ export default function Students() {
                     </div>
                 </div>
 
-                <div className="px-6 pb-5 pt-3 border-t border-gray-50 dark:border-[#232d42]/50 space-y-3">
+                <div className="px-6 pb-5 pt-3 border-t border-gray-50 dark:border-gray-800/50 space-y-3">
                     <div className="relative">
                         <Search size={14} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400" />
                         <input
@@ -593,14 +593,14 @@ export default function Students() {
                             placeholder={t('search_placeholder_students')}
                             value={search}
                             onChange={e => setSearch(e.target.value)}
-                            className="w-full pl-9 pr-4 py-2.5 bg-gray-50 dark:bg-[#0b111a]/50 border border-gray-100 dark:border-[#232d42] rounded-xl text-xs font-bold text-gray-900 dark:text-white outline-none focus:border-[#1b6b6b] transition-all"
+                            className="w-full pl-9 pr-4 py-2.5 bg-gray-50 dark:bg-gray-900/50 border border-gray-100 dark:border-gray-800 rounded-xl text-xs font-bold text-gray-900 dark:text-white outline-none focus:border-[#1b6b6b] transition-all"
                         />
                     </div>
                     <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 xl:grid-cols-9 gap-3">
                         <div>
                             <label className={lbl}>{t('filter_status')}</label>
                             <select value={filters.status} onChange={e => setFilters({...filters, status: e.target.value})}
-                                className="w-full px-3 py-2 bg-gray-50 dark:bg-[#0b111a]/50 border border-gray-100 dark:border-[#232d42] rounded-xl text-[11px] font-bold text-gray-700 dark:text-white outline-none focus:border-[#1b6b6b] transition-all cursor-pointer">
+                                className="w-full px-3 py-2 bg-gray-50 dark:bg-gray-900/50 border border-gray-100 dark:border-gray-800 rounded-xl text-[11px] font-bold text-gray-700 dark:text-white outline-none focus:border-[#1b6b6b] transition-all cursor-pointer">
                                 <option value="">{t('all')}</option>
                                 <option value="Faol">{t('status_active')}</option>
                                 <option value="Passiv">{t('status_passive')}</option>
@@ -611,7 +611,7 @@ export default function Students() {
                         <div>
                             <label className={lbl}>{t('filter_group')}</label>
                             <select value={filters.groupId} onChange={e => setFilters({...filters, groupId: e.target.value})}
-                                className="w-full px-3 py-2 bg-gray-50 dark:bg-[#0b111a]/50 border border-gray-100 dark:border-[#232d42] rounded-xl text-[11px] font-bold text-gray-700 dark:text-white outline-none focus:border-[#1b6b6b] transition-all cursor-pointer">
+                                className="w-full px-3 py-2 bg-gray-50 dark:bg-gray-900/50 border border-gray-100 dark:border-gray-800 rounded-xl text-[11px] font-bold text-gray-700 dark:text-white outline-none focus:border-[#1b6b6b] transition-all cursor-pointer">
                                 <option value="">{t('all')}</option>
                                 {groups.map(g => <option key={g.id} value={g.id}>{g.name}</option>)}
                             </select>
@@ -619,7 +619,7 @@ export default function Students() {
                         <div>
                             <label className={lbl}>{t('filter_balance')}</label>
                             <select value={filters.balanceStatus} onChange={e => setFilters({...filters, balanceStatus: e.target.value})}
-                                className="w-full px-3 py-2 bg-gray-50 dark:bg-[#0b111a]/50 border border-gray-100 dark:border-[#232d42] rounded-xl text-[11px] font-bold text-gray-700 dark:text-white outline-none focus:border-[#1b6b6b] transition-all cursor-pointer">
+                                className="w-full px-3 py-2 bg-gray-50 dark:bg-gray-900/50 border border-gray-100 dark:border-gray-800 rounded-xl text-[11px] font-bold text-gray-700 dark:text-white outline-none focus:border-[#1b6b6b] transition-all cursor-pointer">
                                 <option value="all">{t('all')}</option>
                                 <option value="debt">{t('debtors')}</option>
                                 <option value="positive">{t('paid_students')}</option>
@@ -628,7 +628,7 @@ export default function Students() {
                         <div>
                             <label className={lbl}>Muassasa turi</label>
                             <select value={filters.orgType} onChange={e => setFilters({...filters, orgType: e.target.value})}
-                                className="w-full px-3 py-2 bg-gray-50 dark:bg-[#0b111a]/50 border border-gray-100 dark:border-[#232d42] rounded-xl text-[11px] font-bold text-gray-700 dark:text-white outline-none focus:border-[#1b6b6b] transition-all cursor-pointer">
+                                className="w-full px-3 py-2 bg-gray-50 dark:bg-gray-900/50 border border-gray-100 dark:border-gray-800 rounded-xl text-[11px] font-bold text-gray-700 dark:text-white outline-none focus:border-[#1b6b6b] transition-all cursor-pointer">
                                 <option value="">Barchasi</option>
                                 <option value="Maktab">Maktab</option>
                                 <option value="Prezident maktabi">Prezident maktabi</option>
@@ -644,13 +644,13 @@ export default function Students() {
                                 value={filters.muassasaSearch}
                                 onChange={e => setFilters({...filters, muassasaSearch: e.target.value})}
                                 placeholder="Masalan: 42-maktab"
-                                className="w-full px-3 py-2 bg-gray-50 dark:bg-[#0b111a]/50 border border-gray-100 dark:border-[#232d42] rounded-xl text-[11px] font-bold text-gray-700 dark:text-white outline-none focus:border-[#1b6b6b] transition-all"
+                                className="w-full px-3 py-2 bg-gray-50 dark:bg-gray-900/50 border border-gray-100 dark:border-gray-800 rounded-xl text-[11px] font-bold text-gray-700 dark:text-white outline-none focus:border-[#1b6b6b] transition-all"
                             />
                         </div>
                         <div>
                             <label className={lbl}>Viloyat</label>
                             <select value={filters.region} onChange={e => setFilters({...filters, region: e.target.value, district: ''})}
-                                className="w-full px-3 py-2 bg-gray-50 dark:bg-[#0b111a]/50 border border-gray-100 dark:border-[#232d42] rounded-xl text-[11px] font-bold text-gray-700 dark:text-white outline-none focus:border-[#1b6b6b] transition-all cursor-pointer">
+                                className="w-full px-3 py-2 bg-gray-50 dark:bg-gray-900/50 border border-gray-100 dark:border-gray-800 rounded-xl text-[11px] font-bold text-gray-700 dark:text-white outline-none focus:border-[#1b6b6b] transition-all cursor-pointer">
                                 <option value="">Barchasi</option>
                                 {Object.keys(UZB_REGIONS).map(r => <option key={r} value={r}>{r}</option>)}
                             </select>
@@ -659,7 +659,7 @@ export default function Students() {
                             <label className={lbl}>Tuman</label>
                             <select value={filters.district} onChange={e => setFilters({...filters, district: e.target.value})}
                                 disabled={!filters.region}
-                                className="w-full px-3 py-2 bg-gray-50 dark:bg-[#0b111a]/50 border border-gray-100 dark:border-[#232d42] rounded-xl text-[11px] font-bold text-gray-700 dark:text-white outline-none focus:border-[#1b6b6b] transition-all cursor-pointer disabled:opacity-50">
+                                className="w-full px-3 py-2 bg-gray-50 dark:bg-gray-900/50 border border-gray-100 dark:border-gray-800 rounded-xl text-[11px] font-bold text-gray-700 dark:text-white outline-none focus:border-[#1b6b6b] transition-all cursor-pointer disabled:opacity-50">
                                 <option value="">Barchasi</option>
                                 {filters.region && UZB_REGIONS[filters.region]?.map(d => <option key={d} value={d}>{d}</option>)}
                             </select>
@@ -689,7 +689,7 @@ export default function Students() {
             </div>
 
             {/* Table layout */}
-            <div className="bg-white dark:bg-[#151c2c] rounded-3xl border border-gray-100 dark:border-[#232d42]/50 shadow-sm overflow-hidden">
+            <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-800/50 shadow-sm overflow-hidden">
 
                 {/* Phone layout. The table below needs 900px, which is two and a half
                     screens of sideways scrolling on a 360px phone, so small screens get
@@ -700,7 +700,7 @@ export default function Students() {
                         return (
                             <button key={student.id} onClick={() => navigate(`/students/${student.id}`)}
                                 className="w-full flex items-center gap-3 p-4 text-left hover:bg-gray-50/80 dark:hover:bg-gray-900/40 transition-colors cursor-pointer">
-                                <div className="w-11 h-11 rounded-xl bg-gray-55 dark:bg-[#0b111a] border border-gray-100 dark:border-[#232d42] flex items-center justify-center text-[#1b6b6b] font-bold text-xs overflow-hidden shrink-0">
+                                <div className="w-11 h-11 rounded-xl bg-gray-55 dark:bg-gray-900 border border-gray-100 dark:border-gray-800 flex items-center justify-center text-[#1b6b6b] font-bold text-xs overflow-hidden shrink-0">
                                     {student.photo
                                         ? <img src={student.photo} alt={student.name} loading="lazy" decoding="async" className="w-full h-full object-cover" />
                                         : student.name.charAt(0).toUpperCase()}
@@ -737,7 +737,7 @@ export default function Students() {
                 <div className="hidden md:block overflow-x-auto custom-scrollbar">
                     <table className="w-full text-left border-collapse min-w-[900px]">
                         <thead>
-                            <tr className="bg-gray-50/50 dark:bg-[#0b111a]/50 border-b border-gray-100 dark:border-[#232d42]">
+                            <tr className="bg-gray-50/50 dark:bg-gray-900/50 border-b border-gray-100 dark:border-gray-800">
                                 <th className="p-4 text-[11px] font-bold text-gray-400 uppercase tracking-wider text-center">ID</th>
                                 <th className="p-4 text-[11px] font-bold text-gray-400 uppercase tracking-wider">{t('student')}</th>
                                 <th className="p-4 text-[11px] font-bold text-gray-400 uppercase tracking-wider text-center">{t('student_phone')}</th>
@@ -753,7 +753,7 @@ export default function Students() {
                                     <td className="p-4 text-[11px] font-extrabold text-gray-400 text-center tabular-nums">#{student.id}</td>
                                     <td className="p-4">
                                         <div className="flex items-center gap-3">
-                                            <div className="w-10 h-10 rounded-xl bg-gray-55 dark:bg-[#0b111a] border border-gray-100 dark:border-[#232d42] flex items-center justify-center text-[#1b6b6b] font-bold text-xs shadow-inner overflow-hidden shrink-0 group-hover:scale-105 transition-transform">
+                                            <div className="w-10 h-10 rounded-xl bg-gray-55 dark:bg-gray-900 border border-gray-100 dark:border-gray-800 flex items-center justify-center text-[#1b6b6b] font-bold text-xs shadow-inner overflow-hidden shrink-0 group-hover:scale-105 transition-transform">
                                                 {student.photo ? (
                                                     <img src={student.photo} alt={student.name} loading="lazy" decoding="async" className="w-full h-full object-cover" />
                                                 ) : student.name.charAt(0).toUpperCase()}
@@ -765,7 +765,7 @@ export default function Students() {
                                         </div>
                                     </td>
                                     <td className="p-4 text-center">
-                                        <span className="text-[11px] font-bold text-gray-900 dark:text-white bg-gray-50 dark:bg-[#0b111a]/50 px-2.5 py-1 rounded-lg border border-gray-100 dark:border-[#232d42] tabular-nums">
+                                        <span className="text-[11px] font-bold text-gray-900 dark:text-white bg-gray-50 dark:bg-gray-900/50 px-2.5 py-1 rounded-lg border border-gray-100 dark:border-gray-800 tabular-nums">
                                             {student.phone}
                                         </span>
                                     </td>
@@ -788,7 +788,7 @@ export default function Students() {
                                                 student.status === 'Passiv' ? 'bg-rose-50 text-rose-600 border-rose-100 dark:bg-rose-950/20 dark:text-rose-400' :
                                                 student.status === 'Bitiruvchi' ? 'bg-purple-50 text-purple-600 border-purple-100 dark:bg-purple-950/20 dark:text-purple-400' :
                                                 student.status === 'Sertifikatli' ? 'bg-brand/10 text-brand border-brand/20 dark:bg-brand/20 dark:text-brand' :
-                                                'bg-gray-55 text-gray-400 border-gray-100 dark:bg-[#0b111a]/50'
+                                                'bg-gray-55 text-gray-400 border-gray-100 dark:bg-gray-900/50'
                                             }`}>
                                                 {student.status === 'Faol' ? t('status_active') :
                                                  student.status === 'Arxiv' ? t('status_archive') :
@@ -829,7 +829,7 @@ export default function Students() {
                                 <tr>
                                     <td colSpan={6} className="py-16">
                                         <div className="flex flex-col items-center gap-3 text-center">
-                                            <div className="w-14 h-14 rounded-2xl bg-gray-55 dark:bg-[#0b111a] border border-gray-100 dark:border-[#232d42] flex items-center justify-center">
+                                            <div className="w-14 h-14 rounded-2xl bg-gray-55 dark:bg-gray-900 border border-gray-100 dark:border-gray-800 flex items-center justify-center">
                                                 <Search size={20} className="text-gray-300 dark:text-gray-600" />
                                             </div>
                                             <div>
@@ -851,7 +851,7 @@ export default function Students() {
                 </div>
 
                 {filteredStudents.length > PER_PAGE && (
-                    <div className="flex items-center justify-between gap-4 px-6 py-4 border-t border-gray-50 dark:border-[#232d42]/50">
+                    <div className="flex items-center justify-between gap-4 px-6 py-4 border-t border-gray-50 dark:border-gray-800/50">
                         <p className="text-[12px] font-bold text-gray-400 tabular-nums">
                             {(currentPage - 1) * PER_PAGE + 1}–{Math.min(currentPage * PER_PAGE, filteredStudents.length)} / {filteredStudents.length} ta
                         </p>
@@ -859,14 +859,14 @@ export default function Students() {
                             <button
                                 onClick={() => setPage(p => Math.max(1, p - 1))}
                                 disabled={currentPage === 1}
-                                className="px-3 py-1.5 rounded-lg text-[12px] font-extrabold bg-gray-50 dark:bg-[#0b111a] text-gray-600 dark:text-gray-300 disabled:opacity-40 disabled:cursor-not-allowed hover:bg-gray-100 dark:hover:bg-gray-700 cursor-pointer transition-colors">
+                                className="px-3 py-1.5 rounded-lg text-[12px] font-extrabold bg-gray-50 dark:bg-gray-900 text-gray-600 dark:text-gray-300 disabled:opacity-40 disabled:cursor-not-allowed hover:bg-gray-100 dark:hover:bg-gray-700 cursor-pointer transition-colors">
                                 Oldingi
                             </button>
                             <span className="text-[12px] font-bold text-gray-500 tabular-nums px-1">{currentPage} / {pageCount}</span>
                             <button
                                 onClick={() => setPage(p => Math.min(pageCount, p + 1))}
                                 disabled={currentPage === pageCount}
-                                className="px-3 py-1.5 rounded-lg text-[12px] font-extrabold bg-gray-50 dark:bg-[#0b111a] text-gray-600 dark:text-gray-300 disabled:opacity-40 disabled:cursor-not-allowed hover:bg-gray-100 dark:hover:bg-gray-700 cursor-pointer transition-colors">
+                                className="px-3 py-1.5 rounded-lg text-[12px] font-extrabold bg-gray-50 dark:bg-gray-900 text-gray-600 dark:text-gray-300 disabled:opacity-40 disabled:cursor-not-allowed hover:bg-gray-100 dark:hover:bg-gray-700 cursor-pointer transition-colors">
                                 Keyingi
                             </button>
                         </div>
@@ -881,8 +881,8 @@ export default function Students() {
                     {/* Centering Wrapper */}
                     <div className="flex min-h-full items-center justify-center p-4">
                         {/* Modal Panel */}
-                        <div className="relative bg-white dark:bg-[#151c2c] rounded-[2rem] border border-gray-100 dark:border-[#232d42]/50 shadow-2xl w-full max-w-lg p-8 transform transition-all">
-                            <div className="flex items-center justify-between mb-6 pb-4 border-b border-gray-50 dark:border-[#232d42]/50">
+                        <div className="relative bg-white dark:bg-gray-800 rounded-[2rem] border border-gray-100 dark:border-gray-800/50 shadow-2xl w-full max-w-lg p-8 transform transition-all">
+                            <div className="flex items-center justify-between mb-6 pb-4 border-b border-gray-50 dark:border-gray-800/50">
                                 <div className="text-left">
                                     <h3 className="text-lg font-black text-gray-900 dark:text-white tracking-tight">{t('new_student_title')}</h3>
                                     <p className="text-[11px] font-bold text-[#1b6b6b] uppercase tracking-wider mt-0.5">{t('student_details_subtitle')}</p>
@@ -912,7 +912,7 @@ export default function Students() {
                                         {(['Erkak', 'Ayol'] as const).map(g => (
                                             <button key={g} type="button"
                                                 onClick={() => setNewStudent({ ...newStudent, gender: g })}
-                                                className={`py-2.5 rounded-xl text-xs font-extrabold transition-all border cursor-pointer ${newStudent.gender === g ? 'bg-[#1b6b6b] border-[#1b6b6b] text-white shadow' : 'bg-gray-50 dark:bg-[#0b111a]/30 border-gray-100 dark:border-[#232d42] text-gray-400 hover:text-gray-600'}`}>
+                                                className={`py-2.5 rounded-xl text-xs font-extrabold transition-all border cursor-pointer ${newStudent.gender === g ? 'bg-[#1b6b6b] border-[#1b6b6b] text-white shadow' : 'bg-gray-50 dark:bg-gray-900/30 border-gray-100 dark:border-gray-800 text-gray-400 hover:text-gray-600'}`}>
                                                 {g === 'Erkak' ? '♂ Erkak' : '♀ Ayol'}
                                             </button>
                                         ))}
@@ -982,7 +982,7 @@ export default function Students() {
                                     </div>
                                 </div>
                                 <button type="button" onClick={() => setIsMapOpen(true)}
-                                    className={`w-full py-2.5 rounded-xl border flex items-center justify-center gap-2 text-[11px] font-bold uppercase tracking-wider cursor-pointer transition-all ${newStudent.location ? 'bg-[#1b6b6b]/10 text-[#1b6b6b] border-[#1b6b6b]' : 'bg-gray-55 dark:bg-[#0b111a] border-gray-100 hover:bg-gray-100'}`}>
+                                    className={`w-full py-2.5 rounded-xl border flex items-center justify-center gap-2 text-[11px] font-bold uppercase tracking-wider cursor-pointer transition-all ${newStudent.location ? 'bg-[#1b6b6b]/10 text-[#1b6b6b] border-[#1b6b6b]' : 'bg-gray-55 dark:bg-gray-900 border-gray-100 hover:bg-gray-100'}`}>
                                     <MapPin size={14} /> {newStudent.location ? t('marked_on_map') : t('select_from_map')}
                                 </button>
                                 <div>
@@ -1020,7 +1020,7 @@ export default function Students() {
                                 </div>
 
                                 {newStudent.selectedPrivileges.includes('Sertifikat') && (
-                                    <div className="space-y-3 p-3 bg-gray-55 dark:bg-[#0b111a] rounded-2xl border border-gray-100 dark:border-[#232d42]">
+                                    <div className="space-y-3 p-3 bg-gray-55 dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800">
                                         <div>
                                             <label className={lbl}>Sertifikat toifasi</label>
                                             <select
@@ -1088,10 +1088,10 @@ export default function Students() {
                                         </div>
 
                                         {/* Dynamic multi-certificates array */}
-                                        <div className="border-t border-dashed border-gray-150 dark:border-[#232d42]/50 pt-3 mt-3 space-y-3">
+                                        <div className="border-t border-dashed border-gray-150 dark:border-gray-800/50 pt-3 mt-3 space-y-3">
                                             <span className="block text-[11px] font-bold uppercase text-[#1b6b6b] tracking-wider text-left">Qo'shimcha Sertifikatlar</span>
                                             {newStudent.certificates.map((cert, index) => (
-                                                <div key={index} className="p-3 bg-white dark:bg-slate-800 rounded-xl border border-gray-100 dark:border-[#232d42] space-y-3 relative">
+                                                <div key={index} className="p-3 bg-white dark:bg-slate-800 rounded-xl border border-gray-100 dark:border-gray-800 space-y-3 relative">
                                                     <button
                                                         type="button"
                                                         onClick={() => removeCertificate(index)}
@@ -1167,7 +1167,7 @@ export default function Students() {
                                             <button
                                                 type="button"
                                                 onClick={addCertificate}
-                                                className="w-full py-2.5 bg-white dark:bg-slate-800 border border-dashed border-gray-200 dark:border-[#232d42] rounded-xl text-[11px] font-bold uppercase tracking-wider text-[#1b6b6b] hover:bg-teal-50/10 dark:hover:bg-teal-900/10 transition-colors flex items-center justify-center gap-1.5 cursor-pointer"
+                                                className="w-full py-2.5 bg-white dark:bg-slate-800 border border-dashed border-gray-200 dark:border-gray-800 rounded-xl text-[11px] font-bold uppercase tracking-wider text-[#1b6b6b] hover:bg-teal-50/10 dark:hover:bg-teal-900/10 transition-colors flex items-center justify-center gap-1.5 cursor-pointer"
                                             >
                                                 <Plus size={13} />
                                                 Sertifikat qo'shish
@@ -1176,7 +1176,7 @@ export default function Students() {
                                     </div>
                                 )}
 
-                                <div className="border-t border-dashed border-gray-150 dark:border-[#232d42]/50 pt-4 mt-4 space-y-3">
+                                <div className="border-t border-dashed border-gray-150 dark:border-gray-800/50 pt-4 mt-4 space-y-3">
                                     <span className="block text-[11px] font-bold uppercase text-[#1b6b6b] tracking-wider text-left">Kursga qo'shish</span>
                                     {groups.length === 0 ? (
                                         <p className="text-[11px] text-gray-400 italic">Kurslar mavjud emas</p>
@@ -1208,7 +1208,7 @@ export default function Students() {
                                     )}
                                 </div>
 
-                                <div className="border-t border-dashed border-gray-150 dark:border-[#232d42]/50 pt-4 mt-4 space-y-4">
+                                <div className="border-t border-dashed border-gray-150 dark:border-gray-800/50 pt-4 mt-4 space-y-4">
                                     <span className="block text-[11px] font-bold uppercase text-[#1b6b6b] tracking-wider text-left">{t('parent_info')}</span>
                                     <div className="grid grid-cols-2 gap-4">
                                         <div>
@@ -1233,15 +1233,15 @@ export default function Students() {
                                 </div>
 
 
-                                <div className="border-t border-dashed border-gray-150 dark:border-[#232d42]/50 pt-4 mt-4 space-y-4">
+                                <div className="border-t border-dashed border-gray-150 dark:border-gray-800/50 pt-4 mt-4 space-y-4">
                                     <span className="block text-[11px] font-bold uppercase text-[#1b6b6b] tracking-wider text-left">{t('photo_label')}</span>
                                     <div className="flex items-center gap-4">
-                                        <div className="w-20 h-20 rounded-2xl bg-gray-55 dark:bg-[#0b111a] border border-gray-100 flex items-center justify-center overflow-hidden shrink-0 shadow-inner">
+                                        <div className="w-20 h-20 rounded-2xl bg-gray-55 dark:bg-gray-900 border border-gray-100 flex items-center justify-center overflow-hidden shrink-0 shadow-inner">
                                             {newStudent.photo ? <img src={newStudent.photo} alt="Preview" className="w-full h-full object-cover" /> : <ImageIcon size={24} className="text-gray-300" />}
                                         </div>
                                         <div className="flex-1 space-y-2">
                                             <div className="flex gap-2">
-                                                 <label className="flex-1 flex items-center justify-center gap-1.5 py-2 border border-gray-100 dark:border-[#232d42] rounded-xl cursor-pointer hover:bg-gray-50 text-[11px] font-bold uppercase tracking-wider">
+                                                 <label className="flex-1 flex items-center justify-center gap-1.5 py-2 border border-gray-100 dark:border-gray-800 rounded-xl cursor-pointer hover:bg-gray-50 text-[11px] font-bold uppercase tracking-wider">
                                                      <input type="file" className="hidden" accept="image/*" onChange={(e) => {
                                                          const file = e.target.files?.[0];
                                                          if (file) {
@@ -1256,7 +1256,7 @@ export default function Students() {
                                                      {t('photo_from_file')}
                                                  </label>
                                                 <button type="button" onClick={() => setIsPhotoModalOpen(true)}
-                                                    className="flex-1 flex items-center justify-center gap-1.5 py-2 border border-gray-100 dark:border-[#232d42] rounded-xl hover:bg-gray-55 text-[11px] font-bold uppercase tracking-wider cursor-pointer">
+                                                    className="flex-1 flex items-center justify-center gap-1.5 py-2 border border-gray-100 dark:border-gray-800 rounded-xl hover:bg-gray-55 text-[11px] font-bold uppercase tracking-wider cursor-pointer">
                                                     {t('photo_camera')}
                                                 </button>
                                             </div>
@@ -1270,7 +1270,7 @@ export default function Students() {
                                     </div>
                                 </div>
 
-                                <div className="flex gap-3 pt-4 border-t border-dashed border-gray-150 dark:border-[#232d42]/50">
+                                <div className="flex gap-3 pt-4 border-t border-dashed border-gray-150 dark:border-gray-800/50">
                                     <button type="button" onClick={() => setIsModalOpen(false)}
                                         className="flex-1 py-3 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-white text-xs font-extrabold rounded-2xl transition-all cursor-pointer hover:bg-gray-200 dark:hover:bg-gray-600">
                                         {t('cancel')}
@@ -1307,7 +1307,7 @@ export default function Students() {
             {studentToDelete && (
                 <div className="fixed inset-0 z-[250] flex items-start sm:items-center justify-center overflow-y-auto p-4">
                     <div className="absolute inset-0 bg-gray-900/60 backdrop-blur-sm" onClick={() => setStudentToDelete(null)} />
-                    <div className="relative bg-white dark:bg-[#151c2c] rounded-3xl p-6 shadow-2xl max-w-sm w-full text-center border border-gray-100 dark:border-[#232d42]">
+                    <div className="relative bg-white dark:bg-gray-800 rounded-2xl p-4 shadow-2xl max-w-sm w-full text-center border border-gray-100 dark:border-gray-800">
                         <h4 className="text-sm font-black text-gray-900 dark:text-white tracking-tight mb-2">{t('delete_confirm_title')}</h4>
                         <p className="text-[11px] font-bold text-gray-400 uppercase tracking-wider leading-relaxed mb-6">
                             {t('delete_confirm_desc').replace('{name}', studentToDelete.name)}
@@ -1326,8 +1326,8 @@ export default function Students() {
             {isLinkModalOpen && (
                 <div className="fixed inset-0 z-[200] flex items-start sm:items-center justify-center overflow-y-auto p-4">
                     <div className="absolute inset-0 bg-gray-900/60 backdrop-blur-sm" onClick={() => setIsLinkModalOpen(false)} />
-                    <div className="relative bg-white dark:bg-[#151c2c] rounded-[2rem] border border-gray-100 dark:border-[#232d42]/50 shadow-2xl w-full max-w-sm p-8 text-center">
-                        <div className="flex items-center justify-between mb-6 pb-4 border-b border-gray-150 dark:border-[#232d42]/50">
+                    <div className="relative bg-white dark:bg-gray-800 rounded-[2rem] border border-gray-100 dark:border-gray-800/50 shadow-2xl w-full max-w-sm p-8 text-center">
+                        <div className="flex items-center justify-between mb-6 pb-4 border-b border-gray-150 dark:border-gray-800/50">
                             <h3 className="text-sm font-black text-gray-900 dark:text-white tracking-tight">{t('reception_link')}</h3>
                             <button aria-label="Yopish" onClick={() => setIsLinkModalOpen(false)} className="w-8 h-8 flex items-center justify-center text-gray-400 hover:bg-gray-55 dark:hover:bg-gray-700 rounded-lg cursor-pointer">
                                 <X size={18} />
@@ -1351,7 +1351,7 @@ export default function Students() {
                         </div>
 
                         <div className="space-y-4">
-                            <div className="flex items-center gap-2 bg-gray-55 dark:bg-[#0b111a]/50 p-3 rounded-2xl border border-gray-100 dark:border-gray-750">
+                            <div className="flex items-center gap-2 bg-gray-55 dark:bg-gray-900/50 p-3 rounded-2xl border border-gray-100 dark:border-gray-750">
                                 <span className="text-[11px] font-bold text-[#1b6b6b] uppercase tracking-wider shrink-0">{t('link')}:</span>
                                 <input
                                     readOnly
@@ -1384,7 +1384,7 @@ export default function Students() {
                             top: `${activeMenu.coords.top + 4}px`,
                             left: `${activeMenu.coords.left - 128}px`,
                         }}
-                        className="bg-white dark:bg-[#151c2c] border border-gray-100 dark:border-[#232d42] rounded-xl shadow-xl py-1 w-32 z-50 text-left animate-in slide-in-from-top-1 duration-150"
+                        className="bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-800 rounded-xl shadow-xl py-1 w-32 z-50 text-left animate-in slide-in-from-top-1 duration-150"
                     >
                         <button onClick={() => { setActiveMenu(null); navigate(`/students/${activeMenu.id}`); }}
                             className="w-full text-left px-4 py-2 text-[11px] font-bold text-gray-700 dark:text-gray-200 hover:bg-gray-55 dark:hover:bg-gray-700 uppercase tracking-wider cursor-pointer">

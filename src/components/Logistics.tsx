@@ -12,7 +12,7 @@ import { Transport, DeliveryLog, Route } from '../types';
 
 type TabType = 'flot' | 'marshrutlar' | 'yetkazish';
 
-const inp = "w-full px-4 py-3 bg-gray-50 dark:bg-[#0b111a]/50 border border-gray-100 dark:border-[#232d42] rounded-2xl text-xs font-bold text-gray-900 dark:text-white focus:border-[#1b6b6b] focus:ring-4 focus:ring-[#1b6b6b]/10 outline-none transition-all";
+const inp = "w-full px-4 py-3 bg-gray-50 dark:bg-gray-900/50 border border-gray-100 dark:border-gray-800 rounded-2xl text-xs font-bold text-gray-900 dark:text-white focus:border-[#1b6b6b] focus:ring-4 focus:ring-[#1b6b6b]/10 outline-none transition-all";
 const lbl = "block text-[11px] font-extrabold uppercase tracking-wider text-gray-400 mb-2";
 
 export default function LogisticsHub() {
@@ -142,7 +142,7 @@ export default function LogisticsHub() {
     return (
         <div className="space-y-6 animate-in fade-in duration-500">
             {/* Header */}
-            <div className="bg-white dark:bg-[#151c2c] rounded-3xl border border-gray-100 dark:border-[#232d42]/50 shadow-sm overflow-hidden">
+            <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-800/50 shadow-sm overflow-hidden">
                 <div className="px-6 py-5 flex flex-col md:flex-row md:items-center justify-between gap-4">
                     <div className="flex items-center gap-4">
                         <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-[#1b6b6b] to-[#2e9c9c] flex items-center justify-center shadow-sm shadow-[#1b6b6b]/20">
@@ -156,7 +156,7 @@ export default function LogisticsHub() {
                         </div>
                     </div>
 
-                    <div className="flex bg-gray-50 dark:bg-[#0b111a] p-1 rounded-xl border border-gray-100 dark:border-[#232d42]/50 w-fit">
+                    <div className="flex bg-gray-50 dark:bg-gray-900 p-1 rounded-xl border border-gray-100 dark:border-gray-800/50 w-fit">
                         {[
                             { id: 'marshrutlar', label: t('tab_routes') },
                             { id: 'yetkazish', label: t('tab_daily_status') },
@@ -181,7 +181,7 @@ export default function LogisticsHub() {
             {/* Content Switcher */}
             {activeTab === 'flot' && (
                 <div className="space-y-6">
-                    <div className="bg-white dark:bg-[#151c2c] p-4 rounded-2xl border border-gray-100 dark:border-[#232d42]/50 flex flex-wrap items-center justify-between gap-4">
+                    <div className="bg-white dark:bg-gray-800 p-4 rounded-2xl border border-gray-100 dark:border-gray-800/50 flex flex-wrap items-center justify-between gap-4">
                         <div className="relative flex-1 max-w-xs">
                             <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={14} />
                             <input 
@@ -189,7 +189,7 @@ export default function LogisticsHub() {
                                 placeholder={t('search')} 
                                 value={searchTerm}
                                 onChange={(e) => setSearchTerm(e.target.value)}
-                                className="w-full pl-9 pr-4 py-2 bg-gray-50 dark:bg-[#0b111a]/50 border border-gray-100 dark:border-[#232d42] rounded-xl text-xs font-bold text-gray-900 dark:text-white outline-none focus:border-[#1b6b6b] transition-all"
+                                className="w-full pl-9 pr-4 py-2 bg-gray-50 dark:bg-gray-900/50 border border-gray-100 dark:border-gray-800 rounded-xl text-xs font-bold text-gray-900 dark:text-white outline-none focus:border-[#1b6b6b] transition-all"
                             />
                         </div>
                         <button 
@@ -200,12 +200,12 @@ export default function LogisticsHub() {
                         </button>
                     </div>
 
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                         {transports.filter(t => t.name.toLowerCase().includes(searchTerm.toLowerCase())).map(item => (
-                            <div key={item.id} className="bg-white dark:bg-[#151c2c] rounded-3xl border border-gray-100 dark:border-[#232d42]/50 p-4 hover:border-gray-200 dark:hover:border-gray-700 transition-colors group relative">
+                            <div key={item.id} className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-800/50 p-4 hover:border-gray-200 dark:hover:border-gray-700 transition-colors group relative">
                                 <div>
                                     <div className="flex justify-between items-start mb-4">
-                                        <div className="w-10 h-10 rounded-xl bg-gray-55 dark:bg-[#0b111a] border border-gray-100 dark:border-[#232d42] flex items-center justify-center text-[#1b6b6b]">
+                                        <div className="w-10 h-10 rounded-xl bg-gray-55 dark:bg-gray-900 border border-gray-100 dark:border-gray-800 flex items-center justify-center text-[#1b6b6b]">
                                             <Bus size={18} />
                                         </div>
                                         <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
@@ -222,7 +222,7 @@ Unga biriktirilgan o'quvchilar bo'shatiladi.`)) deleteTransport(item.id); }} cla
                                         <p className="text-[11px] font-bold text-gray-400 uppercase tracking-wider mt-1">{item.model} • {item.number}</p>
                                     </div>
                                 </div>
-                                <div className="mt-4 pt-4 border-t border-dashed border-gray-100 dark:border-[#232d42]/50 grid grid-cols-2 gap-4">
+                                <div className="mt-4 pt-4 border-t border-dashed border-gray-100 dark:border-gray-800/50 grid grid-cols-2 gap-4">
                                     <div>
                                         <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider block mb-0.5">{t('driver')}</span>
                                         <span className="text-xs font-bold text-gray-700 dark:text-gray-200 tracking-tight">{item.driverName || t('unknown_teacher')}</span>
@@ -234,7 +234,7 @@ Unga biriktirilgan o'quvchilar bo'shatiladi.`)) deleteTransport(item.id); }} cla
                                 </div>
                                 <div className="mt-4 flex items-center justify-between">
                                     <span className={`px-2 py-0.5 rounded-md text-[10px] font-black border uppercase tracking-wider ${
-                                        item.status === 'Faol' ? 'bg-emerald-50 text-emerald-600 border-emerald-100 dark:bg-emerald-950/20 dark:text-emerald-400' : 'bg-gray-50 text-gray-400 border-gray-100 dark:bg-[#0b111a]/50'
+                                        item.status === 'Faol' ? 'bg-emerald-50 text-emerald-600 border-emerald-100 dark:bg-emerald-950/20 dark:text-emerald-400' : 'bg-gray-50 text-gray-400 border-gray-100 dark:bg-gray-900/50'
                                     }`}>
                                         {item.status === 'Faol' ? t('status_active') : item.status === 'Ta\'mirda' ? t('status_repair') : item.status === 'Arxiv' ? t('status_archive') : item.status}
                                     </span>
@@ -247,10 +247,10 @@ Unga biriktirilgan o'quvchilar bo'shatiladi.`)) deleteTransport(item.id); }} cla
                     </div>
                 </div>
             )}            {activeTab === 'marshrutlar' && (
-                <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+                <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
                     {/* Left: Route list */}
                     <div className="lg:col-span-4 space-y-4">
-                        <div className="bg-white dark:bg-[#151c2c] rounded-3xl border border-gray-100 dark:border-[#232d42]/50 p-6 shadow-sm">
+                        <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-800/50 p-4 shadow-sm">
                             <div className="flex justify-between items-center mb-6">
                                 <span className="text-[11px] font-bold uppercase text-gray-400 tracking-wider">{t('routes')}</span>
                                 <button 
@@ -268,7 +268,7 @@ Unga biriktirilgan o'quvchilar bo'shatiladi.`)) deleteTransport(item.id); }} cla
                                         className={`p-4 rounded-2xl border transition-all cursor-pointer group ${
                                             editingRoute?.id === route.id 
                                             ? 'bg-[#1b6b6b]/10 border-[#1b6b6b]' 
-                                            : 'bg-gray-50/50 dark:bg-[#0b111a]/40 border-transparent hover:border-gray-100'
+                                            : 'bg-gray-50/50 dark:bg-gray-900/40 border-transparent hover:border-gray-100'
                                         }`}
                                         onClick={() => { 
                                             setEditingRoute(route); 
@@ -291,11 +291,11 @@ Unga biriktirilgan o'quvchilar bo'shatiladi.`)) deleteTransport(item.id); }} cla
                                                     {route.days === 'HAR_KUNI' ? t('every_day') : route.days === 'TOQ' ? t('odd_days') : route.days === 'JUFT' ? t('even_days') : route.days} • {route.startTime || '--:--'} • {route.studentIds.length} {t('student').toLowerCase()}
                                                 </span>
                                             </div>
-                                            <div className="w-8 h-8 rounded-lg bg-white dark:bg-[#151c2c] border border-gray-100 dark:border-[#232d42] flex items-center justify-center text-[#1b6b6b]">
+                                            <div className="w-8 h-8 rounded-lg bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-800 flex items-center justify-center text-[#1b6b6b]">
                                                 <Navigation size={14} />
                                             </div>
                                         </div>
-                                        <div className="mt-4 flex items-center justify-between pt-2 border-t border-dashed border-gray-100 dark:border-[#232d42]/50">
+                                        <div className="mt-4 flex items-center justify-between pt-2 border-t border-dashed border-gray-100 dark:border-gray-800/50">
                                             <span className="text-[11px] font-bold text-gray-500 uppercase tracking-wide">
                                                 🚌 {route.transport?.name || t('not_marked')}
                                             </span>
@@ -318,8 +318,8 @@ Unga biriktirilgan o'quvchilar bo'shatiladi.`)) deleteTransport(item.id); }} cla
                     {/* Right: Route stops detail */}
                     <div className="lg:col-span-8">
                         {editingRoute ? (
-                            <div className="bg-white dark:bg-[#151c2c] rounded-3xl border border-gray-100 dark:border-[#232d42]/50 p-6 shadow-sm animate-in fade-in duration-300">
-                                <div className="flex justify-between items-start mb-6 pb-4 border-b border-gray-50 dark:border-[#232d42]/50">
+                            <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-800/50 p-4 shadow-sm animate-in fade-in duration-300">
+                                <div className="flex justify-between items-start mb-6 pb-4 border-b border-gray-50 dark:border-gray-800/50">
                                     <div>
                                         <h3 className="text-sm font-black text-gray-900 dark:text-white tracking-tight">
                                             {editingRoute.name}
@@ -329,7 +329,7 @@ Unga biriktirilgan o'quvchilar bo'shatiladi.`)) deleteTransport(item.id); }} cla
                                     <div className="flex gap-2">
                                         <button 
                                             onClick={() => setIsRouteModalOpen(true)}
-                                            className="px-3.5 py-2 bg-gray-50 dark:bg-[#0b111a] hover:bg-gray-100 border border-gray-100 dark:border-gray-750 text-gray-700 dark:text-white rounded-xl text-[11px] font-extrabold uppercase tracking-wider transition-all cursor-pointer"
+                                            className="px-3.5 py-2 bg-gray-50 dark:bg-gray-900 hover:bg-gray-100 border border-gray-100 dark:border-gray-750 text-gray-700 dark:text-white rounded-xl text-[11px] font-extrabold uppercase tracking-wider transition-all cursor-pointer"
                                         >
                                             {t('edit')}
                                         </button>
@@ -347,9 +347,9 @@ Unga biriktirilgan o'quvchilar bo'shatiladi.`)) deleteTransport(item.id); }} cla
                                         const student = students.find(s => s.id === sid);
                                         if (!student) return null;
                                         return (
-                                            <div key={sid} className="flex items-center justify-between p-4 bg-gray-50/50 dark:bg-[#0b111a]/40 rounded-2xl hover:border-gray-100 border border-transparent transition-all group">
+                                            <div key={sid} className="flex items-center justify-between p-4 bg-gray-50/50 dark:bg-gray-900/40 rounded-2xl hover:border-gray-100 border border-transparent transition-all group">
                                                 <div className="flex items-center gap-3">
-                                                    <div className="w-8 h-8 rounded-lg bg-white dark:bg-[#151c2c] border border-gray-100 dark:border-[#232d42] flex items-center justify-center font-black text-xs text-[#1b6b6b]">
+                                                    <div className="w-8 h-8 rounded-lg bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-800 flex items-center justify-center font-black text-xs text-[#1b6b6b]">
                                                         {index + 1}
                                                     </div>
                                                     <div>
@@ -394,7 +394,7 @@ Unga biriktirilgan o'quvchilar bo'shatiladi.`)) deleteTransport(item.id); }} cla
                                 </div>
                             </div>
                         ) : (
-                            <div className="bg-white dark:bg-[#151c2c] rounded-3xl border border-gray-100 dark:border-[#232d42]/50 p-12 text-center shadow-sm">
+                            <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-800/50 p-12 text-center shadow-sm">
                                 <p className="text-[11px] font-bold text-gray-400 uppercase tracking-wider">{t('select_route_prompt')}</p>
                             </div>
                         )}
@@ -403,10 +403,10 @@ Unga biriktirilgan o'quvchilar bo'shatiladi.`)) deleteTransport(item.id); }} cla
             )}
 
             {activeTab === 'yetkazish' && (
-                <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
+                <div className="grid grid-cols-1 lg:grid-cols-4 gap-4">
                     {/* Select Transport & Date */}
                     <div className="lg:col-span-1 space-y-4">
-                        <div className="bg-white dark:bg-[#151c2c] rounded-3xl border border-gray-100 dark:border-[#232d42]/50 p-5 shadow-sm">
+                        <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-800/50 p-5 shadow-sm">
                             <span className="text-[11px] font-bold uppercase text-gray-400 tracking-wider block mb-4">{t('transport_selection')}</span>
                             <div className="space-y-2">
                                 {transports.map(t => (
@@ -416,7 +416,7 @@ Unga biriktirilgan o'quvchilar bo'shatiladi.`)) deleteTransport(item.id); }} cla
                                         className={`w-full flex items-center gap-3 p-3 rounded-2xl transition-all cursor-pointer ${
                                             selectedTransportId === t.id
                                             ? 'bg-[#1b6b6b]/10 border border-[#1b6b6b] text-[#1b6b6b]'
-                                            : 'bg-gray-55 dark:bg-[#0b111a] border border-transparent text-gray-700 dark:text-gray-300'
+                                            : 'bg-gray-55 dark:bg-gray-900 border border-transparent text-gray-700 dark:text-gray-300'
                                         }`}
                                     >
                                         <Bus size={16} />
@@ -426,7 +426,7 @@ Unga biriktirilgan o'quvchilar bo'shatiladi.`)) deleteTransport(item.id); }} cla
                             </div>
                         </div>
 
-                        <div className="flex items-center justify-between bg-white dark:bg-[#151c2c] rounded-2xl border border-gray-100 dark:border-[#232d42]/50 p-3 shadow-sm">
+                        <div className="flex items-center justify-between bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-800/50 p-3 shadow-sm">
                             <button onClick={() => { const d = new Date(selectedDate); d.setDate(d.getDate() - 1); setSelectedDate(d.toISOString().split('T')[0]); }} className="w-8 h-8 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center justify-center transition-colors cursor-pointer"><ChevronLeft size={16} /></button>
                             <span className="text-[11px] font-extrabold uppercase text-gray-700 dark:text-gray-200 tracking-wider">{selectedDate}</span>
                             <button onClick={() => { const d = new Date(selectedDate); d.setDate(d.getDate() + 1); setSelectedDate(d.toISOString().split('T')[0]); }} className="w-8 h-8 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center justify-center transition-colors cursor-pointer"><ChevronRight size={16} /></button>
@@ -438,7 +438,7 @@ Unga biriktirilgan o'quvchilar bo'shatiladi.`)) deleteTransport(item.id); }} cla
                         {routes
                             .filter(r => r.transportId === selectedTransportId && isRouteActiveOnDate(r, selectedDate))
                             .map(route => (
-                                <div key={route.id} className="bg-white dark:bg-[#151c2c] rounded-3xl border border-gray-100 dark:border-[#232d42]/50 overflow-hidden shadow-sm">
+                                <div key={route.id} className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-800/50 overflow-hidden shadow-sm">
                                     <button 
                                         onClick={() => setExpandedRouteId(expandedRouteId === route.id ? null : route.id)}
                                         className="w-full flex items-center justify-between p-5 hover:bg-gray-55 dark:hover:bg-gray-750 transition-colors cursor-pointer"
@@ -456,13 +456,13 @@ Unga biriktirilgan o'quvchilar bo'shatiladi.`)) deleteTransport(item.id); }} cla
                                     </button>
 
                                     {expandedRouteId === route.id && (
-                                        <div className="p-4 pt-0 border-t border-gray-50 dark:border-[#232d42]/50 space-y-2">
+                                        <div className="p-4 pt-0 border-t border-gray-50 dark:border-gray-800/50 space-y-2">
                                             {route.studentIds.map(sid => {
                                                 const student = students.find(s => s.id === sid);
                                                 if (!student) return null;
                                                 const status = getDeliveryStatus(student.id);
                                                 return (
-                                                    <div key={student.id} className="p-3 bg-gray-55/50 dark:bg-[#0b111a]/40 rounded-2xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+                                                    <div key={student.id} className="p-3 bg-gray-55/50 dark:bg-gray-900/40 rounded-2xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
                                                         <div>
                                                             <h5 className="text-xs font-black text-gray-900 dark:text-white tracking-tight">{student.name}</h5>
                                                             <span className="text-[11px] text-gray-400 font-bold block mt-0.5 uppercase tracking-wide">{student.address || t('no_address')}</span>
@@ -479,7 +479,7 @@ Unga biriktirilgan o'quvchilar bo'shatiladi.`)) deleteTransport(item.id); }} cla
                                                                     className={`flex-1 sm:flex-none px-3 py-1.5 rounded-xl text-[11px] font-extrabold uppercase tracking-wider transition-all cursor-pointer ${
                                                                         status === opt.status 
                                                                         ? 'bg-[#1b6b6b] text-white' 
-                                                                        : 'bg-white dark:bg-[#151c2c] text-gray-400 border border-gray-100 dark:border-[#232d42]'
+                                                                        : 'bg-white dark:bg-gray-800 text-gray-400 border border-gray-100 dark:border-gray-800'
                                                                     }`}
                                                                 >
                                                                     {opt.label}
@@ -501,8 +501,8 @@ Unga biriktirilgan o'quvchilar bo'shatiladi.`)) deleteTransport(item.id); }} cla
             {isTransportModalOpen && (
                 <div className="fixed inset-0 z-[100] flex items-start sm:items-center justify-center overflow-y-auto p-4">
                     <div className="absolute inset-0 bg-gray-900/60 backdrop-blur-sm" onClick={() => setIsTransportModalOpen(false)} />
-                    <div className="relative bg-white dark:bg-[#151c2c] rounded-[2rem] border border-gray-100 dark:border-[#232d42]/50 shadow-2xl w-full max-w-md p-8">
-                        <div className="flex items-center justify-between mb-6 pb-4 border-b border-gray-50 dark:border-[#232d42]/50">
+                    <div className="relative bg-white dark:bg-gray-800 rounded-[2rem] border border-gray-100 dark:border-gray-800/50 shadow-2xl w-full max-w-md p-8">
+                        <div className="flex items-center justify-between mb-6 pb-4 border-b border-gray-50 dark:border-gray-800/50">
                             <div>
                                 <h3 className="text-lg font-black text-gray-900 dark:text-white tracking-tight">{editingTransport ? t('edit_transport') : t('new_transport')}</h3>
                                 <p className="text-[11px] font-bold text-[#1b6b6b] uppercase tracking-wider mt-0.5">{t('fleet_subtitle')}</p>
@@ -549,7 +549,7 @@ Unga biriktirilgan o'quvchilar bo'shatiladi.`)) deleteTransport(item.id); }} cla
                                     {users.filter(u => u.role === 'DRIVER').map(u => <option key={u.id} value={u.id}>{u.name}</option>)}
                                 </select>
                             </div>
-                            <div className="flex gap-3 pt-4 border-t border-dashed border-gray-150 dark:border-[#232d42]/50">
+                            <div className="flex gap-3 pt-4 border-t border-dashed border-gray-150 dark:border-gray-800/50">
                                 <button type="button" onClick={() => setIsTransportModalOpen(false)}
                                     className="flex-1 py-3 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-white text-xs font-extrabold rounded-2xl transition-all cursor-pointer hover:bg-gray-200 dark:hover:bg-gray-600">
                                     {t('cancel')}
@@ -567,8 +567,8 @@ Unga biriktirilgan o'quvchilar bo'shatiladi.`)) deleteTransport(item.id); }} cla
             {isRouteModalOpen && (
                 <div className="fixed inset-0 z-[100] flex items-start sm:items-center justify-center overflow-y-auto p-4">
                     <div className="absolute inset-0 bg-gray-900/60 backdrop-blur-sm" onClick={() => setIsRouteModalOpen(false)} />
-                    <div className="relative bg-white dark:bg-[#151c2c] rounded-[2rem] border border-gray-100 dark:border-[#232d42]/50 shadow-2xl w-full max-w-md p-8">
-                        <div className="flex items-center justify-between mb-6 pb-4 border-b border-gray-50 dark:border-[#232d42]/50">
+                    <div className="relative bg-white dark:bg-gray-800 rounded-[2rem] border border-gray-100 dark:border-gray-800/50 shadow-2xl w-full max-w-md p-8">
+                        <div className="flex items-center justify-between mb-6 pb-4 border-b border-gray-50 dark:border-gray-800/50">
                             <div>
                                 <h3 className="text-lg font-black text-gray-900 dark:text-white tracking-tight">{editingRoute ? t('edit_route') : t('new_route')}</h3>
                                 <p className="text-[11px] font-bold text-[#1b6b6b] uppercase tracking-wider mt-0.5">{t('route_subtitle')}</p>
@@ -610,7 +610,7 @@ Unga biriktirilgan o'quvchilar bo'shatiladi.`)) deleteTransport(item.id); }} cla
                                     </select>
                                 </div>
                             </div>
-                            <div className="flex gap-3 pt-4 border-t border-dashed border-gray-150 dark:border-[#232d42]/50">
+                            <div className="flex gap-3 pt-4 border-t border-dashed border-gray-150 dark:border-gray-800/50">
                                 <button type="button" onClick={() => setIsRouteModalOpen(false)}
                                     className="flex-1 py-3 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-white text-xs font-extrabold rounded-2xl transition-all cursor-pointer hover:bg-gray-200 dark:hover:bg-gray-600">
                                     {t('cancel')}
@@ -628,8 +628,8 @@ Unga biriktirilgan o'quvchilar bo'shatiladi.`)) deleteTransport(item.id); }} cla
             {isStudentSelectorOpen && editingRoute && (
                 <div className="fixed inset-0 z-[110] flex items-start sm:items-center justify-center overflow-y-auto p-4">
                     <div className="absolute inset-0 bg-gray-900/60 backdrop-blur-sm" onClick={() => setIsStudentSelectorOpen(false)} />
-                    <div className="relative bg-white dark:bg-[#151c2c] rounded-[2rem] border border-gray-100 dark:border-[#232d42]/50 shadow-2xl w-full max-w-md p-8 max-h-[80vh] flex flex-col">
-                        <div className="flex items-center justify-between mb-6 pb-4 border-b border-gray-50 dark:border-[#232d42]/50 shrink-0">
+                    <div className="relative bg-white dark:bg-gray-800 rounded-[2rem] border border-gray-100 dark:border-gray-800/50 shadow-2xl w-full max-w-md p-8 max-h-[80vh] flex flex-col">
+                        <div className="flex items-center justify-between mb-6 pb-4 border-b border-gray-50 dark:border-gray-800/50 shrink-0">
                             <div>
                                 <h3 className="text-lg font-black text-gray-900 dark:text-white tracking-tight">{t('add_student')}</h3>
                                 <p className="text-[11px] font-bold text-[#1b6b6b] uppercase tracking-wider mt-0.5">{t('assign_to_route')}</p>
@@ -641,7 +641,7 @@ Unga biriktirilgan o'quvchilar bo'shatiladi.`)) deleteTransport(item.id); }} cla
                             <input 
                                 type="text"
                                 placeholder={t('search')}
-                                className="w-full pl-9 pr-4 py-2.5 bg-gray-50 dark:bg-[#0b111a]/50 border border-gray-100 dark:border-[#232d42] rounded-xl text-xs font-bold text-gray-900 dark:text-white outline-none focus:border-[#1b6b6b] transition-all"
+                                className="w-full pl-9 pr-4 py-2.5 bg-gray-50 dark:bg-gray-900/50 border border-gray-100 dark:border-gray-800 rounded-xl text-xs font-bold text-gray-900 dark:text-white outline-none focus:border-[#1b6b6b] transition-all"
                                 value={searchTerm}
                                 onChange={(e) => setSearchTerm(e.target.value)}
                             />
@@ -657,7 +657,7 @@ Unga biriktirilgan o'quvchilar bo'shatiladi.`)) deleteTransport(item.id); }} cla
                                             const studentIds = [...editingRoute.studentIds, student.id];
                                             await updateRoute(editingRoute.id, { studentIds });
                                         }}
-                                        className="w-full flex items-center justify-between p-3 bg-gray-50/50 dark:bg-[#0b111a]/40 hover:bg-[#1b6b6b]/5 border border-transparent hover:border-gray-100 rounded-2xl transition-all cursor-pointer text-left"
+                                        className="w-full flex items-center justify-between p-3 bg-gray-50/50 dark:bg-gray-900/40 hover:bg-[#1b6b6b]/5 border border-transparent hover:border-gray-100 rounded-2xl transition-all cursor-pointer text-left"
                                     >
                                         <div>
                                             <p className="text-xs font-black text-gray-900 dark:text-white tracking-tight">{student.name}</p>

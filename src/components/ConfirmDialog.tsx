@@ -46,7 +46,7 @@ export function ConfirmProvider({ children }: { children: React.ReactNode }) {
           aria-modal="true"
         >
           <div className="fixed inset-0 bg-gray-900/60 backdrop-blur-sm" onClick={() => answer(false)} />
-          <div className="relative my-auto w-full max-w-sm rounded-[2rem] border border-gray-100 dark:border-[#232d42]/50 bg-white dark:bg-[#151c2c] p-7 shadow-2xl">
+          <div className="relative my-auto w-full max-w-sm rounded-[2rem] border border-gray-100 dark:border-gray-800/50 bg-white dark:bg-gray-800 p-7 shadow-2xl">
             <button
               type="button"
               aria-label="Yopish"

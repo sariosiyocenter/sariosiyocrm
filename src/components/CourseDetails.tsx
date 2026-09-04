@@ -317,7 +317,7 @@ export default function CourseDetails() {
     const availableStudents = students.filter(s => !(group.studentIds || []).includes(s.id) && s.name.toLowerCase().includes(studentSearch.toLowerCase()));
 
     const labelCls = "block text-[11px] font-extrabold uppercase tracking-wider text-gray-400 mb-2";
-    const inputCls = "w-full px-4 py-3 bg-gray-55 dark:bg-[#0b111a]/50 border border-gray-100 dark:border-[#232d42] rounded-2xl text-xs font-bold text-gray-900 dark:text-white focus:border-[#1b6b6b] focus:ring-4 focus:ring-[#1b6b6b]/10 outline-none transition-all";
+    const inputCls = "w-full px-4 py-3 bg-gray-55 dark:bg-gray-900/50 border border-gray-100 dark:border-gray-800 rounded-2xl text-xs font-bold text-gray-900 dark:text-white focus:border-[#1b6b6b] focus:ring-4 focus:ring-[#1b6b6b]/10 outline-none transition-all";
 
     return (
         <div className="space-y-6 animate-in fade-in duration-500">
@@ -344,11 +344,11 @@ export default function CourseDetails() {
                 </button>
             </div>
 
-            <div className="bg-white dark:bg-[#151c2c] rounded-2xl border border-gray-100 dark:border-[#232d42] shadow-sm overflow-hidden">
+            <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm overflow-hidden">
                 {/* Sarlavha. Avval o'ng tomonda "O'QITUVCHI / BELGILANMAGAN" degan
                     alohida quti turardi va u guruh nomidan kuchliroq ko'rinardi.
                     Endi ustoz, jadval, xona va narx — nom ostidagi bitta qatorda. */}
-                <div className="p-5 border-b border-gray-100 dark:border-[#232d42]">
+                <div className="p-5 border-b border-gray-100 dark:border-gray-800">
                     <div className="flex items-center gap-2.5 flex-wrap">
                         <h1 className="text-xl font-semibold text-gray-900 dark:text-white tracking-tight">{group.name}</h1>
                         <span className="px-2 py-0.5 rounded-md bg-emerald-50 text-emerald-600 border border-emerald-100 dark:bg-emerald-950/20 dark:text-emerald-400 dark:border-emerald-900/40 text-[11px] font-medium">Faol</span>
@@ -389,7 +389,7 @@ export default function CourseDetails() {
                     )}
                 </div>
 
-                <div className="flex px-4 bg-gray-55 dark:bg-[#0b111a] border-b border-gray-100 dark:border-[#232d42] gap-2 pt-2">
+                <div className="flex px-4 bg-gray-55 dark:bg-gray-900 border-b border-gray-100 dark:border-gray-800 gap-2 pt-2">
                     <TabButton label="Umumiy" icon={<Users size={14} />} active={activeTab === 'umumiy'} onClick={() => setActiveTab('umumiy')} />
                     <TabButton label="Yo'qlama" icon={<ClipboardCheck size={14} />} active={activeTab === 'yoqlama'} onClick={() => setActiveTab('yoqlama')} />
                     <TabButton label="To'lovlar" icon={<CreditCard size={14} />} active={activeTab === 'tolovlar'} onClick={() => setActiveTab('tolovlar')} />
@@ -426,7 +426,7 @@ export default function CourseDetails() {
 
                             <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
                                 <div className="lg:col-span-2 space-y-4">
-                                    <div className="flex items-center justify-between pb-2 border-b border-gray-55 dark:border-[#232d42]">
+                                    <div className="flex items-center justify-between pb-2 border-b border-gray-55 dark:border-gray-800">
                                         <span className="text-[11px] font-bold text-gray-400 uppercase tracking-wider">O'quvchilar</span>
                                         <button onClick={() => setIsAddStudentModalOpen(true)}
                                             className="px-4 py-2.5 bg-[#1b6b6b] hover:bg-[#155252] text-white rounded-xl text-[11px] font-extrabold uppercase tracking-wider shadow-sm shadow-[#1b6b6b]/20 active:scale-95 transition-all flex items-center gap-1.5 group cursor-pointer">
@@ -445,7 +445,7 @@ export default function CourseDetails() {
                                         <div className="overflow-x-auto">
                                             <table className="w-full border-collapse text-left min-w-[520px]">
                                                 <thead>
-                                                    <tr className="border-b border-gray-100 dark:border-[#232d42]/50">
+                                                    <tr className="border-b border-gray-100 dark:border-gray-800/50">
                                                         <th className="py-2 pr-3 text-[10px] font-semibold text-gray-400 uppercase tracking-wider w-8">#</th>
                                                         <th className="py-2 pr-3 text-[10px] font-semibold text-gray-400 uppercase tracking-wider">O'quvchi</th>
                                                         <th className="py-2 px-3 text-[10px] font-semibold text-gray-400 uppercase tracking-wider text-right">Balans</th>
@@ -463,7 +463,7 @@ export default function CourseDetails() {
                                                                 </td>
                                                                 <td className="py-2.5 pr-3 align-middle">
                                                                     <div className="flex items-center gap-3 cursor-pointer min-w-0" onClick={() => navigate(`/students/${s.id}`)}>
-                                                                        <div className="w-8 h-8 bg-gray-55 dark:bg-[#0b111a] border border-gray-100 dark:border-[#232d42] rounded-lg flex items-center justify-center text-[#1b6b6b] font-semibold text-[11px] shrink-0">
+                                                                        <div className="w-8 h-8 bg-gray-55 dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-lg flex items-center justify-center text-[#1b6b6b] font-semibold text-[11px] shrink-0">
                                                                             {s.name.charAt(0)}
                                                                         </div>
                                                                         <div className="min-w-0">
@@ -513,7 +513,7 @@ export default function CourseDetails() {
                                     )}
                                 </div>
                                 <div className="space-y-3">
-                                    <div className="flex items-center justify-between pb-2 border-b border-gray-55 dark:border-[#232d42]">
+                                    <div className="flex items-center justify-between pb-2 border-b border-gray-55 dark:border-gray-800">
                                         <span className="text-[11px] font-bold text-gray-400 uppercase tracking-wider">Ma'lumotlar</span>
                                         {!isEditingInfo ? (
                                             <button
@@ -539,7 +539,7 @@ export default function CourseDetails() {
                                             </div>
                                         )}
                                     </div>
-                                    <div className="bg-white dark:bg-[#151c2c] border border-gray-100 dark:border-[#232d42] rounded-2xl p-4 space-y-4">
+                                    <div className="bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-800 rounded-2xl p-4 space-y-4">
                                         {isEditingInfo ? (
                                             <>
                                                 <div>
@@ -626,7 +626,7 @@ export default function CourseDetails() {
 
                     {activeTab === 'yoqlama' && (
                         <div className="space-y-6 animate-in duration-300">
-                            <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 p-4 bg-gray-55 dark:bg-[#0b111a] border border-gray-100 dark:border-[#232d42] rounded-2xl relative overflow-hidden">
+                            <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 p-4 bg-gray-55 dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl relative overflow-hidden">
                                 <div>
                                     <h3 className="text-xs font-black text-gray-900 dark:text-white tracking-tight">Davomat belgilash</h3>
                                     {!isDayValid(group.days, selectedDate) ? (
@@ -643,7 +643,7 @@ export default function CourseDetails() {
                                 </div>
                                 <div className="flex flex-col sm:flex-row items-center gap-3 w-full lg:w-auto">
                                     {/* Date navigation */}
-                                    <div className="flex items-center gap-2 bg-white dark:bg-[#151c2c] p-1.5 rounded-xl border border-gray-100 dark:border-[#232d42] shadow-sm w-full sm:w-auto justify-between">
+                                    <div className="flex items-center gap-2 bg-white dark:bg-gray-800 p-1.5 rounded-xl border border-gray-100 dark:border-gray-800 shadow-sm w-full sm:w-auto justify-between">
                                         <button
                                             onClick={() => setSelectedDate(prev => getValidDate(prev, group.days, 'prev'))}
                                             className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-gray-50 text-gray-450 hover:text-[#1b6b6b] transition-all cursor-pointer"
@@ -665,7 +665,7 @@ export default function CourseDetails() {
                                     </div>
 
                                     {/* Topic Selector */}
-                                    <div className="flex items-center gap-2 bg-white dark:bg-[#151c2c] p-1.5 rounded-xl border border-gray-100 dark:border-[#232d42] shadow-sm w-full sm:w-auto">
+                                    <div className="flex items-center gap-2 bg-white dark:bg-gray-800 p-1.5 rounded-xl border border-gray-100 dark:border-gray-800 shadow-sm w-full sm:w-auto">
                                         <BookOpen size={14} className="text-[#1b6b6b] ml-2 shrink-0" />
                                         <select
                                             value={selectedTopicId}
@@ -697,10 +697,10 @@ export default function CourseDetails() {
                                 </div>
                             </div>
 
-                            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                            <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
                                 {/* Students checklist for selected Date */}
-                                <div className="lg:col-span-1 bg-white dark:bg-[#151c2c] p-4 rounded-3xl border border-gray-100 dark:border-[#232d42] shadow-sm space-y-4">
-                                    <div className="flex items-center justify-between pb-2 border-b border-gray-50 dark:border-[#232d42]">
+                                <div className="lg:col-span-1 bg-white dark:bg-gray-800 p-4 rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm space-y-4">
+                                    <div className="flex items-center justify-between pb-2 border-b border-gray-50 dark:border-gray-800">
                                         <span className="text-[11px] font-bold text-gray-400 uppercase tracking-wider">Dars yo'qlamasi ({selectedDate})</span>
                                         <div className="flex items-center gap-2">
                                             <span className="text-[11px] font-bold text-gray-450">{groupStudents.length} ta o'quvchi</span>
@@ -722,26 +722,26 @@ export default function CourseDetails() {
                                         {groupStudents.map(s => {
                                             const status = getStudentAttStatus(s.id);
                                             return (
-                                                <div key={s.id} className={`flex items-center justify-between px-3 py-2 rounded-xl border transition-all ${status ? 'bg-white dark:bg-[#0b111a] border-gray-100 dark:border-[#232d42]' : 'bg-gray-50 dark:bg-[#0b111a]/40 border-dashed border-gray-200 dark:border-[#232d42]/50'}`}>
+                                                <div key={s.id} className={`flex items-center justify-between px-3 py-2 rounded-xl border transition-all ${status ? 'bg-white dark:bg-gray-900 border-gray-100 dark:border-gray-800' : 'bg-gray-50 dark:bg-gray-900/40 border-dashed border-gray-200 dark:border-gray-800/50'}`}>
                                                     <div className="flex items-center gap-2 min-w-0">
                                                         <div className={`w-1.5 h-5 rounded-full shrink-0 ${status === 'Keldi' ? 'bg-emerald-400' : status === 'Kelmapdi' ? 'bg-rose-400' : status === 'Sababli' ? 'bg-sky-400' : status === 'Kechikdi' ? 'bg-orange-400' : 'bg-gray-200 dark:bg-gray-700'}`} />
                                                         <span className="text-[11px] font-bold text-gray-900 dark:text-white uppercase tracking-tight truncate max-w-[100px]">{s.name}</span>
                                                     </div>
                                                     <div className="flex items-center gap-0.5 shrink-0">
                                                         <button onClick={() => saveAttendance(s.id, 'Keldi')}
-                                                            className={`px-2 py-1 rounded-lg text-[10px] font-bold uppercase tracking-wider transition-all cursor-pointer ${status === 'Keldi' ? 'bg-emerald-500 text-white' : 'bg-gray-100 dark:bg-[#151c2c] text-gray-400 hover:text-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-950/20'}`}>
+                                                            className={`px-2 py-1 rounded-lg text-[10px] font-bold uppercase tracking-wider transition-all cursor-pointer ${status === 'Keldi' ? 'bg-emerald-500 text-white' : 'bg-gray-100 dark:bg-gray-800 text-gray-400 hover:text-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-950/20'}`}>
                                                             Keldi
                                                         </button>
                                                         <button onClick={() => saveAttendance(s.id, 'Kelmapdi')}
-                                                            className={`px-2 py-1 rounded-lg text-[10px] font-bold uppercase tracking-wider transition-all cursor-pointer ${status === 'Kelmapdi' ? 'bg-rose-500 text-white' : 'bg-gray-100 dark:bg-[#151c2c] text-gray-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/20'}`}>
+                                                            className={`px-2 py-1 rounded-lg text-[10px] font-bold uppercase tracking-wider transition-all cursor-pointer ${status === 'Kelmapdi' ? 'bg-rose-500 text-white' : 'bg-gray-100 dark:bg-gray-800 text-gray-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/20'}`}>
                                                             Yo'q
                                                         </button>
                                                         <button onClick={() => saveAttendance(s.id, 'Sababli')}
-                                                            className={`px-2 py-1 rounded-lg text-[10px] font-bold uppercase tracking-wider transition-all cursor-pointer ${status === 'Sababli' ? 'bg-sky-500 text-white' : 'bg-gray-100 dark:bg-[#151c2c] text-gray-400 hover:text-sky-600 hover:bg-sky-50 dark:hover:bg-sky-950/20'}`}>
+                                                            className={`px-2 py-1 rounded-lg text-[10px] font-bold uppercase tracking-wider transition-all cursor-pointer ${status === 'Sababli' ? 'bg-sky-500 text-white' : 'bg-gray-100 dark:bg-gray-800 text-gray-400 hover:text-sky-600 hover:bg-sky-50 dark:hover:bg-sky-950/20'}`}>
                                                             Sababli
                                                         </button>
                                                         <button onClick={() => saveAttendance(s.id, 'Kechikdi')}
-                                                            className={`px-2 py-1 rounded-lg text-[10px] font-bold uppercase tracking-wider transition-all cursor-pointer ${status === 'Kechikdi' ? 'bg-orange-400 text-white' : 'bg-gray-100 dark:bg-[#151c2c] text-gray-400 hover:text-orange-500 hover:bg-orange-50 dark:hover:bg-orange-950/20'}`}>
+                                                            className={`px-2 py-1 rounded-lg text-[10px] font-bold uppercase tracking-wider transition-all cursor-pointer ${status === 'Kechikdi' ? 'bg-orange-400 text-white' : 'bg-gray-100 dark:bg-gray-800 text-gray-400 hover:text-orange-500 hover:bg-orange-50 dark:hover:bg-orange-950/20'}`}>
                                                             Kech
                                                         </button>
                                                     </div>
@@ -768,7 +768,7 @@ export default function CourseDetails() {
 
                             {/* Full width Matrix below the upper grid */}
                             <div className="space-y-3">
-                                <span className="text-[11px] font-bold text-gray-400 uppercase tracking-wider block pb-1 border-b border-gray-50 dark:border-[#232d42]">Davomat Matritsasi</span>
+                                <span className="text-[11px] font-bold text-gray-400 uppercase tracking-wider block pb-1 border-b border-gray-50 dark:border-gray-800">Davomat Matritsasi</span>
                                 <AttendanceMatrix group={group} students={groupStudents} attendances={attendances} />
                             </div>
                         </div>
@@ -827,19 +827,19 @@ export default function CourseDetails() {
                                         type="month"
                                         value={paymentMonth}
                                         onChange={e => setPaymentMonth(e.target.value)}
-                                        className="px-3 py-1.5 text-xs font-semibold bg-white dark:bg-[#151c2c] border border-gray-200 dark:border-[#232d42] rounded-xl outline-none focus:ring-2 focus:ring-violet-500/20 focus:border-violet-400"
+                                        className="px-3 py-1.5 text-xs font-semibold bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-800 rounded-xl outline-none focus:ring-2 focus:ring-violet-500/20 focus:border-violet-400"
                                     />
                                 </div>
                             </div>
                             {/* Summary stats */}
                             {price > 0 && (
                             <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
-                                <div className="bg-white dark:bg-[#151c2c] border border-gray-100 dark:border-[#232d42]/50 rounded-2xl p-4 space-y-1">
+                                <div className="bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-800/50 rounded-2xl p-4 space-y-1">
                                     <span className="text-[11px] font-bold text-gray-400 uppercase tracking-wider">Kurs narxi</span>
                                     <p className="text-sm font-black text-gray-900 dark:text-white tabular-nums">{price.toLocaleString()}</p>
                                     <p className="text-[11px] font-bold text-gray-400 uppercase">UZS / oy</p>
                                 </div>
-                                <div className="bg-white dark:bg-[#151c2c] border border-gray-100 dark:border-[#232d42]/50 rounded-2xl p-4 space-y-1">
+                                <div className="bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-800/50 rounded-2xl p-4 space-y-1">
                                     <span className="text-[11px] font-bold text-gray-400 uppercase tracking-wider">Bu oy tushum</span>
                                     <p className="text-sm font-black text-gray-900 dark:text-white tabular-nums">{totalIncoming.toLocaleString()}</p>
                                     <p className="text-[11px] font-bold text-gray-400 uppercase">/ {totalExpected.toLocaleString()} UZS</p>
@@ -863,11 +863,11 @@ export default function CourseDetails() {
                             )}
 
                             {/* Student payment table */}
-                            <div className="bg-white dark:bg-[#151c2c] rounded-3xl border border-gray-100 dark:border-[#232d42]/50 shadow-sm overflow-hidden">
+                            <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-800/50 shadow-sm overflow-hidden">
                                 <div className="overflow-x-auto">
                                     <table className="w-full text-left border-collapse min-w-[600px]">
                                         <thead>
-                                            <tr className="bg-gray-55 dark:bg-[#0b111a] border-b border-gray-100 dark:border-[#232d42]/50">
+                                            <tr className="bg-gray-55 dark:bg-gray-900 border-b border-gray-100 dark:border-gray-800/50">
                                                 <th className="p-4 text-[11px] font-bold text-gray-400 uppercase tracking-wider">O'quvchi</th>
                                                 {price > 0 && <th className="p-4 text-[11px] font-bold text-gray-400 uppercase tracking-wider text-right">Kurs narxi</th>}
                                                 <th className="p-4 text-[11px] font-bold text-gray-400 uppercase tracking-wider text-right">Bu oy to'lov</th>
@@ -929,7 +929,7 @@ export default function CourseDetails() {
                                                                 ? 'text-amber-600 bg-amber-50 border-amber-100 dark:bg-amber-950/20 dark:text-amber-400 dark:border-amber-900/40' :
                                                             payStatus === 'debt'
                                                                 ? 'text-rose-600 bg-rose-50 border-rose-100 dark:bg-rose-950/20 dark:text-rose-400 dark:border-rose-900/40' :
-                                                                'text-gray-400 bg-gray-50 border-gray-100 dark:bg-[#0b111a] dark:border-[#232d42]'
+                                                                'text-gray-400 bg-gray-50 border-gray-100 dark:bg-gray-900 dark:border-gray-800'
                                                         }`}>
                                                             {payStatus === 'full' || payStatus === 'prepaid' ? "To'liq" :
                                                              payStatus === 'partial' ? 'Qisman' :
@@ -975,8 +975,8 @@ export default function CourseDetails() {
             {isAddStudentModalOpen && (
                 <div className="fixed inset-0 z-[200] flex items-start sm:items-center justify-center overflow-y-auto p-4">
                     <div className="absolute inset-0 bg-gray-900/60 backdrop-blur-sm" onClick={() => setIsAddStudentModalOpen(false)} />
-                    <div className="relative bg-white dark:bg-[#151c2c] rounded-[2rem] border border-gray-100 dark:border-[#232d42]/50 shadow-2xl w-full max-w-sm p-8">
-                        <div className="flex items-center justify-between mb-6 pb-4 border-b border-gray-50 dark:border-[#232d42]/50">
+                    <div className="relative bg-white dark:bg-gray-800 rounded-[2rem] border border-gray-100 dark:border-gray-800/50 shadow-2xl w-full max-w-sm p-8">
+                        <div className="flex items-center justify-between mb-6 pb-4 border-b border-gray-50 dark:border-gray-800/50">
                             <div>
                                 <h3 className="text-lg font-black text-gray-900 dark:text-white tracking-tight">O'quvchi qo'shish</h3>
                                 <p className="text-[11px] font-bold text-[#1b6b6b] uppercase tracking-wider mt-0.5">Kursga biriktirish</p>
@@ -987,7 +987,7 @@ export default function CourseDetails() {
                             <div className="relative">
                                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
                                 <input type="text" placeholder="Ism bo'yicha qidirish..." value={studentSearch} onChange={e => setStudentSearch(e.target.value)}
-                                    className="w-full pl-9 pr-4 py-2.5 bg-gray-55 dark:bg-[#0b111a] border border-gray-100 dark:border-[#232d42] rounded-xl text-xs font-bold text-gray-900 dark:text-white outline-none focus:border-[#1b6b6b]" />
+                                    className="w-full pl-9 pr-4 py-2.5 bg-gray-55 dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-xl text-xs font-bold text-gray-900 dark:text-white outline-none focus:border-[#1b6b6b]" />
                             </div>
                             <div className="max-h-[300px] overflow-y-auto space-y-2 pr-1 custom-scrollbar">
                                 {availableStudents.map(s => (
@@ -1017,8 +1017,8 @@ export default function CourseDetails() {
             {isPaymentModalOpen && (
                 <div className="fixed inset-0 z-[200] flex items-start sm:items-center justify-center overflow-y-auto p-4">
                     <div className="absolute inset-0 bg-gray-900/60 backdrop-blur-sm" onClick={() => setIsPaymentModalOpen(false)} />
-                    <div className="relative bg-white dark:bg-[#151c2c] rounded-[2rem] border border-gray-100 dark:border-[#232d42]/50 shadow-2xl w-full max-w-sm p-8">
-                        <div className="flex items-center justify-between mb-6 pb-4 border-b border-gray-50 dark:border-[#232d42]/50">
+                    <div className="relative bg-white dark:bg-gray-800 rounded-[2rem] border border-gray-100 dark:border-gray-800/50 shadow-2xl w-full max-w-sm p-8">
+                        <div className="flex items-center justify-between mb-6 pb-4 border-b border-gray-50 dark:border-gray-800/50">
                             <div>
                                 <h3 className="text-lg font-black text-gray-900 dark:text-white tracking-tight">To'lov qabul qilish</h3>
                                 <p className="text-[11px] font-bold text-[#1b6b6b] uppercase tracking-wider mt-0.5">
@@ -1062,7 +1062,7 @@ export default function CourseDetails() {
                                     {(['Naqd', 'Karta', 'Click', 'Payme'] as const).map(type => (
                                         <button key={type} type="button"
                                             onClick={() => setPaymentType(type as any)}
-                                            className={`py-2 rounded-xl text-[11px] font-bold uppercase tracking-wider border transition-all cursor-pointer ${paymentType === type ? 'bg-[#1b6b6b] text-white border-[#1b6b6b]' : 'bg-gray-55 dark:bg-[#0b111a] text-gray-600 dark:text-gray-300 border-gray-100 dark:border-[#232d42] hover:border-[#1b6b6b]'}`}>
+                                            className={`py-2 rounded-xl text-[11px] font-bold uppercase tracking-wider border transition-all cursor-pointer ${paymentType === type ? 'bg-[#1b6b6b] text-white border-[#1b6b6b]' : 'bg-gray-55 dark:bg-gray-900 text-gray-600 dark:text-gray-300 border-gray-100 dark:border-gray-800 hover:border-[#1b6b6b]'}`}>
                                             {type}
                                         </button>
                                     ))}
@@ -1087,8 +1087,8 @@ export default function CourseDetails() {
             {isTopicModalOpen && (
                 <div className="fixed inset-0 z-[200] flex items-start sm:items-center justify-center overflow-y-auto p-4">
                     <div className="absolute inset-0 bg-gray-900/60 backdrop-blur-sm" onClick={() => { setIsTopicModalOpen(false); setEditingTopic(null); }} />
-                    <div className="relative bg-white dark:bg-[#151c2c] rounded-[2rem] border border-gray-100 dark:border-[#232d42]/50 shadow-2xl w-full max-w-sm p-8">
-                        <div className="flex items-center justify-between mb-6 pb-4 border-b border-gray-50 dark:border-[#232d42]/50">
+                    <div className="relative bg-white dark:bg-gray-800 rounded-[2rem] border border-gray-100 dark:border-gray-800/50 shadow-2xl w-full max-w-sm p-8">
+                        <div className="flex items-center justify-between mb-6 pb-4 border-b border-gray-50 dark:border-gray-800/50">
                             <div>
                                 <h3 className="text-lg font-black text-gray-900 dark:text-white tracking-tight">
                                     {editingTopic ? "Mavzuni tahrirlash" : "Mavzu qo'shish"}
@@ -1183,7 +1183,7 @@ function StatCardV3({ label, value, unit, subValue, tone, subTone }: any) {
     }[subTone as string] || 'text-gray-400 dark:text-gray-500';
 
     return (
-        <div className="bg-white dark:bg-[#151c2c] px-5 py-4 rounded-2xl border border-gray-100 dark:border-[#232d42]/50 transition-colors hover:border-gray-200 dark:hover:border-gray-700">
+        <div className="bg-white dark:bg-gray-800 px-5 py-4 rounded-2xl border border-gray-100 dark:border-gray-800/50 transition-colors hover:border-gray-200 dark:hover:border-gray-700">
             <span className="text-[12px] text-gray-500 dark:text-gray-400">{label}</span>
             <div className="mt-1.5 flex items-baseline gap-1">
                 <span className={`num text-[30px] font-bold leading-none ${valueTone}`} title={String(value)}>{value}</span>
@@ -1198,7 +1198,7 @@ function StatCardV3({ label, value, unit, subValue, tone, subTone }: any) {
 
 function TabButton({ label, icon, active, onClick }: any) {
     return (
-        <button onClick={onClick} className={`px-5 py-3.5 text-[12px] font-semibold flex items-center gap-2 transition-colors relative shrink-0 cursor-pointer ${active ? 'text-[#1b6b6b] bg-white dark:bg-[#151c2c]' : 'text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'}`}>
+        <button onClick={onClick} className={`px-5 py-3.5 text-[12px] font-semibold flex items-center gap-2 transition-colors relative shrink-0 cursor-pointer ${active ? 'text-[#1b6b6b] bg-white dark:bg-gray-800' : 'text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'}`}>
             {icon}
             {label}
             {active && <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-[#1b6b6b] rounded-t-full" />}

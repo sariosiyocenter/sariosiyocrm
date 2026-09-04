@@ -185,7 +185,7 @@ export default function Dashboard() {
     return (
         <div className="space-y-6 animate-in fade-in duration-500">
             {/* Header */}
-            <div className="bg-white dark:bg-[#151c2c] rounded-2xl border border-gray-100 dark:border-[#232d42] shadow-sm overflow-hidden">
+            <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm overflow-hidden">
                 <div className="px-6 py-5 flex flex-col lg:flex-row lg:items-center justify-between gap-4">
                     <div className="flex items-center gap-4">
                         <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-[#1b6b6b] to-[#2e9c9c] flex items-center justify-center shadow-sm shadow-[#1b6b6b]/20">
@@ -202,7 +202,7 @@ export default function Dashboard() {
                     {/* Presets and Custom Inputs */}
                     <div className="flex flex-wrap items-center gap-3">
                         {/* Presets */}
-                        <div className="flex items-center gap-1 bg-gray-50 dark:bg-[#0b111a] p-1 rounded-xl border border-gray-100 dark:border-[#232d42]">
+                        <div className="flex items-center gap-1 bg-gray-50 dark:bg-gray-900 p-1 rounded-xl border border-gray-100 dark:border-gray-800">
                             {['this_month', 'last_30', 'this_year', 'all'].map((type) => {
                                 const label = type === 'this_month' ? t('preset_this_month') : type === 'last_30' ? t('preset_30_days') : type === 'this_year' ? t('preset_this_year') : t('preset_all');
                                 return (
@@ -228,14 +228,14 @@ export default function Dashboard() {
                                 type="date"
                                 value={startDate}
                                 onChange={(e) => { setStartDate(e.target.value); setSelectedPreset('custom'); }}
-                                className="bg-gray-55 dark:bg-[#0b111a] px-3 py-1.5 rounded-xl border border-gray-100 dark:border-[#232d42] text-xs font-bold text-gray-800 dark:text-gray-200 outline-none focus:border-[#1b6b6b] w-32 cursor-pointer"
+                                className="bg-gray-55 dark:bg-gray-900 px-3 py-1.5 rounded-xl border border-gray-100 dark:border-gray-800 text-xs font-bold text-gray-800 dark:text-gray-200 outline-none focus:border-[#1b6b6b] w-32 cursor-pointer"
                             />
                             <span className="text-gray-400 dark:text-gray-500 font-extrabold text-[11px] uppercase tracking-wider">{t('date_to')}</span>
                             <input
                                 type="date"
                                 value={endDate}
                                 onChange={(e) => { setEndDate(e.target.value); setSelectedPreset('custom'); }}
-                                className="bg-gray-55 dark:bg-[#0b111a] px-3 py-1.5 rounded-xl border border-gray-100 dark:border-[#232d42] text-xs font-bold text-gray-800 dark:text-gray-200 outline-none focus:border-[#1b6b6b] w-32 cursor-pointer"
+                                className="bg-gray-55 dark:bg-gray-900 px-3 py-1.5 rounded-xl border border-gray-100 dark:border-gray-800 text-xs font-bold text-gray-800 dark:text-gray-200 outline-none focus:border-[#1b6b6b] w-32 cursor-pointer"
                             />
                         </div>
                     </div>
@@ -250,7 +250,7 @@ export default function Dashboard() {
                         <div
                             key={idx}
                             onClick={() => navigate(stat.path)}
-                            className="bg-white dark:bg-[#151c2c] rounded-2xl border border-gray-100 dark:border-[#232d42] p-4 hover:shadow-md transition-all cursor-pointer group flex items-center justify-between"
+                            className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-800 p-4 hover:shadow-md transition-all cursor-pointer group flex items-center justify-between"
                         >
                             <div>
                                 <span className="text-[11px] font-extrabold text-gray-400 uppercase tracking-wider block mb-1">{stat.label}</span>
@@ -268,10 +268,10 @@ export default function Dashboard() {
             </div>
 
             {/* Main Section */}
-            <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 xl:grid-cols-3 gap-4">
                 {/* Left 2 Columns */}
                 <div className="xl:col-span-2 space-y-6">
-                    <div className="bg-white dark:bg-[#151c2c] rounded-2xl border border-gray-100 dark:border-[#232d42] p-5 shadow-sm">
+                    <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-800 p-5 shadow-sm">
                         <div className="flex items-center justify-between mb-6">
                             <h3 className="text-xs font-black text-gray-900 dark:text-white flex items-center gap-2">
                                 <TrendingUp size={16} className="text-[#1b6b6b]" />
@@ -293,7 +293,7 @@ export default function Dashboard() {
                                 { label: t('expected'), value: `${(monthlyExpected / 1000000).toFixed(1)}M`, trend: null, positive: true, icon: Clock },
                                 { label: t('debt'), value: `${(totalDebt / 1000000).toFixed(1)}M`, trend: null, positive: totalDebt === 0, icon: TrendingDown },
                             ].map((item, i) => (
-                                <div key={i} className="bg-gray-55 dark:bg-[#0b111a] rounded-xl p-4 border border-gray-100 dark:border-[#232d42]">
+                                <div key={i} className="bg-gray-55 dark:bg-gray-900 rounded-xl p-4 border border-gray-100 dark:border-gray-800">
                                     <div className="flex items-center justify-between mb-2">
                                         <span className="text-[11px] font-bold text-gray-400 uppercase tracking-wider">{item.label}</span>
                                         <item.icon size={14} className={item.positive ? 'text-emerald-500' : 'text-rose-500'} />
@@ -315,7 +315,7 @@ export default function Dashboard() {
                         </div>
 
                         {/* Chart Area */}
-                        <div className="bg-gray-55 dark:bg-[#0b111a] rounded-xl p-4 border border-gray-100 dark:border-[#232d42]">
+                        <div className="bg-gray-55 dark:bg-gray-900 rounded-xl p-4 border border-gray-100 dark:border-gray-800">
                             <div className="flex items-center justify-between mb-5">
                                 <span className="text-[11px] font-bold text-gray-400 uppercase tracking-wider">So'nggi 6 oy (mln so'm)</span>
                                 <span className="text-[11px] font-bold text-[#1b6b6b] uppercase tracking-wider tabular-nums">Jami: {total6Months.toFixed(1)}M</span>
@@ -341,7 +341,7 @@ export default function Dashboard() {
                 {/* Right 1 Column */}
                 <div className="space-y-6">
                     {/* Attention list */}
-                    <div className="bg-white dark:bg-[#151c2c] rounded-2xl border border-gray-100 dark:border-[#232d42] p-4 shadow-sm">
+                    <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-800 p-4 shadow-sm">
                         <div className="flex items-center justify-between mb-4">
                             <h3 className="text-xs font-black text-gray-900 dark:text-white flex items-center gap-2">
                                 <Activity size={16} className="text-rose-500" />
@@ -377,7 +377,7 @@ export default function Dashboard() {
                     </div>
 
                     {/* Top Courses */}
-                    <div className="bg-white dark:bg-[#151c2c] rounded-2xl border border-gray-100 dark:border-[#232d42] p-4 shadow-sm">
+                    <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-800 p-4 shadow-sm">
                         <div className="flex items-center justify-between mb-4">
                             <h3 className="text-xs font-black text-gray-900 dark:text-white flex items-center gap-2">
                                 <BarChart3 size={16} className="text-[#1b6b6b]" />
@@ -391,7 +391,7 @@ export default function Dashboard() {
                                         <span className="text-[11px] font-bold text-gray-700 dark:text-gray-300 truncate max-w-[130px] uppercase tracking-wide">{course.name}</span>
                                         <span className="text-[11px] font-bold text-[#1b6b6b] tabular-nums">{(course.revenue / 1000000).toFixed(1)}M UZS</span>
                                     </div>
-                                    <div className="h-1.5 w-full bg-gray-50 dark:bg-[#0b111a] rounded-full overflow-hidden">
+                                    <div className="h-1.5 w-full bg-gray-50 dark:bg-gray-900 rounded-full overflow-hidden">
                                         <div
                                             className="h-full bg-[#1b6b6b] rounded-full transition-all duration-700"
                                             style={{ width: `${(course.revenue / (topCourseStats[0]?.revenue || 1)) * 100}%` }}
@@ -409,8 +409,8 @@ export default function Dashboard() {
             </div>
 
             {/* Reports Section integrated into Dashboard */}
-            <div className="bg-white dark:bg-[#151c2c] rounded-2xl border border-gray-100 dark:border-[#232d42] p-5 shadow-sm">
-                <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-4 border-b border-gray-50 dark:border-[#232d42] pb-4 mb-5">
+            <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-800 p-5 shadow-sm">
+                <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-4 border-b border-gray-50 dark:border-gray-800 pb-4 mb-5">
                     <div>
                         <h3 className="text-xs font-black text-gray-900 dark:text-white flex items-center gap-2">
                             <BarChart3 size={16} className="text-[#1b6b6b]" />
@@ -419,7 +419,7 @@ export default function Dashboard() {
                         <p className="text-[11px] font-bold text-gray-400 uppercase tracking-wider mt-0.5">Markaz tahliliy ko'rsatkichlari (Tanlangan muddat uchun)</p>
                     </div>
                     {/* Secondary Tabs for Reports */}
-                    <div className="flex overflow-x-auto no-scrollbar flex-nowrap gap-1 bg-gray-100/80 dark:bg-[#0b111a] p-1 rounded-full border border-gray-200/40 dark:border-[#232d42] max-w-full">
+                    <div className="flex overflow-x-auto no-scrollbar flex-nowrap gap-1 bg-gray-100/80 dark:bg-gray-900 p-1 rounded-full border border-gray-200/40 dark:border-gray-800 max-w-full">
                         {PRIMARY_REPORTS.map(r => (
                             <button
                                 key={r.id}
@@ -429,7 +429,7 @@ export default function Dashboard() {
                                 }}
                                 className={`flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-full text-[11px] font-black uppercase tracking-wider transition-all duration-200 cursor-pointer whitespace-nowrap transform active:scale-95 ${
                                     activeReportTab === r.id
-                                        ? 'bg-white dark:bg-[#151c2c] text-[#1b6b6b] dark:text-emerald-400 shadow-sm border border-gray-200/50 dark:border-[#232d42] scale-[1.01]'
+                                        ? 'bg-white dark:bg-gray-800 text-[#1b6b6b] dark:text-emerald-400 shadow-sm border border-gray-200/50 dark:border-gray-800 scale-[1.01]'
                                         : 'text-gray-400 dark:text-gray-500 hover:text-gray-700 dark:hover:text-gray-300'
                                 }`}
                             >
@@ -444,7 +444,7 @@ export default function Dashboard() {
                                 onClick={() => setIsDropdownOpen(!isDropdownOpen)}
                                 className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[11px] font-black uppercase tracking-wider transition-all duration-200 cursor-pointer whitespace-nowrap transform active:scale-95 ${
                                     SECONDARY_REPORTS.some(r => r.id === activeReportTab)
-                                        ? 'bg-white dark:bg-[#151c2c] text-[#1b6b6b] dark:text-emerald-400 shadow-sm border border-gray-200/50 dark:border-[#232d42] scale-[1.01]'
+                                        ? 'bg-white dark:bg-gray-800 text-[#1b6b6b] dark:text-emerald-400 shadow-sm border border-gray-200/50 dark:border-gray-800 scale-[1.01]'
                                         : 'text-gray-400 dark:text-gray-500 hover:text-gray-700 dark:hover:text-gray-300'
                                 }`}
                             >
@@ -464,7 +464,7 @@ export default function Dashboard() {
                                         className="fixed inset-0 z-10" 
                                         onClick={() => setIsDropdownOpen(false)}
                                     />
-                                    <div className="absolute right-0 mt-1.5 w-44 bg-white dark:bg-[#151c2c] rounded-xl border border-gray-150 dark:border-[#232d42] shadow-lg p-1 z-20 animate-in fade-in slide-in-from-top-1 duration-100">
+                                    <div className="absolute right-0 mt-1.5 w-44 bg-white dark:bg-gray-800 rounded-xl border border-gray-150 dark:border-gray-800 shadow-lg p-1 z-20 animate-in fade-in slide-in-from-top-1 duration-100">
                                         {SECONDARY_REPORTS.map(r => (
                                             <button
                                                 key={r.id}
@@ -474,7 +474,7 @@ export default function Dashboard() {
                                                 }}
                                                 className={`flex items-center gap-2 w-full px-3 py-2 rounded-lg text-[11px] font-black uppercase tracking-wider text-left transition-all duration-150 ${
                                                     activeReportTab === r.id
-                                                        ? 'bg-gray-50 dark:bg-[#0b111a] text-[#1b6b6b] dark:text-emerald-400'
+                                                        ? 'bg-gray-50 dark:bg-gray-900 text-[#1b6b6b] dark:text-emerald-400'
                                                         : 'text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-[#0b111a] hover:text-gray-900 dark:hover:text-white'
                                                 }`}
                                             >
@@ -495,7 +495,7 @@ export default function Dashboard() {
             </div>
 
             {/* Room Schedule */}
-            <div className="bg-white dark:bg-[#151c2c] rounded-2xl border border-gray-100 dark:border-[#232d42] p-5 shadow-sm">
+            <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-800 p-5 shadow-sm">
                 <RoomSchedule />
             </div>
         </div>

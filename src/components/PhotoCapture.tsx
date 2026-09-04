@@ -71,7 +71,7 @@ export default function PhotoCapture({ onCapture, onClose }: PhotoCaptureProps) 
     return (
         <div className="fixed inset-0 bg-slate-900/90 backdrop-blur-md z-[300] flex flex-col items-center justify-center p-4">
             <div className="bg-white rounded-[2.5rem] w-full max-w-xl overflow-hidden shadow-2xl flex flex-col items-center">
-                <div className="w-full p-6 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
+                <div className="w-full p-4 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
                     <h3 className="text-xl font-black text-slate-800 tracking-tight">Rasmga olish</h3>
                     <button onClick={onClose} className="p-2 hover:bg-slate-200 rounded-full transition-colors">
                         <X className="w-6 h-6 text-slate-400" />
@@ -92,7 +92,7 @@ export default function PhotoCapture({ onCapture, onClose }: PhotoCaptureProps) 
                     <canvas ref={canvasRef} className="hidden" />
                 </div>
 
-                <div className="p-8 w-full flex items-center justify-center gap-6">
+                <div className="p-8 w-full flex items-center justify-center gap-4">
                     {!capturedImage ? (
                         <button
                             onClick={capturePhoto}

@@ -34,7 +34,7 @@ export default function ExamDetail() {
 
     if (!exam) {
         return (
-            <div className="flex flex-col items-center justify-center py-24 bg-white dark:bg-[#151c2c] rounded-3xl border border-gray-100 dark:border-[#232d42]/50 shadow-sm transition-colors">
+            <div className="flex flex-col items-center justify-center py-24 bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-800/50 shadow-sm transition-colors">
                 <AlertCircle className="w-12 h-12 text-gray-300 dark:text-gray-600 mb-4" />
                 <p className="text-gray-455 dark:text-gray-500 font-bold text-xs">Imtihon topilmadi</p>
                 <button onClick={() => navigate('/exams')} className="mt-6 text-[#1b6b6b] font-bold uppercase tracking-wider text-[11px] hover:underline px-6 py-2 bg-teal-50 dark:bg-teal-900/30 rounded-xl transition-all">Orqaga qaytish</button>
@@ -119,7 +119,7 @@ export default function ExamDetail() {
             {bulkProgress && (
                 <div className="fixed inset-0 z-[250] flex items-start sm:items-center justify-center overflow-y-auto p-4">
                     <div className="absolute inset-0 bg-gray-900/60 backdrop-blur-sm" />
-                    <div className="relative bg-white dark:bg-[#151c2c] rounded-[2rem] shadow-2xl p-8 w-full max-w-xs text-center space-y-6 border border-gray-100 dark:border-[#232d42]/50">
+                    <div className="relative bg-white dark:bg-gray-800 rounded-[2rem] shadow-2xl p-8 w-full max-w-xs text-center space-y-6 border border-gray-100 dark:border-gray-800/50">
                         <div className="w-12 h-12 bg-teal-50 dark:bg-teal-950/20 border border-teal-100 dark:border-teal-900/40 rounded-xl flex items-center justify-center mx-auto text-[#1b6b6b]">
                             <Printer className="w-6 h-6 animate-pulse" />
                         </div>
@@ -127,7 +127,7 @@ export default function ExamDetail() {
                             <p className="text-[11px] font-bold text-gray-900 dark:text-white uppercase tracking-wider">OMR Varaqalari Tayyorlanmoqda</p>
                             <p className="text-[11px] font-bold text-gray-400 mt-1 uppercase tracking-wider">{bulkProgress.current} / {bulkProgress.total} o'quvchi</p>
                         </div>
-                        <div className="w-full bg-gray-55 dark:bg-[#0b111a] rounded-full h-2">
+                        <div className="w-full bg-gray-55 dark:bg-gray-900 rounded-full h-2">
                             <div
                                 className="bg-[#1b6b6b] h-2 rounded-full transition-all duration-300"
                                 style={{ width: `${Math.round((bulkProgress.current / bulkProgress.total) * 100)}%` }}
@@ -143,7 +143,7 @@ export default function ExamDetail() {
                 <div className="flex items-center gap-4">
                     <button 
                         onClick={() => navigate('/exams')}
-                        className="w-10 h-10 bg-white dark:bg-[#151c2c] border border-gray-100 dark:border-[#232d42]/50 rounded-xl flex items-center justify-center text-gray-450 hover:text-[#1b6b6b] hover:bg-gray-55 transition-all shadow-sm cursor-pointer"
+                        className="w-10 h-10 bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-800/50 rounded-xl flex items-center justify-center text-gray-450 hover:text-[#1b6b6b] hover:bg-gray-55 transition-all shadow-sm cursor-pointer"
                     >
                         <ArrowLeft size={18} />
                     </button>
@@ -156,7 +156,7 @@ export default function ExamDetail() {
                 <div className="flex flex-wrap items-center gap-3">
                     <button 
                         onClick={() => generateOMRSheet(exam)}
-                        className="px-4 py-2.5 bg-white dark:bg-[#151c2c] border border-gray-100 dark:border-[#232d42]/50 rounded-xl text-[11px] font-bold uppercase tracking-wider text-gray-500 hover:text-[#1b6b6b] transition-all shadow-sm flex items-center gap-1.5 cursor-pointer"
+                        className="px-4 py-2.5 bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-800/50 rounded-xl text-[11px] font-bold uppercase tracking-wider text-gray-500 hover:text-[#1b6b6b] transition-all shadow-sm flex items-center gap-1.5 cursor-pointer"
                     >
                         <FileText size={14} /> JAVOB VARAQASI (SHABLON)
                     </button>
@@ -170,11 +170,11 @@ export default function ExamDetail() {
                 </div>
             </div>
 
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
                 {/* Left: Info & Group Selection */}
                 <div className="lg:col-span-1 space-y-6">
                     {/* Bulk OMR Section */}
-                    <div className="bg-white dark:bg-[#151c2c] rounded-3xl border border-gray-100 dark:border-[#232d42]/50 shadow-sm p-6">
+                    <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-800/50 shadow-sm p-4">
                         <h3 className="text-[11px] font-bold text-gray-900 dark:text-white uppercase tracking-wider mb-4 flex items-center gap-2">
                             <Users className="text-[#1b6b6b]" size={16} />
                             Kurslar Tanlovi
@@ -188,7 +188,7 @@ export default function ExamDetail() {
                                     <label key={group.id} className={`flex items-center gap-3 p-3 rounded-2xl border transition-all cursor-pointer ${
                                         selectedGroups.includes(group.id) 
                                         ? 'bg-teal-50 dark:bg-teal-950/20 border-teal-200' 
-                                        : 'bg-gray-55 dark:bg-[#0b111a]/50 border-gray-100 dark:border-[#232d42]'
+                                        : 'bg-gray-55 dark:bg-gray-900/50 border-gray-100 dark:border-gray-800'
                                     }`}>
                                         <input 
                                             type="checkbox" 
@@ -199,7 +199,7 @@ export default function ExamDetail() {
                                         <div className={`w-4 h-4 rounded border flex items-center justify-center transition-all ${
                                             selectedGroups.includes(group.id) 
                                             ? 'bg-[#1b6b6b] border-[#1b6b6b] text-white' 
-                                            : 'border-gray-300 dark:border-gray-605 bg-white dark:bg-[#151c2c]'
+                                            : 'border-gray-300 dark:border-gray-605 bg-white dark:bg-gray-800'
                                         }`}>
                                             {selectedGroups.includes(group.id) && <CheckCircle2 size={10} />}
                                         </div>
@@ -222,7 +222,7 @@ export default function ExamDetail() {
                         </button>
                     </div>
 
-                    <div className="bg-white dark:bg-[#151c2c] rounded-3xl border border-gray-100 dark:border-[#232d42]/50 shadow-sm p-6">
+                    <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-800/50 shadow-sm p-4">
                         <h3 className="text-[11px] font-bold text-gray-900 dark:text-white uppercase tracking-wider mb-4 flex items-center gap-2">
                             <Layers className="text-[#1b6b6b]" size={16} />
                             Blueprint Qoidalari
@@ -236,14 +236,14 @@ export default function ExamDetail() {
                                             <p className="text-[11px] font-bold text-gray-900 dark:text-white uppercase tracking-wider">{block.subject}</p>
                                             <span className="text-[10px] font-bold text-[#1b6b6b] bg-teal-50 dark:bg-teal-950/20 px-2 py-0.5 rounded border border-teal-100 dark:border-teal-900/40 uppercase tracking-wider">{block.pointsPerQuestion} ball/savol</span>
                                         </div>
-                                        <div className="p-3 bg-gray-55 dark:bg-[#0b111a]/50 rounded-2xl border border-gray-100 dark:border-[#232d42] space-y-1.5">
+                                        <div className="p-3 bg-gray-55 dark:bg-gray-900/50 rounded-2xl border border-gray-100 dark:border-gray-800 space-y-1.5">
                                             {block.topicRules.map((rule, rIdx) => (
                                                 <div key={rIdx} className="flex justify-between items-center text-[11px] font-bold text-gray-400 uppercase tracking-wider">
                                                     <span>{rule.topic}</span>
                                                     <span className="text-gray-900 dark:text-white">{rule.count} ta</span>
                                                 </div>
                                             ))}
-                                            <div className="pt-2 mt-2 border-t border-dashed border-gray-200 dark:border-[#232d42] flex justify-between items-center text-[11px] font-bold text-gray-900 dark:text-white uppercase tracking-wider">
+                                            <div className="pt-2 mt-2 border-t border-dashed border-gray-200 dark:border-gray-800 flex justify-between items-center text-[11px] font-bold text-gray-900 dark:text-white uppercase tracking-wider">
                                                 <span>Jami {block.subject}</span>
                                                 <span>{blockQCount} ta</span>
                                             </div>
@@ -266,7 +266,7 @@ export default function ExamDetail() {
                         {!exam.variants && (
                             <div className="flex items-center gap-3">
                                 <select 
-                                    className="px-3 py-2 bg-white dark:bg-[#151c2c] border border-gray-100 dark:border-[#232d42] rounded-xl text-[11px] font-bold uppercase tracking-wider outline-none focus:border-teal-500 text-gray-900 dark:text-white cursor-pointer"
+                                    className="px-3 py-2 bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-800 rounded-xl text-[11px] font-bold uppercase tracking-wider outline-none focus:border-teal-500 text-gray-900 dark:text-white cursor-pointer"
                                     value={variantCount}
                                     onChange={e => setVariantCount(Number(e.target.value))}
                                 >
@@ -287,7 +287,7 @@ export default function ExamDetail() {
 
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         {exam.variants?.map((variant) => (
-                            <div key={variant.id} className="bg-white dark:bg-[#151c2c] rounded-3xl border border-gray-100 dark:border-[#232d42]/50 p-5 shadow-sm transition-all flex flex-col justify-between">
+                            <div key={variant.id} className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-800/50 p-5 shadow-sm transition-all flex flex-col justify-between">
                                 <div className="flex items-center justify-between mb-4">
                                     <div className="flex items-center gap-3">
                                         <div className="w-8 h-8 rounded-lg bg-teal-50 dark:bg-teal-950/20 border border-teal-100 dark:border-teal-900/40 flex items-center justify-center text-[#1b6b6b] font-black text-xs">
@@ -301,7 +301,7 @@ export default function ExamDetail() {
                                 </div>
 
                                 <div className="space-y-2 mb-4">
-                                    <div className="h-1 bg-gray-55 dark:bg-[#0b111a] rounded-full overflow-hidden">
+                                    <div className="h-1 bg-gray-55 dark:bg-gray-900 rounded-full overflow-hidden">
                                         <div className="h-full bg-[#1b6b6b]" style={{ width: '100%' }}></div>
                                     </div>
                                     <div className="flex justify-between text-[10px] font-bold text-gray-400 uppercase tracking-wider">
@@ -321,7 +321,7 @@ export default function ExamDetail() {
                     </div>
 
                     {!exam.variants && (
-                        <div className="p-16 border border-dashed border-gray-100 dark:border-[#232d42] rounded-3xl flex flex-col items-center justify-center text-center text-gray-400">
+                        <div className="p-16 border border-dashed border-gray-100 dark:border-gray-800 rounded-2xl flex flex-col items-center justify-center text-center text-gray-400">
                             <Layers className="w-10 h-10 text-gray-200 dark:text-gray-700 mb-4" />
                             <h4 className="text-[11px] font-bold uppercase tracking-wider">Hozircha variantlar yo'q</h4>
                             <p className="text-[11px] font-bold mt-2 max-w-[250px] uppercase text-gray-400/80 leading-relaxed">Variantlarni yaratish uchun yuqoridagi tugmani bosing.</p>

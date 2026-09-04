@@ -66,7 +66,7 @@ export default function GroupAttendanceCalendar({ group, attendances, selectedDa
     const handleNextMonth = () => setViewDate(new Date(year, month + 1, 1));
 
     const StatusChoicePopover = ({ date }: { date: string }) => (
-        <div className="absolute top-full left-1/2 -translate-x-1/2 mt-2 z-50 bg-white dark:bg-[#151c2c] rounded-2xl shadow-2xl border border-gray-100 dark:border-[#232d42] p-2 flex flex-col gap-1 min-w-[170px] animate-in slide-in-from-top-2 duration-200">
+        <div className="absolute top-full left-1/2 -translate-x-1/2 mt-2 z-50 bg-white dark:bg-gray-800 rounded-2xl shadow-2xl border border-gray-100 dark:border-gray-800 p-2 flex flex-col gap-1 min-w-[170px] animate-in slide-in-from-top-2 duration-200">
             <button 
                 onClick={() => handleBatchStatus(date, 'O\'tildi')}
                 className="flex items-center gap-3 px-4 py-3 hover:bg-emerald-50 dark:hover:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 rounded-xl transition-all"
@@ -90,7 +90,7 @@ export default function GroupAttendanceCalendar({ group, attendances, selectedDa
     );
 
     return (
-        <div className="bg-white dark:bg-[#0b111a]/40 rounded-3xl border border-gray-100 dark:border-[#232d42] p-5 shadow-sm transition-all h-full flex flex-col relative overflow-visible">
+        <div className="bg-white dark:bg-gray-900/40 rounded-2xl border border-gray-100 dark:border-gray-800 p-5 shadow-sm transition-all h-full flex flex-col relative overflow-visible">
             <div className="flex items-center justify-between mb-4 px-2">
                 <h4 className="text-xs font-bold text-gray-900 dark:text-white tracking-tight flex items-center gap-2">
                     <CalendarIcon size={14} className="text-sky-500" />
@@ -150,7 +150,7 @@ export default function GroupAttendanceCalendar({ group, attendances, selectedDa
                 })}
             </div>
 
-            <div className="mt-4 pt-4 border-t border-dashed border-gray-100 dark:border-[#232d42]">
+            <div className="mt-4 pt-4 border-t border-dashed border-gray-100 dark:border-gray-800">
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 justify-center">
                     <StatusLink color="bg-emerald-500" label="Dars o'tildi" />
                     <StatusLink color="bg-amber-400" label="Belgilanmagan" />

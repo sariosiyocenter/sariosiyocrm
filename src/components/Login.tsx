@@ -77,7 +77,7 @@ export default function Login() {
         </div>
 
         {/* Login Card */}
-        <div className="login-glass-card rounded-3xl p-8 shadow-2xl relative overflow-hidden border border-white/5 hover:border-white/10 transition-all duration-500">
+        <div className="login-glass-card rounded-2xl p-8 shadow-2xl relative overflow-hidden border border-white/5 hover:border-white/10 transition-all duration-500">
           
           <form onSubmit={handleLogin} className="space-y-5">
             {authError && (

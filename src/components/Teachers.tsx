@@ -10,7 +10,7 @@ const salaryColors: Record<string, string> = {
     'FIXED_KPI': 'bg-amber-50 text-amber-600 border-amber-100 dark:bg-amber-950/30 dark:text-amber-400 dark:border-amber-900/40',
 };
 
-const inp = "w-full px-4 py-3 bg-gray-50 dark:bg-[#0b111a]/50 border border-gray-100 dark:border-[#232d42] rounded-2xl text-xs font-bold text-gray-900 dark:text-white focus:border-[#1b6b6b] focus:ring-4 focus:ring-[#1b6b6b]/10 outline-none transition-all";
+const inp = "w-full px-4 py-3 bg-gray-50 dark:bg-gray-900/50 border border-gray-100 dark:border-gray-800 rounded-2xl text-xs font-bold text-gray-900 dark:text-white focus:border-[#1b6b6b] focus:ring-4 focus:ring-[#1b6b6b]/10 outline-none transition-all";
 const lbl = "block text-[11px] font-extrabold uppercase tracking-wider text-gray-400 mb-2";
 
 export default function Teachers() {
@@ -72,7 +72,7 @@ export default function Teachers() {
     return (
         <div className="space-y-6">
             {/* Header */}
-            <div className="bg-white dark:bg-[#151c2c] rounded-3xl border border-gray-100 dark:border-[#232d42]/50 shadow-sm overflow-hidden">
+            <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-800/50 shadow-sm overflow-hidden">
                 <div className="px-6 py-5 flex flex-col md:flex-row md:items-center justify-between gap-4">
                     <div className="flex items-center gap-4">
                         <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-violet-600 to-violet-400 flex items-center justify-center shadow-lg shadow-violet-500/20">
@@ -91,12 +91,12 @@ export default function Teachers() {
                             <input
                                 type="text" placeholder={t('search_placeholder_students')}
                                 value={search} onChange={e => setSearch(e.target.value)}
-                                className="pl-9 pr-4 py-2.5 bg-gray-55 dark:bg-[#0b111a]/50 border border-gray-100 dark:border-[#232d42] rounded-xl text-xs font-bold text-gray-900 dark:text-white outline-none focus:border-violet-500 transition-all w-52"
+                                className="pl-9 pr-4 py-2.5 bg-gray-55 dark:bg-gray-900/50 border border-gray-100 dark:border-gray-800 rounded-xl text-xs font-bold text-gray-900 dark:text-white outline-none focus:border-violet-500 transition-all w-52"
                             />
                         </div>
                         <button
                             onClick={() => setShowFilters(!showFilters)}
-                            className={`w-10 h-10 flex items-center justify-center rounded-xl border transition-all cursor-pointer ${showFilters ? 'bg-violet-600 border-violet-600 text-white' : 'bg-gray-55 dark:bg-[#0b111a]/50 border-gray-100 dark:border-[#232d42] text-gray-400 hover:border-violet-400 hover:text-violet-500'}`}
+                            className={`w-10 h-10 flex items-center justify-center rounded-xl border transition-all cursor-pointer ${showFilters ? 'bg-violet-600 border-violet-600 text-white' : 'bg-gray-55 dark:bg-gray-900/50 border-gray-100 dark:border-gray-800 text-gray-400 hover:border-violet-400 hover:text-violet-500'}`}
                         >
                             <SlidersHorizontal size={15} />
                         </button>
@@ -110,7 +110,7 @@ export default function Teachers() {
                 </div>
 
                 {showFilters && (
-                    <div className="px-6 pb-5 pt-4 border-t border-gray-50 dark:border-[#232d42]/50 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4">
+                    <div className="px-6 pb-5 pt-4 border-t border-gray-50 dark:border-gray-800/50 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4">
                         {[
                             { label: t('filter_status'), key: 'status', opts: [['', t('all')], ['Faol', t('status_active')], ['Arxiv', t('status_archive')]] },
                             { label: t('salary_type'), key: 'salaryType', opts: [['', t('all')], ['FIXED', t('salary_fixed')], ['KPI', t('salary_kpi')], ['FIXED_KPI', t('salary_fixed_kpi')]] },
@@ -119,7 +119,7 @@ export default function Teachers() {
                             <div key={f.key}>
                                 <label className="text-[11px] font-extrabold text-gray-400 uppercase tracking-wider block mb-1.5">{f.label}</label>
                                 <select value={(filters as any)[f.key]} onChange={e => setFilters({ ...filters, [f.key]: e.target.value })}
-                                    className="w-full px-3 py-2 bg-gray-55 dark:bg-[#0b111a]/50 border border-gray-100 dark:border-[#232d42] rounded-xl text-[11px] font-bold text-gray-700 dark:text-white outline-none focus:border-violet-400 transition-all cursor-pointer">
+                                    className="w-full px-3 py-2 bg-gray-55 dark:bg-gray-900/50 border border-gray-100 dark:border-gray-800 rounded-xl text-[11px] font-bold text-gray-700 dark:text-white outline-none focus:border-violet-400 transition-all cursor-pointer">
                                     {f.opts.map(([v, l]) => <option key={v} value={v}>{l}</option>)}
                                 </select>
                             </div>
@@ -127,12 +127,12 @@ export default function Teachers() {
                         <div>
                             <label className={lbl.replace('mb-2','mb-1.5')}>{t('birth_date')} (min)</label>
                             <input type="number" placeholder="1990" value={filters.minBirthYear} onChange={e => setFilters({ ...filters, minBirthYear: e.target.value })}
-                                className="w-full px-3 py-2 bg-gray-55 dark:bg-[#0b111a]/50 border border-gray-100 dark:border-[#232d42] rounded-xl text-[11px] font-bold text-gray-700 dark:text-white outline-none focus:border-violet-400 transition-all" />
+                                className="w-full px-3 py-2 bg-gray-55 dark:bg-gray-900/50 border border-gray-100 dark:border-gray-800 rounded-xl text-[11px] font-bold text-gray-700 dark:text-white outline-none focus:border-violet-400 transition-all" />
                         </div>
                         <div>
                             <label className={lbl.replace('mb-2','mb-1.5')}>{t('birth_date')} (max)</label>
                             <input type="number" placeholder="2005" value={filters.maxBirthYear} onChange={e => setFilters({ ...filters, maxBirthYear: e.target.value })}
-                                className="w-full px-3 py-2 bg-gray-55 dark:bg-[#0b111a]/50 border border-gray-100 dark:border-[#232d42] rounded-xl text-[11px] font-bold text-gray-700 dark:text-white outline-none focus:border-violet-400 transition-all" />
+                                className="w-full px-3 py-2 bg-gray-55 dark:bg-gray-900/50 border border-gray-100 dark:border-gray-800 rounded-xl text-[11px] font-bold text-gray-700 dark:text-white outline-none focus:border-violet-400 transition-all" />
                         </div>
                         <div className="flex items-end">
                             <button onClick={() => setFilters({ status: '', salaryType: '', dateRange: 'all', minBirthYear: '', maxBirthYear: '' })}
@@ -146,7 +146,7 @@ export default function Teachers() {
 
             {/* Grid */}
             {filteredTeachers.length === 0 ? (
-                <div className="py-24 text-center bg-white dark:bg-[#151c2c] rounded-3xl border border-gray-100 dark:border-[#232d42]/50 border-dashed">
+                <div className="py-24 text-center bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-800/50 border-dashed">
                     <GraduationCap size={40} className="mx-auto text-gray-200 dark:text-gray-600 mb-3" />
                     <p className="text-sm font-bold text-gray-400">{t('teachers_not_found')}</p>
                     <button onClick={() => setIsModalOpen(true)}
@@ -158,7 +158,7 @@ export default function Teachers() {
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
                     {filteredTeachers.map(teacher => (
                         <div key={teacher.id} onClick={() => navigate(`/teachers/${teacher.id}`)}
-                            className="group bg-white dark:bg-[#151c2c] rounded-2xl border border-gray-100 dark:border-[#232d42]/50 shadow-sm hover:shadow-xl hover:border-violet-300 dark:hover:border-violet-700/50 hover:-translate-y-0.5 transition-all duration-300 cursor-pointer p-5 flex flex-col">
+                            className="group bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-800/50 shadow-sm hover:shadow-xl hover:border-violet-300 dark:hover:border-violet-700/50 hover:-translate-y-0.5 transition-all duration-300 cursor-pointer p-5 flex flex-col">
                             <div className="flex items-start justify-between mb-4">
                                 <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-violet-600 to-violet-400 flex items-center justify-center text-white font-black text-lg shadow-lg shadow-violet-500/20 group-hover:scale-105 transition-transform overflow-hidden shrink-0">
                                     {teacher.photo
@@ -166,7 +166,7 @@ export default function Teachers() {
                                         : teacher.name.charAt(0).toUpperCase()
                                     }
                                 </div>
-                                <span className={`text-[11px] font-bold uppercase tracking-wider px-2.5 py-1 rounded-lg border ${teacher.status === 'Faol' ? 'bg-emerald-50 text-emerald-600 border-emerald-100 dark:bg-emerald-950/20 dark:text-emerald-400 dark:border-emerald-900/40' : 'bg-gray-50 text-gray-400 border-gray-100 dark:bg-[#0b111a]/50 dark:border-[#232d42]'}`}>
+                                <span className={`text-[11px] font-bold uppercase tracking-wider px-2.5 py-1 rounded-lg border ${teacher.status === 'Faol' ? 'bg-emerald-50 text-emerald-600 border-emerald-100 dark:bg-emerald-950/20 dark:text-emerald-400 dark:border-emerald-900/40' : 'bg-gray-50 text-gray-400 border-gray-100 dark:bg-gray-900/50 dark:border-gray-800'}`}>
                                     {teacher.status}
                                 </span>
                             </div>
@@ -178,7 +178,7 @@ export default function Teachers() {
                                 </div>
                             </div>
 
-                            <div className="flex items-center justify-between pt-3 border-t border-gray-50 dark:border-[#232d42]/50">
+                            <div className="flex items-center justify-between pt-3 border-t border-gray-50 dark:border-gray-800/50">
                                 <span className={`text-[11px] font-bold uppercase tracking-wider px-2.5 py-1 rounded-lg border ${salaryColors[teacher.salaryType] || salaryColors.FIXED}`}>
                                     {salaryTypeLabels[teacher.salaryType] || 'Fiks'}
                                 </span>
@@ -196,8 +196,8 @@ export default function Teachers() {
             {isModalOpen && (
                 <div className="fixed inset-0 z-[200] flex items-start sm:items-center justify-center overflow-y-auto p-4">
                     <div className="absolute inset-0 bg-gray-900/60 backdrop-blur-sm" onClick={() => setIsModalOpen(false)} />
-                    <div className="relative bg-white dark:bg-[#151c2c] rounded-[2rem] border border-gray-100 dark:border-[#232d42]/50 shadow-2xl w-full max-w-lg p-8 max-h-[90vh] overflow-y-auto">
-                        <div className="flex items-center justify-between mb-6 pb-4 border-b border-gray-50 dark:border-[#232d42]/50">
+                    <div className="relative bg-white dark:bg-gray-800 rounded-[2rem] border border-gray-100 dark:border-gray-800/50 shadow-2xl w-full max-w-lg p-8 max-h-[90vh] overflow-y-auto">
+                        <div className="flex items-center justify-between mb-6 pb-4 border-b border-gray-50 dark:border-gray-800/50">
                             <div>
                                 <h3 className="text-lg font-black text-gray-900 dark:text-white tracking-tight">{t('new_teacher_title')}</h3>
                                 <p className="text-[11px] font-bold text-violet-600 uppercase tracking-wider mt-0.5">{t('teacher_details_subtitle')}</p>
@@ -220,7 +220,7 @@ export default function Teachers() {
                                 <div className="flex gap-2">
                                     {(['FIXED', 'KPI', 'FIXED_KPI'] as const).map(type => (
                                         <button key={type} type="button" onClick={() => setNewTeacher({ ...newTeacher, salaryType: type })}
-                                            className={`flex-1 py-2.5 rounded-xl text-[11px] font-extrabold uppercase tracking-wider border transition-all cursor-pointer ${newTeacher.salaryType === type ? 'bg-[#1b6b6b] border-[#1b6b6b] text-white' : 'bg-gray-55 dark:bg-[#0b111a]/50 border-gray-100 dark:border-[#232d42] text-gray-500 hover:border-[#1b6b6b]/30'}`}>
+                                            className={`flex-1 py-2.5 rounded-xl text-[11px] font-extrabold uppercase tracking-wider border transition-all cursor-pointer ${newTeacher.salaryType === type ? 'bg-[#1b6b6b] border-[#1b6b6b] text-white' : 'bg-gray-55 dark:bg-gray-900/50 border-gray-100 dark:border-gray-800 text-gray-500 hover:border-[#1b6b6b]/30'}`}>
                                             {salaryTypeLabels[type]}
                                         </button>
                                     ))}

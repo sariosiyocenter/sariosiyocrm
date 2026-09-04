@@ -33,7 +33,7 @@ const getGroupColor = (days: string) => {
     return { bg: 'bg-emerald-500/10 dark:bg-emerald-500/20', text: 'text-emerald-600 dark:text-emerald-400', border: 'border-emerald-500/30', dot: 'bg-emerald-400' };
 };
 
-const inp = "w-full px-3 py-2 bg-gray-50 dark:bg-[#0b111a] border border-gray-200 dark:border-[#232d42] rounded-xl text-xs font-bold text-gray-900 dark:text-white focus:border-[#1b6b6b] focus:ring-2 focus:ring-[#1b6b6b]/10 outline-none transition-all";
+const inp = "w-full px-3 py-2 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl text-xs font-bold text-gray-900 dark:text-white focus:border-[#1b6b6b] focus:ring-2 focus:ring-[#1b6b6b]/10 outline-none transition-all";
 
 export default function RoomSchedule() {
     const { groups, rooms, teachers, courses, updateGroup } = useCRM();
@@ -171,7 +171,7 @@ export default function RoomSchedule() {
     return (
         <div className="space-y-6">
             {/* Header + View Toggle */}
-            <div className="bg-white dark:bg-[#151c2c] rounded-[2rem] border border-gray-100 dark:border-[#232d42] shadow-sm p-6">
+            <div className="bg-white dark:bg-gray-800 rounded-[2rem] border border-gray-100 dark:border-gray-800 shadow-sm p-4">
                 <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                     <div className="flex items-center gap-3">
                         <div className="w-10 h-10 rounded-xl bg-[#1b6b6b]/10 flex items-center justify-center text-[#1b6b6b]">
@@ -185,12 +185,12 @@ export default function RoomSchedule() {
 
                     <div className="flex flex-wrap items-center gap-3">
                         {/* View Switcher */}
-                        <div className="flex bg-gray-50 dark:bg-[#0b111a] p-1.5 rounded-2xl border border-gray-100 dark:border-[#232d42]">
+                        <div className="flex bg-gray-50 dark:bg-gray-900 p-1.5 rounded-2xl border border-gray-100 dark:border-gray-800">
                             <button
                                 onClick={() => setViewMode('day')}
                                 className={`flex items-center gap-2 px-4 py-2 rounded-[1rem] text-[11px] font-extrabold uppercase tracking-widest transition-all cursor-pointer ${
                                     viewMode === 'day' 
-                                        ? 'bg-white dark:bg-[#151c2c] text-[#1b6b6b] shadow-sm ring-1 ring-black/5 dark:ring-white/5' 
+                                        ? 'bg-white dark:bg-gray-800 text-[#1b6b6b] shadow-sm ring-1 ring-black/5 dark:ring-white/5' 
                                         : 'text-gray-400 hover:text-gray-600 dark:hover:text-gray-200'
                                 }`}
                             >
@@ -200,7 +200,7 @@ export default function RoomSchedule() {
                                 onClick={() => setViewMode('week')}
                                 className={`flex items-center gap-2 px-4 py-2 rounded-[1rem] text-[11px] font-extrabold uppercase tracking-widest transition-all cursor-pointer ${
                                     viewMode === 'week' 
-                                        ? 'bg-white dark:bg-[#151c2c] text-[#1b6b6b] shadow-sm ring-1 ring-black/5 dark:ring-white/5' 
+                                        ? 'bg-white dark:bg-gray-800 text-[#1b6b6b] shadow-sm ring-1 ring-black/5 dark:ring-white/5' 
                                         : 'text-gray-400 hover:text-gray-600 dark:hover:text-gray-200'
                                 }`}
                             >
@@ -210,7 +210,7 @@ export default function RoomSchedule() {
 
                         {/* Day filter for Daily View */}
                         {viewMode === 'day' && (
-                            <div className="flex bg-gray-50 dark:bg-[#0b111a] p-1.5 rounded-2xl border border-gray-100 dark:border-[#232d42]">
+                            <div className="flex bg-gray-50 dark:bg-gray-900 p-1.5 rounded-2xl border border-gray-100 dark:border-gray-800">
                                 {[
                                     { id: 'TOQ', label: 'Toq kunlar' },
                                     { id: 'JUFT', label: 'Juft kunlar' }
@@ -220,7 +220,7 @@ export default function RoomSchedule() {
                                         onClick={() => setSelectedDayType(type.id as any)}
                                         className={`px-4 py-2 rounded-[1rem] text-[11px] font-extrabold uppercase tracking-widest transition-all cursor-pointer ${
                                             selectedDayType === type.id
-                                                ? 'bg-white dark:bg-[#151c2c] text-[#1b6b6b] shadow-sm ring-1 ring-black/5 dark:ring-white/5'
+                                                ? 'bg-white dark:bg-gray-800 text-[#1b6b6b] shadow-sm ring-1 ring-black/5 dark:ring-white/5'
                                                 : 'text-gray-400 hover:text-gray-600 dark:hover:text-gray-200'
                                         }`}
                                     >
@@ -235,16 +235,16 @@ export default function RoomSchedule() {
 
             {/* DAILY TIMELINE VIEW */}
             {viewMode === 'day' && (
-                <div className="bg-white dark:bg-[#151c2c] rounded-[2.5rem] border border-gray-100 dark:border-[#232d42] shadow-xl overflow-hidden">
+                <div className="bg-white dark:bg-gray-800 rounded-[2.5rem] border border-gray-100 dark:border-gray-800 shadow-xl overflow-hidden">
                     <div className="overflow-x-auto custom-scrollbar">
                         <table className="w-full border-collapse">
                             <thead>
-                                <tr className="bg-gray-50/50 dark:bg-[#0b111a]/50 border-b border-gray-100 dark:border-[#232d42]">
-                                    <th className="sticky left-0 z-20 bg-gray-50 dark:bg-[#0b111a] p-6 min-w-[200px] text-[11px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-wider text-left border-r border-gray-100 dark:border-[#232d42]">
+                                <tr className="bg-gray-50/50 dark:bg-gray-900/50 border-b border-gray-100 dark:border-gray-800">
+                                    <th className="sticky left-0 z-20 bg-gray-50 dark:bg-gray-900 p-4 min-w-[200px] text-[11px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-wider text-left border-r border-gray-100 dark:border-gray-800">
                                         Xona nomi
                                     </th>
                                     {timeSlots.map(time => (
-                                        <th key={time} className="p-4 min-w-[90px] text-[11px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-wider text-center border-r border-gray-100/50 dark:border-[#232d42]/30">
+                                        <th key={time} className="p-4 min-w-[90px] text-[11px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-wider text-center border-r border-gray-100/50 dark:border-gray-800/30">
                                             {time}
                                         </th>
                                     ))}
@@ -256,12 +256,12 @@ export default function RoomSchedule() {
                                     return (
                                         <tr key={room.id} className="group hover:bg-gray-50/30 dark:hover:bg-slate-700/20 transition-colors">
                                             {/* Room details */}
-                                            <td className="sticky left-0 z-10 bg-white dark:bg-[#151c2c] p-5 border-r border-gray-100 dark:border-[#232d42] group-hover:bg-gray-50 dark:group-hover:bg-gray-900/50 transition-colors">
+                                            <td className="sticky left-0 z-10 bg-white dark:bg-gray-800 p-5 border-r border-gray-100 dark:border-gray-800 group-hover:bg-gray-50 dark:group-hover:bg-gray-900/50 transition-colors">
                                                 <button 
                                                     onClick={() => setSelectedRoom(room)}
                                                     className="text-left flex items-center gap-3 w-full hover:opacity-80 transition-opacity"
                                                 >
-                                                    <div className="w-9 h-9 rounded-xl bg-gray-50 dark:bg-[#0b111a] border border-gray-100 dark:border-[#232d42] flex items-center justify-center text-gray-400 group-hover:text-[#1b6b6b] transition-colors">
+                                                    <div className="w-9 h-9 rounded-xl bg-gray-50 dark:bg-gray-900 border border-gray-100 dark:border-gray-800 flex items-center justify-center text-gray-400 group-hover:text-[#1b6b6b] transition-colors">
                                                         <MapPin size={16} />
                                                     </div>
                                                     <div>
@@ -280,7 +280,7 @@ export default function RoomSchedule() {
                                                         key={time}
                                                         colSpan={colspan}
                                                         onClick={() => group && setSelectedRoom(room)}
-                                                        className={`p-1 border-r border-gray-100/40 dark:border-[#232d42]/20 min-h-[70px] align-middle ${group ? 'cursor-pointer' : ''}`}
+                                                        className={`p-1 border-r border-gray-100/40 dark:border-gray-800/20 min-h-[70px] align-middle ${group ? 'cursor-pointer' : ''}`}
                                                         style={{ minWidth: `${colspan * 90}px` }}
                                                     >
                                                         {group ? (
@@ -320,16 +320,16 @@ export default function RoomSchedule() {
 
             {/* WEEKLY MAP VIEW */}
             {viewMode === 'week' && (
-                <div className="bg-white dark:bg-[#151c2c] rounded-[2.5rem] border border-gray-100 dark:border-[#232d42] shadow-xl overflow-hidden">
+                <div className="bg-white dark:bg-gray-800 rounded-[2.5rem] border border-gray-100 dark:border-gray-800 shadow-xl overflow-hidden">
                     <div className="overflow-x-auto custom-scrollbar">
                         <table className="w-full border-collapse">
                             <thead>
-                                <tr className="bg-gray-50/50 dark:bg-[#0b111a]/50 border-b border-gray-100 dark:border-[#232d42]">
-                                    <th className="sticky left-0 z-20 bg-gray-50 dark:bg-[#0b111a] p-6 min-w-[200px] text-[11px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-wider text-left border-r border-gray-100 dark:border-[#232d42]">
+                                <tr className="bg-gray-50/50 dark:bg-gray-900/50 border-b border-gray-100 dark:border-gray-800">
+                                    <th className="sticky left-0 z-20 bg-gray-50 dark:bg-gray-900 p-4 min-w-[200px] text-[11px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-wider text-left border-r border-gray-100 dark:border-gray-800">
                                         Xona nomi
                                     </th>
                                     {FULL_WEEK.map(day => (
-                                        <th key={day.id} className="p-4 min-w-[150px] text-[11px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-wider text-center border-r border-gray-100/50 dark:border-[#232d42]/30">
+                                        <th key={day.id} className="p-4 min-w-[150px] text-[11px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-wider text-center border-r border-gray-100/50 dark:border-gray-800/30">
                                             {day.label}
                                         </th>
                                     ))}
@@ -339,12 +339,12 @@ export default function RoomSchedule() {
                                 {rooms.map(room => (
                                     <tr key={room.id} className="group hover:bg-gray-50/30 dark:hover:bg-slate-700/20 transition-colors">
                                         {/* Room details */}
-                                        <td className="sticky left-0 z-10 bg-white dark:bg-[#151c2c] p-5 border-r border-gray-100 dark:border-[#232d42] group-hover:bg-gray-50 dark:group-hover:bg-gray-900/50 transition-colors">
+                                        <td className="sticky left-0 z-10 bg-white dark:bg-gray-800 p-5 border-r border-gray-100 dark:border-gray-800 group-hover:bg-gray-50 dark:group-hover:bg-gray-900/50 transition-colors">
                                             <button 
                                                 onClick={() => setSelectedRoom(room)}
                                                 className="text-left flex items-center gap-3 w-full hover:opacity-80 transition-opacity"
                                             >
-                                                <div className="w-9 h-9 rounded-xl bg-gray-55 dark:bg-[#0b111a] border border-gray-100 dark:border-[#232d42] flex items-center justify-center text-gray-400 group-hover:text-[#1b6b6b] transition-colors">
+                                                <div className="w-9 h-9 rounded-xl bg-gray-55 dark:bg-gray-900 border border-gray-100 dark:border-gray-800 flex items-center justify-center text-gray-400 group-hover:text-[#1b6b6b] transition-colors">
                                                     <MapPin size={16} />
                                                 </div>
                                                 <div>
@@ -360,7 +360,7 @@ export default function RoomSchedule() {
                                             return (
                                                 <td
                                                     key={day.id}
-                                                    className="p-2 border-r border-gray-100/40 dark:border-[#232d42]/20 min-h-[90px] align-top text-center"
+                                                    className="p-2 border-r border-gray-100/40 dark:border-gray-800/20 min-h-[90px] align-top text-center"
                                                 >
                                                     {dayGroups.length > 0 ? (
                                                         <div className="space-y-1.5 text-left">
@@ -409,7 +409,7 @@ export default function RoomSchedule() {
             )}
 
             {/* Info Banner */}
-            <div className="bg-gray-50 dark:bg-[#0b111a] border border-gray-100 dark:border-[#232d42] rounded-2xl p-4 flex gap-3 text-slate-500 dark:text-slate-400">
+            <div className="bg-gray-50 dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl p-4 flex gap-3 text-slate-500 dark:text-slate-400">
                 <Info size={16} className="text-[#1b6b6b] flex-shrink-0 mt-0.5" />
                 <p className="text-[11px] leading-relaxed">
                     <strong>Jadval Xaritasi Ko'rsatmasi:</strong> Kunlik yoki Haftalik xaritada xonalarning band bo'lgan vaqtlarini to'liq va aniq ko'rish mumkin. Xona nomiga yoki dars jadvali katagiga bosish orqali darslar tarkibi va dars soatlarini interaktiv tahrirlashingiz mumkin.
@@ -420,10 +420,10 @@ export default function RoomSchedule() {
             {selectedRoom && (
                 <div className="fixed inset-0 z-[200] flex items-start sm:items-center justify-center overflow-y-auto p-4">
                     <div className="absolute inset-0 bg-gray-950/60 backdrop-blur-sm" onClick={() => { setSelectedRoom(null); setEditingGroup(null); }} />
-                    <div className="relative bg-white dark:bg-[#151c2c] rounded-[2rem] border border-gray-150 dark:border-[#232d42] shadow-2xl w-full max-w-2xl max-h-[90vh] flex flex-col animate-in zoom-in-95 duration-200 text-gray-950 dark:text-white">
+                    <div className="relative bg-white dark:bg-gray-800 rounded-[2rem] border border-gray-150 dark:border-gray-800 shadow-2xl w-full max-w-2xl max-h-[90vh] flex flex-col animate-in zoom-in-95 duration-200 text-gray-950 dark:text-white">
                         
                         {/* Modal Header */}
-                        <div className="flex items-center justify-between p-6 border-b border-gray-100 dark:border-[#232d42] flex-shrink-0">
+                        <div className="flex items-center justify-between p-4 border-b border-gray-100 dark:border-gray-800 flex-shrink-0">
                             <div className="flex items-center gap-3">
                                 <div className="w-10 h-10 rounded-xl bg-[#1b6b6b]/10 flex items-center justify-center text-[#1b6b6b]">
                                     <MapPin size={18} />
@@ -440,10 +440,10 @@ export default function RoomSchedule() {
                         </div>
 
                         {/* Group List inside Modal */}
-                        <div className="overflow-y-auto flex-1 p-6 space-y-3 custom-scrollbar">
+                        <div className="overflow-y-auto flex-1 p-4 space-y-3 custom-scrollbar">
                             {groups.filter(g => Number(g.room) === Number(selectedRoom.id)).length === 0 ? (
                                 <div className="py-16 flex flex-col items-center text-center">
-                                    <div className="w-12 h-12 rounded-2xl bg-gray-50 dark:bg-[#0b111a] border border-gray-100 dark:border-[#232d42] flex items-center justify-center mb-3 text-gray-400">
+                                    <div className="w-12 h-12 rounded-2xl bg-gray-50 dark:bg-gray-900 border border-gray-100 dark:border-gray-800 flex items-center justify-center mb-3 text-gray-400">
                                         <Users size={20} />
                                     </div>
                                     <p className="text-[11px] font-bold text-gray-400 uppercase tracking-wider">Xonada darslar yo'q</p>
@@ -456,7 +456,7 @@ export default function RoomSchedule() {
                                 const isCurrentlyOn = isCurrentlyActive(g);
 
                                 return (
-                                    <div key={g.id} className={`rounded-2xl border transition-all overflow-hidden bg-gray-50/50 dark:bg-[#0b111a]/30 ${color.border} ${isCurrentlyOn ? 'ring-1 ring-rose-500/40 border-rose-500/40' : ''}`}>
+                                    <div key={g.id} className={`rounded-2xl border transition-all overflow-hidden bg-gray-50/50 dark:bg-gray-900/30 ${color.border} ${isCurrentlyOn ? 'ring-1 ring-rose-500/40 border-rose-500/40' : ''}`}>
                                         
                                         {/* Group header */}
                                         <div className="flex items-start justify-between p-4">
@@ -485,7 +485,7 @@ export default function RoomSchedule() {
                                                 </div>
                                             </div>
                                             <div className="flex items-center gap-2 flex-shrink-0">
-                                                <div className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-white dark:bg-[#0b111a] border border-gray-150 dark:border-gray-850 ${color.text}`}>
+                                                <div className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-white dark:bg-gray-900 border border-gray-150 dark:border-gray-850 ${color.text}`}>
                                                     <Clock size={10} />
                                                     <span className="text-[11px] font-bold tabular-nums">{g.schedule}</span>
                                                 </div>
@@ -494,7 +494,7 @@ export default function RoomSchedule() {
                                                     className={`w-7 h-7 rounded-lg flex items-center justify-center transition-all cursor-pointer ${
                                                         isEditing
                                                             ? 'bg-gray-250 dark:bg-gray-700 text-gray-800 dark:text-white border border-gray-300 dark:border-slate-600'
-                                                            : 'bg-white dark:bg-[#0b111a] hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-550 hover:text-[#1b6b6b] border border-gray-200 dark:border-[#232d42]'
+                                                            : 'bg-white dark:bg-gray-900 hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-550 hover:text-[#1b6b6b] border border-gray-200 dark:border-gray-800'
                                                     }`}
                                                     title="Vaqtni o'zgartirish"
                                                 >
@@ -505,7 +505,7 @@ export default function RoomSchedule() {
 
                                         {/* Inline time editor */}
                                         {isEditing && (
-                                            <div className="px-4 pb-4 border-t border-gray-150 dark:border-[#232d42] pt-3">
+                                            <div className="px-4 pb-4 border-t border-gray-150 dark:border-gray-800 pt-3">
                                                 <p className="text-[11px] font-bold text-gray-450 uppercase tracking-wider mb-2">Dars vaqtini o'zgartirish</p>
                                                 <div className="flex items-center gap-3">
                                                     <div className="flex-1">
@@ -546,12 +546,12 @@ export default function RoomSchedule() {
                         </div>
 
                         {/* Modal Footer */}
-                        <div className="px-6 py-4 border-t border-gray-150 dark:border-[#232d42] flex items-center justify-between flex-shrink-0">
+                        <div className="px-6 py-4 border-t border-gray-150 dark:border-gray-800 flex items-center justify-between flex-shrink-0">
                             <p className="text-[11px] font-bold text-gray-400 uppercase tracking-wider">
                                 Dars vaqtini o'zgartirish uchun ✏️ belgisini bosing
                             </p>
                             <button onClick={() => { setSelectedRoom(null); setEditingGroup(null); }}
-                                className="px-5 py-2 bg-gray-105 hover:bg-gray-200 dark:bg-[#151c2c] dark:hover:bg-gray-705 text-gray-700 dark:text-white rounded-xl text-[11px] font-extrabold uppercase tracking-wider transition-all cursor-pointer">
+                                className="px-5 py-2 bg-gray-105 hover:bg-gray-200 dark:bg-gray-800 dark:hover:bg-gray-705 text-gray-700 dark:text-white rounded-xl text-[11px] font-extrabold uppercase tracking-wider transition-all cursor-pointer">
                                 Yopish
                             </button>
                         </div>
