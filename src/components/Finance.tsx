@@ -381,6 +381,32 @@ export default function Finance() {
             value: val.rev
         }));
 
+        // Qarz yoshi. Qarzning aniq boshlanish sanasi saqlanmaydi, shuning uchun
+        // o'quvchining oxirgi to'lovidan beri o'tgan kun olinadi — bu "qachondan
+        // beri pul kelmayapti" degan savolga to'g'ri javob beradi.
+        const lastPayDay = (studentId: number) => {
+            const dates = posPayments.filter(p => p.studentId === studentId).map(p => p.date).sort();
+            const last = dates[dates.length - 1];
+            if (!last) return Infinity;
+            const d = new Date(last);
+            return isNaN(d.getTime()) ? Infinity : Math.floor((Date.now() - d.getTime()) / 86400000);
+        };
+        const AGE_BUCKETS = [
+            { label: '1-15 kun', max: 15, color: 'bg-emerald-500' },
+            { label: '16-30 kun', max: 30, color: 'bg-amber-400' },
+            { label: '31-60 kun', max: 60, color: 'bg-orange-500' },
+            { label: '60+ kun', max: Infinity, color: 'bg-rose-500' },
+        ];
+        const debtAge = AGE_BUCKETS.map(b => ({ ...b, sum: 0, count: 0 }));
+        debtors.forEach(st => {
+            const days = lastPayDay(st.id);
+            const idx = debtAge.findIndex(b => days <= b.max);
+            const bucket = debtAge[idx === -1 ? debtAge.length - 1 : idx];
+            bucket.sum += Math.abs(st.balance);
+            bucket.count += 1;
+        });
+        const debtAgeMax = Math.max(...debtAge.map(b => b.sum), 1);
+
         // Top 5 debtors
         const topDebtors = [...debtors].sort((a, b) => a.balance - b.balance).slice(0, 5);
 
@@ -389,7 +415,7 @@ export default function Finance() {
             thisMonthProfit, thisMonthCount, todayRevenue, allTimeRevenue, allTimeExpenses,
             allTimeProfit, avgPayment, revTrend, expTrend, profTrend,
             debtors, totalDebt, creditors, totalCredit, unpaidCount,
-            typeSlices, catBars, trendBars, trendLine, topDebtors,
+            typeSlices, catBars, trendBars, trendLine, topDebtors, debtAge, debtAgeMax,
             activeStudentCount: activeStudentIds.size,
             zeroBalanceCount
         };
@@ -743,6 +769,34 @@ export default function Finance() {
                                 </div>
                             </div>
                         </div>
+
+                        {/* Qarz yoshi bo'yicha. Umumiy qarz raqami "qanchalik
+                            jiddiy" ekanini ko'rsatmaydi — 15 kunlik qarz bilan
+                            60 kunlikning farqi katta. */}
+                        {metrics.debtors.length > 0 && (
+                            <div>
+                                <p className="text-[13px] font-semibold text-gray-900 dark:text-white mb-3">Qarz yoshi bo'yicha</p>
+                                <div className="space-y-2.5">
+                                    {metrics.debtAge.map(b => (
+                                        <div key={b.label}>
+                                            <div className="flex items-center justify-between text-[12px]">
+                                                <span className="text-gray-500 dark:text-gray-400">
+                                                    {b.label}
+                                                    {b.count > 0 && <span className="num text-gray-400"> · {b.count}</span>}
+                                                </span>
+                                                <span className="num text-gray-700 dark:text-gray-200">
+                                                    {(b.sum / 1000000).toFixed(1)} mln
+                                                </span>
+                                            </div>
+                                            <div className="mt-1 h-1.5 rounded-full bg-gray-100 dark:bg-gray-700 overflow-hidden">
+                                                <div className={`h-full rounded-full ${b.color}`}
+                                                    style={{ width: `${Math.round((b.sum / metrics.debtAgeMax) * 100)}%` }} />
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
 
                         {/* Top qarzdorlar */}
                         {metrics.topDebtors.length > 0 && (
