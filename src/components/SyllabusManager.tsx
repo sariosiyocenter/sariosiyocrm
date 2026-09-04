@@ -48,15 +48,15 @@ function moduleStatus(topics: Topic[]): typeof STATUSES[number] {
 }
 
 const STATUS_STYLES: Record<string, string> = {
-  Tugallangan: 'bg-emerald-50 text-emerald-600 border-emerald-100 dark:bg-emerald-950/20 dark:text-emerald-400 dark:border-emerald-900/40',
-  Jarayonda: 'bg-amber-50 text-amber-600 border-amber-100 dark:bg-amber-950/20 dark:text-amber-400 dark:border-amber-900/40',
-  Rejada: 'bg-gray-55 text-gray-400 border-gray-100 dark:bg-gray-900/50 dark:text-gray-400 dark:border-gray-800/50',
+  Tugallangan: 'bg-emerald-50 text-emerald-600 border-emerald-100 dark:bg-[#064e3b] dark:text-[#34d399] dark:border-transparent',
+  Jarayonda: 'bg-amber-50 text-amber-600 border-amber-100 dark:bg-[#134e4a] dark:text-[#5eead4] dark:border-transparent',
+  Rejada: 'bg-gray-55 text-gray-400 border-gray-100 dark:bg-gray-800 dark:text-gray-400 dark:border-transparent',
 };
 
 const MATERIAL_STYLES: Record<string, string> = {
-  PDF: 'bg-rose-50 text-rose-500 border-rose-100 dark:bg-rose-950/20 dark:text-rose-400 dark:border-rose-900/40',
-  Video: 'bg-violet-50 text-violet-500 border-violet-100 dark:bg-violet-950/20 dark:text-violet-400 dark:border-violet-900/40',
-  Test: 'bg-sky-50 text-sky-600 border-sky-100 dark:bg-sky-950/20 dark:text-sky-400 dark:border-sky-900/40',
+  PDF: 'bg-rose-50 text-rose-500 border-rose-100 dark:bg-gray-850 dark:text-gray-300 dark:border-transparent',
+  Video: 'bg-violet-50 text-violet-500 border-violet-100 dark:bg-gray-850 dark:text-gray-300 dark:border-transparent',
+  Test: 'bg-sky-50 text-sky-600 border-sky-100 dark:bg-gray-850 dark:text-gray-300 dark:border-transparent',
 };
 
 export default function SyllabusManager() {
@@ -317,7 +317,7 @@ export default function SyllabusManager() {
       </div>
 
       {syllabuses.length === 0 ? (
-        <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-800/50 p-12 text-center max-w-lg mx-auto">
+        <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700/50 p-12 text-center max-w-lg mx-auto">
           <BookOpen size={48} className="text-gray-300 dark:text-gray-600 mx-auto mb-4" />
           <h3 className="text-sm font-black text-gray-900 dark:text-white">O'quv programmalari yo'q</h3>
           <p className="text-xs text-gray-400 font-bold mt-2">Hali hech qanday o'quv programmasi yaratilmagan. Darslar ketma-ketligi va o'quv qo'llanmalarini shakllantirish uchun yangi o'quv dasturini qo'shing.</p>
@@ -332,7 +332,7 @@ export default function SyllabusManager() {
       ) : (
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-4 items-start">
           {/* Chap panel: fanlar ro'yxati */}
-          <div className="lg:col-span-1 bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-800/50 p-3 shadow-sm">
+          <div className="lg:col-span-1 bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700/50 p-3 shadow-sm">
             <p className="text-[11px] font-extrabold text-gray-400 uppercase tracking-wider px-3 py-2">Fanlar</p>
             <div className="space-y-1">
               {syllabuses.map(s => {
@@ -344,12 +344,12 @@ export default function SyllabusManager() {
                     key={s.id}
                     onClick={() => setSelectedSyllabusId(s.id)}
                     className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-2xl text-left transition-all cursor-pointer border ${isActive
-                      ? 'bg-[#1b6b6b]/5 border-[#1b6b6b]/20 dark:bg-[#1b6b6b]/15'
-                      : 'border-transparent hover:bg-gray-55 dark:hover:bg-gray-900/40'}`}
+                      ? 'bg-[#1b6b6b]/5 border-[#1b6b6b]/20 dark:bg-[#0a3830] dark:border-transparent'
+                      : 'border-transparent hover:bg-gray-55 dark:hover:bg-gray-850'}`}
                   >
                     <div className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 text-[11px] font-black uppercase ${isActive
-                      ? 'bg-[#1b6b6b] text-white'
-                      : 'bg-gray-55 dark:bg-gray-900 text-gray-400 border border-gray-100 dark:border-gray-800/50'}`}>
+                      ? 'bg-[#1b6b6b] text-white dark:bg-[#134e4a] dark:text-[#5eead4]'
+                      : 'bg-gray-55 dark:bg-gray-850 text-gray-400 border border-gray-100 dark:border-gray-700/50'}`}>
                       {s.name.slice(0, 2)}
                     </div>
                     <div className="min-w-0">
@@ -369,8 +369,8 @@ export default function SyllabusManager() {
           {/* O'ng panel: tanlangan dastur */}
           <div className="lg:col-span-3 space-y-6">
             {activeSyllabus && (
-              <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-800/50 shadow-sm overflow-hidden">
-                <div className="p-4 flex flex-col md:flex-row md:items-start justify-between gap-4 border-b border-gray-55 dark:border-gray-800/50">
+              <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700/50 shadow-sm overflow-hidden">
+                <div className="p-4 flex flex-col md:flex-row md:items-start justify-between gap-4 border-b border-gray-55 dark:border-gray-700/50">
                   <div className="min-w-0">
                     <h2 className="text-base font-black text-gray-900 dark:text-white tracking-tight">{activeSyllabus.name}</h2>
                     <p className="text-[11px] font-bold text-gray-400 uppercase tracking-wider mt-1 tabular-nums">
@@ -414,7 +414,7 @@ export default function SyllabusManager() {
                 </div>
 
                 {activeSyllabus.materials && (
-                  <div className="px-6 py-4 bg-gray-55/50 dark:bg-gray-900/25 border-b border-gray-55 dark:border-gray-800/50">
+                  <div className="px-6 py-4 bg-gray-55/50 dark:bg-gray-850 border-b border-gray-55 dark:border-gray-700/50">
                     <span className="text-[10px] font-extrabold text-[#1b6b6b] uppercase tracking-wider block mb-1">O'quv qo'llanmalari</span>
                     <p className="text-[12px] text-gray-600 dark:text-gray-350 leading-relaxed font-semibold">{activeSyllabus.materials}</p>
                   </div>
@@ -441,9 +441,9 @@ export default function SyllabusManager() {
                       return (
                         <div key={mod.name}>
                           {/* Modul sarlavhasi */}
-                          <div className="flex items-center justify-between gap-3 px-6 py-3.5 bg-gray-55/40 dark:bg-gray-900/20">
+                          <div className="flex items-center justify-between gap-3 px-6 py-3.5 bg-gray-55/40 dark:bg-gray-850">
                             <div className="flex items-center gap-3 min-w-0">
-                              <span className="w-6 h-6 rounded-lg bg-[#1b6b6b]/10 text-[#1b6b6b] dark:bg-[#1b6b6b]/25 dark:text-teal-300 flex items-center justify-center text-[11px] font-black shrink-0 tabular-nums">
+                              <span className="w-6 h-6 rounded-lg bg-[#1b6b6b]/10 text-[#1b6b6b] dark:bg-[#0a3830] dark:text-[#5eead4] flex items-center justify-center text-[11px] font-black shrink-0 tabular-nums">
                                 {modIdx + 1}
                               </span>
                               <h4 className="text-xs font-black text-gray-900 dark:text-white tracking-tight truncate">{mod.name}</h4>
@@ -472,7 +472,7 @@ export default function SyllabusManager() {
                                 onDragOver={e => { e.preventDefault(); setDropTargetId(topic.id); }}
                                 onDragLeave={() => setDropTargetId(prev => prev === topic.id ? null : prev)}
                                 onDrop={e => { e.preventDefault(); handleDropOnTopic(topic.id); }}
-                                className={`group flex items-center gap-3 px-6 py-3 transition-all ${isDragging ? 'opacity-40' : ''} ${isDropTarget ? 'border-t-2 border-[#1b6b6b] bg-[#1b6b6b]/5' : 'border-t-2 border-transparent'} hover:bg-gray-55/60 dark:hover:bg-gray-900/30`}
+                                className={`group flex items-center gap-3 px-6 py-3 transition-all ${isDragging ? 'opacity-40' : ''} ${isDropTarget ? 'border-t-2 border-[#1b6b6b] bg-[#1b6b6b]/5' : 'border-t-2 border-transparent'} hover:bg-gray-55/60 dark:hover:bg-gray-750`}
                               >
                                 <GripVertical size={14} className="text-gray-300 dark:text-gray-600 shrink-0 cursor-grab active:cursor-grabbing" />
                                 <div className="min-w-0 flex-1">

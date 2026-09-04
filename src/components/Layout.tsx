@@ -69,10 +69,10 @@ export default function Layout({ children, onLogout }: LayoutProps) {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 dark:bg-[#080c14] transition-colors duration-200 flex">
+    <div className="min-h-screen bg-slate-50 dark:bg-gray-950 transition-colors duration-200 flex">
       {/* ===== CHAP PANEL ===== */}
-      <aside className="hidden lg:flex w-[90px] shrink-0 flex-col sticky top-0 h-screen border-r border-slate-200 dark:border-[#151c2c] bg-white dark:bg-gray-900">
-        <Link to="/" title={settings?.orgName || 'Quantum Edu'} className="h-[64px] flex items-center justify-center border-b border-slate-100 dark:border-[#151c2c] shrink-0">
+      <aside className="hidden lg:flex w-[90px] shrink-0 flex-col sticky top-0 h-screen border-r border-slate-200 dark:border-gray-800 bg-white dark:bg-gray-900">
+        <Link to="/" title={settings?.orgName || 'Quantum Edu'} className="h-[64px] flex items-center justify-center border-b border-slate-100 dark:border-gray-800 shrink-0">
           <div className="w-11 h-11 rounded-full overflow-hidden bg-gradient-to-br from-brand to-brand-accent flex items-center justify-center shadow-sm">
             {settings?.logo
               ? <img src={settings.logo} className="w-full h-full object-cover" alt="logo" />
@@ -91,8 +91,8 @@ export default function Layout({ children, onLogout }: LayoutProps) {
                 onClick={() => navigate(item.path)}
                 title={item.label}
                 className={`w-full flex flex-col items-center gap-1 px-1 py-2 rounded-2xl transition-all cursor-pointer ${isActive
-                  ? 'bg-brand/15 dark:bg-brand/20 text-brand dark:text-[#2dd4bf] shadow-sm'
-                  : 'text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800/50'}`}
+                  ? 'bg-brand/15 dark:bg-[#0a3830] text-brand dark:text-[#5eead4] shadow-sm'
+                  : 'text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-gray-850'}`}
               >
                 <Icon size={20} strokeWidth={isActive ? 2.5 : 2} />
                 <span className={`text-[11px] leading-tight text-center line-clamp-1 ${isActive ? 'font-bold' : 'font-medium'}`}>
@@ -117,7 +117,7 @@ export default function Layout({ children, onLogout }: LayoutProps) {
 
 
       {/* ===== HEADER ===== */}
-      <header className="sticky top-0 z-50 border-b border-slate-200 dark:border-[#151c2c] bg-white dark:bg-gray-900">
+      <header className="sticky top-0 z-50 border-b border-slate-200 dark:border-gray-800 bg-white dark:bg-gray-900">
 
         {/* Top Bar */}
         <div className="h-[64px] flex items-center justify-between px-4 lg:px-6">
@@ -157,7 +157,7 @@ export default function Layout({ children, onLogout }: LayoutProps) {
                   <select
                     value={selectedSchoolId === null ? '' : selectedSchoolId}
                     onChange={(e) => setSelectedSchoolId(Number(e.target.value))}
-                    className="pl-9 pr-8 py-2 bg-slate-50 dark:bg-gray-800 border border-slate-200 dark:border-gray-800 rounded-full text-xs font-semibold text-slate-700 dark:text-slate-300 outline-none focus:ring-2 focus:ring-brand/20 focus:border-brand transition-all cursor-pointer appearance-none min-w-[160px]"
+                    className="pl-9 pr-8 py-2 bg-slate-50 dark:bg-gray-850 border border-slate-200 dark:border-gray-800 rounded-full text-xs font-semibold text-slate-700 dark:text-slate-300 outline-none focus:ring-2 focus:ring-brand/20 focus:border-brand transition-all cursor-pointer appearance-none min-w-[160px]"
                   >
                     <option value="" disabled>Filialni tanlang</option>
                     {user?.role === 'ADMIN' && (
@@ -182,7 +182,7 @@ export default function Layout({ children, onLogout }: LayoutProps) {
                 placeholder="O'quvchi, ustoz, guruh yoki telefon..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full bg-slate-50 dark:bg-gray-800 border border-slate-200 dark:border-gray-800 focus:border-brand focus:ring-2 focus:ring-brand/20 rounded-full pl-10 pr-4 py-2 text-sm font-medium text-slate-700 dark:text-white placeholder:text-slate-500 outline-none transition-all"
+                className="w-full bg-slate-50 dark:bg-gray-850 border border-slate-200 dark:border-gray-800 focus:border-brand focus:ring-2 focus:ring-brand/20 rounded-full pl-10 pr-4 py-2 text-sm font-medium text-slate-700 dark:text-white placeholder:text-slate-500 outline-none transition-all"
               />
               {/* Search results dropdown */}
               {results && (
