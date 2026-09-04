@@ -1539,43 +1539,47 @@ export default function StudentDetails() {
 
                             {activeTab === 'courses' && (
                                 <div className="space-y-6 animate-in fade-in duration-300">
-                                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-5 bg-gray-55 dark:bg-gray-900/40 border border-gray-100 dark:border-gray-800/50 rounded-2xl">
+                                    <div className="flex items-center justify-between gap-4">
                                         <div>
-                                            <h4 className="text-xs font-black text-gray-900 dark:text-white tracking-tight">{t('student_groups')}</h4>
+                                            <h4 className="text-[15px] font-semibold text-gray-900 dark:text-white">Guruhlar tarixi</h4>
+                                            <p className="text-[12px] text-gray-400 mt-0.5">
+                                                <span className="num">{studentGroups.length}</span> ta guruh
+                                            </p>
                                         </div>
                                         <button onClick={() => setShowGroupModal(true)}
-                                            className="px-6 py-2.5 bg-[#1b6b6b] hover:bg-[#155252] text-white rounded-xl text-[11px] font-extrabold uppercase tracking-wider shadow-sm shadow-[#1b6b6b]/20 active:scale-95 transition-all text-center cursor-pointer">
-                                            {t('add_to_group')}
+                                            className="px-4 py-2 bg-[#1b6b6b] hover:bg-[#155252] text-white rounded-xl text-[13px] font-semibold transition-colors cursor-pointer shrink-0">
+                                            + {t('add_to_group')}
                                         </button>
                                     </div>
-                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                        {studentGroups.map(group => (
-                                            <div key={group.id} onClick={() => navigate(`/courses/${group.id}`)}
-                                                className="group bg-gray-55 dark:bg-gray-900/30 p-5 rounded-2xl border border-transparent hover:border-gray-100 dark:hover:border-gray-700/50 transition-all cursor-pointer flex flex-col justify-between">
-                                                <div className="flex items-start justify-between mb-4">
-                                                    <div>
-                                                        <h5 className="text-xs font-black text-gray-900 dark:text-white group-hover:text-[#1b6b6b] transition-colors tracking-tight">{group.name}</h5>
-                                                        {group.courseName && <p className="text-[11px] font-bold text-gray-400 mt-0.5">{group.courseName}</p>}
-                                                    </div>
-                                                    <div className="w-9 h-9 bg-white dark:bg-gray-800 rounded-xl flex items-center justify-center text-[#1b6b6b] shrink-0 shadow-sm border border-gray-100 dark:border-gray-800/50">
+
+                                    {/* Referensdagidek bitta ustunli ro'yxat: guruh nomi,
+                                        ostida ustoz va jadval, o'ngda holat. Ikki ustunli
+                                        kartochkalarda nom qisqarib, bir o'quvchining ikki
+                                        guruhi ekranning ikki chekkasida turardi. */}
+                                    {studentGroups.length === 0 ? (
+                                        <p className="text-center py-12 text-[12px] text-gray-400">{t('no_groups_found')}</p>
+                                    ) : (
+                                        <div className="bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700/50 rounded-2xl overflow-hidden divide-y divide-gray-55 dark:divide-gray-700/40">
+                                            {studentGroups.map(group => (
+                                                <div key={group.id} onClick={() => navigate(`/courses/${group.id}`)}
+                                                    className="group flex items-center gap-3 px-4 py-3.5 hover:bg-gray-55/70 dark:hover:bg-gray-900/30 transition-colors cursor-pointer">
+                                                    <div className="w-9 h-9 rounded-xl bg-[#1b6b6b]/10 dark:bg-[#1b6b6b]/20 flex items-center justify-center text-[#1b6b6b] shrink-0">
                                                         <BookOpen size={16} />
                                                     </div>
-                                                </div>
-                                                <div className="space-y-2 pt-3 border-t border-dashed border-gray-100 dark:border-gray-750">
-                                                    <div className="flex items-center gap-2 text-[11px] text-gray-500 font-bold uppercase tracking-wide">
-                                                        <Users size={14} className="text-gray-400" />
-                                                        {group.teacherName}
+                                                    <div className="min-w-0 flex-1">
+                                                        <p className="text-[13px] font-medium text-gray-900 dark:text-white truncate group-hover:text-[#1b6b6b] transition-colors">{group.name}</p>
+                                                        <p className="text-[11px] text-gray-400 truncate">
+                                                            {group.teacherName}
+                                                            {group.schedule && <> · <span className="num">{group.schedule}</span></>}
+                                                            {group.courseName && <> · {group.courseName}</>}
+                                                        </p>
                                                     </div>
-                                                    <div className="flex items-center gap-2 text-[11px] text-gray-500 font-bold uppercase tracking-wide">
-                                                        <Calendar size={14} className="text-gray-400" />
-                                                        <span className="uppercase">{group.days === 'TOQ' ? t('odd_days') : group.days === 'JUFT' ? t('even_days') : t('every_day')}</span> &bull; {group.schedule}
-                                                    </div>
+                                                    <span className="text-[11px] font-medium px-2 py-0.5 rounded-md border bg-emerald-50 text-emerald-600 border-emerald-100 dark:bg-emerald-950/20 dark:text-emerald-400 dark:border-emerald-900/40 shrink-0">
+                                                        {t('status_active')}
+                                                    </span>
                                                 </div>
-                                            </div>
-                                        ))}
-                                    </div>
-                                    {studentGroups.length === 0 && (
-                                        <p className="text-center py-12 text-[11px] text-gray-400 font-bold uppercase tracking-wider">{t('no_groups_found')}</p>
+                                            ))}
+                                        </div>
                                     )}
                                 </div>
                             )}
@@ -2640,12 +2644,11 @@ function TabButton({ label, icon, active, onClick }: any) {
     return (
         <button
             onClick={onClick}
-            className={`px-4 py-2 rounded-xl text-[12px] font-bold uppercase tracking-wider transition-all flex items-center gap-2 shrink-0 cursor-pointer ${active
-                ? 'bg-white dark:bg-gray-800 text-[#1b6b6b] dark:text-teal-400 shadow-sm border border-gray-200/50 dark:border-gray-800'
-                : 'text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-[#151c2c]/50 border border-transparent'
+            className={`px-4 py-2 rounded-lg text-[13px] font-medium transition-colors flex items-center gap-2 shrink-0 cursor-pointer ${active
+                ? 'bg-[#1b6b6b] text-white font-semibold'
+                : 'text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'
                 }`}
         >
-            {icon}
             {label}
         </button>
     );
