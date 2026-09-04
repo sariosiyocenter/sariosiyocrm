@@ -151,21 +151,36 @@ export function LineChart({ data, color = '#0ea5e9', height = 140, unit = '' }: 
         return `${x},${y}`;
     }).join(' ');
     const areaPoints = `0,${h} ${points} ${w},${h}`;
+    // Identifikator rangdan yasalganda "var(--color-brand)" qavslari bilan
+    // birga id ga tushib, url(#...) ishlamay qolardi.
+    const gradId = 'lg-' + color.replace(/[^a-zA-Z0-9]/g, '');
     return (
         <div>
             <svg viewBox={`0 0 ${w} ${h + 4}`} className="w-full overflow-visible" style={{ height }}>
                 <defs>
-                    <linearGradient id={`lg-${color}`} x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="0%" stopColor={color} stopOpacity="0.25" />
+                    <linearGradient id={gradId} x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="0%" stopColor={color} stopOpacity="0.22" />
                         <stop offset="100%" stopColor={color} stopOpacity="0" />
                     </linearGradient>
                 </defs>
-                <polygon points={areaPoints} fill={`url(#lg-${color})`} />
-                <polyline points={points} fill="none" stroke={color} strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
+                <polygon points={areaPoints} fill={`url(#${gradId})`} />
+                <polyline points={points} fill="none" stroke={color} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
                 {data.map((d, i) => {
                     const x = (i / (data.length - 1)) * w;
                     const y = h - ((d.value - minVal) / range) * h;
-                    return <circle key={i} cx={x} cy={y} r={5} fill={color} stroke="white" strokeWidth={2} />;
+                    const eng = d.value >= maxVal;
+                    return (
+                        <g key={i}>
+                            {/* Qiymat doim ko'rinadi: aks holda grafikdan aniq
+                                son o'qib bo'lmaydi. */}
+                            <text x={x} y={y - 12} textAnchor="middle"
+                                fill={eng ? color : 'var(--color-matn-xira)'}
+                                fontSize="11" className="num">
+                                {d.value >= 1000000 ? (d.value / 1000000).toFixed(1).replace('.', ',') : d.value.toLocaleString('ru-RU')}
+                            </text>
+                            <circle cx={x} cy={y} r={4} fill={color} stroke="var(--color-sirt)" strokeWidth={2} />
+                        </g>
+                    );
                 })}
             </svg>
             <div className="flex justify-between mt-2">

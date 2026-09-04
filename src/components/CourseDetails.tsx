@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useCRM } from '../context/CRMContext';
+import StatTile from './ui/StatTile';
 import { displayName } from '../lib/displayName';
 import { useConfirm } from './ConfirmDialog';
 import {
@@ -69,6 +70,28 @@ export default function CourseDetails() {
     ).size;
     const groupDebt = groupStudents.reduce((sum, st) => sum + (st.balance < 0 ? -st.balance : 0), 0);
     const debtorCount = groupStudents.filter(st => st.balance < 0).length;
+
+    // Xona sig'imi — guruhga xona biriktirilgan bo'lsagina ma'lum.
+    // Kiritilmagan bo'lsa nisbat chizig'i chizilmaydi: 60 o'quvchi "necha
+    // foiz to'lgan" degani nimaga nisbatan ekani noma'lum.
+    const roomCapacity = rooms.find(r => r.id === group.room)?.capacity || null;
+
+    // Har o'quvchining shu guruhdagi davomati. "Dars bo'lmadi" hisobga
+    // olinmaydi — bu o'quvchining aybi emas. Yozuvi yo'q o'quvchida foiz
+    // ko'rsatilmaydi.
+    const studentAtt = (() => {
+        const acc = new Map<number, { keldi: number; jami: number }>();
+        for (const a of groupAttendances) {
+            if (a.status === 'Dars bo\'lmadi') continue;
+            const e = acc.get(a.studentId) || { keldi: 0, jami: 0 };
+            e.jami++;
+            if (a.status === 'Keldi' || a.status === 'Kechikdi' || a.status === 'ErtaKetdi') e.keldi++;
+            acc.set(a.studentId, e);
+        }
+        const out = new Map<number, number>();
+        acc.forEach((v, k) => { if (v.jami) out.set(k, Math.round((v.keldi / v.jami) * 100)); });
+        return out;
+    })();
     const shortSum = (n: number) =>
         n >= 1000000 ? (n / 1000000).toFixed(1).replace('.0', '') + ' mln' : n.toLocaleString();
 
@@ -400,21 +423,28 @@ export default function CourseDetails() {
                             </select>
                         </div>
                     ) : (
-                        <div className="flex items-center gap-x-5 gap-y-1 flex-wrap mt-2 text-[13px] text-matn-sokin">
-                            <span>
-                                Ustoz: <span className="font-medium text-matn-2">{teacher?.name || 'Belgilanmagan'}</span>
-                            </span>
-                            {group.schedule && (
-                                <span className="tabular-nums">
-                                    {group.days === 'TOQ' ? 'Toq kunlar' : group.days === 'JUFT' ? 'Juft kunlar' : 'Har kuni'} · {group.schedule}
-                                </span>
+                        // Bitta qator, bitta ajratgich. Kiritilmagan qiymat
+                        // "Belgilanmagan" bo'lib turmaydi — u shunchaki tushib
+                        // qoladi, ustoz bundan mustasno: ustozsiz guruh
+                        // ko'rinib turishi kerak.
+                        <div className="flex items-center gap-x-2 gap-y-1 flex-wrap mt-2 text-[13px] text-matn-sokin">
+                            {teacher?.name
+                                ? <span className="text-matn-2">{displayName(teacher.name)}</span>
+                                : <span className="text-ogoh">Ustoz biriktirilmagan</span>}
+                            {group.room && (
+                                <><span className="text-matn-xira">·</span>
+                                <span>{rooms.find(r => r.id === group.room)?.name || `#${group.room}`}</span></>
                             )}
-                            {group.room ? <span>{rooms.find(r => r.id === group.room)?.name || `#${group.room}`}</span> : null}
-                            {course?.name && course.name !== 'birinchi' && <span>{course.name}</span>}
+                            {group.schedule && !group.schedule.includes('Belgilanmagan') && (
+                                <><span className="text-matn-xira">·</span>
+                                <span>
+                                    {group.days === 'TOQ' ? 'Toq kunlar' : group.days === 'JUFT' ? 'Juft kunlar' : group.days === 'Belgilanmagan' ? '' : 'Har kuni'}{' '}
+                                    <span className="num">{group.schedule}</span>
+                                </span></>
+                            )}
                             {course?.price ? (
-                                <span className="tabular-nums">
-                                    Narx: <span className="font-medium text-matn-2">{course.price.toLocaleString()}</span> so'm/oy
-                                </span>
+                                <><span className="text-matn-xira">·</span>
+                                <span><span className="num text-matn-2">{course.price.toLocaleString('ru-RU')}</span> so'm/oy</span></>
                             ) : null}
                         </div>
                     )}
@@ -430,28 +460,39 @@ export default function CourseDetails() {
                     {activeTab === 'umumiy' && (
                         <div className="space-y-5 animate-in fade-in duration-300">
                             <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-                                <StatCardV3
+                                <StatTile
                                     label="O'quvchilar"
                                     value={groupStudents.length}
-                                    subValue="Guruhdagi jami"
+                                    bar={roomCapacity ? Math.min(100, Math.round((groupStudents.length / roomCapacity) * 100)) : null}
+                                    barCaption={roomCapacity
+                                        ? <><span className="raqam">{roomCapacity}</span> o'rindan <span className="raqam">{Math.min(100, Math.round((groupStudents.length / roomCapacity) * 100))}%</span> band</>
+                                        : undefined}
+                                    subValue={roomCapacity ? undefined : "Xona sig'imi kiritilmagan"}
                                 />
-                                <StatCardV3
+                                <StatTile
                                     label="Davomat"
                                     value={groupAttendanceRate === null ? '—' : groupAttendanceRate}
                                     unit={groupAttendanceRate === null ? undefined : '%'}
-                                    subValue={groupAttendances.length ? `${groupAttendances.length} ta yozuv asosida` : "Yo'qlama qilinmagan"}
+                                    tone={groupAttendanceRate === null ? undefined : groupAttendanceRate >= 85 ? 'good' : groupAttendanceRate >= 70 ? 'warn' : 'bad'}
+                                    bar={groupAttendanceRate}
+                                    barTone={groupAttendanceRate === null ? 'brand' : groupAttendanceRate >= 85 ? 'good' : groupAttendanceRate >= 70 ? 'warn' : 'bad'}
+                                    barCaption={<><span className="raqam">{groupAttendances.length}</span> ta yozuv asosida</>}
+                                    subValue={groupAttendances.length ? undefined : "Yo'qlama qilinmagan"}
                                 />
-                                <StatCardV3
+                                <StatTile
                                     label="Darslar"
                                     value={lessonsThisMonth}
                                     subValue="Shu oyda o'tildi"
                                 />
-                                <StatCardV3
+                                <StatTile
                                     label="Qarzdorlik"
                                     value={groupDebt > 0 ? shortSum(groupDebt) : '0'}
                                     tone={groupDebt > 0 ? 'bad' : 'good'}
-                                    subValue={debtorCount ? `${debtorCount} ta o'quvchi` : 'Qarzdor yo\'q'}
-                                    subTone={debtorCount ? 'bad' : undefined}
+                                    accent={groupDebt > 0}
+                                    subValue={debtorCount
+                                        ? <><span className="raqam">{debtorCount}</span> ta o'quvchidan yig'ilmagan</>
+                                        : "Qarzdor yo'q"}
+                                    subTone={debtorCount ? 'bad' : 'good'}
                                 />
                             </div>
 
@@ -477,16 +518,15 @@ export default function CourseDetails() {
                                             <table className="w-full border-collapse text-left min-w-[520px]">
                                                 <thead>
                                                     <tr className="border-b border-chiziq">
-                                                        <th className="py-2 pr-3 text-[10px] font-semibold text-matn-xira w-8">#</th>
-                                                        <th className="py-2 pr-3 text-[10px] font-semibold text-matn-xira">O'quvchi</th>
-                                                        <th className="py-2 px-3 text-[10px] font-semibold text-matn-xira text-right">Balans</th>
-                                                        <th className="py-2 px-3 text-[10px] font-semibold text-matn-xira text-center">Holat</th>
+                                                        <th className="py-2 pr-3 text-[12px] font-normal text-matn-sokin w-8">&#8470;</th>
+                                                        <th className="py-2 pr-3 text-[12px] font-normal text-matn-sokin">O'quvchi</th>
+                                                        <th className="py-2 px-3 text-[12px] font-normal text-matn-sokin text-right">Balans</th>
+                                                        <th className="py-2 px-3 text-[12px] font-normal text-matn-sokin text-right w-20">Davomat</th>
                                                         <th className="py-2 pl-3 w-20" />
                                                     </tr>
                                                 </thead>
                                                 <tbody className="divide-y divide-chiziq-mayin dark:divide-[#232d42]">
                                                     {groupStudents.map((s, idx) => {
-                                                        const payStatus = getPayStatus(s.balance);
                                                         return (
                                                             <tr key={s.id} className="group hover:bg-gray-55/70 dark:hover:bg-[#0b111a] transition-colors">
                                                                 <td className="num py-2.5 pr-3 text-[11px] text-matn-xira align-middle">
@@ -503,18 +543,20 @@ export default function CourseDetails() {
                                                                         </div>
                                                                     </div>
                                                                 </td>
-                                                                <td className={`num py-2.5 px-3 text-right text-[13px] font-medium align-middle ${s.balance >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-500'}`}>
-                                                                    {s.balance.toLocaleString()}
+                                                                <td className={`num py-2.5 px-3 text-right text-[13px] align-middle ${s.balance > 0 ? 'text-yaxshi' : s.balance < 0 ? 'text-xato' : 'text-matn-xira'}`}>
+                                                                    {s.balance.toLocaleString('ru-RU')}
                                                                 </td>
-                                                                <td className="py-2.5 px-3 text-center align-middle">
-                                                                    {payStatus && (
-                                                                        <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-md border whitespace-nowrap ${
-                                                                            payStatus === 'full' ? 'text-emerald-600 bg-emerald-50 border-emerald-100 dark:bg-emerald-950/20 dark:text-emerald-400 dark:border-emerald-900/40' :
-                                                                            payStatus === 'partial' ? 'text-amber-600 bg-amber-50 border-amber-100 dark:bg-amber-950/20 dark:text-amber-400 dark:border-amber-900/40' :
-                                                                            'text-rose-600 bg-rose-50 border-rose-100 dark:bg-rose-950/20 dark:text-rose-400 dark:border-rose-900/40'
-                                                                        }`}>
-                                                                            {payStatus === 'full' ? "To'liq" : payStatus === 'partial' ? 'Qisman' : 'Qarzdor'}
-                                                                        </span>
+                                                                {/* Ilgari bu yerda "Qarzdor" belgisi turardi — yonidagi
+                                                                    qizil balans allaqachon shuni aytadi. Davomat esa
+                                                                    hech qayerda ko'rinmasdi. */}
+                                                                <td className="py-2.5 px-3 text-right align-middle">
+                                                                    {studentAtt.has(s.id) ? (
+                                                                        <span className={`num text-[13px] ${
+                                                                            (studentAtt.get(s.id) as number) >= 85 ? 'text-yaxshi' :
+                                                                            (studentAtt.get(s.id) as number) >= 70 ? 'text-ogoh' : 'text-xato'
+                                                                        }`}>{studentAtt.get(s.id)}%</span>
+                                                                    ) : (
+                                                                        <span className="num text-[13px] text-matn-xira">&#8212;</span>
                                                                     )}
                                                                 </td>
                                                                 <td className="py-2.5 pl-3 align-middle">
@@ -1249,36 +1291,6 @@ export default function CourseDetails() {
     );
 }
 
-function StatCardV3({ label, value, unit, subValue, tone, subTone }: any) {
-    // Avval qiymat yonida 36px rangli ikonka kvadrati turardi. U kartochkaning
-    // yarmini egallar, lekin hech qanday ma'no qo'shmasdi — rangning o'zi
-    // allaqachon holatni bildiradi. Endi rang raqamning ustida.
-    const valueTone = {
-        good: 'text-emerald-500',
-        warn: 'text-amber-500',
-        bad: 'text-rose-500',
-        brand: 'text-brand',
-    }[tone as string] || 'text-matn';
-
-    const subToneCls = {
-        good: 'text-emerald-500',
-        warn: 'text-amber-500',
-        bad: 'text-rose-500',
-    }[subTone as string] || 'text-matn-xira';
-
-    return (
-        <div className="bg-sirt px-5 py-4 rounded-2xl border border-chiziq transition-colors hover:border-gray-200 dark:hover:border-gray-700">
-            <span className="text-[12px] text-matn-sokin">{label}</span>
-            <div className="mt-1.5 flex items-baseline gap-1">
-                <span className={`num text-[30px] font-bold leading-none ${valueTone}`} title={String(value)}>{value}</span>
-                {unit && <span className="num text-[13px] font-medium text-matn-xira">{unit}</span>}
-            </div>
-            {subValue && (
-                <span className={`text-[11px] block mt-2 truncate ${subToneCls}`}>{subValue}</span>
-            )}
-        </div>
-    );
-}
 
 function TabButton({ label, icon, active, onClick }: any) {
     return (

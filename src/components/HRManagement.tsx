@@ -5,6 +5,8 @@ import {
     GraduationCap, ExternalLink, Camera, Wrench, Eye, Sparkles
 } from 'lucide-react';
 import { useCRM } from '../context/CRMContext';
+import StatTile from './ui/StatTile';
+import { displayName } from '../lib/displayName';
 import { useConfirm } from './ConfirmDialog';
 import { useLang } from '../context/LanguageContext';
 import { useNavigate } from 'react-router-dom';
@@ -186,6 +188,27 @@ export default function HRManagement() {
     // Filtered by selected role
     const filteredUsers = selectedRole ? allStaff.filter(u => u.role === selectedRole) : allStaff;
 
+    // ---- Ko'rsatkichlar. Hammasi mavjud yozuvlardan; hisoblab bo'lmasa
+    // kartochka son o'rniga nima yetishmayotganini aytadi.
+    const staffGroups = (u: any) =>
+        (groups || []).filter(g => g.teacherId === (u._source === 'teacher' ? u._tid : u.teacherId));
+    // Haftalik dars soni: toq/juft kunlar haftada 3 marta, har kuni — 6.
+    // To'liq stavka 24 dars deb olingan.
+    const TOLIQ_STAVKA = 24;
+    const weekLoad = (u: any) =>
+        staffGroups(u).reduce((n, g) => n + (g.days === 'TOQ' || g.days === 'JUFT' ? 3 : 6), 0);
+
+    const teacherCount = allStaff.filter(u => u.role === 'TEACHER' || u.role === 'SUPPORT_TEACHER').length;
+    const withLoad = allStaff.filter(u => weekLoad(u) > 0);
+    const avgLoadPct = withLoad.length
+        ? Math.round(withLoad.reduce((n, u) => n + Math.min(100, (weekLoad(u) / TOLIQ_STAVKA) * 100), 0) / withLoad.length)
+        : null;
+    const salaryFund = allStaff.reduce((n, u) => n + (Number(u.salary) || 0), 0);
+    const salaryMissing = allStaff.filter(u => !(Number(u.salary) > 0)).length;
+    const overloaded = allStaff.filter(u => weekLoad(u) > TOLIQ_STAVKA);
+    const staffTeacherIds = new Set(allStaff.map(u => (u._source === 'teacher' ? u._tid : u.teacherId)).filter(Boolean));
+    const orphanGroups = (groups || []).filter(g => !g.teacherId || !staffTeacherIds.has(g.teacherId));
+
     return (
         <div className="space-y-6 animate-in fade-in duration-500">
             {/* Header */}
@@ -209,53 +232,66 @@ export default function HRManagement() {
             </div>
 
             <div className="space-y-6">
-                    {/* Clickable role counters */}
-                    <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-3">
+                    {/* To'rtta ko'rsatkich */}
+                    <div className="grid grid-cols-2 xl:grid-cols-4 gap-3">
+                        <StatTile
+                            label="Jami xodim"
+                            value={allStaff.length}
+                            subValue={<><span className="raqam">{teacherCount}</span> ustoz, <span className="raqam">{allStaff.length - teacherCount}</span> boshqa lavozim</>}
+                        />
+                        <StatTile
+                            label="Guruh yuritayotgan"
+                            value={withLoad.length}
+                            subValue={orphanGroups.length > 0
+                                ? <><span className="raqam">{orphanGroups.length}</span> ta guruhga ustoz biriktirilmagan</>
+                                : 'Barcha guruhda ustoz bor'}
+                            subTone={orphanGroups.length > 0 ? 'warn' : 'good'}
+                        />
+                        <StatTile
+                            label="O'rtacha yuklama"
+                            value={avgLoadPct === null ? '—' : avgLoadPct}
+                            unit={avgLoadPct === null ? undefined : '%'}
+                            bar={avgLoadPct}
+                            barCaption={<>to'liq stavka <span className="raqam">{TOLIQ_STAVKA}</span> dars/hafta deb olingan</>}
+                            subValue={avgLoadPct === null ? 'Guruhlarga kun kiritilmagan' : undefined}
+                        />
+                        <StatTile
+                            label="Oylik fond"
+                            value={salaryFund > 0 ? (salaryFund / 1000000).toFixed(1).replace('.', ',') : '—'}
+                            unit={salaryFund > 0 ? 'mln' : undefined}
+                            subValue={salaryMissing > 0
+                                ? <><span className="raqam">{salaryMissing}</span> ta xodimning oyligi kiritilmagan</>
+                                : 'Barcha oylik kiritilgan'}
+                            subTone={salaryMissing > 0 ? 'warn' : 'good'}
+                        />
+                    </div>
+
+                    {/* Lavozim bo'yicha filtr. Ilgari bular ettita katta kartochka
+                        edi va beshtasida nol turardi — ekranning uchdan biri
+                        bo'sh sonlarga ketardi. Endi nol bo'lgan lavozim
+                        umuman ko'rsatilmaydi. */}
+                    <div className="flex flex-wrap gap-2">
+                        <button onClick={() => setSelectedRole(null)}
+                            className={`px-3 py-1.5 rounded-lg text-[12px] border transition-colors cursor-pointer ${
+                                selectedRole === null ? 'bg-brand text-brand-ust border-brand font-semibold' : 'border-chiziq-kuchli text-matn-sokin hover:text-matn'
+                            }`}>
+                            Barchasi <span className="raqam opacity-65">{allStaff.length}</span>
+                        </button>
                         {Object.keys(ROLE_LABELS).map((role) => {
-                            const label    = getRoleLabel(role);
-                            const count    = allStaff.filter(u => u.role === role).length;
+                            const count = allStaff.filter(u => u.role === role).length;
+                            if (!count) return null;
                             const isActive = selectedRole === role;
                             return (
-                                <button
-                                    key={role}
+                                <button key={role}
                                     onClick={() => setSelectedRole(prev => prev === role ? null : role)}
-                                    className={`bg-sirt border rounded-2xl p-4 flex items-center justify-between transition-all cursor-pointer hover:shadow-md text-left w-full ${
-                                        isActive
-                                            ? 'border-brand ring-2 ring-[#1b6b6b]/20 shadow-md'
-                                            : 'border-chiziq hover:border-brand/30'
-                                    }`}
-                                >
-                                    <div>
-                                        <span className="text-[11px] font-extrabold text-matn-xira block mb-1 leading-tight">{label}</span>
-                                        <h4 className="text-lg font-black text-matn tabular-nums">{count}</h4>
-                                    </div>
-                                    <div className={`w-8 h-8 rounded-lg flex items-center justify-center border text-xs font-extrabold transition-all ${
-                                        isActive ? 'bg-brand text-brand-ust border-brand' : (ROLE_COLORS[role] || '')
+                                    className={`px-3 py-1.5 rounded-lg text-[12px] border transition-colors cursor-pointer ${
+                                        isActive ? 'bg-brand text-brand-ust border-brand font-semibold' : 'border-chiziq-kuchli text-matn-sokin hover:text-matn'
                                     }`}>
-                                        {label.charAt(0)}
-                                    </div>
+                                    {getRoleLabel(role)} <span className="raqam opacity-65">{count}</span>
                                 </button>
                             );
                         })}
-                        {selectedRole && (
-                            <button
-                                onClick={() => setSelectedRole(null)}
-                                className="bg-ichki border border-dashed border-gray-200 dark:border-gray-800 rounded-2xl p-4 flex items-center justify-center transition-all cursor-pointer hover:border-rose-300 hover:bg-rose-50 dark:hover:bg-rose-950/10 text-matn-xira hover:text-rose-500 gap-1"
-                            >
-                                <X size={12} />
-                                <span className="text-[11px] font-extrabold">{t('filter')}</span>
-                            </button>
-                        )}
                     </div>
-
-                    {/* Role filter indicator */}
-                    {selectedRole && (
-                        <div className="flex items-center gap-2">
-                            <span className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[11px] font-extrabold border ${ROLE_COLORS[selectedRole] || ''}`}>
-                                {getRoleLabel(selectedRole)} — {filteredUsers.length}
-                            </span>
-                        </div>
-                    )}
 
                     {loadingUsers ? (
                         <div className="py-20 text-center text-brand text-xs font-bold">{t('loading')}</div>
@@ -296,24 +332,26 @@ export default function HRManagement() {
                                                 <tr key={u.id} className="group hover:bg-gray-55/70 dark:hover:bg-gray-900/30 transition-colors">
                                                     <td className="px-5 py-3 align-middle">
                                                         <div className="flex items-center gap-3 cursor-pointer min-w-0" onClick={() => navigate(profilePath)}>
-                                                            <div className="w-9 h-9 rounded-lg overflow-hidden shrink-0">
+                                                            <div className="w-8 h-8 rounded-full overflow-hidden shrink-0">
                                                                 {u.photo ? (
                                                                     <img src={u.photo} alt={u.name} className="w-full h-full object-cover object-top" />
                                                                 ) : (
-                                                                    <div className={`w-full h-full bg-gradient-to-br ${ROLE_AVATAR_COLORS[u.role] || 'from-gray-400 to-gray-600'} flex items-center justify-center text-white font-semibold text-[12px]`}>
-                                                                        {u.name?.charAt(0).toUpperCase()}
+                                                                    <div className="w-full h-full bg-brand/12 flex items-center justify-center text-brand font-semibold text-[11px]">
+                                                                        {displayName(u.name || '').split(/\s+/).filter(Boolean).slice(0, 2).map((w: string) => w[0]).join('').toUpperCase()}
                                                                     </div>
                                                                 )}
                                                             </div>
                                                             <div className="min-w-0">
-                                                                <p className="text-[13px] font-medium text-matn truncate group-hover:text-brand transition-colors">{u.name}</p>
+                                                                <p className="text-[13px] font-medium text-matn truncate group-hover:text-brand transition-colors">{displayName(u.name)}</p>
                                                                 {u.phone && <p className="num text-[11px] text-matn-xira truncate">{u.phone}</p>}
                                                             </div>
                                                         </div>
                                                     </td>
                                                     <td className="px-3 py-3 text-[12px] text-matn-sokin align-middle">{u.position || '—'}</td>
                                                     <td className="px-3 py-3 align-middle">
-                                                        <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-md border whitespace-nowrap ${ROLE_COLORS[u.role] || 'bg-gray-50 text-matn-xira border-gray-100'}`}>
+                                                        {/* Rang endi ma'no bermaydi: yetti xil rangli
+                                                            belgi ro'yxatni bezakka aylantirardi. */}
+                                                        <span className="text-[11px] px-2 py-0.5 rounded-md border border-chiziq text-matn-2 whitespace-nowrap">
                                                             {getRoleLabel(u.role)}
                                                         </span>
                                                     </td>
@@ -374,6 +412,46 @@ export default function HRManagement() {
                                         })}
                                     </tbody>
                                 </table>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Ro'yxatdan chiqadigan xulosalar. Hech narsa bo'lmasa
+                        blok umuman ko'rsatilmaydi — bo'sh kartochka
+                        "hammasi joyida" degan xabardan ko'ra ko'proq
+                        chalg'itadi. */}
+                    {(overloaded.length > 0 || orphanGroups.length > 0 || salaryMissing > 0) && (
+                        <div className="bg-sirt rounded-xl border border-chiziq p-4">
+                            <p className="text-[14px] font-semibold text-matn mb-3">E'tibor talab qiladi</p>
+                            <div className="space-y-2.5">
+                                {overloaded.map(u => (
+                                    <div key={`load-${u.id}`} className="flex items-center gap-2.5">
+                                        <span className="w-1.5 h-1.5 rounded-full bg-xato shrink-0" />
+                                        <span className="text-[13px] text-matn">
+                                            {displayName(u.name)} haftasiga <span className="raqam">{weekLoad(u)}</span> dars —
+                                            to'liq stavkadan (<span className="raqam">{TOLIQ_STAVKA}</span>) yuqori
+                                        </span>
+                                    </div>
+                                ))}
+                                {orphanGroups.length > 0 && (
+                                    <div className="flex items-center gap-2.5">
+                                        <span className="w-1.5 h-1.5 rounded-full bg-ogoh shrink-0" />
+                                        <span className="text-[13px] text-matn">
+                                            <span className="raqam">{orphanGroups.length}</span> ta guruhga ustoz biriktirilmagan:{' '}
+                                            <span className="text-matn-sokin">{orphanGroups.slice(0, 3).map(g => g.name).join(', ')}</span>
+                                            {orphanGroups.length > 3 && <span className="text-matn-xira"> va yana {orphanGroups.length - 3} ta</span>}
+                                        </span>
+                                    </div>
+                                )}
+                                {salaryMissing > 0 && (
+                                    <div className="flex items-center gap-2.5">
+                                        <span className="w-1.5 h-1.5 rounded-full bg-ogoh shrink-0" />
+                                        <span className="text-[13px] text-matn">
+                                            <span className="raqam">{salaryMissing}</span> ta xodimning oyligi kiritilmagan —
+                                            oylik fond to'liq hisoblanmayapti
+                                        </span>
+                                    </div>
+                                )}
                             </div>
                         </div>
                     )}

@@ -7,6 +7,8 @@ import {
 } from 'lucide-react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useCRM } from '../context/CRMContext';
+import StatTile from './ui/StatTile';
+import { displayName } from '../lib/displayName';
 import { useConfirm } from './ConfirmDialog';
 import { useLang } from '../context/LanguageContext';
 import { Payment, Expense } from '../types';
@@ -41,6 +43,10 @@ export default function Finance() {
     }, [token]);
     const { t } = useLang();
     const navigate = useNavigate();
+
+    // Summalarni millionda ko'rsatadi: "500 001 UZS" o'rniga "0,5".
+    // Bir qarashda o'qish uchun aniq so'm kerak emas, kattalik kerak.
+    const mln = (n: number) => (n / 1000000).toFixed(1).replace('.', ',');
     const [searchParams] = useSearchParams();
     const [activeTab, setActiveTab] = useState<'reports' | 'billing' | 'payments' | 'expenses'>('reports');
 
@@ -333,6 +339,7 @@ export default function Finance() {
         // Student balances
         const debtors = filteredStudents.filter(s => s.balance < 0);
         const totalDebt = debtors.reduce((s, st) => s + Math.abs(st.balance), 0);
+
         const creditors = filteredStudents.filter(s => s.balance > 0);
         const totalCredit = creditors.reduce((s, st) => s + st.balance, 0);
         const zeroBalanceCount = filteredStudents.filter(s => s.balance === 0).length;
@@ -406,6 +413,8 @@ export default function Finance() {
             bucket.count += 1;
         });
         const debtAgeMax = Math.max(...debtAge.map(b => b.sum), 1);
+        // 30 kundan oshgan qarzlar soni — ko'rsatkich kartochkasidagi izoh uchun.
+        const staleDebtCount = debtors.filter(st => lastPayDay(st.id) > 30).length;
 
         // Top 5 debtors
         const topDebtors = [...debtors].sort((a, b) => a.balance - b.balance).slice(0, 5);
@@ -414,7 +423,7 @@ export default function Finance() {
             thisMonthRevenue, lastMonthRevenue, thisMonthExpenses, lastMonthExpenses,
             thisMonthProfit, thisMonthCount, todayRevenue, allTimeRevenue, allTimeExpenses,
             allTimeProfit, avgPayment, revTrend, expTrend, profTrend,
-            debtors, totalDebt, creditors, totalCredit, unpaidCount,
+            debtors, totalDebt, creditors, totalCredit, unpaidCount, staleDebtCount,
             typeSlices, catBars, trendBars, trendLine, topDebtors, debtAge, debtAgeMax,
             activeStudentCount: activeStudentIds.size,
             zeroBalanceCount
@@ -591,65 +600,112 @@ export default function Finance() {
                 {/* ─── HISOBOTLAR TAB ──────────────────────────────────────── */}
                 {activeTab === 'reports' && (
                     <div className="p-4 space-y-8">
-                        {/* Bu oy asosiy 3 ta metrika */}
+                        {/* To'rtta ko'rsatkich, bitta qatorda. Summalar millionda:
+                            "500 001 UZS" o'rniga "0,5 mln" — raqamni bir qarashda
+                            o'qish uchun aniq so'm kerak emas. */}
                         <div>
-                            <p className="text-[11px] font-bold text-matn-xira mb-4">
-                                Muddat: {dateLabel}
-                            </p>
-                            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                                <StatCard
+                            <p className="text-[12px] text-matn-sokin mb-3">Muddat: {dateLabel}</p>
+                            <div className="grid grid-cols-2 xl:grid-cols-4 gap-3">
+                                <StatTile
                                     label="Tushum"
-                                    value={metrics.thisMonthRevenue.toLocaleString() + ' UZS'}
-                                    sub="tanlangan davr"
-                                    trend={metrics.revTrend}
-                                    icon={<TrendingUp size={18} />}
-                                    color="emerald"
+                                    value={mln(metrics.thisMonthRevenue)}
+                                    unit="mln"
+                                    subValue={<>
+                                        <span className="raqam">{metrics.thisMonthCount}</span> ta to'lov
+                                        {metrics.avgPayment > 0 && <> · o'rtacha <span className="raqam">{mln(metrics.avgPayment)}</span> mln</>}
+                                    </>}
                                 />
-                                <StatCard
+                                <StatTile
                                     label="Xarajat"
-                                    value={metrics.thisMonthExpenses.toLocaleString() + ' UZS'}
-                                    sub="tanlangan davr"
-                                    trend={metrics.expTrend !== 0 ? -metrics.expTrend : undefined}
-                                    icon={<TrendingDown size={18} />}
-                                    color="rose"
+                                    value={mln(metrics.thisMonthExpenses)}
+                                    unit="mln"
+                                    subValue={metrics.thisMonthRevenue > 0
+                                        ? <>tushumning <span className="raqam">{Math.round((metrics.thisMonthExpenses / metrics.thisMonthRevenue) * 100)}%</span></>
+                                        : 'tanlangan davr'}
                                 />
-                                <StatCard
+                                <StatTile
                                     label="Sof foyda"
-                                    value={metrics.thisMonthProfit.toLocaleString() + ' UZS'}
-                                    sub="tanlangan davr"
-                                    trend={metrics.profTrend}
-                                    icon={<Wallet size={18} />}
-                                    color={metrics.thisMonthProfit >= 0 ? 'sky' : 'rose'}
+                                    value={mln(metrics.thisMonthProfit)}
+                                    unit="mln"
+                                    tone={metrics.thisMonthProfit >= 0 ? 'good' : 'bad'}
+                                    bar={metrics.thisMonthRevenue > 0 ? Math.max(0, Math.round((metrics.thisMonthProfit / metrics.thisMonthRevenue) * 100)) : null}
+                                    barTone={metrics.thisMonthProfit >= 0 ? 'good' : 'bad'}
+                                    barCaption={<>tushumning <span className="raqam">{metrics.thisMonthRevenue > 0 ? Math.round((metrics.thisMonthProfit / metrics.thisMonthRevenue) * 100) : 0}%</span></>}
+                                    subValue={metrics.thisMonthRevenue > 0 ? undefined : 'tanlangan davr'}
+                                />
+                                <StatTile
+                                    label="Qarzdorlik"
+                                    value={mln(metrics.totalDebt)}
+                                    unit="mln"
+                                    tone="bad"
+                                    accent={metrics.totalDebt > 0}
+                                    subValue={<>
+                                        <span className="raqam">{metrics.debtors.length}</span> o'quvchi
+                                        {metrics.staleDebtCount > 0 && <> · <span className="raqam">{metrics.staleDebtCount}</span> tasi 30 kundan oshgan</>}
+                                    </>}
+                                    subTone="bad"
                                 />
                             </div>
                         </div>
 
-                        {/* Ikkinchi qator — qo'shimcha metrikalar */}
-                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                            {[
-                                { label: "Faol o'quvchilar", value: metrics.activeStudentCount + ' ta', icon: <Users size={16} />, color: 'amber' as const },
-                                { label: "To'lovlar soni", value: metrics.thisMonthCount + ' ta', icon: <CreditCard size={16} />, color: 'violet' as const },
-                                { label: "O'rtacha to'lov", value: metrics.avgPayment.toLocaleString() + ' UZS', icon: <ArrowUpRight size={16} />, color: 'indigo' as const },
-                                { label: "To'lamagan o'quvchilar", value: metrics.unpaidCount + ' ta', icon: <AlertCircle size={16} />, color: 'rose' as const },
-                            ].map((m, i) => (
-                                <div key={i} className="bg-ichki rounded-2xl border border-chiziq p-4 flex flex-col gap-2">
-                                    <div className="flex items-center gap-1.5 text-matn-xira">
-                                        {m.icon}
-                                        <span className="text-[11px] font-bold">{m.label}</span>
+                        {/* Trend va qarzdorlik yoshi yonma-yon. Moliyadagi asosiy
+                            savol "qancha tushdi" emas, "qarz qancha eskirgan":
+                            30 kunlik qarz qaytadi, 90 kunlik odatda qaytmaydi. */}
+                        <div className="grid grid-cols-1 xl:grid-cols-5 gap-4 items-start">
+                            <div className="xl:col-span-3 bg-sirt rounded-xl border border-chiziq p-5">
+                                <p className="text-[14px] font-semibold text-matn mb-4">Oylik tushum trendi <span className="text-[12px] font-normal text-matn-sokin">· so'nggi 6 oy</span></p>
+                                {metrics.trendLine.length >= 2
+                                    ? <LineChart data={metrics.trendLine} color="var(--color-brand)" height={168} />
+                                    : <BarChart data={metrics.trendBars} height={168} />
+                                }
+                            </div>
+
+                            <div className="xl:col-span-2 bg-sirt rounded-xl border border-chiziq p-5">
+                                <p className="text-[14px] font-semibold text-matn">Qarzdorlik yoshi</p>
+                                <p className="text-[12px] text-matn-sokin mt-0.5 mb-4">
+                                    {metrics.staleDebtCount > 0
+                                        ? <><span className="raqam">{metrics.staleDebtCount}</span> ta qarz 30 kundan oshgan</>
+                                        : 'Barcha qarzlar yangi'}
+                                </p>
+                                {metrics.totalDebt === 0 ? (
+                                    <p className="text-[13px] text-matn-sokin py-6 text-center">Qarzdor yo'q</p>
+                                ) : (
+                                    <div className="space-y-3">
+                                        {metrics.debtAge.map(b => (
+                                            <div key={b.label}>
+                                                <div className="flex items-baseline justify-between mb-1.5">
+                                                    <span className="text-[12px] text-matn-2">
+                                                        {b.label} <span className="raqam text-matn-xira">· {b.count} ta</span>
+                                                    </span>
+                                                    <span className="num text-[12px] text-matn-2">{mln(b.sum)} mln</span>
+                                                </div>
+                                                <div className="h-1.5 rounded-full bg-chiziq overflow-hidden">
+                                                    <div className={`h-full rounded-full ${b.color}`}
+                                                        style={{ width: `${Math.round((b.sum / metrics.debtAgeMax) * 100)}%` }} />
+                                                </div>
+                                            </div>
+                                        ))}
                                     </div>
-                                    <p className="text-base font-black text-matn tabular-nums">{m.value}</p>
-                                </div>
-                            ))}
+                                )}
+                            </div>
                         </div>
 
-                        {/* Oylik tushum trendi */}
-                        <div className="bg-ichki/40 rounded-2xl border border-chiziq p-5">
-                            <p className="text-[11px] font-bold text-matn-xira mb-4">Oylik tushum trendi (so'nggi 6 oy)</p>
-                            {metrics.trendLine.length >= 2
-                                ? <LineChart data={metrics.trendLine} color="#1b6b6b" height={160} />
-                                : <BarChart data={metrics.trendBars} height={160} />
-                            }
-                        </div>
+                        {/* Eng katta qarzdorlar — kim bilan gaplashish kerakligi */}
+                        {metrics.topDebtors.length > 0 && (
+                            <div className="bg-sirt rounded-xl border border-chiziq overflow-hidden">
+                                <div className="flex items-baseline justify-between px-4 pt-3.5 pb-3">
+                                    <p className="text-[14px] font-semibold text-matn">Eng katta qarzdorlar</p>
+                                    <span className="text-[12px] text-matn-sokin">jami <span className="raqam">{metrics.debtors.length}</span> ta</span>
+                                </div>
+                                {metrics.topDebtors.map(d => (
+                                    <div key={d.id} onClick={() => navigate(`/students/${d.id}`)}
+                                        className="flex items-center gap-3 px-4 py-2.5 border-t border-chiziq-mayin hover:bg-ichki transition-colors cursor-pointer">
+                                        <span className="text-[13px] text-matn flex-1 min-w-0 truncate">{displayName(d.name)}</span>
+                                        <span className="num text-[13px] text-xato w-36 text-right">{d.balance.toLocaleString('ru-RU')}</span>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
 
                         {/* To'lov usullari + Xarajat kategoriyalari */}
                         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">

@@ -4,6 +4,7 @@ import {
     Clock, CheckCircle, XCircle, Plus, Award, ClipboardCheck, Users, Layers, ChevronRight, Save, Edit, Bus, Sparkles, Image as ImageIcon, Camera, X, Send, Trash2, Star
 } from 'lucide-react';
 import { useCRM } from '../context/CRMContext';
+import StatTile from './ui/StatTile';
 import { displayName } from '../lib/displayName';
 import { useConfirm } from './ConfirmDialog';
 import { useParams, useNavigate } from 'react-router-dom';
@@ -1169,25 +1170,25 @@ export default function StudentDetails() {
                 <div className="lg:col-span-3 space-y-6">
                     {/* Summary Stats */}
                     <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-                        <StatCardV3
+                        <StatTile
                             label={t('attendance')}
                             value={attendanceRate}
                             unit="%"
                             subValue={t('class_attendance')}
                         />
-                        <StatCardV3
+                        <StatTile
                             label={t('missed_lessons')}
                             value={missedLessonsCount}
                             tone={missedLessonsCount > 0 ? 'warn' : undefined}
                             subValue={t('missed_lessons_subtitle')}
                         />
-                        <StatCardV3
+                        <StatTile
                             label={t('missed_topics')}
                             value={missedTopicsCount}
                             tone={missedTopicsCount > 0 ? 'bad' : undefined}
                             subValue={t('missed_topics_subtitle')}
                         />
-                        <StatCardV3
+                        <StatTile
                             label={t('caught_up_topics')}
                             value={caughtUpTopicsCount}
                             tone={caughtUpTopicsCount > 0 ? 'good' : undefined}
@@ -2159,36 +2160,6 @@ export default function StudentDetails() {
     );
 }
 
-function StatCardV3({ label, value, unit, subValue, tone, subTone }: any) {
-    // Avval qiymat yonida 36px rangli ikonka kvadrati turardi. U kartochkaning
-    // yarmini egallar, lekin hech qanday ma'no qo'shmasdi — rangning o'zi
-    // allaqachon holatni bildiradi. Endi rang raqamning ustida.
-    const valueTone = {
-        good: 'text-emerald-500',
-        warn: 'text-amber-500',
-        bad: 'text-rose-500',
-        brand: 'text-brand',
-    }[tone as string] || 'text-matn';
-
-    const subToneCls = {
-        good: 'text-emerald-500',
-        warn: 'text-amber-500',
-        bad: 'text-rose-500',
-    }[subTone as string] || 'text-matn-xira';
-
-    return (
-        <div className="bg-sirt px-5 py-4 rounded-2xl border border-chiziq transition-colors hover:border-gray-200 dark:hover:border-gray-700">
-            <span className="text-[12px] text-matn-sokin">{label}</span>
-            <div className="mt-1.5 flex items-baseline gap-1">
-                <span className={`num text-[30px] font-bold leading-none ${valueTone}`} title={String(value)}>{value}</span>
-                {unit && <span className="num text-[13px] font-medium text-matn-xira">{unit}</span>}
-            </div>
-            {subValue && (
-                <span className={`text-[11px] block mt-2 truncate ${subToneCls}`}>{subValue}</span>
-            )}
-        </div>
-    );
-}
 
 function PaymentAddModal({ studentId, onClose, onAdd }: { studentId: number; onClose: () => void; onAdd: (data: any) => void }) {
     const { students, groups, courses, payments } = useCRM();
