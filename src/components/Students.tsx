@@ -4,6 +4,7 @@ import { useCRM } from '../context/CRMContext';
 import { useConfirm } from './ConfirmDialog';
 import { useLang } from '../context/LanguageContext';
 import { useNavigate, useSearchParams } from 'react-router-dom';
+import { displayName } from '../lib/displayName';
 import PhotoCapture from './PhotoCapture';
 import MapPicker from './MapPicker';
 import { compressImage } from '../lib/image';
@@ -845,7 +846,7 @@ export default function Students() {
                                                 ) : student.name.charAt(0).toUpperCase()}
                                             </div>
                                             <div>
-                                                <p className="text-xs font-bold text-gray-900 dark:text-white tracking-tight group-hover:text-[#1b6b6b] transition-colors">{student.name}</p>
+                                                <p className="text-xs font-bold text-gray-900 dark:text-white tracking-tight group-hover:text-[#1b6b6b] transition-colors">{displayName(student.name)}</p>
                                                 {/* Qo'shilgan sana o'rniga maktab va sinf: ro'yxatda
                                                     o'quvchini aynan shu bilan farqlashadi. */}
                                                 <span className="text-[11px] text-gray-400 block mt-0.5 truncate">

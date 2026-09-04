@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useCRM } from '../context/CRMContext';
+import { displayName } from '../lib/displayName';
 import { useConfirm } from './ConfirmDialog';
 import {
     Users, Calendar, Clock, BookOpen, Plus,
@@ -467,7 +468,7 @@ export default function CourseDetails() {
                                                                             {s.name.charAt(0)}
                                                                         </div>
                                                                         <div className="min-w-0">
-                                                                            <p className="text-[13px] font-medium text-gray-900 dark:text-white truncate group-hover:text-[#1b6b6b] transition-colors">{s.name}</p>
+                                                                            <p className="text-[13px] font-medium text-gray-900 dark:text-white truncate group-hover:text-[#1b6b6b] transition-colors">{displayName(s.name)}</p>
                                                                             <p className="num text-[11px] text-gray-400 truncate">{s.phone}</p>
                                                                         </div>
                                                                     </div>
@@ -894,7 +895,7 @@ export default function CourseDetails() {
                                                                 {s.name.charAt(0)}
                                                             </div>
                                                             <div>
-                                                                <p className="text-xs font-black text-gray-900 dark:text-white tracking-tight group-hover:text-[#1b6b6b] transition-colors">{s.name}</p>
+                                                                <p className="text-xs font-black text-gray-900 dark:text-white tracking-tight group-hover:text-[#1b6b6b] transition-colors">{displayName(s.name)}</p>
                                                                 <p className="text-[11px] font-bold text-gray-400 mt-0.5">{s.phone}</p>
                                                             </div>
                                                         </div>

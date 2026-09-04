@@ -312,7 +312,8 @@ export default function Courses() {
             <div className="flex items-center gap-2 overflow-x-auto no-scrollbar">
                 {([
                     ['all', t('all'), stateCounts.all, false],
-                    ['faol', t('status_active'), stateCounts.faol, false],
+                    // Jami bilan teng bo'lsa ko'rsatilmaydi — ikkita bir xil raqamli chip chalkashtiradi.
+                    ['faol', t('status_active'), stateCounts.faol === stateCounts.all ? 0 : stateCounts.faol, false],
                     ['toplanmoqda', "Yangi to'planmoqda", stateCounts.toplanmoqda, false],
                     ['ustozsiz', "Ustoz yo'q", stateCounts.ustozsiz, true],
                 ] as const).map(([key, label, count, warn]) => (

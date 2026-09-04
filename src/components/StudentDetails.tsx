@@ -4,6 +4,7 @@ import {
     Clock, CheckCircle, XCircle, Plus, Award, ClipboardCheck, Users, Layers, ChevronRight, Save, Edit, Bus, Sparkles, Image as ImageIcon, Camera, X, Send, Trash2, Star
 } from 'lucide-react';
 import { useCRM } from '../context/CRMContext';
+import { displayName } from '../lib/displayName';
 import { useConfirm } from './ConfirmDialog';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useLang } from '../context/LanguageContext';
@@ -155,15 +156,7 @@ export default function StudentDetails() {
 
     const student = students.find(s => s.id === Number(id));
 
-    /** Ismlar bazada butunlay bosh harflarda saqlangan ("ABDUHAYEVA SHAHNOZA
-     *  ERKIN QIZI"). Bunday yozuv o'qishni qiyinlashtiradi, shuning uchun
-     *  ko'rsatishda oddiy yozuvga keltiriladi. Bazadagi ma'lumot o'zgarmaydi.
-     *  Aralash yozuvdagi ism (masalan "McKenzie") tegilmaydi. */
-    const displayName = (raw: string) => {
-        if (!raw || raw !== raw.toUpperCase()) return raw;
-        return raw.toLowerCase().replace(/(^|[\s\-])([a-zà-ÿo'g'\u2018\u2019])/g,
-            (_m, sep, ch) => sep + ch.toUpperCase());
-    };
+    // Ismni oddiy yozuvga keltirish — umumiy yordamchi (src/lib/displayName).
 
     // Startup only carries recent attendance, so pull this student's full history —
     // the profile shows every lesson they have attended, not just the last few weeks.

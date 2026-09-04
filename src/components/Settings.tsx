@@ -130,10 +130,10 @@ export default function Settings() {
             setBotInfo({ loading: false, error: "Token formati noto'g'ri" });
             return;
         }
-        
+
         let active = true;
         setBotInfo({ loading: true });
-        
+
         const fetchBot = async () => {
             try {
                 const res = await fetch(`https://api.telegram.org/bot${token}/getMe`);
@@ -663,20 +663,10 @@ export default function Settings() {
     return (
         <div className="space-y-6 animate-in fade-in duration-500">
             {/* Header */}
-            <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-800/50 shadow-sm overflow-hidden">
-                <div className="px-6 py-5 flex flex-col md:flex-row md:items-center justify-between gap-4">
-                    <div className="flex items-center gap-4">
-                        <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-[#1b6b6b] to-[#2e9c9c] flex items-center justify-center shadow-sm shadow-[#1b6b6b]/20">
-                            <Building2 size={22} className="text-white" />
-                        </div>
-                        <div>
-                            <h1 className="text-lg font-black text-gray-900 dark:text-white tracking-tight">{t('settings_title')}</h1>
-                            <p className="text-[11px] font-bold text-gray-400 uppercase tracking-wider mt-0.5">
-                                {t('settings_subtitle')}
-                            </p>
-                        </div>
-                    </div>
-                </div>
+            {/* Boshqa sahifalar bilan bir uslubda: ochiq fonda, ikonka kvadratisiz. */}
+            <div>
+                <h1 className="text-[26px] font-bold text-gray-900 dark:text-white tracking-tight leading-tight">{t('settings_title')}</h1>
+                <p className="text-[13px] text-gray-500 dark:text-gray-400 mt-1">{t('settings_subtitle')}</p>
             </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-4 gap-4 items-start">

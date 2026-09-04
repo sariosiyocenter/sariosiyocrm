@@ -112,7 +112,9 @@ export default function Dashboard() {
                 const d = new Date(p.date);
                 return d.getMonth() === m.month && d.getFullYear() === m.year;
             })
-            .reduce((acc, p) => acc + p.amount, 0) / 1000000; // In millions
+            // Faqat kirimlar: oylik hisoblash manfiy yozuv bo'lib, uni qo'shsak
+            // ustun manfiyga tushib ketadi (sentabrda -127 chiqqan edi).
+            .reduce((acc, p) => acc + (p.amount > 0 ? p.amount : 0), 0) / 1000000;
     });
 
     const chartLabels = last6Months.map(m => m.label);
@@ -149,6 +151,12 @@ export default function Dashboard() {
             return d >= startDate && d <= endDate;
         }).length;
     }, [leads, startDate, endDate]);
+
+    // Sana qo'lda yig'iladi: brauzerlarda 'uz-UZ' lokali yo'q, shuning uchun
+    // toLocaleDateString "M09 4, Fri" kabi chala matn qaytarardi.
+    const UZ_DAYS = ['Yakshanba', 'Dushanba', 'Seshanba', 'Chorshanba', 'Payshanba', 'Juma', 'Shanba'];
+    const UZ_MONTHS = ['yanvar', 'fevral', 'mart', 'aprel', 'may', 'iyun', 'iyul', 'avgust', 'sentabr', 'oktabr', 'noyabr', 'dekabr'];
+    const todayLabel = `${UZ_DAYS[new Date().getDay()]}, ${new Date().getDate()}-${UZ_MONTHS[new Date().getMonth()]}`;
 
     // ---- Referensdagi uchta asosiy ko'rsatkich va "Bugun hal qilinsin" ro'yxati.
     // Hammasi mavjud yozuvlardan hisoblanadi; ma'lumot bo'lmasa blok ko'rsatilmaydi.
@@ -262,7 +270,7 @@ export default function Dashboard() {
                             Xush kelibsiz, {(user?.name || '').split(' ')[0] || t('dashboard_title')}
                         </h1>
                         <p className="text-[13px] text-gray-500 dark:text-gray-400 mt-1">
-                            {new Date().toLocaleDateString('uz-UZ', { weekday: 'long', day: 'numeric', month: 'long' })}
+                            {todayLabel}
                             {todoItems.length > 0 && <> · <span className="num">{todoItems.length}</span> ta ish e'tiboringizni kutmoqda</>}
                         </p>
                     </div>
@@ -394,38 +402,6 @@ export default function Dashboard() {
                             </button>
                         </div>
 
-                        {/* Summary Cards */}
-                        <div className="grid grid-cols-3 gap-4 mb-6">
-                            {[
-                                // Only income has a real period-over-period figure. "Expected" is a
-                                // projection with nothing to compare against, and debt is a running
-                                // balance we keep no history of — both used to show invented
-                                // percentages, so they now show no trend rather than a false one.
-                                { label: t('income'), value: `${(periodIncome / 1000000).toFixed(1)}M`, trend: `${incomeTrend > 0 ? '+' : ''}${incomeTrend.toFixed(1)}%`, positive: incomeTrend >= 0, icon: TrendingUp },
-                                { label: t('expected'), value: `${(monthlyExpected / 1000000).toFixed(1)}M`, trend: null, positive: true, icon: Clock },
-                                { label: t('debt'), value: `${(totalDebt / 1000000).toFixed(1)}M`, trend: null, positive: totalDebt === 0, icon: TrendingDown },
-                            ].map((item, i) => (
-                                <div key={i} className="bg-gray-55 dark:bg-gray-900 rounded-xl p-4 border border-gray-100 dark:border-gray-800">
-                                    <div className="flex items-center justify-between mb-2">
-                                        <span className="text-[11px] font-bold text-gray-400 uppercase tracking-wider">{item.label}</span>
-                                        <item.icon size={14} className={item.positive ? 'text-emerald-500' : 'text-rose-500'} />
-                                    </div>
-                                    <div className="flex items-end justify-between">
-                                        <span className="text-lg font-black text-gray-900 dark:text-white tabular-nums">{item.value}</span>
-                                        {item.trend && (
-                                            <span className={`text-[10px] font-black px-1.5 py-0.5 rounded-md ${
-                                                item.positive
-                                                    ? 'text-emerald-600 bg-emerald-50 dark:text-emerald-400 dark:bg-emerald-950/20'
-                                                    : 'text-rose-600 bg-rose-50 dark:text-rose-400 dark:bg-rose-950/20'
-                                            }`}>
-                                                {item.trend}
-                                            </span>
-                                        )}
-                                    </div>
-                                </div>
-                            ))}
-                        </div>
-
                         {/* Chart Area */}
                         <div className="bg-gray-55 dark:bg-gray-900 rounded-xl p-4 border border-gray-100 dark:border-gray-800">
                             <div className="flex items-center justify-between mb-5">
@@ -479,7 +455,8 @@ export default function Dashboard() {
                         </div>
                     )}
 
-                    {/* Top Courses */}
+                    {/* Top Courses — bo'sh bo'lsa umuman ko'rsatilmaydi */}
+                    {topCourseStats.length > 0 && (
                     <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-800 p-4 shadow-sm">
                         <div className="mb-4">
                             <h3 className="text-[14px] font-semibold text-gray-900 dark:text-white">Eng ko'p tushum keltirgan kurslar</h3>
@@ -505,6 +482,7 @@ export default function Dashboard() {
                             )}
                         </div>
                     </div>
+                    )}
                 </div>
             </div>
 

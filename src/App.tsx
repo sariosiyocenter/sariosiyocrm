@@ -59,10 +59,10 @@ const PublicApply     = lazyRetry(() => import('./components/PublicApply'));
 
 function PageLoader() {
   return (
-    <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center">
       <div className="flex flex-col items-center gap-4">
         <div className="w-10 h-10 border-[3px] border-[#1b6b6b] border-t-transparent rounded-full animate-spin" />
-        <p className="text-[14px] text-gray-500 font-medium">Yuklanmoqda...</p>
+        <p className="text-[14px] text-gray-500 dark:text-gray-400 font-medium">Yuklanmoqda...</p>
       </div>
     </div>
   );

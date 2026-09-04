@@ -95,7 +95,7 @@ export default function Layout({ children, onLogout }: LayoutProps) {
                   : 'text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-gray-850'}`}
               >
                 <Icon size={20} strokeWidth={isActive ? 2.5 : 2} />
-                <span className={`text-[11px] leading-tight text-center line-clamp-1 ${isActive ? 'font-bold' : 'font-medium'}`}>
+                <span className={`text-[11px] leading-tight text-center line-clamp-2 whitespace-normal break-words ${isActive ? 'font-bold' : 'font-medium'}`}>
                   {item.label}
                 </span>
               </button>
