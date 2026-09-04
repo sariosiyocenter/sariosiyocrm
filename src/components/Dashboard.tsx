@@ -121,7 +121,8 @@ export default function Dashboard() {
 
     const courseStatsMap: { [key: string]: { name: string, students: number, revenue: number } } = {};
 
-    courses.filter(c => c.name !== 'birinchi').forEach(c => {
+    const PLACEHOLDER_COURSE_NAMES = ['birinchi', 'belgilanmagan', '-'];
+    courses.filter(c => !PLACEHOLDER_COURSE_NAMES.includes((c.name || '').trim().toLowerCase())).forEach(c => {
         const courseGroups = groups.filter(g => g.courseId === c.id);
         const studentCount = courseGroups.reduce((acc, g) => acc + (g.studentIds || []).length, 0);
         const revenue = studentCount * c.price;
@@ -428,20 +429,23 @@ export default function Dashboard() {
                         {/* Chart Area */}
                         <div className="bg-gray-55 dark:bg-gray-900 rounded-xl p-4 border border-gray-100 dark:border-gray-800">
                             <div className="flex items-center justify-between mb-5">
-                                <span className="text-[11px] font-bold text-gray-400 uppercase tracking-wider">So'nggi 6 oy (mln so'm)</span>
-                                <span className="text-[11px] font-bold text-[#1b6b6b] uppercase tracking-wider tabular-nums">Jami: {total6Months.toFixed(1)}M</span>
+                                <span className="text-[12px] text-gray-500 dark:text-gray-400">So'nggi 6 oy, mln so'm</span>
+                                <span className="text-[12px] text-gray-500 dark:text-gray-400">Jami <span className="num text-gray-800 dark:text-gray-100">{total6Months.toFixed(1)}</span> mln</span>
                             </div>
                             <div className="h-[150px] flex items-end gap-4">
                                 {chartDataValues.map((val, i) => (
-                                    <div key={i} className="flex-1 flex flex-col items-center gap-2 group/bar relative">
-                                        <div className="absolute -top-7 left-1/2 -translate-x-1/2 bg-gray-900 dark:bg-[#1e293b] text-white text-[11px] px-2 py-1 rounded-md opacity-0 group-hover/bar:opacity-100 transition-opacity whitespace-nowrap z-10 font-bold">
-                                            {val.toFixed(1)} mln
-                                        </div>
+                                    <div key={i} className="flex-1 flex flex-col items-center justify-end gap-1.5 h-full group/bar">
+                                        {/* Qiymat ustun tepasida doim ko'rinadi — avval u faqat
+                                            sichqoncha olib borilganda chiqardi, ya'ni grafikdan
+                                            aniq son o'qib bo'lmasdi. */}
+                                        <span className={`num text-[11px] ${val >= maxVal ? 'text-[#1b6b6b] dark:text-teal-400' : 'text-gray-400'}`}>
+                                            {val.toFixed(1)}
+                                        </span>
                                         <div
-                                            className="w-full bg-[#1b6b6b] rounded-lg hover:bg-[#2e9c9c] transition-colors cursor-pointer min-h-[4px]"
+                                            className={`w-full rounded-lg transition-colors cursor-pointer min-h-[4px] ${val >= maxVal ? 'bg-[#1b6b6b]' : 'bg-[#1b6b6b]/45 group-hover/bar:bg-[#1b6b6b]'}`}
                                             style={{ height: `${(val / maxVal) * 110}px` }}
                                         />
-                                        <span className="text-[11px] font-bold text-gray-400 uppercase tracking-wider">{chartLabels[i]}</span>
+                                        <span className="text-[11px] text-gray-400">{chartLabels[i]}</span>
                                     </div>
                                 ))}
                             </div>
@@ -475,56 +479,17 @@ export default function Dashboard() {
                         </div>
                     )}
 
-                    {/* Attention list */}
-                    <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-800 p-4 shadow-sm">
-                        <div className="flex items-center justify-between mb-4">
-                            <h3 className="text-xs font-black text-gray-900 dark:text-white flex items-center gap-2">
-                                <Activity size={16} className="text-rose-500" />
-                                {t('attention_title')}
-                            </h3>
-                            <span className="w-1.5 h-1.5 bg-rose-500 rounded-full animate-pulse"></span>
-                        </div>
-                        <div className="space-y-2">
-                            {[
-                                { title: `${students.filter(s => s.balance < 0).length} ${t('attention_debtors')}`, desc: t('attention_debt_desc'), icon: Clock, color: '#ef4444', path: '/finance' },
-                                { title: `${leads.filter(l => l.status === 'Yangi').length} ${t('stat_new_leads').toLowerCase()}`, desc: t('attention_leads_desc'), icon: Target, color: '#f59e0b', path: '/leads' },
-                                { title: groups[0]?.name || t('stat_groups'), desc: t('attention_top_group'), icon: Calendar, color: '#1b6b6b', path: '/courses' },
-                            ].map((item, i) => (
-                                <div
-                                    key={i}
-                                    onClick={() => navigate(item.path)}
-                                    className="flex items-center gap-3 p-3 rounded-xl hover:bg-gray-50 dark:hover:bg-[#0b111a] cursor-pointer transition-colors group border border-transparent hover:border-gray-100 dark:hover:border-[#232d42]"
-                                >
-                                    <div
-                                        className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0"
-                                        style={{ backgroundColor: item.color + '15', color: item.color }}
-                                    >
-                                        <item.icon size={16} />
-                                    </div>
-                                    <div className="flex-1 min-w-0">
-                                        <p className="text-xs font-bold text-gray-900 dark:text-white truncate tracking-tight">{item.title}</p>
-                                        <p className="text-[11px] text-gray-400 font-bold block mt-0.5 uppercase tracking-wider">{item.desc}</p>
-                                    </div>
-                                    <ChevronRight size={14} className="text-gray-300 group-hover:text-gray-500 transition-colors" />
-                                </div>
-                            ))}
-                        </div>
-                    </div>
-
                     {/* Top Courses */}
                     <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-800 p-4 shadow-sm">
-                        <div className="flex items-center justify-between mb-4">
-                            <h3 className="text-xs font-black text-gray-900 dark:text-white flex items-center gap-2">
-                                <BarChart3 size={16} className="text-[#1b6b6b]" />
-                                Top Kurslar
-                            </h3>
+                        <div className="mb-4">
+                            <h3 className="text-[14px] font-semibold text-gray-900 dark:text-white">Eng ko'p tushum keltirgan kurslar</h3>
                         </div>
                         <div className="space-y-4">
                             {topCourseStats.map((course, i) => (
                                 <div key={i}>
                                     <div className="flex items-center justify-between mb-1.5">
-                                        <span className="text-[11px] font-bold text-gray-700 dark:text-gray-300 truncate max-w-[130px] uppercase tracking-wide">{course.name}</span>
-                                        <span className="text-[11px] font-bold text-[#1b6b6b] tabular-nums">{(course.revenue / 1000000).toFixed(1)}M UZS</span>
+                                        <span className="text-[12px] text-gray-700 dark:text-gray-300 truncate">{course.name}</span>
+                                        <span className="num text-[12px] text-gray-500 dark:text-gray-400 shrink-0">{(course.revenue / 1000000).toFixed(1)} mln</span>
                                     </div>
                                     <div className="h-1.5 w-full bg-gray-50 dark:bg-gray-900 rounded-full overflow-hidden">
                                         <div
@@ -532,7 +497,7 @@ export default function Dashboard() {
                                             style={{ width: `${(course.revenue / (topCourseStats[0]?.revenue || 1)) * 100}%` }}
                                         />
                                     </div>
-                                    <p className="text-[11px] font-bold text-gray-400 uppercase tracking-wider mt-1">{course.students} ta o'quvchi</p>
+                                    <p className="text-[11px] text-gray-400 mt-1"><span className="num">{course.students}</span> ta o'quvchi</p>
                                 </div>
                             ))}
                             {topCourseStats.length === 0 && (
@@ -547,14 +512,11 @@ export default function Dashboard() {
             <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-800 p-5 shadow-sm">
                 <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-4 border-b border-gray-50 dark:border-gray-800 pb-4 mb-5">
                     <div>
-                        <h3 className="text-xs font-black text-gray-900 dark:text-white flex items-center gap-2">
-                            <BarChart3 size={16} className="text-[#1b6b6b]" />
-                            {t('reports_title')}
-                        </h3>
-                        <p className="text-[11px] font-bold text-gray-400 uppercase tracking-wider mt-0.5">Markaz tahliliy ko'rsatkichlari (Tanlangan muddat uchun)</p>
+                        <h3 className="text-[15px] font-semibold text-gray-900 dark:text-white">{t('reports_title')}</h3>
+                        <p className="text-[12px] text-gray-400 mt-0.5">Tanlangan muddat uchun markaz ko'rsatkichlari</p>
                     </div>
                     {/* Secondary Tabs for Reports */}
-                    <div className="flex overflow-x-auto no-scrollbar flex-nowrap gap-1 bg-gray-100/80 dark:bg-gray-900 p-1 rounded-full border border-gray-200/40 dark:border-gray-800 max-w-full">
+                    <div className="flex overflow-x-auto no-scrollbar flex-nowrap gap-1 bg-gray-55 dark:bg-gray-900 p-1 rounded-xl border border-gray-100 dark:border-gray-800 max-w-full">
                         {PRIMARY_REPORTS.map(r => (
                             <button
                                 key={r.id}
@@ -562,9 +524,9 @@ export default function Dashboard() {
                                     setActiveReportTab(r.id);
                                     setIsDropdownOpen(false);
                                 }}
-                                className={`flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-full text-[11px] font-black uppercase tracking-wider transition-all duration-200 cursor-pointer whitespace-nowrap transform active:scale-95 ${
+                                className={`flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-lg text-[12px] font-medium transition-colors cursor-pointer whitespace-nowrap ${
                                     activeReportTab === r.id
-                                        ? 'bg-white dark:bg-gray-800 text-[#1b6b6b] dark:text-emerald-400 shadow-sm border border-gray-200/50 dark:border-gray-800 scale-[1.01]'
+                                        ? 'bg-[#1b6b6b] text-white font-semibold'
                                         : 'text-gray-400 dark:text-gray-500 hover:text-gray-700 dark:hover:text-gray-300'
                                 }`}
                             >
@@ -577,9 +539,9 @@ export default function Dashboard() {
                         <div className="relative">
                             <button
                                 onClick={() => setIsDropdownOpen(!isDropdownOpen)}
-                                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[11px] font-black uppercase tracking-wider transition-all duration-200 cursor-pointer whitespace-nowrap transform active:scale-95 ${
+                                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[12px] font-medium transition-colors cursor-pointer whitespace-nowrap ${
                                     SECONDARY_REPORTS.some(r => r.id === activeReportTab)
-                                        ? 'bg-white dark:bg-gray-800 text-[#1b6b6b] dark:text-emerald-400 shadow-sm border border-gray-200/50 dark:border-gray-800 scale-[1.01]'
+                                        ? 'bg-[#1b6b6b] text-white font-semibold'
                                         : 'text-gray-400 dark:text-gray-500 hover:text-gray-700 dark:hover:text-gray-300'
                                 }`}
                             >

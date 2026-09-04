@@ -10,33 +10,22 @@ interface StatCardProps {
     icon: React.ReactNode;
     color?: string;
 }
-export function StatCard({ label, value, sub, trend, icon, color = 'sky' }: StatCardProps) {
-    const colorMap: Record<string, string> = {
-        sky: 'bg-sky-50 dark:bg-sky-900/30 text-sky-600 dark:text-sky-400',
-        emerald: 'bg-emerald-50 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400',
-        rose: 'bg-rose-50 dark:bg-rose-900/30 text-rose-600 dark:text-rose-400',
-        amber: 'bg-amber-50 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400',
-        violet: 'bg-violet-50 dark:bg-violet-900/30 text-violet-600 dark:text-violet-400',
-        indigo: 'bg-brand/10 dark:bg-brand/30 text-brand dark:text-brand',
-        gray: 'bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400',
-    };
+export function StatCard({ label, value, sub, trend }: StatCardProps) {
     return (
-        <div className="bg-white dark:bg-[#151c2c] rounded-2xl border border-slate-100 dark:border-[#232d42] p-4 shadow-sm hover:shadow-md transition-shadow flex flex-col gap-3">
-            <div className="flex items-center justify-between">
-                <span className="text-[11px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-wider">{label}</span>
-                <div className={`w-9 h-9 rounded-xl flex items-center justify-center ${colorMap[color] || colorMap.sky}`}>
-                    {icon}
-                </div>
-            </div>
-            <p className="text-3xl font-extrabold text-gray-900 dark:text-white tabular-nums leading-none">{value}</p>
-            <div className="flex items-center gap-2">
+        // Rangli ikonka kvadrati olib tashlandi: har bir kartada boshqa rangdagi
+        // kvadrat bo'lgani uchun to'rtta karta to'rt xil ohangda "qichqirar",
+        // asosiy raqam esa ular orasida yo'qolib ketardi.
+        <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700/50 px-5 py-4 transition-colors hover:border-gray-200 dark:hover:border-gray-700">
+            <span className="text-[12px] text-gray-500 dark:text-gray-400">{label}</span>
+            <p className="num text-[30px] font-bold text-gray-900 dark:text-white leading-none mt-1.5">{value}</p>
+            <div className="flex items-center gap-2 mt-2">
                 {trend !== undefined && (
-                    <span className={`flex items-center gap-1 text-[11px] font-bold px-2 py-0.5 rounded-lg ${trend >= 0 ? 'text-emerald-600 bg-emerald-50 dark:text-emerald-400 dark:bg-emerald-900/30' : 'text-rose-600 bg-rose-50 dark:text-rose-400 dark:bg-rose-900/30'}`}>
-                        {trend >= 0 ? <TrendingUp size={10} /> : <TrendingDown size={10} />}
-                        {Math.abs(trend)}%
+                    <span className={`flex items-center gap-0.5 text-[11px] font-medium ${trend >= 0 ? 'text-emerald-500' : 'text-rose-500'}`}>
+                        {trend >= 0 ? <TrendingUp size={11} /> : <TrendingDown size={11} />}
+                        <span className="num">{Math.abs(trend)}%</span>
                     </span>
                 )}
-                {sub && <span className="text-[11px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-wider">{sub}</span>}
+                {sub && <span className="text-[11px] text-gray-400 dark:text-gray-500">{sub}</span>}
             </div>
         </div>
     );
