@@ -6,6 +6,7 @@ import {
 import { useCRM } from '../context/CRMContext';
 import StatTile from './ui/StatTile';
 import { displayName } from '../lib/displayName';
+import Avatar from './ui/Avatar';
 import { useConfirm } from './ConfirmDialog';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useLang } from '../context/LanguageContext';
@@ -508,12 +509,7 @@ export default function StudentDetails() {
                 savolga javob berardi. Endi bitta qator. */}
             <div className="flex items-start justify-between gap-4 flex-wrap">
                 <div className="flex items-center gap-3.5 min-w-0">
-                    <div className="group/avatar relative w-12 h-12 rounded-full bg-brand/12 flex items-center justify-center text-brand font-semibold text-[15px] overflow-hidden shrink-0">
-                        {displayName(student.name).split(/\s+/).filter(Boolean).slice(0, 2).map(w => w[0]).join('').toUpperCase()}
-                        {student.photo && (
-                            <img src={student.photo} alt="" onError={e => { e.currentTarget.style.display = 'none'; }}
-                                className="absolute inset-0 w-full h-full object-cover object-top" />
-                        )}
+                    <Avatar name={student.name} photo={student.photo} size={48} fontSize={15} className="group/avatar">
                         {/* Rasm amallari avatarning ustida — alohida tugmalar
                             uyumi yasalmasin. */}
                         <div className="absolute inset-0 bg-gray-950/70 opacity-0 group-hover/avatar:opacity-100 transition-opacity flex items-center justify-center gap-1">
@@ -526,7 +522,7 @@ export default function StudentDetails() {
                                 <Camera size={11} />
                             </button>
                         </div>
-                    </div>
+                    </Avatar>
                     <div className="min-w-0">
                         <div className="flex items-center gap-2">
                             <h1 className="text-[22px] font-semibold text-matn tracking-tight leading-tight truncate">{displayName(student.name)}</h1>

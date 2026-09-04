@@ -7,6 +7,7 @@ import {
 import { useCRM } from '../context/CRMContext';
 import StatTile from './ui/StatTile';
 import { displayName } from '../lib/displayName';
+import Avatar from './ui/Avatar';
 import { useConfirm } from './ConfirmDialog';
 import { useLang } from '../context/LanguageContext';
 import { useNavigate } from 'react-router-dom';
@@ -332,15 +333,7 @@ export default function HRManagement() {
                                                 <tr key={u.id} className="group hover:bg-ichki transition-colors">
                                                     <td className="px-5 py-3 align-middle">
                                                         <div className="flex items-center gap-3 cursor-pointer min-w-0" onClick={() => navigate(profilePath)}>
-                                                            <div className="w-8 h-8 rounded-full overflow-hidden shrink-0">
-                                                                {u.photo ? (
-                                                                    <img src={u.photo} alt={u.name} className="w-full h-full object-cover object-top" />
-                                                                ) : (
-                                                                    <div className="w-full h-full bg-brand/12 flex items-center justify-center text-brand font-semibold text-[11px]">
-                                                                        {displayName(u.name || '').split(/\s+/).filter(Boolean).slice(0, 2).map((w: string) => w[0]).join('').toUpperCase()}
-                                                                    </div>
-                                                                )}
-                                                            </div>
+                                                            <Avatar name={u.name} photo={u.photo} size={32} fontSize={11} />
                                                             <div className="min-w-0">
                                                                 <p className="text-[13px] font-medium text-matn truncate group-hover:text-brand transition-colors">{displayName(u.name)}</p>
                                                                 {u.phone && <p className="num text-[11px] text-matn-xira truncate">{u.phone}</p>}

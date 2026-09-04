@@ -5,6 +5,7 @@ import { useConfirm } from './ConfirmDialog';
 import { useLang } from '../context/LanguageContext';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { displayName } from '../lib/displayName';
+import Avatar from './ui/Avatar';
 import PhotoCapture from './PhotoCapture';
 import MapPicker from './MapPicker';
 import { compressImage } from '../lib/image';
@@ -505,11 +506,6 @@ export default function Students() {
         return raw || '';
     };
 
-    // Ism bosh harflari — surat yo'q o'quvchilar uchun. Ilgari bo'sh doira
-    // turardi va ro'yxat teshik-teshik ko'rinardi.
-    const initials = (name: string) =>
-        displayName(name).split(/\s+/).filter(Boolean).slice(0, 2).map(w => w[0] || '').join('').toUpperCase();
-
     // Davomat foizi mavjud yozuvlardan. "Dars bo'lmadi" hisobga olinmaydi,
     // chunki bu o'quvchining aybi emas. Yozuvi yo'q o'quvchida foiz
     // ko'rsatilmaydi — nol deb yozish yolg'on bo'lardi.
@@ -871,14 +867,7 @@ export default function Students() {
                                     <td className="px-4 py-2.5 num text-[12px] text-matn-xira">{student.id}</td>
                                     <td className="px-4 py-2.5">
                                         <div className="flex items-center gap-2.5 min-w-0">
-                                            <div className="relative w-7 h-7 rounded-full bg-brand/12 flex items-center justify-center text-brand font-semibold text-[10px] overflow-hidden shrink-0">
-                                                {initials(student.name)}
-                                                {student.photo && (
-                                                    <img src={student.photo} alt="" loading="lazy" decoding="async"
-                                                        onError={e => { e.currentTarget.style.display = 'none'; }}
-                                                        className="absolute inset-0 w-full h-full object-cover" />
-                                                )}
-                                            </div>
+                                            <Avatar name={student.name} photo={student.photo} size={28} fontSize={10} />
                                             <div className="min-w-0">
                                                 <p className="text-[13px] text-matn truncate group-hover:text-brand transition-colors">
                                                     {displayName(student.name)}
