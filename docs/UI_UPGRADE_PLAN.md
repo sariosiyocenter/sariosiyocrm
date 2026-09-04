@@ -41,6 +41,65 @@ Hamma narsa `src/index.css` ichidagi `@theme` tokenlaridan chiqadi. Komponentlar
 | Sirt qatlamlari | `bg-white` · `bg-gray-55` · `dark:bg-gray-800` · `dark:bg-gray-900` aralash | 3 qatlam: `--surface-0` (fon), `--surface-1` (kartochka), `--surface-2` (kartochka ichi) | ⬜ |
 | Chegara | `gray-100` / `gray-700/50` / `gray-800/50` aralash | `--line` bitta token, ikkala mavzuda | ⬜ |
 
+### 1.1a Kelishilgan palitra — 22 token
+
+Chizma tasdiqlangan (kanvas: `Komponentlar.dc.html`). Har token bitta ma'noni
+bildiradi va ikkala mavzuda bir xil ma'noni saqlaydi — shuning uchun komponent
+mavzuni bilishi shart emas, faqat tokenni chaqiradi.
+
+| Token | Ma'nosi | Qorong'u | Yorug' |
+|---|---|---|---|
+| `fon` | sahifa foni | `#0f1216` | `#f4f6f5` |
+| `sirt` | kartochka | `#171c25` | `#ffffff` |
+| `sirt-2` | chap va yuqori panel | `#131720` | `#ffffff` |
+| `ichki` | kartochka ichidagi maydon, input | `#181d26` | `#f4f6f5` |
+| `chiziq` | asosiy chegara | `#232a35` | `#e3e8e5` |
+| `chiziq-kuchli` | tugma va input chegarasi | `#2b323d` | `#dbe2de` |
+| `chiziq-mayin` | jadval qatorlari orasi | `#1e242e` | `#eaefec` |
+| `matn` | asosiy matn | `#e8ebef` | `#16211d` |
+| `matn-2` | ikkilamchi matn, jadval qiymati | `#c3cad4` | `#3d4b45` |
+| `matn-sokin` | ustun sarlavhasi, izoh | `#8b93a1` | `#71827b` |
+| `matn-xira` | eng past daraja, yordamchi | `#6b7482` | `#8a978f` |
+| `brend` | asosiy amal, faol holat | `#3ddad0` | `#0f7a6e` |
+| `brend-ust` | brend ustidagi matn | `#0d1418` | `#ffffff` |
+| `brend-fon` | brendning yumshoq foni, avatar | `#16302f` | `#ddefeb` |
+| `yaxshi` | ijobiy qiymat, to'langan | `#3ddc97` | `#17803d` |
+| `yaxshi-fon` | ijobiy fon | `#14302a` | `#dcf1e3` |
+| `ogoh` | e'tibor talab qiladi | `#ffb547` | `#a86a00` |
+| `ogoh-fon` | ogohlantirish foni | `#32281a` | `#fdf0dc` |
+| `xato` | qarz, xato, salbiy | `#ff5d6c` | `#b4231f` |
+| `xato-fon` | xato kartochkasi foni | `#2a1a1e` | `#fceeec` |
+| `xato-chiziq` | xato kartochkasi chegarasi | `#4a2830` | `#f6d5d2` |
+| `xato-mayin` | qizil fon ustidagi matn | `#ff8a95` | `#a45a54` |
+
+Tekshirildi: yettita ekranning hech birida shu ro'yxatdan tashqari rang yo'q
+(`design/tekshir.py`).
+
+### 1.1b Chizmadan chiqqan qoidalar
+
+Bular ekranlarni chizishda topilgan va tuzatilgan xatolar. Kodda ham xuddi
+shunday bo'lishi kerak.
+
+1. **Sahifa pastida o'lik bo'shliq bo'lmaydi.** Mazmun ramkani to'ldirishi
+   kerak: ro'yxat yetarlicha qator ko'rsatadi, kartochkalar mazmunga teng.
+   Aksincha qilish ham xato — qatorlarni cho'zib bo'shliqni yopish 4 ta
+   qatorni 130px ga aylantiradi.
+2. **Har bir progress chizig'i tagida u nimaning ulushi ekani yozilishi
+   shart.** Izohsiz chiziq hech narsa anglatmaydi.
+3. **Ogohlantirish rangi raqamning o'ziga tushmaydi**, izohga tushadi.
+   «Guruhlar 5» sariq bo'lsa, go'yo 5 yomon son. Muammo izohda: bittasiga
+   ustoz yo'q.
+4. **Katta raqamlar monoshriftda emas.** 27px da JetBrains Mono «0 , 5» bo'lib
+   yoyilib ketadi. Jadval ustunlari — `.num` (mono), katta ko'rsatkichlar —
+   `.raqam` (Sora + `tabular-nums`).
+5. **0% ko'rsatkichda chiziq umuman chizilmaydi.** Ingichka dumcha go'yo biror
+   ish qilingandek ko'rinadi.
+6. **Grafik o'qi qiymat oralig'iga moslanadi.** Davomat 47–58 orasida
+   o'zgarsa, noldan chizilgan ustunlar bir xil bo'lib qoladi va grafik hech
+   narsa ko'rsatmaydi.
+7. **Ro'yxatdagi bog'lanish ustuni butunlay havola rangida bo'lmaydi** —
+   12 ta ko'k qator ko'zni charchatadi. Kichik belgi (chip) shaklida.
+
 ### 1.2 Tipografika
 
 | | Hozir | Bo'lishi kerak | Holat |
@@ -194,6 +253,8 @@ Bazaga kerak maydonlar (qaror 2a bo'yicha qo'shiladi): `Course.level`, `Course.d
 5. Referens — yo'nalish, nusxa emas: bizdagisi yaxshiroq bo'lsa (masalan Dashboard sana filtri) — qoladi.
 
 ## 5. Ketma-ketlik — keyingi qadamlar
+
+Dizayn bosqichi yakunlandi: vizual tizim va yettita ekran chizilib, tasdiqlandi. Endi kod shu chizmalarga keltiriladi.
 
 ```
 1-bosqich  tokenlar: semantik ranglar, sirt qatlamlari, chegara, o'lcham shkalasi   (M)
