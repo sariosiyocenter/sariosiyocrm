@@ -503,6 +503,89 @@ export default function StudentDetails() {
                 {t('back')}
             </button>
 
+            {/* Sahifa sarlavhasi. Ilgari bu ma'lumot chap ustundagi baland
+                kartochkada turardi va o'ngdagi ko'rsatkichlar bilan bir xil
+                savolga javob berardi. Endi bitta qator. */}
+            <div className="flex items-start justify-between gap-4 flex-wrap">
+                <div className="flex items-center gap-3.5 min-w-0">
+                    <div className="group/avatar relative w-12 h-12 rounded-full bg-brand/12 flex items-center justify-center text-brand font-semibold text-[15px] overflow-hidden shrink-0">
+                        {displayName(student.name).split(/\s+/).filter(Boolean).slice(0, 2).map(w => w[0]).join('').toUpperCase()}
+                        {student.photo && (
+                            <img src={student.photo} alt="" onError={e => { e.currentTarget.style.display = 'none'; }}
+                                className="absolute inset-0 w-full h-full object-cover object-top" />
+                        )}
+                        {/* Rasm amallari avatarning ustida — alohida tugmalar
+                            uyumi yasalmasin. */}
+                        <div className="absolute inset-0 bg-gray-950/70 opacity-0 group-hover/avatar:opacity-100 transition-opacity flex items-center justify-center gap-1">
+                            <label className="w-6 h-6 rounded-md bg-white/15 hover:bg-white/30 text-white flex items-center justify-center cursor-pointer transition-colors" title={t('upload')}>
+                                <input type="file" className="hidden" accept="image/*" onChange={handlePhotoUpload} />
+                                <ImageIcon size={11} />
+                            </label>
+                            <button onClick={() => setIsPhotoModalOpen(true)} title={t('take_photo')}
+                                className="w-6 h-6 rounded-md bg-white/15 hover:bg-white/30 text-white flex items-center justify-center cursor-pointer transition-colors">
+                                <Camera size={11} />
+                            </button>
+                        </div>
+                    </div>
+                    <div className="min-w-0">
+                        <div className="flex items-center gap-2">
+                            <h1 className="text-[22px] font-semibold text-matn tracking-tight leading-tight truncate">{displayName(student.name)}</h1>
+                            <button onClick={handleStartEdit} title={t('edit')} className="text-matn-xira hover:text-brand cursor-pointer shrink-0">
+                                <Edit size={13} />
+                            </button>
+                        </div>
+                        <div className="flex items-center gap-2 mt-1">
+                            <span className="num text-[12px] text-matn-xira">&#8470;{student.id}</span>
+                            <span className="w-1 h-1 rounded-full bg-matn-xira" />
+                            <span className={`px-2 py-0.5 rounded-md text-[11px] ${
+                                student.status === 'Faol' ? 'bg-yaxshi-fon text-yaxshi' :
+                                student.status === 'Sinov' ? 'bg-ogoh-fon text-ogoh' :
+                                student.status === 'Passiv' ? 'bg-xato-fon text-xato' :
+                                student.status === 'Muzlatilgan' ? 'bg-brand/12 text-brand' :
+                                'bg-ichki text-matn-sokin'
+                            }`}>
+                                {student.status === 'Faol' ? t('status_active') :
+                                 student.status === 'Arxiv' ? t('status_archive') :
+                                 student.status === 'Sinov' ? t('status_test') :
+                                 student.status === 'Muzlatilgan' ? t('status_frozen') :
+                                 student.status === 'Passiv' ? t('status_passive') :
+                                 student.status === 'Bitiruvchi' ? t('status_graduated') :
+                                 student.status === 'Sertifikatli' ? t('status_certified') :
+                                 student.status}
+                            </span>
+                            {[student.studentSchool, student.orgType].filter(Boolean).length > 0 && (
+                                <>
+                                    <span className="w-1 h-1 rounded-full bg-matn-xira" />
+                                    <span className="text-[12px] text-matn-sokin truncate">
+                                        {[student.studentSchool, student.orgType].filter(Boolean).join(' \u00b7 ')}
+                                    </span>
+                                </>
+                            )}
+                        </div>
+                    </div>
+                </div>
+
+                {/* Eng ko'p ishlatiladigan uchta amal */}
+                <div className="flex items-center gap-2 shrink-0">
+                    <button onClick={() => setShowPaymentModal(true)}
+                        className="h-9 px-4 bg-brand hover:bg-brand-dark text-white rounded-lg text-[13px] font-semibold transition-colors cursor-pointer">
+                        {t('add_payment')}
+                    </button>
+                    <a href={student.phone ? `tel:${student.phone.replace(/\s/g, '')}` : undefined}
+                        aria-disabled={!student.phone}
+                        title={student.phone || t('phone_not_found')}
+                        className={`w-9 h-9 flex items-center justify-center rounded-lg border transition-colors ${student.phone
+                            ? 'border-chiziq-kuchli text-brand hover:bg-brand hover:text-white cursor-pointer'
+                            : 'border-chiziq text-matn-xira pointer-events-none'}`}>
+                        <Phone size={15} />
+                    </a>
+                    <button onClick={() => handleSendSms(student.phone, 'manual')} title="SMS yuborish"
+                        className="w-9 h-9 flex items-center justify-center rounded-lg border border-chiziq-kuchli text-brand hover:bg-brand hover:text-white transition-colors cursor-pointer">
+                        <Send size={15} />
+                    </button>
+                </div>
+            </div>
+
             <div className="grid grid-cols-1 lg:grid-cols-4 gap-4 items-start">
                 {/* Left Profile Card */}
                 <div className="lg:col-span-1 space-y-4">
@@ -517,35 +600,7 @@ export default function StudentDetails() {
                             kartochkaning eng baland ovozli qismiga aylanib qolgandi —
                             asosiy narsa esa ism va balans. Endi u past va shaffof
                             qatlam: brend rangi sezilib turadi, lekin qichqirmaydi. */}
-                        <div className="h-20 relative bg-brand/10 dark:bg-brand/20">
-                            <div className="absolute inset-0 overflow-hidden bg-gradient-to-b from-[#1b6b6b]/25 to-transparent dark:from-[#1b6b6b]/30" />
-                            <div className="absolute inset-x-0 top-0 h-0.5 bg-brand" />
-                            <div className="absolute -bottom-9 left-1/2 -translate-x-1/2 rounded-[1.3rem] bg-sirt p-1 shadow-sm">
-                                <div className="group/avatar relative w-24 h-24 rounded-[1.15rem] bg-ichki border border-chiziq flex items-center justify-center text-brand font-bold text-3xl overflow-hidden">
-                                    {student.photo ? (
-                                        <img src={student.photo} alt={student.name} className="w-full h-full object-cover object-top" />
-                                    ) : (
-                                        student.name.charAt(0).toUpperCase()
-                                    )}
-                                    {/* Rasm amallari alohida tugmalar emas, avatarning
-                                        ustida — chap ustundagi tugmalar uyumi kamaydi. */}
-                                    <div className="absolute inset-0 bg-gray-950/70 opacity-0 group-hover/avatar:opacity-100 transition-opacity flex items-center justify-center gap-1.5">
-                                        <label className="w-7 h-7 rounded-lg bg-white/15 hover:bg-white/30 text-white flex items-center justify-center cursor-pointer transition-colors" title={t('upload')}>
-                                            <input type="file" className="hidden" accept="image/*" onChange={handlePhotoUpload} />
-                                            <ImageIcon size={13} />
-                                        </label>
-                                        <button
-                                            onClick={() => setIsPhotoModalOpen(true)}
-                                            title={t('take_photo')}
-                                            className="w-7 h-7 rounded-lg bg-white/15 hover:bg-white/30 text-white flex items-center justify-center cursor-pointer transition-colors"
-                                        >
-                                            <Camera size={13} />
-                                        </button>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                        <div className="pt-14 pb-5 px-6 text-center">
+                        <div className={isEditing ? "px-5 py-4" : "hidden"}>
                             {isEditing ? (
                                 <div className="space-y-3">
                                     <div>
@@ -586,82 +641,23 @@ export default function StudentDetails() {
                                         </select>
                                     </div>
                                 </div>
-                            ) : (
-                                <>
-                                    {/* Uzun o'zbek ismlari bosh harflarda o'qilmaydi,
-                                        shuning uchun oddiy yozuvda qoldirildi. */}
-                                    <div className="flex items-center justify-center gap-1.5">
-                                        <h2 className="text-[16px] font-semibold text-matn tracking-tight leading-snug">{displayName(student.name)}</h2>
-                                        <button onClick={handleStartEdit} title={t('edit')} className="text-matn-xira hover:text-brand cursor-pointer shrink-0">
-                                            <Edit size={12} />
-                                        </button>
-                                    </div>
-                                    <div className="mt-2 flex items-center justify-center gap-2">
-                                        <span className="num text-[11px] font-semibold text-matn-xira">#{student.id}</span>
-                                        <span className="w-1 h-1 rounded-full bg-gray-300 dark:bg-gray-650" />
-                                        <span className={`px-2 py-0.5 rounded-md text-[11px] font-medium border ${
-                                            student.status === 'Faol' ? 'bg-emerald-50 text-emerald-600 border-emerald-100 dark:bg-emerald-950/20 dark:text-emerald-400' :
-                                            student.status === 'Sinov' ? 'bg-amber-50 text-amber-600 border-amber-100 dark:bg-amber-950/20 dark:text-amber-400' :
-                                            student.status === 'Muzlatilgan' ? 'bg-sky-50 text-sky-650 border-sky-100 dark:bg-sky-950/20 dark:text-sky-455' :
-                                            student.status === 'Passiv' ? 'bg-rose-50 text-rose-600 border-rose-100 dark:bg-rose-950/20 dark:text-rose-400' :
-                                            student.status === 'Bitiruvchi' ? 'bg-purple-50 text-purple-600 border-purple-100 dark:bg-purple-950/20 dark:text-purple-400' :
-                                            student.status === 'Sertifikatli' ? 'bg-brand/10 text-brand border-brand/20 dark:bg-brand/20 dark:text-brand' :
-                                            'bg-gray-55 text-matn-xira border-gray-100 dark:bg-gray-900/50'
-                                        }`}>
-                                            {student.status === 'Faol' ? t('status_active') :
-                                             student.status === 'Arxiv' ? t('status_archive') :
-                                             student.status === 'Sinov' ? t('status_test') :
-                                             student.status === 'Muzlatilgan' ? t('status_frozen') :
-                                             student.status === 'Passiv' ? t('status_passive') :
-                                             student.status === 'Bitiruvchi' ? t('status_graduated') :
-                                             student.status === 'Sertifikatli' ? t('status_certified') :
-                                             student.status}
-                                        </span>
-                                    </div>
-                                </>
-                            )}
+                            ) : null}
                         </div>
 
                         <div className="px-6 pb-5 space-y-3 border-t border-chiziq pt-4">
-                            <div className={`px-4 py-3.5 rounded-2xl border flex flex-col items-center ${student.balance >= 0
-                                ? 'bg-emerald-50/40 border-emerald-100 dark:bg-emerald-950/15 dark:border-emerald-900/30 text-emerald-600 dark:text-emerald-400'
-                                : 'bg-rose-50/40 border-rose-100 dark:bg-rose-950/15 dark:border-rose-900/30 text-rose-600 dark:text-rose-400'}`}>
-                                <span className="text-[12px] text-matn-sokin mb-1">{t('filter_balance')}</span>
-                                <span className="num text-[26px] font-bold tracking-tight leading-none">{student.balance.toLocaleString()}</span>
-                                <span className="text-[11px] text-matn-xira mt-1">so'm</span>
+                            <div className={`px-4 py-3.5 rounded-xl border ${student.balance >= 0
+                                ? 'bg-yaxshi-fon border-yaxshi/25 text-yaxshi'
+                                : 'bg-xato-fon border-xato-chiziq text-xato'}`}>
+                                <span className="text-[12px] text-matn-sokin block">{t('filter_balance')}</span>
+                                <div className="flex items-baseline mt-1">
+                                    <span className="raqam text-[24px] font-semibold leading-none">{student.balance.toLocaleString('ru-RU')}</span>
+                                    <span className="text-[12px] text-matn-xira ml-1.5">so'm</span>
+                                </div>
                                 {debtDays !== null && (
-                                    <span className="text-[11px] text-rose-500/80 dark:text-rose-400/80 mt-1.5">
-                                        <span className="num">{debtDays}</span> kundan beri muddati o'tgan
+                                    <span className="text-[11px] text-xato-mayin block mt-1.5">
+                                        <span className="raqam">{debtDays}</span> kundan beri muddati o'tgan
                                     </span>
                                 )}
-                            </div>
-
-                            {/* Eng ko'p ishlatiladigan uchta amal — to'lov qabul qilish,
-                                qo'ng'iroq va SMS — profilning eng tepasida. */}
-                            <div className="flex items-center gap-2">
-                                <button
-                                    onClick={() => setShowPaymentModal(true)}
-                                    className="flex-1 py-2.5 bg-brand hover:bg-brand-dark text-white rounded-xl text-[13px] font-semibold transition-colors cursor-pointer"
-                                >
-                                    {t('add_payment')}
-                                </button>
-                                <a
-                                    href={student.phone ? `tel:${student.phone.replace(/\s/g, '')}` : undefined}
-                                    aria-disabled={!student.phone}
-                                    title={student.phone || t('phone_not_found')}
-                                    className={`w-10 h-10 flex items-center justify-center rounded-xl border transition-colors shrink-0 ${student.phone
-                                        ? 'bg-ichki border-chiziq text-brand hover:bg-brand hover:text-white cursor-pointer'
-                                        : 'bg-ichki border-chiziq text-gray-300 pointer-events-none'}`}
-                                >
-                                    <Phone size={15} />
-                                </a>
-                                <button
-                                    onClick={() => handleSendSms(student.phone, 'manual')}
-                                    title="SMS yuborish"
-                                    className="w-11 h-11 flex items-center justify-center rounded-xl border bg-ichki border-chiziq text-brand hover:bg-brand hover:text-white transition-all cursor-pointer shrink-0"
-                                >
-                                    <Send size={15} />
-                                </button>
                             </div>
 
                             {student.photo && (
