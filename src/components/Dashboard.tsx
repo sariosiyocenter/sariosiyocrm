@@ -1,8 +1,8 @@
 import React, { useState, useMemo } from 'react';
-import { 
-  Users, GraduationCap, Target, 
-  TrendingUp, TrendingDown, ArrowUpRight, 
-  Activity, Calendar, Clock, ChevronRight, BookOpen, BarChart3, LayoutDashboard, FileText, UserMinus, Award, Star, MoreHorizontal, ChevronDown
+import {
+  Users, GraduationCap, Target,
+  TrendingUp, TrendingDown, ArrowUpRight,
+  Activity, Calendar, Clock, ChevronRight, BookOpen, BarChart3, FileText, UserMinus, Award, Star, MoreHorizontal, ChevronDown
 } from 'lucide-react';
 import { useCRM } from '../context/CRMContext';
 import { useLang } from '../context/LanguageContext';
@@ -18,7 +18,7 @@ import GraduatesReport from './reports/GraduatesReport';
 import CenterStatsReport from './reports/CenterStatsReport';
 
 export default function Dashboard() {
-    const { students, groups, teachers, leads, payments, courses } = useCRM();
+    const { students, groups, teachers, leads, payments, courses, rooms, attendances, user } = useCRM();
     const { t } = useLang();
     const navigate = useNavigate();
 
@@ -92,7 +92,7 @@ export default function Dashboard() {
     const totalDebt = students
         .filter(s => s.balance < 0)
         .reduce((acc, s) => acc + Math.abs(s.balance), 0);
-    
+
 
     const monthNames = [t('month_jan'), t('month_feb'), t('month_mar'), t('month_apr'), t('month_may'), t('month_jun'), t('month_jul'), t('month_aug'), t('month_sep'), t('month_oct'), t('month_nov'), t('month_dec')];
     const last6Months = Array.from({ length: 6 }, (_, i) => {
@@ -120,13 +120,13 @@ export default function Dashboard() {
     const maxVal = Math.max(...chartDataValues, 0.1);
 
     const courseStatsMap: { [key: string]: { name: string, students: number, revenue: number } } = {};
-    
+
     courses.filter(c => c.name !== 'birinchi').forEach(c => {
         const courseGroups = groups.filter(g => g.courseId === c.id);
         const studentCount = courseGroups.reduce((acc, g) => acc + (g.studentIds || []).length, 0);
         const revenue = studentCount * c.price;
         const normalizedKey = c.name.trim().toUpperCase();
-        
+
         if (courseStatsMap[normalizedKey]) {
             courseStatsMap[normalizedKey].students += studentCount;
             courseStatsMap[normalizedKey].revenue += revenue;
@@ -149,12 +149,80 @@ export default function Dashboard() {
         }).length;
     }, [leads, startDate, endDate]);
 
-    const stats = [
-        { label: t('stat_active_students'), value: students.filter(s => s.status === 'Faol').length, icon: GraduationCap, accent: 'var(--brand-color)', path: '/students' },
-        { label: t('stat_groups'), value: groups.length, icon: Users, accent: 'var(--brand-color)', path: '/courses' },
-        { label: t('stat_teachers'), value: teachers.filter(t => t.status === 'Faol').length, icon: BookOpen, accent: 'var(--brand-color)', path: '/teachers' },
-        { label: t('stat_new_leads'), value: periodNewLeads, icon: Target, accent: 'var(--brand-color)', path: '/leads' },
-    ];
+    // ---- Referensdagi uchta asosiy ko'rsatkich va "Bugun hal qilinsin" ro'yxati.
+    // Hammasi mavjud yozuvlardan hisoblanadi; ma'lumot bo'lmasa blok ko'rsatilmaydi.
+
+    const activeStudents = students.filter(s => s.status === 'Faol').length;
+
+    // Joriy oyda qo'shilgan o'quvchilar — "+N" ko'rsatkichi uchun.
+    const monthPrefix = new Date().toISOString().slice(0, 7);
+    const joinedThisMonth = students.filter(s => (s.joinedDate || '').startsWith(monthPrefix)).length;
+
+    // Umumiy o'rin — guruhlarga biriktirilgan xonalar sig'imi yig'indisi.
+    // Xona biriktirilmagan bo'lsa o'rin soni noma'lum, shuning uchun chiziq chizilmaydi.
+    const totalSeats = groups.reduce((n, g) => n + (rooms.find(r => r.id === g.room)?.capacity || 0), 0);
+    const seatsPct = totalSeats > 0 ? Math.min(100, Math.round((activeStudents / totalSeats) * 100)) : null;
+
+    // Tushum kutilgan oylik yuklamaga nisbatan.
+    const incomePct = monthlyExpected > 0 ? Math.min(100, Math.round((periodIncome / monthlyExpected) * 100)) : null;
+
+    // Qarzdorlik: kim qancha vaqtdan beri to'lov qilmagan.
+    const debtors = students.filter(s => (s.balance || 0) < 0);
+    const daysSinceLastPayment = (studentId: number) => {
+        const dates = payments.filter(p => p.studentId === studentId && p.amount > 0).map(p => p.date).sort();
+        const last = dates[dates.length - 1];
+        if (!last) return null;
+        const d = new Date(last);
+        if (isNaN(d.getTime())) return null;
+        return Math.floor((Date.now() - d.getTime()) / 86400000);
+    };
+    const staleDebtors = debtors.filter(s => {
+        const d = daysSinceLastPayment(s.id);
+        return d === null || d > 30;
+    });
+    const staleDebtSum = staleDebtors.reduce((n, s) => n + Math.abs(s.balance || 0), 0);
+
+    // Uzoq vaqt javobsiz qolgan lidlar.
+    const openLeads = leads.filter(l => l.status !== "To'lov qildi" && l.status !== 'Kelishdi');
+    const leadAge = (l: any) => {
+        const d = new Date(l.createdAt);
+        return isNaN(d.getTime()) ? null : Math.floor((Date.now() - d.getTime()) / 86400000);
+    };
+    const staleLeads = openLeads.filter(l => (leadAge(l) ?? 0) >= 2);
+    const oldestLeadAge = staleLeads.reduce((m, l) => Math.max(m, leadAge(l) ?? 0), 0);
+
+    // Yo'qlamasi kiritilmagan guruhlar (oxirgi 3 kun ichida yozuv yo'q).
+    const groupsMissingAttendance = groups.filter(g => {
+        const dates = (attendances || []).filter(a => a.groupId === g.id).map(a => a.date).sort();
+        const last = dates[dates.length - 1];
+        if (!last) return true;
+        const d = new Date(last);
+        return isNaN(d.getTime()) ? true : Math.floor((Date.now() - d.getTime()) / 86400000) > 3;
+    });
+
+    const todoItems = [
+        staleDebtors.length > 0 && {
+            key: 'debt',
+            tone: 'bg-rose-500',
+            title: `${staleDebtors.length} ta o'quvchi 30+ kun to'lov qilmagan`,
+            sub: `Jami ${(staleDebtSum / 1000000).toFixed(1)} mln so'm`,
+            path: '/students?filter=debt',
+        },
+        staleLeads.length > 0 && {
+            key: 'leads',
+            tone: 'bg-amber-500',
+            title: `${staleLeads.length} ta lid javobsiz qolgan`,
+            sub: `Eng qadimgisi — ${oldestLeadAge} kun oldin`,
+            path: '/leads',
+        },
+        groupsMissingAttendance.length > 0 && {
+            key: 'att',
+            tone: 'bg-sky-500',
+            title: `${groupsMissingAttendance.length} ta guruh davomati kiritilmagan`,
+            sub: groupsMissingAttendance.slice(0, 2).map(g => g.name).join(', '),
+            path: `/courses/${groupsMissingAttendance[0].id}`,
+        },
+    ].filter(Boolean) as { key: string; tone: string; title: string; sub: string; path: string }[];
 
     const PRIMARY_REPORTS = [
         { id: 'stats', label: t('rep_stats'), icon: <FileText size={12} /> },
@@ -184,19 +252,18 @@ export default function Dashboard() {
 
     return (
         <div className="space-y-6 animate-in fade-in duration-500">
-            {/* Header */}
-            <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm overflow-hidden">
-                <div className="px-6 py-5 flex flex-col lg:flex-row lg:items-center justify-between gap-4">
-                    <div className="flex items-center gap-4">
-                        <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-[#1b6b6b] to-[#2e9c9c] flex items-center justify-center shadow-sm shadow-[#1b6b6b]/20">
-                            <LayoutDashboard size={22} className="text-white" />
-                        </div>
-                        <div>
-                            <h1 className="text-lg font-black text-gray-900 dark:text-white tracking-tight">{t('dashboard_title')}</h1>
-                            <p className="text-[11px] font-bold text-gray-400 uppercase tracking-wider mt-0.5">
-                                {t('dashboard_subtitle')}
-                            </p>
-                        </div>
+            {/* Sarlavha. Referensdagidek: salomlashuv, ostida bugungi holat,
+                o'ngda davr almashtirgichi. */}
+            <div>
+                <div className="flex flex-col lg:flex-row lg:items-start justify-between gap-4">
+                    <div>
+                        <h1 className="text-[26px] font-bold text-gray-900 dark:text-white tracking-tight leading-tight">
+                            Xush kelibsiz, {(user?.name || '').split(' ')[0] || t('dashboard_title')}
+                        </h1>
+                        <p className="text-[13px] text-gray-500 dark:text-gray-400 mt-1">
+                            {new Date().toLocaleDateString('uz-UZ', { weekday: 'long', day: 'numeric', month: 'long' })}
+                            {todoItems.length > 0 && <> · <span className="num">{todoItems.length}</span> ta ish e'tiboringizni kutmoqda</>}
+                        </p>
                     </div>
 
                     {/* Presets and Custom Inputs */}
@@ -206,14 +273,14 @@ export default function Dashboard() {
                             {['this_month', 'last_30', 'this_year', 'all'].map((type) => {
                                 const label = type === 'this_month' ? t('preset_this_month') : type === 'last_30' ? t('preset_30_days') : type === 'this_year' ? t('preset_this_year') : t('preset_all');
                                 return (
-                                    <button 
+                                    <button
                                         key={type}
                                         type="button"
                                         onClick={() => handlePreset(type as any)}
-                                        className={`px-3 py-1.5 rounded-lg text-[11px] font-extrabold uppercase tracking-wider transition-all cursor-pointer ${
+                                        className={`px-3 py-1.5 rounded-lg text-[12px] font-medium transition-colors cursor-pointer ${
                                             selectedPreset === type
-                                                ? 'bg-[#1b6b6b] text-white shadow'
-                                                : 'text-gray-400 hover:text-gray-600'
+                                                ? 'bg-[#1b6b6b] text-white'
+                                                : 'text-gray-400 hover:text-gray-600 dark:hover:text-gray-200'
                                         }`}
                                     >
                                         {label}
@@ -242,29 +309,73 @@ export default function Dashboard() {
                 </div>
             </div>
 
-            {/* Quick Stats Grid */}
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-                {stats.map((stat, idx) => {
-                    const Icon = stat.icon;
-                    return (
-                        <div
-                            key={idx}
-                            onClick={() => navigate(stat.path)}
-                            className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-800 p-4 hover:shadow-md transition-all cursor-pointer group flex items-center justify-between"
-                        >
-                            <div>
-                                <span className="text-[11px] font-extrabold text-gray-400 uppercase tracking-wider block mb-1">{stat.label}</span>
-                                <h4 className="text-2xl font-black text-gray-900 dark:text-white tracking-tight tabular-nums">{stat.value}</h4>
+            {/* Uchta asosiy ko'rsatkich. Avval to'rtta mayda karta bor edi
+                (o'quvchi / guruh / ustoz / lid) — ular shunchaki sanoq bo'lib,
+                holatni ko'rsatmasdi. Endi har birida nisbat chizig'i bor. */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div onClick={() => navigate('/students')}
+                    className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700/50 p-5 cursor-pointer hover:border-[#1b6b6b]/40 transition-colors">
+                    <span className="text-[12px] text-gray-500 dark:text-gray-400">{t('stat_active_students')}</span>
+                    <div className="mt-1.5 flex items-baseline gap-2">
+                        <span className="num text-[30px] font-bold leading-none text-gray-900 dark:text-white">{activeStudents}</span>
+                        {joinedThisMonth > 0 && (
+                            <span className="num text-[13px] font-medium text-emerald-500">+{joinedThisMonth}</span>
+                        )}
+                    </div>
+                    {seatsPct !== null ? (
+                        <>
+                            <div className="mt-3 h-1.5 rounded-full bg-gray-100 dark:bg-gray-700 overflow-hidden">
+                                <div className="h-full rounded-full bg-[#1b6b6b]" style={{ width: `${seatsPct}%` }} />
                             </div>
-                            <div
-                                className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform"
-                                style={{ backgroundColor: stat.accent + '15', color: stat.accent }}
-                            >
-                                <Icon size={18} />
+                            <span className="text-[11px] text-gray-400 block mt-2">
+                                <span className="num">{totalSeats}</span> o'rindan <span className="num">{seatsPct}%</span> band
+                            </span>
+                        </>
+                    ) : (
+                        <span className="text-[11px] text-gray-400 block mt-2">Xona sig'imi kiritilmagan</span>
+                    )}
+                </div>
+
+                <div onClick={() => navigate('/finance')}
+                    className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700/50 p-5 cursor-pointer hover:border-[#1b6b6b]/40 transition-colors">
+                    <span className="text-[12px] text-gray-500 dark:text-gray-400">{t('income')}</span>
+                    <div className="mt-1.5 flex items-baseline gap-1">
+                        <span className="num text-[30px] font-bold leading-none text-emerald-500">{(periodIncome / 1000000).toFixed(1)}</span>
+                        <span className="num text-[13px] font-medium text-gray-400">mln</span>
+                    </div>
+                    {incomePct !== null ? (
+                        <>
+                            <div className="mt-3 h-1.5 rounded-full bg-gray-100 dark:bg-gray-700 overflow-hidden">
+                                <div className="h-full rounded-full bg-emerald-500" style={{ width: `${incomePct}%` }} />
                             </div>
-                        </div>
-                    );
-                })}
+                            <span className="text-[11px] text-gray-400 block mt-2">
+                                <span className="num">{(monthlyExpected / 1000000).toFixed(1)}</span> mln kutilgandan <span className="num">{incomePct}%</span>
+                            </span>
+                        </>
+                    ) : (
+                        <span className="text-[11px] text-gray-400 block mt-2">Kutilayotgan summa hisoblanmadi</span>
+                    )}
+                </div>
+
+                <div onClick={() => navigate('/students?filter=debt')}
+                    className="bg-white dark:bg-gray-800 rounded-2xl border border-rose-100 dark:border-rose-900/40 p-5 cursor-pointer hover:border-rose-300 dark:hover:border-rose-800 transition-colors">
+                    <span className="text-[12px] text-gray-500 dark:text-gray-400">{t('debt')}</span>
+                    <div className="mt-1.5 flex items-baseline gap-1">
+                        <span className="num text-[30px] font-bold leading-none text-rose-500">{(totalDebt / 1000000).toFixed(1)}</span>
+                        <span className="num text-[13px] font-medium text-gray-400">mln</span>
+                    </div>
+                    <div className="mt-3 h-1.5 rounded-full bg-gray-100 dark:bg-gray-700 overflow-hidden flex">
+                        {debtors.length > 0 && (
+                            <>
+                                <div className="h-full bg-amber-400" style={{ width: `${Math.round(((debtors.length - staleDebtors.length) / debtors.length) * 100)}%` }} />
+                                <div className="h-full bg-rose-500" style={{ width: `${Math.round((staleDebtors.length / debtors.length) * 100)}%` }} />
+                            </>
+                        )}
+                    </div>
+                    <span className="text-[11px] text-gray-400 block mt-2">
+                        <span className="num">{debtors.length}</span> o'quvchi · <span className="num">{staleDebtors.length}</span> tasi 30 kundan oshgan
+                    </span>
+                </div>
             </div>
 
             {/* Main Section */}
@@ -281,7 +392,7 @@ export default function Dashboard() {
                                 {t('rep_stats')} <ArrowUpRight size={12} />
                             </button>
                         </div>
-                        
+
                         {/* Summary Cards */}
                         <div className="grid grid-cols-3 gap-4 mb-6">
                             {[
@@ -326,7 +437,7 @@ export default function Dashboard() {
                                         <div className="absolute -top-7 left-1/2 -translate-x-1/2 bg-gray-900 dark:bg-[#1e293b] text-white text-[11px] px-2 py-1 rounded-md opacity-0 group-hover/bar:opacity-100 transition-opacity whitespace-nowrap z-10 font-bold">
                                             {val.toFixed(1)} mln
                                         </div>
-                                        <div 
+                                        <div
                                             className="w-full bg-[#1b6b6b] rounded-lg hover:bg-[#2e9c9c] transition-colors cursor-pointer min-h-[4px]"
                                             style={{ height: `${(val / maxVal) * 110}px` }}
                                         />
@@ -340,6 +451,30 @@ export default function Dashboard() {
 
                 {/* Right 1 Column */}
                 <div className="space-y-6">
+                    {/* Bugun hal qilinsin — sanoqlar emas, aniq ish. Har bir qator
+                        o'sha ishni bajaradigan sahifaga olib boradi. Ro'yxat bo'sh
+                        bo'lsa blok umuman ko'rsatilmaydi. */}
+                    {todoItems.length > 0 && (
+                        <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700/50 overflow-hidden">
+                            <div className="px-5 py-4 border-b border-gray-100 dark:border-gray-700/50">
+                                <h3 className="text-[14px] font-semibold text-gray-900 dark:text-white">Bugun hal qilinsin</h3>
+                            </div>
+                            <div className="divide-y divide-gray-55 dark:divide-gray-700/40">
+                                {todoItems.map(item => (
+                                    <button key={item.key} onClick={() => navigate(item.path)}
+                                        className="w-full flex items-center gap-3 px-5 py-3.5 text-left hover:bg-gray-55/70 dark:hover:bg-gray-900/30 transition-colors cursor-pointer">
+                                        <span className={`w-2 h-2 rounded-full shrink-0 ${item.tone}`} />
+                                        <div className="min-w-0 flex-1">
+                                            <p className="text-[13px] font-medium text-gray-900 dark:text-white truncate">{item.title}</p>
+                                            <p className="text-[11px] text-gray-400 truncate">{item.sub}</p>
+                                        </div>
+                                        <ChevronRight size={15} className="text-gray-300 dark:text-gray-600 shrink-0" />
+                                    </button>
+                                ))}
+                            </div>
+                        </div>
+                    )}
+
                     {/* Attention list */}
                     <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-800 p-4 shadow-sm">
                         <div className="flex items-center justify-between mb-4">
@@ -460,8 +595,8 @@ export default function Dashboard() {
                             {isDropdownOpen && (
                                 <>
                                     {/* Backdrop to close dropdown */}
-                                    <div 
-                                        className="fixed inset-0 z-10" 
+                                    <div
+                                        className="fixed inset-0 z-10"
                                         onClick={() => setIsDropdownOpen(false)}
                                     />
                                     <div className="absolute right-0 mt-1.5 w-44 bg-white dark:bg-gray-800 rounded-xl border border-gray-150 dark:border-gray-800 shadow-lg p-1 z-20 animate-in fade-in slide-in-from-top-1 duration-100">
