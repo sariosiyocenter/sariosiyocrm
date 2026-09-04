@@ -8,6 +8,7 @@ import { useCRM } from '../context/CRMContext';
 import { useLang } from '../context/LanguageContext';
 import { useNavigate } from 'react-router-dom';
 import RoomSchedule from './RoomSchedule';
+import { displayName } from '../lib/displayName';
 
 import LeftStudentsReport from './reports/LeftStudentsReport';
 import StaffAttendanceReport from './reports/StaffAttendanceReport';
@@ -215,26 +216,85 @@ export default function Dashboard() {
     const todoItems = [
         staleDebtors.length > 0 && {
             key: 'debt',
-            tone: 'bg-rose-500',
+            tone: 'bg-xato',
             title: `${staleDebtors.length} ta o'quvchi 30+ kun to'lov qilmagan`,
             sub: `Jami ${(staleDebtSum / 1000000).toFixed(1)} mln so'm`,
             path: '/students?filter=debt',
         },
         staleLeads.length > 0 && {
             key: 'leads',
-            tone: 'bg-amber-500',
+            tone: 'bg-ogoh',
             title: `${staleLeads.length} ta lid javobsiz qolgan`,
             sub: `Eng qadimgisi — ${oldestLeadAge} kun oldin`,
             path: '/leads',
         },
         groupsMissingAttendance.length > 0 && {
             key: 'att',
-            tone: 'bg-sky-500',
+            tone: 'bg-brand',
             title: `${groupsMissingAttendance.length} ta guruh davomati kiritilmagan`,
             sub: groupsMissingAttendance.slice(0, 2).map(g => g.name).join(', '),
             path: `/courses/${groupsMissingAttendance[0].id}`,
         },
     ].filter(Boolean) as { key: string; tone: string; title: string; sub: string; path: string }[];
+
+    // ---- Bugungi darslar.
+    // Faqat jadvali kiritilgan guruhlar. "Belgilanmagan" kunli guruh uchun
+    // dars bor deb taxmin qilinmaydi — aks holda ro'yxat o'ylab topilgan
+    // bo'lib chiqadi.
+    const dowToday = new Date().getDay();
+    const todayISO = new Date().toISOString().slice(0, 10);
+    const yesterdayISO = new Date(Date.now() - 86400000).toISOString().slice(0, 10);
+
+    const runsToday = (days: string) => {
+        if (days === 'TOQ') return [1, 3, 5].includes(dowToday);
+        if (days === 'JUFT') return [2, 4, 6].includes(dowToday);
+        if (days === 'HAR_KUNI' || days === 'HARKUNI') return dowToday !== 0;
+        return false;
+    };
+
+    const todayLessons = groups.filter(g => runsToday(g.days)).map(g => {
+        const sched = (g.schedule || '').trim();
+        const teacher = teachers.find(tt => tt.id === g.teacherId);
+        const room = rooms.find(r => r.id === g.room);
+        return {
+            id: g.id,
+            name: g.name,
+            time: sched && !sched.includes('Belgilanmagan') ? sched : null,
+            teacher: teacher ? displayName(teacher.name) : null,
+            room: room ? room.name : null,
+            marked: (attendances || []).some(a => a.groupId === g.id && (a.date || '').slice(0, 10) === todayISO),
+        };
+    }).sort((a, b) => (a.time || 'zz').localeCompare(b.time || 'zz'));
+
+    const unmarkedToday = todayLessons.filter(l => !l.marked).length;
+
+    // ---- So'nggi to'lovlar. Manfiy yozuvlar oylik hisob, ular to'lov emas.
+    const uzDayLabel = (iso: string) => {
+        const d = (iso || '').slice(0, 10);
+        if (d === todayISO) return 'bugun';
+        if (d === yesterdayISO) return 'kecha';
+        const dt = new Date(d);
+        return isNaN(dt.getTime()) ? d : `${dt.getDate()}-${UZ_MONTHS[dt.getMonth()]}`;
+    };
+
+    const recentPayments = (payments || [])
+        .filter(p => p.amount > 0 && (p.date || '').slice(0, 10) <= todayISO)
+        .sort((a, b) => (b.date || '').localeCompare(a.date || '') || b.id - a.id)
+        .slice(0, 5)
+        .map(p => {
+            const st = students.find(x => x.id === p.studentId);
+            return {
+                id: p.id,
+                studentId: p.studentId,
+                name: st ? displayName(st.name) : "O'chirilgan o'quvchi",
+                amount: p.amount,
+                when: uzDayLabel(p.date),
+                type: (p.type || '').toLowerCase(),
+            };
+        });
+
+    // ---- Guruhlar ko'rsatkichi.
+    const groupsWithoutTeacher = groups.filter(g => !teachers.find(tt => tt.id === g.teacherId)).length;
 
     const PRIMARY_REPORTS = [
         { id: 'stats', label: t('rep_stats'), icon: <FileText size={12} /> },
@@ -269,10 +329,10 @@ export default function Dashboard() {
             <div>
                 <div className="flex flex-col lg:flex-row lg:items-start justify-between gap-4">
                     <div>
-                        <h1 className="text-[26px] font-bold text-gray-900 dark:text-white tracking-tight leading-tight">
+                        <h1 className="text-[26px] font-bold text-matn tracking-tight leading-tight">
                             Xush kelibsiz, {(user?.name || '').split(' ')[0] || t('dashboard_title')}
                         </h1>
-                        <p className="text-[13px] text-gray-500 dark:text-gray-400 mt-1">
+                        <p className="text-[13px] text-matn-sokin mt-1">
                             {todayLabel}
                             {todoItems.length > 0 && <> · <span className="num">{todoItems.length}</span> ta ish e'tiboringizni kutmoqda</>}
                         </p>
@@ -281,7 +341,7 @@ export default function Dashboard() {
                     {/* Presets and Custom Inputs */}
                     <div className="flex flex-wrap items-center gap-3">
                         {/* Presets */}
-                        <div className="flex items-center gap-1 bg-gray-50 dark:bg-gray-900 p-1 rounded-xl border border-gray-100 dark:border-gray-800">
+                        <div className="flex items-center gap-1 bg-ichki p-1 rounded-xl border border-chiziq">
                             {['this_month', 'last_30', 'this_year', 'all'].map((type) => {
                                 const label = type === 'this_month' ? t('preset_this_month') : type === 'last_30' ? t('preset_30_days') : type === 'this_year' ? t('preset_this_year') : t('preset_all');
                                 return (
@@ -291,8 +351,8 @@ export default function Dashboard() {
                                         onClick={() => handlePreset(type as any)}
                                         className={`px-3 py-1.5 rounded-lg text-[12px] font-medium transition-colors cursor-pointer ${
                                             selectedPreset === type
-                                                ? 'bg-[#1b6b6b] text-white'
-                                                : 'text-gray-400 hover:text-gray-600 dark:hover:text-gray-200'
+                                                ? 'bg-brand text-brand-ust'
+                                                : 'text-matn-xira hover:text-gray-600 dark:hover:text-gray-200'
                                         }`}
                                     >
                                         {label}
@@ -307,14 +367,14 @@ export default function Dashboard() {
                                 type="date"
                                 value={startDate}
                                 onChange={(e) => { setStartDate(e.target.value); setSelectedPreset('custom'); }}
-                                className="bg-gray-55 dark:bg-gray-900 px-3 py-1.5 rounded-xl border border-gray-100 dark:border-gray-800 text-xs font-bold text-gray-800 dark:text-gray-200 outline-none focus:border-[#1b6b6b] w-32 cursor-pointer"
+                                className="bg-ichki px-3 py-1.5 rounded-xl border border-chiziq text-xs font-bold text-matn-2 outline-none focus:border-brand w-32 cursor-pointer"
                             />
-                            <span className="text-gray-400 dark:text-gray-500 font-extrabold text-[11px]">{t('date_to')}</span>
+                            <span className="text-matn-xira font-extrabold text-[11px]">{t('date_to')}</span>
                             <input
                                 type="date"
                                 value={endDate}
                                 onChange={(e) => { setEndDate(e.target.value); setSelectedPreset('custom'); }}
-                                className="bg-gray-55 dark:bg-gray-900 px-3 py-1.5 rounded-xl border border-gray-100 dark:border-gray-800 text-xs font-bold text-gray-800 dark:text-gray-200 outline-none focus:border-[#1b6b6b] w-32 cursor-pointer"
+                                className="bg-ichki px-3 py-1.5 rounded-xl border border-chiziq text-xs font-bold text-matn-2 outline-none focus:border-brand w-32 cursor-pointer"
                             />
                         </div>
                     </div>
@@ -324,167 +384,238 @@ export default function Dashboard() {
             {/* Uchta asosiy ko'rsatkich. Avval to'rtta mayda karta bor edi
                 (o'quvchi / guruh / ustoz / lid) — ular shunchaki sanoq bo'lib,
                 holatni ko'rsatmasdi. Endi har birida nisbat chizig'i bor. */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="grid grid-cols-2 xl:grid-cols-4 gap-3">
                 <div onClick={() => navigate('/students')}
-                    className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700/50 p-5 cursor-pointer hover:border-[#1b6b6b]/40 transition-colors">
-                    <span className="text-[12px] text-gray-500 dark:text-gray-400">{t('stat_active_students')}</span>
-                    <div className="mt-1.5 flex items-baseline gap-2">
-                        <span className="num text-[30px] font-bold leading-none text-gray-900 dark:text-white">{activeStudents}</span>
+                    className="bg-sirt rounded-xl border border-chiziq p-4 cursor-pointer hover:border-chiziq-kuchli transition-colors">
+                    <span className="text-[12px] text-matn-sokin">{t('stat_active_students')}</span>
+                    <div className="mt-1 flex items-baseline gap-2">
+                        <span className="raqam text-[27px] font-semibold leading-none text-matn">{activeStudents}</span>
                         {joinedThisMonth > 0 && (
-                            <span className="num text-[13px] font-medium text-emerald-500">+{joinedThisMonth}</span>
+                            <span className="raqam text-[13px] text-yaxshi">+{joinedThisMonth}</span>
                         )}
                     </div>
                     {seatsPct !== null ? (
                         <>
-                            <div className="mt-3 h-1.5 rounded-full bg-gray-100 dark:bg-gray-700 overflow-hidden">
-                                <div className="h-full rounded-full bg-[#1b6b6b]" style={{ width: `${seatsPct}%` }} />
+                            <div className="mt-2.5 h-1 rounded-full bg-chiziq overflow-hidden">
+                                <div className="h-full rounded-full bg-brand" style={{ width: `${seatsPct}%` }} />
                             </div>
-                            <span className="text-[11px] text-gray-400 block mt-2">
-                                <span className="num">{totalSeats}</span> o'rindan <span className="num">{seatsPct}%</span> band
+                            <span className="text-[11px] text-matn-xira block mt-1.5">
+                                <span className="raqam">{totalSeats}</span> o'rindan <span className="raqam">{seatsPct}%</span> band
                             </span>
                         </>
                     ) : (
-                        <span className="text-[11px] text-gray-400 block mt-2">
-                            {groupsWithoutRoom > 0 ? <><span className="num">{groupsWithoutRoom}</span> ta guruhga xona biriktirilmagan</> : "Xona sig'imi kiritilmagan"}
+                        <span className="text-[11px] text-matn-xira block mt-2">
+                            {groupsWithoutRoom > 0 ? <><span className="raqam">{groupsWithoutRoom}</span> ta guruhga xona biriktirilmagan</> : "Xona sig'imi kiritilmagan"}
                         </span>
                     )}
                 </div>
 
                 <div onClick={() => navigate('/finance')}
-                    className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700/50 p-5 cursor-pointer hover:border-[#1b6b6b]/40 transition-colors">
-                    <span className="text-[12px] text-gray-500 dark:text-gray-400">{t('income')}</span>
-                    <div className="mt-1.5 flex items-baseline gap-1">
-                        <span className="num text-[30px] font-bold leading-none text-gray-900 dark:text-white">{(periodIncome / 1000000).toFixed(1)}</span>
-                        <span className="num text-[13px] font-medium text-gray-400">mln</span>
+                    className="bg-sirt rounded-xl border border-chiziq p-4 cursor-pointer hover:border-chiziq-kuchli transition-colors">
+                    <span className="text-[12px] text-matn-sokin">{t('income')}</span>
+                    <div className="mt-1 flex items-baseline">
+                        <span className="raqam text-[27px] font-semibold leading-none text-matn">{(periodIncome / 1000000).toFixed(1)}</span>
+                        <span className="raqam text-[13px] text-matn-xira ml-1">mln</span>
                     </div>
                     {incomePct !== null ? (
                         <>
-                            <div className="mt-3 h-1.5 rounded-full bg-gray-100 dark:bg-gray-700 overflow-hidden">
-                                <div className="h-full rounded-full bg-[#1b6b6b]" style={{ width: `${incomePct}%` }} />
+                            <div className="mt-2.5 h-1 rounded-full bg-chiziq overflow-hidden">
+                                <div className="h-full rounded-full bg-brand" style={{ width: `${incomePct}%` }} />
                             </div>
-                            <span className="text-[11px] text-gray-400 block mt-2">
-                                <span className="num">{(monthlyExpected / 1000000).toFixed(1)}</span> mln kutilgandan <span className="num">{incomePct}%</span>
+                            <span className="text-[11px] text-matn-xira block mt-1.5">
+                                kutilgan <span className="raqam">{(monthlyExpected / 1000000).toFixed(1)}</span> mln dan <span className="raqam">{incomePct}%</span>
                             </span>
                         </>
                     ) : (
-                        <span className="text-[11px] text-gray-400 block mt-2">Kutilayotgan summa hisoblanmadi</span>
+                        <span className="text-[11px] text-matn-xira block mt-2">Kutilayotgan summa hisoblanmadi</span>
                     )}
                 </div>
 
                 <div onClick={() => navigate('/students?filter=debt')}
-                    className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700/50 p-5 cursor-pointer hover:border-rose-300 dark:hover:border-rose-900/60 transition-colors">
-                    <span className="text-[12px] text-gray-500 dark:text-gray-400">{t('debt')}</span>
-                    <div className="mt-1.5 flex items-baseline gap-1">
-                        <span className="num text-[30px] font-bold leading-none text-rose-500">{(totalDebt / 1000000).toFixed(1)}</span>
-                        <span className="num text-[13px] font-medium text-gray-400">mln</span>
+                    className="bg-xato-fon rounded-xl border border-xato-chiziq p-4 cursor-pointer hover:border-xato transition-colors">
+                    <span className="text-[12px] text-matn-sokin">{t('debt')}</span>
+                    <div className="mt-1 flex items-baseline">
+                        <span className="raqam text-[27px] font-semibold leading-none text-xato">{(totalDebt / 1000000).toFixed(1)}</span>
+                        <span className="raqam text-[13px] text-matn-xira ml-1">mln</span>
                     </div>
-                    <div className="mt-3 h-1.5 rounded-full bg-gray-100 dark:bg-gray-700 overflow-hidden flex">
+                    <div className="mt-2.5 h-1 rounded-full bg-chiziq overflow-hidden flex">
                         {debtors.length > 0 && (
                             <>
-                                <div className="h-full bg-amber-400" style={{ width: `${Math.round(((debtors.length - staleDebtors.length) / debtors.length) * 100)}%` }} />
-                                <div className="h-full bg-rose-500" style={{ width: `${Math.round((staleDebtors.length / debtors.length) * 100)}%` }} />
+                                <div className="h-full bg-ogoh" style={{ width: `${Math.round(((debtors.length - staleDebtors.length) / debtors.length) * 100)}%` }} />
+                                <div className="h-full bg-xato" style={{ width: `${Math.round((staleDebtors.length / debtors.length) * 100)}%` }} />
                             </>
                         )}
                     </div>
-                    <span className="text-[11px] text-gray-400 block mt-2">
-                        <span className="num">{debtors.length}</span> o'quvchi · <span className="num">{staleDebtors.length}</span> tasi 30 kundan oshgan
+                    <span className="text-[11px] text-xato-mayin block mt-1.5">
+                        <span className="raqam">{debtors.length}</span> o'quvchi · <span className="raqam">{staleDebtors.length}</span> tasi 30 kundan oshgan
+                    </span>
+                </div>
+
+                {/* Guruhlar. Sonning o'zi yomon xabar emas, shuning uchun raqam
+                    oddiy rangda — ogohlantirish faqat izohda. */}
+                <div onClick={() => navigate('/courses')}
+                    className="bg-sirt rounded-xl border border-chiziq p-4 cursor-pointer hover:border-chiziq-kuchli transition-colors">
+                    <span className="text-[12px] text-matn-sokin">{t('nav_groups')}</span>
+                    <div className="mt-1 flex items-baseline">
+                        <span className="raqam text-[27px] font-semibold leading-none text-matn">{groups.length}</span>
+                    </div>
+                    <span className={`text-[11px] block mt-2 ${groupsWithoutTeacher > 0 ? 'text-ogoh' : 'text-matn-xira'}`}>
+                        {groupsWithoutTeacher > 0
+                            ? <><span className="raqam">{groupsWithoutTeacher}</span> tasiga ustoz biriktirilmagan</>
+                            : <><span className="raqam">{groups.reduce((n, g) => n + (g.studentIds || []).length, 0)}</span> ta o'quvchi biriktirilgan</>}
                     </span>
                 </div>
             </div>
 
-            {/* Main Section */}
-            <div className="grid grid-cols-1 xl:grid-cols-3 gap-4">
-                {/* Left 2 Columns */}
-                <div className="xl:col-span-2 space-y-6">
-                    <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-800 p-5 shadow-sm">
-                        <div className="flex items-center justify-between mb-6">
-                            <h3 className="text-xs font-black text-gray-900 dark:text-white flex items-center gap-2">
-                                <TrendingUp size={16} className="text-[#1b6b6b]" />
-                                {t('finance_title')}
-                            </h3>
-                            <button onClick={() => navigate('/finance')} className="flex items-center gap-1 text-[11px] font-extrabold text-[#1b6b6b] hover:text-[#155252] transition-colors cursor-pointer">
-                                {t('rep_stats')} <ArrowUpRight size={12} />
+            {/* Asosiy qism — chizmadagi ikki qator.
+                Chapda keng bloklar, o'ngda tor bloklar. Ilgari o'ng ustun
+                chapdan ancha kalta tugab, sahifa pastida katta quruq maydon
+                qolar edi; endi ikkala ustunda ham mazmun bor. */}
+            <div className="grid grid-cols-1 xl:grid-cols-3 gap-4 items-start">
+
+                {/* ---- CHAP USTUN ---- */}
+                <div className="xl:col-span-2 space-y-4">
+
+                    {/* Tushum grafigi. Ilgari kartochka ichida yana bir
+                        kartochka bor edi — ikki qavat ramka va ikki qavat
+                        ichki bo'shliq. Endi bitta qavat. */}
+                    <div className="bg-sirt rounded-xl border border-chiziq p-5">
+                        <div className="flex items-start justify-between mb-4">
+                            <div>
+                                <h3 className="text-[15px] font-semibold text-matn">{t('finance_title')}</h3>
+                                <p className="text-[12px] text-matn-sokin mt-0.5">
+                                    So'nggi 6 oy, mln so'm · jami <span className="raqam text-matn-2">{total6Months.toFixed(1)}</span> mln
+                                </p>
+                            </div>
+                            <button onClick={() => navigate('/finance')} className="flex items-center gap-1 text-[12px] text-brand hover:underline cursor-pointer shrink-0">
+                                {t('rep_stats')} <ArrowUpRight size={13} />
                             </button>
                         </div>
-
-                        {/* Chart Area */}
-                        <div className="bg-gray-55 dark:bg-gray-900 rounded-xl p-4 border border-gray-100 dark:border-gray-800">
-                            <div className="flex items-center justify-between mb-5">
-                                <span className="text-[12px] text-gray-500 dark:text-gray-400">So'nggi 6 oy, mln so'm</span>
-                                <span className="text-[12px] text-gray-500 dark:text-gray-400">Jami <span className="num text-gray-800 dark:text-gray-100">{total6Months.toFixed(1)}</span> mln</span>
-                            </div>
-                            <div className="h-[150px] flex items-end gap-4">
-                                {chartDataValues.map((val, i) => (
-                                    <div key={i} className="flex-1 flex flex-col items-center justify-end gap-1.5 h-full group/bar">
-                                        {/* Qiymat ustun tepasida doim ko'rinadi — avval u faqat
-                                            sichqoncha olib borilganda chiqardi, ya'ni grafikdan
-                                            aniq son o'qib bo'lmasdi. */}
-                                        <span className={`num text-[11px] ${val >= maxVal ? 'text-[#1b6b6b] dark:text-teal-400' : 'text-gray-400'}`}>
-                                            {val.toFixed(1)}
-                                        </span>
-                                        <div
-                                            className={`w-full rounded-lg transition-colors cursor-pointer min-h-[4px] ${val >= maxVal ? 'bg-[#1b6b6b]' : 'bg-[#1b6b6b]/45 group-hover/bar:bg-[#1b6b6b]'}`}
-                                            style={{ height: `${(val / maxVal) * 110}px` }}
-                                        />
-                                        <span className="text-[11px] text-gray-400">{chartLabels[i]}</span>
-                                    </div>
-                                ))}
-                            </div>
+                        <div className="h-[152px] flex items-end gap-4">
+                            {chartDataValues.map((val, i) => (
+                                <div key={i} className="flex-1 flex flex-col items-center justify-end gap-1.5 h-full group/bar">
+                                    {/* Qiymat ustun tepasida doim ko'rinadi — avval u faqat
+                                        sichqoncha olib borilganda chiqardi, ya'ni grafikdan
+                                        aniq son o'qib bo'lmasdi. */}
+                                    <span className={`num text-[11px] ${val >= maxVal ? 'text-brand' : 'text-matn-xira'}`}>
+                                        {val.toFixed(1)}
+                                    </span>
+                                    <div
+                                        className={`w-full rounded-t-md bg-brand transition-opacity cursor-pointer min-h-[3px] ${val >= maxVal ? 'opacity-100' : 'opacity-40 group-hover/bar:opacity-100'}`}
+                                        style={{ height: `${(val / maxVal) * 112}px` }}
+                                    />
+                                    <span className="text-[11px] text-matn-xira">{chartLabels[i]}</span>
+                                </div>
+                            ))}
                         </div>
+                    </div>
+
+                    {/* Bugungi darslar. Jadvali kiritilmagan guruh bu yerga
+                        tushmaydi — dars bor deb taxmin qilinmaydi. */}
+                    <div className="bg-sirt rounded-xl border border-chiziq overflow-hidden">
+                        <div className="flex items-baseline justify-between px-4 pt-3.5 pb-3">
+                            <h3 className="text-[15px] font-semibold text-matn">Bugungi darslar</h3>
+                            {todayLessons.length > 0 && (
+                                <span className="text-[12px] text-matn-sokin">
+                                    <span className="raqam">{todayLessons.length}</span> ta dars
+                                    {unmarkedToday > 0 && <> · <span className="raqam">{unmarkedToday}</span> tasida davomat yo'q</>}
+                                </span>
+                            )}
+                        </div>
+                        {todayLessons.length === 0 ? (
+                            <div className="px-4 py-9 text-center border-t border-chiziq-mayin">
+                                <p className="text-[13px] text-matn-sokin">Bugunga dars belgilanmagan</p>
+                                <p className="text-[11px] text-matn-xira mt-1">Guruhga kun va vaqt kiritilsa, bugungi darslar shu yerda chiqadi</p>
+                            </div>
+                        ) : todayLessons.map(l => (
+                            <button key={l.id} onClick={() => navigate(`/courses/${l.id}`)}
+                                className="w-full flex items-center gap-3.5 px-4 py-3 text-left border-t border-chiziq-mayin hover:bg-ichki transition-colors cursor-pointer">
+                                <span className={`num text-[12px] w-[96px] shrink-0 ${l.time ? 'text-matn-2' : 'text-matn-xira'}`}>
+                                    {l.time || 'vaqt yo\u2019q'}
+                                </span>
+                                <span className="min-w-0 flex-1">
+                                    <span className="text-[13px] text-matn block truncate">{l.name}</span>
+                                    <span className="text-[11px] text-matn-xira block truncate">
+                                        {[l.teacher, l.room].filter(Boolean).join(' \u00b7 ') || 'ustoz va xona kiritilmagan'}
+                                    </span>
+                                </span>
+                                <span className={`flex items-center gap-2 text-[12px] shrink-0 ${l.marked ? 'text-yaxshi' : 'text-ogoh'}`}>
+                                    <span className={`w-1.5 h-1.5 rounded-full ${l.marked ? 'bg-yaxshi' : 'bg-ogoh'}`} />
+                                    {l.marked ? 'davomat olindi' : 'davomat kiritilmagan'}
+                                </span>
+                            </button>
+                        ))}
                     </div>
                 </div>
 
-                {/* Right 1 Column */}
-                <div className="space-y-6">
+                {/* ---- O'NG USTUN ---- */}
+                <div className="space-y-4">
+
                     {/* Bugun hal qilinsin — sanoqlar emas, aniq ish. Har bir qator
                         o'sha ishni bajaradigan sahifaga olib boradi. Ro'yxat bo'sh
                         bo'lsa blok umuman ko'rsatilmaydi. */}
                     {todoItems.length > 0 && (
-                        <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700/50 overflow-hidden">
-                            <div className="px-5 py-4 border-b border-gray-100 dark:border-gray-700/50">
-                                <h3 className="text-[14px] font-semibold text-gray-900 dark:text-white">Bugun hal qilinsin</h3>
+                        <div className="bg-sirt rounded-xl border border-chiziq overflow-hidden">
+                            <div className="px-4 pt-3.5 pb-3">
+                                <h3 className="text-[15px] font-semibold text-matn">Bugun hal qilinsin</h3>
                             </div>
-                            <div className="divide-y divide-gray-55 dark:divide-gray-700/40">
-                                {todoItems.map(item => (
-                                    <button key={item.key} onClick={() => navigate(item.path)}
-                                        className="w-full flex items-center gap-3 px-5 py-3.5 text-left hover:bg-gray-55/70 dark:hover:bg-gray-900/30 transition-colors cursor-pointer">
-                                        <span className={`w-2 h-2 rounded-full shrink-0 ${item.tone}`} />
-                                        <div className="min-w-0 flex-1">
-                                            <p className="text-[13px] font-medium text-gray-900 dark:text-white truncate">{item.title}</p>
-                                            <p className="text-[11px] text-gray-400 truncate">{item.sub}</p>
-                                        </div>
-                                        <ChevronRight size={15} className="text-gray-300 dark:text-gray-600 shrink-0" />
-                                    </button>
-                                ))}
-                            </div>
+                            {todoItems.map(item => (
+                                <button key={item.key} onClick={() => navigate(item.path)}
+                                    className="w-full flex items-center gap-3 px-4 py-3 text-left border-t border-chiziq-mayin hover:bg-ichki transition-colors cursor-pointer">
+                                    <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${item.tone}`} />
+                                    <div className="min-w-0 flex-1">
+                                        <p className="text-[13px] text-matn truncate">{item.title}</p>
+                                        <p className="text-[11px] text-matn-xira truncate">{item.sub}</p>
+                                    </div>
+                                    <ChevronRight size={15} className="text-matn-xira shrink-0" />
+                                </button>
+                            ))}
                         </div>
                     )}
 
-                    {/* Top Courses — bo'sh bo'lsa umuman ko'rsatilmaydi */}
-                    {topCourseStats.length > 0 && (
-                    <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-800 p-4 shadow-sm">
-                        <div className="mb-4">
-                            <h3 className="text-[14px] font-semibold text-gray-900 dark:text-white">Eng ko'p tushum keltirgan kurslar</h3>
+                    {/* So'nggi to'lovlar. Manfiy yozuvlar oylik hisob, ular
+                        to'lov emas — shuning uchun bu yerga tushmaydi. */}
+                    <div className="bg-sirt rounded-xl border border-chiziq overflow-hidden">
+                        <div className="flex items-baseline justify-between px-4 pt-3.5 pb-3">
+                            <h3 className="text-[15px] font-semibold text-matn">So'nggi to'lovlar</h3>
+                            <button onClick={() => navigate('/finance')} className="text-[12px] text-brand hover:underline cursor-pointer">Barchasi</button>
                         </div>
-                        <div className="space-y-4">
+                        {recentPayments.length === 0 ? (
+                            <div className="px-4 py-9 text-center border-t border-chiziq-mayin">
+                                <p className="text-[13px] text-matn-sokin">Hali to'lov qabul qilinmagan</p>
+                            </div>
+                        ) : recentPayments.map(p => (
+                            <button key={p.id} onClick={() => navigate(`/students/${p.studentId}`)}
+                                className="w-full flex items-center gap-3 px-4 py-3 text-left border-t border-chiziq-mayin hover:bg-ichki transition-colors cursor-pointer">
+                                <span className="min-w-0 flex-1">
+                                    <span className="text-[13px] text-matn block truncate">{p.name}</span>
+                                    <span className="text-[11px] text-matn-xira block truncate">{p.when} · {p.type}</span>
+                                </span>
+                                <span className="num text-[13px] text-yaxshi shrink-0">+{p.amount.toLocaleString('ru-RU')}</span>
+                            </button>
+                        ))}
+                    </div>
+
+                    {/* Eng ko'p tushum keltirgan kurslar — bo'sh bo'lsa ko'rsatilmaydi */}
+                    {topCourseStats.length > 0 && (
+                    <div className="bg-sirt rounded-xl border border-chiziq p-4">
+                        <h3 className="text-[15px] font-semibold text-matn mb-3.5">Eng ko'p tushum keltirgan kurslar</h3>
+                        <div className="space-y-3.5">
                             {topCourseStats.map((course, i) => (
                                 <div key={i}>
                                     <div className="flex items-center justify-between mb-1.5">
-                                        <span className="text-[12px] text-gray-700 dark:text-gray-300 truncate">{course.name}</span>
-                                        <span className="num text-[12px] text-gray-500 dark:text-gray-400 shrink-0">{(course.revenue / 1000000).toFixed(1)} mln</span>
+                                        <span className="text-[12px] text-matn-2 truncate">{course.name}</span>
+                                        <span className="num text-[12px] text-matn-sokin shrink-0">{(course.revenue / 1000000).toFixed(1)} mln</span>
                                     </div>
-                                    <div className="h-1.5 w-full bg-gray-50 dark:bg-gray-900 rounded-full overflow-hidden">
+                                    <div className="h-1 w-full bg-chiziq rounded-full overflow-hidden">
                                         <div
-                                            className="h-full bg-[#1b6b6b] rounded-full transition-all duration-700"
+                                            className="h-full bg-brand rounded-full transition-all duration-700"
                                             style={{ width: `${(course.revenue / (topCourseStats[0]?.revenue || 1)) * 100}%` }}
                                         />
                                     </div>
-                                    <p className="text-[11px] text-gray-400 mt-1"><span className="num">{course.students}</span> ta o'quvchi</p>
+                                    <p className="text-[11px] text-matn-xira mt-1"><span className="raqam">{course.students}</span> ta o'quvchi</p>
                                 </div>
                             ))}
-                            {topCourseStats.length === 0 && (
-                                <p className="text-[11px] text-gray-400 font-bold text-center py-4">Ma'lumotlar yo'q</p>
-                            )}
                         </div>
                     </div>
                     )}
@@ -492,11 +623,11 @@ export default function Dashboard() {
             </div>
 
             {/* Reports Section integrated into Dashboard */}
-            <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-800 p-5 shadow-sm">
-                <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-4 border-b border-gray-50 dark:border-gray-800 pb-4 mb-5">
+            <div className="bg-sirt rounded-2xl border border-chiziq p-5 shadow-sm">
+                <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-4 border-b border-chiziq-mayin pb-4 mb-5">
                     <div>
-                        <h3 className="text-[15px] font-semibold text-gray-900 dark:text-white">{t('reports_title')}</h3>
-                        <p className="text-[12px] text-gray-400 mt-0.5">Tanlangan muddat uchun markaz ko'rsatkichlari</p>
+                        <h3 className="text-[15px] font-semibold text-matn">{t('reports_title')}</h3>
+                        <p className="text-[12px] text-matn-xira mt-0.5">Tanlangan muddat uchun markaz ko'rsatkichlari</p>
                     </div>
                     {/* Secondary Tabs for Reports */}
                     {/* `overflow-x-auto` aylantirish uchun kerak edi, lekin brauzer
@@ -504,7 +635,7 @@ export default function Dashboard() {
                         "Boshqalar" ro'yxati tugma ostida ochilib, ko'rinmay qolardi.
                         Endi aylantirish faqat asosiy tablarga tegishli, ro'yxat esa
                         kesuvchi konteynerdan tashqarida. */}
-                    <div className="flex items-center gap-1 bg-gray-55 dark:bg-gray-900 p-1 rounded-xl border border-gray-100 dark:border-gray-800 max-w-full">
+                    <div className="flex items-center gap-1 bg-ichki p-1 rounded-xl border border-chiziq max-w-full">
                       <div className="flex overflow-x-auto no-scrollbar flex-nowrap gap-1 min-w-0">
                         {PRIMARY_REPORTS.map(r => (
                             <button
@@ -515,8 +646,8 @@ export default function Dashboard() {
                                 }}
                                 className={`flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-lg text-[12px] font-medium transition-colors cursor-pointer whitespace-nowrap ${
                                     activeReportTab === r.id
-                                        ? 'bg-[#1b6b6b] text-white font-semibold'
-                                        : 'text-gray-400 dark:text-gray-500 hover:text-gray-700 dark:hover:text-gray-300'
+                                        ? 'bg-brand text-brand-ust font-semibold'
+                                        : 'text-matn-xira hover:text-gray-700 dark:hover:text-gray-300'
                                 }`}
                             >
                                 <span className="shrink-0">{r.icon}</span>
@@ -532,8 +663,8 @@ export default function Dashboard() {
                                 onClick={() => setIsDropdownOpen(!isDropdownOpen)}
                                 className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[12px] font-medium transition-colors cursor-pointer whitespace-nowrap ${
                                     SECONDARY_REPORTS.some(r => r.id === activeReportTab)
-                                        ? 'bg-[#1b6b6b] text-white font-semibold'
-                                        : 'text-gray-400 dark:text-gray-500 hover:text-gray-700 dark:hover:text-gray-300'
+                                        ? 'bg-brand text-brand-ust font-semibold'
+                                        : 'text-matn-xira hover:text-gray-700 dark:hover:text-gray-300'
                                 }`}
                             >
                                 <span className="shrink-0">
@@ -552,7 +683,7 @@ export default function Dashboard() {
                                         className="fixed inset-0 z-10"
                                         onClick={() => setIsDropdownOpen(false)}
                                     />
-                                    <div className="absolute right-0 mt-1.5 w-44 bg-white dark:bg-gray-800 rounded-xl border border-gray-150 dark:border-gray-800 shadow-lg p-1 z-20 animate-in fade-in slide-in-from-top-1 duration-100">
+                                    <div className="absolute right-0 mt-1.5 w-44 bg-sirt rounded-xl border border-chiziq shadow-lg p-1 z-20 animate-in fade-in slide-in-from-top-1 duration-100">
                                         {SECONDARY_REPORTS.map(r => (
                                             <button
                                                 key={r.id}
@@ -562,8 +693,8 @@ export default function Dashboard() {
                                                 }}
                                                 className={`flex items-center gap-2 w-full px-3 py-2 rounded-lg text-[12px] font-medium text-left transition-colors ${
                                                     activeReportTab === r.id
-                                                        ? 'bg-[#1b6b6b]/10 text-[#1b6b6b] dark:text-teal-400'
-                                                        : 'text-gray-500 dark:text-gray-400 hover:bg-gray-55 dark:hover:bg-gray-900 hover:text-gray-900 dark:hover:text-white'
+                                                        ? 'bg-brand/10 text-brand'
+                                                        : 'text-matn-sokin hover:bg-gray-55 dark:hover:bg-gray-900 hover:text-gray-900 dark:hover:text-white'
                                                 }`}
                                             >
                                                 <span className="shrink-0">{r.icon}</span>
@@ -583,7 +714,7 @@ export default function Dashboard() {
             </div>
 
             {/* Room Schedule */}
-            <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-800 p-5 shadow-sm">
+            <div className="bg-sirt rounded-2xl border border-chiziq p-5 shadow-sm">
                 <RoomSchedule />
             </div>
         </div>

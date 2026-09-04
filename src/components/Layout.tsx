@@ -69,19 +69,19 @@ export default function Layout({ children, onLogout }: LayoutProps) {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 dark:bg-gray-950 transition-colors duration-200 flex">
+    <div className="min-h-screen bg-fon transition-colors duration-200 flex">
       {/* ===== CHAP PANEL ===== */}
-      <aside className="hidden lg:flex w-[90px] shrink-0 flex-col sticky top-0 h-screen border-r border-slate-200 dark:border-gray-800 bg-white dark:bg-gray-900">
-        <Link to="/" title={settings?.orgName || 'Quantum Edu'} className="h-[64px] flex items-center justify-center border-b border-slate-100 dark:border-gray-800 shrink-0">
-          <div className="w-11 h-11 rounded-full overflow-hidden bg-gradient-to-br from-brand to-brand-accent flex items-center justify-center shadow-sm">
+      <aside className="hidden lg:flex w-[76px] shrink-0 flex-col sticky top-0 h-screen border-r border-chiziq bg-sirt-2">
+        <Link to="/" title={settings?.orgName || 'Quantum Edu'} className="h-[54px] flex items-center justify-center border-b border-chiziq shrink-0">
+          <div className="w-9 h-9 rounded-[10px] overflow-hidden bg-brand flex items-center justify-center">
             {settings?.logo
               ? <img src={settings.logo} className="w-full h-full object-cover" alt="logo" />
-              : <Atom size={21} className="text-white" />
+              : <Atom size={18} className="text-brand-ust" />
             }
           </div>
         </Link>
 
-        <nav className="flex-1 overflow-y-auto no-scrollbar py-3 px-2 space-y-1">
+        <nav className="flex-1 overflow-y-auto no-scrollbar py-3 px-1.5 space-y-0.5">
           {navItems.map((item) => {
             const isActive = location.pathname === item.path;
             const Icon = item.icon;
@@ -90,12 +90,12 @@ export default function Layout({ children, onLogout }: LayoutProps) {
                 key={item.path}
                 onClick={() => navigate(item.path)}
                 title={item.label}
-                className={`w-full flex flex-col items-center gap-1 px-1 py-2 rounded-2xl transition-all cursor-pointer ${isActive
-                  ? 'bg-brand/15 dark:bg-[#0a3830] text-brand dark:text-[#5eead4] shadow-sm'
-                  : 'text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-gray-850'}`}
+                className={`w-full flex flex-col items-center gap-1 px-1 py-2 rounded-[10px] transition-colors cursor-pointer ${isActive
+                  ? 'bg-brand/12 text-brand'
+                  : 'text-matn-sokin hover:text-matn hover:bg-ichki'}`}
               >
-                <Icon size={20} strokeWidth={isActive ? 2.5 : 2} />
-                <span className={`text-[11px] leading-tight text-center line-clamp-2 whitespace-normal break-words ${isActive ? 'font-bold' : 'font-medium'}`}>
+                <Icon size={19} strokeWidth={isActive ? 2.2 : 1.75} />
+                <span className={`text-[10px] leading-tight text-center line-clamp-2 whitespace-normal break-words ${isActive ? 'font-semibold' : 'font-normal'}`}>
                   {item.label}
                 </span>
               </button>
@@ -106,10 +106,10 @@ export default function Layout({ children, onLogout }: LayoutProps) {
         <button
           onClick={onLogout}
           title="Chiqish"
-          className="m-2 mb-3 flex flex-col items-center gap-1.5 py-2.5 rounded-xl text-slate-400 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-900/20 transition-colors cursor-pointer shrink-0"
+          className="m-1.5 mb-3 flex flex-col items-center gap-1 py-2 rounded-[10px] text-matn-xira hover:text-xato hover:bg-xato-fon transition-colors cursor-pointer shrink-0"
         >
-          <LogOut size={18} />
-          <span className="text-[10px] font-medium">Chiqish</span>
+          <LogOut size={18} strokeWidth={1.75} />
+          <span className="text-[10px]">Chiqish</span>
         </button>
       </aside>
 
@@ -117,10 +117,10 @@ export default function Layout({ children, onLogout }: LayoutProps) {
 
 
       {/* ===== HEADER ===== */}
-      <header className="sticky top-0 z-50 border-b border-slate-200 dark:border-gray-800 bg-white dark:bg-gray-900">
+      <header className="sticky top-0 z-50 border-b border-chiziq bg-sirt-2">
 
         {/* Top Bar */}
-        <div className="h-[64px] flex items-center justify-between px-4 lg:px-6">
+        <div className="h-[54px] flex items-center justify-between px-4 lg:px-6">
           <div className="flex items-center gap-4">
             {/* Mobile menu button */}
             <button
