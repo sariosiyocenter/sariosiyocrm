@@ -734,15 +734,26 @@ export default function CourseDetails() {
                                                     o'rtacha {Math.round(recentLessons.reduce((n, l) => n + l.pct, 0) / recentLessons.length)}%
                                                 </span>
                                             </div>
-                                            <div className="flex items-end gap-1.5 h-14">
-                                                {recentLessons.map(l => (
-                                                    <div key={l.date} className="flex-1 flex flex-col items-center justify-end gap-1 h-full" title={`${l.date} · ${l.pct}%`}>
-                                                        <div className={`w-full rounded-sm ${l.pct >= 85 ? 'bg-emerald-500' : l.pct >= 70 ? 'bg-amber-400' : 'bg-rose-500'}`}
-                                                            style={{ height: `${Math.max(8, l.pct)}%` }} />
-                                                        <span className="num text-[9px] text-matn-xira">{l.date.slice(8, 10)}</span>
+                                            {/* O'q noldan emas, eng past qiymatdan pastroqdan
+                                                boshlanadi. Davomat 85–95 oralig'ida o'zgarsa,
+                                                noldan chizilgan o'nta ustun bir xil bo'lib
+                                                qoladi va grafik hech narsa ko'rsatmaydi. */}
+                                            {(() => {
+                                                const eng = Math.min(...recentLessons.map(l => l.pct));
+                                                const baza = Math.max(0, Math.min(eng - 5, 90));
+                                                return (
+                                                    <div className="flex items-end gap-1.5 h-16">
+                                                        {recentLessons.map(l => (
+                                                            <div key={l.date} className="flex-1 flex flex-col items-center justify-end gap-1 h-full" title={`${l.date} · ${l.pct}%`}>
+                                                                <span className="num text-[9px] text-matn-xira">{l.pct}</span>
+                                                                <div className={`w-full rounded-sm ${l.pct >= 85 ? 'bg-yaxshi' : l.pct >= 70 ? 'bg-ogoh' : 'bg-xato'}`}
+                                                                    style={{ height: `${Math.max(6, ((l.pct - baza) / Math.max(1, 100 - baza)) * 100)}%` }} />
+                                                                <span className="num text-[9px] text-matn-xira">{l.date.slice(8, 10)}</span>
+                                                            </div>
+                                                        ))}
                                                     </div>
-                                                ))}
-                                            </div>
+                                                );
+                                            })()}
                                         </div>
                                     )}
                                 </div>
