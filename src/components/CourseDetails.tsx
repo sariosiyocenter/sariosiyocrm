@@ -473,7 +473,7 @@ export default function CourseDetails() {
                                     label="Davomat"
                                     value={groupAttendanceRate === null ? '—' : groupAttendanceRate}
                                     unit={groupAttendanceRate === null ? undefined : '%'}
-                                    tone={groupAttendanceRate === null ? undefined : groupAttendanceRate >= 85 ? 'good' : groupAttendanceRate >= 70 ? 'warn' : 'bad'}
+                                    tone={groupAttendanceRate !== null && groupAttendanceRate < 85 ? (groupAttendanceRate >= 70 ? 'warn' : 'bad') : undefined}
                                     bar={groupAttendanceRate}
                                     barTone={groupAttendanceRate === null ? 'brand' : groupAttendanceRate >= 85 ? 'good' : groupAttendanceRate >= 70 ? 'warn' : 'bad'}
                                     barCaption={<><span className="raqam">{groupAttendances.length}</span> ta yozuv asosida</>}
@@ -552,7 +552,7 @@ export default function CourseDetails() {
                                                                 <td className="py-2.5 px-3 text-right align-middle">
                                                                     {studentAtt.has(s.id) ? (
                                                                         <span className={`num text-[13px] ${
-                                                                            (studentAtt.get(s.id) as number) >= 85 ? 'text-yaxshi' :
+                                                                            (studentAtt.get(s.id) as number) >= 85 ? 'text-matn-2' :
                                                                             (studentAtt.get(s.id) as number) >= 70 ? 'text-ogoh' : 'text-xato'
                                                                         }`}>{studentAtt.get(s.id)}%</span>
                                                                     ) : (

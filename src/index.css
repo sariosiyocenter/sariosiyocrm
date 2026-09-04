@@ -69,8 +69,8 @@
      Chizmadagi yaxshi / ogoh / xato tokenlari. Ilovada allaqachon
      emerald / amber / rose to'g'ridan-to'g'ri yozilgan, shuning uchun
      o'sha pog'onalarning o'zi tasdiqlangan qiymatlarga keltirildi. */
-  --color-emerald-350: #5ce3ad;
-  --color-emerald-400: #3ddc97;
+  --color-emerald-350: #6bd3a3;
+  --color-emerald-400: #4fc98d;
   --color-emerald-500: #1da865;
   --color-emerald-550: #17944f;
   --color-emerald-600: #17803d;
@@ -78,7 +78,7 @@
   --color-emerald-50:  #dcf1e3;
   --color-emerald-950: #14302a;
 
-  --color-amber-400: #ffb547;
+  --color-amber-400: #f0ad4e;
   --color-amber-500: #d78f10;
   --color-amber-600: #a86a00;
   --color-amber-50:  #fdf0dc;
@@ -166,9 +166,9 @@
   --color-matn-2:       #c3cad4;
   --color-matn-sokin:   #8b93a1;
   --color-matn-xira:    #6b7482;
-  --color-yaxshi:       #3ddc97;
+  --color-yaxshi:       #4fc98d;
   --color-yaxshi-fon:   #14302a;
-  --color-ogoh:         #ffb547;
+  --color-ogoh:         #f0ad4e;
   --color-ogoh-fon:     #32281a;
   --color-xato:         #ff5d6c;
   --color-xato-fon:     #2a1a1e;

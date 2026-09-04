@@ -3,7 +3,7 @@ export type Lang = 'uz' | 'ru' | 'en';
 const translations = {
   uz: {
     // Nav
-    nav_dashboard:   'Dashboard',
+    nav_dashboard:   'Bosh',
     nav_leads:       'Lidlar',
     nav_groups:      'Kurslar',
     nav_students:    "O'quvchilar",
@@ -11,9 +11,9 @@ const translations = {
     nav_logistics:   'Logistika',
     nav_exams:       'Imtihonlar',
     nav_reports:     'Hisobotlar',
-    nav_hr:          'HR Menejment',
+    nav_hr:          'Xodimlar',
     nav_settings:    'Sozlamalar',
-    nav_syllabus:    "O'quv programmasi",
+    nav_syllabus:    "O'quv reja",
     nav_messaging:   'Xabarlar',
     // Common actions
     save:        'Saqlash',
@@ -557,9 +557,9 @@ const translations = {
     nav_logistics:   'Логистика',
     nav_exams:       'Экзамены',
     nav_reports:     'Отчёты',
-    nav_hr:          'HR Менеджмент',
+    nav_hr:          'Сотрудники',
     nav_settings:    'Настройки',
-    nav_syllabus:    'Учебная программа',
+    nav_syllabus:    'Учебный план',
     nav_messaging:   'Сообщения',
     save:        'Сохранить',
     saving:      'Сохранение...',
@@ -1074,7 +1074,7 @@ const translations = {
     nav_logistics:   'Logistics',
     nav_exams:       'Exams',
     nav_reports:     'Reports',
-    nav_hr:          'HR Management',
+    nav_hr:          'Staff',
     nav_settings:    'Settings',
     nav_syllabus:    'Syllabus',
     nav_messaging:   'Messaging',

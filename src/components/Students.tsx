@@ -931,9 +931,11 @@ export default function Students() {
                                         </span>
                                     </td>
                                     <td className="px-4 py-2.5 text-right">
+                                        {/* Yaxshi davomat rangsiz: e'tibor faqat muammoga
+                                            kerak. Ilgari ro'yxatning yarmi yashil edi. */}
                                         {attRate.has(student.id) ? (
                                             <span className={`num text-[13px] ${
-                                                (attRate.get(student.id) as number) >= 85 ? 'text-yaxshi' :
+                                                (attRate.get(student.id) as number) >= 85 ? 'text-matn-2' :
                                                 (attRate.get(student.id) as number) >= 70 ? 'text-ogoh' : 'text-xato'
                                             }`}>{attRate.get(student.id)}%</span>
                                         ) : (
