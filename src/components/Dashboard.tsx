@@ -340,13 +340,13 @@ export default function Dashboard() {
                     className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700/50 p-5 cursor-pointer hover:border-[#1b6b6b]/40 transition-colors">
                     <span className="text-[12px] text-gray-500 dark:text-gray-400">{t('income')}</span>
                     <div className="mt-1.5 flex items-baseline gap-1">
-                        <span className="num text-[30px] font-bold leading-none text-emerald-500">{(periodIncome / 1000000).toFixed(1)}</span>
+                        <span className="num text-[30px] font-bold leading-none text-gray-900 dark:text-white">{(periodIncome / 1000000).toFixed(1)}</span>
                         <span className="num text-[13px] font-medium text-gray-400">mln</span>
                     </div>
                     {incomePct !== null ? (
                         <>
                             <div className="mt-3 h-1.5 rounded-full bg-gray-100 dark:bg-gray-700 overflow-hidden">
-                                <div className="h-full rounded-full bg-emerald-500" style={{ width: `${incomePct}%` }} />
+                                <div className="h-full rounded-full bg-[#1b6b6b]" style={{ width: `${incomePct}%` }} />
                             </div>
                             <span className="text-[11px] text-gray-400 block mt-2">
                                 <span className="num">{(monthlyExpected / 1000000).toFixed(1)}</span> mln kutilgandan <span className="num">{incomePct}%</span>
@@ -358,7 +358,7 @@ export default function Dashboard() {
                 </div>
 
                 <div onClick={() => navigate('/students?filter=debt')}
-                    className="bg-white dark:bg-gray-800 rounded-2xl border border-rose-100 dark:border-rose-900/40 p-5 cursor-pointer hover:border-rose-300 dark:hover:border-rose-800 transition-colors">
+                    className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700/50 p-5 cursor-pointer hover:border-rose-300 dark:hover:border-rose-900/60 transition-colors">
                     <span className="text-[12px] text-gray-500 dark:text-gray-400">{t('debt')}</span>
                     <div className="mt-1.5 flex items-baseline gap-1">
                         <span className="num text-[30px] font-bold leading-none text-rose-500">{(totalDebt / 1000000).toFixed(1)}</span>

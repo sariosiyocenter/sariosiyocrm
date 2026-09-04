@@ -155,6 +155,16 @@ export default function StudentDetails() {
 
     const student = students.find(s => s.id === Number(id));
 
+    /** Ismlar bazada butunlay bosh harflarda saqlangan ("ABDUHAYEVA SHAHNOZA
+     *  ERKIN QIZI"). Bunday yozuv o'qishni qiyinlashtiradi, shuning uchun
+     *  ko'rsatishda oddiy yozuvga keltiriladi. Bazadagi ma'lumot o'zgarmaydi.
+     *  Aralash yozuvdagi ism (masalan "McKenzie") tegilmaydi. */
+    const displayName = (raw: string) => {
+        if (!raw || raw !== raw.toUpperCase()) return raw;
+        return raw.toLowerCase().replace(/(^|[\s\-])([a-zà-ÿo'g'\u2018\u2019])/g,
+            (_m, sep, ch) => sep + ch.toUpperCase());
+    };
+
     // Startup only carries recent attendance, so pull this student's full history —
     // the profile shows every lesson they have attended, not just the last few weeks.
     React.useEffect(() => {
@@ -509,9 +519,14 @@ export default function StudentDetails() {
                         {/* overflow-hidden bo'lmasligi kerak: avatar muqovadan pastga chiqib turadi
                             va u yerda qirqilib qolardi. Burchaklarni tashqi kartochka
                             allaqachon kesib turibdi. */}
-                        <div className="h-24 relative bg-gradient-to-br from-[#1b6b6b] to-[#2e9c9c]">
-                            <div className="absolute inset-0 overflow-hidden bg-gradient-to-t from-black/25 to-transparent" />
-                            <div className="absolute -bottom-10 left-1/2 -translate-x-1/2 rounded-[1.4rem] bg-white dark:bg-gray-800 p-1 shadow-lg">
+                        {/* Muqova. Avval to'la to'yingan brend gradienti edi va
+                            kartochkaning eng baland ovozli qismiga aylanib qolgandi —
+                            asosiy narsa esa ism va balans. Endi u past va shaffof
+                            qatlam: brend rangi sezilib turadi, lekin qichqirmaydi. */}
+                        <div className="h-20 relative bg-[#1b6b6b]/10 dark:bg-[#1b6b6b]/20">
+                            <div className="absolute inset-0 overflow-hidden bg-gradient-to-b from-[#1b6b6b]/25 to-transparent dark:from-[#1b6b6b]/30" />
+                            <div className="absolute inset-x-0 top-0 h-0.5 bg-[#1b6b6b]" />
+                            <div className="absolute -bottom-9 left-1/2 -translate-x-1/2 rounded-[1.3rem] bg-white dark:bg-gray-800 p-1 shadow-sm">
                                 <div className="group/avatar relative w-24 h-24 rounded-[1.15rem] bg-gray-55 dark:bg-gray-900 border border-gray-100 dark:border-gray-800/50 flex items-center justify-center text-[#1b6b6b] font-bold text-3xl overflow-hidden">
                                     {student.photo ? (
                                         <img src={student.photo} alt={student.name} className="w-full h-full object-cover object-top" />
@@ -582,7 +597,7 @@ export default function StudentDetails() {
                                     {/* Uzun o'zbek ismlari bosh harflarda o'qilmaydi,
                                         shuning uchun oddiy yozuvda qoldirildi. */}
                                     <div className="flex items-center justify-center gap-1.5">
-                                        <h2 className="text-[15px] font-bold text-gray-900 dark:text-white tracking-tight leading-snug">{student.name}</h2>
+                                        <h2 className="text-[16px] font-semibold text-gray-900 dark:text-white tracking-tight leading-snug">{displayName(student.name)}</h2>
                                         <button onClick={handleStartEdit} title={t('edit')} className="text-gray-300 dark:text-gray-600 hover:text-[#1b6b6b] cursor-pointer shrink-0">
                                             <Edit size={12} />
                                         </button>
@@ -590,7 +605,7 @@ export default function StudentDetails() {
                                     <div className="mt-2 flex items-center justify-center gap-2">
                                         <span className="num text-[11px] font-semibold text-gray-400">#{student.id}</span>
                                         <span className="w-1 h-1 rounded-full bg-gray-300 dark:bg-gray-650" />
-                                        <span className={`px-2.5 py-0.5 rounded-md text-[10px] font-black border uppercase tracking-wider ${
+                                        <span className={`px-2 py-0.5 rounded-md text-[11px] font-medium border ${
                                             student.status === 'Faol' ? 'bg-emerald-50 text-emerald-600 border-emerald-100 dark:bg-emerald-950/20 dark:text-emerald-400' :
                                             student.status === 'Sinov' ? 'bg-amber-50 text-amber-600 border-amber-100 dark:bg-amber-950/20 dark:text-amber-400' :
                                             student.status === 'Muzlatilgan' ? 'bg-sky-50 text-sky-650 border-sky-100 dark:bg-sky-950/20 dark:text-sky-455' :
@@ -614,12 +629,15 @@ export default function StudentDetails() {
                         </div>
 
                         <div className="px-6 pb-5 space-y-3 border-t border-gray-100 dark:border-gray-800/50 pt-4">
-                            <div className={`p-4 rounded-2xl border ${student.balance >= 0 ? 'bg-emerald-50/50 border-emerald-100 dark:bg-emerald-950/20 dark:border-emerald-900/40 text-emerald-600' : 'bg-rose-50/50 border-rose-100 dark:bg-rose-950/20 dark:border-rose-900/40 text-rose-600'} flex flex-col items-center`}>
-                                <span className="text-[10px] font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-1">{t('filter_balance')}</span>
-                                <span className="num text-xl font-bold tracking-tight">{student.balance.toLocaleString()} <span className="text-[11px] font-semibold opacity-60">UZS</span></span>
+                            <div className={`px-4 py-3.5 rounded-2xl border flex flex-col items-center ${student.balance >= 0
+                                ? 'bg-emerald-50/40 border-emerald-100 dark:bg-emerald-950/15 dark:border-emerald-900/30 text-emerald-600 dark:text-emerald-400'
+                                : 'bg-rose-50/40 border-rose-100 dark:bg-rose-950/15 dark:border-rose-900/30 text-rose-600 dark:text-rose-400'}`}>
+                                <span className="text-[12px] text-gray-500 dark:text-gray-400 mb-1">{t('filter_balance')}</span>
+                                <span className="num text-[26px] font-bold tracking-tight leading-none">{student.balance.toLocaleString()}</span>
+                                <span className="text-[11px] text-gray-400 dark:text-gray-500 mt-1">so'm</span>
                                 {debtDays !== null && (
-                                    <span className="text-[10px] font-bold text-rose-500 dark:text-rose-400 mt-1 tabular-nums">
-                                        {debtDays} kundan beri muddati o'tgan
+                                    <span className="text-[11px] text-rose-500/80 dark:text-rose-400/80 mt-1.5">
+                                        <span className="num">{debtDays}</span> kundan beri muddati o'tgan
                                     </span>
                                 )}
                             </div>
@@ -629,7 +647,7 @@ export default function StudentDetails() {
                             <div className="flex items-center gap-2">
                                 <button
                                     onClick={() => setShowPaymentModal(true)}
-                                    className="flex-1 py-3 bg-[#1b6b6b] hover:bg-[#155252] text-white rounded-xl text-[11px] font-extrabold uppercase tracking-wider shadow-sm shadow-[#1b6b6b]/20 active:scale-95 transition-all cursor-pointer"
+                                    className="flex-1 py-2.5 bg-[#1b6b6b] hover:bg-[#155252] text-white rounded-xl text-[13px] font-semibold transition-colors cursor-pointer"
                                 >
                                     {t('add_payment')}
                                 </button>
@@ -637,7 +655,7 @@ export default function StudentDetails() {
                                     href={student.phone ? `tel:${student.phone.replace(/\s/g, '')}` : undefined}
                                     aria-disabled={!student.phone}
                                     title={student.phone || t('phone_not_found')}
-                                    className={`w-11 h-11 flex items-center justify-center rounded-xl border transition-all shrink-0 ${student.phone
+                                    className={`w-10 h-10 flex items-center justify-center rounded-xl border transition-colors shrink-0 ${student.phone
                                         ? 'bg-gray-55 dark:bg-gray-900 border-gray-100 dark:border-gray-800 text-[#1b6b6b] hover:bg-[#1b6b6b] hover:text-white cursor-pointer'
                                         : 'bg-gray-55 dark:bg-gray-900 border-gray-100 dark:border-gray-800 text-gray-300 pointer-events-none'}`}
                                 >
