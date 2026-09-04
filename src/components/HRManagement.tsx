@@ -277,6 +277,7 @@ export default function HRManagement() {
                                             <th className="px-3 py-3 text-[11px] font-medium text-gray-400">Lavozim</th>
                                             <th className="px-3 py-3 text-[11px] font-medium text-gray-400">Rol</th>
                                             <th className="px-3 py-3 text-[11px] font-medium text-gray-400 text-right">Guruh</th>
+                                            <th className="px-3 py-3 text-[11px] font-medium text-gray-400">Haftalik yuklama</th>
                                             <th className="px-3 py-3 text-[11px] font-medium text-gray-400 text-right">Oylik</th>
                                             <th className="px-5 py-3 w-28" />
                                         </tr>
@@ -285,7 +286,12 @@ export default function HRManagement() {
                                         {filteredUsers.map((u) => {
                                             const isLegacy = u._source === 'teacher';
                                             const profilePath = isLegacy ? `/teachers/${u._tid}` : `/hr/${u.id}`;
-                                            const groupCount = (groups || []).filter(g => g.teacherId === (isLegacy ? u._tid : u.teacherId)).length;
+                                            const myGroups = (groups || []).filter(g => g.teacherId === (isLegacy ? u._tid : u.teacherId));
+                                            const groupCount = myGroups.length;
+                                            // Haftalik dars soni: toq/juft kunlar haftada 3 marta,
+                                            // har kuni — 6 marta. Boshqa maydon bazada yo'q.
+                                            const weeklyLessons = myGroups.reduce((n, g) => n + (g.days === 'TOQ' || g.days === 'JUFT' ? 3 : 6), 0);
+                                            const loadPct = Math.min(100, Math.round((weeklyLessons / 24) * 100));
                                             return (
                                                 <tr key={u.id} className="group hover:bg-gray-55/70 dark:hover:bg-gray-900/30 transition-colors">
                                                     <td className="px-5 py-3 align-middle">
@@ -313,6 +319,19 @@ export default function HRManagement() {
                                                     </td>
                                                     <td className="num px-3 py-3 text-[13px] text-right text-gray-700 dark:text-gray-200 align-middle">
                                                         {groupCount || '—'}
+                                                    </td>
+                                                    <td className="px-3 py-3 align-middle">
+                                                        {weeklyLessons > 0 ? (
+                                                            <div className="flex items-center gap-2">
+                                                                <div className="w-20 h-1.5 rounded-full bg-gray-100 dark:bg-gray-700 overflow-hidden shrink-0">
+                                                                    <div className={`h-full rounded-full ${loadPct >= 85 ? 'bg-rose-500' : loadPct >= 60 ? 'bg-emerald-500' : 'bg-amber-400'}`}
+                                                                        style={{ width: `${loadPct}%` }} />
+                                                                </div>
+                                                                <span className="num text-[12px] text-gray-500 dark:text-gray-400 shrink-0">{weeklyLessons} dars</span>
+                                                            </div>
+                                                        ) : (
+                                                            <span className="text-[12px] text-gray-400">—</span>
+                                                        )}
                                                     </td>
                                                     <td className="num px-3 py-3 text-[13px] text-right text-gray-700 dark:text-gray-200 align-middle">
                                                         {u.salary > 0 ? u.salary.toLocaleString() : '—'}
