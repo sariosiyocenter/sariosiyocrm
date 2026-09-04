@@ -427,7 +427,7 @@ export default function SuperAdmin() {
     return (
       <div className="flex flex-col items-center justify-center py-20">
         <div className="text-red-500 font-extrabold text-lg">Ruxsat etilmagan</div>
-        <p className="text-gray-500 text-sm mt-2">Bu sahifaga faqat Super Admin yoki Sotuvchi kira oladi.</p>
+        <p className="text-matn-sokin text-sm mt-2">Bu sahifaga faqat Super Admin yoki Sotuvchi kira oladi.</p>
       </div>
     );
   }
@@ -437,10 +437,10 @@ export default function SuperAdmin() {
       {/* Header */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-black text-gray-900 dark:text-white tracking-tight">
+          <h1 className="text-2xl font-black text-matn tracking-tight">
             {isSuper ? 'Super Admin Boshqaruvi' : 'Sotuvchi Dashboard'}
           </h1>
-          <p className="text-xs font-bold text-gray-400 dark:text-gray-500 mt-1">
+          <p className="text-xs font-bold text-matn-xira mt-1">
             {isSuper ? 'Platformadagi barcha tashkilotlar, lidlar va sotuvchilarni nazorat qilish' : 'Sizga biriktirilgan sotuv lidlarini boshqarish'}
           </p>
         </div>
@@ -448,7 +448,7 @@ export default function SuperAdmin() {
           {activeTab === 'orgs' && isSuper && (
             <button
               onClick={() => setOrgModalOpen(true)}
-              className="inline-flex items-center justify-center gap-2 px-6 py-3.5 bg-[#1b6b6b] hover:bg-[#155252] text-white text-xs font-extrabold rounded-2xl shadow-sm shadow-[#1b6b6b]/20 transition-all hover:scale-105 cursor-pointer"
+              className="inline-flex items-center justify-center gap-2 px-6 py-3.5 bg-brand hover:bg-brand-dark text-white text-xs font-extrabold rounded-2xl shadow-sm shadow-[#1b6b6b]/20 transition-all hover:scale-105 cursor-pointer"
             >
               <Plus size={15} />
               Yangi Tashkilot
@@ -477,7 +477,7 @@ export default function SuperAdmin() {
 
       {/* Tab Selector */}
       {isSuper && (
-        <div className="flex border-b border-gray-100 dark:border-gray-800/50 gap-2 pb-px">
+        <div className="flex border-b border-chiziq gap-2 pb-px">
           {[
             { id: 'overview', label: 'Boshqaruv Paneli', icon: LayoutDashboard },
             { id: 'orgs', label: 'Tashkilotlar', icon: Building2 },
@@ -492,8 +492,8 @@ export default function SuperAdmin() {
                 onClick={() => setActiveTab(tab.id as any)}
                 className={`flex items-center gap-2 px-6 py-3 text-xs font-extrabold border-b-2 transition-all cursor-pointer ${
                   active
-                    ? 'border-[#1b6b6b] text-[#1b6b6b] dark:text-[#2eb8b8]'
-                    : 'border-transparent text-gray-400 hover:text-gray-600 dark:hover:text-gray-300'
+                    ? 'border-brand text-brand dark:text-[#2eb8b8]'
+                    : 'border-transparent text-matn-xira hover:text-gray-600 dark:hover:text-gray-300'
                 }`}
               >
                 <Icon size={14} />
@@ -508,15 +508,15 @@ export default function SuperAdmin() {
       {activeTab === 'overview' && isSuper && (
         <div className="space-y-8">
           {/* SaaS Business Metrics Dashboard */}
-          <div className="space-y-6 bg-gray-50/40 dark:bg-gray-900/30 p-4 rounded-[2rem] border border-gray-100 dark:border-gray-800">
-            <h2 className="text-xs font-black text-gray-900 dark:text-white mb-2">
+          <div className="space-y-6 bg-gray-50/40 dark:bg-gray-900/30 p-4 rounded-[2rem] border border-chiziq">
+            <h2 className="text-xs font-black text-matn mb-2">
               SaaS Tizimi Ko'rsatkichlari (KPIs)
             </h2>
             
             <div className="space-y-8">
               {/* Group 1: Biznes va Obuna */}
               <div className="space-y-3">
-                <h3 className="text-[11px] font-bold text-gray-400 dark:text-gray-500 flex items-center gap-2">
+                <h3 className="text-[11px] font-bold text-matn-xira flex items-center gap-2">
                   <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span> Biznes va Obuna Metrikalari
                 </h3>
                 <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
@@ -527,10 +527,10 @@ export default function SuperAdmin() {
                     { label: 'O\'rtacha Filial Limiti', value: avgMaxSchoolsLimit + ' ta', icon: Building2, color: 'text-amber-600 bg-amber-50 dark:bg-amber-950/20 dark:text-amber-400' },
                     { label: 'Sotuvchilar (Agentlar)', value: totalSellers + ' ta', icon: Users2, color: 'text-rose-600 bg-rose-50 dark:bg-rose-950/20 dark:text-rose-400' },
                   ].map((m, i) => (
-                    <div key={i} className="bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-800/50 rounded-2xl p-4 flex flex-col justify-between h-[100px] shadow-sm hover:shadow transition-all duration-300">
-                      <span className="text-[11px] font-bold text-gray-400 dark:text-gray-500 leading-tight">{m.label}</span>
+                    <div key={i} className="bg-sirt border border-chiziq rounded-2xl p-4 flex flex-col justify-between h-[100px] shadow-sm hover:shadow transition-all duration-300">
+                      <span className="text-[11px] font-bold text-matn-xira leading-tight">{m.label}</span>
                       <div className="flex items-end justify-between mt-1.5">
-                        <span className="text-sm font-black text-gray-900 dark:text-white leading-none tracking-tight">{m.value}</span>
+                        <span className="text-sm font-black text-matn leading-none tracking-tight">{m.value}</span>
                         <div className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0 ${m.color}`}>
                           <m.icon size={13} />
                         </div>
@@ -542,7 +542,7 @@ export default function SuperAdmin() {
 
               {/* Group 2: Sotuv Lidleari Boshqaruvi */}
               <div className="space-y-3">
-                <h3 className="text-[11px] font-bold text-gray-400 dark:text-gray-500 flex items-center gap-2">
+                <h3 className="text-[11px] font-bold text-matn-xira flex items-center gap-2">
                   <span className="w-1.5 h-1.5 rounded-full bg-brand"></span> Sotuv va Lidlar Metrikalari
                 </h3>
                 <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-4">
@@ -554,10 +554,10 @@ export default function SuperAdmin() {
                     { label: 'Rad etilgan (Lost)', value: lostLeadsCount + ' ta', icon: X, color: 'text-rose-600 bg-rose-50 dark:bg-rose-950/20 dark:text-rose-400' },
                     { label: 'Lead Conversion Rate', value: leadWonRate, icon: GraduationCap, color: 'text-violet-600 bg-violet-50 dark:bg-violet-950/20 dark:text-violet-400' },
                   ].map((m, i) => (
-                    <div key={i} className="bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-800/50 rounded-2xl p-4 flex flex-col justify-between h-[100px] shadow-sm hover:shadow transition-all duration-300">
-                      <span className="text-[11px] font-bold text-gray-400 dark:text-gray-500 leading-tight">{m.label}</span>
+                    <div key={i} className="bg-sirt border border-chiziq rounded-2xl p-4 flex flex-col justify-between h-[100px] shadow-sm hover:shadow transition-all duration-300">
+                      <span className="text-[11px] font-bold text-matn-xira leading-tight">{m.label}</span>
                       <div className="flex items-end justify-between mt-1.5">
-                        <span className="text-sm font-black text-gray-900 dark:text-white leading-none tracking-tight">{m.value}</span>
+                        <span className="text-sm font-black text-matn leading-none tracking-tight">{m.value}</span>
                         <div className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0 ${m.color}`}>
                           <m.icon size={13} />
                         </div>
@@ -569,20 +569,20 @@ export default function SuperAdmin() {
 
               {/* Group 3: Tashkilotlar Holati */}
               <div className="space-y-3">
-                <h3 className="text-[11px] font-bold text-gray-400 dark:text-gray-500 flex items-center gap-2">
+                <h3 className="text-[11px] font-bold text-matn-xira flex items-center gap-2">
                   <span className="w-1.5 h-1.5 rounded-full bg-sky-500"></span> Tashkilotlar Holati Metrikalari
                 </h3>
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                   {[
-                    { label: 'Jami Tashkilotlar', value: totalOrgs + ' ta', icon: Building2, color: 'text-gray-600 bg-gray-50 dark:bg-gray-800 dark:text-gray-400' },
+                    { label: 'Jami Tashkilotlar', value: totalOrgs + ' ta', icon: Building2, color: 'text-gray-600 bg-ichki dark:text-gray-400' },
                     { label: 'Faol Tashkilotlar', value: activeOrgs + ' ta', icon: Building2, color: 'text-emerald-600 bg-emerald-50 dark:bg-emerald-950/20 dark:text-emerald-400' },
                     { label: 'Trial Tashkilotlar', value: trialOrgs + ' ta', icon: Building2, color: 'text-amber-600 bg-amber-50 dark:bg-amber-950/20 dark:text-amber-400' },
                     { label: 'Muzlatilganlar', value: frozenOrgs + ' ta', icon: Building2, color: 'text-rose-600 bg-rose-50 dark:bg-rose-950/20 dark:text-rose-400' },
                   ].map((m, i) => (
-                    <div key={i} className="bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-800/50 rounded-2xl p-4 flex flex-col justify-between h-[100px] shadow-sm hover:shadow transition-all duration-300">
-                      <span className="text-[11px] font-bold text-gray-400 dark:text-gray-500 leading-tight">{m.label}</span>
+                    <div key={i} className="bg-sirt border border-chiziq rounded-2xl p-4 flex flex-col justify-between h-[100px] shadow-sm hover:shadow transition-all duration-300">
+                      <span className="text-[11px] font-bold text-matn-xira leading-tight">{m.label}</span>
                       <div className="flex items-end justify-between mt-1.5">
-                        <span className="text-sm font-black text-gray-900 dark:text-white leading-none tracking-tight">{m.value}</span>
+                        <span className="text-sm font-black text-matn leading-none tracking-tight">{m.value}</span>
                         <div className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0 ${m.color}`}>
                           <m.icon size={13} />
                         </div>
@@ -594,7 +594,7 @@ export default function SuperAdmin() {
 
               {/* Group 4: Platformadan Foydalanish */}
               <div className="space-y-3">
-                <h3 className="text-[11px] font-bold text-gray-400 dark:text-gray-500 flex items-center gap-2">
+                <h3 className="text-[11px] font-bold text-matn-xira flex items-center gap-2">
                   <span className="w-1.5 h-1.5 rounded-full bg-violet-500"></span> Platforma Foydalanish Metrikalari
                 </h3>
                 <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
@@ -605,10 +605,10 @@ export default function SuperAdmin() {
                     { label: 'Jami O\'qituvchilar', value: totalPlatformTeachers.toLocaleString() + ' ta', icon: GraduationCap, color: 'text-violet-600 bg-violet-50 dark:bg-violet-950/20 dark:text-violet-400' },
                     { label: 'Jami Foydalanuvchilar', value: totalPlatformUsers.toLocaleString() + ' ta', icon: Users2, color: 'text-rose-600 bg-rose-50 dark:bg-rose-950/20 dark:text-rose-400' },
                   ].map((m, i) => (
-                    <div key={i} className="bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-800/50 rounded-2xl p-4 flex flex-col justify-between h-[100px] shadow-sm hover:shadow transition-all duration-300">
-                      <span className="text-[11px] font-bold text-gray-400 dark:text-gray-500 leading-tight">{m.label}</span>
+                    <div key={i} className="bg-sirt border border-chiziq rounded-2xl p-4 flex flex-col justify-between h-[100px] shadow-sm hover:shadow transition-all duration-300">
+                      <span className="text-[11px] font-bold text-matn-xira leading-tight">{m.label}</span>
                       <div className="flex items-end justify-between mt-1.5">
-                        <span className="text-sm font-black text-gray-900 dark:text-white leading-none tracking-tight">{m.value}</span>
+                        <span className="text-sm font-black text-matn leading-none tracking-tight">{m.value}</span>
                         <div className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0 ${m.color}`}>
                           <m.icon size={13} />
                         </div>
@@ -628,7 +628,7 @@ export default function SuperAdmin() {
           {/* Org list */}
           <div>
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
-              <h2 className="text-[11px] font-extrabold text-gray-400">
+              <h2 className="text-[11px] font-extrabold text-matn-xira">
                 Tashkilotlar ro'yxati ({filteredOrgs.length})
               </h2>
               <div className="flex items-center gap-3">
@@ -637,12 +637,12 @@ export default function SuperAdmin() {
                   placeholder="Qidirish (nomi, manzil, telefon)..."
                   value={orgSearch}
                   onChange={(e) => setOrgSearch(e.target.value)}
-                  className="px-4 py-2.5 bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-800/50 rounded-xl text-xs font-bold text-gray-900 dark:text-white outline-none w-64 shadow-sm focus:border-emerald-500 transition-all"
+                  className="px-4 py-2.5 bg-sirt border border-chiziq rounded-xl text-xs font-bold text-matn outline-none w-64 shadow-sm focus:border-emerald-500 transition-all"
                 />
                 <select
                   value={orgFilterStatus}
                   onChange={(e) => setOrgFilterStatus(e.target.value as any)}
-                  className="px-4 py-2.5 bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-800/50 rounded-xl text-xs font-bold text-gray-900 dark:text-white outline-none cursor-pointer shadow-sm focus:border-emerald-500 transition-all"
+                  className="px-4 py-2.5 bg-sirt border border-chiziq rounded-xl text-xs font-bold text-matn outline-none cursor-pointer shadow-sm focus:border-emerald-500 transition-all"
                 >
                   <option value="ALL">Barchasi</option>
                   <option value="FAOL">Faol Tashkilotlar</option>
@@ -654,15 +654,15 @@ export default function SuperAdmin() {
 
             {fetchingOrgs ? (
               <div className="py-20 flex items-center justify-center">
-                <div className="w-8 h-8 border-[3px] border-[#1b6b6b] border-t-transparent rounded-full animate-spin" />
+                <div className="w-8 h-8 border-[3px] border-brand border-t-transparent rounded-full animate-spin" />
               </div>
             ) : filteredOrgs.length === 0 ? (
-              <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-800/50 shadow-sm p-16 text-center">
+              <div className="bg-sirt rounded-2xl border border-chiziq shadow-sm p-16 text-center">
                 <Building2 size={40} className="mx-auto text-gray-200 dark:text-gray-600 mb-4" />
-                <p className="text-gray-400 font-bold text-sm">Hozircha tashkilot topilmadi</p>
+                <p className="text-matn-xira font-bold text-sm">Hozircha tashkilot topilmadi</p>
                 <button
                   onClick={() => setOrgModalOpen(true)}
-                  className="mt-4 inline-flex items-center gap-2 px-5 py-2.5 bg-[#1b6b6b] text-white text-xs font-extrabold rounded-xl cursor-pointer"
+                  className="mt-4 inline-flex items-center gap-2 px-5 py-2.5 bg-brand text-brand-ust text-xs font-extrabold rounded-xl cursor-pointer"
                 >
                   <Plus size={13} /> Yangi tashkilot yarating
                 </button>
@@ -679,7 +679,7 @@ export default function SuperAdmin() {
                     <div
                       key={org.id}
                       onClick={() => navigate(`/org/${org.id}`)}
-                      className="group bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-800/50 shadow-sm hover:shadow-xl hover:border-[#1b6b6b]/30 hover:-translate-y-0.5 transition-all duration-300 cursor-pointer overflow-hidden p-4 flex flex-col md:flex-row md:items-center md:justify-between gap-4"
+                      className="group bg-sirt rounded-2xl border border-chiziq shadow-sm hover:shadow-xl hover:border-brand/30 hover:-translate-y-0.5 transition-all duration-300 cursor-pointer overflow-hidden p-4 flex flex-col md:flex-row md:items-center md:justify-between gap-4"
                     >
                       {/* Left: Info */}
                       <div className="flex items-center gap-5 min-w-[280px]">
@@ -688,42 +688,42 @@ export default function SuperAdmin() {
                         </div>
                         <div className="space-y-1">
                           <div className="flex items-center gap-2">
-                            <span className="text-[11px] font-extrabold text-[#1b6b6b] dark:text-[#2b9b9b]">Tashkilot #{org.id}</span>
+                            <span className="text-[11px] font-extrabold text-brand dark:text-[#2b9b9b]">Tashkilot #{org.id}</span>
                             <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold border ${statusColors[org.status || 'Sinov']}`}>
                               {org.status || 'Sinov'}
                             </span>
                           </div>
-                          <h3 className="font-black text-gray-900 dark:text-white tracking-tight text-base group-hover:text-[#1b6b6b] transition-colors">{org.name}</h3>
-                          <div className="flex flex-wrap gap-x-3 gap-y-1 text-[12px] text-gray-400 font-bold items-center">
+                          <h3 className="font-black text-matn tracking-tight text-base group-hover:text-brand transition-colors">{org.name}</h3>
+                          <div className="flex flex-wrap gap-x-3 gap-y-1 text-[12px] text-matn-xira font-bold items-center">
                             {org.address && (
                               <div className="flex items-center gap-1">
-                                <MapPin size={11} className="text-gray-400" />
+                                <MapPin size={11} className="text-matn-xira" />
                                 {org.address}
                               </div>
                             )}
                             {org.phone && (
                               <div className="flex items-center gap-1">
-                                <Phone size={11} className="text-gray-400" />
+                                <Phone size={11} className="text-matn-xira" />
                                 {org.phone}
                               </div>
                             )}
                             {(org as any).adminEmail && (
                               <div className="flex items-center gap-1 text-slate-500 dark:text-slate-400">
-                                <span className="font-extrabold text-[11px] bg-slate-100 dark:bg-slate-800 px-1.5 py-0.5 rounded text-gray-500 dark:text-gray-400">Admin:</span>
-                                <span className="text-[#1b6b6b] dark:text-[#2b9b9b]">{(org as any).adminEmail}</span>
+                                <span className="font-extrabold text-[11px] bg-slate-100 dark:bg-slate-800 px-1.5 py-0.5 rounded text-matn-sokin">Admin:</span>
+                                <span className="text-brand dark:text-[#2b9b9b]">{(org as any).adminEmail}</span>
                                 {(org as any).adminPhone && <span className="text-[11px] opacity-75">({(org as any).adminPhone})</span>}
                               </div>
                             )}
                           </div>
                           {org.expiresAt && (
-                             <div className="text-[11px] text-gray-400 dark:text-gray-500 font-bold flex items-center gap-1">
-                               <Calendar size={12} className="text-gray-400" />
+                             <div className="text-[11px] text-matn-xira font-bold flex items-center gap-1">
+                               <Calendar size={12} className="text-matn-xira" />
                                {new Date(org.createdAt).toLocaleDateString()} → {new Date(org.expiresAt).toLocaleDateString()}
                              </div>
                            )}
                            {!org.expiresAt && org.createdAt && (
-                             <div className="text-[11px] text-gray-400 dark:text-gray-500 font-bold flex items-center gap-1">
-                               <Calendar size={12} className="text-gray-400" />
+                             <div className="text-[11px] text-matn-xira font-bold flex items-center gap-1">
+                               <Calendar size={12} className="text-matn-xira" />
                                Boshlangan: {new Date(org.createdAt).toLocaleDateString()}
                              </div>
                            )}
@@ -747,13 +747,13 @@ export default function SuperAdmin() {
 
                       {/* Right: Actions */}
                       <div className="flex items-center gap-3 shrink-0 ml-auto md:ml-0">
-                        <div className="flex items-center gap-1.5 bg-gray-50 dark:bg-gray-900/40 p-1.5 rounded-2xl border border-gray-100 dark:border-gray-800/30">
+                        <div className="flex items-center gap-1.5 bg-ichki/40 p-1.5 rounded-2xl border border-chiziq/30">
                           <button
                             onClick={e => { e.stopPropagation(); handleToggleBlockOrg(org); }}
                             className={`w-10 h-10 flex items-center justify-center rounded-xl transition-all cursor-pointer shadow-sm border ${
                               org.status === 'Muzlatilgan' 
                                 ? 'text-amber-500 hover:bg-amber-100/50 dark:hover:bg-amber-950/40 border-transparent hover:border-amber-100 dark:hover:border-amber-900'
-                                : 'text-gray-400 hover:text-rose-500 hover:bg-rose-100/50 dark:hover:bg-rose-950/40 border-transparent hover:border-rose-100 dark:hover:border-rose-900'
+                                : 'text-matn-xira hover:text-rose-500 hover:bg-rose-100/50 dark:hover:bg-rose-950/40 border-transparent hover:border-rose-100 dark:hover:border-rose-900'
                             }`}
                             title={org.status === 'Muzlatilgan' ? "Faollashtirish" : "Muzlatish (Bloklash)"}
                           >
@@ -761,14 +761,14 @@ export default function SuperAdmin() {
                           </button>
                           <button
                             onClick={e => { e.stopPropagation(); handleOpenSubscription(org); }}
-                            className="w-10 h-10 flex items-center justify-center text-gray-400 hover:text-sky-500 hover:bg-sky-100/50 dark:hover:bg-sky-950/40 rounded-xl transition-all cursor-pointer shadow-sm border border-transparent hover:border-sky-100 dark:hover:border-sky-900"
+                            className="w-10 h-10 flex items-center justify-center text-matn-xira hover:text-sky-500 hover:bg-sky-100/50 dark:hover:bg-sky-950/40 rounded-xl transition-all cursor-pointer shadow-sm border border-transparent hover:border-sky-100 dark:hover:border-sky-900"
                             title="Tarifni sozlash"
                           >
                             <Settings size={16} />
                           </button>
                         </div>
-                        <div className="w-10 h-10 rounded-2xl bg-gray-50 dark:bg-gray-900/40 flex items-center justify-center border border-gray-100 dark:border-gray-800/30 group-hover:bg-[#1b6b6b]/10 group-hover:border-[#1b6b6b]/20 transition-all">
-                          <ChevronRight size={20} className="text-gray-400 group-hover:text-[#1b6b6b] group-hover:translate-x-0.5 transition-all" />
+                        <div className="w-10 h-10 rounded-2xl bg-ichki/40 flex items-center justify-center border border-chiziq/30 group-hover:bg-brand/10 group-hover:border-brand/20 transition-all">
+                          <ChevronRight size={20} className="text-matn-xira group-hover:text-brand group-hover:translate-x-0.5 transition-all" />
                         </div>
                       </div>
                     </div>
@@ -784,14 +784,14 @@ export default function SuperAdmin() {
       {activeTab === 'leads' && (
         <div className="space-y-6">
           {/* Filters Bar */}
-          <div className="bg-white dark:bg-gray-800 rounded-2xl p-4 border border-gray-100 dark:border-gray-800/50 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <div className="bg-sirt rounded-2xl p-4 border border-chiziq shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-4">
             <div className="flex-1 max-w-md relative">
               <input
                 type="text"
                 placeholder="Lid nomi, tel yoki markaz..."
                 value={leadSearch}
                 onChange={e => setLeadSearch(e.target.value)}
-                className="w-full pl-5 pr-4 py-3 bg-gray-50 dark:bg-gray-900/50 border border-gray-100 dark:border-gray-800 rounded-2xl text-xs font-bold text-gray-900 dark:text-white outline-none focus:border-[#1b6b6b] transition-all"
+                className="w-full pl-5 pr-4 py-3 bg-ichki border border-chiziq rounded-2xl text-xs font-bold text-matn outline-none focus:border-brand transition-all"
               />
             </div>
             <div className="flex gap-2">
@@ -802,7 +802,7 @@ export default function SuperAdmin() {
                   className={`px-4 py-2.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
                     leadFilterStatus === st
                       ? 'bg-brand-dark text-white shadow-md shadow-brand/10'
-                      : 'bg-gray-50 dark:bg-gray-900/50 text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 border border-gray-100 dark:border-gray-800'
+                      : 'bg-ichki text-matn-xira hover:text-gray-700 dark:hover:text-gray-200 border border-chiziq'
                   }`}
                 >
                   {st === 'all' ? 'Barchasi' : st}
@@ -817,9 +817,9 @@ export default function SuperAdmin() {
               <div className="w-8 h-8 border-[3px] border-brand border-t-transparent rounded-full animate-spin" />
             </div>
           ) : filteredLeads.length === 0 ? (
-            <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-800/50 shadow-sm p-16 text-center">
+            <div className="bg-sirt rounded-2xl border border-chiziq shadow-sm p-16 text-center">
               <ClipboardList size={40} className="mx-auto text-gray-200 dark:text-gray-600 mb-4" />
-              <p className="text-gray-400 font-bold text-sm">Sotuv lidlari topilmadi</p>
+              <p className="text-matn-xira font-bold text-sm">Sotuv lidlari topilmadi</p>
               <button
                 onClick={() => handleOpenLeadModal(null)}
                 className="mt-4 inline-flex items-center gap-2 px-5 py-2.5 bg-brand-dark text-white text-xs font-extrabold rounded-xl cursor-pointer"
@@ -840,7 +840,7 @@ export default function SuperAdmin() {
                 return (
                   <div
                     key={lead.id}
-                    className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-800/50 p-4 shadow-sm hover:shadow-md transition-all flex flex-col justify-between"
+                    className="bg-sirt rounded-2xl border border-chiziq p-4 shadow-sm hover:shadow-md transition-all flex flex-col justify-between"
                   >
                     <div>
                       <div className="flex items-center justify-between mb-4">
@@ -850,7 +850,7 @@ export default function SuperAdmin() {
                         <div className="flex gap-1">
                           <button
                             onClick={() => handleOpenLeadModal(lead)}
-                            className="w-7 h-7 flex items-center justify-center text-gray-400 hover:text-brand hover:bg-brand/10 dark:hover:bg-brand/20 rounded-lg transition-all cursor-pointer"
+                            className="w-7 h-7 flex items-center justify-center text-matn-xira hover:text-brand hover:bg-brand/10 dark:hover:bg-brand/20 rounded-lg transition-all cursor-pointer"
                             title="Tahrirlash"
                           >
                             <Edit3 size={12} />
@@ -865,36 +865,36 @@ export default function SuperAdmin() {
                         </div>
                       </div>
 
-                      <h3 className="font-black text-gray-900 dark:text-white tracking-tight text-base leading-tight mb-2">
+                      <h3 className="font-black text-matn tracking-tight text-base leading-tight mb-2">
                         {lead.name}
                       </h3>
 
-                      <div className="space-y-1.5 mb-4 text-xs font-bold text-gray-500 dark:text-gray-400">
+                      <div className="space-y-1.5 mb-4 text-xs font-bold text-matn-sokin">
                         <div className="flex items-center gap-1.5">
-                          <Phone size={12} className="text-gray-400" />
+                          <Phone size={12} className="text-matn-xira" />
                           <span>{lead.phone}</span>
                         </div>
                         {lead.centerName && (
                           <div className="flex items-center gap-1.5">
-                            <Building2 size={12} className="text-gray-400" />
+                            <Building2 size={12} className="text-matn-xira" />
                             <span>Markaz: {lead.centerName}</span>
                           </div>
                         )}
                         <div className="flex items-center gap-1.5">
-                          <Calendar size={12} className="text-gray-400" />
+                          <Calendar size={12} className="text-matn-xira" />
                           <span>Qo'shildi: {new Date(lead.createdAt).toLocaleDateString()}</span>
                         </div>
                       </div>
 
                       {lead.notes && (
-                        <div className="bg-gray-50 dark:bg-gray-900/50 rounded-xl p-3 mb-4 text-[12px] font-bold text-gray-500 dark:text-gray-400 border border-gray-100/55 dark:border-gray-800">
-                          <div className="text-[11px] font-bold text-gray-400 mb-1">Izoh / Eslatma:</div>
+                        <div className="bg-ichki rounded-xl p-3 mb-4 text-[12px] font-bold text-matn-sokin border border-gray-100/55 dark:border-gray-800">
+                          <div className="text-[11px] font-bold text-matn-xira mb-1">Izoh / Eslatma:</div>
                           {lead.notes}
                         </div>
                       )}
                     </div>
 
-                    <div className="border-t border-gray-50 dark:border-gray-800/50 pt-4 flex items-center justify-between text-[11px] font-extrabold text-gray-400">
+                    <div className="border-t border-chiziq-mayin/50 pt-4 flex items-center justify-between text-[11px] font-extrabold text-matn-xira">
                       <span>Sotuvchi agent:</span>
                       <span className="text-brand dark:text-brand font-black">
                         {lead.seller ? lead.seller.name : 'Biriktirilmagan'}
@@ -916,9 +916,9 @@ export default function SuperAdmin() {
               <div className="w-8 h-8 border-[3px] border-violet-600 border-t-transparent rounded-full animate-spin" />
             </div>
           ) : sellers.length === 0 ? (
-            <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-800/50 shadow-sm p-16 text-center">
+            <div className="bg-sirt rounded-2xl border border-chiziq shadow-sm p-16 text-center">
               <Users2 size={40} className="mx-auto text-gray-200 dark:text-gray-600 mb-4" />
-              <p className="text-gray-400 font-bold text-sm">Hozircha sotuvchi agentlar yo'q</p>
+              <p className="text-matn-xira font-bold text-sm">Hozircha sotuvchi agentlar yo'q</p>
               <button
                 onClick={() => setSellerModalOpen(true)}
                 className="mt-4 inline-flex items-center gap-2 px-5 py-2.5 bg-violet-600 text-white text-xs font-extrabold rounded-xl cursor-pointer"
@@ -931,7 +931,7 @@ export default function SuperAdmin() {
               {sellers.map(sel => (
                 <div
                   key={sel.id}
-                  className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-800/50 p-4 shadow-sm flex flex-col justify-between"
+                  className="bg-sirt rounded-2xl border border-chiziq p-4 shadow-sm flex flex-col justify-between"
                 >
                   <div>
                     <div className="flex items-center justify-between mb-4">
@@ -943,30 +943,30 @@ export default function SuperAdmin() {
                       </span>
                     </div>
 
-                    <h3 className="font-black text-gray-900 dark:text-white tracking-tight text-base leading-tight mb-1">
+                    <h3 className="font-black text-matn tracking-tight text-base leading-tight mb-1">
                       {sel.name}
                     </h3>
-                    <p className="text-xs font-bold text-gray-400 mb-4">{sel.email}</p>
+                    <p className="text-xs font-bold text-matn-xira mb-4">{sel.email}</p>
 
-                    <div className="space-y-1 text-xs font-bold text-gray-500 dark:text-gray-400 mb-6">
+                    <div className="space-y-1 text-xs font-bold text-matn-sokin mb-6">
                       {sel.phone && (
                         <div className="flex items-center gap-1.5">
-                          <Phone size={12} className="text-gray-400" />
+                          <Phone size={12} className="text-matn-xira" />
                           <span>{sel.phone}</span>
                         </div>
                       )}
                       <div className="flex items-center gap-1.5">
-                        <Calendar size={12} className="text-gray-400" />
+                        <Calendar size={12} className="text-matn-xira" />
                         <span>Ro'yxatdan o'tdi: {new Date(sel.createdAt).toLocaleDateString()}</span>
                       </div>
                     </div>
                   </div>
 
                   {/* Stats Block */}
-                  <div className="border-t border-gray-50 dark:border-gray-800/50 pt-4 space-y-3">
+                  <div className="border-t border-chiziq-mayin/50 pt-4 space-y-3">
                     <div className="grid grid-cols-2 gap-2 text-center">
-                      <div className="bg-gray-50 dark:bg-gray-900/50 rounded-xl p-2 border border-gray-100/50 dark:border-gray-800/20">
-                        <div className="text-[10px] font-extrabold text-gray-400">Jami Lidlar</div>
+                      <div className="bg-ichki rounded-xl p-2 border border-gray-100/50 dark:border-gray-800/20">
+                        <div className="text-[10px] font-extrabold text-matn-xira">Jami Lidlar</div>
                         <div className="text-sm font-black text-gray-800 dark:text-white">{sel.totalLeads}</div>
                       </div>
                       <div className="bg-emerald-50/50 dark:bg-emerald-950/10 rounded-xl p-2 border border-emerald-100/30 dark:border-emerald-900/10">
@@ -975,11 +975,11 @@ export default function SuperAdmin() {
                       </div>
                     </div>
 
-                    <div className="flex items-center justify-between text-[11px] font-extrabold text-gray-400">
+                    <div className="flex items-center justify-between text-[11px] font-extrabold text-matn-xira">
                       <span>Konversiya:</span>
                       <div className="flex items-center gap-2">
                         <span className="text-violet-600 dark:text-violet-400 font-black">{sel.conversionRate}%</span>
-                        <div className="w-16 h-2 bg-gray-100 dark:bg-gray-700 rounded-full overflow-hidden">
+                        <div className="w-16 h-2 bg-chiziq rounded-full overflow-hidden">
                           <div
                             className="h-full bg-violet-500 rounded-full"
                             style={{ width: `${sel.conversionRate}%` }}
@@ -999,13 +999,13 @@ export default function SuperAdmin() {
       {orgModalOpen && (
         <div className="fixed inset-0 z-[200] flex items-start sm:items-center justify-center overflow-y-auto p-4">
           <div className="absolute inset-0 bg-gray-900/60 backdrop-blur-sm" onClick={() => setOrgModalOpen(false)} />
-          <div className="relative bg-white dark:bg-gray-800 rounded-[2rem] border border-gray-100 dark:border-gray-800/50 shadow-2xl w-full max-w-xl p-8 max-h-[90vh] overflow-y-auto">
-            <div className="flex items-center justify-between mb-6 pb-4 border-b border-gray-50 dark:border-gray-800/50">
+          <div className="relative bg-sirt rounded-[2rem] border border-chiziq shadow-2xl w-full max-w-xl p-8 max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between mb-6 pb-4 border-b border-chiziq-mayin/50">
               <div>
-                <h3 className="text-lg font-black text-gray-900 dark:text-white tracking-tight">Yangi Tashkilot</h3>
-                <p className="text-[11px] font-bold text-gray-400 mt-0.5">O'quv markaz yoki tashkilot</p>
+                <h3 className="text-lg font-black text-matn tracking-tight">Yangi Tashkilot</h3>
+                <p className="text-[11px] font-bold text-matn-xira mt-0.5">O'quv markaz yoki tashkilot</p>
               </div>
-              <button aria-label="Yopish" onClick={() => setOrgModalOpen(false)} className="w-9 h-9 flex items-center justify-center text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700 rounded-xl cursor-pointer">
+              <button aria-label="Yopish" onClick={() => setOrgModalOpen(false)} className="w-9 h-9 flex items-center justify-center text-matn-xira hover:bg-gray-50 dark:hover:bg-gray-700 rounded-xl cursor-pointer">
                 <X size={18} />
               </button>
             </div>
@@ -1013,79 +1013,79 @@ export default function SuperAdmin() {
             <form onSubmit={handleCreateOrg} className="space-y-5">
               {/* Tashkilot ma'lumotlari */}
               <div className="space-y-3">
-                <h4 className="text-[11px] font-bold text-[#1b6b6b] flex items-center gap-2">
+                <h4 className="text-[11px] font-bold text-brand flex items-center gap-2">
                   <Building2 size={13} /> Tashkilot Ma'lumotlari
                 </h4>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                   <div className="md:col-span-2">
-                    <label className="block text-[11px] font-extrabold text-gray-400 mb-2">Tashkilot Nomi *</label>
+                    <label className="block text-[11px] font-extrabold text-matn-xira mb-2">Tashkilot Nomi *</label>
                     <input
                       type="text" required
                       placeholder="Masalan: Sariosiyo O'quv Markazi"
                       value={orgName} onChange={e => setOrgName(e.target.value)}
-                      className="w-full px-4 py-3 bg-gray-50 dark:bg-gray-900/50 border border-gray-100 dark:border-gray-800 rounded-2xl text-xs font-bold text-gray-900 dark:text-white focus:border-[#1b6b6b] outline-none transition-all"
+                      className="w-full px-4 py-3 bg-ichki border border-chiziq rounded-2xl text-xs font-bold text-matn focus:border-brand outline-none transition-all"
                     />
                   </div>
                   <div>
-                    <label className="block text-[11px] font-extrabold text-gray-400 mb-2">Manzil</label>
+                    <label className="block text-[11px] font-extrabold text-matn-xira mb-2">Manzil</label>
                     <input
                       type="text"
                       placeholder="Masalan: Toshkent sh., Chilonzor"
                       value={orgAddress} onChange={e => setOrgAddress(e.target.value)}
-                      className="w-full px-4 py-3 bg-gray-50 dark:bg-gray-900/50 border border-gray-100 dark:border-gray-800 rounded-2xl text-xs font-bold text-gray-900 dark:text-white focus:border-[#1b6b6b] outline-none transition-all"
+                      className="w-full px-4 py-3 bg-ichki border border-chiziq rounded-2xl text-xs font-bold text-matn focus:border-brand outline-none transition-all"
                     />
                   </div>
                   <div>
-                    <label className="block text-[11px] font-extrabold text-gray-400 mb-2">Telefon</label>
+                    <label className="block text-[11px] font-extrabold text-matn-xira mb-2">Telefon</label>
                     <input
                       type="text"
                       placeholder="+998 90 123 45 67"
                       value={orgPhone} onChange={e => setOrgPhone(e.target.value)}
-                      className="w-full px-4 py-3 bg-gray-50 dark:bg-gray-900/50 border border-gray-100 dark:border-gray-800 rounded-2xl text-xs font-bold text-gray-900 dark:text-white focus:border-[#1b6b6b] outline-none transition-all"
+                      className="w-full px-4 py-3 bg-ichki border border-chiziq rounded-2xl text-xs font-bold text-matn focus:border-brand outline-none transition-all"
                     />
                   </div>
                   <div>
-                    <label className="block text-[11px] font-extrabold text-gray-400 mb-2">Filial Limiti</label>
+                    <label className="block text-[11px] font-extrabold text-matn-xira mb-2">Filial Limiti</label>
                     <input
                       type="number" min={1} max={50}
                       value={orgMaxSchools} onChange={e => setOrgMaxSchools(Number(e.target.value))}
-                      className="w-full px-4 py-3 bg-gray-50 dark:bg-gray-900/50 border border-gray-100 dark:border-gray-800 rounded-2xl text-xs font-bold text-gray-900 dark:text-white focus:border-[#1b6b6b] outline-none transition-all"
+                      className="w-full px-4 py-3 bg-ichki border border-chiziq rounded-2xl text-xs font-bold text-matn focus:border-brand outline-none transition-all"
                     />
                   </div>
                 </div>
               </div>
 
               {/* Admin ma'lumotlari */}
-              <div className="space-y-3 pt-4 border-t border-gray-100 dark:border-gray-800/50">
+              <div className="space-y-3 pt-4 border-t border-chiziq">
                 <h4 className="text-[11px] font-bold text-brand dark:text-brand flex items-center gap-2">
                   <UserPlus size={13} /> Admin Hisobi *
                 </h4>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                   <div className="md:col-span-2">
-                    <label className="block text-[11px] font-extrabold text-gray-400 mb-2">Admin Ismi</label>
+                    <label className="block text-[11px] font-extrabold text-matn-xira mb-2">Admin Ismi</label>
                     <input
                       type="text"
                       placeholder="Sardor Rahimov"
                       value={orgAdminName} onChange={e => setOrgAdminName(e.target.value)}
-                      className="w-full px-4 py-3 bg-gray-50 dark:bg-gray-900/50 border border-gray-100 dark:border-gray-800 rounded-2xl text-xs font-bold text-gray-900 dark:text-white focus:border-brand outline-none transition-all"
+                      className="w-full px-4 py-3 bg-ichki border border-chiziq rounded-2xl text-xs font-bold text-matn focus:border-brand outline-none transition-all"
                     />
                   </div>
                   <div>
-                    <label className="block text-[11px] font-extrabold text-gray-400 mb-2">Email *</label>
+                    <label className="block text-[11px] font-extrabold text-matn-xira mb-2">Email *</label>
                     <input
                       type="email" required
                       placeholder="admin@sariosiyo.uz"
                       value={orgAdminEmail} onChange={e => setOrgAdminEmail(e.target.value)}
-                      className="w-full px-4 py-3 bg-gray-50 dark:bg-gray-900/50 border border-gray-100 dark:border-gray-800 rounded-2xl text-xs font-bold text-gray-900 dark:text-white focus:border-brand outline-none transition-all"
+                      className="w-full px-4 py-3 bg-ichki border border-chiziq rounded-2xl text-xs font-bold text-matn focus:border-brand outline-none transition-all"
                     />
                   </div>
                   <div>
-                    <label className="block text-[11px] font-extrabold text-gray-400 mb-2">Parol *</label>
+                    <label className="block text-[11px] font-extrabold text-matn-xira mb-2">Parol *</label>
                     <input
                       type="password" required
                       placeholder="••••••••"
                       value={orgAdminPassword} onChange={e => setOrgAdminPassword(e.target.value)}
-                      className="w-full px-4 py-3 bg-gray-50 dark:bg-gray-900/50 border border-gray-100 dark:border-gray-800 rounded-2xl text-xs font-bold text-gray-900 dark:text-white focus:border-brand outline-none transition-all"
+                      className="w-full px-4 py-3 bg-ichki border border-chiziq rounded-2xl text-xs font-bold text-matn focus:border-brand outline-none transition-all"
                     />
                   </div>
                 </div>
@@ -1097,7 +1097,7 @@ export default function SuperAdmin() {
                   Bekor
                 </button>
                 <button type="submit" disabled={creatingOrg}
-                  className="flex-1 py-3 bg-[#1b6b6b] hover:bg-[#155252] text-white text-xs font-extrabold rounded-2xl shadow-sm shadow-[#1b6b6b]/20 transition-all disabled:opacity-50 cursor-pointer">
+                  className="flex-1 py-3 bg-brand hover:bg-brand-dark text-white text-xs font-extrabold rounded-2xl shadow-sm shadow-[#1b6b6b]/20 transition-all disabled:opacity-50 cursor-pointer">
                   {creatingOrg ? 'Yaratilmoqda...' : 'Yaratish'}
                 </button>
               </div>
@@ -1110,13 +1110,13 @@ export default function SuperAdmin() {
       {subModalOpen && selectedOrg && (
         <div className="fixed inset-0 z-[200] flex items-start sm:items-center justify-center overflow-y-auto p-4">
           <div className="absolute inset-0 bg-gray-900/60 backdrop-blur-sm" onClick={() => setSubModalOpen(false)} />
-          <div className="relative bg-white dark:bg-gray-800 rounded-[2rem] border border-gray-100 dark:border-gray-800/50 shadow-2xl w-full max-w-2xl p-8 max-h-[90vh] overflow-y-auto">
-            <div className="flex items-center justify-between mb-6 pb-4 border-b border-gray-50 dark:border-gray-800/50">
+          <div className="relative bg-sirt rounded-[2rem] border border-chiziq shadow-2xl w-full max-w-2xl p-8 max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between mb-6 pb-4 border-b border-chiziq-mayin/50">
               <div>
-                <h3 className="text-lg font-black text-gray-900 dark:text-white tracking-tight">Tashkilot va Admin Sozlamalari</h3>
-                <p className="text-[11px] font-bold text-[#1b6b6b] mt-0.5">{selectedOrg.name} tahrirlash</p>
+                <h3 className="text-lg font-black text-matn tracking-tight">Tashkilot va Admin Sozlamalari</h3>
+                <p className="text-[11px] font-bold text-brand mt-0.5">{selectedOrg.name} tahrirlash</p>
               </div>
-              <button aria-label="Yopish" onClick={() => setSubModalOpen(false)} className="w-9 h-9 flex items-center justify-center text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700 rounded-xl cursor-pointer">
+              <button aria-label="Yopish" onClick={() => setSubModalOpen(false)} className="w-9 h-9 flex items-center justify-center text-matn-xira hover:bg-gray-50 dark:hover:bg-gray-700 rounded-xl cursor-pointer">
                 <X size={18} />
               </button>
             </div>
@@ -1124,48 +1124,48 @@ export default function SuperAdmin() {
             <form onSubmit={handleUpdateSubscription} className="space-y-6">
               {/* Section 1: Organization Details */}
               <div className="space-y-4">
-                <h4 className="text-[11px] font-bold text-gray-400 pb-1 border-b border-gray-50 dark:border-gray-800/30">Tashkilot Ma'lumotlari</h4>
+                <h4 className="text-[11px] font-bold text-matn-xira pb-1 border-b border-chiziq-mayin/30">Tashkilot Ma'lumotlari</h4>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-[11px] font-extrabold text-gray-400 mb-2">Tashkilot Nomi *</label>
+                    <label className="block text-[11px] font-extrabold text-matn-xira mb-2">Tashkilot Nomi *</label>
                     <input
                       type="text" required
                       value={subName}
                       onChange={e => setSubName(e.target.value)}
-                      className="w-full px-4 py-3 bg-gray-50 dark:bg-gray-900/50 border border-gray-100 dark:border-gray-800 rounded-2xl text-xs font-bold text-gray-900 dark:text-white outline-none focus:border-[#1b6b6b] transition-all"
+                      className="w-full px-4 py-3 bg-ichki border border-chiziq rounded-2xl text-xs font-bold text-matn outline-none focus:border-brand transition-all"
                     />
                   </div>
                   <div>
-                    <label className="block text-[11px] font-extrabold text-gray-400 mb-2">Telefon Raqami</label>
+                    <label className="block text-[11px] font-extrabold text-matn-xira mb-2">Telefon Raqami</label>
                     <input
                       type="text"
                       value={subPhone}
                       onChange={e => setSubPhone(e.target.value)}
-                      className="w-full px-4 py-3 bg-gray-50 dark:bg-gray-900/50 border border-gray-100 dark:border-gray-800 rounded-2xl text-xs font-bold text-gray-900 dark:text-white outline-none focus:border-[#1b6b6b] transition-all"
+                      className="w-full px-4 py-3 bg-ichki border border-chiziq rounded-2xl text-xs font-bold text-matn outline-none focus:border-brand transition-all"
                     />
                   </div>
                 </div>
                 <div>
-                  <label className="block text-[11px] font-extrabold text-gray-400 mb-2">Manzil</label>
+                  <label className="block text-[11px] font-extrabold text-matn-xira mb-2">Manzil</label>
                   <input
                     type="text"
                     value={subAddress}
                     onChange={e => setSubAddress(e.target.value)}
-                    className="w-full px-4 py-3 bg-gray-50 dark:bg-gray-900/50 border border-gray-100 dark:border-gray-800 rounded-2xl text-xs font-bold text-gray-900 dark:text-white outline-none focus:border-[#1b6b6b] transition-all"
+                    className="w-full px-4 py-3 bg-ichki border border-chiziq rounded-2xl text-xs font-bold text-matn outline-none focus:border-brand transition-all"
                   />
                 </div>
               </div>
 
               {/* Section 2: Subscription Details */}
               <div className="space-y-4">
-                <h4 className="text-[11px] font-bold text-gray-400 pb-1 border-b border-gray-50 dark:border-gray-800/30">Obuna Sozlamalari</h4>
+                <h4 className="text-[11px] font-bold text-matn-xira pb-1 border-b border-chiziq-mayin/30">Obuna Sozlamalari</h4>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   <div>
-                    <label className="block text-[11px] font-extrabold text-gray-400 mb-2">Holati</label>
+                    <label className="block text-[11px] font-extrabold text-matn-xira mb-2">Holati</label>
                     <select
                       value={subStatus}
                       onChange={e => setSubStatus(e.target.value)}
-                      className="w-full px-4 py-3 bg-gray-50 dark:bg-gray-900/50 border border-gray-100 dark:border-gray-800 rounded-2xl text-xs font-bold text-gray-900 dark:text-white outline-none focus:border-[#1b6b6b] transition-all"
+                      className="w-full px-4 py-3 bg-ichki border border-chiziq rounded-2xl text-xs font-bold text-matn outline-none focus:border-brand transition-all"
                     >
                       <option value="Sinov">Sinov (Trial)</option>
                       <option value="Faol">Faol (Active)</option>
@@ -1173,21 +1173,21 @@ export default function SuperAdmin() {
                     </select>
                   </div>
                   <div>
-                    <label className="block text-[11px] font-extrabold text-gray-400 mb-2">Ruxsat Muddati (Expires At)</label>
+                    <label className="block text-[11px] font-extrabold text-matn-xira mb-2">Ruxsat Muddati (Expires At)</label>
                     <input
                       type="date"
                       value={subExpiresAt}
                       onChange={e => setSubExpiresAt(e.target.value)}
-                      className="w-full px-4 py-3 bg-gray-50 dark:bg-gray-900/50 border border-gray-100 dark:border-gray-800 rounded-2xl text-xs font-bold text-gray-900 dark:text-white outline-none focus:border-[#1b6b6b] transition-all"
+                      className="w-full px-4 py-3 bg-ichki border border-chiziq rounded-2xl text-xs font-bold text-matn outline-none focus:border-brand transition-all"
                     />
                   </div>
                   <div>
-                    <label className="block text-[11px] font-extrabold text-gray-400 mb-2">Maksimal Filial Limiti</label>
+                    <label className="block text-[11px] font-extrabold text-matn-xira mb-2">Maksimal Filial Limiti</label>
                     <input
                       type="number" required min={1}
                       value={subMaxSchools}
                       onChange={e => setSubMaxSchools(Number(e.target.value))}
-                      className="w-full px-4 py-3 bg-gray-50 dark:bg-gray-900/50 border border-gray-100 dark:border-gray-800 rounded-2xl text-xs font-bold text-gray-900 dark:text-white outline-none focus:border-[#1b6b6b] transition-all"
+                      className="w-full px-4 py-3 bg-ichki border border-chiziq rounded-2xl text-xs font-bold text-matn outline-none focus:border-brand transition-all"
                     />
                   </div>
                 </div>
@@ -1195,57 +1195,57 @@ export default function SuperAdmin() {
 
               {/* Section 3: Admin Details */}
               <div className="space-y-4">
-                <h4 className="text-[11px] font-bold text-gray-400 pb-1 border-b border-gray-50 dark:border-gray-800/30">Admin Akkaunti Ma'lumotlari</h4>
+                <h4 className="text-[11px] font-bold text-matn-xira pb-1 border-b border-chiziq-mayin/30">Admin Akkaunti Ma'lumotlari</h4>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-[11px] font-extrabold text-gray-400 mb-2">Admin Ismi *</label>
+                    <label className="block text-[11px] font-extrabold text-matn-xira mb-2">Admin Ismi *</label>
                     <input
                       type="text" required
                       value={subAdminName}
                       onChange={e => setSubAdminName(e.target.value)}
-                      className="w-full px-4 py-3 bg-gray-50 dark:bg-gray-900/50 border border-gray-100 dark:border-gray-800 rounded-2xl text-xs font-bold text-gray-900 dark:text-white outline-none focus:border-[#1b6b6b] transition-all"
+                      className="w-full px-4 py-3 bg-ichki border border-chiziq rounded-2xl text-xs font-bold text-matn outline-none focus:border-brand transition-all"
                     />
                   </div>
                   <div>
-                    <label className="block text-[11px] font-extrabold text-gray-400 mb-2">Admin Telefoni</label>
+                    <label className="block text-[11px] font-extrabold text-matn-xira mb-2">Admin Telefoni</label>
                     <input
                       type="text"
                       value={subAdminPhone}
                       onChange={e => setSubAdminPhone(e.target.value)}
-                      className="w-full px-4 py-3 bg-gray-50 dark:bg-gray-900/50 border border-gray-100 dark:border-gray-800 rounded-2xl text-xs font-bold text-gray-900 dark:text-white outline-none focus:border-[#1b6b6b] transition-all"
+                      className="w-full px-4 py-3 bg-ichki border border-chiziq rounded-2xl text-xs font-bold text-matn outline-none focus:border-brand transition-all"
                     />
                   </div>
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-[11px] font-extrabold text-gray-400 mb-2">Admin Email (Login) *</label>
+                    <label className="block text-[11px] font-extrabold text-matn-xira mb-2">Admin Email (Login) *</label>
                     <input
                       type="email" required
                       value={subAdminEmail}
                       onChange={e => setSubAdminEmail(e.target.value)}
-                      className="w-full px-4 py-3 bg-gray-50 dark:bg-gray-900/50 border border-gray-100 dark:border-gray-800 rounded-2xl text-xs font-bold text-gray-900 dark:text-white outline-none focus:border-[#1b6b6b] transition-all"
+                      className="w-full px-4 py-3 bg-ichki border border-chiziq rounded-2xl text-xs font-bold text-matn outline-none focus:border-brand transition-all"
                     />
                   </div>
                   <div>
-                    <label className="block text-[11px] font-extrabold text-gray-400 mb-2">Yangi Parol (O'zgartirish uchun to'ldiring)</label>
+                    <label className="block text-[11px] font-extrabold text-matn-xira mb-2">Yangi Parol (O'zgartirish uchun to'ldiring)</label>
                     <input
                       type="password"
                       placeholder="Faqat o'zgartirish uchun..."
                       value={subAdminPassword}
                       onChange={e => setSubAdminPassword(e.target.value)}
-                      className="w-full px-4 py-3 bg-gray-50 dark:bg-gray-900/50 border border-gray-100 dark:border-gray-800 rounded-2xl text-xs font-bold text-gray-900 dark:text-white outline-none focus:border-[#1b6b6b] transition-all"
+                      className="w-full px-4 py-3 bg-ichki border border-chiziq rounded-2xl text-xs font-bold text-matn outline-none focus:border-brand transition-all"
                     />
                   </div>
                 </div>
               </div>
 
-              <div className="flex gap-3 pt-4 border-t border-gray-50 dark:border-gray-800/50">
+              <div className="flex gap-3 pt-4 border-t border-chiziq-mayin/50">
                 <button type="button" onClick={() => setSubModalOpen(false)}
                   className="flex-1 py-3 bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-700 dark:text-white text-xs font-extrabold rounded-2xl transition-all cursor-pointer">
                   Bekor
                 </button>
                 <button type="submit" disabled={updatingSub}
-                  className="flex-1 py-3 bg-[#1b6b6b] hover:bg-[#155252] text-white text-xs font-extrabold rounded-2xl shadow-sm shadow-[#1b6b6b]/20 transition-all disabled:opacity-50 cursor-pointer">
+                  className="flex-1 py-3 bg-brand hover:bg-brand-dark text-white text-xs font-extrabold rounded-2xl shadow-sm shadow-[#1b6b6b]/20 transition-all disabled:opacity-50 cursor-pointer">
                   {updatingSub ? 'Saqlanmoqda...' : 'Saqlash'}
                 </button>
               </div>
@@ -1258,54 +1258,54 @@ export default function SuperAdmin() {
       {leadModalOpen && (
         <div className="fixed inset-0 z-[200] flex items-start sm:items-center justify-center overflow-y-auto p-4">
           <div className="absolute inset-0 bg-gray-900/60 backdrop-blur-sm" onClick={() => setLeadModalOpen(false)} />
-          <div className="relative bg-white dark:bg-gray-800 rounded-[2rem] border border-gray-100 dark:border-gray-800/50 shadow-2xl w-full max-w-md p-8">
-            <div className="flex items-center justify-between mb-6 pb-4 border-b border-gray-50 dark:border-gray-800/50">
+          <div className="relative bg-sirt rounded-[2rem] border border-chiziq shadow-2xl w-full max-w-md p-8">
+            <div className="flex items-center justify-between mb-6 pb-4 border-b border-chiziq-mayin/50">
               <div>
-                <h3 className="text-lg font-black text-gray-900 dark:text-white tracking-tight">
+                <h3 className="text-lg font-black text-matn tracking-tight">
                   {selectedLead ? 'Lidni Tahrirlash' : 'Yangi Lid'}
                 </h3>
                 <p className="text-[11px] font-bold text-brand mt-0.5">CRM Xarid qilish istagida bo'lgan mijoz</p>
               </div>
-              <button aria-label="Yopish" onClick={() => setLeadModalOpen(false)} className="w-9 h-9 flex items-center justify-center text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700 rounded-xl cursor-pointer">
+              <button aria-label="Yopish" onClick={() => setLeadModalOpen(false)} className="w-9 h-9 flex items-center justify-center text-matn-xira hover:bg-gray-50 dark:hover:bg-gray-700 rounded-xl cursor-pointer">
                 <X size={18} />
               </button>
             </div>
 
             <form onSubmit={handleSaveLead} className="space-y-4">
               <div>
-                <label className="block text-[11px] font-extrabold text-gray-400 mb-2">Mijoz Ismi *</label>
+                <label className="block text-[11px] font-extrabold text-matn-xira mb-2">Mijoz Ismi *</label>
                 <input
                   type="text" required
                   placeholder="Masalan: Jamshid Aliyev"
                   value={leadName} onChange={e => setLeadName(e.target.value)}
-                  className="w-full px-4 py-3 bg-gray-50 dark:bg-gray-900/50 border border-gray-100 dark:border-gray-800 rounded-2xl text-xs font-bold text-gray-900 dark:text-white focus:border-brand outline-none transition-all"
+                  className="w-full px-4 py-3 bg-ichki border border-chiziq rounded-2xl text-xs font-bold text-matn focus:border-brand outline-none transition-all"
                 />
               </div>
               <div>
-                <label className="block text-[11px] font-extrabold text-gray-400 mb-2">Telefon Raqami *</label>
+                <label className="block text-[11px] font-extrabold text-matn-xira mb-2">Telefon Raqami *</label>
                 <input
                   type="text" required
                   placeholder="Masalan: +998 90 999 88 77"
                   value={leadPhone} onChange={e => setLeadPhone(e.target.value)}
-                  className="w-full px-4 py-3 bg-gray-50 dark:bg-gray-900/50 border border-gray-100 dark:border-gray-800 rounded-2xl text-xs font-bold text-gray-900 dark:text-white focus:border-brand outline-none transition-all"
+                  className="w-full px-4 py-3 bg-ichki border border-chiziq rounded-2xl text-xs font-bold text-matn focus:border-brand outline-none transition-all"
                 />
               </div>
               <div>
-                <label className="block text-[11px] font-extrabold text-gray-400 mb-2">O'quv Markaz Nomi</label>
+                <label className="block text-[11px] font-extrabold text-matn-xira mb-2">O'quv Markaz Nomi</label>
                 <input
                   type="text"
                   placeholder="Masalan: Quantum Academy"
                   value={leadCenter} onChange={e => setLeadCenter(e.target.value)}
-                  className="w-full px-4 py-3 bg-gray-50 dark:bg-gray-900/50 border border-gray-100 dark:border-gray-800 rounded-2xl text-xs font-bold text-gray-900 dark:text-white focus:border-brand outline-none transition-all"
+                  className="w-full px-4 py-3 bg-ichki border border-chiziq rounded-2xl text-xs font-bold text-matn focus:border-brand outline-none transition-all"
                 />
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-[11px] font-extrabold text-gray-400 mb-2">Holati</label>
+                  <label className="block text-[11px] font-extrabold text-matn-xira mb-2">Holati</label>
                   <select
                     value={leadStatus}
                     onChange={e => setLeadStatus(e.target.value)}
-                    className="w-full px-4 py-3 bg-gray-50 dark:bg-gray-900/50 border border-gray-100 dark:border-gray-800 rounded-2xl text-xs font-bold text-gray-900 dark:text-white focus:border-brand outline-none transition-all"
+                    className="w-full px-4 py-3 bg-ichki border border-chiziq rounded-2xl text-xs font-bold text-matn focus:border-brand outline-none transition-all"
                   >
                     <option value="Yangi">Yangi</option>
                     <option value="Bog'lanildi">Bog'lanildi</option>
@@ -1315,11 +1315,11 @@ export default function SuperAdmin() {
                 </div>
                 {isSuper && (
                   <div>
-                    <label className="block text-[11px] font-extrabold text-gray-400 mb-2">Sotuvchi Agent</label>
+                    <label className="block text-[11px] font-extrabold text-matn-xira mb-2">Sotuvchi Agent</label>
                     <select
                       value={leadSellerId}
                       onChange={e => setLeadSellerId(e.target.value)}
-                      className="w-full px-4 py-3 bg-gray-50 dark:bg-gray-900/50 border border-gray-100 dark:border-gray-800 rounded-2xl text-xs font-bold text-gray-900 dark:text-white focus:border-brand outline-none transition-all"
+                      className="w-full px-4 py-3 bg-ichki border border-chiziq rounded-2xl text-xs font-bold text-matn focus:border-brand outline-none transition-all"
                     >
                       <option value="">Tanlanmagan</option>
                       {sellers.map(s => (
@@ -1330,12 +1330,12 @@ export default function SuperAdmin() {
                 )}
               </div>
               <div>
-                <label className="block text-[11px] font-extrabold text-gray-400 mb-2">Eslatmalar / Izohlar</label>
+                <label className="block text-[11px] font-extrabold text-matn-xira mb-2">Eslatmalar / Izohlar</label>
                 <textarea
                   placeholder="Uchrashuv vaqti yoki alohida istaklar..."
                   value={leadNotes} onChange={e => setLeadNotes(e.target.value)}
                   rows={3}
-                  className="w-full px-4 py-3 bg-gray-50 dark:bg-gray-900/50 border border-gray-100 dark:border-gray-800 rounded-2xl text-xs font-bold text-gray-900 dark:text-white focus:border-brand outline-none transition-all resize-none"
+                  className="w-full px-4 py-3 bg-ichki border border-chiziq rounded-2xl text-xs font-bold text-matn focus:border-brand outline-none transition-all resize-none"
                 />
               </div>
               <div className="flex gap-3 pt-2">
@@ -1357,52 +1357,52 @@ export default function SuperAdmin() {
       {sellerModalOpen && isSuper && (
         <div className="fixed inset-0 z-[200] flex items-start sm:items-center justify-center overflow-y-auto p-4">
           <div className="absolute inset-0 bg-gray-900/60 backdrop-blur-sm" onClick={() => setSellerModalOpen(false)} />
-          <div className="relative bg-white dark:bg-gray-800 rounded-[2rem] border border-gray-100 dark:border-gray-800/50 shadow-2xl w-full max-w-md p-8">
-            <div className="flex items-center justify-between mb-6 pb-4 border-b border-gray-50 dark:border-gray-800/50">
+          <div className="relative bg-sirt rounded-[2rem] border border-chiziq shadow-2xl w-full max-w-md p-8">
+            <div className="flex items-center justify-between mb-6 pb-4 border-b border-chiziq-mayin/50">
               <div>
-                <h3 className="text-lg font-black text-gray-900 dark:text-white tracking-tight">Yangi Sotuvchi Agent</h3>
+                <h3 className="text-lg font-black text-matn tracking-tight">Yangi Sotuvchi Agent</h3>
                 <p className="text-[11px] font-bold text-violet-600 mt-0.5">CRM Tizimini sotadigan xodim</p>
               </div>
-              <button aria-label="Yopish" onClick={() => setSellerModalOpen(false)} className="w-9 h-9 flex items-center justify-center text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700 rounded-xl cursor-pointer">
+              <button aria-label="Yopish" onClick={() => setSellerModalOpen(false)} className="w-9 h-9 flex items-center justify-center text-matn-xira hover:bg-gray-50 dark:hover:bg-gray-700 rounded-xl cursor-pointer">
                 <X size={18} />
               </button>
             </div>
 
             <form onSubmit={handleCreateSeller} className="space-y-4">
               <div>
-                <label className="block text-[11px] font-extrabold text-gray-400 mb-2">Ism Familiya *</label>
+                <label className="block text-[11px] font-extrabold text-matn-xira mb-2">Ism Familiya *</label>
                 <input
                   type="text" required
                   placeholder="Masalan: Sardor Komilov"
                   value={sellerName} onChange={e => setSellerName(e.target.value)}
-                  className="w-full px-4 py-3 bg-gray-50 dark:bg-gray-900/50 border border-gray-100 dark:border-gray-800 rounded-2xl text-xs font-bold text-gray-900 dark:text-white focus:border-violet-500 outline-none transition-all"
+                  className="w-full px-4 py-3 bg-ichki border border-chiziq rounded-2xl text-xs font-bold text-matn focus:border-violet-500 outline-none transition-all"
                 />
               </div>
               <div>
-                <label className="block text-[11px] font-extrabold text-gray-400 mb-2">Email *</label>
+                <label className="block text-[11px] font-extrabold text-matn-xira mb-2">Email *</label>
                 <input
                   type="email" required
                   placeholder="sardor@saraosiyo.uz"
                   value={sellerEmail} onChange={e => setSellerEmail(e.target.value)}
-                  className="w-full px-4 py-3 bg-gray-50 dark:bg-gray-900/50 border border-gray-100 dark:border-gray-800 rounded-2xl text-xs font-bold text-gray-900 dark:text-white focus:border-violet-500 outline-none transition-all"
+                  className="w-full px-4 py-3 bg-ichki border border-chiziq rounded-2xl text-xs font-bold text-matn focus:border-violet-500 outline-none transition-all"
                 />
               </div>
               <div>
-                <label className="block text-[11px] font-extrabold text-gray-400 mb-2">Telefon</label>
+                <label className="block text-[11px] font-extrabold text-matn-xira mb-2">Telefon</label>
                 <input
                   type="text"
                   placeholder="+998 93 111 22 33"
                   value={sellerPhone} onChange={e => setSellerPhone(e.target.value)}
-                  className="w-full px-4 py-3 bg-gray-50 dark:bg-gray-900/50 border border-gray-100 dark:border-gray-800 rounded-2xl text-xs font-bold text-gray-900 dark:text-white focus:border-violet-500 outline-none transition-all"
+                  className="w-full px-4 py-3 bg-ichki border border-chiziq rounded-2xl text-xs font-bold text-matn focus:border-violet-500 outline-none transition-all"
                 />
               </div>
               <div>
-                <label className="block text-[11px] font-extrabold text-gray-400 mb-2">Parol *</label>
+                <label className="block text-[11px] font-extrabold text-matn-xira mb-2">Parol *</label>
                 <input
                   type="password" required
                   placeholder="••••••••"
                   value={sellerPassword} onChange={e => setSellerPassword(e.target.value)}
-                  className="w-full px-4 py-3 bg-gray-50 dark:bg-gray-900/50 border border-gray-100 dark:border-gray-800 rounded-2xl text-xs font-bold text-gray-900 dark:text-white focus:border-violet-500 outline-none transition-all"
+                  className="w-full px-4 py-3 bg-ichki border border-chiziq rounded-2xl text-xs font-bold text-matn focus:border-violet-500 outline-none transition-all"
                 />
               </div>
               <div className="flex gap-3 pt-2">

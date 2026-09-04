@@ -25,7 +25,7 @@ const ROLE_LABELS: Record<string, string> = {
 const ROLE_COLORS: Record<string, string> = {
     ADMIN:           'bg-purple-50 text-purple-600 border-purple-100 dark:bg-purple-950/20 dark:text-purple-400 dark:border-purple-900/40',
     MANAGER:         'bg-sky-50 text-sky-600 border-sky-100 dark:bg-sky-950/20 dark:text-sky-400 dark:border-sky-900/40',
-    TEACHER:         'bg-teal-50 text-[#1b6b6b] border-teal-100 dark:bg-teal-950/20 dark:text-teal-400 dark:border-teal-900/40',
+    TEACHER:         'bg-teal-50 text-brand border-teal-100 dark:bg-teal-950/20 dark:text-teal-400 dark:border-teal-900/40',
     SUPPORT_TEACHER: 'bg-cyan-50 text-cyan-600 border-cyan-100 dark:bg-cyan-950/20 dark:text-cyan-400 dark:border-cyan-900/40',
     RECEPTIONIST:    'bg-gray-50 text-gray-600 border-gray-100 dark:bg-gray-900/50 dark:text-gray-400 dark:border-gray-800/40',
     DRIVER:          'bg-amber-50 text-amber-600 border-amber-100 dark:bg-amber-950/20 dark:text-amber-400 dark:border-amber-900/40',
@@ -43,8 +43,8 @@ const ROLE_AVATAR_COLORS: Record<string, string> = {
 };
 
 
-const inp = "w-full px-4 py-3 bg-gray-50 dark:bg-gray-900/50 border border-gray-100 dark:border-gray-800 rounded-2xl text-xs font-bold text-gray-900 dark:text-white focus:border-[#1b6b6b] focus:ring-4 focus:ring-[#1b6b6b]/10 outline-none transition-all";
-const lbl = "block text-[11px] font-extrabold   text-gray-400 mb-2";
+const inp = "w-full px-4 py-3 bg-ichki border border-chiziq rounded-2xl text-xs font-bold text-matn focus:border-brand focus:ring-4 focus:ring-[#1b6b6b]/10 outline-none transition-all";
+const lbl = "block text-[11px] font-extrabold   text-matn-xira mb-2";
 
 export default function HRManagement() {
     const { teachers, groups, selectedSchoolId, user: currentUser, token, showNotification } = useCRM();
@@ -193,15 +193,15 @@ export default function HRManagement() {
                 <div className="flex flex-col md:flex-row md:items-start justify-between gap-4">
                     <div className="flex items-center gap-4">
                         <div>
-                            <h1 className="text-[26px] font-bold text-gray-900 dark:text-white tracking-tight leading-tight">{t('hr_title')}</h1>
-                            <p className="text-[13px] text-gray-500 dark:text-gray-400 mt-1">
+                            <h1 className="text-[26px] font-bold text-matn tracking-tight leading-tight">{t('hr_title')}</h1>
+                            <p className="text-[13px] text-matn-sokin mt-1">
                                 {t('hr_subtitle')}
                             </p>
                         </div>
                     </div>
                     {isAdminOrManager && (
                         <button onClick={() => { setNewUser({ role: 'RECEPTIONIST' }); setIsAddOpen(true); }}
-                            className="flex items-center gap-2 px-4 py-2.5 bg-[#1b6b6b] hover:bg-[#155252] text-white rounded-xl text-xs font-extrabold shadow-sm shadow-[#1b6b6b]/20 transition-all cursor-pointer">
+                            className="flex items-center gap-2 px-4 py-2.5 bg-brand hover:bg-brand-dark text-white rounded-xl text-xs font-extrabold shadow-sm shadow-[#1b6b6b]/20 transition-all cursor-pointer">
                             <Plus size={14} /> {t('new_staff')}
                         </button>
                     )}
@@ -219,18 +219,18 @@ export default function HRManagement() {
                                 <button
                                     key={role}
                                     onClick={() => setSelectedRole(prev => prev === role ? null : role)}
-                                    className={`bg-white dark:bg-gray-800 border rounded-2xl p-4 flex items-center justify-between transition-all cursor-pointer hover:shadow-md text-left w-full ${
+                                    className={`bg-sirt border rounded-2xl p-4 flex items-center justify-between transition-all cursor-pointer hover:shadow-md text-left w-full ${
                                         isActive
-                                            ? 'border-[#1b6b6b] ring-2 ring-[#1b6b6b]/20 shadow-md'
-                                            : 'border-gray-100 dark:border-gray-800/50 hover:border-[#1b6b6b]/30'
+                                            ? 'border-brand ring-2 ring-[#1b6b6b]/20 shadow-md'
+                                            : 'border-chiziq hover:border-brand/30'
                                     }`}
                                 >
                                     <div>
-                                        <span className="text-[11px] font-extrabold text-gray-400 block mb-1 leading-tight">{label}</span>
-                                        <h4 className="text-lg font-black text-gray-900 dark:text-white tabular-nums">{count}</h4>
+                                        <span className="text-[11px] font-extrabold text-matn-xira block mb-1 leading-tight">{label}</span>
+                                        <h4 className="text-lg font-black text-matn tabular-nums">{count}</h4>
                                     </div>
                                     <div className={`w-8 h-8 rounded-lg flex items-center justify-center border text-xs font-extrabold transition-all ${
-                                        isActive ? 'bg-[#1b6b6b] text-white border-[#1b6b6b]' : (ROLE_COLORS[role] || '')
+                                        isActive ? 'bg-brand text-brand-ust border-brand' : (ROLE_COLORS[role] || '')
                                     }`}>
                                         {label.charAt(0)}
                                     </div>
@@ -240,7 +240,7 @@ export default function HRManagement() {
                         {selectedRole && (
                             <button
                                 onClick={() => setSelectedRole(null)}
-                                className="bg-gray-55 dark:bg-gray-900 border border-dashed border-gray-200 dark:border-gray-800 rounded-2xl p-4 flex items-center justify-center transition-all cursor-pointer hover:border-rose-300 hover:bg-rose-50 dark:hover:bg-rose-950/10 text-gray-400 hover:text-rose-500 gap-1"
+                                className="bg-ichki border border-dashed border-gray-200 dark:border-gray-800 rounded-2xl p-4 flex items-center justify-center transition-all cursor-pointer hover:border-rose-300 hover:bg-rose-50 dark:hover:bg-rose-950/10 text-matn-xira hover:text-rose-500 gap-1"
                             >
                                 <X size={12} />
                                 <span className="text-[11px] font-extrabold">{t('filter')}</span>
@@ -258,31 +258,31 @@ export default function HRManagement() {
                     )}
 
                     {loadingUsers ? (
-                        <div className="py-20 text-center text-[#1b6b6b] text-xs font-bold">{t('loading')}</div>
+                        <div className="py-20 text-center text-brand text-xs font-bold">{t('loading')}</div>
                     ) : filteredUsers.length === 0 ? (
-                        <div className="py-20 text-center bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-800/50">
-                            <p className="text-[11px] font-bold text-gray-400">{t('no_staff_found')}</p>
+                        <div className="py-20 text-center bg-sirt rounded-2xl border border-chiziq">
+                            <p className="text-[11px] font-bold text-matn-xira">{t('no_staff_found')}</p>
                         </div>
                     ) : (
                         // Kartochka o'rniga jadval: xodimlar ro'yxatida ismlarni va
                         // oyliklarni yonma-yon solishtirish kerak bo'ladi, kartochkalarda
                         // esa har biri alohida qutida turib, ekranga ikki barobar kam
                         // qator sig'ardi.
-                        <div className="bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-800/50 rounded-2xl overflow-hidden">
+                        <div className="bg-sirt border border-chiziq rounded-2xl overflow-hidden">
                             <div className="overflow-x-auto">
                                 <table className="w-full border-collapse text-left min-w-[720px]">
                                     <thead>
-                                        <tr className="border-b border-gray-100 dark:border-gray-800/50">
-                                            <th className="px-5 py-3 text-[11px] font-medium text-gray-400">Xodim</th>
-                                            <th className="px-3 py-3 text-[11px] font-medium text-gray-400">Lavozim</th>
-                                            <th className="px-3 py-3 text-[11px] font-medium text-gray-400">Rol</th>
-                                            <th className="px-3 py-3 text-[11px] font-medium text-gray-400 text-right">Guruh</th>
-                                            <th className="px-3 py-3 text-[11px] font-medium text-gray-400">Haftalik yuklama</th>
-                                            <th className="px-3 py-3 text-[11px] font-medium text-gray-400 text-right">Oylik</th>
+                                        <tr className="border-b border-chiziq">
+                                            <th className="px-5 py-3 text-[11px] font-medium text-matn-xira">Xodim</th>
+                                            <th className="px-3 py-3 text-[11px] font-medium text-matn-xira">Lavozim</th>
+                                            <th className="px-3 py-3 text-[11px] font-medium text-matn-xira">Rol</th>
+                                            <th className="px-3 py-3 text-[11px] font-medium text-matn-xira text-right">Guruh</th>
+                                            <th className="px-3 py-3 text-[11px] font-medium text-matn-xira">Haftalik yuklama</th>
+                                            <th className="px-3 py-3 text-[11px] font-medium text-matn-xira text-right">Oylik</th>
                                             <th className="px-5 py-3 w-28" />
                                         </tr>
                                     </thead>
-                                    <tbody className="divide-y divide-gray-55 dark:divide-gray-700/40">
+                                    <tbody className="divide-y divide-chiziq-mayin dark:divide-gray-700/40">
                                         {filteredUsers.map((u) => {
                                             const isLegacy = u._source === 'teacher';
                                             const profilePath = isLegacy ? `/teachers/${u._tid}` : `/hr/${u.id}`;
@@ -306,14 +306,14 @@ export default function HRManagement() {
                                                                 )}
                                                             </div>
                                                             <div className="min-w-0">
-                                                                <p className="text-[13px] font-medium text-gray-900 dark:text-white truncate group-hover:text-[#1b6b6b] transition-colors">{u.name}</p>
-                                                                {u.phone && <p className="num text-[11px] text-gray-400 truncate">{u.phone}</p>}
+                                                                <p className="text-[13px] font-medium text-matn truncate group-hover:text-brand transition-colors">{u.name}</p>
+                                                                {u.phone && <p className="num text-[11px] text-matn-xira truncate">{u.phone}</p>}
                                                             </div>
                                                         </div>
                                                     </td>
-                                                    <td className="px-3 py-3 text-[12px] text-gray-500 dark:text-gray-400 align-middle">{u.position || '—'}</td>
+                                                    <td className="px-3 py-3 text-[12px] text-matn-sokin align-middle">{u.position || '—'}</td>
                                                     <td className="px-3 py-3 align-middle">
-                                                        <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-md border whitespace-nowrap ${ROLE_COLORS[u.role] || 'bg-gray-50 text-gray-400 border-gray-100'}`}>
+                                                        <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-md border whitespace-nowrap ${ROLE_COLORS[u.role] || 'bg-gray-50 text-matn-xira border-gray-100'}`}>
                                                             {getRoleLabel(u.role)}
                                                         </span>
                                                     </td>
@@ -323,14 +323,14 @@ export default function HRManagement() {
                                                     <td className="px-3 py-3 align-middle">
                                                         {weeklyLessons > 0 ? (
                                                             <div className="flex items-center gap-2">
-                                                                <div className="w-20 h-1.5 rounded-full bg-gray-100 dark:bg-gray-700 overflow-hidden shrink-0">
+                                                                <div className="w-20 h-1.5 rounded-full bg-chiziq overflow-hidden shrink-0">
                                                                     <div className={`h-full rounded-full ${loadPct >= 85 ? 'bg-rose-500' : loadPct >= 60 ? 'bg-emerald-500' : 'bg-amber-400'}`}
                                                                         style={{ width: `${loadPct}%` }} />
                                                                 </div>
-                                                                <span className="num text-[12px] text-gray-500 dark:text-gray-400 shrink-0">{weeklyLessons} dars</span>
+                                                                <span className="num text-[12px] text-matn-sokin shrink-0">{weeklyLessons} dars</span>
                                                             </div>
                                                         ) : (
-                                                            <span className="text-[12px] text-gray-400">—</span>
+                                                            <span className="text-[12px] text-matn-xira">—</span>
                                                         )}
                                                     </td>
                                                     <td className="num px-3 py-3 text-[13px] text-right text-gray-700 dark:text-gray-200 align-middle">
@@ -342,7 +342,7 @@ export default function HRManagement() {
                                                                 <button
                                                                     onClick={(e) => { e.stopPropagation(); navigate(`/finance?openExpense=1&staffId=${isLegacy ? u._tid : u.id}&staffName=${encodeURIComponent(u.name)}`); }}
                                                                     title="Ish haqqi berish"
-                                                                    className="w-7 h-7 flex items-center justify-center rounded-lg text-gray-400 hover:text-white hover:bg-rose-500 transition-colors cursor-pointer"
+                                                                    className="w-7 h-7 flex items-center justify-center rounded-lg text-matn-xira hover:text-white hover:bg-rose-500 transition-colors cursor-pointer"
                                                                 >
                                                                     <Banknote size={13} />
                                                                 </button>
@@ -350,20 +350,20 @@ export default function HRManagement() {
                                                             {isAdminOrManager && (
                                                                 <button onClick={() => { setEditingUser({ ...u, password: '' }); setIsEditOpen(true); }}
                                                                     title="Tahrirlash"
-                                                                    className="w-7 h-7 rounded-lg text-gray-400 hover:text-[#1b6b6b] hover:bg-gray-100 dark:hover:bg-gray-900 flex items-center justify-center transition-colors cursor-pointer">
+                                                                    className="w-7 h-7 rounded-lg text-matn-xira hover:text-brand hover:bg-gray-100 dark:hover:bg-gray-900 flex items-center justify-center transition-colors cursor-pointer">
                                                                     <Pencil size={13} />
                                                                 </button>
                                                             )}
                                                             <button onClick={() => navigate(profilePath)}
                                                                 title={t('view_profile')}
-                                                                className="w-7 h-7 rounded-lg text-gray-400 hover:text-[#1b6b6b] hover:bg-gray-100 dark:hover:bg-gray-900 flex items-center justify-center transition-colors cursor-pointer">
+                                                                className="w-7 h-7 rounded-lg text-matn-xira hover:text-brand hover:bg-gray-100 dark:hover:bg-gray-900 flex items-center justify-center transition-colors cursor-pointer">
                                                                 <Eye size={13} />
                                                             </button>
                                                             {isAdmin && (
                                                                 <button
                                                                     onClick={() => isLegacy ? handleDeleteTeacher(u._tid) : handleDeleteUser(u.id)}
                                                                     title="O'chirish"
-                                                                    className="w-7 h-7 rounded-lg text-gray-400 hover:text-white hover:bg-rose-500 flex items-center justify-center transition-colors cursor-pointer">
+                                                                    className="w-7 h-7 rounded-lg text-matn-xira hover:text-white hover:bg-rose-500 flex items-center justify-center transition-colors cursor-pointer">
                                                                     <Trash2 size={13} />
                                                                 </button>
                                                             )}
@@ -408,9 +408,9 @@ export default function HRManagement() {
 
 function InfoRow({ label, value }: { label: string; value: string }) {
     return (
-        <div className="flex justify-between items-center py-2.5 border-b border-gray-50 dark:border-gray-800/50">
-            <span className="text-[11px] font-bold text-gray-400">{label}</span>
-            <span className="text-xs font-extrabold text-gray-900 dark:text-white tracking-tight">{value}</span>
+        <div className="flex justify-between items-center py-2.5 border-b border-chiziq-mayin/50">
+            <span className="text-[11px] font-bold text-matn-xira">{label}</span>
+            <span className="text-xs font-extrabold text-matn tracking-tight">{value}</span>
         </div>
     );
 }
@@ -472,19 +472,19 @@ function UserModal({
     return (
         <div className="fixed inset-0 z-[200] flex items-start sm:items-center justify-center overflow-y-auto p-4">
             <div className="absolute inset-0 bg-gray-900/60 backdrop-blur-sm" onClick={onClose} />
-            <div className="relative bg-white dark:bg-gray-800 rounded-[2rem] border border-gray-100 dark:border-gray-800/50 shadow-2xl w-full max-w-lg p-8 max-h-[90vh] overflow-y-auto custom-scrollbar">
-                <div className="flex items-center justify-between mb-6 pb-4 border-b border-gray-50 dark:border-gray-800/50">
+            <div className="relative bg-sirt rounded-[2rem] border border-chiziq shadow-2xl w-full max-w-lg p-8 max-h-[90vh] overflow-y-auto custom-scrollbar">
+                <div className="flex items-center justify-between mb-6 pb-4 border-b border-chiziq-mayin/50">
                     <div>
-                        <h3 className="text-lg font-black text-gray-900 dark:text-white tracking-tight">{title}</h3>
-                        <p className="text-[11px] font-bold text-[#1b6b6b] mt-0.5">{subtitle}</p>
+                        <h3 className="text-lg font-black text-matn tracking-tight">{title}</h3>
+                        <p className="text-[11px] font-bold text-brand mt-0.5">{subtitle}</p>
                     </div>
-                    <button onClick={onClose} className="w-9 h-9 flex items-center justify-center text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-xl cursor-pointer" aria-label="Yopish"><X size={18} /></button>
+                    <button onClick={onClose} className="w-9 h-9 flex items-center justify-center text-matn-xira hover:bg-gray-100 dark:hover:bg-gray-700 rounded-xl cursor-pointer" aria-label="Yopish"><X size={18} /></button>
                 </div>
 
                 <form onSubmit={onSubmit} className="space-y-4">
                     {/* Photo */}
                     <div className="flex items-center gap-4">
-                        <div className="w-16 h-16 rounded-2xl overflow-hidden border-2 border-dashed border-gray-200 dark:border-gray-600 flex items-center justify-center bg-gray-50 dark:bg-gray-900 shrink-0">
+                        <div className="w-16 h-16 rounded-2xl overflow-hidden border-2 border-dashed border-gray-200 dark:border-gray-600 flex items-center justify-center bg-ichki shrink-0">
                             {user.photo
                                 ? <img src={user.photo} alt="preview" className="w-full h-full object-cover" />
                                 : <Camera size={20} className="text-gray-300" />}
@@ -492,11 +492,11 @@ function UserModal({
                         <div className="flex flex-col gap-2">
                             <div className="flex gap-2">
                                 <button type="button" onClick={() => setIsCameraOpen(true)}
-                                    className="flex items-center gap-1.5 px-3 py-2 bg-[#1b6b6b]/10 hover:bg-[#1b6b6b] text-[#1b6b6b] hover:text-white border border-[#1b6b6b]/20 rounded-xl text-[11px] font-extrabold cursor-pointer transition-all">
+                                    className="flex items-center gap-1.5 px-3 py-2 bg-brand/10 hover:bg-brand text-brand hover:text-white border border-brand/20 rounded-xl text-[11px] font-extrabold cursor-pointer transition-all">
                                     <Camera size={11} /> {t('camera')}
                                 </button>
                                 <button type="button" onClick={() => fileRef.current?.click()}
-                                    className="flex items-center gap-1.5 px-3 py-2 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 text-gray-600 dark:text-gray-300 border border-gray-200 dark:border-gray-600 rounded-xl text-[11px] font-extrabold cursor-pointer transition-all">
+                                    className="flex items-center gap-1.5 px-3 py-2 bg-chiziq hover:bg-gray-200 dark:hover:bg-gray-600 text-matn-2 border border-gray-200 dark:border-gray-600 rounded-xl text-[11px] font-extrabold cursor-pointer transition-all">
                                     {t('upload_from_file')}
                                 </button>
                             </div>
@@ -584,13 +584,13 @@ function UserModal({
                         </div>
                     )}
 
-                    <div className="flex gap-3 pt-4 border-t border-dashed border-gray-100 dark:border-gray-800/50">
+                    <div className="flex gap-3 pt-4 border-t border-dashed border-chiziq">
                         <button type="button" onClick={onClose}
-                            className="flex-1 py-3 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-white text-xs font-extrabold rounded-2xl transition-all cursor-pointer hover:bg-gray-200 dark:hover:bg-gray-600">
+                            className="flex-1 py-3 bg-chiziq text-gray-700 dark:text-white text-xs font-extrabold rounded-2xl transition-all cursor-pointer hover:bg-gray-200 dark:hover:bg-gray-600">
                             {t('cancel')}
                         </button>
                         <button type="submit"
-                            className="flex-1 py-3 bg-[#1b6b6b] hover:bg-[#155252] text-white text-xs font-extrabold rounded-2xl shadow-sm shadow-[#1b6b6b]/20 transition-all cursor-pointer">
+                            className="flex-1 py-3 bg-brand hover:bg-brand-dark text-white text-xs font-extrabold rounded-2xl shadow-sm shadow-[#1b6b6b]/20 transition-all cursor-pointer">
                             {t('save')}
                         </button>
                     </div>

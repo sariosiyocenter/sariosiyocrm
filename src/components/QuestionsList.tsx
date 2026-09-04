@@ -169,13 +169,13 @@ export default function QuestionsList() {
             {importPreview && (
                 <div className="fixed inset-0 z-[250] flex items-start sm:items-center justify-center overflow-y-auto p-4">
                     <div className="absolute inset-0 bg-gray-905/65 backdrop-blur-sm" />
-                    <div className="relative bg-white dark:bg-gray-800 rounded-2xl shadow-xl w-full max-w-md p-4 space-y-4 border border-gray-100 dark:border-gray-800/50">
-                        <div className="flex items-start justify-between border-b border-gray-100 dark:border-gray-800/50 pb-3">
+                    <div className="relative bg-sirt rounded-2xl shadow-xl w-full max-w-md p-4 space-y-4 border border-chiziq">
+                        <div className="flex items-start justify-between border-b border-chiziq pb-3">
                             <div>
-                                <h2 className="text-[11px] font-bold text-gray-900 dark:text-white">Excel Import Tekshiruvi</h2>
-                                <p className="text-[11px] font-bold text-gray-400 mt-1">Jami {importPreview.total} ta qator</p>
+                                <h2 className="text-[11px] font-bold text-matn">Excel Import Tekshiruvi</h2>
+                                <p className="text-[11px] font-bold text-matn-xira mt-1">Jami {importPreview.total} ta qator</p>
                             </div>
-                            <button aria-label="Yopish" onClick={() => setImportPreview(null)} className="p-1 text-gray-400 hover:text-gray-650 rounded-lg cursor-pointer">
+                            <button aria-label="Yopish" onClick={() => setImportPreview(null)} className="p-1 text-matn-xira hover:text-gray-650 rounded-lg cursor-pointer">
                                 <X size={18} />
                             </button>
                         </div>
@@ -207,17 +207,17 @@ export default function QuestionsList() {
                             </div>
                         )}
 
-                        <div className="flex gap-2 pt-3 border-t border-dashed border-gray-100 dark:border-gray-800/50">
+                        <div className="flex gap-2 pt-3 border-t border-dashed border-chiziq">
                             <button
                                 onClick={() => setImportPreview(null)}
-                                className="flex-1 py-2.5 rounded-xl border border-gray-100 dark:border-gray-800 text-[11px] font-bold text-gray-500 hover:bg-gray-55 cursor-pointer transition-all"
+                                className="flex-1 py-2.5 rounded-xl border border-chiziq text-[11px] font-bold text-matn-sokin hover:bg-gray-55 cursor-pointer transition-all"
                             >
                                 Bekor
                             </button>
                             <button
                                 onClick={confirmImport}
                                 disabled={isImporting || importPreview.valid.length === 0}
-                                className="flex-1 py-2.5 rounded-xl bg-[#1b6b6b] hover:bg-[#155252] text-white text-[11px] font-bold disabled:opacity-50 disabled:cursor-not-allowed transition-all cursor-pointer"
+                                className="flex-1 py-2.5 rounded-xl bg-brand hover:bg-brand-dark text-white text-[11px] font-bold disabled:opacity-50 disabled:cursor-not-allowed transition-all cursor-pointer"
                             >
                                 {isImporting ? 'Yuklanmoqda...' : `Import (${importPreview.valid.length})`}
                             </button>
@@ -227,23 +227,23 @@ export default function QuestionsList() {
             )}
 
             {/* Header / Filter Toolbar */}
-            <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-800/50 shadow-sm p-4">
+            <div className="bg-sirt rounded-2xl border border-chiziq shadow-sm p-4">
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                     <div className="flex items-center gap-2 flex-1 max-w-md">
                         <div className="relative flex-1">
-                            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-matn-xira" />
                             <input
                                 type="text"
                                 placeholder="Savollarni qidirish..."
                                 value={search}
                                 onChange={(e) => setSearch(e.target.value)}
-                                className="w-full pl-10 pr-4 py-2.5 bg-gray-55 dark:bg-gray-905 border border-gray-100 dark:border-gray-800 rounded-2xl text-xs font-bold text-gray-900 dark:text-white placeholder:text-gray-400 focus:border-[#1b6b6b] focus:ring-4 focus:ring-[#1b6b6b]/10 outline-none transition-all"
+                                className="w-full pl-10 pr-4 py-2.5 bg-gray-55 dark:bg-gray-905 border border-chiziq rounded-2xl text-xs font-bold text-matn placeholder:text-gray-400 focus:border-brand focus:ring-4 focus:ring-[#1b6b6b]/10 outline-none transition-all"
                             />
                         </div>
                         <button 
                             onClick={() => setShowFilters(!showFilters)}
                             className={`w-10 h-10 flex items-center justify-center rounded-2xl border transition-colors cursor-pointer ${
-                                showFilters ? 'bg-teal-50 border-teal-200 text-[#1b6b6b] dark:bg-teal-950/20' : 'bg-white dark:bg-gray-800 border-gray-100 dark:border-gray-800 text-gray-400 hover:text-gray-650'
+                                showFilters ? 'bg-teal-50 border-teal-200 text-brand dark:bg-teal-950/20' : 'bg-sirt border-chiziq text-matn-xira hover:text-gray-650'
                             }`}
                         >
                             <Filter size={16} />
@@ -258,7 +258,7 @@ export default function QuestionsList() {
                         </label>
                         <button 
                             onClick={() => navigate('/questions/new')}
-                            className="px-4 py-2.5 bg-[#1b6b6b] hover:bg-[#155252] text-white rounded-xl text-[11px] font-bold transition-colors flex items-center gap-1.5 cursor-pointer shadow-sm shadow-[#1b6b6b]/20"
+                            className="px-4 py-2.5 bg-brand hover:bg-brand-dark text-white rounded-xl text-[11px] font-bold transition-colors flex items-center gap-1.5 cursor-pointer shadow-sm shadow-[#1b6b6b]/20"
                         >
                             <Plus size={14} />
                             Savol Qo'shish
@@ -269,33 +269,33 @@ export default function QuestionsList() {
                 {showFilters && (
                     <div className="mt-4 pt-4 grid grid-cols-1 md:grid-cols-3 gap-4 border-t border-dashed border-gray-105 dark:border-gray-800/50 animate-in slide-in-from-top duration-300">
                         <div>
-                            <label className="text-[11px] font-bold text-gray-400 block mb-1.5">Fan</label>
+                            <label className="text-[11px] font-bold text-matn-xira block mb-1.5">Fan</label>
                             <select 
                                 value={filters.subject}
                                 onChange={e => setFilters({...filters, subject: e.target.value})}
-                                className="w-full px-3 py-2 bg-gray-55 dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-xl text-[11px] font-bold text-gray-900 dark:text-white outline-none focus:border-teal-500 cursor-pointer"
+                                className="w-full px-3 py-2 bg-ichki border border-chiziq rounded-xl text-[11px] font-bold text-matn outline-none focus:border-teal-500 cursor-pointer"
                             >
                                 <option value="">Barcha fanlar</option>
                                 {subjects.map(s => <option key={s} value={s}>{s}</option>)}
                             </select>
                         </div>
                         <div>
-                            <label className="text-[11px] font-bold text-gray-400 block mb-1.5">Mavzu</label>
+                            <label className="text-[11px] font-bold text-matn-xira block mb-1.5">Mavzu</label>
                             <select 
                                 value={filters.topic}
                                 onChange={e => setFilters({...filters, topic: e.target.value})}
-                                className="w-full px-3 py-2 bg-gray-55 dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-xl text-[11px] font-bold text-gray-900 dark:text-white outline-none focus:border-teal-500 cursor-pointer"
+                                className="w-full px-3 py-2 bg-ichki border border-chiziq rounded-xl text-[11px] font-bold text-matn outline-none focus:border-teal-500 cursor-pointer"
                             >
                                 <option value="">Barcha mavzular</option>
                                 {topics.map(t => <option key={t} value={t}>{t}</option>)}
                             </select>
                         </div>
                         <div>
-                            <label className="text-[11px] font-bold text-gray-400 block mb-1.5">Qiyinlik Darajasi</label>
+                            <label className="text-[11px] font-bold text-matn-xira block mb-1.5">Qiyinlik Darajasi</label>
                             <select 
                                 value={filters.difficulty}
                                 onChange={e => setFilters({...filters, difficulty: e.target.value})}
-                                className="w-full px-3 py-2 bg-gray-55 dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-xl text-[11px] font-bold text-gray-900 dark:text-white outline-none focus:border-teal-500 cursor-pointer"
+                                className="w-full px-3 py-2 bg-ichki border border-chiziq rounded-xl text-[11px] font-bold text-matn outline-none focus:border-teal-500 cursor-pointer"
                             >
                                 <option value="">Barcha darajalar</option>
                                 <option value="1">Oson</option>
@@ -308,32 +308,32 @@ export default function QuestionsList() {
             </div>
 
             {/* Questions Table */}
-            <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-800/50 shadow-sm overflow-hidden">
+            <div className="bg-sirt rounded-2xl border border-chiziq shadow-sm overflow-hidden">
                 <div className="overflow-x-auto">
                     <table className="w-full text-left border-collapse min-w-[800px]">
                         <thead>
-                            <tr className="bg-gray-55 dark:bg-gray-900 border-b border-gray-100 dark:border-gray-800/50">
-                                <th className="p-4 text-[11px] font-bold text-gray-400 w-20 text-center">ID</th>
-                                <th className="p-4 text-[11px] font-bold text-gray-400">Savol Matni</th>
-                                <th className="p-4 text-[11px] font-bold text-gray-400">Fan & Mavzu</th>
-                                <th className="p-4 text-[11px] font-bold text-gray-400 text-center">Daraja</th>
-                                <th className="p-4 text-[11px] font-bold text-gray-400 text-center">To'g'ri</th>
+                            <tr className="bg-ichki border-b border-chiziq">
+                                <th className="p-4 text-[11px] font-bold text-matn-xira w-20 text-center">ID</th>
+                                <th className="p-4 text-[11px] font-bold text-matn-xira">Savol Matni</th>
+                                <th className="p-4 text-[11px] font-bold text-matn-xira">Fan & Mavzu</th>
+                                <th className="p-4 text-[11px] font-bold text-matn-xira text-center">Daraja</th>
+                                <th className="p-4 text-[11px] font-bold text-matn-xira text-center">To'g'ri</th>
                                 <th className="p-4 w-20 text-center"></th>
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-gray-100 dark:divide-gray-800">
                             {filteredQuestions.map((q) => (
                                 <tr key={q.id} className="hover:bg-gray-50/50 dark:hover:bg-teal-950/20 transition-all cursor-pointer group" onClick={() => navigate(`/questions/${q.id}/edit`)}>
-                                    <td className="p-4 text-[11px] font-bold text-gray-400 text-center tabular-nums">#{q.id.toString().substring(0,4)}</td>
+                                    <td className="p-4 text-[11px] font-bold text-matn-xira text-center tabular-nums">#{q.id.toString().substring(0,4)}</td>
                                     <td className="p-4">
-                                        <p className="text-xs font-bold text-gray-900 dark:text-white line-clamp-1 max-w-[400px]">
+                                        <p className="text-xs font-bold text-matn line-clamp-1 max-w-[400px]">
                                             {stripHtml(q.text)}
                                         </p>
                                     </td>
                                     <td className="p-4">
                                         <div className="flex flex-col gap-0.5">
-                                            <span className="text-[11px] font-bold text-[#1b6b6b]">{q.subject}</span>
-                                            <span className="text-[11px] font-bold text-gray-400">{q.topic || 'Mavzusiz'}</span>
+                                            <span className="text-[11px] font-bold text-brand">{q.subject}</span>
+                                            <span className="text-[11px] font-bold text-matn-xira">{q.topic || 'Mavzusiz'}</span>
                                         </div>
                                     </td>
                                     <td className="p-4 text-center">
@@ -346,7 +346,7 @@ export default function QuestionsList() {
                                         </span>
                                     </td>
                                     <td className="p-4 text-center">
-                                        <div className="inline-flex items-center justify-center w-7 h-7 rounded-lg bg-teal-50 dark:bg-teal-950/20 text-[#1b6b6b] font-black text-xs border border-teal-100 dark:border-teal-900/40">
+                                        <div className="inline-flex items-center justify-center w-7 h-7 rounded-lg bg-teal-50 dark:bg-teal-950/20 text-brand font-black text-xs border border-teal-100 dark:border-teal-900/40">
                                             {q.correctAnswer}
                                         </div>
                                     </td>
@@ -357,7 +357,7 @@ export default function QuestionsList() {
                                                     e.stopPropagation();
                                                     if(await confirm('O\'chirishni xohlaysizmi?')) deleteQuestion(q.id);
                                                 }}
-                                                className="w-8 h-8 flex items-center justify-center rounded-lg text-gray-400 hover:text-rose-500 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors cursor-pointer"
+                                                className="w-8 h-8 flex items-center justify-center rounded-lg text-matn-xira hover:text-rose-500 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors cursor-pointer"
                                             >
                                                 <Trash2 size={14} />
                                             </button>
@@ -369,7 +369,7 @@ export default function QuestionsList() {
                                 <tr>
                                     <td colSpan={6} className="p-16 text-center">
                                         <AlertCircle className="w-8 h-8 text-gray-300 dark:text-gray-700 mx-auto mb-3" />
-                                        <p className="text-[11px] font-bold text-gray-400">Hozircha savollar topilmadi</p>
+                                        <p className="text-[11px] font-bold text-matn-xira">Hozircha savollar topilmadi</p>
                                     </td>
                                 </tr>
                             )}

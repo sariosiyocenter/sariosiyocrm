@@ -31,24 +31,24 @@ export default function ExamsList() {
         return (
             <div className="space-y-6 animate-in fade-in duration-500">
                 {/* Tabs Header */}
-                <div className="flex border-b border-gray-100 dark:border-gray-800/50 bg-white dark:bg-gray-800 rounded-2xl overflow-hidden p-1 shadow-sm gap-1">
+                <div className="flex border-b border-chiziq bg-sirt rounded-2xl overflow-hidden p-1 shadow-sm gap-1">
                     <button
                         onClick={() => setActiveTab('exams')}
-                        className="flex items-center gap-2 px-6 py-3.5 rounded-xl text-[11px] font-extrabold transition-all text-gray-400 hover:text-gray-900 dark:hover:text-white cursor-pointer"
+                        className="flex items-center gap-2 px-6 py-3.5 rounded-xl text-[11px] font-extrabold transition-all text-matn-xira hover:text-gray-900 dark:hover:text-white cursor-pointer"
                     >
                         <FileText size={14} />
                         {t('exam_tab_exams')}
                     </button>
                     <button
                         onClick={() => setActiveTab('questions')}
-                        className="flex items-center gap-2 px-6 py-3.5 rounded-xl text-[11px] font-extrabold transition-all bg-teal-50 dark:bg-teal-950/20 text-[#1b6b6b] cursor-pointer"
+                        className="flex items-center gap-2 px-6 py-3.5 rounded-xl text-[11px] font-extrabold transition-all bg-teal-50 dark:bg-teal-950/20 text-brand cursor-pointer"
                     >
                         <BookOpen size={14} />
                         {t('exam_tab_questions')}
                     </button>
                     <button
                         onClick={() => setActiveTab('scanner')}
-                        className="flex items-center gap-2 px-6 py-3.5 rounded-xl text-[11px] font-extrabold transition-all text-gray-400 hover:text-gray-900 dark:hover:text-white cursor-pointer"
+                        className="flex items-center gap-2 px-6 py-3.5 rounded-xl text-[11px] font-extrabold transition-all text-matn-xira hover:text-gray-900 dark:hover:text-white cursor-pointer"
                     >
                         <ScanLine size={14} />
                         {t('exam_tab_scanner')}
@@ -66,24 +66,24 @@ export default function ExamsList() {
     return (
         <div className="space-y-6 animate-in fade-in duration-500">
             {/* Tabs Header */}
-            <div className="flex border-b border-gray-100 dark:border-gray-800/50 bg-white dark:bg-gray-800 rounded-2xl overflow-hidden p-1 shadow-sm gap-1">
+            <div className="flex border-b border-chiziq bg-sirt rounded-2xl overflow-hidden p-1 shadow-sm gap-1">
                 <button
                     onClick={() => setActiveTab('exams')}
-                    className="flex items-center gap-2 px-6 py-3.5 rounded-xl text-[11px] font-extrabold transition-all bg-teal-50 dark:bg-teal-950/20 text-[#1b6b6b] cursor-pointer"
+                    className="flex items-center gap-2 px-6 py-3.5 rounded-xl text-[11px] font-extrabold transition-all bg-teal-50 dark:bg-teal-950/20 text-brand cursor-pointer"
                 >
                     <FileText size={14} />
                     {t('exam_tab_exams')}
                 </button>
                 <button
                     onClick={() => setActiveTab('questions')}
-                    className="flex items-center gap-2 px-6 py-3.5 rounded-xl text-[11px] font-extrabold transition-all text-gray-400 hover:text-gray-900 dark:hover:text-white cursor-pointer"
+                    className="flex items-center gap-2 px-6 py-3.5 rounded-xl text-[11px] font-extrabold transition-all text-matn-xira hover:text-gray-900 dark:hover:text-white cursor-pointer"
                 >
                     <BookOpen size={14} />
                     {t('exam_tab_questions')}
                 </button>
                 <button
                     onClick={() => setActiveTab('scanner')}
-                    className="flex items-center gap-2 px-6 py-3.5 rounded-xl text-[11px] font-extrabold transition-all text-gray-400 hover:text-gray-900 dark:hover:text-white cursor-pointer"
+                    className="flex items-center gap-2 px-6 py-3.5 rounded-xl text-[11px] font-extrabold transition-all text-matn-xira hover:text-gray-900 dark:hover:text-white cursor-pointer"
                 >
                     <ScanLine size={14} />
                     {t('exam_tab_scanner')}
@@ -91,31 +91,31 @@ export default function ExamsList() {
             </div>
 
             {/* Header */}
-            <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-800/50 shadow-sm p-4">
+            <div className="bg-sirt rounded-2xl border border-chiziq shadow-sm p-4">
                 <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                     <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-xl bg-teal-50 dark:bg-teal-950/20 border border-teal-100 dark:border-teal-900/40 flex items-center justify-center text-[#1b6b6b]">
+                        <div className="w-10 h-10 rounded-xl bg-teal-50 dark:bg-teal-950/20 border border-teal-100 dark:border-teal-900/40 flex items-center justify-center text-brand">
                             <FileText size={20} />
                         </div>
                         <div>
-                            <h1 className="text-sm font-black text-gray-900 dark:text-white tracking-tight">{t('exams_title')}</h1>
-                            <p className="text-[11px] font-bold text-gray-400 mt-0.5">{t('exams_list_subtitle')}</p>
+                            <h1 className="text-sm font-black text-matn tracking-tight">{t('exams_title')}</h1>
+                            <p className="text-[11px] font-bold text-matn-xira mt-0.5">{t('exams_list_subtitle')}</p>
                         </div>
                     </div>
                     <div className="flex flex-col sm:flex-row items-center gap-3 w-full md:w-auto">
                         <div className="relative w-full sm:w-64">
-                            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-matn-xira" />
                             <input
                                 type="text"
                                 placeholder={t('search')}
                                 value={search}
                                 onChange={(e) => setSearch(e.target.value)}
-                                className="w-full bg-gray-55 dark:bg-gray-905 border border-gray-100 dark:border-gray-800 rounded-2xl pl-10 pr-4 py-2.5 text-xs font-bold text-gray-900 dark:text-white focus:border-[#1b6b6b] focus:ring-4 focus:ring-[#1b6b6b]/10 outline-none transition-all placeholder:text-gray-400"
+                                className="w-full bg-gray-55 dark:bg-gray-905 border border-chiziq rounded-2xl pl-10 pr-4 py-2.5 text-xs font-bold text-matn focus:border-brand focus:ring-4 focus:ring-[#1b6b6b]/10 outline-none transition-all placeholder:text-gray-400"
                             />
                         </div>
                         <button
                             onClick={() => navigate('/exams/new')}
-                            className="w-full sm:w-auto flex items-center justify-center gap-2 px-6 py-2.5 bg-[#1b6b6b] hover:bg-[#155252] text-white rounded-2xl text-[11px] font-extrabold shadow-sm shadow-[#1b6b6b]/20 active:scale-95 transition-all cursor-pointer"
+                            className="w-full sm:w-auto flex items-center justify-center gap-2 px-6 py-2.5 bg-brand hover:bg-brand-dark text-white rounded-2xl text-[11px] font-extrabold shadow-sm shadow-[#1b6b6b]/20 active:scale-95 transition-all cursor-pointer"
                         >
                             <Plus size={14} />
                             {t('add_exam')}
@@ -125,16 +125,16 @@ export default function ExamsList() {
             </div>
 
             {/* Data Grid / Table */}
-            <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-800/50 shadow-sm overflow-hidden">
+            <div className="bg-sirt rounded-2xl border border-chiziq shadow-sm overflow-hidden">
                 <div className="overflow-x-auto">
                     <table className="w-full text-left border-collapse min-w-[800px]">
                         <thead>
-                            <tr className="bg-gray-55 dark:bg-gray-900 border-b border-gray-100 dark:border-gray-800/50">
-                                <th className="p-4 text-[11px] font-bold text-gray-400 w-20 text-center">ID</th>
-                                <th className="p-4 text-[11px] font-bold text-gray-400">{t('exam_col_name')}</th>
-                                <th className="p-4 text-[11px] font-bold text-gray-400 text-center">{t('exam_col_date')}</th>
-                                <th className="p-4 text-[11px] font-bold text-gray-400 text-center">{t('exam_col_questions')}</th>
-                                <th className="p-4 text-[11px] font-bold text-gray-400 text-right">{t('status')}</th>
+                            <tr className="bg-ichki border-b border-chiziq">
+                                <th className="p-4 text-[11px] font-bold text-matn-xira w-20 text-center">ID</th>
+                                <th className="p-4 text-[11px] font-bold text-matn-xira">{t('exam_col_name')}</th>
+                                <th className="p-4 text-[11px] font-bold text-matn-xira text-center">{t('exam_col_date')}</th>
+                                <th className="p-4 text-[11px] font-bold text-matn-xira text-center">{t('exam_col_questions')}</th>
+                                <th className="p-4 text-[11px] font-bold text-matn-xira text-right">{t('status')}</th>
                                 <th className="p-4 w-12 text-center"></th>
                             </tr>
                         </thead>
@@ -143,41 +143,41 @@ export default function ExamsList() {
                                 <tr key={exam.id} className="hover:bg-gray-50/30 transition-colors cursor-pointer group"
                                     onClick={() => navigate(`/exams/${exam.id}`)}
                                 >
-                                    <td className="p-4 text-[11px] font-bold text-gray-400 text-center tabular-nums">#{exam.id.toString().substring(0,4)}</td>
+                                    <td className="p-4 text-[11px] font-bold text-matn-xira text-center tabular-nums">#{exam.id.toString().substring(0,4)}</td>
                                     <td className="p-4">
                                         <div className="flex items-center gap-3">
-                                            <div className="w-9 h-9 rounded-xl bg-teal-50 dark:bg-teal-950/20 border border-teal-100 dark:border-teal-900/40 flex items-center justify-center text-[#1b6b6b] shrink-0">
+                                            <div className="w-9 h-9 rounded-xl bg-teal-50 dark:bg-teal-950/20 border border-teal-100 dark:border-teal-900/40 flex items-center justify-center text-brand shrink-0">
                                                 <BookOpen size={16} />
                                             </div>
                                             <div>
-                                                <p className="text-xs font-black text-gray-900 dark:text-white group-hover:text-[#1b6b6b] transition-colors tracking-tight">{exam.name}</p>
-                                                <p className="text-[11px] font-bold text-gray-400 mt-0.5">{exam.blocks?.length || 0} ta fan</p>
+                                                <p className="text-xs font-black text-matn group-hover:text-brand transition-colors tracking-tight">{exam.name}</p>
+                                                <p className="text-[11px] font-bold text-matn-xira mt-0.5">{exam.blocks?.length || 0} ta fan</p>
                                             </div>
                                         </div>
                                     </td>
                                     <td className="p-4 text-center">
                                         <div className="flex flex-col items-center gap-1">
-                                            <span className="text-[11px] font-bold text-gray-650 dark:text-gray-300 bg-gray-55 dark:bg-gray-900 px-2.5 py-1 rounded-md border border-gray-100 dark:border-gray-800 inline-flex items-center gap-1.5">
-                                                <Calendar size={12} className="text-gray-400" /> {exam.date}
+                                            <span className="text-[11px] font-bold text-gray-650 dark:text-gray-300 bg-ichki px-2.5 py-1 rounded-md border border-chiziq inline-flex items-center gap-1.5">
+                                                <Calendar size={12} className="text-matn-xira" /> {exam.date}
                                             </span>
-                                            <span className="text-[11px] font-bold text-gray-400">
+                                            <span className="text-[11px] font-bold text-matn-xira">
                                                 {exam.duration} daqiqa
                                             </span>
                                         </div>
                                     </td>
                                     <td className="p-4 text-center">
                                         <div className="flex flex-col items-center">
-                                            <span className="inline-flex items-center justify-center px-2 py-0.5 rounded bg-teal-50 dark:bg-teal-950/20 text-[#1b6b6b] border border-teal-100 dark:border-teal-900/40 text-[11px] font-bold">
+                                            <span className="inline-flex items-center justify-center px-2 py-0.5 rounded bg-teal-50 dark:bg-teal-950/20 text-brand border border-teal-100 dark:border-teal-900/40 text-[11px] font-bold">
                                                 {exam.totalQuestions || 0} ta
                                             </span>
-                                            <span className="text-[11px] font-bold text-gray-400 mt-1">{exam.maxScore || 0} ball</span>
+                                            <span className="text-[11px] font-bold text-matn-xira mt-1">{exam.maxScore || 0} ball</span>
                                         </div>
                                     </td>
                                     <td className="p-4 text-right">
                                         <span className={`px-2.5 py-1 rounded-md text-[11px] font-black border ${
                                             exam.status === 'Tugallangan' ? 'bg-emerald-50 text-emerald-600 border-emerald-100 dark:bg-emerald-950/20 dark:text-emerald-400' :
                                             exam.status === 'Yaqinlashmoqda' ? 'bg-sky-50 text-sky-600 border-sky-100 dark:bg-sky-950/20 dark:text-sky-400' :
-                                            'bg-gray-55 text-gray-400 border-gray-100'
+                                            'bg-gray-55 text-matn-xira border-gray-100'
                                         }`}>
                                             {exam.status}
                                         </span>
@@ -196,7 +196,7 @@ export default function ExamsList() {
                                 <tr>
                                     <td colSpan={6} className="p-16 text-center">
                                         <BookOpen className="w-10 h-10 text-gray-300 mx-auto mb-3" />
-                                        <p className="text-[11px] font-bold text-gray-400">{t('no_exams_found')}</p>
+                                        <p className="text-[11px] font-bold text-matn-xira">{t('no_exams_found')}</p>
                                     </td>
                                 </tr>
                             )}

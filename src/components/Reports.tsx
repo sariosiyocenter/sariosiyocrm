@@ -33,7 +33,7 @@ export default function Reports() {
         { id: 'leads', label: t('rep_leads'), icon: <Target className="w-4 h-4 text-purple-500" /> },
         { id: 'students_general', label: t('rep_students_general'), icon: <Users className="w-4 h-4 text-brand" /> },
         { id: 'graduates', label: t('rep_graduates'), icon: <GraduationCap className="w-4 h-4 text-emerald-500" /> },
-        { id: 'stats', label: t('rep_stats'), icon: <FileText className="w-4 h-4 text-gray-500" /> },
+        { id: 'stats', label: t('rep_stats'), icon: <FileText className="w-4 h-4 text-matn-sokin" /> },
     ];
 
     const [activeReport, setActiveReport] = useState<string | null>(null);
@@ -87,10 +87,10 @@ export default function Reports() {
             case 'stats': return <CenterStatsReport />;
             default: return (
                 <div className="flex-1 flex flex-col items-center justify-center p-20 text-center">
-                    <div className="w-16 h-16 bg-gray-50 dark:bg-gray-900 border border-gray-100 dark:border-gray-750 rounded-2xl flex items-center justify-center text-gray-300 dark:text-gray-700 mb-6">
+                    <div className="w-16 h-16 bg-ichki border border-gray-100 dark:border-gray-750 rounded-2xl flex items-center justify-center text-gray-300 dark:text-gray-700 mb-6">
                         <FileText size={28} />
                     </div>
-                    <p className="text-[11px] font-extrabold text-gray-400 dark:text-gray-500">{t('report_select_hint')}</p>
+                    <p className="text-[11px] font-extrabold text-matn-xira">{t('report_select_hint')}</p>
                 </div>
             );
         }
@@ -99,15 +99,15 @@ export default function Reports() {
     return (
         <div className="space-y-6 animate-in fade-in duration-500">
             {/* Header */}
-            <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-800/50 shadow-sm overflow-hidden">
+            <div className="bg-sirt rounded-2xl border border-chiziq shadow-sm overflow-hidden">
                 <div className="px-6 py-5 flex flex-col md:flex-row md:items-center justify-between gap-4">
                     <div className="flex items-center gap-4">
                         <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-[#1b6b6b] to-[#2e9c9c] flex items-center justify-center shadow-sm shadow-[#1b6b6b]/20">
                             <FileText size={22} className="text-white" />
                         </div>
                         <div>
-                            <h1 className="text-lg font-black text-gray-900 dark:text-white tracking-tight">{t('reports_title')}</h1>
-                            <p className="text-[11px] font-bold text-gray-400 mt-0.5">
+                            <h1 className="text-lg font-black text-matn tracking-tight">{t('reports_title')}</h1>
+                            <p className="text-[11px] font-bold text-matn-xira mt-0.5">
                                 {t('reports_subtitle')}
                             </p>
                         </div>
@@ -115,7 +115,7 @@ export default function Reports() {
                     
                     <div className="flex flex-wrap items-center gap-3">
                         {/* Presets */}
-                        <div className="flex items-center gap-1 bg-gray-55 dark:bg-gray-900 p-1 rounded-xl border border-gray-100 dark:border-gray-800">
+                        <div className="flex items-center gap-1 bg-ichki p-1 rounded-xl border border-chiziq">
                           {['this_month', 'last_30', 'this_year', 'all'].map((type) => {
                             const label = type === 'this_month' ? t('preset_this_month') : type === 'last_30' ? t('preset_30_days') : type === 'this_year' ? t('preset_this_year') : t('preset_all');
                             return (
@@ -125,8 +125,8 @@ export default function Reports() {
                                 onClick={() => handlePreset(type as any)}
                                 className={`px-3 py-1.5 rounded-lg text-[11px] font-extrabold transition-all cursor-pointer ${
                                   selectedPreset === type
-                                  ? 'bg-[#1b6b6b] text-white shadow-sm'
-                                  : 'text-gray-500 dark:text-gray-400 hover:text-gray-800'
+                                  ? 'bg-brand text-brand-ust shadow-sm'
+                                  : 'text-matn-sokin hover:text-gray-800'
                                 }`}
                               >
                                 {label}
@@ -141,14 +141,14 @@ export default function Reports() {
                             type="date"
                             value={startDate}
                             onChange={(e) => { setStartDate(e.target.value); setSelectedPreset('custom'); }}
-                            className="bg-gray-55 dark:bg-gray-900 px-3 py-1.5 rounded-xl border border-gray-100 dark:border-gray-800 text-xs font-bold text-gray-800 dark:text-gray-200 outline-none focus:border-[#1b6b6b] w-32 cursor-pointer"
+                            className="bg-ichki px-3 py-1.5 rounded-xl border border-chiziq text-xs font-bold text-matn-2 outline-none focus:border-brand w-32 cursor-pointer"
                           />
-                          <span className="text-gray-400 dark:text-gray-500 font-extrabold text-[11px]">{t('date_to')}</span>
+                          <span className="text-matn-xira font-extrabold text-[11px]">{t('date_to')}</span>
                           <input
                             type="date"
                             value={endDate}
                             onChange={(e) => { setEndDate(e.target.value); setSelectedPreset('custom'); }}
-                            className="bg-gray-55 dark:bg-gray-900 px-3 py-1.5 rounded-xl border border-gray-100 dark:border-gray-800 text-xs font-bold text-gray-800 dark:text-gray-200 outline-none focus:border-[#1b6b6b] w-32 cursor-pointer"
+                            className="bg-ichki px-3 py-1.5 rounded-xl border border-chiziq text-xs font-bold text-matn-2 outline-none focus:border-brand w-32 cursor-pointer"
                           />
                         </div>
                     </div>
@@ -156,18 +156,18 @@ export default function Reports() {
             </div>
 
             {/* Report Types Buttons */}
-            <div className="flex flex-wrap gap-2 bg-white dark:bg-gray-800 p-4 rounded-2xl border border-gray-100 dark:border-gray-800/50 shadow-sm">
+            <div className="flex flex-wrap gap-2 bg-sirt p-4 rounded-2xl border border-chiziq shadow-sm">
                 {REPORT_TYPES.map((report, idx) => (
                     <button
                         key={report.id}
                         onClick={() => setActiveReport(report.id)}
                         className={`flex items-center gap-2 px-4 py-2.5 rounded-xl border text-left transition-all cursor-pointer ${
                             activeReport === report.id 
-                            ? 'bg-[#1b6b6b] border-[#1b6b6b] text-white shadow-sm' 
-                            : 'bg-gray-55 dark:bg-gray-900 border-transparent text-gray-500 dark:text-gray-400 hover:border-gray-100'
+                            ? 'bg-brand border-brand text-white shadow-sm' 
+                            : 'bg-ichki border-transparent text-matn-sokin hover:border-gray-100'
                         }`}
                     >
-                        <div className={`p-1.5 rounded-lg ${activeReport === report.id ? 'bg-white/20 text-white [&_svg]:!text-white' : 'bg-white dark:bg-gray-800'}`}>
+                        <div className={`p-1.5 rounded-lg ${activeReport === report.id ? 'bg-white/20 text-white [&_svg]:!text-white' : 'bg-sirt'}`}>
                             {report.icon}
                         </div>
                         <span className="text-[11px] font-extrabold">
@@ -178,7 +178,7 @@ export default function Reports() {
             </div>
 
             {/* Report Body */}
-            <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-800/50 shadow-sm overflow-hidden">
+            <div className="bg-sirt rounded-2xl border border-chiziq shadow-sm overflow-hidden">
                 {renderReportContent()}
             </div>
         </div>

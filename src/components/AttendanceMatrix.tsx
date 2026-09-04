@@ -16,7 +16,7 @@ const STATUSES = [
     { key: 'Sababli',     label: 'Sababli',          color: 'bg-sky-500',     text: 'text-sky-600 dark:text-sky-400',         light: 'hover:bg-sky-50 dark:hover:bg-sky-900/30',         icon: <HelpCircle size={11} />, short: 'S' },
     { key: 'Kechikdi',    label: 'Kechikib keldi',   color: 'bg-orange-400',  text: 'text-orange-600 dark:text-orange-400',   light: 'hover:bg-orange-50 dark:hover:bg-orange-900/30',   icon: <Clock size={11} />, short: '~' },
     { key: 'ErtaKetdi',   label: 'Erta ketdi',       color: 'bg-purple-500',  text: 'text-purple-600 dark:text-purple-400',   light: 'hover:bg-purple-50 dark:hover:bg-purple-900/30',   icon: <LogOut size={11} />, short: '↓' },
-    { key: "Dars bo'lmadi", label: "Dars bo'lmadi",  color: 'bg-gray-400 dark:bg-gray-600', text: 'text-gray-500', light: 'hover:bg-gray-100 dark:hover:bg-gray-700', icon: <Ban size={11} />, short: '—' },
+    { key: "Dars bo'lmadi", label: "Dars bo'lmadi",  color: 'bg-gray-400 dark:bg-gray-600', text: 'text-matn-sokin', light: 'hover:bg-gray-100 dark:hover:bg-gray-700', icon: <Ban size={11} />, short: '—' },
 ] as const;
 
 export default function AttendanceMatrix({ group, students, attendances, selectedDate }: AttendanceMatrixProps) {
@@ -83,28 +83,28 @@ export default function AttendanceMatrix({ group, students, attendances, selecte
     const isSelected = (d: string) => selectedDate && d === selectedDate;
 
     return (
-        <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 overflow-hidden shadow-sm">
+        <div className="bg-sirt rounded-2xl border border-chiziq overflow-hidden shadow-sm">
             <div className="overflow-x-auto custom-scrollbar">
                 <table className="w-full border-separate border-spacing-0">
                     <thead>
                         <tr>
                             {/* Name column header */}
-                            <th className="sticky left-0 z-30 bg-gray-50 dark:bg-gray-800/80 px-4 py-3 text-left border-b border-r border-gray-100 dark:border-gray-800 min-w-[160px]">
-                                <span className="text-[11px] font-bold text-gray-400">O'quvchi</span>
+                            <th className="sticky left-0 z-30 bg-ichki/80 px-4 py-3 text-left border-b border-r border-chiziq min-w-[160px]">
+                                <span className="text-[11px] font-bold text-matn-xira">O'quvchi</span>
                             </th>
                             {/* % column */}
-                            <th className="bg-gray-50 dark:bg-gray-800/80 px-3 py-3 border-b border-r border-gray-100 dark:border-gray-800 min-w-[52px]">
-                                <span className="text-[11px] font-bold text-gray-400 block text-center">%</span>
+                            <th className="bg-ichki/80 px-3 py-3 border-b border-r border-chiziq min-w-[52px]">
+                                <span className="text-[11px] font-bold text-matn-xira block text-center">%</span>
                             </th>
                             {/* Date columns */}
                             {lessonDates.map(date => {
                                 const { day, date: dateNum } = getDayLabel(date);
                                 const highlight = isToday(date) || isSelected(date);
                                 return (
-                                    <th key={date} className={`px-1 py-2 border-b border-gray-100 dark:border-gray-800 min-w-[44px] ${highlight ? 'bg-emerald-50 dark:bg-emerald-950/30 border-b-2 border-b-emerald-400' : 'bg-gray-50/50 dark:bg-gray-800/50'}`}>
+                                    <th key={date} className={`px-1 py-2 border-b border-chiziq min-w-[44px] ${highlight ? 'bg-emerald-50 dark:bg-emerald-950/30 border-b-2 border-b-emerald-400' : 'bg-gray-50/50 dark:bg-gray-800/50'}`}>
                                         <div className="flex flex-col items-center gap-0.5">
-                                            <span className={`text-[7px] font-black ${highlight ? 'text-emerald-600 dark:text-emerald-400' : 'text-gray-400'}`}>{day}</span>
-                                            <span className={`text-[11px] font-bold ${highlight ? 'text-emerald-700 dark:text-emerald-300' : 'text-gray-500 dark:text-gray-400'}`}>{dateNum}</span>
+                                            <span className={`text-[7px] font-black ${highlight ? 'text-emerald-600 dark:text-emerald-400' : 'text-matn-xira'}`}>{day}</span>
+                                            <span className={`text-[11px] font-bold ${highlight ? 'text-emerald-700 dark:text-emerald-300' : 'text-matn-sokin'}`}>{dateNum}</span>
                                         </div>
                                     </th>
                                 );
@@ -114,15 +114,15 @@ export default function AttendanceMatrix({ group, students, attendances, selecte
                     <tbody>
                         {students.map((student, si) => {
                             const pct = getAttendancePct(student.id);
-                            const rowBg = si % 2 === 0 ? 'bg-white dark:bg-gray-900' : 'bg-gray-50/30 dark:bg-gray-800/20';
+                            const rowBg = si % 2 === 0 ? 'bg-sirt' : 'bg-gray-50/30 dark:bg-gray-800/20';
                             return (
                                 <tr key={student.id} className={`${rowBg} hover:bg-emerald-50/20 dark:hover:bg-emerald-950/10 transition-colors`}>
                                     {/* Name */}
-                                    <td className={`sticky left-0 z-20 ${rowBg} px-4 py-2.5 border-r border-b border-gray-100 dark:border-gray-800`}>
-                                        <p className="text-[11px] font-bold text-gray-900 dark:text-white tracking-tight truncate max-w-[140px]">{student.name}</p>
+                                    <td className={`sticky left-0 z-20 ${rowBg} px-4 py-2.5 border-r border-b border-chiziq`}>
+                                        <p className="text-[11px] font-bold text-matn tracking-tight truncate max-w-[140px]">{student.name}</p>
                                     </td>
                                     {/* % */}
-                                    <td className="px-2 py-2.5 border-r border-b border-gray-100 dark:border-gray-800 text-center">
+                                    <td className="px-2 py-2.5 border-r border-b border-chiziq text-center">
                                         {pct !== null && (
                                             <span className={`text-[11px] font-bold tabular-nums ${pct >= 80 ? 'text-emerald-500' : pct >= 60 ? 'text-amber-500' : 'text-rose-500'}`}>
                                                 {pct}%
@@ -146,18 +146,18 @@ export default function AttendanceMatrix({ group, students, attendances, selecte
                                             cellClass = 'border border-dashed border-gray-200 dark:border-gray-800 opacity-30';
                                         } else if (!att) {
                                             cellClass = 'border border-gray-200 dark:border-gray-800 hover:bg-gray-100 dark:hover:bg-gray-700/60 hover:border-gray-400 dark:hover:border-gray-500';
-                                            content = <span className="text-gray-300 dark:text-gray-600 text-[11px] font-bold">—</span>;
+                                            content = <span className="text-matn-xira text-[11px] font-bold">—</span>;
                                         } else if (resolvedStatusObj) {
                                             cellClass = `${resolvedStatusObj.color} text-white`;
                                             content = <span className="text-[11px] font-bold">{resolvedStatusObj.short}</span>;
                                         } else if (att) {
                                             // unknown/legacy status — treat as unrecorded so user can re-set
                                             cellClass = 'border border-gray-200 dark:border-gray-800 hover:bg-gray-100 dark:hover:bg-gray-700/60 hover:border-gray-400 dark:hover:border-gray-500';
-                                            content = <span className="text-gray-300 dark:text-gray-600 text-[11px] font-bold">—</span>;
+                                            content = <span className="text-matn-xira text-[11px] font-bold">—</span>;
                                         }
 
                                         return (
-                                            <td key={date} className={`p-1 text-center border-b border-gray-50 dark:border-gray-800/50 ${isHighlight ? 'bg-emerald-50/60 dark:bg-emerald-950/20' : ''}`}>
+                                            <td key={date} className={`p-1 text-center border-b border-chiziq-mayin/50 ${isHighlight ? 'bg-emerald-50/60 dark:bg-emerald-950/20' : ''}`}>
                                                 <button
                                                     onClick={e => {
                                                         if (isFuture) {
@@ -184,7 +184,7 @@ export default function AttendanceMatrix({ group, students, attendances, selecte
                         })}
                         {students.length === 0 && (
                             <tr>
-                                <td colSpan={lessonDates.length + 2} className="py-12 text-center text-[11px] font-bold text-gray-400">
+                                <td colSpan={lessonDates.length + 2} className="py-12 text-center text-[11px] font-bold text-matn-xira">
                                     Bu kursda o'quvchilar yo'q
                                 </td>
                             </tr>
@@ -194,20 +194,20 @@ export default function AttendanceMatrix({ group, students, attendances, selecte
             </div>
 
             {/* Legend — compact */}
-            <div className="px-4 py-2.5 border-t border-gray-100 dark:border-gray-800 flex flex-wrap gap-x-4 gap-y-1">
+            <div className="px-4 py-2.5 border-t border-chiziq flex flex-wrap gap-x-4 gap-y-1">
                 {STATUSES.map(s => (
                     <div key={s.key} className="flex items-center gap-1.5">
                         <div className={`w-4 h-4 rounded-md flex items-center justify-center text-white ${s.color}`}>
                             <span className="text-[7px] font-black">{s.short}</span>
                         </div>
-                        <span className="text-[10px] font-bold text-gray-400 dark:text-gray-500">{s.label}</span>
+                        <span className="text-[10px] font-bold text-matn-xira">{s.label}</span>
                     </div>
                 ))}
                 <div className="flex items-center gap-1.5">
                     <div className="w-4 h-4 rounded-md border border-gray-200 dark:border-gray-800 flex items-center justify-center">
                         <span className="text-[7px] font-black text-gray-300">—</span>
                     </div>
-                    <span className="text-[10px] font-bold text-gray-400 dark:text-gray-500">Belgilanmagan</span>
+                    <span className="text-[10px] font-bold text-matn-xira">Belgilanmagan</span>
                 </div>
             </div>
 
@@ -217,7 +217,7 @@ export default function AttendanceMatrix({ group, students, attendances, selecte
                     <div className="fixed inset-0 z-40" onClick={() => setActivePopover(null)} />
                     <div
                         style={{ position: 'fixed', top: `${activePopover.coords.top + 6}px`, left: `${activePopover.coords.left}px`, transform: 'translateX(-50%)' }}
-                        className="z-50 bg-white dark:bg-gray-800 rounded-2xl shadow-2xl border border-gray-100 dark:border-gray-800 p-1.5 flex flex-col gap-0.5 min-w-[160px] animate-in slide-in-from-top-2 duration-150"
+                        className="z-50 bg-sirt rounded-2xl shadow-2xl border border-chiziq p-1.5 flex flex-col gap-0.5 min-w-[160px] animate-in slide-in-from-top-2 duration-150"
                     >
                         {STATUSES.map(s => (
                             <button
@@ -229,8 +229,8 @@ export default function AttendanceMatrix({ group, students, attendances, selecte
                                 <span className="text-[11px] font-bold">{s.label}</span>
                             </button>
                         ))}
-                        <div className="h-px bg-gray-100 dark:bg-gray-700 my-0.5" />
-                        <button onClick={() => setActivePopover(null)} className="flex items-center gap-3 px-3 py-2 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-700 text-gray-400 transition-all cursor-pointer">
+                        <div className="h-px bg-chiziq my-0.5" />
+                        <button onClick={() => setActivePopover(null)} className="flex items-center gap-3 px-3 py-2 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-700 text-matn-xira transition-all cursor-pointer">
                             <XCircle size={14} />
                             <span className="text-[11px] font-bold">Yopish</span>
                         </button>

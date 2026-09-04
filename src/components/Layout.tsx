@@ -157,7 +157,7 @@ export default function Layout({ children, onLogout }: LayoutProps) {
                   <select
                     value={selectedSchoolId === null ? '' : selectedSchoolId}
                     onChange={(e) => setSelectedSchoolId(Number(e.target.value))}
-                    className="pl-9 pr-8 py-2 bg-slate-50 dark:bg-gray-850 border border-slate-200 dark:border-gray-800 rounded-full text-xs font-semibold text-slate-700 dark:text-slate-300 outline-none focus:ring-2 focus:ring-brand/20 focus:border-brand transition-all cursor-pointer appearance-none min-w-[160px]"
+                    className="pl-9 pr-8 py-2 bg-slate-50 dark:bg-gray-850 border border-chiziq rounded-full text-xs font-semibold text-slate-700 dark:text-slate-300 outline-none focus:ring-2 focus:ring-brand/20 focus:border-brand transition-all cursor-pointer appearance-none min-w-[160px]"
                   >
                     <option value="" disabled>Filialni tanlang</option>
                     {user?.role === 'ADMIN' && (
@@ -182,7 +182,7 @@ export default function Layout({ children, onLogout }: LayoutProps) {
                 placeholder="O'quvchi, ustoz, guruh yoki telefon..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full bg-slate-50 dark:bg-gray-850 border border-slate-200 dark:border-gray-800 focus:border-brand focus:ring-2 focus:ring-brand/20 rounded-full pl-10 pr-4 py-2 text-sm font-medium text-slate-700 dark:text-white placeholder:text-slate-500 outline-none transition-all"
+                className="w-full bg-slate-50 dark:bg-gray-850 border border-chiziq focus:border-brand focus:ring-2 focus:ring-brand/20 rounded-full pl-10 pr-4 py-2 text-sm font-medium text-slate-700 dark:text-white placeholder:text-slate-500 outline-none transition-all"
               />
               {/* Search results dropdown */}
               {results && (
@@ -282,7 +282,7 @@ export default function Layout({ children, onLogout }: LayoutProps) {
               <select
                 value={lang}
                 onChange={e => setLang(e.target.value as 'uz' | 'ru' | 'en')}
-                className="pl-8 pr-6 py-1.5 bg-slate-50 dark:bg-gray-800 border border-slate-200 dark:border-gray-800 rounded-full text-xs font-bold text-slate-700 dark:text-slate-300 outline-none focus:ring-2 focus:ring-brand/20 transition-all cursor-pointer appearance-none"
+                className="pl-8 pr-6 py-1.5 bg-slate-50 dark:bg-gray-800 border border-chiziq rounded-full text-xs font-bold text-slate-700 dark:text-slate-300 outline-none focus:ring-2 focus:ring-brand/20 transition-all cursor-pointer appearance-none"
               >
                 <option value="uz">UZ</option>
                 <option value="ru">RU</option>

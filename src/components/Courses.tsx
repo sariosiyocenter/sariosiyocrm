@@ -4,8 +4,8 @@ import { useCRM } from '../context/CRMContext';
 import { useLang } from '../context/LanguageContext';
 import { useNavigate } from 'react-router-dom';
 
-const inp = "w-full px-4 py-3 bg-gray-55 dark:bg-gray-900/50 border border-gray-100 dark:border-gray-750 rounded-2xl text-xs font-bold text-gray-900 dark:text-white focus:border-[#1b6b6b] focus:ring-4 focus:ring-[#1b6b6b]/10 outline-none transition-all";
-const lbl = "block text-[11px] font-extrabold   text-gray-400 mb-2";
+const inp = "w-full px-4 py-3 bg-ichki border border-gray-100 dark:border-gray-750 rounded-2xl text-xs font-bold text-matn focus:border-brand focus:ring-4 focus:ring-[#1b6b6b]/10 outline-none transition-all";
+const lbl = "block text-[11px] font-extrabold   text-matn-xira mb-2";
 
 export default function Courses() {
     const {
@@ -226,40 +226,40 @@ export default function Courses() {
                 <div className="flex flex-col md:flex-row md:items-start justify-between gap-4">
                     <div className="flex items-center gap-4">
                         <div>
-                            <h1 className="text-[26px] font-bold text-gray-900 dark:text-white tracking-tight leading-tight">{t('groups_title')}</h1>
-                            <p className="text-[13px] text-gray-500 dark:text-gray-400 mt-1">
+                            <h1 className="text-[26px] font-bold text-matn tracking-tight leading-tight">{t('groups_title')}</h1>
+                            <p className="text-[13px] text-matn-sokin mt-1">
                                 <span className="num">{stateCounts.faol}</span> faol guruh · <span className="num">{groups.reduce((n, g) => n + ((g.studentIds || []).length), 0)}</span> o'quvchi
                             </p>
                         </div>
                     </div>
                     <div className="flex items-center gap-2">
-                        <div className="flex items-center gap-1 bg-white dark:bg-gray-800 p-1 rounded-xl border border-gray-100 dark:border-gray-700">
+                        <div className="flex items-center gap-1 bg-sirt p-1 rounded-xl border border-chiziq">
                             {(['cards', 'table'] as const).map(mode => (
                                 <button key={mode} onClick={() => setViewMode(mode)}
                                     className={`px-3 py-1.5 rounded-lg text-[12px] font-medium transition-colors cursor-pointer ${viewMode === mode
-                                        ? 'bg-[#1b6b6b] text-white'
-                                        : 'text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'}`}>
+                                        ? 'bg-brand text-brand-ust'
+                                        : 'text-matn-xira hover:text-gray-700 dark:hover:text-gray-200'}`}>
                                     {mode === 'cards' ? 'Kartalar' : 'Jadval'}
                                 </button>
                             ))}
                         </div>
                         <div className="relative">
-                            <Search size={14} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400" />
+                            <Search size={14} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-matn-xira" />
                             <input
                                 type="text" placeholder={t('search_group_placeholder')}
                                 value={search} onChange={e => setSearch(e.target.value)}
-                                className="pl-9 pr-4 py-2.5 bg-gray-55 dark:bg-gray-900/50 border border-gray-100 dark:border-gray-750 rounded-xl text-xs font-bold text-gray-900 dark:text-white outline-none focus:border-[#1b6b6b] transition-all w-52"
+                                className="pl-9 pr-4 py-2.5 bg-ichki border border-gray-100 dark:border-gray-750 rounded-xl text-xs font-bold text-matn outline-none focus:border-brand transition-all w-52"
                             />
                         </div>
                         <button
                             onClick={() => setShowFilters(!showFilters)}
-                            className={`w-10 h-10 flex items-center justify-center rounded-xl border transition-all cursor-pointer ${showFilters ? 'bg-[#1b6b6b] border-[#1b6b6b] text-white' : 'bg-gray-55 dark:bg-gray-900/50 border-gray-100 dark:border-gray-800 text-gray-400 hover:border-[#1b6b6b]'}`}
+                            className={`w-10 h-10 flex items-center justify-center rounded-xl border transition-all cursor-pointer ${showFilters ? 'bg-brand border-brand text-white' : 'bg-ichki border-chiziq text-matn-xira hover:border-brand'}`}
                         >
                             <SlidersHorizontal size={15} />
                         </button>
                         <button
                             onClick={() => setIsModalOpen(true)}
-                            className="flex items-center gap-2 px-4 py-2.5 bg-[#1b6b6b] hover:bg-[#155252] text-white rounded-xl text-xs font-extrabold shadow-sm shadow-[#1b6b6b]/20 transition-all cursor-pointer"
+                            className="flex items-center gap-2 px-4 py-2.5 bg-brand hover:bg-brand-dark text-white rounded-xl text-xs font-extrabold shadow-sm shadow-[#1b6b6b]/20 transition-all cursor-pointer"
                         >
                             <Plus size={14} /> {t('add')}
                         </button>
@@ -267,11 +267,11 @@ export default function Courses() {
                 </div>
 
                 {showFilters && (
-                    <div className="mt-4 p-5 bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-800/50 rounded-2xl grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                    <div className="mt-4 p-5 bg-sirt border border-chiziq rounded-2xl grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                         <div>
                             <label className={lbl}>{t('group_teacher')}</label>
                             <select value={filters.teacherId} onChange={e => setFilters({...filters, teacherId: e.target.value})}
-                                className="w-full px-3 py-2 bg-gray-55 dark:bg-gray-900/50 border border-gray-100 dark:border-gray-800 rounded-xl text-[11px] font-bold text-gray-700 dark:text-white outline-none focus:border-[#1b6b6b] transition-all cursor-pointer">
+                                className="w-full px-3 py-2 bg-ichki border border-chiziq rounded-xl text-[11px] font-bold text-gray-700 dark:text-white outline-none focus:border-brand transition-all cursor-pointer">
                                 <option value="">{t('all')}</option>
                                 {teachers.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
                             </select>
@@ -279,7 +279,7 @@ export default function Courses() {
                         <div>
                             <label className={lbl}>{t('days')}</label>
                             <select value={filters.dayType} onChange={e => setFilters({...filters, dayType: e.target.value})}
-                                className="w-full px-3 py-2 bg-gray-55 dark:bg-gray-900/50 border border-gray-100 dark:border-gray-800 rounded-xl text-[11px] font-bold text-gray-700 dark:text-white outline-none focus:border-[#1b6b6b] transition-all cursor-pointer">
+                                className="w-full px-3 py-2 bg-ichki border border-chiziq rounded-xl text-[11px] font-bold text-gray-700 dark:text-white outline-none focus:border-brand transition-all cursor-pointer">
                                 <option value="all">{t('all')}</option>
                                 <option value="TOQ">{t('odd_days')}</option>
                                 <option value="JUFT">{t('even_days')}</option>
@@ -289,7 +289,7 @@ export default function Courses() {
                         <div>
                             <label className={lbl}>{t('group_room')}</label>
                             <select value={filters.roomId} onChange={e => setFilters({...filters, roomId: e.target.value})}
-                                className="w-full px-3 py-2 bg-gray-55 dark:bg-gray-900/50 border border-gray-100 dark:border-gray-800 rounded-xl text-[11px] font-bold text-gray-700 dark:text-white outline-none focus:border-[#1b6b6b] transition-all cursor-pointer">
+                                className="w-full px-3 py-2 bg-ichki border border-chiziq rounded-xl text-[11px] font-bold text-gray-700 dark:text-white outline-none focus:border-brand transition-all cursor-pointer">
                                 <option value="">{t('all')}</option>
                                 {rooms.map(r => <option key={r.id} value={r.id}>{r.name}</option>)}
                             </select>
@@ -320,10 +320,10 @@ export default function Courses() {
                     count > 0 || key === 'all' ? (
                         <button key={key} onClick={() => setStateFilter(key as any)}
                             className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[12px] font-medium border transition-colors cursor-pointer shrink-0 ${stateFilter === key
-                                ? (warn ? 'bg-rose-500 border-rose-500 text-white' : 'bg-[#1b6b6b] border-[#1b6b6b] text-white')
+                                ? (warn ? 'bg-rose-500 border-rose-500 text-white' : 'bg-brand border-brand text-white')
                                 : warn
                                     ? 'bg-rose-50 dark:bg-rose-950/20 border-rose-100 dark:border-rose-900/40 text-rose-500 hover:border-rose-300'
-                                    : 'bg-white dark:bg-gray-800 border-gray-100 dark:border-gray-700 text-gray-500 dark:text-gray-400 hover:text-[#1b6b6b] hover:border-[#1b6b6b]'}`}>
+                                    : 'bg-sirt border-chiziq text-matn-sokin hover:text-brand hover:border-brand'}`}>
                             {label} <span className="num opacity-60">{count}</span>
                         </button>
                     ) : null
@@ -331,50 +331,50 @@ export default function Courses() {
             </div>
 
             {filteredGroups.length === 0 ? (
-                <div className="py-24 text-center bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-800/50 border-dashed">
+                <div className="py-24 text-center bg-sirt rounded-2xl border border-chiziq border-dashed">
                     <Layers size={40} className="mx-auto text-gray-200 dark:text-gray-600 mb-3" />
-                    <p className="text-sm font-bold text-gray-400">{t('no_groups_found')}</p>
+                    <p className="text-sm font-bold text-matn-xira">{t('no_groups_found')}</p>
                     <button onClick={() => setIsModalOpen(true)}
-                        className="mt-4 inline-flex items-center gap-2 px-5 py-2.5 bg-[#1b6b6b] text-white text-xs font-extrabold rounded-xl cursor-pointer">
+                        className="mt-4 inline-flex items-center gap-2 px-5 py-2.5 bg-brand text-brand-ust text-xs font-extrabold rounded-xl cursor-pointer">
                         <Plus size={13} /> {t('new_group_title')}
                     </button>
                 </div>
             ) : (
                 viewMode === 'table' ? (
-                <div className="bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700/50 rounded-2xl overflow-hidden">
+                <div className="bg-sirt border border-chiziq rounded-2xl overflow-hidden">
                     <div className="overflow-x-auto">
                         <table className="w-full border-collapse text-left min-w-[760px]">
                             <thead>
-                                <tr className="border-b border-gray-100 dark:border-gray-700/50">
-                                    <th className="px-5 py-3 text-[11px] font-medium text-gray-400">{t('group_name')}</th>
-                                    <th className="px-3 py-3 text-[11px] font-medium text-gray-400">{t('group_teacher')}</th>
-                                    <th className="px-3 py-3 text-[11px] font-medium text-gray-400">{t('time')}</th>
-                                    <th className="px-3 py-3 text-[11px] font-medium text-gray-400 text-right">O'quvchi</th>
-                                    <th className="px-3 py-3 text-[11px] font-medium text-gray-400 text-right">{t('payments_tab')}</th>
-                                    <th className="px-5 py-3 text-[11px] font-medium text-gray-400 text-right">{t('attendance')}</th>
+                                <tr className="border-b border-chiziq">
+                                    <th className="px-5 py-3 text-[11px] font-medium text-matn-xira">{t('group_name')}</th>
+                                    <th className="px-3 py-3 text-[11px] font-medium text-matn-xira">{t('group_teacher')}</th>
+                                    <th className="px-3 py-3 text-[11px] font-medium text-matn-xira">{t('time')}</th>
+                                    <th className="px-3 py-3 text-[11px] font-medium text-matn-xira text-right">O'quvchi</th>
+                                    <th className="px-3 py-3 text-[11px] font-medium text-matn-xira text-right">{t('payments_tab')}</th>
+                                    <th className="px-5 py-3 text-[11px] font-medium text-matn-xira text-right">{t('attendance')}</th>
                                 </tr>
                             </thead>
-                            <tbody className="divide-y divide-gray-55 dark:divide-gray-700/40">
+                            <tbody className="divide-y divide-chiziq-mayin dark:divide-gray-700/40">
                                 {filteredGroups.map(group => {
                                     const st = getGroupStats(group);
                                     const teacher = teachers.find(tc => tc.id === group.teacherId);
                                     return (
                                         <tr key={group.id} onClick={() => navigate(`/courses/${group.id}`)}
                                             className="group hover:bg-gray-55/70 dark:hover:bg-gray-900/30 transition-colors cursor-pointer">
-                                            <td className="px-5 py-3 text-[13px] font-medium text-gray-900 dark:text-white group-hover:text-[#1b6b6b] transition-colors">{group.name}</td>
-                                            <td className={`px-3 py-3 text-[12px] ${teacher ? 'text-gray-500 dark:text-gray-400' : 'text-amber-500'}`}>
+                                            <td className="px-5 py-3 text-[13px] font-medium text-matn group-hover:text-brand transition-colors">{group.name}</td>
+                                            <td className={`px-3 py-3 text-[12px] ${teacher ? 'text-matn-sokin' : 'text-amber-500'}`}>
                                                 {teacher?.name || "Biriktirilmagan"}
                                             </td>
-                                            <td className="px-3 py-3 text-[12px] text-gray-500 dark:text-gray-400">
+                                            <td className="px-3 py-3 text-[12px] text-matn-sokin">
                                                 {group.days === 'TOQ' ? t('odd_days') : group.days === 'JUFT' ? t('even_days') : t('every_day')}
                                             </td>
                                             <td className="num px-3 py-3 text-[13px] text-right text-gray-700 dark:text-gray-200">
                                                 {st.members}{st.capacity ? ` / ${st.capacity}` : ''}
                                             </td>
-                                            <td className={`num px-3 py-3 text-[13px] text-right ${st.payRate === null ? 'text-gray-400' : st.payRate >= 80 ? 'text-emerald-500' : st.payRate >= 50 ? 'text-amber-500' : 'text-rose-500'}`}>
+                                            <td className={`num px-3 py-3 text-[13px] text-right ${st.payRate === null ? 'text-matn-xira' : st.payRate >= 80 ? 'text-emerald-500' : st.payRate >= 50 ? 'text-amber-500' : 'text-rose-500'}`}>
                                                 {st.payRate === null ? '—' : `${st.payRate}%`}
                                             </td>
-                                            <td className={`num px-5 py-3 text-[13px] text-right ${st.attRate === null ? 'text-gray-400' : st.attRate >= 85 ? 'text-emerald-500' : st.attRate >= 70 ? 'text-amber-500' : 'text-rose-500'}`}>
+                                            <td className={`num px-5 py-3 text-[13px] text-right ${st.attRate === null ? 'text-matn-xira' : st.attRate >= 85 ? 'text-emerald-500' : st.attRate >= 70 ? 'text-amber-500' : 'text-rose-500'}`}>
                                                 {st.attRate === null ? '—' : `${st.attRate}%`}
                                             </td>
                                         </tr>
@@ -392,14 +392,14 @@ export default function Courses() {
                         const priceVal = getCoursePrice(group.courseId);
                         return (
                             <div key={group.id} onClick={() => navigate(`/courses/${group.id}`)}
-                                className="group bg-white dark:bg-gray-800 rounded-2xl border border-slate-100 dark:border-gray-800 shadow-sm hover:shadow-md hover:border-brand/40 transition-all duration-300 cursor-pointer p-5 flex flex-col">
+                                className="group bg-sirt rounded-2xl border border-slate-100 dark:border-gray-800 shadow-sm hover:shadow-md hover:border-brand/40 transition-all duration-300 cursor-pointer p-5 flex flex-col">
                                 <div className="flex items-start justify-between mb-4">
                                     <div className="w-11 h-11 rounded-xl bg-brand/10 dark:bg-brand/20 flex items-center justify-center text-brand font-bold text-lg group-hover:scale-105 transition-transform overflow-hidden shrink-0">
                                         <Layers size={20} />
                                     </div>
                                     <div className="min-w-0 flex-1">
-                                        <h3 className="text-[14px] font-semibold text-gray-900 dark:text-white truncate group-hover:text-[#1b6b6b] transition-colors">{group.name}</h3>
-                                        <p className={`text-[11px] truncate ${teachers.find(tc => tc.id === group.teacherId) ? 'text-gray-400' : 'text-amber-500'}`}>
+                                        <h3 className="text-[14px] font-semibold text-matn truncate group-hover:text-brand transition-colors">{group.name}</h3>
+                                        <p className={`text-[11px] truncate ${teachers.find(tc => tc.id === group.teacherId) ? 'text-matn-xira' : 'text-amber-500'}`}>
                                             {teachers.find(tc => tc.id === group.teacherId)?.name || "Ustoz biriktirilmagan"}
                                         </p>
                                     </div>
@@ -408,11 +408,11 @@ export default function Courses() {
                                     </span>
                                 </div>
 
-                                <div className="flex items-center gap-x-3 gap-y-1 flex-wrap mt-3 text-[11px] text-gray-400">
+                                <div className="flex items-center gap-x-3 gap-y-1 flex-wrap mt-3 text-[11px] text-matn-xira">
                                     {startTime && startTime !== 'Belgilanmagan' && <span className="num">{startTime}</span>}
                                     <span>{group.days === 'TOQ' ? t('odd_days') : group.days === 'JUFT' ? t('even_days') : t('every_day')}</span>
                                     {group.room ? <span>{rooms.find(r => r.id === group.room)?.name || `#${group.room}`}</span> : null}
-                                    {priceVal > 0 && <span className="num ml-auto text-[#1b6b6b] dark:text-teal-400">{priceVal.toLocaleString()}</span>}
+                                    {priceVal > 0 && <span className="num ml-auto text-brand">{priceVal.toLocaleString()}</span>}
                                 </div>
 
                                 {/* To'ldirilish va uchta ko'rsatkich — kartochkani
@@ -422,13 +422,13 @@ export default function Courses() {
                                     const fillPct = st.capacity ? Math.min(100, Math.round((st.members / st.capacity) * 100)) : null;
                                     const barTone = fillPct === null ? 'bg-gray-300 dark:bg-gray-600'
                                         : fillPct >= 90 ? 'bg-emerald-500'
-                                        : fillPct >= 60 ? 'bg-[#1b6b6b]'
+                                        : fillPct >= 60 ? 'bg-brand'
                                         : 'bg-amber-400';
                                     return (
                                         <>
-                                            <div className="mt-3 pt-3 border-t border-gray-100 dark:border-gray-800/50">
+                                            <div className="mt-3 pt-3 border-t border-chiziq">
                                                 <div className="flex items-center justify-between text-[11px]">
-                                                    <span className="text-gray-400">To'ldirilish</span>
+                                                    <span className="text-matn-xira">To'ldirilish</span>
                                                     <span className="num text-gray-700 dark:text-gray-200">
                                                         {st.members}{st.capacity ? ` / ${st.capacity}` : ''}
                                                     </span>
@@ -437,7 +437,7 @@ export default function Courses() {
                                                     chiziq chizilmaydi — bo'sh chiziq "guruh to'lmagan"
                                                     degan noto'g'ri taassurot qoldirardi. */}
                                                 {fillPct !== null && (
-                                                    <div className="mt-1.5 h-1.5 rounded-full bg-gray-100 dark:bg-gray-700 overflow-hidden">
+                                                    <div className="mt-1.5 h-1.5 rounded-full bg-chiziq overflow-hidden">
                                                         <div className={`h-full rounded-full ${barTone}`} style={{ width: `${fillPct}%` }} />
                                                     </div>
                                                 )}
@@ -445,19 +445,19 @@ export default function Courses() {
 
                                             <div className="grid grid-cols-3 gap-2 mt-3">
                                                 <div>
-                                                    <span className="block text-[10px] text-gray-400">{t('payments_tab')}</span>
-                                                    <span className={`num text-[13px] font-semibold ${st.payRate === null ? 'text-gray-400' : st.payRate >= 80 ? 'text-emerald-500' : st.payRate >= 50 ? 'text-amber-500' : 'text-rose-500'}`}>
+                                                    <span className="block text-[10px] text-matn-xira">{t('payments_tab')}</span>
+                                                    <span className={`num text-[13px] font-semibold ${st.payRate === null ? 'text-matn-xira' : st.payRate >= 80 ? 'text-emerald-500' : st.payRate >= 50 ? 'text-amber-500' : 'text-rose-500'}`}>
                                                         {st.payRate === null ? '—' : `${st.payRate}%`}
                                                     </span>
                                                 </div>
                                                 <div>
-                                                    <span className="block text-[10px] text-gray-400">{t('attendance')}</span>
-                                                    <span className={`num text-[13px] font-semibold ${st.attRate === null ? 'text-gray-400' : st.attRate >= 85 ? 'text-emerald-500' : st.attRate >= 70 ? 'text-amber-500' : 'text-rose-500'}`}>
+                                                    <span className="block text-[10px] text-matn-xira">{t('attendance')}</span>
+                                                    <span className={`num text-[13px] font-semibold ${st.attRate === null ? 'text-matn-xira' : st.attRate >= 85 ? 'text-emerald-500' : st.attRate >= 70 ? 'text-amber-500' : 'text-rose-500'}`}>
                                                         {st.attRate === null ? '—' : `${st.attRate}%`}
                                                     </span>
                                                 </div>
                                                 <div>
-                                                    <span className="block text-[10px] text-gray-400">{t('topic_label')}</span>
+                                                    <span className="block text-[10px] text-matn-xira">{t('topic_label')}</span>
                                                     <span className="num text-[13px] font-semibold text-gray-700 dark:text-gray-200">
                                                         {st.totalTopics ? `${st.doneTopics}/${st.totalTopics}` : '—'}
                                                     </span>
@@ -477,13 +477,13 @@ export default function Courses() {
             {isModalOpen && (
                 <div className="fixed inset-0 z-[200] flex items-start sm:items-center justify-center overflow-y-auto p-4">
                     <div className="absolute inset-0 bg-gray-900/60 backdrop-blur-sm" onClick={() => setIsModalOpen(false)} />
-                    <div className="relative bg-white dark:bg-gray-800 rounded-[2rem] border border-gray-100 dark:border-gray-800/50 shadow-2xl w-full max-w-lg p-8 max-h-[90vh] overflow-y-auto">
+                    <div className="relative bg-sirt rounded-[2rem] border border-chiziq shadow-2xl w-full max-w-lg p-8 max-h-[90vh] overflow-y-auto">
                         <div className="flex items-center justify-between mb-6 pb-4 border-b border-gray-55 dark:border-gray-800/50">
                             <div>
-                                <h3 className="text-lg font-black text-gray-900 dark:text-white tracking-tight">{t('new_group_title')}</h3>
-                                <p className="text-[11px] font-bold text-[#1b6b6b] mt-0.5">{t('group_details_subtitle')}</p>
+                                <h3 className="text-lg font-black text-matn tracking-tight">{t('new_group_title')}</h3>
+                                <p className="text-[11px] font-bold text-brand mt-0.5">{t('group_details_subtitle')}</p>
                             </div>
-                            <button aria-label="Yopish" onClick={() => setIsModalOpen(false)} className="w-9 h-9 flex items-center justify-center text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700 rounded-xl cursor-pointer"><X size={18} /></button>
+                            <button aria-label="Yopish" onClick={() => setIsModalOpen(false)} className="w-9 h-9 flex items-center justify-center text-matn-xira hover:bg-gray-50 dark:hover:bg-gray-700 rounded-xl cursor-pointer"><X size={18} /></button>
                         </div>
                         <form onSubmit={handleAddGroup} className="space-y-4">
                             <div>
@@ -543,7 +543,7 @@ export default function Courses() {
                                     {t('cancel')}
                                 </button>
                                 <button type="submit" disabled={isAdding}
-                                    className="flex-1 py-3 bg-[#1b6b6b] hover:bg-[#155252] text-white text-xs font-extrabold rounded-2xl shadow-sm shadow-[#1b6b6b]/20 transition-all cursor-pointer disabled:opacity-50">
+                                    className="flex-1 py-3 bg-brand hover:bg-brand-dark text-white text-xs font-extrabold rounded-2xl shadow-sm shadow-[#1b6b6b]/20 transition-all cursor-pointer disabled:opacity-50">
                                     {isAdding ? t('saving') : t('save')}
                                 </button>
                             </div>

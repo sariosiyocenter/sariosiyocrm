@@ -46,28 +46,28 @@ export function ConfirmProvider({ children }: { children: React.ReactNode }) {
           aria-modal="true"
         >
           <div className="fixed inset-0 bg-gray-900/60 backdrop-blur-sm" onClick={() => answer(false)} />
-          <div className="relative my-auto w-full max-w-sm rounded-[2rem] border border-gray-100 dark:border-gray-800/50 bg-white dark:bg-gray-800 p-7 shadow-2xl">
+          <div className="relative my-auto w-full max-w-sm rounded-[2rem] border border-chiziq bg-sirt p-7 shadow-2xl">
             <button
               type="button"
               aria-label="Yopish"
               onClick={() => answer(false)}
-              className="absolute right-5 top-5 flex h-8 w-8 items-center justify-center rounded-xl text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700 cursor-pointer"
+              className="absolute right-5 top-5 flex h-8 w-8 items-center justify-center rounded-xl text-matn-xira hover:bg-gray-50 dark:hover:bg-gray-700 cursor-pointer"
             >
               <X size={16} />
             </button>
 
             <div className={`mb-4 flex h-11 w-11 items-center justify-center rounded-2xl ${
               open.danger === false
-                ? 'bg-teal-50 text-[#1b6b6b] dark:bg-teal-950/30 dark:text-teal-400'
+                ? 'bg-teal-50 text-brand dark:bg-teal-950/30 dark:text-teal-400'
                 : 'bg-rose-50 text-rose-600 dark:bg-rose-950/30 dark:text-rose-400'
             }`}>
               <AlertTriangle size={20} />
             </div>
 
-            <h3 className="text-base font-black tracking-tight text-gray-900 dark:text-white">
+            <h3 className="text-base font-black tracking-tight text-matn">
               {open.title || 'Tasdiqlang'}
             </h3>
-            <p className="mt-2 whitespace-pre-line text-sm text-gray-500 dark:text-gray-400">
+            <p className="mt-2 whitespace-pre-line text-sm text-matn-sokin">
               {open.message}
             </p>
 
@@ -85,7 +85,7 @@ export function ConfirmProvider({ children }: { children: React.ReactNode }) {
                 onClick={() => answer(true)}
                 className={`flex-1 rounded-2xl py-3 text-xs font-extrabold text-white shadow-lg transition-all cursor-pointer ${
                   open.danger === false
-                    ? 'bg-[#1b6b6b] hover:bg-[#155252] shadow-[#1b6b6b]/20'
+                    ? 'bg-brand hover:bg-brand-dark shadow-[#1b6b6b]/20'
                     : 'bg-rose-600 hover:bg-rose-700 shadow-rose-600/20'
                 }`}
               >

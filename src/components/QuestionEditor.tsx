@@ -118,8 +118,8 @@ export default function QuestionEditor() {
         }
     };
 
-    const labelCls = "block text-[11px] font-extrabold   text-gray-400 mb-2";
-    const inputCls = "w-full px-4 py-3 bg-gray-55 dark:bg-gray-900/50 border border-gray-100 dark:border-gray-800 rounded-2xl text-xs font-bold text-gray-900 dark:text-white focus:border-[#1b6b6b] focus:ring-4 focus:ring-[#1b6b6b]/10 outline-none transition-all";
+    const labelCls = "block text-[11px] font-extrabold   text-matn-xira mb-2";
+    const inputCls = "w-full px-4 py-3 bg-ichki border border-chiziq rounded-2xl text-xs font-bold text-matn focus:border-brand focus:ring-4 focus:ring-[#1b6b6b]/10 outline-none transition-all";
 
     return (
         <div className="max-w-7xl mx-auto pb-20 animate-in fade-in duration-500 space-y-6">
@@ -128,22 +128,22 @@ export default function QuestionEditor() {
                 <div className="flex items-center gap-4">
                     <button
                         onClick={() => navigate('/questions')}
-                        className="w-10 h-10 bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-800/50 rounded-xl flex items-center justify-center text-gray-450 hover:text-[#1b6b6b] hover:bg-gray-55 transition-all shadow-sm cursor-pointer"
+                        className="w-10 h-10 bg-sirt border border-chiziq rounded-xl flex items-center justify-center text-gray-450 hover:text-brand hover:bg-gray-55 transition-all shadow-sm cursor-pointer"
                     >
                         <ArrowLeft size={18} />
                     </button>
                     <div>
-                        <h1 className="text-sm font-black text-gray-900 dark:text-white tracking-tight">
+                        <h1 className="text-sm font-black text-matn tracking-tight">
                             {isEditMode ? 'Savolni Tahrirlash' : 'Savol Qo\'shish'}
                         </h1>
-                        <p className="text-[11px] font-bold text-gray-400 mt-0.5">
+                        <p className="text-[11px] font-bold text-matn-xira mt-0.5">
                             {isEditMode ? 'Savolni tahrirlash va yangilash' : `Fan va mavzuni bir marta kiriting — savollarni ketma-ket qo'shing`}
                         </p>
                     </div>
                     {!isEditMode && addedCount > 0 && (
                         <div className="flex items-center gap-1.5 px-3 py-1 bg-teal-50 dark:bg-teal-950/20 rounded-lg border border-teal-100 dark:border-teal-900/40">
-                            <CheckCircle2 size={12} className="text-[#1b6b6b]" />
-                            <span className="text-[11px] font-bold text-[#1b6b6b]">
+                            <CheckCircle2 size={12} className="text-brand" />
+                            <span className="text-[11px] font-bold text-brand">
                                 {addedCount} ta savol qo'shildi
                             </span>
                         </div>
@@ -160,7 +160,7 @@ export default function QuestionEditor() {
                         <button
                             onClick={() => handleSave(true)}
                             disabled={isSaving}
-                            className="px-5 py-2.5 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200 rounded-xl text-[11px] font-extrabold hover:bg-gray-250 transition-all flex items-center gap-1.5 cursor-pointer"
+                            className="px-5 py-2.5 bg-chiziq text-gray-700 dark:text-gray-200 rounded-xl text-[11px] font-extrabold hover:bg-gray-250 transition-all flex items-center gap-1.5 cursor-pointer"
                         >
                             <Plus size={14} />
                             Saqlash & Davom etish
@@ -169,7 +169,7 @@ export default function QuestionEditor() {
                     <button
                         onClick={() => handleSave(false)}
                         disabled={isSaving}
-                        className="px-6 py-2.5 bg-[#1b6b6b] hover:bg-[#155252] text-white rounded-xl text-[11px] font-extrabold hover:bg-teal-550 shadow-sm shadow-[#1b6b6b]/20 flex items-center gap-1.5 cursor-pointer"
+                        className="px-6 py-2.5 bg-brand hover:bg-brand-dark text-white rounded-xl text-[11px] font-extrabold hover:bg-teal-550 shadow-sm shadow-[#1b6b6b]/20 flex items-center gap-1.5 cursor-pointer"
                     >
                         <Save size={14} />
                         {isSaving ? 'Saqlanmoqda...' : isEditMode ? 'Yangilash' : 'Saqlash & Chiqish'}
@@ -181,14 +181,14 @@ export default function QuestionEditor() {
 
                 {/* LEFT COLUMN: Subject/Topic/Difficulty — Persistent */}
                 <div className="xl:col-span-1 space-y-6">
-                    <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-800/50 shadow-sm p-4 sticky top-4">
-                        <div className="flex items-center gap-3 mb-6 pb-4 border-b border-dashed border-gray-100 dark:border-gray-800/50">
-                            <div className="w-10 h-10 bg-teal-50 dark:bg-teal-950/20 border border-teal-100 dark:border-teal-900/40 rounded-xl flex items-center justify-center text-[#1b6b6b]">
+                    <div className="bg-sirt rounded-2xl border border-chiziq shadow-sm p-4 sticky top-4">
+                        <div className="flex items-center gap-3 mb-6 pb-4 border-b border-dashed border-chiziq">
+                            <div className="w-10 h-10 bg-teal-50 dark:bg-teal-950/20 border border-teal-100 dark:border-teal-900/40 rounded-xl flex items-center justify-center text-brand">
                                 <BookOpen size={18} />
                             </div>
                             <div>
-                                <h3 className="text-xs font-black text-gray-900 dark:text-white tracking-tight">Fan Sozlamalari</h3>
-                                <p className="text-[11px] font-bold text-gray-400 mt-0.5">Barcha savollarga taalluqli</p>
+                                <h3 className="text-xs font-black text-matn tracking-tight">Fan Sozlamalari</h3>
+                                <p className="text-[11px] font-bold text-matn-xira mt-0.5">Barcha savollarga taalluqli</p>
                             </div>
                         </div>
 
@@ -228,14 +228,14 @@ export default function QuestionEditor() {
                             {/* Difficulty */}
                             <div>
                                 <label className={labelCls}>Qiyinlik Darajasi</label>
-                                <div className="flex items-center gap-2 bg-gray-55 dark:bg-gray-900 p-1.5 rounded-xl border border-gray-100 dark:border-gray-705">
+                                <div className="flex items-center gap-2 bg-ichki p-1.5 rounded-xl border border-gray-100 dark:border-gray-705">
                                     {[1, 2, 3].map((lvl) => (
                                         <button key={lvl} type="button" onClick={() => setDifficulty(lvl)}
                                             className={`flex-1 py-2 rounded-lg text-[11px] font-black transition-all cursor-pointer ${difficulty === lvl
                                                 ? lvl === 1 ? 'bg-emerald-500 text-white shadow-md'
                                                     : lvl === 2 ? 'bg-amber-500 text-white shadow-md'
                                                         : 'bg-rose-500 text-white shadow-md'
-                                                : 'text-gray-400 hover:text-gray-600'}`}
+                                                : 'text-matn-xira hover:text-gray-600'}`}
                                         >
                                             {lvl === 1 ? 'OSON' : lvl === 2 ? 'O\'RTA' : 'QIYIN'}
                                         </button>
@@ -247,11 +247,11 @@ export default function QuestionEditor() {
                             {!isEditMode && subject && topic && (
                                 <div className="mt-4 p-4 bg-teal-50 dark:bg-teal-950/20 rounded-2xl border border-teal-100 dark:border-teal-900/40">
                                     <div className="flex items-center gap-1.5 mb-1.5">
-                                        <Tag size={12} className="text-[#1b6b6b]" />
-                                        <span className="text-[11px] font-bold text-[#1b6b6b]">Joriy sozlama</span>
+                                        <Tag size={12} className="text-brand" />
+                                        <span className="text-[11px] font-bold text-brand">Joriy sozlama</span>
                                     </div>
-                                    <p className="text-xs font-black text-gray-900 dark:text-white tracking-tight">{subject}</p>
-                                    <p className="text-[11px] font-bold text-gray-400 mt-0.5">{topic}</p>
+                                    <p className="text-xs font-black text-matn tracking-tight">{subject}</p>
+                                    <p className="text-[11px] font-bold text-matn-xira mt-0.5">{topic}</p>
                                 </div>
                             )}
                         </div>
@@ -261,8 +261,8 @@ export default function QuestionEditor() {
                 {/* RIGHT COLUMN: Question Form */}
                 <div className="xl:col-span-2 space-y-6">
                     {/* Question Text */}
-                    <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-800/50 shadow-sm p-4">
-                        <label className="text-[11px] font-bold text-gray-400 mb-4 block ml-1">
+                    <div className="bg-sirt rounded-2xl border border-chiziq shadow-sm p-4">
+                        <label className="text-[11px] font-bold text-matn-xira mb-4 block ml-1">
                             Savol Matni
                         </label>
                         <RichTextEditor
@@ -271,13 +271,13 @@ export default function QuestionEditor() {
                         />
 
                         {/* Image Upload */}
-                        <div className="mt-6 pt-6 border-t border-dashed border-gray-100 dark:border-gray-800/50">
-                            <label className="text-[11px] font-bold text-gray-400 ml-1 mb-3 block">
+                        <div className="mt-6 pt-6 border-t border-dashed border-chiziq">
+                            <label className="text-[11px] font-bold text-matn-xira ml-1 mb-3 block">
                                 Savol Rasmi (ixtiyoriy)
                             </label>
                             {imagePreview ? (
-                                <div className="relative rounded-2xl overflow-hidden border border-gray-100 dark:border-gray-800 group">
-                                    <img src={imagePreview} alt="Savol rasmi" className="max-h-48 w-full object-contain bg-gray-55 dark:bg-gray-900" />
+                                <div className="relative rounded-2xl overflow-hidden border border-chiziq group">
+                                    <img src={imagePreview} alt="Savol rasmi" className="max-h-48 w-full object-contain bg-ichki" />
                                     <button aria-label="Yopish"
                                         onClick={() => { setImagePreview(null); setQ(prev => ({ ...prev, imageUrl: '' })); }}
                                         className="absolute top-3 right-3 w-8 h-8 bg-rose-500 text-white rounded-xl flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer"
@@ -290,8 +290,8 @@ export default function QuestionEditor() {
                                     onClick={() => fileInputRef.current?.click()}
                                     className="w-full p-4 border border-dashed border-gray-200 dark:border-gray-800 rounded-2xl text-center hover:border-teal-300 transition-all group cursor-pointer"
                                 >
-                                    <Image size={24} className="mx-auto text-gray-300 group-hover:text-[#1b6b6b] transition-colors mb-2" />
-                                    <p className="text-[11px] font-bold text-gray-400">Rasm yuklash uchun bosing</p>
+                                    <Image size={24} className="mx-auto text-gray-300 group-hover:text-brand transition-colors mb-2" />
+                                    <p className="text-[11px] font-bold text-matn-xira">Rasm yuklash uchun bosing</p>
                                 </button>
                             )}
                             <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={handleImageUpload} />
@@ -301,16 +301,16 @@ export default function QuestionEditor() {
                     {/* Answer Options */}
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         {(['A', 'B', 'C', 'D'] as const).map((opt) => (
-                            <div key={opt} className={`relative bg-white dark:bg-gray-800 rounded-2xl border transition-all p-5 ${
+                            <div key={opt} className={`relative bg-sirt rounded-2xl border transition-all p-5 ${
                                 q.correctAnswer === opt
-                                    ? 'border-[#1b6b6b] ring-4 ring-[#1b6b6b]/5'
-                                    : 'border-gray-100 dark:border-gray-800/50'
+                                    ? 'border-brand ring-4 ring-[#1b6b6b]/5'
+                                    : 'border-chiziq'
                             }`}>
                                 <div className="flex items-center justify-between mb-3">
                                     <span className={`w-7 h-7 rounded-lg flex items-center justify-center text-xs font-black ${
                                         q.correctAnswer === opt
-                                            ? 'bg-[#1b6b6b] text-white'
-                                            : 'bg-gray-55 dark:bg-gray-900 text-gray-400'
+                                            ? 'bg-brand text-brand-ust'
+                                            : 'bg-ichki text-matn-xira'
                                     }`}>
                                         {opt}
                                     </span>
@@ -319,7 +319,7 @@ export default function QuestionEditor() {
                                         onClick={() => setQ(prev => ({ ...prev, correctAnswer: opt }))}
                                         className={`text-[11px] font-black px-2.5 py-1.5 rounded-lg transition-all cursor-pointer ${
                                             q.correctAnswer === opt
-                                                ? 'bg-[#1b6b6b]/10 text-[#1b6b6b]'
+                                                ? 'bg-brand/10 text-brand'
                                                 : 'text-gray-405 hover:bg-gray-50'
                                         }`}
                                     >
@@ -328,7 +328,7 @@ export default function QuestionEditor() {
                                 </div>
                                 <textarea
                                     placeholder={`Variant ${opt}...`}
-                                    className="w-full bg-transparent border-none outline-none text-xs font-bold text-gray-700 dark:text-gray-300 resize-none h-16 placeholder:text-gray-300 focus:ring-0"
+                                    className="w-full bg-transparent border-none outline-none text-xs font-bold text-matn-2 resize-none h-16 placeholder:text-gray-300 focus:ring-0"
                                     value={q[`option${opt}` as keyof typeof q] as string}
                                     onChange={(e) => setQ(prev => ({ ...prev, [`option${opt}`]: e.target.value }))}
                                 />
@@ -342,7 +342,7 @@ export default function QuestionEditor() {
                             <button
                                 onClick={() => handleSave(true)}
                                 disabled={isSaving}
-                                className="flex-1 py-3 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200 rounded-xl text-[11px] font-extrabold hover:bg-gray-200 transition-all flex items-center justify-center gap-1.5 cursor-pointer"
+                                className="flex-1 py-3 bg-chiziq text-gray-700 dark:text-gray-200 rounded-xl text-[11px] font-extrabold hover:bg-gray-200 transition-all flex items-center justify-center gap-1.5 cursor-pointer"
                             >
                                 <Plus size={14} />
                                 Saqlash & Keyingi Savol ({addedCount + 1} →)
@@ -351,7 +351,7 @@ export default function QuestionEditor() {
                         <button
                             onClick={() => handleSave(false)}
                             disabled={isSaving}
-                            className="flex-1 py-3 bg-[#1b6b6b] text-white rounded-xl text-[11px] font-extrabold hover:bg-teal-500 transition-all shadow-sm shadow-[#1b6b6b]/20 flex items-center justify-center gap-1.5 cursor-pointer"
+                            className="flex-1 py-3 bg-brand text-brand-ust rounded-xl text-[11px] font-extrabold hover:bg-teal-500 transition-all shadow-sm shadow-[#1b6b6b]/20 flex items-center justify-center gap-1.5 cursor-pointer"
                         >
                             <Save size={14} />
                             {isSaving ? 'Saqlanmoqda...' : isEditMode ? 'Yangilash' : 'Saqlash & Chiqish'}

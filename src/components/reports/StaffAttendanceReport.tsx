@@ -62,7 +62,7 @@ export default function StaffAttendanceReport({ startDate, endDate }: { startDat
                             />
                         </div>
                     ))}
-                    {teachers.length === 0 && <p className="text-xs text-gray-400 col-span-2 text-center py-8">Xodimlar mavjud emas</p>}
+                    {teachers.length === 0 && <p className="text-xs text-matn-xira col-span-2 text-center py-8">Xodimlar mavjud emas</p>}
                 </div>
             </ReportCard>
 

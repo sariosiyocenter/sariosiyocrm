@@ -25,8 +25,8 @@ const ROLE_LABELS: Record<string, string> = {
     ADMIN: 'Admin', MANAGER: 'Menejer', TEACHER: "O'qituvchi", RECEPTIONIST: 'Receptionist', DRIVER: 'Haydovchi'
 };
 
-const inp = "w-full px-4 py-3 bg-gray-55 dark:bg-gray-900/50 border border-gray-100 dark:border-gray-800 rounded-2xl text-xs font-bold text-gray-900 dark:text-white focus:border-[#1b6b6b] focus:ring-4 focus:ring-[#1b6b6b]/10 outline-none transition-all";
-const lbl = "block text-[11px] font-extrabold   text-gray-400 mb-2";
+const inp = "w-full px-4 py-3 bg-ichki border border-chiziq rounded-2xl text-xs font-bold text-matn focus:border-brand focus:ring-4 focus:ring-[#1b6b6b]/10 outline-none transition-all";
+const lbl = "block text-[11px] font-extrabold   text-matn-xira mb-2";
 
 export default function Settings() {
     const { settings, updateSettings, rooms, schools,
@@ -245,26 +245,26 @@ export default function Settings() {
             <div className="space-y-8">
                 <form onSubmit={handleSaveProfile} className="space-y-6">
                 <div>
-                    <h2 className="text-xs font-black text-gray-900 dark:text-white">{t('org_profile_title')}</h2>
-                    <p className="text-[11px] font-bold text-gray-400 mt-0.5">{t('org_profile_subtitle')}</p>
+                    <h2 className="text-xs font-black text-matn">{t('org_profile_title')}</h2>
+                    <p className="text-[11px] font-bold text-matn-xira mt-0.5">{t('org_profile_subtitle')}</p>
                 </div>
                 <div className="flex items-center gap-4">
                     <div className="relative group">
-                        <div className="w-20 h-20 rounded-2xl bg-gray-50 dark:bg-gray-900 border border-gray-100 dark:border-gray-800/50 overflow-hidden flex items-center justify-center">
+                        <div className="w-20 h-20 rounded-2xl bg-ichki border border-chiziq overflow-hidden flex items-center justify-center">
                             {profileForm?.logo
                                 ? <img src={profileForm.logo} className="w-full h-full object-cover" alt="logo" />
-                                : <Building2 size={24} className="text-[#1b6b6b]" />
+                                : <Building2 size={24} className="text-brand" />
                             }
                         </div>
                         <button type="button" onClick={() => logoInputRef.current?.click()}
-                            className="absolute -bottom-2 -right-2 w-8 h-8 bg-[#1b6b6b] hover:bg-[#155252] rounded-xl flex items-center justify-center transition-all shadow-lg cursor-pointer">
+                            className="absolute -bottom-2 -right-2 w-8 h-8 bg-brand hover:bg-brand-dark rounded-xl flex items-center justify-center transition-all shadow-lg cursor-pointer">
                             <Camera size={13} className="text-white" />
                         </button>
                         <input ref={logoInputRef} type="file" accept="image/*" className="hidden" onChange={handleLogoChange} />
                     </div>
                     <div>
-                        <p className="text-xs font-black text-gray-900 dark:text-white tracking-wide">{profileForm?.orgName || t('org_name')}</p>
-                        <p className="text-[11px] font-bold text-gray-400 mt-0.5">{t('logo_upload_hint')}</p>
+                        <p className="text-xs font-black text-matn tracking-wide">{profileForm?.orgName || t('org_name')}</p>
+                        <p className="text-[11px] font-bold text-matn-xira mt-0.5">{t('logo_upload_hint')}</p>
                     </div>
                 </div>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -285,12 +285,12 @@ export default function Settings() {
                         <input type="text" placeholder="09:00 - 21:00" className={inp} value={profileForm?.workingHours || ''} onChange={e => setProfileForm(p => ({ ...p, workingHours: e.target.value }))} />
                     </div>
                 </div>
-                <p className="text-[11px] font-bold text-gray-400">
+                <p className="text-[11px] font-bold text-matn-xira">
                     Telegram bot, SMS va Instagram sozlamalari — "Integratsiyalar" bo'limida.
                 </p>
-                <div className="flex justify-end pt-4 border-t border-dashed border-gray-150 dark:border-gray-800/50">
+                <div className="flex justify-end pt-4 border-t border-dashed border-chiziq/50">
                     <button type="submit" disabled={isSaving}
-                        className="px-6 py-3 bg-[#1b6b6b] hover:bg-[#155252] disabled:opacity-50 text-white rounded-2xl text-xs font-extrabold flex items-center gap-2 shadow-sm shadow-[#1b6b6b]/20 transition-all cursor-pointer">
+                        className="px-6 py-3 bg-brand hover:bg-brand-dark disabled:opacity-50 text-white rounded-2xl text-xs font-extrabold flex items-center gap-2 shadow-sm shadow-[#1b6b6b]/20 transition-all cursor-pointer">
                         <Save size={14} />{isSaving ? t('saving') : t('save')}
                     </button>
                 </div>
@@ -303,27 +303,27 @@ export default function Settings() {
         if (activeSection === 'integratsiyalar') return (
             <form onSubmit={handleSaveProfile} className="space-y-8">
                 <div>
-                    <h2 className="text-xs font-black text-gray-900 dark:text-white">Integratsiyalar</h2>
-                    <p className="text-[11px] font-bold text-gray-400 mt-0.5">Tashqi xizmatlar bilan ulanish kalitlari</p>
+                    <h2 className="text-xs font-black text-matn">Integratsiyalar</h2>
+                    <p className="text-[11px] font-bold text-matn-xira mt-0.5">Tashqi xizmatlar bilan ulanish kalitlari</p>
                 </div>
 
                 {/* Telegram bot */}
-                <div className="p-5 bg-gray-55 dark:bg-gray-900/30 border border-gray-100 dark:border-gray-800/50 rounded-2xl space-y-4">
+                <div className="p-5 bg-ichki/30 border border-chiziq rounded-2xl space-y-4">
                     <div className="flex items-center justify-between gap-3">
                         <div className="flex items-center gap-3">
                             <div className="w-9 h-9 rounded-xl bg-sky-50 text-sky-600 border border-sky-100 dark:bg-sky-950/20 dark:text-sky-400 dark:border-sky-900/40 flex items-center justify-center">
                                 <Send size={16} />
                             </div>
                             <div>
-                                <p className="text-xs font-black text-gray-900 dark:text-white tracking-wide">Telegram bot</p>
-                                <p className="text-[11px] font-bold text-gray-400 mt-0.5">Ota-onalarga xabar va davomat bildirishnomalari</p>
+                                <p className="text-xs font-black text-matn tracking-wide">Telegram bot</p>
+                                <p className="text-[11px] font-bold text-matn-xira mt-0.5">Ota-onalarga xabar va davomat bildirishnomalari</p>
                             </div>
                         </div>
                         <span className={`px-2.5 py-1 rounded-lg text-[10px] font-black border shrink-0 ${botInfo?.username
                             ? 'bg-emerald-50 text-emerald-600 border-emerald-100 dark:bg-emerald-950/20 dark:text-emerald-400 dark:border-emerald-900/40'
                             : botInfo?.error
                                 ? 'bg-rose-50 text-rose-500 border-rose-100 dark:bg-rose-950/20 dark:text-rose-400 dark:border-rose-900/40'
-                                : 'bg-gray-100 text-gray-400 border-gray-200 dark:bg-gray-900 dark:border-gray-800'}`}>
+                                : 'bg-gray-100 text-matn-xira border-gray-200 dark:bg-gray-900 dark:border-gray-800'}`}>
                             {botInfo?.loading ? 'Tekshirilmoqda' : botInfo?.username ? 'Ulangan' : botInfo?.error ? 'Xato' : 'Ulanmagan'}
                         </span>
                     </div>
@@ -345,20 +345,20 @@ export default function Settings() {
                 </div>
 
                 {/* Eskiz SMS */}
-                <div className="p-5 bg-gray-55 dark:bg-gray-900/30 border border-gray-100 dark:border-gray-800/50 rounded-2xl space-y-4">
+                <div className="p-5 bg-ichki/30 border border-chiziq rounded-2xl space-y-4">
                     <div className="flex items-center justify-between gap-3">
                         <div className="flex items-center gap-3">
                             <div className="w-9 h-9 rounded-xl bg-violet-50 text-violet-600 border border-violet-100 dark:bg-violet-950/20 dark:text-violet-400 dark:border-violet-900/40 flex items-center justify-center">
                                 <MessageSquare size={16} />
                             </div>
                             <div>
-                                <p className="text-xs font-black text-gray-900 dark:text-white tracking-wide">Eskiz SMS</p>
-                                <p className="text-[11px] font-bold text-gray-400 mt-0.5">To'lov eslatmalari va SMS xabarnomalar</p>
+                                <p className="text-xs font-black text-matn tracking-wide">Eskiz SMS</p>
+                                <p className="text-[11px] font-bold text-matn-xira mt-0.5">To'lov eslatmalari va SMS xabarnomalar</p>
                             </div>
                         </div>
                         <span className={`px-2.5 py-1 rounded-lg text-[10px] font-black border shrink-0 ${profileForm?.eskizEmail && profileForm?.eskizPassword
                             ? 'bg-emerald-50 text-emerald-600 border-emerald-100 dark:bg-emerald-950/20 dark:text-emerald-400 dark:border-emerald-900/40'
-                            : 'bg-gray-100 text-gray-400 border-gray-200 dark:bg-gray-900 dark:border-gray-800'}`}>
+                            : 'bg-gray-100 text-matn-xira border-gray-200 dark:bg-gray-900 dark:border-gray-800'}`}>
                             {profileForm?.eskizEmail && profileForm?.eskizPassword ? 'Kalitlar kiritilgan' : 'Ulanmagan'}
                         </span>
                     </div>
@@ -379,14 +379,14 @@ export default function Settings() {
                 </div>
 
                 {/* Instagram */}
-                <div className="p-5 bg-gray-55 dark:bg-gray-900/30 border border-gray-100 dark:border-gray-800/50 rounded-2xl space-y-4">
+                <div className="p-5 bg-ichki/30 border border-chiziq rounded-2xl space-y-4">
                     <div className="flex items-center gap-3">
                         <div className="w-9 h-9 rounded-xl bg-rose-50 text-rose-500 border border-rose-100 dark:bg-rose-950/20 dark:text-rose-400 dark:border-rose-900/40 flex items-center justify-center">
                             <Instagram size={16} />
                         </div>
                         <div>
-                            <p className="text-xs font-black text-gray-900 dark:text-white tracking-wide">Instagram</p>
-                            <p className="text-[11px] font-bold text-gray-400 mt-0.5">Landing sahifadagi havola</p>
+                            <p className="text-xs font-black text-matn tracking-wide">Instagram</p>
+                            <p className="text-[11px] font-bold text-matn-xira mt-0.5">Landing sahifadagi havola</p>
                         </div>
                     </div>
                     <div>
@@ -395,9 +395,9 @@ export default function Settings() {
                     </div>
                 </div>
 
-                <div className="flex justify-end pt-4 border-t border-dashed border-gray-150 dark:border-gray-800/50">
+                <div className="flex justify-end pt-4 border-t border-dashed border-chiziq/50">
                     <button type="submit" disabled={isSaving}
-                        className="px-6 py-3 bg-[#1b6b6b] hover:bg-[#155252] disabled:opacity-50 text-white rounded-2xl text-xs font-extrabold flex items-center gap-2 shadow-sm shadow-[#1b6b6b]/20 transition-all cursor-pointer">
+                        className="px-6 py-3 bg-brand hover:bg-brand-dark disabled:opacity-50 text-white rounded-2xl text-xs font-extrabold flex items-center gap-2 shadow-sm shadow-[#1b6b6b]/20 transition-all cursor-pointer">
                         <Save size={14} />{isSaving ? t('saving') : t('save')}
                     </button>
                 </div>
@@ -408,42 +408,42 @@ export default function Settings() {
             <div className="space-y-6">
                 <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
                     <div>
-                        <h2 className="text-xs font-black text-gray-900 dark:text-white">Avtomatlashtirish</h2>
-                        <p className="text-[11px] font-bold text-gray-400 mt-0.5">CRM o'zi bajaradigan ishlar</p>
+                        <h2 className="text-xs font-black text-matn">Avtomatlashtirish</h2>
+                        <p className="text-[11px] font-bold text-matn-xira mt-0.5">CRM o'zi bajaradigan ishlar</p>
                     </div>
                     <button onClick={() => navigate('/messaging')}
-                        className="flex items-center gap-2 px-4 py-2.5 bg-[#1b6b6b] hover:bg-[#155252] text-white rounded-xl text-[11px] font-extrabold shadow-sm shadow-[#1b6b6b]/20 transition-all cursor-pointer shrink-0">
+                        className="flex items-center gap-2 px-4 py-2.5 bg-brand hover:bg-brand-dark text-white rounded-xl text-[11px] font-extrabold shadow-sm shadow-[#1b6b6b]/20 transition-all cursor-pointer shrink-0">
                         <Zap size={13} /> Qoidalarni boshqarish
                     </button>
                 </div>
 
-                <p className="text-[11px] font-bold text-gray-400 leading-relaxed">
+                <p className="text-[11px] font-bold text-matn-xira leading-relaxed">
                     Avtomatik qoidalar Xabarlar modulida yaratiladi va tahrirlanadi — bu yerda ularning joriy holati ko'rinadi.
                 </p>
 
                 {autoRules === null ? (
-                    <p className="text-center py-10 text-[11px] text-gray-400 font-bold">Yuklanmoqda…</p>
+                    <p className="text-center py-10 text-[11px] text-matn-xira font-bold">Yuklanmoqda…</p>
                 ) : autoRulesError ? (
                     <p className="text-center py-10 text-[11px] text-rose-500 font-bold">{autoRulesError}</p>
                 ) : autoRules.length === 0 ? (
                     <div className="py-10 text-center">
                         <Zap size={28} className="mx-auto text-gray-200 dark:text-gray-700 mb-3" />
                         <p className="text-sm font-bold text-gray-700 dark:text-gray-200">Avtomatik qoidalar yo'q</p>
-                        <p className="text-xs text-gray-400 mt-1">To'lov eslatmasi yoki tug'ilgan kun tabrigini Xabarlar modulidan qo'shing.</p>
+                        <p className="text-xs text-matn-xira mt-1">To'lov eslatmasi yoki tug'ilgan kun tabrigini Xabarlar modulidan qo'shing.</p>
                     </div>
                 ) : (
-                    <div className="bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-800/50 rounded-2xl overflow-hidden shadow-sm divide-y divide-gray-55 dark:divide-gray-700/50">
+                    <div className="bg-sirt border border-chiziq rounded-2xl overflow-hidden shadow-sm divide-y divide-chiziq-mayin dark:divide-gray-700/50">
                         {autoRules.map((rule: any) => (
                             <button key={rule.id} onClick={() => navigate('/messaging')}
                                 className="w-full flex items-center gap-4 px-5 py-4 text-left hover:bg-gray-55/60 dark:hover:bg-gray-900/30 transition-colors cursor-pointer">
                                 <div className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 border ${rule.enabled
-                                    ? 'bg-teal-50 text-[#1b6b6b] border-teal-100 dark:bg-teal-950/20 dark:text-teal-400 dark:border-teal-900/40'
-                                    : 'bg-gray-55 text-gray-400 border-gray-100 dark:bg-gray-900 dark:border-gray-800'}`}>
+                                    ? 'bg-teal-50 text-brand border-teal-100 dark:bg-teal-950/20 dark:text-teal-400 dark:border-teal-900/40'
+                                    : 'bg-gray-55 text-matn-xira border-gray-100 dark:bg-gray-900 dark:border-gray-800'}`}>
                                     <Zap size={15} />
                                 </div>
                                 <div className="min-w-0 flex-1">
-                                    <p className="text-xs font-black text-gray-900 dark:text-white tracking-wide truncate">{rule.name}</p>
-                                    <p className="text-[11px] font-bold text-gray-400 mt-0.5 tabular-nums">
+                                    <p className="text-xs font-black text-matn tracking-wide truncate">{rule.name}</p>
+                                    <p className="text-[11px] font-bold text-matn-xira mt-0.5 tabular-nums">
                                         {rule.type === 'DEBT_REMINDER' ? 'Qarzdorlik eslatmasi' : rule.type === 'BIRTHDAY' ? "Tug'ilgan kun tabrigi" : rule.type}
                                         {rule.time ? ` · ${rule.time}` : ''}
                                         {rule.channel ? ` · ${rule.channel}` : ''}
@@ -451,7 +451,7 @@ export default function Settings() {
                                 </div>
                                 <span className={`px-2.5 py-1 rounded-lg text-[10px] font-black border shrink-0 ${rule.enabled
                                     ? 'bg-emerald-50 text-emerald-600 border-emerald-100 dark:bg-emerald-950/20 dark:text-emerald-400 dark:border-emerald-900/40'
-                                    : 'bg-gray-100 text-gray-400 border-gray-200 dark:bg-gray-900 dark:border-gray-800'}`}>
+                                    : 'bg-gray-100 text-matn-xira border-gray-200 dark:bg-gray-900 dark:border-gray-800'}`}>
                                     {rule.enabled ? 'Yoqilgan' : "O'chirilgan"}
                                 </span>
                                 <ChevronRight size={14} className="text-gray-300 shrink-0" />
@@ -465,29 +465,29 @@ export default function Settings() {
         if (activeSection === 'xavfsizlik') return (
             <div className="space-y-8">
                 <div>
-                    <h2 className="text-xs font-black text-gray-900 dark:text-white">Xavfsizlik</h2>
-                    <p className="text-[11px] font-bold text-gray-400 mt-0.5">Hisob ma'lumotlari va parol</p>
+                    <h2 className="text-xs font-black text-matn">Xavfsizlik</h2>
+                    <p className="text-[11px] font-bold text-matn-xira mt-0.5">Hisob ma'lumotlari va parol</p>
                 </div>
 
-                <div className="p-5 bg-gray-55 dark:bg-gray-900/30 border border-gray-100 dark:border-gray-800/50 rounded-2xl space-y-3">
+                <div className="p-5 bg-ichki/30 border border-chiziq rounded-2xl space-y-3">
                     <div className="flex items-center justify-between gap-3">
-                        <span className="text-[11px] font-bold text-gray-400">Email</span>
-                        <span className="text-xs font-bold text-gray-900 dark:text-white truncate">{currentUser?.email || '—'}</span>
+                        <span className="text-[11px] font-bold text-matn-xira">Email</span>
+                        <span className="text-xs font-bold text-matn truncate">{currentUser?.email || '—'}</span>
                     </div>
                     <div className="flex items-center justify-between gap-3">
-                        <span className="text-[11px] font-bold text-gray-400">Rol</span>
-                        <span className="text-xs font-bold text-gray-900 dark:text-white">{ROLE_LABELS[currentUser?.role || ''] || currentUser?.role || '—'}</span>
+                        <span className="text-[11px] font-bold text-matn-xira">Rol</span>
+                        <span className="text-xs font-bold text-matn">{ROLE_LABELS[currentUser?.role || ''] || currentUser?.role || '—'}</span>
                     </div>
                     <div className="flex items-center justify-between gap-3">
-                        <span className="text-[11px] font-bold text-gray-400">Filial</span>
-                        <span className="text-xs font-bold text-gray-900 dark:text-white truncate">
+                        <span className="text-[11px] font-bold text-matn-xira">Filial</span>
+                        <span className="text-xs font-bold text-matn truncate">
                             {schools?.find(sc => sc.id === currentUser?.schoolId)?.name || '—'}
                         </span>
                     </div>
                 </div>
 
                 <form onSubmit={handleChangePassword} className="space-y-4">
-                    <h3 className="text-xs font-black text-gray-900 dark:text-white">Parolni o'zgartirish</h3>
+                    <h3 className="text-xs font-black text-matn">Parolni o'zgartirish</h3>
                     <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                         <div>
                             <label className={lbl}>Joriy parol</label>
@@ -505,12 +505,12 @@ export default function Settings() {
                                 value={pwForm.confirm} onChange={e => setPwForm(f => ({ ...f, confirm: e.target.value }))} />
                         </div>
                     </div>
-                    <p className="text-[11px] font-bold text-gray-400">Parol kamida 6 ta belgidan iborat bo'lsin.</p>
+                    <p className="text-[11px] font-bold text-matn-xira">Parol kamida 6 ta belgidan iborat bo'lsin.</p>
                     {pwState.error && <p className="text-[11px] font-bold text-rose-500">⚠️ {pwState.error}</p>}
                     {pwState.ok && <p className="text-[11px] font-bold text-emerald-600 dark:text-emerald-400">✓ Parol yangilandi</p>}
-                    <div className="flex justify-end pt-4 border-t border-dashed border-gray-150 dark:border-gray-800/50">
+                    <div className="flex justify-end pt-4 border-t border-dashed border-chiziq/50">
                         <button type="submit" disabled={pwState.busy}
-                            className="px-6 py-3 bg-[#1b6b6b] hover:bg-[#155252] disabled:opacity-50 text-white rounded-2xl text-xs font-extrabold flex items-center gap-2 shadow-sm shadow-[#1b6b6b]/20 transition-all cursor-pointer">
+                            className="px-6 py-3 bg-brand hover:bg-brand-dark disabled:opacity-50 text-white rounded-2xl text-xs font-extrabold flex items-center gap-2 shadow-sm shadow-[#1b6b6b]/20 transition-all cursor-pointer">
                             <Lock size={14} />{pwState.busy ? t('saving') : 'Parolni yangilash'}
                         </button>
                     </div>
@@ -538,7 +538,7 @@ export default function Settings() {
                 icon={<Building2 size={16} />} onAdd={() => { setNewItem({}); setIsAddModalOpen(true); }}
                 items={schools || []} emptyText={t('no_branches_found')}
                 renderItem={(item: any) => (
-                    <ItemCard key={item.id} icon={<Building2 size={16} />} iconBg="bg-teal-50 text-[#1b6b6b] border-teal-100 dark:bg-teal-950/20 dark:text-teal-400 dark:border-teal-900/40"
+                    <ItemCard key={item.id} icon={<Building2 size={16} />} iconBg="bg-teal-50 text-brand border-teal-100 dark:bg-teal-950/20 dark:text-teal-400 dark:border-teal-900/40"
                         title={item.name} subtitle={item.address || t('no_address')}
                         onDelete={() => deleteSchool(item.id)} />
                 )}
@@ -548,17 +548,17 @@ export default function Settings() {
         if (activeSection === 'ruxsatlar') return (
             <div className="space-y-6">
                 <div>
-                    <h2 className="text-xs font-black text-gray-900 dark:text-white">{t('permissions_title')}</h2>
-                    <p className="text-[11px] font-bold text-gray-400 mt-0.5">{t('permissions_subtitle')}</p>
+                    <h2 className="text-xs font-black text-matn">{t('permissions_title')}</h2>
+                    <p className="text-[11px] font-bold text-matn-xira mt-0.5">{t('permissions_subtitle')}</p>
                 </div>
-                <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-800/50 overflow-hidden shadow-sm">
+                <div className="bg-sirt rounded-2xl border border-chiziq overflow-hidden shadow-sm">
                     <div className="overflow-x-auto custom-scrollbar">
                         <table className="w-full min-w-[600px] border-collapse text-left">
                             <thead>
-                                <tr className="border-b border-gray-100 dark:border-gray-800/50 bg-gray-50/50 dark:bg-gray-900/20">
-                                    <th className="p-4 text-[11px] font-bold text-gray-400 min-w-[150px]">{t('module_label')}</th>
+                                <tr className="border-b border-chiziq bg-gray-50/50 dark:bg-gray-900/20">
+                                    <th className="p-4 text-[11px] font-bold text-matn-xira min-w-[150px]">{t('module_label')}</th>
                                     {Object.keys(permissions).map(role => (
-                                        <th key={role} className="p-4 text-center text-[11px] font-bold text-gray-400">
+                                        <th key={role} className="p-4 text-center text-[11px] font-bold text-matn-xira">
                                             {ROLE_LABELS[role] || role}
                                         </th>
                                     ))}
@@ -567,7 +567,7 @@ export default function Settings() {
                             <tbody className="divide-y divide-gray-100 dark:divide-gray-700/50">
                                 {MODULES.map(mod => (
                                     <tr key={mod.key} className="hover:bg-gray-50/40 dark:hover:bg-gray-700/10 transition-colors">
-                                        <td className="p-4 text-xs font-black text-gray-900 dark:text-white tracking-wide">{mod.label}</td>
+                                        <td className="p-4 text-xs font-black text-matn tracking-wide">{mod.label}</td>
                                         {Object.keys(permissions).map(role => {
                                             const on = permissions[role]?.[mod.key] ?? false;
                                             const isLocked = role === 'ADMIN';
@@ -582,7 +582,7 @@ export default function Settings() {
                                                         className={`inline-flex items-center justify-center transition-all ${isLocked ? 'opacity-40 cursor-not-allowed' : 'cursor-pointer'}`}
                                                     >
                                                         {on
-                                                            ? <ToggleRight size={26} className="text-[#1b6b6b]" />
+                                                            ? <ToggleRight size={26} className="text-brand" />
                                                             : <ToggleLeft size={26} className="text-gray-300 dark:text-gray-700" />
                                                         }
                                                     </button>
@@ -595,9 +595,9 @@ export default function Settings() {
                         </table>
                     </div>
                 </div>
-                <div className="flex justify-end pt-4 border-t border-dashed border-gray-150 dark:border-gray-800/50">
+                <div className="flex justify-end pt-4 border-t border-dashed border-chiziq/50">
                     <button onClick={handleSavePermissions}
-                        className={`px-6 py-3 rounded-2xl text-xs font-extrabold flex items-center gap-2 transition-all cursor-pointer ${permSaved ? 'bg-emerald-600 text-white' : 'bg-[#1b6b6b] hover:bg-[#155252] text-white shadow-sm shadow-[#1b6b6b]/20'}`}>
+                        className={`px-6 py-3 rounded-2xl text-xs font-extrabold flex items-center gap-2 transition-all cursor-pointer ${permSaved ? 'bg-emerald-600 text-white' : 'bg-brand hover:bg-brand-dark text-white shadow-sm shadow-[#1b6b6b]/20'}`}>
                         <Save size={14} />{permSaved ? t('saved_success') : t('save')}
                     </button>
                 </div>
@@ -607,8 +607,8 @@ export default function Settings() {
         if (activeSection === 'dizayn') return (
             <div className="space-y-6 animate-in fade-in duration-300">
                 <div>
-                    <h2 className="text-xs font-black text-gray-900 dark:text-white">{t('design_palette_title')}</h2>
-                    <p className="text-[11px] font-bold text-gray-400 mt-0.5">{t('design_palette_subtitle')}</p>
+                    <h2 className="text-xs font-black text-matn">{t('design_palette_title')}</h2>
+                    <p className="text-[11px] font-bold text-matn-xira mt-0.5">{t('design_palette_subtitle')}</p>
                 </div>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     {THEMES.map(theme => {
@@ -622,11 +622,11 @@ export default function Settings() {
                                 className={`w-full flex items-center justify-between p-5 rounded-2xl border transition-all text-left group cursor-pointer ${
                                     isActive
                                         ? 'border-[var(--brand-color)] bg-[var(--brand-light)] dark:bg-gray-700/20'
-                                        : 'border-gray-100 dark:border-gray-800/50 bg-white dark:bg-gray-800 hover:border-gray-300 dark:hover:border-gray-600'
+                                        : 'border-chiziq bg-sirt hover:border-gray-300 dark:hover:border-gray-600'
                                 }`}
                             >
                                 <div className="space-y-2">
-                                    <p className="text-xs font-black text-gray-900 dark:text-white tracking-wide group-hover:text-[var(--brand-color)] transition-colors">
+                                    <p className="text-xs font-black text-matn tracking-wide group-hover:text-[var(--brand-color)] transition-colors">
                                         {theme.name}
                                     </p>
                                     <div className="flex items-center gap-1.5">
@@ -665,20 +665,20 @@ export default function Settings() {
             {/* Header */}
             {/* Boshqa sahifalar bilan bir uslubda: ochiq fonda, ikonka kvadratisiz. */}
             <div>
-                <h1 className="text-[26px] font-bold text-gray-900 dark:text-white tracking-tight leading-tight">{t('settings_title')}</h1>
-                <p className="text-[13px] text-gray-500 dark:text-gray-400 mt-1">{t('settings_subtitle')}</p>
+                <h1 className="text-[26px] font-bold text-matn tracking-tight leading-tight">{t('settings_title')}</h1>
+                <p className="text-[13px] text-matn-sokin mt-1">{t('settings_subtitle')}</p>
             </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-4 gap-4 items-start">
                 {/* Sidebar */}
-                <div className="lg:col-span-1 bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-800/50 p-3 shadow-sm">
+                <div className="lg:col-span-1 bg-sirt rounded-2xl border border-chiziq p-3 shadow-sm">
                     <div className="space-y-1">
                         {menuGroups.map(group => (
                             <div key={group.id} className="space-y-0.5">
                                 <button onClick={() => toggle(group.id)}
-                                    className="w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-gray-400 hover:text-gray-600 dark:hover:text-gray-250 transition-all cursor-pointer">
+                                    className="w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-matn-xira hover:text-gray-600 dark:hover:text-gray-250 transition-all cursor-pointer">
                                     <div className="flex items-center gap-2">
-                                        <span className="text-[#1b6b6b]">{group.icon}</span>
+                                        <span className="text-brand">{group.icon}</span>
                                         <span className="text-[11px] font-bold">{group.label}</span>
                                     </div>
                                     {openGroups[group.id]
@@ -687,16 +687,16 @@ export default function Settings() {
                                     }
                                 </button>
                                 {openGroups[group.id] && (
-                                    <div className="ml-3 pl-3 border-l border-gray-100 dark:border-gray-800/50 space-y-0.5 mt-0.5 mb-1.5">
+                                    <div className="ml-3 pl-3 border-l border-chiziq space-y-0.5 mt-0.5 mb-1.5">
                                         {group.items.map(item => (
                                             <button key={item.id} onClick={() => setActiveSection(item.id)}
-                                                className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl transition-all text-left cursor-pointer ${activeSection === item.id ? 'bg-[#1b6b6b]/5 text-[#1b6b6b] border border-[#1b6b6b]/10' : 'text-gray-500 hover:text-gray-900 dark:hover:text-white'}`}>
+                                                className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl transition-all text-left cursor-pointer ${activeSection === item.id ? 'bg-brand/5 text-brand border border-brand/10' : 'text-matn-sokin hover:text-gray-900 dark:hover:text-white'}`}>
                                                 <div className="flex items-center gap-2">
                                                     {item.icon}
                                                     <span className="text-[11px] font-extrabold">{item.label}</span>
                                                 </div>
                                                 {'count' in item && item.count !== undefined && (
-                                                    <span className="text-[10px] font-bold bg-gray-50 dark:bg-gray-900 px-2 py-0.5 rounded-lg text-gray-500">{item.count}</span>
+                                                    <span className="text-[10px] font-bold bg-ichki px-2 py-0.5 rounded-lg text-matn-sokin">{item.count}</span>
                                                 )}
                                             </button>
                                         ))}
@@ -708,7 +708,7 @@ export default function Settings() {
                 </div>
 
                 {/* Content */}
-                <div className="lg:col-span-3 bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-800/50 p-5 shadow-sm">
+                <div className="lg:col-span-3 bg-sirt rounded-2xl border border-chiziq p-5 shadow-sm">
                     {renderContent()}
                 </div>
             </div>
@@ -717,13 +717,13 @@ export default function Settings() {
             {isAddModalOpen && (
                 <div className="fixed inset-0 z-[200] flex items-start sm:items-center justify-center overflow-y-auto p-4">
                     <div className="absolute inset-0 bg-gray-900/60 backdrop-blur-sm" onClick={() => setIsAddModalOpen(false)} />
-                    <div className="relative bg-white dark:bg-gray-800 rounded-[2rem] border border-gray-100 dark:border-gray-800/50 shadow-2xl w-full max-w-md p-8">
-                        <div className="flex items-center justify-between mb-6 pb-4 border-b border-gray-50 dark:border-gray-800/50">
+                    <div className="relative bg-sirt rounded-[2rem] border border-chiziq shadow-2xl w-full max-w-md p-8">
+                        <div className="flex items-center justify-between mb-6 pb-4 border-b border-chiziq-mayin/50">
                             <div>
-                                <h3 className="text-lg font-black text-gray-900 dark:text-white tracking-tight">{addModalTitle}</h3>
-                                <p className="text-[11px] font-bold text-[#1b6b6b] mt-0.5">{t('add_data_subtitle')}</p>
+                                <h3 className="text-lg font-black text-matn tracking-tight">{addModalTitle}</h3>
+                                <p className="text-[11px] font-bold text-brand mt-0.5">{t('add_data_subtitle')}</p>
                             </div>
-                            <button aria-label="Yopish" onClick={() => setIsAddModalOpen(false)} className="w-9 h-9 flex items-center justify-center text-gray-400 hover:bg-gray-55 dark:hover:bg-gray-700 rounded-xl cursor-pointer"><X size={18} /></button>
+                            <button aria-label="Yopish" onClick={() => setIsAddModalOpen(false)} className="w-9 h-9 flex items-center justify-center text-matn-xira hover:bg-gray-55 dark:hover:bg-gray-700 rounded-xl cursor-pointer"><X size={18} /></button>
                         </div>
                         <form onSubmit={handleAddItem} className="space-y-4">
                             <div>
@@ -742,13 +742,13 @@ export default function Settings() {
                                     <input type="text" className={inp} value={newItem.address || ''} onChange={e => setNewItem({ ...newItem, address: e.target.value })} />
                                 </div>
                             )}
-                            <div className="flex gap-3 pt-4 border-t border-dashed border-gray-150 dark:border-gray-800/50">
+                            <div className="flex gap-3 pt-4 border-t border-dashed border-chiziq/50">
                                 <button type="button" onClick={() => setIsAddModalOpen(false)}
-                                    className="flex-1 py-3 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-white text-xs font-extrabold rounded-2xl transition-all cursor-pointer hover:bg-gray-200 dark:hover:bg-gray-600">
+                                    className="flex-1 py-3 bg-chiziq text-gray-700 dark:text-white text-xs font-extrabold rounded-2xl transition-all cursor-pointer hover:bg-gray-200 dark:hover:bg-gray-600">
                                     {t('cancel')}
                                 </button>
                                 <button type="submit"
-                                    className="flex-1 py-3 bg-[#1b6b6b] hover:bg-[#155252] text-white text-xs font-extrabold rounded-2xl shadow-sm shadow-[#1b6b6b]/20 transition-all cursor-pointer">
+                                    className="flex-1 py-3 bg-brand hover:bg-brand-dark text-white text-xs font-extrabold rounded-2xl shadow-sm shadow-[#1b6b6b]/20 transition-all cursor-pointer">
                                     {t('save')}
                                 </button>
                             </div>
@@ -768,18 +768,18 @@ function ListSection({ title, subtitle, icon, onAdd, items, emptyText, renderIte
         <div className="space-y-6">
             <div className="flex items-center justify-between">
                 <div>
-                    <h2 className="text-xs font-black text-gray-900 dark:text-white">{title}</h2>
-                    <p className="text-[11px] font-bold text-gray-400 mt-0.5">{subtitle}</p>
+                    <h2 className="text-xs font-black text-matn">{title}</h2>
+                    <p className="text-[11px] font-bold text-matn-xira mt-0.5">{subtitle}</p>
                 </div>
                 <button onClick={onAdd}
-                    className="flex items-center gap-2 px-4 py-2.5 bg-[#1b6b6b] hover:bg-[#155252] text-white rounded-xl text-xs font-extrabold shadow-sm shadow-[#1b6b6b]/20 transition-all cursor-pointer">
+                    className="flex items-center gap-2 px-4 py-2.5 bg-brand hover:bg-brand-dark text-white rounded-xl text-xs font-extrabold shadow-sm shadow-[#1b6b6b]/20 transition-all cursor-pointer">
                     <Plus size={14} />Qo'shish
                 </button>
             </div>
             {items.length === 0 ? (
                 <div className="py-16 flex flex-col items-center justify-center text-center">
-                    <div className="w-12 h-12 bg-gray-50 dark:bg-gray-900 border border-gray-100 dark:border-gray-800/50 rounded-2xl flex items-center justify-center mb-3 text-gray-400">{icon}</div>
-                    <p className="text-[11px] font-bold text-gray-400">{emptyText}</p>
+                    <div className="w-12 h-12 bg-ichki border border-chiziq rounded-2xl flex items-center justify-center mb-3 text-matn-xira">{icon}</div>
+                    <p className="text-[11px] font-bold text-matn-xira">{emptyText}</p>
                 </div>
             ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
@@ -798,17 +798,17 @@ function ItemCard({ icon, iconBg, title, subtitle, onDelete }: {
     icon: React.ReactNode; iconBg: string; title: string; subtitle: string; onDelete: () => void;
 }) {
     return (
-        <div className="bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-800/50 rounded-2xl p-4 flex flex-col gap-4 group hover:shadow-md transition-all">
+        <div className="bg-sirt border border-chiziq rounded-2xl p-4 flex flex-col gap-4 group hover:shadow-md transition-all">
             <div className="flex items-start justify-between">
                 <div className={`w-10 h-10 rounded-xl border flex items-center justify-center ${iconBg}`}>{icon}</div>
                 <button onClick={onDelete}
-                    className="w-7 h-7 rounded-lg text-gray-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/20 flex items-center justify-center transition-colors cursor-pointer opacity-0 group-hover:opacity-100">
+                    className="w-7 h-7 rounded-lg text-matn-xira hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/20 flex items-center justify-center transition-colors cursor-pointer opacity-0 group-hover:opacity-100">
                     <Trash2 size={13} />
                 </button>
             </div>
             <div>
-                <p className="text-xs font-black text-gray-900 dark:text-white tracking-wide">{title}</p>
-                <p className="text-[11px] font-bold text-gray-400 mt-1">{subtitle}</p>
+                <p className="text-xs font-black text-matn tracking-wide">{title}</p>
+                <p className="text-[11px] font-bold text-matn-xira mt-1">{subtitle}</p>
             </div>
         </div>
     );

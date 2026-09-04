@@ -66,7 +66,7 @@ export default function GroupAttendanceCalendar({ group, attendances, selectedDa
     const handleNextMonth = () => setViewDate(new Date(year, month + 1, 1));
 
     const StatusChoicePopover = ({ date }: { date: string }) => (
-        <div className="absolute top-full left-1/2 -translate-x-1/2 mt-2 z-50 bg-white dark:bg-gray-800 rounded-2xl shadow-2xl border border-gray-100 dark:border-gray-800 p-2 flex flex-col gap-1 min-w-[170px] animate-in slide-in-from-top-2 duration-200">
+        <div className="absolute top-full left-1/2 -translate-x-1/2 mt-2 z-50 bg-sirt rounded-2xl shadow-2xl border border-chiziq p-2 flex flex-col gap-1 min-w-[170px] animate-in slide-in-from-top-2 duration-200">
             <button 
                 onClick={() => handleBatchStatus(date, 'O\'tildi')}
                 className="flex items-center gap-3 px-4 py-3 hover:bg-emerald-50 dark:hover:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 rounded-xl transition-all"
@@ -82,7 +82,7 @@ export default function GroupAttendanceCalendar({ group, attendances, selectedDa
                 <span className="text-[11px] font-bold leading-none">Dars bo'lmadi</span>
             </button>
             <div className="h-px bg-gray-50 dark:bg-gray-700 my-1 px-2" />
-            <button onClick={() => setActivePopover(null)} className="flex items-center gap-3 px-4 py-2 hover:bg-gray-50 dark:hover:bg-gray-700 text-gray-400 rounded-xl transition-all">
+            <button onClick={() => setActivePopover(null)} className="flex items-center gap-3 px-4 py-2 hover:bg-gray-50 dark:hover:bg-gray-700 text-matn-xira rounded-xl transition-all">
                 <XCircle size={14} />
                 <span className="text-[11px] font-bold">Yopish</span>
             </button>
@@ -90,9 +90,9 @@ export default function GroupAttendanceCalendar({ group, attendances, selectedDa
     );
 
     return (
-        <div className="bg-white dark:bg-gray-900/40 rounded-2xl border border-gray-100 dark:border-gray-800 p-5 shadow-sm transition-all h-full flex flex-col relative overflow-visible">
+        <div className="bg-sirt/40 rounded-2xl border border-chiziq p-5 shadow-sm transition-all h-full flex flex-col relative overflow-visible">
             <div className="flex items-center justify-between mb-4 px-2">
-                <h4 className="text-xs font-bold text-gray-900 dark:text-white tracking-tight flex items-center gap-2">
+                <h4 className="text-xs font-bold text-matn tracking-tight flex items-center gap-2">
                     <CalendarIcon size={14} className="text-sky-500" />
                     {monthName}
                 </h4>
@@ -104,7 +104,7 @@ export default function GroupAttendanceCalendar({ group, attendances, selectedDa
 
             <div className="grid grid-cols-7 gap-1 max-w-sm mx-auto w-full flex-grow">
                 {['Du', 'Se', 'Ch', 'Pa', 'Ju', 'Sh', 'Ya'].map(d => (
-                    <div key={d} className="text-center text-[10px] font-extrabold text-gray-300 dark:text-gray-600 pb-1.5">{d}</div>
+                    <div key={d} className="text-center text-[10px] font-extrabold text-matn-xira pb-1.5">{d}</div>
                 ))}
                 {Array(blanks).fill(0).map((_, i) => <div key={`b-${i}`} />)}
                 {Array(daysInMonth).fill(0).map((_, i) => {
@@ -150,7 +150,7 @@ export default function GroupAttendanceCalendar({ group, attendances, selectedDa
                 })}
             </div>
 
-            <div className="mt-4 pt-4 border-t border-dashed border-gray-100 dark:border-gray-800">
+            <div className="mt-4 pt-4 border-t border-dashed border-chiziq">
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 justify-center">
                     <StatusLink color="bg-emerald-500" label="Dars o'tildi" />
                     <StatusLink color="bg-amber-400" label="Belgilanmagan" />
@@ -166,7 +166,7 @@ function StatusLink({ color, label }: { color: string, label: string }) {
     return (
         <div className="flex items-center gap-2">
             <div className={`w-2 h-2 rounded-full ${color}`} />
-            <span className="text-[11px] font-bold text-gray-400 dark:text-gray-500">{label}</span>
+            <span className="text-[11px] font-bold text-matn-xira">{label}</span>
         </div>
     );
 }

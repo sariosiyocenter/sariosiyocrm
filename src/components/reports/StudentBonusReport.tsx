@@ -62,7 +62,7 @@ export default function StudentBonusReport({ startDate, endDate }: { startDate?:
                                 </div>
                             ))}
                         </div>
-                    ) : <p className="text-xs text-gray-400 text-center py-8">Hali baholashlar yo'q</p>}
+                    ) : <p className="text-xs text-matn-xira text-center py-8">Hali baholashlar yo'q</p>}
                 </ReportCard>
 
                 <ReportCard>
@@ -96,7 +96,7 @@ export default function StudentBonusReport({ startDate, endDate }: { startDate?:
                         { key: 'count', label: 'Baholashlar soni' },
                         { key: 'totalScore', label: 'Jami ball', render: r => <span className="text-amber-600 dark:text-amber-400 font-extrabold">{r.totalScore}</span> },
                         { key: 'avgScore', label: "O'rtacha ball", render: r => r.avgScore || '-' },
-                        { key: 'status', label: 'Status', render: r => <span className={`px-2 py-0.5 rounded-lg text-[11px] font-bold ${r.status === 'Faol' ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400' : 'bg-gray-100 text-gray-500 dark:bg-gray-700 dark:text-gray-400'}`}>{r.status}</span> },
+                        { key: 'status', label: 'Status', render: r => <span className={`px-2 py-0.5 rounded-lg text-[11px] font-bold ${r.status === 'Faol' ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400' : 'bg-gray-100 text-matn-sokin dark:bg-gray-700 dark:text-gray-400'}`}>{r.status}</span> },
                     ]}
                     rows={sorted}
                 />

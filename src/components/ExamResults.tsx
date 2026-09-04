@@ -128,17 +128,17 @@ export default function ExamResults() {
     return (
         <div className="space-y-6 pb-12 animate-in fade-in duration-500 max-w-7xl mx-auto">
             {/* Header */}
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white dark:bg-gray-800 p-4 rounded-2xl border border-gray-100 dark:border-gray-800/50 shadow-sm">
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-sirt p-4 rounded-2xl border border-chiziq shadow-sm">
                 <div>
-                    <h1 className="text-sm font-black text-gray-900 dark:text-white tracking-tight">Imtihon Natijalari</h1>
-                    <p className="text-[11px] font-bold text-gray-400 mt-0.5">Statistika va tahlillar</p>
+                    <h1 className="text-sm font-black text-matn tracking-tight">Imtihon Natijalari</h1>
+                    <p className="text-[11px] font-bold text-matn-xira mt-0.5">Statistika va tahlillar</p>
                 </div>
 
                 <div className="flex flex-wrap items-center gap-3 w-full md:w-auto">
                     <select
                         value={selectedExamId || ''}
                         onChange={e => { setSelectedExamId(Number(e.target.value) || null); setExpandedRow(null); }}
-                        className="px-4 py-2.5 bg-gray-55 dark:bg-gray-905 border border-gray-100 dark:border-gray-800 rounded-2xl text-[11px] font-bold outline-none focus:border-[#1b6b6b] text-gray-900 dark:text-white cursor-pointer"
+                        className="px-4 py-2.5 bg-gray-55 dark:bg-gray-905 border border-chiziq rounded-2xl text-[11px] font-bold outline-none focus:border-brand text-matn cursor-pointer"
                     >
                         <option value="">Imtihon tanlang</option>
                         {exams.map(e => <option key={e.id} value={e.id}>{e.name}</option>)}
@@ -147,7 +147,7 @@ export default function ExamResults() {
                     <select
                         value={selectedGroupId}
                         onChange={e => setSelectedGroupId(e.target.value ? Number(e.target.value) : '')}
-                        className="px-4 py-2.5 bg-gray-55 dark:bg-gray-905 border border-gray-100 dark:border-gray-800 rounded-2xl text-[11px] font-bold outline-none focus:border-[#1b6b6b] text-gray-900 dark:text-white cursor-pointer"
+                        className="px-4 py-2.5 bg-gray-55 dark:bg-gray-905 border border-chiziq rounded-2xl text-[11px] font-bold outline-none focus:border-brand text-matn cursor-pointer"
                     >
                         <option value="">Barcha kurslar</option>
                         {groups.map(g => <option key={g.id} value={g.id}>{g.name}</option>)}
@@ -164,12 +164,12 @@ export default function ExamResults() {
             </div>
 
             {!selectedExamId ? (
-                <div className="bg-white dark:bg-gray-800 rounded-2xl p-16 border border-gray-100 dark:border-gray-800/50 text-center">
-                    <p className="text-gray-400 text-[11px] font-bold">Yuqoridan imtihon tanlang</p>
+                <div className="bg-sirt rounded-2xl p-16 border border-chiziq text-center">
+                    <p className="text-matn-xira text-[11px] font-bold">Yuqoridan imtihon tanlang</p>
                 </div>
             ) : filteredResults.length === 0 ? (
-                <div className="bg-white dark:bg-gray-800 rounded-2xl p-16 border border-gray-100 dark:border-gray-800/50 text-center">
-                    <p className="text-gray-400 text-[11px] font-bold">Hali natijalar kiritilmagan</p>
+                <div className="bg-sirt rounded-2xl p-16 border border-chiziq text-center">
+                    <p className="text-matn-xira text-[11px] font-bold">Hali natijalar kiritilmagan</p>
                 </div>
             ) : (
                 <>
@@ -187,39 +187,39 @@ export default function ExamResults() {
                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
                         {/* Score distribution */}
                         {scoreDistribution.length > 0 && (
-                            <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-800/50 p-4 shadow-sm">
-                                <h3 className="text-[11px] font-bold text-gray-400 mb-6">Ball Taqsimoti</h3>
+                            <div className="bg-sirt rounded-2xl border border-chiziq p-4 shadow-sm">
+                                <h3 className="text-[11px] font-bold text-matn-xira mb-6">Ball Taqsimoti</h3>
                                 <BarChart data={scoreDistribution} height={160} unit=" kishi" />
                             </div>
                         )}
 
                         {/* Subject performance */}
                         {subjectPerformance.length > 0 && (
-                            <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-800/50 p-4 shadow-sm">
-                                <h3 className="text-[11px] font-bold text-gray-400 mb-6">Fan Bo'yicha Ko'rsatkichlar</h3>
+                            <div className="bg-sirt rounded-2xl border border-chiziq p-4 shadow-sm">
+                                <h3 className="text-[11px] font-bold text-matn-xira mb-6">Fan Bo'yicha Ko'rsatkichlar</h3>
                                 <BarChart data={subjectPerformance} horizontal unit="%" />
                             </div>
                         )}
                     </div>
 
                     {/* Results table */}
-                    <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-800/50 shadow-sm overflow-hidden">
+                    <div className="bg-sirt rounded-2xl border border-chiziq shadow-sm overflow-hidden">
                         <div className="overflow-x-auto">
                             <table className="w-full text-left border-collapse min-w-[700px]">
                                 <thead>
-                                    <tr className="bg-gray-55 dark:bg-gray-900 border-b border-gray-100 dark:border-gray-800/50">
-                                        <th className="p-4 text-[11px] font-bold text-gray-400 cursor-pointer hover:text-gray-650" onClick={() => toggleSort('name')}>
+                                    <tr className="bg-ichki border-b border-chiziq">
+                                        <th className="p-4 text-[11px] font-bold text-matn-xira cursor-pointer hover:text-gray-650" onClick={() => toggleSort('name')}>
                                             Ism <SortIcon col="name" />
                                         </th>
-                                        <th className="p-4 text-[11px] font-bold text-gray-400">Kurs</th>
-                                        <th className="p-4 text-[11px] font-bold text-gray-400 text-center">Variant</th>
-                                        <th className="p-4 text-[11px] font-bold text-gray-400 text-center cursor-pointer hover:text-gray-650" onClick={() => toggleSort('score')}>
+                                        <th className="p-4 text-[11px] font-bold text-matn-xira">Kurs</th>
+                                        <th className="p-4 text-[11px] font-bold text-matn-xira text-center">Variant</th>
+                                        <th className="p-4 text-[11px] font-bold text-matn-xira text-center cursor-pointer hover:text-gray-650" onClick={() => toggleSort('score')}>
                                             Ball <SortIcon col="score" />
                                         </th>
-                                        <th className="p-4 text-[11px] font-bold text-gray-400 text-center cursor-pointer hover:text-gray-650" onClick={() => toggleSort('percentage')}>
+                                        <th className="p-4 text-[11px] font-bold text-matn-xira text-center cursor-pointer hover:text-gray-650" onClick={() => toggleSort('percentage')}>
                                             % <SortIcon col="percentage" />
                                         </th>
-                                        <th className="p-4 text-[11px] font-bold text-gray-400 text-center">Sana</th>
+                                        <th className="p-4 text-[11px] font-bold text-matn-xira text-center">Sana</th>
                                         <th className="p-4 w-10" />
                                     </tr>
                                 </thead>
@@ -240,23 +240,23 @@ export default function ExamResults() {
                                                 >
                                                     <td className="p-4">
                                                         <div className="flex items-center gap-3">
-                                                            <div className="w-8 h-8 rounded-xl bg-teal-50 dark:bg-teal-950/20 border border-teal-100 dark:border-teal-900/40 flex items-center justify-center text-[#1b6b6b] font-black text-xs">
+                                                            <div className="w-8 h-8 rounded-xl bg-teal-50 dark:bg-teal-950/20 border border-teal-100 dark:border-teal-900/40 flex items-center justify-center text-brand font-black text-xs">
                                                                 {student?.name?.[0] || '?'}
                                                             </div>
-                                                            <span className="text-xs font-black text-gray-900 dark:text-white tracking-tight">{student?.name || `ID: ${result.studentId}`}</span>
+                                                            <span className="text-xs font-black text-matn tracking-tight">{student?.name || `ID: ${result.studentId}`}</span>
                                                         </div>
                                                     </td>
-                                                    <td className="p-4 text-[11px] font-bold text-gray-500 dark:text-gray-400">
+                                                    <td className="p-4 text-[11px] font-bold text-matn-sokin">
                                                         {group?.name || '-'}
                                                     </td>
                                                     <td className="p-4 text-center">
-                                                        <span className="px-2.5 py-1 bg-gray-55 dark:bg-gray-900 rounded-lg text-[11px] font-bold text-gray-500 dark:text-gray-400">
+                                                        <span className="px-2.5 py-1 bg-ichki rounded-lg text-[11px] font-bold text-matn-sokin">
                                                             {result.variantCode || '-'}
                                                         </span>
                                                     </td>
                                                     <td className="p-4 text-center">
-                                                        <span className="text-sm font-black text-gray-900 dark:text-white">{result.score}</span>
-                                                        <span className="text-[11px] text-gray-400 ml-1">/ {exam?.maxScore}</span>
+                                                        <span className="text-sm font-black text-matn">{result.score}</span>
+                                                        <span className="text-[11px] text-matn-xira ml-1">/ {exam?.maxScore}</span>
                                                     </td>
                                                     <td className="p-4 text-center">
                                                         <span className={`px-2.5 py-1 rounded-md text-[11px] font-black ${
@@ -267,7 +267,7 @@ export default function ExamResults() {
                                                             {result.percentage}%
                                                         </span>
                                                     </td>
-                                                    <td className="p-4 text-center text-[11px] text-gray-400">
+                                                    <td className="p-4 text-center text-[11px] text-matn-xira">
                                                         {new Date(result.scannedAt).toLocaleDateString('uz')}
                                                     </td>
                                                     <td className="p-4 text-center">
@@ -278,18 +278,18 @@ export default function ExamResults() {
                                                 {isExpanded && result.blockScores && (
                                                     <tr>
                                                         <td colSpan={7} className="px-4 pb-4">
-                                                            <div className="bg-gray-55 dark:bg-gray-900/50 rounded-2xl p-4 space-y-3 border border-gray-100 dark:border-gray-800">
+                                                            <div className="bg-ichki rounded-2xl p-4 space-y-3 border border-chiziq">
                                                                 <p className="text-[11px] font-bold text-gray-450 mb-3">Fan Bo'yicha Natijalar</p>
                                                                 {(result.blockScores as { subject: string; earned: number; max: number }[]).map((bs, i) => (
                                                                     <div key={i} className="flex items-center gap-4">
-                                                                        <span className="text-[11px] font-bold text-gray-600 dark:text-gray-300 w-28 shrink-0">{bs.subject}</span>
+                                                                        <span className="text-[11px] font-bold text-matn-2 w-28 shrink-0">{bs.subject}</span>
                                                                         <div className="flex-1 h-2 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
                                                                             <div
                                                                                 className={`h-full rounded-full transition-all ${bs.max > 0 && bs.earned / bs.max >= 0.5 ? 'bg-teal-500' : 'bg-rose-450'}`}
                                                                                 style={{ width: `${bs.max > 0 ? (bs.earned / bs.max) * 100 : 0}%` }}
                                                                             />
                                                                         </div>
-                                                                        <span className="text-[11px] font-bold text-gray-600 dark:text-gray-300 w-16 text-right">
+                                                                        <span className="text-[11px] font-bold text-matn-2 w-16 text-right">
                                                                             {bs.earned}/{bs.max}
                                                                         </span>
                                                                     </div>

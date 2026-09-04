@@ -25,7 +25,7 @@ const ROLE_LABELS: Record<string, string> = {
 const ROLE_COLORS: Record<string, string> = {
     ADMIN:           'bg-purple-50 text-purple-600 border-purple-100 dark:bg-purple-950/20 dark:text-purple-400',
     MANAGER:         'bg-sky-50 text-sky-600 border-sky-100 dark:bg-sky-950/20 dark:text-sky-400',
-    TEACHER:         'bg-teal-50 text-[#1b6b6b] border-teal-100 dark:bg-teal-950/20 dark:text-teal-400',
+    TEACHER:         'bg-teal-50 text-brand border-teal-100 dark:bg-teal-950/20 dark:text-teal-400',
     SUPPORT_TEACHER: 'bg-cyan-50 text-cyan-600 border-cyan-100 dark:bg-cyan-950/20 dark:text-cyan-400',
     RECEPTIONIST:    'bg-gray-50 text-gray-600 border-gray-100 dark:bg-gray-900/50 dark:text-gray-400',
     DRIVER:          'bg-amber-50 text-amber-600 border-amber-100 dark:bg-amber-950/20 dark:text-amber-400',
@@ -49,8 +49,8 @@ const WEEK_DAYS_FULL = ['Dushanba','Seshanba','Chorshanba','Payshanba','Juma','S
 // JS getDay(): 0=Sun,1=Mon,2=Tue,3=Wed,4=Thu,5=Fri,6=Sat
 const DAY_JS: Record<string,number> = { Du:1, Se:2, Ch:3, Pa:4, Ju:5, Sh:6, Ya:0 };
 
-const inp = "w-full px-4 py-3 bg-gray-50 dark:bg-gray-900/50 border border-gray-100 dark:border-gray-800 rounded-2xl text-xs font-bold text-gray-900 dark:text-white focus:border-[#1b6b6b] focus:ring-4 focus:ring-[#1b6b6b]/10 outline-none transition-all";
-const lbl = "block text-[11px] font-extrabold   text-gray-400 mb-2";
+const inp = "w-full px-4 py-3 bg-ichki border border-chiziq rounded-2xl text-xs font-bold text-matn focus:border-brand focus:ring-4 focus:ring-[#1b6b6b]/10 outline-none transition-all";
+const lbl = "block text-[11px] font-extrabold   text-matn-xira mb-2";
 
 export default function StaffDetails() {
     const { id } = useParams<{ id: string }>();
@@ -229,11 +229,11 @@ export default function StaffDetails() {
     }, [staffUser?.id, token, payMonth, payYear]);
 
     if (loading) {
-        return <div className="py-20 text-center text-[#1b6b6b] text-xs font-bold">{t('loading')}</div>;
+        return <div className="py-20 text-center text-brand text-xs font-bold">{t('loading')}</div>;
     }
     if (!staffUser) {
         return (
-            <div className="p-12 text-center text-gray-500 font-bold text-sm bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-800/50 shadow-sm">
+            <div className="p-12 text-center text-matn-sokin font-bold text-sm bg-sirt rounded-2xl border border-chiziq shadow-sm">
                 {t('staff_not_found')}
             </div>
         );
@@ -503,7 +503,7 @@ export default function StaffDetails() {
         <div className="space-y-6 animate-in fade-in duration-500">
             {/* Back */}
             <button onClick={() => navigate('/hr')}
-                className="flex items-center gap-2 text-gray-400 hover:text-[#1b6b6b] transition-all text-[11px] font-extrabold group cursor-pointer">
+                className="flex items-center gap-2 text-matn-xira hover:text-brand transition-all text-[11px] font-extrabold group cursor-pointer">
                 <ArrowLeft size={14} className="group-hover:-translate-x-1 transition-transform" />
                 {t('staff_list')}
             </button>
@@ -511,7 +511,7 @@ export default function StaffDetails() {
             <div className="grid grid-cols-1 lg:grid-cols-4 gap-4 items-start">
                 {/* Left profile card */}
                 <div className="lg:col-span-1 space-y-5">
-                    <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-800/50 shadow-sm overflow-hidden">
+                    <div className="bg-sirt rounded-2xl border border-chiziq shadow-sm overflow-hidden">
                         {/* Banner */}
                         <div className={`h-20 bg-gradient-to-br ${ROLE_GRADIENT[staffUser.role] || 'from-gray-400 to-gray-600'} relative opacity-90`}>
                             {isAdminOrManager && (
@@ -522,12 +522,12 @@ export default function StaffDetails() {
                                 </button>
                             )}
                             {/* Avatar — centred, extends below banner */}
-                            <div className="absolute -bottom-9 left-1/2 -translate-x-1/2 rounded-2xl bg-white dark:bg-gray-800 p-1 shadow-sm group/avatar">
-                                <div className="w-24 h-24 rounded-xl overflow-hidden flex items-center justify-center bg-gray-50 dark:bg-gray-900 border border-gray-100 dark:border-gray-800/50 relative">
+                            <div className="absolute -bottom-9 left-1/2 -translate-x-1/2 rounded-2xl bg-sirt p-1 shadow-sm group/avatar">
+                                <div className="w-24 h-24 rounded-xl overflow-hidden flex items-center justify-center bg-ichki border border-chiziq relative">
                                     {staffUser.photo ? (
                                         <img src={staffUser.photo} alt={staffUser.name} className="w-full h-full object-cover object-top" />
                                     ) : (
-                                        <span className="text-3xl font-bold text-[#1b6b6b]">
+                                        <span className="text-3xl font-bold text-brand">
                                             {staffUser.name?.charAt(0).toUpperCase()}
                                         </span>
                                     )}
@@ -545,9 +545,9 @@ export default function StaffDetails() {
 
                         {/* Name / role */}
                         <div className="pt-14 pb-5 px-6 text-center">
-                            <h2 className="text-sm font-black text-gray-900 dark:text-white tracking-tight">{staffUser.name}</h2>
+                            <h2 className="text-sm font-black text-matn tracking-tight">{staffUser.name}</h2>
                             {staffUser.position && (
-                                <p className="text-[11px] font-bold text-gray-400 mt-1">{staffUser.position}</p>
+                                <p className="text-[11px] font-bold text-matn-xira mt-1">{staffUser.position}</p>
                             )}
                             <div className="mt-3 flex justify-center">
                                 <span className={`px-2.5 py-0.5 rounded-md text-[10px] font-bold border ${ROLE_COLORS[staffUser.role] || ''}`}>
@@ -566,7 +566,7 @@ export default function StaffDetails() {
                             )}
                         </div>
 
-                        <div className="px-6 pb-6 space-y-3 border-t border-dashed border-gray-100 dark:border-gray-800/50 pt-4">
+                        <div className="px-6 pb-6 space-y-3 border-t border-dashed border-chiziq pt-4">
                             {staffUser.phone && <DetailRow icon={<Phone size={14} />} label={t('phone')} value={staffUser.phone} />}
                             {staffUser.role !== 'TECH_STAFF' && staffUser.email && (
                                 <DetailRow icon={<Mail size={14} />} label="Email" value={staffUser.email} />
@@ -575,7 +575,7 @@ export default function StaffDetails() {
                     </div>
 
                     {/* Salary card */}
-                    <div className="bg-[#1b6b6b] rounded-2xl p-4 text-white shadow-sm shadow-[#1b6b6b]/20 relative overflow-hidden">
+                    <div className="bg-brand rounded-2xl p-4 text-white shadow-sm shadow-[#1b6b6b]/20 relative overflow-hidden">
                         <span className="text-[11px] font-bold text-teal-100 block mb-3">{t('base_salary_short')}</span>
                         <div className="flex items-baseline gap-1">
                             <span className="text-2xl font-black tracking-tight tabular-nums">{baseSalary.toLocaleString()}</span>
@@ -590,13 +590,13 @@ export default function StaffDetails() {
 
                 {/* Right tabs */}
                 <div className="lg:col-span-3 space-y-6">
-                    <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-800/50 shadow-sm overflow-hidden">
-                        <div className="flex px-4 bg-gray-50 dark:bg-gray-900/50 border-b border-gray-100 dark:border-gray-800/50 gap-2">
+                    <div className="bg-sirt rounded-2xl border border-chiziq shadow-sm overflow-hidden">
+                        <div className="flex px-4 bg-ichki border-b border-chiziq gap-2">
                             {tabs.map(tab => (
                                 <button key={tab.id} onClick={() => setActiveTab(tab.id)}
-                                    className={`px-5 py-4 text-[11px] font-extrabold flex items-center gap-2 transition-all relative shrink-0 cursor-pointer ${activeTab === tab.id ? 'text-[#1b6b6b] bg-white dark:bg-gray-800' : 'text-gray-400 hover:text-gray-900 dark:hover:text-white'}`}>
+                                    className={`px-5 py-4 text-[11px] font-extrabold flex items-center gap-2 transition-all relative shrink-0 cursor-pointer ${activeTab === tab.id ? 'text-brand bg-sirt' : 'text-matn-xira hover:text-gray-900 dark:hover:text-white'}`}>
                                     {tab.icon}{tab.label}
-                                    {activeTab === tab.id && <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-[#1b6b6b] rounded-t-full" />}
+                                    {activeTab === tab.id && <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-brand rounded-t-full" />}
                                 </button>
                             ))}
                         </div>
@@ -622,39 +622,39 @@ export default function StaffDetails() {
                                         <div className="xl:col-span-2 space-y-5">
                                             {/* Yuritayotgan guruhlar */}
                                             {linkedTeacher && (
-                                                <div className="bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700/50 rounded-2xl overflow-hidden">
-                                                    <div className="px-5 py-4 border-b border-gray-100 dark:border-gray-700/50">
-                                                        <h3 className="text-[14px] font-semibold text-gray-900 dark:text-white">Yuritayotgan guruhlar</h3>
+                                                <div className="bg-sirt border border-chiziq rounded-2xl overflow-hidden">
+                                                    <div className="px-5 py-4 border-b border-chiziq">
+                                                        <h3 className="text-[14px] font-semibold text-matn">Yuritayotgan guruhlar</h3>
                                                     </div>
                                                     {myGroups.length === 0 ? (
-                                                        <p className="px-5 py-8 text-center text-[12px] text-gray-400">Guruh biriktirilmagan</p>
+                                                        <p className="px-5 py-8 text-center text-[12px] text-matn-xira">Guruh biriktirilmagan</p>
                                                     ) : (
                                                         <div className="overflow-x-auto">
                                                             <table className="w-full border-collapse text-left min-w-[560px]">
                                                                 <thead>
-                                                                    <tr className="border-b border-gray-100 dark:border-gray-700/50">
-                                                                        <th className="px-5 py-2.5 text-[11px] font-medium text-gray-400">Guruh</th>
-                                                                        <th className="px-3 py-2.5 text-[11px] font-medium text-gray-400">Vaqt</th>
-                                                                        <th className="px-3 py-2.5 text-[11px] font-medium text-gray-400 text-right">O'quvchi</th>
-                                                                        <th className="px-3 py-2.5 text-[11px] font-medium text-gray-400 text-right">Davomat</th>
-                                                                        <th className="px-5 py-2.5 text-[11px] font-medium text-gray-400 text-right">{getMonthName(payMonth)} tushumi</th>
+                                                                    <tr className="border-b border-chiziq">
+                                                                        <th className="px-5 py-2.5 text-[11px] font-medium text-matn-xira">Guruh</th>
+                                                                        <th className="px-3 py-2.5 text-[11px] font-medium text-matn-xira">Vaqt</th>
+                                                                        <th className="px-3 py-2.5 text-[11px] font-medium text-matn-xira text-right">O'quvchi</th>
+                                                                        <th className="px-3 py-2.5 text-[11px] font-medium text-matn-xira text-right">Davomat</th>
+                                                                        <th className="px-5 py-2.5 text-[11px] font-medium text-matn-xira text-right">{getMonthName(payMonth)} tushumi</th>
                                                                     </tr>
                                                                 </thead>
-                                                                <tbody className="divide-y divide-gray-55 dark:divide-gray-700/40">
+                                                                <tbody className="divide-y divide-chiziq-mayin dark:divide-gray-700/40">
                                                                     {myGroups.map(g => {
                                                                         const att = groupAttRate(g.id);
                                                                         const inc = groupMonthIncome(g.id);
                                                                         return (
                                                                             <tr key={g.id} onClick={() => navigate(`/courses/${g.id}`)}
                                                                                 className="group hover:bg-gray-55/70 dark:hover:bg-gray-900/30 transition-colors cursor-pointer">
-                                                                                <td className="px-5 py-3 text-[13px] font-medium text-gray-900 dark:text-white group-hover:text-[#1b6b6b] transition-colors">
-                                                                                    <span className="inline-block w-0.5 h-4 rounded-full bg-[#1b6b6b] mr-3 align-middle" />{g.name}
+                                                                                <td className="px-5 py-3 text-[13px] font-medium text-matn group-hover:text-brand transition-colors">
+                                                                                    <span className="inline-block w-0.5 h-4 rounded-full bg-brand mr-3 align-middle" />{g.name}
                                                                                 </td>
-                                                                                <td className="px-3 py-3 text-[12px] text-gray-500 dark:text-gray-400">
+                                                                                <td className="px-3 py-3 text-[12px] text-matn-sokin">
                                                                                     {g.days === 'TOQ' ? 'Toq' : g.days === 'JUFT' ? 'Juft' : 'Har kuni'}{g.schedule ? <> · <span className="num">{g.schedule.split(' - ')[0]}</span></> : null}
                                                                                 </td>
                                                                                 <td className="num px-3 py-3 text-[13px] text-right text-gray-700 dark:text-gray-200">{(g.studentIds || []).length}</td>
-                                                                                <td className={`num px-3 py-3 text-[13px] text-right ${att === null ? 'text-gray-400' : att >= 85 ? 'text-emerald-500' : att >= 70 ? 'text-amber-500' : 'text-rose-500'}`}>
+                                                                                <td className={`num px-3 py-3 text-[13px] text-right ${att === null ? 'text-matn-xira' : att >= 85 ? 'text-emerald-500' : att >= 70 ? 'text-amber-500' : 'text-rose-500'}`}>
                                                                                     {att === null ? '—' : `${att}%`}
                                                                                 </td>
                                                                                 <td className="num px-5 py-3 text-[13px] text-right text-gray-700 dark:text-gray-200">
@@ -670,8 +670,8 @@ export default function StaffDetails() {
                                                 </div>
                                             )}
 
-                                            <div className="bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700/50 rounded-2xl p-5">
-                                                <h3 className="text-[14px] font-semibold text-gray-900 dark:text-white mb-3">{t('staff_info')}</h3>
+                                            <div className="bg-sirt border border-chiziq rounded-2xl p-5">
+                                                <h3 className="text-[14px] font-semibold text-matn mb-3">{t('staff_info')}</h3>
                                                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                                                     <InfoBox label="ID"           value={`#${staffUser.id}`} />
                                                     <InfoBox label="Lavozim"      value={getRoleLabel(staffUser.role)} />
@@ -679,7 +679,7 @@ export default function StaffDetails() {
                                                     {staffUser.phone && <InfoBox label={t('phone')} value={staffUser.phone} />}
                                                     {linkedTeacher && (
                                                         <button onClick={() => navigate(`/teachers/${linkedTeacher.id}`)}
-                                                            className="sm:col-span-2 flex items-center justify-between px-4 py-3 rounded-xl border border-gray-100 dark:border-gray-700/50 text-[13px] text-[#1b6b6b] dark:text-teal-400 hover:bg-[#1b6b6b]/5 transition-colors cursor-pointer">
+                                                            className="sm:col-span-2 flex items-center justify-between px-4 py-3 rounded-xl border border-chiziq text-[13px] text-brand hover:bg-brand/5 transition-colors cursor-pointer">
                                                             <span className="flex items-center gap-2"><GraduationCap size={15} /> {t('view_teacher_profile')}</span>
                                                             <ChevronRight size={15} />
                                                         </button>
@@ -690,61 +690,61 @@ export default function StaffDetails() {
 
                                         <div className="space-y-5">
                                             {/* Oylik hisob-kitobi — Maosh tabidagi hisobning qisqa ko'rinishi. */}
-                                            <div className="bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700/50 rounded-2xl p-5">
+                                            <div className="bg-sirt border border-chiziq rounded-2xl p-5">
                                                 <div className="flex items-baseline justify-between mb-3">
-                                                    <h3 className="text-[14px] font-semibold text-gray-900 dark:text-white">Oylik hisob-kitobi</h3>
-                                                    <span className="text-[12px] text-gray-400">{getMonthName(payMonth)}</span>
+                                                    <h3 className="text-[14px] font-semibold text-matn">Oylik hisob-kitobi</h3>
+                                                    <span className="text-[12px] text-matn-xira">{getMonthName(payMonth)}</span>
                                                 </div>
                                                 <div className="space-y-2 text-[13px]">
                                                     <div className="flex items-center justify-between gap-3">
-                                                        <span className="text-gray-500 dark:text-gray-400">Asosiy</span>
-                                                        <span className="num text-gray-800 dark:text-gray-100">{baseSalary.toLocaleString()}</span>
+                                                        <span className="text-matn-sokin">Asosiy</span>
+                                                        <span className="num text-matn">{baseSalary.toLocaleString()}</span>
                                                     </div>
                                                     {kpiPercent > 0 && (
                                                         <>
                                                             <div className="flex items-center justify-between gap-3">
-                                                                <span className="text-gray-500 dark:text-gray-400">Guruhlardan tushum</span>
-                                                                <span className="num text-gray-800 dark:text-gray-100">{kpiLoading ? '…' : (kpiData?.totalPayments || 0).toLocaleString()}</span>
+                                                                <span className="text-matn-sokin">Guruhlardan tushum</span>
+                                                                <span className="num text-matn">{kpiLoading ? '…' : (kpiData?.totalPayments || 0).toLocaleString()}</span>
                                                             </div>
                                                             <div className="flex items-center justify-between gap-3">
-                                                                <span className="text-gray-500 dark:text-gray-400">Ulush ({kpiPercent}%)</span>
-                                                                <span className="num text-[#1b6b6b] dark:text-teal-400">{kpiLoading ? '…' : `+${kpiAmount.toLocaleString()}`}</span>
+                                                                <span className="text-matn-sokin">Ulush ({kpiPercent}%)</span>
+                                                                <span className="num text-brand">{kpiLoading ? '…' : `+${kpiAmount.toLocaleString()}`}</span>
                                                             </div>
                                                         </>
                                                     )}
                                                     {totalBonus > 0 && (
                                                         <div className="flex items-center justify-between gap-3">
-                                                            <span className="text-gray-500 dark:text-gray-400">Bonus</span>
+                                                            <span className="text-matn-sokin">Bonus</span>
                                                             <span className="num text-emerald-500">+{totalBonus.toLocaleString()}</span>
                                                         </div>
                                                     )}
                                                     {totalFine > 0 && (
                                                         <div className="flex items-center justify-between gap-3">
-                                                            <span className="text-gray-500 dark:text-gray-400">Ushlanma</span>
+                                                            <span className="text-matn-sokin">Ushlanma</span>
                                                             <span className="num text-rose-500">-{totalFine.toLocaleString()}</span>
                                                         </div>
                                                     )}
-                                                    <div className="flex items-center justify-between gap-3 pt-2 mt-1 border-t border-gray-100 dark:border-gray-700/50">
-                                                        <span className="font-semibold text-gray-900 dark:text-white">To'lanadi</span>
-                                                        <span className="num font-semibold text-[#1b6b6b] dark:text-teal-400">{totalSalary.toLocaleString()}</span>
+                                                    <div className="flex items-center justify-between gap-3 pt-2 mt-1 border-t border-chiziq">
+                                                        <span className="font-semibold text-matn">To'lanadi</span>
+                                                        <span className="num font-semibold text-brand">{totalSalary.toLocaleString()}</span>
                                                     </div>
                                                 </div>
                                                 <button onClick={() => setActiveTab('maosh')}
-                                                    className="mt-4 w-full py-2 rounded-xl text-[12px] text-[#1b6b6b] dark:text-teal-400 border border-gray-100 dark:border-gray-700/50 hover:bg-[#1b6b6b]/5 transition-colors cursor-pointer">
+                                                    className="mt-4 w-full py-2 rounded-xl text-[12px] text-brand border border-chiziq hover:bg-brand/5 transition-colors cursor-pointer">
                                                     Batafsil →
                                                 </button>
                                             </div>
 
                                             {/* Intizom — shu oy davomati */}
-                                            <div className="bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700/50 rounded-2xl p-5">
-                                                <h3 className="text-[14px] font-semibold text-gray-900 dark:text-white mb-3">Intizom · {getMonthName(selMonth)}</h3>
+                                            <div className="bg-sirt border border-chiziq rounded-2xl p-5">
+                                                <h3 className="text-[14px] font-semibold text-matn mb-3">Intizom · {getMonthName(selMonth)}</h3>
                                                 <div className="space-y-2 text-[13px]">
-                                                    <div className="flex items-center justify-between"><span className="text-gray-500 dark:text-gray-400">{t('attendance')}</span><span className="num text-emerald-500">{presentDays} kun</span></div>
-                                                    <div className="flex items-center justify-between"><span className="text-gray-500 dark:text-gray-400">{t('absent')}</span><span className={`num ${absentDays > 0 ? 'text-rose-500' : 'text-gray-400'}`}>{absentDays} kun</span></div>
-                                                    <div className="flex items-center justify-between"><span className="text-gray-500 dark:text-gray-400">{t('excused')}</span><span className={`num ${excusedDays > 0 ? 'text-amber-500' : 'text-gray-400'}`}>{excusedDays} kun</span></div>
+                                                    <div className="flex items-center justify-between"><span className="text-matn-sokin">{t('attendance')}</span><span className="num text-emerald-500">{presentDays} kun</span></div>
+                                                    <div className="flex items-center justify-between"><span className="text-matn-sokin">{t('absent')}</span><span className={`num ${absentDays > 0 ? 'text-rose-500' : 'text-matn-xira'}`}>{absentDays} kun</span></div>
+                                                    <div className="flex items-center justify-between"><span className="text-matn-sokin">{t('excused')}</span><span className={`num ${excusedDays > 0 ? 'text-amber-500' : 'text-matn-xira'}`}>{excusedDays} kun</span></div>
                                                 </div>
                                                 <button onClick={() => setActiveTab('jadval')}
-                                                    className="mt-4 w-full py-2 rounded-xl text-[12px] text-[#1b6b6b] dark:text-teal-400 border border-gray-100 dark:border-gray-700/50 hover:bg-[#1b6b6b]/5 transition-colors cursor-pointer">
+                                                    className="mt-4 w-full py-2 rounded-xl text-[12px] text-brand border border-chiziq hover:bg-brand/5 transition-colors cursor-pointer">
                                                     Ish grafigi →
                                                 </button>
                                             </div>
@@ -758,7 +758,7 @@ export default function StaffDetails() {
                                 <div className="space-y-6 animate-in fade-in duration-300">
 
                                     {/* Inline base salary editor */}
-                                    <div className="flex items-center gap-4 p-4 bg-[#1b6b6b]/5 border border-[#1b6b6b]/15 rounded-2xl">
+                                    <div className="flex items-center gap-4 p-4 bg-brand/5 border border-brand/15 rounded-2xl">
                                         <div className="flex-1 min-w-0">
                                             <span className={lbl}>{t('base_salary')}</span>
                                             {editingSalary ? (
@@ -770,17 +770,17 @@ export default function StaffDetails() {
                                                         onChange={e => setSalaryDraft(e.target.value)}
                                                         onKeyDown={e => { if (e.key === 'Enter') saveSalaryInline(); if (e.key === 'Escape') setEditingSalary(false); }}
                                                     />
-                                                    <button onClick={saveSalaryInline} className="px-4 py-2 bg-[#1b6b6b] hover:bg-[#155252] text-white text-[11px] font-extrabold rounded-xl cursor-pointer transition-all whitespace-nowrap">{t('save')}</button>
-                                                    <button onClick={() => setEditingSalary(false)} className="px-3 py-2 bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-white text-[11px] font-extrabold rounded-xl cursor-pointer hover:bg-gray-200 transition-all">{t('cancel')}</button>
+                                                    <button onClick={saveSalaryInline} className="px-4 py-2 bg-brand hover:bg-brand-dark text-white text-[11px] font-extrabold rounded-xl cursor-pointer transition-all whitespace-nowrap">{t('save')}</button>
+                                                    <button onClick={() => setEditingSalary(false)} className="px-3 py-2 bg-chiziq text-gray-600 dark:text-white text-[11px] font-extrabold rounded-xl cursor-pointer hover:bg-gray-200 transition-all">{t('cancel')}</button>
                                                 </div>
                                             ) : (
                                                 <div className="flex items-center gap-2 mt-1">
-                                                    <span className="text-2xl font-black text-gray-900 dark:text-white tabular-nums">{baseSalary.toLocaleString()}</span>
-                                                    <span className="text-[11px] font-bold text-gray-400">UZS</span>
+                                                    <span className="text-2xl font-black text-matn tabular-nums">{baseSalary.toLocaleString()}</span>
+                                                    <span className="text-[11px] font-bold text-matn-xira">UZS</span>
                                                     {isAdminOrManager && (
                                                         <button
                                                             onClick={() => { setSalaryDraft(String(baseSalary)); setEditingSalary(true); }}
-                                                            className="ml-1 text-gray-400 hover:text-[#1b6b6b] transition-colors cursor-pointer">
+                                                            className="ml-1 text-matn-xira hover:text-brand transition-colors cursor-pointer">
                                                             <Pencil size={13} />
                                                         </button>
                                                     )}
@@ -798,17 +798,17 @@ export default function StaffDetails() {
                                                         onChange={e => setKpiDraft(e.target.value)}
                                                         onKeyDown={e => { if (e.key === 'Enter') saveKpiInline(); if (e.key === 'Escape') setEditingKpi(false); }}
                                                     />
-                                                    <button onClick={saveKpiInline} className="px-3 py-2 bg-[#1b6b6b] hover:bg-[#155252] text-white text-[11px] font-extrabold rounded-xl cursor-pointer transition-all">✓</button>
-                                                    <button onClick={() => setEditingKpi(false)} className="px-3 py-2 bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-white text-[11px] font-extrabold rounded-xl cursor-pointer hover:bg-gray-200 transition-all">✕</button>
+                                                    <button onClick={saveKpiInline} className="px-3 py-2 bg-brand hover:bg-brand-dark text-white text-[11px] font-extrabold rounded-xl cursor-pointer transition-all">✓</button>
+                                                    <button onClick={() => setEditingKpi(false)} className="px-3 py-2 bg-chiziq text-gray-600 dark:text-white text-[11px] font-extrabold rounded-xl cursor-pointer hover:bg-gray-200 transition-all">✕</button>
                                                 </div>
                                             ) : (
                                                 <div className="flex items-center justify-end gap-2 mt-1">
-                                                    <span className="text-2xl font-black text-[#1b6b6b] tabular-nums">{kpiPercent}</span>
-                                                    <span className="text-[11px] font-bold text-gray-400">%</span>
+                                                    <span className="text-2xl font-black text-brand tabular-nums">{kpiPercent}</span>
+                                                    <span className="text-[11px] font-bold text-matn-xira">%</span>
                                                     {isAdminOrManager && (
                                                         <button
                                                             onClick={() => { setKpiDraft(String(kpiPercent)); setEditingKpi(true); }}
-                                                            className="ml-1 text-gray-400 hover:text-[#1b6b6b] transition-colors cursor-pointer">
+                                                            className="ml-1 text-matn-xira hover:text-brand transition-colors cursor-pointer">
                                                             <Pencil size={13} />
                                                         </button>
                                                     )}
@@ -819,15 +819,15 @@ export default function StaffDetails() {
 
                                     {/* Month selector */}
                                     <div className="flex items-center justify-between">
-                                        <span className="text-[11px] font-extrabold text-gray-400 flex items-center gap-1.5">
+                                        <span className="text-[11px] font-extrabold text-matn-xira flex items-center gap-1.5">
                                             <Banknote size={11} /> {t('salary_calculation')}
                                         </span>
                                         <div className="flex items-center gap-2">
-                                            <button onClick={prevPayMonth} className="w-8 h-8 flex items-center justify-center rounded-xl bg-gray-50 dark:bg-gray-900 border border-gray-100 dark:border-gray-800 text-gray-500 hover:border-[#1b6b6b] hover:text-[#1b6b6b] transition-all cursor-pointer">
+                                            <button onClick={prevPayMonth} className="w-8 h-8 flex items-center justify-center rounded-xl bg-ichki border border-chiziq text-matn-sokin hover:border-brand hover:text-brand transition-all cursor-pointer">
                                                 <ChevronLeft size={14} />
                                             </button>
-                                            <span className="text-xs font-black text-gray-900 dark:text-white min-w-[120px] text-center">{getMonthName(payMonth)} {payYear}</span>
-                                            <button onClick={nextPayMonth} className="w-8 h-8 flex items-center justify-center rounded-xl bg-gray-50 dark:bg-gray-900 border border-gray-100 dark:border-gray-800 text-gray-500 hover:border-[#1b6b6b] hover:text-[#1b6b6b] transition-all cursor-pointer">
+                                            <span className="text-xs font-black text-matn min-w-[120px] text-center">{getMonthName(payMonth)} {payYear}</span>
+                                            <button onClick={nextPayMonth} className="w-8 h-8 flex items-center justify-center rounded-xl bg-ichki border border-chiziq text-matn-sokin hover:border-brand hover:text-brand transition-all cursor-pointer">
                                                 <ChevronRight size={14} />
                                             </button>
                                         </div>
@@ -851,7 +851,7 @@ export default function StaffDetails() {
                                             </div>
                                             {isAdminOrManager && (
                                                 <button onClick={() => deleteSalaryPayment(currentPayment.id)}
-                                                    className="text-gray-400 hover:text-rose-500 transition-colors cursor-pointer p-2 rounded-xl hover:bg-rose-50 dark:hover:bg-rose-950/20">
+                                                    className="text-matn-xira hover:text-rose-500 transition-colors cursor-pointer p-2 rounded-xl hover:bg-rose-50 dark:hover:bg-rose-950/20">
                                                     <Trash2 size={14} />
                                                 </button>
                                             )}
@@ -873,48 +873,48 @@ export default function StaffDetails() {
                                             {/* KPI group breakdown — teachers only */}
                                             {(staffUser.role === 'TEACHER' || staffUser.role === 'SUPPORT_TEACHER') && (
                                                 <div className="space-y-3">
-                                                    <p className="text-[11px] font-extrabold text-gray-400 flex items-center gap-1.5">
+                                                    <p className="text-[11px] font-extrabold text-matn-xira flex items-center gap-1.5">
                                                         <Target size={11} /> {t('kpi_calculation')} — {getMonthName(payMonth)} {payYear}
                                                     </p>
                                                     {kpiLoading ? (
-                                                        <div className="py-8 text-center text-[11px] text-gray-400 font-bold">{t('loading')}</div>
+                                                        <div className="py-8 text-center text-[11px] text-matn-xira font-bold">{t('loading')}</div>
                                                     ) : kpiPercent === 0 ? (
-                                                        <div className="p-4 bg-gray-50 dark:bg-gray-900/50 border border-dashed border-gray-200 dark:border-gray-800 rounded-2xl text-center">
-                                                            <p className="text-[11px] text-gray-400 font-bold">{t('kpi_percent_not_set')}</p>
+                                                        <div className="p-4 bg-ichki border border-dashed border-gray-200 dark:border-gray-800 rounded-2xl text-center">
+                                                            <p className="text-[11px] text-matn-xira font-bold">{t('kpi_percent_not_set')}</p>
                                                         </div>
                                                     ) : kpiData?.groups?.length > 0 ? (
-                                                        <div className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800/50 rounded-2xl overflow-hidden">
+                                                        <div className="bg-sirt border border-chiziq rounded-2xl overflow-hidden">
                                                             <table className="w-full text-left">
                                                                 <thead>
-                                                                    <tr className="bg-gray-50 dark:bg-gray-900/80 border-b border-gray-100 dark:border-gray-800">
-                                                                        <th className="p-3 text-[11px] font-bold text-gray-400">{t('group')}</th>
-                                                                        <th className="p-3 text-[11px] font-bold text-gray-400">{t('students')}</th>
-                                                                        <th className="p-3 text-[11px] font-bold text-gray-400 text-right">{t('payments')}</th>
-                                                                        <th className="p-3 text-[11px] font-bold text-gray-400 text-right">KPI ({kpiPercent}%)</th>
+                                                                    <tr className="bg-ichki/80 border-b border-chiziq">
+                                                                        <th className="p-3 text-[11px] font-bold text-matn-xira">{t('group')}</th>
+                                                                        <th className="p-3 text-[11px] font-bold text-matn-xira">{t('students')}</th>
+                                                                        <th className="p-3 text-[11px] font-bold text-matn-xira text-right">{t('payments')}</th>
+                                                                        <th className="p-3 text-[11px] font-bold text-matn-xira text-right">KPI ({kpiPercent}%)</th>
                                                                     </tr>
                                                                 </thead>
                                                                 <tbody className="divide-y divide-gray-50 dark:divide-gray-800">
                                                                     {kpiData.groups.map((g: any) => (
                                                                         <tr key={g.id} className="hover:bg-gray-50/50 dark:hover:bg-gray-800/30">
-                                                                            <td className="p-3 text-[11px] font-bold text-gray-900 dark:text-white">{g.name}</td>
-                                                                            <td className="p-3 text-[11px] font-bold text-gray-500">{g.studentCount}</td>
-                                                                            <td className="p-3 text-[11px] font-bold text-gray-700 dark:text-gray-300 text-right">{g.total.toLocaleString()}</td>
-                                                                            <td className="p-3 text-[11px] font-bold text-[#1b6b6b] text-right">+{Math.round(g.total * kpiPercent / 100).toLocaleString()}</td>
+                                                                            <td className="p-3 text-[11px] font-bold text-matn">{g.name}</td>
+                                                                            <td className="p-3 text-[11px] font-bold text-matn-sokin">{g.studentCount}</td>
+                                                                            <td className="p-3 text-[11px] font-bold text-matn-2 text-right">{g.total.toLocaleString()}</td>
+                                                                            <td className="p-3 text-[11px] font-bold text-brand text-right">+{Math.round(g.total * kpiPercent / 100).toLocaleString()}</td>
                                                                         </tr>
                                                                     ))}
                                                                 </tbody>
                                                                 <tfoot>
-                                                                    <tr className="border-t border-gray-100 dark:border-gray-800 bg-[#1b6b6b]/5">
-                                                                        <td colSpan={2} className="p-3 text-[11px] font-extrabold text-[#1b6b6b]">{t('total_kpi')}</td>
-                                                                        <td className="p-3 text-[11px] font-bold text-gray-600 dark:text-gray-300 text-right">{kpiData.totalPayments?.toLocaleString()}</td>
-                                                                        <td className="p-3 text-[12px] font-bold text-[#1b6b6b] text-right">+{kpiAmount.toLocaleString()} UZS</td>
+                                                                    <tr className="border-t border-chiziq bg-brand/5">
+                                                                        <td colSpan={2} className="p-3 text-[11px] font-extrabold text-brand">{t('total_kpi')}</td>
+                                                                        <td className="p-3 text-[11px] font-bold text-matn-2 text-right">{kpiData.totalPayments?.toLocaleString()}</td>
+                                                                        <td className="p-3 text-[12px] font-bold text-brand text-right">+{kpiAmount.toLocaleString()} UZS</td>
                                                                     </tr>
                                                                 </tfoot>
                                                             </table>
                                                         </div>
                                                     ) : (
-                                                        <div className="p-4 bg-gray-50 dark:bg-gray-900/50 border border-dashed border-gray-200 dark:border-gray-800 rounded-2xl text-center">
-                                                            <p className="text-[11px] text-gray-400 font-bold">{t('no_group_payments_found')}</p>
+                                                        <div className="p-4 bg-ichki border border-dashed border-gray-200 dark:border-gray-800 rounded-2xl text-center">
+                                                            <p className="text-[11px] text-matn-xira font-bold">{t('no_group_payments_found')}</p>
                                                         </div>
                                                     )}
                                                 </div>
@@ -931,14 +931,14 @@ export default function StaffDetails() {
                                                                 <span className="text-[11px] font-bold text-emerald-600 dark:text-emerald-400">{b.label}</span>
                                                                 <div className="flex items-center gap-2">
                                                                     <span className="text-[11px] font-bold text-emerald-600 dark:text-emerald-400">+{b.amount.toLocaleString()}</span>
-                                                                    <button aria-label="Yopish" onClick={() => setBonuses(bs => bs.filter((_,j) => j!==i))} className="text-gray-400 hover:text-rose-500 cursor-pointer"><X size={18} /></button>
+                                                                    <button aria-label="Yopish" onClick={() => setBonuses(bs => bs.filter((_,j) => j!==i))} className="text-matn-xira hover:text-rose-500 cursor-pointer"><X size={18} /></button>
                                                                 </div>
                                                             </div>
                                                         ))}
                                                         <div className="flex gap-2">
                                                             <input type="text"   placeholder={t('reason_input_placeholder')} className={inp + " py-2 text-[11px]"} value={bonusInput.label}  onChange={e => setBonusInput(p=>({...p,label:e.target.value}))} />
                                                             <input type="number" placeholder={t('amount')} className={inp + " w-24 py-2 text-[11px]"} value={bonusInput.amount} onChange={e => setBonusInput(p=>({...p,amount:e.target.value}))} />
-                                                            <button onClick={() => { if (bonusInput.label&&bonusInput.amount) { setBonuses(b=>[...b,{label:bonusInput.label,amount:Number(bonusInput.amount)}]); setBonusInput({label:'',amount:''}); } }} className="w-9 h-9 shrink-0 bg-[#1b6b6b] hover:bg-[#155252] rounded-xl flex items-center justify-center text-white transition-all cursor-pointer"><Plus size={13} /></button>
+                                                            <button onClick={() => { if (bonusInput.label&&bonusInput.amount) { setBonuses(b=>[...b,{label:bonusInput.label,amount:Number(bonusInput.amount)}]); setBonusInput({label:'',amount:''}); } }} className="w-9 h-9 shrink-0 bg-brand hover:bg-brand-dark rounded-xl flex items-center justify-center text-white transition-all cursor-pointer"><Plus size={13} /></button>
                                                         </div>
                                                     </div>
 
@@ -950,7 +950,7 @@ export default function StaffDetails() {
                                                                 <span className="text-[11px] font-bold text-rose-600 dark:text-rose-400">{f.label}</span>
                                                                 <div className="flex items-center gap-2">
                                                                     <span className="text-[11px] font-bold text-rose-600 dark:text-rose-400">-{f.amount.toLocaleString()}</span>
-                                                                    <button aria-label="Yopish" onClick={() => setFines(fs => fs.filter((_,j) => j!==i))} className="text-gray-400 hover:text-rose-500 cursor-pointer"><X size={18} /></button>
+                                                                    <button aria-label="Yopish" onClick={() => setFines(fs => fs.filter((_,j) => j!==i))} className="text-matn-xira hover:text-rose-500 cursor-pointer"><X size={18} /></button>
                                                                 </div>
                                                             </div>
                                                         ))}
@@ -963,20 +963,20 @@ export default function StaffDetails() {
                                                 </div>
 
                                                 {/* Summary + pay button */}
-                                                <div className="bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-800/50 rounded-2xl p-4 flex flex-col justify-between">
+                                                <div className="bg-sirt border border-chiziq rounded-2xl p-4 flex flex-col justify-between">
                                                     <div>
-                                                        <h3 className="text-xs font-black text-[#1b6b6b] mb-5">
+                                                        <h3 className="text-xs font-black text-brand mb-5">
                                                             {getMonthName(payMonth)} {payYear} — {t('bill')}
                                                         </h3>
                                                         <div className="space-y-3">
                                                             <div className="flex justify-between">
-                                                                <span className="text-[11px] font-bold text-gray-400">{t('base_salary_short')}</span>
-                                                                <span className="text-xs font-extrabold text-gray-900 dark:text-white">{baseSalary.toLocaleString()} UZS</span>
+                                                                <span className="text-[11px] font-bold text-matn-xira">{t('base_salary_short')}</span>
+                                                                <span className="text-xs font-extrabold text-matn">{baseSalary.toLocaleString()} UZS</span>
                                                             </div>
                                                             {kpiAmount > 0 && (
                                                                 <div className="flex justify-between">
-                                                                    <span className="text-[11px] font-bold text-[#1b6b6b]">KPI ({kpiPercent}%)</span>
-                                                                    <span className="text-xs font-extrabold text-[#1b6b6b]">+{kpiAmount.toLocaleString()}</span>
+                                                                    <span className="text-[11px] font-bold text-brand">KPI ({kpiPercent}%)</span>
+                                                                    <span className="text-xs font-extrabold text-brand">+{kpiAmount.toLocaleString()}</span>
                                                                 </div>
                                                             )}
                                                             <div className="flex justify-between">
@@ -987,18 +987,18 @@ export default function StaffDetails() {
                                                                 <span className="text-[11px] font-bold text-rose-600">{t('fine')} ({fines.length})</span>
                                                                 <span className="text-xs font-extrabold text-rose-600">-{totalFine.toLocaleString()}</span>
                                                             </div>
-                                                            <div className="pt-4 border-t border-dashed border-gray-100 dark:border-gray-800 flex justify-between items-center">
-                                                                <span className="text-[11px] font-extrabold text-[#1b6b6b]">{t('to_be_paid')}</span>
-                                                                <span className="text-2xl font-black text-[#1b6b6b] tabular-nums">{totalSalary.toLocaleString()}</span>
+                                                            <div className="pt-4 border-t border-dashed border-chiziq flex justify-between items-center">
+                                                                <span className="text-[11px] font-extrabold text-brand">{t('to_be_paid')}</span>
+                                                                <span className="text-2xl font-black text-brand tabular-nums">{totalSalary.toLocaleString()}</span>
                                                             </div>
-                                                            <p className="text-[11px] text-right text-gray-400 font-bold">UZS</p>
+                                                            <p className="text-[11px] text-right text-matn-xira font-bold">UZS</p>
                                                         </div>
                                                     </div>
 
                                                     {!payConfirm ? (
                                                         <button
                                                             onClick={() => setPayConfirm(true)}
-                                                            className="mt-6 w-full py-3 bg-[#1b6b6b] hover:bg-[#155252] text-white rounded-2xl text-xs font-extrabold flex items-center justify-center gap-2 shadow-sm shadow-[#1b6b6b]/20 transition-all cursor-pointer">
+                                                            className="mt-6 w-full py-3 bg-brand hover:bg-brand-dark text-white rounded-2xl text-xs font-extrabold flex items-center justify-center gap-2 shadow-sm shadow-[#1b6b6b]/20 transition-all cursor-pointer">
                                                             <Banknote size={14} /> {t('pay_salary_btn')}
                                                         </button>
                                                     ) : (
@@ -1007,7 +1007,7 @@ export default function StaffDetails() {
                                                                 {t('confirm_pay_salary').replace('{name}', staffUser.name).replace('{amount}', totalSalary.toLocaleString())}
                                                             </p>
                                                             <div className="flex gap-2">
-                                                                <button onClick={() => setPayConfirm(false)} className="flex-1 py-2 bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-white text-[11px] font-extrabold rounded-xl cursor-pointer hover:bg-gray-200 transition-all">
+                                                                <button onClick={() => setPayConfirm(false)} className="flex-1 py-2 bg-chiziq text-gray-600 dark:text-white text-[11px] font-extrabold rounded-xl cursor-pointer hover:bg-gray-200 transition-all">
                                                                     {t('cancel')}
                                                                 </button>
                                                                 <button onClick={paySalary} disabled={paying}
@@ -1025,19 +1025,19 @@ export default function StaffDetails() {
                                     {/* Payment history */}
                                     {salaryPayments.length > 0 && (
                                         <div className="space-y-3">
-                                            <span className="text-[11px] font-extrabold text-gray-400 flex items-center gap-1.5 border-t border-dashed border-gray-100 dark:border-gray-800/50 pt-4">
+                                            <span className="text-[11px] font-extrabold text-matn-xira flex items-center gap-1.5 border-t border-dashed border-chiziq pt-4">
                                                 <Clock size={10} /> {t('payments_history')}
                                             </span>
-                                            <div className="bg-white dark:bg-gray-800 rounded-2xl overflow-hidden border border-gray-100 dark:border-gray-800/50">
+                                            <div className="bg-sirt rounded-2xl overflow-hidden border border-chiziq">
                                                 <table className="w-full text-left">
                                                     <thead>
-                                                        <tr className="bg-gray-50 dark:bg-gray-900 border-b border-gray-100 dark:border-gray-800">
-                                                            <th className="p-3 text-[11px] font-bold text-gray-400">{t('month')}</th>
-                                                            <th className="p-3 text-[11px] font-bold text-gray-400">{t('base_short')}</th>
-                                                            <th className="p-3 text-[11px] font-bold text-gray-400">+Bonus</th>
-                                                            <th className="p-3 text-[11px] font-bold text-gray-400">−Jarima</th>
-                                                            <th className="p-3 text-[11px] font-bold text-gray-400">{t('total_short')}</th>
-                                                            <th className="p-3 text-[11px] font-bold text-gray-400">{t('date_short')}</th>
+                                                        <tr className="bg-ichki border-b border-chiziq">
+                                                            <th className="p-3 text-[11px] font-bold text-matn-xira">{t('month')}</th>
+                                                            <th className="p-3 text-[11px] font-bold text-matn-xira">{t('base_short')}</th>
+                                                            <th className="p-3 text-[11px] font-bold text-matn-xira">+Bonus</th>
+                                                            <th className="p-3 text-[11px] font-bold text-matn-xira">−Jarima</th>
+                                                            <th className="p-3 text-[11px] font-bold text-matn-xira">{t('total_short')}</th>
+                                                            <th className="p-3 text-[11px] font-bold text-matn-xira">{t('date_short')}</th>
                                                             <th className="p-3" />
                                                         </tr>
                                                     </thead>
@@ -1046,14 +1046,14 @@ export default function StaffDetails() {
                                                             const [yr, mo] = p.month.split('-');
                                                             return (
                                                                 <tr key={p.id} className="hover:bg-gray-50/50 dark:hover:bg-gray-800/50">
-                                                                    <td className="p-3 text-[11px] font-bold text-gray-900 dark:text-white">
+                                                                    <td className="p-3 text-[11px] font-bold text-matn">
                                                                         {getMonthName(parseInt(mo)-1)} {yr}
                                                                     </td>
-                                                                    <td className="p-3 text-[11px] font-bold text-gray-600 dark:text-gray-300">{p.baseSalary.toLocaleString()}</td>
+                                                                    <td className="p-3 text-[11px] font-bold text-matn-2">{p.baseSalary.toLocaleString()}</td>
                                                                     <td className="p-3 text-[11px] font-bold text-emerald-600">{p.bonuses > 0 ? `+${p.bonuses.toLocaleString()}` : '—'}</td>
                                                                     <td className="p-3 text-[11px] font-bold text-rose-600">{p.fines > 0 ? `-${p.fines.toLocaleString()}` : '—'}</td>
-                                                                    <td className="p-3 text-[11px] font-bold text-[#1b6b6b]">{p.amount.toLocaleString()}</td>
-                                                                    <td className="p-3 text-[11px] font-bold text-gray-400">{new Date(p.paidAt).toLocaleDateString('uz-UZ')}</td>
+                                                                    <td className="p-3 text-[11px] font-bold text-brand">{p.amount.toLocaleString()}</td>
+                                                                    <td className="p-3 text-[11px] font-bold text-matn-xira">{new Date(p.paidAt).toLocaleDateString('uz-UZ')}</td>
                                                                     <td className="p-3">
                                                                         {isAdminOrManager && (
                                                                             <button onClick={() => deleteSalaryPayment(p.id)}
@@ -1080,12 +1080,12 @@ export default function StaffDetails() {
                                     {/* Work schedule */}
                                     <div className="space-y-4">
                                         <div className="flex items-center justify-between">
-                                            <span className="text-[11px] font-extrabold text-gray-400 flex items-center gap-1.5">
+                                            <span className="text-[11px] font-extrabold text-matn-xira flex items-center gap-1.5">
                                                 <CalendarDays size={11} /> {t('weekly_work_days')}
                                             </span>
                                             {workDaysChanged && (
                                                 <button onClick={saveWorkDays} disabled={savingWD}
-                                                    className="px-4 py-2 bg-[#1b6b6b] hover:bg-[#155252] text-white text-[11px] font-bold rounded-xl cursor-pointer transition-all disabled:opacity-60 shadow-sm shadow-[#1b6b6b]/20">
+                                                    className="px-4 py-2 bg-brand hover:bg-brand-dark text-white text-[11px] font-bold rounded-xl cursor-pointer transition-all disabled:opacity-60 shadow-sm shadow-[#1b6b6b]/20">
                                                     {savingWD ? t('saving') : t('save')}
                                                 </button>
                                             )}
@@ -1100,8 +1100,8 @@ export default function StaffDetails() {
                                                         )}
                                                         className={`flex flex-col items-center py-3 rounded-2xl border-2 transition-all cursor-pointer select-none ${
                                                             sel
-                                                                ? 'bg-[#1b6b6b] border-[#1b6b6b] text-white shadow-md shadow-[#1b6b6b]/25'
-                                                                : 'bg-white dark:bg-gray-800 border-gray-100 dark:border-gray-800 text-gray-400 hover:border-[#1b6b6b]/40 hover:text-gray-700'
+                                                                ? 'bg-brand border-brand text-white shadow-md shadow-[#1b6b6b]/25'
+                                                                : 'bg-sirt border-chiziq text-matn-xira hover:border-brand/40 hover:text-gray-700'
                                                         }`}>
                                                         <span className="text-[12px] font-bold">{getWeekDayShort(day)}</span>
                                                         <span className="text-[10px] font-bold mt-0.5 opacity-70">{getWeekDayFull(WEEK_DAYS_FULL[i]).slice(0,3)}</span>
@@ -1117,21 +1117,21 @@ export default function StaffDetails() {
                                     </div>
 
                                     {/* Divider */}
-                                    <div className="border-t border-dashed border-gray-100 dark:border-gray-800/50" />
+                                    <div className="border-t border-dashed border-chiziq" />
 
                                     {/* Attendance calendar */}
                                     <div className="space-y-4">
                                         {/* Month selector */}
                                         <div className="flex items-center justify-between">
-                                            <span className="text-[11px] font-extrabold text-gray-400">{t('attendance')}</span>
+                                            <span className="text-[11px] font-extrabold text-matn-xira">{t('attendance')}</span>
                                             <div className="flex items-center gap-2">
-                                                <button onClick={prevMonth} className="w-8 h-8 flex items-center justify-center rounded-xl bg-gray-50 dark:bg-gray-900 border border-gray-100 dark:border-gray-800 text-gray-500 hover:border-[#1b6b6b] hover:text-[#1b6b6b] transition-all cursor-pointer">
+                                                <button onClick={prevMonth} className="w-8 h-8 flex items-center justify-center rounded-xl bg-ichki border border-chiziq text-matn-sokin hover:border-brand hover:text-brand transition-all cursor-pointer">
                                                     <ChevronLeft size={14} />
                                                 </button>
-                                                <span className="text-xs font-black text-gray-900 dark:text-white min-w-[120px] text-center">
+                                                <span className="text-xs font-black text-matn min-w-[120px] text-center">
                                                     {getMonthName(selMonth)} {selYear}
                                                 </span>
-                                                <button onClick={nextMonth} className="w-8 h-8 flex items-center justify-center rounded-xl bg-gray-50 dark:bg-gray-900 border border-gray-100 dark:border-gray-800 text-gray-500 hover:border-[#1b6b6b] hover:text-[#1b6b6b] transition-all cursor-pointer">
+                                                <button onClick={nextMonth} className="w-8 h-8 flex items-center justify-center rounded-xl bg-ichki border border-chiziq text-matn-sokin hover:border-brand hover:text-brand transition-all cursor-pointer">
                                                     <ChevronRight size={14} />
                                                 </button>
                                             </div>
@@ -1145,7 +1145,7 @@ export default function StaffDetails() {
                                                     { label:t('absent'), count: absentDays,  cls:'border-rose-100 dark:border-rose-950/20 text-rose-600 dark:text-rose-400' },
                                                     { label:t('excused'), count: excusedDays, cls:'border-amber-100 dark:border-amber-950/20 text-amber-600 dark:text-amber-400' },
                                                 ].map(({ label, count, cls }) => (
-                                                    <div key={label} className={`bg-white dark:bg-gray-800 border rounded-2xl p-3 text-center ${cls}`}>
+                                                    <div key={label} className={`bg-sirt border rounded-2xl p-3 text-center ${cls}`}>
                                                         <span className="text-[11px] font-extrabold block mb-1 opacity-70">{label}</span>
                                                         <p className="text-2xl font-black tabular-nums">{count}</p>
                                                     </div>
@@ -1154,20 +1154,20 @@ export default function StaffDetails() {
                                         )}
 
                                         {workDays.length === 0 ? (
-                                            <div className="py-10 text-center bg-gray-50 dark:bg-gray-900/40 rounded-2xl border border-dashed border-gray-200 dark:border-gray-800">
+                                            <div className="py-10 text-center bg-ichki/40 rounded-2xl border border-dashed border-gray-200 dark:border-gray-800">
                                                 <CalendarDays size={28} className="mx-auto text-gray-300 mb-2" />
-                                                <p className="text-[11px] font-bold text-gray-400">
+                                                <p className="text-[11px] font-bold text-matn-xira">
                                                     {t('attendance_setup_warning')}
                                                 </p>
                                             </div>
                                         ) : attLoading ? (
-                                            <div className="py-8 text-center text-[11px] text-gray-400 font-bold">{t('loading')}</div>
+                                            <div className="py-8 text-center text-[11px] text-matn-xira font-bold">{t('loading')}</div>
                                         ) : (
                                             <>
                                                 {/* Day-of-week headers */}
                                                 <div className="grid grid-cols-7 gap-1">
                                                     {WEEK_DAYS.map(d => (
-                                                        <div key={d} className={`text-center text-[11px] font-bold py-1.5 rounded-lg ${workDays.includes(d) ? 'text-[#1b6b6b] bg-[#1b6b6b]/5' : 'text-gray-300'}`}>{d}</div>
+                                                        <div key={d} className={`text-center text-[11px] font-bold py-1.5 rounded-lg ${workDays.includes(d) ? 'text-brand bg-brand/5' : 'text-gray-300'}`}>{d}</div>
                                                     ))}
                                                 </div>
                                                 {/* Day cells */}
@@ -1191,7 +1191,7 @@ export default function StaffDetails() {
                                                         } else if (status === 'Sababli') {
                                                             cls += 'bg-amber-100 dark:bg-amber-950/50 border-amber-300 dark:border-amber-800 text-amber-700 dark:text-amber-400 cursor-pointer hover:opacity-80';
                                                         } else {
-                                                            cls += `bg-white dark:bg-gray-800 border-[#1b6b6b]/20 text-gray-700 dark:text-gray-200 cursor-pointer hover:border-[#1b6b6b] hover:bg-[#1b6b6b]/5 ${isToday ? 'ring-2 ring-[#1b6b6b] ring-offset-1' : ''}`;
+                                                            cls += `bg-sirt border-brand/20 text-gray-700 dark:text-gray-200 cursor-pointer hover:border-brand hover:bg-brand/5 ${isToday ? 'ring-2 ring-[#1b6b6b] ring-offset-1' : ''}`;
                                                         }
 
                                                         return (
@@ -1206,7 +1206,7 @@ export default function StaffDetails() {
                                                         );
                                                     })}
                                                 </div>
-                                                <p className="text-[11px] text-center text-gray-400 font-bold">
+                                                <p className="text-[11px] text-center text-matn-xira font-bold">
                                                     Ish kuniga bosing → davomat belgilang
                                                 </p>
                                             </>
@@ -1223,13 +1223,13 @@ export default function StaffDetails() {
             {attPicker && (
                 <div className="fixed inset-0 z-[200] flex items-start sm:items-center justify-center overflow-y-auto p-4">
                     <div className="absolute inset-0 bg-gray-900/60 backdrop-blur-sm" onClick={() => setAttPicker(null)} />
-                    <div className="relative bg-white dark:bg-gray-800 rounded-[2rem] border border-gray-100 dark:border-gray-800/50 shadow-2xl w-full max-w-xs p-4">
-                        <div className="flex items-center justify-between mb-5 pb-3 border-b border-gray-50 dark:border-gray-800/50">
+                    <div className="relative bg-sirt rounded-[2rem] border border-chiziq shadow-2xl w-full max-w-xs p-4">
+                        <div className="flex items-center justify-between mb-5 pb-3 border-b border-chiziq-mayin/50">
                             <div>
-                                <h3 className="text-sm font-black text-gray-900 dark:text-white tracking-tight">{attPicker}</h3>
-                                <p className="text-[11px] font-bold text-gray-400 mt-0.5">Davomat holati</p>
+                                <h3 className="text-sm font-black text-matn tracking-tight">{attPicker}</h3>
+                                <p className="text-[11px] font-bold text-matn-xira mt-0.5">Davomat holati</p>
                             </div>
-                            <button aria-label="Yopish" onClick={() => setAttPicker(null)} className="w-8 h-8 flex items-center justify-center text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-xl cursor-pointer">
+                            <button aria-label="Yopish" onClick={() => setAttPicker(null)} className="w-8 h-8 flex items-center justify-center text-matn-xira hover:bg-gray-100 dark:hover:bg-gray-700 rounded-xl cursor-pointer">
                                 <X size={18} />
                             </button>
                         </div>
@@ -1253,7 +1253,7 @@ export default function StaffDetails() {
                         </div>
                         {staffAtt.find(a => a.date === attPicker) && (
                             <button onClick={() => markAttendance(attPicker, 'delete')}
-                                className="mt-3 w-full py-2 text-[11px] font-bold text-gray-400 hover:text-rose-500 cursor-pointer transition-colors text-center">
+                                className="mt-3 w-full py-2 text-[11px] font-bold text-matn-xira hover:text-rose-500 cursor-pointer transition-colors text-center">
                                 O'chirish
                             </button>
                         )}
@@ -1265,21 +1265,21 @@ export default function StaffDetails() {
             {isEditOpen && (
                 <div className="fixed inset-0 z-[200] flex items-start sm:items-center justify-center overflow-y-auto p-4">
                     <div className="absolute inset-0 bg-gray-900/60 backdrop-blur-sm" onClick={() => setIsEditOpen(false)} />
-                    <div className="relative bg-white dark:bg-gray-800 rounded-[2rem] border border-gray-100 dark:border-gray-800/50 shadow-2xl w-full max-w-md p-8 max-h-[90vh] overflow-y-auto custom-scrollbar">
-                        <div className="flex items-center justify-between mb-6 pb-4 border-b border-gray-50 dark:border-gray-800/50">
+                    <div className="relative bg-sirt rounded-[2rem] border border-chiziq shadow-2xl w-full max-w-md p-8 max-h-[90vh] overflow-y-auto custom-scrollbar">
+                        <div className="flex items-center justify-between mb-6 pb-4 border-b border-chiziq-mayin/50">
                             <div>
-                                <h3 className="text-lg font-black text-gray-900 dark:text-white tracking-tight">Tahrirlash</h3>
-                                <p className="text-[11px] font-bold text-[#1b6b6b] mt-0.5">Ma'lumotlarni yangilash</p>
+                                <h3 className="text-lg font-black text-matn tracking-tight">Tahrirlash</h3>
+                                <p className="text-[11px] font-bold text-brand mt-0.5">Ma'lumotlarni yangilash</p>
                             </div>
-                            <button aria-label="Yopish" onClick={() => setIsEditOpen(false)} className="w-9 h-9 flex items-center justify-center text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-xl cursor-pointer"><X size={18} /></button>
+                            <button aria-label="Yopish" onClick={() => setIsEditOpen(false)} className="w-9 h-9 flex items-center justify-center text-matn-xira hover:bg-gray-100 dark:hover:bg-gray-700 rounded-xl cursor-pointer"><X size={18} /></button>
                         </div>
                         <form onSubmit={handleSaveEdit} className="space-y-4">
                             <div className="flex items-center gap-4">
-                                <div onClick={() => fileRef.current?.click()} className="w-16 h-16 rounded-2xl overflow-hidden border-2 border-dashed border-gray-200 dark:border-gray-600 cursor-pointer hover:border-[#1b6b6b] transition-colors flex items-center justify-center bg-gray-50 dark:bg-gray-900 shrink-0">
+                                <div onClick={() => fileRef.current?.click()} className="w-16 h-16 rounded-2xl overflow-hidden border-2 border-dashed border-gray-200 dark:border-gray-600 cursor-pointer hover:border-brand transition-colors flex items-center justify-center bg-ichki shrink-0">
                                     {editData.photo ? <img src={editData.photo} alt="preview" className="w-full h-full object-cover" /> : <Camera size={20} className="text-gray-300" />}
                                 </div>
                                 <div>
-                                    <button type="button" onClick={() => fileRef.current?.click()} className="text-[11px] font-extrabold text-[#1b6b6b] cursor-pointer hover:underline">Rasm yuklash</button>
+                                    <button type="button" onClick={() => fileRef.current?.click()} className="text-[11px] font-extrabold text-brand cursor-pointer hover:underline">Rasm yuklash</button>
                                     {editData.photo && <button type="button" onClick={() => setEditData((p:any) => ({...p,photo:''}))} className="ml-3 text-[11px] font-extrabold text-rose-500 cursor-pointer hover:underline">O'chirish</button>}
                                 </div>
                                 <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={handlePhoto} />
@@ -1291,9 +1291,9 @@ export default function StaffDetails() {
                             </div>
                             <div><label className={lbl}>Vazifa / Mutaxassislik</label><input type="text" className={inp} value={editData.position||''} onChange={e => setEditData((p:any)=>({...p,position:e.target.value}))} /></div>
                             <div><label className={lbl}>Yangi Parol (ixtiyoriy)</label><input type="password" placeholder="O'zgartirish uchun to'ldiring" className={inp} value={editData.password||''} onChange={e => setEditData((p:any)=>({...p,password:e.target.value}))} /></div>
-                            <div className="flex gap-3 pt-4 border-t border-dashed border-gray-100 dark:border-gray-800/50">
-                                <button type="button" onClick={() => setIsEditOpen(false)} className="flex-1 py-3 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-white text-xs font-extrabold rounded-2xl cursor-pointer hover:bg-gray-200">Bekor</button>
-                                <button type="submit" className="flex-1 py-3 bg-[#1b6b6b] hover:bg-[#155252] text-white text-xs font-extrabold rounded-2xl shadow-sm shadow-[#1b6b6b]/20 cursor-pointer">Saqlash</button>
+                            <div className="flex gap-3 pt-4 border-t border-dashed border-chiziq">
+                                <button type="button" onClick={() => setIsEditOpen(false)} className="flex-1 py-3 bg-chiziq text-gray-700 dark:text-white text-xs font-extrabold rounded-2xl cursor-pointer hover:bg-gray-200">Bekor</button>
+                                <button type="submit" className="flex-1 py-3 bg-brand hover:bg-brand-dark text-white text-xs font-extrabold rounded-2xl shadow-sm shadow-[#1b6b6b]/20 cursor-pointer">Saqlash</button>
                             </div>
                         </form>
                     </div>
@@ -1314,19 +1314,19 @@ export default function StaffDetails() {
 function StatCard({ label, value, sub, color }: { label: string; value: string | number; sub: string; color: string }) {
     const cls = { emerald:'border-emerald-100 dark:border-emerald-950/30 text-emerald-600 dark:text-emerald-400', rose:'border-rose-100 dark:border-rose-950/30 text-rose-600 dark:text-rose-400', amber:'border-amber-100 dark:border-amber-950/30 text-amber-600 dark:text-amber-400' }[color] || 'border-gray-100 text-gray-600';
     return (
-        <div className="bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700/50 rounded-2xl px-5 py-4">
-            <span className="text-[12px] text-gray-500 dark:text-gray-400 block">{label}</span>
-            <p className={`num text-[26px] font-bold leading-none mt-1.5 ${cls.split(' ').filter(c => c.startsWith('text-')).join(' ') || 'text-gray-900 dark:text-white'}`}>{value}</p>
-            <p className="text-[11px] text-gray-400 mt-2">{sub}</p>
+        <div className="bg-sirt border border-chiziq rounded-2xl px-5 py-4">
+            <span className="text-[12px] text-matn-sokin block">{label}</span>
+            <p className={`num text-[26px] font-bold leading-none mt-1.5 ${cls.split(' ').filter(c => c.startsWith('text-')).join(' ') || 'text-matn'}`}>{value}</p>
+            <p className="text-[11px] text-matn-xira mt-2">{sub}</p>
         </div>
     );
 }
 
 function InfoBox({ label, value }: { label: string; value: string }) {
     return (
-        <div className="bg-gray-55 dark:bg-gray-900/40 rounded-xl px-4 py-3 border border-gray-100 dark:border-gray-800/50">
-            <span className="text-[11px] text-gray-400 block mb-0.5">{label}</span>
-            <span className="text-[13px] font-medium text-gray-900 dark:text-white">{value}</span>
+        <div className="bg-ichki/40 rounded-xl px-4 py-3 border border-chiziq">
+            <span className="text-[11px] text-matn-xira block mb-0.5">{label}</span>
+            <span className="text-[13px] font-medium text-matn">{value}</span>
         </div>
     );
 }
@@ -1334,11 +1334,11 @@ function InfoBox({ label, value }: { label: string; value: string }) {
 function DetailRow({ icon, label, value }: { icon: React.ReactNode; label: string; value: string }) {
     return (
         <div className="flex items-center justify-between gap-3 py-1.5">
-            <span className="flex items-center gap-2 text-[11px] text-gray-400 shrink-0">
-                <span className="text-gray-300 dark:text-gray-600 shrink-0">{icon}</span>
+            <span className="flex items-center gap-2 text-[11px] text-matn-xira shrink-0">
+                <span className="text-matn-xira shrink-0">{icon}</span>
                 {label}
             </span>
-            <span className="text-[12px] font-medium text-gray-900 dark:text-white text-right truncate min-w-0" title={value}>{value || '—'}</span>
+            <span className="text-[12px] font-medium text-matn text-right truncate min-w-0" title={value}>{value || '—'}</span>
         </div>
     );
 }

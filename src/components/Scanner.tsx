@@ -186,7 +186,7 @@ export default function Scanner({ onClose }: { onClose?: () => void }) {
                         </div>
                         <div>
                             <h3 className="text-white font-black text-xl mb-2">Javob Varaqasini Skaner Qilish</h3>
-                            <p className="text-gray-400 text-xs font-bold tracking-tight max-w-xs mx-auto">
+                            <p className="text-matn-xira text-xs font-bold tracking-tight max-w-xs mx-auto">
                                 Varaqadagi QR kodni kameraga ko'rsating. Sistema o'quvchi va variantni avtomatik aniqlaydi.
                             </p>
                         </div>
@@ -236,13 +236,13 @@ export default function Scanner({ onClose }: { onClose?: () => void }) {
 
                         {/* Bubble grid */}
                         <div className="bg-gray-900 rounded-2xl border border-gray-800 overflow-hidden">
-                            <div className="grid grid-cols-5 bg-gray-800/50 px-4 py-2 text-[11px] font-bold text-gray-400">
+                            <div className="grid grid-cols-5 bg-gray-800/50 px-4 py-2 text-[11px] font-bold text-matn-xira">
                                 <span>#</span><span className="text-center">A</span><span className="text-center">B</span><span className="text-center">C</span><span className="text-center">D</span>
                             </div>
                             <div className="max-h-[50vh] overflow-y-auto divide-y divide-gray-800/50">
                                 {scanCtx.variantQuestions.map(({ order }) => (
                                     <div key={order} className="grid grid-cols-5 items-center px-4 py-2.5">
-                                        <span className="text-gray-500 font-black text-xs">{order}</span>
+                                        <span className="text-matn-sokin font-black text-xs">{order}</span>
                                         {(['A', 'B', 'C', 'D'] as const).map(opt => (
                                             <button
                                                 key={opt}
@@ -250,7 +250,7 @@ export default function Scanner({ onClose }: { onClose?: () => void }) {
                                                 className={`mx-auto w-9 h-9 rounded-full border-2 flex items-center justify-center text-xs font-black transition-all ${
                                                     answers[order] === opt
                                                         ? 'bg-teal-500 border-teal-400 text-white scale-110'
-                                                        : 'bg-transparent border-gray-700 text-gray-500 hover:border-gray-500'
+                                                        : 'bg-transparent border-gray-700 text-matn-sokin hover:border-gray-500'
                                                 }`}
                                             >
                                                 {opt}
@@ -262,7 +262,7 @@ export default function Scanner({ onClose }: { onClose?: () => void }) {
                         </div>
 
                         {/* Progress */}
-                        <p className="text-center text-[11px] font-bold text-gray-500">
+                        <p className="text-center text-[11px] font-bold text-matn-sokin">
                             {Object.values(answers).filter(Boolean).length} / {scanCtx.variantQuestions.length} javob berildi
                         </p>
 
@@ -299,11 +299,11 @@ export default function Scanner({ onClose }: { onClose?: () => void }) {
 
                         <div className="bg-gray-900 border border-gray-800 rounded-2xl p-8 w-full space-y-4">
                             <div className="flex justify-between items-center">
-                                <span className="text-gray-400 text-[11px] font-bold">Ball</span>
+                                <span className="text-matn-xira text-[11px] font-bold">Ball</span>
                                 <span className="text-white text-2xl font-black">{savedResult.score}</span>
                             </div>
                             <div className="flex justify-between items-center">
-                                <span className="text-gray-400 text-[11px] font-bold">Foiz</span>
+                                <span className="text-matn-xira text-[11px] font-bold">Foiz</span>
                                 <span className={`text-xl font-black ${savedResult.percentage >= 50 ? 'text-teal-400' : 'text-rose-400'}`}>
                                     {savedResult.percentage}%
                                 </span>

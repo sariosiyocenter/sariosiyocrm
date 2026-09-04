@@ -87,13 +87,13 @@ export default function PaymentsReport({ startDate, endDate }: Props) {
                 {/* Daily Bar Chart */}
                 <ReportCard className="lg:col-span-2">
                     <SectionHeader title="Kunlik to'lovlar" sub={`${startDate} — ${endDate}`} />
-                    {barData.length > 0 ? <BarChart data={barData} unit=" so'm" height={200} /> : <p className="text-xs text-gray-400 text-center py-8">Ma'lumot yo'q</p>}
+                    {barData.length > 0 ? <BarChart data={barData} unit=" so'm" height={200} /> : <p className="text-xs text-matn-xira text-center py-8">Ma'lumot yo'q</p>}
                 </ReportCard>
 
                 {/* Donut by type */}
                 <ReportCard>
                     <SectionHeader title="To'lov turlari" />
-                    {donutSlices.length > 0 ? <DonutChart slices={donutSlices} /> : <p className="text-xs text-gray-400 text-center py-8">Ma'lumot yo'q</p>}
+                    {donutSlices.length > 0 ? <DonutChart slices={donutSlices} /> : <p className="text-xs text-matn-xira text-center py-8">Ma'lumot yo'q</p>}
                 </ReportCard>
             </div>
 
@@ -101,7 +101,7 @@ export default function PaymentsReport({ startDate, endDate }: Props) {
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
                 <ReportCard>
                     <SectionHeader title="6 Oylik tushum trendi" />
-                    {monthlyTrend.length > 1 ? <LineChart data={monthlyTrend} color="#0ea5e9" unit=" so'm" /> : <p className="text-xs text-gray-400 text-center py-8">Ma'lumot yo'q</p>}
+                    {monthlyTrend.length > 1 ? <LineChart data={monthlyTrend} color="#0ea5e9" unit=" so'm" /> : <p className="text-xs text-matn-xira text-center py-8">Ma'lumot yo'q</p>}
                 </ReportCard>
 
                 <ReportCard>
@@ -129,7 +129,7 @@ export default function PaymentsReport({ startDate, endDate }: Props) {
                     columns={[
                         { key: 'student', label: "O'quvchi" },
                         { key: 'amount', label: 'Summa', render: r => <span className="text-emerald-600 dark:text-emerald-400 font-extrabold">+{r.amount.toLocaleString()} UZS</span> },
-                        { key: 'type', label: 'Turi', render: r => <span className="px-2 py-0.5 bg-gray-100 dark:bg-gray-700 rounded-lg text-[11px] font-bold">{r.type}</span> },
+                        { key: 'type', label: 'Turi', render: r => <span className="px-2 py-0.5 bg-chiziq rounded-lg text-[11px] font-bold">{r.type}</span> },
                         { key: 'date', label: 'Sana' },
                         { key: 'desc', label: 'Izoh' }
                     ]}

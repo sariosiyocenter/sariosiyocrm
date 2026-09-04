@@ -63,7 +63,7 @@ export default function OrgDetail() {
   if (fetching) {
     return (
       <div className="py-24 flex items-center justify-center">
-        <div className="w-8 h-8 border-[3px] border-[#1b6b6b] border-t-transparent rounded-full animate-spin" />
+        <div className="w-8 h-8 border-[3px] border-brand border-t-transparent rounded-full animate-spin" />
       </div>
     );
   }
@@ -76,30 +76,30 @@ export default function OrgDetail() {
       <div>
         <button
           onClick={() => navigate('/')}
-          className="inline-flex items-center gap-2 text-xs font-extrabold text-gray-400 hover:text-[#1b6b6b] transition-colors mb-5"
+          className="inline-flex items-center gap-2 text-xs font-extrabold text-matn-xira hover:text-brand transition-colors mb-5"
         >
           <ArrowLeft size={14} />
           Tashkilotlarga qaytish
         </button>
 
-        <div className="bg-white dark:bg-gray-800 rounded-[2rem] border border-gray-100 dark:border-gray-800/50 shadow-sm p-4 md:p-8">
+        <div className="bg-sirt rounded-[2rem] border border-chiziq shadow-sm p-4 md:p-8">
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
             {/* Org Info */}
             <div className="flex items-center gap-5">
-              <div className="w-16 h-16 rounded-2xl bg-[#1b6b6b] flex items-center justify-center shrink-0 shadow-sm shadow-[#1b6b6b]/20">
+              <div className="w-16 h-16 rounded-2xl bg-brand flex items-center justify-center shrink-0 shadow-sm shadow-[#1b6b6b]/20">
                 <Building2 size={28} className="text-white" />
               </div>
               <div>
-                <div className="text-[11px] font-extrabold text-[#1b6b6b] mb-1">Tashkilot #{org.id}</div>
-                <h1 className="text-2xl font-black text-gray-900 dark:text-white tracking-tight">{org.name}</h1>
+                <div className="text-[11px] font-extrabold text-brand mb-1">Tashkilot #{org.id}</div>
+                <h1 className="text-2xl font-black text-matn tracking-tight">{org.name}</h1>
                 <div className="flex flex-wrap gap-3 mt-1.5">
                   {org.address && (
-                    <div className="flex items-center gap-1 text-xs text-gray-400 font-bold">
-                      <MapPin size={11} className="text-[#1b6b6b]" /> {org.address}
+                    <div className="flex items-center gap-1 text-xs text-matn-xira font-bold">
+                      <MapPin size={11} className="text-brand" /> {org.address}
                     </div>
                   )}
                   {org.phone && (
-                    <div className="flex items-center gap-1 text-xs text-gray-400 font-bold">
+                    <div className="flex items-center gap-1 text-xs text-matn-xira font-bold">
                       <Phone size={11} /> {org.phone}
                     </div>
                   )}
@@ -127,25 +127,25 @@ export default function OrgDetail() {
       </div>
 
       {/* Branches Section */}
-      <div className="bg-white dark:bg-gray-800 rounded-[2rem] border border-gray-100 dark:border-gray-800/50 shadow-sm overflow-hidden">
-        <div className="px-8 py-5 border-b border-gray-50 dark:border-gray-800/50 flex items-center gap-3">
-          <GitBranch size={15} className="text-[#1b6b6b]" />
-          <span className="text-xs font-extrabold text-gray-900 dark:text-white">
+      <div className="bg-sirt rounded-[2rem] border border-chiziq shadow-sm overflow-hidden">
+        <div className="px-8 py-5 border-b border-chiziq-mayin/50 flex items-center gap-3">
+          <GitBranch size={15} className="text-brand" />
+          <span className="text-xs font-extrabold text-matn">
             Filiallar ({org.schools.length})
           </span>
-          <span className="text-[11px] text-gray-400 font-bold">— tashkilot admini boshqaradi</span>
+          <span className="text-[11px] text-matn-xira font-bold">— tashkilot admini boshqaradi</span>
         </div>
 
         <div className="overflow-x-auto">
           <table className="w-full text-left border-collapse">
             <thead>
               <tr className="bg-gray-50/50 dark:bg-gray-900/30">
-                <th className="pl-8 pr-4 py-4 text-[11px] font-extrabold text-gray-400">ID</th>
-                <th className="px-4 py-4 text-[11px] font-extrabold text-gray-400">Filial Nomi / Manzil</th>
-                <th className="px-4 py-4 text-[11px] font-extrabold text-gray-400 text-center">O'quvchilar</th>
-                <th className="px-4 py-4 text-[11px] font-extrabold text-gray-400 text-center">Ustozlar</th>
-                <th className="px-4 py-4 text-[11px] font-extrabold text-gray-400 text-center">Xodimlar</th>
-                <th className="px-4 pr-8 py-4 text-[11px] font-extrabold text-gray-400 text-center">Kassa</th>
+                <th className="pl-8 pr-4 py-4 text-[11px] font-extrabold text-matn-xira">ID</th>
+                <th className="px-4 py-4 text-[11px] font-extrabold text-matn-xira">Filial Nomi / Manzil</th>
+                <th className="px-4 py-4 text-[11px] font-extrabold text-matn-xira text-center">O'quvchilar</th>
+                <th className="px-4 py-4 text-[11px] font-extrabold text-matn-xira text-center">Ustozlar</th>
+                <th className="px-4 py-4 text-[11px] font-extrabold text-matn-xira text-center">Xodimlar</th>
+                <th className="px-4 pr-8 py-4 text-[11px] font-extrabold text-matn-xira text-center">Kassa</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-50 dark:divide-gray-700/50">
@@ -154,14 +154,14 @@ export default function OrgDetail() {
                   <td className="pl-8 pr-4 py-5">
                     <div className="flex items-center gap-2">
                       <div className="w-4 h-4 border-l-2 border-b-2 border-gray-200 dark:border-gray-600 rounded-bl-sm shrink-0" />
-                      <span className="text-xs font-extrabold text-gray-400">#{branch.id}</span>
+                      <span className="text-xs font-extrabold text-matn-xira">#{branch.id}</span>
                     </div>
                   </td>
                   <td className="px-4 py-5">
-                    <div className="font-extrabold text-gray-900 dark:text-white tracking-tight text-sm">{branch.name}</div>
+                    <div className="font-extrabold text-matn tracking-tight text-sm">{branch.name}</div>
                     {branch.address && (
-                      <div className="flex items-center gap-1 mt-1 text-xs text-gray-400 font-bold">
-                        <MapPin size={11} className="text-[#1b6b6b]" />
+                      <div className="flex items-center gap-1 mt-1 text-xs text-matn-xira font-bold">
+                        <MapPin size={11} className="text-brand" />
                         {branch.address}
                       </div>
                     )}
@@ -182,7 +182,7 @@ export default function OrgDetail() {
                     </span>
                   </td>
                   <td className="px-4 py-5 text-center">
-                    <div className="font-extrabold text-gray-900 dark:text-white text-sm">{(branch.revenue || 0).toLocaleString()} so'm</div>
+                    <div className="font-extrabold text-matn text-sm">{(branch.revenue || 0).toLocaleString()} so'm</div>
                   </td>
                 </tr>
               ))}
@@ -190,8 +190,8 @@ export default function OrgDetail() {
                 <tr>
                   <td colSpan={6} className="px-8 py-14 text-center">
                     <GitBranch size={32} className="mx-auto text-gray-200 dark:text-gray-600 mb-3" />
-                    <p className="text-gray-400 font-bold text-sm">Hozircha filial qo'shilmagan</p>
-                    <p className="text-gray-300 dark:text-gray-600 text-xs mt-1">Filiallarni tashkilot admini o'z panelidan qo'sha oladi</p>
+                    <p className="text-matn-xira font-bold text-sm">Hozircha filial qo'shilmagan</p>
+                    <p className="text-matn-xira text-xs mt-1">Filiallarni tashkilot admini o'z panelidan qo'sha oladi</p>
                   </td>
                 </tr>
               )}

@@ -12,8 +12,8 @@ import { useLang } from '../context/LanguageContext';
 import { Payment, Expense } from '../types';
 import { StatCard, BarChart, DonutChart, LineChart } from './reports/shared';
 
-const inp = "w-full px-4 py-3 bg-slate-50 dark:bg-[#1a2232] border border-slate-200 dark:border-gray-800 rounded-xl text-sm font-semibold text-slate-900 dark:text-white focus:border-brand focus:ring-2 focus:ring-brand/20 outline-none transition-all";
-const lbl = "block text-[11px] font-extrabold   text-gray-400 mb-2";
+const inp = "w-full px-4 py-3 bg-slate-50 dark:bg-[#1a2232] border border-chiziq rounded-xl text-sm font-semibold text-slate-900 dark:text-white focus:border-brand focus:ring-2 focus:ring-brand/20 outline-none transition-all";
+const lbl = "block text-[11px] font-extrabold   text-matn-xira mb-2";
 
 const MONTHS = ['Yan','Fev','Mar','Apr','May','Iyun','Iyul','Avg','Sen','Okt','Noy','Dek'];
 const PRESET_CATS = ['Ish haqi', 'Ijara', 'Kommunal', 'Marketing', 'Boshqa'];
@@ -464,8 +464,8 @@ export default function Finance() {
                 <div className="flex flex-col md:flex-row md:items-start justify-between gap-4">
                     <div className="flex items-center gap-4">
                         <div>
-                            <h1 className="text-[26px] font-bold text-gray-900 dark:text-white tracking-tight leading-tight">{t('finance_title')}</h1>
-                            <p className="text-[13px] text-gray-500 dark:text-gray-400 mt-1">
+                            <h1 className="text-[26px] font-bold text-matn tracking-tight leading-tight">{t('finance_title')}</h1>
+                            <p className="text-[13px] text-matn-sokin mt-1">
                                 {t('stat_revenue')} & {t('stat_expenses')}
                             </p>
                         </div>
@@ -473,7 +473,7 @@ export default function Finance() {
                     <div className="flex items-center gap-3">
                         <button
                             onClick={() => setIsPaymentModalOpen(true)}
-                            className="flex items-center gap-2 px-4 py-2.5 bg-[#1b6b6b] hover:bg-[#155252] text-white rounded-xl text-xs font-extrabold shadow-sm shadow-[#1b6b6b]/20 transition-all cursor-pointer"
+                            className="flex items-center gap-2 px-4 py-2.5 bg-brand hover:bg-brand-dark text-white rounded-xl text-xs font-extrabold shadow-sm shadow-[#1b6b6b]/20 transition-all cursor-pointer"
                         >
                             <Plus size={14} /> {t('add_payment')}
                         </button>
@@ -488,38 +488,38 @@ export default function Finance() {
             </div>
 
             {/* Main Card with Tabs */}
-            <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-800/50 shadow-sm">
+            <div className="bg-sirt rounded-2xl border border-chiziq shadow-sm">
                 {/* Tab Bar */}
-                <div className="px-6 pt-5 pb-4 border-b border-gray-50 dark:border-gray-800/50 flex flex-col xl:flex-row xl:items-center justify-between gap-4">
+                <div className="px-6 pt-5 pb-4 border-b border-chiziq-mayin/50 flex flex-col xl:flex-row xl:items-center justify-between gap-4">
                     <div className="flex items-center gap-1 bg-gray-100/80 dark:bg-gray-950/40 p-1 rounded-xl border border-gray-200/40 dark:border-gray-800/40 w-full xl:w-auto max-w-full overflow-x-auto no-scrollbar flex-nowrap">
                         <button onClick={() => setActiveTab('reports')} className={`flex items-center gap-1.5 px-3.5 py-2 rounded-lg text-[11px] font-black transition-all duration-200 cursor-pointer whitespace-nowrap transform active:scale-95 ${
                             activeTab === 'reports'
-                                ? 'bg-white dark:bg-gray-800 text-[#1b6b6b] dark:text-emerald-400 shadow-sm border border-gray-200/50 dark:border-gray-800/50 scale-[1.01]'
-                                : 'text-gray-400 dark:text-gray-500 hover:text-gray-700 dark:hover:text-gray-300'
+                                ? 'bg-sirt text-brand dark:text-emerald-400 shadow-sm border border-gray-200/50 dark:border-gray-800/50 scale-[1.01]'
+                                : 'text-matn-xira hover:text-gray-700 dark:hover:text-gray-300'
                         }`}>
                             <BarChart2 size={12} className="shrink-0" />
                             <span>Hisobotlar</span>
                         </button>
                         <button onClick={() => setActiveTab('billing')} className={`flex items-center gap-1.5 px-3.5 py-2 rounded-lg text-[11px] font-black transition-all duration-200 cursor-pointer whitespace-nowrap transform active:scale-95 ${
                             activeTab === 'billing'
-                                ? 'bg-white dark:bg-gray-800 text-violet-600 dark:text-violet-400 shadow-sm border border-gray-200/50 dark:border-gray-800/50 scale-[1.01]'
-                                : 'text-gray-400 dark:text-gray-500 hover:text-gray-700 dark:hover:text-gray-300'
+                                ? 'bg-sirt text-violet-600 dark:text-violet-400 shadow-sm border border-gray-200/50 dark:border-gray-800/50 scale-[1.01]'
+                                : 'text-matn-xira hover:text-gray-700 dark:hover:text-gray-300'
                         }`}>
                             <Calendar size={12} className="shrink-0" />
                             <span>Oylik nazorat</span>
                         </button>
                         <button onClick={() => { setActiveTab('payments'); setListSearch(''); }} className={`flex items-center gap-1.5 px-3.5 py-2 rounded-lg text-[11px] font-black transition-all duration-200 cursor-pointer whitespace-nowrap transform active:scale-95 ${
                             activeTab === 'payments'
-                                ? 'bg-white dark:bg-gray-800 text-[#1b6b6b] dark:text-emerald-400 shadow-sm border border-gray-200/50 dark:border-gray-800/50 scale-[1.01]'
-                                : 'text-gray-400 dark:text-gray-500 hover:text-gray-700 dark:hover:text-gray-300'
+                                ? 'bg-sirt text-brand dark:text-emerald-400 shadow-sm border border-gray-200/50 dark:border-gray-800/50 scale-[1.01]'
+                                : 'text-matn-xira hover:text-gray-700 dark:hover:text-gray-300'
                         }`}>
                             <CreditCard size={12} className="shrink-0" />
                             <span>{t('payments_tab')}</span>
                         </button>
                         <button onClick={() => { setActiveTab('expenses'); setListSearch(''); }} className={`flex items-center gap-1.5 px-3.5 py-2 rounded-lg text-[11px] font-black transition-all duration-200 cursor-pointer whitespace-nowrap transform active:scale-95 ${
                             activeTab === 'expenses'
-                                ? 'bg-white dark:bg-gray-800 text-[#1b6b6b] dark:text-emerald-400 shadow-sm border border-gray-200/50 dark:border-gray-800/50 scale-[1.01]'
-                                : 'text-gray-400 dark:text-gray-500 hover:text-gray-700 dark:hover:text-gray-300'
+                                ? 'bg-sirt text-brand dark:text-emerald-400 shadow-sm border border-gray-200/50 dark:border-gray-800/50 scale-[1.01]'
+                                : 'text-matn-xira hover:text-gray-700 dark:hover:text-gray-300'
                         }`}>
                             <TrendingDown size={12} className="shrink-0" />
                             <span>{t('expenses_tab')}</span>
@@ -529,7 +529,7 @@ export default function Finance() {
                     {activeTab !== 'billing' && (
                         <div className="flex flex-wrap items-center gap-3">
                             {/* Presets */}
-                            <div className="flex items-center gap-1 bg-gray-55 dark:bg-gray-900 p-1 rounded-xl border border-gray-100 dark:border-gray-800/50">
+                            <div className="flex items-center gap-1 bg-ichki p-1 rounded-xl border border-chiziq">
                                 {['this_month', 'last_30', 'this_year', 'all'].map((type) => {
                                     const label = type === 'this_month' ? t('preset_this_month') : type === 'last_30' ? t('preset_30_days') : type === 'this_year' ? t('preset_this_year') : t('preset_all');
                                     return (
@@ -539,8 +539,8 @@ export default function Finance() {
                                             onClick={() => handlePreset(type as any)}
                                             className={`px-3 py-1.5 rounded-lg text-[11px] font-extrabold transition-all cursor-pointer ${
                                                 selectedPreset === type
-                                                    ? 'bg-[#1b6b6b] text-white shadow'
-                                                    : 'text-gray-400 hover:text-gray-600'
+                                                    ? 'bg-brand text-brand-ust shadow'
+                                                    : 'text-matn-xira hover:text-gray-600'
                                             }`}
                                         >
                                             {label}
@@ -555,27 +555,27 @@ export default function Finance() {
                                     type="date"
                                     value={startDate}
                                     onChange={(e) => { setStartDate(e.target.value); setSelectedPreset('custom'); }}
-                                    className="bg-gray-55 dark:bg-gray-900 px-3 py-1.5 rounded-xl border border-gray-100 dark:border-gray-800 text-xs font-bold text-gray-800 dark:text-gray-200 outline-none focus:border-[#1b6b6b] w-32 cursor-pointer"
+                                    className="bg-ichki px-3 py-1.5 rounded-xl border border-chiziq text-xs font-bold text-matn-2 outline-none focus:border-brand w-32 cursor-pointer"
                                 />
-                                <span className="text-gray-400 dark:text-gray-500 font-extrabold text-[11px]">{t('date_to')}</span>
+                                <span className="text-matn-xira font-extrabold text-[11px]">{t('date_to')}</span>
                                 <input
                                     type="date"
                                     value={endDate}
                                     onChange={(e) => { setEndDate(e.target.value); setSelectedPreset('custom'); }}
-                                    className="bg-gray-55 dark:bg-gray-900 px-3 py-1.5 rounded-xl border border-gray-100 dark:border-gray-800 text-xs font-bold text-gray-800 dark:text-gray-200 outline-none focus:border-[#1b6b6b] w-32 cursor-pointer"
+                                    className="bg-ichki px-3 py-1.5 rounded-xl border border-chiziq text-xs font-bold text-matn-2 outline-none focus:border-brand w-32 cursor-pointer"
                                 />
                             </div>
 
                             {/* Search box if activeTab is payments or expenses */}
                             {(activeTab === 'payments' || activeTab === 'expenses') && (
                                 <div className="relative">
-                                    <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                                    <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-matn-xira" />
                                     <input
                                         type="text"
                                         placeholder={activeTab === 'payments' ? "O'quvchi ismi..." : "Kategoriya..."}
                                         value={listSearch}
                                         onChange={e => setListSearch(e.target.value)}
-                                        className="pl-8 pr-4 py-2 bg-gray-55 dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-xl text-[11px] font-bold text-gray-900 dark:text-white outline-none focus:border-[#1b6b6b] w-40 transition-all"
+                                        className="pl-8 pr-4 py-2 bg-ichki border border-chiziq rounded-xl text-[11px] font-bold text-matn outline-none focus:border-brand w-40 transition-all"
                                     />
                                     {listSearch && (
                                         <button aria-label="Yopish" onClick={() => setListSearch('')} className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-300 hover:text-gray-500 cursor-pointer">
@@ -593,7 +593,7 @@ export default function Finance() {
                     <div className="p-4 space-y-8">
                         {/* Bu oy asosiy 3 ta metrika */}
                         <div>
-                            <p className="text-[11px] font-bold text-gray-400 mb-4">
+                            <p className="text-[11px] font-bold text-matn-xira mb-4">
                                 Muddat: {dateLabel}
                             </p>
                             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
@@ -632,19 +632,19 @@ export default function Finance() {
                                 { label: "O'rtacha to'lov", value: metrics.avgPayment.toLocaleString() + ' UZS', icon: <ArrowUpRight size={16} />, color: 'indigo' as const },
                                 { label: "To'lamagan o'quvchilar", value: metrics.unpaidCount + ' ta', icon: <AlertCircle size={16} />, color: 'rose' as const },
                             ].map((m, i) => (
-                                <div key={i} className="bg-gray-55 dark:bg-gray-900/50 rounded-2xl border border-gray-100 dark:border-gray-800/50 p-4 flex flex-col gap-2">
-                                    <div className="flex items-center gap-1.5 text-gray-400 dark:text-gray-500">
+                                <div key={i} className="bg-ichki rounded-2xl border border-chiziq p-4 flex flex-col gap-2">
+                                    <div className="flex items-center gap-1.5 text-matn-xira">
                                         {m.icon}
                                         <span className="text-[11px] font-bold">{m.label}</span>
                                     </div>
-                                    <p className="text-base font-black text-gray-900 dark:text-white tabular-nums">{m.value}</p>
+                                    <p className="text-base font-black text-matn tabular-nums">{m.value}</p>
                                 </div>
                             ))}
                         </div>
 
                         {/* Oylik tushum trendi */}
-                        <div className="bg-gray-50 dark:bg-gray-900/40 rounded-2xl border border-gray-100 dark:border-gray-800/50 p-5">
-                            <p className="text-[11px] font-bold text-gray-400 mb-4">Oylik tushum trendi (so'nggi 6 oy)</p>
+                        <div className="bg-ichki/40 rounded-2xl border border-chiziq p-5">
+                            <p className="text-[11px] font-bold text-matn-xira mb-4">Oylik tushum trendi (so'nggi 6 oy)</p>
                             {metrics.trendLine.length >= 2
                                 ? <LineChart data={metrics.trendLine} color="#1b6b6b" height={160} />
                                 : <BarChart data={metrics.trendBars} height={160} />
@@ -653,25 +653,25 @@ export default function Finance() {
 
                         {/* To'lov usullari + Xarajat kategoriyalari */}
                         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                            <div className="bg-gray-50 dark:bg-gray-900/40 rounded-2xl border border-gray-100 dark:border-gray-800/50 p-5">
-                                <p className="text-[11px] font-bold text-gray-400 mb-4">Bu oy to'lov usullari</p>
+                            <div className="bg-ichki/40 rounded-2xl border border-chiziq p-5">
+                                <p className="text-[11px] font-bold text-matn-xira mb-4">Bu oy to'lov usullari</p>
                                 {metrics.typeSlices.length > 0
                                     ? <DonutChart slices={metrics.typeSlices} size={140} />
-                                    : <p className="text-[11px] text-gray-400 font-bold text-center py-8">Bu oy to'lovlar yo'q</p>
+                                    : <p className="text-[11px] text-matn-xira font-bold text-center py-8">Bu oy to'lovlar yo'q</p>
                                 }
                             </div>
-                            <div className="bg-gray-50 dark:bg-gray-900/40 rounded-2xl border border-gray-100 dark:border-gray-800/50 p-5">
-                                <p className="text-[11px] font-bold text-gray-400 mb-4">Bu oy xarajat kategoriyalari</p>
+                            <div className="bg-ichki/40 rounded-2xl border border-chiziq p-5">
+                                <p className="text-[11px] font-bold text-matn-xira mb-4">Bu oy xarajat kategoriyalari</p>
                                 {metrics.catBars.length > 0
                                     ? <BarChart data={metrics.catBars} horizontal />
-                                    : <p className="text-[11px] text-gray-400 font-bold text-center py-8">Bu oy xarajatlar yo'q</p>
+                                    : <p className="text-[11px] text-matn-xira font-bold text-center py-8">Bu oy xarajatlar yo'q</p>
                                 }
                             </div>
                         </div>
 
                         {/* O'tgan oy taqqoslash */}
-                        <div className="bg-gray-50 dark:bg-gray-900/40 rounded-2xl border border-gray-100 dark:border-gray-800/50 p-5">
-                            <p className="text-[11px] font-bold text-gray-400 mb-4">
+                        <div className="bg-ichki/40 rounded-2xl border border-chiziq p-5">
+                            <p className="text-[11px] font-bold text-matn-xira mb-4">
                                 O'tgan oy taqqoslash — {MONTHS[lastMonthDate.getMonth()]} {lastMonthDate.getFullYear()}
                             </p>
                             <div className="grid grid-cols-3 gap-4">
@@ -684,9 +684,9 @@ export default function Finance() {
                                     const isUp = diff > 0;
                                     return (
                                         <div key={i} className="text-center">
-                                            <p className="text-[11px] font-bold text-gray-400 mb-2">{item.label}</p>
-                                            <p className="text-lg font-black text-gray-900 dark:text-white tabular-nums">{item.cur.toLocaleString()}</p>
-                                            <p className="text-[11px] text-gray-400 tabular-nums mt-0.5">{item.prev.toLocaleString()} o'tgan oy</p>
+                                            <p className="text-[11px] font-bold text-matn-xira mb-2">{item.label}</p>
+                                            <p className="text-lg font-black text-matn tabular-nums">{item.cur.toLocaleString()}</p>
+                                            <p className="text-[11px] text-matn-xira tabular-nums mt-0.5">{item.prev.toLocaleString()} o'tgan oy</p>
                                             {diff !== 0 && (
                                                 <span className={`inline-flex items-center gap-0.5 text-[11px] font-bold mt-1 px-2 py-0.5 rounded-lg ${(item.pos ? isUp : !isUp) ? 'text-emerald-600 bg-emerald-50 dark:bg-emerald-950/30' : 'text-rose-600 bg-rose-50 dark:bg-rose-950/30'}`}>
                                                     {isUp ? <TrendingUp size={9} /> : <TrendingDown size={9} />}
@@ -700,12 +700,12 @@ export default function Finance() {
                         </div>
 
                         {/* O'quvchilar balansi va qarzdorligi */}
-                        <div className="border-t border-gray-100 dark:border-gray-800/80 pt-6">
+                        <div className="border-t border-chiziq/80 pt-6">
                             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-4">
-                                <p className="text-[11px] font-bold text-gray-400">
+                                <p className="text-[11px] font-bold text-matn-xira">
                                     O'quvchilar moliyaviy holati va qarzdorligi
                                 </p>
-                                <div className="flex items-center gap-1 bg-gray-55 dark:bg-gray-900 p-1 rounded-xl border border-gray-100 dark:border-gray-800/50 self-start sm:self-auto">
+                                <div className="flex items-center gap-1 bg-ichki p-1 rounded-xl border border-chiziq self-start sm:self-auto">
                                     {[
                                         { value: 'all', label: "Barcha o'quvchilar" },
                                         { value: 'active', label: "Faol o'quvchilar" },
@@ -717,8 +717,8 @@ export default function Finance() {
                                             onClick={() => setStudentStatus(opt.value as any)}
                                             className={`px-3 py-1.5 rounded-lg text-[11px] font-extrabold transition-all cursor-pointer ${
                                                 studentStatus === opt.value
-                                                    ? 'bg-[#1b6b6b] text-white shadow'
-                                                    : 'text-gray-400 hover:text-gray-600'
+                                                    ? 'bg-brand text-brand-ust shadow'
+                                                    : 'text-matn-xira hover:text-gray-600'
                                             }`}
                                         >
                                             {opt.label}
@@ -757,10 +757,10 @@ export default function Finance() {
                                     <p className="text-2xl font-black text-emerald-600 dark:text-emerald-400">{metrics.creditors.length} ta</p>
                                     <p className="text-[11px] font-bold text-emerald-400 mt-1 tabular-nums">{metrics.totalCredit.toLocaleString()} UZS</p>
                                 </div>
-                                <div className="bg-gray-50 dark:bg-gray-900/50 rounded-2xl border border-gray-100 dark:border-gray-800/50 p-4">
-                                    <span className="text-[11px] font-bold text-gray-400 block mb-1">Nol balans</span>
-                                    <p className="text-2xl font-black text-gray-600 dark:text-gray-300">{metrics.zeroBalanceCount} ta</p>
-                                    <p className="text-[11px] font-bold text-gray-400 mt-1">to'langan</p>
+                                <div className="bg-ichki rounded-2xl border border-chiziq p-4">
+                                    <span className="text-[11px] font-bold text-matn-xira block mb-1">Nol balans</span>
+                                    <p className="text-2xl font-black text-matn-2">{metrics.zeroBalanceCount} ta</p>
+                                    <p className="text-[11px] font-bold text-matn-xira mt-1">to'langan</p>
                                 </div>
                                 <div className="bg-amber-50 dark:bg-amber-950/20 rounded-2xl border border-amber-100 dark:border-amber-900/40 p-4">
                                     <span className="text-[11px] font-bold text-amber-500 block mb-1">Bu oy to'lamagan</span>
@@ -775,20 +775,20 @@ export default function Finance() {
                             60 kunlikning farqi katta. */}
                         {metrics.debtors.length > 0 && (
                             <div>
-                                <p className="text-[13px] font-semibold text-gray-900 dark:text-white mb-3">Qarz yoshi bo'yicha</p>
+                                <p className="text-[13px] font-semibold text-matn mb-3">Qarz yoshi bo'yicha</p>
                                 <div className="space-y-2.5">
                                     {metrics.debtAge.map(b => (
                                         <div key={b.label}>
                                             <div className="flex items-center justify-between text-[12px]">
-                                                <span className="text-gray-500 dark:text-gray-400">
+                                                <span className="text-matn-sokin">
                                                     {b.label}
-                                                    {b.count > 0 && <span className="num text-gray-400"> · {b.count}</span>}
+                                                    {b.count > 0 && <span className="num text-matn-xira"> · {b.count}</span>}
                                                 </span>
                                                 <span className="num text-gray-700 dark:text-gray-200">
                                                     {(b.sum / 1000000).toFixed(1)} mln
                                                 </span>
                                             </div>
-                                            <div className="mt-1 h-1.5 rounded-full bg-gray-100 dark:bg-gray-700 overflow-hidden">
+                                            <div className="mt-1 h-1.5 rounded-full bg-chiziq overflow-hidden">
                                                 <div className={`h-full rounded-full ${b.color}`}
                                                     style={{ width: `${Math.round((b.sum / metrics.debtAgeMax) * 100)}%` }} />
                                             </div>
@@ -801,7 +801,7 @@ export default function Finance() {
                         {/* Top qarzdorlar */}
                         {metrics.topDebtors.length > 0 && (
                             <div>
-                                <p className="text-[11px] font-bold text-gray-400 mb-4">Eng ko'p qarzdorlar (top 5)</p>
+                                <p className="text-[11px] font-bold text-matn-xira mb-4">Eng ko'p qarzdorlar (top 5)</p>
                                 <div className="space-y-2">
                                     {metrics.topDebtors.map((st, i) => (
                                         <div
@@ -812,8 +812,8 @@ export default function Finance() {
                                             <div className="flex items-center gap-3">
                                                 <span className="text-[11px] font-bold text-rose-300 w-5">{i + 1}.</span>
                                                 <div>
-                                                    <p className="text-xs font-bold text-gray-900 dark:text-white">{st.name}</p>
-                                                    {st.phone && <p className="text-[11px] text-gray-400 font-bold mt-0.5">{st.phone}</p>}
+                                                    <p className="text-xs font-bold text-matn">{st.name}</p>
+                                                    {st.phone && <p className="text-[11px] text-matn-xira font-bold mt-0.5">{st.phone}</p>}
                                                 </div>
                                             </div>
                                             <div className="flex items-center gap-2">
@@ -858,17 +858,17 @@ export default function Finance() {
                             return (
                                 <>
                                     {/* To'lovlar ro'yxati */}
-                                    <div className="bg-gray-50 dark:bg-gray-900/40 rounded-2xl border border-gray-100 dark:border-gray-800/50 overflow-hidden">
-                                        <div className="px-5 py-4 flex flex-col sm:flex-row sm:items-center gap-3 border-b border-gray-100 dark:border-gray-800/50">
+                                    <div className="bg-ichki/40 rounded-2xl border border-chiziq overflow-hidden">
+                                        <div className="px-5 py-4 flex flex-col sm:flex-row sm:items-center gap-3 border-b border-chiziq">
                                             <div className="flex-1">
-                                                <p className="text-[11px] font-bold text-gray-400">To'lovlar ro'yxati</p>
-                                                <p className="text-[11px] font-bold text-[#1b6b6b] mt-0.5">{filterLabel} — {rPayments.length} ta yozuv • Jami: {rPayTotal.toLocaleString()} UZS</p>
+                                                <p className="text-[11px] font-bold text-matn-xira">To'lovlar ro'yxati</p>
+                                                <p className="text-[11px] font-bold text-brand mt-0.5">{filterLabel} — {rPayments.length} ta yozuv • Jami: {rPayTotal.toLocaleString()} UZS</p>
                                             </div>
                                             <div className="flex items-center gap-2">
-                                                <div className="flex items-center gap-1 bg-white dark:bg-gray-800 p-1 rounded-xl border border-gray-100 dark:border-gray-800">
+                                                <div className="flex items-center gap-1 bg-sirt p-1 rounded-xl border border-chiziq">
                                                     {(['thisMonth','lastMonth','all'] as const).map(f => (
                                                         <button key={f} onClick={() => { setReportFilter(f); setPayPage(0); setBalPage(0); }}
-                                                            className={`px-3 py-1 rounded-lg text-[11px] font-bold transition-all cursor-pointer ${reportFilter === f ? 'bg-[#1b6b6b] text-white shadow' : 'text-gray-400 hover:text-gray-600'}`}>
+                                                            className={`px-3 py-1 rounded-lg text-[11px] font-bold transition-all cursor-pointer ${reportFilter === f ? 'bg-brand text-brand-ust shadow' : 'text-matn-xira hover:text-gray-600'}`}>
                                                             {f === 'thisMonth' ? 'Bu oy' : f === 'lastMonth' ? "O'tgan oy" : 'Hammasi'}
                                                         </button>
                                                     ))}
@@ -877,7 +877,7 @@ export default function Finance() {
                                                     const s = students.find(st => st.id === p.studentId);
                                                     return { "O'quvchi": s?.name || '', "Summa (UZS)": p.amount, "Turi": p.type, "Sana": p.date, "Izoh": p.description || '' };
                                                 }))}
-                                                    className="flex items-center gap-1 px-3 py-1.5 bg-[#1b6b6b] hover:bg-[#155252] text-white text-[11px] font-bold rounded-xl transition-all cursor-pointer">
+                                                    className="flex items-center gap-1 px-3 py-1.5 bg-brand hover:bg-brand-dark text-white text-[11px] font-bold rounded-xl transition-all cursor-pointer">
                                                     <ArrowUpRight size={11} /> CSV
                                                 </button>
                                             </div>
@@ -885,25 +885,25 @@ export default function Finance() {
                                         <div className="overflow-x-auto">
                                             <table className="w-full text-left">
                                                 <thead>
-                                                    <tr className="border-b border-gray-100 dark:border-gray-800/50">
+                                                    <tr className="border-b border-chiziq">
                                                         {["O'QUVCHI", "SUMMA", "TURI", "SANA", "IZOH"].map(h => (
-                                                            <th key={h} className="py-3 px-4 text-[11px] font-bold text-gray-400 whitespace-nowrap">{h}</th>
+                                                            <th key={h} className="py-3 px-4 text-[11px] font-bold text-matn-xira whitespace-nowrap">{h}</th>
                                                         ))}
                                                     </tr>
                                                 </thead>
                                                 <tbody className="divide-y divide-gray-100 dark:divide-gray-700/30">
                                                     {pagePayments.length === 0 ? (
-                                                        <tr><td colSpan={5} className="py-10 text-center text-[11px] font-bold text-gray-400">To'lovlar topilmadi</td></tr>
+                                                        <tr><td colSpan={5} className="py-10 text-center text-[11px] font-bold text-matn-xira">To'lovlar topilmadi</td></tr>
                                                     ) : pagePayments.map(p => {
                                                         const s = students.find(st => st.id === p.studentId);
                                                         return (
                                                             <tr key={p.id} onClick={() => s && navigate(`/students/${s.id}`)}
                                                                 className="hover:bg-white dark:hover:bg-gray-800/50 cursor-pointer transition-colors">
-                                                                <td className="py-3 px-4 text-xs font-bold text-gray-900 dark:text-white">{s?.name || 'Noma\'lum'}</td>
+                                                                <td className="py-3 px-4 text-xs font-bold text-matn">{s?.name || 'Noma\'lum'}</td>
                                                                 <td className="py-3 px-4 text-xs font-black text-emerald-600 tabular-nums">+{p.amount.toLocaleString()} UZS</td>
-                                                                <td className="py-3 px-4"><span className="px-2 py-0.5 bg-gray-100 dark:bg-gray-700 text-[11px] font-bold rounded-lg text-gray-600 dark:text-gray-300">{p.type}</span></td>
-                                                                <td className="py-3 px-4 text-[11px] font-bold text-gray-500 tabular-nums">{p.date}</td>
-                                                                <td className="py-3 px-4 text-[11px] text-gray-400">{p.description || '—'}</td>
+                                                                <td className="py-3 px-4"><span className="px-2 py-0.5 bg-chiziq text-[11px] font-bold rounded-lg text-matn-2">{p.type}</span></td>
+                                                                <td className="py-3 px-4 text-[11px] font-bold text-matn-sokin tabular-nums">{p.date}</td>
+                                                                <td className="py-3 px-4 text-[11px] text-matn-xira">{p.description || '—'}</td>
                                                             </tr>
                                                         );
                                                     })}
@@ -911,12 +911,12 @@ export default function Finance() {
                                             </table>
                                         </div>
                                         {pTotalPages > 1 && (
-                                            <div className="flex items-center justify-between px-5 py-3 border-t border-gray-100 dark:border-gray-800/50">
-                                                <span className="text-[11px] font-bold text-gray-400">{rPayments.length} ta yozuv</span>
+                                            <div className="flex items-center justify-between px-5 py-3 border-t border-chiziq">
+                                                <span className="text-[11px] font-bold text-matn-xira">{rPayments.length} ta yozuv</span>
                                                 <div className="flex items-center gap-2">
                                                     <button onClick={() => setPayPage(p => Math.max(0, p - 1))} disabled={pPage === 0}
                                                         className="px-3 py-1 text-[11px] font-bold border border-gray-200 dark:border-gray-800 rounded-lg disabled:opacity-30 hover:bg-gray-100 dark:hover:bg-gray-700 cursor-pointer transition-all">Oldin</button>
-                                                    <span className="text-[11px] font-bold text-gray-600 dark:text-gray-300">{pPage + 1}/{pTotalPages}</span>
+                                                    <span className="text-[11px] font-bold text-matn-2">{pPage + 1}/{pTotalPages}</span>
                                                     <button onClick={() => setPayPage(p => Math.min(pTotalPages - 1, p + 1))} disabled={pPage === pTotalPages - 1}
                                                         className="px-3 py-1 text-[11px] font-bold border border-gray-200 dark:border-gray-800 rounded-lg disabled:opacity-30 hover:bg-gray-100 dark:hover:bg-gray-700 cursor-pointer transition-all">Keyin</button>
                                                 </div>
@@ -925,42 +925,42 @@ export default function Finance() {
                                     </div>
 
                                     {/* Barcha talabalar balansi */}
-                                    <div className="bg-gray-50 dark:bg-gray-900/40 rounded-2xl border border-gray-100 dark:border-gray-800/50 overflow-hidden">
-                                        <div className="px-5 py-4 flex items-center justify-between border-b border-gray-100 dark:border-gray-800/50">
+                                    <div className="bg-ichki/40 rounded-2xl border border-chiziq overflow-hidden">
+                                        <div className="px-5 py-4 flex items-center justify-between border-b border-chiziq">
                                             <div>
-                                                <p className="text-[11px] font-bold text-gray-400">Barcha talabalar balansi</p>
-                                                <p className="text-[11px] font-bold text-[#1b6b6b] mt-0.5">{allStudents.length} ta o'quvchi</p>
+                                                <p className="text-[11px] font-bold text-matn-xira">Barcha talabalar balansi</p>
+                                                <p className="text-[11px] font-bold text-brand mt-0.5">{allStudents.length} ta o'quvchi</p>
                                             </div>
                                             <button onClick={() => downloadCSV('talabalar_balansi.csv', allStudents.map(s => {
                                                 const lp = lastPayMap[s.id];
                                                 return { "Ism Familiya": s.name, "Status": s.status, "Balans (UZS)": s.balance, "So'nggi to'lov": lp?.date || '—', "Summa": lp ? lp.amount : 0 };
                                             }))}
-                                                className="flex items-center gap-1 px-3 py-1.5 bg-[#1b6b6b] hover:bg-[#155252] text-white text-[11px] font-bold rounded-xl transition-all cursor-pointer">
+                                                className="flex items-center gap-1 px-3 py-1.5 bg-brand hover:bg-brand-dark text-white text-[11px] font-bold rounded-xl transition-all cursor-pointer">
                                                 <ArrowUpRight size={11} /> CSV
                                             </button>
                                         </div>
                                         <div className="overflow-x-auto">
                                             <table className="w-full text-left">
                                                 <thead>
-                                                    <tr className="border-b border-gray-100 dark:border-gray-800/50">
+                                                    <tr className="border-b border-chiziq">
                                                         {["ISM FAMILIYA", "STATUS", "BALANS (UZS)", "SO'NGGI TO'LOV", "SUMMA"].map(h => (
-                                                            <th key={h} className="py-3 px-4 text-[11px] font-bold text-gray-400 whitespace-nowrap">{h}</th>
+                                                            <th key={h} className="py-3 px-4 text-[11px] font-bold text-matn-xira whitespace-nowrap">{h}</th>
                                                         ))}
                                                     </tr>
                                                 </thead>
                                                 <tbody className="divide-y divide-gray-100 dark:divide-gray-700/30">
                                                     {pageStudents.length === 0 ? (
-                                                        <tr><td colSpan={5} className="py-10 text-center text-[11px] font-bold text-gray-400">O'quvchilar topilmadi</td></tr>
+                                                        <tr><td colSpan={5} className="py-10 text-center text-[11px] font-bold text-matn-xira">O'quvchilar topilmadi</td></tr>
                                                     ) : pageStudents.map(s => {
                                                         const lp = lastPayMap[s.id];
                                                         return (
                                                             <tr key={s.id} onClick={() => navigate(`/students/${s.id}`)}
                                                                 className="hover:bg-white dark:hover:bg-gray-800/50 cursor-pointer transition-colors">
-                                                                <td className="py-3 px-4 text-xs font-bold text-gray-900 dark:text-white">{s.name}</td>
-                                                                <td className="py-3 px-4"><span className={`px-2 py-0.5 text-[11px] font-bold rounded-lg ${s.status === 'Faol' ? 'bg-emerald-50 text-emerald-600 dark:bg-emerald-950/20 dark:text-emerald-400' : 'bg-gray-100 text-gray-500 dark:bg-gray-700 dark:text-gray-400'}`}>{s.status}</span></td>
-                                                                <td className={`py-3 px-4 text-xs font-black tabular-nums ${s.balance < 0 ? 'text-rose-600' : s.balance > 0 ? 'text-emerald-600' : 'text-gray-500'}`}>{s.balance.toLocaleString()}</td>
-                                                                <td className="py-3 px-4 text-[11px] font-bold text-gray-500 tabular-nums">{lp?.date || '—'}</td>
-                                                                <td className="py-3 px-4 text-[11px] font-bold text-gray-600 dark:text-gray-300 tabular-nums">{lp ? lp.amount.toLocaleString() + ' UZS' : '—'}</td>
+                                                                <td className="py-3 px-4 text-xs font-bold text-matn">{s.name}</td>
+                                                                <td className="py-3 px-4"><span className={`px-2 py-0.5 text-[11px] font-bold rounded-lg ${s.status === 'Faol' ? 'bg-emerald-50 text-emerald-600 dark:bg-emerald-950/20 dark:text-emerald-400' : 'bg-gray-100 text-matn-sokin dark:bg-gray-700 dark:text-gray-400'}`}>{s.status}</span></td>
+                                                                <td className={`py-3 px-4 text-xs font-black tabular-nums ${s.balance < 0 ? 'text-rose-600' : s.balance > 0 ? 'text-emerald-600' : 'text-matn-sokin'}`}>{s.balance.toLocaleString()}</td>
+                                                                <td className="py-3 px-4 text-[11px] font-bold text-matn-sokin tabular-nums">{lp?.date || '—'}</td>
+                                                                <td className="py-3 px-4 text-[11px] font-bold text-matn-2 tabular-nums">{lp ? lp.amount.toLocaleString() + ' UZS' : '—'}</td>
                                                             </tr>
                                                         );
                                                     })}
@@ -968,12 +968,12 @@ export default function Finance() {
                                             </table>
                                         </div>
                                         {bTotalPages > 1 && (
-                                            <div className="flex items-center justify-between px-5 py-3 border-t border-gray-100 dark:border-gray-800/50">
-                                                <span className="text-[11px] font-bold text-gray-400">{allStudents.length} ta o'quvchi</span>
+                                            <div className="flex items-center justify-between px-5 py-3 border-t border-chiziq">
+                                                <span className="text-[11px] font-bold text-matn-xira">{allStudents.length} ta o'quvchi</span>
                                                 <div className="flex items-center gap-2">
                                                     <button onClick={() => setBalPage(p => Math.max(0, p - 1))} disabled={bPage === 0}
                                                         className="px-3 py-1 text-[11px] font-bold border border-gray-200 dark:border-gray-800 rounded-lg disabled:opacity-30 hover:bg-gray-100 dark:hover:bg-gray-700 cursor-pointer transition-all">Oldin</button>
-                                                    <span className="text-[11px] font-bold text-gray-600 dark:text-gray-300">{bPage + 1}/{bTotalPages}</span>
+                                                    <span className="text-[11px] font-bold text-matn-2">{bPage + 1}/{bTotalPages}</span>
                                                     <button onClick={() => setBalPage(p => Math.min(bTotalPages - 1, p + 1))} disabled={bPage === bTotalPages - 1}
                                                         className="px-3 py-1 text-[11px] font-bold border border-gray-200 dark:border-gray-800 rounded-lg disabled:opacity-30 hover:bg-gray-100 dark:hover:bg-gray-700 cursor-pointer transition-all">Keyin</button>
                                                 </div>
@@ -992,25 +992,25 @@ export default function Finance() {
                         {/* Month selector header */}
                         <div className="flex items-center justify-between gap-4">
                             <div>
-                                <h3 className="text-base font-black text-gray-900 dark:text-white tracking-tight">Oylik hisob-kitob kitobi</h3>
-                                <p className="text-[11px] font-bold text-gray-400 mt-0.5">Moliyaviy nazorat paneli</p>
+                                <h3 className="text-base font-black text-matn tracking-tight">Oylik hisob-kitob kitobi</h3>
+                                <p className="text-[11px] font-bold text-matn-xira mt-0.5">Moliyaviy nazorat paneli</p>
                             </div>
-                            <div className="flex items-center gap-2 bg-gray-50 dark:bg-gray-900/60 p-1.5 rounded-2xl border border-gray-100 dark:border-gray-800/50">
+                            <div className="flex items-center gap-2 bg-ichki/60 p-1.5 rounded-2xl border border-chiziq">
                                 <button onClick={prevBillingMonth} className="w-8 h-8 flex items-center justify-center rounded-xl border border-gray-200 dark:border-gray-800 hover:bg-gray-100 dark:hover:bg-gray-800 transition-all cursor-pointer">
-                                    <ChevronLeft size={14} className="text-gray-500" />
+                                    <ChevronLeft size={14} className="text-matn-sokin" />
                                 </button>
                                 <div className="text-center min-w-[110px]">
-                                    <p className="text-xs font-black text-gray-900 dark:text-white">{billingMonthLabel(billingMonth)}</p>
+                                    <p className="text-xs font-black text-matn">{billingMonthLabel(billingMonth)}</p>
                                 </div>
                                 <button onClick={nextBillingMonth} className="w-8 h-8 flex items-center justify-center rounded-xl border border-gray-200 dark:border-gray-800 hover:bg-gray-100 dark:hover:bg-gray-800 transition-all cursor-pointer">
-                                    <ChevronRight size={14} className="text-gray-500" />
+                                    <ChevronRight size={14} className="text-matn-sokin" />
                                 </button>
                             </div>
                         </div>
 
                         {/* Billing status badge */}
                         {billingData && (
-                            <div className={`flex items-center gap-2 px-4 py-3 rounded-2xl border text-[11px] font-bold ${billingData.billingDone ? 'bg-emerald-50 dark:bg-emerald-950/20 border-emerald-100 dark:border-emerald-900/40 text-emerald-700 dark:text-emerald-400' : 'bg-gray-50 dark:bg-gray-950/20 border-gray-100 dark:border-gray-900/40 text-gray-500'}`}>
+                            <div className={`flex items-center gap-2 px-4 py-3 rounded-2xl border text-[11px] font-bold ${billingData.billingDone ? 'bg-emerald-50 dark:bg-emerald-950/20 border-emerald-100 dark:border-emerald-900/40 text-emerald-700 dark:text-emerald-400' : 'bg-gray-50 dark:bg-gray-950/20 border-gray-100 dark:border-gray-900/40 text-matn-sokin'}`}>
                                 {billingData.billingDone
                                     ? <><CheckCircle2 size={14} /> {billingMonthLabel(billingMonth)} — oylik hisob-kitob avtomatik o'tkazilgan</>
                                     : <><AlertCircle size={14} /> {billingMonthLabel(billingMonth)} — kelgusi oy uchun hisob-kitob hali boshlanmagan</>
@@ -1037,24 +1037,24 @@ export default function Finance() {
                         {billingLoading && !billingData && (
                             <div className="py-16 text-center">
                                 <RefreshCw size={24} className="animate-spin text-violet-400 mx-auto mb-2" />
-                                <p className="text-[11px] font-bold text-gray-400">Ma'lumot yuklanmoqda...</p>
+                                <p className="text-[11px] font-bold text-matn-xira">Ma'lumot yuklanmoqda...</p>
                             </div>
                         )}
 
                         {/* Students status table */}
                         {billingData && billingData.students.length > 0 && (
-                            <div className="bg-gray-50 dark:bg-gray-900/40 rounded-2xl border border-gray-100 dark:border-gray-800/50 overflow-hidden">
-                                <div className="px-5 py-4 flex flex-col sm:flex-row sm:items-center gap-3 border-b border-gray-100 dark:border-gray-800/50">
+                            <div className="bg-ichki/40 rounded-2xl border border-chiziq overflow-hidden">
+                                <div className="px-5 py-4 flex flex-col sm:flex-row sm:items-center gap-3 border-b border-chiziq">
                                     <div className="flex-1">
-                                        <p className="text-[11px] font-bold text-gray-400">O'quvchilar to'lov holati</p>
+                                        <p className="text-[11px] font-bold text-matn-xira">O'quvchilar to'lov holati</p>
                                         <p className="text-[11px] font-bold text-violet-600 mt-0.5">{billingData.students.length} ta faol o'quvchi</p>
                                     </div>
-                                    <div className="flex items-center gap-1 bg-white dark:bg-gray-800 p-1 rounded-xl border border-gray-100 dark:border-gray-800">
+                                    <div className="flex items-center gap-1 bg-sirt p-1 rounded-xl border border-chiziq">
                                         {(['all', 'paid', 'partial', 'unpaid'] as const).map(f => (
                                             <button key={f} onClick={() => setBillingFilter(f)}
                                                 className={`px-3 py-1 rounded-lg text-[11px] font-black transition-all cursor-pointer ${billingFilter === f
                                                     ? f === 'paid' ? 'bg-emerald-500 text-white' : f === 'unpaid' ? 'bg-rose-500 text-white' : f === 'partial' ? 'bg-amber-500 text-white' : 'bg-violet-600 text-white shadow'
-                                                    : 'text-gray-400 hover:text-gray-600'}`}>
+                                                    : 'text-matn-xira hover:text-gray-600'}`}>
                                                 {f === 'all' ? 'Barchasi' : f === 'paid' ? 'To\'lagan' : f === 'partial' ? 'Qisman' : 'To\'lamagan'}
                                             </button>
                                         ))}
@@ -1063,9 +1063,9 @@ export default function Finance() {
                                 <div className="overflow-x-auto">
                                     <table className="w-full text-left">
                                         <thead>
-                                            <tr className="border-b border-gray-100 dark:border-gray-800/50">
+                                            <tr className="border-b border-chiziq">
                                                 {["O'QUVCHI", "GURUHLAR", "KUTILGAN", "TO'LANGAN", "BALANS", "HOLAT"].map(h => (
-                                                    <th key={h} className="py-3 px-4 text-[11px] font-bold text-gray-400 whitespace-nowrap">{h}</th>
+                                                    <th key={h} className="py-3 px-4 text-[11px] font-bold text-matn-xira whitespace-nowrap">{h}</th>
                                                 ))}
                                             </tr>
                                         </thead>
@@ -1076,8 +1076,8 @@ export default function Finance() {
                                                     <tr key={st.studentId} onClick={() => navigate(`/students/${st.studentId}`)}
                                                         className="hover:bg-white dark:hover:bg-gray-800/50 cursor-pointer transition-colors">
                                                         <td className="py-3 px-4">
-                                                            <p className="text-xs font-bold text-gray-900 dark:text-white">{st.name}</p>
-                                                            {st.phone && <p className="text-[11px] text-gray-400 font-bold mt-0.5">{st.phone}</p>}
+                                                            <p className="text-xs font-bold text-matn">{st.name}</p>
+                                                            {st.phone && <p className="text-[11px] text-matn-xira font-bold mt-0.5">{st.phone}</p>}
                                                         </td>
                                                         <td className="py-3 px-4">
                                                             <div className="flex flex-wrap gap-1">
@@ -1088,9 +1088,9 @@ export default function Finance() {
                                                                 ))}
                                                             </div>
                                                         </td>
-                                                        <td className="py-3 px-4 text-xs font-black text-gray-700 dark:text-gray-300 tabular-nums">{st.expected.toLocaleString()} UZS</td>
+                                                        <td className="py-3 px-4 text-xs font-black text-matn-2 tabular-nums">{st.expected.toLocaleString()} UZS</td>
                                                         <td className="py-3 px-4 text-xs font-black text-emerald-600 tabular-nums">{st.paid.toLocaleString()} UZS</td>
-                                                        <td className={`py-3 px-4 text-xs font-black tabular-nums ${st.balance < 0 ? 'text-rose-600' : st.balance > 0 ? 'text-emerald-600' : 'text-gray-400'}`}>
+                                                        <td className={`py-3 px-4 text-xs font-black tabular-nums ${st.balance < 0 ? 'text-rose-600' : st.balance > 0 ? 'text-emerald-600' : 'text-matn-xira'}`}>
                                                             {st.balance.toLocaleString()} UZS
                                                         </td>
                                                         <td className="py-3 px-4">
@@ -1109,14 +1109,14 @@ export default function Finance() {
                         {/* Groups breakdown */}
                         {billingData && billingData.groups.length > 0 && (
                             <div>
-                                <p className="text-[11px] font-bold text-gray-400 mb-4">Guruhlar bo'yicha breakdown</p>
+                                <p className="text-[11px] font-bold text-matn-xira mb-4">Guruhlar bo'yicha breakdown</p>
                                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                                     {billingData.groups.filter(g => g.totalStudents > 0).map((g: any) => (
-                                        <div key={g.groupId} className="bg-gray-50 dark:bg-gray-900/40 rounded-2xl border border-gray-100 dark:border-gray-800/50 p-4">
+                                        <div key={g.groupId} className="bg-ichki/40 rounded-2xl border border-chiziq p-4">
                                             <div className="flex items-start justify-between mb-3">
                                                 <div>
-                                                    <p className="text-xs font-black text-gray-900 dark:text-white">{g.groupName}</p>
-                                                    <p className="text-[11px] text-gray-400 font-bold mt-0.5">{g.courseName}</p>
+                                                    <p className="text-xs font-black text-matn">{g.groupName}</p>
+                                                    <p className="text-[11px] text-matn-xira font-bold mt-0.5">{g.courseName}</p>
                                                 </div>
                                                 <span className="text-[11px] font-bold text-violet-600 bg-violet-50 dark:bg-violet-950/20 px-2 py-0.5 rounded-lg">{g.totalStudents} o'quvchi</span>
                                             </div>
@@ -1130,8 +1130,8 @@ export default function Finance() {
                                                     <span className="text-rose-500 font-bold">To'lamagan</span>
                                                 </div>
                                             </div>
-                                            <div className="mt-3 pt-3 border-t border-gray-100 dark:border-gray-800/50 flex justify-between text-[11px] font-bold text-gray-500">
-                                                <span>Kutilgan: <span className="text-gray-700 dark:text-gray-300 font-black">{g.expected.toLocaleString()}</span></span>
+                                            <div className="mt-3 pt-3 border-t border-chiziq flex justify-between text-[11px] font-bold text-matn-sokin">
+                                                <span>Kutilgan: <span className="text-matn-2 font-black">{g.expected.toLocaleString()}</span></span>
                                                 <span>Tushgan: <span className="text-emerald-600 font-black">{g.actual.toLocaleString()}</span></span>
                                             </div>
                                         </div>
@@ -1144,7 +1144,7 @@ export default function Finance() {
                         {billingData && billingData.students.filter((st: any) => st.status !== 'paid').length > 0 && (
                             <div className="flex justify-end">
                                 <button
-                                    className="flex items-center gap-2 px-5 py-3 bg-[#1b6b6b] hover:bg-[#155252] text-white rounded-xl text-[11px] font-bold transition-all cursor-pointer shadow-sm shadow-[#1b6b6b]/20"
+                                    className="flex items-center gap-2 px-5 py-3 bg-brand hover:bg-brand-dark text-white rounded-xl text-[11px] font-bold transition-all cursor-pointer shadow-sm shadow-[#1b6b6b]/20"
                                     onClick={() => setShowDebtNotifyModal(true)}
                                 >
                                     <MessageSquare size={14} />
@@ -1156,7 +1156,7 @@ export default function Finance() {
                         {!billingData && !billingLoading && (
                             <div className="py-16 text-center">
                                 <Calendar size={32} className="text-gray-300 mx-auto mb-3" />
-                                <p className="text-[11px] font-bold text-gray-400">Ma'lumot yuklanmadi</p>
+                                <p className="text-[11px] font-bold text-matn-xira">Ma'lumot yuklanmadi</p>
                                 <button onClick={loadBillingStatus} className="mt-3 text-[11px] font-bold text-violet-600 hover:underline cursor-pointer">Qayta urinish</button>
                             </div>
                         )}
@@ -1165,16 +1165,16 @@ export default function Finance() {
 
                 {/* Summary row — only for payments/expenses */}
                 {(activeTab === 'payments' || activeTab === 'expenses') && (
-                    <div className="px-6 py-3 border-b border-gray-50 dark:border-gray-800/30 flex items-center gap-4">
-                        <span className="text-[11px] font-bold text-gray-400">{dateLabel}</span>
+                    <div className="px-6 py-3 border-b border-chiziq-mayin/30 flex items-center gap-4">
+                        <span className="text-[11px] font-bold text-matn-xira">{dateLabel}</span>
                         {activeTab === 'payments' ? (
                             <>
-                                <span className="text-[11px] font-bold text-gray-400">{filteredPayments.length} ta to'lov</span>
+                                <span className="text-[11px] font-bold text-matn-xira">{filteredPayments.length} ta to'lov</span>
                                 <span className="text-[11px] font-bold text-emerald-600 tabular-nums ml-auto">+{filteredRevenue.toLocaleString()} UZS</span>
                             </>
                         ) : (
                             <>
-                                <span className="text-[11px] font-bold text-gray-400">{filteredExpenses.length} ta xarajat</span>
+                                <span className="text-[11px] font-bold text-matn-xira">{filteredExpenses.length} ta xarajat</span>
                                 <span className="text-[11px] font-bold text-rose-600 tabular-nums ml-auto">-{filteredExpenditure.toLocaleString()} UZS</span>
                             </>
                         )}
@@ -1186,7 +1186,7 @@ export default function Finance() {
                     <div className="divide-y divide-gray-50 dark:divide-gray-700/30 max-h-[520px] overflow-y-auto">
                         {activeTab === 'payments' ? (
                             filteredPayments.length === 0 ? (
-                                <p className="text-center py-12 text-[11px] text-gray-400 font-bold">To'lovlar topilmadi</p>
+                                <p className="text-center py-12 text-[11px] text-matn-xira font-bold">To'lovlar topilmadi</p>
                             ) : filteredPayments.map(p => {
                                 const student = students.find(s => s.id === p.studentId);
                                 return (
@@ -1198,8 +1198,8 @@ export default function Finance() {
                                                 <DollarSign size={14} className="text-emerald-600 dark:text-emerald-400" />
                                             </div>
                                             <div className="min-w-0">
-                                                <p className="text-xs font-bold text-gray-900 dark:text-white truncate">{student?.name || "Noma'lum"}</p>
-                                                <span className="text-[11px] text-gray-400 font-bold block mt-0.5">{p.date} • {p.type}</span>
+                                                <p className="text-xs font-bold text-matn truncate">{student?.name || "Noma'lum"}</p>
+                                                <span className="text-[11px] text-matn-xira font-bold block mt-0.5">{p.date} • {p.type}</span>
                                             </div>
                                         </div>
                                         <div className="flex items-center gap-2 shrink-0">
@@ -1211,7 +1211,7 @@ export default function Finance() {
                             })
                         ) : (
                             filteredExpenses.length === 0 ? (
-                                <p className="text-center py-12 text-[11px] text-gray-400 font-bold">Xarajatlar topilmadi</p>
+                                <p className="text-center py-12 text-[11px] text-matn-xira font-bold">Xarajatlar topilmadi</p>
                             ) : filteredExpenses.map(e => (
                                 <div key={e.id} className="flex items-center justify-between px-6 py-3.5 hover:bg-gray-50/70 dark:hover:bg-gray-900/40 transition-all">
                                     <div className="flex items-center gap-3 min-w-0">
@@ -1219,7 +1219,7 @@ export default function Finance() {
                                             <TrendingDown size={14} className="text-rose-500 dark:text-rose-400" />
                                         </div>
                                         <div className="min-w-0">
-                                            <p className="text-xs font-bold text-gray-900 dark:text-white truncate">
+                                            <p className="text-xs font-bold text-matn truncate">
                                                 {e.category}
                                                 {e.category === 'Ish haqi' && (e as any).staffName && (
                                                     <span className="ml-1.5 text-[11px] font-bold text-rose-500 normal-case tracking-normal">
@@ -1227,7 +1227,7 @@ export default function Finance() {
                                                     </span>
                                                 )}
                                             </p>
-                                            <span className="text-[11px] text-gray-400 font-bold block mt-0.5">{e.date}{e.description ? ` • ${e.description}` : ''}</span>
+                                            <span className="text-[11px] text-matn-xira font-bold block mt-0.5">{e.date}{e.description ? ` • ${e.description}` : ''}</span>
                                         </div>
                                     </div>
                                     <div className="flex items-center gap-3 shrink-0">
@@ -1249,33 +1249,33 @@ ${e.description || e.category} — ${Number(e.amount).toLocaleString()} so'm`)) 
             {isPaymentModalOpen && (
                 <div className="fixed inset-0 z-[200] flex items-start sm:items-center justify-center overflow-y-auto p-4">
                     <div className="absolute inset-0 bg-gray-900/60 backdrop-blur-sm" onClick={closePaymentModal} />
-                    <div className="relative bg-white dark:bg-gray-800 rounded-[2rem] border border-gray-100 dark:border-gray-800/50 shadow-2xl w-full max-w-md p-8 overflow-hidden">
+                    <div className="relative bg-sirt rounded-[2rem] border border-chiziq shadow-2xl w-full max-w-md p-8 overflow-hidden">
 
                         {createdPaymentForReceipt ? (
                             <div className="space-y-6">
                                 <div className="text-center space-y-1">
-                                    <h3 className="text-sm font-black text-[#1b6b6b] dark:text-teal-400">SARIOSIYO CENTER</h3>
-                                    <p className="text-[11px] font-bold text-gray-400 dark:text-gray-500">TO'LOV CHEKI (RECEIPT)</p>
+                                    <h3 className="text-sm font-black text-brand">SARIOSIYO CENTER</h3>
+                                    <p className="text-[11px] font-bold text-matn-xira">TO'LOV CHEKI (RECEIPT)</p>
                                 </div>
-                                <div className="bg-gray-50 dark:bg-gray-900/30 p-4 rounded-2xl border border-gray-100 dark:border-gray-750 font-mono text-xs text-gray-800 dark:text-gray-300 space-y-4 shadow-inner">
+                                <div className="bg-ichki/30 p-4 rounded-2xl border border-gray-100 dark:border-gray-750 font-mono text-xs text-gray-800 dark:text-gray-300 space-y-4 shadow-inner">
                                     <div className="border-b border-dashed border-gray-300 dark:border-gray-800 pb-3 space-y-1">
                                         <div className="flex justify-between"><span>Chek #</span><span className="font-black">#{createdPaymentForReceipt.id}</span></div>
                                         <div className="flex justify-between"><span>Sana:</span><span className="font-semibold">{createdPaymentForReceipt.date}</span></div>
                                     </div>
                                     <div className="space-y-2">
                                         <div>
-                                            <span className="text-[11px] text-gray-400 block">O'quvchi:</span>
-                                            <span className="font-black text-gray-900 dark:text-white text-[13px]">{selectedStudent?.name}</span>
+                                            <span className="text-[11px] text-matn-xira block">O'quvchi:</span>
+                                            <span className="font-black text-matn text-[13px]">{selectedStudent?.name}</span>
                                         </div>
                                         {selectedStudent?.phone && (
-                                            <div><span className="text-[11px] text-gray-400 block">Telefon:</span><span>{selectedStudent.phone}</span></div>
+                                            <div><span className="text-[11px] text-matn-xira block">Telefon:</span><span>{selectedStudent.phone}</span></div>
                                         )}
                                         {(() => {
                                             const sg = groups.filter(g => (g.studentIds || []).includes(selectedStudent?.id));
                                             if (!sg.length) return null;
                                             return (
                                                 <div>
-                                                    <span className="text-[11px] text-gray-400 block">Kurslar:</span>
+                                                    <span className="text-[11px] text-matn-xira block">Kurslar:</span>
                                                     <div className="font-semibold">{sg.map(g => {
                                                         const cn = courses.find(c => c.id === g.courseId)?.name || '';
                                                         return <div key={g.id}>- {g.name}{cn && ` (${cn})`}</div>;
@@ -1290,7 +1290,7 @@ ${e.description || e.category} — ${Number(e.amount).toLocaleString()} so'm`)) 
                                             <span className="font-black">{createdPaymentForReceipt.type}</span>
                                         </div>
                                         <div className="flex justify-between text-base">
-                                            <span className="font-bold text-[#1b6b6b]">To'landi:</span>
+                                            <span className="font-bold text-brand">To'landi:</span>
                                             <span className="font-black text-emerald-600 tabular-nums">+{createdPaymentForReceipt.amount.toLocaleString()} UZS</span>
                                         </div>
                                         <div className="flex justify-between text-[13px]">
@@ -1300,29 +1300,29 @@ ${e.description || e.category} — ${Number(e.amount).toLocaleString()} so'm`)) 
                                             </span>
                                         </div>
                                     </div>
-                                    <div className="border-t border-dashed border-gray-300 dark:border-gray-800 pt-3 text-center text-[11px] text-gray-400 font-bold">
+                                    <div className="border-t border-dashed border-gray-300 dark:border-gray-800 pt-3 text-center text-[11px] text-matn-xira font-bold">
                                         To'lovingiz uchun rahmat!
                                     </div>
                                 </div>
                                 <div className="flex gap-3">
                                     <button type="button" onClick={() => handlePrintReceipt(createdPaymentForReceipt, selectedStudent)}
-                                        className="flex-1 py-3 bg-[#1b6b6b] hover:bg-[#155252] text-white text-xs font-extrabold rounded-2xl transition-all cursor-pointer shadow-sm shadow-[#1b6b6b]/20 text-center">
+                                        className="flex-1 py-3 bg-brand hover:bg-brand-dark text-white text-xs font-extrabold rounded-2xl transition-all cursor-pointer shadow-sm shadow-[#1b6b6b]/20 text-center">
                                         Chop etish (Print)
                                     </button>
                                     <button type="button" onClick={closePaymentModal}
-                                        className="flex-1 py-3 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-white text-xs font-extrabold rounded-2xl transition-all cursor-pointer hover:bg-gray-200">
+                                        className="flex-1 py-3 bg-chiziq text-gray-700 dark:text-white text-xs font-extrabold rounded-2xl transition-all cursor-pointer hover:bg-gray-200">
                                         Yopish
                                     </button>
                                 </div>
                             </div>
                         ) : (
                             <>
-                                <div className="flex items-center justify-between mb-6 pb-4 border-b border-gray-50 dark:border-gray-800/50">
+                                <div className="flex items-center justify-between mb-6 pb-4 border-b border-chiziq-mayin/50">
                                     <div>
-                                        <h3 className="text-lg font-black text-gray-900 dark:text-white tracking-tight">Yangi Kirim</h3>
-                                        <p className="text-[11px] font-bold text-[#1b6b6b] mt-0.5">To'lov qabul qilish</p>
+                                        <h3 className="text-lg font-black text-matn tracking-tight">Yangi Kirim</h3>
+                                        <p className="text-[11px] font-bold text-brand mt-0.5">To'lov qabul qilish</p>
                                     </div>
-                                    <button onClick={closePaymentModal} className="w-9 h-9 flex items-center justify-center text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700 rounded-xl cursor-pointer" aria-label="Yopish"><X size={18} /></button>
+                                    <button onClick={closePaymentModal} className="w-9 h-9 flex items-center justify-center text-matn-xira hover:bg-gray-50 dark:hover:bg-gray-700 rounded-xl cursor-pointer" aria-label="Yopish"><X size={18} /></button>
                                 </div>
                                 <form onSubmit={async (e) => {
                                     e.preventDefault();
@@ -1351,59 +1351,59 @@ ${e.description || e.category} — ${Number(e.amount).toLocaleString()} so'm`)) 
                                             <input type="text" placeholder="Ism yoki telefon raqami..." className={inp}
                                                 value={studentSearch} onChange={(e) => setStudentSearch(e.target.value)} />
                                             {studentSearch.trim() !== '' && (
-                                                <div className="absolute z-[210] left-0 right-0 mt-1 bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-800 rounded-2xl shadow-xl overflow-hidden max-h-48 overflow-y-auto divide-y divide-gray-50 dark:divide-gray-750">
+                                                <div className="absolute z-[210] left-0 right-0 mt-1 bg-sirt border border-chiziq rounded-2xl shadow-xl overflow-hidden max-h-48 overflow-y-auto divide-y divide-gray-50 dark:divide-gray-750">
                                                     {students.filter(s =>
                                                         s.name.toLowerCase().includes(studentSearch.toLowerCase()) ||
                                                         (s.phone && s.phone.includes(studentSearch))
                                                     ).slice(0, 6).map(s => (
                                                         <button key={s.id} type="button"
                                                             onClick={() => { setSelectedStudent(s); setStudentSearch(''); }}
-                                                            className="w-full text-left px-4 py-3 hover:bg-gray-50 dark:hover:bg-gray-700/50 text-xs font-bold text-gray-900 dark:text-white flex flex-col cursor-pointer transition-colors">
+                                                            className="w-full text-left px-4 py-3 hover:bg-gray-50 dark:hover:bg-gray-700/50 text-xs font-bold text-matn flex flex-col cursor-pointer transition-colors">
                                                             <span>{s.name}</span>
-                                                            {s.phone && <span className="text-[11px] text-gray-400 font-bold mt-0.5">{s.phone}</span>}
+                                                            {s.phone && <span className="text-[11px] text-matn-xira font-bold mt-0.5">{s.phone}</span>}
                                                         </button>
                                                     ))}
                                                     {students.filter(s =>
                                                         s.name.toLowerCase().includes(studentSearch.toLowerCase()) ||
                                                         (s.phone && s.phone.includes(studentSearch))
                                                     ).length === 0 && (
-                                                        <div className="px-4 py-4 text-center text-[11px] text-gray-400 font-bold">O'quvchi topilmadi</div>
+                                                        <div className="px-4 py-4 text-center text-[11px] text-matn-xira font-bold">O'quvchi topilmadi</div>
                                                     )}
                                                 </div>
                                             )}
                                         </div>
                                     ) : (
-                                        <div className="p-4 bg-gray-50 dark:bg-gray-900/50 rounded-2xl border border-gray-100 dark:border-gray-800/80 relative space-y-3">
+                                        <div className="p-4 bg-ichki rounded-2xl border border-chiziq/80 relative space-y-3">
                                             <button type="button"
                                                 onClick={() => { setSelectedStudent(null); setNewPayment({ ...newPayment, studentId: 0 }); }}
-                                                className="absolute top-3.5 right-3.5 text-[11px] text-rose-500 font-bold hover:underline cursor-pointer bg-white dark:bg-gray-800 px-2.5 py-1 rounded-lg border border-gray-100 dark:border-gray-800">
+                                                className="absolute top-3.5 right-3.5 text-[11px] text-rose-500 font-bold hover:underline cursor-pointer bg-sirt px-2.5 py-1 rounded-lg border border-chiziq">
                                                 O'zgartirish
                                             </button>
                                             <div>
-                                                <span className="text-[10px] font-bold text-[#1b6b6b] block">Tanlangan o'quvchi</span>
-                                                <h4 className="text-xs font-bold text-gray-900 dark:text-white mt-0.5">{selectedStudent.name}</h4>
-                                                {selectedStudent.phone && <p className="text-[11px] text-gray-400 font-bold mt-0.5">{selectedStudent.phone}</p>}
+                                                <span className="text-[10px] font-bold text-brand block">Tanlangan o'quvchi</span>
+                                                <h4 className="text-xs font-bold text-matn mt-0.5">{selectedStudent.name}</h4>
+                                                {selectedStudent.phone && <p className="text-[11px] text-matn-xira font-bold mt-0.5">{selectedStudent.phone}</p>}
                                             </div>
                                             <div className="grid grid-cols-2 gap-3 pt-2 border-t border-dashed border-gray-200 dark:border-gray-800/50">
                                                 <div>
-                                                    <span className="text-[10px] font-bold text-gray-400 block">Joriy Balans</span>
+                                                    <span className="text-[10px] font-bold text-matn-xira block">Joriy Balans</span>
                                                     <span className={`text-[12px] font-bold block mt-0.5 tabular-nums ${selectedStudent.balance >= 0 ? 'text-emerald-600' : 'text-rose-600'}`}>
                                                         {selectedStudent.balance.toLocaleString()} UZS
                                                     </span>
                                                 </div>
                                                 <div>
-                                                    <span className="text-[10px] font-bold text-gray-400 block">Oxirgi to'lov</span>
+                                                    <span className="text-[10px] font-bold text-matn-xira block">Oxirgi to'lov</span>
                                                     {(() => {
                                                         const sp = payments.filter(p => p.studentId === selectedStudent.id && p.amount > 0);
                                                         const lp = sp.length > 0 ? sp[sp.length - 1] : null;
                                                         return lp
-                                                            ? <span className="text-[11px] font-bold text-gray-600 dark:text-gray-300 block mt-0.5 tabular-nums">{lp.amount.toLocaleString()} UZS ({lp.date})</span>
-                                                            : <span className="text-[11px] text-gray-400 italic block mt-0.5">Mavjud emas</span>;
+                                                            ? <span className="text-[11px] font-bold text-matn-2 block mt-0.5 tabular-nums">{lp.amount.toLocaleString()} UZS ({lp.date})</span>
+                                                            : <span className="text-[11px] text-matn-xira italic block mt-0.5">Mavjud emas</span>;
                                                     })()}
                                                 </div>
                                             </div>
                                             <div className="pt-2 border-t border-dashed border-gray-200 dark:border-gray-800/50">
-                                                <span className="text-[10px] font-bold text-gray-400 block">Kurslar</span>
+                                                <span className="text-[10px] font-bold text-matn-xira block">Kurslar</span>
                                                 {(() => {
                                                     const sg = groups.filter(g => (g.studentIds || []).includes(selectedStudent.id));
                                                     return sg.length > 0 ? (
@@ -1411,13 +1411,13 @@ ${e.description || e.category} — ${Number(e.amount).toLocaleString()} so'm`)) 
                                                             {sg.map(g => {
                                                                 const cn = courses.find(c => c.id === g.courseId)?.name || '';
                                                                 return (
-                                                                    <span key={g.id} className="px-2 py-0.5 bg-white dark:bg-gray-800 text-[10px] font-bold text-[#1b6b6b] border border-teal-100/50 dark:border-teal-900/40 rounded-md">
+                                                                    <span key={g.id} className="px-2 py-0.5 bg-sirt text-[10px] font-bold text-brand border border-teal-100/50 dark:border-teal-900/40 rounded-md">
                                                                         {g.name}{cn && ` (${cn})`}
                                                                     </span>
                                                                 );
                                                             })}
                                                         </div>
-                                                    ) : <span className="text-[11px] text-gray-400 italic block mt-0.5">Kurslarga a'zo emas</span>;
+                                                    ) : <span className="text-[11px] text-matn-xira italic block mt-0.5">Kurslarga a'zo emas</span>;
                                                 })()}
                                             </div>
                                         </div>
@@ -1432,7 +1432,7 @@ ${e.description || e.category} — ${Number(e.amount).toLocaleString()} so'm`)) 
                                             {[300000, 400000, 500000, 600000, 800000].map(amt => (
                                                 <button key={amt} type="button"
                                                     onClick={() => setNewPayment({ ...newPayment, amount: amt })}
-                                                    className={`px-3 py-1.5 text-[11px] font-bold border rounded-xl transition-all cursor-pointer ${newPayment.amount === amt ? 'bg-[#1b6b6b] border-[#1b6b6b] text-white shadow-sm' : 'bg-gray-50 dark:bg-gray-900/30 dark:border-gray-800 hover:bg-gray-100 text-gray-500 dark:text-gray-400'}`}>
+                                                    className={`px-3 py-1.5 text-[11px] font-bold border rounded-xl transition-all cursor-pointer ${newPayment.amount === amt ? 'bg-brand border-brand text-white shadow-sm' : 'bg-ichki/30 dark:border-gray-800 hover:bg-gray-100 text-matn-sokin'}`}>
                                                     {amt.toLocaleString()}
                                                 </button>
                                             ))}
@@ -1445,7 +1445,7 @@ ${e.description || e.category} — ${Number(e.amount).toLocaleString()} so'm`)) 
                                             {['Naqd', 'Karta', "O'tkazma"].map(tType => (
                                                 <button key={tType} type="button"
                                                     onClick={() => setNewPayment({ ...newPayment, type: tType as any })}
-                                                    className={`py-2.5 rounded-xl text-xs font-extrabold transition-all border cursor-pointer ${newPayment.type === tType ? 'bg-[#1b6b6b] border-[#1b6b6b] text-white shadow-sm shadow-[#1b6b6b]/20' : 'bg-white dark:bg-gray-850 border-gray-100 dark:border-gray-800 text-gray-400 dark:text-gray-500 hover:bg-gray-50'}`}>
+                                                    className={`py-2.5 rounded-xl text-xs font-extrabold transition-all border cursor-pointer ${newPayment.type === tType ? 'bg-brand border-brand text-white shadow-sm shadow-[#1b6b6b]/20' : 'bg-sirt border-chiziq text-matn-xira hover:bg-gray-50'}`}>
                                                     {tType}
                                                 </button>
                                             ))}
@@ -1459,13 +1459,13 @@ ${e.description || e.category} — ${Number(e.amount).toLocaleString()} so'm`)) 
                                             onChange={e => setNewPayment({ ...newPayment, description: e.target.value })} />
                                     </div>
 
-                                    <div className="flex gap-3 pt-4 border-t border-gray-50 dark:border-gray-800/50">
+                                    <div className="flex gap-3 pt-4 border-t border-chiziq-mayin/50">
                                         <button type="button" onClick={closePaymentModal}
-                                            className="flex-1 py-3 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-white text-xs font-extrabold rounded-2xl transition-all cursor-pointer hover:bg-gray-200 dark:hover:bg-gray-600">
+                                            className="flex-1 py-3 bg-chiziq text-gray-700 dark:text-white text-xs font-extrabold rounded-2xl transition-all cursor-pointer hover:bg-gray-200 dark:hover:bg-gray-600">
                                             {t('cancel')}
                                         </button>
                                         <button type="submit" disabled={!selectedStudent || isSavingPayment}
-                                            className="flex-1 py-3 bg-[#1b6b6b] hover:bg-[#155252] disabled:opacity-50 disabled:cursor-not-allowed text-white text-xs font-extrabold rounded-2xl shadow-sm shadow-[#1b6b6b]/20 transition-all cursor-pointer">
+                                            className="flex-1 py-3 bg-brand hover:bg-brand-dark disabled:opacity-50 disabled:cursor-not-allowed text-white text-xs font-extrabold rounded-2xl shadow-sm shadow-[#1b6b6b]/20 transition-all cursor-pointer">
                                             {isSavingPayment ? 'Saqlanmoqda…' : t('save')}
                                         </button>
                                     </div>
@@ -1480,13 +1480,13 @@ ${e.description || e.category} — ${Number(e.amount).toLocaleString()} so'm`)) 
             {isExpenseModalOpen && (
                 <div className="fixed inset-0 z-[200] flex items-start sm:items-center justify-center overflow-y-auto p-4">
                     <div className="absolute inset-0 bg-gray-900/60 backdrop-blur-sm" onClick={() => setIsExpenseModalOpen(false)} />
-                    <div className="relative bg-white dark:bg-gray-800 rounded-[2rem] border border-gray-100 dark:border-gray-800/50 shadow-2xl w-full max-w-md p-8">
-                        <div className="flex items-center justify-between mb-6 pb-4 border-b border-gray-50 dark:border-gray-800/50">
+                    <div className="relative bg-sirt rounded-[2rem] border border-chiziq shadow-2xl w-full max-w-md p-8">
+                        <div className="flex items-center justify-between mb-6 pb-4 border-b border-chiziq-mayin/50">
                             <div>
-                                <h3 className="text-lg font-black text-gray-900 dark:text-white tracking-tight">Yangi Chiqim</h3>
+                                <h3 className="text-lg font-black text-matn tracking-tight">Yangi Chiqim</h3>
                                 <p className="text-[11px] font-bold text-rose-600 mt-0.5">Xarajat kiritish</p>
                             </div>
-                            <button aria-label="Yopish" onClick={() => setIsExpenseModalOpen(false)} className="w-9 h-9 flex items-center justify-center text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700 rounded-xl cursor-pointer"><X size={18} /></button>
+                            <button aria-label="Yopish" onClick={() => setIsExpenseModalOpen(false)} className="w-9 h-9 flex items-center justify-center text-matn-xira hover:bg-gray-50 dark:hover:bg-gray-700 rounded-xl cursor-pointer"><X size={18} /></button>
                         </div>
                         <form onSubmit={(e) => {
                             e.preventDefault();
@@ -1570,7 +1570,7 @@ ${e.description || e.category} — ${Number(e.amount).toLocaleString()} so'm`)) 
                             </div>
                             <div className="flex gap-3 pt-2">
                                 <button type="button" onClick={() => setIsExpenseModalOpen(false)}
-                                    className="flex-1 py-3 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-white text-xs font-extrabold rounded-2xl transition-all cursor-pointer hover:bg-gray-200 dark:hover:bg-gray-600">
+                                    className="flex-1 py-3 bg-chiziq text-gray-700 dark:text-white text-xs font-extrabold rounded-2xl transition-all cursor-pointer hover:bg-gray-200 dark:hover:bg-gray-600">
                                     {t('cancel')}
                                 </button>
                                 <button type="submit"
@@ -1587,13 +1587,13 @@ ${e.description || e.category} — ${Number(e.amount).toLocaleString()} so'm`)) 
             {showDebtNotifyModal && (
                 <div className="fixed inset-0 z-[200] flex items-start sm:items-center justify-center overflow-y-auto p-4">
                     <div className="absolute inset-0 bg-gray-900/60 backdrop-blur-sm" onClick={() => setShowDebtNotifyModal(false)} />
-                    <div className="relative bg-white dark:bg-gray-800 rounded-[2rem] border border-gray-100 dark:border-gray-800/50 shadow-2xl w-full max-w-lg p-8">
-                        <div className="flex items-center justify-between mb-6 pb-4 border-b border-gray-50 dark:border-gray-800/50">
+                    <div className="relative bg-sirt rounded-[2rem] border border-chiziq shadow-2xl w-full max-w-lg p-8">
+                        <div className="flex items-center justify-between mb-6 pb-4 border-b border-chiziq-mayin/50">
                             <div>
-                                <h3 className="text-sm font-black text-gray-900 dark:text-white tracking-tight text-[#1b6b6b]">Qarzdorlarga Xabar Yuborish</h3>
-                                <p className="text-[11px] font-bold text-gray-400 mt-0.5">Oylik hisob-kitob bo'yicha</p>
+                                <h3 className="text-sm font-black text-matn tracking-tight text-brand">Qarzdorlarga Xabar Yuborish</h3>
+                                <p className="text-[11px] font-bold text-matn-xira mt-0.5">Oylik hisob-kitob bo'yicha</p>
                             </div>
-                            <button aria-label="Yopish" onClick={() => setShowDebtNotifyModal(false)} className="w-9 h-9 flex items-center justify-center text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700 rounded-xl cursor-pointer"><X size={18} /></button>
+                            <button aria-label="Yopish" onClick={() => setShowDebtNotifyModal(false)} className="w-9 h-9 flex items-center justify-center text-matn-xira hover:bg-gray-50 dark:hover:bg-gray-700 rounded-xl cursor-pointer"><X size={18} /></button>
                         </div>
                         <div className="space-y-4">
                             <div>
@@ -1610,8 +1610,8 @@ ${e.description || e.category} — ${Number(e.amount).toLocaleString()} so'm`)) 
                                             onClick={() => setDebtNotifyStatusFilter(opt.value)}
                                             className={`flex-1 py-2 rounded-xl text-[11px] font-extrabold border transition-all cursor-pointer ${
                                                 debtNotifyStatusFilter === opt.value
-                                                    ? 'bg-[#1b6b6b] text-white border-[#1b6b6b]'
-                                                    : 'bg-gray-50 dark:bg-gray-700 text-gray-600 dark:text-gray-300 border-gray-200 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-600'
+                                                    ? 'bg-brand text-brand-ust border-brand'
+                                                    : 'bg-gray-50 dark:bg-gray-700 text-matn-2 border-gray-200 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-600'
                                             }`}
                                         >
                                             {opt.label}
@@ -1630,7 +1630,7 @@ ${e.description || e.category} — ${Number(e.amount).toLocaleString()} so'm`)) 
                             <div>
                                 <div className="flex justify-between items-center mb-1">
                                     <label className={lbl}>Xabar Shablon Matni</label>
-                                    <span className="text-[11px] text-gray-400 font-bold">Placeholder: {"{ism}"}, {"{oylik}"}, {"{qarz}"}, {"{markaz}"}</span>
+                                    <span className="text-[11px] text-matn-xira font-bold">Placeholder: {"{ism}"}, {"{oylik}"}, {"{qarz}"}, {"{markaz}"}</span>
                                 </div>
                                 <textarea
                                     className={`${inp} min-h-[120px] py-3 text-xs leading-relaxed`}
@@ -1647,11 +1647,11 @@ ${e.description || e.category} — ${Number(e.amount).toLocaleString()} so'm`)) 
 
                             <div className="flex gap-3 pt-2">
                                 <button type="button" onClick={() => setShowDebtNotifyModal(false)} disabled={isSendingDebtNotify}
-                                    className="flex-1 py-3 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-white text-xs font-extrabold rounded-2xl transition-all cursor-pointer hover:bg-gray-200 dark:hover:bg-gray-600">
+                                    className="flex-1 py-3 bg-chiziq text-gray-700 dark:text-white text-xs font-extrabold rounded-2xl transition-all cursor-pointer hover:bg-gray-200 dark:hover:bg-gray-600">
                                     {t('cancel')}
                                 </button>
                                 <button type="button" onClick={handleSendDebtNotifications} disabled={isSendingDebtNotify}
-                                    className="flex-1 py-3 bg-[#1b6b6b] hover:bg-[#155252] text-white text-xs font-extrabold rounded-2xl shadow-sm shadow-[#1b6b6b]/20 transition-all cursor-pointer flex items-center justify-center gap-2">
+                                    className="flex-1 py-3 bg-brand hover:bg-brand-dark text-white text-xs font-extrabold rounded-2xl shadow-sm shadow-[#1b6b6b]/20 transition-all cursor-pointer flex items-center justify-center gap-2">
                                     {isSendingDebtNotify ? (
                                         <>
                                             <RefreshCw size={12} className="animate-spin" /> Yuborilmoqda...

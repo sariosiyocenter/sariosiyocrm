@@ -13,8 +13,8 @@ const STAGES = [
   { id: 'tolov_qildi', name: "To'lov qildi", color: 'bg-rose-500', borderColor: 'border-rose-500', lightBgc: 'bg-rose-50 dark:bg-rose-950/20 text-rose-600 dark:text-rose-400 border-rose-100 dark:border-rose-900/30' },
 ] as const;
 
-const inp = "w-full px-4 py-3 bg-gray-50 dark:bg-gray-900/50 border border-gray-100 dark:border-gray-800 rounded-2xl text-xs font-bold text-gray-900 dark:text-white focus:border-[#1b6b6b] focus:ring-4 focus:ring-[#1b6b6b]/10 outline-none transition-all";
-const lbl = "block text-[11px] font-extrabold   text-gray-400 mb-2";
+const inp = "w-full px-4 py-3 bg-ichki border border-chiziq rounded-2xl text-xs font-bold text-matn focus:border-brand focus:ring-4 focus:ring-[#1b6b6b]/10 outline-none transition-all";
+const lbl = "block text-[11px] font-extrabold   text-matn-xira mb-2";
 
 const UZB_REGIONS: Record<string, string[]> = {
   "Surxondaryo": [
@@ -316,29 +316,29 @@ export default function Leads() {
           sahifadan ajratib qo'yardi. */}
       <div className="flex flex-col lg:flex-row lg:items-start justify-between gap-4">
           <div>
-            <h1 className="text-[26px] font-bold text-gray-900 dark:text-white tracking-tight leading-tight">{t('leads_title')}</h1>
-            <p className="text-[13px] text-gray-500 dark:text-gray-400 mt-1">
+            <h1 className="text-[26px] font-bold text-matn tracking-tight leading-tight">{t('leads_title')}</h1>
+            <p className="text-[13px] text-matn-sokin mt-1">
               {t('leads_subtitle')} · <span className="num">{leads.length}</span>
             </p>
           </div>
           <div className="flex items-center gap-2 shrink-0">
             <div className="relative">
-              <Search size={14} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400" />
+              <Search size={14} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-matn-xira" />
               <input
                 type="text" placeholder={t('search_placeholder_students')}
                 value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-9 pr-4 py-2.5 bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-800 rounded-xl text-[13px] text-gray-900 dark:text-white outline-none focus:border-[#1b6b6b] transition-colors w-52"
+                className="pl-9 pr-4 py-2.5 bg-sirt border border-chiziq rounded-xl text-[13px] text-matn outline-none focus:border-brand transition-colors w-52"
               />
             </div>
             <button
               onClick={() => setShowFilters(!showFilters)}
-              className={`w-10 h-10 flex items-center justify-center rounded-xl border transition-colors cursor-pointer shrink-0 ${showFilters ? 'bg-[#1b6b6b] border-[#1b6b6b] text-white' : 'bg-white dark:bg-gray-800 border-gray-100 dark:border-gray-800 text-gray-400 hover:border-[#1b6b6b] hover:text-[#1b6b6b]'}`}
+              className={`w-10 h-10 flex items-center justify-center rounded-xl border transition-colors cursor-pointer shrink-0 ${showFilters ? 'bg-brand border-brand text-white' : 'bg-sirt border-chiziq text-matn-xira hover:border-brand hover:text-brand'}`}
             >
               <SlidersHorizontal size={15} />
             </button>
             <button
               onClick={() => setIsModalOpen(true)}
-              className="flex items-center gap-2 px-4 py-2.5 bg-[#1b6b6b] hover:bg-[#155252] text-white rounded-xl text-[13px] font-semibold shadow-sm shadow-[#1b6b6b]/20 transition-colors cursor-pointer shrink-0"
+              className="flex items-center gap-2 px-4 py-2.5 bg-brand hover:bg-brand-dark text-white rounded-xl text-[13px] font-semibold shadow-sm shadow-[#1b6b6b]/20 transition-colors cursor-pointer shrink-0"
             >
               <Plus size={14} /> {t('add')}
             </button>
@@ -349,12 +349,12 @@ export default function Leads() {
           bu qator o'sha paneldagi manba tanlovi bilan bitta holatni bo'lishadi. */}
       <div>
         <div className="flex items-center gap-2 overflow-x-auto no-scrollbar">
-          <span className="text-[12px] text-gray-400 shrink-0 mr-1">{t('by_source')}</span>
+          <span className="text-[12px] text-matn-xira shrink-0 mr-1">{t('by_source')}</span>
           <button
             onClick={() => setFilters({ ...filters, source: '' })}
             className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[11px] font-semibold border transition-colors cursor-pointer shrink-0 ${!filters.source
-              ? 'bg-[#1b6b6b] border-[#1b6b6b] text-white'
-              : 'bg-gray-55 dark:bg-gray-900/50 border-gray-100 dark:border-gray-800 text-gray-500 dark:text-gray-400 hover:text-[#1b6b6b] hover:border-[#1b6b6b]'}`}
+              ? 'bg-brand border-brand text-white'
+              : 'bg-ichki border-chiziq text-matn-sokin hover:text-brand hover:border-brand'}`}
           >
             {t('all')} <span className="tabular-nums opacity-60">{sourceCounts.total}</span>
           </button>
@@ -364,8 +364,8 @@ export default function Leads() {
               onClick={() => setFilters({ ...filters, source: filters.source === src ? '' : src })}
               title={src}
               className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[11px] font-semibold border transition-colors cursor-pointer shrink-0 max-w-[200px] ${filters.source === src
-                ? 'bg-[#1b6b6b] border-[#1b6b6b] text-white'
-                : 'bg-gray-55 dark:bg-gray-900/50 border-gray-100 dark:border-gray-800 text-gray-500 dark:text-gray-400 hover:text-[#1b6b6b] hover:border-[#1b6b6b]'}`}
+                ? 'bg-brand border-brand text-white'
+                : 'bg-ichki border-chiziq text-matn-sokin hover:text-brand hover:border-brand'}`}
             >
               <span className="truncate">{src}</span>
               <span className="tabular-nums opacity-60 shrink-0">{count}</span>
@@ -374,13 +374,13 @@ export default function Leads() {
         </div>
 
         {showFilters && (
-          <div className="mt-4 p-5 bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-800/50 rounded-2xl grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          <div className="mt-4 p-5 bg-sirt border border-chiziq rounded-2xl grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
             <div>
               <label className={lbl}>{t('by_course')}</label>
               <select
                 value={filters.course}
                 onChange={e => setFilters({...filters, course: e.target.value})}
-                className="w-full px-3 py-2 bg-gray-55 dark:bg-gray-900/50 border border-gray-100 dark:border-gray-800 rounded-xl text-[11px] font-bold text-gray-700 dark:text-white outline-none focus:border-[#1b6b6b] transition-all cursor-pointer"
+                className="w-full px-3 py-2 bg-ichki border border-chiziq rounded-xl text-[11px] font-bold text-gray-700 dark:text-white outline-none focus:border-brand transition-all cursor-pointer"
               >
                 <option value="">{t('all')}</option>
                 {courses.map(c => <option key={c.id} value={c.name}>{c.name}</option>)}
@@ -391,7 +391,7 @@ export default function Leads() {
               <select
                 value={filters.source}
                 onChange={e => setFilters({...filters, source: e.target.value})}
-                className="w-full px-3 py-2 bg-gray-55 dark:bg-gray-900/50 border border-gray-100 dark:border-gray-800 rounded-xl text-[11px] font-bold text-gray-700 dark:text-white outline-none focus:border-[#1b6b6b] transition-all cursor-pointer"
+                className="w-full px-3 py-2 bg-ichki border border-chiziq rounded-xl text-[11px] font-bold text-gray-700 dark:text-white outline-none focus:border-brand transition-all cursor-pointer"
               >
                 <option value="">{t('all')}</option>
                 <option value="Instagram">Instagram</option>
@@ -406,7 +406,7 @@ export default function Leads() {
               <select
                 value={filters.dateRange}
                 onChange={e => setFilters({...filters, dateRange: e.target.value})}
-                className="w-full px-3 py-2 bg-gray-55 dark:bg-gray-900/50 border border-gray-100 dark:border-gray-800 rounded-xl text-[11px] font-bold text-gray-700 dark:text-white outline-none focus:border-[#1b6b6b] transition-all cursor-pointer"
+                className="w-full px-3 py-2 bg-ichki border border-chiziq rounded-xl text-[11px] font-bold text-gray-700 dark:text-white outline-none focus:border-brand transition-all cursor-pointer"
               >
                 <option value="all">{t('all_time')}</option>
                 <option value="today">{t('today')}</option>
@@ -444,18 +444,18 @@ export default function Leads() {
                   if (!isNaN(leadId)) handleStatusChange(leadId, stage.name);
                 }
               }}
-              className="w-[264px] shrink-0 rounded-2xl bg-gray-55/70 dark:bg-gray-900/25 border border-gray-100 dark:border-gray-800/50 flex flex-col max-h-[76vh] overflow-hidden"
+              className="w-[264px] shrink-0 rounded-2xl bg-gray-55/70 dark:bg-gray-900/25 border border-chiziq flex flex-col max-h-[76vh] overflow-hidden"
             >
               {/* Bosqich rangi ustun tepasida ingichka chiziq bo'lib turadi —
                   sarlavhadagi nuqta bilan ikki marta takrorlanmasin uchun. */}
               <div className={`h-0.5 w-full ${stage.color}`} />
               <div className="px-3 pt-3 pb-2 flex items-baseline justify-between gap-2">
                 <div className="flex items-baseline gap-2 min-w-0">
-                  <h3 className="font-semibold text-gray-900 dark:text-gray-100 text-[13px] truncate">{getStageLabel(stage.name)}</h3>
-                  <span className="num text-[11px] font-medium text-gray-400 shrink-0">{stageLeads.length}</span>
+                  <h3 className="font-semibold text-matn dark:text-gray-100 text-[13px] truncate">{getStageLabel(stage.name)}</h3>
+                  <span className="num text-[11px] font-medium text-matn-xira shrink-0">{stageLeads.length}</span>
                 </div>
                 {stageLeads.length > 0 && (
-                  <span className="num text-[11px] font-medium text-gray-400 dark:text-gray-500 shrink-0">
+                  <span className="num text-[11px] font-medium text-matn-xira shrink-0">
                     {formatSum(stagePotential(stageLeads))}
                   </span>
                 )}
@@ -473,15 +473,15 @@ export default function Leads() {
                       setSelectedLead(lead);
                       setIsConverting(false);
                     }}
-                    className="group/card bg-white dark:bg-gray-800 px-3 py-2.5 rounded-xl border border-gray-100 dark:border-gray-755 hover:border-[#1b6b6b]/40 dark:hover:border-[#1b6b6b]/50 transition-colors cursor-pointer"
+                    className="group/card bg-sirt px-3 py-2.5 rounded-xl border border-gray-100 dark:border-gray-755 hover:border-brand/40 dark:hover:border-brand/50 transition-colors cursor-pointer"
                   >
                     {/* Ism eng muhim ma'lumot, shuning uchun kartaning tepasida.
                         Kurs nomi "birinchi" bo'lsa — bu joy to'ldirgichi, ko'rsatilmaydi. */}
-                    <h4 className="font-semibold text-gray-900 dark:text-white text-[13px] leading-snug truncate">{lead.name}</h4>
+                    <h4 className="font-semibold text-matn text-[13px] leading-snug truncate">{lead.name}</h4>
 
-                    <div className="text-[11px] text-gray-400">
+                    <div className="text-[11px] text-matn-xira">
                       {lead.phone && (
-                        <p className="num text-[12px] text-gray-500 dark:text-gray-400 truncate">{lead.phone}</p>
+                        <p className="num text-[12px] text-matn-sokin truncate">{lead.phone}</p>
                       )}
 
                       {/* Manba nomlari juda uzun bo'lishi mumkin ("Bir martalik QR
@@ -497,7 +497,7 @@ export default function Leads() {
                           {lead.source && (
                             <span
                               title={lead.source}
-                              className="min-w-0 truncate text-[10px] font-medium px-1.5 py-0.5 rounded bg-gray-55 dark:bg-gray-900 text-gray-500 dark:text-gray-400 border border-gray-100 dark:border-gray-800"
+                              className="min-w-0 truncate text-[10px] font-medium px-1.5 py-0.5 rounded bg-ichki text-matn-sokin border border-chiziq"
                             >
                               {lead.source}
                             </span>
@@ -508,13 +508,13 @@ export default function Leads() {
                       {/* Pastki qator: lid necha kundan beri turibdi, o'ngda tez
                           amallar. Amallar avval faqat hover'da ko'rinardi — sensorli
                           ekranda ular umuman topilmasdi, endi doim turadi. */}
-                      <div className="flex items-center justify-between gap-2 mt-2 pt-2 border-t border-gray-100 dark:border-gray-800/50">
+                      <div className="flex items-center justify-between gap-2 mt-2 pt-2 border-t border-chiziq">
                         {(() => {
                           const age = daysSince(lead.createdAt);
                           if (age === null) return <span />;
                           const stale = age >= 3 && stage.name !== "To'lov qildi";
                           return (
-                            <span className={`text-[11px] font-medium tabular-nums truncate ${stale ? 'text-rose-500' : 'text-gray-400 dark:text-gray-500'}`}>
+                            <span className={`text-[11px] font-medium tabular-nums truncate ${stale ? 'text-rose-500' : 'text-matn-xira'}`}>
                               {age === 0 ? 'Bugun' : age === 1 ? 'Kecha' : `${age} kundan beri`}
                             </span>
                           );
@@ -524,7 +524,7 @@ export default function Leads() {
                             href={lead.phone ? `tel:${lead.phone.replace(/\s/g, '')}` : undefined}
                             onClick={e => e.stopPropagation()}
                             title="Qo'ng'iroq qilish"
-                            className="w-7 h-7 flex items-center justify-center rounded-lg text-gray-400 hover:bg-[#1b6b6b] hover:text-white transition-colors"
+                            className="w-7 h-7 flex items-center justify-center rounded-lg text-matn-xira hover:bg-brand hover:text-white transition-colors"
                           >
                             <Phone size={13} />
                           </a>
@@ -532,7 +532,7 @@ export default function Leads() {
                             <button
                               onClick={e => { e.stopPropagation(); advanceStage(lead); }}
                               title="Keyingi bosqichga o'tkazish"
-                              className="w-7 h-7 flex items-center justify-center rounded-lg text-gray-400 hover:bg-[#1b6b6b] hover:text-white transition-colors cursor-pointer"
+                              className="w-7 h-7 flex items-center justify-center rounded-lg text-matn-xira hover:bg-brand hover:text-white transition-colors cursor-pointer"
                             >
                               <ArrowRight size={13} />
                             </button>
@@ -545,7 +545,7 @@ export default function Leads() {
 
                 <button
                   onClick={() => setIsModalOpen(true)}
-                  className="w-full flex items-center justify-center gap-1.5 py-2 rounded-xl text-gray-400 hover:text-[#1b6b6b] hover:bg-white dark:hover:bg-gray-800 transition-colors text-[12px] font-medium cursor-pointer"
+                  className="w-full flex items-center justify-center gap-1.5 py-2 rounded-xl text-matn-xira hover:text-brand hover:bg-white dark:hover:bg-gray-800 transition-colors text-[12px] font-medium cursor-pointer"
                 >
                   <Plus size={13} /> {t('add')}
                 </button>
@@ -559,13 +559,13 @@ export default function Leads() {
       {isModalOpen && (
         <div className="fixed inset-0 z-[200] flex items-start sm:items-center justify-center overflow-y-auto p-4">
           <div className="absolute inset-0 bg-gray-900/60 backdrop-blur-sm" onClick={() => setIsModalOpen(false)} />
-          <div className="relative bg-white dark:bg-gray-800 rounded-[2rem] border border-gray-100 dark:border-gray-800/50 shadow-2xl w-full max-w-md p-8">
-            <div className="flex items-center justify-between mb-6 pb-4 border-b border-gray-50 dark:border-gray-800/50">
+          <div className="relative bg-sirt rounded-[2rem] border border-chiziq shadow-2xl w-full max-w-md p-8">
+            <div className="flex items-center justify-between mb-6 pb-4 border-b border-chiziq-mayin/50">
               <div>
-                <h3 className="text-lg font-black text-gray-900 dark:text-white tracking-tight">{t('new_lead_title')}</h3>
-                <p className="text-[11px] font-bold text-[#1b6b6b] mt-0.5">{t('lead_details_subtitle')}</p>
+                <h3 className="text-lg font-black text-matn tracking-tight">{t('new_lead_title')}</h3>
+                <p className="text-[11px] font-bold text-brand mt-0.5">{t('lead_details_subtitle')}</p>
               </div>
-              <button aria-label="Yopish" onClick={() => setIsModalOpen(false)} className="w-9 h-9 flex items-center justify-center text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700 rounded-xl cursor-pointer"><X size={18} /></button>
+              <button aria-label="Yopish" onClick={() => setIsModalOpen(false)} className="w-9 h-9 flex items-center justify-center text-matn-xira hover:bg-gray-50 dark:hover:bg-gray-700 rounded-xl cursor-pointer"><X size={18} /></button>
             </div>
             <form onSubmit={handleAddLead} className="space-y-4">
               <div>
@@ -662,7 +662,7 @@ export default function Leads() {
               </div>
 
               {newLead.privilegeType === 'Sertifikat' && (
-                <div className="space-y-3 p-3 bg-gray-55 dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800">
+                <div className="space-y-3 p-3 bg-ichki rounded-2xl border border-chiziq">
                   <div>
                     <label className={lbl}>Sertifikat toifasi</label>
                     <select
@@ -723,11 +723,11 @@ export default function Leads() {
 
               <div className="flex gap-3 pt-2">
                 <button type="button" onClick={() => setIsModalOpen(false)}
-                  className="flex-1 py-3 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-white text-xs font-extrabold rounded-2xl transition-all cursor-pointer hover:bg-gray-200 dark:hover:bg-gray-600">
+                  className="flex-1 py-3 bg-chiziq text-gray-700 dark:text-white text-xs font-extrabold rounded-2xl transition-all cursor-pointer hover:bg-gray-200 dark:hover:bg-gray-600">
                   {t('cancel')}
                 </button>
                 <button type="submit"
-                  className="flex-1 py-3 bg-[#1b6b6b] hover:bg-[#155252] text-white text-xs font-extrabold rounded-2xl shadow-sm shadow-[#1b6b6b]/20 transition-all cursor-pointer">
+                  className="flex-1 py-3 bg-brand hover:bg-brand-dark text-white text-xs font-extrabold rounded-2xl shadow-sm shadow-[#1b6b6b]/20 transition-all cursor-pointer">
                   {t('save')}
                 </button>
               </div>
@@ -740,98 +740,98 @@ export default function Leads() {
       {selectedLead && (
         <div className="fixed inset-0 z-[200] flex items-start sm:items-center justify-center overflow-y-auto p-4">
           <div className="absolute inset-0 bg-gray-900/60 backdrop-blur-sm" onClick={() => setSelectedLead(null)} />
-          <div className="relative bg-white dark:bg-gray-800 rounded-[2rem] border border-gray-100 dark:border-gray-800/50 shadow-2xl w-full max-w-lg p-8 overflow-y-auto max-h-[90vh] custom-scrollbar">
+          <div className="relative bg-sirt rounded-[2rem] border border-chiziq shadow-2xl w-full max-w-lg p-8 overflow-y-auto max-h-[90vh] custom-scrollbar">
 
-            <div className="flex items-center justify-between mb-6 pb-4 border-b border-gray-50 dark:border-gray-800/50">
+            <div className="flex items-center justify-between mb-6 pb-4 border-b border-chiziq-mayin/50">
               <div>
-                <h3 className="text-base font-black text-gray-900 dark:text-white tracking-tight">{t('lead_details_title')}</h3>
-                <p className="text-[11px] font-bold text-gray-400 mt-0.5">{t('registered_at')}{new Date(selectedLead.createdAt).toLocaleString()}</p>
+                <h3 className="text-base font-black text-matn tracking-tight">{t('lead_details_title')}</h3>
+                <p className="text-[11px] font-bold text-matn-xira mt-0.5">{t('registered_at')}{new Date(selectedLead.createdAt).toLocaleString()}</p>
               </div>
-              <button aria-label="Yopish" onClick={() => setSelectedLead(null)} className="w-9 h-9 flex items-center justify-center text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700 rounded-xl cursor-pointer"><X size={18} /></button>
+              <button aria-label="Yopish" onClick={() => setSelectedLead(null)} className="w-9 h-9 flex items-center justify-center text-matn-xira hover:bg-gray-50 dark:hover:bg-gray-700 rounded-xl cursor-pointer"><X size={18} /></button>
             </div>
 
             {!isConverting ? (
               <div className="space-y-6">
                 {selectedLead.photo && (
                   <div className="flex justify-center mb-2">
-                    <div className="w-24 h-24 rounded-2xl border border-gray-150 dark:border-gray-800 overflow-hidden shadow-sm shrink-0">
+                    <div className="w-24 h-24 rounded-2xl border border-chiziq overflow-hidden shadow-sm shrink-0">
                       <img src={selectedLead.photo} alt="Preview" className="w-full h-full object-cover" />
                     </div>
                   </div>
                 )}
                 {/* Details list */}
                 <div className="grid grid-cols-2 gap-4">
-                  <div className="bg-gray-55 dark:bg-gray-900/30 p-4 rounded-2xl border border-gray-100 dark:border-gray-750">
-                    <span className="block text-[11px] font-bold text-gray-400 mb-1">{t('student_name')}</span>
-                    <span className="text-xs font-extrabold text-gray-900 dark:text-white">{selectedLead.name}</span>
+                  <div className="bg-ichki/30 p-4 rounded-2xl border border-gray-100 dark:border-gray-750">
+                    <span className="block text-[11px] font-bold text-matn-xira mb-1">{t('student_name')}</span>
+                    <span className="text-xs font-extrabold text-matn">{selectedLead.name}</span>
                   </div>
-                  <div className="bg-gray-55 dark:bg-gray-900/30 p-4 rounded-2xl border border-gray-100 dark:border-gray-750">
-                    <span className="block text-[11px] font-bold text-gray-400 mb-1">{t('student_phone')}</span>
-                    <span className="text-xs font-extrabold text-gray-900 dark:text-white flex items-center gap-1.5">
-                      <Phone size={12} className="text-[#1b6b6b]" />
+                  <div className="bg-ichki/30 p-4 rounded-2xl border border-gray-100 dark:border-gray-750">
+                    <span className="block text-[11px] font-bold text-matn-xira mb-1">{t('student_phone')}</span>
+                    <span className="text-xs font-extrabold text-matn flex items-center gap-1.5">
+                      <Phone size={12} className="text-brand" />
                       {selectedLead.phone}
                     </span>
                   </div>
-                  <div className="bg-gray-55 dark:bg-gray-900/30 p-4 rounded-2xl border border-gray-100 dark:border-gray-750">
-                    <span className="block text-[11px] font-bold text-gray-400 mb-1">{t('selected_course')}</span>
-                    <span className="text-xs font-extrabold text-[#1b6b6b]">{selectedLead.course}</span>
+                  <div className="bg-ichki/30 p-4 rounded-2xl border border-gray-100 dark:border-gray-750">
+                    <span className="block text-[11px] font-bold text-matn-xira mb-1">{t('selected_course')}</span>
+                    <span className="text-xs font-extrabold text-brand">{selectedLead.course}</span>
                   </div>
-                  <div className="bg-gray-55 dark:bg-gray-900/30 p-4 rounded-2xl border border-gray-100 dark:border-gray-750">
-                    <span className="block text-[11px] font-bold text-gray-400 mb-1">{t('lead_source')}</span>
-                    <span className="text-xs font-extrabold text-gray-700 dark:text-gray-300">{selectedLead.source}</span>
+                  <div className="bg-ichki/30 p-4 rounded-2xl border border-gray-100 dark:border-gray-750">
+                    <span className="block text-[11px] font-bold text-matn-xira mb-1">{t('lead_source')}</span>
+                    <span className="text-xs font-extrabold text-matn-2">{selectedLead.source}</span>
                   </div>
                   {selectedLead.birthDate && (
-                    <div className="bg-gray-55 dark:bg-gray-900/30 p-4 rounded-2xl border border-gray-100 dark:border-gray-750">
-                      <span className="block text-[11px] font-bold text-gray-400 mb-1">{t('birth_date')}</span>
-                      <span className="text-xs font-extrabold text-gray-700 dark:text-gray-300">{selectedLead.birthDate}</span>
+                    <div className="bg-ichki/30 p-4 rounded-2xl border border-gray-100 dark:border-gray-750">
+                      <span className="block text-[11px] font-bold text-matn-xira mb-1">{t('birth_date')}</span>
+                      <span className="text-xs font-extrabold text-matn-2">{selectedLead.birthDate}</span>
                     </div>
                   )}
                   {selectedLead.orgType && (
-                    <div className="bg-gray-55 dark:bg-gray-900/30 p-4 rounded-2xl border border-gray-100 dark:border-gray-750">
-                      <span className="block text-[11px] font-bold text-gray-400 mb-1">Muassasa turi</span>
-                      <span className="text-xs font-extrabold text-gray-700 dark:text-gray-300">{selectedLead.orgType}</span>
+                    <div className="bg-ichki/30 p-4 rounded-2xl border border-gray-100 dark:border-gray-750">
+                      <span className="block text-[11px] font-bold text-matn-xira mb-1">Muassasa turi</span>
+                      <span className="text-xs font-extrabold text-matn-2">{selectedLead.orgType}</span>
                     </div>
                   )}
                   {selectedLead.studentSchool && (
-                    <div className="bg-gray-55 dark:bg-gray-900/30 p-4 rounded-2xl border border-gray-100 dark:border-gray-750">
-                      <span className="block text-[11px] font-bold text-gray-400 mb-1">Muassasa nomi</span>
-                      <span className="text-xs font-extrabold text-gray-700 dark:text-gray-300">{selectedLead.studentSchool}</span>
+                    <div className="bg-ichki/30 p-4 rounded-2xl border border-gray-100 dark:border-gray-750">
+                      <span className="block text-[11px] font-bold text-matn-xira mb-1">Muassasa nomi</span>
+                      <span className="text-xs font-extrabold text-matn-2">{selectedLead.studentSchool}</span>
                     </div>
                   )}
                   {(selectedLead.region || selectedLead.district) && (
-                    <div className="bg-gray-55 dark:bg-gray-900/30 p-4 rounded-2xl border border-gray-100 dark:border-gray-750">
-                      <span className="block text-[11px] font-bold text-gray-400 mb-1">Viloyat / Tuman</span>
-                      <span className="text-xs font-extrabold text-gray-700 dark:text-gray-300">
+                    <div className="bg-ichki/30 p-4 rounded-2xl border border-gray-100 dark:border-gray-750">
+                      <span className="block text-[11px] font-bold text-matn-xira mb-1">Viloyat / Tuman</span>
+                      <span className="text-xs font-extrabold text-matn-2">
                         {[selectedLead.region, selectedLead.district].filter(Boolean).join(', ')}
                       </span>
                     </div>
                   )}
                   {(selectedLead.fatherName || selectedLead.fatherPhone) && (
-                    <div className="bg-gray-55 dark:bg-gray-900/30 p-4 rounded-2xl border border-gray-100 dark:border-gray-750">
-                      <span className="block text-[11px] font-bold text-gray-400 mb-1">{t('father')}</span>
-                      <span className="text-xs font-extrabold text-gray-700 dark:text-gray-300">
+                    <div className="bg-ichki/30 p-4 rounded-2xl border border-gray-100 dark:border-gray-750">
+                      <span className="block text-[11px] font-bold text-matn-xira mb-1">{t('father')}</span>
+                      <span className="text-xs font-extrabold text-matn-2">
                         {selectedLead.fatherName || 'Ismsiz'} {selectedLead.fatherPhone ? `(${selectedLead.fatherPhone})` : ''}
                       </span>
                     </div>
                   )}
                   {(selectedLead.motherName || selectedLead.motherPhone) && (
-                    <div className="bg-gray-55 dark:bg-gray-900/30 p-4 rounded-2xl border border-gray-100 dark:border-gray-750">
-                      <span className="block text-[11px] font-bold text-gray-400 mb-1">{t('mother')}</span>
-                      <span className="text-xs font-extrabold text-gray-700 dark:text-gray-300">
+                    <div className="bg-ichki/30 p-4 rounded-2xl border border-gray-100 dark:border-gray-750">
+                      <span className="block text-[11px] font-bold text-matn-xira mb-1">{t('mother')}</span>
+                      <span className="text-xs font-extrabold text-matn-2">
                         {selectedLead.motherName || 'Ismsiz'} {selectedLead.motherPhone ? `(${selectedLead.motherPhone})` : ''}
                       </span>
                     </div>
                   )}
                   {selectedLead.address && (
-                    <div className="bg-gray-55 dark:bg-gray-900/30 p-4 rounded-2xl border border-gray-100 dark:border-gray-750 col-span-2">
-                      <span className="block text-[11px] font-bold text-gray-400 mb-1">{t('address')}</span>
-                      <span className="text-xs font-extrabold text-gray-700 dark:text-gray-300">{selectedLead.address}</span>
+                    <div className="bg-ichki/30 p-4 rounded-2xl border border-gray-100 dark:border-gray-750 col-span-2">
+                      <span className="block text-[11px] font-bold text-matn-xira mb-1">{t('address')}</span>
+                      <span className="text-xs font-extrabold text-matn-2">{selectedLead.address}</span>
                     </div>
                   )}
                   {selectedLead.notes && (
-                    <div className="bg-gray-55 dark:bg-gray-900/30 p-4 rounded-2xl border border-gray-100 dark:border-gray-750 col-span-2">
-                      <span className="block text-[11px] font-bold text-gray-400 mb-1">{t('description')}</span>
-                      <span className="text-xs font-semibold text-gray-700 dark:text-gray-300">{selectedLead.notes}</span>
+                    <div className="bg-ichki/30 p-4 rounded-2xl border border-gray-100 dark:border-gray-750 col-span-2">
+                      <span className="block text-[11px] font-bold text-matn-xira mb-1">{t('description')}</span>
+                      <span className="text-xs font-semibold text-matn-2">{selectedLead.notes}</span>
                     </div>
                   )}
                 </div>
@@ -848,7 +848,7 @@ export default function Leads() {
                         className={`px-3 py-2 rounded-xl text-[11px] font-black border transition-all cursor-pointer ${
                           selectedLead.status === s.name
                             ? `${s.color} text-white border-transparent shadow-md`
-                            : 'bg-white dark:bg-gray-900 border-gray-100 dark:border-gray-755 text-gray-500 hover:border-gray-300 dark:hover:border-gray-600'
+                            : 'bg-sirt border-gray-100 dark:border-gray-755 text-matn-sokin hover:border-gray-300 dark:hover:border-gray-600'
                         }`}
                       >
                         {getStageLabel(s.name)}
@@ -858,10 +858,10 @@ export default function Leads() {
                 </div>
 
                 {/* Conversion Prompt */}
-                <div className="p-4 rounded-2xl bg-[#1b6b6b]/5 border border-[#1b6b6b]/20 flex items-center justify-between">
+                <div className="p-4 rounded-2xl bg-brand/5 border border-brand/20 flex items-center justify-between">
                   <div>
-                    <h4 className="text-xs font-black text-gray-900 dark:text-white tracking-tight">{t('convert_to_student')}</h4>
-                    <p className="text-[11px] text-gray-500 mt-0.5">{t('convert_to_student_hint')}</p>
+                    <h4 className="text-xs font-black text-matn tracking-tight">{t('convert_to_student')}</h4>
+                    <p className="text-[11px] text-matn-sokin mt-0.5">{t('convert_to_student_hint')}</p>
                   </div>
                   <button
                     onClick={() => {
@@ -887,7 +887,7 @@ export default function Leads() {
                         district: selectedLead.district || ''
                       });
                     }}
-                    className="flex items-center gap-1.5 px-4 py-2.5 bg-[#1b6b6b] hover:bg-[#155252] text-white rounded-xl text-[11px] font-bold cursor-pointer shadow-md transition-all"
+                    className="flex items-center gap-1.5 px-4 py-2.5 bg-brand hover:bg-brand-dark text-white rounded-xl text-[11px] font-bold cursor-pointer shadow-md transition-all"
                   >
                     <UserPlus size={14} /> {t('convert')}
                   </button>
@@ -1000,8 +1000,8 @@ export default function Leads() {
                   <input type="text" placeholder="Sariosiyo tumani, ... ko'chasi" className={inp} value={conversionData.address} onChange={e => setConversionData({ ...conversionData, address: e.target.value })} />
                 </div>
 
-                <div className="border-t border-dashed border-gray-100 dark:border-gray-800/50 pt-4 mt-4 space-y-4">
-                  <span className="block text-[11px] font-bold text-[#1b6b6b]">{t('parents_info_optional')}</span>
+                <div className="border-t border-dashed border-chiziq pt-4 mt-4 space-y-4">
+                  <span className="block text-[11px] font-bold text-brand">{t('parents_info_optional')}</span>
                   <div className="grid grid-cols-2 gap-4">
                     <div>
                       <label className={lbl}>{t('father_name')}</label>

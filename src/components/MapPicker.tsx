@@ -63,16 +63,16 @@ export default function MapPicker({ onSelect, onClose, initialLocation }: MapPic
 
     return (
         <div className="fixed inset-0 z-[300] flex items-start sm:items-center justify-center overflow-y-auto p-4 bg-gray-900/60 backdrop-blur-md animate-in fade-in duration-300" onClick={onClose}>
-            <div className="bg-white dark:bg-gray-800 w-full max-w-4xl rounded-[2.5rem] shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200 border border-gray-100 dark:border-gray-800 min-h-[500px] h-[80vh] flex flex-col" onClick={e => e.stopPropagation()}>
-                <div className="px-10 py-6 flex items-center justify-between border-b border-gray-50 dark:border-gray-800 bg-gray-50/50 dark:bg-gray-900/50">
+            <div className="bg-sirt w-full max-w-4xl rounded-[2.5rem] shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200 border border-chiziq min-h-[500px] h-[80vh] flex flex-col" onClick={e => e.stopPropagation()}>
+                <div className="px-10 py-6 flex items-center justify-between border-b border-chiziq-mayin bg-gray-50/50 dark:bg-gray-900/50">
                     <div>
-                        <h2 className="text-xl font-bold text-gray-900 dark:text-white tracking-tight flex items-center gap-3">
+                        <h2 className="text-xl font-bold text-matn tracking-tight flex items-center gap-3">
                             <MapPin className="text-sky-500" />
                             Manzilni belgilash
                         </h2>
-                        <p className="text-[11px] font-bold text-gray-400 dark:text-gray-500 mt-1 leading-none pt-1">Xarita orqali o'quvchi yashash joyini belgilang</p>
+                        <p className="text-[11px] font-bold text-matn-xira mt-1 leading-none pt-1">Xarita orqali o'quvchi yashash joyini belgilang</p>
                     </div>
-                    <button onClick={onClose} className="w-10 h-10 flex items-center justify-center hover:bg-white dark:hover:bg-gray-700 rounded-2xl text-gray-400 hover:text-gray-900 dark:hover:text-white transition-all shadow-sm border border-transparent hover:border-gray-100 dark:hover:border-gray-600" aria-label="Yopish">
+                    <button onClick={onClose} className="w-10 h-10 flex items-center justify-center hover:bg-white dark:hover:bg-gray-700 rounded-2xl text-matn-xira hover:text-gray-900 dark:hover:text-white transition-all shadow-sm border border-transparent hover:border-gray-100 dark:hover:border-gray-600" aria-label="Yopish">
                         <X size={22} />
                     </button>
                 </div>
@@ -81,15 +81,15 @@ export default function MapPicker({ onSelect, onClose, initialLocation }: MapPic
                     <div ref={mapRef} className="absolute inset-0 z-10" />
                 </div>
 
-                <div className="p-8 bg-gray-50/50 dark:bg-gray-900/50 border-t border-gray-100 dark:border-gray-800 flex flex-col sm:flex-row items-center justify-between gap-4">
+                <div className="p-8 bg-gray-50/50 dark:bg-gray-900/50 border-t border-chiziq flex flex-col sm:flex-row items-center justify-between gap-4">
                     <div className="flex-1 w-full">
-                        <p className="text-[11px] font-bold text-gray-400 dark:text-gray-500 mb-2 ml-1">Koordinatalar</p>
-                        <div className="bg-white dark:bg-gray-800 px-4 py-2 rounded-xl border border-gray-100 dark:border-gray-800 text-xs font-bold text-gray-600 dark:text-gray-400 tracking-wider">
+                        <p className="text-[11px] font-bold text-matn-xira mb-2 ml-1">Koordinatalar</p>
+                        <div className="bg-sirt px-4 py-2 rounded-xl border border-chiziq text-xs font-bold text-gray-600 dark:text-gray-400 tracking-wider">
                             {selectedPos ? `${selectedPos[0].toFixed(6)}, ${selectedPos[1].toFixed(6)}` : 'Belgilanmadi'}
                         </div>
                     </div>
                     <div className="flex items-center gap-4 w-full sm:w-auto">
-                        <button onClick={onClose} className="flex-1 sm:flex-none px-8 py-4 bg-white dark:bg-gray-800 text-gray-500 dark:text-gray-400 border border-gray-200 dark:border-gray-800 rounded-2xl text-[11px] font-bold hover:bg-gray-50 dark:hover:bg-gray-700 transition-all">
+                        <button onClick={onClose} className="flex-1 sm:flex-none px-8 py-4 bg-sirt text-matn-sokin border border-gray-200 dark:border-gray-800 rounded-2xl text-[11px] font-bold hover:bg-gray-50 dark:hover:bg-gray-700 transition-all">
                             Bekor qilish
                         </button>
                         <button onClick={handleConfirm} className="flex-1 sm:flex-none px-12 py-4 bg-sky-600 dark:bg-sky-500 text-white rounded-2xl text-[11px] font-bold hover:bg-sky-500 active:scale-[0.98] transition-all shadow-xl shadow-sky-500/20 flex items-center justify-center gap-2">

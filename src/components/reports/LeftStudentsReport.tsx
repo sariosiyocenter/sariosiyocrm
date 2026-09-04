@@ -92,7 +92,7 @@ export default function LeftStudentsReport({ startDate, endDate }: { startDate?:
                         { key: 'name', label: "O'quvchi" },
                         { key: 'group', label: "Kurs" },
                         { key: 'date', label: "Ketgan sana" },
-                        { key: 'reason', label: "Sabab", render: r => <span className="text-gray-500 italic">{r.reason}</span> }
+                        { key: 'reason', label: "Sabab", render: r => <span className="text-matn-sokin italic">{r.reason}</span> }
                     ]}
                     rows={tableRows}
                 />

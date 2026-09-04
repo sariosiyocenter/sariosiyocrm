@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Search, Plus, FileSpreadsheet, MoreVertical, X, Image as ImageIcon, MapPin, GraduationCap, QrCode, Trash2, SlidersHorizontal } from 'lucide-react';
 import { useCRM } from '../context/CRMContext';
 import { useConfirm } from './ConfirmDialog';
@@ -10,8 +10,8 @@ import MapPicker from './MapPicker';
 import { compressImage } from '../lib/image';
 import * as XLSX from 'xlsx';
 
-const inp = "w-full px-4 py-3 bg-gray-50 dark:bg-gray-900/50 border border-gray-100 dark:border-gray-800 rounded-2xl text-xs font-bold text-gray-900 dark:text-white focus:border-[#1b6b6b] focus:ring-4 focus:ring-[#1b6b6b]/10 outline-none transition-all";
-const lbl = "block text-[11px] text-gray-400 mb-1.5";
+const inp = "w-full px-4 py-3 bg-ichki border border-chiziq rounded-2xl text-xs font-bold text-matn focus:border-brand focus:ring-4 focus:ring-[#1b6b6b]/10 outline-none transition-all";
+const lbl = "block text-[11px] text-matn-xira mb-1.5";
 
 const UZB_REGIONS: Record<string, string[]> = {
   "Surxondaryo": [
@@ -497,6 +497,36 @@ export default function Students() {
         }
     };
 
+    // Telefonni o'qiladigan holga keltiradi: +998917309709 -> +998 91 730 97 09
+    const phoneFmt = (raw?: string) => {
+        const d = (raw || '').replace(/\D/g, '');
+        if (d.length === 12 && d.startsWith('998'))
+            return `+998 ${d.slice(3, 5)} ${d.slice(5, 8)} ${d.slice(8, 10)} ${d.slice(10)}`;
+        return raw || '';
+    };
+
+    // Ism bosh harflari — surat yo'q o'quvchilar uchun. Ilgari bo'sh doira
+    // turardi va ro'yxat teshik-teshik ko'rinardi.
+    const initials = (name: string) =>
+        displayName(name).split(/\s+/).filter(Boolean).slice(0, 2).map(w => w[0] || '').join('').toUpperCase();
+
+    // Davomat foizi mavjud yozuvlardan. "Dars bo'lmadi" hisobga olinmaydi,
+    // chunki bu o'quvchining aybi emas. Yozuvi yo'q o'quvchida foiz
+    // ko'rsatilmaydi — nol deb yozish yolg'on bo'lardi.
+    const attRate = useMemo(() => {
+        const acc = new Map<number, { keldi: number; jami: number }>();
+        for (const a of (attendances || [])) {
+            if (a.status === 'Dars bo\'lmadi') continue;
+            const e = acc.get(a.studentId) || { keldi: 0, jami: 0 };
+            e.jami++;
+            if (a.status === 'Keldi' || a.status === 'Kechikdi' || a.status === 'ErtaKetdi') e.keldi++;
+            acc.set(a.studentId, e);
+        }
+        const out = new Map<number, number>();
+        acc.forEach((v, k) => { if (v.jami) out.set(k, Math.round((v.keldi / v.jami) * 100)); });
+        return out;
+    }, [attendances]);
+
     const getStudentGroups = (studentGroupIds: number[]) => {
         return groups.filter(g => (studentGroupIds || []).includes(g.id)).map(g => {
             const teacher = teachers.find(t => t.id === g.teacherId);
@@ -583,8 +613,8 @@ export default function Students() {
                 <div className="flex flex-col lg:flex-row lg:items-start justify-between gap-4">
                     <div className="flex items-center gap-4">
                         <div>
-                            <h1 className="text-[26px] font-bold text-gray-900 dark:text-white tracking-tight leading-tight">{t('students_title')}</h1>
-                            <p className="text-[13px] text-gray-500 dark:text-gray-400 mt-1">
+                            <h1 className="text-[26px] font-bold text-matn tracking-tight leading-tight">{t('students_title')}</h1>
+                            <p className="text-[13px] text-matn-sokin mt-1">
                                 <span className="num">{quickCounts.faol}</span> faol
                                 {quickCounts.qarzdor > 0 && <> · <span className="num">{quickCounts.qarzdor}</span> qarzdor</>}
                                 {quickCounts.kelmayotgan > 0 && <> · <span className="num">{quickCounts.kelmayotgan}</span> tasi 2 haftadan beri kelmagan</>}
@@ -598,14 +628,14 @@ export default function Students() {
                     <div className="flex flex-wrap items-center gap-2">
                         <button
                             onClick={handleExport}
-                            className="flex items-center gap-2 px-3 py-2.5 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 text-gray-600 dark:text-gray-300 hover:border-brand hover:text-brand rounded-xl text-xs font-bold transition-all cursor-pointer"
+                            className="flex items-center gap-2 px-3 py-2.5 bg-sirt border border-gray-200 dark:border-gray-800 text-matn-2 hover:border-brand hover:text-brand rounded-xl text-xs font-bold transition-all cursor-pointer"
                         >
                             <FileSpreadsheet size={14} /> {t('export')}
                         </button>
                         <button
                             onClick={() => document.getElementById('import-excel-input')?.click()}
                             disabled={isImporting}
-                            className="flex items-center gap-2 px-3 py-2.5 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 text-gray-600 dark:text-gray-300 hover:border-brand hover:text-brand rounded-xl text-xs font-bold transition-all cursor-pointer disabled:opacity-50"
+                            className="flex items-center gap-2 px-3 py-2.5 bg-sirt border border-gray-200 dark:border-gray-800 text-matn-2 hover:border-brand hover:text-brand rounded-xl text-xs font-bold transition-all cursor-pointer disabled:opacity-50"
                         >
                             <FileSpreadsheet size={14} /> {t('import')}
                         </button>
@@ -613,7 +643,7 @@ export default function Students() {
                         {selectedSchoolId !== 0 && (
                             <button
                                 onClick={() => setIsLinkModalOpen(true)}
-                                className="flex items-center gap-2 px-3 py-2.5 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 text-gray-600 dark:text-gray-300 hover:border-brand hover:text-brand rounded-xl text-xs font-bold transition-all cursor-pointer"
+                                className="flex items-center gap-2 px-3 py-2.5 bg-sirt border border-gray-200 dark:border-gray-800 text-matn-2 hover:border-brand hover:text-brand rounded-xl text-xs font-bold transition-all cursor-pointer"
                             >
                                 <QrCode size={14} /> {t('create_link')}
                             </button>
@@ -646,32 +676,32 @@ export default function Students() {
                     count > 0 || key === 'all' ? (
                         <button key={key} onClick={() => setQuickFilter(key as any)}
                             className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[12px] font-medium border transition-colors cursor-pointer shrink-0 ${quickFilter === key
-                                ? (warn ? 'bg-rose-500 border-rose-500 text-white' : 'bg-[#1b6b6b] border-[#1b6b6b] text-white')
+                                ? (warn ? 'bg-rose-500 border-rose-500 text-white' : 'bg-brand border-brand text-white')
                                 : warn
                                     ? 'bg-rose-50 dark:bg-rose-950/20 border-rose-100 dark:border-rose-900/40 text-rose-500 hover:border-rose-300'
-                                    : 'bg-white dark:bg-gray-800 border-gray-100 dark:border-gray-700 text-gray-500 dark:text-gray-400 hover:text-[#1b6b6b] hover:border-[#1b6b6b]'}`}>
+                                    : 'bg-sirt border-chiziq text-matn-sokin hover:text-brand hover:border-brand'}`}>
                             {label} <span className="num opacity-60">{count}</span>
                         </button>
                     ) : null
                 ))}
             </div>
-                <div className="px-6 pb-5 pt-3 border-t border-gray-50 dark:border-gray-800/50 space-y-3">
+                <div className="px-6 pb-5 pt-3 border-t border-chiziq-mayin/50 space-y-3">
                     <div className="flex items-center gap-2">
                     <div className="relative flex-1 min-w-0">
-                        <Search size={14} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400" />
+                        <Search size={14} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-matn-xira" />
                         <input
                             type="text"
                             placeholder={t('search_placeholder_students')}
                             value={search}
                             onChange={e => setSearch(e.target.value)}
-                            className="w-full pl-9 pr-4 py-2.5 bg-gray-50 dark:bg-gray-900/50 border border-gray-100 dark:border-gray-800 rounded-xl text-[13px] text-gray-900 dark:text-white outline-none focus:border-[#1b6b6b] transition-colors"
+                            className="w-full pl-9 pr-4 py-2.5 bg-ichki border border-chiziq rounded-xl text-[13px] text-matn outline-none focus:border-brand transition-colors"
                         />
                     </div>
                         <button
                             onClick={() => setShowFilters(v => !v)}
                             className={`flex items-center gap-2 px-3.5 py-2.5 rounded-xl border text-[13px] font-medium transition-colors cursor-pointer shrink-0 ${showFilters || activeFilterCount > 0
-                                ? 'bg-[#1b6b6b] border-[#1b6b6b] text-white'
-                                : 'bg-white dark:bg-gray-800 border-gray-100 dark:border-gray-700 text-gray-500 dark:text-gray-400 hover:text-[#1b6b6b] hover:border-[#1b6b6b]'}`}
+                                ? 'bg-brand border-brand text-white'
+                                : 'bg-sirt border-chiziq text-matn-sokin hover:text-brand hover:border-brand'}`}
                         >
                             <SlidersHorizontal size={14} />
                             Filtrlar
@@ -681,7 +711,7 @@ export default function Students() {
                             <button
                                 onClick={() => { setSearch(''); setFilters(DEFAULT_FILTERS); }}
                                 title={t('filter_clear')}
-                                className="flex items-center gap-1.5 px-3 py-2.5 rounded-xl text-[13px] text-gray-400 hover:text-rose-500 transition-colors cursor-pointer shrink-0"
+                                className="flex items-center gap-1.5 px-3 py-2.5 rounded-xl text-[13px] text-matn-xira hover:text-rose-500 transition-colors cursor-pointer shrink-0"
                             >
                                 <X size={14} /> {t('filter_clear')}
                             </button>
@@ -693,7 +723,7 @@ export default function Students() {
                         <div>
                             <label className={lbl}>{t('filter_status')}</label>
                             <select value={filters.status} onChange={e => setFilters({...filters, status: e.target.value})}
-                                className="w-full px-3 py-2 bg-gray-50 dark:bg-gray-900/50 border border-gray-100 dark:border-gray-800 rounded-xl text-[11px] font-bold text-gray-700 dark:text-white outline-none focus:border-[#1b6b6b] transition-all cursor-pointer">
+                                className="w-full px-3 py-2 bg-ichki border border-chiziq rounded-xl text-[11px] font-bold text-gray-700 dark:text-white outline-none focus:border-brand transition-all cursor-pointer">
                                 <option value="">{t('all')}</option>
                                 <option value="Faol">{t('status_active')}</option>
                                 <option value="Passiv">{t('status_passive')}</option>
@@ -704,7 +734,7 @@ export default function Students() {
                         <div>
                             <label className={lbl}>{t('filter_group')}</label>
                             <select value={filters.groupId} onChange={e => setFilters({...filters, groupId: e.target.value})}
-                                className="w-full px-3 py-2 bg-gray-50 dark:bg-gray-900/50 border border-gray-100 dark:border-gray-800 rounded-xl text-[11px] font-bold text-gray-700 dark:text-white outline-none focus:border-[#1b6b6b] transition-all cursor-pointer">
+                                className="w-full px-3 py-2 bg-ichki border border-chiziq rounded-xl text-[11px] font-bold text-gray-700 dark:text-white outline-none focus:border-brand transition-all cursor-pointer">
                                 <option value="">{t('all')}</option>
                                 {groups.map(g => <option key={g.id} value={g.id}>{g.name}</option>)}
                             </select>
@@ -712,7 +742,7 @@ export default function Students() {
                         <div>
                             <label className={lbl}>{t('filter_balance')}</label>
                             <select value={filters.balanceStatus} onChange={e => setFilters({...filters, balanceStatus: e.target.value})}
-                                className="w-full px-3 py-2 bg-gray-50 dark:bg-gray-900/50 border border-gray-100 dark:border-gray-800 rounded-xl text-[11px] font-bold text-gray-700 dark:text-white outline-none focus:border-[#1b6b6b] transition-all cursor-pointer">
+                                className="w-full px-3 py-2 bg-ichki border border-chiziq rounded-xl text-[11px] font-bold text-gray-700 dark:text-white outline-none focus:border-brand transition-all cursor-pointer">
                                 <option value="all">{t('all')}</option>
                                 <option value="debt">{t('debtors')}</option>
                                 <option value="positive">{t('paid_students')}</option>
@@ -721,7 +751,7 @@ export default function Students() {
                         <div>
                             <label className={lbl}>Muassasa turi</label>
                             <select value={filters.orgType} onChange={e => setFilters({...filters, orgType: e.target.value})}
-                                className="w-full px-3 py-2 bg-gray-50 dark:bg-gray-900/50 border border-gray-100 dark:border-gray-800 rounded-xl text-[11px] font-bold text-gray-700 dark:text-white outline-none focus:border-[#1b6b6b] transition-all cursor-pointer">
+                                className="w-full px-3 py-2 bg-ichki border border-chiziq rounded-xl text-[11px] font-bold text-gray-700 dark:text-white outline-none focus:border-brand transition-all cursor-pointer">
                                 <option value="">Barchasi</option>
                                 <option value="Maktab">Maktab</option>
                                 <option value="Prezident maktabi">Prezident maktabi</option>
@@ -737,13 +767,13 @@ export default function Students() {
                                 value={filters.muassasaSearch}
                                 onChange={e => setFilters({...filters, muassasaSearch: e.target.value})}
                                 placeholder="Masalan: 42-maktab"
-                                className="w-full px-3 py-2 bg-gray-50 dark:bg-gray-900/50 border border-gray-100 dark:border-gray-800 rounded-xl text-[11px] font-bold text-gray-700 dark:text-white outline-none focus:border-[#1b6b6b] transition-all"
+                                className="w-full px-3 py-2 bg-ichki border border-chiziq rounded-xl text-[11px] font-bold text-gray-700 dark:text-white outline-none focus:border-brand transition-all"
                             />
                         </div>
                         <div>
                             <label className={lbl}>Viloyat</label>
                             <select value={filters.region} onChange={e => setFilters({...filters, region: e.target.value, district: ''})}
-                                className="w-full px-3 py-2 bg-gray-50 dark:bg-gray-900/50 border border-gray-100 dark:border-gray-800 rounded-xl text-[11px] font-bold text-gray-700 dark:text-white outline-none focus:border-[#1b6b6b] transition-all cursor-pointer">
+                                className="w-full px-3 py-2 bg-ichki border border-chiziq rounded-xl text-[11px] font-bold text-gray-700 dark:text-white outline-none focus:border-brand transition-all cursor-pointer">
                                 <option value="">Barchasi</option>
                                 {Object.keys(UZB_REGIONS).map(r => <option key={r} value={r}>{r}</option>)}
                             </select>
@@ -752,7 +782,7 @@ export default function Students() {
                             <label className={lbl}>Tuman</label>
                             <select value={filters.district} onChange={e => setFilters({...filters, district: e.target.value})}
                                 disabled={!filters.region}
-                                className="w-full px-3 py-2 bg-gray-50 dark:bg-gray-900/50 border border-gray-100 dark:border-gray-800 rounded-xl text-[11px] font-bold text-gray-700 dark:text-white outline-none focus:border-[#1b6b6b] transition-all cursor-pointer disabled:opacity-50">
+                                className="w-full px-3 py-2 bg-ichki border border-chiziq rounded-xl text-[11px] font-bold text-gray-700 dark:text-white outline-none focus:border-brand transition-all cursor-pointer disabled:opacity-50">
                                 <option value="">Barchasi</option>
                                 {filters.region && UZB_REGIONS[filters.region]?.map(d => <option key={d} value={d}>{d}</option>)}
                             </select>
@@ -776,7 +806,7 @@ export default function Students() {
             </div>
 
             {/* Table layout */}
-            <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-800/50 shadow-sm overflow-hidden">
+            <div className="bg-sirt rounded-2xl border border-chiziq shadow-sm overflow-hidden">
 
                 {/* Phone layout. The table below needs 900px, which is two and a half
                     screens of sideways scrolling on a 360px phone, so small screens get
@@ -787,20 +817,20 @@ export default function Students() {
                         return (
                             <button key={student.id} onClick={() => navigate(`/students/${student.id}`)}
                                 className="w-full flex items-center gap-3 p-4 text-left hover:bg-gray-50/80 dark:hover:bg-gray-900/40 transition-colors cursor-pointer">
-                                <div className="w-11 h-11 rounded-xl bg-gray-55 dark:bg-gray-900 border border-gray-100 dark:border-gray-800 flex items-center justify-center text-[#1b6b6b] font-bold text-xs overflow-hidden shrink-0">
+                                <div className="w-11 h-11 rounded-xl bg-ichki border border-chiziq flex items-center justify-center text-brand font-bold text-xs overflow-hidden shrink-0">
                                     {student.photo
                                         ? <img src={student.photo} alt={student.name} loading="lazy" decoding="async" className="w-full h-full object-cover" />
                                         : student.name.charAt(0).toUpperCase()}
                                 </div>
                                 <div className="flex-1 min-w-0">
-                                    <p className="text-xs font-bold text-gray-900 dark:text-white truncate">{student.name}</p>
-                                    <p className="text-[12px] text-gray-400 tabular-nums mt-0.5">{student.phone || "telefon yo'q"}</p>
+                                    <p className="text-xs font-bold text-matn truncate">{student.name}</p>
+                                    <p className="text-[12px] text-matn-xira tabular-nums mt-0.5">{student.phone || "telefon yo'q"}</p>
                                 </div>
                                 <div className="text-right shrink-0">
                                     <p className={`text-xs font-black tabular-nums ${balance < 0 ? 'text-rose-500' : 'text-emerald-600'}`}>
                                         {balance.toLocaleString()}
                                     </p>
-                                    <p className="text-[11px] font-bold text-gray-400 mt-0.5">
+                                    <p className="text-[11px] font-bold text-matn-xira mt-0.5">
                                         {balance < 0 ? 'qarz' : 'balans'}
                                     </p>
                                 </div>
@@ -812,7 +842,7 @@ export default function Students() {
                             <p className="text-sm font-bold text-gray-700 dark:text-gray-200">
                                 {students.length === 0 ? "Hali o'quvchi qo'shilmagan" : "Hech narsa topilmadi"}
                             </p>
-                            <p className="text-xs text-gray-400 mt-1">
+                            <p className="text-xs text-matn-xira mt-1">
                                 {students.length === 0
                                     ? "Yuqoridagi tugma orqali birinchi o'quvchini qo'shing."
                                     : `${students.length} ta o'quvchi ichidan mos keladigani yo'q.`}
@@ -824,76 +854,93 @@ export default function Students() {
                 <div className="hidden md:block overflow-x-auto custom-scrollbar">
                     <table className="w-full text-left border-collapse min-w-[900px]">
                         <thead>
-                            <tr className="bg-gray-50/50 dark:bg-gray-900/50 border-b border-gray-100 dark:border-gray-800">
-                                <th className="p-4 text-[11px] font-bold text-gray-400 text-center">ID</th>
-                                <th className="p-4 text-[11px] font-bold text-gray-400">{t('student')}</th>
-                                <th className="p-4 text-[11px] font-bold text-gray-400 text-center">{t('student_phone')}</th>
-                                <th className="p-4 text-[11px] font-bold text-gray-400">{t('student_groups')}</th>
-                                <th className="p-4 text-[11px] font-bold text-gray-400 text-right">{t('student_balance')}</th>
-                                <th className="p-4 w-12 text-center"></th>
+                            <tr className="border-b border-chiziq">
+                                <th className="px-4 py-2.5 text-[12px] font-normal text-matn-sokin w-[58px]">&#8470;</th>
+                                <th className="px-4 py-2.5 text-[12px] font-normal text-matn-sokin">{t('student')}</th>
+                                <th className="px-4 py-2.5 text-[12px] font-normal text-matn-sokin w-[172px]">{t('student_phone')}</th>
+                                <th className="px-4 py-2.5 text-[12px] font-normal text-matn-sokin w-[180px]">{t('student_groups')}</th>
+                                <th className="px-4 py-2.5 text-[12px] font-normal text-matn-sokin text-right w-[124px]">{t('student_balance')}</th>
+                                <th className="px-4 py-2.5 text-[12px] font-normal text-matn-sokin text-right w-[82px]">Davomat</th>
+                                <th className="px-2 py-2.5 w-10"></th>
                             </tr>
                         </thead>
-                        <tbody className="divide-y divide-gray-50 dark:divide-gray-700/50">
+                        <tbody className="divide-y divide-chiziq-mayin">
                             {visibleStudents.map((student) => (
-                                <tr key={student.id} className="hover:bg-gray-50/80 dark:hover:bg-gray-900/40 transition-all cursor-pointer group"
+                                <tr key={student.id} className="hover:bg-ichki transition-colors cursor-pointer group"
                                     onClick={() => navigate(`/students/${student.id}`)}>
-                                    <td className="p-4 text-[11px] font-extrabold text-gray-400 text-center tabular-nums">#{student.id}</td>
-                                    <td className="p-4">
-                                        <div className="flex items-center gap-3">
-                                            <div className="w-10 h-10 rounded-xl bg-gray-55 dark:bg-gray-900 border border-gray-100 dark:border-gray-800 flex items-center justify-center text-[#1b6b6b] font-bold text-xs shadow-inner overflow-hidden shrink-0 group-hover:scale-105 transition-transform">
-                                                {student.photo ? (
-                                                    <img src={student.photo} alt={student.name} loading="lazy" decoding="async" className="w-full h-full object-cover" />
-                                                ) : student.name.charAt(0).toUpperCase()}
+                                    <td className="px-4 py-2.5 num text-[12px] text-matn-xira">{student.id}</td>
+                                    <td className="px-4 py-2.5">
+                                        <div className="flex items-center gap-2.5 min-w-0">
+                                            <div className="relative w-7 h-7 rounded-full bg-brand/12 flex items-center justify-center text-brand font-semibold text-[10px] overflow-hidden shrink-0">
+                                                {initials(student.name)}
+                                                {student.photo && (
+                                                    <img src={student.photo} alt="" loading="lazy" decoding="async"
+                                                        onError={e => { e.currentTarget.style.display = 'none'; }}
+                                                        className="absolute inset-0 w-full h-full object-cover" />
+                                                )}
                                             </div>
-                                            <div>
-                                                <p className="text-xs font-bold text-gray-900 dark:text-white tracking-tight group-hover:text-[#1b6b6b] transition-colors">{displayName(student.name)}</p>
+                                            <div className="min-w-0">
+                                                <p className="text-[13px] text-matn truncate group-hover:text-brand transition-colors">
+                                                    {displayName(student.name)}
+                                                    {/* Holat faqat "Faol" bo'lmaganda ko'rsatiladi: ilgari
+                                                        har qatorda yashil "Faol" turardi va hech narsa
+                                                        anglatmasdi. */}
+                                                    {student.status !== 'Faol' && (
+                                                        <span className={`ml-2 px-1.5 py-0.5 rounded text-[10px] align-middle ${
+                                                            student.status === 'Sinov' ? 'bg-ogoh-fon text-ogoh' :
+                                                            student.status === 'Muzlatilgan' ? 'bg-brand/12 text-brand' :
+                                                            student.status === 'Passiv' ? 'bg-xato-fon text-xato' :
+                                                            'bg-ichki text-matn-sokin'
+                                                        }`}>
+                                                            {student.status === 'Arxiv' ? t('status_archive') :
+                                                             student.status === 'Sinov' ? t('status_test') :
+                                                             student.status === 'Muzlatilgan' ? t('status_frozen') :
+                                                             student.status === 'Passiv' ? t('status_passive') :
+                                                             student.status === 'Bitiruvchi' ? t('status_graduated') :
+                                                             student.status === 'Sertifikatli' ? t('status_certified') :
+                                                             student.status}
+                                                        </span>
+                                                    )}
+                                                </p>
                                                 {/* Qo'shilgan sana o'rniga maktab va sinf: ro'yxatda
                                                     o'quvchini aynan shu bilan farqlashadi. */}
-                                                <span className="text-[11px] text-gray-400 block mt-0.5 truncate">
+                                                <span className="text-[11px] text-matn-xira block truncate">
                                                     {[student.studentSchool, student.orgType].filter(Boolean).join(' · ') || student.joinedDate}
                                                 </span>
                                             </div>
                                         </div>
                                     </td>
-                                    <td className="p-4 text-center">
-                                        <span className="num text-[12px] text-gray-600 dark:text-gray-300">{student.phone}</span>
+                                    <td className="px-4 py-2.5">
+                                        <span className="num text-[12px] text-matn-2">{phoneFmt(student.phone) || <span className="text-matn-xira">&#8212;</span>}</span>
                                     </td>
-                                    <td className="p-4">
+                                    <td className="px-4 py-2.5">
+                                        {/* Guruh nomi butun ustunni ko'k havolaga aylantirmasin —
+                                            12 ta ko'k qator ko'zni charchatadi. */}
                                         <div className="flex flex-wrap gap-1">
                                             {getStudentGroups(student.groups || []).map(g => (
-                                                <span key={g.id} className="px-2 py-0.5 bg-[#1b6b6b]/10 text-[#1b6b6b] dark:text-teal-400 rounded-md text-[11px] font-medium">
+                                                <span key={g.id} className="px-2 py-0.5 border border-chiziq text-matn-2 rounded-md text-[11px] whitespace-nowrap">
                                                     {g.name}
                                                 </span>
                                             ))}
-                                            {(student.groups || []).length === 0 && <span className="text-[11px] text-gray-400">{t('no_group')}</span>}
+                                            {(student.groups || []).length === 0 && <span className="text-[11px] text-matn-xira">{t('no_group')}</span>}
                                         </div>
                                     </td>
-                                    <td className="p-4 text-right">
-                                        <div className="flex flex-col items-end gap-1">
-                                            <span className={`px-2 py-0.5 rounded-md text-[10px] font-black border ${
-                                                student.status === 'Faol' ? 'bg-emerald-50 text-emerald-600 border-emerald-100 dark:bg-emerald-950/20 dark:text-emerald-400' :
-                                                student.status === 'Sinov' ? 'bg-amber-50 text-amber-600 border-amber-100 dark:bg-amber-950/20 dark:text-amber-400' :
-                                                student.status === 'Muzlatilgan' ? 'bg-sky-50 text-sky-650 border-sky-100 dark:bg-sky-950/20 dark:text-sky-455' :
-                                                student.status === 'Passiv' ? 'bg-rose-50 text-rose-600 border-rose-100 dark:bg-rose-950/20 dark:text-rose-400' :
-                                                student.status === 'Bitiruvchi' ? 'bg-purple-50 text-purple-600 border-purple-100 dark:bg-purple-950/20 dark:text-purple-400' :
-                                                student.status === 'Sertifikatli' ? 'bg-brand/10 text-brand border-brand/20 dark:bg-brand/20 dark:text-brand' :
-                                                'bg-gray-55 text-gray-400 border-gray-100 dark:bg-gray-900/50'
-                                            }`}>
-                                                {student.status === 'Faol' ? t('status_active') :
-                                                 student.status === 'Arxiv' ? t('status_archive') :
-                                                 student.status === 'Sinov' ? t('status_test') :
-                                                 student.status === 'Muzlatilgan' ? t('status_frozen') :
-                                                 student.status === 'Passiv' ? t('status_passive') :
-                                                 student.status === 'Bitiruvchi' ? t('status_graduated') :
-                                                 student.status === 'Sertifikatli' ? t('status_certified') :
-                                                 student.status}
-                                            </span>
-                                            <span className={`text-xs font-extrabold tabular-nums ${student.balance >= 0 ? 'text-gray-900 dark:text-white' : 'text-rose-600 dark:text-rose-400'}`}>
-                                                {student.balance.toLocaleString()} UZS
-                                            </span>
-                                        </div>
+                                    <td className="px-4 py-2.5 text-right">
+                                        <span className={`num text-[13px] ${student.balance > 0 ? 'text-yaxshi' : student.balance < 0 ? 'text-xato' : 'text-matn-xira'}`}>
+                                            {student.balance.toLocaleString('ru-RU')}
+                                        </span>
                                     </td>
-                                    <td className="p-4 text-center relative" onClick={(e) => e.stopPropagation()}>
+                                    <td className="px-4 py-2.5 text-right">
+                                        {attRate.has(student.id) ? (
+                                            <span className={`num text-[13px] ${
+                                                (attRate.get(student.id) as number) >= 85 ? 'text-yaxshi' :
+                                                (attRate.get(student.id) as number) >= 70 ? 'text-ogoh' : 'text-xato'
+                                            }`}>{attRate.get(student.id)}%</span>
+                                        ) : (
+                                            <span className="num text-[13px] text-matn-xira">&#8212;</span>
+                                        )}
+                                    </td>
+                                    <td className="px-2 py-2.5 text-center relative" onClick={(e) => e.stopPropagation()}>
                                         <button onClick={(e) => {
                                             if (activeMenu?.id === student.id) {
                                                 setActiveMenu(null);
@@ -908,24 +955,24 @@ export default function Students() {
                                                 });
                                             }
                                         }}
-                                            className="w-8 h-8 flex items-center justify-center rounded-lg text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 cursor-pointer">
-                                            <MoreVertical size={16} />
+                                            className="w-7 h-7 flex items-center justify-center rounded-lg text-matn-xira hover:bg-chiziq cursor-pointer">
+                                            <MoreVertical size={15} />
                                         </button>
                                     </td>
                                 </tr>
                             ))}
                             {visibleStudents.length === 0 && (
                                 <tr>
-                                    <td colSpan={6} className="py-16">
+                                    <td colSpan={7} className="py-16">
                                         <div className="flex flex-col items-center gap-3 text-center">
-                                            <div className="w-14 h-14 rounded-2xl bg-gray-55 dark:bg-gray-900 border border-gray-100 dark:border-gray-800 flex items-center justify-center">
-                                                <Search size={20} className="text-gray-300 dark:text-gray-600" />
+                                            <div className="w-14 h-14 rounded-2xl bg-ichki border border-chiziq flex items-center justify-center">
+                                                <Search size={20} className="text-matn-xira" />
                                             </div>
                                             <div>
                                                 <p className="text-sm font-bold text-gray-700 dark:text-gray-200">
                                                     {students.length === 0 ? "Hali o'quvchi qo'shilmagan" : "Hech narsa topilmadi"}
                                                 </p>
-                                                <p className="text-xs text-gray-400 mt-1">
+                                                <p className="text-xs text-matn-xira mt-1">
                                                     {students.length === 0
                                                         ? "Yuqoridagi tugma orqali birinchi o'quvchini qo'shing."
                                                         : `${students.length} ta o'quvchi ichidan qidiruv va filtrlarga mos keladigani yo'q.`}
@@ -940,22 +987,22 @@ export default function Students() {
                 </div>
 
                 {filteredStudents.length > PER_PAGE && (
-                    <div className="flex items-center justify-between gap-4 px-6 py-4 border-t border-gray-50 dark:border-gray-800/50">
-                        <p className="text-[12px] font-bold text-gray-400 tabular-nums">
+                    <div className="flex items-center justify-between gap-4 px-6 py-4 border-t border-chiziq-mayin/50">
+                        <p className="text-[12px] font-bold text-matn-xira tabular-nums">
                             {(currentPage - 1) * PER_PAGE + 1}–{Math.min(currentPage * PER_PAGE, filteredStudents.length)} / {filteredStudents.length} ta
                         </p>
                         <div className="flex items-center gap-2">
                             <button
                                 onClick={() => setPage(p => Math.max(1, p - 1))}
                                 disabled={currentPage === 1}
-                                className="px-3 py-1.5 rounded-lg text-[12px] font-extrabold bg-gray-50 dark:bg-gray-900 text-gray-600 dark:text-gray-300 disabled:opacity-40 disabled:cursor-not-allowed hover:bg-gray-100 dark:hover:bg-gray-700 cursor-pointer transition-colors">
+                                className="px-3 py-1.5 rounded-lg text-[12px] font-extrabold bg-ichki text-matn-2 disabled:opacity-40 disabled:cursor-not-allowed hover:bg-gray-100 dark:hover:bg-gray-700 cursor-pointer transition-colors">
                                 Oldingi
                             </button>
-                            <span className="text-[12px] font-bold text-gray-500 tabular-nums px-1">{currentPage} / {pageCount}</span>
+                            <span className="text-[12px] font-bold text-matn-sokin tabular-nums px-1">{currentPage} / {pageCount}</span>
                             <button
                                 onClick={() => setPage(p => Math.min(pageCount, p + 1))}
                                 disabled={currentPage === pageCount}
-                                className="px-3 py-1.5 rounded-lg text-[12px] font-extrabold bg-gray-50 dark:bg-gray-900 text-gray-600 dark:text-gray-300 disabled:opacity-40 disabled:cursor-not-allowed hover:bg-gray-100 dark:hover:bg-gray-700 cursor-pointer transition-colors">
+                                className="px-3 py-1.5 rounded-lg text-[12px] font-extrabold bg-ichki text-matn-2 disabled:opacity-40 disabled:cursor-not-allowed hover:bg-gray-100 dark:hover:bg-gray-700 cursor-pointer transition-colors">
                                 Keyingi
                             </button>
                         </div>
@@ -970,13 +1017,13 @@ export default function Students() {
                     {/* Centering Wrapper */}
                     <div className="flex min-h-full items-center justify-center p-4">
                         {/* Modal Panel */}
-                        <div className="relative bg-white dark:bg-gray-800 rounded-[2rem] border border-gray-100 dark:border-gray-800/50 shadow-2xl w-full max-w-lg p-8 transform transition-all">
-                            <div className="flex items-center justify-between mb-6 pb-4 border-b border-gray-50 dark:border-gray-800/50">
+                        <div className="relative bg-sirt rounded-[2rem] border border-chiziq shadow-2xl w-full max-w-lg p-8 transform transition-all">
+                            <div className="flex items-center justify-between mb-6 pb-4 border-b border-chiziq-mayin/50">
                                 <div className="text-left">
-                                    <h3 className="text-lg font-black text-gray-900 dark:text-white tracking-tight">{t('new_student_title')}</h3>
-                                    <p className="text-[11px] font-bold text-[#1b6b6b] mt-0.5">{t('student_details_subtitle')}</p>
+                                    <h3 className="text-lg font-black text-matn tracking-tight">{t('new_student_title')}</h3>
+                                    <p className="text-[11px] font-bold text-brand mt-0.5">{t('student_details_subtitle')}</p>
                                 </div>
-                                <button aria-label="Yopish" type="button" onClick={() => setIsModalOpen(false)} className="w-9 h-9 flex items-center justify-center text-gray-400 hover:bg-gray-55 dark:hover:bg-gray-700 rounded-xl cursor-pointer">
+                                <button aria-label="Yopish" type="button" onClick={() => setIsModalOpen(false)} className="w-9 h-9 flex items-center justify-center text-matn-xira hover:bg-gray-55 dark:hover:bg-gray-700 rounded-xl cursor-pointer">
                                     <X size={18} />
                                 </button>
                             </div>
@@ -1001,7 +1048,7 @@ export default function Students() {
                                         {(['Erkak', 'Ayol'] as const).map(g => (
                                             <button key={g} type="button"
                                                 onClick={() => setNewStudent({ ...newStudent, gender: g })}
-                                                className={`py-2.5 rounded-xl text-xs font-extrabold transition-all border cursor-pointer ${newStudent.gender === g ? 'bg-[#1b6b6b] border-[#1b6b6b] text-white shadow' : 'bg-gray-50 dark:bg-gray-900/30 border-gray-100 dark:border-gray-800 text-gray-400 hover:text-gray-600'}`}>
+                                                className={`py-2.5 rounded-xl text-xs font-extrabold transition-all border cursor-pointer ${newStudent.gender === g ? 'bg-brand border-brand text-white shadow' : 'bg-ichki/30 border-chiziq text-matn-xira hover:text-gray-600'}`}>
                                                 {g === 'Erkak' ? '♂ Erkak' : '♀ Ayol'}
                                             </button>
                                         ))}
@@ -1071,7 +1118,7 @@ export default function Students() {
                                     </div>
                                 </div>
                                 <button type="button" onClick={() => setIsMapOpen(true)}
-                                    className={`w-full py-2.5 rounded-xl border flex items-center justify-center gap-2 text-[11px] font-bold cursor-pointer transition-all ${newStudent.location ? 'bg-[#1b6b6b]/10 text-[#1b6b6b] border-[#1b6b6b]' : 'bg-gray-55 dark:bg-gray-900 border-gray-100 hover:bg-gray-100'}`}>
+                                    className={`w-full py-2.5 rounded-xl border flex items-center justify-center gap-2 text-[11px] font-bold cursor-pointer transition-all ${newStudent.location ? 'bg-brand/10 text-brand border-brand' : 'bg-ichki border-gray-100 hover:bg-gray-100'}`}>
                                     <MapPin size={14} /> {newStudent.location ? t('marked_on_map') : t('select_from_map')}
                                 </button>
                                 <div>
@@ -1097,8 +1144,8 @@ export default function Students() {
                                                     }}
                                                     className={`px-3 py-1.5 rounded-xl text-[11px] font-bold border-2 transition-all cursor-pointer ${
                                                         checked
-                                                            ? 'bg-[#1b6b6b] text-white border-[#1b6b6b] shadow-lg shadow-[#1b6b6b]/30'
-                                                            : 'bg-transparent text-gray-400 dark:text-gray-500 border-gray-300 dark:border-gray-600 hover:border-[#1b6b6b] hover:text-[#1b6b6b]'
+                                                            ? 'bg-brand text-brand-ust border-brand shadow-lg shadow-[#1b6b6b]/30'
+                                                            : 'bg-transparent text-matn-xira border-gray-300 dark:border-gray-600 hover:border-brand hover:text-brand'
                                                     }`}
                                                 >
                                                     {checked ? '✓ ' : ''}{priv}
@@ -1109,7 +1156,7 @@ export default function Students() {
                                 </div>
 
                                 {newStudent.selectedPrivileges.includes('Sertifikat') && (
-                                    <div className="space-y-3 p-3 bg-gray-55 dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800">
+                                    <div className="space-y-3 p-3 bg-ichki rounded-2xl border border-chiziq">
                                         <div>
                                             <label className={lbl}>Sertifikat toifasi</label>
                                             <select
@@ -1177,14 +1224,14 @@ export default function Students() {
                                         </div>
 
                                         {/* Dynamic multi-certificates array */}
-                                        <div className="border-t border-dashed border-gray-150 dark:border-gray-800/50 pt-3 mt-3 space-y-3">
-                                            <span className="block text-[11px] font-bold text-[#1b6b6b] text-left">Qo'shimcha Sertifikatlar</span>
+                                        <div className="border-t border-dashed border-chiziq/50 pt-3 mt-3 space-y-3">
+                                            <span className="block text-[11px] font-bold text-brand text-left">Qo'shimcha Sertifikatlar</span>
                                             {newStudent.certificates.map((cert, index) => (
-                                                <div key={index} className="p-3 bg-white dark:bg-slate-800 rounded-xl border border-gray-100 dark:border-gray-800 space-y-3 relative">
+                                                <div key={index} className="p-3 bg-white dark:bg-slate-800 rounded-xl border border-chiziq space-y-3 relative">
                                                     <button
                                                         type="button"
                                                         onClick={() => removeCertificate(index)}
-                                                        className="absolute top-2 right-2 text-gray-400 hover:text-red-500 transition-colors"
+                                                        className="absolute top-2 right-2 text-matn-xira hover:text-red-500 transition-colors"
                                                     >
                                                         <Trash2 size={13} />
                                                     </button>
@@ -1256,7 +1303,7 @@ export default function Students() {
                                             <button
                                                 type="button"
                                                 onClick={addCertificate}
-                                                className="w-full py-2.5 bg-white dark:bg-slate-800 border border-dashed border-gray-200 dark:border-gray-800 rounded-xl text-[11px] font-bold text-[#1b6b6b] hover:bg-teal-50/10 dark:hover:bg-teal-900/10 transition-colors flex items-center justify-center gap-1.5 cursor-pointer"
+                                                className="w-full py-2.5 bg-white dark:bg-slate-800 border border-dashed border-gray-200 dark:border-gray-800 rounded-xl text-[11px] font-bold text-brand hover:bg-teal-50/10 dark:hover:bg-teal-900/10 transition-colors flex items-center justify-center gap-1.5 cursor-pointer"
                                             >
                                                 <Plus size={13} />
                                                 Sertifikat qo'shish
@@ -1265,10 +1312,10 @@ export default function Students() {
                                     </div>
                                 )}
 
-                                <div className="border-t border-dashed border-gray-150 dark:border-gray-800/50 pt-4 mt-4 space-y-3">
-                                    <span className="block text-[11px] font-bold text-[#1b6b6b] text-left">Kursga qo'shish</span>
+                                <div className="border-t border-dashed border-chiziq/50 pt-4 mt-4 space-y-3">
+                                    <span className="block text-[11px] font-bold text-brand text-left">Kursga qo'shish</span>
                                     {groups.length === 0 ? (
-                                        <p className="text-[11px] text-gray-400 italic">Kurslar mavjud emas</p>
+                                        <p className="text-[11px] text-matn-xira italic">Kurslar mavjud emas</p>
                                     ) : (
                                         <div className="flex flex-wrap gap-2">
                                             {groups.map(g => {
@@ -1285,8 +1332,8 @@ export default function Students() {
                                                         }}
                                                         className={`px-3 py-1.5 rounded-xl text-[11px] font-bold border-2 transition-all cursor-pointer ${
                                                             selected
-                                                                ? 'bg-[#1b6b6b] text-white border-[#1b6b6b] shadow-lg shadow-[#1b6b6b]/30'
-                                                                : 'bg-transparent text-gray-400 dark:text-gray-500 border-gray-300 dark:border-gray-600 hover:border-[#1b6b6b] hover:text-[#1b6b6b]'
+                                                                ? 'bg-brand text-brand-ust border-brand shadow-lg shadow-[#1b6b6b]/30'
+                                                                : 'bg-transparent text-matn-xira border-gray-300 dark:border-gray-600 hover:border-brand hover:text-brand'
                                                         }`}
                                                     >
                                                         {selected ? '✓ ' : '+ '}{g.name}
@@ -1297,8 +1344,8 @@ export default function Students() {
                                     )}
                                 </div>
 
-                                <div className="border-t border-dashed border-gray-150 dark:border-gray-800/50 pt-4 mt-4 space-y-4">
-                                    <span className="block text-[11px] font-bold text-[#1b6b6b] text-left">{t('parent_info')}</span>
+                                <div className="border-t border-dashed border-chiziq/50 pt-4 mt-4 space-y-4">
+                                    <span className="block text-[11px] font-bold text-brand text-left">{t('parent_info')}</span>
                                     <div className="grid grid-cols-2 gap-4">
                                         <div>
                                             <label className={lbl}>{t('father_name')}</label>
@@ -1322,15 +1369,15 @@ export default function Students() {
                                 </div>
 
 
-                                <div className="border-t border-dashed border-gray-150 dark:border-gray-800/50 pt-4 mt-4 space-y-4">
-                                    <span className="block text-[11px] font-bold text-[#1b6b6b] text-left">{t('photo_label')}</span>
+                                <div className="border-t border-dashed border-chiziq/50 pt-4 mt-4 space-y-4">
+                                    <span className="block text-[11px] font-bold text-brand text-left">{t('photo_label')}</span>
                                     <div className="flex items-center gap-4">
-                                        <div className="w-20 h-20 rounded-2xl bg-gray-55 dark:bg-gray-900 border border-gray-100 flex items-center justify-center overflow-hidden shrink-0 shadow-inner">
+                                        <div className="w-20 h-20 rounded-2xl bg-ichki border border-gray-100 flex items-center justify-center overflow-hidden shrink-0 shadow-inner">
                                             {newStudent.photo ? <img src={newStudent.photo} alt="Preview" className="w-full h-full object-cover" /> : <ImageIcon size={24} className="text-gray-300" />}
                                         </div>
                                         <div className="flex-1 space-y-2">
                                             <div className="flex gap-2">
-                                                 <label className="flex-1 flex items-center justify-center gap-1.5 py-2 border border-gray-100 dark:border-gray-800 rounded-xl cursor-pointer hover:bg-gray-50 text-[11px] font-bold">
+                                                 <label className="flex-1 flex items-center justify-center gap-1.5 py-2 border border-chiziq rounded-xl cursor-pointer hover:bg-gray-50 text-[11px] font-bold">
                                                      <input type="file" className="hidden" accept="image/*" onChange={(e) => {
                                                          const file = e.target.files?.[0];
                                                          if (file) {
@@ -1345,7 +1392,7 @@ export default function Students() {
                                                      {t('photo_from_file')}
                                                  </label>
                                                 <button type="button" onClick={() => setIsPhotoModalOpen(true)}
-                                                    className="flex-1 flex items-center justify-center gap-1.5 py-2 border border-gray-100 dark:border-gray-800 rounded-xl hover:bg-gray-55 text-[11px] font-bold cursor-pointer">
+                                                    className="flex-1 flex items-center justify-center gap-1.5 py-2 border border-chiziq rounded-xl hover:bg-gray-55 text-[11px] font-bold cursor-pointer">
                                                     {t('photo_camera')}
                                                 </button>
                                             </div>
@@ -1359,13 +1406,13 @@ export default function Students() {
                                     </div>
                                 </div>
 
-                                <div className="flex gap-3 pt-4 border-t border-dashed border-gray-150 dark:border-gray-800/50">
+                                <div className="flex gap-3 pt-4 border-t border-dashed border-chiziq/50">
                                     <button type="button" onClick={() => setIsModalOpen(false)}
-                                        className="flex-1 py-3 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-white text-xs font-extrabold rounded-2xl transition-all cursor-pointer hover:bg-gray-200 dark:hover:bg-gray-600">
+                                        className="flex-1 py-3 bg-chiziq text-gray-700 dark:text-white text-xs font-extrabold rounded-2xl transition-all cursor-pointer hover:bg-gray-200 dark:hover:bg-gray-600">
                                         {t('cancel')}
                                     </button>
                                     <button type="submit" disabled={isAdding}
-                                        className="flex-1 py-3 bg-[#1b6b6b] hover:bg-[#155252] text-white text-xs font-extrabold rounded-2xl shadow-sm shadow-[#1b6b6b]/20 transition-all cursor-pointer disabled:opacity-50">
+                                        className="flex-1 py-3 bg-brand hover:bg-brand-dark text-white text-xs font-extrabold rounded-2xl shadow-sm shadow-[#1b6b6b]/20 transition-all cursor-pointer disabled:opacity-50">
                                         {isAdding ? t('saving') : t('save')}
                                     </button>
                                 </div>
@@ -1396,9 +1443,9 @@ export default function Students() {
             {studentToDelete && (
                 <div className="fixed inset-0 z-[250] flex items-start sm:items-center justify-center overflow-y-auto p-4">
                     <div className="absolute inset-0 bg-gray-900/60 backdrop-blur-sm" onClick={() => setStudentToDelete(null)} />
-                    <div className="relative bg-white dark:bg-gray-800 rounded-2xl p-4 shadow-2xl max-w-sm w-full text-center border border-gray-100 dark:border-gray-800">
-                        <h4 className="text-sm font-black text-gray-900 dark:text-white tracking-tight mb-2">{t('delete_confirm_title')}</h4>
-                        <p className="text-[11px] font-bold text-gray-400 leading-relaxed mb-6">
+                    <div className="relative bg-sirt rounded-2xl p-4 shadow-2xl max-w-sm w-full text-center border border-chiziq">
+                        <h4 className="text-sm font-black text-matn tracking-tight mb-2">{t('delete_confirm_title')}</h4>
+                        <p className="text-[11px] font-bold text-matn-xira leading-relaxed mb-6">
                             {t('delete_confirm_desc').replace('{name}', studentToDelete.name)}
                         </p>
                         <div className="flex gap-3">
@@ -1415,14 +1462,14 @@ export default function Students() {
             {isLinkModalOpen && (
                 <div className="fixed inset-0 z-[200] flex items-start sm:items-center justify-center overflow-y-auto p-4">
                     <div className="absolute inset-0 bg-gray-900/60 backdrop-blur-sm" onClick={() => setIsLinkModalOpen(false)} />
-                    <div className="relative bg-white dark:bg-gray-800 rounded-[2rem] border border-gray-100 dark:border-gray-800/50 shadow-2xl w-full max-w-sm p-8 text-center">
-                        <div className="flex items-center justify-between mb-6 pb-4 border-b border-gray-150 dark:border-gray-800/50">
-                            <h3 className="text-sm font-black text-gray-900 dark:text-white tracking-tight">{t('reception_link')}</h3>
-                            <button aria-label="Yopish" onClick={() => setIsLinkModalOpen(false)} className="w-8 h-8 flex items-center justify-center text-gray-400 hover:bg-gray-55 dark:hover:bg-gray-700 rounded-lg cursor-pointer">
+                    <div className="relative bg-sirt rounded-[2rem] border border-chiziq shadow-2xl w-full max-w-sm p-8 text-center">
+                        <div className="flex items-center justify-between mb-6 pb-4 border-b border-chiziq/50">
+                            <h3 className="text-sm font-black text-matn tracking-tight">{t('reception_link')}</h3>
+                            <button aria-label="Yopish" onClick={() => setIsLinkModalOpen(false)} className="w-8 h-8 flex items-center justify-center text-matn-xira hover:bg-gray-55 dark:hover:bg-gray-700 rounded-lg cursor-pointer">
                                 <X size={18} />
                             </button>
                         </div>
-                        <p className="text-[11px] font-bold text-gray-400 leading-relaxed mb-2">
+                        <p className="text-[11px] font-bold text-matn-xira leading-relaxed mb-2">
                             {t('reception_link_desc')}
                         </p>
                         <p className="text-[11px] font-bold text-amber-500 leading-relaxed mb-6 normal-case">
@@ -1434,14 +1481,14 @@ export default function Students() {
                                 <img src={qrCodeDataUrl} alt="QR Code" className="w-[180px] h-[180px] block" />
                             ) : (
                                 <div className="w-[180px] h-[180px] flex items-center justify-center">
-                                    <div className="w-8 h-8 border-2 border-[#1b6b6b] border-t-transparent rounded-full animate-spin" />
+                                    <div className="w-8 h-8 border-2 border-brand border-t-transparent rounded-full animate-spin" />
                                 </div>
                             )}
                         </div>
 
                         <div className="space-y-4">
-                            <div className="flex items-center gap-2 bg-gray-55 dark:bg-gray-900/50 p-3 rounded-2xl border border-gray-100 dark:border-gray-750">
-                                <span className="text-[11px] font-bold text-[#1b6b6b] shrink-0">{t('link')}:</span>
+                            <div className="flex items-center gap-2 bg-ichki p-3 rounded-2xl border border-gray-100 dark:border-gray-750">
+                                <span className="text-[11px] font-bold text-brand shrink-0">{t('link')}:</span>
                                 <input
                                     readOnly
                                     type="text"
@@ -1454,7 +1501,7 @@ export default function Students() {
                                 className={`w-full py-3.5 rounded-2xl text-[11px] font-black transition-all cursor-pointer ${
                                     copySuccess
                                         ? 'bg-emerald-600 text-white shadow-lg shadow-emerald-500/10'
-                                        : 'bg-[#1b6b6b] hover:bg-[#155252] text-white shadow-lg shadow-[#1b6b6b]/15'
+                                        : 'bg-brand hover:bg-brand-dark text-white shadow-lg shadow-[#1b6b6b]/15'
                                 }`}
                             >
                                 {copySuccess ? t('copied') : t('copy_link')}
@@ -1473,7 +1520,7 @@ export default function Students() {
                             top: `${activeMenu.coords.top + 4}px`,
                             left: `${activeMenu.coords.left - 128}px`,
                         }}
-                        className="bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-800 rounded-xl shadow-xl py-1 w-32 z-50 text-left animate-in slide-in-from-top-1 duration-150"
+                        className="bg-sirt border border-chiziq rounded-xl shadow-xl py-1 w-32 z-50 text-left animate-in slide-in-from-top-1 duration-150"
                     >
                         <button onClick={() => { setActiveMenu(null); navigate(`/students/${activeMenu.id}`); }}
                             className="w-full text-left px-4 py-2 text-[11px] font-bold text-gray-700 dark:text-gray-200 hover:bg-gray-55 dark:hover:bg-gray-700 cursor-pointer">

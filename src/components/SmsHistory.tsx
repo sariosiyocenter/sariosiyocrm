@@ -94,15 +94,15 @@ export default function SmsHistory() {
     return (
         <div className="space-y-6 pb-12 animate-in fade-in duration-500 max-w-7xl mx-auto">
             {/* Header */}
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white dark:bg-gray-800 p-4 rounded-2xl border border-gray-100 dark:border-gray-800/50 shadow-sm">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-sirt p-4 rounded-2xl border border-chiziq shadow-sm">
                 <div>
-                    <h1 className="text-sm font-black text-gray-900 dark:text-white tracking-tight">SMS Tarixi</h1>
-                    <p className="text-[11px] font-bold text-gray-400 mt-0.5">Yuborilgan barcha xabarlar monitoringi</p>
+                    <h1 className="text-sm font-black text-matn tracking-tight">SMS Tarixi</h1>
+                    <p className="text-[11px] font-bold text-matn-xira mt-0.5">Yuborilgan barcha xabarlar monitoringi</p>
                 </div>
                 <div className="flex items-center gap-3">
                     <button 
                         onClick={handleTestConnection}
-                        className="flex items-center gap-1.5 px-4 py-2.5 bg-[#1b6b6b] hover:bg-[#155252] text-white rounded-xl text-[11px] font-bold shadow-sm shadow-[#1b6b6b]/20 transition-all active:scale-95 disabled:opacity-50 cursor-pointer"
+                        className="flex items-center gap-1.5 px-4 py-2.5 bg-brand hover:bg-brand-dark text-white rounded-xl text-[11px] font-bold shadow-sm shadow-[#1b6b6b]/20 transition-all active:scale-95 disabled:opacity-50 cursor-pointer"
                         disabled={loading}
                     >
                         <Zap size={14} />
@@ -110,31 +110,31 @@ export default function SmsHistory() {
                     </button>
                     <button 
                         onClick={fetchLogs}
-                        className="p-2.5 bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-800/50 rounded-xl text-gray-400 hover:text-[#1b6b6b] transition-all shadow-sm cursor-pointer"
+                        className="p-2.5 bg-sirt border border-chiziq rounded-xl text-matn-xira hover:text-brand transition-all shadow-sm cursor-pointer"
                     >
                         <RefreshCw size={16} className={loading ? 'animate-spin' : ''} />
                     </button>
                 </div>
             </div>
 
-            <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-800/50 shadow-sm overflow-hidden">
-                <div className="p-5 flex flex-col md:flex-row gap-4 justify-between items-center border-b border-dashed border-gray-100 dark:border-gray-800/50">
+            <div className="bg-sirt rounded-2xl border border-chiziq shadow-sm overflow-hidden">
+                <div className="p-5 flex flex-col md:flex-row gap-4 justify-between items-center border-b border-dashed border-chiziq">
                     <div className="relative w-full md:w-80">
-                        <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                        <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-matn-xira" />
                         <input
                             type="text"
                             placeholder="Qidirish (telefon yoki xabar)..."
                             value={search}
                             onChange={(e) => setSearch(e.target.value)}
-                            className="w-full pl-10 pr-4 py-2.5 bg-gray-55 dark:bg-gray-905 border border-gray-100 dark:border-gray-800 rounded-2xl text-xs font-bold text-gray-900 dark:text-white placeholder:text-gray-400 focus:border-[#1b6b6b] focus:ring-4 focus:ring-[#1b6b6b]/10 outline-none transition-all"
+                            className="w-full pl-10 pr-4 py-2.5 bg-gray-55 dark:bg-gray-905 border border-chiziq rounded-2xl text-xs font-bold text-matn placeholder:text-gray-400 focus:border-brand focus:ring-4 focus:ring-[#1b6b6b]/10 outline-none transition-all"
                         />
                     </div>
                     <div className="flex items-center gap-3">
-                        <Filter size={16} className="text-gray-400" />
+                        <Filter size={16} className="text-matn-xira" />
                         <select 
                             value={filter}
                             onChange={e => setFilter(e.target.value)}
-                            className="px-3 py-2 bg-gray-55 dark:bg-gray-905 border border-gray-100 dark:border-gray-800 rounded-xl text-[11px] font-bold outline-none focus:border-[#1b6b6b] text-gray-900 dark:text-white cursor-pointer"
+                            className="px-3 py-2 bg-gray-55 dark:bg-gray-905 border border-chiziq rounded-xl text-[11px] font-bold outline-none focus:border-brand text-matn cursor-pointer"
                         >
                             <option value="all">Barchasi</option>
                             <option value="sent">Yuborilgan</option>
@@ -147,12 +147,12 @@ export default function SmsHistory() {
                 <div className="overflow-x-auto custom-scrollbar">
                     <table className="w-full text-left border-collapse min-w-[800px]">
                         <thead>
-                            <tr className="bg-gray-55 dark:bg-gray-900 border-b border-gray-100 dark:border-gray-800/50">
-                                <th className="p-4 text-[11px] font-bold text-gray-400">Sana</th>
-                                <th className="p-4 text-[11px] font-bold text-gray-400">Qabul qiluvchi</th>
-                                <th className="p-4 text-[11px] font-bold text-gray-400">Xabar</th>
-                                <th className="p-4 text-[11px] font-bold text-gray-400">Tur</th>
-                                <th className="p-4 text-[11px] font-bold text-gray-400 text-center">Holat</th>
+                            <tr className="bg-ichki border-b border-chiziq">
+                                <th className="p-4 text-[11px] font-bold text-matn-xira">Sana</th>
+                                <th className="p-4 text-[11px] font-bold text-matn-xira">Qabul qiluvchi</th>
+                                <th className="p-4 text-[11px] font-bold text-matn-xira">Xabar</th>
+                                <th className="p-4 text-[11px] font-bold text-matn-xira">Tur</th>
+                                <th className="p-4 text-[11px] font-bold text-matn-xira text-center">Holat</th>
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-gray-100 dark:divide-gray-800">
@@ -160,16 +160,16 @@ export default function SmsHistory() {
                                 <tr key={log.id} className="hover:bg-gray-50/50 dark:hover:bg-teal-950/20 transition-all">
                                     <td className="p-4">
                                         <div className="flex flex-col gap-0.5">
-                                            <span className="text-[11px] font-bold text-gray-900 dark:text-white tabular-nums">
+                                            <span className="text-[11px] font-bold text-matn tabular-nums">
                                                 {new Date(log.sentAt).toLocaleDateString()}
                                             </span>
-                                            <span className="text-[11px] font-bold text-gray-400 tabular-nums">
+                                            <span className="text-[11px] font-bold text-matn-xira tabular-nums">
                                                 {new Date(log.sentAt).toLocaleTimeString()}
                                             </span>
                                         </div>
                                     </td>
                                     <td className="p-4">
-                                        <span className="text-[11px] font-bold text-gray-900 dark:text-white tabular-nums bg-gray-55 dark:bg-gray-900 px-2.5 py-1 rounded-lg border border-gray-100 dark:border-gray-800">
+                                        <span className="text-[11px] font-bold text-matn tabular-nums bg-ichki px-2.5 py-1 rounded-lg border border-chiziq">
                                             {log.toPhone}
                                         </span>
                                     </td>
@@ -179,7 +179,7 @@ export default function SmsHistory() {
                                         </p>
                                     </td>
                                     <td className="p-4">
-                                        <span className="text-[11px] font-bold text-gray-400">
+                                        <span className="text-[11px] font-bold text-matn-xira">
                                             {log.type}
                                         </span>
                                     </td>
@@ -214,7 +214,7 @@ export default function SmsHistory() {
 
                                             <button 
                                                 onClick={() => handleCheckStatus(log.id)}
-                                                className="p-1 text-gray-400 hover:text-[#1b6b6b] hover:bg-gray-50 rounded transition-all cursor-pointer"
+                                                className="p-1 text-matn-xira hover:text-brand hover:bg-gray-50 rounded transition-all cursor-pointer"
                                                 title="Statusni yangilash"
                                             >
                                                 <RefreshCw size={12} />
@@ -227,7 +227,7 @@ export default function SmsHistory() {
                                 <tr>
                                     <td colSpan={5} className="p-16 text-center">
                                         <Mail className="w-8 h-8 text-gray-200 dark:text-gray-700 mx-auto mb-3" />
-                                        <p className="text-[11px] font-bold text-gray-400">Hech qanday log topilmadi</p>
+                                        <p className="text-[11px] font-bold text-matn-xira">Hech qanday log topilmadi</p>
                                     </td>
                                 </tr>
                             )}

@@ -69,7 +69,7 @@ export default function LeadsReport({ startDate, endDate }: { startDate?: string
 
                 <ReportCard>
                     <SectionHeader title="Manba bo'yicha" />
-                    {bySource.length > 0 ? <BarChart data={bySource} horizontal /> : <p className="text-xs text-gray-400 py-8 text-center">Ma'lumot yo'q</p>}
+                    {bySource.length > 0 ? <BarChart data={bySource} horizontal /> : <p className="text-xs text-matn-xira py-8 text-center">Ma'lumot yo'q</p>}
                 </ReportCard>
             </div>
 
@@ -94,7 +94,7 @@ export default function LeadsReport({ startDate, endDate }: { startDate?: string
                         { key: 'name', label: 'Ism' },
                         { key: 'phone', label: 'Telefon' },
                         { key: 'source', label: 'Manba', render: r => r.source || '-' },
-                        { key: 'status', label: 'Holat', render: r => <span className={`px-2 py-0.5 rounded-lg text-[11px] font-bold ${statusColors[r.status] || 'bg-gray-100 text-gray-500'}`}>{r.status}</span> },
+                        { key: 'status', label: 'Holat', render: r => <span className={`px-2 py-0.5 rounded-lg text-[11px] font-bold ${statusColors[r.status] || 'bg-gray-100 text-matn-sokin'}`}>{r.status}</span> },
                         { key: 'date', label: 'Sana', render: r => r.createdAt ? r.createdAt.slice(0, 10) : '-' },
                     ]}
                     rows={leads}

@@ -165,7 +165,7 @@ export default function FaceAttendance({ students, attendanceStatus, onMatch, on
                     </div>
                     <div>
                         <p className="text-white text-sm font-black tracking-tight">Face ID Yo'qlama</p>
-                        <p className="text-gray-400 text-[11px] font-bold">
+                        <p className="text-matn-xira text-[11px] font-bold">
                             {totalEnrolled}/{students.length} o'quvchi ro'yxatda
                         </p>
                     </div>
@@ -197,7 +197,7 @@ export default function FaceAttendance({ students, attendanceStatus, onMatch, on
                     <div className="absolute inset-0 flex flex-col items-center justify-center z-20">
                         <div className="w-12 h-12 border-2 border-emerald-500 border-t-transparent rounded-full animate-spin mb-5" />
                         <p className="text-white text-sm font-bold">{loadMsg}</p>
-                        <p className="text-gray-500 text-xs mt-2">Bu bir marta yuklanadi</p>
+                        <p className="text-matn-sokin text-xs mt-2">Bu bir marta yuklanadi</p>
                     </div>
                 )}
                 {phase === 'error' && (

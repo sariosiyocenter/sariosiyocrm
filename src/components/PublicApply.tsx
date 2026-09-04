@@ -169,7 +169,7 @@ export default function PublicApply() {
             <div className="min-h-screen bg-gradient-to-tr from-gray-50 to-gray-100 dark:from-gray-900 dark:to-gray-950 flex items-center justify-center p-4">
                 <div className="flex flex-col items-center gap-3">
                     <div className="w-10 h-10 border-[3px] border-[var(--brand-color,#1b6b6b)] border-t-transparent rounded-full animate-spin" />
-                    <p className="text-[11px] font-bold text-gray-400 uppercase tracking-wider">Ma'lumotlar yuklanmoqda...</p>
+                    <p className="text-[11px] font-bold text-matn-xira uppercase tracking-wider">Ma'lumotlar yuklanmoqda...</p>
                 </div>
             </div>
         );
@@ -178,24 +178,24 @@ export default function PublicApply() {
     if (error || !schoolInfo) {
         return (
             <div className="min-h-screen bg-gradient-to-tr from-gray-50 to-gray-100 dark:from-gray-900 dark:to-gray-950 flex items-center justify-center p-4">
-                <div className="max-w-md w-full bg-white dark:bg-gray-800 rounded-[2rem] border border-gray-100 dark:border-gray-800/50 p-8 text-center shadow-lg">
+                <div className="max-w-md w-full bg-sirt rounded-[2rem] border border-chiziq p-8 text-center shadow-lg">
                     <div className="w-14 h-14 bg-red-50 dark:bg-red-950/20 text-red-500 rounded-2xl flex items-center justify-center mx-auto mb-4 border border-red-100 dark:border-red-900/40">
                         <Building2 size={24} />
                     </div>
-                    <h2 className="text-sm font-black text-gray-900 dark:text-white">Xatolik</h2>
-                    <p className="text-[11px] font-bold text-gray-400 uppercase tracking-wider mt-2">{error || 'Filial topilmadi'}</p>
+                    <h2 className="text-sm font-black text-matn">Xatolik</h2>
+                    <p className="text-[11px] font-bold text-matn-xira uppercase tracking-wider mt-2">{error || 'Filial topilmadi'}</p>
                 </div>
             </div>
         );
     }
 
-    const inp = "w-full pl-10 pr-4 py-3.5 bg-gray-55 dark:bg-gray-900 border border-gray-100 dark:border-gray-800/50 rounded-2xl text-xs font-bold text-gray-950 dark:text-white focus:border-[var(--brand-color,#1b6b6b)] focus:ring-4 focus:ring-[var(--brand-color,#1b6b6b)]/10 outline-none transition-all";
-    const lbl = "block text-[11px] font-extrabold uppercase tracking-wider text-gray-400 mb-2";
-    const secTitle = "block text-[11px] font-bold uppercase text-[#1b6b6b] tracking-wider border-b border-dashed border-gray-150 dark:border-gray-750 pb-2 mb-4 mt-6 first:mt-0";
+    const inp = "w-full pl-10 pr-4 py-3.5 bg-ichki border border-chiziq rounded-2xl text-xs font-bold text-gray-950 dark:text-white focus:border-[var(--brand-color,#1b6b6b)] focus:ring-4 focus:ring-[var(--brand-color,#1b6b6b)]/10 outline-none transition-all";
+    const lbl = "block text-[11px] font-extrabold uppercase tracking-wider text-matn-xira mb-2";
+    const secTitle = "block text-[11px] font-bold uppercase text-brand tracking-wider border-b border-dashed border-gray-150 dark:border-gray-750 pb-2 mb-4 mt-6 first:mt-0";
 
     return (
         <div className="min-h-screen bg-gradient-to-tr from-gray-50 to-gray-100 dark:from-gray-900 dark:to-gray-950 flex items-center justify-center p-4 py-12">
-            <div className="max-w-md w-full bg-white dark:bg-gray-800 rounded-[2.5rem] border border-gray-100 dark:border-gray-800/50 shadow-xl overflow-hidden transition-all">
+            <div className="max-w-md w-full bg-sirt rounded-[2.5rem] border border-chiziq shadow-xl overflow-hidden transition-all">
                 {/* School Header */}
                 <div className="bg-gradient-to-tr from-[var(--brand-color,#1b6b6b)] to-[var(--brand-color,#1b6b6b)]/80 p-8 text-white relative">
                     <div className="absolute top-0 right-0 w-32 h-32 bg-white/5 rounded-full blur-2xl -mr-10 -mt-10" />
@@ -221,8 +221,8 @@ export default function PublicApply() {
                             <div className="w-20 h-20 bg-emerald-50 dark:bg-emerald-950/20 border border-emerald-100 dark:border-emerald-900/40 text-emerald-500 rounded-2xl flex items-center justify-center mx-auto mb-6 shadow-lg shadow-emerald-500/10">
                                 <CheckCircle2 size={40} className="animate-bounce" />
                             </div>
-                            <h2 className="text-sm font-black text-gray-900 dark:text-white mb-2">Arizangiz qabul qilindi!</h2>
-                            <p className="text-[11px] font-bold text-gray-400 uppercase tracking-wider leading-relaxed">
+                            <h2 className="text-sm font-black text-matn mb-2">Arizangiz qabul qilindi!</h2>
+                            <p className="text-[11px] font-bold text-matn-xira uppercase tracking-wider leading-relaxed">
                                 Tez orada administratorlarimiz siz bilan bog'lanishadi va kursga qo'shishadi.
                             </p>
                         </div>
@@ -235,7 +235,7 @@ export default function PublicApply() {
                             <div>
                                 <label className={lbl}>Ism-sharifingiz *</label>
                                 <div className="relative">
-                                    <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-gray-400">
+                                    <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-matn-xira">
                                         <User size={15} />
                                     </div>
                                     <input
@@ -253,7 +253,7 @@ export default function PublicApply() {
                                 <div>
                                     <label className={lbl}>Telefon raqamingiz *</label>
                                     <div className="relative">
-                                        <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-gray-400">
+                                        <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-matn-xira">
                                             <Phone size={15} />
                                         </div>
                                         <input
@@ -270,7 +270,7 @@ export default function PublicApply() {
                                 <div>
                                     <label className={lbl}>Tug'ilgan sana</label>
                                     <div className="relative">
-                                        <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-gray-400">
+                                        <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-matn-xira">
                                             <Calendar size={15} />
                                         </div>
                                         <input
@@ -287,7 +287,7 @@ export default function PublicApply() {
                                         {(['Erkak', 'Ayol'] as const).map(g => (
                                             <button key={g} type="button"
                                                 onClick={() => setForm({ ...form, gender: g })}
-                                                className={`py-3 rounded-xl text-xs font-extrabold transition-all border cursor-pointer ${form.gender === g ? 'bg-[#1b6b6b] border-[#1b6b6b] text-white shadow' : 'bg-gray-50 border-gray-200 text-gray-400 hover:text-gray-600'}`}>
+                                                className={`py-3 rounded-xl text-xs font-extrabold transition-all border cursor-pointer ${form.gender === g ? 'bg-brand border-brand text-white shadow' : 'bg-gray-50 border-gray-200 text-matn-xira hover:text-gray-600'}`}>
                                                 {g === 'Erkak' ? '♂ Erkak' : '♀ Ayol'}
                                             </button>
                                         ))}
@@ -298,7 +298,7 @@ export default function PublicApply() {
                             <div>
                                 <label className={lbl}>Maktab / Bog'cha</label>
                                 <div className="relative">
-                                    <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-gray-400">
+                                    <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-matn-xira">
                                         <GraduationCap size={15} />
                                     </div>
                                     <input
@@ -314,12 +314,12 @@ export default function PublicApply() {
                             <div>
                                 <label className={lbl}>O'quvchi rasmi</label>
                                 <div className="flex items-center gap-4 mt-2">
-                                    <div className="w-20 h-20 rounded-2xl bg-gray-55 dark:bg-gray-900 border border-gray-100 dark:border-gray-800/55 flex items-center justify-center overflow-hidden shrink-0 shadow-inner">
+                                    <div className="w-20 h-20 rounded-2xl bg-ichki border border-chiziq/55 flex items-center justify-center overflow-hidden shrink-0 shadow-inner">
                                         {form.photo ? <img src={form.photo} alt="Preview" className="w-full h-full object-cover" /> : <ImageIcon size={24} className="text-gray-300" />}
                                     </div>
                                     <div className="flex-1 space-y-2 text-left">
                                         <div className="flex gap-2">
-                                            <label className="flex-1 flex items-center justify-center gap-1.5 py-2.5 border border-gray-150 dark:border-gray-800 rounded-xl cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-900 text-[11px] font-bold uppercase tracking-wider text-gray-500">
+                                            <label className="flex-1 flex items-center justify-center gap-1.5 py-2.5 border border-chiziq rounded-xl cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-900 text-[11px] font-bold uppercase tracking-wider text-matn-sokin">
                                                 <input type="file" className="hidden" accept="image/*" onChange={async (e) => {
                                                     const file = e.target.files?.[0];
                                                     if (file) {
@@ -334,7 +334,7 @@ export default function PublicApply() {
                                                 Fayldan
                                             </label>
                                             <button type="button" onClick={() => setIsPhotoModalOpen(true)}
-                                                className="flex-1 flex items-center justify-center gap-1.5 py-2.5 border border-gray-150 dark:border-gray-800 rounded-xl hover:bg-gray-55 dark:hover:bg-gray-900 text-[11px] font-bold uppercase tracking-wider text-gray-500 cursor-pointer">
+                                                className="flex-1 flex items-center justify-center gap-1.5 py-2.5 border border-chiziq rounded-xl hover:bg-gray-55 dark:hover:bg-gray-900 text-[11px] font-bold uppercase tracking-wider text-matn-sokin cursor-pointer">
                                                 Kamera
                                             </button>
                                         </div>
@@ -353,11 +353,11 @@ export default function PublicApply() {
                             
                             <div className="space-y-3">
                                 {form.certificates.map((cert, index) => (
-                                    <div key={index} className="p-4 bg-gray-55 dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-750/50 space-y-3 relative animate-in fade-in slide-in-from-top-2 duration-250">
+                                    <div key={index} className="p-4 bg-ichki rounded-2xl border border-gray-100 dark:border-gray-750/50 space-y-3 relative animate-in fade-in slide-in-from-top-2 duration-250">
                                         <button 
                                             type="button" 
                                             onClick={() => removeCertificate(index)}
-                                            className="absolute top-3 right-3 text-gray-400 hover:text-red-500 transition-colors"
+                                            className="absolute top-3 right-3 text-matn-xira hover:text-red-500 transition-colors"
                                         >
                                             <Trash2 size={14} />
                                         </button>
@@ -367,7 +367,7 @@ export default function PublicApply() {
                                             <select
                                                 value={cert.category}
                                                 onChange={e => updateCertificate(index, 'category', e.target.value as any)}
-                                                className="w-full px-3 py-2 bg-white dark:bg-gray-800 border border-gray-150 dark:border-gray-750 rounded-xl text-xs font-bold text-gray-900 dark:text-white outline-none focus:border-[var(--brand-color,#1b6b6b)]"
+                                                className="w-full px-3 py-2 bg-sirt border border-gray-150 dark:border-gray-750 rounded-xl text-xs font-bold text-matn outline-none focus:border-[var(--brand-color,#1b6b6b)]"
                                             >
                                                 <option value="Milliy">Milliy sertifikat</option>
                                                 <option value="Xalqaro">Xalqaro sertifikat</option>
@@ -380,7 +380,7 @@ export default function PublicApply() {
                                                 <select
                                                     value={cert.subject || ''}
                                                     onChange={e => updateCertificate(index, 'subject', e.target.value)}
-                                                    className="w-full px-3 py-2 bg-white dark:bg-gray-800 border border-gray-150 dark:border-gray-750 rounded-xl text-xs font-bold text-gray-900 dark:text-white outline-none focus:border-[var(--brand-color,#1b6b6b)]"
+                                                    className="w-full px-3 py-2 bg-sirt border border-gray-150 dark:border-gray-750 rounded-xl text-xs font-bold text-matn outline-none focus:border-[var(--brand-color,#1b6b6b)]"
                                                 >
                                                     <option value="Matematika">Matematika</option>
                                                     <option value="Fizika">Fizika</option>
@@ -402,7 +402,7 @@ export default function PublicApply() {
                                                 <select
                                                     value={cert.type || ''}
                                                     onChange={e => updateCertificate(index, 'type', e.target.value)}
-                                                    className="w-full px-3 py-2 bg-white dark:bg-gray-800 border border-gray-150 dark:border-gray-750 rounded-xl text-xs font-bold text-gray-900 dark:text-white outline-none focus:border-[var(--brand-color,#1b6b6b)]"
+                                                    className="w-full px-3 py-2 bg-sirt border border-gray-150 dark:border-gray-750 rounded-xl text-xs font-bold text-matn outline-none focus:border-[var(--brand-color,#1b6b6b)]"
                                                 >
                                                     <option value="IELTS">IELTS</option>
                                                     <option value="SAT">SAT</option>
@@ -420,7 +420,7 @@ export default function PublicApply() {
                                                 placeholder={cert.category === 'Xalqaro' ? 'Misol: 7.5 yoki 1450' : 'Misol: 94.8%'}
                                                 value={cert.score || ''}
                                                 onChange={e => updateCertificate(index, 'score', e.target.value)}
-                                                className="w-full px-3 py-2 bg-white dark:bg-gray-800 border border-gray-150 dark:border-gray-750 rounded-xl text-xs font-bold text-gray-900 dark:text-white outline-none focus:border-[var(--brand-color,#1b6b6b)]"
+                                                className="w-full px-3 py-2 bg-sirt border border-gray-150 dark:border-gray-750 rounded-xl text-xs font-bold text-matn outline-none focus:border-[var(--brand-color,#1b6b6b)]"
                                             />
                                         </div>
                                     </div>
@@ -429,7 +429,7 @@ export default function PublicApply() {
                                 <button
                                     type="button"
                                     onClick={addCertificate}
-                                    className="w-full py-3 bg-gray-55 dark:bg-gray-900 border border-dashed border-gray-200 dark:border-gray-750 rounded-2xl text-[11px] font-bold uppercase tracking-wider text-[#1b6b6b] hover:bg-teal-50/10 dark:hover:bg-teal-900/10 transition-colors flex items-center justify-center gap-1.5 cursor-pointer"
+                                    className="w-full py-3 bg-ichki border border-dashed border-gray-200 dark:border-gray-750 rounded-2xl text-[11px] font-bold uppercase tracking-wider text-brand hover:bg-teal-50/10 dark:hover:bg-teal-900/10 transition-colors flex items-center justify-center gap-1.5 cursor-pointer"
                                 >
                                     <Plus size={14} />
                                     Sertifikat qo'shish
@@ -443,7 +443,7 @@ export default function PublicApply() {
                                 <div>
                                     <label className={lbl}>Otasining ismi</label>
                                     <div className="relative">
-                                        <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-gray-400">
+                                        <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-matn-xira">
                                             <User size={15} />
                                         </div>
                                         <input
@@ -459,7 +459,7 @@ export default function PublicApply() {
                                 <div>
                                     <label className={lbl}>Otasining telefoni</label>
                                     <div className="relative">
-                                        <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-gray-400">
+                                        <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-matn-xira">
                                             <Phone size={15} />
                                         </div>
                                         <input
@@ -477,7 +477,7 @@ export default function PublicApply() {
                                 <div>
                                     <label className={lbl}>Onasining ismi</label>
                                     <div className="relative">
-                                        <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-gray-400">
+                                        <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-matn-xira">
                                             <User size={15} />
                                         </div>
                                         <input
@@ -493,7 +493,7 @@ export default function PublicApply() {
                                 <div>
                                     <label className={lbl}>Onasining telefoni</label>
                                     <div className="relative">
-                                        <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-gray-400">
+                                        <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-matn-xira">
                                             <Phone size={15} />
                                         </div>
                                         <input
@@ -513,7 +513,7 @@ export default function PublicApply() {
                             <div>
                                 <label className={lbl}>Qaysi kursda o'qimoqchisiz? *</label>
                                 <div className="relative">
-                                    <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-gray-400">
+                                    <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-matn-xira">
                                         <BookOpen size={15} />
                                     </div>
                                     <select
@@ -533,7 +533,7 @@ export default function PublicApply() {
                             <div>
                                 <label className={lbl}>Yashash manzilingiz</label>
                                 <div className="relative">
-                                    <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-gray-400">
+                                    <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-matn-xira">
                                         <MapPin size={15} />
                                     </div>
                                     <input
@@ -549,7 +549,7 @@ export default function PublicApply() {
                             <div>
                                 <label className={lbl}>Savollaringiz yoki qo'shimcha izohlar</label>
                                 <div className="relative">
-                                    <div className="absolute inset-y-0 left-0 pl-3.5 pt-3.5 flex items-start pointer-events-none text-gray-400">
+                                    <div className="absolute inset-y-0 left-0 pl-3.5 pt-3.5 flex items-start pointer-events-none text-matn-xira">
                                         <MessageSquare size={15} />
                                     </div>
                                     <textarea
