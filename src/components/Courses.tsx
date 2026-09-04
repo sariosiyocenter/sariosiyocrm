@@ -148,6 +148,25 @@ export default function Courses() {
 
     const getTeacherName = (id: number) => teachers.find(t => t.id === id)?.name || t('unknown_teacher');
 
+    /** Guruh holati alohida maydon emas — mavjud ma'lumotdan aniqlanadi:
+     *  ustozsiz guruh alohida ajratiladi, o'quvchisi yo'q guruh hali
+     *  to'planmoqda, qolgani faol. */
+    const groupState = (g: any): 'faol' | 'toplanmoqda' | 'ustozsiz' => {
+        if (!teachers.find(tc => tc.id === g.teacherId)) return 'ustozsiz';
+        if (((g.studentIds || []).length) === 0) return 'toplanmoqda';
+        return 'faol';
+    };
+
+    const [stateFilter, setStateFilter] = useState<'all' | 'faol' | 'toplanmoqda' | 'ustozsiz'>('all');
+    const [viewMode, setViewMode] = useState<'cards' | 'table'>('cards');
+
+    const stateCounts = {
+        all: groups.length,
+        faol: groups.filter(g => groupState(g) === 'faol').length,
+        toplanmoqda: groups.filter(g => groupState(g) === 'toplanmoqda').length,
+        ustozsiz: groups.filter(g => groupState(g) === 'ustozsiz').length,
+    };
+
     /** Kartochkadagi uchta ko'rsatkich va to'ldirilish. Hech biri o'ylab
      *  topilmaydi: ma'lumot bo'lmasa "—" qaytadi. */
     const getGroupStats = (group: any) => {
@@ -196,7 +215,8 @@ export default function Courses() {
             else if (filters.timeOfDay === 'evening') matchesTime = hour >= 18;
         }
 
-        return matchesSearch && matchesTeacher && matchesDay && matchesRoom && matchesTime;
+        const matchesState = stateFilter === 'all' || groupState(g) === stateFilter;
+        return matchesSearch && matchesTeacher && matchesDay && matchesRoom && matchesTime && matchesState;
     });
 
     return (
@@ -208,11 +228,21 @@ export default function Courses() {
                         <div>
                             <h1 className="text-[26px] font-bold text-gray-900 dark:text-white tracking-tight leading-tight">{t('groups_title')}</h1>
                             <p className="text-[13px] text-gray-500 dark:text-gray-400 mt-1">
-                                {groups.length} ta guruh · <span className="num">{groups.reduce((n, g) => n + ((g.studentIds || []).length), 0)}</span> o'quvchi
+                                <span className="num">{stateCounts.faol}</span> faol guruh · <span className="num">{groups.reduce((n, g) => n + ((g.studentIds || []).length), 0)}</span> o'quvchi
                             </p>
                         </div>
                     </div>
-                    <div className="flex items-center gap-3">
+                    <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-1 bg-white dark:bg-gray-800 p-1 rounded-xl border border-gray-100 dark:border-gray-700">
+                            {(['cards', 'table'] as const).map(mode => (
+                                <button key={mode} onClick={() => setViewMode(mode)}
+                                    className={`px-3 py-1.5 rounded-lg text-[12px] font-medium transition-colors cursor-pointer ${viewMode === mode
+                                        ? 'bg-[#1b6b6b] text-white'
+                                        : 'text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'}`}>
+                                    {mode === 'cards' ? 'Kartalar' : 'Jadval'}
+                                </button>
+                            ))}
+                        </div>
                         <div className="relative">
                             <Search size={14} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400" />
                             <input
@@ -275,6 +305,30 @@ export default function Courses() {
             </div>
 
             {/* Courses Grid */}
+
+            {/* Holat chiplari. Alohida "status" maydoni yo'q, shuning uchun holat
+                mavjud ma'lumotdan aniqlanadi — ustozsiz guruh alohida ajratiladi,
+                chunki uni tezda ko'rish kerak bo'ladi. */}
+            <div className="flex items-center gap-2 overflow-x-auto no-scrollbar">
+                {([
+                    ['all', t('all'), stateCounts.all, false],
+                    ['faol', t('status_active'), stateCounts.faol, false],
+                    ['toplanmoqda', "Yangi to'planmoqda", stateCounts.toplanmoqda, false],
+                    ['ustozsiz', "Ustoz yo'q", stateCounts.ustozsiz, true],
+                ] as const).map(([key, label, count, warn]) => (
+                    count > 0 || key === 'all' ? (
+                        <button key={key} onClick={() => setStateFilter(key as any)}
+                            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[12px] font-medium border transition-colors cursor-pointer shrink-0 ${stateFilter === key
+                                ? (warn ? 'bg-rose-500 border-rose-500 text-white' : 'bg-[#1b6b6b] border-[#1b6b6b] text-white')
+                                : warn
+                                    ? 'bg-rose-50 dark:bg-rose-950/20 border-rose-100 dark:border-rose-900/40 text-rose-500 hover:border-rose-300'
+                                    : 'bg-white dark:bg-gray-800 border-gray-100 dark:border-gray-700 text-gray-500 dark:text-gray-400 hover:text-[#1b6b6b] hover:border-[#1b6b6b]'}`}>
+                            {label} <span className="num opacity-60">{count}</span>
+                        </button>
+                    ) : null
+                ))}
+            </div>
+
             {filteredGroups.length === 0 ? (
                 <div className="py-24 text-center bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-800/50 border-dashed">
                     <Layers size={40} className="mx-auto text-gray-200 dark:text-gray-600 mb-3" />
@@ -285,6 +339,51 @@ export default function Courses() {
                     </button>
                 </div>
             ) : (
+                viewMode === 'table' ? (
+                <div className="bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700/50 rounded-2xl overflow-hidden">
+                    <div className="overflow-x-auto">
+                        <table className="w-full border-collapse text-left min-w-[760px]">
+                            <thead>
+                                <tr className="border-b border-gray-100 dark:border-gray-700/50">
+                                    <th className="px-5 py-3 text-[11px] font-medium text-gray-400">{t('group_name')}</th>
+                                    <th className="px-3 py-3 text-[11px] font-medium text-gray-400">{t('group_teacher')}</th>
+                                    <th className="px-3 py-3 text-[11px] font-medium text-gray-400">{t('time')}</th>
+                                    <th className="px-3 py-3 text-[11px] font-medium text-gray-400 text-right">O'quvchi</th>
+                                    <th className="px-3 py-3 text-[11px] font-medium text-gray-400 text-right">{t('payments_tab')}</th>
+                                    <th className="px-5 py-3 text-[11px] font-medium text-gray-400 text-right">{t('attendance')}</th>
+                                </tr>
+                            </thead>
+                            <tbody className="divide-y divide-gray-55 dark:divide-gray-700/40">
+                                {filteredGroups.map(group => {
+                                    const st = getGroupStats(group);
+                                    const teacher = teachers.find(tc => tc.id === group.teacherId);
+                                    return (
+                                        <tr key={group.id} onClick={() => navigate(`/courses/${group.id}`)}
+                                            className="group hover:bg-gray-55/70 dark:hover:bg-gray-900/30 transition-colors cursor-pointer">
+                                            <td className="px-5 py-3 text-[13px] font-medium text-gray-900 dark:text-white group-hover:text-[#1b6b6b] transition-colors">{group.name}</td>
+                                            <td className={`px-3 py-3 text-[12px] ${teacher ? 'text-gray-500 dark:text-gray-400' : 'text-amber-500'}`}>
+                                                {teacher?.name || "Biriktirilmagan"}
+                                            </td>
+                                            <td className="px-3 py-3 text-[12px] text-gray-500 dark:text-gray-400">
+                                                {group.days === 'TOQ' ? t('odd_days') : group.days === 'JUFT' ? t('even_days') : t('every_day')}
+                                            </td>
+                                            <td className="num px-3 py-3 text-[13px] text-right text-gray-700 dark:text-gray-200">
+                                                {st.members}{st.capacity ? ` / ${st.capacity}` : ''}
+                                            </td>
+                                            <td className={`num px-3 py-3 text-[13px] text-right ${st.payRate === null ? 'text-gray-400' : st.payRate >= 80 ? 'text-emerald-500' : st.payRate >= 50 ? 'text-amber-500' : 'text-rose-500'}`}>
+                                                {st.payRate === null ? '—' : `${st.payRate}%`}
+                                            </td>
+                                            <td className={`num px-5 py-3 text-[13px] text-right ${st.attRate === null ? 'text-gray-400' : st.attRate >= 85 ? 'text-emerald-500' : st.attRate >= 70 ? 'text-amber-500' : 'text-rose-500'}`}>
+                                                {st.attRate === null ? '—' : `${st.attRate}%`}
+                                            </td>
+                                        </tr>
+                                    );
+                                })}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                ) : (
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
                     {filteredGroups.map(group => {
                         const scheduleParts = group.schedule ? group.schedule.split(' - ') : [];
@@ -370,6 +469,7 @@ export default function Courses() {
                         );
                     })}
                 </div>
+                )
             )}
 
             {/* Course Add Modal */}
