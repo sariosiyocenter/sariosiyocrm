@@ -519,6 +519,10 @@ app.get('/api/kpi-calculation', authenticate, async (req, res, next) => {
       select: { name: true, schoolId: true, kpiPercent: true }
     });
     if (!employee) return res.json({ groups: [], totalPayments: 0, kpiAmount: 0 });
+    // Filialsiz xodimni ustoz yozuvi bilan bog'lab bo'lmaydi: bog'lash
+    // aynan filial bo'yicha qidiriladi. Bu tekshiruvsiz Prisma
+    // `schoolId: null` ni rad etib, 500 qaytarardi.
+    if (employee.schoolId == null) return res.json({ groups: [], totalPayments: 0, kpiAmount: 0 });
 
     // Find linked Teacher by name
     const teacher = await prisma.teacher.findFirst({

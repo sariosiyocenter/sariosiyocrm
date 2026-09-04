@@ -513,7 +513,10 @@ export default function StaffDetails() {
                 <div className="lg:col-span-1 space-y-5">
                     <div className="bg-sirt rounded-2xl border border-chiziq shadow-sm overflow-hidden">
                         {/* Banner */}
-                        <div className={`h-20 bg-gradient-to-br ${ROLE_GRADIENT[staffUser.role] || 'from-gray-400 to-gray-600'} relative opacity-90`}>
+                        {/* Muqova endi lavozimga qarab rang o'zgartirmaydi:
+                            yettita rang hech qanday ma'no bermasdi, lavozim
+                            allaqachon yozuvda turibdi. */}
+                        <div className="h-16 bg-brand/10 dark:bg-brand/15 relative">
                             {isAdminOrManager && (
                                 <button
                                     onClick={() => { setEditData({ ...staffUser, password: '' }); setIsEditOpen(true); }}
@@ -523,7 +526,7 @@ export default function StaffDetails() {
                             )}
                             {/* Avatar — centred, extends below banner */}
                             <div className="absolute -bottom-9 left-1/2 -translate-x-1/2 rounded-2xl bg-sirt p-1 shadow-sm group/avatar">
-                                <div className="w-24 h-24 rounded-xl overflow-hidden flex items-center justify-center bg-ichki border border-chiziq relative">
+                                <div className="w-20 h-20 rounded-2xl overflow-hidden flex items-center justify-center bg-brand/12 text-brand relative">
                                     {staffUser.photo ? (
                                         <img src={staffUser.photo} alt={staffUser.name} className="w-full h-full object-cover object-top" />
                                     ) : (
@@ -574,16 +577,18 @@ export default function StaffDetails() {
                         </div>
                     </div>
 
-                    {/* Salary card */}
-                    <div className="bg-brand rounded-2xl p-4 text-white shadow-sm shadow-[#1b6b6b]/20 relative overflow-hidden">
-                        <span className="text-[11px] font-bold text-teal-100 block mb-3">{t('base_salary_short')}</span>
-                        <div className="flex items-baseline gap-1">
-                            <span className="text-2xl font-black tracking-tight tabular-nums">{baseSalary.toLocaleString()}</span>
-                            <span className="text-[11px] font-extrabold text-teal-200">UZS</span>
+                    {/* Oylik. Ilgari bu kartochka to'la to'yingan brend rangida
+                        edi va sahifadagi eng baland ovozli element bo'lib
+                        qolgandi — holbuki u shunchaki bitta son. */}
+                    <div className="bg-sirt border border-chiziq rounded-2xl p-4">
+                        <span className="text-[12px] text-matn-sokin block">{t('base_salary_short')}</span>
+                        <div className="flex items-baseline mt-1">
+                            <span className="raqam text-[24px] font-semibold leading-none text-matn">{baseSalary.toLocaleString('ru-RU')}</span>
+                            <span className="text-[12px] text-matn-xira ml-1.5">so'm</span>
                         </div>
-                        <div className="mt-3 pt-3 border-t border-white/10 flex items-center justify-between">
-                            <span className="text-[11px] text-teal-200 font-bold">{t('with_kpi')}</span>
-                            <span className="text-sm font-black">{totalSalary.toLocaleString()}</span>
+                        <div className="mt-3 pt-3 border-t border-chiziq-mayin flex items-center justify-between">
+                            <span className="text-[12px] text-matn-sokin">{t('with_kpi')}</span>
+                            <span className="num text-[14px] text-brand">{totalSalary.toLocaleString('ru-RU')}</span>
                         </div>
                     </div>
                 </div>
