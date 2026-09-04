@@ -3,16 +3,16 @@ import { Student, Teacher, Group, Lead, Payment, CRMState, Course, Room, School,
 import { generateVariants } from '../lib/shuffler';
 
 export const THEMES = [
-    { id: 'zumrad', name: "Sokin Zumrad", primary: '#1b6b6b', hover: '#155252', light: '#f0f8f8', gradientStart: '#1b6b6b', gradientEnd: '#2e9c9c' },
-    { id: 'indigo', name: "Kosmik Indigo", primary: '#6366f1', hover: '#4f46e5', light: '#eef2ff', gradientStart: '#6366f1', gradientEnd: '#4f46e5' },
-    { id: 'yoqut', name: "Qirollik Yoquti", primary: '#dc2626', hover: '#b91c1c', light: '#fef2f2', gradientStart: '#dc2626', gradientEnd: '#ef4444' },
-    { id: 'oltin', name: "Zafaron Oltin", primary: '#d97706', hover: '#b45309', light: '#fffbeb', gradientStart: '#d97706', gradientEnd: '#f59e0b' },
-    { id: 'okean', name: "Klassik Okean", primary: '#0284c7', hover: '#0369a1', light: '#f0f9ff', gradientStart: '#0284c7', gradientEnd: '#38bdf8' },
-    { id: 'yalpiz', name: "Yalpiz Tarovati", primary: '#059669', hover: '#047857', light: '#ecfdf5', gradientStart: '#059669', gradientEnd: '#10b981' },
-    { id: 'binafsha', name: "Tungi Binafsha", primary: '#7c3aed', hover: '#6d28d9', light: '#f5f3ff', gradientStart: '#7c3aed', gradientEnd: '#8b5cf6' },
-    { id: 'burgundiya', name: "Burgundiya Iffati", primary: '#db2777', hover: '#be185d', light: '#fdf2f8', gradientStart: '#db2777', gradientEnd: '#ec4899' },
-    { id: 'bronza', name: "Kuzgi Bronza", primary: '#854d0e', hover: '#713f12', light: '#fefce8', gradientStart: '#854d0e', gradientEnd: '#a16207' },
-    { id: 'shifer', name: "Tungi Shifer", primary: '#475569', hover: '#334155', light: '#f8fafc', gradientStart: '#475569', gradientEnd: '#64748b' }
+    { id: 'zumrad', name: "Sokin Zumrad", primary: '#1b6b6b', hover: '#155252', light: '#f0f8f8', gradientStart: '#1b6b6b', gradientEnd: '#2e9c9c' , bright: '#3ddad0' },
+    { id: 'indigo', name: "Kosmik Indigo", primary: '#6366f1', hover: '#4f46e5', light: '#eef2ff', gradientStart: '#6366f1', gradientEnd: '#4f46e5' , bright: '#a5b0ff' },
+    { id: 'yoqut', name: "Qirollik Yoquti", primary: '#dc2626', hover: '#b91c1c', light: '#fef2f2', gradientStart: '#dc2626', gradientEnd: '#ef4444' , bright: '#ff7b72' },
+    { id: 'oltin', name: "Zafaron Oltin", primary: '#d97706', hover: '#b45309', light: '#fffbeb', gradientStart: '#d97706', gradientEnd: '#f59e0b' , bright: '#ffb547' },
+    { id: 'okean', name: "Klassik Okean", primary: '#0284c7', hover: '#0369a1', light: '#f0f9ff', gradientStart: '#0284c7', gradientEnd: '#38bdf8' , bright: '#5cc0f5' },
+    { id: 'yalpiz', name: "Yalpiz Tarovati", primary: '#059669', hover: '#047857', light: '#ecfdf5', gradientStart: '#059669', gradientEnd: '#10b981' , bright: '#3ddc97' },
+    { id: 'binafsha', name: "Tungi Binafsha", primary: '#7c3aed', hover: '#6d28d9', light: '#f5f3ff', gradientStart: '#7c3aed', gradientEnd: '#8b5cf6' , bright: '#b794ff' },
+    { id: 'burgundiya', name: "Burgundiya Iffati", primary: '#db2777', hover: '#be185d', light: '#fdf2f8', gradientStart: '#db2777', gradientEnd: '#ec4899' , bright: '#ff85b8' },
+    { id: 'bronza', name: "Kuzgi Bronza", primary: '#854d0e', hover: '#713f12', light: '#fefce8', gradientStart: '#854d0e', gradientEnd: '#a16207' , bright: '#d9a44a' },
+    { id: 'shifer', name: "Tungi Shifer", primary: '#475569', hover: '#334155', light: '#f8fafc', gradientStart: '#475569', gradientEnd: '#64748b' , bright: '#9fb0c6' }
 ];
 
 interface AuthenticatedUser {
@@ -146,6 +146,7 @@ export const CRMProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
     useEffect(() => {
         const theme = THEMES.find(t => t.id === themeColor) || THEMES[0];
+        const bright = (theme as { bright?: string }).bright || theme.gradientEnd;
         let styleEl = document.getElementById('crm-dynamic-theme');
         if (!styleEl) {
             styleEl = document.createElement('style');
@@ -222,6 +223,44 @@ export const CRMProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             }
             .border-teal-500 {
                 border-color: ${theme.gradientEnd} !important;
+            }
+
+            /* Qorong'u mavzu. Asosiy brend rangi qora fonda ko'rinmaydi,
+               shuning uchun yorqin variantga almashadi. Yorqin fon ustidagi
+               oq yozuv o'qilmaydi — shuning uchun matn qoraga o'tadi, xuddi
+               chizmadagidek. */
+            .dark {
+                --color-brand: ${bright};
+                --brand-color: ${bright};
+                --color-brand-fon: ${theme.primary}26;
+            }
+            .dark .bg-\\[\\#1b6b6b\\] {
+                background-color: ${bright} !important;
+            }
+            .dark .bg-\\[\\#1b6b6b\\].text-white,
+            .dark .bg-\\[\\#1b6b6b\\] .text-white {
+                color: #0d1418 !important;
+            }
+            .dark .hover\\:bg-\\[\\#155252\\]:hover {
+                background-color: ${theme.gradientEnd} !important;
+            }
+            .dark .text-\\[\\#1b6b6b\\],
+            .dark .text-teal-650,
+            .dark .text-teal-600 {
+                color: ${bright} !important;
+            }
+            .dark .border-\\[\\#1b6b6b\\],
+            .dark .focus\\:border-\\[\\#1b6b6b\\]:focus {
+                border-color: ${bright} !important;
+            }
+            .dark .from-\\[\\#1b6b6b\\] {
+                --tw-gradient-from: ${bright} !important;
+            }
+            .dark .bg-teal-50 {
+                background-color: ${theme.primary}26 !important;
+            }
+            .dark .border-teal-100 {
+                border-color: ${theme.primary}40 !important;
             }
         `;
     }, [themeColor]);

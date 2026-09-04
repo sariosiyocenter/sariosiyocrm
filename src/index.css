@@ -1,3 +1,8 @@
+/* Matn shrifti. Sora — sarlavha va interfeys uchun, chizmada tasdiqlangan.
+   Sora'da kirill harflari yo'q, shuning uchun Inter ikkinchi bo'lib turadi:
+   brauzer har harfni alohida tanlaydi, ya'ni ruscha matn to'liq Inter'da
+   chiqadi va hech narsa buzilmaydi. */
+@import url('https://fonts.googleapis.com/css2?family=Sora:wght@400;500;600;700&display=swap');
 @import url('https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&display=swap');
 /* Raqamlar uchun alohida shrift. Summalar, foizlar, telefon va sanalar mono
    shriftda tursa, ustunlar bir chiziqda tekislanadi va panel "boshqaruv paneli"
@@ -6,85 +11,174 @@
 
 @import "tailwindcss";
 
-/* The brand colour is chosen in Settings and injected at runtime as --color-brand.
-   These defaults are the first theme ("Sokin Zumrad"), so the first paint already
-   matches the app instead of flashing indigo before the theme script runs. */
 @theme {
+  /* --- Brend ---------------------------------------------------------------
+     Sozlamadan tanlanadi va ish vaqtida --color-brand orqali quyiladi.
+     Bu yerdagilar birinchi mavzuning ("Sokin Zumrad") qiymatlari, shuning
+     uchun birinchi chizishda ham ilova o'z rangida chiqadi. Qorong'u mavzu
+     uchun yorqinroq variant CRMContext'da .dark ichida beriladi — #1b6b6b
+     qora fonda deyarli ko'rinmaydi. */
   --color-brand: #1b6b6b;
   --color-brand-dark: #155252;
   --color-brand-light: #f0f8f8;
   --color-brand-accent: #2e9c9c;
+  --color-brand-ust: #ffffff;
+  --color-brand-fon: #ddefeb;
 
-  /* Kulrang shkala. Komponentlarda gray-55, gray-150, gray-405, gray-750,
-     gray-850 kabi oraliq pog'onalar ~370 joyda ishlatilgan, lekin Tailwind'da
-     bunday pog'onalar yo'q edi — ya'ni o'sha klasslar hech qanday rang
-     bermasdan tushib qolar edi: ichki panellar fonsiz, chegaralar ko'rinmas.
-     Shkala butunlay slate ohangida qayta yozildi, chunki sahifa foni ham
-     slate (#0f172a) — shu bilan kartochka, panel va fon bitta oilaga tushdi. */
-  --color-gray-50:  #f8fafc;
-  --color-gray-55:  #f5f7fa;
-  --color-gray-100: #f1f4f8;
-  --color-gray-105: #eef2f7;
-  --color-gray-150: #e8edf3;
-  --color-gray-200: #e2e8f0;
-  --color-gray-250: #d8e0ea;
-  --color-gray-300: #cbd5e1;
-  --color-gray-305: #c4cfdd;
-  --color-gray-350: #b3c0d1;
-  --color-gray-400: #94a3b8;
-  --color-gray-405: #8d9db4;
-  --color-gray-455: #8494ab;
-  --color-gray-500: #64748b;
-  --color-gray-550: #5b6a80;
-  --color-gray-600: #475569;
-  --color-gray-650: #3e4a5e;
-  --color-gray-700: #30363d;
-  --color-gray-750: #21262d;
-  --color-gray-755: #1c2128;
-  --color-gray-800: #161b22;
-  --color-gray-850: #12161d;
-  --color-gray-900: #0d1117;
-  --color-gray-950: #010409;
+  /* --- Kulrang shkala ------------------------------------------------------
+     Bitta sovuq slate oilasi, ikkala mavzu uchun. Qiymatlar tasdiqlangan
+     chizmadagi palitradan olingan (docs/UI_UPGRADE_PLAN.md, 1.1a):
+       950 — sahifa foni      900 — kartochka
+       800 — asosiy chegara   700 — kuchli chegara
+       400 — so'ngan matn     900 — asosiy matn (yorug' mavzuda)
+     Har pog'ona ilovadagi eng ko'p ishlatiladigan roliga qarab tanlangan,
+     shuning uchun 25 ming qator kodga tegmasdan butun ilova yangi palitraga
+     o'tadi. */
+  --color-gray-50:  #f7f9fb;
+  --color-gray-55:  #f3f6f9;
+  --color-gray-100: #e9eef4;
+  --color-gray-105: #e6ebf2;
+  --color-gray-150: #e1e7ef;
+  --color-gray-200: #d7dfea;
+  --color-gray-250: #cdd7e4;
+  --color-gray-300: #bcc8d8;
+  --color-gray-305: #b5c2d3;
+  --color-gray-350: #a3b1c4;
+  --color-gray-400: #8b98ab;
+  --color-gray-405: #838fa3;
+  --color-gray-455: #7b8799;
+  --color-gray-500: #6d7b8f;
+  --color-gray-550: #5e6b7d;
+  --color-gray-600: #4e5a6b;
+  --color-gray-650: #3e4a5a;
+  --color-gray-700: #2b323d;
+  --color-gray-750: #262d38;
+  --color-gray-755: #242b36;
+  --color-gray-800: #232a35;
+  --color-gray-850: #1c222c;
+  --color-gray-900: #171c25;
+  --color-gray-950: #0f1216;
 
-  /* Ranglardagi shu turdagi oraliq pog'onalar ham bir nechta joyda uchraydi. */
-  --color-slate-55:  #f5f7fa;
-  --color-slate-350: #b3c0d1;
-  --color-slate-650: #3e4a5e;
-  --color-rose-55:   #fff5f6;
-  --color-rose-455:  #f77e8e;
-  --color-rose-550:  #ea3d5c;
-  --color-rose-650:  #cc1e40;
-  --color-emerald-350: #4ee0a4;
-  --color-emerald-550: #0aa668;
-  --color-emerald-650: #06855a;
+  /* Ranglardagi oraliq pog'onalar ham bir nechta joyda uchraydi. */
+  --color-slate-55:  #f3f6f9;
+  --color-slate-350: #a3b1c4;
+  --color-slate-650: #3e4a5a;
+
+  /* --- Semantik ranglar ----------------------------------------------------
+     Chizmadagi yaxshi / ogoh / xato tokenlari. Ilovada allaqachon
+     emerald / amber / rose to'g'ridan-to'g'ri yozilgan, shuning uchun
+     o'sha pog'onalarning o'zi tasdiqlangan qiymatlarga keltirildi. */
+  --color-emerald-350: #5ce3ad;
+  --color-emerald-400: #3ddc97;
+  --color-emerald-500: #1da865;
+  --color-emerald-550: #17944f;
+  --color-emerald-600: #17803d;
+  --color-emerald-650: #126a33;
+  --color-emerald-50:  #dcf1e3;
+  --color-emerald-950: #14302a;
+
+  --color-amber-400: #ffb547;
+  --color-amber-500: #d78f10;
+  --color-amber-600: #a86a00;
+  --color-amber-50:  #fdf0dc;
+  --color-amber-950: #32281a;
+
+  --color-rose-55:  #fdf3f2;
+  --color-rose-50:  #fceeec;
+  --color-rose-400: #ff8a95;
+  --color-rose-455: #ff7480;
+  --color-rose-500: #ff5d6c;
+  --color-rose-550: #de3a42;
+  --color-rose-600: #b4231f;
+  --color-rose-650: #961b18;
+  --color-rose-950: #2a1a1e;
+
   --color-sky-455:   #48b4f0;
   --color-sky-650:   #0378bd;
   --color-teal-550:  #0d9488;
   --color-teal-650:  #0c7f7f;
 
-  /* Tipografika ohangi. Ilovada font-black 309 marta, font-extrabold 304 marta,
-     uppercase esa 1191 marta ishlatilgan — natijada sahifadagi hamma narsa bir
-     xil baland ovozda "qichqirar" va ierarxiya yo'qolar edi. Har bir faylga
-     tegmasdan, shkalaning o'zi bir pog'ona pasaytirildi: yozuvlar o'z o'rnida
-     qoladi, lekin ko'z bir joyga tikiladi. */
+  /* --- Ma'noli qatlamlar ---------------------------------------------------
+     Yangi va qayta yozilgan komponentlar shulardan foydalanadi: bg-sirt,
+     text-matn, border-chiziq. Har token bitta ma'noni bildiradi va mavzu
+     almashganda ma'no o'zgarmaydi — komponent qaysi mavzuda ekanini
+     bilishi shart emas. Bu yerdagilar yorug' mavzu; qorong'usi quyida. */
+  --color-fon:          #f3f6f9;
+  --color-sirt:         #ffffff;
+  --color-sirt-2:       #ffffff;
+  --color-ichki:        #f3f6f9;
+  --color-chiziq:       #e1e7ef;
+  --color-chiziq-kuchli:#d7dfea;
+  --color-chiziq-mayin: #e9eef4;
+  --color-matn:         #171c25;
+  --color-matn-2:       #3e4a5a;
+  --color-matn-sokin:   #6d7b8f;
+  --color-matn-xira:    #8b98ab;
+  --color-yaxshi:       #17803d;
+  --color-yaxshi-fon:   #dcf1e3;
+  --color-ogoh:         #a86a00;
+  --color-ogoh-fon:     #fdf0dc;
+  --color-xato:         #b4231f;
+  --color-xato-fon:     #fceeec;
+  --color-xato-chiziq:  #f6d5d2;
+  --color-xato-mayin:   #a45a54;
+
+  /* --- Tipografika ---------------------------------------------------------
+     Ilovada font-black 309 marta, font-extrabold 304 marta ishlatilgan —
+     natijada sahifadagi hamma narsa bir xil baland ovozda "qichqirar" va
+     ierarxiya yo'qolar edi. Har bir faylga tegmasdan, shkalaning o'zi bir
+     pog'ona pasaytirildi: yozuvlar o'z o'rnida qoladi, lekin ko'z bir joyga
+     tikiladi. */
   --font-weight-medium: 500;
   --font-weight-semibold: 500;
   --font-weight-bold: 600;
   --font-weight-extrabold: 600;
   --font-weight-black: 700;
 
-  /* Bosh harfli yozuvlarda harflar orasi ham keng edi, bu qatorlarni
-     cho'zib, uzun o'zbek so'zlarini sig'masdan qoldirardi. */
   --tracking-wider: 0.035em;
   --tracking-widest: 0.06em;
 
   --font-mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
 }
 
-/* Raqamli qiymatlar uchun: <span className="num">500 000</span>.
-   Faqat sof raqamga qo'yiladi — ichida gap bo'lgan matnga emas. */
+/* Qorong'u mavzu. Faqat ma'noli qatlamlar almashadi — kulrang shkala ikkala
+   mavzuda bir xil qoladi, chunki unga `dark:` variantlari orqali murojaat
+   qilinadi. */
+.dark {
+  --color-fon:          #0f1216;
+  --color-sirt:         #171c25;
+  --color-sirt-2:       #131720;
+  --color-ichki:        #1c222c;
+  --color-chiziq:       #232a35;
+  --color-chiziq-kuchli:#2b323d;
+  --color-chiziq-mayin: #1e242e;
+  --color-matn:         #e8ebef;
+  --color-matn-2:       #c3cad4;
+  --color-matn-sokin:   #8b93a1;
+  --color-matn-xira:    #6b7482;
+  --color-yaxshi:       #3ddc97;
+  --color-yaxshi-fon:   #14302a;
+  --color-ogoh:         #ffb547;
+  --color-ogoh-fon:     #32281a;
+  --color-xato:         #ff5d6c;
+  --color-xato-fon:     #2a1a1e;
+  --color-xato-chiziq:  #4a2830;
+  --color-xato-mayin:   #ff8a95;
+  --color-brand-ust:    #0d1418;
+}
+
+/* Raqamli qiymatlar.
+   .num   — jadval ustunlari uchun: mono shrift, raqamlar bir-birining ostiga
+            tushadi. Faqat sof raqamga qo'yiladi, ichida gap bo'lgan matnga emas.
+   .raqam — katta ko'rsatkichlar uchun: bir xil kenglikdagi raqam, lekin mono
+            emas. 27px da JetBrains Mono "0,5" ni "0 , 5" qilib yoyib yuboradi. */
 .num {
   font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums lining-nums;
+  letter-spacing: -0.02em;
+}
+
+.raqam {
   font-variant-numeric: tabular-nums lining-nums;
   letter-spacing: -0.02em;
 }
@@ -92,7 +186,7 @@
 @variant dark (&:is(.dark, .dark *));
 
 * {
-  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  font-family: 'Sora', 'Inter', system-ui, -apple-system, sans-serif;
 }
 
 button,
@@ -114,13 +208,9 @@ label[for] {
    cursor. :focus-visible only fires for keyboard (and other non-pointer) focus, so this
    restores a ring for keyboard users without putting one around every clicked button. */
 :where(button, a, [role="button"], select, textarea, input, summary, [tabindex]):focus-visible {
-  outline: 2px solid #1b6b6b;
+  outline: 2px solid var(--color-brand);
   outline-offset: 2px;
   border-radius: 6px;
-}
-
-.dark :where(button, a, [role="button"], select, textarea, input, summary, [tabindex]):focus-visible {
-  outline-color: #58aaa6;
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -133,25 +223,19 @@ label[for] {
 }
 
 body {
-  background-color: #f1f5f9;
-  color: #1e293b;
+  background-color: var(--color-fon);
+  color: var(--color-matn);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-}
-
-.dark body,
-body.dark {
-  background-color: #0d1117;
-  color: #c9d1d9;
 }
 
 /* Scrollbar */
 ::-webkit-scrollbar { width: 5px; height: 5px; }
 ::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
-::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
-.dark ::-webkit-scrollbar-thumb { background: #1e3a5f; border-radius: 4px; }
-.dark ::-webkit-scrollbar-thumb:hover { background: #2d5986; }
+::-webkit-scrollbar-thumb { background: #c3cfdd; border-radius: 4px; }
+::-webkit-scrollbar-thumb:hover { background: #a3b1c4; }
+.dark ::-webkit-scrollbar-thumb { background: #2b323d; border-radius: 4px; }
+.dark ::-webkit-scrollbar-thumb:hover { background: #3b4552; }
 
 .no-scrollbar::-webkit-scrollbar { display: none; }
 .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
