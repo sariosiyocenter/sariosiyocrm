@@ -309,7 +309,7 @@ export default function Dashboard() {
                                 onChange={(e) => { setStartDate(e.target.value); setSelectedPreset('custom'); }}
                                 className="bg-gray-55 dark:bg-gray-900 px-3 py-1.5 rounded-xl border border-gray-100 dark:border-gray-800 text-xs font-bold text-gray-800 dark:text-gray-200 outline-none focus:border-[#1b6b6b] w-32 cursor-pointer"
                             />
-                            <span className="text-gray-400 dark:text-gray-500 font-extrabold text-[11px] uppercase tracking-wider">{t('date_to')}</span>
+                            <span className="text-gray-400 dark:text-gray-500 font-extrabold text-[11px]">{t('date_to')}</span>
                             <input
                                 type="date"
                                 value={endDate}
@@ -402,7 +402,7 @@ export default function Dashboard() {
                                 <TrendingUp size={16} className="text-[#1b6b6b]" />
                                 {t('finance_title')}
                             </h3>
-                            <button onClick={() => navigate('/finance')} className="flex items-center gap-1 text-[11px] font-extrabold uppercase text-[#1b6b6b] hover:text-[#155252] transition-colors cursor-pointer">
+                            <button onClick={() => navigate('/finance')} className="flex items-center gap-1 text-[11px] font-extrabold text-[#1b6b6b] hover:text-[#155252] transition-colors cursor-pointer">
                                 {t('rep_stats')} <ArrowUpRight size={12} />
                             </button>
                         </div>
@@ -483,7 +483,7 @@ export default function Dashboard() {
                                 </div>
                             ))}
                             {topCourseStats.length === 0 && (
-                                <p className="text-[11px] text-gray-400 font-bold text-center py-4 uppercase tracking-wider">Ma'lumotlar yo'q</p>
+                                <p className="text-[11px] text-gray-400 font-bold text-center py-4">Ma'lumotlar yo'q</p>
                             )}
                         </div>
                     </div>

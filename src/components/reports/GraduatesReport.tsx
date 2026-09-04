@@ -77,7 +77,7 @@ export default function GraduatesReport({ startDate, endDate }: { startDate?: st
                 <SectionHeader 
                     title="Yaqindagi bitiruvchilar" 
                     action={
-                        <button className="flex items-center gap-2 px-4 py-2 bg-emerald-600 text-white rounded-xl text-[11px] font-extrabold uppercase tracking-wider hover:bg-emerald-500 transition-all">
+                        <button className="flex items-center gap-2 px-4 py-2 bg-emerald-600 text-white rounded-xl text-[11px] font-extrabold hover:bg-emerald-500 transition-all">
                             <Download size={14} /> CERTIFICATES
                         </button>
                     }

@@ -59,7 +59,7 @@ export default function TeacherDetails() {
     return (
         <div className="space-y-6 animate-in fade-in duration-500">
             {/* Back Button */}
-            <button onClick={() => navigate('/teachers')} className="flex items-center gap-2 text-gray-400 dark:text-gray-500 hover:text-[#1b6b6b] transition-all text-[11px] font-extrabold uppercase tracking-wider group cursor-pointer">
+            <button onClick={() => navigate('/teachers')} className="flex items-center gap-2 text-gray-400 dark:text-gray-500 hover:text-[#1b6b6b] transition-all text-[11px] font-extrabold group cursor-pointer">
                 <ArrowLeft size={14} className="group-hover:-translate-x-1 transition-transform" />
                 Orqaga
             </button>
@@ -81,9 +81,9 @@ export default function TeacherDetails() {
                         </div>
                         <div className="pt-14 pb-6 px-6 text-center">
                             <h2 className="text-sm font-black text-gray-900 dark:text-white tracking-tight">{teacher.name}</h2>
-                            <p className="text-[11px] font-bold text-gray-400 uppercase tracking-wider mt-1">ID: #{teacher.id}</p>
+                            <p className="text-[11px] font-bold text-gray-400 mt-1">ID: #{teacher.id}</p>
                             <div className="mt-4 flex justify-center">
-                                <span className={`px-2.5 py-0.5 rounded-md text-[10px] font-bold border uppercase tracking-wider ${teacher.status === 'Faol' ? 'bg-emerald-50 text-emerald-600 border-emerald-100 dark:bg-emerald-950/20 dark:text-emerald-400' : 'bg-gray-55 text-gray-400 border-gray-100 dark:bg-gray-900/50'}`}>
+                                <span className={`px-2.5 py-0.5 rounded-md text-[10px] font-bold border ${teacher.status === 'Faol' ? 'bg-emerald-50 text-emerald-600 border-emerald-100 dark:bg-emerald-950/20 dark:text-emerald-400' : 'bg-gray-55 text-gray-400 border-gray-100 dark:bg-gray-900/50'}`}>
                                     {teacher.status}
                                 </span>
                             </div>
@@ -96,18 +96,18 @@ export default function TeacherDetails() {
                     </div>
 
                     <div className="bg-[#1b6b6b] rounded-2xl p-4 text-white shadow-sm shadow-[#1b6b6b]/20 relative overflow-hidden">
-                        <span className="text-[11px] font-bold text-teal-100 uppercase tracking-wider block mb-4">Maosh Hisobi</span>
+                        <span className="text-[11px] font-bold text-teal-100 block mb-4">Maosh Hisobi</span>
                         <div className="space-y-4">
                             <div>
-                                <span className="text-[11px] text-teal-200 font-bold uppercase tracking-wider block">Joriy oylik</span>
+                                <span className="text-[11px] text-teal-200 font-bold block">Joriy oylik</span>
                                 <div className="flex items-baseline gap-1 mt-1">
                                     <span className="text-2xl font-black tracking-tight tabular-nums">{calculatedSalary.toLocaleString()}</span>
-                                    <span className="text-[11px] font-extrabold text-teal-200 uppercase tracking-wider">UZS</span>
+                                    <span className="text-[11px] font-extrabold text-teal-200">UZS</span>
                                 </div>
                             </div>
                             {kpiDetails && (
                                 <div className="flex items-center justify-between pt-3 border-t border-white/10">
-                                    <span className="text-[11px] text-teal-200 font-bold uppercase tracking-wider">KPI ulushi</span>
+                                    <span className="text-[11px] text-teal-200 font-bold">KPI ulushi</span>
                                     <span className="text-[11px] font-bold bg-white/20 px-2 py-0.5 rounded text-white">{kpiDetails.percentage}%</span>
                                 </div>
                             )}
@@ -160,8 +160,8 @@ export default function TeacherDetails() {
 
                                     <div>
                                         <div className="flex items-center justify-between mb-4 pb-2 border-b border-gray-55 dark:border-gray-800/50">
-                                            <span className="text-[11px] font-bold text-gray-400 uppercase tracking-wider">Biriktirilgan Kurslar</span>
-                                            <span className="text-[11px] font-extrabold text-[#1b6b6b] uppercase tracking-wider bg-[#1b6b6b]/5 px-2.5 py-0.5 rounded border border-[#1b6b6b]/10">Jami: {teacherGroups.length} ta</span>
+                                            <span className="text-[11px] font-bold text-gray-400">Biriktirilgan Kurslar</span>
+                                            <span className="text-[11px] font-extrabold text-[#1b6b6b] bg-[#1b6b6b]/5 px-2.5 py-0.5 rounded border border-[#1b6b6b]/10">Jami: {teacherGroups.length} ta</span>
                                         </div>
                                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                             {teacherGroups.map(group => (
@@ -174,15 +174,15 @@ export default function TeacherDetails() {
                                                             </div>
                                                             <div>
                                                                 <h5 className="text-xs font-black text-gray-900 dark:text-white group-hover:text-[#1b6b6b] transition-colors tracking-tight">{group.name}</h5>
-                                                                <p className="text-[11px] font-bold text-gray-400 mt-0.5 uppercase tracking-wider">{group.days}</p>
+                                                                <p className="text-[11px] font-bold text-gray-400 mt-0.5">{group.days}</p>
                                                             </div>
                                                         </div>
                                                         <div className="flex items-center gap-4 pt-3 border-t border-dashed border-gray-100 dark:border-gray-750">
-                                                            <div className="flex items-center gap-1.5 text-[11px] text-gray-500 font-bold uppercase tracking-wide">
+                                                            <div className="flex items-center gap-1.5 text-[11px] text-gray-500 font-bold">
                                                                 <Clock size={12} className="text-gray-400" />
                                                                 {group.schedule}
                                                             </div>
-                                                            <div className="flex items-center gap-1.5 text-[11px] text-gray-500 font-bold uppercase tracking-wide">
+                                                            <div className="flex items-center gap-1.5 text-[11px] text-gray-500 font-bold">
                                                                 <Users size={12} className="text-gray-400" />
                                                                 {group.studentIds.length} o'quvchi
                                                             </div>
@@ -192,7 +192,7 @@ export default function TeacherDetails() {
                                                 </div>
                                             ))}
                                             {teacherGroups.length === 0 && (
-                                                <p className="col-span-2 text-center py-12 text-[11px] text-gray-400 font-bold uppercase tracking-wider">Kurslar mavjud emas</p>
+                                                <p className="col-span-2 text-center py-12 text-[11px] text-gray-400 font-bold">Kurslar mavjud emas</p>
                                             )}
                                         </div>
                                     </div>
@@ -209,21 +209,21 @@ export default function TeacherDetails() {
                                         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                                             <div className="md:col-span-2 space-y-6">
                                                 <div>
-                                                    <span className="text-[11px] font-bold text-gray-400 uppercase tracking-wider block mb-2">HISOBLASH TURI</span>
-                                                    <span className="text-[11px] font-bold text-[#1b6b6b] bg-[#1b6b6b]/5 border border-[#1b6b6b]/10 px-3 py-1.5 rounded-lg inline-block uppercase tracking-wider">
+                                                    <span className="text-[11px] font-bold text-gray-400 block mb-2">HISOBLASH TURI</span>
+                                                    <span className="text-[11px] font-bold text-[#1b6b6b] bg-[#1b6b6b]/5 border border-[#1b6b6b]/10 px-3 py-1.5 rounded-lg inline-block">
                                                         {teacher.salaryType === 'FIXED' ? 'Fiks oylik' : teacher.salaryType === 'KPI' ? 'KPI (Ulush)' : 'Fiks + KPI'}
                                                     </span>
                                                 </div>
                                                 {kpiDetails && (
                                                     <div className="space-y-3">
-                                                        <span className="text-[11px] font-bold text-gray-400 uppercase tracking-wider block">KPI TAFSILOTLARI</span>
+                                                        <span className="text-[11px] font-bold text-gray-400 block">KPI TAFSILOTLARI</span>
                                                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                                             <div className="bg-gray-55 dark:bg-gray-900/30 p-4 rounded-xl border border-gray-100 dark:border-gray-800/50">
-                                                                <span className="text-[10px] font-bold text-gray-400 block mb-1 uppercase tracking-wider">Kurslar tushumi</span>
+                                                                <span className="text-[10px] font-bold text-gray-400 block mb-1">Kurslar tushumi</span>
                                                                 <span className="text-sm font-black text-gray-900 dark:text-white tracking-tight tabular-nums">{kpiDetails.groupRevenue.toLocaleString()} UZS</span>
                                                             </div>
                                                             <div className="bg-gray-55 dark:bg-gray-900/30 p-4 rounded-xl border border-gray-100 dark:border-gray-800/50">
-                                                                <span className="text-[10px] font-bold text-gray-400 block mb-1 uppercase tracking-wider">Ulush foizi</span>
+                                                                <span className="text-[10px] font-bold text-gray-400 block mb-1">Ulush foizi</span>
                                                                 <span className="text-sm font-black text-gray-900 dark:text-white tracking-tight tabular-nums">{kpiDetails.percentage}%</span>
                                                             </div>
                                                         </div>
@@ -231,9 +231,9 @@ export default function TeacherDetails() {
                                                 )}
                                             </div>
                                             <div className="bg-gradient-to-br from-[#1b6b6b] to-[#268c8c] p-4 rounded-2xl flex flex-col items-center justify-center text-white text-center">
-                                                <span className="text-[11px] font-bold uppercase tracking-wider mb-1.5 text-teal-100">UMUMIY MIQDOR</span>
+                                                <span className="text-[11px] font-bold mb-1.5 text-teal-100">UMUMIY MIQDOR</span>
                                                 <span className="text-2xl font-black tracking-tight tabular-nums">{calculatedSalary.toLocaleString()}</span>
-                                                <span className="text-[10px] font-bold mt-3 text-teal-200 uppercase tracking-wider border border-white/20 px-3 py-1 rounded-full">UZS</span>
+                                                <span className="text-[10px] font-bold mt-3 text-teal-200 border border-white/20 px-3 py-1 rounded-full">UZS</span>
                                             </div>
                                         </div>
                                     </div>
@@ -245,21 +245,21 @@ export default function TeacherDetails() {
                                     <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-5 bg-gray-55 dark:bg-gray-900/40 border border-gray-100 dark:border-gray-800/50 rounded-2xl">
                                         <div>
                                             <h3 className="text-xs font-black text-gray-900 dark:text-white tracking-tight">Ishga kelishi</h3>
-                                            <p className="text-[11px] font-bold text-gray-450 uppercase tracking-wider mt-1">{new Date().toLocaleDateString('uz-UZ', { month: 'long' })} oyi</p>
+                                            <p className="text-[11px] font-bold text-gray-450 mt-1">{new Date().toLocaleDateString('uz-UZ', { month: 'long' })} oyi</p>
                                         </div>
                                         <button onClick={() => setShowAttendanceModal(true)} 
-                                            className="px-4 py-2 bg-[#1b6b6b] hover:bg-[#155252] text-white rounded-xl text-[11px] font-extrabold uppercase tracking-wider transition-all cursor-pointer shadow-sm shadow-[#1b6b6b]/20">
+                                            className="px-4 py-2 bg-[#1b6b6b] hover:bg-[#155252] text-white rounded-xl text-[11px] font-extrabold transition-all cursor-pointer shadow-sm shadow-[#1b6b6b]/20">
                                             Davomat belgilash
                                         </button>
                                     </div>
 
                                     <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
                                         <div className="bg-white dark:bg-gray-800 rounded-xl p-4 border border-gray-100 dark:border-gray-800 shadow-sm group hover:border-emerald-300">
-                                            <span className="text-[11px] font-bold text-gray-400 mb-2 uppercase tracking-wider block group-hover:text-emerald-500 transition-colors">KELDI</span>
+                                            <span className="text-[11px] font-bold text-gray-400 mb-2 block group-hover:text-emerald-500 transition-colors">KELDI</span>
                                             <span className="text-xl font-black text-emerald-600 dark:text-emerald-400 tracking-tight tabular-nums">{presentDays} <span className="text-[11px] opacity-70">KUN</span></span>
                                         </div>
                                         <div className="bg-white dark:bg-gray-800 rounded-xl p-4 border border-gray-100 dark:border-gray-800 shadow-sm group hover:border-rose-300">
-                                            <span className="text-[11px] font-bold text-gray-400 mb-2 uppercase tracking-wider block group-hover:text-rose-500 transition-colors">KELMADI</span>
+                                            <span className="text-[11px] font-bold text-gray-400 mb-2 block group-hover:text-rose-500 transition-colors">KELMADI</span>
                                             <span className="text-xl font-black text-rose-600 dark:text-rose-400 tracking-tight tabular-nums">{absentDays} <span className="text-[11px] opacity-70">KUN</span></span>
                                         </div>
                                     </div>
@@ -268,8 +268,8 @@ export default function TeacherDetails() {
                                         <table className="w-full text-left border-collapse">
                                             <thead>
                                                 <tr className="bg-gray-55 dark:bg-gray-900 border-b border-gray-100 dark:border-gray-800">
-                                                    <th className="p-4 text-[11px] font-bold text-gray-400 uppercase tracking-wider">Sana</th>
-                                                    <th className="p-4 text-center text-[11px] font-bold text-gray-400 uppercase tracking-wider">Holati</th>
+                                                    <th className="p-4 text-[11px] font-bold text-gray-400">Sana</th>
+                                                    <th className="p-4 text-center text-[11px] font-bold text-gray-400">Holati</th>
                                                 </tr>
                                             </thead>
                                             <tbody className="divide-y divide-gray-100 dark:divide-gray-800">
@@ -278,7 +278,7 @@ export default function TeacherDetails() {
                                                         <td className="p-4 text-xs font-bold text-gray-900 dark:text-white tracking-tight">{a.date}</td>
                                                         <td className="p-4">
                                                             <div className="flex justify-center">
-                                                                <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-lg text-[11px] font-bold border uppercase tracking-wider ${a.status === 'Keldi' ? 'bg-emerald-50 text-emerald-600 border-emerald-100 dark:bg-emerald-950/20 dark:text-emerald-400' : 'bg-rose-50 text-rose-600 border-rose-100 dark:bg-rose-950/20 dark:text-rose-400'}`}>
+                                                                <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-lg text-[11px] font-bold border ${a.status === 'Keldi' ? 'bg-emerald-50 text-emerald-600 border-emerald-100 dark:bg-emerald-950/20 dark:text-emerald-400' : 'bg-rose-50 text-rose-600 border-rose-100 dark:bg-rose-950/20 dark:text-rose-400'}`}>
                                                                     {a.status === 'Keldi' ? 'Keldi' : 'Kelmadi'}
                                                                 </span>
                                                             </div>
@@ -286,7 +286,7 @@ export default function TeacherDetails() {
                                                     </tr>
                                                 ))}
                                                 {currentMonthAttendances.length === 0 && (
-                                                    <tr><td colSpan={2} className="p-10 text-center text-gray-400 text-[11px] font-bold uppercase tracking-wider">Shu oy bo'yicha ma'lumot yo'q</td></tr>
+                                                    <tr><td colSpan={2} className="p-10 text-center text-gray-400 text-[11px] font-bold">Shu oy bo'yicha ma'lumot yo'q</td></tr>
                                                 )}
                                             </tbody>
                                         </table>
@@ -306,7 +306,7 @@ export default function TeacherDetails() {
                         <div className="flex items-center justify-between mb-6 pb-4 border-b border-gray-50 dark:border-gray-800/50">
                             <div>
                                 <h3 className="text-lg font-black text-gray-900 dark:text-white tracking-tight">Davomat</h3>
-                                <p className="text-[11px] font-bold text-[#1b6b6b] uppercase tracking-wider mt-0.5">Bugungi sana uchun</p>
+                                <p className="text-[11px] font-bold text-[#1b6b6b] mt-0.5">Bugungi sana uchun</p>
                             </div>
                             <button onClick={() => setShowAttendanceModal(false)} className="w-9 h-9 flex items-center justify-center text-gray-400 hover:bg-gray-55 dark:hover:bg-gray-700 rounded-xl cursor-pointer"><XCircle size={18} /></button>
                         </div>
@@ -323,7 +323,7 @@ export default function TeacherDetails() {
                                 className="flex flex-col items-center gap-3 p-4 border border-emerald-100 dark:border-emerald-800/50 bg-emerald-50/30 dark:bg-emerald-900/20 hover:bg-[#1b6b6b] hover:text-white hover:border-[#1b6b6b] group rounded-2xl transition-all cursor-pointer text-center shadow-sm"
                             >
                                 <CheckCircle size={24} className="text-emerald-500 group-hover:text-white transition-colors" />
-                                <span className="text-[11px] font-bold text-emerald-600 dark:text-emerald-400 group-hover:text-white uppercase tracking-wider">KELDI</span>
+                                <span className="text-[11px] font-bold text-emerald-600 dark:text-emerald-400 group-hover:text-white">KELDI</span>
                             </button>
                             <button
                                 onClick={() => {
@@ -337,7 +337,7 @@ export default function TeacherDetails() {
                                 className="flex flex-col items-center gap-3 p-4 border border-rose-100 dark:border-rose-800/50 bg-rose-50/30 dark:bg-rose-900/20 hover:bg-rose-500 hover:text-white hover:border-rose-500 group rounded-2xl transition-all cursor-pointer text-center shadow-sm"
                             >
                                 <XCircle size={24} className="text-rose-500 group-hover:text-white transition-colors" />
-                                <span className="text-[11px] font-bold text-rose-600 dark:text-rose-400 group-hover:text-white uppercase tracking-wider">KELMADI</span>
+                                <span className="text-[11px] font-bold text-rose-600 dark:text-rose-400 group-hover:text-white">KELMADI</span>
                             </button>
                         </div>
                     </div>
@@ -359,7 +359,7 @@ function StatCardV3({ label, value, subValue, icon, color }: any) {
         <div className="bg-white dark:bg-gray-800 p-5 rounded-2xl border border-gray-100 dark:border-gray-800/50 shadow-sm transition-all hover:-translate-y-0.5">
             <div className="flex items-start justify-between">
                 <div className="space-y-1">
-                    <span className="text-[11px] font-bold text-gray-400 uppercase tracking-wider">{label}</span>
+                    <span className="text-[11px] font-bold text-gray-400">{label}</span>
                     <h5 className="text-lg font-black text-gray-900 dark:text-white tracking-tight leading-none tabular-nums" title={value}>{value}</h5>
                 </div>
                 <div className={`w-10 h-10 rounded-xl flex items-center justify-center border ${colorClasses}`}>
@@ -367,7 +367,7 @@ function StatCardV3({ label, value, subValue, icon, color }: any) {
                 </div>
             </div>
             <div className="pt-3 mt-3 border-t border-dashed border-gray-100 dark:border-gray-800/50">
-                <span className="text-[11px] font-bold text-gray-400 flex items-center gap-1 uppercase tracking-wider leading-none">
+                <span className="text-[11px] font-bold text-gray-400 flex items-center gap-1 leading-none">
                     <TrendingUp size={12} className="text-[#1b6b6b]" />
                     {subValue}
                 </span>
@@ -383,7 +383,7 @@ function DetailRow({ icon, label, value }: { icon: React.ReactNode; label: strin
                 {icon}
             </div>
             <div>
-                <span className="text-[11px] font-bold text-gray-400 uppercase tracking-wider leading-none block">{label}</span>
+                <span className="text-[11px] font-bold text-gray-400 leading-none block">{label}</span>
                 <span className="text-xs font-bold text-gray-900 dark:text-white tracking-tight mt-0.5 block">{value}</span>
             </div>
         </div>
@@ -392,7 +392,7 @@ function DetailRow({ icon, label, value }: { icon: React.ReactNode; label: strin
 
 function TabButton({ label, icon, active, onClick }: any) {
     return (
-        <button onClick={onClick} className={`px-6 py-4 text-[11px] font-extrabold uppercase tracking-wider flex items-center gap-2 transition-all relative shrink-0 cursor-pointer ${active ? 'text-[#1b6b6b] bg-white dark:bg-gray-800' : 'text-gray-400 hover:text-gray-900 dark:hover:text-white'}`}>
+        <button onClick={onClick} className={`px-6 py-4 text-[11px] font-extrabold flex items-center gap-2 transition-all relative shrink-0 cursor-pointer ${active ? 'text-[#1b6b6b] bg-white dark:bg-gray-800' : 'text-gray-400 hover:text-gray-900 dark:hover:text-white'}`}>
             {icon}
             {label}
             {active && <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-[#1b6b6b] rounded-t-full" />}

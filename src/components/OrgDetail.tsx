@@ -90,7 +90,7 @@ export default function OrgDetail() {
                 <Building2 size={28} className="text-white" />
               </div>
               <div>
-                <div className="text-[11px] font-extrabold text-[#1b6b6b] uppercase tracking-wider mb-1">Tashkilot #{org.id}</div>
+                <div className="text-[11px] font-extrabold text-[#1b6b6b] mb-1">Tashkilot #{org.id}</div>
                 <h1 className="text-2xl font-black text-gray-900 dark:text-white tracking-tight">{org.name}</h1>
                 <div className="flex flex-wrap gap-3 mt-1.5">
                   {org.address && (
@@ -117,7 +117,7 @@ export default function OrgDetail() {
                 { label: 'Kassa', value: totalRevenue.toLocaleString() + " so'm", color: 'bg-rose-50 text-rose-600 dark:bg-rose-950/40 dark:text-rose-400' },
               ].map((s, i) => (
                 <div key={i} className={`flex flex-col items-center px-4 py-2.5 rounded-xl ${s.color}`}>
-                  <span className="text-[11px] font-extrabold uppercase tracking-wider opacity-70">{s.label}</span>
+                  <span className="text-[11px] font-extrabold opacity-70">{s.label}</span>
                   <span className="text-sm font-black mt-0.5">{s.value}</span>
                 </div>
               ))}
@@ -140,12 +140,12 @@ export default function OrgDetail() {
           <table className="w-full text-left border-collapse">
             <thead>
               <tr className="bg-gray-50/50 dark:bg-gray-900/30">
-                <th className="pl-8 pr-4 py-4 text-[11px] font-extrabold text-gray-400 uppercase tracking-wider">ID</th>
-                <th className="px-4 py-4 text-[11px] font-extrabold text-gray-400 uppercase tracking-wider">Filial Nomi / Manzil</th>
-                <th className="px-4 py-4 text-[11px] font-extrabold text-gray-400 uppercase tracking-wider text-center">O'quvchilar</th>
-                <th className="px-4 py-4 text-[11px] font-extrabold text-gray-400 uppercase tracking-wider text-center">Ustozlar</th>
-                <th className="px-4 py-4 text-[11px] font-extrabold text-gray-400 uppercase tracking-wider text-center">Xodimlar</th>
-                <th className="px-4 pr-8 py-4 text-[11px] font-extrabold text-gray-400 uppercase tracking-wider text-center">Kassa</th>
+                <th className="pl-8 pr-4 py-4 text-[11px] font-extrabold text-gray-400">ID</th>
+                <th className="px-4 py-4 text-[11px] font-extrabold text-gray-400">Filial Nomi / Manzil</th>
+                <th className="px-4 py-4 text-[11px] font-extrabold text-gray-400 text-center">O'quvchilar</th>
+                <th className="px-4 py-4 text-[11px] font-extrabold text-gray-400 text-center">Ustozlar</th>
+                <th className="px-4 py-4 text-[11px] font-extrabold text-gray-400 text-center">Xodimlar</th>
+                <th className="px-4 pr-8 py-4 text-[11px] font-extrabold text-gray-400 text-center">Kassa</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-50 dark:divide-gray-700/50">

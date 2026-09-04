@@ -131,14 +131,14 @@ export default function ExamResults() {
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white dark:bg-gray-800 p-4 rounded-2xl border border-gray-100 dark:border-gray-800/50 shadow-sm">
                 <div>
                     <h1 className="text-sm font-black text-gray-900 dark:text-white tracking-tight">Imtihon Natijalari</h1>
-                    <p className="text-[11px] font-bold text-gray-400 uppercase tracking-wider mt-0.5">Statistika va tahlillar</p>
+                    <p className="text-[11px] font-bold text-gray-400 mt-0.5">Statistika va tahlillar</p>
                 </div>
 
                 <div className="flex flex-wrap items-center gap-3 w-full md:w-auto">
                     <select
                         value={selectedExamId || ''}
                         onChange={e => { setSelectedExamId(Number(e.target.value) || null); setExpandedRow(null); }}
-                        className="px-4 py-2.5 bg-gray-55 dark:bg-gray-905 border border-gray-100 dark:border-gray-800 rounded-2xl text-[11px] font-bold uppercase tracking-wider outline-none focus:border-[#1b6b6b] text-gray-900 dark:text-white cursor-pointer"
+                        className="px-4 py-2.5 bg-gray-55 dark:bg-gray-905 border border-gray-100 dark:border-gray-800 rounded-2xl text-[11px] font-bold outline-none focus:border-[#1b6b6b] text-gray-900 dark:text-white cursor-pointer"
                     >
                         <option value="">Imtihon tanlang</option>
                         {exams.map(e => <option key={e.id} value={e.id}>{e.name}</option>)}
@@ -147,7 +147,7 @@ export default function ExamResults() {
                     <select
                         value={selectedGroupId}
                         onChange={e => setSelectedGroupId(e.target.value ? Number(e.target.value) : '')}
-                        className="px-4 py-2.5 bg-gray-55 dark:bg-gray-905 border border-gray-100 dark:border-gray-800 rounded-2xl text-[11px] font-bold uppercase tracking-wider outline-none focus:border-[#1b6b6b] text-gray-900 dark:text-white cursor-pointer"
+                        className="px-4 py-2.5 bg-gray-55 dark:bg-gray-905 border border-gray-100 dark:border-gray-800 rounded-2xl text-[11px] font-bold outline-none focus:border-[#1b6b6b] text-gray-900 dark:text-white cursor-pointer"
                     >
                         <option value="">Barcha kurslar</option>
                         {groups.map(g => <option key={g.id} value={g.id}>{g.name}</option>)}
@@ -156,7 +156,7 @@ export default function ExamResults() {
                     <button
                         onClick={exportToExcel}
                         disabled={filteredResults.length === 0}
-                        className="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-2xl text-[11px] font-bold uppercase tracking-wider disabled:opacity-40 flex items-center gap-1.5 cursor-pointer shadow-lg shadow-emerald-500/10"
+                        className="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-2xl text-[11px] font-bold disabled:opacity-40 flex items-center gap-1.5 cursor-pointer shadow-lg shadow-emerald-500/10"
                     >
                         <Download size={14} /> Excel
                     </button>
@@ -165,11 +165,11 @@ export default function ExamResults() {
 
             {!selectedExamId ? (
                 <div className="bg-white dark:bg-gray-800 rounded-2xl p-16 border border-gray-100 dark:border-gray-800/50 text-center">
-                    <p className="text-gray-400 text-[11px] font-bold uppercase tracking-wider">Yuqoridan imtihon tanlang</p>
+                    <p className="text-gray-400 text-[11px] font-bold">Yuqoridan imtihon tanlang</p>
                 </div>
             ) : filteredResults.length === 0 ? (
                 <div className="bg-white dark:bg-gray-800 rounded-2xl p-16 border border-gray-100 dark:border-gray-800/50 text-center">
-                    <p className="text-gray-400 text-[11px] font-bold uppercase tracking-wider">Hali natijalar kiritilmagan</p>
+                    <p className="text-gray-400 text-[11px] font-bold">Hali natijalar kiritilmagan</p>
                 </div>
             ) : (
                 <>
@@ -188,7 +188,7 @@ export default function ExamResults() {
                         {/* Score distribution */}
                         {scoreDistribution.length > 0 && (
                             <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-800/50 p-4 shadow-sm">
-                                <h3 className="text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-6">Ball Taqsimoti</h3>
+                                <h3 className="text-[11px] font-bold text-gray-400 mb-6">Ball Taqsimoti</h3>
                                 <BarChart data={scoreDistribution} height={160} unit=" kishi" />
                             </div>
                         )}
@@ -196,7 +196,7 @@ export default function ExamResults() {
                         {/* Subject performance */}
                         {subjectPerformance.length > 0 && (
                             <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-800/50 p-4 shadow-sm">
-                                <h3 className="text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-6">Fan Bo'yicha Ko'rsatkichlar</h3>
+                                <h3 className="text-[11px] font-bold text-gray-400 mb-6">Fan Bo'yicha Ko'rsatkichlar</h3>
                                 <BarChart data={subjectPerformance} horizontal unit="%" />
                             </div>
                         )}
@@ -208,18 +208,18 @@ export default function ExamResults() {
                             <table className="w-full text-left border-collapse min-w-[700px]">
                                 <thead>
                                     <tr className="bg-gray-55 dark:bg-gray-900 border-b border-gray-100 dark:border-gray-800/50">
-                                        <th className="p-4 text-[11px] font-bold text-gray-400 uppercase tracking-wider cursor-pointer hover:text-gray-650" onClick={() => toggleSort('name')}>
+                                        <th className="p-4 text-[11px] font-bold text-gray-400 cursor-pointer hover:text-gray-650" onClick={() => toggleSort('name')}>
                                             Ism <SortIcon col="name" />
                                         </th>
-                                        <th className="p-4 text-[11px] font-bold text-gray-400 uppercase tracking-wider">Kurs</th>
-                                        <th className="p-4 text-[11px] font-bold text-gray-400 uppercase tracking-wider text-center">Variant</th>
-                                        <th className="p-4 text-[11px] font-bold text-gray-400 uppercase tracking-wider text-center cursor-pointer hover:text-gray-650" onClick={() => toggleSort('score')}>
+                                        <th className="p-4 text-[11px] font-bold text-gray-400">Kurs</th>
+                                        <th className="p-4 text-[11px] font-bold text-gray-400 text-center">Variant</th>
+                                        <th className="p-4 text-[11px] font-bold text-gray-400 text-center cursor-pointer hover:text-gray-650" onClick={() => toggleSort('score')}>
                                             Ball <SortIcon col="score" />
                                         </th>
-                                        <th className="p-4 text-[11px] font-bold text-gray-400 uppercase tracking-wider text-center cursor-pointer hover:text-gray-650" onClick={() => toggleSort('percentage')}>
+                                        <th className="p-4 text-[11px] font-bold text-gray-400 text-center cursor-pointer hover:text-gray-650" onClick={() => toggleSort('percentage')}>
                                             % <SortIcon col="percentage" />
                                         </th>
-                                        <th className="p-4 text-[11px] font-bold text-gray-400 uppercase tracking-wider text-center">Sana</th>
+                                        <th className="p-4 text-[11px] font-bold text-gray-400 text-center">Sana</th>
                                         <th className="p-4 w-10" />
                                     </tr>
                                 </thead>
@@ -246,11 +246,11 @@ export default function ExamResults() {
                                                             <span className="text-xs font-black text-gray-900 dark:text-white tracking-tight">{student?.name || `ID: ${result.studentId}`}</span>
                                                         </div>
                                                     </td>
-                                                    <td className="p-4 text-[11px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                                                    <td className="p-4 text-[11px] font-bold text-gray-500 dark:text-gray-400">
                                                         {group?.name || '-'}
                                                     </td>
                                                     <td className="p-4 text-center">
-                                                        <span className="px-2.5 py-1 bg-gray-55 dark:bg-gray-900 rounded-lg text-[11px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                                                        <span className="px-2.5 py-1 bg-gray-55 dark:bg-gray-900 rounded-lg text-[11px] font-bold text-gray-500 dark:text-gray-400">
                                                             {result.variantCode || '-'}
                                                         </span>
                                                     </td>
@@ -259,7 +259,7 @@ export default function ExamResults() {
                                                         <span className="text-[11px] text-gray-400 ml-1">/ {exam?.maxScore}</span>
                                                     </td>
                                                     <td className="p-4 text-center">
-                                                        <span className={`px-2.5 py-1 rounded-md text-[11px] font-black uppercase tracking-wider ${
+                                                        <span className={`px-2.5 py-1 rounded-md text-[11px] font-black ${
                                                             result.percentage >= 80 ? 'bg-emerald-50 text-emerald-600' :
                                                             result.percentage >= 50 ? 'bg-amber-50 text-amber-600' :
                                                             'bg-rose-50 text-rose-600'
@@ -279,10 +279,10 @@ export default function ExamResults() {
                                                     <tr>
                                                         <td colSpan={7} className="px-4 pb-4">
                                                             <div className="bg-gray-55 dark:bg-gray-900/50 rounded-2xl p-4 space-y-3 border border-gray-100 dark:border-gray-800">
-                                                                <p className="text-[11px] font-bold text-gray-450 uppercase tracking-wider mb-3">Fan Bo'yicha Natijalar</p>
+                                                                <p className="text-[11px] font-bold text-gray-450 mb-3">Fan Bo'yicha Natijalar</p>
                                                                 {(result.blockScores as { subject: string; earned: number; max: number }[]).map((bs, i) => (
                                                                     <div key={i} className="flex items-center gap-4">
-                                                                        <span className="text-[11px] font-bold text-gray-600 dark:text-gray-300 uppercase tracking-wider w-28 shrink-0">{bs.subject}</span>
+                                                                        <span className="text-[11px] font-bold text-gray-600 dark:text-gray-300 w-28 shrink-0">{bs.subject}</span>
                                                                         <div className="flex-1 h-2 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
                                                                             <div
                                                                                 className={`h-full rounded-full transition-all ${bs.max > 0 && bs.earned / bs.max >= 0.5 ? 'bg-teal-500' : 'bg-rose-450'}`}

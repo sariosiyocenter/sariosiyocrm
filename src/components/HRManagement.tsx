@@ -44,7 +44,7 @@ const ROLE_AVATAR_COLORS: Record<string, string> = {
 
 
 const inp = "w-full px-4 py-3 bg-gray-50 dark:bg-gray-900/50 border border-gray-100 dark:border-gray-800 rounded-2xl text-xs font-bold text-gray-900 dark:text-white focus:border-[#1b6b6b] focus:ring-4 focus:ring-[#1b6b6b]/10 outline-none transition-all";
-const lbl = "block text-[11px] font-extrabold uppercase tracking-wider text-gray-400 mb-2";
+const lbl = "block text-[11px] font-extrabold   text-gray-400 mb-2";
 
 export default function HRManagement() {
     const { teachers, groups, selectedSchoolId, user: currentUser, token, showNotification } = useCRM();
@@ -226,7 +226,7 @@ export default function HRManagement() {
                                     }`}
                                 >
                                     <div>
-                                        <span className="text-[11px] font-extrabold text-gray-400 uppercase tracking-wider block mb-1 leading-tight">{label}</span>
+                                        <span className="text-[11px] font-extrabold text-gray-400 block mb-1 leading-tight">{label}</span>
                                         <h4 className="text-lg font-black text-gray-900 dark:text-white tabular-nums">{count}</h4>
                                     </div>
                                     <div className={`w-8 h-8 rounded-lg flex items-center justify-center border text-xs font-extrabold transition-all ${
@@ -243,7 +243,7 @@ export default function HRManagement() {
                                 className="bg-gray-55 dark:bg-gray-900 border border-dashed border-gray-200 dark:border-gray-800 rounded-2xl p-4 flex items-center justify-center transition-all cursor-pointer hover:border-rose-300 hover:bg-rose-50 dark:hover:bg-rose-950/10 text-gray-400 hover:text-rose-500 gap-1"
                             >
                                 <X size={12} />
-                                <span className="text-[11px] font-extrabold uppercase tracking-wider">{t('filter')}</span>
+                                <span className="text-[11px] font-extrabold">{t('filter')}</span>
                             </button>
                         )}
                     </div>
@@ -251,7 +251,7 @@ export default function HRManagement() {
                     {/* Role filter indicator */}
                     {selectedRole && (
                         <div className="flex items-center gap-2">
-                            <span className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[11px] font-extrabold border uppercase tracking-wider ${ROLE_COLORS[selectedRole] || ''}`}>
+                            <span className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[11px] font-extrabold border ${ROLE_COLORS[selectedRole] || ''}`}>
                                 {getRoleLabel(selectedRole)} — {filteredUsers.length}
                             </span>
                         </div>
@@ -261,7 +261,7 @@ export default function HRManagement() {
                         <div className="py-20 text-center text-[#1b6b6b] text-xs font-bold">{t('loading')}</div>
                     ) : filteredUsers.length === 0 ? (
                         <div className="py-20 text-center bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-800/50">
-                            <p className="text-[11px] font-bold text-gray-400 uppercase tracking-wider">{t('no_staff_found')}</p>
+                            <p className="text-[11px] font-bold text-gray-400">{t('no_staff_found')}</p>
                         </div>
                     ) : (
                         // Kartochka o'rniga jadval: xodimlar ro'yxatida ismlarni va
@@ -409,7 +409,7 @@ export default function HRManagement() {
 function InfoRow({ label, value }: { label: string; value: string }) {
     return (
         <div className="flex justify-between items-center py-2.5 border-b border-gray-50 dark:border-gray-800/50">
-            <span className="text-[11px] font-bold text-gray-400 uppercase tracking-wider">{label}</span>
+            <span className="text-[11px] font-bold text-gray-400">{label}</span>
             <span className="text-xs font-extrabold text-gray-900 dark:text-white tracking-tight">{value}</span>
         </div>
     );
@@ -476,7 +476,7 @@ function UserModal({
                 <div className="flex items-center justify-between mb-6 pb-4 border-b border-gray-50 dark:border-gray-800/50">
                     <div>
                         <h3 className="text-lg font-black text-gray-900 dark:text-white tracking-tight">{title}</h3>
-                        <p className="text-[11px] font-bold text-[#1b6b6b] uppercase tracking-wider mt-0.5">{subtitle}</p>
+                        <p className="text-[11px] font-bold text-[#1b6b6b] mt-0.5">{subtitle}</p>
                     </div>
                     <button onClick={onClose} className="w-9 h-9 flex items-center justify-center text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-xl cursor-pointer" aria-label="Yopish"><X size={18} /></button>
                 </div>
@@ -492,23 +492,23 @@ function UserModal({
                         <div className="flex flex-col gap-2">
                             <div className="flex gap-2">
                                 <button type="button" onClick={() => setIsCameraOpen(true)}
-                                    className="flex items-center gap-1.5 px-3 py-2 bg-[#1b6b6b]/10 hover:bg-[#1b6b6b] text-[#1b6b6b] hover:text-white border border-[#1b6b6b]/20 rounded-xl text-[11px] font-extrabold uppercase tracking-wider cursor-pointer transition-all">
+                                    className="flex items-center gap-1.5 px-3 py-2 bg-[#1b6b6b]/10 hover:bg-[#1b6b6b] text-[#1b6b6b] hover:text-white border border-[#1b6b6b]/20 rounded-xl text-[11px] font-extrabold cursor-pointer transition-all">
                                     <Camera size={11} /> {t('camera')}
                                 </button>
                                 <button type="button" onClick={() => fileRef.current?.click()}
-                                    className="flex items-center gap-1.5 px-3 py-2 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 text-gray-600 dark:text-gray-300 border border-gray-200 dark:border-gray-600 rounded-xl text-[11px] font-extrabold uppercase tracking-wider cursor-pointer transition-all">
+                                    className="flex items-center gap-1.5 px-3 py-2 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 text-gray-600 dark:text-gray-300 border border-gray-200 dark:border-gray-600 rounded-xl text-[11px] font-extrabold cursor-pointer transition-all">
                                     {t('upload_from_file')}
                                 </button>
                             </div>
                             {user.photo && (
                                 <div className="flex flex-col gap-1.5">
                                     <button type="button" onClick={handleRemoveBg} disabled={isRemovingBg}
-                                        className="flex items-center gap-1.5 px-3 py-2 bg-violet-50 dark:bg-violet-950/20 text-violet-600 dark:text-violet-400 border border-violet-100 dark:border-violet-900/30 rounded-xl text-[11px] font-extrabold uppercase tracking-wider hover:bg-violet-600 hover:text-white transition-all disabled:opacity-50 cursor-pointer">
+                                        className="flex items-center gap-1.5 px-3 py-2 bg-violet-50 dark:bg-violet-950/20 text-violet-600 dark:text-violet-400 border border-violet-100 dark:border-violet-900/30 rounded-xl text-[11px] font-extrabold hover:bg-violet-600 hover:text-white transition-all disabled:opacity-50 cursor-pointer">
                                         <Sparkles size={11} className={isRemovingBg ? 'animate-spin' : ''} />
                                         {isRemovingBg ? t('clearing_bg') : t('clear_bg')}
                                     </button>
                                     <button type="button" onClick={() => onChange({ ...user, photo: '' })}
-                                        className="text-[11px] font-bold text-rose-500 uppercase tracking-wider cursor-pointer hover:underline text-left">
+                                        className="text-[11px] font-bold text-rose-500 cursor-pointer hover:underline text-left">
                                         {t('delete_photo')}
                                     </button>
                                 </div>

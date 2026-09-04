@@ -26,7 +26,7 @@ const ROLE_LABELS: Record<string, string> = {
 };
 
 const inp = "w-full px-4 py-3 bg-gray-55 dark:bg-gray-900/50 border border-gray-100 dark:border-gray-800 rounded-2xl text-xs font-bold text-gray-900 dark:text-white focus:border-[#1b6b6b] focus:ring-4 focus:ring-[#1b6b6b]/10 outline-none transition-all";
-const lbl = "block text-[11px] font-extrabold uppercase tracking-wider text-gray-400 mb-2";
+const lbl = "block text-[11px] font-extrabold   text-gray-400 mb-2";
 
 export default function Settings() {
     const { settings, updateSettings, rooms, schools,
@@ -246,7 +246,7 @@ export default function Settings() {
                 <form onSubmit={handleSaveProfile} className="space-y-6">
                 <div>
                     <h2 className="text-xs font-black text-gray-900 dark:text-white">{t('org_profile_title')}</h2>
-                    <p className="text-[11px] font-bold text-gray-400 uppercase tracking-wider mt-0.5">{t('org_profile_subtitle')}</p>
+                    <p className="text-[11px] font-bold text-gray-400 mt-0.5">{t('org_profile_subtitle')}</p>
                 </div>
                 <div className="flex items-center gap-4">
                     <div className="relative group">
@@ -264,7 +264,7 @@ export default function Settings() {
                     </div>
                     <div>
                         <p className="text-xs font-black text-gray-900 dark:text-white tracking-wide">{profileForm?.orgName || t('org_name')}</p>
-                        <p className="text-[11px] font-bold text-gray-400 uppercase tracking-wider mt-0.5">{t('logo_upload_hint')}</p>
+                        <p className="text-[11px] font-bold text-gray-400 mt-0.5">{t('logo_upload_hint')}</p>
                     </div>
                 </div>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -285,7 +285,7 @@ export default function Settings() {
                         <input type="text" placeholder="09:00 - 21:00" className={inp} value={profileForm?.workingHours || ''} onChange={e => setProfileForm(p => ({ ...p, workingHours: e.target.value }))} />
                     </div>
                 </div>
-                <p className="text-[11px] font-bold text-gray-400 uppercase tracking-wider">
+                <p className="text-[11px] font-bold text-gray-400">
                     Telegram bot, SMS va Instagram sozlamalari — "Integratsiyalar" bo'limida.
                 </p>
                 <div className="flex justify-end pt-4 border-t border-dashed border-gray-150 dark:border-gray-800/50">
@@ -304,7 +304,7 @@ export default function Settings() {
             <form onSubmit={handleSaveProfile} className="space-y-8">
                 <div>
                     <h2 className="text-xs font-black text-gray-900 dark:text-white">Integratsiyalar</h2>
-                    <p className="text-[11px] font-bold text-gray-400 uppercase tracking-wider mt-0.5">Tashqi xizmatlar bilan ulanish kalitlari</p>
+                    <p className="text-[11px] font-bold text-gray-400 mt-0.5">Tashqi xizmatlar bilan ulanish kalitlari</p>
                 </div>
 
                 {/* Telegram bot */}
@@ -316,10 +316,10 @@ export default function Settings() {
                             </div>
                             <div>
                                 <p className="text-xs font-black text-gray-900 dark:text-white tracking-wide">Telegram bot</p>
-                                <p className="text-[11px] font-bold text-gray-400 uppercase tracking-wider mt-0.5">Ota-onalarga xabar va davomat bildirishnomalari</p>
+                                <p className="text-[11px] font-bold text-gray-400 mt-0.5">Ota-onalarga xabar va davomat bildirishnomalari</p>
                             </div>
                         </div>
-                        <span className={`px-2.5 py-1 rounded-lg text-[10px] font-black uppercase tracking-wider border shrink-0 ${botInfo?.username
+                        <span className={`px-2.5 py-1 rounded-lg text-[10px] font-black border shrink-0 ${botInfo?.username
                             ? 'bg-emerald-50 text-emerald-600 border-emerald-100 dark:bg-emerald-950/20 dark:text-emerald-400 dark:border-emerald-900/40'
                             : botInfo?.error
                                 ? 'bg-rose-50 text-rose-500 border-rose-100 dark:bg-rose-950/20 dark:text-rose-400 dark:border-rose-900/40'
@@ -353,10 +353,10 @@ export default function Settings() {
                             </div>
                             <div>
                                 <p className="text-xs font-black text-gray-900 dark:text-white tracking-wide">Eskiz SMS</p>
-                                <p className="text-[11px] font-bold text-gray-400 uppercase tracking-wider mt-0.5">To'lov eslatmalari va SMS xabarnomalar</p>
+                                <p className="text-[11px] font-bold text-gray-400 mt-0.5">To'lov eslatmalari va SMS xabarnomalar</p>
                             </div>
                         </div>
-                        <span className={`px-2.5 py-1 rounded-lg text-[10px] font-black uppercase tracking-wider border shrink-0 ${profileForm?.eskizEmail && profileForm?.eskizPassword
+                        <span className={`px-2.5 py-1 rounded-lg text-[10px] font-black border shrink-0 ${profileForm?.eskizEmail && profileForm?.eskizPassword
                             ? 'bg-emerald-50 text-emerald-600 border-emerald-100 dark:bg-emerald-950/20 dark:text-emerald-400 dark:border-emerald-900/40'
                             : 'bg-gray-100 text-gray-400 border-gray-200 dark:bg-gray-900 dark:border-gray-800'}`}>
                             {profileForm?.eskizEmail && profileForm?.eskizPassword ? 'Kalitlar kiritilgan' : 'Ulanmagan'}
@@ -386,7 +386,7 @@ export default function Settings() {
                         </div>
                         <div>
                             <p className="text-xs font-black text-gray-900 dark:text-white tracking-wide">Instagram</p>
-                            <p className="text-[11px] font-bold text-gray-400 uppercase tracking-wider mt-0.5">Landing sahifadagi havola</p>
+                            <p className="text-[11px] font-bold text-gray-400 mt-0.5">Landing sahifadagi havola</p>
                         </div>
                     </div>
                     <div>
@@ -409,10 +409,10 @@ export default function Settings() {
                 <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
                     <div>
                         <h2 className="text-xs font-black text-gray-900 dark:text-white">Avtomatlashtirish</h2>
-                        <p className="text-[11px] font-bold text-gray-400 uppercase tracking-wider mt-0.5">CRM o'zi bajaradigan ishlar</p>
+                        <p className="text-[11px] font-bold text-gray-400 mt-0.5">CRM o'zi bajaradigan ishlar</p>
                     </div>
                     <button onClick={() => navigate('/messaging')}
-                        className="flex items-center gap-2 px-4 py-2.5 bg-[#1b6b6b] hover:bg-[#155252] text-white rounded-xl text-[11px] font-extrabold uppercase tracking-wider shadow-sm shadow-[#1b6b6b]/20 transition-all cursor-pointer shrink-0">
+                        className="flex items-center gap-2 px-4 py-2.5 bg-[#1b6b6b] hover:bg-[#155252] text-white rounded-xl text-[11px] font-extrabold shadow-sm shadow-[#1b6b6b]/20 transition-all cursor-pointer shrink-0">
                         <Zap size={13} /> Qoidalarni boshqarish
                     </button>
                 </div>
@@ -422,7 +422,7 @@ export default function Settings() {
                 </p>
 
                 {autoRules === null ? (
-                    <p className="text-center py-10 text-[11px] text-gray-400 font-bold uppercase tracking-wider">Yuklanmoqda…</p>
+                    <p className="text-center py-10 text-[11px] text-gray-400 font-bold">Yuklanmoqda…</p>
                 ) : autoRulesError ? (
                     <p className="text-center py-10 text-[11px] text-rose-500 font-bold">{autoRulesError}</p>
                 ) : autoRules.length === 0 ? (
@@ -443,13 +443,13 @@ export default function Settings() {
                                 </div>
                                 <div className="min-w-0 flex-1">
                                     <p className="text-xs font-black text-gray-900 dark:text-white tracking-wide truncate">{rule.name}</p>
-                                    <p className="text-[11px] font-bold text-gray-400 uppercase tracking-wider mt-0.5 tabular-nums">
+                                    <p className="text-[11px] font-bold text-gray-400 mt-0.5 tabular-nums">
                                         {rule.type === 'DEBT_REMINDER' ? 'Qarzdorlik eslatmasi' : rule.type === 'BIRTHDAY' ? "Tug'ilgan kun tabrigi" : rule.type}
                                         {rule.time ? ` · ${rule.time}` : ''}
                                         {rule.channel ? ` · ${rule.channel}` : ''}
                                     </p>
                                 </div>
-                                <span className={`px-2.5 py-1 rounded-lg text-[10px] font-black uppercase tracking-wider border shrink-0 ${rule.enabled
+                                <span className={`px-2.5 py-1 rounded-lg text-[10px] font-black border shrink-0 ${rule.enabled
                                     ? 'bg-emerald-50 text-emerald-600 border-emerald-100 dark:bg-emerald-950/20 dark:text-emerald-400 dark:border-emerald-900/40'
                                     : 'bg-gray-100 text-gray-400 border-gray-200 dark:bg-gray-900 dark:border-gray-800'}`}>
                                     {rule.enabled ? 'Yoqilgan' : "O'chirilgan"}
@@ -466,20 +466,20 @@ export default function Settings() {
             <div className="space-y-8">
                 <div>
                     <h2 className="text-xs font-black text-gray-900 dark:text-white">Xavfsizlik</h2>
-                    <p className="text-[11px] font-bold text-gray-400 uppercase tracking-wider mt-0.5">Hisob ma'lumotlari va parol</p>
+                    <p className="text-[11px] font-bold text-gray-400 mt-0.5">Hisob ma'lumotlari va parol</p>
                 </div>
 
                 <div className="p-5 bg-gray-55 dark:bg-gray-900/30 border border-gray-100 dark:border-gray-800/50 rounded-2xl space-y-3">
                     <div className="flex items-center justify-between gap-3">
-                        <span className="text-[11px] font-bold text-gray-400 uppercase tracking-wider">Email</span>
+                        <span className="text-[11px] font-bold text-gray-400">Email</span>
                         <span className="text-xs font-bold text-gray-900 dark:text-white truncate">{currentUser?.email || '—'}</span>
                     </div>
                     <div className="flex items-center justify-between gap-3">
-                        <span className="text-[11px] font-bold text-gray-400 uppercase tracking-wider">Rol</span>
+                        <span className="text-[11px] font-bold text-gray-400">Rol</span>
                         <span className="text-xs font-bold text-gray-900 dark:text-white">{ROLE_LABELS[currentUser?.role || ''] || currentUser?.role || '—'}</span>
                     </div>
                     <div className="flex items-center justify-between gap-3">
-                        <span className="text-[11px] font-bold text-gray-400 uppercase tracking-wider">Filial</span>
+                        <span className="text-[11px] font-bold text-gray-400">Filial</span>
                         <span className="text-xs font-bold text-gray-900 dark:text-white truncate">
                             {schools?.find(sc => sc.id === currentUser?.schoolId)?.name || '—'}
                         </span>
@@ -549,16 +549,16 @@ export default function Settings() {
             <div className="space-y-6">
                 <div>
                     <h2 className="text-xs font-black text-gray-900 dark:text-white">{t('permissions_title')}</h2>
-                    <p className="text-[11px] font-bold text-gray-400 uppercase tracking-wider mt-0.5">{t('permissions_subtitle')}</p>
+                    <p className="text-[11px] font-bold text-gray-400 mt-0.5">{t('permissions_subtitle')}</p>
                 </div>
                 <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-800/50 overflow-hidden shadow-sm">
                     <div className="overflow-x-auto custom-scrollbar">
                         <table className="w-full min-w-[600px] border-collapse text-left">
                             <thead>
                                 <tr className="border-b border-gray-100 dark:border-gray-800/50 bg-gray-50/50 dark:bg-gray-900/20">
-                                    <th className="p-4 text-[11px] font-bold text-gray-400 uppercase tracking-wider min-w-[150px]">{t('module_label')}</th>
+                                    <th className="p-4 text-[11px] font-bold text-gray-400 min-w-[150px]">{t('module_label')}</th>
                                     {Object.keys(permissions).map(role => (
-                                        <th key={role} className="p-4 text-center text-[11px] font-bold text-gray-400 uppercase tracking-wider">
+                                        <th key={role} className="p-4 text-center text-[11px] font-bold text-gray-400">
                                             {ROLE_LABELS[role] || role}
                                         </th>
                                     ))}
@@ -608,7 +608,7 @@ export default function Settings() {
             <div className="space-y-6 animate-in fade-in duration-300">
                 <div>
                     <h2 className="text-xs font-black text-gray-900 dark:text-white">{t('design_palette_title')}</h2>
-                    <p className="text-[11px] font-bold text-gray-400 uppercase tracking-wider mt-0.5">{t('design_palette_subtitle')}</p>
+                    <p className="text-[11px] font-bold text-gray-400 mt-0.5">{t('design_palette_subtitle')}</p>
                 </div>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     {THEMES.map(theme => {
@@ -637,7 +637,7 @@ export default function Settings() {
                                 </div>
                                 <div className="flex items-center gap-3">
                                     <div
-                                        className="px-3 py-1.5 rounded-xl text-[11px] font-extrabold uppercase tracking-wider text-white shadow-sm transition-all"
+                                        className="px-3 py-1.5 rounded-xl text-[11px] font-extrabold text-white shadow-sm transition-all"
                                         style={{ background: `linear-gradient(135deg, ${theme.gradientStart}, ${theme.gradientEnd})` }}
                                     >
                                         Palitra
@@ -679,7 +679,7 @@ export default function Settings() {
                                     className="w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-gray-400 hover:text-gray-600 dark:hover:text-gray-250 transition-all cursor-pointer">
                                     <div className="flex items-center gap-2">
                                         <span className="text-[#1b6b6b]">{group.icon}</span>
-                                        <span className="text-[11px] font-bold uppercase tracking-wider">{group.label}</span>
+                                        <span className="text-[11px] font-bold">{group.label}</span>
                                     </div>
                                     {openGroups[group.id]
                                         ? <ChevronDown size={12} />
@@ -693,7 +693,7 @@ export default function Settings() {
                                                 className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl transition-all text-left cursor-pointer ${activeSection === item.id ? 'bg-[#1b6b6b]/5 text-[#1b6b6b] border border-[#1b6b6b]/10' : 'text-gray-500 hover:text-gray-900 dark:hover:text-white'}`}>
                                                 <div className="flex items-center gap-2">
                                                     {item.icon}
-                                                    <span className="text-[11px] font-extrabold uppercase tracking-wider">{item.label}</span>
+                                                    <span className="text-[11px] font-extrabold">{item.label}</span>
                                                 </div>
                                                 {'count' in item && item.count !== undefined && (
                                                     <span className="text-[10px] font-bold bg-gray-50 dark:bg-gray-900 px-2 py-0.5 rounded-lg text-gray-500">{item.count}</span>
@@ -721,7 +721,7 @@ export default function Settings() {
                         <div className="flex items-center justify-between mb-6 pb-4 border-b border-gray-50 dark:border-gray-800/50">
                             <div>
                                 <h3 className="text-lg font-black text-gray-900 dark:text-white tracking-tight">{addModalTitle}</h3>
-                                <p className="text-[11px] font-bold text-[#1b6b6b] uppercase tracking-wider mt-0.5">{t('add_data_subtitle')}</p>
+                                <p className="text-[11px] font-bold text-[#1b6b6b] mt-0.5">{t('add_data_subtitle')}</p>
                             </div>
                             <button aria-label="Yopish" onClick={() => setIsAddModalOpen(false)} className="w-9 h-9 flex items-center justify-center text-gray-400 hover:bg-gray-55 dark:hover:bg-gray-700 rounded-xl cursor-pointer"><X size={18} /></button>
                         </div>
@@ -769,7 +769,7 @@ function ListSection({ title, subtitle, icon, onAdd, items, emptyText, renderIte
             <div className="flex items-center justify-between">
                 <div>
                     <h2 className="text-xs font-black text-gray-900 dark:text-white">{title}</h2>
-                    <p className="text-[11px] font-bold text-gray-400 uppercase tracking-wider mt-0.5">{subtitle}</p>
+                    <p className="text-[11px] font-bold text-gray-400 mt-0.5">{subtitle}</p>
                 </div>
                 <button onClick={onAdd}
                     className="flex items-center gap-2 px-4 py-2.5 bg-[#1b6b6b] hover:bg-[#155252] text-white rounded-xl text-xs font-extrabold shadow-sm shadow-[#1b6b6b]/20 transition-all cursor-pointer">
@@ -779,7 +779,7 @@ function ListSection({ title, subtitle, icon, onAdd, items, emptyText, renderIte
             {items.length === 0 ? (
                 <div className="py-16 flex flex-col items-center justify-center text-center">
                     <div className="w-12 h-12 bg-gray-50 dark:bg-gray-900 border border-gray-100 dark:border-gray-800/50 rounded-2xl flex items-center justify-center mb-3 text-gray-400">{icon}</div>
-                    <p className="text-[11px] font-bold text-gray-400 uppercase tracking-wider">{emptyText}</p>
+                    <p className="text-[11px] font-bold text-gray-400">{emptyText}</p>
                 </div>
             ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
@@ -808,7 +808,7 @@ function ItemCard({ icon, iconBg, title, subtitle, onDelete }: {
             </div>
             <div>
                 <p className="text-xs font-black text-gray-900 dark:text-white tracking-wide">{title}</p>
-                <p className="text-[11px] font-bold text-gray-400 uppercase tracking-wider mt-1">{subtitle}</p>
+                <p className="text-[11px] font-bold text-gray-400 mt-1">{subtitle}</p>
             </div>
         </div>
     );

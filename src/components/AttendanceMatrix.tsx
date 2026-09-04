@@ -90,11 +90,11 @@ export default function AttendanceMatrix({ group, students, attendances, selecte
                         <tr>
                             {/* Name column header */}
                             <th className="sticky left-0 z-30 bg-gray-50 dark:bg-gray-800/80 px-4 py-3 text-left border-b border-r border-gray-100 dark:border-gray-800 min-w-[160px]">
-                                <span className="text-[11px] font-bold text-gray-400 uppercase tracking-wider">O'quvchi</span>
+                                <span className="text-[11px] font-bold text-gray-400">O'quvchi</span>
                             </th>
                             {/* % column */}
                             <th className="bg-gray-50 dark:bg-gray-800/80 px-3 py-3 border-b border-r border-gray-100 dark:border-gray-800 min-w-[52px]">
-                                <span className="text-[11px] font-bold text-gray-400 uppercase tracking-wider block text-center">%</span>
+                                <span className="text-[11px] font-bold text-gray-400 block text-center">%</span>
                             </th>
                             {/* Date columns */}
                             {lessonDates.map(date => {
@@ -103,7 +103,7 @@ export default function AttendanceMatrix({ group, students, attendances, selecte
                                 return (
                                     <th key={date} className={`px-1 py-2 border-b border-gray-100 dark:border-gray-800 min-w-[44px] ${highlight ? 'bg-emerald-50 dark:bg-emerald-950/30 border-b-2 border-b-emerald-400' : 'bg-gray-50/50 dark:bg-gray-800/50'}`}>
                                         <div className="flex flex-col items-center gap-0.5">
-                                            <span className={`text-[7px] font-black uppercase tracking-widest ${highlight ? 'text-emerald-600 dark:text-emerald-400' : 'text-gray-400'}`}>{day}</span>
+                                            <span className={`text-[7px] font-black ${highlight ? 'text-emerald-600 dark:text-emerald-400' : 'text-gray-400'}`}>{day}</span>
                                             <span className={`text-[11px] font-bold ${highlight ? 'text-emerald-700 dark:text-emerald-300' : 'text-gray-500 dark:text-gray-400'}`}>{dateNum}</span>
                                         </div>
                                     </th>
@@ -119,7 +119,7 @@ export default function AttendanceMatrix({ group, students, attendances, selecte
                                 <tr key={student.id} className={`${rowBg} hover:bg-emerald-50/20 dark:hover:bg-emerald-950/10 transition-colors`}>
                                     {/* Name */}
                                     <td className={`sticky left-0 z-20 ${rowBg} px-4 py-2.5 border-r border-b border-gray-100 dark:border-gray-800`}>
-                                        <p className="text-[11px] font-bold text-gray-900 dark:text-white uppercase tracking-tight truncate max-w-[140px]">{student.name}</p>
+                                        <p className="text-[11px] font-bold text-gray-900 dark:text-white tracking-tight truncate max-w-[140px]">{student.name}</p>
                                     </td>
                                     {/* % */}
                                     <td className="px-2 py-2.5 border-r border-b border-gray-100 dark:border-gray-800 text-center">
@@ -184,7 +184,7 @@ export default function AttendanceMatrix({ group, students, attendances, selecte
                         })}
                         {students.length === 0 && (
                             <tr>
-                                <td colSpan={lessonDates.length + 2} className="py-12 text-center text-[11px] font-bold text-gray-400 uppercase tracking-wider">
+                                <td colSpan={lessonDates.length + 2} className="py-12 text-center text-[11px] font-bold text-gray-400">
                                     Bu kursda o'quvchilar yo'q
                                 </td>
                             </tr>
@@ -200,14 +200,14 @@ export default function AttendanceMatrix({ group, students, attendances, selecte
                         <div className={`w-4 h-4 rounded-md flex items-center justify-center text-white ${s.color}`}>
                             <span className="text-[7px] font-black">{s.short}</span>
                         </div>
-                        <span className="text-[10px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-wider">{s.label}</span>
+                        <span className="text-[10px] font-bold text-gray-400 dark:text-gray-500">{s.label}</span>
                     </div>
                 ))}
                 <div className="flex items-center gap-1.5">
                     <div className="w-4 h-4 rounded-md border border-gray-200 dark:border-gray-800 flex items-center justify-center">
                         <span className="text-[7px] font-black text-gray-300">—</span>
                     </div>
-                    <span className="text-[10px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-wider">Belgilanmagan</span>
+                    <span className="text-[10px] font-bold text-gray-400 dark:text-gray-500">Belgilanmagan</span>
                 </div>
             </div>
 
@@ -226,13 +226,13 @@ export default function AttendanceMatrix({ group, students, attendances, selecte
                                 className={`flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all cursor-pointer ${s.light} ${s.text}`}
                             >
                                 <div className={`w-5 h-5 ${s.color} rounded-lg flex items-center justify-center text-white`}>{s.icon}</div>
-                                <span className="text-[11px] font-bold uppercase tracking-wider">{s.label}</span>
+                                <span className="text-[11px] font-bold">{s.label}</span>
                             </button>
                         ))}
                         <div className="h-px bg-gray-100 dark:bg-gray-700 my-0.5" />
                         <button onClick={() => setActivePopover(null)} className="flex items-center gap-3 px-3 py-2 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-700 text-gray-400 transition-all cursor-pointer">
                             <XCircle size={14} />
-                            <span className="text-[11px] font-bold uppercase tracking-wider">Yopish</span>
+                            <span className="text-[11px] font-bold">Yopish</span>
                         </button>
                     </div>
                 </>

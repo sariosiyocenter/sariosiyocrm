@@ -5,7 +5,7 @@ import { useLang } from '../context/LanguageContext';
 import { useNavigate } from 'react-router-dom';
 
 const inp = "w-full px-4 py-3 bg-gray-55 dark:bg-gray-900/50 border border-gray-100 dark:border-gray-750 rounded-2xl text-xs font-bold text-gray-900 dark:text-white focus:border-[#1b6b6b] focus:ring-4 focus:ring-[#1b6b6b]/10 outline-none transition-all";
-const lbl = "block text-[11px] font-extrabold uppercase tracking-wider text-gray-400 mb-2";
+const lbl = "block text-[11px] font-extrabold   text-gray-400 mb-2";
 
 export default function Courses() {
     const {
@@ -296,7 +296,7 @@ export default function Courses() {
                         </div>
                         <div className="flex items-end">
                             <button onClick={() => setFilters({teacherId: '', dayType: 'all', roomId: '', timeOfDay: 'all'})}
-                                className="w-full py-2 text-[11px] font-extrabold uppercase text-rose-500 hover:text-rose-600 flex items-center justify-center gap-1.5 cursor-pointer">
+                                className="w-full py-2 text-[11px] font-extrabold text-rose-500 hover:text-rose-600 flex items-center justify-center gap-1.5 cursor-pointer">
                                 <X size={12} /> {t('filter_clear')}
                             </button>
                         </div>
@@ -481,7 +481,7 @@ export default function Courses() {
                         <div className="flex items-center justify-between mb-6 pb-4 border-b border-gray-55 dark:border-gray-800/50">
                             <div>
                                 <h3 className="text-lg font-black text-gray-900 dark:text-white tracking-tight">{t('new_group_title')}</h3>
-                                <p className="text-[11px] font-bold text-[#1b6b6b] uppercase tracking-wider mt-0.5">{t('group_details_subtitle')}</p>
+                                <p className="text-[11px] font-bold text-[#1b6b6b] mt-0.5">{t('group_details_subtitle')}</p>
                             </div>
                             <button aria-label="Yopish" onClick={() => setIsModalOpen(false)} className="w-9 h-9 flex items-center justify-center text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700 rounded-xl cursor-pointer"><X size={18} /></button>
                         </div>

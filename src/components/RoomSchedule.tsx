@@ -179,7 +179,7 @@ export default function RoomSchedule() {
                         </div>
                         <div>
                             <h3 className="text-sm font-extrabold text-gray-900 dark:text-white tracking-tight">Jadval Xaritasi (Timetable)</h3>
-                            <p className="text-[11px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-wider">Xonalar bandligi jadvali</p>
+                            <p className="text-[11px] font-bold text-gray-400 dark:text-gray-500">Xonalar bandligi jadvali</p>
                         </div>
                     </div>
 
@@ -188,7 +188,7 @@ export default function RoomSchedule() {
                         <div className="flex bg-gray-50 dark:bg-gray-900 p-1.5 rounded-2xl border border-gray-100 dark:border-gray-800">
                             <button
                                 onClick={() => setViewMode('day')}
-                                className={`flex items-center gap-2 px-4 py-2 rounded-[1rem] text-[11px] font-extrabold uppercase tracking-widest transition-all cursor-pointer ${
+                                className={`flex items-center gap-2 px-4 py-2 rounded-[1rem] text-[11px] font-extrabold transition-all cursor-pointer ${
                                     viewMode === 'day' 
                                         ? 'bg-white dark:bg-gray-800 text-[#1b6b6b] shadow-sm ring-1 ring-black/5 dark:ring-white/5' 
                                         : 'text-gray-400 hover:text-gray-600 dark:hover:text-gray-200'
@@ -198,7 +198,7 @@ export default function RoomSchedule() {
                             </button>
                             <button
                                 onClick={() => setViewMode('week')}
-                                className={`flex items-center gap-2 px-4 py-2 rounded-[1rem] text-[11px] font-extrabold uppercase tracking-widest transition-all cursor-pointer ${
+                                className={`flex items-center gap-2 px-4 py-2 rounded-[1rem] text-[11px] font-extrabold transition-all cursor-pointer ${
                                     viewMode === 'week' 
                                         ? 'bg-white dark:bg-gray-800 text-[#1b6b6b] shadow-sm ring-1 ring-black/5 dark:ring-white/5' 
                                         : 'text-gray-400 hover:text-gray-600 dark:hover:text-gray-200'
@@ -218,7 +218,7 @@ export default function RoomSchedule() {
                                     <button
                                         key={type.id}
                                         onClick={() => setSelectedDayType(type.id as any)}
-                                        className={`px-4 py-2 rounded-[1rem] text-[11px] font-extrabold uppercase tracking-widest transition-all cursor-pointer ${
+                                        className={`px-4 py-2 rounded-[1rem] text-[11px] font-extrabold transition-all cursor-pointer ${
                                             selectedDayType === type.id
                                                 ? 'bg-white dark:bg-gray-800 text-[#1b6b6b] shadow-sm ring-1 ring-black/5 dark:ring-white/5'
                                                 : 'text-gray-400 hover:text-gray-600 dark:hover:text-gray-200'
@@ -240,11 +240,11 @@ export default function RoomSchedule() {
                         <table className="w-full border-collapse">
                             <thead>
                                 <tr className="bg-gray-50/50 dark:bg-gray-900/50 border-b border-gray-100 dark:border-gray-800">
-                                    <th className="sticky left-0 z-20 bg-gray-50 dark:bg-gray-900 p-4 min-w-[200px] text-[11px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-wider text-left border-r border-gray-100 dark:border-gray-800">
+                                    <th className="sticky left-0 z-20 bg-gray-50 dark:bg-gray-900 p-4 min-w-[200px] text-[11px] font-bold text-gray-400 dark:text-gray-500 text-left border-r border-gray-100 dark:border-gray-800">
                                         Xona nomi
                                     </th>
                                     {timeSlots.map(time => (
-                                        <th key={time} className="p-4 min-w-[90px] text-[11px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-wider text-center border-r border-gray-100/50 dark:border-gray-800/30">
+                                        <th key={time} className="p-4 min-w-[90px] text-[11px] font-bold text-gray-400 dark:text-gray-500 text-center border-r border-gray-100/50 dark:border-gray-800/30">
                                             {time}
                                         </th>
                                     ))}
@@ -266,7 +266,7 @@ export default function RoomSchedule() {
                                                     </div>
                                                     <div>
                                                         <p className="text-xs font-black text-gray-900 dark:text-white tracking-tight">{room.name}</p>
-                                                        <p className="text-[11px] font-bold text-gray-450 uppercase tracking-wider">{room.capacity} o'rin</p>
+                                                        <p className="text-[11px] font-bold text-gray-450">{room.capacity} o'rin</p>
                                                     </div>
                                                 </button>
                                             </td>
@@ -288,14 +288,14 @@ export default function RoomSchedule() {
                                                                 isActive ? 'ring-2 ring-rose-500/30 dark:ring-rose-500/20 border-rose-500/40' : ''
                                                             }`}>
                                                                 <div className="flex items-center justify-between gap-1">
-                                                                    <p className={`text-[11px] font-bold uppercase tracking-tight truncate ${color?.text}`}>{group.name}</p>
+                                                                    <p className={`text-[11px] font-bold tracking-tight truncate ${color?.text}`}>{group.name}</p>
                                                                     {isActive && <span className="h-1.5 w-1.5 rounded-full bg-rose-500 animate-ping flex-shrink-0" />}
                                                                 </div>
                                                                 <span className="text-[10px] font-bold opacity-80 mt-0.5 tabular-nums block">{group.schedule}</span>
                                                             </div>
                                                         ) : (
                                                             <div className="h-full flex items-center justify-center py-4">
-                                                                <span className="text-[10px] font-bold text-gray-200 dark:text-gray-700/80 uppercase tracking-wider">Bo'sh</span>
+                                                                <span className="text-[10px] font-bold text-gray-200 dark:text-gray-700/80">Bo'sh</span>
                                                             </div>
                                                         )}
                                                     </td>
@@ -325,11 +325,11 @@ export default function RoomSchedule() {
                         <table className="w-full border-collapse">
                             <thead>
                                 <tr className="bg-gray-50/50 dark:bg-gray-900/50 border-b border-gray-100 dark:border-gray-800">
-                                    <th className="sticky left-0 z-20 bg-gray-50 dark:bg-gray-900 p-4 min-w-[200px] text-[11px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-wider text-left border-r border-gray-100 dark:border-gray-800">
+                                    <th className="sticky left-0 z-20 bg-gray-50 dark:bg-gray-900 p-4 min-w-[200px] text-[11px] font-bold text-gray-400 dark:text-gray-500 text-left border-r border-gray-100 dark:border-gray-800">
                                         Xona nomi
                                     </th>
                                     {FULL_WEEK.map(day => (
-                                        <th key={day.id} className="p-4 min-w-[150px] text-[11px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-wider text-center border-r border-gray-100/50 dark:border-gray-800/30">
+                                        <th key={day.id} className="p-4 min-w-[150px] text-[11px] font-bold text-gray-400 dark:text-gray-500 text-center border-r border-gray-100/50 dark:border-gray-800/30">
                                             {day.label}
                                         </th>
                                     ))}
@@ -349,7 +349,7 @@ export default function RoomSchedule() {
                                                 </div>
                                                 <div>
                                                     <p className="text-xs font-black text-gray-900 dark:text-white tracking-tight">{room.name}</p>
-                                                    <p className="text-[11px] font-bold text-gray-450 uppercase tracking-wider">{room.capacity} o'rin</p>
+                                                    <p className="text-[11px] font-bold text-gray-450">{room.capacity} o'rin</p>
                                                 </div>
                                             </button>
                                         </td>
@@ -371,7 +371,7 @@ export default function RoomSchedule() {
                                                                     <div 
                                                                         key={g.id} 
                                                                         onClick={() => setSelectedRoom(room)}
-                                                                        className={`p-2 rounded-lg border transition-all cursor-pointer text-[11px] font-black uppercase tracking-tight ${color.bg} ${color.border} ${color.text} ${
+                                                                        className={`p-2 rounded-lg border transition-all cursor-pointer text-[11px] font-black tracking-tight ${color.bg} ${color.border} ${color.text} ${
                                                                             isActive ? 'ring-2 ring-rose-500/35 border-rose-500/40' : ''
                                                                         }`}
                                                                     >
@@ -386,7 +386,7 @@ export default function RoomSchedule() {
                                                         </div>
                                                     ) : (
                                                         <div className="py-6 flex items-center justify-center">
-                                                            <span className="text-[10px] font-bold text-gray-250 dark:text-gray-700/80 uppercase tracking-wider italic">Bo'sh</span>
+                                                            <span className="text-[10px] font-bold text-gray-250 dark:text-gray-700/80 italic">Bo'sh</span>
                                                         </div>
                                                     )}
                                                 </td>
@@ -430,7 +430,7 @@ export default function RoomSchedule() {
                                 </div>
                                 <div>
                                     <h3 className="text-sm font-black text-gray-900 dark:text-white tracking-tight">{selectedRoom.name}</h3>
-                                    <p className="text-[11px] font-bold text-gray-400 uppercase tracking-wider">{selectedRoom.capacity} kishilik • {getGroupsForRoomAndDay(selectedRoom.id, true).length + getGroupsForRoomAndDay(selectedRoom.id, false).length} ta dars</p>
+                                    <p className="text-[11px] font-bold text-gray-400">{selectedRoom.capacity} kishilik • {getGroupsForRoomAndDay(selectedRoom.id, true).length + getGroupsForRoomAndDay(selectedRoom.id, false).length} ta dars</p>
                                 </div>
                             </div>
                             <button aria-label="Yopish" onClick={() => { setSelectedRoom(null); setEditingGroup(null); }}
@@ -446,7 +446,7 @@ export default function RoomSchedule() {
                                     <div className="w-12 h-12 rounded-2xl bg-gray-50 dark:bg-gray-900 border border-gray-100 dark:border-gray-800 flex items-center justify-center mb-3 text-gray-400">
                                         <Users size={20} />
                                     </div>
-                                    <p className="text-[11px] font-bold text-gray-400 uppercase tracking-wider">Xonada darslar yo'q</p>
+                                    <p className="text-[11px] font-bold text-gray-400">Xonada darslar yo'q</p>
                                 </div>
                             ) : groups.filter(g => Number(g.room) === Number(selectedRoom.id)).map(g => {
                                 const color = getGroupColor(g.days);
@@ -466,19 +466,19 @@ export default function RoomSchedule() {
                                                     <div className="flex items-center gap-2">
                                                         <p className={`text-xs font-black tracking-tight ${color.text}`}>{g.name}</p>
                                                         {isCurrentlyOn && (
-                                                            <span className="px-1.5 py-0.5 bg-rose-500/10 border border-rose-500/30 text-rose-550 rounded text-[7px] font-black uppercase tracking-widest animate-pulse">
+                                                            <span className="px-1.5 py-0.5 bg-rose-500/10 border border-rose-500/30 text-rose-550 rounded text-[7px] font-black animate-pulse">
                                                                 Hozir Darsda
                                                             </span>
                                                         )}
                                                     </div>
-                                                    <p className="text-[11px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider mt-0.5">
+                                                    <p className="text-[11px] font-bold text-gray-500 dark:text-gray-400 mt-0.5">
                                                         {(course?.name && course.name !== 'birinchi') ? `${course.name} • ` : ''}{teacher?.name || '—'}
                                                     </p>
                                                     <div className="flex items-center gap-3 mt-1">
-                                                        <span className="flex items-center gap-1 text-[11px] font-bold text-gray-500 uppercase tracking-wider">
+                                                        <span className="flex items-center gap-1 text-[11px] font-bold text-gray-500">
                                                             <Users size={9} /> {g.studentIds?.length || 0} o'quvchi
                                                         </span>
-                                                        <span className="flex items-center gap-1 text-[11px] font-bold text-gray-500 uppercase tracking-wider">
+                                                        <span className="flex items-center gap-1 text-[11px] font-bold text-gray-500">
                                                             <Calendar size={9} /> {g.days}
                                                         </span>
                                                     </div>
@@ -506,10 +506,10 @@ export default function RoomSchedule() {
                                         {/* Inline time editor */}
                                         {isEditing && (
                                             <div className="px-4 pb-4 border-t border-gray-150 dark:border-gray-800 pt-3">
-                                                <p className="text-[11px] font-bold text-gray-450 uppercase tracking-wider mb-2">Dars vaqtini o'zgartirish</p>
+                                                <p className="text-[11px] font-bold text-gray-450 mb-2">Dars vaqtini o'zgartirish</p>
                                                 <div className="flex items-center gap-3">
                                                     <div className="flex-1">
-                                                        <label className="text-[11px] font-bold text-gray-400 uppercase tracking-wider block mb-1">Boshlanish</label>
+                                                        <label className="text-[11px] font-bold text-gray-400 block mb-1">Boshlanish</label>
                                                         <input
                                                             type="time"
                                                             value={editSchedule.start}
@@ -519,7 +519,7 @@ export default function RoomSchedule() {
                                                     </div>
                                                     <div className="flex-shrink-0 pt-5 text-gray-400 font-black">→</div>
                                                     <div className="flex-1">
-                                                        <label className="text-[11px] font-bold text-gray-405 uppercase tracking-wider block mb-1">Tugash</label>
+                                                        <label className="text-[11px] font-bold text-gray-405 block mb-1">Tugash</label>
                                                         <input
                                                             type="time"
                                                             value={editSchedule.end}
@@ -531,7 +531,7 @@ export default function RoomSchedule() {
                                                         <button
                                                             onClick={handleSaveSchedule}
                                                             disabled={isSaving}
-                                                            className="flex items-center gap-1.5 px-4 py-2 bg-[#1b6b6b] hover:bg-[#155252] disabled:opacity-50 text-white rounded-xl text-[11px] font-extrabold uppercase tracking-wider shadow-lg transition-all cursor-pointer"
+                                                            className="flex items-center gap-1.5 px-4 py-2 bg-[#1b6b6b] hover:bg-[#155252] disabled:opacity-50 text-white rounded-xl text-[11px] font-extrabold shadow-lg transition-all cursor-pointer"
                                                         >
                                                             <Save size={12} />
                                                             {isSaving ? 'Saqlanmoqda...' : 'Saqlash'}
@@ -547,11 +547,11 @@ export default function RoomSchedule() {
 
                         {/* Modal Footer */}
                         <div className="px-6 py-4 border-t border-gray-150 dark:border-gray-800 flex items-center justify-between flex-shrink-0">
-                            <p className="text-[11px] font-bold text-gray-400 uppercase tracking-wider">
+                            <p className="text-[11px] font-bold text-gray-400">
                                 Dars vaqtini o'zgartirish uchun ✏️ belgisini bosing
                             </p>
                             <button onClick={() => { setSelectedRoom(null); setEditingGroup(null); }}
-                                className="px-5 py-2 bg-gray-105 hover:bg-gray-200 dark:bg-gray-800 dark:hover:bg-gray-705 text-gray-700 dark:text-white rounded-xl text-[11px] font-extrabold uppercase tracking-wider transition-all cursor-pointer">
+                                className="px-5 py-2 bg-gray-105 hover:bg-gray-200 dark:bg-gray-800 dark:hover:bg-gray-705 text-gray-700 dark:text-white rounded-xl text-[11px] font-extrabold transition-all cursor-pointer">
                                 Yopish
                             </button>
                         </div>

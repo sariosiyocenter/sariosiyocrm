@@ -50,12 +50,12 @@ const WEEK_DAYS_FULL = ['Dushanba','Seshanba','Chorshanba','Payshanba','Juma','S
 const DAY_JS: Record<string,number> = { Du:1, Se:2, Ch:3, Pa:4, Ju:5, Sh:6, Ya:0 };
 
 const inp = "w-full px-4 py-3 bg-gray-50 dark:bg-gray-900/50 border border-gray-100 dark:border-gray-800 rounded-2xl text-xs font-bold text-gray-900 dark:text-white focus:border-[#1b6b6b] focus:ring-4 focus:ring-[#1b6b6b]/10 outline-none transition-all";
-const lbl = "block text-[11px] font-extrabold uppercase tracking-wider text-gray-400 mb-2";
+const lbl = "block text-[11px] font-extrabold   text-gray-400 mb-2";
 
 export default function StaffDetails() {
     const { id } = useParams<{ id: string }>();
     const navigate = useNavigate();
-    const { teachers, token, user: currentUser, showNotification } = useCRM();
+    const { teachers, groups, attendances, token, user: currentUser, showNotification } = useCRM();
     const confirm = useConfirm();
     const { t } = useLang();
 
@@ -213,9 +213,10 @@ export default function StaffDetails() {
         .finally(() => setAttLoading(false));
     }, [staffUser?.id, token, selMonth, selYear]);
 
-    // Fetch KPI calculation when in maosh tab and month changes
+    // KPI hisobi sahifa ochilishi bilan yuklanadi: "Umumiy" tabidagi oylik
+    // hisob-kitobi kartasi ham shu ma'lumotga tayanadi.
     useEffect(() => {
-        if (activeTab !== 'maosh' || !staffUser || !token) return;
+        if (!staffUser || !token) return;
         const month = `${payYear}-${String(payMonth + 1).padStart(2, '0')}`;
         setKpiLoading(true);
         fetch(`/api/kpi-calculation?userId=${staffUser.id}&month=${month}`, {
@@ -225,7 +226,7 @@ export default function StaffDetails() {
         .then(data => setKpiData(data))
         .catch(() => setKpiData(null))
         .finally(() => setKpiLoading(false));
-    }, [activeTab, staffUser?.id, token, payMonth, payYear]);
+    }, [staffUser?.id, token, payMonth, payYear]);
 
     if (loading) {
         return <div className="py-20 text-center text-[#1b6b6b] text-xs font-bold">{t('loading')}</div>;
@@ -241,6 +242,18 @@ export default function StaffDetails() {
     const linkedTeacher = (staffUser.role === 'TEACHER' || staffUser.role === 'SUPPORT_TEACHER')
         ? teachers.find(t => t.name.toLowerCase().trim() === staffUser.name.toLowerCase().trim())
         : null;
+
+    // Ustoz yuritayotgan guruhlar va ular bo'yicha ko'rsatkichlar.
+    // Hammasi mavjud yozuvlardan; reyting kabi bazada yo'q qiymat ko'rsatilmaydi.
+    const myGroups = linkedTeacher ? (groups || []).filter(g => g.teacherId === linkedTeacher.id) : [];
+    const myStudentCount = myGroups.reduce((n, g) => n + ((g.studentIds || []).length), 0);
+    // Toq/juft kunlar — haftada 3 dars, har kuni — 6.
+    const weeklyLessons = myGroups.reduce((n, g) => n + (g.days === 'TOQ' || g.days === 'JUFT' ? 3 : 6), 0);
+    const groupAttRate = (gid: number) => {
+        const rows = (attendances || []).filter(a => a.groupId === gid);
+        return rows.length ? Math.round((rows.filter(a => a.status === 'Keldi').length / rows.length) * 100) : null;
+    };
+    const groupMonthIncome = (gid: number) => (kpiData?.groups || []).find((g: any) => g.id === gid)?.total ?? null;
 
     // Salary
     const baseSalary  = staffUser.salary || 0;
@@ -490,7 +503,7 @@ export default function StaffDetails() {
         <div className="space-y-6 animate-in fade-in duration-500">
             {/* Back */}
             <button onClick={() => navigate('/hr')}
-                className="flex items-center gap-2 text-gray-400 hover:text-[#1b6b6b] transition-all text-[11px] font-extrabold uppercase tracking-wider group cursor-pointer">
+                className="flex items-center gap-2 text-gray-400 hover:text-[#1b6b6b] transition-all text-[11px] font-extrabold group cursor-pointer">
                 <ArrowLeft size={14} className="group-hover:-translate-x-1 transition-transform" />
                 {t('staff_list')}
             </button>
@@ -523,7 +536,7 @@ export default function StaffDetails() {
                                             onClick={() => setIsPhotoModalOpen(true)}
                                             className="absolute inset-0 bg-black/40 opacity-0 group-hover/avatar:opacity-100 transition-opacity flex flex-col items-center justify-center gap-1 cursor-pointer">
                                             <Camera size={24} className="text-white" />
-                                            <span className="text-[11px] font-extrabold text-white uppercase tracking-wider">{t('camera')}</span>
+                                            <span className="text-[11px] font-extrabold text-white">{t('camera')}</span>
                                         </button>
                                     )}
                                 </div>
@@ -537,7 +550,7 @@ export default function StaffDetails() {
                                 <p className="text-[11px] font-bold text-gray-400 mt-1">{staffUser.position}</p>
                             )}
                             <div className="mt-3 flex justify-center">
-                                <span className={`px-2.5 py-0.5 rounded-md text-[10px] font-bold border uppercase tracking-wider ${ROLE_COLORS[staffUser.role] || ''}`}>
+                                <span className={`px-2.5 py-0.5 rounded-md text-[10px] font-bold border ${ROLE_COLORS[staffUser.role] || ''}`}>
                                     {getRoleLabel(staffUser.role)}
                                 </span>
                             </div>
@@ -545,7 +558,7 @@ export default function StaffDetails() {
                                 <button
                                     onClick={handleRemoveBg}
                                     disabled={isRemovingBg}
-                                    className="mt-3 flex items-center gap-1.5 px-4 py-2 mx-auto bg-violet-50 text-violet-600 border border-violet-100 dark:bg-violet-950/20 dark:text-violet-400 dark:border-violet-900/30 rounded-xl text-[11px] font-extrabold uppercase tracking-wider hover:bg-violet-600 hover:text-white transition-all disabled:opacity-50 cursor-pointer"
+                                    className="mt-3 flex items-center gap-1.5 px-4 py-2 mx-auto bg-violet-50 text-violet-600 border border-violet-100 dark:bg-violet-950/20 dark:text-violet-400 dark:border-violet-900/30 rounded-xl text-[11px] font-extrabold hover:bg-violet-600 hover:text-white transition-all disabled:opacity-50 cursor-pointer"
                                 >
                                     <Sparkles size={11} className={isRemovingBg ? 'animate-spin' : ''} />
                                     {isRemovingBg ? t('clearing_bg') : t('clear_bg_btn')}
@@ -563,13 +576,13 @@ export default function StaffDetails() {
 
                     {/* Salary card */}
                     <div className="bg-[#1b6b6b] rounded-2xl p-4 text-white shadow-sm shadow-[#1b6b6b]/20 relative overflow-hidden">
-                        <span className="text-[11px] font-bold text-teal-100 uppercase tracking-wider block mb-3">{t('base_salary_short')}</span>
+                        <span className="text-[11px] font-bold text-teal-100 block mb-3">{t('base_salary_short')}</span>
                         <div className="flex items-baseline gap-1">
                             <span className="text-2xl font-black tracking-tight tabular-nums">{baseSalary.toLocaleString()}</span>
-                            <span className="text-[11px] font-extrabold text-teal-200 uppercase tracking-wider">UZS</span>
+                            <span className="text-[11px] font-extrabold text-teal-200">UZS</span>
                         </div>
                         <div className="mt-3 pt-3 border-t border-white/10 flex items-center justify-between">
-                            <span className="text-[11px] text-teal-200 font-bold uppercase tracking-wider">{t('with_kpi')}</span>
+                            <span className="text-[11px] text-teal-200 font-bold">{t('with_kpi')}</span>
                             <span className="text-sm font-black">{totalSalary.toLocaleString()}</span>
                         </div>
                     </div>
@@ -581,7 +594,7 @@ export default function StaffDetails() {
                         <div className="flex px-4 bg-gray-50 dark:bg-gray-900/50 border-b border-gray-100 dark:border-gray-800/50 gap-2">
                             {tabs.map(tab => (
                                 <button key={tab.id} onClick={() => setActiveTab(tab.id)}
-                                    className={`px-5 py-4 text-[11px] font-extrabold uppercase tracking-wider flex items-center gap-2 transition-all relative shrink-0 cursor-pointer ${activeTab === tab.id ? 'text-[#1b6b6b] bg-white dark:bg-gray-800' : 'text-gray-400 hover:text-gray-900 dark:hover:text-white'}`}>
+                                    className={`px-5 py-4 text-[11px] font-extrabold flex items-center gap-2 transition-all relative shrink-0 cursor-pointer ${activeTab === tab.id ? 'text-[#1b6b6b] bg-white dark:bg-gray-800' : 'text-gray-400 hover:text-gray-900 dark:hover:text-white'}`}>
                                     {tab.icon}{tab.label}
                                     {activeTab === tab.id && <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-[#1b6b6b] rounded-t-full" />}
                                 </button>
@@ -591,43 +604,152 @@ export default function StaffDetails() {
                         <div className="p-4">
                             {/* ── UMUMIY ── */}
                             {activeTab === 'umumiy' && (
-                                <div className="space-y-6 animate-in fade-in duration-300">
-                                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
-                                        <StatCard label={t('attendance')} value={`${presentDays} ${t('days')}`} sub={t('present_this_month_sub')} color="emerald" />
-                                        <StatCard label={t('absent')} value={`${absentDays} ${t('days')}`} sub={t('absent_this_month_sub')} color="rose" />
-                                        <StatCard label={t('excused')}  value={`${excusedDays} ${t('days')}`} sub={t('excused_this_month')} color="amber" />
+                                <div className="space-y-5 animate-in fade-in duration-300">
+                                    {/* Asosiy ko'rsatkichlar bitta qatorda. Reyting bazada yo'q —
+                                        o'ylab yozilmaydi. */}
+                                    <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+                                        {linkedTeacher && (
+                                            <>
+                                                <StatCard label="Guruhlar" value={myGroups.length} sub={`${myStudentCount} o'quvchi`} color="" />
+                                                <StatCard label="Haftalik dars" value={weeklyLessons} sub="guruh jadvalidan" color="" />
+                                            </>
+                                        )}
+                                        <StatCard label={`${getMonthName(payMonth)} oyligi`} value={totalSalary >= 1000000 ? `${(totalSalary / 1000000).toFixed(1)} mln` : totalSalary.toLocaleString()} sub={kpiPercent ? `asosiy + ${kpiPercent}% ulush` : 'asosiy oylik'} color="emerald" />
+                                        <StatCard label={t('attendance')} value={`${presentDays} kun`} sub={absentDays > 0 ? `${absentDays} kun kelmagan` : t('present_this_month_sub')} color={absentDays > 0 ? 'amber' : ''} />
                                     </div>
 
-                                    <div className="space-y-3">
-                                        <span className="text-[11px] font-extrabold text-gray-400 uppercase tracking-wider block border-b border-gray-50 dark:border-gray-800/50 pb-2">
-                                            {t('staff_info')}
-                                        </span>
-                                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                                            <InfoBox label="ID"           value={`#${staffUser.id}`} />
-                                            <InfoBox label="Lavozim"      value={getRoleLabel(staffUser.role)} />
-                                            {staffUser.position && <InfoBox label="Vazifa" value={staffUser.position} />}
-                                            <InfoBox label={t('base_salary')} value={`${baseSalary.toLocaleString()} UZS`} />
-                                            {staffUser.phone && <InfoBox label={t('phone')} value={staffUser.phone} />}
+                                    <div className="grid grid-cols-1 xl:grid-cols-3 gap-5 items-start">
+                                        <div className="xl:col-span-2 space-y-5">
+                                            {/* Yuritayotgan guruhlar */}
+                                            {linkedTeacher && (
+                                                <div className="bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700/50 rounded-2xl overflow-hidden">
+                                                    <div className="px-5 py-4 border-b border-gray-100 dark:border-gray-700/50">
+                                                        <h3 className="text-[14px] font-semibold text-gray-900 dark:text-white">Yuritayotgan guruhlar</h3>
+                                                    </div>
+                                                    {myGroups.length === 0 ? (
+                                                        <p className="px-5 py-8 text-center text-[12px] text-gray-400">Guruh biriktirilmagan</p>
+                                                    ) : (
+                                                        <div className="overflow-x-auto">
+                                                            <table className="w-full border-collapse text-left min-w-[560px]">
+                                                                <thead>
+                                                                    <tr className="border-b border-gray-100 dark:border-gray-700/50">
+                                                                        <th className="px-5 py-2.5 text-[11px] font-medium text-gray-400">Guruh</th>
+                                                                        <th className="px-3 py-2.5 text-[11px] font-medium text-gray-400">Vaqt</th>
+                                                                        <th className="px-3 py-2.5 text-[11px] font-medium text-gray-400 text-right">O'quvchi</th>
+                                                                        <th className="px-3 py-2.5 text-[11px] font-medium text-gray-400 text-right">Davomat</th>
+                                                                        <th className="px-5 py-2.5 text-[11px] font-medium text-gray-400 text-right">{getMonthName(payMonth)} tushumi</th>
+                                                                    </tr>
+                                                                </thead>
+                                                                <tbody className="divide-y divide-gray-55 dark:divide-gray-700/40">
+                                                                    {myGroups.map(g => {
+                                                                        const att = groupAttRate(g.id);
+                                                                        const inc = groupMonthIncome(g.id);
+                                                                        return (
+                                                                            <tr key={g.id} onClick={() => navigate(`/courses/${g.id}`)}
+                                                                                className="group hover:bg-gray-55/70 dark:hover:bg-gray-900/30 transition-colors cursor-pointer">
+                                                                                <td className="px-5 py-3 text-[13px] font-medium text-gray-900 dark:text-white group-hover:text-[#1b6b6b] transition-colors">
+                                                                                    <span className="inline-block w-0.5 h-4 rounded-full bg-[#1b6b6b] mr-3 align-middle" />{g.name}
+                                                                                </td>
+                                                                                <td className="px-3 py-3 text-[12px] text-gray-500 dark:text-gray-400">
+                                                                                    {g.days === 'TOQ' ? 'Toq' : g.days === 'JUFT' ? 'Juft' : 'Har kuni'}{g.schedule ? <> · <span className="num">{g.schedule.split(' - ')[0]}</span></> : null}
+                                                                                </td>
+                                                                                <td className="num px-3 py-3 text-[13px] text-right text-gray-700 dark:text-gray-200">{(g.studentIds || []).length}</td>
+                                                                                <td className={`num px-3 py-3 text-[13px] text-right ${att === null ? 'text-gray-400' : att >= 85 ? 'text-emerald-500' : att >= 70 ? 'text-amber-500' : 'text-rose-500'}`}>
+                                                                                    {att === null ? '—' : `${att}%`}
+                                                                                </td>
+                                                                                <td className="num px-5 py-3 text-[13px] text-right text-gray-700 dark:text-gray-200">
+                                                                                    {inc === null ? '—' : inc >= 1000000 ? `${(inc / 1000000).toFixed(1)} mln` : inc.toLocaleString()}
+                                                                                </td>
+                                                                            </tr>
+                                                                        );
+                                                                    })}
+                                                                </tbody>
+                                                            </table>
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            )}
+
+                                            <div className="bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700/50 rounded-2xl p-5">
+                                                <h3 className="text-[14px] font-semibold text-gray-900 dark:text-white mb-3">{t('staff_info')}</h3>
+                                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                                    <InfoBox label="ID"           value={`#${staffUser.id}`} />
+                                                    <InfoBox label="Lavozim"      value={getRoleLabel(staffUser.role)} />
+                                                    {staffUser.position && <InfoBox label="Vazifa" value={staffUser.position} />}
+                                                    {staffUser.phone && <InfoBox label={t('phone')} value={staffUser.phone} />}
+                                                    {linkedTeacher && (
+                                                        <button onClick={() => navigate(`/teachers/${linkedTeacher.id}`)}
+                                                            className="sm:col-span-2 flex items-center justify-between px-4 py-3 rounded-xl border border-gray-100 dark:border-gray-700/50 text-[13px] text-[#1b6b6b] dark:text-teal-400 hover:bg-[#1b6b6b]/5 transition-colors cursor-pointer">
+                                                            <span className="flex items-center gap-2"><GraduationCap size={15} /> {t('view_teacher_profile')}</span>
+                                                            <ChevronRight size={15} />
+                                                        </button>
+                                                    )}
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <div className="space-y-5">
+                                            {/* Oylik hisob-kitobi — Maosh tabidagi hisobning qisqa ko'rinishi. */}
+                                            <div className="bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700/50 rounded-2xl p-5">
+                                                <div className="flex items-baseline justify-between mb-3">
+                                                    <h3 className="text-[14px] font-semibold text-gray-900 dark:text-white">Oylik hisob-kitobi</h3>
+                                                    <span className="text-[12px] text-gray-400">{getMonthName(payMonth)}</span>
+                                                </div>
+                                                <div className="space-y-2 text-[13px]">
+                                                    <div className="flex items-center justify-between gap-3">
+                                                        <span className="text-gray-500 dark:text-gray-400">Asosiy</span>
+                                                        <span className="num text-gray-800 dark:text-gray-100">{baseSalary.toLocaleString()}</span>
+                                                    </div>
+                                                    {kpiPercent > 0 && (
+                                                        <>
+                                                            <div className="flex items-center justify-between gap-3">
+                                                                <span className="text-gray-500 dark:text-gray-400">Guruhlardan tushum</span>
+                                                                <span className="num text-gray-800 dark:text-gray-100">{kpiLoading ? '…' : (kpiData?.totalPayments || 0).toLocaleString()}</span>
+                                                            </div>
+                                                            <div className="flex items-center justify-between gap-3">
+                                                                <span className="text-gray-500 dark:text-gray-400">Ulush ({kpiPercent}%)</span>
+                                                                <span className="num text-[#1b6b6b] dark:text-teal-400">{kpiLoading ? '…' : `+${kpiAmount.toLocaleString()}`}</span>
+                                                            </div>
+                                                        </>
+                                                    )}
+                                                    {totalBonus > 0 && (
+                                                        <div className="flex items-center justify-between gap-3">
+                                                            <span className="text-gray-500 dark:text-gray-400">Bonus</span>
+                                                            <span className="num text-emerald-500">+{totalBonus.toLocaleString()}</span>
+                                                        </div>
+                                                    )}
+                                                    {totalFine > 0 && (
+                                                        <div className="flex items-center justify-between gap-3">
+                                                            <span className="text-gray-500 dark:text-gray-400">Ushlanma</span>
+                                                            <span className="num text-rose-500">-{totalFine.toLocaleString()}</span>
+                                                        </div>
+                                                    )}
+                                                    <div className="flex items-center justify-between gap-3 pt-2 mt-1 border-t border-gray-100 dark:border-gray-700/50">
+                                                        <span className="font-semibold text-gray-900 dark:text-white">To'lanadi</span>
+                                                        <span className="num font-semibold text-[#1b6b6b] dark:text-teal-400">{totalSalary.toLocaleString()}</span>
+                                                    </div>
+                                                </div>
+                                                <button onClick={() => setActiveTab('maosh')}
+                                                    className="mt-4 w-full py-2 rounded-xl text-[12px] text-[#1b6b6b] dark:text-teal-400 border border-gray-100 dark:border-gray-700/50 hover:bg-[#1b6b6b]/5 transition-colors cursor-pointer">
+                                                    Batafsil →
+                                                </button>
+                                            </div>
+
+                                            {/* Intizom — shu oy davomati */}
+                                            <div className="bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700/50 rounded-2xl p-5">
+                                                <h3 className="text-[14px] font-semibold text-gray-900 dark:text-white mb-3">Intizom · {getMonthName(selMonth)}</h3>
+                                                <div className="space-y-2 text-[13px]">
+                                                    <div className="flex items-center justify-between"><span className="text-gray-500 dark:text-gray-400">{t('attendance')}</span><span className="num text-emerald-500">{presentDays} kun</span></div>
+                                                    <div className="flex items-center justify-between"><span className="text-gray-500 dark:text-gray-400">{t('absent')}</span><span className={`num ${absentDays > 0 ? 'text-rose-500' : 'text-gray-400'}`}>{absentDays} kun</span></div>
+                                                    <div className="flex items-center justify-between"><span className="text-gray-500 dark:text-gray-400">{t('excused')}</span><span className={`num ${excusedDays > 0 ? 'text-amber-500' : 'text-gray-400'}`}>{excusedDays} kun</span></div>
+                                                </div>
+                                                <button onClick={() => setActiveTab('jadval')}
+                                                    className="mt-4 w-full py-2 rounded-xl text-[12px] text-[#1b6b6b] dark:text-teal-400 border border-gray-100 dark:border-gray-700/50 hover:bg-[#1b6b6b]/5 transition-colors cursor-pointer">
+                                                    Ish grafigi →
+                                                </button>
+                                            </div>
                                         </div>
                                     </div>
-
-                                    {linkedTeacher && (
-                                        <div>
-                                            <span className="text-[11px] font-extrabold text-gray-400 uppercase tracking-wider block border-b border-gray-50 dark:border-gray-800/50 pb-2 mb-3">
-                                                {t('linked_teacher_profile')}
-                                            </span>
-                                            <button onClick={() => navigate(`/teachers/${linkedTeacher.id}`)}
-                                                className="flex items-center gap-3 p-4 bg-teal-50 dark:bg-teal-950/20 border border-teal-100 dark:border-teal-900/40 rounded-2xl hover:bg-[#1b6b6b] hover:text-white group transition-all cursor-pointer w-full text-left">
-                                                <div className="w-10 h-10 rounded-xl bg-[#1b6b6b]/10 group-hover:bg-white/20 flex items-center justify-center text-[#1b6b6b] group-hover:text-white transition-all">
-                                                    <GraduationCap size={18} />
-                                                </div>
-                                                <div>
-                                                    <p className="text-xs font-black text-[#1b6b6b] group-hover:text-white tracking-wide transition-all">{linkedTeacher.name}</p>
-                                                    <p className="text-[11px] font-bold text-teal-600 dark:text-teal-400 group-hover:text-teal-100 mt-0.5 uppercase tracking-wider">{t('view_teacher_profile')}</p>
-                                                </div>
-                                            </button>
-                                        </div>
-                                    )}
                                 </div>
                             )}
 
@@ -648,13 +770,13 @@ export default function StaffDetails() {
                                                         onChange={e => setSalaryDraft(e.target.value)}
                                                         onKeyDown={e => { if (e.key === 'Enter') saveSalaryInline(); if (e.key === 'Escape') setEditingSalary(false); }}
                                                     />
-                                                    <button onClick={saveSalaryInline} className="px-4 py-2 bg-[#1b6b6b] hover:bg-[#155252] text-white text-[11px] font-extrabold uppercase tracking-wider rounded-xl cursor-pointer transition-all whitespace-nowrap">{t('save')}</button>
-                                                    <button onClick={() => setEditingSalary(false)} className="px-3 py-2 bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-white text-[11px] font-extrabold uppercase tracking-wider rounded-xl cursor-pointer hover:bg-gray-200 transition-all">{t('cancel')}</button>
+                                                    <button onClick={saveSalaryInline} className="px-4 py-2 bg-[#1b6b6b] hover:bg-[#155252] text-white text-[11px] font-extrabold rounded-xl cursor-pointer transition-all whitespace-nowrap">{t('save')}</button>
+                                                    <button onClick={() => setEditingSalary(false)} className="px-3 py-2 bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-white text-[11px] font-extrabold rounded-xl cursor-pointer hover:bg-gray-200 transition-all">{t('cancel')}</button>
                                                 </div>
                                             ) : (
                                                 <div className="flex items-center gap-2 mt-1">
                                                     <span className="text-2xl font-black text-gray-900 dark:text-white tabular-nums">{baseSalary.toLocaleString()}</span>
-                                                    <span className="text-[11px] font-bold text-gray-400 uppercase tracking-wider">UZS</span>
+                                                    <span className="text-[11px] font-bold text-gray-400">UZS</span>
                                                     {isAdminOrManager && (
                                                         <button
                                                             onClick={() => { setSalaryDraft(String(baseSalary)); setEditingSalary(true); }}
@@ -676,13 +798,13 @@ export default function StaffDetails() {
                                                         onChange={e => setKpiDraft(e.target.value)}
                                                         onKeyDown={e => { if (e.key === 'Enter') saveKpiInline(); if (e.key === 'Escape') setEditingKpi(false); }}
                                                     />
-                                                    <button onClick={saveKpiInline} className="px-3 py-2 bg-[#1b6b6b] hover:bg-[#155252] text-white text-[11px] font-extrabold uppercase tracking-wider rounded-xl cursor-pointer transition-all">✓</button>
-                                                    <button onClick={() => setEditingKpi(false)} className="px-3 py-2 bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-white text-[11px] font-extrabold uppercase tracking-wider rounded-xl cursor-pointer hover:bg-gray-200 transition-all">✕</button>
+                                                    <button onClick={saveKpiInline} className="px-3 py-2 bg-[#1b6b6b] hover:bg-[#155252] text-white text-[11px] font-extrabold rounded-xl cursor-pointer transition-all">✓</button>
+                                                    <button onClick={() => setEditingKpi(false)} className="px-3 py-2 bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-white text-[11px] font-extrabold rounded-xl cursor-pointer hover:bg-gray-200 transition-all">✕</button>
                                                 </div>
                                             ) : (
                                                 <div className="flex items-center justify-end gap-2 mt-1">
                                                     <span className="text-2xl font-black text-[#1b6b6b] tabular-nums">{kpiPercent}</span>
-                                                    <span className="text-[11px] font-bold text-gray-400 uppercase tracking-wider">%</span>
+                                                    <span className="text-[11px] font-bold text-gray-400">%</span>
                                                     {isAdminOrManager && (
                                                         <button
                                                             onClick={() => { setKpiDraft(String(kpiPercent)); setEditingKpi(true); }}
@@ -697,7 +819,7 @@ export default function StaffDetails() {
 
                                     {/* Month selector */}
                                     <div className="flex items-center justify-between">
-                                        <span className="text-[11px] font-extrabold text-gray-400 uppercase tracking-wider flex items-center gap-1.5">
+                                        <span className="text-[11px] font-extrabold text-gray-400 flex items-center gap-1.5">
                                             <Banknote size={11} /> {t('salary_calculation')}
                                         </span>
                                         <div className="flex items-center gap-2">
@@ -722,7 +844,7 @@ export default function StaffDetails() {
                                                     <p className="text-xs font-black text-emerald-700 dark:text-emerald-400 tracking-wide">
                                                         {getMonthName(payMonth)} {payYear} — {t('salary_paid')} ✓
                                                     </p>
-                                                    <p className="text-[11px] font-bold text-emerald-600 dark:text-emerald-500 mt-0.5 uppercase tracking-wider">
+                                                    <p className="text-[11px] font-bold text-emerald-600 dark:text-emerald-500 mt-0.5">
                                                         {currentPayment.amount.toLocaleString()} UZS · {new Date(currentPayment.paidAt).toLocaleDateString('uz-UZ')}
                                                     </p>
                                                 </div>
@@ -739,7 +861,7 @@ export default function StaffDetails() {
                                             <div className="w-10 h-10 bg-rose-100 dark:bg-rose-950/40 rounded-xl flex items-center justify-center shrink-0">
                                                 <Clock size={18} className="text-rose-500" />
                                             </div>
-                                            <p className="text-[11px] font-bold text-rose-600 dark:text-rose-400 uppercase tracking-wider">
+                                            <p className="text-[11px] font-bold text-rose-600 dark:text-rose-400">
                                                 {getMonthName(payMonth)} {payYear} — {t('salary_not_paid')}
                                             </p>
                                         </div>
@@ -751,11 +873,11 @@ export default function StaffDetails() {
                                             {/* KPI group breakdown — teachers only */}
                                             {(staffUser.role === 'TEACHER' || staffUser.role === 'SUPPORT_TEACHER') && (
                                                 <div className="space-y-3">
-                                                    <p className="text-[11px] font-extrabold text-gray-400 uppercase tracking-wider flex items-center gap-1.5">
+                                                    <p className="text-[11px] font-extrabold text-gray-400 flex items-center gap-1.5">
                                                         <Target size={11} /> {t('kpi_calculation')} — {getMonthName(payMonth)} {payYear}
                                                     </p>
                                                     {kpiLoading ? (
-                                                        <div className="py-8 text-center text-[11px] text-gray-400 font-bold uppercase tracking-wider">{t('loading')}</div>
+                                                        <div className="py-8 text-center text-[11px] text-gray-400 font-bold">{t('loading')}</div>
                                                     ) : kpiPercent === 0 ? (
                                                         <div className="p-4 bg-gray-50 dark:bg-gray-900/50 border border-dashed border-gray-200 dark:border-gray-800 rounded-2xl text-center">
                                                             <p className="text-[11px] text-gray-400 font-bold">{t('kpi_percent_not_set')}</p>
@@ -765,10 +887,10 @@ export default function StaffDetails() {
                                                             <table className="w-full text-left">
                                                                 <thead>
                                                                     <tr className="bg-gray-50 dark:bg-gray-900/80 border-b border-gray-100 dark:border-gray-800">
-                                                                        <th className="p-3 text-[11px] font-bold text-gray-400 uppercase tracking-wider">{t('group')}</th>
-                                                                        <th className="p-3 text-[11px] font-bold text-gray-400 uppercase tracking-wider">{t('students')}</th>
-                                                                        <th className="p-3 text-[11px] font-bold text-gray-400 uppercase tracking-wider text-right">{t('payments')}</th>
-                                                                        <th className="p-3 text-[11px] font-bold text-gray-400 uppercase tracking-wider text-right">KPI ({kpiPercent}%)</th>
+                                                                        <th className="p-3 text-[11px] font-bold text-gray-400">{t('group')}</th>
+                                                                        <th className="p-3 text-[11px] font-bold text-gray-400">{t('students')}</th>
+                                                                        <th className="p-3 text-[11px] font-bold text-gray-400 text-right">{t('payments')}</th>
+                                                                        <th className="p-3 text-[11px] font-bold text-gray-400 text-right">KPI ({kpiPercent}%)</th>
                                                                     </tr>
                                                                 </thead>
                                                                 <tbody className="divide-y divide-gray-50 dark:divide-gray-800">
@@ -783,7 +905,7 @@ export default function StaffDetails() {
                                                                 </tbody>
                                                                 <tfoot>
                                                                     <tr className="border-t border-gray-100 dark:border-gray-800 bg-[#1b6b6b]/5">
-                                                                        <td colSpan={2} className="p-3 text-[11px] font-extrabold text-[#1b6b6b] uppercase tracking-wider">{t('total_kpi')}</td>
+                                                                        <td colSpan={2} className="p-3 text-[11px] font-extrabold text-[#1b6b6b]">{t('total_kpi')}</td>
                                                                         <td className="p-3 text-[11px] font-bold text-gray-600 dark:text-gray-300 text-right">{kpiData.totalPayments?.toLocaleString()}</td>
                                                                         <td className="p-3 text-[12px] font-bold text-[#1b6b6b] text-right">+{kpiAmount.toLocaleString()} UZS</td>
                                                                     </tr>
@@ -803,7 +925,7 @@ export default function StaffDetails() {
                                                 <div className="space-y-4">
                                                     {/* Manual bonus */}
                                                     <div className="space-y-2">
-                                                        <span className="text-[11px] font-bold text-emerald-600 uppercase tracking-wider flex items-center gap-1"><Star size={10} /> {t('additional_bonus')}</span>
+                                                        <span className="text-[11px] font-bold text-emerald-600 flex items-center gap-1"><Star size={10} /> {t('additional_bonus')}</span>
                                                         {bonuses.map((b, i) => (
                                                             <div key={i} className="flex items-center justify-between bg-emerald-50 dark:bg-emerald-950/20 border border-emerald-100 dark:border-emerald-900/30 px-3 py-2 rounded-xl">
                                                                 <span className="text-[11px] font-bold text-emerald-600 dark:text-emerald-400">{b.label}</span>
@@ -822,7 +944,7 @@ export default function StaffDetails() {
 
                                                     {/* Manual fine */}
                                                     <div className="space-y-2">
-                                                        <span className="text-[11px] font-bold text-rose-600 uppercase tracking-wider flex items-center gap-1"><AlertCircle size={10} /> {t('fine')}</span>
+                                                        <span className="text-[11px] font-bold text-rose-600 flex items-center gap-1"><AlertCircle size={10} /> {t('fine')}</span>
                                                         {fines.map((f, i) => (
                                                             <div key={i} className="flex items-center justify-between bg-rose-50 dark:bg-rose-950/20 border border-rose-100 dark:border-rose-900/30 px-3 py-2 rounded-xl">
                                                                 <span className="text-[11px] font-bold text-rose-600 dark:text-rose-400">{f.label}</span>
@@ -848,28 +970,28 @@ export default function StaffDetails() {
                                                         </h3>
                                                         <div className="space-y-3">
                                                             <div className="flex justify-between">
-                                                                <span className="text-[11px] font-bold text-gray-400 uppercase tracking-wider">{t('base_salary_short')}</span>
+                                                                <span className="text-[11px] font-bold text-gray-400">{t('base_salary_short')}</span>
                                                                 <span className="text-xs font-extrabold text-gray-900 dark:text-white">{baseSalary.toLocaleString()} UZS</span>
                                                             </div>
                                                             {kpiAmount > 0 && (
                                                                 <div className="flex justify-between">
-                                                                    <span className="text-[11px] font-bold text-[#1b6b6b] uppercase tracking-wider">KPI ({kpiPercent}%)</span>
+                                                                    <span className="text-[11px] font-bold text-[#1b6b6b]">KPI ({kpiPercent}%)</span>
                                                                     <span className="text-xs font-extrabold text-[#1b6b6b]">+{kpiAmount.toLocaleString()}</span>
                                                                 </div>
                                                             )}
                                                             <div className="flex justify-between">
-                                                                <span className="text-[11px] font-bold text-emerald-600 uppercase tracking-wider">{t('additional_bonus')} ({bonuses.length})</span>
+                                                                <span className="text-[11px] font-bold text-emerald-600">{t('additional_bonus')} ({bonuses.length})</span>
                                                                 <span className="text-xs font-extrabold text-emerald-600">+{totalBonus.toLocaleString()}</span>
                                                             </div>
                                                             <div className="flex justify-between">
-                                                                <span className="text-[11px] font-bold text-rose-600 uppercase tracking-wider">{t('fine')} ({fines.length})</span>
+                                                                <span className="text-[11px] font-bold text-rose-600">{t('fine')} ({fines.length})</span>
                                                                 <span className="text-xs font-extrabold text-rose-600">-{totalFine.toLocaleString()}</span>
                                                             </div>
                                                             <div className="pt-4 border-t border-dashed border-gray-100 dark:border-gray-800 flex justify-between items-center">
-                                                                <span className="text-[11px] font-extrabold text-[#1b6b6b] uppercase tracking-wider">{t('to_be_paid')}</span>
+                                                                <span className="text-[11px] font-extrabold text-[#1b6b6b]">{t('to_be_paid')}</span>
                                                                 <span className="text-2xl font-black text-[#1b6b6b] tabular-nums">{totalSalary.toLocaleString()}</span>
                                                             </div>
-                                                            <p className="text-[11px] text-right text-gray-400 font-bold uppercase tracking-wider">UZS</p>
+                                                            <p className="text-[11px] text-right text-gray-400 font-bold">UZS</p>
                                                         </div>
                                                     </div>
 
@@ -881,15 +1003,15 @@ export default function StaffDetails() {
                                                         </button>
                                                     ) : (
                                                         <div className="mt-4 p-4 bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-900/40 rounded-2xl space-y-3">
-                                                            <p className="text-[11px] font-extrabold text-amber-700 dark:text-amber-400 uppercase tracking-wider text-center">
+                                                            <p className="text-[11px] font-extrabold text-amber-700 dark:text-amber-400 text-center">
                                                                 {t('confirm_pay_salary').replace('{name}', staffUser.name).replace('{amount}', totalSalary.toLocaleString())}
                                                             </p>
                                                             <div className="flex gap-2">
-                                                                <button onClick={() => setPayConfirm(false)} className="flex-1 py-2 bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-white text-[11px] font-extrabold uppercase tracking-wider rounded-xl cursor-pointer hover:bg-gray-200 transition-all">
+                                                                <button onClick={() => setPayConfirm(false)} className="flex-1 py-2 bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-white text-[11px] font-extrabold rounded-xl cursor-pointer hover:bg-gray-200 transition-all">
                                                                     {t('cancel')}
                                                                 </button>
                                                                 <button onClick={paySalary} disabled={paying}
-                                                                    className="flex-1 py-2 bg-emerald-600 hover:bg-emerald-500 text-white text-[11px] font-extrabold uppercase tracking-wider rounded-xl cursor-pointer transition-all disabled:opacity-60 flex items-center justify-center gap-1.5">
+                                                                    className="flex-1 py-2 bg-emerald-600 hover:bg-emerald-500 text-white text-[11px] font-extrabold rounded-xl cursor-pointer transition-all disabled:opacity-60 flex items-center justify-center gap-1.5">
                                                                     {paying ? t('saving') : <><CheckCircle2 size={12} /> {t('yes_paid')}</>}
                                                                 </button>
                                                             </div>
@@ -903,19 +1025,19 @@ export default function StaffDetails() {
                                     {/* Payment history */}
                                     {salaryPayments.length > 0 && (
                                         <div className="space-y-3">
-                                            <span className="text-[11px] font-extrabold text-gray-400 uppercase tracking-wider flex items-center gap-1.5 border-t border-dashed border-gray-100 dark:border-gray-800/50 pt-4">
+                                            <span className="text-[11px] font-extrabold text-gray-400 flex items-center gap-1.5 border-t border-dashed border-gray-100 dark:border-gray-800/50 pt-4">
                                                 <Clock size={10} /> {t('payments_history')}
                                             </span>
                                             <div className="bg-white dark:bg-gray-800 rounded-2xl overflow-hidden border border-gray-100 dark:border-gray-800/50">
                                                 <table className="w-full text-left">
                                                     <thead>
                                                         <tr className="bg-gray-50 dark:bg-gray-900 border-b border-gray-100 dark:border-gray-800">
-                                                            <th className="p-3 text-[11px] font-bold text-gray-400 uppercase tracking-wider">{t('month')}</th>
-                                                            <th className="p-3 text-[11px] font-bold text-gray-400 uppercase tracking-wider">{t('base_short')}</th>
-                                                            <th className="p-3 text-[11px] font-bold text-gray-400 uppercase tracking-wider">+Bonus</th>
-                                                            <th className="p-3 text-[11px] font-bold text-gray-400 uppercase tracking-wider">−Jarima</th>
-                                                            <th className="p-3 text-[11px] font-bold text-gray-400 uppercase tracking-wider">{t('total_short')}</th>
-                                                            <th className="p-3 text-[11px] font-bold text-gray-400 uppercase tracking-wider">{t('date_short')}</th>
+                                                            <th className="p-3 text-[11px] font-bold text-gray-400">{t('month')}</th>
+                                                            <th className="p-3 text-[11px] font-bold text-gray-400">{t('base_short')}</th>
+                                                            <th className="p-3 text-[11px] font-bold text-gray-400">+Bonus</th>
+                                                            <th className="p-3 text-[11px] font-bold text-gray-400">−Jarima</th>
+                                                            <th className="p-3 text-[11px] font-bold text-gray-400">{t('total_short')}</th>
+                                                            <th className="p-3 text-[11px] font-bold text-gray-400">{t('date_short')}</th>
                                                             <th className="p-3" />
                                                         </tr>
                                                     </thead>
@@ -924,7 +1046,7 @@ export default function StaffDetails() {
                                                             const [yr, mo] = p.month.split('-');
                                                             return (
                                                                 <tr key={p.id} className="hover:bg-gray-50/50 dark:hover:bg-gray-800/50">
-                                                                    <td className="p-3 text-[11px] font-bold text-gray-900 dark:text-white uppercase">
+                                                                    <td className="p-3 text-[11px] font-bold text-gray-900 dark:text-white">
                                                                         {getMonthName(parseInt(mo)-1)} {yr}
                                                                     </td>
                                                                     <td className="p-3 text-[11px] font-bold text-gray-600 dark:text-gray-300">{p.baseSalary.toLocaleString()}</td>
@@ -958,12 +1080,12 @@ export default function StaffDetails() {
                                     {/* Work schedule */}
                                     <div className="space-y-4">
                                         <div className="flex items-center justify-between">
-                                            <span className="text-[11px] font-extrabold text-gray-400 uppercase tracking-wider flex items-center gap-1.5">
+                                            <span className="text-[11px] font-extrabold text-gray-400 flex items-center gap-1.5">
                                                 <CalendarDays size={11} /> {t('weekly_work_days')}
                                             </span>
                                             {workDaysChanged && (
                                                 <button onClick={saveWorkDays} disabled={savingWD}
-                                                    className="px-4 py-2 bg-[#1b6b6b] hover:bg-[#155252] text-white text-[11px] font-bold uppercase tracking-wider rounded-xl cursor-pointer transition-all disabled:opacity-60 shadow-sm shadow-[#1b6b6b]/20">
+                                                    className="px-4 py-2 bg-[#1b6b6b] hover:bg-[#155252] text-white text-[11px] font-bold rounded-xl cursor-pointer transition-all disabled:opacity-60 shadow-sm shadow-[#1b6b6b]/20">
                                                     {savingWD ? t('saving') : t('save')}
                                                 </button>
                                             )}
@@ -988,7 +1110,7 @@ export default function StaffDetails() {
                                             })}
                                         </div>
                                         {workDays.length === 0 && !workDaysChanged && (
-                                            <p className="text-[11px] font-bold text-amber-500 uppercase tracking-wider text-center py-1">
+                                            <p className="text-[11px] font-bold text-amber-500 text-center py-1">
                                                 {t('work_schedule_not_set')}
                                             </p>
                                         )}
@@ -1001,7 +1123,7 @@ export default function StaffDetails() {
                                     <div className="space-y-4">
                                         {/* Month selector */}
                                         <div className="flex items-center justify-between">
-                                            <span className="text-[11px] font-extrabold text-gray-400 uppercase tracking-wider">{t('attendance')}</span>
+                                            <span className="text-[11px] font-extrabold text-gray-400">{t('attendance')}</span>
                                             <div className="flex items-center gap-2">
                                                 <button onClick={prevMonth} className="w-8 h-8 flex items-center justify-center rounded-xl bg-gray-50 dark:bg-gray-900 border border-gray-100 dark:border-gray-800 text-gray-500 hover:border-[#1b6b6b] hover:text-[#1b6b6b] transition-all cursor-pointer">
                                                     <ChevronLeft size={14} />
@@ -1024,7 +1146,7 @@ export default function StaffDetails() {
                                                     { label:t('excused'), count: excusedDays, cls:'border-amber-100 dark:border-amber-950/20 text-amber-600 dark:text-amber-400' },
                                                 ].map(({ label, count, cls }) => (
                                                     <div key={label} className={`bg-white dark:bg-gray-800 border rounded-2xl p-3 text-center ${cls}`}>
-                                                        <span className="text-[11px] font-extrabold uppercase tracking-wider block mb-1 opacity-70">{label}</span>
+                                                        <span className="text-[11px] font-extrabold block mb-1 opacity-70">{label}</span>
                                                         <p className="text-2xl font-black tabular-nums">{count}</p>
                                                     </div>
                                                 ))}
@@ -1034,18 +1156,18 @@ export default function StaffDetails() {
                                         {workDays.length === 0 ? (
                                             <div className="py-10 text-center bg-gray-50 dark:bg-gray-900/40 rounded-2xl border border-dashed border-gray-200 dark:border-gray-800">
                                                 <CalendarDays size={28} className="mx-auto text-gray-300 mb-2" />
-                                                <p className="text-[11px] font-bold text-gray-400 uppercase tracking-wider">
+                                                <p className="text-[11px] font-bold text-gray-400">
                                                     {t('attendance_setup_warning')}
                                                 </p>
                                             </div>
                                         ) : attLoading ? (
-                                            <div className="py-8 text-center text-[11px] text-gray-400 font-bold uppercase tracking-wider">{t('loading')}</div>
+                                            <div className="py-8 text-center text-[11px] text-gray-400 font-bold">{t('loading')}</div>
                                         ) : (
                                             <>
                                                 {/* Day-of-week headers */}
                                                 <div className="grid grid-cols-7 gap-1">
                                                     {WEEK_DAYS.map(d => (
-                                                        <div key={d} className={`text-center text-[11px] font-bold uppercase tracking-wider py-1.5 rounded-lg ${workDays.includes(d) ? 'text-[#1b6b6b] bg-[#1b6b6b]/5' : 'text-gray-300'}`}>{d}</div>
+                                                        <div key={d} className={`text-center text-[11px] font-bold py-1.5 rounded-lg ${workDays.includes(d) ? 'text-[#1b6b6b] bg-[#1b6b6b]/5' : 'text-gray-300'}`}>{d}</div>
                                                     ))}
                                                 </div>
                                                 {/* Day cells */}
@@ -1084,7 +1206,7 @@ export default function StaffDetails() {
                                                         );
                                                     })}
                                                 </div>
-                                                <p className="text-[11px] text-center text-gray-400 font-bold uppercase tracking-wider">
+                                                <p className="text-[11px] text-center text-gray-400 font-bold">
                                                     Ish kuniga bosing → davomat belgilang
                                                 </p>
                                             </>
@@ -1105,7 +1227,7 @@ export default function StaffDetails() {
                         <div className="flex items-center justify-between mb-5 pb-3 border-b border-gray-50 dark:border-gray-800/50">
                             <div>
                                 <h3 className="text-sm font-black text-gray-900 dark:text-white tracking-tight">{attPicker}</h3>
-                                <p className="text-[11px] font-bold text-gray-400 uppercase tracking-wider mt-0.5">Davomat holati</p>
+                                <p className="text-[11px] font-bold text-gray-400 mt-0.5">Davomat holati</p>
                             </div>
                             <button aria-label="Yopish" onClick={() => setAttPicker(null)} className="w-8 h-8 flex items-center justify-center text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-xl cursor-pointer">
                                 <X size={18} />
@@ -1125,13 +1247,13 @@ export default function StaffDetails() {
                                                               'border-amber-100 bg-amber-50/50 hover:bg-amber-500 hover:border-amber-500'
                                     }`}>
                                     <span className={`${color==='emerald'?'text-emerald-500':color==='rose'?'text-rose-500':'text-amber-500'} group-hover:text-white transition-colors`}>{icon}</span>
-                                    <span className={`text-[10px] font-bold uppercase tracking-wider ${color==='emerald'?'text-emerald-600':color==='rose'?'text-rose-600':'text-amber-600'} group-hover:text-white transition-colors`}>{label}</span>
+                                    <span className={`text-[10px] font-bold ${color==='emerald'?'text-emerald-600':color==='rose'?'text-rose-600':'text-amber-600'} group-hover:text-white transition-colors`}>{label}</span>
                                 </button>
                             ))}
                         </div>
                         {staffAtt.find(a => a.date === attPicker) && (
                             <button onClick={() => markAttendance(attPicker, 'delete')}
-                                className="mt-3 w-full py-2 text-[11px] font-bold text-gray-400 hover:text-rose-500 uppercase tracking-wider cursor-pointer transition-colors text-center">
+                                className="mt-3 w-full py-2 text-[11px] font-bold text-gray-400 hover:text-rose-500 cursor-pointer transition-colors text-center">
                                 O'chirish
                             </button>
                         )}
@@ -1147,7 +1269,7 @@ export default function StaffDetails() {
                         <div className="flex items-center justify-between mb-6 pb-4 border-b border-gray-50 dark:border-gray-800/50">
                             <div>
                                 <h3 className="text-lg font-black text-gray-900 dark:text-white tracking-tight">Tahrirlash</h3>
-                                <p className="text-[11px] font-bold text-[#1b6b6b] uppercase tracking-wider mt-0.5">Ma'lumotlarni yangilash</p>
+                                <p className="text-[11px] font-bold text-[#1b6b6b] mt-0.5">Ma'lumotlarni yangilash</p>
                             </div>
                             <button aria-label="Yopish" onClick={() => setIsEditOpen(false)} className="w-9 h-9 flex items-center justify-center text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-xl cursor-pointer"><X size={18} /></button>
                         </div>
@@ -1157,8 +1279,8 @@ export default function StaffDetails() {
                                     {editData.photo ? <img src={editData.photo} alt="preview" className="w-full h-full object-cover" /> : <Camera size={20} className="text-gray-300" />}
                                 </div>
                                 <div>
-                                    <button type="button" onClick={() => fileRef.current?.click()} className="text-[11px] font-extrabold text-[#1b6b6b] uppercase tracking-wider cursor-pointer hover:underline">Rasm yuklash</button>
-                                    {editData.photo && <button type="button" onClick={() => setEditData((p:any) => ({...p,photo:''}))} className="ml-3 text-[11px] font-extrabold text-rose-500 uppercase tracking-wider cursor-pointer hover:underline">O'chirish</button>}
+                                    <button type="button" onClick={() => fileRef.current?.click()} className="text-[11px] font-extrabold text-[#1b6b6b] cursor-pointer hover:underline">Rasm yuklash</button>
+                                    {editData.photo && <button type="button" onClick={() => setEditData((p:any) => ({...p,photo:''}))} className="ml-3 text-[11px] font-extrabold text-rose-500 cursor-pointer hover:underline">O'chirish</button>}
                                 </div>
                                 <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={handlePhoto} />
                             </div>

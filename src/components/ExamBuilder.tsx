@@ -141,7 +141,7 @@ export default function ExamBuilder() {
         }
     };
 
-    const labelCls = "block text-[11px] font-extrabold uppercase tracking-wider text-gray-400 mb-2";
+    const labelCls = "block text-[11px] font-extrabold   text-gray-400 mb-2";
     const inputCls = "w-full px-4 py-3 bg-gray-55 dark:bg-gray-900/50 border border-gray-100 dark:border-gray-800 rounded-2xl text-xs font-bold text-gray-900 dark:text-white focus:border-[#1b6b6b] focus:ring-4 focus:ring-[#1b6b6b]/10 outline-none transition-all";
 
     return (
@@ -157,14 +157,14 @@ export default function ExamBuilder() {
                     </button>
                     <div>
                         <h1 className="text-sm font-black text-gray-900 dark:text-white tracking-tight">Imtihon Konstruktori</h1>
-                        <p className="text-[11px] font-bold text-gray-400 uppercase tracking-wider mt-0.5">Mavzular bo'yicha savollarni saralash va qoidalar yaratish</p>
+                        <p className="text-[11px] font-bold text-gray-400 mt-0.5">Mavzular bo'yicha savollarni saralash va qoidalar yaratish</p>
                     </div>
                 </div>
                 
                 <button 
                     onClick={handleSave}
                     disabled={isSaving}
-                    className="px-6 py-2.5 bg-[#1b6b6b] hover:bg-[#155252] text-white rounded-xl text-[11px] font-extrabold uppercase tracking-wider shadow-sm shadow-[#1b6b6b]/20 active:scale-95 transition-all flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
+                    className="px-6 py-2.5 bg-[#1b6b6b] hover:bg-[#155252] text-white rounded-xl text-[11px] font-extrabold shadow-sm shadow-[#1b6b6b]/20 active:scale-95 transition-all flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
                 >
                     <Save size={14} />
                     {isSaving ? "Saqlanmoqda..." : "Imtihonni Saqlash"}
@@ -182,7 +182,7 @@ export default function ExamBuilder() {
                             </div>
                             <div>
                                 <h2 className="text-xs font-black text-gray-900 dark:text-white tracking-tight">Asosiy Ma'lumotlar</h2>
-                                <p className="text-[11px] font-bold text-gray-450 uppercase tracking-wider">Imtihon parametrlari</p>
+                                <p className="text-[11px] font-bold text-gray-450">Imtihon parametrlari</p>
                             </div>
                         </div>
                         
@@ -228,20 +228,20 @@ export default function ExamBuilder() {
                         
                         <div className="flex items-center gap-2 mb-6 relative z-10">
                             <Calculator className="w-5 h-5 text-teal-400" />
-                            <h3 className="text-[11px] font-bold text-white uppercase tracking-wider">Imtihon Blueprinti</h3>
+                            <h3 className="text-[11px] font-bold text-white">Imtihon Blueprinti</h3>
                         </div>
 
                         <div className="space-y-4 relative z-10">
                             <div className="flex justify-between items-end border-b border-slate-700/50 pb-3">
-                                <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Fanlar Soni</span>
+                                <span className="text-[11px] font-bold text-slate-400">Fanlar Soni</span>
                                 <span className="text-sm font-black text-white">{blocks.length} ta fan</span>
                             </div>
                             <div className="flex justify-between items-end border-b border-slate-700/50 pb-3">
-                                <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Jami Savollar</span>
+                                <span className="text-[11px] font-bold text-slate-400">Jami Savollar</span>
                                 <span className="text-xl font-black text-teal-400">{totalQuestions} <span className="text-[11px] font-bold text-slate-500">ta</span></span>
                             </div>
                             <div className="flex justify-between items-end">
-                                <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Maksimal Ball</span>
+                                <span className="text-[11px] font-bold text-slate-400">Maksimal Ball</span>
                                 <span className="text-xl font-black text-amber-500">{maxScore.toFixed(1)} <span className="text-[11px] font-bold text-slate-500">ball</span></span>
                             </div>
                         </div>
@@ -258,7 +258,7 @@ export default function ExamBuilder() {
                         
                         <button 
                             onClick={handleAddBlock}
-                            className="px-4 py-2.5 bg-teal-50 dark:bg-teal-950/20 text-[#1b6b6b] border border-teal-100 dark:border-teal-900/40 rounded-xl text-[11px] font-extrabold uppercase tracking-wider hover:bg-teal-100 transition-all flex items-center gap-1.5 cursor-pointer"
+                            className="px-4 py-2.5 bg-teal-50 dark:bg-teal-950/20 text-[#1b6b6b] border border-teal-100 dark:border-teal-900/40 rounded-xl text-[11px] font-extrabold hover:bg-teal-100 transition-all flex items-center gap-1.5 cursor-pointer"
                         >
                             <Plus size={14} />
                             Blok (Fan) Qo'shish
@@ -277,9 +277,9 @@ export default function ExamBuilder() {
                                         </div>
                                         <div className="flex flex-wrap gap-3 items-center">
                                             <div className="space-y-1">
-                                                <label className="text-[10px] font-bold text-gray-405 uppercase tracking-wider ml-1">Fan Tanlang</label>
+                                                <label className="text-[10px] font-bold text-gray-405 ml-1">Fan Tanlang</label>
                                                 <select 
-                                                    className="px-3 py-1.5 bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-800 rounded-xl text-[11px] font-bold uppercase tracking-wider focus:border-teal-500 outline-none text-gray-900 dark:text-white cursor-pointer"
+                                                    className="px-3 py-1.5 bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-800 rounded-xl text-[11px] font-bold focus:border-teal-500 outline-none text-gray-900 dark:text-white cursor-pointer"
                                                     value={block.subject}
                                                     onChange={e => handleUpdateBlock(block.id, { subject: e.target.value })}
                                                 >
@@ -290,9 +290,9 @@ export default function ExamBuilder() {
                                                 </select>
                                             </div>
                                             <div className="space-y-1">
-                                                <label className="text-[10px] font-bold text-gray-405 uppercase tracking-wider ml-1">Ball / Savol</label>
+                                                <label className="text-[10px] font-bold text-gray-405 ml-1">Ball / Savol</label>
                                                 <input type="number" step="0.1" 
-                                                    className="w-20 px-3 py-1.5 bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-800 rounded-xl text-[11px] font-bold uppercase tracking-wider focus:border-teal-500 outline-none text-amber-600"
+                                                    className="w-20 px-3 py-1.5 bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-800 rounded-xl text-[11px] font-bold focus:border-teal-500 outline-none text-amber-600"
                                                     value={block.pointsPerQuestion || ''}
                                                     onChange={e => handleUpdateBlock(block.id, { pointsPerQuestion: Number(e.target.value) })}
                                                 />
@@ -307,10 +307,10 @@ export default function ExamBuilder() {
                                 {/* Rules List */}
                                 <div className="p-5 space-y-4">
                                     <div className="flex items-center justify-between mb-1">
-                                        <h4 className="text-[11px] font-bold text-gray-400 uppercase tracking-wider">Mavzu bo'yicha qoidalar</h4>
+                                        <h4 className="text-[11px] font-bold text-gray-400">Mavzu bo'yicha qoidalar</h4>
                                         <button 
                                             onClick={() => handleAddRule(block.id)}
-                                            className="text-[11px] font-bold text-[#1b6b6b] uppercase tracking-wider flex items-center gap-1 hover:opacity-70 cursor-pointer"
+                                            className="text-[11px] font-bold text-[#1b6b6b] flex items-center gap-1 hover:opacity-70 cursor-pointer"
                                         >
                                             <Plus size={12} /> Mavzu Qo'shish
                                         </button>
@@ -324,9 +324,9 @@ export default function ExamBuilder() {
                                             return (
                                                 <div key={rIdx} className="grid grid-cols-12 gap-3 items-end bg-gray-55 dark:bg-gray-900/30 p-3.5 rounded-2xl border border-transparent hover:border-gray-100 transition-all">
                                                     <div className="col-span-5 space-y-1.5">
-                                                        <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider ml-1">Mavzu</label>
+                                                        <label className="text-[10px] font-bold text-gray-400 ml-1">Mavzu</label>
                                                         <select 
-                                                            className="w-full px-3 py-2 bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-800 rounded-xl text-[11px] font-bold uppercase tracking-wider focus:border-teal-500 outline-none text-gray-900 dark:text-white cursor-pointer"
+                                                            className="w-full px-3 py-2 bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-800 rounded-xl text-[11px] font-bold focus:border-teal-500 outline-none text-gray-900 dark:text-white cursor-pointer"
                                                             value={rule.topic}
                                                             onChange={e => handleUpdateRule(block.id, rIdx, 'topic', e.target.value)}
                                                         >
@@ -337,15 +337,15 @@ export default function ExamBuilder() {
                                                         </select>
                                                     </div>
                                                     <div className="col-span-3 space-y-1.5">
-                                                        <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider ml-1">Soni</label>
+                                                        <label className="text-[10px] font-bold text-gray-400 ml-1">Soni</label>
                                                         <input type="number" 
-                                                            className={`w-full px-3 py-2 bg-white dark:bg-gray-800 border ${isError ? 'border-rose-500 ring-2 ring-rose-500/10' : 'border-gray-100 dark:border-gray-800'} rounded-xl text-[11px] font-bold uppercase tracking-wider focus:border-teal-500 outline-none`}
+                                                            className={`w-full px-3 py-2 bg-white dark:bg-gray-800 border ${isError ? 'border-rose-500 ring-2 ring-rose-500/10' : 'border-gray-100 dark:border-gray-800'} rounded-xl text-[11px] font-bold focus:border-teal-500 outline-none`}
                                                             value={rule.count || ''}
                                                             onChange={e => handleUpdateRule(block.id, rIdx, 'count', Number(e.target.value))}
                                                         />
                                                     </div>
                                                     <div className="col-span-3 pb-2">
-                                                        <div className={`flex items-center gap-1 text-[11px] font-bold uppercase ${isError ? 'text-rose-500' : 'text-gray-450'}`}>
+                                                        <div className={`flex items-center gap-1 text-[11px] font-bold ${isError ? 'text-rose-500' : 'text-gray-450'}`}>
                                                             {isError ? <AlertTriangle size={12} /> : <CheckCircle2 size={12} className="text-teal-500" />}
                                                             {avail} ta bor
                                                         </div>
@@ -362,7 +362,7 @@ export default function ExamBuilder() {
                                         {block.topicRules.length === 0 && (
                                             <div className="py-8 text-center border border-dashed border-gray-100 dark:border-gray-800 rounded-2xl">
                                                 <Tag className="w-6 h-6 text-gray-200 mx-auto mb-2" />
-                                                <p className="text-[11px] font-bold text-gray-400 uppercase tracking-wider">Mavzu qoidalari mavjud emas</p>
+                                                <p className="text-[11px] font-bold text-gray-400">Mavzu qoidalari mavjud emas</p>
                                             </div>
                                         )}
                                     </div>

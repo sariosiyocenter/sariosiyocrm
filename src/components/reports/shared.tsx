@@ -45,7 +45,7 @@ export function BarChart({ data, height = 180, unit = '', horizontal = false }: 
             <div className="space-y-3">
                 {data.map((d, i) => (
                     <div key={i} className="flex items-center gap-3">
-                        <span className="text-[11px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider w-28 shrink-0 truncate">{d.label}</span>
+                        <span className="text-[11px] font-bold text-gray-500 dark:text-gray-400 w-28 shrink-0 truncate">{d.label}</span>
                         <div className="flex-1 h-7 bg-gray-100 dark:bg-gray-900 rounded-xl overflow-hidden">
                             <div
                                 className="h-full rounded-xl transition-all duration-700"
@@ -79,7 +79,7 @@ export function BarChart({ data, height = 180, unit = '', horizontal = false }: 
                             background: d.color || 'linear-gradient(180deg,#0ea5e9,#6366f1)'
                         }}
                     />
-                    <span className="text-[11px] font-bold text-gray-400 dark:text-gray-600 uppercase tracking-wider text-center leading-tight">{d.label}</span>
+                    <span className="text-[11px] font-bold text-gray-400 dark:text-gray-600 text-center leading-tight">{d.label}</span>
                 </div>
             ))}
         </div>
@@ -118,13 +118,13 @@ export function DonutChart({ slices, size = 160 }: { slices: DonutSlice[]; size?
                     return el;
                 })}
                 <text x={cx} y={cy} textAnchor="middle" dominantBaseline="middle" className="fill-gray-900 dark:fill-white text-sm font-extrabold" style={{ fontSize: 18, fontWeight: 800 }}>{total.toLocaleString()}</text>
-                <text x={cx} y={cy + 16} textAnchor="middle" dominantBaseline="middle" style={{ fontSize: 8, fontWeight: 700, fill: '#9ca3af', letterSpacing: '0.1em', textTransform: 'uppercase' }}>JAMI</text>
+                <text x={cx} y={cy + 16} textAnchor="middle" dominantBaseline="middle" style={{ fontSize: 8, fontWeight: 700, fill: '#9ca3af', letterSpacing: '0.1em', textTransform: '' }}>JAMI</text>
             </svg>
             <div className="space-y-2">
                 {slices.map((s, i) => (
                     <div key={i} className="flex items-center gap-2">
                         <div className="w-2.5 h-2.5 rounded-full shrink-0" style={{ background: s.color }} />
-                        <span className="text-[11px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">{s.label}</span>
+                        <span className="text-[11px] font-bold text-gray-500 dark:text-gray-400">{s.label}</span>
                         <span className="text-[11px] font-extrabold text-gray-900 dark:text-white ml-1">{s.value.toLocaleString()}</span>
                     </div>
                 ))}
@@ -170,7 +170,7 @@ export function LineChart({ data, color = '#0ea5e9', height = 140, unit = '' }: 
             </svg>
             <div className="flex justify-between mt-2">
                 {data.map((d, i) => (
-                    <span key={i} className="text-[11px] font-bold text-gray-400 dark:text-gray-600 uppercase tracking-wider text-center" style={{ width: `${100 / data.length}%` }}>{d.label}</span>
+                    <span key={i} className="text-[11px] font-bold text-gray-400 dark:text-gray-600 text-center" style={{ width: `${100 / data.length}%` }}>{d.label}</span>
                 ))}
             </div>
         </div>
@@ -183,7 +183,7 @@ export function ProgressBar({ value, max, color = '#0ea5e9', label, sub }: { val
     return (
         <div className="space-y-1.5">
             <div className="flex justify-between">
-                <span className="text-[11px] font-bold text-gray-700 dark:text-gray-300 uppercase tracking-wider">{label}</span>
+                <span className="text-[11px] font-bold text-gray-700 dark:text-gray-300">{label}</span>
                 <span className="text-[11px] font-extrabold tabular-nums" style={{ color }}>{pct}%{sub ? ` · ${sub}` : ''}</span>
             </div>
             <div className="h-2.5 bg-gray-100 dark:bg-gray-900 rounded-full overflow-hidden">
@@ -199,7 +199,7 @@ export function SectionHeader({ title, sub, action }: { title: string; sub?: str
         <div className="flex items-center justify-between mb-5">
             <div>
                 <h3 className="text-sm font-extrabold text-gray-900 dark:text-white tracking-tight">{title}</h3>
-                {sub && <p className="text-[11px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-wider mt-0.5">{sub}</p>}
+                {sub && <p className="text-[11px] font-bold text-gray-400 dark:text-gray-500 mt-0.5">{sub}</p>}
             </div>
             {action}
         </div>
@@ -222,7 +222,7 @@ export function EmptyState({ message }: { message: string }) {
             <div className="w-16 h-16 bg-gray-50 dark:bg-gray-900 rounded-2xl flex items-center justify-center mb-4">
                 <span className="text-2xl">📊</span>
             </div>
-            <p className="text-[11px] font-extrabold text-gray-400 dark:text-gray-500 uppercase tracking-wider">{message}</p>
+            <p className="text-[11px] font-extrabold text-gray-400 dark:text-gray-500">{message}</p>
         </div>
     );
 }
@@ -240,7 +240,7 @@ export function DataTable<T extends Record<string, any>>({ columns, rows, maxRow
                     <thead>
                         <tr className="border-b border-gray-100 dark:border-gray-700">
                             {columns.map(c => (
-                                <th key={String(c.key)} className="py-3 px-4 text-[11px] font-extrabold text-gray-400 dark:text-gray-500 uppercase tracking-wider whitespace-nowrap">{c.label}</th>
+                                <th key={String(c.key)} className="py-3 px-4 text-[11px] font-extrabold text-gray-400 dark:text-gray-500 whitespace-nowrap">{c.label}</th>
                             ))}
                         </tr>
                     </thead>
@@ -255,18 +255,18 @@ export function DataTable<T extends Record<string, any>>({ columns, rows, maxRow
                             </tr>
                         ))}
                         {pageRows.length === 0 && (
-                            <tr><td colSpan={columns.length} className="py-10 text-center text-[11px] font-bold text-gray-400 uppercase tracking-wider">Hech qanday ma'lumot topilmadi</td></tr>
+                            <tr><td colSpan={columns.length} className="py-10 text-center text-[11px] font-bold text-gray-400">Hech qanday ma'lumot topilmadi</td></tr>
                         )}
                     </tbody>
                 </table>
             </div>
             {totalPages > 1 && (
                 <div className="flex items-center justify-between mt-4 px-4">
-                    <span className="text-[11px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-wider">{rows.length} ta yozuv</span>
+                    <span className="text-[11px] font-bold text-gray-400 dark:text-gray-500">{rows.length} ta yozuv</span>
                     <div className="flex gap-2">
-                        <button onClick={() => setPage(p => Math.max(0, p - 1))} disabled={page === 0} className="px-3 py-1.5 text-[11px] font-bold uppercase tracking-wider border border-gray-200 dark:border-gray-700 rounded-xl disabled:opacity-30 hover:bg-gray-50 dark:hover:bg-gray-700 transition-all">Oldin</button>
+                        <button onClick={() => setPage(p => Math.max(0, p - 1))} disabled={page === 0} className="px-3 py-1.5 text-[11px] font-bold border border-gray-200 dark:border-gray-700 rounded-xl disabled:opacity-30 hover:bg-gray-50 dark:hover:bg-gray-700 transition-all">Oldin</button>
                         <span className="px-3 py-1.5 text-[11px] font-bold text-gray-600 dark:text-gray-300">{page + 1}/{totalPages}</span>
-                        <button onClick={() => setPage(p => Math.min(totalPages - 1, p + 1))} disabled={page === totalPages - 1} className="px-3 py-1.5 text-[11px] font-bold uppercase tracking-wider border border-gray-200 dark:border-gray-700 rounded-xl disabled:opacity-30 hover:bg-gray-50 dark:hover:bg-gray-700 transition-all">Keyin</button>
+                        <button onClick={() => setPage(p => Math.min(totalPages - 1, p + 1))} disabled={page === totalPages - 1} className="px-3 py-1.5 text-[11px] font-bold border border-gray-200 dark:border-gray-700 rounded-xl disabled:opacity-30 hover:bg-gray-50 dark:hover:bg-gray-700 transition-all">Keyin</button>
                     </div>
                 </div>
             )}

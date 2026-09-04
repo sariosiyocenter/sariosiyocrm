@@ -90,7 +90,7 @@ export default function Reports() {
                     <div className="w-16 h-16 bg-gray-50 dark:bg-gray-900 border border-gray-100 dark:border-gray-750 rounded-2xl flex items-center justify-center text-gray-300 dark:text-gray-700 mb-6">
                         <FileText size={28} />
                     </div>
-                    <p className="text-[11px] font-extrabold text-gray-400 dark:text-gray-500 uppercase tracking-wider">{t('report_select_hint')}</p>
+                    <p className="text-[11px] font-extrabold text-gray-400 dark:text-gray-500">{t('report_select_hint')}</p>
                 </div>
             );
         }
@@ -107,7 +107,7 @@ export default function Reports() {
                         </div>
                         <div>
                             <h1 className="text-lg font-black text-gray-900 dark:text-white tracking-tight">{t('reports_title')}</h1>
-                            <p className="text-[11px] font-bold text-gray-400 uppercase tracking-wider mt-0.5">
+                            <p className="text-[11px] font-bold text-gray-400 mt-0.5">
                                 {t('reports_subtitle')}
                             </p>
                         </div>
@@ -123,7 +123,7 @@ export default function Reports() {
                                 key={type}
                                 type="button"
                                 onClick={() => handlePreset(type as any)}
-                                className={`px-3 py-1.5 rounded-lg text-[11px] font-extrabold uppercase tracking-wider transition-all cursor-pointer ${
+                                className={`px-3 py-1.5 rounded-lg text-[11px] font-extrabold transition-all cursor-pointer ${
                                   selectedPreset === type
                                   ? 'bg-[#1b6b6b] text-white shadow-sm'
                                   : 'text-gray-500 dark:text-gray-400 hover:text-gray-800'
@@ -143,7 +143,7 @@ export default function Reports() {
                             onChange={(e) => { setStartDate(e.target.value); setSelectedPreset('custom'); }}
                             className="bg-gray-55 dark:bg-gray-900 px-3 py-1.5 rounded-xl border border-gray-100 dark:border-gray-800 text-xs font-bold text-gray-800 dark:text-gray-200 outline-none focus:border-[#1b6b6b] w-32 cursor-pointer"
                           />
-                          <span className="text-gray-400 dark:text-gray-500 font-extrabold text-[11px] uppercase tracking-wider">{t('date_to')}</span>
+                          <span className="text-gray-400 dark:text-gray-500 font-extrabold text-[11px]">{t('date_to')}</span>
                           <input
                             type="date"
                             value={endDate}
@@ -170,7 +170,7 @@ export default function Reports() {
                         <div className={`p-1.5 rounded-lg ${activeReport === report.id ? 'bg-white/20 text-white [&_svg]:!text-white' : 'bg-white dark:bg-gray-800'}`}>
                             {report.icon}
                         </div>
-                        <span className="text-[11px] font-extrabold uppercase tracking-wider">
+                        <span className="text-[11px] font-extrabold">
                             {report.label}
                         </span>
                     </button>
