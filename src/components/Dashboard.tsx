@@ -169,8 +169,11 @@ export default function Dashboard() {
 
     // Umumiy o'rin — guruhlarga biriktirilgan xonalar sig'imi yig'indisi.
     // Xona biriktirilmagan bo'lsa o'rin soni noma'lum, shuning uchun chiziq chizilmaydi.
+    // Sig'im faqat hamma guruhga xona biriktirilganda ma'noli: aks holda bitta
+    // guruhning 80 o'rni butun markaz uchun "100% band" deb chiqib ketardi.
+    const groupsWithoutRoom = groups.filter(g => !rooms.find(r => r.id === g.room)).length;
     const totalSeats = groups.reduce((n, g) => n + (rooms.find(r => r.id === g.room)?.capacity || 0), 0);
-    const seatsPct = totalSeats > 0 ? Math.min(100, Math.round((activeStudents / totalSeats) * 100)) : null;
+    const seatsPct = groupsWithoutRoom === 0 && totalSeats > 0 ? Math.min(100, Math.round((activeStudents / totalSeats) * 100)) : null;
 
     // Tushum kutilgan oylik yuklamaga nisbatan.
     const incomePct = monthlyExpected > 0 ? Math.min(100, Math.round((periodIncome / monthlyExpected) * 100)) : null;
@@ -341,7 +344,9 @@ export default function Dashboard() {
                             </span>
                         </>
                     ) : (
-                        <span className="text-[11px] text-gray-400 block mt-2">Xona sig'imi kiritilmagan</span>
+                        <span className="text-[11px] text-gray-400 block mt-2">
+                            {groupsWithoutRoom > 0 ? <><span className="num">{groupsWithoutRoom}</span> ta guruhga xona biriktirilmagan</> : "Xona sig'imi kiritilmagan"}
+                        </span>
                     )}
                 </div>
 

@@ -131,6 +131,36 @@ export default function CourseDetails() {
     const courseObj = (courses || []).find(c => c.id === group.courseId);
     const activeSyllabusId = group.syllabusId || courseObj?.syllabusId;
     const activeSyllabus = activeSyllabusId ? (syllabuses || []).find(s => s.id === activeSyllabusId) : null;
+    /** Dastur bo'yicha o'zlashtirish: mavzular modul bo'yicha guruhlanadi,
+     *  har modulda "Tugallangan" holatdagi mavzular ulushi. Holat O'quv reja
+     *  sahifasida belgilanadi; hech qanday holat qo'yilmagan bo'lsa 0%. */
+    const moduleProgress = (() => {
+        const order: string[] = [];
+        const map = new Map<string, { total: number; done: number }>();
+        ((topics || []).filter(t => activeSyllabus && t.syllabusId === activeSyllabus.id).sort((a, b) => a.order - b.order)).forEach(t => {
+            const key = (t.moduleName || '').trim() || 'Boshqa mavzular';
+            if (!map.has(key)) { map.set(key, { total: 0, done: 0 }); order.push(key); }
+            const m = map.get(key)!;
+            m.total += 1;
+            if (t.status === 'Tugallangan') m.done += 1;
+        });
+        return order.map(name => ({ name, ...map.get(name)! }));
+    })();
+
+    /** So'nggi 10 dars: yo'qlama yozuvlari sana bo'yicha guruhlanadi,
+     *  har darsda kelganlar ulushi. */
+    const recentLessons = (() => {
+        const byDate = new Map<string, { total: number; present: number }>();
+        (attendances || []).filter(a => a.groupId === group.id).forEach(a => {
+            const d = byDate.get(a.date) || { total: 0, present: 0 };
+            d.total += 1;
+            if (a.status === 'Keldi') d.present += 1;
+            byDate.set(a.date, d);
+        });
+        return [...byDate.entries()].sort((a, b) => b[0].localeCompare(a[0])).slice(0, 10).reverse()
+            .map(([date, d]) => ({ date, pct: d.total ? Math.round((d.present / d.total) * 100) : 0 }));
+    })();
+
     const courseTopics = activeSyllabus
         ? (topics || []).filter(t => t.syllabusId === activeSyllabus.id).sort((a, b) => a.order - b.order)
         : [];
@@ -620,6 +650,59 @@ export default function CourseDetails() {
                                             </>
                                         )}
                                     </div>
+
+                                    {/* Dastur bo'yicha o'zlashtirish. Guruh dasturning qayerida
+                                        turganini ochmasdan ko'rish uchun. */}
+                                    {moduleProgress.length > 0 && (
+                                        <div className="pt-4 border-t border-gray-100 dark:border-gray-800">
+                                            <div className="flex items-center justify-between mb-3">
+                                                <span className="text-[13px] font-semibold text-gray-900 dark:text-white">Dastur bo'yicha o'zlashtirish</span>
+                                                <button onClick={() => navigate('/syllabus')} className="text-[12px] text-[#1b6b6b] dark:text-teal-400 hover:underline cursor-pointer">Dastur →</button>
+                                            </div>
+                                            <div className="space-y-2.5">
+                                                {moduleProgress.map((m, i) => {
+                                                    const pct = m.total ? Math.round((m.done / m.total) * 100) : 0;
+                                                    return (
+                                                        <div key={m.name}>
+                                                            <div className="flex items-center justify-between gap-3 text-[12px]">
+                                                                <span className={`flex items-center gap-2 min-w-0 ${pct === 0 ? 'text-gray-400' : 'text-gray-700 dark:text-gray-200'}`}>
+                                                                    <span className={`num w-5 h-5 rounded-md flex items-center justify-center text-[10px] shrink-0 ${pct === 100 ? 'bg-emerald-500/15 text-emerald-500' : pct > 0 ? 'bg-[#1b6b6b]/15 text-[#1b6b6b] dark:text-teal-400' : 'bg-gray-100 dark:bg-gray-800 text-gray-400'}`}>
+                                                                        {pct === 100 ? '✓' : i + 1}
+                                                                    </span>
+                                                                    <span className="truncate">{m.name}</span>
+                                                                </span>
+                                                                <span className="num text-gray-400 shrink-0">{pct}%</span>
+                                                            </div>
+                                                            <div className="mt-1 h-1 rounded-full bg-gray-100 dark:bg-gray-800 overflow-hidden">
+                                                                <div className={`h-full rounded-full ${pct === 100 ? 'bg-emerald-500' : 'bg-[#1b6b6b]'}`} style={{ width: `${pct}%` }} />
+                                                            </div>
+                                                        </div>
+                                                    );
+                                                })}
+                                            </div>
+                                        </div>
+                                    )}
+
+                                    {/* So'nggi 10 dars davomati — bitta qatorda, har dars uchun ustun. */}
+                                    {recentLessons.length > 0 && (
+                                        <div className="pt-4 border-t border-gray-100 dark:border-gray-800">
+                                            <div className="flex items-center justify-between mb-3">
+                                                <span className="text-[13px] font-semibold text-gray-900 dark:text-white">So'nggi {recentLessons.length} dars davomati</span>
+                                                <span className="num text-[12px] text-gray-400">
+                                                    o'rtacha {Math.round(recentLessons.reduce((n, l) => n + l.pct, 0) / recentLessons.length)}%
+                                                </span>
+                                            </div>
+                                            <div className="flex items-end gap-1.5 h-14">
+                                                {recentLessons.map(l => (
+                                                    <div key={l.date} className="flex-1 flex flex-col items-center justify-end gap-1 h-full" title={`${l.date} · ${l.pct}%`}>
+                                                        <div className={`w-full rounded-sm ${l.pct >= 85 ? 'bg-emerald-500' : l.pct >= 70 ? 'bg-amber-400' : 'bg-rose-500'}`}
+                                                            style={{ height: `${Math.max(8, l.pct)}%` }} />
+                                                        <span className="num text-[9px] text-gray-400">{l.date.slice(8, 10)}</span>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        </div>
+                                    )}
                                 </div>
                             </div>
                         </div>
