@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Search, Plus, FileSpreadsheet, MoreVertical, X, Image as ImageIcon, MapPin, GraduationCap, QrCode, Trash2 } from 'lucide-react';
+import { Search, Plus, FileSpreadsheet, MoreVertical, X, Image as ImageIcon, MapPin, GraduationCap, QrCode, Trash2, SlidersHorizontal } from 'lucide-react';
 import { useCRM } from '../context/CRMContext';
 import { useConfirm } from './ConfirmDialog';
 import { useLang } from '../context/LanguageContext';
@@ -10,7 +10,7 @@ import { compressImage } from '../lib/image';
 import * as XLSX from 'xlsx';
 
 const inp = "w-full px-4 py-3 bg-gray-50 dark:bg-gray-900/50 border border-gray-100 dark:border-gray-800 rounded-2xl text-xs font-bold text-gray-900 dark:text-white focus:border-[#1b6b6b] focus:ring-4 focus:ring-[#1b6b6b]/10 outline-none transition-all";
-const lbl = "block text-[11px] font-extrabold uppercase tracking-wider text-gray-400 mb-2";
+const lbl = "block text-[11px] text-gray-400 mb-1.5";
 
 const UZB_REGIONS: Record<string, string[]> = {
   "Surxondaryo": [
@@ -207,6 +207,16 @@ export default function Students() {
     };
 
     const [quickFilter, setQuickFilter] = useState<'all' | 'qarzdor' | 'kelmayotgan' | 'faol' | 'arxiv'>('all');
+    /** Kengaytirilgan filtrlar yopiq turadi: sakkizta ochiladigan ro'yxat doim
+     *  ochiq bo'lganda ekranning uchdan birini egallar, lekin ularning deyarli
+     *  hammasida "Barchasi" tanlangan bo'lardi. Tugmada nechta filtr yoqilgani
+     *  ko'rinib turadi, ya'ni yopiq holatda ham hech narsa yashirin qolmaydi. */
+    const [showFilters, setShowFilters] = useState(false);
+
+    const DEFAULT_FILTERS = {
+        status: '', groupId: '', balanceStatus: 'all', dateRange: 'all', orgType: '',
+        muassasaSearch: '', region: '', district: '', location: '', missingInfo: '',
+    };
 
     /** Tez filtr chiplari uchun sanoq. Ular joriy filtrga bog'liq emas —
      *  aks holda bitta chip bosilgach qolganlari nolga tushib qolardi. */
@@ -244,6 +254,10 @@ export default function Students() {
         const wanted = searchParams.get('filter') === 'debt' ? 'debt' : null;
         if (wanted) setFilters(f => (f.balanceStatus === wanted ? f : { ...f, balanceStatus: wanted }));
     }, [searchParams]);
+
+    // Filtr tugmasidagi raqam: nechta filtr sukutdan farq qiladi.
+    const activeFilterCount = Object.entries(filters).filter(([k, v]) =>
+        v !== '' && !(k === 'balanceStatus' && v === 'all') && !(k === 'dateRange' && v === 'all')).length;
 
     const [activeMenu, setActiveMenu] = useState<{
         id: number;
@@ -623,7 +637,9 @@ export default function Students() {
                     ['all', t('all'), quickCounts.all, false],
                     ['qarzdor', 'Qarzdor', quickCounts.qarzdor, true],
                     ['kelmayotgan', 'Kelmayotgan', quickCounts.kelmayotgan, false],
-                    ['faol', t('status_active'), quickCounts.faol, false],
+                    // "Faol" chipi jami bilan teng bo'lsa ko'rsatilmaydi — ikkita
+                    // bir xil raqamli chip yonma-yon turishi chalkashtiradi.
+                    ['faol', t('status_active'), quickCounts.faol === quickCounts.all ? 0 : quickCounts.faol, false],
                     ['arxiv', t('status_archive'), quickCounts.arxiv, false],
                 ] as const).map(([key, label, count, warn]) => (
                     count > 0 || key === 'all' ? (
@@ -639,16 +655,39 @@ export default function Students() {
                 ))}
             </div>
                 <div className="px-6 pb-5 pt-3 border-t border-gray-50 dark:border-gray-800/50 space-y-3">
-                    <div className="relative">
+                    <div className="flex items-center gap-2">
+                    <div className="relative flex-1 min-w-0">
                         <Search size={14} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400" />
                         <input
                             type="text"
                             placeholder={t('search_placeholder_students')}
                             value={search}
                             onChange={e => setSearch(e.target.value)}
-                            className="w-full pl-9 pr-4 py-2.5 bg-gray-50 dark:bg-gray-900/50 border border-gray-100 dark:border-gray-800 rounded-xl text-xs font-bold text-gray-900 dark:text-white outline-none focus:border-[#1b6b6b] transition-all"
+                            className="w-full pl-9 pr-4 py-2.5 bg-gray-50 dark:bg-gray-900/50 border border-gray-100 dark:border-gray-800 rounded-xl text-[13px] text-gray-900 dark:text-white outline-none focus:border-[#1b6b6b] transition-colors"
                         />
                     </div>
+                        <button
+                            onClick={() => setShowFilters(v => !v)}
+                            className={`flex items-center gap-2 px-3.5 py-2.5 rounded-xl border text-[13px] font-medium transition-colors cursor-pointer shrink-0 ${showFilters || activeFilterCount > 0
+                                ? 'bg-[#1b6b6b] border-[#1b6b6b] text-white'
+                                : 'bg-white dark:bg-gray-800 border-gray-100 dark:border-gray-700 text-gray-500 dark:text-gray-400 hover:text-[#1b6b6b] hover:border-[#1b6b6b]'}`}
+                        >
+                            <SlidersHorizontal size={14} />
+                            Filtrlar
+                            {activeFilterCount > 0 && <span className="num opacity-80">{activeFilterCount}</span>}
+                        </button>
+                        {(activeFilterCount > 0 || search) && (
+                            <button
+                                onClick={() => { setSearch(''); setFilters(DEFAULT_FILTERS); }}
+                                title={t('filter_clear')}
+                                className="flex items-center gap-1.5 px-3 py-2.5 rounded-xl text-[13px] text-gray-400 hover:text-rose-500 transition-colors cursor-pointer shrink-0"
+                            >
+                                <X size={14} /> {t('filter_clear')}
+                            </button>
+                        )}
+                    </div>
+
+                    {showFilters && (
                     <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 xl:grid-cols-9 gap-3">
                         <div>
                             <label className={lbl}>{t('filter_status')}</label>
@@ -730,14 +769,8 @@ export default function Students() {
                                 <option value="parent_no_telegram">{t('defect_parent_no_telegram').replace('{count}', String(students.filter(s => (!!s.fatherPhone && (!s.fatherTelegramId || s.fatherTelegramId.trim() === '')) || (!!s.motherPhone && (!s.motherTelegramId || s.motherTelegramId.trim() === ''))).length))}</option>
                             </select>
                         </div>
-                        <div className="flex items-end">
-                            <button
-                                onClick={() => { setSearch(''); setFilters({status: '', groupId: '', balanceStatus: 'all', dateRange: 'all', orgType: '', muassasaSearch: '', region: '', district: '', location: '', missingInfo: ''}); }}
-                                className="w-full py-2 text-[11px] font-extrabold uppercase text-rose-500 hover:text-rose-600 flex items-center justify-center gap-1.5 cursor-pointer">
-                                <X size={12} /> {t('filter_clear')}
-                            </button>
-                        </div>
                     </div>
+                    )}
                 </div>
             </div>
 
