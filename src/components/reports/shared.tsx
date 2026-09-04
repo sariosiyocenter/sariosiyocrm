@@ -154,6 +154,9 @@ export function LineChart({ data, color = '#0ea5e9', height = 140, unit = '' }: 
     // Identifikator rangdan yasalganda "var(--color-brand)" qavslari bilan
     // birga id ga tushib, url(#...) ishlamay qolardi.
     const gradId = 'lg-' + color.replace(/[^a-zA-Z0-9]/g, '');
+    // Birlik butun qator uchun bitta: aks holda bitta chiziqda "51,9" va
+    // "500 001" yonma-yon chiqib, o'lchov buziladi.
+    const mlnda = maxVal >= 1000000;
     return (
         <div>
             <svg viewBox={`0 0 ${w} ${h + 4}`} className="w-full overflow-visible" style={{ height }}>
@@ -176,7 +179,7 @@ export function LineChart({ data, color = '#0ea5e9', height = 140, unit = '' }: 
                             <text x={x} y={y - 12} textAnchor="middle"
                                 fill={eng ? color : 'var(--color-matn-xira)'}
                                 fontSize="11" className="num">
-                                {d.value >= 1000000 ? (d.value / 1000000).toFixed(1).replace('.', ',') : d.value.toLocaleString('ru-RU')}
+                                {mlnda ? (d.value / 1000000).toFixed(1).replace('.', ',') : d.value.toLocaleString('ru-RU')}
                             </text>
                             <circle cx={x} cy={y} r={4} fill={color} stroke="var(--color-sirt)" strokeWidth={2} />
                         </g>

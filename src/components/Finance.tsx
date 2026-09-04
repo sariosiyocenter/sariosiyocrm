@@ -539,17 +539,21 @@ export default function Finance() {
                         <div className="flex flex-wrap items-center gap-3">
                             {/* Presets */}
                             <div className="flex items-center gap-1 bg-ichki p-1 rounded-xl border border-chiziq">
-                                {['this_month', 'last_30', 'this_year', 'all'].map((type) => {
-                                    const label = type === 'this_month' ? t('preset_this_month') : type === 'last_30' ? t('preset_30_days') : type === 'this_year' ? t('preset_this_year') : t('preset_all');
+                                {['this_month', 'last_30', 'this_year', 'all', 'custom'].map((type) => {
+                                    const label = type === 'this_month' ? t('preset_this_month')
+                                        : type === 'last_30' ? t('preset_30_days')
+                                        : type === 'this_year' ? t('preset_this_year')
+                                        : type === 'all' ? t('preset_all')
+                                        : 'Boshqa muddat';
                                     return (
                                         <button
                                             key={type}
                                             type="button"
-                                            onClick={() => handlePreset(type as any)}
-                                            className={`px-3 py-1.5 rounded-lg text-[11px] font-extrabold transition-all cursor-pointer ${
+                                            onClick={() => type === 'custom' ? setSelectedPreset('custom') : handlePreset(type as any)}
+                                            className={`px-3 py-1.5 rounded-lg text-[12px] transition-colors cursor-pointer ${
                                                 selectedPreset === type
-                                                    ? 'bg-brand text-brand-ust shadow'
-                                                    : 'text-matn-xira hover:text-gray-600'
+                                                    ? 'bg-brand text-brand-ust font-semibold'
+                                                    : 'text-matn-sokin hover:text-matn'
                                             }`}
                                         >
                                             {label}
@@ -558,22 +562,25 @@ export default function Finance() {
                                 })}
                             </div>
 
-                            {/* Custom inputs */}
-                            <div className="flex items-center gap-2">
-                                <input
-                                    type="date"
-                                    value={startDate}
-                                    onChange={(e) => { setStartDate(e.target.value); setSelectedPreset('custom'); }}
-                                    className="bg-ichki px-3 py-1.5 rounded-xl border border-chiziq text-xs font-bold text-matn-2 outline-none focus:border-brand w-32 cursor-pointer"
-                                />
-                                <span className="text-matn-xira font-extrabold text-[11px]">{t('date_to')}</span>
-                                <input
-                                    type="date"
-                                    value={endDate}
-                                    onChange={(e) => { setEndDate(e.target.value); setSelectedPreset('custom'); }}
-                                    className="bg-ichki px-3 py-1.5 rounded-xl border border-chiziq text-xs font-bold text-matn-2 outline-none focus:border-brand w-32 cursor-pointer"
-                                />
-                            </div>
+                            {/* Sana maydonlari faqat kerak bo'lganda ochiladi —
+                                bosh sahifadagi kabi. */}
+                            {selectedPreset === 'custom' && (
+                                <div className="flex items-center gap-2">
+                                    <input
+                                        type="date"
+                                        value={startDate}
+                                        onChange={(e) => { setStartDate(e.target.value); setSelectedPreset('custom'); }}
+                                        className="num bg-ichki px-2.5 h-[30px] rounded-lg border border-chiziq-kuchli text-[12px] text-matn-2 outline-none focus:border-brand cursor-pointer"
+                                    />
+                                    <span className="text-matn-xira text-[12px]">{t('date_to')}</span>
+                                    <input
+                                        type="date"
+                                        value={endDate}
+                                        onChange={(e) => { setEndDate(e.target.value); setSelectedPreset('custom'); }}
+                                        className="num bg-ichki px-2.5 h-[30px] rounded-lg border border-chiziq-kuchli text-[12px] text-matn-2 outline-none focus:border-brand cursor-pointer"
+                                    />
+                                </div>
+                            )}
 
                             {/* Search box if activeTab is payments or expenses */}
                             {(activeTab === 'payments' || activeTab === 'expenses') && (
