@@ -128,7 +128,7 @@ export default function QuestionEditor() {
                 <div className="flex items-center gap-4">
                     <button
                         onClick={() => navigate('/questions')}
-                        className="w-10 h-10 bg-sirt border border-chiziq rounded-xl flex items-center justify-center text-gray-450 hover:text-brand hover:bg-gray-55 transition-all shadow-sm cursor-pointer"
+                        className="w-10 h-10 bg-sirt border border-chiziq rounded-xl flex items-center justify-center text-matn-sokin hover:text-brand hover:bg-gray-55 transition-all shadow-sm cursor-pointer"
                     >
                         <ArrowLeft size={18} />
                     </button>
@@ -160,7 +160,7 @@ export default function QuestionEditor() {
                         <button
                             onClick={() => handleSave(true)}
                             disabled={isSaving}
-                            className="px-5 py-2.5 bg-chiziq text-gray-700 dark:text-gray-200 rounded-xl text-[11px] font-extrabold hover:bg-gray-250 transition-all flex items-center gap-1.5 cursor-pointer"
+                            className="px-5 py-2.5 bg-chiziq text-matn-2 rounded-xl text-[11px] font-extrabold hover:bg-gray-250 transition-all flex items-center gap-1.5 cursor-pointer"
                         >
                             <Plus size={14} />
                             Saqlash & Davom etish
@@ -288,7 +288,7 @@ export default function QuestionEditor() {
                             ) : (
                                 <button
                                     onClick={() => fileInputRef.current?.click()}
-                                    className="w-full p-4 border border-dashed border-gray-200 dark:border-gray-800 rounded-2xl text-center hover:border-teal-300 transition-all group cursor-pointer"
+                                    className="w-full p-4 border border-dashed border-chiziq rounded-2xl text-center hover:border-teal-300 transition-all group cursor-pointer"
                                 >
                                     <Image size={24} className="mx-auto text-gray-300 group-hover:text-brand transition-colors mb-2" />
                                     <p className="text-[11px] font-bold text-matn-xira">Rasm yuklash uchun bosing</p>
@@ -342,7 +342,7 @@ export default function QuestionEditor() {
                             <button
                                 onClick={() => handleSave(true)}
                                 disabled={isSaving}
-                                className="flex-1 py-3 bg-chiziq text-gray-700 dark:text-gray-200 rounded-xl text-[11px] font-extrabold hover:bg-gray-200 transition-all flex items-center justify-center gap-1.5 cursor-pointer"
+                                className="flex-1 py-3 bg-chiziq text-matn-2 rounded-xl text-[11px] font-extrabold hover:bg-gray-200 transition-all flex items-center justify-center gap-1.5 cursor-pointer"
                             >
                                 <Plus size={14} />
                                 Saqlash & Keyingi Savol ({addedCount + 1} →)

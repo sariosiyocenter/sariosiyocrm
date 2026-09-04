@@ -20,7 +20,7 @@ const MenuButton = ({ onClick, isActive, children, title }: any) => (
         className={`p-2 rounded-lg transition-all ${
             isActive 
             ? 'bg-teal-600 text-white shadow-lg' 
-            : 'text-matn-sokin hover:bg-gray-100 dark:hover:bg-gray-700'
+            : 'text-matn-sokin hover:bg-chiziq'
         }`}
     >
         {children}

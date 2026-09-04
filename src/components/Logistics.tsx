@@ -225,11 +225,11 @@ Unga biriktirilgan o'quvchilar bo'shatiladi.`)) deleteTransport(item.id); }} cla
                                 <div className="mt-4 pt-4 border-t border-dashed border-chiziq grid grid-cols-2 gap-4">
                                     <div>
                                         <span className="text-[10px] font-bold text-matn-xira block mb-0.5">{t('driver')}</span>
-                                        <span className="text-xs font-bold text-gray-700 dark:text-gray-200 tracking-tight">{item.driverName || t('unknown_teacher')}</span>
+                                        <span className="text-xs font-bold text-matn-2 tracking-tight">{item.driverName || t('unknown_teacher')}</span>
                                     </div>
                                     <div>
                                         <span className="text-[10px] font-bold text-matn-xira block mb-0.5">{t('capacity')}</span>
-                                        <span className="text-xs font-bold text-gray-700 dark:text-gray-200 tabular-nums">{t('capacity_unit').replace('{count}', String(item.capacity))}</span>
+                                        <span className="text-xs font-bold text-matn-2 tabular-nums">{t('capacity_unit').replace('{count}', String(item.capacity))}</span>
                                     </div>
                                 </div>
                                 <div className="mt-4 flex items-center justify-between">
@@ -427,9 +427,9 @@ Unga biriktirilgan o'quvchilar bo'shatiladi.`)) deleteTransport(item.id); }} cla
                         </div>
 
                         <div className="flex items-center justify-between bg-sirt rounded-2xl border border-chiziq p-3 shadow-sm">
-                            <button onClick={() => { const d = new Date(selectedDate); d.setDate(d.getDate() - 1); setSelectedDate(d.toISOString().split('T')[0]); }} className="w-8 h-8 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center justify-center transition-colors cursor-pointer"><ChevronLeft size={16} /></button>
-                            <span className="text-[11px] font-extrabold text-gray-700 dark:text-gray-200">{selectedDate}</span>
-                            <button onClick={() => { const d = new Date(selectedDate); d.setDate(d.getDate() + 1); setSelectedDate(d.toISOString().split('T')[0]); }} className="w-8 h-8 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center justify-center transition-colors cursor-pointer"><ChevronRight size={16} /></button>
+                            <button onClick={() => { const d = new Date(selectedDate); d.setDate(d.getDate() - 1); setSelectedDate(d.toISOString().split('T')[0]); }} className="w-8 h-8 rounded-lg hover:bg-chiziq flex items-center justify-center transition-colors cursor-pointer"><ChevronLeft size={16} /></button>
+                            <span className="text-[11px] font-extrabold text-matn-2">{selectedDate}</span>
+                            <button onClick={() => { const d = new Date(selectedDate); d.setDate(d.getDate() + 1); setSelectedDate(d.toISOString().split('T')[0]); }} className="w-8 h-8 rounded-lg hover:bg-chiziq flex items-center justify-center transition-colors cursor-pointer"><ChevronRight size={16} /></button>
                         </div>
                     </div>
 

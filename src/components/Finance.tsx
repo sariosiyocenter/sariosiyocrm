@@ -840,7 +840,7 @@ export default function Finance() {
                                                     {b.label}
                                                     {b.count > 0 && <span className="num text-matn-xira"> · {b.count}</span>}
                                                 </span>
-                                                <span className="num text-gray-700 dark:text-gray-200">
+                                                <span className="num text-matn-2">
                                                     {(b.sum / 1000000).toFixed(1)} mln
                                                 </span>
                                             </div>
@@ -971,10 +971,10 @@ export default function Finance() {
                                                 <span className="text-[11px] font-bold text-matn-xira">{rPayments.length} ta yozuv</span>
                                                 <div className="flex items-center gap-2">
                                                     <button onClick={() => setPayPage(p => Math.max(0, p - 1))} disabled={pPage === 0}
-                                                        className="px-3 py-1 text-[11px] font-bold border border-gray-200 dark:border-gray-800 rounded-lg disabled:opacity-30 hover:bg-gray-100 dark:hover:bg-gray-700 cursor-pointer transition-all">Oldin</button>
+                                                        className="px-3 py-1 text-[11px] font-bold border border-chiziq rounded-lg disabled:opacity-30 hover:bg-chiziq cursor-pointer transition-all">Oldin</button>
                                                     <span className="text-[11px] font-bold text-matn-2">{pPage + 1}/{pTotalPages}</span>
                                                     <button onClick={() => setPayPage(p => Math.min(pTotalPages - 1, p + 1))} disabled={pPage === pTotalPages - 1}
-                                                        className="px-3 py-1 text-[11px] font-bold border border-gray-200 dark:border-gray-800 rounded-lg disabled:opacity-30 hover:bg-gray-100 dark:hover:bg-gray-700 cursor-pointer transition-all">Keyin</button>
+                                                        className="px-3 py-1 text-[11px] font-bold border border-chiziq rounded-lg disabled:opacity-30 hover:bg-chiziq cursor-pointer transition-all">Keyin</button>
                                                 </div>
                                             </div>
                                         )}
@@ -1028,10 +1028,10 @@ export default function Finance() {
                                                 <span className="text-[11px] font-bold text-matn-xira">{allStudents.length} ta o'quvchi</span>
                                                 <div className="flex items-center gap-2">
                                                     <button onClick={() => setBalPage(p => Math.max(0, p - 1))} disabled={bPage === 0}
-                                                        className="px-3 py-1 text-[11px] font-bold border border-gray-200 dark:border-gray-800 rounded-lg disabled:opacity-30 hover:bg-gray-100 dark:hover:bg-gray-700 cursor-pointer transition-all">Oldin</button>
+                                                        className="px-3 py-1 text-[11px] font-bold border border-chiziq rounded-lg disabled:opacity-30 hover:bg-chiziq cursor-pointer transition-all">Oldin</button>
                                                     <span className="text-[11px] font-bold text-matn-2">{bPage + 1}/{bTotalPages}</span>
                                                     <button onClick={() => setBalPage(p => Math.min(bTotalPages - 1, p + 1))} disabled={bPage === bTotalPages - 1}
-                                                        className="px-3 py-1 text-[11px] font-bold border border-gray-200 dark:border-gray-800 rounded-lg disabled:opacity-30 hover:bg-gray-100 dark:hover:bg-gray-700 cursor-pointer transition-all">Keyin</button>
+                                                        className="px-3 py-1 text-[11px] font-bold border border-chiziq rounded-lg disabled:opacity-30 hover:bg-chiziq cursor-pointer transition-all">Keyin</button>
                                                 </div>
                                             </div>
                                         )}
@@ -1052,13 +1052,13 @@ export default function Finance() {
                                 <p className="text-[11px] font-bold text-matn-xira mt-0.5">Moliyaviy nazorat paneli</p>
                             </div>
                             <div className="flex items-center gap-2 bg-ichki/60 p-1.5 rounded-2xl border border-chiziq">
-                                <button onClick={prevBillingMonth} className="w-8 h-8 flex items-center justify-center rounded-xl border border-gray-200 dark:border-gray-800 hover:bg-gray-100 dark:hover:bg-gray-800 transition-all cursor-pointer">
+                                <button onClick={prevBillingMonth} className="w-8 h-8 flex items-center justify-center rounded-xl border border-chiziq hover:bg-gray-100 dark:hover:bg-gray-800 transition-all cursor-pointer">
                                     <ChevronLeft size={14} className="text-matn-sokin" />
                                 </button>
                                 <div className="text-center min-w-[110px]">
                                     <p className="text-xs font-black text-matn">{billingMonthLabel(billingMonth)}</p>
                                 </div>
-                                <button onClick={nextBillingMonth} className="w-8 h-8 flex items-center justify-center rounded-xl border border-gray-200 dark:border-gray-800 hover:bg-gray-100 dark:hover:bg-gray-800 transition-all cursor-pointer">
+                                <button onClick={nextBillingMonth} className="w-8 h-8 flex items-center justify-center rounded-xl border border-chiziq hover:bg-gray-100 dark:hover:bg-gray-800 transition-all cursor-pointer">
                                     <ChevronRight size={14} className="text-matn-sokin" />
                                 </button>
                             </div>
@@ -1440,7 +1440,7 @@ ${e.description || e.category} — ${Number(e.amount).toLocaleString()} so'm`)) 
                                                 <h4 className="text-xs font-bold text-matn mt-0.5">{selectedStudent.name}</h4>
                                                 {selectedStudent.phone && <p className="text-[11px] text-matn-xira font-bold mt-0.5">{selectedStudent.phone}</p>}
                                             </div>
-                                            <div className="grid grid-cols-2 gap-3 pt-2 border-t border-dashed border-gray-200 dark:border-gray-800/50">
+                                            <div className="grid grid-cols-2 gap-3 pt-2 border-t border-dashed border-chiziq/50">
                                                 <div>
                                                     <span className="text-[10px] font-bold text-matn-xira block">Joriy Balans</span>
                                                     <span className={`text-[12px] font-bold block mt-0.5 tabular-nums ${selectedStudent.balance >= 0 ? 'text-emerald-600' : 'text-rose-600'}`}>
@@ -1458,7 +1458,7 @@ ${e.description || e.category} — ${Number(e.amount).toLocaleString()} so'm`)) 
                                                     })()}
                                                 </div>
                                             </div>
-                                            <div className="pt-2 border-t border-dashed border-gray-200 dark:border-gray-800/50">
+                                            <div className="pt-2 border-t border-dashed border-chiziq/50">
                                                 <span className="text-[10px] font-bold text-matn-xira block">Kurslar</span>
                                                 {(() => {
                                                     const sg = groups.filter(g => (g.studentIds || []).includes(selectedStudent.id));

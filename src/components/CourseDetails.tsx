@@ -525,10 +525,10 @@ export default function CourseDetails() {
                                                         <th className="py-2 pl-3 w-20" />
                                                     </tr>
                                                 </thead>
-                                                <tbody className="divide-y divide-chiziq-mayin dark:divide-[#232d42]">
+                                                <tbody className="divide-y divide-chiziq-mayin ">
                                                     {groupStudents.map((s, idx) => {
                                                         return (
-                                                            <tr key={s.id} className="group hover:bg-gray-55/70 dark:hover:bg-[#0b111a] transition-colors">
+                                                            <tr key={s.id} className="group hover:bg-gray-55/70  transition-colors">
                                                                 <td className="num py-2.5 pr-3 text-[11px] text-matn-xira align-middle">
                                                                     {String(idx + 1).padStart(2, '0')}
                                                                 </td>
@@ -707,7 +707,7 @@ export default function CourseDetails() {
                                                     return (
                                                         <div key={m.name}>
                                                             <div className="flex items-center justify-between gap-3 text-[12px]">
-                                                                <span className={`flex items-center gap-2 min-w-0 ${pct === 0 ? 'text-matn-xira' : 'text-gray-700 dark:text-gray-200'}`}>
+                                                                <span className={`flex items-center gap-2 min-w-0 ${pct === 0 ? 'text-matn-xira' : 'text-matn-2'}`}>
                                                                     <span className={`num w-5 h-5 rounded-md flex items-center justify-center text-[10px] shrink-0 ${pct === 100 ? 'bg-emerald-500/15 text-emerald-500' : pct > 0 ? 'bg-brand/15 text-brand' : 'bg-ichki text-matn-xira'}`}>
                                                                         {pct === 100 ? '✓' : i + 1}
                                                                     </span>
@@ -772,7 +772,7 @@ export default function CourseDetails() {
                                     <div className="flex items-center gap-2 bg-sirt p-1.5 rounded-xl border border-chiziq shadow-sm w-full sm:w-auto justify-between">
                                         <button
                                             onClick={() => setSelectedDate(prev => getValidDate(prev, group.days, 'prev'))}
-                                            className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-gray-50 text-gray-450 hover:text-brand transition-all cursor-pointer"
+                                            className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-gray-50 text-matn-sokin hover:text-brand transition-all cursor-pointer"
                                             title="Oldingi dars"
                                         >
                                             <ArrowLeft size={16} />
@@ -783,7 +783,7 @@ export default function CourseDetails() {
 
                                         <button
                                             onClick={() => setSelectedDate(prev => getValidDate(prev, group.days, 'next'))}
-                                            className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-gray-50 text-gray-450 hover:text-brand transition-all cursor-pointer"
+                                            className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-gray-50 text-matn-sokin hover:text-brand transition-all cursor-pointer"
                                             title="Keyingi dars"
                                         >
                                             <ChevronRight size={16} />
@@ -829,7 +829,7 @@ export default function CourseDetails() {
                                     <div className="flex items-center justify-between pb-2 border-b border-chiziq-mayin">
                                         <span className="text-[11px] font-bold text-matn-xira">Dars yo'qlamasi ({selectedDate})</span>
                                         <div className="flex items-center gap-2">
-                                            <span className="text-[11px] font-bold text-gray-450">{groupStudents.length} ta o'quvchi</span>
+                                            <span className="text-[11px] font-bold text-matn-sokin">{groupStudents.length} ta o'quvchi</span>
                                             <button
                                                 onClick={() => addBatchAttendance(group.id, selectedDate, groupStudents.map(s => ({ studentId: s.id, status: 'Keldi' })), selectedTopicId ? Number(selectedTopicId) : undefined)}
                                                 className="px-2.5 py-1 rounded-lg text-[10px] font-bold bg-emerald-50 text-emerald-600 border border-emerald-100 hover:bg-emerald-500 hover:text-white hover:border-emerald-500 dark:bg-emerald-950/20 dark:text-emerald-400 dark:border-emerald-900/40 transition-all cursor-pointer"
@@ -848,7 +848,7 @@ export default function CourseDetails() {
                                         {groupStudents.map(s => {
                                             const status = getStudentAttStatus(s.id);
                                             return (
-                                                <div key={s.id} className={`flex items-center justify-between px-3 py-2 rounded-xl border transition-all ${status ? 'bg-sirt border-chiziq' : 'bg-ichki/40 border-dashed border-gray-200 dark:border-gray-800/50'}`}>
+                                                <div key={s.id} className={`flex items-center justify-between px-3 py-2 rounded-xl border transition-all ${status ? 'bg-sirt border-chiziq' : 'bg-ichki/40 border-dashed border-chiziq/50'}`}>
                                                     <div className="flex items-center gap-2 min-w-0">
                                                         <div className={`w-1.5 h-5 rounded-full shrink-0 ${status === 'Keldi' ? 'bg-emerald-400' : status === 'Kelmapdi' ? 'bg-rose-400' : status === 'Sababli' ? 'bg-sky-400' : status === 'Kechikdi' ? 'bg-orange-400' : 'bg-gray-200 dark:bg-gray-700'}`} />
                                                         <span className="text-[11px] font-bold text-matn tracking-tight truncate max-w-[100px]">{s.name}</span>
@@ -953,7 +953,7 @@ export default function CourseDetails() {
                                         type="month"
                                         value={paymentMonth}
                                         onChange={e => setPaymentMonth(e.target.value)}
-                                        className="px-3 py-1.5 text-xs font-semibold bg-sirt border border-gray-200 dark:border-gray-800 rounded-xl outline-none focus:ring-2 focus:ring-violet-500/20 focus:border-violet-400"
+                                        className="px-3 py-1.5 text-xs font-semibold bg-sirt border border-chiziq rounded-xl outline-none focus:ring-2 focus:ring-violet-500/20 focus:border-violet-400"
                                     />
                                 </div>
                             </div>
@@ -1131,7 +1131,7 @@ export default function CourseDetails() {
                                     </button>
                                 ))}
                                 {availableStudents.length === 0 && (
-                                    <p className="py-12 text-center text-[11px] text-gray-450 font-bold">O'quvchi topilmadi</p>
+                                    <p className="py-12 text-center text-[11px] text-matn-sokin font-bold">O'quvchi topilmadi</p>
                                 )}
                             </div>
                         </div>

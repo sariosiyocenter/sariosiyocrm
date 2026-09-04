@@ -151,7 +151,7 @@ export default function ExamBuilder() {
                 <div className="flex items-center gap-4">
                     <button 
                         onClick={() => navigate('/exams')}
-                        className="w-10 h-10 bg-sirt border border-chiziq rounded-xl flex items-center justify-center text-gray-450 hover:text-brand hover:bg-gray-50 transition-all shadow-sm group cursor-pointer"
+                        className="w-10 h-10 bg-sirt border border-chiziq rounded-xl flex items-center justify-center text-matn-sokin hover:text-brand hover:bg-gray-50 transition-all shadow-sm group cursor-pointer"
                     >
                         <ArrowLeft size={18} className="group-hover:-translate-x-0.5 transition-transform" />
                     </button>
@@ -182,7 +182,7 @@ export default function ExamBuilder() {
                             </div>
                             <div>
                                 <h2 className="text-xs font-black text-matn tracking-tight">Asosiy Ma'lumotlar</h2>
-                                <p className="text-[11px] font-bold text-gray-450">Imtihon parametrlari</p>
+                                <p className="text-[11px] font-bold text-matn-sokin">Imtihon parametrlari</p>
                             </div>
                         </div>
                         
@@ -345,7 +345,7 @@ export default function ExamBuilder() {
                                                         />
                                                     </div>
                                                     <div className="col-span-3 pb-2">
-                                                        <div className={`flex items-center gap-1 text-[11px] font-bold ${isError ? 'text-rose-500' : 'text-gray-450'}`}>
+                                                        <div className={`flex items-center gap-1 text-[11px] font-bold ${isError ? 'text-rose-500' : 'text-matn-sokin'}`}>
                                                             {isError ? <AlertTriangle size={12} /> : <CheckCircle2 size={12} className="text-teal-500" />}
                                                             {avail} ta bor
                                                         </div>
@@ -372,7 +372,7 @@ export default function ExamBuilder() {
                     </div>
                     
                     {blocks.length === 0 && (
-                        <div className="p-12 border border-dashed border-gray-200 dark:border-gray-800 rounded-2xl flex flex-col items-center justify-center text-center">
+                        <div className="p-12 border border-dashed border-chiziq rounded-2xl flex flex-col items-center justify-center text-center">
                             <Layers className="w-10 h-10 text-gray-300 mb-4" />
                             <p className="text-xs font-bold text-matn-sokin">Hozircha fanlar yo'q. Birinchi blokni qo'shing.</p>
                         </div>

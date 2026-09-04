@@ -428,7 +428,7 @@ export default function Settings() {
                 ) : autoRules.length === 0 ? (
                     <div className="py-10 text-center">
                         <Zap size={28} className="mx-auto text-gray-200 dark:text-gray-700 mb-3" />
-                        <p className="text-sm font-bold text-gray-700 dark:text-gray-200">Avtomatik qoidalar yo'q</p>
+                        <p className="text-sm font-bold text-matn-2">Avtomatik qoidalar yo'q</p>
                         <p className="text-xs text-matn-xira mt-1">To'lov eslatmasi yoki tug'ilgan kun tabrigini Xabarlar modulidan qo'shing.</p>
                     </div>
                 ) : (

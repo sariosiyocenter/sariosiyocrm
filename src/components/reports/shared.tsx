@@ -46,7 +46,7 @@ export function BarChart({ data, height = 180, unit = '', horizontal = false }: 
                 {data.map((d, i) => (
                     <div key={i} className="flex items-center gap-3">
                         <span className="text-[11px] font-bold text-matn-sokin w-28 shrink-0 truncate">{d.label}</span>
-                        <div className="flex-1 h-7 bg-gray-100 dark:bg-gray-900 rounded-xl overflow-hidden">
+                        <div className="flex-1 h-7 bg-ichki rounded-xl overflow-hidden">
                             <div
                                 className="h-full rounded-xl transition-all duration-700"
                                 style={{
@@ -201,7 +201,7 @@ export function ProgressBar({ value, max, color = '#0ea5e9', label, sub }: { val
                 <span className="text-[11px] font-bold text-matn-2">{label}</span>
                 <span className="text-[11px] font-extrabold tabular-nums" style={{ color }}>{pct}%{sub ? ` · ${sub}` : ''}</span>
             </div>
-            <div className="h-2.5 bg-gray-100 dark:bg-gray-900 rounded-full overflow-hidden">
+            <div className="h-2.5 bg-ichki rounded-full overflow-hidden">
                 <div className="h-full rounded-full transition-all duration-700" style={{ width: `${pct}%`, background: color }} />
             </div>
         </div>
@@ -259,7 +259,7 @@ export function DataTable<T extends Record<string, any>>({ columns, rows, maxRow
                             ))}
                         </tr>
                     </thead>
-                    <tbody className="divide-y divide-gray-50 dark:divide-gray-700/50">
+                    <tbody className="divide-y divide-chiziq-mayin">
                         {pageRows.map((row, i) => (
                             <tr key={i} className="hover:bg-gray-50/50 dark:hover:bg-gray-700/10 transition-colors">
                                 {columns.map(c => (

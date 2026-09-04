@@ -279,7 +279,7 @@ export default function ExamResults() {
                                                     <tr>
                                                         <td colSpan={7} className="px-4 pb-4">
                                                             <div className="bg-ichki rounded-2xl p-4 space-y-3 border border-chiziq">
-                                                                <p className="text-[11px] font-bold text-gray-450 mb-3">Fan Bo'yicha Natijalar</p>
+                                                                <p className="text-[11px] font-bold text-matn-sokin mb-3">Fan Bo'yicha Natijalar</p>
                                                                 {(result.blockScores as { subject: string; earned: number; max: number }[]).map((bs, i) => (
                                                                     <div key={i} className="flex items-center gap-4">
                                                                         <span className="text-[11px] font-bold text-matn-2 w-28 shrink-0">{bs.subject}</span>

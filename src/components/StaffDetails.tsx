@@ -646,18 +646,18 @@ export default function StaffDetails() {
                                                                         const inc = groupMonthIncome(g.id);
                                                                         return (
                                                                             <tr key={g.id} onClick={() => navigate(`/courses/${g.id}`)}
-                                                                                className="group hover:bg-gray-55/70 dark:hover:bg-gray-900/30 transition-colors cursor-pointer">
+                                                                                className="group hover:bg-ichki transition-colors cursor-pointer">
                                                                                 <td className="px-5 py-3 text-[13px] font-medium text-matn group-hover:text-brand transition-colors">
                                                                                     <span className="inline-block w-0.5 h-4 rounded-full bg-brand mr-3 align-middle" />{g.name}
                                                                                 </td>
                                                                                 <td className="px-3 py-3 text-[12px] text-matn-sokin">
                                                                                     {g.days === 'TOQ' ? 'Toq' : g.days === 'JUFT' ? 'Juft' : 'Har kuni'}{g.schedule ? <> · <span className="num">{g.schedule.split(' - ')[0]}</span></> : null}
                                                                                 </td>
-                                                                                <td className="num px-3 py-3 text-[13px] text-right text-gray-700 dark:text-gray-200">{(g.studentIds || []).length}</td>
+                                                                                <td className="num px-3 py-3 text-[13px] text-right text-matn-2">{(g.studentIds || []).length}</td>
                                                                                 <td className={`num px-3 py-3 text-[13px] text-right ${att === null ? 'text-matn-xira' : att >= 85 ? 'text-emerald-500' : att >= 70 ? 'text-amber-500' : 'text-rose-500'}`}>
                                                                                     {att === null ? '—' : `${att}%`}
                                                                                 </td>
-                                                                                <td className="num px-5 py-3 text-[13px] text-right text-gray-700 dark:text-gray-200">
+                                                                                <td className="num px-5 py-3 text-[13px] text-right text-matn-2">
                                                                                     {inc === null ? '—' : inc >= 1000000 ? `${(inc / 1000000).toFixed(1)} mln` : inc.toLocaleString()}
                                                                                 </td>
                                                                             </tr>
@@ -879,7 +879,7 @@ export default function StaffDetails() {
                                                     {kpiLoading ? (
                                                         <div className="py-8 text-center text-[11px] text-matn-xira font-bold">{t('loading')}</div>
                                                     ) : kpiPercent === 0 ? (
-                                                        <div className="p-4 bg-ichki border border-dashed border-gray-200 dark:border-gray-800 rounded-2xl text-center">
+                                                        <div className="p-4 bg-ichki border border-dashed border-chiziq rounded-2xl text-center">
                                                             <p className="text-[11px] text-matn-xira font-bold">{t('kpi_percent_not_set')}</p>
                                                         </div>
                                                     ) : kpiData?.groups?.length > 0 ? (
@@ -913,7 +913,7 @@ export default function StaffDetails() {
                                                             </table>
                                                         </div>
                                                     ) : (
-                                                        <div className="p-4 bg-ichki border border-dashed border-gray-200 dark:border-gray-800 rounded-2xl text-center">
+                                                        <div className="p-4 bg-ichki border border-dashed border-chiziq rounded-2xl text-center">
                                                             <p className="text-[11px] text-matn-xira font-bold">{t('no_group_payments_found')}</p>
                                                         </div>
                                                     )}
@@ -1154,7 +1154,7 @@ export default function StaffDetails() {
                                         )}
 
                                         {workDays.length === 0 ? (
-                                            <div className="py-10 text-center bg-ichki/40 rounded-2xl border border-dashed border-gray-200 dark:border-gray-800">
+                                            <div className="py-10 text-center bg-ichki/40 rounded-2xl border border-dashed border-chiziq">
                                                 <CalendarDays size={28} className="mx-auto text-gray-300 mb-2" />
                                                 <p className="text-[11px] font-bold text-matn-xira">
                                                     {t('attendance_setup_warning')}
@@ -1191,7 +1191,7 @@ export default function StaffDetails() {
                                                         } else if (status === 'Sababli') {
                                                             cls += 'bg-amber-100 dark:bg-amber-950/50 border-amber-300 dark:border-amber-800 text-amber-700 dark:text-amber-400 cursor-pointer hover:opacity-80';
                                                         } else {
-                                                            cls += `bg-sirt border-brand/20 text-gray-700 dark:text-gray-200 cursor-pointer hover:border-brand hover:bg-brand/5 ${isToday ? 'ring-2 ring-[#1b6b6b] ring-offset-1' : ''}`;
+                                                            cls += `bg-sirt border-brand/20 text-matn-2 cursor-pointer hover:border-brand hover:bg-brand/5 ${isToday ? 'ring-2 ring-[#1b6b6b] ring-offset-1' : ''}`;
                                                         }
 
                                                         return (
@@ -1229,7 +1229,7 @@ export default function StaffDetails() {
                                 <h3 className="text-sm font-black text-matn tracking-tight">{attPicker}</h3>
                                 <p className="text-[11px] font-bold text-matn-xira mt-0.5">Davomat holati</p>
                             </div>
-                            <button aria-label="Yopish" onClick={() => setAttPicker(null)} className="w-8 h-8 flex items-center justify-center text-matn-xira hover:bg-gray-100 dark:hover:bg-gray-700 rounded-xl cursor-pointer">
+                            <button aria-label="Yopish" onClick={() => setAttPicker(null)} className="w-8 h-8 flex items-center justify-center text-matn-xira hover:bg-chiziq rounded-xl cursor-pointer">
                                 <X size={18} />
                             </button>
                         </div>
@@ -1271,7 +1271,7 @@ export default function StaffDetails() {
                                 <h3 className="text-lg font-black text-matn tracking-tight">Tahrirlash</h3>
                                 <p className="text-[11px] font-bold text-brand mt-0.5">Ma'lumotlarni yangilash</p>
                             </div>
-                            <button aria-label="Yopish" onClick={() => setIsEditOpen(false)} className="w-9 h-9 flex items-center justify-center text-matn-xira hover:bg-gray-100 dark:hover:bg-gray-700 rounded-xl cursor-pointer"><X size={18} /></button>
+                            <button aria-label="Yopish" onClick={() => setIsEditOpen(false)} className="w-9 h-9 flex items-center justify-center text-matn-xira hover:bg-chiziq rounded-xl cursor-pointer"><X size={18} /></button>
                         </div>
                         <form onSubmit={handleSaveEdit} className="space-y-4">
                             <div className="flex items-center gap-4">

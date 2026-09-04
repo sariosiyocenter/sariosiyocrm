@@ -148,7 +148,7 @@ export default function OrgDetail() {
                 <th className="px-4 pr-8 py-4 text-[11px] font-extrabold text-matn-xira text-center">Kassa</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-gray-50 dark:divide-gray-700/50">
+            <tbody className="divide-y divide-chiziq-mayin">
               {org.schools.map((branch) => (
                 <tr key={branch.id} className="hover:bg-gray-50/30 dark:hover:bg-gray-700/10 transition-colors">
                   <td className="pl-8 pr-4 py-5">

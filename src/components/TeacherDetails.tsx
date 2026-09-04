@@ -245,7 +245,7 @@ export default function TeacherDetails() {
                                     <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-5 bg-ichki/40 border border-chiziq rounded-2xl">
                                         <div>
                                             <h3 className="text-xs font-black text-matn tracking-tight">Ishga kelishi</h3>
-                                            <p className="text-[11px] font-bold text-gray-450 mt-1">{new Date().toLocaleDateString('uz-UZ', { month: 'long' })} oyi</p>
+                                            <p className="text-[11px] font-bold text-matn-sokin mt-1">{new Date().toLocaleDateString('uz-UZ', { month: 'long' })} oyi</p>
                                         </div>
                                         <button onClick={() => setShowAttendanceModal(true)} 
                                             className="px-4 py-2 bg-brand hover:bg-brand-dark text-white rounded-xl text-[11px] font-extrabold transition-all cursor-pointer shadow-sm shadow-[#1b6b6b]/20">

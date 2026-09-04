@@ -384,14 +384,14 @@ export default function SyllabusManager() {
                     <button
                       onClick={handleDuplicateSyllabus}
                       disabled={isDuplicating}
-                      className="flex items-center gap-2 px-4 py-2.5 bg-ichki text-matn-2 rounded-xl text-[11px] font-bold border border-chiziq hover:bg-gray-100 dark:hover:bg-gray-700 transition-all cursor-pointer disabled:opacity-50"
+                      className="flex items-center gap-2 px-4 py-2.5 bg-ichki text-matn-2 rounded-xl text-[11px] font-bold border border-chiziq hover:bg-chiziq transition-all cursor-pointer disabled:opacity-50"
                     >
                       <Copy size={13} />
                       {isDuplicating ? 'Nusxalanmoqda…' : 'Nusxa olish'}
                     </button>
                     <button
                       onClick={() => handleOpenSyllabusModal(activeSyllabus)}
-                      className="flex items-center gap-2 px-4 py-2.5 bg-ichki text-matn-2 rounded-xl text-[11px] font-bold border border-chiziq hover:bg-gray-100 dark:hover:bg-gray-700 transition-all cursor-pointer"
+                      className="flex items-center gap-2 px-4 py-2.5 bg-ichki text-matn-2 rounded-xl text-[11px] font-bold border border-chiziq hover:bg-chiziq transition-all cursor-pointer"
                     >
                       <Edit size={13} />
                       Tahrirlash
@@ -423,7 +423,7 @@ export default function SyllabusManager() {
                 {syllabusTopics.length === 0 ? (
                   <div className="py-16 text-center">
                     <BookOpen size={36} className="text-gray-300 dark:text-gray-650 mx-auto mb-3" />
-                    <p className="text-xs text-gray-450 font-bold">Dasturda hali mavzular yo'q</p>
+                    <p className="text-xs text-matn-sokin font-bold">Dasturda hali mavzular yo'q</p>
                     <p className="text-[11px] text-matn-xira font-semibold mt-1">Dars kunlarida o'tiladigan mavzularni ketma-ketlik bo'yicha qo'shing.</p>
                     <button
                       onClick={() => handleOpenTopicModal()}

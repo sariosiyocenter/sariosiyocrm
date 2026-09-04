@@ -143,7 +143,7 @@ export default function ExamDetail() {
                 <div className="flex items-center gap-4">
                     <button 
                         onClick={() => navigate('/exams')}
-                        className="w-10 h-10 bg-sirt border border-chiziq rounded-xl flex items-center justify-center text-gray-450 hover:text-brand hover:bg-gray-55 transition-all shadow-sm cursor-pointer"
+                        className="w-10 h-10 bg-sirt border border-chiziq rounded-xl flex items-center justify-center text-matn-sokin hover:text-brand hover:bg-gray-55 transition-all shadow-sm cursor-pointer"
                     >
                         <ArrowLeft size={18} />
                     </button>
@@ -243,7 +243,7 @@ export default function ExamDetail() {
                                                     <span className="text-matn">{rule.count} ta</span>
                                                 </div>
                                             ))}
-                                            <div className="pt-2 mt-2 border-t border-dashed border-gray-200 dark:border-gray-800 flex justify-between items-center text-[11px] font-bold text-matn">
+                                            <div className="pt-2 mt-2 border-t border-dashed border-chiziq flex justify-between items-center text-[11px] font-bold text-matn">
                                                 <span>Jami {block.subject}</span>
                                                 <span>{blockQCount} ta</span>
                                             </div>

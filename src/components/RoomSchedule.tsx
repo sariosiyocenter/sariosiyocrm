@@ -33,7 +33,7 @@ const getGroupColor = (days: string) => {
     return { bg: 'bg-emerald-500/10 dark:bg-emerald-500/20', text: 'text-emerald-600 dark:text-emerald-400', border: 'border-emerald-500/30', dot: 'bg-emerald-400' };
 };
 
-const inp = "w-full px-3 py-2 bg-ichki border border-gray-200 dark:border-gray-800 rounded-xl text-xs font-bold text-matn focus:border-brand focus:ring-2 focus:ring-[#1b6b6b]/10 outline-none transition-all";
+const inp = "w-full px-3 py-2 bg-ichki border border-chiziq rounded-xl text-xs font-bold text-matn focus:border-brand focus:ring-2 focus:ring-[#1b6b6b]/10 outline-none transition-all";
 
 export default function RoomSchedule() {
     const { groups, rooms, teachers, courses, updateGroup } = useCRM();
@@ -239,7 +239,7 @@ export default function RoomSchedule() {
                     <div className="overflow-x-auto custom-scrollbar">
                         <table className="w-full border-collapse">
                             <thead>
-                                <tr className="bg-gray-50/50 dark:bg-gray-900/50 border-b border-chiziq">
+                                <tr className="bg-ichki border-b border-chiziq">
                                     <th className="sticky left-0 z-20 bg-ichki p-4 min-w-[200px] text-[11px] font-bold text-matn-xira text-left border-r border-chiziq">
                                         Xona nomi
                                     </th>
@@ -250,7 +250,7 @@ export default function RoomSchedule() {
                                     ))}
                                 </tr>
                             </thead>
-                            <tbody className="divide-y divide-gray-50 dark:divide-gray-700/50">
+                            <tbody className="divide-y divide-chiziq-mayin">
                                 {rooms.map(room => {
                                     const cells = buildRowCells(room.id);
                                     return (
@@ -266,7 +266,7 @@ export default function RoomSchedule() {
                                                     </div>
                                                     <div>
                                                         <p className="text-xs font-black text-matn tracking-tight">{room.name}</p>
-                                                        <p className="text-[11px] font-bold text-gray-450">{room.capacity} o'rin</p>
+                                                        <p className="text-[11px] font-bold text-matn-sokin">{room.capacity} o'rin</p>
                                                     </div>
                                                 </button>
                                             </td>
@@ -324,7 +324,7 @@ export default function RoomSchedule() {
                     <div className="overflow-x-auto custom-scrollbar">
                         <table className="w-full border-collapse">
                             <thead>
-                                <tr className="bg-gray-50/50 dark:bg-gray-900/50 border-b border-chiziq">
+                                <tr className="bg-ichki border-b border-chiziq">
                                     <th className="sticky left-0 z-20 bg-ichki p-4 min-w-[200px] text-[11px] font-bold text-matn-xira text-left border-r border-chiziq">
                                         Xona nomi
                                     </th>
@@ -335,7 +335,7 @@ export default function RoomSchedule() {
                                     ))}
                                 </tr>
                             </thead>
-                            <tbody className="divide-y divide-gray-50 dark:divide-gray-700/50">
+                            <tbody className="divide-y divide-chiziq-mayin">
                                 {rooms.map(room => (
                                     <tr key={room.id} className="group hover:bg-gray-50/30 dark:hover:bg-slate-700/20 transition-colors">
                                         {/* Room details */}
@@ -349,7 +349,7 @@ export default function RoomSchedule() {
                                                 </div>
                                                 <div>
                                                     <p className="text-xs font-black text-matn tracking-tight">{room.name}</p>
-                                                    <p className="text-[11px] font-bold text-gray-450">{room.capacity} o'rin</p>
+                                                    <p className="text-[11px] font-bold text-matn-sokin">{room.capacity} o'rin</p>
                                                 </div>
                                             </button>
                                         </td>
@@ -494,7 +494,7 @@ export default function RoomSchedule() {
                                                     className={`w-7 h-7 rounded-lg flex items-center justify-center transition-all cursor-pointer ${
                                                         isEditing
                                                             ? 'bg-gray-250 dark:bg-gray-700 text-gray-800 dark:text-white border border-gray-300 dark:border-slate-600'
-                                                            : 'bg-sirt hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-550 hover:text-brand border border-gray-200 dark:border-gray-800'
+                                                            : 'bg-sirt hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-550 hover:text-brand border border-chiziq'
                                                     }`}
                                                     title="Vaqtni o'zgartirish"
                                                 >
@@ -506,7 +506,7 @@ export default function RoomSchedule() {
                                         {/* Inline time editor */}
                                         {isEditing && (
                                             <div className="px-4 pb-4 border-t border-chiziq pt-3">
-                                                <p className="text-[11px] font-bold text-gray-450 mb-2">Dars vaqtini o'zgartirish</p>
+                                                <p className="text-[11px] font-bold text-matn-sokin mb-2">Dars vaqtini o'zgartirish</p>
                                                 <div className="flex items-center gap-3">
                                                     <div className="flex-1">
                                                         <label className="text-[11px] font-bold text-matn-xira block mb-1">Boshlanish</label>

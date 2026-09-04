@@ -357,7 +357,7 @@ export default function QuestionsList() {
                                                     e.stopPropagation();
                                                     if(await confirm('O\'chirishni xohlaysizmi?')) deleteQuestion(q.id);
                                                 }}
-                                                className="w-8 h-8 flex items-center justify-center rounded-lg text-matn-xira hover:text-rose-500 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors cursor-pointer"
+                                                className="w-8 h-8 flex items-center justify-center rounded-lg text-matn-xira hover:text-rose-500 hover:bg-chiziq transition-colors cursor-pointer"
                                             >
                                                 <Trash2 size={14} />
                                             </button>

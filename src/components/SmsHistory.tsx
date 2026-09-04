@@ -174,7 +174,7 @@ export default function SmsHistory() {
                                         </span>
                                     </td>
                                     <td className="p-4">
-                                        <p className="text-xs text-gray-600 dark:text-gray-400 max-w-md line-clamp-2 leading-relaxed">
+                                        <p className="text-xs text-matn-sokin max-w-md line-clamp-2 leading-relaxed">
                                             {log.message}
                                         </p>
                                     </td>

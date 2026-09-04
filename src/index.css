@@ -47,6 +47,7 @@
   --color-gray-400: #8b98ab;
   --color-gray-405: #838fa3;
   --color-gray-455: #7b8799;
+  --color-gray-450: #7f8c9f;
   --color-gray-500: #6d7b8f;
   --color-gray-550: #5e6b7d;
   --color-gray-600: #4e5a6b;
@@ -137,6 +138,15 @@
 
   --tracking-wider: 0.035em;
   --tracking-widest: 0.06em;
+
+  /* --- Radius ---------------------------------------------------------------
+     Chizmada kartochka 12px, tugma va input 8px. Ilovada rounded-2xl 413
+     joyda, rounded-xl 500+ joyda ishlatilgan — har birini qo'lda tuzatish
+     o'rniga shkalaning o'zi ko'chirildi. Natijada burchaklar bir xil
+     yumshoqlikka keldi va hech bir faylga tegilmadi. */
+  --radius-xl:  0.625rem;
+  --radius-2xl: 0.75rem;
+  --radius-3xl: 1rem;
 
   --font-mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
 }

@@ -329,7 +329,7 @@ export default function HRManagement() {
                                             const weeklyLessons = myGroups.reduce((n, g) => n + (g.days === 'TOQ' || g.days === 'JUFT' ? 3 : 6), 0);
                                             const loadPct = Math.min(100, Math.round((weeklyLessons / 24) * 100));
                                             return (
-                                                <tr key={u.id} className="group hover:bg-gray-55/70 dark:hover:bg-gray-900/30 transition-colors">
+                                                <tr key={u.id} className="group hover:bg-ichki transition-colors">
                                                     <td className="px-5 py-3 align-middle">
                                                         <div className="flex items-center gap-3 cursor-pointer min-w-0" onClick={() => navigate(profilePath)}>
                                                             <div className="w-8 h-8 rounded-full overflow-hidden shrink-0">
@@ -355,7 +355,7 @@ export default function HRManagement() {
                                                             {getRoleLabel(u.role)}
                                                         </span>
                                                     </td>
-                                                    <td className="num px-3 py-3 text-[13px] text-right text-gray-700 dark:text-gray-200 align-middle">
+                                                    <td className="num px-3 py-3 text-[13px] text-right text-matn-2 align-middle">
                                                         {groupCount || '—'}
                                                     </td>
                                                     <td className="px-3 py-3 align-middle">
@@ -371,7 +371,7 @@ export default function HRManagement() {
                                                             <span className="text-[12px] text-matn-xira">—</span>
                                                         )}
                                                     </td>
-                                                    <td className="num px-3 py-3 text-[13px] text-right text-gray-700 dark:text-gray-200 align-middle">
+                                                    <td className="num px-3 py-3 text-[13px] text-right text-matn-2 align-middle">
                                                         {u.salary > 0 ? u.salary.toLocaleString() : '—'}
                                                     </td>
                                                     <td className="px-5 py-3 align-middle">
@@ -388,13 +388,13 @@ export default function HRManagement() {
                                                             {isAdminOrManager && (
                                                                 <button onClick={() => { setEditingUser({ ...u, password: '' }); setIsEditOpen(true); }}
                                                                     title="Tahrirlash"
-                                                                    className="w-7 h-7 rounded-lg text-matn-xira hover:text-brand hover:bg-gray-100 dark:hover:bg-gray-900 flex items-center justify-center transition-colors cursor-pointer">
+                                                                    className="w-7 h-7 rounded-lg text-matn-xira hover:text-brand hover:bg-ichki flex items-center justify-center transition-colors cursor-pointer">
                                                                     <Pencil size={13} />
                                                                 </button>
                                                             )}
                                                             <button onClick={() => navigate(profilePath)}
                                                                 title={t('view_profile')}
-                                                                className="w-7 h-7 rounded-lg text-matn-xira hover:text-brand hover:bg-gray-100 dark:hover:bg-gray-900 flex items-center justify-center transition-colors cursor-pointer">
+                                                                className="w-7 h-7 rounded-lg text-matn-xira hover:text-brand hover:bg-ichki flex items-center justify-center transition-colors cursor-pointer">
                                                                 <Eye size={13} />
                                                             </button>
                                                             {isAdmin && (
@@ -556,7 +556,7 @@ function UserModal({
                         <h3 className="text-lg font-black text-matn tracking-tight">{title}</h3>
                         <p className="text-[11px] font-bold text-brand mt-0.5">{subtitle}</p>
                     </div>
-                    <button onClick={onClose} className="w-9 h-9 flex items-center justify-center text-matn-xira hover:bg-gray-100 dark:hover:bg-gray-700 rounded-xl cursor-pointer" aria-label="Yopish"><X size={18} /></button>
+                    <button onClick={onClose} className="w-9 h-9 flex items-center justify-center text-matn-xira hover:bg-chiziq rounded-xl cursor-pointer" aria-label="Yopish"><X size={18} /></button>
                 </div>
 
                 <form onSubmit={onSubmit} className="space-y-4">

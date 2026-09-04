@@ -16,7 +16,7 @@ const STATUSES = [
     { key: 'Sababli',     label: 'Sababli',          color: 'bg-sky-500',     text: 'text-sky-600 dark:text-sky-400',         light: 'hover:bg-sky-50 dark:hover:bg-sky-900/30',         icon: <HelpCircle size={11} />, short: 'S' },
     { key: 'Kechikdi',    label: 'Kechikib keldi',   color: 'bg-orange-400',  text: 'text-orange-600 dark:text-orange-400',   light: 'hover:bg-orange-50 dark:hover:bg-orange-900/30',   icon: <Clock size={11} />, short: '~' },
     { key: 'ErtaKetdi',   label: 'Erta ketdi',       color: 'bg-purple-500',  text: 'text-purple-600 dark:text-purple-400',   light: 'hover:bg-purple-50 dark:hover:bg-purple-900/30',   icon: <LogOut size={11} />, short: '↓' },
-    { key: "Dars bo'lmadi", label: "Dars bo'lmadi",  color: 'bg-gray-400 dark:bg-gray-600', text: 'text-matn-sokin', light: 'hover:bg-gray-100 dark:hover:bg-gray-700', icon: <Ban size={11} />, short: '—' },
+    { key: "Dars bo'lmadi", label: "Dars bo'lmadi",  color: 'bg-gray-400 dark:bg-gray-600', text: 'text-matn-sokin', light: 'hover:bg-chiziq', icon: <Ban size={11} />, short: '—' },
 ] as const;
 
 export default function AttendanceMatrix({ group, students, attendances, selectedDate }: AttendanceMatrixProps) {
@@ -143,16 +143,16 @@ export default function AttendanceMatrix({ group, students, attendances, selecte
                                         const resolvedStatusObj = att ? STATUSES.find(s => s.key === normalizedStatus) : null;
 
                                         if (isFuture) {
-                                            cellClass = 'border border-dashed border-gray-200 dark:border-gray-800 opacity-30';
+                                            cellClass = 'border border-dashed border-chiziq opacity-30';
                                         } else if (!att) {
-                                            cellClass = 'border border-gray-200 dark:border-gray-800 hover:bg-gray-100 dark:hover:bg-gray-700/60 hover:border-gray-400 dark:hover:border-gray-500';
+                                            cellClass = 'border border-chiziq hover:bg-chiziq/60 hover:border-gray-400 dark:hover:border-gray-500';
                                             content = <span className="text-matn-xira text-[11px] font-bold">—</span>;
                                         } else if (resolvedStatusObj) {
                                             cellClass = `${resolvedStatusObj.color} text-white`;
                                             content = <span className="text-[11px] font-bold">{resolvedStatusObj.short}</span>;
                                         } else if (att) {
                                             // unknown/legacy status — treat as unrecorded so user can re-set
-                                            cellClass = 'border border-gray-200 dark:border-gray-800 hover:bg-gray-100 dark:hover:bg-gray-700/60 hover:border-gray-400 dark:hover:border-gray-500';
+                                            cellClass = 'border border-chiziq hover:bg-chiziq/60 hover:border-gray-400 dark:hover:border-gray-500';
                                             content = <span className="text-matn-xira text-[11px] font-bold">—</span>;
                                         }
 
@@ -204,7 +204,7 @@ export default function AttendanceMatrix({ group, students, attendances, selecte
                     </div>
                 ))}
                 <div className="flex items-center gap-1.5">
-                    <div className="w-4 h-4 rounded-md border border-gray-200 dark:border-gray-800 flex items-center justify-center">
+                    <div className="w-4 h-4 rounded-md border border-chiziq flex items-center justify-center">
                         <span className="text-[7px] font-black text-gray-300">—</span>
                     </div>
                     <span className="text-[10px] font-bold text-matn-xira">Belgilanmagan</span>

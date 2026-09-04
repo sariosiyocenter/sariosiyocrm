@@ -97,8 +97,8 @@ export default function GroupAttendanceCalendar({ group, attendances, selectedDa
                     {monthName}
                 </h4>
                 <div className="flex items-center gap-1.5">
-                    <button onClick={handlePrevMonth} className="p-1.5 hover:bg-gray-50 dark:hover:bg-gray-800 rounded-lg text-gray-450 transition-all"><ChevronLeft size={16} /></button>
-                    <button onClick={handleNextMonth} className="p-1.5 hover:bg-gray-50 dark:hover:bg-gray-800 rounded-lg text-gray-450 transition-all"><ChevronRight size={16} /></button>
+                    <button onClick={handlePrevMonth} className="p-1.5 hover:bg-gray-50 dark:hover:bg-gray-800 rounded-lg text-matn-sokin transition-all"><ChevronLeft size={16} /></button>
+                    <button onClick={handleNextMonth} className="p-1.5 hover:bg-gray-50 dark:hover:bg-gray-800 rounded-lg text-matn-sokin transition-all"><ChevronRight size={16} /></button>
                 </div>
             </div>
 
@@ -139,7 +139,7 @@ export default function GroupAttendanceCalendar({ group, attendances, selectedDa
                                 }}
                                 className={`w-8 h-8 sm:w-9 sm:h-9 mx-auto rounded-xl flex flex-col items-center justify-center relative transition-all border group hover:scale-105 shadow-sm ${bg} ${border} z-10`}
                             >
-                                <span className={`text-[11px] font-bold ${isSelected ? 'text-sky-600 dark:text-sky-400 scale-110' : (isLesson ? 'text-gray-600 dark:text-gray-400' : 'text-gray-300 dark:text-gray-700')}`}>
+                                <span className={`text-[11px] font-bold ${isSelected ? 'text-sky-600 dark:text-sky-400 scale-110' : (isLesson ? 'text-matn-sokin' : 'text-gray-300 dark:text-gray-700')}`}>
                                     {d}
                                 </span>
                                 {isLesson && <div className={`absolute bottom-1 w-1 h-1 rounded-full ${dotColor}`} />}

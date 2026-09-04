@@ -360,7 +360,7 @@ export default function Courses() {
                                     const teacher = teachers.find(tc => tc.id === group.teacherId);
                                     return (
                                         <tr key={group.id} onClick={() => navigate(`/courses/${group.id}`)}
-                                            className="group hover:bg-gray-55/70 dark:hover:bg-gray-900/30 transition-colors cursor-pointer">
+                                            className="group hover:bg-ichki transition-colors cursor-pointer">
                                             <td className="px-5 py-3 text-[13px] font-medium text-matn group-hover:text-brand transition-colors">{group.name}</td>
                                             <td className={`px-3 py-3 text-[12px] ${teacher ? 'text-matn-sokin' : 'text-amber-500'}`}>
                                                 {teacher?.name || "Biriktirilmagan"}
@@ -368,7 +368,7 @@ export default function Courses() {
                                             <td className="px-3 py-3 text-[12px] text-matn-sokin">
                                                 {group.days === 'TOQ' ? t('odd_days') : group.days === 'JUFT' ? t('even_days') : t('every_day')}
                                             </td>
-                                            <td className="num px-3 py-3 text-[13px] text-right text-gray-700 dark:text-gray-200">
+                                            <td className="num px-3 py-3 text-[13px] text-right text-matn-2">
                                                 {st.members}{st.capacity ? ` / ${st.capacity}` : ''}
                                             </td>
                                             <td className={`num px-3 py-3 text-[13px] text-right ${st.payRate === null ? 'text-matn-xira' : st.payRate >= 80 ? 'text-emerald-500' : st.payRate >= 50 ? 'text-amber-500' : 'text-rose-500'}`}>
@@ -429,7 +429,7 @@ export default function Courses() {
                                             <div className="mt-3 pt-3 border-t border-chiziq">
                                                 <div className="flex items-center justify-between text-[11px]">
                                                     <span className="text-matn-xira">To'ldirilish</span>
-                                                    <span className="num text-gray-700 dark:text-gray-200">
+                                                    <span className="num text-matn-2">
                                                         {st.members}{st.capacity ? ` / ${st.capacity}` : ''}
                                                     </span>
                                                 </div>
@@ -458,7 +458,7 @@ export default function Courses() {
                                                 </div>
                                                 <div>
                                                     <span className="block text-[10px] text-matn-xira">{t('topic_label')}</span>
-                                                    <span className="num text-[13px] font-semibold text-gray-700 dark:text-gray-200">
+                                                    <span className="num text-[13px] font-semibold text-matn-2">
                                                         {st.totalTopics ? `${st.doneTopics}/${st.totalTopics}` : '—'}
                                                     </span>
                                                 </div>

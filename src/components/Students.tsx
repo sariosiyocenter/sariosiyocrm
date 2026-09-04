@@ -628,14 +628,14 @@ export default function Students() {
                     <div className="flex flex-wrap items-center gap-2">
                         <button
                             onClick={handleExport}
-                            className="flex items-center gap-2 px-3 py-2.5 bg-sirt border border-gray-200 dark:border-gray-800 text-matn-2 hover:border-brand hover:text-brand rounded-xl text-xs font-bold transition-all cursor-pointer"
+                            className="flex items-center gap-2 px-3 py-2.5 bg-sirt border border-chiziq text-matn-2 hover:border-brand hover:text-brand rounded-xl text-xs font-bold transition-all cursor-pointer"
                         >
                             <FileSpreadsheet size={14} /> {t('export')}
                         </button>
                         <button
                             onClick={() => document.getElementById('import-excel-input')?.click()}
                             disabled={isImporting}
-                            className="flex items-center gap-2 px-3 py-2.5 bg-sirt border border-gray-200 dark:border-gray-800 text-matn-2 hover:border-brand hover:text-brand rounded-xl text-xs font-bold transition-all cursor-pointer disabled:opacity-50"
+                            className="flex items-center gap-2 px-3 py-2.5 bg-sirt border border-chiziq text-matn-2 hover:border-brand hover:text-brand rounded-xl text-xs font-bold transition-all cursor-pointer disabled:opacity-50"
                         >
                             <FileSpreadsheet size={14} /> {t('import')}
                         </button>
@@ -643,7 +643,7 @@ export default function Students() {
                         {selectedSchoolId !== 0 && (
                             <button
                                 onClick={() => setIsLinkModalOpen(true)}
-                                className="flex items-center gap-2 px-3 py-2.5 bg-sirt border border-gray-200 dark:border-gray-800 text-matn-2 hover:border-brand hover:text-brand rounded-xl text-xs font-bold transition-all cursor-pointer"
+                                className="flex items-center gap-2 px-3 py-2.5 bg-sirt border border-chiziq text-matn-2 hover:border-brand hover:text-brand rounded-xl text-xs font-bold transition-all cursor-pointer"
                             >
                                 <QrCode size={14} /> {t('create_link')}
                             </button>
@@ -811,12 +811,12 @@ export default function Students() {
                 {/* Phone layout. The table below needs 900px, which is two and a half
                     screens of sideways scrolling on a 360px phone, so small screens get
                     cards carrying the same fields instead. */}
-                <div className="md:hidden divide-y divide-gray-50 dark:divide-gray-700/50">
+                <div className="md:hidden divide-y divide-chiziq-mayin">
                     {visibleStudents.map(student => {
                         const balance = student.balance || 0;
                         return (
                             <button key={student.id} onClick={() => navigate(`/students/${student.id}`)}
-                                className="w-full flex items-center gap-3 p-4 text-left hover:bg-gray-50/80 dark:hover:bg-gray-900/40 transition-colors cursor-pointer">
+                                className="w-full flex items-center gap-3 p-4 text-left hover:hover:bg-ichki transition-colors cursor-pointer">
                                 <div className="w-11 h-11 rounded-xl bg-ichki border border-chiziq flex items-center justify-center text-brand font-bold text-xs overflow-hidden shrink-0">
                                     {student.photo
                                         ? <img src={student.photo} alt={student.name} loading="lazy" decoding="async" className="w-full h-full object-cover" />
@@ -839,7 +839,7 @@ export default function Students() {
                     })}
                     {visibleStudents.length === 0 && (
                         <div className="py-14 px-6 text-center">
-                            <p className="text-sm font-bold text-gray-700 dark:text-gray-200">
+                            <p className="text-sm font-bold text-matn-2">
                                 {students.length === 0 ? "Hali o'quvchi qo'shilmagan" : "Hech narsa topilmadi"}
                             </p>
                             <p className="text-xs text-matn-xira mt-1">
@@ -969,7 +969,7 @@ export default function Students() {
                                                 <Search size={20} className="text-matn-xira" />
                                             </div>
                                             <div>
-                                                <p className="text-sm font-bold text-gray-700 dark:text-gray-200">
+                                                <p className="text-sm font-bold text-matn-2">
                                                     {students.length === 0 ? "Hali o'quvchi qo'shilmagan" : "Hech narsa topilmadi"}
                                                 </p>
                                                 <p className="text-xs text-matn-xira mt-1">
@@ -995,14 +995,14 @@ export default function Students() {
                             <button
                                 onClick={() => setPage(p => Math.max(1, p - 1))}
                                 disabled={currentPage === 1}
-                                className="px-3 py-1.5 rounded-lg text-[12px] font-extrabold bg-ichki text-matn-2 disabled:opacity-40 disabled:cursor-not-allowed hover:bg-gray-100 dark:hover:bg-gray-700 cursor-pointer transition-colors">
+                                className="px-3 py-1.5 rounded-lg text-[12px] font-extrabold bg-ichki text-matn-2 disabled:opacity-40 disabled:cursor-not-allowed hover:bg-chiziq cursor-pointer transition-colors">
                                 Oldingi
                             </button>
                             <span className="text-[12px] font-bold text-matn-sokin tabular-nums px-1">{currentPage} / {pageCount}</span>
                             <button
                                 onClick={() => setPage(p => Math.min(pageCount, p + 1))}
                                 disabled={currentPage === pageCount}
-                                className="px-3 py-1.5 rounded-lg text-[12px] font-extrabold bg-ichki text-matn-2 disabled:opacity-40 disabled:cursor-not-allowed hover:bg-gray-100 dark:hover:bg-gray-700 cursor-pointer transition-colors">
+                                className="px-3 py-1.5 rounded-lg text-[12px] font-extrabold bg-ichki text-matn-2 disabled:opacity-40 disabled:cursor-not-allowed hover:bg-chiziq cursor-pointer transition-colors">
                                 Keyingi
                             </button>
                         </div>
@@ -1303,7 +1303,7 @@ export default function Students() {
                                             <button
                                                 type="button"
                                                 onClick={addCertificate}
-                                                className="w-full py-2.5 bg-white dark:bg-slate-800 border border-dashed border-gray-200 dark:border-gray-800 rounded-xl text-[11px] font-bold text-brand hover:bg-teal-50/10 dark:hover:bg-teal-900/10 transition-colors flex items-center justify-center gap-1.5 cursor-pointer"
+                                                className="w-full py-2.5 bg-white dark:bg-slate-800 border border-dashed border-chiziq rounded-xl text-[11px] font-bold text-brand hover:bg-teal-50/10 dark:hover:bg-teal-900/10 transition-colors flex items-center justify-center gap-1.5 cursor-pointer"
                                             >
                                                 <Plus size={13} />
                                                 Sertifikat qo'shish
@@ -1523,7 +1523,7 @@ export default function Students() {
                         className="bg-sirt border border-chiziq rounded-xl shadow-xl py-1 w-32 z-50 text-left animate-in slide-in-from-top-1 duration-150"
                     >
                         <button onClick={() => { setActiveMenu(null); navigate(`/students/${activeMenu.id}`); }}
-                            className="w-full text-left px-4 py-2 text-[11px] font-bold text-gray-700 dark:text-gray-200 hover:bg-gray-55 dark:hover:bg-gray-700 cursor-pointer">
+                            className="w-full text-left px-4 py-2 text-[11px] font-bold text-matn-2 hover:bg-gray-55 dark:hover:bg-gray-700 cursor-pointer">
                             {t('details')}
                         </button>
                         <button onClick={() => { setActiveMenu(null); handleDeleteStudent(activeMenu.id, students.find(s => s.id === activeMenu.id)?.name || ''); }}

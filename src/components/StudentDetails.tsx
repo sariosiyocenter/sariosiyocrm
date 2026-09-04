@@ -962,7 +962,7 @@ export default function StudentDetails() {
                                         <button
                                             type="button"
                                             onClick={addEditCertificate}
-                                            className="w-full py-3 bg-ichki border border-dashed border-gray-200 dark:border-gray-800 rounded-2xl text-[11px] font-bold text-brand hover:bg-teal-50/10 dark:hover:bg-teal-900/10 transition-colors flex items-center justify-center gap-1.5 cursor-pointer"
+                                            className="w-full py-3 bg-ichki border border-dashed border-chiziq rounded-2xl text-[11px] font-bold text-brand hover:bg-teal-50/10 dark:hover:bg-teal-900/10 transition-colors flex items-center justify-center gap-1.5 cursor-pointer"
                                         >
                                             <Plus size={14} />
                                             Sertifikat qo'shish
@@ -1102,7 +1102,7 @@ export default function StudentDetails() {
                                                     Imtiyoz: {student.privilegeType === 'Sertifikat' ? `${student.certCategory} sertifikat` : student.privilegeType}
                                                 </p>
                                                 {student.privilegeType === 'Sertifikat' && (
-                                                    <p className="text-[10px] font-bold text-gray-450 mt-0.5">
+                                                    <p className="text-[10px] font-bold text-matn-sokin mt-0.5">
                                                         {student.certCategory === 'Milliy' ? `Fan: ${student.certSubject || '-'}` : `Turi: ${student.certType || '-'}`}
                                                         {student.certScore ? ` · Ball: ${student.certScore}` : ''}
                                                     </p>
@@ -1285,7 +1285,7 @@ export default function StudentDetails() {
                                                                 <p className="text-[11px] font-bold text-matn-xira mt-0.5">{p.date}</p>
                                                             </div>
                                                         </div>
-                                                        <span className={`text-[11px] font-bold px-2.5 py-1 rounded-md border ${isDed ? 'text-rose-500 bg-rose-50 border-rose-100 dark:bg-rose-950/20 dark:border-rose-900/40' : 'text-gray-600 dark:text-gray-400 bg-sirt border-chiziq'}`}>
+                                                        <span className={`text-[11px] font-bold px-2.5 py-1 rounded-md border ${isDed ? 'text-rose-500 bg-rose-50 border-rose-100 dark:bg-rose-950/20 dark:border-rose-900/40' : 'text-matn-sokin bg-sirt border-chiziq'}`}>
                                                             {isDed ? 'Oylik' : p.type === 'Naqd' ? t('type_cash') : p.type === 'Karta' ? t('type_card') : p.type === 'Peyme' ? t('type_payme') : p.type === 'Klik' ? t('type_click') : p.type}
                                                         </span>
                                                     </div>
@@ -1570,7 +1570,7 @@ export default function StudentDetails() {
                                         <div className="bg-sirt border border-chiziq rounded-2xl overflow-hidden divide-y divide-chiziq-mayin dark:divide-gray-700/40">
                                             {studentGroups.map(group => (
                                                 <div key={group.id} onClick={() => navigate(`/courses/${group.id}`)}
-                                                    className="group flex items-center gap-3 px-4 py-3.5 hover:bg-gray-55/70 dark:hover:bg-gray-900/30 transition-colors cursor-pointer">
+                                                    className="group flex items-center gap-3 px-4 py-3.5 hover:bg-ichki transition-colors cursor-pointer">
                                                     <div className="w-9 h-9 rounded-xl bg-brand/10 dark:bg-brand/20 flex items-center justify-center text-brand shrink-0">
                                                         <BookOpen size={16} />
                                                     </div>
@@ -1888,7 +1888,7 @@ export default function StudentDetails() {
                                     {studentScores.length === 0 ? (
                                         <div className="py-14 text-center">
                                             <Star size={28} className="mx-auto text-gray-200 dark:text-gray-700 mb-3" />
-                                            <p className="text-sm font-bold text-gray-700 dark:text-gray-200">Hali ball berilmagan</p>
+                                            <p className="text-sm font-bold text-matn-2">Hali ball berilmagan</p>
                                             <p className="text-xs text-matn-xira mt-1">Berilgan ballar hisobotlardagi reytingga qo'shiladi.</p>
                                         </div>
                                     ) : (
@@ -2250,12 +2250,12 @@ function PaymentAddModal({ studentId, onClose, onAdd }: { studentId: number; onC
 
                             <div className="space-y-2">
                                 <div>
-                                    <span className="text-[11px] text-gray-450 block">O'quvchi:</span>
+                                    <span className="text-[11px] text-matn-sokin block">O'quvchi:</span>
                                     <span className="font-black text-matn text-[13px]">{student?.name}</span>
                                 </div>
                                 {student?.phone && (
                                     <div>
-                                        <span className="text-[11px] text-gray-450 block">Telefon:</span>
+                                        <span className="text-[11px] text-matn-sokin block">Telefon:</span>
                                         <span>{student.phone}</span>
                                     </div>
                                 )}
@@ -2264,7 +2264,7 @@ function PaymentAddModal({ studentId, onClose, onAdd }: { studentId: number; onC
                                     if (sg.length === 0) return null;
                                     return (
                                         <div>
-                                            <span className="text-[11px] text-gray-450 block">Kurslar:</span>
+                                            <span className="text-[11px] text-matn-sokin block">Kurslar:</span>
                                             <div className="font-semibold">
                                                 {sg.map(g => {
                                                     const courseName = courses.find(c => c.id === g.courseId)?.name || '';
@@ -2334,7 +2334,7 @@ function PaymentAddModal({ studentId, onClose, onAdd }: { studentId: number; onC
                                         {student.phone && <p className="text-[11px] text-matn-xira font-bold mt-0.5">{student.phone}</p>}
                                     </div>
 
-                                    <div className="grid grid-cols-2 gap-3 pt-2 border-t border-dashed border-gray-200 dark:border-gray-800/50">
+                                    <div className="grid grid-cols-2 gap-3 pt-2 border-t border-dashed border-chiziq/50">
                                         <div>
                                             <span className="text-[10px] font-bold text-matn-xira block">Joriy Balans</span>
                                             <span className={`text-[12px] font-bold block mt-0.5 tabular-nums ${student.balance >= 0 ? 'text-emerald-600' : 'text-rose-600'}`}>
@@ -2357,7 +2357,7 @@ function PaymentAddModal({ studentId, onClose, onAdd }: { studentId: number; onC
                                         </div>
                                     </div>
 
-                                    <div className="pt-2 border-t border-dashed border-gray-200 dark:border-gray-800/50">
+                                    <div className="pt-2 border-t border-dashed border-chiziq/50">
                                         <span className="text-[10px] font-bold text-matn-xira block">Kurslar</span>
                                         {(() => {
                                             const sg = groups.filter(g => g.studentIds.includes(student.id));

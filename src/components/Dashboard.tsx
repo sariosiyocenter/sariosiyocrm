@@ -280,7 +280,7 @@ export default function Dashboard() {
     const recentPayments = (payments || [])
         .filter(p => p.amount > 0 && (p.date || '').slice(0, 10) <= todayISO)
         .sort((a, b) => (b.date || '').localeCompare(a.date || '') || b.id - a.id)
-        .slice(0, 5)
+        .slice(0, 4)
         .map(p => {
             const st = students.find(x => x.id === p.studentId);
             return {
