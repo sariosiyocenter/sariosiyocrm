@@ -500,7 +500,7 @@ export default function StaffDetails() {
                 <div className="lg:col-span-1 space-y-5">
                     <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-800/50 shadow-sm overflow-hidden">
                         {/* Banner */}
-                        <div className={`h-48 bg-gradient-to-br ${ROLE_GRADIENT[staffUser.role] || 'from-gray-400 to-gray-600'} relative`}>
+                        <div className={`h-20 bg-gradient-to-br ${ROLE_GRADIENT[staffUser.role] || 'from-gray-400 to-gray-600'} relative opacity-90`}>
                             {isAdminOrManager && (
                                 <button
                                     onClick={() => { setEditData({ ...staffUser, password: '' }); setIsEditOpen(true); }}
@@ -509,12 +509,12 @@ export default function StaffDetails() {
                                 </button>
                             )}
                             {/* Avatar — centred, extends below banner */}
-                            <div className="absolute -bottom-20 left-1/2 -translate-x-1/2 rounded-2xl bg-white dark:bg-gray-800 p-2 shadow-xl group/avatar">
-                                <div className="w-40 h-40 rounded-xl overflow-hidden flex items-center justify-center bg-gray-50 dark:bg-gray-900 border border-gray-100 dark:border-gray-800/50 relative">
+                            <div className="absolute -bottom-9 left-1/2 -translate-x-1/2 rounded-2xl bg-white dark:bg-gray-800 p-1 shadow-sm group/avatar">
+                                <div className="w-24 h-24 rounded-xl overflow-hidden flex items-center justify-center bg-gray-50 dark:bg-gray-900 border border-gray-100 dark:border-gray-800/50 relative">
                                     {staffUser.photo ? (
-                                        <img src={staffUser.photo} alt={staffUser.name} className="w-full h-full object-cover" />
+                                        <img src={staffUser.photo} alt={staffUser.name} className="w-full h-full object-cover object-top" />
                                     ) : (
-                                        <span className="text-5xl font-black text-[#1b6b6b]">
+                                        <span className="text-3xl font-bold text-[#1b6b6b]">
                                             {staffUser.name?.charAt(0).toUpperCase()}
                                         </span>
                                     )}
@@ -531,7 +531,7 @@ export default function StaffDetails() {
                         </div>
 
                         {/* Name / role */}
-                        <div className="pt-24 pb-6 px-6 text-center">
+                        <div className="pt-14 pb-5 px-6 text-center">
                             <h2 className="text-sm font-black text-gray-900 dark:text-white tracking-tight">{staffUser.name}</h2>
                             {staffUser.position && (
                                 <p className="text-[11px] font-bold text-gray-400 mt-1">{staffUser.position}</p>
@@ -1192,33 +1192,31 @@ export default function StaffDetails() {
 function StatCard({ label, value, sub, color }: { label: string; value: string | number; sub: string; color: string }) {
     const cls = { emerald:'border-emerald-100 dark:border-emerald-950/30 text-emerald-600 dark:text-emerald-400', rose:'border-rose-100 dark:border-rose-950/30 text-rose-600 dark:text-rose-400', amber:'border-amber-100 dark:border-amber-950/30 text-amber-600 dark:text-amber-400' }[color] || 'border-gray-100 text-gray-600';
     return (
-        <div className={`bg-white dark:bg-gray-800 border rounded-2xl p-4 ${cls}`}>
-            <span className="text-[11px] font-extrabold uppercase tracking-wider block mb-1 opacity-70">{label}</span>
-            <p className="text-2xl font-black tabular-nums">{value}</p>
-            <p className="text-[11px] font-bold text-gray-400 mt-1 uppercase tracking-wider">{sub}</p>
+        <div className="bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700/50 rounded-2xl px-5 py-4">
+            <span className="text-[12px] text-gray-500 dark:text-gray-400 block">{label}</span>
+            <p className={`num text-[26px] font-bold leading-none mt-1.5 ${cls.split(' ').filter(c => c.startsWith('text-')).join(' ') || 'text-gray-900 dark:text-white'}`}>{value}</p>
+            <p className="text-[11px] text-gray-400 mt-2">{sub}</p>
         </div>
     );
 }
 
 function InfoBox({ label, value }: { label: string; value: string }) {
     return (
-        <div className="bg-gray-50 dark:bg-gray-900/40 rounded-xl px-4 py-3 border border-gray-100 dark:border-gray-800/50">
-            <span className="text-[11px] font-extrabold text-gray-400 uppercase tracking-wider block mb-0.5">{label}</span>
-            <span className="text-xs font-black text-gray-900 dark:text-white">{value}</span>
+        <div className="bg-gray-55 dark:bg-gray-900/40 rounded-xl px-4 py-3 border border-gray-100 dark:border-gray-800/50">
+            <span className="text-[11px] text-gray-400 block mb-0.5">{label}</span>
+            <span className="text-[13px] font-medium text-gray-900 dark:text-white">{value}</span>
         </div>
     );
 }
 
 function DetailRow({ icon, label, value }: { icon: React.ReactNode; label: string; value: string }) {
     return (
-        <div className="flex items-center gap-3">
-            <div className="w-9 h-9 bg-teal-50 dark:bg-teal-950/20 border border-teal-100 dark:border-teal-900/40 rounded-xl flex items-center justify-center text-[#1b6b6b]">
-                {icon}
-            </div>
-            <div>
-                <span className="text-[11px] font-bold text-gray-400 uppercase tracking-wider leading-none block">{label}</span>
-                <span className="text-xs font-bold text-gray-900 dark:text-white tracking-tight mt-0.5 block truncate max-w-[150px]">{value}</span>
-            </div>
+        <div className="flex items-center justify-between gap-3 py-1.5">
+            <span className="flex items-center gap-2 text-[11px] text-gray-400 shrink-0">
+                <span className="text-gray-300 dark:text-gray-600 shrink-0">{icon}</span>
+                {label}
+            </span>
+            <span className="text-[12px] font-medium text-gray-900 dark:text-white text-right truncate min-w-0" title={value}>{value || '—'}</span>
         </div>
     );
 }
