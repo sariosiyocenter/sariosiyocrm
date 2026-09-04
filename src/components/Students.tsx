@@ -81,7 +81,7 @@ const UZB_REGIONS: Record<string, string[]> = {
 };
 
 export default function Students() {
-    const { students, groups, teachers, transports, addStudent, deleteStudent, importStudents, selectedSchoolId, showNotification } = useCRM();
+    const { students, groups, teachers, transports, attendances, addStudent, deleteStudent, importStudents, selectedSchoolId, showNotification } = useCRM();
     const confirm = useConfirm();
     const { t } = useLang();
     const navigate = useNavigate();
@@ -204,6 +204,23 @@ export default function Students() {
                 setTimeout(() => setCopySuccess(false), 2000);
             })
             .catch(err => console.error("Havolani nusxalashda xatolik:", err));
+    };
+
+    const [quickFilter, setQuickFilter] = useState<'all' | 'qarzdor' | 'kelmayotgan' | 'faol' | 'arxiv'>('all');
+
+    /** Tez filtr chiplari uchun sanoq. Ular joriy filtrga bog'liq emas —
+     *  aks holda bitta chip bosilgach qolganlari nolga tushib qolardi. */
+    const twoWeeksAgo = new Date(Date.now() - 14 * 86400000).toISOString().slice(0, 10);
+    const lastSeen = (id: number) => {
+        const ds = (attendances || []).filter(a => a.studentId === id && a.status === 'Keldi').map(a => a.date).sort();
+        return ds[ds.length - 1] || null;
+    };
+    const quickCounts = {
+        all: students.length,
+        faol: students.filter(s => s.status === 'Faol').length,
+        qarzdor: students.filter(s => (s.balance || 0) < 0).length,
+        kelmayotgan: students.filter(s => s.status === 'Faol' && (lastSeen(s.id) ?? '') < twoWeeksAgo).length,
+        arxiv: students.filter(s => s.status === 'Arxiv').length,
     };
 
     // Yuqori paneldagi "N qarzdor" tugmasi bu yerga ?filter=debt bilan olib keladi.
@@ -491,6 +508,14 @@ export default function Students() {
         const matchesLocation = !filters.location || s.location === filters.location;
 
         let matchesBalance = true;
+        // Tez filtr chiplari asosiy filtrlardan mustaqil ishlaydi.
+        let matchesQuick = true;
+        if (quickFilter === 'qarzdor') matchesQuick = (s.balance || 0) < 0;
+        else if (quickFilter === 'faol') matchesQuick = s.status === 'Faol';
+        else if (quickFilter === 'arxiv') matchesQuick = s.status === 'Arxiv';
+        else if (quickFilter === 'kelmayotgan') matchesQuick = s.status === 'Faol' && (lastSeen(s.id) ?? '') < twoWeeksAgo;
+        if (!matchesQuick) return false;
+
         if (filters.balanceStatus === 'debt') matchesBalance = (s.balance || 0) < 0;
         else if (filters.balanceStatus === 'positive') matchesBalance = (s.balance || 0) >= 0;
 
@@ -545,7 +570,9 @@ export default function Students() {
                         <div>
                             <h1 className="text-[26px] font-bold text-gray-900 dark:text-white tracking-tight leading-tight">{t('students_title')}</h1>
                             <p className="text-[13px] text-gray-500 dark:text-gray-400 mt-1">
-                                {t('students_count_summary').replace('{total}', String(students.length)).replace('{found}', String(filteredStudents.length))}
+                                <span className="num">{quickCounts.faol}</span> faol
+                                {quickCounts.qarzdor > 0 && <> · <span className="num">{quickCounts.qarzdor}</span> qarzdor</>}
+                                {quickCounts.kelmayotgan > 0 && <> · <span className="num">{quickCounts.kelmayotgan}</span> tasi 2 haftadan beri kelmagan</>}
                             </p>
                         </div>
                     </div>
@@ -585,6 +612,32 @@ export default function Students() {
                     </div>
                 </div>
 
+
+
+            {/* Tez filtr chiplari. Pastdagi kengaytirilgan filtrlar joyida qoladi —
+                bu qator eng ko'p ishlatiladigan to'rt kesimni bir bosishda beradi.
+                Sanoqlar joriy filtrga bog'liq emas, aks holda bitta chip bosilgach
+                qolganlari nolga tushib qolardi. */}
+            <div className="flex items-center gap-2 overflow-x-auto no-scrollbar">
+                {([
+                    ['all', t('all'), quickCounts.all, false],
+                    ['qarzdor', 'Qarzdor', quickCounts.qarzdor, true],
+                    ['kelmayotgan', 'Kelmayotgan', quickCounts.kelmayotgan, false],
+                    ['faol', t('status_active'), quickCounts.faol, false],
+                    ['arxiv', t('status_archive'), quickCounts.arxiv, false],
+                ] as const).map(([key, label, count, warn]) => (
+                    count > 0 || key === 'all' ? (
+                        <button key={key} onClick={() => setQuickFilter(key as any)}
+                            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[12px] font-medium border transition-colors cursor-pointer shrink-0 ${quickFilter === key
+                                ? (warn ? 'bg-rose-500 border-rose-500 text-white' : 'bg-[#1b6b6b] border-[#1b6b6b] text-white')
+                                : warn
+                                    ? 'bg-rose-50 dark:bg-rose-950/20 border-rose-100 dark:border-rose-900/40 text-rose-500 hover:border-rose-300'
+                                    : 'bg-white dark:bg-gray-800 border-gray-100 dark:border-gray-700 text-gray-500 dark:text-gray-400 hover:text-[#1b6b6b] hover:border-[#1b6b6b]'}`}>
+                            {label} <span className="num opacity-60">{count}</span>
+                        </button>
+                    ) : null
+                ))}
+            </div>
                 <div className="px-6 pb-5 pt-3 border-t border-gray-50 dark:border-gray-800/50 space-y-3">
                     <div className="relative">
                         <Search size={14} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400" />
@@ -760,23 +813,25 @@ export default function Students() {
                                             </div>
                                             <div>
                                                 <p className="text-xs font-bold text-gray-900 dark:text-white tracking-tight group-hover:text-[#1b6b6b] transition-colors">{student.name}</p>
-                                                <span className="text-[11px] text-gray-400 font-bold block mt-0.5 uppercase tracking-wider">{t('date')}: {student.joinedDate}</span>
+                                                {/* Qo'shilgan sana o'rniga maktab va sinf: ro'yxatda
+                                                    o'quvchini aynan shu bilan farqlashadi. */}
+                                                <span className="text-[11px] text-gray-400 block mt-0.5 truncate">
+                                                    {[student.studentSchool, student.orgType].filter(Boolean).join(' · ') || student.joinedDate}
+                                                </span>
                                             </div>
                                         </div>
                                     </td>
                                     <td className="p-4 text-center">
-                                        <span className="text-[11px] font-bold text-gray-900 dark:text-white bg-gray-50 dark:bg-gray-900/50 px-2.5 py-1 rounded-lg border border-gray-100 dark:border-gray-800 tabular-nums">
-                                            {student.phone}
-                                        </span>
+                                        <span className="num text-[12px] text-gray-600 dark:text-gray-300">{student.phone}</span>
                                     </td>
                                     <td className="p-4">
                                         <div className="flex flex-wrap gap-1">
                                             {getStudentGroups(student.groups || []).map(g => (
-                                                <span key={g.id} className="px-2 py-0.5 bg-[#1b6b6b]/10 text-[#1b6b6b] rounded-md text-[11px] font-extrabold uppercase tracking-wide">
+                                                <span key={g.id} className="px-2 py-0.5 bg-[#1b6b6b]/10 text-[#1b6b6b] dark:text-teal-400 rounded-md text-[11px] font-medium">
                                                     {g.name}
                                                 </span>
                                             ))}
-                                            {(student.groups || []).length === 0 && <span className="text-[11px] font-bold text-gray-400 uppercase tracking-wider italic">{t('no_group')}</span>}
+                                            {(student.groups || []).length === 0 && <span className="text-[11px] text-gray-400">{t('no_group')}</span>}
                                         </div>
                                     </td>
                                     <td className="p-4 text-right">
