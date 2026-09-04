@@ -252,24 +252,38 @@ Bazaga kerak maydonlar (qaror 2a bo'yicha qo'shiladi): `Course.level`, `Course.d
 4. Bazada yo'q raqam ko'rsatilmaydi; blok bo'sh qoladi.
 5. Referens — yo'nalish, nusxa emas: bizdagisi yaxshiroq bo'lsa (masalan Dashboard sana filtri) — qoladi.
 
-## 5. Ketma-ketlik — keyingi qadamlar
+## 5. Bajarildi
 
-Dizayn bosqichi yakunlandi: vizual tizim va yettita ekran chizilib, tasdiqlandi. Endi kod shu chizmalarga keltiriladi.
+Dizayn bosqichi yakunlandi va kodga o'tkazildi.
 
-```
-1-bosqich  tokenlar: semantik ranglar, sirt qatlamlari, chegara, o'lcham shkalasi   (M)
-E1   Button                                                                        (L)
-E2   Input / Select                                                                (M)
-E3   Chip / Badge                                                                  (M)
-E4   Tabs                                                                          (S)
-E5   Card                                                                          (M)
-E6   StatTile birlashtirish                                                        (S)
-E7   Table                                                                         (M)
-E8   ListRow                                                                       (M)
-E9   PageHeader — qolgan 5 sahifa                                                  (S)
-E10  Modal                                                                         (L)
-E11–E14                                                                            (S+XS+S+M)
-3-bosqich  sahifalar 4 → 5 → 9 → 10 → 11
-```
+| Qadam | Holat | Izoh |
+|---|---|---|
+| Token qatlami | ✅ | Kulrang shkala chizmadagi qiymatlarga keltirildi. Har pog'ona ilovadagi eng ko'p uchraydigan roliga qarab tanlangani uchun 25 ming qator kodga tegmasdan butun ilova yangi palitraga o'tdi. |
+| Ma'noli qatlamlar | ✅ | `bg-sirt`, `text-matn`, `border-chiziq` va boshqalar. Mavzu bilan almashadi. |
+| Qorong'u mavzuda brend | ✅ | `#1b6b6b` yangi `#0f1216` fonda ko'rinmasdi; endi har mavzuning yorqin varianti bor. |
+| Shrift | ✅ | Sora, orqasida Inter (kirill uchun). |
+| Chap panel va yuqori panel | ✅ | Uchta qatlam ajratildi: fon, panel, kartochka. |
+| E6 StatTile | ✅ | Uch faylda takrorlangan nusxa bitta komponentga birlashtirildi. Nisbat chizig'i endi izohsiz bo'lolmaydi. |
+| Bosh sahifa | ✅ | To'rtinchi ko'rsatkich, bugungi darslar, so'nggi to'lovlar. |
+| O'quvchilar ro'yxati | ✅ | Qator 74px → 57px, davomat ustuni, telefon formati, bosh harflar. |
+| Guruh sahifasi | ✅ | Takrorlangan "Qarzdor" belgisi o'rniga davomat; nisbat chiziqlari. |
+| Moliya | ✅ | Ettita kartochka → to'rtta; qarzdorlik yoshi va eng katta qarzdorlar umumiy sahifada. |
+| Xodimlar | ✅ | Yettita lavozim kartochkasi → chip; to'rtta ko'rsatkich; e'tibor bloki. |
+| O'quvchi profili | ✅ | Baland chap kartochka olib tashlandi, shaxs ma'lumoti sarlavha qatorida. |
+| Radius shkalasi | ✅ | Kartochka 12px, tugma 10px — shkala orqali, fayllarga tegmasdan. |
+| O'lik klasslar | ✅ | `text-gray-450` (21 joy) topildi va tuzatildi. |
 
-Hajm: XS — 1 soatgacha · S — 1–2 soat · M — yarim kun · L — bir kun.
+### Qolgan ishlar
+
+Bular chizmada bor, lekin hali kodga o'tmagan:
+
+- **E1 Button** — ilovada 90 xil tugma varianti bor. Ular hali bir joydan
+  boshqarilmaydi, faqat rangi tokenga o'tdi.
+- **E2 Input** — 20 ta alohida `inp`/`inputCls` doimiysi turli fayllarda.
+- **E10 Modal** — 27 ta modal, har biri o'z o'lchamida.
+- **Lidlar, O'quv reja, Sozlamalar** sahifalari faqat rang bo'yicha
+  yangilandi, tuzilishi tegilmagan.
+- **Bazaga qo'shiladigan 7 ta maydon** (`Course.level`, `Course.durationMonths`,
+  `Teacher.rating`, `Setting.monthlyRevenuePlan`, `Payment.acceptedById`,
+  `Score.type`, `Lead.telegramId`, `Lead.trialAt`) — tasdiqlangan, lekin
+  migratsiya qilinmagan.
