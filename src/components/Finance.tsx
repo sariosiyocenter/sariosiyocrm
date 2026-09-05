@@ -14,6 +14,7 @@ import { useLang } from '../context/LanguageContext';
 import { Payment, Expense } from '../types';
 import { StatCard, BarChart, DonutChart, LineChart } from './reports/shared';
 import { printReceipt } from '../lib/receipt';
+import { activeCourses } from '../lib/activeCourses';
 
 const inp = "w-full px-4 py-3 bg-slate-50 dark:bg-[#1a2232] border border-chiziq rounded-xl text-sm font-semibold text-slate-900 dark:text-white focus:border-brand focus:ring-2 focus:ring-brand/20 outline-none transition-all";
 const lbl = "block text-[11px] font-extrabold   text-matn-xira mb-2";
@@ -223,12 +224,14 @@ export default function Finance() {
     /** To'lov modalidagi kurs ro'yxati: avval o'quvchi a'zo bo'lgan guruhlarning
      *  kurslari, ular yo'q bo'lsa markazdagi barcha kurslar. */
     const paymentCourseOptions = useMemo(() => {
-        if (!selectedStudent) return courses;
+        // O'quvchi tanlanmagan bo'lsa — markazda haqiqatan o'qitilayotgan
+        // kurslar; tanlangach — faqat o'shaning kurslari.
+        if (!selectedStudent) return activeCourses(courses, groups);
         const ids = new Set(
             groups.filter(g => (g.studentIds || []).includes(selectedStudent.id)).map(g => g.courseId)
         );
         const own = courses.filter(c => ids.has(c.id));
-        return own.length > 0 ? own : courses;
+        return own.length > 0 ? own : activeCourses(courses, groups);
     }, [selectedStudent, groups, courses]);
 
     // All staff for salary expense selector (users + legacy teachers)

@@ -5,6 +5,7 @@ import {
   Activity, Calendar, Clock, ChevronRight, BookOpen, BarChart3, FileText, UserMinus, Award, Star, MoreHorizontal, ChevronDown
 } from 'lucide-react';
 import { useCRM } from '../context/CRMContext';
+import { activeCourses } from '../lib/activeCourses';
 import { useLang } from '../context/LanguageContext';
 import { useNavigate } from 'react-router-dom';
 import RoomSchedule from './RoomSchedule';
@@ -124,8 +125,7 @@ export default function Dashboard() {
 
     const courseStatsMap: { [key: string]: { name: string, students: number, revenue: number } } = {};
 
-    const PLACEHOLDER_COURSE_NAMES = ['birinchi', 'belgilanmagan', '-'];
-    courses.filter(c => !PLACEHOLDER_COURSE_NAMES.includes((c.name || '').trim().toLowerCase())).forEach(c => {
+    activeCourses(courses, groups).forEach(c => {
         const courseGroups = groups.filter(g => g.courseId === c.id);
         const studentCount = courseGroups.reduce((acc, g) => acc + (g.studentIds || []).length, 0);
         const revenue = studentCount * c.price;

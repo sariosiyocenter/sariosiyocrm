@@ -1587,14 +1587,21 @@ app.put('/api/courses/:id', authenticate, requireRole(...STAFF_MANAGERS), async 
 app.delete('/api/courses/:id', authenticate, requireRole(...STAFF_MANAGERS), async (req, res, next) => {
   try {
     const cId = parseInt(req.params.id);
-    // Detach all groups from this course before deleting (set courseId to a placeholder)
-    // First, find a fallback course (id=1 or any other) or just nullify by finding the 'birinchi' course
-    const fallback = await prisma.course.findFirst({
-      where: { NOT: { id: cId } }
-    });
-    if (fallback) {
-      await prisma.group.updateMany({ where: { courseId: cId }, data: { courseId: fallback.id } });
+    if (isNaN(cId)) return res.status(400).json({ error: "Noto'g'ri ID" });
+
+    // Ilgari bu yerda guruhlar ixtiyoriy boshqa kursga ko'chirilardi:
+    // findFirst filial bo'yicha ham filtrlanmagani uchun guruh butunlay
+    // boshqa markazning kursiga o'tib ketishi mumkin edi. Endi guruhi bor
+    // kursni o'chirib bo'lmaydi — avval guruhlarni ko'chirish kerak.
+    const groupCount = await prisma.group.count({ where: { courseId: cId } });
+    if (groupCount > 0) {
+      return res.status(400).json({
+        error: "Bu kursda " + groupCount + " ta guruh bor. Avval guruhlarni boshqa kursga o'tkazing yoki o'chiring."
+      });
     }
+
+    // To'lovlar kursga bog'langan bo'lsa, yozuv o'chmasin — faqat bog'lanish uziladi.
+    await prisma.payment.updateMany({ where: { courseId: cId }, data: { courseId: null } });
     await prisma.course.delete({ where: { id: cId } });
     res.json({ success: true });
   } catch (error) {

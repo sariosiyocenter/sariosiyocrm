@@ -4,6 +4,7 @@ import { useCRM } from '../context/CRMContext';
 import { useConfirm } from './ConfirmDialog';
 import { useLang } from '../context/LanguageContext';
 import { Lead } from '../types';
+import { activeCourses } from '../lib/activeCourses';
 
 const STAGES = [
   { id: 'yangi', name: 'Yangi', color: 'bg-sky-500', borderColor: 'border-sky-500', lightBgc: 'bg-sky-50 dark:bg-sky-950/20 text-sky-600 dark:text-sky-400 border-sky-100 dark:border-sky-900/30' },
@@ -86,6 +87,8 @@ const UZB_REGIONS: Record<string, string[]> = {
 
 export default function Leads() {
   const { leads, courses, groups, updateLead, addLead, deleteLead, addStudent } = useCRM();
+  // Guruhi bo'lmagan kurslar tanlash ro'yxatlarida ko'rinmaydi.
+  const selectableCourses = activeCourses(courses, groups);
     const confirm = useConfirm();
   const { t } = useLang();
 
@@ -383,7 +386,7 @@ export default function Leads() {
                 className="w-full px-3 py-2 bg-ichki border border-chiziq rounded-xl text-[11px] font-bold text-gray-700 dark:text-white outline-none focus:border-brand transition-all cursor-pointer"
               >
                 <option value="">{t('all')}</option>
-                {courses.map(c => <option key={c.id} value={c.name}>{c.name}</option>)}
+                {selectableCourses.map(c => <option key={c.id} value={c.name}>{c.name}</option>)}
               </select>
             </div>
             <div>
@@ -580,7 +583,7 @@ export default function Leads() {
                 <label className={lbl}>{t('course')} *</label>
                 <select required className={inp} value={newLead.course} onChange={e => setNewLead({ ...newLead, course: e.target.value })}>
                   <option value="" disabled>{t('select_placeholder')}</option>
-                  {courses.map(c => <option key={c.id} value={c.name}>{c.name}</option>)}
+                  {selectableCourses.map(c => <option key={c.id} value={c.name}>{c.name}</option>)}
                 </select>
               </div>
               <div>

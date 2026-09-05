@@ -14,6 +14,7 @@ import MapPicker from './MapPicker';
 import PhotoCapture from './PhotoCapture';
 import { uploadProfilePhoto } from '../lib/image';
 import { printReceipt } from '../lib/receipt';
+import { activeCourses } from '../lib/activeCourses';
 import FaceEnroll from './FaceEnroll';
 import PhotoViewer from './PhotoViewer';
 
@@ -2252,7 +2253,7 @@ function PaymentAddModal({ studentId, onClose, onAdd }: { studentId: number; onC
     const studentCourses = (() => {
         const ids = new Set(groups.filter(g => (g.studentIds || []).includes(studentId)).map(g => g.courseId));
         const own = courses.filter(c => ids.has(c.id));
-        return own.length > 0 ? own : courses;
+        return own.length > 0 ? own : activeCourses(courses, groups);
     })();
 
     const handleSubmit = async (e: React.FormEvent) => {
