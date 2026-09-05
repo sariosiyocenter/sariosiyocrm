@@ -268,7 +268,12 @@ app.post('/api/auth/change-password', authenticate, async (req, res, next) => {
 // --- User Management (Admin only) ---
 app.get('/api/users', authenticate, async (req, res, next) => {
   try {
-    if (req.user.role !== 'ADMIN' && req.user.role !== 'MANAGER') return res.status(403).json({ error: 'Ruhsat yo' });
+    // SUPERADMIN xodim qo'sha va o'chira olardi, lekin ro'yxatni ko'ra
+    // olmasdi. Markaz administratori yo'qolgan holatda uni tiklash uchun
+    // aynan shu ro'yxat kerak.
+    if (req.user.role !== 'ADMIN' && req.user.role !== 'MANAGER' && req.user.role !== 'SUPERADMIN') {
+      return res.status(403).json({ error: 'Ruhsat yo' });
+    }
 
     const { schoolId } = req.query;
     let where = {};
@@ -359,11 +364,69 @@ app.post('/api/users', authenticate, async (req, res, next) => {
   } catch (error) { next(error); }
 });
 
+// Xodim ustida amal qilishdan oldingi umumiy tekshiruvlar.
+// Xato bo'lsa {status, error} qaytaradi, hammasi joyida bo'lsa null.
+async function xodimAmaliTekshir(req, targetId) {
+  const target = await prisma.user.findUnique({ where: { id: targetId } });
+  if (!target) return { status: 404, error: 'Xodim topilmadi' };
+
+  const isSuper = req.user.role === 'SUPERADMIN';
+
+  // Filial chegarasi. Ilgari bu yo'q edi: bir filial admini boshqa
+  // filialning xodimini ham tahrirlay va o'chira olardi.
+  if (!isSuper && target.schoolId !== req.user.schoolId) {
+    return { status: 403, error: 'Bu xodim boshqa filialga tegishli' };
+  }
+
+  // Menejer ADMIN ustida hech qanday amal qila olmaydi.
+  if (req.user.role === 'MANAGER' && target.role === 'ADMIN') {
+    return { status: 403, error: 'Menejer administratorni o\'zgartira olmaydi' };
+  }
+
+  return { target, isSuper };
+}
+
+// Markazda boshqa ADMIN qoladimi? Oxirgisini o'chirish yoki lavozimini
+// tushirish markazni boshsiz qoldiradi.
+async function oxirgiAdminmi(target) {
+  if (target.role !== 'ADMIN') return false;
+  const soni = await prisma.user.count({
+    where: { schoolId: target.schoolId, role: 'ADMIN' }
+  });
+  return soni <= 1;
+}
+
 app.put('/api/users/:id', authenticate, async (req, res, next) => {
   try {
-    if (req.user.role !== 'ADMIN' && req.user.role !== 'MANAGER') return res.status(403).json({ error: 'Faqat ADMIN/MANAGER tahrirlay oladi' });
+    if (req.user.role !== 'ADMIN' && req.user.role !== 'MANAGER' && req.user.role !== 'SUPERADMIN') {
+      return res.status(403).json({ error: 'Faqat ADMIN/MANAGER tahrirlay oladi' });
+    }
     const { id } = req.params;
+    const targetId = parseInt(id);
+    if (!Number.isInteger(targetId)) return res.status(400).json({ error: 'Xodim raqami noto\'g\'ri' });
+
+    const tekshir = await xodimAmaliTekshir(req, targetId);
+    if (tekshir.error) return res.status(tekshir.status).json({ error: tekshir.error });
+    const { target } = tekshir;
+
     const { email, name, phone, photo, position, salary, role, password, workDays, kpiPercent } = req.body;
+
+    if (role !== undefined && role !== target.role) {
+      // Menejer o'zini yoki boshqani ADMIN/MANAGER qilib ko'tara olmaydi.
+      // Xodim qo'shishda bu taqiqlangan edi, tahrirlashda unutilgan.
+      if (req.user.role === 'MANAGER' && (role === 'ADMIN' || role === 'MANAGER')) {
+        return res.status(403).json({ error: 'Menejer bu lavozimni bera olmaydi' });
+      }
+      // O'z lavozimini o'zi o'zgartira olmaydi.
+      if (target.id === req.user.id) {
+        return res.status(400).json({ error: 'O\'z lavozimingizni o\'zingiz o\'zgartira olmaysiz' });
+      }
+      // Oxirgi administratorni tushirish markazni boshsiz qoldiradi.
+      if (await oxirgiAdminmi(target)) {
+        return res.status(400).json({ error: 'Bu markazdagi yagona administrator. Avval boshqa administrator tayinlang' });
+      }
+    }
+
     const data = {};
     if (email !== undefined) data.email = email;
     if (name !== undefined) data.name = name;
@@ -393,9 +456,38 @@ app.put('/api/users/:id', authenticate, async (req, res, next) => {
 
 app.delete('/api/users/:id', authenticate, async (req, res, next) => {
   try {
-    if (req.user.role !== 'ADMIN') return res.status(403).json({ error: 'Faqat ADMIN o\'chira oladi' });
+    if (req.user.role !== 'ADMIN' && req.user.role !== 'SUPERADMIN') {
+      return res.status(403).json({ error: 'Faqat ADMIN o\'chira oladi' });
+    }
     const { id } = req.params;
-    await prisma.user.delete({ where: { id: parseInt(id) } });
+    const targetId = parseInt(id);
+    if (!Number.isInteger(targetId)) return res.status(400).json({ error: 'Xodim raqami noto\'g\'ri' });
+
+    const tekshir = await xodimAmaliTekshir(req, targetId);
+    if (tekshir.error) return res.status(tekshir.status).json({ error: tekshir.error });
+    const { target } = tekshir;
+
+    // O'zini o'zi o'chirish. Aynan shu holat sodir bo'lgan: markaz rahbari
+    // HR bo'limidan o'z hisobini o'chirib yuborgan va markaz boshsiz qolgan.
+    if (target.id === req.user.id) {
+      return res.status(400).json({ error: 'O\'z hisobingizni o\'zingiz o\'chira olmaysiz' });
+    }
+
+    // Markazning yagona administratori.
+    if (await oxirgiAdminmi(target)) {
+      return res.status(400).json({ error: 'Bu markazdagi yagona administrator. Avval boshqa administrator tayinlang' });
+    }
+
+    try {
+      await prisma.user.delete({ where: { id: targetId } });
+    } catch (delErr) {
+      // Davomat yoki oylik yozuvi bor xodim o'chmaydi. Ilgari bu 500 bo'lib
+      // chiqardi va sabab ko'rinmasdi.
+      if (delErr.code === 'P2003' || delErr.code === 'P2014') {
+        return res.status(400).json({ error: 'Bu xodimda davomat yoki oylik yozuvlari bor, shuning uchun o\'chirib bo\'lmaydi' });
+      }
+      throw delErr;
+    }
     res.json({ success: true });
   } catch (error) { next(error); }
 });

@@ -322,6 +322,7 @@ export default function HRManagement() {
                                     <tbody className="divide-y divide-chiziq-mayin dark:divide-gray-700/40">
                                         {filteredUsers.map((u) => {
                                             const isLegacy = u._source === 'teacher';
+                                            const ozHisobi = !isLegacy && u.id === currentUser?.id;
                                             const profilePath = isLegacy ? `/teachers/${u._tid}` : `/hr/${u.id}`;
                                             const myGroups = (groups || []).filter(g => g.teacherId === (isLegacy ? u._tid : u.teacherId));
                                             const groupCount = myGroups.length;
@@ -390,7 +391,10 @@ export default function HRManagement() {
                                                                 className="w-7 h-7 rounded-lg text-matn-xira hover:text-brand hover:bg-ichki flex items-center justify-center transition-colors cursor-pointer">
                                                                 <Eye size={13} />
                                                             </button>
-                                                            {isAdmin && (
+                                                            {/* O'zini o'zi o'chira olmaydi. Aynan shu holat
+                                                                sodir bo'lgan: markaz rahbari o'z hisobini
+                                                                o'chirib, markaz boshsiz qolgan. */}
+                                                            {isAdmin && !ozHisobi && (
                                                                 <button
                                                                     onClick={() => isLegacy ? handleDeleteTeacher(u._tid) : handleDeleteUser(u.id)}
                                                                     title="O'chirish"
