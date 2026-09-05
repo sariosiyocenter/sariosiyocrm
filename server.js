@@ -552,6 +552,42 @@ app.delete('/api/users/:id', authenticate, async (req, res, next) => {
   } catch (error) { next(error); }
 });
 
+app.get('/api/staff-attendance', authenticate, async (req, res, next) => {
+  try {
+    if (req.user.role !== 'ADMIN' && req.user.role !== 'MANAGER') return res.status(403).json({ error: 'Ruhsat yo' });
+    const { userId, month } = req.query;
+    if (!userId) return res.status(400).json({ error: 'userId required' });
+    const where = { userId: parseInt(userId) };
+    if (month) where.date = { startsWith: String(month) };
+    const records = await prisma.staffAttendance.findMany({ where, orderBy: { date: 'asc' } });
+    res.json(records);
+  } catch (error) { next(error); }
+});
+
+app.post('/api/staff-attendance', authenticate, async (req, res, next) => {
+  try {
+    if (req.user.role !== 'ADMIN' && req.user.role !== 'MANAGER') return res.status(403).json({ error: 'Ruhsat yo' });
+    const { userId, date, status } = req.body;
+    const schoolId = req.user.schoolId;
+    const record = await prisma.staffAttendance.upsert({
+      where: { userId_date: { userId: parseInt(userId), date } },
+      update: { status },
+      create: { userId: parseInt(userId), date, status, schoolId }
+    });
+    res.json(record);
+  } catch (error) { next(error); }
+});
+
+app.delete('/api/staff-attendance', authenticate, async (req, res, next) => {
+  try {
+    if (req.user.role !== 'ADMIN' && req.user.role !== 'MANAGER') return res.status(403).json({ error: 'Ruhsat yo' });
+    const { userId, date } = req.query;
+    await prisma.staffAttendance.deleteMany({ where: { userId: parseInt(userId), date: String(date) } });
+    res.json({ success: true });
+  } catch (error) { next(error); }
+});
+
+
 // Oylik to'lovlari. SUPERADMIN ham ko'ra oladi: ilgari u 403 olardi, klient esa
 // javobni tekshirmasdan bo'sh massiv qilib qo'yardi va hamma oy "to'lanmagan"
 // bo'lib ko'rinardi.
