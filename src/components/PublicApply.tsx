@@ -9,6 +9,24 @@ interface Course {
     name: string;
 }
 
+interface PublicGroup {
+    id: number;
+    name: string;
+    schedule: string;
+    days: string;
+    courseId: number;
+    courseName: string;
+    teacherName: string;
+    studentCount: number;
+    capacity: number | null;
+}
+
+const DAY_LABELS: Record<string, string> = {
+    TOQ: 'Toq kunlar',
+    JUFT: 'Juft kunlar',
+    HAR_KUNI: 'Har kuni',
+};
+
 interface SchoolInfo {
     id: number;
     name: string;
@@ -27,6 +45,7 @@ export default function PublicApply() {
     const { schoolId } = useParams<{ schoolId: string }>();
     const [schoolInfo, setSchoolInfo] = useState<SchoolInfo | null>(null);
     const [courses, setCourses] = useState<Course[]>([]);
+    const [groups, setGroups] = useState<PublicGroup[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
 
@@ -42,6 +61,7 @@ export default function PublicApply() {
         motherPhone: '',
         address: '',
         course: '',
+        groupId: '' as number | '',
         notes: '',
         photo: '',
         certificates: [] as Certificate[]
@@ -125,6 +145,12 @@ export default function PublicApply() {
                     const coursesData = await coursesRes.json();
                     setCourses(coursesData);
                 }
+
+                // Hozir ochiq guruhlar — ariza beruvchi jadvalga qarab tanlaydi.
+                const groupsRes = await fetch(`/api/public/schools/${schoolId}/groups`);
+                if (groupsRes.ok) {
+                    setGroups(await groupsRes.json());
+                }
             } catch (err: any) {
                 setError(err.message || 'Xatolik yuz berdi');
             } finally {
@@ -188,6 +214,11 @@ export default function PublicApply() {
             </div>
         );
     }
+
+    // Tanlangan kursning guruhlari. Kurs tanlanmagan bo'lsa hech narsa ko'rsatilmaydi.
+    const courseGroups = form.course
+        ? groups.filter(g => g.courseName === form.course)
+        : [];
 
     const inp = "w-full pl-10 pr-4 py-3.5 bg-ichki border border-chiziq rounded-2xl text-xs font-bold text-gray-950 dark:text-white focus:border-[var(--brand-color,#1b6b6b)] focus:ring-4 focus:ring-[var(--brand-color,#1b6b6b)]/10 outline-none transition-all";
     const lbl = "block text-[11px] font-extrabold uppercase tracking-wider text-matn-xira mb-2";
@@ -520,7 +551,7 @@ export default function PublicApply() {
                                         required
                                         className={`${inp} appearance-none cursor-pointer`}
                                         value={form.course}
-                                        onChange={e => setForm({ ...form, course: e.target.value })}
+                                        onChange={e => setForm({ ...form, course: e.target.value, groupId: '' })}
                                     >
                                         <option value="">Kursni tanlang</option>
                                         {courses.map(c => (
@@ -529,6 +560,48 @@ export default function PublicApply() {
                                     </select>
                                 </div>
                             </div>
+
+                            {/* Hozir ochiq guruhlar. Kurs tanlangach faqat o'sha kursnikilari
+                                ko'rsatiladi; guruh tanlash ixtiyoriy. */}
+                            {courseGroups.length > 0 && (
+                                <div>
+                                    <label className={lbl}>Guruhni tanlang (ixtiyoriy)</label>
+                                    <div className="space-y-2">
+                                        {courseGroups.map(g => {
+                                            const isFull = g.capacity !== null && g.studentCount >= g.capacity;
+                                            const selected = form.groupId === g.id;
+                                            return (
+                                                <button
+                                                    key={g.id}
+                                                    type="button"
+                                                    onClick={() => setForm({ ...form, groupId: selected ? '' : g.id })}
+                                                    className={`w-full text-left px-4 py-3 rounded-2xl border transition-all cursor-pointer ${
+                                                        selected
+                                                            ? 'border-[var(--brand-color,#1b6b6b)] bg-[var(--brand-color,#1b6b6b)]/8'
+                                                            : 'border-chiziq bg-ichki hover:border-[var(--brand-color,#1b6b6b)]/50'
+                                                    }`}
+                                                >
+                                                    <div className="flex items-center justify-between gap-2">
+                                                        <span className="text-xs font-extrabold text-gray-950 dark:text-white truncate">{g.name}</span>
+                                                        {isFull
+                                                            ? <span className="text-[10px] font-extrabold text-rose-500 shrink-0">To'lgan</span>
+                                                            : g.capacity !== null && (
+                                                                <span className="text-[10px] font-bold text-matn-xira shrink-0 tabular-nums">
+                                                                    {g.capacity - g.studentCount} ta joy
+                                                                </span>
+                                                            )}
+                                                    </div>
+                                                    <div className="text-[11px] font-bold text-matn-xira mt-1 truncate">
+                                                        {[DAY_LABELS[g.days] || g.days, g.schedule, g.teacherName]
+                                                            .filter(Boolean)
+                                                            .join(' · ')}
+                                                    </div>
+                                                </button>
+                                            );
+                                        })}
+                                    </div>
+                                </div>
+                            )}
 
                             <div>
                                 <label className={lbl}>Yashash manzilingiz</label>

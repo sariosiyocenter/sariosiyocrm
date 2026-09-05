@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState, useCallback } from 'react';
 import * as faceapi from 'face-api.js';
-import { X, Camera, UserCheck, Users, CheckCircle2 } from 'lucide-react';
+import { X, Camera, UserCheck, Users, CheckCircle2, SwitchCamera } from 'lucide-react';
 
 const MODEL_URL = 'https://cdn.jsdelivr.net/gh/justadudewhohacks/face-api.js@0.22.2/weights';
 
@@ -30,6 +30,16 @@ export default function FaceAttendance({ students, attendanceStatus, onMatch, on
     const [lastMatched, setLastMatched] = useState<StudentInfo | null>(null);
     const [labeledDescriptors, setLabeledDescriptors] = useState<faceapi.LabeledFaceDescriptors[]>([]);
     const [markedSet, setMarkedSet] = useState<Set<number>>(new Set());
+    /** Qaysi kamera ishlayapti. Telefonda old kamera bilan yuzni tutish noqulay —
+     *  xodim odatda o'quvchiga orqa kamerani qaratadi, shuning uchun almashtirish
+     *  tugmasi bor va tanlov keyingi safar ham eslab qolinadi. */
+    const [facingMode, setFacingMode] = useState<'user' | 'environment'>(() => {
+        try {
+            return localStorage.getItem('faceid_camera') === 'environment' ? 'environment' : 'user';
+        } catch {
+            return 'user';
+        }
+    });
 
     const enrolledStudents = students.filter(s => s.customPrices?.faceDescriptor);
     const totalEnrolled = enrolledStudents.length;
@@ -61,14 +71,18 @@ export default function FaceAttendance({ students, attendanceStatus, onMatch, on
         load();
     }, []);
 
-    // Start camera after models ready
+    // Start camera after models ready — kamera almashtirilganda ham qayta ishga tushadi
     useEffect(() => {
         if (phase !== 'ready') return;
+        let cancelled = false;
         const start = async () => {
             try {
+                // Avvalgi oqim yopilmasa, ba'zi qurilmalar ikkinchi kamerani bermaydi.
+                streamRef.current?.getTracks().forEach(t => t.stop());
                 const stream = await navigator.mediaDevices.getUserMedia({
-                    video: { facingMode: 'user', width: { ideal: 1280 }, height: { ideal: 720 } }
+                    video: { facingMode: { ideal: facingMode }, width: { ideal: 1280 }, height: { ideal: 720 } }
                 });
+                if (cancelled) { stream.getTracks().forEach(t => t.stop()); return; }
                 streamRef.current = stream;
                 if (videoRef.current) videoRef.current.srcObject = stream;
             } catch {
@@ -78,10 +92,23 @@ export default function FaceAttendance({ students, attendanceStatus, onMatch, on
         };
         start();
         return () => {
+            cancelled = true;
             streamRef.current?.getTracks().forEach(t => t.stop());
             if (intervalRef.current) clearInterval(intervalRef.current);
         };
-    }, [phase]);
+    }, [phase, facingMode]);
+
+    const toggleCamera = () => {
+        setFacingMode(prev => {
+            const next = prev === 'user' ? 'environment' : 'user';
+            try { localStorage.setItem('faceid_camera', next); } catch { /* private mode */ }
+            return next;
+        });
+    };
+
+    // Old kamera ko'zguday aks ettiriladi, orqa kamera esa yo'q — aks holda
+    // o'quvchiga qaratilgan tasvir teskari ko'rinadi.
+    const mirror = facingMode === 'user' ? 'scaleX(-1)' : 'none';
 
     const detect = useCallback(async () => {
         const video = videoRef.current;
@@ -171,6 +198,14 @@ export default function FaceAttendance({ students, attendanceStatus, onMatch, on
                     </div>
                 </div>
                 <div className="flex items-center gap-3">
+                    <button
+                        onClick={toggleCamera}
+                        title={facingMode === 'user' ? "Orqa kameraga o'tish" : "Old kameraga o'tish"}
+                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-gray-800 hover:bg-gray-700 border border-gray-700 transition-colors cursor-pointer"
+                    >
+                        <SwitchCamera size={13} className="text-white" />
+                        <span className="text-white text-[11px] font-bold">{facingMode === 'user' ? 'Old' : 'Orqa'}</span>
+                    </button>
                     <div className="flex items-center gap-1.5 bg-emerald-500/20 px-3 py-1.5 rounded-xl border border-emerald-500/30">
                         <UserCheck size={13} className="text-emerald-400" />
                         <span className="text-emerald-300 text-xs font-black tabular-nums">{markedThisSession.length}/{totalEnrolled}</span>
@@ -213,12 +248,12 @@ export default function FaceAttendance({ students, attendanceStatus, onMatch, on
                     playsInline
                     muted
                     className="w-full h-full object-cover"
-                    style={{ transform: 'scaleX(-1)' }}
+                    style={{ transform: mirror }}
                 />
                 <canvas
                     ref={canvasRef}
                     className="absolute inset-0 w-full h-full"
-                    style={{ transform: 'scaleX(-1)' }}
+                    style={{ transform: mirror }}
                 />
 
                 {/* Match notification */}

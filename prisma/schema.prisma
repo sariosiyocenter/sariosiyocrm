@@ -225,10 +225,16 @@ model Payment {
   date        String
   description String
 
+  // Qaysi kurs uchun to'langani. Ixtiyoriy: eski to'lovlarda va bir nechta
+  // kursga taalluqli umumiy to'lovlarda bo'sh qoladi.
+  courseId    Int?
+  course      Course?  @relation(fields: [courseId], references: [id])
+
   schoolId    Int
   school      School   @relation(fields: [schoolId], references: [id])
 
   @@index([schoolId])
+  @@index([courseId])
 }
 
 model Course {
@@ -242,6 +248,7 @@ model Course {
   schoolId   Int
   school     School    @relation(fields: [schoolId], references: [id])
   groups     Group[]
+  payments   Payment[]
 
   @@index([schoolId])
 }

@@ -5,6 +5,7 @@ import {
 } from 'lucide-react';
 import { useCRM } from '../context/CRMContext';
 import { useParams, useNavigate } from 'react-router-dom';
+import PhotoViewer from './PhotoViewer';
 
 export default function TeacherDetails() {
     const { id } = useParams<{ id: string }>();
@@ -12,6 +13,7 @@ export default function TeacherDetails() {
     const { teachers, groups, students, payments, teacherAttendances, addTeacherAttendance } = useCRM();
     const [activeTab, setActiveTab] = useState('umumiy');
     const [showAttendanceModal, setShowAttendanceModal] = useState(false);
+    const [isPhotoViewerOpen, setIsPhotoViewerOpen] = useState(false);
 
     const teacher = teachers.find(t => t.id === Number(id));
 
@@ -69,17 +71,25 @@ export default function TeacherDetails() {
                 <div className="lg:col-span-1 space-y-6">
                     <div className="bg-sirt rounded-2xl border border-chiziq shadow-sm overflow-hidden">
                         <div className="h-28 bg-brand relative">
-                            <div className="absolute -bottom-10 left-1/2 -translate-x-1/2 rounded-2xl bg-sirt p-1 shadow-md">
-                                <div className="w-20 h-20 rounded-xl bg-ichki border border-chiziq flex items-center justify-center text-brand font-bold text-2xl">
+                            {/* Surat ilgari 80px edi va o'quvchi profilidagidan kichik
+                                ko'rinardi. Endi ikkalasi ham bir xil o'lchamda. */}
+                            <div className="absolute -bottom-16 left-1/2 -translate-x-1/2 rounded-2xl bg-sirt p-1 shadow-md">
+                                <div className="w-32 h-32 rounded-2xl overflow-hidden bg-ichki border border-chiziq flex items-center justify-center text-brand font-bold text-5xl">
                                     {teacher.photo ? (
-                                        <img src={teacher.photo} alt={teacher.name} className="w-full h-full object-cover rounded-lg" />
+                                        <img
+                                            src={teacher.photo}
+                                            alt={teacher.name}
+                                            onClick={() => setIsPhotoViewerOpen(true)}
+                                            title="Kattalashtirib ko'rish"
+                                            className="w-full h-full object-cover object-top cursor-zoom-in"
+                                        />
                                     ) : (
                                         teacher.name.charAt(0).toUpperCase()
                                     )}
                                 </div>
                             </div>
                         </div>
-                        <div className="pt-14 pb-6 px-6 text-center">
+                        <div className="pt-20 pb-6 px-6 text-center">
                             <h2 className="text-sm font-black text-matn tracking-tight">{teacher.name}</h2>
                             <p className="text-[11px] font-bold text-matn-xira mt-1">ID: #{teacher.id}</p>
                             <div className="mt-4 flex justify-center">
@@ -299,6 +309,14 @@ export default function TeacherDetails() {
             </div>
 
             {/* Attendance Modal */}
+            {isPhotoViewerOpen && teacher.photo && (
+                <PhotoViewer
+                    src={teacher.photo}
+                    name={teacher.name}
+                    onClose={() => setIsPhotoViewerOpen(false)}
+                />
+            )}
+
             {showAttendanceModal && (
                 <div className="fixed inset-0 z-[200] flex items-start sm:items-center justify-center overflow-y-auto p-4">
                     <div className="absolute inset-0 bg-gray-900/60 backdrop-blur-sm" onClick={() => setShowAttendanceModal(false)} />

@@ -58,7 +58,10 @@ app.use(helmet({
       fontSrc: ["'self'", 'https://fonts.gstatic.com', 'data:'],
       imgSrc: ["'self'", 'data:', 'blob:', SUPABASE_ORIGIN, 'https://unpkg.com', 'https://*.tile.openstreetmap.org'].filter(Boolean),
       // The settings screen verifies the Telegram bot token straight from the browser.
-      connectSrc: ["'self'", SUPABASE_ORIGIN, 'https://api.telegram.org'].filter(Boolean),
+      // jsDelivr is where face-api.js downloads its model weights from: without it
+      // Face ID failed at "Modellar yuklanmoqda..." on every attempt, because the
+      // weights are fetch() calls and connect-src did not allow the CDN.
+      connectSrc: ["'self'", SUPABASE_ORIGIN, 'https://api.telegram.org', 'https://cdn.jsdelivr.net'].filter(Boolean),
       mediaSrc: ["'self'", 'blob:', 'data:'],
       objectSrc: ["'none'"],
       frameAncestors: ["'self'"],
@@ -866,6 +869,15 @@ app.put('/api/students/:id', authenticate, async (req, res, next) => {
     if (data.transportId !== undefined) {
       data.transportId = data.transportId ? parseInt(data.transportId) : null;
     }
+    // Telegram ID lar unique: bo'sh satr NULL emas, shuning uchun ikkinchi
+    // o'quvchini bo'sh qiymat bilan saqlashda baza xato berardi. "Ulanmagan" —
+    // bu NULL.
+    for (const key of ['telegramId', 'fatherTelegramId', 'motherTelegramId']) {
+      if (data[key] !== undefined) {
+        const trimmed = typeof data[key] === 'string' ? data[key].trim() : data[key];
+        data[key] = trimmed ? String(trimmed) : null;
+      }
+    }
     if (data.balance !== undefined) data.balance = parseFloat(data.balance) || 0;
     if (data.certificates !== undefined) {
       if (typeof data.certificates === 'string') {
@@ -1287,11 +1299,50 @@ app.get('/api/public/schools/:schoolId/courses', async (req, res, next) => {
     const schoolId = parseInt(req.params.schoolId);
     if (isNaN(schoolId)) return res.status(400).json({ error: 'Mavjud bo\'lmagan filial ID' });
 
+    // Faqat hozir guruhi bor kurslar. Ilgari markazda bir marta yaratilgan,
+    // lekin allaqachon yopilgan eski kurslar ham ariza formasida turardi va
+    // ariza beruvchi mavjud bo'lmagan kursni tanlay olardi.
     const courses = await prisma.course.findMany({
-      where: { schoolId },
-      select: { id: true, name: true, price: true }
+      where: { schoolId, groups: { some: {} } },
+      select: { id: true, name: true, price: true },
+      orderBy: { name: 'asc' }
     });
     res.json(courses);
+  } catch (error) { next(error); }
+});
+
+// GET current groups for the public apply form.
+// The form only offered a course name, so an applicant could not see which groups are
+// actually running or pick one that fits their schedule. Only non-sensitive fields are
+// exposed: no student names, no phone numbers.
+app.get('/api/public/schools/:schoolId/groups', async (req, res, next) => {
+  try {
+    const schoolId = parseInt(req.params.schoolId);
+    if (isNaN(schoolId)) return res.status(400).json({ error: "Mavjud bo'lmagan filial ID" });
+
+    const groups = await prisma.group.findMany({
+      where: { schoolId },
+      select: {
+        id: true, name: true, schedule: true, days: true, courseId: true,
+        course: { select: { name: true } },
+        teacher: { select: { name: true } },
+        roomRel: { select: { capacity: true } },
+        _count: { select: { students: true } }
+      },
+      orderBy: { name: 'asc' }
+    });
+
+    res.json(groups.map(g => ({
+      id: g.id,
+      name: g.name,
+      schedule: g.schedule,
+      days: g.days,
+      courseId: g.courseId,
+      courseName: g.course?.name || '',
+      teacherName: g.teacher?.name || '',
+      studentCount: g._count.students,
+      capacity: g.roomRel?.capacity ?? null
+    })));
   } catch (error) { next(error); }
 });
 
@@ -1334,7 +1385,7 @@ app.post('/api/public/schools/:schoolId/leads', publicFormLimiter, async (req, r
     if (isNaN(schoolId)) return res.status(400).json({ error: 'Mavjud bo\'lmagan filial ID' });
 
     const {
-      name, phone, course, source, token,
+      name, phone, course, source, token, groupId,
       birthDate, address, gender, studentSchool,
       fatherName, fatherPhone, motherName, motherPhone,
       preferredTime, notes, photo, certificates
@@ -1393,6 +1444,19 @@ app.post('/api/public/schools/:schoolId/leads', publicFormLimiter, async (req, r
     });
 
     notifyAdmins(`🆕 Onlayn formadan yangi o'quvchi:\n👤 ${student.name}\n📞 ${student.phone}\n📚 Kurs: ${course || 'Aniqlanmagan'}`, schoolId);
+    // Tanlangan guruh — faqat shu filialniki bo'lsa biriktiriladi.
+    const wantedGroupId = parseInt(groupId);
+    if (!isNaN(wantedGroupId)) {
+      const joinedGroup = await prisma.group.findFirst({ where: { id: wantedGroupId, schoolId } });
+      if (joinedGroup) {
+        await prisma.student.update({
+          where: { id: student.id },
+          data: { groups: { connect: { id: joinedGroup.id } } }
+        });
+        notifyAdmins("👥 Guruh: " + joinedGroup.name + " (" + student.name + ")", schoolId);
+      }
+    }
+
     res.json({ success: true, id: student.id });
   } catch (error) { next(error); }
 });
@@ -1430,6 +1494,12 @@ app.post('/api/payments', authenticate, async (req, res, next) => {
     if (!schoolId) return res.status(400).json({ error: 'schoolId required' });
     if (data.amount) data.amount = parseFloat(data.amount);
     if (data.studentId) data.studentId = parseInt(data.studentId);
+    // Kurs ixtiyoriy: tanlanmasa null, noto'g'ri qiymat ham null bo'ladi
+    // (0 yoki bo'sh satr foreign key xatosini keltirib chiqarardi).
+    if (data.courseId !== undefined) {
+      const parsedCourseId = parseInt(data.courseId);
+      data.courseId = Number.isInteger(parsedCourseId) && parsedCourseId > 0 ? parsedCourseId : null;
+    }
     const payment = await prisma.payment.create({ data: { ...data, schoolId: parseInt(schoolId) } });
     await prisma.student.update({
       where: { id: payment.studentId },
@@ -2379,6 +2449,39 @@ app.post('/api/schools', authenticate, async (req, res, next) => {
   } catch (error) { next(error); }
 });
 
+// Filial nomi/manzilini tahrirlash. Ilgari faqat qo'shish va o'chirish bor edi,
+// shuning uchun nomdagi xatoni ("Filliali") tuzatib bo'lmasdi — filialni o'chirib
+// qaytadan yaratish esa unga bog'langan barcha ma'lumotni yo'qotardi.
+app.put('/api/schools/:id', authenticate, async (req, res, next) => {
+  try {
+    const isSuper = req.user.role === 'SUPERADMIN';
+    const isAdmin = req.user.role === 'ADMIN';
+    if (!isSuper && !isAdmin) {
+      return res.status(403).json({ error: "Faqat Super Admin yoki Tashkilot Admini filialni tahrirlay oladi" });
+    }
+
+    const schoolId = parseInt(req.params.id);
+    if (isNaN(schoolId)) return res.status(400).json({ error: "Noto'g'ri ID" });
+
+    const { name, address } = req.body;
+    const data = {};
+    if (name !== undefined) {
+      const trimmed = String(name).trim();
+      if (!trimmed) return res.status(400).json({ error: "Filial nomi bo'sh bo'lmasligi kerak" });
+      data.name = trimmed;
+    }
+    if (address !== undefined) {
+      const trimmed = String(address).trim();
+      data.address = trimmed || null;
+    }
+    if (Object.keys(data).length === 0) {
+      return res.status(400).json({ error: "O'zgartirish uchun ma'lumot yo'q" });
+    }
+
+    res.json(await prisma.school.update({ where: { id: schoolId }, data }));
+  } catch (error) { next(error); }
+});
+
 app.delete('/api/schools/:id', authenticate, async (req, res, next) => {
   try {
     const isSuper = req.user.role === 'SUPERADMIN';
@@ -2569,31 +2672,10 @@ app.post('/api/attendances', authenticate, async (req, res, next) => {
       attendance = await prisma.attendance.create({ data: prismaData });
     }
     
-    // Telegram Notification
-    try {
-      const student = await prisma.student.findUnique({ where: { id: parseInt(data.studentId) } });
-      if (student) {
-        const schoolBot = await getTelegramBot(student.schoolId);
-        if (schoolBot) {
-          const icon = attendance.status === 'Keldi' ? '✅' : (attendance.status === 'Kelmapdi' ? '❌' : '⚠️');
-          const msg = `${icon} Davomat xabarnomasi:\n\n` +
-                      `👤 O'quvchi: ${student.name}\n` +
-                      `📌 Holat: ${attendance.status}\n` +
-                      `📅 Sana: ${attendance.date}`;
-          if (student.telegramId) {
-            schoolBot.telegram.sendMessage(student.telegramId, msg).catch(e => console.error('Telegram error:', e));
-          }
-          if (student.fatherTelegramId) {
-            schoolBot.telegram.sendMessage(student.fatherTelegramId, msg).catch(e => console.error('Telegram error:', e));
-          }
-          if (student.motherTelegramId) {
-            schoolBot.telegram.sendMessage(student.motherTelegramId, msg).catch(e => console.error('Telegram error:', e));
-          }
-        }
-      }
-    } catch (e) {
-      console.error('Notification error:', e);
-    }
+    // Davomat qo'yilganda xabar avtomatik ketmaydi. Ilgari har bir belgilash
+    // ota-onaga darhol Telegram xabari yuborardi: yo'qlama tuzatilsa ular ikki-uch
+    // marta xabar olardi. Endi xabarni xodim POST /api/attendances/notify orqali
+    // bir marta o'zi yuboradi.
 
     res.json(attendance);
   } catch (error) { next(error); }
@@ -2637,14 +2719,12 @@ app.post('/api/attendances/batch', authenticate, async (req, res, next) => {
     if (!schoolId || !groupId || !date || !records) return res.status(400).json({ error: 'Missing fields' });
     
     const results = [];
-    const group = await prisma.group.findUnique({ where: { id: parseInt(groupId) } });
 
     for (const record of records) {
       const existing = await prisma.attendance.findFirst({
         where: { studentId: record.studentId, groupId: parseInt(groupId), date, schoolId: parseInt(schoolId) }
       });
       let updatedOrCreated;
-      let shouldNotify = false;
 
       if (existing) {
         const updateData = { status: record.status };
@@ -2656,10 +2736,6 @@ app.post('/api/attendances/batch', authenticate, async (req, res, next) => {
           where: { id: existing.id },
           data: updateData
         });
-        
-        if (existing.status !== record.status) {
-          shouldNotify = true;
-        }
       } else {
         const createData = {
           studentId: record.studentId,
@@ -2675,40 +2751,74 @@ app.post('/api/attendances/batch', authenticate, async (req, res, next) => {
         updatedOrCreated = await prisma.attendance.create({
           data: createData
         });
-        shouldNotify = true;
       }
       results.push(updatedOrCreated);
 
-      // Telegram notification for batch attendance
-      if (shouldNotify) {
+    }
+    res.json(results);
+  } catch (error) { next(error); }
+});
+
+// Bir kunlik yo'qlamani ota-onalarga bitta bosishda yuborish.
+// Davomat qo'yilganda xabar avtomatik ketmaydi — xodim yo'qlamani tekshirib
+// bo'lgach shu tugmani bosadi va har bir o'quvchi uchun bitta xabar ketadi.
+app.post('/api/attendances/notify', authenticate, async (req, res, next) => {
+  try {
+    const { schoolId, groupId, date } = req.body;
+    if (!schoolId || !groupId || !date) {
+      return res.status(400).json({ error: "schoolId, groupId va date kerak" });
+    }
+
+    const records = await prisma.attendance.findMany({
+      where: { groupId: parseInt(groupId), date, schoolId: parseInt(schoolId) },
+      include: { student: true, group: { select: { name: true } } }
+    });
+
+    if (records.length === 0) {
+      return res.json({ success: true, sent: 0, skipped: 0, total: 0, message: "Bu kunga yo'qlama qo'yilmagan" });
+    }
+
+    const schoolBot = await getTelegramBot(parseInt(schoolId));
+    if (!schoolBot) {
+      return res.status(400).json({ error: "Telegram bot sozlanmagan" });
+    }
+
+    const ICONS = { Keldi: "✅", Kelmapdi: "❌", Sababli: "⚠️", Kechikdi: "⏰" };
+    let sent = 0;
+    let skipped = 0;
+
+    for (const record of records) {
+      const student = record.student;
+      if (!student) continue;
+
+      const icon = ICONS[record.status] || "ℹ️";
+      const message = [
+        icon + " Davomat xabarnomasi",
+        "",
+        "👤 O'quvchi: " + student.name,
+        "📌 Holat: " + record.status,
+        "📅 Sana: " + date,
+        "📚 Guruh: " + (record.group ? record.group.name : "")
+      ].join(String.fromCharCode(10));
+
+      // Ota-ona birinchi navbatda; ular ulanmagan bo'lsa o'quvchining o'ziga.
+      const chatIds = [student.fatherTelegramId, student.motherTelegramId].filter(Boolean);
+      if (chatIds.length === 0 && student.telegramId) chatIds.push(student.telegramId);
+
+      if (chatIds.length === 0) { skipped++; continue; }
+
+      for (const chatId of chatIds) {
         try {
-          const student = await prisma.student.findUnique({ where: { id: record.studentId } });
-          if (student) {
-            const schoolBot = await getTelegramBot(student.schoolId);
-            if (schoolBot) {
-              const icon = record.status === 'Keldi' ? '✅' : (record.status === 'Kelmapdi' ? '❌' : '⚠️');
-              const msg = `${icon} Davomat xabarnomasi:\n\n` +
-                          `👤 O'quvchi: ${student.name}\n` +
-                          `📌 Holat: ${record.status}\n` +
-                          `📅 Sana: ${date}\n` +
-                          `📚 Guruh: ${group ? group.name : ''}`;
-              if (student.telegramId) {
-                schoolBot.telegram.sendMessage(student.telegramId, msg).catch(e => console.error('[Telegram Batch Notify] Error sending message:', e));
-              }
-              if (student.fatherTelegramId) {
-                schoolBot.telegram.sendMessage(student.fatherTelegramId, msg).catch(e => console.error('[Telegram Batch Notify] Error sending message:', e));
-              }
-              if (student.motherTelegramId) {
-                schoolBot.telegram.sendMessage(student.motherTelegramId, msg).catch(e => console.error('[Telegram Batch Notify] Error sending message:', e));
-              }
-            }
-          }
+          await schoolBot.telegram.sendMessage(chatId, message);
+          sent++;
         } catch (e) {
-          console.error('[Telegram Batch Notify] Error:', e);
+          console.error('[Attendance notify] ' + student.name + ':', e.message);
+          skipped++;
         }
       }
     }
-    res.json(results);
+
+    res.json({ success: true, sent, skipped, total: records.length });
   } catch (error) { next(error); }
 });
 

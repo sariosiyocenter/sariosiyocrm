@@ -30,9 +30,16 @@ export async function allowedSchoolIds(user) {
   return siblings.map(s => s.id);
 }
 
+// The branch switcher's "To'liq o'quv markazi" option sends schoolId 0. It is not a
+// real branch — it means "every branch I am allowed to see", which is exactly the set
+// canAccessSchool already grants. Rejecting it used to answer 403, and the client reads
+// a 403 as an expired session and logs the user out.
+export const ALL_BRANCHES = 0;
+
 export async function canAccessSchool(user, schoolId) {
   if (CROSS_SCHOOL_ROLES.includes(user?.role)) return true;
   if (schoolId === null) return true;              // request is not school-scoped
+  if (schoolId === ALL_BRANCHES) return true;      // "all my branches", not one branch
   if (user?.schoolId === schoolId) return true;    // own branch — no lookup needed
   return (await allowedSchoolIds(user)).includes(schoolId);
 }
@@ -97,7 +104,10 @@ export const authenticate = (req, res, next) => {
       const recordError = await recordAccessError(req);
       if (recordError) return res.status(403).json({ error: recordError });
 
-      req.schoolScope = wanted ?? user.schoolId ?? null;
+      // 0 is the "all branches" marker, not a branch a handler could scope a write to.
+      req.schoolScope = (wanted === null || wanted === ALL_BRANCHES)
+        ? (user.schoolId ?? null)
+        : wanted;
       next();
     } catch (e) { next(e); }
   });

@@ -38,6 +38,50 @@ const getGuestMenu = () => Markup.keyboard([
     ['📝 Sinov darsiga yozilish', '📞 Kontaktlar']
 ]).resize();
 
+/**
+ * Markaz sozlamalari (nom, logotip, manzil, telefon) — bir necha marta so'ralgani
+ * uchun qisqa muddatga eslab qolinadi.
+ */
+const settingsCache = new Map(); // schoolId -> { value, at }
+const SETTINGS_TTL_MS = 5 * 60 * 1000;
+
+const getSchoolSettings = async (schoolId) => {
+    if (!schoolId) return null;
+    const cached = settingsCache.get(schoolId);
+    if (cached && Date.now() - cached.at < SETTINGS_TTL_MS) return cached.value;
+    try {
+        const value = await prisma.setting.findUnique({ where: { schoolId: Number(schoolId) } });
+        settingsCache.set(schoolId, { value, at: Date.now() });
+        return value;
+    } catch (e) {
+        console.error('Sozlamalarni o' + String.fromCharCode(39) + 'qib bo' + String.fromCharCode(39) + 'lmadi:', e.message);
+        return null;
+    }
+};
+
+/**
+ * Markaz logotipini rasm sifatida yuboradi; logotip yo'q bo'lsa oddiy matn.
+ * Telegram data URL ni qabul qilmaydi, shuning uchun base64 bufferga aylantiriladi.
+ */
+const replyWithLogo = async (ctx, schoolId, caption, extra = {}) => {
+    const settings = await getSchoolSettings(schoolId);
+    const logo = settings && settings.logo;
+    if (!logo) return ctx.reply(caption, extra);
+
+    try {
+        const options = Object.assign({ caption }, extra);
+        if (logo.startsWith('data:')) {
+            const base64 = logo.slice(logo.indexOf(',') + 1);
+            return await ctx.replyWithPhoto({ source: Buffer.from(base64, 'base64') }, options);
+        }
+        return await ctx.replyWithPhoto(logo, options);
+    } catch (e) {
+        // Rasm yuborilmasa xabarning o'zi baribir yetib borsin.
+        console.error('Logotipni yuborib bo' + String.fromCharCode(39) + 'lmadi:', e.message);
+        return ctx.reply(caption, extra);
+    }
+};
+
 // Helper to find user by telegramId and schoolId
 const findUser = async (tid, schoolId) => {
     const tidStr = String(tid);
@@ -105,15 +149,18 @@ export const setupBotHandlers = (botInstance, schoolId) => {
                 menu = getDriverMenu();
             }
 
-            return ctx.reply(greeting, menu);
+            return replyWithLogo(ctx, schoolId, greeting, menu);
         }
 
-        ctx.reply(
-            "CRM botiga xush kelibsiz! \n\nTizimdan foydalanish uchun telefon raqamingizni yuboring:",
-            Markup.keyboard([
-                [Markup.button.contactRequest('📱 Telefon raqamni yuborish')]
-            ]).resize()
-        );
+        const settings = await getSchoolSettings(schoolId);
+        const NL = String.fromCharCode(10);
+        const welcome = ((settings && settings.orgName) || 'CRM') +
+            ' botiga xush kelibsiz!' + NL + NL +
+            'Tizimdan foydalanish uchun telefon raqamingizni yuboring:';
+
+        return replyWithLogo(ctx, schoolId, welcome, Markup.keyboard([
+            [Markup.button.contactRequest('📱 Telefon raqamni yuborish')]
+        ]).resize());
     });
 
     const logoutHandler = async (ctx) => {
@@ -139,6 +186,18 @@ export const setupBotHandlers = (botInstance, schoolId) => {
         const phone = ctx.message.contact.phone_number.replace('+', '').trim();
         const tid = String(ctx.from.id);
         const phoneSuffix = phone.slice(-9);
+
+        // telegramId maydonlari unique. Shu Telegram hisobi ilgari boshqa
+        // yozuvga bog'langan bo'lsa (masalan avval o'qituvchi, endi ota),
+        // yangi bog'lanish baza cheklovi tufayli jimgina uzilib qolardi va
+        // CRM da ulanish ko'rinmasdi. Avval eski bog'lanishni bo'shatamiz.
+        await Promise.all([
+            prisma.student.updateMany({ where: { telegramId: tid }, data: { telegramId: null } }),
+            prisma.student.updateMany({ where: { fatherTelegramId: tid }, data: { fatherTelegramId: null } }),
+            prisma.student.updateMany({ where: { motherTelegramId: tid }, data: { motherTelegramId: null } }),
+            prisma.teacher.updateMany({ where: { telegramId: tid }, data: { telegramId: null } }),
+            prisma.user.updateMany({ where: { telegramId: tid }, data: { telegramId: null } })
+        ]);
 
         // 1. Try to find student where phone matches phoneSuffix
         let student = await prisma.student.findFirst({
@@ -622,8 +681,24 @@ export const setupBotHandlers = (botInstance, schoolId) => {
     });
 
     // Guest Handlers
-    botInstance.hears('ℹ️ Markaz haqida', (ctx) => {
-        ctx.reply("Sifatli ta'lim maskani! \n\nBizda: \n- Ingliz tili\n- Matematika\n- IT kurslari\n mavjud.");
+    botInstance.hears('ℹ️ Markaz haqida', async (ctx) => {
+        const settings = await getSchoolSettings(schoolId);
+        const courses = schoolId
+            ? await prisma.course.findMany({ where: { schoolId }, select: { name: true }, take: 20 })
+            : [];
+
+        const NL = String.fromCharCode(10);
+        const lines = [(settings && settings.orgName) || "O'quv markazi", ''];
+        if (courses.length > 0) {
+            lines.push('Kurslarimiz:');
+            courses.forEach(c => lines.push('• ' + c.name));
+            lines.push('');
+        }
+        if (settings && settings.address) lines.push('📍 ' + settings.address);
+        if (settings && settings.adminPhone) lines.push('📞 ' + settings.adminPhone);
+        if (settings && settings.workingHours) lines.push('🕒 ' + settings.workingHours);
+
+        await replyWithLogo(ctx, schoolId, lines.join(NL).trim());
     });
 
     botInstance.hears('📍 Geolokatsiya', (ctx) => {

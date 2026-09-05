@@ -113,6 +113,8 @@ export interface Payment {
     type: 'Naqd' | 'Karta' | 'Peyme' | 'Klik' | 'O\'tkazma';
     date: string;
     description: string;
+    /** Qaysi kurs uchun to'langani. Tanlanmagan bo'lsa null. */
+    courseId?: number | null;
     schoolId: number;
 }
 

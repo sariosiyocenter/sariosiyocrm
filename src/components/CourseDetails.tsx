@@ -7,7 +7,7 @@ import { useConfirm } from './ConfirmDialog';
 import {
     Users, Calendar, Clock, BookOpen, Plus,
     XCircle, ArrowLeft, Search, ClipboardCheck, ChevronRight, Presentation, Check, Sparkles,
-    CreditCard, DollarSign, Wallet, Trash2
+    CreditCard, DollarSign, Wallet, Trash2, Send, Pencil
 } from 'lucide-react';
 import AttendanceMatrix from './AttendanceMatrix';
 import GroupAttendanceCalendar from './GroupAttendanceCalendar';
@@ -19,8 +19,11 @@ export default function CourseDetails() {
     const { groups, students, teachers, courses, rooms, attendances, payments, addBatchAttendance, addAttendance, updateDayTopic, addStudentToGroup, removeStudentFromGroup, updateGroup, updateCourse, deleteGroup, showNotification, topics, addTopic, updateTopic, addPayment, syllabuses, loadAttendanceFor } = useCRM();
     const confirm = useConfirm();
     const [isEditingInfo, setIsEditingInfo] = useState(false);
+    // courseName ham shu formada: kurs nomi noto'g'ri yozilgan bo'lsa
+    // ("Belgilanmagan" kabi) uni tuzatishning boshqa yo'li yo'q edi.
     const [editForm, setEditForm] = useState({
         teacherId: 0,
+        courseName: '',
         days: '',
         startTime: '',
         endTime: '',
@@ -116,6 +119,47 @@ export default function CourseDetails() {
     const getStudentAttStatus = (studentId: number): AttStatus | null => {
         const rec = attendances.find(a => a.groupId === group.id && a.date === selectedDate && a.studentId === studentId);
         return (rec?.status as AttStatus) || null;
+    };
+
+    /** Kun yo'qlamasini ota-onalarga Telegram orqali bir marta yuborish.
+     *  Ilgari har bir belgilash avtomatik xabar yuborardi va yo'qlama tuzatilsa
+     *  ota-ona bir necha marta xabar olardi. */
+    const [isNotifyingParents, setIsNotifyingParents] = useState(false);
+    const handleNotifyParents = async () => {
+        if (isNotifyingParents) return;
+        const marked = groupStudents.filter(s => getStudentAttStatus(s.id)).length;
+        if (marked === 0) {
+            showNotification("Avval yo'qlamani belgilang", "info");
+            return;
+        }
+        if (!await confirm(selectedDate + " kungi yo'qlama ota-onalarga yuborilsinmi? (" + marked + " ta o'quvchi)")) return;
+
+        setIsNotifyingParents(true);
+        try {
+            const token = localStorage.getItem('token');
+            const response = await fetch('/api/attendances/notify', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': 'Bearer ' + token
+                },
+                body: JSON.stringify({ schoolId: group.schoolId, groupId: group.id, date: selectedDate })
+            });
+            const data = await response.json();
+            if (response.ok && data.success) {
+                showNotification(
+                    data.sent + " ta xabar yuborildi" + (data.skipped ? ", " + data.skipped + " tasi Telegramga ulanmagan" : ""),
+                    data.sent > 0 ? "success" : "info"
+                );
+            } else {
+                showNotification("Xatolik: " + (data.error || "xabar yuborilmadi"), "error");
+            }
+        } catch (err) {
+            console.error("Attendance notify failed", err);
+            showNotification("Xabar yuborishda xatolik yuz berdi", "error");
+        } finally {
+            setIsNotifyingParents(false);
+        }
     };
 
     const handleSendAttendanceSms = async () => {
@@ -274,6 +318,7 @@ export default function CourseDetails() {
         const [start, end] = group.schedule.split(' - ');
         setEditForm({
             teacherId: group.teacherId,
+            courseName: course?.name || '',
             days: group.days,
             startTime: start || '',
             endTime: end || '',
@@ -302,8 +347,14 @@ export default function CourseDetails() {
                 room: roomId,
                 syllabusId: editForm.syllabusId === '' ? null : Number(editForm.syllabusId)
             });
-            if (course && editForm.coursePrice !== course.price) {
-                await updateCourse(course.id, { price: Number(editForm.coursePrice) });
+            if (course) {
+                const courseChanges: Record<string, any> = {};
+                if (editForm.coursePrice !== course.price) courseChanges.price = Number(editForm.coursePrice);
+                const newName = String(editForm.courseName || '').trim();
+                if (newName && newName !== course.name) courseChanges.name = newName;
+                if (Object.keys(courseChanges).length > 0) {
+                    await updateCourse(course.id, courseChanges);
+                }
             }
             setIsEditingInfo(false);
             showNotification("Kurs ma'lumotlari yangilandi", "success");
@@ -413,14 +464,19 @@ export default function CourseDetails() {
                         <div className="flex flex-col gap-1.5 mt-4 max-w-xs">
                             <label className={labelCls}>O'qituvchi</label>
                             <select
-                                value={editForm.teacherId}
+                                value={editForm.teacherId || ''}
                                 onChange={e => setEditForm({ ...editForm, teacherId: Number(e.target.value) })}
                                 className={inputCls}
                             >
-                                {teachers.map(t => (
-                                    <option key={t.id} value={t.id}>{t.name}</option>
+                                <option value="" disabled>Ustozni tanlang</option>
+                                {teachers.filter(t => t.status !== 'Arxiv' || t.id === group.teacherId).map(t => (
+                                    <option key={t.id} value={t.id}>{displayName(t.name)}</option>
                                 ))}
                             </select>
+                            <div className="flex gap-2 mt-1">
+                                <button onClick={handleSaveInfo} className="text-[11px] font-bold text-emerald-600 hover:underline cursor-pointer">Saqlash</button>
+                                <button onClick={() => setIsEditingInfo(false)} className="text-[11px] font-bold text-rose-600 hover:underline cursor-pointer">Bekor</button>
+                            </div>
                         </div>
                     ) : (
                         // Bitta qator, bitta ajratgich. Kiritilmagan qiymat
@@ -428,9 +484,19 @@ export default function CourseDetails() {
                         // qoladi, ustoz bundan mustasno: ustozsiz guruh
                         // ko'rinib turishi kerak.
                         <div className="flex items-center gap-x-2 gap-y-1 flex-wrap mt-2 text-[13px] text-matn-sokin">
-                            {teacher?.name
-                                ? <span className="text-matn-2">{displayName(teacher.name)}</span>
-                                : <span className="text-ogoh">Ustoz biriktirilmagan</span>}
+                            {/* Ustozni shu yerdan almashtirish mumkin — ilgari buning
+                                yagona yo'li "Umumiy" bo'limining pastidagi "O'zgartirish"
+                                tugmasi edi va uni topish qiyin edi. */}
+                            <button
+                                onClick={handleStartEdit}
+                                title="O'qituvchini o'zgartirish"
+                                className="inline-flex items-center gap-1 hover:text-brand transition-colors cursor-pointer"
+                            >
+                                {teacher?.name
+                                    ? <span className="text-matn-2">{displayName(teacher.name)}</span>
+                                    : <span className="text-ogoh">Ustoz biriktirilmagan</span>}
+                                <Pencil size={11} className="text-matn-xira" />
+                            </button>
                             {group.room && (
                                 <><span className="text-matn-xira">·</span>
                                 <span>{rooms.find(r => r.id === group.room)?.name || `#${group.room}`}</span></>
@@ -615,6 +681,19 @@ export default function CourseDetails() {
                                     <div className="bg-sirt border border-chiziq rounded-2xl p-4 space-y-4">
                                         {isEditingInfo ? (
                                             <>
+                                                <div>
+                                                    <label className={labelCls}>Kurs nomi</label>
+                                                    <input
+                                                        type="text"
+                                                        value={editForm.courseName}
+                                                        onChange={e => setEditForm({ ...editForm, courseName: e.target.value })}
+                                                        placeholder="Masalan: Ingliz tili"
+                                                        className={inputCls}
+                                                    />
+                                                    <p className="text-[10px] text-matn-xira mt-1">
+                                                        Bu nom ochiq ariza formasida ham ko'rinadi.
+                                                    </p>
+                                                </div>
                                                 <div>
                                                     <label className={labelCls}>Kunlar</label>
                                                     <select
@@ -820,8 +899,16 @@ export default function CourseDetails() {
                                         </select>
                                     </div>
 
-                                    {/* SMS only */}
                                     <div className="flex items-center gap-2 w-full sm:w-auto shrink-0">
+                                        <button
+                                            onClick={handleNotifyParents}
+                                            disabled={isNotifyingParents}
+                                            className="px-4 py-2 bg-sky-50 dark:bg-sky-950/20 text-sky-600 dark:text-sky-400 border border-sky-100 dark:border-sky-900/40 rounded-xl text-[11px] font-extrabold hover:bg-sky-600 hover:text-white transition-all flex items-center gap-1.5 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                                            title="Kun yo'qlamasini ota-onalarga Telegramda yuborish"
+                                        >
+                                            <Send size={13} />
+                                            {isNotifyingParents ? 'Yuborilmoqda…' : "Ota-onaga yuborish"}
+                                        </button>
                                         <button
                                             onClick={handleSendAttendanceSms}
                                             className="px-4 py-2 bg-amber-50 dark:bg-amber-950/20 text-amber-600 dark:text-amber-400 border border-amber-100 dark:border-amber-900/40 rounded-xl text-[11px] font-extrabold hover:bg-amber-600 hover:text-white transition-all flex items-center gap-1.5 group cursor-pointer"

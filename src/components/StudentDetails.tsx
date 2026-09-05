@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import {
     ArrowLeft, Phone, Calendar, MapPin, BookOpen, CreditCard, ReceiptText,
-    Clock, CheckCircle, XCircle, Plus, Award, ClipboardCheck, Users, Layers, ChevronRight, Save, Edit, Bus, Sparkles, Image as ImageIcon, Camera, X, Send, Trash2, Star
+    Clock, CheckCircle, XCircle, Plus, Award, ClipboardCheck, Users, Layers, ChevronRight, Save, Edit, Bus, Sparkles, Image as ImageIcon, Camera, X, Send, Trash2, Star, ScanFace, Maximize2
 } from 'lucide-react';
 import { useCRM } from '../context/CRMContext';
 import StatTile from './ui/StatTile';
@@ -12,7 +12,10 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { useLang } from '../context/LanguageContext';
 import MapPicker from './MapPicker';
 import PhotoCapture from './PhotoCapture';
-import { compressImage } from '../lib/image';
+import { uploadProfilePhoto } from '../lib/image';
+import { printReceipt } from '../lib/receipt';
+import FaceEnroll from './FaceEnroll';
+import PhotoViewer from './PhotoViewer';
 
 const UZB_REGIONS: Record<string, string[]> = {
   "Surxondaryo": [
@@ -99,6 +102,8 @@ export default function StudentDetails() {
     const [isSaving, setIsSaving] = useState(false);
     const [isRemovingBg, setIsRemovingBg] = useState(false);
     const [isPhotoModalOpen, setIsPhotoModalOpen] = useState(false);
+    const [isFaceEnrollOpen, setIsFaceEnrollOpen] = useState(false);
+    const [isPhotoViewerOpen, setIsPhotoViewerOpen] = useState(false);
     const [showSmsModal, setShowSmsModal] = useState(false);
     const [smsData, setSmsData] = useState({ phone: '', type: '' });
     const [showDeleteModal, setShowDeleteModal] = useState(false);
@@ -121,9 +126,25 @@ export default function StudentDetails() {
         }
     };
 
+    /** Face ID yo'qlamasi shu belgi bo'yicha o'quvchini tanaydi.
+     *  customPrices ichida boshqa qiymatlar ham bor (guruh narxlari, izohlar) —
+     *  shuning uchun ustidan yozilmaydi, faqat qo'shiladi. */
+    const handleFaceEnroll = async (descriptor: number[], photo: string) => {
+        const previous = (student!.customPrices && typeof student!.customPrices === 'object')
+            ? student!.customPrices as Record<string, any>
+            : {};
+        const url = await uploadProfilePhoto(photo, "face-" + student!.id + ".jpg");
+        await updateStudent(student!.id, {
+            customPrices: { ...previous, faceDescriptor: descriptor },
+            // Suratsiz o'quvchi uchun shu kadr profil surati bo'lib qoladi.
+            ...(student!.photo ? {} : { photo: url })
+        });
+        showNotification("Yuz saqlandi — endi Face ID yo'qlamasi bu o'quvchini taniydi", 'success');
+    };
+
     const handlePhotoCapture = async (base64: string) => {
-        const compressed = await compressImage(base64);
-        updateStudent(student!.id, { photo: compressed });
+        const url = await uploadProfilePhoto(base64, `student-${student!.id}.jpg`);
+        updateStudent(student!.id, { photo: url });
     };
 
 
@@ -157,6 +178,13 @@ export default function StudentDetails() {
     });
 
     const student = students.find(s => s.id === Number(id));
+
+    const isFaceEnrolled = Boolean(
+        student?.customPrices
+        && typeof student.customPrices === 'object'
+        && Array.isArray((student.customPrices as Record<string, any>).faceDescriptor)
+    );
+
 
     // Ismni oddiy yozuvga keltirish — umumiy yordamchi (src/lib/displayName).
 
@@ -291,10 +319,27 @@ export default function StudentDetails() {
     const handleSaveEdit = async () => {
         try {
             setIsSaving(true);
-            await updateStudent(student.id, {
+
+            // Telegram ID lar formaga sahifa ochilganda yozilgan. Agar o'quvchi
+            // shundan keyin botga ulangan bo'lsa, o'zgarmagan bo'sh maydonni
+            // yuborish yangi ulanishni o'chirib yuborardi — shuning uchun
+            // tegilmagan maydonlar umuman yuborilmaydi.
+            const payload: Record<string, any> = {
                 ...editForm,
                 transportId: editForm.transportId ? Number(editForm.transportId) : null
-            });
+            };
+            const telegramFields = ['telegramId', 'fatherTelegramId', 'motherTelegramId'] as const;
+            for (const key of telegramFields) {
+                const typed = (editForm[key] || '').trim();
+                const loaded = (student[key] || '').trim();
+                if (typed === loaded) {
+                    delete payload[key];
+                } else {
+                    payload[key] = typed || null;
+                }
+            }
+
+            await updateStudent(student.id, payload);
             setIsEditing(false);
         } catch (err) {
             console.error("Update failed", err);
@@ -337,8 +382,8 @@ export default function StudentDetails() {
         if (file) {
             const reader = new FileReader();
             reader.onloadend = async () => {
-                const compressed = await compressImage(reader.result as string);
-                updateStudent(student.id, { photo: compressed });
+                const url = await uploadProfilePhoto(reader.result as string, file.name);
+                updateStudent(student.id, { photo: url });
             };
             reader.readAsDataURL(file);
         }
@@ -509,17 +554,23 @@ export default function StudentDetails() {
                 savolga javob berardi. Endi bitta qator. */}
             <div className="flex items-start justify-between gap-4 flex-wrap">
                 <div className="flex items-center gap-3.5 min-w-0">
-                    <Avatar name={student.name} photo={student.photo} size={48} fontSize={15} className="group/avatar">
+                    <Avatar name={student.name} photo={student.photo} size={120} fontSize={38} className="group/avatar">
                         {/* Rasm amallari avatarning ustida — alohida tugmalar
                             uyumi yasalmasin. */}
-                        <div className="absolute inset-0 bg-gray-950/70 opacity-0 group-hover/avatar:opacity-100 transition-opacity flex items-center justify-center gap-1">
-                            <label className="w-6 h-6 rounded-md bg-white/15 hover:bg-white/30 text-white flex items-center justify-center cursor-pointer transition-colors" title={t('upload')}>
+                        <div className="absolute inset-0 bg-gray-950/70 opacity-0 group-hover/avatar:opacity-100 transition-opacity flex items-center justify-center gap-1.5">
+                            {student.photo && (
+                                <button onClick={() => setIsPhotoViewerOpen(true)} title="Kattalashtirib ko'rish"
+                                    className="w-9 h-9 rounded-lg bg-white/15 hover:bg-white/30 text-white flex items-center justify-center cursor-pointer transition-colors">
+                                    <Maximize2 size={16} />
+                                </button>
+                            )}
+                            <label className="w-9 h-9 rounded-lg bg-white/15 hover:bg-white/30 text-white flex items-center justify-center cursor-pointer transition-colors" title={t('upload')}>
                                 <input type="file" className="hidden" accept="image/*" onChange={handlePhotoUpload} />
-                                <ImageIcon size={11} />
+                                <ImageIcon size={16} />
                             </label>
                             <button onClick={() => setIsPhotoModalOpen(true)} title={t('take_photo')}
-                                className="w-6 h-6 rounded-md bg-white/15 hover:bg-white/30 text-white flex items-center justify-center cursor-pointer transition-colors">
-                                <Camera size={11} />
+                                className="w-9 h-9 rounded-lg bg-white/15 hover:bg-white/30 text-white flex items-center justify-center cursor-pointer transition-colors">
+                                <Camera size={16} />
                             </button>
                         </div>
                     </Avatar>
@@ -673,6 +724,22 @@ export default function StudentDetails() {
                                 <PhotoCapture
                                     onCapture={handlePhotoCapture}
                                     onClose={() => setIsPhotoModalOpen(false)}
+                                />
+                            )}
+
+                            {isPhotoViewerOpen && student.photo && (
+                                <PhotoViewer
+                                    src={student.photo}
+                                    name={displayName(student.name)}
+                                    onClose={() => setIsPhotoViewerOpen(false)}
+                                />
+                            )}
+
+                            {isFaceEnrollOpen && (
+                                <FaceEnroll
+                                    studentName={displayName(student.name)}
+                                    onEnroll={handleFaceEnroll}
+                                    onClose={() => setIsFaceEnrollOpen(false)}
                                 />
                             )}
 
@@ -1012,6 +1079,25 @@ export default function StudentDetails() {
                                             </span>
                                         </div>
                                     )}
+                                    {/* Face ID. Yuz belgisi customPrices ichida saqlanadi;
+                                        u yozilmasa Face ID yo'qlamasi o'quvchini tanimaydi. */}
+                                    <div className="flex items-center justify-between gap-2 py-1">
+                                        <div className="flex items-center gap-2 text-matn-xira">
+                                            <ScanFace className="w-3.5 h-3.5" />
+                                            <span className="text-[12px]">Face ID</span>
+                                        </div>
+                                        <div className="flex items-center gap-2">
+                                            <span className={"text-[11px] font-bold " + (isFaceEnrolled ? 'text-emerald-600 dark:text-emerald-400' : 'text-matn-xira')}>
+                                                {isFaceEnrolled ? "Ro'yxatdan o'tgan" : "Ro'yxatdan o'tmagan"}
+                                            </span>
+                                            <button
+                                                onClick={() => setIsFaceEnrollOpen(true)}
+                                                className="text-[11px] font-bold text-brand hover:underline cursor-pointer"
+                                            >
+                                                {isFaceEnrolled ? 'Yangilash' : "Ro'yxatdan o'tkazish"}
+                                            </button>
+                                        </div>
+                                    </div>
                                     <InfoRow
                                         icon={<Bus className="w-3.5 h-3.5" />}
                                         label={t('transport')}
@@ -2154,16 +2240,24 @@ export default function StudentDetails() {
 
 
 function PaymentAddModal({ studentId, onClose, onAdd }: { studentId: number; onClose: () => void; onAdd: (data: any) => void }) {
-    const { students, groups, courses, payments } = useCRM();
+    const { students, groups, courses, payments, settings } = useCRM();
     const [amount, setAmount] = useState('');
     const [type, setType] = useState('Naqd');
+    const [courseId, setCourseId] = useState<number | ''>('');
     const [createdPaymentForReceipt, setCreatedPaymentForReceipt] = useState<any>(null);
 
     const student = students.find(s => s.id === studentId);
 
+    /** Kurs ro'yxati: avval o'quvchining guruhlaridagi kurslar, ular yo'q bo'lsa hammasi. */
+    const studentCourses = (() => {
+        const ids = new Set(groups.filter(g => (g.studentIds || []).includes(studentId)).map(g => g.courseId));
+        const own = courses.filter(c => ids.has(c.id));
+        return own.length > 0 ? own : courses;
+    })();
+
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-        const paymentData = { studentId, amount: Number(amount), type, date: new Date().toISOString().split('T')[0], description: '' };
+        const paymentData = { studentId, amount: Number(amount), type, courseId: courseId === '' ? null : Number(courseId), date: new Date().toISOString().split('T')[0], description: '' };
         const created = await onAdd(paymentData);
         setCreatedPaymentForReceipt(created);
 
@@ -2200,35 +2294,12 @@ function PaymentAddModal({ studentId, onClose, onAdd }: { studentId: number; onC
             <div className="relative bg-sirt w-full max-w-md rounded-[2rem] shadow-2xl overflow-hidden border border-chiziq" onClick={e => e.stopPropagation()}>
 
                 {createdPaymentForReceipt ? (
-                    <div className="p-8 space-y-6" id="print-receipt-container">
-                        <style dangerouslySetInnerHTML={{ __html: `
-                            @media print {
-                                body > * {
-                                    display: none !important;
-                                }
-                                #print-receipt-container, #print-receipt-container * {
-                                    display: block !important;
-                                    visibility: visible !important;
-                                }
-                                #print-receipt-container {
-                                    position: absolute !important;
-                                    left: 0 !important;
-                                    top: 0 !important;
-                                    width: 100% !important;
-                                    margin: 0 !important;
-                                    padding: 20px !important;
-                                    background: white !important;
-                                    color: black !important;
-                                    box-shadow: none !important;
-                                    border: none !important;
-                                }
-                                .no-print {
-                                    display: none !important;
-                                }
-                            }
-                        `}} />
+                    <div className="p-8 space-y-6">
                         <div className="text-center space-y-1">
-                            <h3 className="text-sm font-black text-brand">SARIOSIYO CENTER</h3>
+                            {settings?.logo && (
+                                <img src={settings.logo} alt="" className="w-14 h-14 object-contain mx-auto mb-2" />
+                            )}
+                            <h3 className="text-sm font-black text-brand">{settings?.orgName || "O'QUV MARKAZI"}</h3>
                             <p className="text-[11px] font-bold text-matn-xira">TO'LOV CHEKI (RECEIPT)</p>
                         </div>
 
@@ -2273,6 +2344,14 @@ function PaymentAddModal({ studentId, onClose, onAdd }: { studentId: number; onC
                             </div>
 
                             <div className="border-t border-dashed border-gray-300 dark:border-gray-800 pt-3 space-y-1.5">
+                                {createdPaymentForReceipt.courseId && (
+                                    <div className="flex justify-between text-[13px]">
+                                        <span className="font-bold">Kurs uchun:</span>
+                                        <span className="font-black text-right">
+                                            {courses.find(c => c.id === createdPaymentForReceipt.courseId)?.name || ''}
+                                        </span>
+                                    </div>
+                                )}
                                 <div className="flex justify-between text-[13px]">
                                     <span className="font-bold">To'lov turi:</span>
                                     <span className="font-black">{createdPaymentForReceipt.type}</span>
@@ -2294,10 +2373,26 @@ function PaymentAddModal({ studentId, onClose, onAdd }: { studentId: number; onC
                             </div>
                         </div>
 
-                        <div className="flex gap-3 no-print">
+                        <div className="flex gap-3">
                             <button
                                 type="button"
-                                onClick={() => window.print()}
+                                onClick={() => printReceipt({
+                                    payment: createdPaymentForReceipt,
+                                    student,
+                                    orgName: settings?.orgName,
+                                    logo: settings?.logo,
+                                    address: settings?.address,
+                                    adminPhone: settings?.adminPhone,
+                                    courseName: createdPaymentForReceipt.courseId
+                                        ? (courses.find(c => c.id === createdPaymentForReceipt.courseId)?.name || null)
+                                        : null,
+                                    groupLines: groups
+                                        .filter(g => (g.studentIds || []).includes(studentId))
+                                        .map(g => {
+                                            const cn = courses.find(c => c.id === g.courseId)?.name || '';
+                                            return g.name + (cn ? ' (' + cn + ')' : '');
+                                        })
+                                })}
                                 className="flex-1 py-3 bg-brand hover:bg-brand-dark text-white text-xs font-extrabold rounded-2xl transition-all cursor-pointer shadow-sm shadow-[#1b6b6b]/20 text-center"
                             >
                                 Chop etish (Print)
@@ -2395,6 +2490,22 @@ function PaymentAddModal({ studentId, onClose, onAdd }: { studentId: number; onC
                                         </button>
                                     ))}
                                 </div>
+                            </div>
+
+                            <div>
+                                <label className={labelCls}>QAYSI KURS UCHUN</label>
+                                <select
+                                    value={courseId}
+                                    onChange={e => setCourseId(e.target.value ? Number(e.target.value) : '')}
+                                    className={inputCls}
+                                >
+                                    <option value="">Umumiy to'lov (kurs tanlanmagan)</option>
+                                    {studentCourses.map(c => (
+                                        <option key={c.id} value={c.id}>
+                                            {c.name + (c.price ? ' — ' + c.price.toLocaleString() + ' UZS/oy' : '')}
+                                        </option>
+                                    ))}
+                                </select>
                             </div>
 
                             <div>

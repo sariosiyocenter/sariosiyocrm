@@ -8,7 +8,8 @@ import {
 import { useCRM } from '../context/CRMContext';
 import { useConfirm } from './ConfirmDialog';
 import { useParams, useNavigate } from 'react-router-dom';
-import { compressImage, compressAndUpload } from '../lib/image';
+import { uploadProfilePhoto } from '../lib/image';
+import PhotoViewer from './PhotoViewer';
 import PhotoCapture from './PhotoCapture';
 import { useLang } from '../context/LanguageContext';
 
@@ -163,6 +164,7 @@ export default function StaffDetails() {
     const [isEditOpen, setIsEditOpen] = useState(false);
     const [editData,   setEditData]   = useState<any>({});
     const [isPhotoModalOpen, setIsPhotoModalOpen] = useState(false);
+    const [isPhotoViewerOpen, setIsPhotoViewerOpen] = useState(false);
     const [isRemovingBg, setIsRemovingBg] = useState(false);
     const fileRef = React.useRef<HTMLInputElement>(null);
 
@@ -358,14 +360,14 @@ export default function StaffDetails() {
         if (!file) return;
         const reader = new FileReader();
         reader.onload = async ev => {
-            const url = await compressAndUpload(ev.target?.result as string, file.name);
+            const url = await uploadProfilePhoto(ev.target?.result as string, file.name);
             setEditData((p: any) => ({ ...p, photo: url }));
         };
         reader.readAsDataURL(file);
     };
 
     const handlePhotoCapture = async (base64: string) => {
-        const compressed = await compressImage(base64);
+        const compressed = await uploadProfilePhoto(base64, `staff-${staffUser.id}.jpg`);
         try {
             const res = await fetch(`/api/users/${staffUser.id}`, {
                 method: 'PUT',
@@ -525,12 +527,18 @@ export default function StaffDetails() {
                                 </button>
                             )}
                             {/* Avatar — centred, extends below banner */}
-                            <div className="absolute -bottom-9 left-1/2 -translate-x-1/2 rounded-2xl bg-sirt p-1 shadow-sm group/avatar">
-                                <div className="w-20 h-20 rounded-2xl overflow-hidden flex items-center justify-center bg-brand/12 text-brand relative">
+                            <div className="absolute -bottom-16 left-1/2 -translate-x-1/2 rounded-2xl bg-sirt p-1 shadow-sm group/avatar">
+                                <div className="w-32 h-32 rounded-2xl overflow-hidden flex items-center justify-center bg-brand/12 text-brand relative">
                                     {staffUser.photo ? (
-                                        <img src={staffUser.photo} alt={staffUser.name} className="w-full h-full object-cover object-top" />
+                                        <img
+                                            src={staffUser.photo}
+                                            alt={staffUser.name}
+                                            onClick={() => setIsPhotoViewerOpen(true)}
+                                            title="Kattalashtirib ko'rish"
+                                            className="w-full h-full object-cover object-top cursor-zoom-in"
+                                        />
                                     ) : (
-                                        <span className="text-3xl font-bold text-brand">
+                                        <span className="text-5xl font-bold text-brand">
                                             {staffUser.name?.charAt(0).toUpperCase()}
                                         </span>
                                     )}
@@ -547,7 +555,7 @@ export default function StaffDetails() {
                         </div>
 
                         {/* Name / role */}
-                        <div className="pt-14 pb-5 px-6 text-center">
+                        <div className="pt-20 pb-5 px-6 text-center">
                             <h2 className="text-sm font-black text-matn tracking-tight">{staffUser.name}</h2>
                             {staffUser.position && (
                                 <p className="text-[11px] font-bold text-matn-xira mt-1">{staffUser.position}</p>
@@ -1310,6 +1318,14 @@ export default function StaffDetails() {
                 <PhotoCapture
                     onCapture={handlePhotoCapture}
                     onClose={() => setIsPhotoModalOpen(false)}
+                />
+            )}
+
+            {isPhotoViewerOpen && staffUser.photo && (
+                <PhotoViewer
+                    src={staffUser.photo}
+                    name={staffUser.name}
+                    onClose={() => setIsPhotoViewerOpen(false)}
                 />
             )}
         </div>

@@ -8,7 +8,7 @@ import { displayName } from '../lib/displayName';
 import Avatar from './ui/Avatar';
 import PhotoCapture from './PhotoCapture';
 import MapPicker from './MapPicker';
-import { compressImage } from '../lib/image';
+import { uploadProfilePhoto } from '../lib/image';
 import * as XLSX from 'xlsx';
 
 const inp = "w-full px-4 py-3 bg-ichki border border-chiziq rounded-2xl text-xs font-bold text-matn focus:border-brand focus:ring-4 focus:ring-[#1b6b6b]/10 outline-none transition-all";
@@ -83,7 +83,7 @@ const UZB_REGIONS: Record<string, string[]> = {
 };
 
 export default function Students() {
-    const { students, groups, teachers, transports, attendances, addStudent, deleteStudent, importStudents, selectedSchoolId, showNotification } = useCRM();
+    const { students, groups, teachers, transports, attendances, addStudent, deleteStudent, importStudents, selectedSchoolId, schools, user, showNotification } = useCRM();
     const confirm = useConfirm();
     const { t } = useLang();
     const navigate = useNavigate();
@@ -108,6 +108,17 @@ export default function Students() {
         selectedGroupIds: [] as number[],
         certificates: [] as Array<{ category: 'Milliy' | 'Xalqaro'; subject?: string; type?: string; score?: string }>
     });
+
+    // Qaysi filialga yozilsin. "To'liq o'quv markazi" (0) rejimida tanlangan filial yo'q,
+    // shuning uchun foydalanuvchining o'z filiali sukut bo'ladi.
+    const defaultBranchId = (selectedSchoolId && selectedSchoolId > 0)
+        ? selectedSchoolId
+        : (user?.schoolId ?? schools[0]?.id ?? 0);
+    const [branchId, setBranchId] = useState<number>(defaultBranchId);
+    React.useEffect(() => { setBranchId(defaultBranchId); }, [defaultBranchId]);
+
+    // Guruhlar filialga bog'liq: boshqa filialning guruhiga yozib bo'lmaydi.
+    const branchGroups = groups.filter(g => !g.schoolId || g.schoolId === branchId);
 
     const addCertificate = () => {
         setNewStudent(prev => ({
@@ -288,6 +299,9 @@ export default function Students() {
             setIsAdding(true);
             await addStudent({
                 ...newStudent,
+                // Filial aniqlanmagan bo'lsa maydonni umuman yubormaymiz —
+                // shunda joriy filial ishlatiladi.
+                ...(branchId > 0 ? { schoolId: branchId } : {}),
                 status: 'Faol',
                 joinedDate: new Date().toISOString().split('T')[0],
                 balance: 0,
@@ -1019,6 +1033,26 @@ export default function Students() {
                                 </button>
                             </div>
                             <form onSubmit={handleAddStudent} className="space-y-4 text-left">
+                                {schools.length > 1 && (
+                                    <div>
+                                        <label className={lbl}>Filial *</label>
+                                        <select
+                                            required
+                                            className={inp}
+                                            value={branchId || ''}
+                                            onChange={e => {
+                                                setBranchId(Number(e.target.value));
+                                                // Boshqa filialning guruhlari endi ko'rinmaydi — tanlovni tozalaymiz.
+                                                setNewStudent(prev => ({ ...prev, selectedGroupIds: [] }));
+                                            }}
+                                        >
+                                            <option value="" disabled>Filialni tanlang</option>
+                                            {schools.map(s => (
+                                                <option key={s.id} value={s.id}>{s.name}</option>
+                                            ))}
+                                        </select>
+                                    </div>
+                                )}
                                 <div>
                                     <label className={lbl}>{t('full_name')}</label>
                                     <input required type="text" placeholder="Jasur Alimov" className={inp} value={newStudent.name} onChange={e => setNewStudent({ ...newStudent, name: e.target.value })} />
@@ -1305,11 +1339,11 @@ export default function Students() {
 
                                 <div className="border-t border-dashed border-chiziq/50 pt-4 mt-4 space-y-3">
                                     <span className="block text-[11px] font-bold text-brand text-left">Kursga qo'shish</span>
-                                    {groups.length === 0 ? (
+                                    {branchGroups.length === 0 ? (
                                         <p className="text-[11px] text-matn-xira italic">Kurslar mavjud emas</p>
                                     ) : (
                                         <div className="flex flex-wrap gap-2">
-                                            {groups.map(g => {
+                                            {branchGroups.map(g => {
                                                 const selected = newStudent.selectedGroupIds.includes(g.id);
                                                 return (
                                                     <button
@@ -1374,8 +1408,8 @@ export default function Students() {
                                                          if (file) {
                                                              const reader = new FileReader();
                                                              reader.onloadend = async () => {
-                                                                 const compressed = await compressImage(reader.result as string);
-                                                                 setNewStudent({ ...newStudent, photo: compressed });
+                                                                 const url = await uploadProfilePhoto(reader.result as string, file.name);
+                                                                 setNewStudent({ ...newStudent, photo: url });
                                                              };
                                                              reader.readAsDataURL(file);
                                                          }
@@ -1416,8 +1450,8 @@ export default function Students() {
             {isPhotoModalOpen && (
                 <PhotoCapture
                     onCapture={async (photo) => {
-                        const compressed = await compressImage(photo);
-                        setNewStudent({ ...newStudent, photo: compressed });
+                        const url = await uploadProfilePhoto(photo, 'student-new.jpg');
+                        setNewStudent({ ...newStudent, photo: url });
                     }}
                     onClose={() => setIsPhotoModalOpen(false)}
                 />

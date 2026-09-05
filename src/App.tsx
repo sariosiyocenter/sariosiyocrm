@@ -69,7 +69,7 @@ function PageLoader() {
 }
 
 export default function App() {
-  const { user, logout, loading } = useCRM();
+  const { user, logout, loading, token, error, checkAuth } = useCRM();
 
   React.useEffect(() => {
     sessionStorage.removeItem('chunk-reload-flag');
@@ -89,6 +89,34 @@ export default function App() {
           <Route path="*" element={<Navigate to="/login" replace />} />
         </Routes>
       </Suspense>
+    );
+  }
+
+  // Sessiya bor, lekin server javob bermadi. Ilgari bunday holatda foydalanuvchi
+  // tizimdan chiqarilib, reklama sahifasiga tushib qolardi — go'yo u chiqib ketgandek.
+  // Endi token saqlanadi va faqat qayta urinish taklif qilinadi.
+  if (!user && token && error) {
+    return (
+      <div className="min-h-screen bg-ichki flex items-center justify-center p-6">
+        <div className="max-w-sm w-full bg-sirt border border-chiziq rounded-2xl p-8 text-center space-y-4">
+          <h1 className="text-sm font-black text-matn tracking-tight">Serverga ulanib bo'lmadi</h1>
+          <p className="text-[12px] text-matn-xira font-medium">{error}</p>
+          <div className="flex gap-2 pt-1">
+            <button
+              onClick={() => checkAuth()}
+              className="flex-1 py-3 bg-brand hover:bg-brand-dark text-white rounded-xl text-[11px] font-extrabold transition-all cursor-pointer"
+            >
+              Qayta urinish
+            </button>
+            <button
+              onClick={logout}
+              className="flex-1 py-3 bg-chiziq text-matn rounded-xl text-[11px] font-extrabold transition-all cursor-pointer"
+            >
+              Chiqish
+            </button>
+          </div>
+        </div>
+      </div>
     );
   }
 

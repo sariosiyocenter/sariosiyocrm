@@ -3,7 +3,17 @@
  * Resizes and compresses any image base64 data URL to an optimized maximum width and height
  * to drastically reduce upload payloads, database footprints, and background removal processing times.
  */
-export function compressImage(base64Str: string, maxWidth = 640, maxHeight = 640): Promise<string> {
+/**
+ * Profil suratlari uchun o'lcham va sifat.
+ *
+ * Ro'yxatdagi 28px avatar uchun 640px yetarli edi, lekin profil sahifasida surat
+ * endi kattaroq ko'rsatiladi va 0.75 sifatdagi 640px siqilish artefaktlari
+ * ko'zga tashlanardi. Bu suratlar Supabase'ga fayl bo'lib yuklanadi (data URL
+ * emas), shuning uchun kattaroq o'lcham /api/init javobini og'irlashtirmaydi.
+ */
+export const PROFILE_PHOTO = { maxWidth: 900, maxHeight: 900, quality: 0.9 };
+
+export function compressImage(base64Str: string, maxWidth = 640, maxHeight = 640, quality = 0.75): Promise<string> {
     return new Promise((resolve) => {
         const img = new Image();
         img.src = base64Str;
@@ -30,7 +40,7 @@ export function compressImage(base64Str: string, maxWidth = 640, maxHeight = 640
             if (ctx) {
                 ctx.drawImage(img, 0, 0, width, height);
                 // 0.75 quality is the sweet spot: perfect look, 10-50x smaller size
-                resolve(canvas.toDataURL('image/jpeg', 0.75));
+                resolve(canvas.toDataURL('image/jpeg', quality));
             } else {
                 resolve(base64Str);
             }
@@ -39,6 +49,11 @@ export function compressImage(base64Str: string, maxWidth = 640, maxHeight = 640
             resolve(base64Str);
         };
     });
+}
+
+/** Profil surati: kattaroq o'lcham, yuqori sifat, fayl bo'lib saqlanadi. */
+export function uploadProfilePhoto(base64Str: string, filename = 'photo.jpg'): Promise<string> {
+    return compressAndUpload(base64Str, filename, PROFILE_PHOTO.maxWidth, PROFILE_PHOTO.maxHeight, PROFILE_PHOTO.quality);
 }
 
 /**
@@ -56,9 +71,10 @@ export async function compressAndUpload(
     base64Str: string,
     filename = 'image.jpg',
     maxWidth = 640,
-    maxHeight = 640
+    maxHeight = 640,
+    quality = 0.75
 ): Promise<string> {
-    const compressed = await compressImage(base64Str, maxWidth, maxHeight);
+    const compressed = await compressImage(base64Str, maxWidth, maxHeight, quality);
     try {
         const token = localStorage.getItem('token');
         const res = await fetch('/api/upload', {

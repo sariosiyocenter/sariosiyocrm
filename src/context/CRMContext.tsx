@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
 import { Student, Teacher, Group, Lead, Payment, CRMState, Course, Room, School, UserRole, Attendance, Score, TeacherAttendance, Expense, Transport, DeliveryLog, Route, Question, Exam, ExamResult, Variant, Topic, Syllabus } from '../types';
 import { generateVariants } from '../lib/shuffler';
 
@@ -34,7 +34,9 @@ interface CRMContextType extends CRMState {
     logout: () => void;
     checkAuth: () => Promise<void>;
     setSelectedSchoolId: (id: number) => void;
-    addStudent: (student: Omit<Student, 'id' | 'schoolId'>) => Promise<void>;
+    // schoolId ixtiyoriy: ko'p filialli markazda o'quvchi qaysi filialga
+    // yozilishini forma o'zi tanlaydi, aks holda joriy filial olinadi.
+    addStudent: (student: Omit<Student, 'id' | 'schoolId'> & { schoolId?: number }) => Promise<void>;
     updateStudent: (id: number, student: Partial<Student>) => Promise<void>;
     deleteStudent: (id: number) => Promise<void>;
     importStudents: (students: any[]) => Promise<void>;
@@ -57,6 +59,7 @@ interface CRMContextType extends CRMState {
     addRoom: (room: Omit<Room, 'id' | 'schoolId'>) => Promise<void>;
     deleteRoom: (id: number) => Promise<void>;
     addSchool: (school: Omit<School, 'id'>) => Promise<void>;
+    updateSchool: (id: number, school: Partial<Omit<School, 'id'>>) => Promise<void>;
     deleteSchool: (id: number) => Promise<void>;
     addAttendance: (attendance: Omit<Attendance, 'id' | 'schoolId'>) => Promise<void>;
     updateAttendance: (id: number, updates: Partial<Attendance>) => Promise<void>;
@@ -100,6 +103,20 @@ interface CRMContextType extends CRMState {
 const CRMContext = createContext<CRMContextType | undefined>(undefined);
 
 const API_BASE = '/api';
+
+// Tanlangan filial. 0 — "To'liq o'quv markazi", ya'ni tashkilotning barcha filiallari.
+const BRANCH_KEY = 'crm_branch';
+
+function storedBranchId(): number | null {
+    try {
+        const raw = localStorage.getItem(BRANCH_KEY);
+        if (raw === null) return null;
+        const id = Number(raw);
+        return Number.isFinite(id) ? id : null;
+    } catch {
+        return null;
+    }
+}
 
 export const CRMProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
     const [state, setState] = useState<CRMState>({
@@ -281,7 +298,16 @@ export const CRMProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
     const toggleDarkMode = () => setDarkMode(prev => !prev);
 
+    /** Hozir qaysi filial yuklanayotgani. Filial almashtirilganda oldingi so'rov
+     *  hali yo'lda bo'lishi mumkin; u kechikib kelib o'z filialini qayta yozsa,
+     *  effekt yana yuklashni boshlardi va ikki so'rov bir-birini cheksiz
+     *  almashtirardi. Eskirgan javob shu yerda tashlab yuboriladi. */
+    const activeBranchRef = useRef<number | null>(null);
+
     const setSelectedSchoolId = (id: number) => {
+        // Remember the branch across reloads. Without this every refresh dropped the
+        // user back onto their home branch, so a switch never appeared to stick.
+        try { localStorage.setItem(BRANCH_KEY, String(id)); } catch { /* private mode */ }
         setState(prev => ({ ...prev, selectedSchoolId: id }));
     };
 
@@ -330,6 +356,7 @@ export const CRMProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             }
 
             // 19 request → 1 request: /api/init
+            activeBranchRef.current = schoolIdToUse;
             const res = await fetch(`${API_BASE}/init?schoolId=${schoolIdToUse}`, {
                 headers: { 'Authorization': `Bearer ${currentToken}` }
             });
@@ -337,6 +364,9 @@ export const CRMProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             if (!res.ok) throw new Error(`Init fetch error: ${res.statusText}`);
 
             const data = await res.json();
+
+            // Javob kelguncha boshqa filial tanlangan bo'lsa, bu ma'lumot eskirgan.
+            if (activeBranchRef.current !== schoolIdToUse) return;
 
             setState(prev => ({
                 ...prev,
@@ -396,13 +426,19 @@ export const CRMProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             // JWT dan rolni oldindan o'qib, parallel optimizatsiya
             const decoded = decodeToken(token);
             const predictedRole = decoded?.role;
-            const predictedSchoolId = decoded?.schoolId;
+            // The branch the user last chose wins over the one baked into the token —
+            // otherwise the switcher resets to the home branch on every reload.
+            const savedBranch = storedBranchId();
+            const predictedSchoolId = savedBranch !== null ? savedBranch : decoded?.schoolId;
             const headers = { 'Authorization': `Bearer ${token}` };
 
             const authPromise = fetch(`${API_BASE}/auth/me`, { headers });
 
-            // SUPERADMIN emas + schoolId JWT da bor → /api/init ni parallel boshlash
-            const initPromise = (predictedRole && predictedRole !== 'SUPERADMIN' && predictedSchoolId)
+            // SUPERADMIN emas + schoolId ma'lum → /api/init ni parallel boshlash.
+            // 0 ham haqiqiy qiymat ("To'liq o'quv markazi"), shuning uchun null/undefined
+            // bilan solishtiramiz.
+            const initPromise = (predictedRole && predictedRole !== 'SUPERADMIN'
+                    && predictedSchoolId !== undefined && predictedSchoolId !== null)
                 ? fetch(`${API_BASE}/init?schoolId=${predictedSchoolId}`, { headers })
                 : null;
 
@@ -415,12 +451,14 @@ export const CRMProvider: React.FC<{ children: React.ReactNode }> = ({ children 
                     // SUPERADMIN — data organizations sahifasida yuklanadi, bu yerda hech narsa kerak emas
                     setLoading(false);
                     return;
-                } else if (initPromise) {
+                } else if (initPromise && predictedSchoolId !== undefined && predictedSchoolId !== null) {
                     // Init response allaqachon yuborilgan, faqat kutamiz
+                    activeBranchRef.current = predictedSchoolId;
                     const initRes = await initPromise;
                     if (initRes.status === 401 || initRes.status === 403) { logout(); return; }
                     if (initRes.ok) {
                         const data = await initRes.json();
+                        if (activeBranchRef.current !== predictedSchoolId) return;
                         setState(prev => ({
                             ...prev,
                             schools:            data.schools        || [],
@@ -445,31 +483,39 @@ export const CRMProvider: React.FC<{ children: React.ReactNode }> = ({ children 
                             topics:             data.topics         || [],
                             syllabuses:         data.syllabuses     || [],
                             deliveryLogs:       [],
-                            selectedSchoolId:   userData.schoolId
+                            selectedSchoolId:   predictedSchoolId
                         }));
                         // This fast path fills state without going through fetchData, so it
                         // has to clear the error banner itself — otherwise a successful
                         // reload still shows "could not load".
                         setError(null);
                     } else {
-                        await fetchData(token, userData.schoolId || undefined, userData.role);
+                        await fetchData(token, savedBranch ?? userData.schoolId ?? undefined, userData.role);
                     }
                 } else {
-                    await fetchData(token, userData.schoolId || undefined, userData.role);
+                    await fetchData(token, savedBranch ?? userData.schoolId ?? undefined, userData.role);
                 }
             } else {
                 if (token.startsWith('mock_token_')) {
                     setUser({ id: 1, name: "Admin (Mock)", email: "admin@sariosiyo.uz", role: "ADMIN", schoolId: 1 });
                     return;
                 }
-                logout();
+                // Faqat sessiya haqiqatan ham yaroqsiz bo'lsa chiqaramiz. Ilgari
+                // serverning har qanday xatosi — masalan baza ulanishlari tugab
+                // qolgandagi 500 — foydalanuvchini login sahifasiga uloqtirardi.
+                if (res.status === 401 || res.status === 403) {
+                    logout();
+                } else {
+                    setError("Server javob bermadi. Sahifani yangilab ko'ring.");
+                }
             }
         } catch (err) {
             console.error("Auth check failed", err);
             if (token.startsWith('mock_token_')) {
                 setUser({ id: 1, name: "Admin (Mock)", email: "admin@sariosiyo.uz", role: "ADMIN", schoolId: 1 });
             } else {
-                logout();
+                // Tarmoq uzilishi sessiyani bekor qilmaydi — token joyida qoladi.
+                setError("Aloqa yo'q. Internetni tekshirib, qayta urinib ko'ring.");
             }
         } finally {
             setLoading(false);
@@ -481,11 +527,38 @@ export const CRMProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }, []);
 
     useEffect(() => {
-        if (state.selectedSchoolId !== null && user) {
-            // Keep the current screen on screen while the new branch's data arrives.
+        if (state.selectedSchoolId === null || !user) return;
+        // Kirishdagi tezkor yo'l shu filial ma'lumotini allaqachon yuklab qo'ygan.
+        // Bu tekshiruvsiz har ochilishda /api/init ikki marta chaqirilardi.
+        if (activeBranchRef.current === state.selectedSchoolId) return;
+        // Keep the current screen on screen while the new branch's data arrives.
+        fetchData(undefined, undefined, user.role, true);
+    }, [state.selectedSchoolId, user?.id]);
+
+    // Ma'lumotlar faqat kirishda bir marta yuklanardi, shuning uchun tashqarida
+    // sodir bo'lgan o'zgarishlar — masalan o'quvchining Telegram botga ulanishi —
+    // sahifa to'liq qayta yuklanmaguncha ko'rinmasdi. Endi vkladkaga qaytilganda
+    // ma'lumot jimgina yangilanadi. Minutiga bir martadan tez-tez emas: /api/init
+    // katta javob qaytaradi.
+    useEffect(() => {
+        if (!token || !user || user.role === 'SUPERADMIN') return;
+        let lastRefresh = Date.now();
+        const REFRESH_AFTER_MS = 60 * 1000;
+
+        const refreshIfStale = () => {
+            if (document.visibilityState !== 'visible') return;
+            if (Date.now() - lastRefresh < REFRESH_AFTER_MS) return;
+            lastRefresh = Date.now();
             fetchData(undefined, undefined, user.role, true);
-        }
-    }, [state.selectedSchoolId]);
+        };
+
+        document.addEventListener('visibilitychange', refreshIfStale);
+        window.addEventListener('focus', refreshIfStale);
+        return () => {
+            document.removeEventListener('visibilitychange', refreshIfStale);
+            window.removeEventListener('focus', refreshIfStale);
+        };
+    }, [token, user?.id, user?.role, state.selectedSchoolId]);
 
     const login = async (email: string, password: string) => {
         try {
@@ -527,6 +600,7 @@ export const CRMProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         setToken(null);
         setUser(null);
         localStorage.removeItem('token');
+        try { localStorage.removeItem(BRANCH_KEY); } catch { /* private mode */ }
         setState({
             students: [], teachers: [], groups: [], leads: [], payments: [], courses: [], rooms: [], schools: [],
             attendances: [], scores: [], teacherAttendances: [], expenses: [],
@@ -571,7 +645,7 @@ export const CRMProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         return method !== 'DELETE' ? await res.json() : null;
     };
 
-    const addStudent = async (student: Omit<Student, 'id' | 'schoolId'>) => {
+    const addStudent = async (student: Omit<Student, 'id' | 'schoolId'> & { schoolId?: number }) => {
         try {
             const newStudent = await apiCall('students', 'POST', student);
             setState(prev => ({ ...prev, students: [...prev.students, newStudent] }));
@@ -781,6 +855,17 @@ export const CRMProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     const addSchool = async (school: Omit<School, 'id'>) => {
         const newSchool = await apiCall('schools', 'POST', school);
         setState(prev => ({ ...prev, schools: [...prev.schools, newSchool] }));
+    };
+
+    const updateSchool = async (id: number, school: Partial<Omit<School, 'id'>>) => {
+        try {
+            const updated = await apiCall(`schools/${id}`, 'PUT', school);
+            setState(prev => ({ ...prev, schools: prev.schools.map(s => s.id === id ? { ...s, ...updated } : s) }));
+            showNotification("Filial ma'lumotlari yangilandi", 'success');
+        } catch (err: any) {
+            showNotification('Filialni yangilashda xatolik: ' + err.message, 'error');
+            throw err;
+        }
     };
 
     const deleteSchool = async (id: number) => {
@@ -1216,7 +1301,7 @@ export const CRMProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             updateSettings,
             addCourse, updateCourse, deleteCourse,
             addRoom, deleteRoom,
-            addSchool, deleteSchool,
+            addSchool, updateSchool, deleteSchool,
             addAttendance, updateAttendance, addBatchAttendance, deleteBatchAttendance, updateDayTopic, addScore, loadAttendanceFor, retryLoad,
             addTopic, updateTopic, deleteTopic,
             addSyllabus, updateSyllabus, deleteSyllabus,

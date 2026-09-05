@@ -30,7 +30,7 @@ const lbl = "block text-[11px] font-extrabold   text-matn-xira mb-2";
 
 export default function Settings() {
     const { settings, updateSettings, rooms, schools,
-        addRoom, deleteRoom, addSchool, deleteSchool,
+        addRoom, deleteRoom, addSchool, updateSchool, deleteSchool,
         themeColor, setThemeColor } = useCRM();
     const { user: currentUser, token } = useCRM();
     const { t } = useLang();
@@ -56,6 +56,8 @@ export default function Settings() {
     const logoInputRef = useRef<HTMLInputElement>(null);
 
     const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+    // Tahrirlanayotgan filial. null bo'lsa modal "qo'shish" rejimida ishlaydi.
+    const [editingSchool, setEditingSchool] = useState<any>(null);
     const [newItem, setNewItem] = useState<any>({});
 
     const [permissions, setPermissions] = useState<Record<string, Record<string, boolean>>>(() => {
@@ -200,9 +202,14 @@ export default function Settings() {
             if (activeSection === 'xonalar') {
                 await addRoom({ ...newItem, capacity: Number(newItem.capacity) });
             } else if (activeSection === 'filiallar') {
-                await addSchool(newItem);
+                if (editingSchool) {
+                    await updateSchool(editingSchool.id, { name: newItem.name, address: newItem.address });
+                } else {
+                    await addSchool(newItem);
+                }
             }
             setIsAddModalOpen(false);
+            setEditingSchool(null);
             setNewItem({});
         } catch (err: any) {
             console.error('Add failed', err);
@@ -535,11 +542,16 @@ export default function Settings() {
         if (activeSection === 'filiallar') return (
             <ListSection
                 title={t('settings_branches')} subtitle={t('branches_subtitle')}
-                icon={<Building2 size={16} />} onAdd={() => { setNewItem({}); setIsAddModalOpen(true); }}
+                icon={<Building2 size={16} />} onAdd={() => { setEditingSchool(null); setNewItem({}); setIsAddModalOpen(true); }}
                 items={schools || []} emptyText={t('no_branches_found')}
                 renderItem={(item: any) => (
                     <ItemCard key={item.id} icon={<Building2 size={16} />} iconBg="bg-teal-50 text-brand border-teal-100 dark:bg-teal-950/20 dark:text-teal-400 dark:border-teal-900/40"
                         title={item.name} subtitle={item.address || t('no_address')}
+                        onEdit={() => {
+                            setEditingSchool(item);
+                            setNewItem({ name: item.name, address: item.address || '' });
+                            setIsAddModalOpen(true);
+                        }}
                         onDelete={() => deleteSchool(item.id)} />
                 )}
             />
@@ -658,7 +670,9 @@ export default function Settings() {
         return null;
     };
 
-    const addModalTitle = activeSection === 'xonalar' ? t('add_room') : t('add_branch');
+    const addModalTitle = activeSection === 'xonalar'
+        ? t('add_room')
+        : (editingSchool ? 'Filialni tahrirlash' : t('add_branch'));
 
     return (
         <div className="space-y-6 animate-in fade-in duration-500">
@@ -721,9 +735,11 @@ export default function Settings() {
                         <div className="flex items-center justify-between mb-6 pb-4 border-b border-chiziq-mayin/50">
                             <div>
                                 <h3 className="text-lg font-black text-matn tracking-tight">{addModalTitle}</h3>
-                                <p className="text-[11px] font-bold text-brand mt-0.5">{t('add_data_subtitle')}</p>
+                                <p className="text-[11px] font-bold text-brand mt-0.5">
+                                    {editingSchool ? "Nomi va manzilini o'zgartirish" : t('add_data_subtitle')}
+                                </p>
                             </div>
-                            <button aria-label="Yopish" onClick={() => setIsAddModalOpen(false)} className="w-9 h-9 flex items-center justify-center text-matn-xira hover:bg-gray-55 dark:hover:bg-gray-700 rounded-xl cursor-pointer"><X size={18} /></button>
+                            <button aria-label="Yopish" onClick={() => { setIsAddModalOpen(false); setEditingSchool(null); }} className="w-9 h-9 flex items-center justify-center text-matn-xira hover:bg-gray-55 dark:hover:bg-gray-700 rounded-xl cursor-pointer"><X size={18} /></button>
                         </div>
                         <form onSubmit={handleAddItem} className="space-y-4">
                             <div>
@@ -743,7 +759,7 @@ export default function Settings() {
                                 </div>
                             )}
                             <div className="flex gap-3 pt-4 border-t border-dashed border-chiziq/50">
-                                <button type="button" onClick={() => setIsAddModalOpen(false)}
+                                <button type="button" onClick={() => { setIsAddModalOpen(false); setEditingSchool(null); }}
                                     className="flex-1 py-3 bg-chiziq text-gray-700 dark:text-white text-xs font-extrabold rounded-2xl transition-all cursor-pointer hover:bg-gray-200 dark:hover:bg-gray-600">
                                     {t('cancel')}
                                 </button>
@@ -794,17 +810,26 @@ function ListSection({ title, subtitle, icon, onAdd, items, emptyText, renderIte
     );
 }
 
-function ItemCard({ icon, iconBg, title, subtitle, onDelete }: {
-    icon: React.ReactNode; iconBg: string; title: string; subtitle: string; onDelete: () => void;
+function ItemCard({ icon, iconBg, title, subtitle, onEdit, onDelete }: {
+    icon: React.ReactNode; iconBg: string; title: string; subtitle: string;
+    onEdit?: () => void; onDelete: () => void;
 }) {
     return (
         <div className="bg-sirt border border-chiziq rounded-2xl p-4 flex flex-col gap-4 group hover:shadow-md transition-all">
             <div className="flex items-start justify-between">
                 <div className={`w-10 h-10 rounded-xl border flex items-center justify-center ${iconBg}`}>{icon}</div>
-                <button onClick={onDelete}
-                    className="w-7 h-7 rounded-lg text-matn-xira hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/20 flex items-center justify-center transition-colors cursor-pointer opacity-0 group-hover:opacity-100">
-                    <Trash2 size={13} />
-                </button>
+                <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                    {onEdit && (
+                        <button onClick={onEdit} title="Tahrirlash"
+                            className="w-7 h-7 rounded-lg text-matn-xira hover:text-brand hover:bg-brand/10 flex items-center justify-center transition-colors cursor-pointer">
+                            <Pencil size={13} />
+                        </button>
+                    )}
+                    <button onClick={onDelete} title="O'chirish"
+                        className="w-7 h-7 rounded-lg text-matn-xira hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/20 flex items-center justify-center transition-colors cursor-pointer">
+                        <Trash2 size={13} />
+                    </button>
+                </div>
             </div>
             <div>
                 <p className="text-xs font-black text-matn tracking-wide">{title}</p>

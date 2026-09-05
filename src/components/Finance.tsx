@@ -13,6 +13,7 @@ import { useConfirm } from './ConfirmDialog';
 import { useLang } from '../context/LanguageContext';
 import { Payment, Expense } from '../types';
 import { StatCard, BarChart, DonutChart, LineChart } from './reports/shared';
+import { printReceipt } from '../lib/receipt';
 
 const inp = "w-full px-4 py-3 bg-slate-50 dark:bg-[#1a2232] border border-chiziq rounded-xl text-sm font-semibold text-slate-900 dark:text-white focus:border-brand focus:ring-2 focus:ring-brand/20 outline-none transition-all";
 const lbl = "block text-[11px] font-extrabold   text-matn-xira mb-2";
@@ -31,7 +32,7 @@ const downloadCSV = (filename: string, rows: Record<string, any>[]) => {
 };
 
 export default function Finance() {
-    const { students, payments, expenses, addPayment, addExpense, deleteExpense, groups, courses, token, selectedSchoolId, teachers, showNotification } = useCRM();
+    const { students, payments, expenses, addPayment, addExpense, deleteExpense, groups, courses, token, selectedSchoolId, teachers, settings, showNotification } = useCRM();
     const confirm = useConfirm();
 
     // HR users (staff list for salary expense)
@@ -212,12 +213,23 @@ export default function Finance() {
     const [selectedStudent, setSelectedStudent] = useState<any>(null);
     const [createdPaymentForReceipt, setCreatedPaymentForReceipt] = useState<any>(null);
     const [newPayment, setNewPayment] = useState<Omit<Payment, 'id' | 'schoolId'>>({
-        studentId: 0, amount: 0, type: 'Naqd', description: '', date: new Date().toISOString().split('T')[0]
+        studentId: 0, amount: 0, type: 'Naqd', description: '', courseId: null, date: new Date().toISOString().split('T')[0]
     });
     const [newExpense, setNewExpense] = useState<Omit<Expense, 'id' | 'schoolId'>>({
         amount: 0, category: 'Boshqa', description: '', date: new Date().toISOString().split('T')[0],
         staffId: null, staffName: null
     });
+
+    /** To'lov modalidagi kurs ro'yxati: avval o'quvchi a'zo bo'lgan guruhlarning
+     *  kurslari, ular yo'q bo'lsa markazdagi barcha kurslar. */
+    const paymentCourseOptions = useMemo(() => {
+        if (!selectedStudent) return [];
+        const ids = new Set(
+            groups.filter(g => (g.studentIds || []).includes(selectedStudent.id)).map(g => g.courseId)
+        );
+        const own = courses.filter(c => ids.has(c.id));
+        return own.length > 0 ? own : courses;
+    }, [selectedStudent, groups, courses]);
 
     // All staff for salary expense selector (users + legacy teachers)
     const userNames = new Set(hrUsers.map(u => u.name.toLowerCase().trim()));
@@ -229,56 +241,21 @@ export default function Finance() {
 
     const handlePrintReceipt = (payment: any, student: any) => {
         const studentGroups = groups.filter(g => (g.studentIds || []).includes(student?.id));
-        const groupLines = studentGroups.map(g => {
-            const courseName = courses.find(c => c.id === g.courseId)?.name || '';
-            return `<div>- ${g.name}${courseName ? ` (${courseName})` : ''}</div>`;
-        }).join('');
-        const popup = window.open('', '_blank', 'width=420,height=640');
-        if (!popup) return;
-        popup.document.write(`<!DOCTYPE html>
-<html><head><meta charset="utf-8"><title>Chek #${payment.id}</title>
-<style>
-  * { margin: 0; padding: 0; box-sizing: border-box; }
-  body { font-family: 'Courier New', monospace; font-size: 12px; color: #111; background: #fff; padding: 24px 20px; }
-  h2 { font-size: 15px; font-weight: 900; text-align: center; letter-spacing: 2px; text-transform: ; color: #1b6b6b; margin-bottom: 4px; }
-  .sub { text-align: center; font-size: 9px; letter-spacing: 2px; text-transform: ; color: #888; margin-bottom: 18px; }
-  .box { border: 1px dashed #ccc; border-radius: 8px; padding: 16px; }
-  .row { display: flex; justify-content: space-between; margin-bottom: 6px; }
-  .row .val { font-weight: 900; }
-  .divider { border-top: 1px dashed #ccc; margin: 12px 0; }
-  .label { font-size: 9px; text-transform: ; color: #888; display: block; margin-bottom: 2px; }
-  .big { font-size: 14px; font-weight: 900; }
-  .green { color: #059669; }
-  .red { color: #e11d48; }
-  .footer { margin-top: 14px; text-align: center; font-size: 9px; letter-spacing: 2px; text-transform: ; color: #aaa; }
-  @media print { body { padding: 10px; } }
-</style></head><body>
-<h2>SARIOSIYO CENTER</h2>
-<div class="sub">To'lov cheki (Receipt)</div>
-<div class="box">
-  <div class="row"><span>Chek #</span><span class="val">#${payment.id}</span></div>
-  <div class="row"><span>Sana:</span><span class="val">${payment.date}</span></div>
-  <div class="divider"></div>
-  <div style="margin-bottom:10px"><span class="label">O'quvchi:</span><div class="big">${student?.name || ''}</div></div>
-  ${student?.phone ? `<div style="margin-bottom:10px"><span class="label">Telefon:</span><div>${student.phone}</div></div>` : ''}
-  ${groupLines ? `<div style="margin-bottom:10px"><span class="label">Kurslar:</span>${groupLines}</div>` : ''}
-  <div class="divider"></div>
-  <div class="row"><span>To'lov turi:</span><span class="val">${payment.type}</span></div>
-  <div class="row" style="font-size:15px">
-    <span style="color:#1b6b6b;font-weight:700">To'landi:</span>
-    <span class="val green">+${payment.amount.toLocaleString()} UZS</span>
-  </div>
-  <div class="row">
-    <span>Joriy balans:</span>
-    <span class="val ${(student?.balance || 0) >= 0 ? 'green' : 'red'}">${(student?.balance || 0).toLocaleString()} UZS</span>
-  </div>
-  <div class="divider"></div>
-  <div class="footer">To'lovingiz uchun rahmat!</div>
-</div>
-</body></html>`);
-        popup.document.close();
-        popup.focus();
-        setTimeout(() => { popup.print(); popup.close(); }, 400);
+        printReceipt({
+            payment,
+            student,
+            orgName: settings?.orgName,
+            logo: settings?.logo,
+            address: settings?.address,
+            adminPhone: settings?.adminPhone,
+            courseName: payment?.courseId
+                ? (courses.find(c => c.id === payment.courseId)?.name || null)
+                : null,
+            groupLines: studentGroups.map(g => {
+                const courseName = courses.find(c => c.id === g.courseId)?.name || '';
+                return g.name + (courseName ? ' (' + courseName + ')' : '');
+            })
+        });
     };
 
     const closePaymentModal = () => {
@@ -286,7 +263,7 @@ export default function Finance() {
         setCreatedPaymentForReceipt(null);
         setSelectedStudent(null);
         setStudentSearch('');
-        setNewPayment({ studentId: 0, amount: 0, type: 'Naqd', description: '', date: new Date().toISOString().split('T')[0] });
+        setNewPayment({ studentId: 0, amount: 0, type: 'Naqd', description: '', courseId: null, date: new Date().toISOString().split('T')[0] });
     };
 
     // ─── Date helpers ─────────────────────────────────────────────
@@ -1317,7 +1294,10 @@ ${e.description || e.category} — ${Number(e.amount).toLocaleString()} so'm`)) 
                         {createdPaymentForReceipt ? (
                             <div className="space-y-6">
                                 <div className="text-center space-y-1">
-                                    <h3 className="text-sm font-black text-brand">SARIOSIYO CENTER</h3>
+                                    {settings?.logo && (
+                                        <img src={settings.logo} alt="" className="w-14 h-14 object-contain mx-auto mb-2" />
+                                    )}
+                                    <h3 className="text-sm font-black text-brand">{settings?.orgName || "O'QUV MARKAZI"}</h3>
                                     <p className="text-[11px] font-bold text-matn-xira">TO'LOV CHEKI (RECEIPT)</p>
                                 </div>
                                 <div className="bg-ichki/30 p-4 rounded-2xl border border-gray-100 dark:border-gray-750 font-mono text-xs text-gray-800 dark:text-gray-300 space-y-4 shadow-inner">
@@ -1348,6 +1328,14 @@ ${e.description || e.category} — ${Number(e.amount).toLocaleString()} so'm`)) 
                                         })()}
                                     </div>
                                     <div className="border-t border-dashed border-gray-300 dark:border-gray-800 pt-3 space-y-1.5">
+                                        {createdPaymentForReceipt.courseId && (
+                                            <div className="flex justify-between text-[13px]">
+                                                <span className="font-bold">Kurs uchun:</span>
+                                                <span className="font-black text-right">
+                                                    {courses.find(c => c.id === createdPaymentForReceipt.courseId)?.name || ''}
+                                                </span>
+                                            </div>
+                                        )}
                                         <div className="flex justify-between text-[13px]">
                                             <span className="font-bold">To'lov turi:</span>
                                             <span className="font-black">{createdPaymentForReceipt.type}</span>
@@ -1399,6 +1387,7 @@ ${e.description || e.category} — ${Number(e.amount).toLocaleString()} so'm`)) 
                                             amount: newPayment.amount,
                                             type: newPayment.type,
                                             description: newPayment.description || '',
+                                            courseId: newPayment.courseId ?? null,
                                             date: newPayment.date
                                         });
                                         setCreatedPaymentForReceipt(created);
@@ -1438,7 +1427,7 @@ ${e.description || e.category} — ${Number(e.amount).toLocaleString()} so'm`)) 
                                     ) : (
                                         <div className="p-4 bg-ichki rounded-2xl border border-chiziq/80 relative space-y-3">
                                             <button type="button"
-                                                onClick={() => { setSelectedStudent(null); setNewPayment({ ...newPayment, studentId: 0 }); }}
+                                                onClick={() => { setSelectedStudent(null); setNewPayment({ ...newPayment, studentId: 0, courseId: null }); }}
                                                 className="absolute top-3.5 right-3.5 text-[11px] text-rose-500 font-bold hover:underline cursor-pointer bg-sirt px-2.5 py-1 rounded-lg border border-chiziq">
                                                 O'zgartirish
                                             </button>
@@ -1501,6 +1490,26 @@ ${e.description || e.category} — ${Number(e.amount).toLocaleString()} so'm`)) 
                                             ))}
                                         </div>
                                     </div>
+
+                                    {/* Qaysi kurs uchun. O'quvchining guruhlaridan olinadi;
+                                        birortasiga a'zo bo'lmasa markazning barcha kurslari. */}
+                                    {selectedStudent && (
+                                        <div>
+                                            <label className={lbl}>Qaysi kurs uchun</label>
+                                            <select
+                                                className={inp}
+                                                value={newPayment.courseId ?? ''}
+                                                onChange={(e) => setNewPayment({ ...newPayment, courseId: e.target.value ? Number(e.target.value) : null })}
+                                            >
+                                                <option value="">Umumiy to'lov (kurs tanlanmagan)</option>
+                                                {paymentCourseOptions.map(c => (
+                                                    <option key={c.id} value={c.id}>
+                                                        {c.name + (c.price ? ' — ' + c.price.toLocaleString() + ' UZS/oy' : '')}
+                                                    </option>
+                                                ))}
+                                            </select>
+                                        </div>
+                                    )}
 
                                     <div>
                                         <label className={lbl}>To'lov usuli *</label>
