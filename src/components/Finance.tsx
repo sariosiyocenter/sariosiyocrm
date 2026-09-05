@@ -223,7 +223,7 @@ export default function Finance() {
     /** To'lov modalidagi kurs ro'yxati: avval o'quvchi a'zo bo'lgan guruhlarning
      *  kurslari, ular yo'q bo'lsa markazdagi barcha kurslar. */
     const paymentCourseOptions = useMemo(() => {
-        if (!selectedStudent) return [];
+        if (!selectedStudent) return courses;
         const ids = new Set(
             groups.filter(g => (g.studentIds || []).includes(selectedStudent.id)).map(g => g.courseId)
         );
@@ -1493,23 +1493,21 @@ ${e.description || e.category} — ${Number(e.amount).toLocaleString()} so'm`)) 
 
                                     {/* Qaysi kurs uchun. O'quvchining guruhlaridan olinadi;
                                         birortasiga a'zo bo'lmasa markazning barcha kurslari. */}
-                                    {selectedStudent && (
-                                        <div>
-                                            <label className={lbl}>Qaysi kurs uchun</label>
-                                            <select
-                                                className={inp}
-                                                value={newPayment.courseId ?? ''}
-                                                onChange={(e) => setNewPayment({ ...newPayment, courseId: e.target.value ? Number(e.target.value) : null })}
-                                            >
-                                                <option value="">Umumiy to'lov (kurs tanlanmagan)</option>
-                                                {paymentCourseOptions.map(c => (
-                                                    <option key={c.id} value={c.id}>
-                                                        {c.name + (c.price ? ' — ' + c.price.toLocaleString() + ' UZS/oy' : '')}
-                                                    </option>
-                                                ))}
-                                            </select>
-                                        </div>
-                                    )}
+                                    <div>
+                                        <label className={lbl}>Qaysi kurs uchun</label>
+                                        <select
+                                            className={inp}
+                                            value={newPayment.courseId ?? ''}
+                                            onChange={(e) => setNewPayment({ ...newPayment, courseId: e.target.value ? Number(e.target.value) : null })}
+                                        >
+                                            <option value="">Umumiy to'lov (kurs tanlanmagan)</option>
+                                            {paymentCourseOptions.map(c => (
+                                                <option key={c.id} value={c.id}>
+                                                    {c.name + (c.price ? ' — ' + c.price.toLocaleString() + ' UZS/oy' : '')}
+                                                </option>
+                                            ))}
+                                        </select>
+                                    </div>
 
                                     <div>
                                         <label className={lbl}>To'lov usuli *</label>

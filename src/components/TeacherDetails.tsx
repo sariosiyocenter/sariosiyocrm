@@ -73,8 +73,8 @@ export default function TeacherDetails() {
                         <div className="h-28 bg-brand relative">
                             {/* Surat ilgari 80px edi va o'quvchi profilidagidan kichik
                                 ko'rinardi. Endi ikkalasi ham bir xil o'lchamda. */}
-                            <div className="absolute -bottom-16 left-1/2 -translate-x-1/2 rounded-2xl bg-sirt p-1 shadow-md">
-                                <div className="w-32 h-32 rounded-2xl overflow-hidden bg-ichki border border-chiziq flex items-center justify-center text-brand font-bold text-5xl">
+                            <div className="absolute -bottom-16 left-1/2 -translate-x-1/2 rounded-full bg-sirt p-1 shadow-md">
+                                <div className="w-32 h-32 rounded-full overflow-hidden bg-ichki border border-chiziq flex items-center justify-center text-brand font-bold text-5xl">
                                     {teacher.photo ? (
                                         <img
                                             src={teacher.photo}

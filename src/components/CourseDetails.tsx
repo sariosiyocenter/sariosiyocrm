@@ -315,6 +315,7 @@ export default function CourseDetails() {
     };
 
     const handleStartEdit = () => {
+        setActiveTab('umumiy');
         const [start, end] = group.schedule.split(' - ');
         setEditForm({
             teacherId: group.teacherId,
@@ -461,22 +462,15 @@ export default function CourseDetails() {
                     </div>
 
                     {isEditingInfo ? (
-                        <div className="flex flex-col gap-1.5 mt-4 max-w-xs">
-                            <label className={labelCls}>O'qituvchi</label>
-                            <select
-                                value={editForm.teacherId || ''}
-                                onChange={e => setEditForm({ ...editForm, teacherId: Number(e.target.value) })}
-                                className={inputCls}
-                            >
-                                <option value="" disabled>Ustozni tanlang</option>
-                                {teachers.filter(t => t.status !== 'Arxiv' || t.id === group.teacherId).map(t => (
-                                    <option key={t.id} value={t.id}>{displayName(t.name)}</option>
-                                ))}
-                            </select>
-                            <div className="flex gap-2 mt-1">
-                                <button onClick={handleSaveInfo} className="text-[11px] font-bold text-emerald-600 hover:underline cursor-pointer">Saqlash</button>
-                                <button onClick={() => setIsEditingInfo(false)} className="text-[11px] font-bold text-rose-600 hover:underline cursor-pointer">Bekor</button>
-                            </div>
+                        <div className="flex items-center gap-2 mt-2 text-[13px] text-matn-sokin">
+                            <span className="text-matn-2">
+                                {teachers.find(tc => tc.id === Number(editForm.teacherId))?.name
+                                    ? displayName(teachers.find(tc => tc.id === Number(editForm.teacherId))!.name)
+                                    : 'Ustoz tanlanmagan'}
+                            </span>
+                            <span className="text-[11px] text-matn-xira">
+                                &mdash; pastdagi &laquo;Ma'lumotlar&raquo; bo'limidan o'zgartiring
+                            </span>
                         </div>
                     ) : (
                         // Bitta qator, bitta ajratgich. Kiritilmagan qiymat
@@ -681,6 +675,19 @@ export default function CourseDetails() {
                                     <div className="bg-sirt border border-chiziq rounded-2xl p-4 space-y-4">
                                         {isEditingInfo ? (
                                             <>
+                                                <div>
+                                                    <label className={labelCls}>O'qituvchi</label>
+                                                    <select
+                                                        value={editForm.teacherId || ''}
+                                                        onChange={e => setEditForm({ ...editForm, teacherId: Number(e.target.value) })}
+                                                        className={inputCls}
+                                                    >
+                                                        <option value="" disabled>Ustozni tanlang</option>
+                                                        {teachers.filter(tc => tc.status !== 'Arxiv' || tc.id === group.teacherId).map(tc => (
+                                                            <option key={tc.id} value={tc.id}>{displayName(tc.name)}</option>
+                                                        ))}
+                                                    </select>
+                                                </div>
                                                 <div>
                                                     <label className={labelCls}>Kurs nomi</label>
                                                     <input

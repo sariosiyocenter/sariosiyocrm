@@ -63,26 +63,50 @@ function receiptHtml(o: ReceiptOptions): string {
     return `<!DOCTYPE html>
 <html lang="uz"><head><meta charset="utf-8"><title>Chek #${esc(payment.id)}</title>
 <style>
+  /* A4 varaq solinadi, chek uning yuqori yarmiga — ya'ni A5 maydoniga —
+     bosiladi. Pastda kesish chizig'i turadi, varaq shu joydan qirqiladi.
+     A4 = 210x297mm, yarmi = 210x148.5mm. */
+  @page { size: A4 portrait; margin: 0; }
+
   * { margin: 0; padding: 0; box-sizing: border-box; }
-  body { font-family: 'Courier New', monospace; font-size: 12px; color: #111; background: #fff; padding: 24px 20px; }
-  .logo { display: block; margin: 0 auto 10px; max-width: 96px; max-height: 96px; object-fit: contain; }
+  body { font-family: 'Courier New', monospace; font-size: 12px; color: #111; background: #fff; }
+  .sheet {
+    width: 210mm;
+    min-height: 148.5mm;
+    padding: 10mm 12mm 6mm;
+    margin: 0 auto;
+    position: relative;
+  }
+  .logo { display: block; margin: 0 auto 6px; max-width: 64px; max-height: 64px; object-fit: contain; }
   h2 { font-size: 15px; font-weight: 900; text-align: center; letter-spacing: 2px; color: #1b6b6b; margin-bottom: 4px; }
-  .sub { text-align: center; font-size: 9px; letter-spacing: 2px; color: #888; margin-bottom: 18px; }
-  .box { border: 1px dashed #ccc; border-radius: 8px; padding: 16px; }
-  .row { display: flex; justify-content: space-between; margin-bottom: 6px; gap: 12px; }
+  .sub { text-align: center; font-size: 9px; letter-spacing: 2px; color: #888; margin-bottom: 10px; }
+  .box { border: 1px dashed #ccc; border-radius: 8px; padding: 12px 16px; }
+  .row { display: flex; justify-content: space-between; margin-bottom: 5px; gap: 12px; }
   .row .val { font-weight: 900; text-align: right; }
-  .divider { border-top: 1px dashed #ccc; margin: 12px 0; }
+  .divider { border-top: 1px dashed #ccc; margin: 9px 0; }
   .label { font-size: 9px; color: #888; display: block; margin-bottom: 2px; }
   .big { font-size: 14px; font-weight: 900; }
   .green { color: #059669; }
   .red { color: #e11d48; }
-  .footer { margin-top: 14px; text-align: center; font-size: 9px; letter-spacing: 1px; color: #aaa; }
+  .footer { margin-top: 10px; text-align: center; font-size: 9px; letter-spacing: 1px; color: #aaa; }
+  /* Kesish chizig'i — A4 ning aynan o'rtasi. */
+  .cut {
+    position: absolute;
+    left: 0; right: 0; bottom: 0;
+    border-top: 1px dashed #bbb;
+    text-align: center;
+  }
+  .cut span { font-size: 8px; color: #bbb; letter-spacing: 1px; background: #fff; padding: 0 6px; position: relative; top: -6px; }
+  @media screen {
+    body { background: #f1f5f9; padding: 16px 0; }
+    .sheet { background: #fff; box-shadow: 0 2px 12px rgba(0,0,0,.12); }
+  }
   @media print {
-    body { padding: 10px; }
     /* Rangli sarlavha va logotip printerda ham chiqsin. */
     * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
   }
 </style></head><body>
+<div class="sheet">
 ${o.logo ? `<img class="logo" src="${esc(o.logo)}" alt="">` : ''}
 <h2>${esc(o.orgName || 'O\'QUV MARKAZI')}</h2>
 <div class="sub">To'lov cheki (Receipt)</div>
@@ -107,12 +131,14 @@ ${o.logo ? `<img class="logo" src="${esc(o.logo)}" alt="">` : ''}
   <div class="divider"></div>
   <div class="footer">To'lovingiz uchun rahmat!${footerLines ? `<br>${footerLines}` : ''}</div>
 </div>
+<div class="cut"><span>&#9986; shu chiziq bo'yicha qirqing</span></div>
+</div>
 </body></html>`;
 }
 
 /** Chekni alohida oynada ochadi va chop etish muloqotini chiqaradi. */
 export function printReceipt(options: ReceiptOptions): void {
-    const popup = window.open('', '_blank', 'width=420,height=680');
+    const popup = window.open('', '_blank', 'width=860,height=700');
     if (!popup) {
         alert("Chekni chop etish uchun brauzerda pop-up oynalarga ruxsat bering.");
         return;

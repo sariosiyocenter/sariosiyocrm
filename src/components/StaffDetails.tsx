@@ -3,13 +3,15 @@ import {
     ArrowLeft, Phone, Mail, Layers, Wallet,
     Plus, X, Save, Target, Star, AlertCircle, GraduationCap, Pencil, Camera, Sparkles,
     CheckCircle2, XCircle, ChevronLeft, ChevronRight, CalendarDays,
-    Banknote, Clock, Trash2
+    Banknote, Clock, Trash2, Maximize2
 } from 'lucide-react';
 import { useCRM } from '../context/CRMContext';
 import { useConfirm } from './ConfirmDialog';
 import { useParams, useNavigate } from 'react-router-dom';
 import { uploadProfilePhoto } from '../lib/image';
 import PhotoViewer from './PhotoViewer';
+import Avatar from './ui/Avatar';
+import { displayName } from '../lib/displayName';
 import PhotoCapture from './PhotoCapture';
 import { useLang } from '../context/LanguageContext';
 
@@ -503,100 +505,129 @@ export default function StaffDetails() {
 
     return (
         <div className="space-y-6 animate-in fade-in duration-500">
-            {/* Back */}
+            {/* Orqaga. Xodim profili endi o'quvchi profili bilan bir xil
+                tuzilishda: yuqorida bitta qatorli sarlavha, pastda chapda
+                ma'lumotlar, o'ngda bo'limlar. */}
             <button onClick={() => navigate('/hr')}
-                className="flex items-center gap-2 text-matn-xira hover:text-brand transition-all text-[11px] font-extrabold group cursor-pointer">
+                className="flex items-center gap-2 text-matn-xira hover:text-brand transition-colors text-[12px] font-semibold group cursor-pointer">
                 <ArrowLeft size={14} className="group-hover:-translate-x-1 transition-transform" />
                 {t('staff_list')}
             </button>
 
-            <div className="grid grid-cols-1 lg:grid-cols-4 gap-4 items-start">
-                {/* Left profile card */}
-                <div className="lg:col-span-1 space-y-5">
-                    <div className="bg-sirt rounded-2xl border border-chiziq shadow-sm overflow-hidden">
-                        {/* Banner */}
-                        {/* Muqova endi lavozimga qarab rang o'zgartirmaydi:
-                            yettita rang hech qanday ma'no bermasdi, lavozim
-                            allaqachon yozuvda turibdi. */}
-                        <div className="h-16 bg-brand/10 dark:bg-brand/15 relative">
+            <div className="flex items-start justify-between gap-4 flex-wrap">
+                <div className="flex items-center gap-3.5 min-w-0">
+                    <Avatar name={staffUser.name} photo={staffUser.photo} size={120} fontSize={38} className="group/avatar">
+                        <div className="absolute inset-0 bg-gray-950/70 opacity-0 group-hover/avatar:opacity-100 transition-opacity flex items-center justify-center gap-1.5">
+                            {staffUser.photo && (
+                                <button onClick={() => setIsPhotoViewerOpen(true)} title="Kattalashtirib ko'rish"
+                                    className="w-9 h-9 rounded-lg bg-white/15 hover:bg-white/30 text-white flex items-center justify-center cursor-pointer transition-colors">
+                                    <Maximize2 size={16} />
+                                </button>
+                            )}
+                            {isAdminOrManager && (
+                                <button onClick={() => setIsPhotoModalOpen(true)} title={t('camera')}
+                                    className="w-9 h-9 rounded-lg bg-white/15 hover:bg-white/30 text-white flex items-center justify-center cursor-pointer transition-colors">
+                                    <Camera size={16} />
+                                </button>
+                            )}
+                        </div>
+                    </Avatar>
+                    <div className="min-w-0">
+                        <div className="flex items-center gap-2">
+                            <h1 className="text-[22px] font-semibold text-matn tracking-tight leading-tight truncate">{displayName(staffUser.name)}</h1>
                             {isAdminOrManager && (
                                 <button
                                     onClick={() => { setEditData({ ...staffUser, password: '' }); setIsEditOpen(true); }}
-                                    className="absolute top-3 right-3 w-8 h-8 bg-white/20 hover:bg-white/40 rounded-xl flex items-center justify-center text-white transition-all cursor-pointer">
+                                    title={t('edit')}
+                                    className="text-matn-xira hover:text-brand cursor-pointer shrink-0">
                                     <Pencil size={13} />
                                 </button>
                             )}
-                            {/* Avatar — centred, extends below banner */}
-                            <div className="absolute -bottom-16 left-1/2 -translate-x-1/2 rounded-2xl bg-sirt p-1 shadow-sm group/avatar">
-                                <div className="w-32 h-32 rounded-2xl overflow-hidden flex items-center justify-center bg-brand/12 text-brand relative">
-                                    {staffUser.photo ? (
-                                        <img
-                                            src={staffUser.photo}
-                                            alt={staffUser.name}
-                                            onClick={() => setIsPhotoViewerOpen(true)}
-                                            title="Kattalashtirib ko'rish"
-                                            className="w-full h-full object-cover object-top cursor-zoom-in"
-                                        />
-                                    ) : (
-                                        <span className="text-5xl font-bold text-brand">
-                                            {staffUser.name?.charAt(0).toUpperCase()}
-                                        </span>
-                                    )}
-                                    {isAdminOrManager && (
-                                        <button
-                                            onClick={() => setIsPhotoModalOpen(true)}
-                                            className="absolute inset-0 bg-black/40 opacity-0 group-hover/avatar:opacity-100 transition-opacity flex flex-col items-center justify-center gap-1 cursor-pointer">
-                                            <Camera size={24} className="text-white" />
-                                            <span className="text-[11px] font-extrabold text-white">{t('camera')}</span>
-                                        </button>
-                                    )}
+                        </div>
+                        <div className="flex items-center gap-2 mt-1 flex-wrap">
+                            <span className="num text-[12px] text-matn-xira">&#8470;{staffUser.id}</span>
+                            <span className="w-1 h-1 rounded-full bg-matn-xira" />
+                            <span className={`px-2 py-0.5 rounded-md text-[11px] border ${ROLE_COLORS[staffUser.role] || ''}`}>
+                                {getRoleLabel(staffUser.role)}
+                            </span>
+                            {staffUser.position && (
+                                <>
+                                    <span className="w-1 h-1 rounded-full bg-matn-xira" />
+                                    <span className="text-[12px] text-matn-sokin truncate">{staffUser.position}</span>
+                                </>
+                            )}
+                        </div>
+                    </div>
+                </div>
+
+                {/* Eng ko'p ishlatiladigan amallar */}
+                <div className="flex items-center gap-2 shrink-0">
+                    <a href={staffUser.phone ? `tel:${String(staffUser.phone).replace(/\s/g, '')}` : undefined}
+                        aria-disabled={!staffUser.phone}
+                        title={staffUser.phone || t('phone_not_found')}
+                        className={`w-9 h-9 flex items-center justify-center rounded-lg border transition-colors ${staffUser.phone
+                            ? 'border-chiziq-kuchli text-brand hover:bg-brand hover:text-white cursor-pointer'
+                            : 'border-chiziq text-matn-xira pointer-events-none'}`}>
+                        <Phone size={15} />
+                    </a>
+                    <a href={staffUser.email ? `mailto:${staffUser.email}` : undefined}
+                        aria-disabled={!staffUser.email}
+                        title={staffUser.email || 'Email kiritilmagan'}
+                        className={`w-9 h-9 flex items-center justify-center rounded-lg border transition-colors ${staffUser.email
+                            ? 'border-chiziq-kuchli text-brand hover:bg-brand hover:text-white cursor-pointer'
+                            : 'border-chiziq text-matn-xira pointer-events-none'}`}>
+                        <Mail size={15} />
+                    </a>
+                </div>
+            </div>
+
+            <div className="grid grid-cols-1 lg:grid-cols-4 gap-4 items-start">
+                {/* Chap ustun — o'quvchi profilidagi kabi: yirik son, so'ng
+                    aloqa ma'lumotlari. */}
+                <div className="lg:col-span-1 space-y-4">
+                    <div className="bg-sirt rounded-2xl border border-chiziq shadow-sm overflow-hidden">
+                        <div className="px-6 py-5 space-y-3">
+                            <div className="px-4 py-3.5 rounded-xl border bg-brand/8 border-brand/20">
+                                <span className="text-[12px] text-matn-sokin block">{t('base_salary_short')}</span>
+                                <div className="flex items-baseline mt-1">
+                                    <span className="raqam text-[24px] font-semibold leading-none text-matn">{baseSalary.toLocaleString('ru-RU')}</span>
+                                    <span className="text-[12px] text-matn-xira ml-1.5">so'm</span>
+                                </div>
+                                <div className="mt-2.5 pt-2.5 border-t border-chiziq-mayin flex items-center justify-between">
+                                    <span className="text-[12px] text-matn-sokin">{t('with_kpi')}</span>
+                                    <span className="num text-[14px] text-brand">{totalSalary.toLocaleString('ru-RU')}</span>
                                 </div>
                             </div>
-                        </div>
 
-                        {/* Name / role */}
-                        <div className="pt-20 pb-5 px-6 text-center">
-                            <h2 className="text-sm font-black text-matn tracking-tight">{staffUser.name}</h2>
-                            {staffUser.position && (
-                                <p className="text-[11px] font-bold text-matn-xira mt-1">{staffUser.position}</p>
-                            )}
-                            <div className="mt-3 flex justify-center">
-                                <span className={`px-2.5 py-0.5 rounded-md text-[10px] font-bold border ${ROLE_COLORS[staffUser.role] || ''}`}>
-                                    {getRoleLabel(staffUser.role)}
-                                </span>
-                            </div>
                             {isAdminOrManager && staffUser.photo && (
                                 <button
                                     onClick={handleRemoveBg}
                                     disabled={isRemovingBg}
-                                    className="mt-3 flex items-center gap-1.5 px-4 py-2 mx-auto bg-violet-50 text-violet-600 border border-violet-100 dark:bg-violet-950/20 dark:text-violet-400 dark:border-violet-900/30 rounded-xl text-[11px] font-extrabold hover:bg-violet-600 hover:text-white transition-all disabled:opacity-50 cursor-pointer"
+                                    className="w-full flex items-center justify-center gap-1.5 py-2 text-matn-xira hover:text-brand text-[11px] font-semibold transition-colors disabled:opacity-50 cursor-pointer"
                                 >
-                                    <Sparkles size={11} className={isRemovingBg ? 'animate-spin' : ''} />
+                                    <Sparkles size={12} className={isRemovingBg ? 'animate-spin' : ''} />
                                     {isRemovingBg ? t('clearing_bg') : t('clear_bg_btn')}
                                 </button>
                             )}
                         </div>
 
-                        <div className="px-6 pb-6 space-y-3 border-t border-dashed border-chiziq pt-4">
-                            {staffUser.phone && <DetailRow icon={<Phone size={14} />} label={t('phone')} value={staffUser.phone} />}
-                            {staffUser.role !== 'TECH_STAFF' && staffUser.email && (
-                                <DetailRow icon={<Mail size={14} />} label="Email" value={staffUser.email} />
+                        <div className="px-6 pb-6 space-y-1 border-t border-chiziq pt-4">
+                            <h3 className="text-[10px] font-semibold text-matn-xira mb-1 px-0.5">
+                                Aloqa ma'lumotlari
+                            </h3>
+                            <DetailRow icon={<Phone className="w-3.5 h-3.5" />} label={t('phone')} value={staffUser.phone || ''} />
+                            {staffUser.role !== 'TECH_STAFF' && (
+                                <DetailRow icon={<Mail className="w-3.5 h-3.5" />} label="Email" value={staffUser.email || ''} />
                             )}
-                        </div>
-                    </div>
-
-                    {/* Oylik. Ilgari bu kartochka to'la to'yingan brend rangida
-                        edi va sahifadagi eng baland ovozli element bo'lib
-                        qolgandi — holbuki u shunchaki bitta son. */}
-                    <div className="bg-sirt border border-chiziq rounded-2xl p-4">
-                        <span className="text-[12px] text-matn-sokin block">{t('base_salary_short')}</span>
-                        <div className="flex items-baseline mt-1">
-                            <span className="raqam text-[24px] font-semibold leading-none text-matn">{baseSalary.toLocaleString('ru-RU')}</span>
-                            <span className="text-[12px] text-matn-xira ml-1.5">so'm</span>
-                        </div>
-                        <div className="mt-3 pt-3 border-t border-chiziq-mayin flex items-center justify-between">
-                            <span className="text-[12px] text-matn-sokin">{t('with_kpi')}</span>
-                            <span className="num text-[14px] text-brand">{totalSalary.toLocaleString('ru-RU')}</span>
+                            <DetailRow icon={<Layers className="w-3.5 h-3.5" />} label="Lavozim" value={staffUser.position || ''} />
+                            <DetailRow
+                                icon={<CalendarDays className="w-3.5 h-3.5" />}
+                                label={t('work_schedule')}
+                                value={workDays.length ? workDays.length + ' kun' : ''}
+                            />
+                            {kpiPercent > 0 && (
+                                <DetailRow icon={<Target className="w-3.5 h-3.5" />} label="KPI" value={kpiPercent + '%'} />
+                            )}
                         </div>
                     </div>
                 </div>
