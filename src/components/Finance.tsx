@@ -15,6 +15,7 @@ import { Payment, Expense } from '../types';
 import { StatCard, BarChart, DonutChart, LineChart } from './reports/shared';
 import { printReceipt } from '../lib/receipt';
 import { activeCourses } from '../lib/activeCourses';
+import { isCashIncome } from '../lib/money';
 
 const inp = "w-full px-4 py-3 bg-slate-50 dark:bg-[#1a2232] border border-chiziq rounded-xl text-sm font-semibold text-slate-900 dark:text-white focus:border-brand focus:ring-2 focus:ring-brand/20 outline-none transition-all";
 const lbl = "block text-[11px] font-extrabold   text-matn-xira mb-2";
@@ -288,7 +289,7 @@ export default function Finance() {
             return s.status !== 'Faol';
         });
 
-        const posPayments = payments.filter(p => p.amount > 0);
+        const posPayments = payments.filter(isCashIncome);
 
         // Previous period of equal length
         const start = new Date(startDate);
@@ -413,7 +414,7 @@ export default function Finance() {
     // ─── List filters ─────────────────────────────────────────────
     const filteredPayments = useMemo(() => {
         return payments
-            .filter(p => p.amount > 0)
+            .filter(isCashIncome)
             .filter(p => {
                 return p.date >= startDate && p.date <= endDate;
             })
@@ -875,14 +876,14 @@ export default function Finance() {
                             const prefix = reportFilter === 'thisMonth' ? thisMonthPrefix
                                 : reportFilter === 'lastMonth' ? lastMonthPrefix : null;
                             const rPayments = payments
-                                .filter(p => p.amount > 0)
+                                .filter(isCashIncome)
                                 .filter(p => !prefix || p.date.startsWith(prefix))
                                 .slice().reverse();
                             const rPayTotal = rPayments.reduce((s, p) => s + p.amount, 0);
 
                             const allStudents = [...students].sort((a, b) => a.balance - b.balance);
                             const lastPayMap: Record<number, { date: string; amount: number }> = {};
-                            payments.filter(p => p.amount > 0).forEach(p => {
+                            payments.filter(isCashIncome).forEach(p => {
                                 const cur = lastPayMap[p.studentId];
                                 if (!cur || p.date > cur.date) lastPayMap[p.studentId] = { date: p.date, amount: p.amount };
                             });
@@ -1449,7 +1450,7 @@ ${e.description || e.category} — ${Number(e.amount).toLocaleString()} so'm`)) 
                                                 <div>
                                                     <span className="text-[10px] font-bold text-matn-xira block">Oxirgi to'lov</span>
                                                     {(() => {
-                                                        const sp = payments.filter(p => p.studentId === selectedStudent.id && p.amount > 0);
+                                                        const sp = payments.filter(p => p.studentId === selectedStudent.id && isCashIncome(p));
                                                         const lp = sp.length > 0 ? sp[sp.length - 1] : null;
                                                         return lp
                                                             ? <span className="text-[11px] font-bold text-matn-2 block mt-0.5 tabular-nums">{lp.amount.toLocaleString()} UZS ({lp.date})</span>

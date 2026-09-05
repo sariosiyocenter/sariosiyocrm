@@ -17,6 +17,7 @@ import { printReceipt } from '../lib/receipt';
 import { activeCourses } from '../lib/activeCourses';
 import FaceEnroll from './FaceEnroll';
 import PhotoViewer from './PhotoViewer';
+import DiscountModal from './DiscountModal';
 
 const UZB_REGIONS: Record<string, string[]> = {
   "Surxondaryo": [
@@ -104,6 +105,7 @@ export default function StudentDetails() {
     const [isRemovingBg, setIsRemovingBg] = useState(false);
     const [isPhotoModalOpen, setIsPhotoModalOpen] = useState(false);
     const [isFaceEnrollOpen, setIsFaceEnrollOpen] = useState(false);
+    const [showDiscountModal, setShowDiscountModal] = useState(false);
     const [isPhotoViewerOpen, setIsPhotoViewerOpen] = useState(false);
     const [showSmsModal, setShowSmsModal] = useState(false);
     const [smsData, setSmsData] = useState({ phone: '', type: '' });
@@ -618,6 +620,13 @@ export default function StudentDetails() {
                     <button onClick={() => setShowPaymentModal(true)}
                         className="h-9 px-4 bg-brand hover:bg-brand-dark text-white rounded-lg text-[13px] font-semibold transition-colors cursor-pointer">
                         {t('add_payment')}
+                    </button>
+                    {/* Dars qoldirgani uchun qayta hisob: pul kirmaydi, lekin
+                        o'quvchining hisobiga yoziladi. */}
+                    <button onClick={() => setShowDiscountModal(true)}
+                        title="Kelmagan darslar uchun chegirma"
+                        className="h-9 px-4 border border-chiziq-kuchli text-brand hover:bg-brand hover:text-white rounded-lg text-[13px] font-semibold transition-colors cursor-pointer">
+                        Chegirma
                     </button>
                     <a href={student.phone ? `tel:${student.phone.replace(/\s/g, '')}` : undefined}
                         aria-disabled={!student.phone}
@@ -1588,7 +1597,9 @@ export default function StudentDetails() {
                                         <div className="bg-sirt border border-chiziq rounded-2xl overflow-hidden shadow-sm divide-y divide-chiziq-mayin dark:divide-gray-700/50">
                                             {studentPayments.map(p => {
                                                 const isDeduction = p.amount < 0;
+                                                const isChegirma = p.type === 'Chegirma';
                                                 const method = isDeduction ? 'Hisob'
+                                                    : isChegirma ? 'Chegirma'
                                                     : p.type === 'Naqd' ? t('type_cash')
                                                     : p.type === 'Karta' ? t('type_card')
                                                     : p.type === 'Peyme' ? t('type_payme')
@@ -1598,7 +1609,9 @@ export default function StudentDetails() {
                                                     <div key={p.id} className="flex items-center gap-3 sm:gap-4 px-4 sm:px-5 py-3.5 hover:bg-gray-55/50 dark:hover:bg-gray-900/30 transition-colors">
                                                         <div className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 border ${isDeduction
                                                             ? 'bg-rose-50 text-rose-500 border-rose-100 dark:bg-rose-950/20 dark:text-rose-400 dark:border-rose-900/40'
-                                                            : 'bg-emerald-50 text-emerald-600 border-emerald-100 dark:bg-emerald-950/20 dark:text-emerald-400 dark:border-emerald-900/40'
+                                                            : isChegirma
+                                                                ? 'bg-sky-50 text-sky-600 border-sky-100 dark:bg-sky-950/20 dark:text-sky-400 dark:border-sky-900/40'
+                                                                : 'bg-emerald-50 text-emerald-600 border-emerald-100 dark:bg-emerald-950/20 dark:text-emerald-400 dark:border-emerald-900/40'
                                                         }`}>
                                                             {isDeduction ? <ReceiptText size={15} /> : <CreditCard size={15} />}
                                                         </div>
@@ -1607,10 +1620,12 @@ export default function StudentDetails() {
                                                                 {p.description || (isDeduction ? 'Oylik hisoblandi' : "To'lov qabul qilindi")}
                                                             </p>
                                                             <p className="text-[11px] font-semibold text-matn-xira truncate mt-0.5">
-                                                                {isDeduction ? 'Avtomatik hisoblash' : method + ' orqali'}
+                                                                {isDeduction ? 'Avtomatik hisoblash'
+                                                                    : isChegirma ? 'Qayta hisob — pul kirmagan'
+                                                                    : method + ' orqali'}
                                                             </p>
                                                         </div>
-                                                        <span className={`num text-[13px] font-bold shrink-0 ${isDeduction ? 'text-rose-500 dark:text-rose-400' : 'text-emerald-600 dark:text-emerald-400'}`}>
+                                                        <span className={`num text-[13px] font-bold shrink-0 ${isDeduction ? 'text-rose-500 dark:text-rose-400' : isChegirma ? 'text-sky-600 dark:text-sky-400' : 'text-emerald-600 dark:text-emerald-400'}`}>
                                                             {isDeduction ? '' : '+'}{p.amount.toLocaleString()}
                                                         </span>
                                                         <span className="num hidden md:block text-[11px] text-matn-xira w-24 text-right shrink-0">{p.date}</span>
@@ -2019,6 +2034,9 @@ export default function StudentDetails() {
             {/* Modals Cleanup */}
             {showPaymentModal && (
                 <PaymentAddModal studentId={student.id} onClose={() => setShowPaymentModal(false)} onAdd={addPayment} />
+            )}
+            {showDiscountModal && (
+                <DiscountModal studentId={student.id} onClose={() => setShowDiscountModal(false)} onAdd={addPayment} />
             )}
             {showScoreModal && (
                 <div className="fixed inset-0 z-[200] flex items-start sm:items-center justify-center overflow-y-auto p-4">

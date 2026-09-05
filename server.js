@@ -289,7 +289,7 @@ app.get('/api/users', authenticate, async (req, res, next) => {
 
     const users = await prisma.user.findMany({
       where,
-      select: { id: true, email: true, name: true, phone: true, photo: true, position: true, salary: true, workDays: true, kpiPercent: true, role: true, createdAt: true, schoolId: true }
+      select: { id: true, email: true, name: true, phone: true, photo: true, position: true, salary: true, workDays: true, kpiPercent: true, role: true, createdAt: true, schoolId: true, status: true }
     });
     res.json(users);
   } catch (error) { next(error); }
@@ -412,7 +412,7 @@ app.put('/api/users/:id', authenticate, async (req, res, next) => {
     if (tekshir.error) return res.status(tekshir.status).json({ error: tekshir.error });
     const { target } = tekshir;
 
-    const { email, name, phone, photo, position, salary, role, password, workDays, kpiPercent } = req.body;
+    const { email, name, phone, photo, position, salary, role, password, workDays, kpiPercent, status } = req.body;
 
     if (role !== undefined && role !== target.role) {
       // Menejer o'zini yoki boshqani ADMIN/MANAGER qilib ko'tara olmaydi.
@@ -440,6 +440,21 @@ app.put('/api/users/:id', authenticate, async (req, res, next) => {
     if (role !== undefined) data.role = role;
     if (workDays !== undefined) data.workDays = workDays;
     if (kpiPercent !== undefined) data.kpiPercent = parseInt(kpiPercent) || 0;
+    // Arxivga olish: davomat yoki oylik yozuvi bor xodimni o'chirib bo'lmaydi,
+    // shuning uchun uni ro'yxatdan olib qo'yamiz.
+    if (status !== undefined) {
+      if (!['Faol', 'Arxiv'].includes(status)) {
+        return res.status(400).json({ error: "Holat faqat 'Faol' yoki 'Arxiv' bo'lishi mumkin" });
+      }
+      // Yagona administratorni arxivga olish markazni boshsiz qoldiradi.
+      if (status === 'Arxiv' && await oxirgiAdminmi(target)) {
+        return res.status(400).json({ error: 'Bu markazdagi yagona administrator. Avval boshqa administrator tayinlang' });
+      }
+      if (status === 'Arxiv' && target.id === req.user.id) {
+        return res.status(400).json({ error: "O'z hisobingizni o'zingiz arxivga ola olmaysiz" });
+      }
+      data.status = status;
+    }
     if (password) data.password = await bcrypt.hash(password, 10);
 
     let user;
@@ -447,7 +462,7 @@ app.put('/api/users/:id', authenticate, async (req, res, next) => {
       user = await prisma.user.update({
         where: { id: parseInt(id) },
         data,
-        select: { id: true, email: true, name: true, phone: true, photo: true, position: true, salary: true, workDays: true, kpiPercent: true, role: true, createdAt: true, schoolId: true }
+        select: { id: true, email: true, name: true, phone: true, photo: true, position: true, salary: true, workDays: true, kpiPercent: true, role: true, createdAt: true, schoolId: true, status: true }
       });
     } catch (updateErr) {
       if (updateErr.code === 'P2002') return res.status(400).json({ error: 'Bu email allaqachon ro\'yxatdan o\'tgan' });
@@ -481,13 +496,55 @@ app.delete('/api/users/:id', authenticate, async (req, res, next) => {
       return res.status(400).json({ error: 'Bu markazdagi yagona administrator. Avval boshqa administrator tayinlang' });
     }
 
+    // Davomat va oylik yozuvlari xodimni o'chirishga to'sqinlik qiladi (ikkala
+    // bog'lanish ham Restrict). Ilgari bu Prisma xatosi bo'lib chiqar, sabab esa
+    // ekranda ko'rinmasdi. Endi oldindan sanaymiz va nima qilish kerakligini
+    // aytamiz — bunday xodim arxivga olinadi.
+    const [davomatSoni, oylikSoni] = await Promise.all([
+      prisma.staffAttendance.count({ where: { userId: targetId } }),
+      prisma.salaryPayment.count({ where: { userId: targetId } })
+    ]);
+    if (davomatSoni > 0 || oylikSoni > 0) {
+      const qismlar = [];
+      if (davomatSoni > 0) qismlar.push(davomatSoni + ' ta davomat');
+      if (oylikSoni > 0) qismlar.push(oylikSoni + ' ta oylik');
+      return res.status(400).json({
+        error: 'Bu xodimda ' + qismlar.join(' va ') + ' yozuvi bor, shuning uchun butunlay o\'chirib bo\'lmaydi. Uni arxivga oling — ro\'yxatdan yo\'qoladi, tarix esa saqlanib qoladi.',
+        canArchive: true
+      });
+    }
+
+    // TEACHER roli uchun avtomatik yaratilgan Teacher yozuvi ham ketsin, aks
+    // holda u HR ro'yxatida "eski" qator bo'lib qaytib chiqadi. Ikkalasi ism
+    // bo'yicha bog'langan, shuning uchun qidiruv ham ism bo'yicha.
+    if (target.role === 'TEACHER' || target.role === 'SUPPORT_TEACHER') {
+      try {
+        const teacher = await prisma.teacher.findFirst({
+          where: { name: target.name, schoolId: target.schoolId }
+        });
+        if (teacher) {
+          const guruhSoni = await prisma.group.count({ where: { teacherId: teacher.id } });
+          const tDavomat = await prisma.teacherAttendance.count({ where: { teacherId: teacher.id } });
+          if (guruhSoni === 0 && tDavomat === 0) {
+            await prisma.teacher.delete({ where: { id: teacher.id } });
+          } else {
+            // Guruhi bor ustozni o'chirib bo'lmaydi — arxivga olamiz.
+            await prisma.teacher.update({ where: { id: teacher.id }, data: { status: 'Arxiv' } });
+          }
+        }
+      } catch (e) {
+        console.error('Teacher tozalashda xato:', e.message);
+      }
+    }
+
     try {
       await prisma.user.delete({ where: { id: targetId } });
     } catch (delErr) {
-      // Davomat yoki oylik yozuvi bor xodim o'chmaydi. Ilgari bu 500 bo'lib
-      // chiqardi va sabab ko'rinmasdi.
       if (delErr.code === 'P2003' || delErr.code === 'P2014') {
-        return res.status(400).json({ error: 'Bu xodimda davomat yoki oylik yozuvlari bor, shuning uchun o\'chirib bo\'lmaydi' });
+        return res.status(400).json({
+          error: 'Bu xodimga bog\'langan yozuvlar bor, shuning uchun o\'chirib bo\'lmaydi. Uni arxivga oling.',
+          canArchive: true
+        });
       }
       throw delErr;
     }
@@ -495,46 +552,14 @@ app.delete('/api/users/:id', authenticate, async (req, res, next) => {
   } catch (error) { next(error); }
 });
 
-// --- Staff Attendance ---
-app.get('/api/staff-attendance', authenticate, async (req, res, next) => {
-  try {
-    if (req.user.role !== 'ADMIN' && req.user.role !== 'MANAGER') return res.status(403).json({ error: 'Ruhsat yo' });
-    const { userId, month } = req.query;
-    if (!userId) return res.status(400).json({ error: 'userId required' });
-    const where = { userId: parseInt(userId) };
-    if (month) where.date = { startsWith: String(month) };
-    const records = await prisma.staffAttendance.findMany({ where, orderBy: { date: 'asc' } });
-    res.json(records);
-  } catch (error) { next(error); }
-});
-
-app.post('/api/staff-attendance', authenticate, async (req, res, next) => {
-  try {
-    if (req.user.role !== 'ADMIN' && req.user.role !== 'MANAGER') return res.status(403).json({ error: 'Ruhsat yo' });
-    const { userId, date, status } = req.body;
-    const schoolId = req.user.schoolId;
-    const record = await prisma.staffAttendance.upsert({
-      where: { userId_date: { userId: parseInt(userId), date } },
-      update: { status },
-      create: { userId: parseInt(userId), date, status, schoolId }
-    });
-    res.json(record);
-  } catch (error) { next(error); }
-});
-
-app.delete('/api/staff-attendance', authenticate, async (req, res, next) => {
-  try {
-    if (req.user.role !== 'ADMIN' && req.user.role !== 'MANAGER') return res.status(403).json({ error: 'Ruhsat yo' });
-    const { userId, date } = req.query;
-    await prisma.staffAttendance.deleteMany({ where: { userId: parseInt(userId), date: String(date) } });
-    res.json({ success: true });
-  } catch (error) { next(error); }
-});
-
-// --- Salary Payments ---
+// Oylik to'lovlari. SUPERADMIN ham ko'ra oladi: ilgari u 403 olardi, klient esa
+// javobni tekshirmasdan bo'sh massiv qilib qo'yardi va hamma oy "to'lanmagan"
+// bo'lib ko'rinardi.
 app.get('/api/salary-payments', authenticate, async (req, res, next) => {
   try {
-    if (req.user.role !== 'ADMIN' && req.user.role !== 'MANAGER') return res.status(403).json({ error: 'Ruhsat yo' });
+    if (!['ADMIN', 'MANAGER', 'SUPERADMIN'].includes(req.user.role)) {
+      return res.status(403).json({ error: "Bu ma'lumotni ko'rishga ruxsatingiz yo'q" });
+    }
     const { userId } = req.query;
     if (!userId) return res.status(400).json({ error: 'userId required' });
     const payments = await prisma.salaryPayment.findMany({
@@ -545,64 +570,133 @@ app.get('/api/salary-payments', authenticate, async (req, res, next) => {
   } catch (error) { next(error); }
 });
 
+// Oylik berish. Xarajat va oylik yozuvi bitta tranzaksiyada yaratiladi:
+// ilgari xarajat avval yozilar, oylik yozuvi yiqilsa (masalan o'sha oy uchun
+// allaqachon to'langan bo'lsa) Moliyada yetim xarajat qolib ketardi va har
+// urinishda takrorlanardi.
 app.post('/api/salary-payments', authenticate, async (req, res, next) => {
   try {
-    if (req.user.role !== 'ADMIN' && req.user.role !== 'MANAGER') return res.status(403).json({ error: 'Ruhsat yo' });
+    if (!['ADMIN', 'MANAGER', 'SUPERADMIN'].includes(req.user.role)) {
+      return res.status(403).json({ error: "Oylik berishga ruxsatingiz yo'q" });
+    }
     const { userId, month, amount, baseSalary, bonuses, fines, note } = req.body;
-    const schoolId = req.user.schoolId;
+    const parsedUserId = parseInt(userId);
+    const parsedAmount = parseInt(amount);
+    if (!Number.isInteger(parsedUserId)) return res.status(400).json({ error: "Xodim tanlanmagan" });
+    if (!month) return res.status(400).json({ error: "Oy ko'rsatilmagan" });
+    if (!Number.isFinite(parsedAmount)) return res.status(400).json({ error: "Summa noto'g'ri" });
 
-    // Get employee name for expense description
-    const employee = await prisma.user.findUnique({ where: { id: parseInt(userId) }, select: { name: true } });
-    const empName = employee?.name || 'Xodim';
-
-    // Create linked expense record in Finance
-    const expense = await prisma.expense.create({
-      data: {
-        amount: parseInt(amount),
-        category: 'Ish haqi',
-        date: new Date().toISOString().split('T')[0],
-        description: `${empName} — ${month} oy maoshi`,
-        schoolId
-      }
+    const employee = await prisma.user.findUnique({
+      where: { id: parsedUserId },
+      select: { name: true, schoolId: true }
     });
+    if (!employee) return res.status(404).json({ error: 'Xodim topilmadi' });
 
-    // Create salary payment
-    const payment = await prisma.salaryPayment.create({
-      data: {
-        userId: parseInt(userId),
-        month,
-        amount: parseInt(amount),
-        baseSalary: parseInt(baseSalary),
-        bonuses: parseInt(bonuses) || 0,
-        fines: parseInt(fines) || 0,
-        note: note || null,
-        expenseId: expense.id,
-        schoolId
+    // Xodimning o'z filiali. Ilgari req.user.schoolId olinardi va filial
+    // almashtirilgan bo'lsa yozuv boshqa filialga tushib ketardi.
+    const schoolId = employee.schoolId || req.schoolScope || req.user.schoolId;
+    if (!schoolId) return res.status(400).json({ error: "Xodim filialga biriktirilmagan" });
+
+    const empName = employee.name || 'Xodim';
+
+    try {
+      const payment = await prisma.$transaction(async (tx) => {
+        const expense = await tx.expense.create({
+          data: {
+            amount: parsedAmount,
+            category: 'Ish haqi',
+            date: new Date().toISOString().split('T')[0],
+            description: empName + ' \u2014 ' + month + ' oy maoshi',
+            schoolId
+          }
+        });
+        return await tx.salaryPayment.create({
+          data: {
+            userId: parsedUserId,
+            month,
+            amount: parsedAmount,
+            baseSalary: parseInt(baseSalary) || 0,
+            bonuses: parseInt(bonuses) || 0,
+            fines: parseInt(fines) || 0,
+            note: note || null,
+            expenseId: expense.id,
+            schoolId
+          }
+        });
+      });
+      res.json(payment);
+    } catch (err) {
+      if (err.code === 'P2002') {
+        return res.status(400).json({ error: "Bu oy uchun oylik allaqachon berilgan. O'zgartirish uchun \"Tahrirlash\" tugmasidan foydalaning." });
       }
-    });
+      throw err;
+    }
+  } catch (error) { next(error); }
+});
 
-    res.json(payment);
+// Berilgan oylikni tuzatish. Ilgari bunday yo'l umuman yo'q edi — xato summa
+// kiritilsa yozuvni o'chirib, qaytadan yaratishdan boshqa chora qolmasdi.
+app.put('/api/salary-payments/:id', authenticate, async (req, res, next) => {
+  try {
+    if (!['ADMIN', 'MANAGER', 'SUPERADMIN'].includes(req.user.role)) {
+      return res.status(403).json({ error: "Oylikni o'zgartirishga ruxsatingiz yo'q" });
+    }
+    const pid = parseInt(req.params.id);
+    if (!Number.isInteger(pid)) return res.status(400).json({ error: "Noto'g'ri ID" });
+
+    const existing = await prisma.salaryPayment.findUnique({ where: { id: pid } });
+    if (!existing) return res.status(404).json({ error: 'Oylik yozuvi topilmadi' });
+
+    const { amount, baseSalary, bonuses, fines, note } = req.body;
+    const data = {};
+    if (amount !== undefined) {
+      const v = parseInt(amount);
+      if (!Number.isFinite(v)) return res.status(400).json({ error: "Summa noto'g'ri" });
+      data.amount = v;
+    }
+    if (baseSalary !== undefined) data.baseSalary = parseInt(baseSalary) || 0;
+    if (bonuses !== undefined) data.bonuses = parseInt(bonuses) || 0;
+    if (fines !== undefined) data.fines = parseInt(fines) || 0;
+    if (note !== undefined) data.note = note || null;
+    if (Object.keys(data).length === 0) {
+      return res.status(400).json({ error: "O'zgartirish uchun ma'lumot yo'q" });
+    }
+
+    const updated = await prisma.$transaction(async (tx) => {
+      // Moliyadagi xarajat ham summaga ergashsin, aks holda kassa va oylik
+      // yozuvi bir-biriga mos kelmay qoladi.
+      if (data.amount !== undefined && existing.expenseId) {
+        await tx.expense.updateMany({
+          where: { id: existing.expenseId },
+          data: { amount: data.amount }
+        });
+      }
+      return await tx.salaryPayment.update({ where: { id: pid }, data });
+    });
+    res.json(updated);
   } catch (error) { next(error); }
 });
 
 app.delete('/api/salary-payments/:id', authenticate, async (req, res, next) => {
   try {
-    if (req.user.role !== 'ADMIN' && req.user.role !== 'MANAGER') return res.status(403).json({ error: 'Ruhsat yo' });
+    if (!['ADMIN', 'MANAGER', 'SUPERADMIN'].includes(req.user.role)) {
+      return res.status(403).json({ error: "O'chirishga ruxsatingiz yo'q" });
+    }
     const { id } = req.params;
     const payment = await prisma.salaryPayment.findUnique({ where: { id: parseInt(id) } });
     if (!payment) return res.status(404).json({ error: 'Not found' });
 
-    // Delete linked expense if exists
-    if (payment.expenseId) {
-      try { await prisma.expense.delete({ where: { id: payment.expenseId } }); } catch {}
-    }
-
-    await prisma.salaryPayment.delete({ where: { id: parseInt(id) } });
+    // Oylik yozuvi va unga bog'langan xarajat birga ketadi.
+    await prisma.$transaction(async (tx) => {
+      if (payment.expenseId) {
+        await tx.expense.deleteMany({ where: { id: payment.expenseId } });
+      }
+      await tx.salaryPayment.delete({ where: { id: parseInt(id) } });
+    });
     res.json({ success: true });
   } catch (error) { next(error); }
 });
 
-// KPI calculation from group payments
 app.get('/api/kpi-calculation', authenticate, async (req, res, next) => {
   try {
     if (req.user.role !== 'ADMIN' && req.user.role !== 'MANAGER') return res.status(403).json({ error: 'Ruhsat yo' });
@@ -1488,11 +1582,25 @@ app.get('/api/payments', authenticate, async (req, res, next) => {
     res.json(payments);
   } catch (error) { next(error); }
 });
+// To'lov turlari. "Chegirma" — pul kirmagan, lekin o'quvchining hisobiga
+// yozilgan qayta hisob (masalan kasal bo'lib dars qoldirgan). U balansni
+// oshiradi, lekin kassa tushumi sifatida hisoblanmaydi.
+const PAYMENT_TYPES = ['Naqd', 'Karta', "O'tkazma", 'Peyme', 'Klik', 'Chegirma', 'Oylik'];
+
 app.post('/api/payments', authenticate, async (req, res, next) => {
   try {
     const { schoolId, ...data } = req.body;
     if (!schoolId) return res.status(400).json({ error: 'schoolId required' });
-    if (data.amount) data.amount = parseFloat(data.amount);
+    // Ilgari hech qanday tekshiruv yo'q edi: bo'sh yoki matnli summa Prisma
+    // xatosiga aylanib, 500 bo'lib chiqardi.
+    const parsedAmount = parseFloat(data.amount);
+    if (!Number.isFinite(parsedAmount) || parsedAmount === 0) {
+      return res.status(400).json({ error: "Summa noto'g'ri" });
+    }
+    data.amount = parsedAmount;
+    if (data.type && !PAYMENT_TYPES.includes(data.type)) {
+      return res.status(400).json({ error: "To'lov turi noto'g'ri" });
+    }
     if (data.studentId) data.studentId = parseInt(data.studentId);
     // Kurs ixtiyoriy: tanlanmasa null, noto'g'ri qiymat ham null bo'ladi
     // (0 yoki bo'sh satr foreign key xatosini keltirib chiqarardi).
@@ -2871,6 +2979,59 @@ app.post('/api/teacher-attendances', authenticate, async (req, res, next) => {
     }
     const attendance = await prisma.teacherAttendance.create({ data: { ...data, schoolId: parseInt(schoolId) } });
     res.json(attendance);
+  } catch (error) { next(error); }
+});
+
+// O'qituvchining o'z davomatini unga Telegram orqali yuborish.
+// O'quvchi davomati uchun /api/attendances/notify bor edi, ustozlar uchun esa
+// hech qanday xabar yo'q edi. Xabar faqat ustozning o'ziga boradi.
+app.post('/api/teacher-attendances/notify', authenticate, async (req, res, next) => {
+  try {
+    const { schoolId, date, teacherId } = req.body;
+    if (!schoolId || !date) return res.status(400).json({ error: "schoolId va date kerak" });
+
+    const where = { schoolId: parseInt(schoolId), date };
+    if (teacherId) where.teacherId = parseInt(teacherId);
+
+    const records = await prisma.teacherAttendance.findMany({
+      where,
+      include: { teacher: { select: { name: true, telegramId: true } } }
+    });
+
+    if (records.length === 0) {
+      return res.json({ success: true, sent: 0, skipped: 0, total: 0, message: "Bu kunga davomat qo'yilmagan" });
+    }
+
+    const schoolBot = await getTelegramBot(parseInt(schoolId));
+    if (!schoolBot) return res.status(400).json({ error: "Telegram bot sozlanmagan" });
+
+    const ICONS = { Keldi: "\u2705", Kelmapdi: "\u274C", Kelmadi: "\u274C", Sababli: "\u26A0\uFE0F" };
+    let sent = 0;
+    let skipped = 0;
+
+    for (const record of records) {
+      const teacher = record.teacher;
+      if (!teacher || !teacher.telegramId) { skipped++; continue; }
+
+      const icon = ICONS[record.status] || "\u2139\uFE0F";
+      const message = [
+        icon + " Davomat xabarnomasi",
+        "",
+        "\u{1F464} " + teacher.name,
+        "\u{1F4CC} Holat: " + record.status,
+        "\u{1F4C5} Sana: " + date
+      ].join(String.fromCharCode(10));
+
+      try {
+        await schoolBot.telegram.sendMessage(teacher.telegramId, message);
+        sent++;
+      } catch (e) {
+        console.error('[Teacher notify] ' + teacher.name + ':', e.message);
+        skipped++;
+      }
+    }
+
+    res.json({ success: true, sent, skipped, total: records.length });
   } catch (error) { next(error); }
 });
 

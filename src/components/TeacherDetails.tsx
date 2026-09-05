@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import {
     ArrowLeft, Phone, Calendar, UserCheck, GraduationCap,
-    Presentation, Wallet, TrendingUp, Clock, CheckCircle, XCircle, Layers, ClipboardCheck, ChevronRight, Users
+    Presentation, Wallet, TrendingUp, Clock, CheckCircle, XCircle, Layers, ClipboardCheck, ChevronRight, Users,
+    Pencil, Send
 } from 'lucide-react';
 import { useCRM } from '../context/CRMContext';
 import { useParams, useNavigate } from 'react-router-dom';
@@ -10,12 +11,48 @@ import PhotoViewer from './PhotoViewer';
 export default function TeacherDetails() {
     const { id } = useParams<{ id: string }>();
     const navigate = useNavigate();
-    const { teachers, groups, students, payments, teacherAttendances, addTeacherAttendance } = useCRM();
+    const { teachers, groups, students, payments, teacherAttendances, addTeacherAttendance,
+        updateTeacher, showNotification, selectedSchoolId, user } = useCRM();
     const [activeTab, setActiveTab] = useState('umumiy');
     const [showAttendanceModal, setShowAttendanceModal] = useState(false);
     const [isPhotoViewerOpen, setIsPhotoViewerOpen] = useState(false);
+    const [editingStatus, setEditingStatus] = useState(false);
+    const [isNotifying, setIsNotifying] = useState(false);
+    const isAdminOrManager = user?.role === 'ADMIN' || user?.role === 'MANAGER';
 
     const teacher = teachers.find(t => t.id === Number(id));
+
+    /** Bugungi davomatni ustozning o'ziga Telegram orqali yuborish. */
+    const notifyTeacher = async () => {
+        if (!teacher || isNotifying) return;
+        setIsNotifying(true);
+        try {
+            const token = localStorage.getItem('token');
+            const today = new Date().toISOString().split('T')[0];
+            const res = await fetch('/api/teacher-attendances/notify', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + token },
+                body: JSON.stringify({ schoolId: teacher.schoolId || selectedSchoolId, date: today, teacherId: teacher.id })
+            });
+            const data = await res.json();
+            if (!res.ok || !data.success) {
+                showNotification('Xatolik: ' + (data.error || 'xabar yuborilmadi'), 'error');
+                return;
+            }
+            if (data.total === 0) {
+                showNotification("Bugunga davomat qo'yilmagan", 'info');
+            } else if (data.sent === 0) {
+                showNotification("Ustoz Telegram botga ulanmagan", 'info');
+            } else {
+                showNotification(data.sent + " ta xabar yuborildi", 'success');
+            }
+        } catch (err) {
+            console.error('Teacher notify failed', err);
+            showNotification('Xabar yuborishda xatolik', 'error');
+        } finally {
+            setIsNotifying(false);
+        }
+    };
 
     if (!teacher) {
         return (
@@ -93,9 +130,40 @@ export default function TeacherDetails() {
                             <h2 className="text-sm font-black text-matn tracking-tight">{teacher.name}</h2>
                             <p className="text-[11px] font-bold text-matn-xira mt-1">ID: #{teacher.id}</p>
                             <div className="mt-4 flex justify-center">
-                                <span className={`px-2.5 py-0.5 rounded-md text-[10px] font-bold border ${teacher.status === 'Faol' ? 'bg-emerald-50 text-emerald-600 border-emerald-100 dark:bg-emerald-950/20 dark:text-emerald-400' : 'bg-gray-55 text-matn-xira border-gray-100 dark:bg-gray-900/50'}`}>
-                                    {teacher.status}
-                                </span>
+                                {editingStatus ? (
+                                    <select
+                                        autoFocus
+                                        value={teacher.status}
+                                        onChange={async e => {
+                                            const next = e.target.value;
+                                            setEditingStatus(false);
+                                            if (next === teacher.status) return;
+                                            try {
+                                                await updateTeacher(teacher.id, { status: next as any });
+                                            } catch { /* xabar CRMContext da chiqadi */ }
+                                        }}
+                                        onBlur={() => setEditingStatus(false)}
+                                        className="px-2 py-1 bg-ichki border border-chiziq rounded-lg text-[11px] font-bold text-matn outline-none focus:border-brand cursor-pointer"
+                                    >
+                                        <option value="Faol">Faol</option>
+                                        <option value="Passiv">Passiv</option>
+                                        <option value="Arxiv">Arxiv</option>
+                                    </select>
+                                ) : (
+                                    <button
+                                        onClick={() => isAdminOrManager && setEditingStatus(true)}
+                                        title={isAdminOrManager ? "Holatni o'zgartirish" : undefined}
+                                        className={`px-2.5 py-0.5 rounded-md text-[10px] font-bold border inline-flex items-center gap-1 ${isAdminOrManager ? 'cursor-pointer' : 'cursor-default'} ${
+                                            teacher.status === 'Faol'
+                                                ? 'bg-emerald-50 text-emerald-600 border-emerald-100 dark:bg-emerald-950/20 dark:text-emerald-400'
+                                                : teacher.status === 'Passiv'
+                                                    ? 'bg-amber-50 text-amber-600 border-amber-100 dark:bg-amber-950/20 dark:text-amber-400'
+                                                    : 'bg-gray-55 text-matn-xira border-gray-100 dark:bg-gray-900/50'
+                                        }`}>
+                                        {teacher.status}
+                                        {isAdminOrManager && <Pencil size={9} className="opacity-60" />}
+                                    </button>
+                                )}
                             </div>
                         </div>
                         <div className="px-6 pb-6 space-y-3 border-t border-dashed border-chiziq pt-4">
@@ -257,10 +325,18 @@ export default function TeacherDetails() {
                                             <h3 className="text-xs font-black text-matn tracking-tight">Ishga kelishi</h3>
                                             <p className="text-[11px] font-bold text-matn-sokin mt-1">{new Date().toLocaleDateString('uz-UZ', { month: 'long' })} oyi</p>
                                         </div>
-                                        <button onClick={() => setShowAttendanceModal(true)} 
-                                            className="px-4 py-2 bg-brand hover:bg-brand-dark text-white rounded-xl text-[11px] font-extrabold transition-all cursor-pointer shadow-sm shadow-[#1b6b6b]/20">
-                                            Davomat belgilash
-                                        </button>
+                                        <div className="flex items-center gap-2">
+                                            <button onClick={notifyTeacher} disabled={isNotifying}
+                                                title="Bugungi davomatni ustozning Telegramiga yuborish"
+                                                className="px-4 py-2 bg-sky-50 dark:bg-sky-950/20 text-sky-600 dark:text-sky-400 border border-sky-100 dark:border-sky-900/40 rounded-xl text-[11px] font-extrabold hover:bg-sky-600 hover:text-white transition-all cursor-pointer disabled:opacity-50 flex items-center gap-1.5">
+                                                <Send size={13} />
+                                                {isNotifying ? 'Yuborilmoqda…' : "Telegramga yuborish"}
+                                            </button>
+                                            <button onClick={() => setShowAttendanceModal(true)}
+                                                className="px-4 py-2 bg-brand hover:bg-brand-dark text-white rounded-xl text-[11px] font-extrabold transition-all cursor-pointer shadow-sm shadow-[#1b6b6b]/20">
+                                                Davomat belgilash
+                                            </button>
+                                        </div>
                                     </div>
 
                                     <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">

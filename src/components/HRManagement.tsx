@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import {
     Users2, Plus, X, Trash2, Pencil,
     Banknote,
-    GraduationCap, ExternalLink, Camera, Wrench, Eye, Sparkles
+    GraduationCap, ExternalLink, Camera, Wrench, Eye, Sparkles, Archive, RotateCcw
 } from 'lucide-react';
 import { useCRM } from '../context/CRMContext';
 import StatTile from './ui/StatTile';
@@ -58,6 +58,8 @@ export default function HRManagement() {
     const [users, setUsers]               = useState<any[]>([]);
     const [loadingUsers, setLoadingUsers] = useState(false);
     const [selectedRole, setSelectedRole] = useState<string | null>(null);
+    // Arxivdagi xodimlar sukut bo'yicha yashirin.
+    const [showArchived, setShowArchived] = useState(false);
 
     const [isAddOpen, setIsAddOpen]       = useState(false);
     const [isEditOpen, setIsEditOpen]     = useState(false);
@@ -150,26 +152,70 @@ export default function HRManagement() {
         } catch (err) { console.error('Edit user failed', err); }
     };
 
+    const setUserStatus = async (id: number, status: string) => {
+        try {
+            const res = await fetch(`/api/users/${id}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+                body: JSON.stringify({ status })
+            });
+            if (!res.ok) {
+                const d = await res.json().catch(() => ({}));
+                showNotification(d.error || "Xatolik yuz berdi", 'error');
+                return;
+            }
+            fetchUsers();
+            showNotification(status === 'Arxiv' ? "Xodim arxivga olindi" : "Xodim faol holatga qaytarildi", 'success');
+        } catch {
+            showNotification("Aloqa xatosi", 'error');
+        }
+    };
+
     const handleDeleteUser = async (id: number) => {
-        if (!await confirm("Xodimni o'chirmoqchimisiz?")) return;
+        if (!await confirm("Xodimni butunlay o'chirmoqchimisiz?")) return;
         try {
             const res = await fetch(`/api/users/${id}`, { method: 'DELETE', headers: { 'Authorization': `Bearer ${token}` } });
-            if (res.ok) fetchUsers();
-        } catch (err) { console.error('Delete user failed', err); }
+            if (res.ok) {
+                fetchUsers();
+                showNotification("Xodim o'chirildi", 'success');
+                return;
+            }
+            const d = await res.json().catch(() => ({}));
+            // Davomat yoki oylik yozuvi bor xodimni o'chirib bo'lmaydi —
+            // shu yerning o'zida arxivga olishni taklif qilamiz.
+            if (d.canArchive) {
+                if (await confirm(d.error + "\n\nArxivga olinsinmi?")) await setUserStatus(id, 'Arxiv');
+                return;
+            }
+            showNotification(d.error || "Xatolik yuz berdi", 'error');
+        } catch (err) {
+            console.error('Delete user failed', err);
+            showNotification("Aloqa xatosi", 'error');
+        }
     };
 
     const handleDeleteTeacher = async (tid: number) => {
         if (!await confirm("O'qituvchini o'chirmoqchimisiz?")) return;
         try {
-            await fetch(`/api/teachers/${tid}`, { method: 'DELETE', headers: { Authorization: `Bearer ${token}` } });
-            // CRMContext teachers refresh is not available here, so force page reload
+            const res = await fetch(`/api/teachers/${tid}`, { method: 'DELETE', headers: { Authorization: `Bearer ${token}` } });
+            if (!res.ok) {
+                const d = await res.json().catch(() => ({}));
+                showNotification(d.error || "O'qituvchini o'chirib bo'lmadi", 'error');
+                return;
+            }
+            // Ilgari bu yerda javob tekshirilmasdan sahifa qayta yuklanardi va
+            // muvaffaqiyatsiz o'chirish ham muvaffaqiyatli ko'rinardi.
             window.location.reload();
-        } catch (err) { console.error('Delete teacher failed', err); }
+        } catch (err) {
+            console.error('Delete teacher failed', err);
+            showNotification("Aloqa xatosi", 'error');
+        }
     };
 
     // Merge User records + Teacher model records from context
     // Exclude teachers whose name already matches a User record (no duplicates)
     const userNames = new Set(users.map(u => u.name.toLowerCase().trim()));
+    const arxivSoni = users.filter((u: any) => u.status === 'Arxiv').length;
     const uniqueTeacherRows = (teachers || [])
         .filter(t => t.status !== 'Arxiv' && !userNames.has(t.name.toLowerCase().trim()))
         .map(t => ({
@@ -187,7 +233,9 @@ export default function HRManagement() {
     const allStaff = [...users, ...uniqueTeacherRows];
 
     // Filtered by selected role
-    const filteredUsers = selectedRole ? allStaff.filter(u => u.role === selectedRole) : allStaff;
+    const byRole = selectedRole ? allStaff.filter(u => u.role === selectedRole) : allStaff;
+    const filteredUsers = byRole.filter((u: any) =>
+        showArchived ? u.status === 'Arxiv' : u.status !== 'Arxiv');
 
     // ---- Ko'rsatkichlar. Hammasi mavjud yozuvlardan; hisoblab bo'lmasa
     // kartochka son o'rniga nima yetishmayotganini aytadi.
@@ -276,15 +324,15 @@ export default function HRManagement() {
                             className={`px-3 py-1.5 rounded-lg text-[12px] border transition-colors cursor-pointer ${
                                 selectedRole === null ? 'bg-brand text-brand-ust border-brand font-semibold' : 'border-chiziq-kuchli text-matn-sokin hover:text-matn'
                             }`}>
-                            Barchasi <span className="raqam opacity-65">{allStaff.length}</span>
+                            Barchasi <span className="raqam opacity-65">{allStaff.filter((u: any) => u.status !== 'Arxiv').length}</span>
                         </button>
                         {Object.keys(ROLE_LABELS).map((role) => {
-                            const count = allStaff.filter(u => u.role === role).length;
+                            const count = allStaff.filter((u: any) => u.role === role && u.status !== 'Arxiv').length;
                             if (!count) return null;
                             const isActive = selectedRole === role;
                             return (
                                 <button key={role}
-                                    onClick={() => setSelectedRole(prev => prev === role ? null : role)}
+                                    onClick={() => { setSelectedRole(prev => prev === role ? null : role); setShowArchived(false); }}
                                     className={`px-3 py-1.5 rounded-lg text-[12px] border transition-colors cursor-pointer ${
                                         isActive ? 'bg-brand text-brand-ust border-brand font-semibold' : 'border-chiziq-kuchli text-matn-sokin hover:text-matn'
                                     }`}>
@@ -292,6 +340,14 @@ export default function HRManagement() {
                                 </button>
                             );
                         })}
+                        {arxivSoni > 0 && (
+                            <button onClick={() => { setShowArchived(v => !v); setSelectedRole(null); }}
+                                className={`px-3 py-1.5 rounded-lg text-[12px] border transition-colors cursor-pointer ${
+                                    showArchived ? 'bg-brand text-brand-ust border-brand font-semibold' : 'border-chiziq-kuchli text-matn-sokin hover:text-matn'
+                                }`}>
+                                Arxiv <span className="raqam opacity-65">{arxivSoni}</span>
+                            </button>
+                        )}
                     </div>
 
                     {loadingUsers ? (
@@ -394,6 +450,14 @@ export default function HRManagement() {
                                                             {/* O'zini o'zi o'chira olmaydi. Aynan shu holat
                                                                 sodir bo'lgan: markaz rahbari o'z hisobini
                                                                 o'chirib, markaz boshsiz qolgan. */}
+                                                            {isAdmin && !ozHisobi && !isLegacy && (
+                                                                <button
+                                                                    onClick={() => setUserStatus(u.id, (u as any).status === 'Arxiv' ? 'Faol' : 'Arxiv')}
+                                                                    title={(u as any).status === 'Arxiv' ? "Faol holatga qaytarish" : "Arxivga olish"}
+                                                                    className="w-7 h-7 rounded-lg text-matn-xira hover:text-white hover:bg-brand flex items-center justify-center transition-colors cursor-pointer">
+                                                                    {(u as any).status === 'Arxiv' ? <RotateCcw size={13} /> : <Archive size={13} />}
+                                                                </button>
+                                                            )}
                                                             {isAdmin && !ozHisobi && (
                                                                 <button
                                                                     onClick={() => isLegacy ? handleDeleteTeacher(u._tid) : handleDeleteUser(u.id)}

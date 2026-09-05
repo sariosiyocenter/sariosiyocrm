@@ -6,6 +6,7 @@ import {
 } from 'lucide-react';
 import { useCRM } from '../context/CRMContext';
 import { activeCourses } from '../lib/activeCourses';
+import { isCashIncome } from '../lib/money';
 import { useLang } from '../context/LanguageContext';
 import { useNavigate } from 'react-router-dom';
 import RoomSchedule from './RoomSchedule';
@@ -116,7 +117,7 @@ export default function Dashboard() {
             })
             // Faqat kirimlar: oylik hisoblash manfiy yozuv bo'lib, uni qo'shsak
             // ustun manfiyga tushib ketadi (sentabrda -127 chiqqan edi).
-            .reduce((acc, p) => acc + (p.amount > 0 ? p.amount : 0), 0) / 1000000;
+            .reduce((acc, p) => acc + (isCashIncome(p) ? p.amount : 0), 0) / 1000000;
     });
 
     const chartLabels = last6Months.map(m => m.label);
@@ -182,7 +183,7 @@ export default function Dashboard() {
     // Qarzdorlik: kim qancha vaqtdan beri to'lov qilmagan.
     const debtors = students.filter(s => (s.balance || 0) < 0);
     const daysSinceLastPayment = (studentId: number) => {
-        const dates = payments.filter(p => p.studentId === studentId && p.amount > 0).map(p => p.date).sort();
+        const dates = payments.filter(p => p.studentId === studentId && isCashIncome(p)).map(p => p.date).sort();
         const last = dates[dates.length - 1];
         if (!last) return null;
         const d = new Date(last);
@@ -278,7 +279,7 @@ export default function Dashboard() {
     };
 
     const recentPayments = (payments || [])
-        .filter(p => p.amount > 0 && (p.date || '').slice(0, 10) <= todayISO)
+        .filter(p => isCashIncome(p) && (p.date || '').slice(0, 10) <= todayISO)
         .sort((a, b) => (b.date || '').localeCompare(a.date || '') || b.id - a.id)
         .slice(0, 4)
         .map(p => {

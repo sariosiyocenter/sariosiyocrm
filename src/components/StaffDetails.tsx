@@ -58,7 +58,7 @@ const lbl = "block text-[11px] font-extrabold   text-matn-xira mb-2";
 export default function StaffDetails() {
     const { id } = useParams<{ id: string }>();
     const navigate = useNavigate();
-    const { teachers, groups, attendances, token, user: currentUser, showNotification } = useCRM();
+    const { teachers, groups, attendances, token, user: currentUser, showNotification, retryLoad } = useCRM();
     const confirm = useConfirm();
     const { t } = useLang();
 
@@ -152,6 +152,13 @@ export default function StaffDetails() {
     const [payConfirm, setPayConfirm] = useState(false);
     const [paying,     setPaying]     = useState(false);
 
+    // Berilgan oylikni tuzatish oynasi.
+    const [editingPayment, setEditingPayment] = useState<any>(null);
+    const [editPayAmount, setEditPayAmount] = useState('');
+    const [editPayNote, setEditPayNote] = useState('');
+    const [savingPayEdit, setSavingPayEdit] = useState(false);
+
+
     // Inline salary / kpi edit
     const [editingSalary,  setEditingSalary]  = useState(false);
     const [salaryDraft,    setSalaryDraft]    = useState('');
@@ -198,9 +205,18 @@ export default function StaffDetails() {
         fetch(`/api/salary-payments?userId=${staffUser.id}`, {
             headers: { Authorization: `Bearer ${token}` }
         })
-        .then(r => r.json())
+        .then(async r => {
+            if (!r.ok) {
+                const d = await r.json().catch(() => ({}));
+                throw new Error(d.error || ('Server ' + r.status));
+            }
+            return r.json();
+        })
         .then(data => setSalaryPayments(Array.isArray(data) ? data : []))
-        .catch(() => setSalaryPayments([]));
+        .catch((err) => {
+            setSalaryPayments([]);
+            showNotification("Oylik tarixini yuklab bo'lmadi: " + (err?.message || 'aloqa xatosi'), 'error');
+        });
     }, [staffUser?.id, token]);
 
     // Fetch attendance whenever user/month changes
@@ -429,15 +445,52 @@ export default function StaffDetails() {
                     fines: totalFine,
                 }),
             });
-            if (res.ok) {
-                const payment = await res.json();
-                setSalaryPayments(prev => [...prev.filter(p => p.month !== payMonthStr), payment]);
-                setBonuses([]);
-                setFines([]);
-                setPayConfirm(false);
+            if (!res.ok) {
+                const d = await res.json().catch(() => ({}));
+                throw new Error(d.error || ('Server ' + res.status));
             }
-        } catch { /* ignore */ }
+            const payment = await res.json();
+            setSalaryPayments(prev => [...prev.filter(p => p.month !== payMonthStr), payment]);
+            setBonuses([]);
+            setFines([]);
+            setPayConfirm(false);
+            showNotification("Oylik berildi va Moliyaga xarajat sifatida yozildi", 'success');
+            // Moliyadagi xarajatlar ro'yxati faqat /api/init dan keladi, shuning
+            // uchun yangi xarajat ko'rinishi uchun ma'lumotni yangilaymiz.
+            retryLoad();
+        } catch (err: any) {
+            showNotification("Oylikni saqlab bo'lmadi: " + (err?.message || 'aloqa xatosi'), 'error');
+        }
         setPaying(false);
+    };
+
+    /** Berilgan oylikni tuzatish. Ilgari buning yo'li yo'q edi — faqat
+     *  o'chirib, qaytadan berish mumkin edi. */
+    const saveSalaryEdit = async () => {
+        if (!editingPayment || savingPayEdit) return;
+        const val = parseInt(editPayAmount);
+        if (!Number.isFinite(val)) { showNotification("Summa noto'g'ri", 'error'); return; }
+        setSavingPayEdit(true);
+        try {
+            const res = await fetch(`/api/salary-payments/${editingPayment.id}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+                body: JSON.stringify({ amount: val, note: editPayNote })
+            });
+            if (!res.ok) {
+                const d = await res.json().catch(() => ({}));
+                throw new Error(d.error || ('Server ' + res.status));
+            }
+            const updated = await res.json();
+            setSalaryPayments(prev => prev.map(p => p.id === updated.id ? updated : p));
+            setEditingPayment(null);
+            showNotification("Oylik yangilandi", 'success');
+            retryLoad();
+        } catch (err: any) {
+            showNotification("O'zgartirib bo'lmadi: " + (err?.message || 'aloqa xatosi'), 'error');
+        } finally {
+            setSavingPayEdit(false);
+        }
     };
 
     const deleteSalaryPayment = async (pid: number) => {
@@ -894,10 +947,22 @@ export default function StaffDetails() {
                                                 </div>
                                             </div>
                                             {isAdminOrManager && (
-                                                <button onClick={() => deleteSalaryPayment(currentPayment.id)}
-                                                    className="text-matn-xira hover:text-rose-500 transition-colors cursor-pointer p-2 rounded-xl hover:bg-rose-50 dark:hover:bg-rose-950/20">
-                                                    <Trash2 size={14} />
-                                                </button>
+                                                <div className="flex items-center gap-1 shrink-0">
+                                                    <button onClick={() => {
+                                                        setEditingPayment(currentPayment);
+                                                        setEditPayAmount(String(currentPayment.amount));
+                                                        setEditPayNote(currentPayment.note || '');
+                                                    }}
+                                                        title="Tahrirlash"
+                                                        className="text-matn-xira hover:text-brand transition-colors cursor-pointer p-2 rounded-xl hover:bg-brand/10">
+                                                        <Pencil size={14} />
+                                                    </button>
+                                                    <button onClick={() => deleteSalaryPayment(currentPayment.id)}
+                                                        title="O'chirish"
+                                                        className="text-matn-xira hover:text-rose-500 transition-colors cursor-pointer p-2 rounded-xl hover:bg-rose-50 dark:hover:bg-rose-950/20">
+                                                        <Trash2 size={14} />
+                                                    </button>
+                                                </div>
                                             )}
                                         </div>
                                     ) : (
@@ -1358,6 +1423,46 @@ export default function StaffDetails() {
                     name={staffUser.name}
                     onClose={() => setIsPhotoViewerOpen(false)}
                 />
+            )}
+
+            {editingPayment && (
+                <div className="fixed inset-0 z-[200] flex items-start sm:items-center justify-center overflow-y-auto p-4">
+                    <div className="absolute inset-0 bg-gray-900/60 backdrop-blur-sm" onClick={() => setEditingPayment(null)} />
+                    <div className="relative bg-sirt rounded-[2rem] border border-chiziq shadow-2xl w-full max-w-md p-8 space-y-4">
+                        <div className="flex items-center justify-between pb-4 border-b border-chiziq-mayin/50">
+                            <div>
+                                <h3 className="text-lg font-black text-matn tracking-tight">Oylikni tahrirlash</h3>
+                                <p className="text-[11px] font-bold text-brand mt-0.5">{editingPayment.month} — {staffUser.name}</p>
+                            </div>
+                            <button aria-label="Yopish" onClick={() => setEditingPayment(null)}
+                                className="w-9 h-9 flex items-center justify-center text-matn-xira hover:bg-ichki rounded-xl cursor-pointer">
+                                <X size={18} />
+                            </button>
+                        </div>
+                        <div>
+                            <label className="block text-[11px] font-extrabold text-matn-xira mb-2">Summa (UZS)</label>
+                            <input type="number" value={editPayAmount} onChange={e => setEditPayAmount(e.target.value)}
+                                className="w-full px-4 py-3 bg-ichki border border-chiziq rounded-2xl text-xs font-bold text-matn outline-none focus:border-brand transition-all" />
+                            <p className="text-[10px] text-matn-xira mt-1">Moliyadagi xarajat ham shu summaga o'zgaradi.</p>
+                        </div>
+                        <div>
+                            <label className="block text-[11px] font-extrabold text-matn-xira mb-2">Izoh</label>
+                            <input type="text" value={editPayNote} onChange={e => setEditPayNote(e.target.value)}
+                                placeholder="Masalan: summa xato kiritilgan edi"
+                                className="w-full px-4 py-3 bg-ichki border border-chiziq rounded-2xl text-xs font-bold text-matn outline-none focus:border-brand transition-all" />
+                        </div>
+                        <div className="flex gap-3 pt-4 border-t border-dashed border-chiziq/50">
+                            <button type="button" onClick={() => setEditingPayment(null)}
+                                className="flex-1 py-3 bg-chiziq text-gray-700 dark:text-white text-xs font-extrabold rounded-2xl cursor-pointer hover:bg-gray-200 dark:hover:bg-gray-600 transition-all">
+                                Bekor
+                            </button>
+                            <button type="button" onClick={saveSalaryEdit} disabled={savingPayEdit}
+                                className="flex-1 py-3 bg-brand hover:bg-brand-dark disabled:opacity-50 text-white text-xs font-extrabold rounded-2xl cursor-pointer transition-all">
+                                {savingPayEdit ? 'Saqlanmoqda…' : 'Saqlash'}
+                            </button>
+                        </div>
+                    </div>
+                </div>
             )}
         </div>
     );

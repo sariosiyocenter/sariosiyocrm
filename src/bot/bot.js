@@ -411,19 +411,60 @@ export const setupBotHandlers = (botInstance, schoolId) => {
         if (!user || user.type !== 'teacher') return;
 
         const teacher = user.data;
-        let msg = `💰 Ish haqi ma'lumotlari:\n\n`;
-        msg += `💳 Oylik turi: ${teacher.salaryType === 'PERCENTAGE' ? 'Foizbay' : 'Belgilangan (Fixed)'}\n`;
-        
-        if (teacher.salaryType === 'PERCENTAGE') {
-            msg += `📈 Ulush: ${teacher.sharePercentage}%\n`;
-        } else {
-            msg += `💵 Oylik miqdori: ${teacher.salary.toLocaleString()} UZS\n`;
-        }
-        
-        msg += `📖 Dars haqi: ${teacher.lessonFee.toLocaleString()} UZS\n`;
-        msg += `\n(Batafsil ma'lumot uchun boshqaruv paneliga murojaat qiling)`;
+        const NL = String.fromCharCode(10);
+        const lines = ['💰 Ish haqi'];
 
-        ctx.reply(msg);
+        // Haqiqatan berilgan oyliklar. Ilgari bu yerda faqat shartnoma
+        // ma'lumoti (stavka) ko'rsatilardi va to'lansa ham, to'lanmasa ham
+        // xabar bir xil bo'lardi — shuning uchun "telegramda aks etmayapti".
+        // SalaryPayment User ga bog'langan, Teacher ga emas: ikkalasi ism
+        // bo'yicha topiladi (server.js dagi KPI hisobi ham shunday qiladi).
+        let paid = [];
+        try {
+            const staff = await prisma.user.findFirst({
+                where: { name: teacher.name, schoolId: teacher.schoolId },
+                select: { id: true }
+            });
+            if (staff) {
+                paid = await prisma.salaryPayment.findMany({
+                    where: { userId: staff.id },
+                    orderBy: { month: 'desc' },
+                    take: 6
+                });
+            }
+        } catch (e) {
+            console.error('Oylik tarixini olishda xato:', e.message);
+        }
+
+        if (paid.length > 0) {
+            lines.push('');
+            lines.push('✅ Berilgan oyliklar:');
+            paid.forEach(p => {
+                let row = '▫️ ' + p.month + ': ' + p.amount.toLocaleString() + ' UZS';
+                if (p.bonuses) row += ' (+' + p.bonuses.toLocaleString() + ' bonus)';
+                if (p.fines) row += ' (−' + p.fines.toLocaleString() + ' jarima)';
+                lines.push(row);
+            });
+        } else {
+            lines.push('');
+            lines.push('Hozircha berilgan oylik yozuvi yo\'q.');
+        }
+
+        lines.push('');
+        lines.push('📋 Shartnoma bo\'yicha:');
+        const turi = teacher.salaryType === 'KPI' ? 'KPI (foizli)'
+            : teacher.salaryType === 'FIXED_KPI' ? 'Belgilangan + KPI'
+            : 'Belgilangan';
+        lines.push('💳 Turi: ' + turi);
+        if (teacher.salaryType !== 'FIXED') {
+            lines.push('📈 Ulush: ' + teacher.sharePercentage + '%');
+        }
+        if (teacher.salaryType !== 'KPI') {
+            lines.push('💵 Oylik: ' + (teacher.salary || 0).toLocaleString() + ' UZS');
+        }
+        lines.push('📖 Dars haqi: ' + (teacher.lessonFee || 0).toLocaleString() + ' UZS');
+
+        ctx.reply(lines.join(NL));
     });
 
     botInstance.action(/mark_att_(\d+)/, async (ctx) => {

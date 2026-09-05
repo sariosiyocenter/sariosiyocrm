@@ -61,7 +61,9 @@ export interface Teacher {
     birthDate: string;
     hiredDate: string;
     photo?: string;
-    status: 'Faol' | 'Arxiv';
+    // Passiv — vaqtincha ishlamayotgan ustoz: ro'yxatda qoladi, lekin
+    // "Faol" hisoblanmaydi. Arxiv — butunlay ishdan chiqqan.
+    status: 'Faol' | 'Passiv' | 'Arxiv';
     schoolId: number;
 }
 
@@ -110,7 +112,9 @@ export interface Payment {
     id: number;
     studentId: number;
     amount: number;
-    type: 'Naqd' | 'Karta' | 'Peyme' | 'Klik' | 'O\'tkazma';
+    // 'Chegirma' — pul kirmagan qayta hisob (dars qoldirgani uchun).
+    // 'Oylik' — billing yozadigan manfiy hisob.
+    type: 'Naqd' | 'Karta' | 'Peyme' | 'Klik' | 'O\'tkazma' | 'Chegirma' | 'Oylik';
     date: string;
     description: string;
     /** Qaysi kurs uchun to'langani. Tanlanmagan bo'lsa null. */
