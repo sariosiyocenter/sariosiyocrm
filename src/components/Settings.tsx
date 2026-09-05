@@ -257,9 +257,10 @@ export default function Settings() {
                 </div>
                 <div className="flex items-center gap-4">
                     <div className="relative group">
-                        <div className="w-20 h-20 rounded-2xl bg-ichki border border-chiziq overflow-hidden flex items-center justify-center">
+                        {/* Logotip qirqilmasin — object-contain butun belgini ramkaga sig'diradi. */}
+                        <div className={`w-20 h-20 rounded-2xl border border-chiziq overflow-hidden flex items-center justify-center ${profileForm?.logo ? 'bg-white' : 'bg-ichki'}`}>
                             {profileForm?.logo
-                                ? <img src={profileForm.logo} className="w-full h-full object-cover" alt="logo" />
+                                ? <img src={profileForm.logo} className="w-full h-full object-contain p-2" alt="logo" />
                                 : <Building2 size={24} className="text-brand" />
                             }
                         </div>

@@ -231,9 +231,11 @@ export default function PublicApply() {
                 <div className="bg-gradient-to-tr from-[var(--brand-color,#1b6b6b)] to-[var(--brand-color,#1b6b6b)]/80 p-8 text-white relative">
                     <div className="absolute top-0 right-0 w-32 h-32 bg-white/5 rounded-full blur-2xl -mr-10 -mt-10" />
                     <div className="flex items-center gap-4 relative z-10">
-                        <div className="w-12 h-12 rounded-2xl bg-white/10 backdrop-blur-md border border-white/20 flex items-center justify-center shrink-0">
+                        <div className={`w-12 h-12 rounded-2xl border flex items-center justify-center shrink-0 ${
+                            schoolInfo.logo ? 'bg-white border-white/40' : 'bg-white/10 backdrop-blur-md border-white/20'
+                        }`}>
                             {schoolInfo.logo ? (
-                                <img src={schoolInfo.logo} alt="logo" className="w-full h-full object-cover rounded-2xl" />
+                                <img src={schoolInfo.logo} alt="logo" className="w-full h-full object-contain p-1.5 rounded-2xl" />
                             ) : (
                                 <Building2 size={22} />
                             )}

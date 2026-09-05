@@ -86,9 +86,9 @@ export default function Layout({ children, onLogout }: LayoutProps) {
       {/* ===== CHAP PANEL ===== */}
       <aside className="hidden lg:flex w-[76px] shrink-0 flex-col sticky top-0 h-screen border-r border-chiziq bg-sirt-2">
         <Link to="/" title={settings?.orgName || 'Quantum Edu'} className="h-[54px] flex items-center justify-center border-b border-chiziq shrink-0">
-          <div className="w-9 h-9 rounded-[10px] overflow-hidden bg-brand flex items-center justify-center">
+          <div className={`w-9 h-9 rounded-[10px] overflow-hidden flex items-center justify-center ${settings?.logo ? 'bg-white' : 'bg-brand'}`}>
             {settings?.logo
-              ? <img src={settings.logo} className="w-full h-full object-cover" alt="logo" />
+              ? <img src={settings.logo} className="w-full h-full object-contain p-1" alt="logo" />
               : <Atom size={18} className="text-brand-ust" />
             }
           </div>
@@ -147,9 +147,9 @@ export default function Layout({ children, onLogout }: LayoutProps) {
             {/* Logo */}
             {/* Kichik ekranda chap panel yashiringan, shuning uchun belgi shu yerda. */}
             <Link to="/" className="lg:hidden flex items-center shrink-0">
-              <div className="w-9 h-9 rounded-xl overflow-hidden bg-gradient-to-br from-brand to-brand-accent flex items-center justify-center">
+              <div className={`w-9 h-9 rounded-xl overflow-hidden flex items-center justify-center ${settings?.logo ? 'bg-white' : 'bg-gradient-to-br from-brand to-brand-accent'}`}>
                 {settings?.logo
-                  ? <img src={settings.logo} className="w-full h-full object-cover" alt="logo" />
+                  ? <img src={settings.logo} className="w-full h-full object-contain p-1" alt="logo" />
                   : <Atom size={19} className="text-white" />
                 }
               </div>
