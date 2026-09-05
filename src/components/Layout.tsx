@@ -7,6 +7,7 @@ import {
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useCRM } from '../context/CRMContext';
 import { useLang } from '../context/LanguageContext';
+import { useConfirm } from './ConfirmDialog';
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -20,6 +21,18 @@ const BRAND_LIGHT = 'var(--brand-light)';
 const BRAND_DARK_TEXT = 'var(--brand-color)';
 
 export default function Layout({ children, onLogout }: LayoutProps) {
+  const confirm = useConfirm();
+
+  const handleLogout = async () => {
+    const ok = await confirm({
+      title: 'Tizimdan chiqish',
+      message: "Rostdan ham chiqmoqchimisiz? Qaytadan kirish uchun parolni kiritishingiz kerak bo'ladi.",
+      confirmLabel: 'Ha, chiqaman',
+      cancelLabel: 'Bekor qilish',
+      danger: true,
+    });
+    if (ok) onLogout();
+  };
   const { user, schools, selectedSchoolId, setSelectedSchoolId, students, leads, groups, teachers, courses, darkMode, toggleDarkMode, notification, settings, error, retryLoad } = useCRM();
   const { lang, setLang, t } = useLang();
   const location = useLocation();
@@ -104,7 +117,7 @@ export default function Layout({ children, onLogout }: LayoutProps) {
         </nav>
 
         <button
-          onClick={onLogout}
+          onClick={handleLogout}
           title="Chiqish"
           className="m-1.5 mb-3 flex flex-col items-center gap-1 py-2 rounded-[10px] text-matn-xira hover:text-xato hover:bg-xato-fon transition-colors cursor-pointer shrink-0"
         >
@@ -384,7 +397,7 @@ export default function Layout({ children, onLogout }: LayoutProps) {
             </div>
             <div className="p-3 border-t border-slate-100 dark:border-slate-800">
               <button
-                onClick={() => { onLogout(); setMobileMenuOpen(false); }}
+                onClick={async () => { setMobileMenuOpen(false); await handleLogout(); }}
                 className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-900/20 transition-all"
               >
                 <LogOut size={18} />
