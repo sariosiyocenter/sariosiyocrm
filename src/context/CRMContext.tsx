@@ -38,7 +38,8 @@ interface CRMContextType extends CRMState {
     // yozilishini forma o'zi tanlaydi, aks holda joriy filial olinadi.
     addStudent: (student: Omit<Student, 'id' | 'schoolId'> & { schoolId?: number }) => Promise<void>;
     updateStudent: (id: number, student: Partial<Student>) => Promise<void>;
-    deleteStudent: (id: number) => Promise<void>;
+    deleteStudent: (id: number, force?: boolean) => Promise<{ ok: boolean; needsChoice?: boolean; error?: string }>;
+    setStudentStatus: (id: number, status: string) => Promise<void>;
     importStudents: (students: any[]) => Promise<void>;
     addStudentToGroup: (groupId: number, studentId: number) => Promise<void>;
     removeStudentFromGroup: (groupId: number, studentId: number) => Promise<void>;
@@ -667,11 +668,26 @@ export const CRMProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         }
     };
 
-    const deleteStudent = async (id: number) => {
+    /**
+     * O'quvchini o'chirish. Yozuvi bor o'quvchi uchun server avval arxivni
+     * taklif qiladi — o'chirish uning to'lov tarixini ham olib ketadi va
+     * Moliyadagi o'tgan oylar tushumi kamayadi. Chaqiruvchi shu javobni olib
+     * "Arxivga olish / Butunlay o'chirish" tanlovini ko'rsatadi.
+     */
+    const deleteStudent = async (id: number, force = false): Promise<{ ok: boolean; needsChoice?: boolean; error?: string }> => {
         try {
-            await apiCall(`students/${id}`, 'DELETE');
-            setState(prev => ({ 
-                ...prev, 
+            const res = await fetch(`${API_BASE}/students/${id}${force ? '?force=1' : ''}`, {
+                method: 'DELETE',
+                headers: { Authorization: `Bearer ${token}` },
+            });
+            if (!res.ok) {
+                const d = await res.json().catch(() => ({}));
+                if (d.canArchive) return { ok: false, needsChoice: true, error: d.error };
+                showNotification("O'quvchini o'chirishda xatolik: " + (d.error || res.statusText), "error");
+                return { ok: false, error: d.error };
+            }
+            setState(prev => ({
+                ...prev,
                 students: prev.students.filter(s => s.id !== id),
                 groups: prev.groups.map(g => ({
                     ...g,
@@ -679,10 +695,16 @@ export const CRMProvider: React.FC<{ children: React.ReactNode }> = ({ children 
                 }))
             }));
             showNotification("O'quvchi o'chirildi", "success");
+            return { ok: true };
         } catch (err: any) {
             showNotification("O'quvchini o'chirishda xatolik: " + err.message, "error");
-            throw err;
+            return { ok: false, error: err.message };
         }
+    };
+
+    /** O'quvchini arxivga olish yoki faol holatga qaytarish. */
+    const setStudentStatus = async (id: number, status: string) => {
+        await updateStudent(id, { status } as any);
     };
 
     const importStudents = async (importedStudents: any[]) => {
@@ -1293,7 +1315,7 @@ export const CRMProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             ...state,
             loading, error, user, token,
             login, logout, checkAuth, setSelectedSchoolId,
-            addStudent, updateStudent, deleteStudent, importStudents, addStudentToGroup, removeStudentFromGroup,
+            addStudent, updateStudent, deleteStudent, setStudentStatus, importStudents, addStudentToGroup, removeStudentFromGroup,
             addTeacher, updateTeacher, deleteTeacher,
             addGroup, updateGroup, deleteGroup,
             updateLead, addLead, deleteLead,

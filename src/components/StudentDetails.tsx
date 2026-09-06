@@ -92,7 +92,7 @@ export default function StudentDetails() {
     const { id } = useParams<{ id: string }>();
     const navigate = useNavigate();
     const { t } = useLang();
-    const { students, groups, teachers, courses, payments, attendances, scores, transports, addPayment, addAttendance, addScore, updateStudent, addStudentToGroup, deleteStudent, topics, updateAttendance, showNotification, loadAttendanceFor } = useCRM();
+    const { students, groups, teachers, courses, payments, attendances, scores, transports, addPayment, addAttendance, addScore, updateStudent, addStudentToGroup, deleteStudent, setStudentStatus, topics, updateAttendance, showNotification, loadAttendanceFor } = useCRM();
     const confirm = useConfirm();
     const [activeTab, setActiveTab] = useState('umumiy');
     const [showPaymentModal, setShowPaymentModal] = useState(false);
@@ -123,9 +123,33 @@ export default function StudentDetails() {
     const [isSavingNote, setIsSavingNote] = useState(false);
 
     const handleConfirmDelete = async () => {
+        const id = student!.id;
         try {
-            await deleteStudent(student!.id);
-            navigate('/students');
+            const res = await deleteStudent(id);
+            if (res.ok) { navigate('/students'); return; }
+            if (!res.needsChoice) return;
+            // To'lovi yoki davomati bor o'quvchi: o'chirish butun tarixini
+            // olib ketadi, shuning uchun avval arxiv taklif qilinadi.
+            const javob = await confirm({
+                title: "O'quvchini o'chirish",
+                message: res.error || '',
+                confirmLabel: 'Arxivga olish',
+                altLabel: "Butunlay o'chirish",
+                cancelLabel: 'Bekor qilish',
+            });
+            if (javob === 'alt') {
+                if (!await confirm({
+                    title: 'Yana bir bor tasdiqlang',
+                    message: "O'quvchi va uning to'lovlari, davomati, baholari butunlay o'chadi. Moliyadagi o'tgan oylar tushumi ham shunga mos kamayadi. Bu amalni ortga qaytarib bo'lmaydi.",
+                    confirmLabel: "Ha, butunlay o'chir",
+                })) return;
+                const majburiy = await deleteStudent(id, true);
+                if (majburiy.ok) navigate('/students');
+            } else if (javob === true) {
+                await setStudentStatus(id, 'Arxiv');
+                showNotification("O'quvchi arxivga olindi", 'success');
+                navigate('/students');
+            }
         } catch (err) {
             console.error("Delete failed", err);
             showNotification(t('error_occurred'), 'error');

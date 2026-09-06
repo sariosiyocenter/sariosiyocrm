@@ -1255,6 +1255,29 @@ app.delete('/api/students/:id', authenticate, requireRole(...STAFF_MANAGERS), as
   try {
     const sid = parseInt(req.params.id);
     if (isNaN(sid)) return res.status(400).json({ error: 'Noto\u2019g\u2019ri ID' });
+
+    // O'quvchini o'chirish uning butun tarixini ham o'chiradi \u2014 eng muhimi
+    // to'lovlarini, ya'ni Moliyadagi o'tgan oylar tushumi ham kamayadi. Shuning
+    // uchun yozuvi bor o'quvchi uchun avval arxiv taklif qilinadi; rahbar
+    // baribir o'chirishni tanlasa (force) shundagina hammasi o'chadi.
+    const majburiy = String(req.query.force || '') === '1' || req.body?.force === true;
+    if (!majburiy) {
+      const [tolovSoni, davomatSoni] = await Promise.all([
+        prisma.payment.count({ where: { studentId: sid } }),
+        prisma.attendance.count({ where: { studentId: sid } }),
+      ]);
+      if (tolovSoni > 0 || davomatSoni > 0) {
+        const qismlar = [];
+        if (tolovSoni > 0) qismlar.push(tolovSoni + " ta to'lov");
+        if (davomatSoni > 0) qismlar.push(davomatSoni + ' ta davomat');
+        return res.status(400).json({
+          error: "Bu o'quvchida " + qismlar.join(' va ') + " yozuvi bor. Arxivga olsangiz ro'yxatdan yo'qoladi, to'lov tarixi va Moliyadagi tushum joyida qoladi. Butunlay o'chirsangiz to'lovlari, davomati, baholari va imtihon natijalari ham o'chib ketadi.",
+          canArchive: true,
+          canForce: true
+        });
+      }
+    }
+
     // Many-to-many: guruhlardan uzib olamiz
     await prisma.student.update({ where: { id: sid }, data: { groups: { set: [] } } }).catch(() => {});
     // Bog'liq yozuvlarni ketma-ket o'chiramiz

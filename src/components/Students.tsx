@@ -83,7 +83,7 @@ const UZB_REGIONS: Record<string, string[]> = {
 };
 
 export default function Students() {
-    const { students, groups, teachers, transports, attendances, addStudent, deleteStudent, importStudents, selectedSchoolId, schools, user, showNotification } = useCRM();
+    const { students, groups, teachers, transports, attendances, addStudent, deleteStudent, setStudentStatus, importStudents, selectedSchoolId, schools, user, showNotification } = useCRM();
     const confirm = useConfirm();
     const { t } = useLang();
     const navigate = useNavigate();
@@ -284,9 +284,32 @@ export default function Students() {
 
     const confirmDeleteStudent = async () => {
         if (!studentToDelete) return;
+        const { id } = studentToDelete;
         try {
-            await deleteStudent(studentToDelete.id);
+            const res = await deleteStudent(id);
+            if (res.ok) { setStudentToDelete(null); return; }
+            if (!res.needsChoice) return;
+            // To'lovi yoki davomati bor o'quvchi. O'chirish uning butun tarixini
+            // olib ketadi, shuning uchun avval arxiv taklif qilinadi.
             setStudentToDelete(null);
+            const javob = await confirm({
+                title: "O'quvchini o'chirish",
+                message: res.error || '',
+                confirmLabel: 'Arxivga olish',
+                altLabel: "Butunlay o'chirish",
+                cancelLabel: 'Bekor qilish',
+            });
+            if (javob === 'alt') {
+                if (!await confirm({
+                    title: 'Yana bir bor tasdiqlang',
+                    message: "O'quvchi va uning to'lovlari, davomati, baholari butunlay o'chadi. Moliyadagi o'tgan oylar tushumi ham shunga mos kamayadi. Bu amalni ortga qaytarib bo'lmaydi.",
+                    confirmLabel: "Ha, butunlay o'chir",
+                })) return;
+                await deleteStudent(id, true);
+            } else if (javob === true) {
+                await setStudentStatus(id, 'Arxiv');
+                showNotification("O'quvchi arxivga olindi", 'success');
+            }
         } catch (err) {
             console.error("Delete student failed", err);
             showNotification("O'chirishda xatolik yuz berdi", 'error');
