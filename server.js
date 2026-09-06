@@ -9,6 +9,7 @@ import { encryptSecret, decryptSecret } from './lib/secrets.js';
 import { claimBillingRun, releaseBillingRun, processMonthlyBilling } from './services/billing.js';
 import jwt from 'jsonwebtoken';
 import bot, { startBot, notifyAdmins, getTelegramBot } from './src/bot/bot.js';
+import { transferStudent, refundStudent } from './services/enrollment.js';
 import bcrypt from 'bcryptjs';
 import helmet from 'helmet';
 import rateLimit from 'express-rate-limit';
@@ -755,38 +756,62 @@ app.get('/api/kpi-calculation', authenticate, async (req, res, next) => {
     });
     if (!teacher) return res.json({ groups: [], totalPayments: 0, kpiAmount: 0 });
 
-    // Get teacher's groups with students and their payments for the month
+    // Ustozning guruhlari. Ilgari bu yerda har guruh uchun o'quvchining
+    // BARCHA to'lovlari qo'shilardi — bir nechta guruhda o'qiydigan o'quvchining
+    // puli har bir ustozga to'liq yozilib, ikki marta sanalardi. Endi pul
+    // guruhga bog'langan yozuvlar (Payment.groupId) bo'yicha olinadi.
     const groups = await prisma.group.findMany({
       where: { teacherId: teacher.id },
-      include: {
-        students: {
-          include: {
-            payments: { where: { date: { startsWith: String(month) } } }
-          }
-        },
-        course: { select: { name: true } }
-      }
+      include: { course: { select: { name: true } }, students: { select: { id: true } } }
     });
+    const groupIds = groups.map(g => g.id);
+
+    // Shu oyda guruhlarga yozilgan hisob: manfiy "Oylik" yozuvlari, ya'ni
+    // o'quvchi o'sha guruh uchun qancha to'lashi kerakligi.
+    const charged = groupIds.length
+      ? await prisma.payment.groupBy({
+          by: ['groupId'],
+          where: { groupId: { in: groupIds }, type: 'Oylik', date: { startsWith: String(month) } },
+          _sum: { amount: true },
+        })
+      : [];
+    const chargedByGroup = new Map(charged.map(r => [r.groupId, -(r._sum.amount || 0)]));
+
+    // O'tkazilgan darslar: yo'qlama belgilangan kunlar soni.
+    const lessonRows = groupIds.length
+      ? await prisma.attendance.findMany({
+          where: { groupId: { in: groupIds }, date: { startsWith: String(month) } },
+          select: { groupId: true, date: true },
+          distinct: ['groupId', 'date'],
+        })
+      : [];
+    const lessonsByGroup = new Map();
+    lessonRows.forEach(r => lessonsByGroup.set(r.groupId, (lessonsByGroup.get(r.groupId) || 0) + 1));
+
+    const lessonFee = Number(teacher.lessonFee || 0);
 
     let totalPayments = 0;
+    let totalLessons = 0;
     const groupBreakdown = groups.map(g => {
-      const groupTotal = g.students.reduce((sum, s) => {
-        return sum + s.payments.reduce((ps, p) => ps + p.amount, 0);
-      }, 0);
+      const groupTotal = chargedByGroup.get(g.id) || 0;
+      const lessons = lessonsByGroup.get(g.id) || 0;
       totalPayments += groupTotal;
+      totalLessons += lessons;
       return {
         id: g.id,
         name: g.name,
         course: g.course?.name || '',
         studentCount: g.students.length,
-        total: groupTotal
+        lessons,
+        total: groupTotal,
       };
     });
 
     const kpiPercent = employee.kpiPercent || 0;
     const kpiAmount  = Math.round(totalPayments * kpiPercent / 100);
+    const lessonPay  = Math.round(totalLessons * lessonFee);
 
-    res.json({ groups: groupBreakdown, totalPayments, kpiPercent, kpiAmount });
+    res.json({ groups: groupBreakdown, totalPayments, kpiPercent, kpiAmount, totalLessons, lessonFee, lessonPay });
   } catch (error) { next(error); }
 });
 
@@ -3068,6 +3093,45 @@ app.post('/api/teacher-attendances/notify', authenticate, async (req, res, next)
     }
 
     res.json({ success: true, sent, skipped, total: records.length });
+  } catch (error) { next(error); }
+});
+
+// O'quvchini boshqa guruhga ko'chirish — pul oyning qolgan qismi bo'yicha
+// qayta hisoblanadi. preview: true bo'lsa faqat hisob qaytadi, hech narsa yozilmaydi.
+app.post('/api/students/:id/transfer', authenticate, requireRole(...STAFF_MANAGERS), async (req, res, next) => {
+  try {
+    const { schoolId, fromGroupId, toGroupId, date, preview } = req.body;
+    if (!schoolId || !toGroupId || !date) {
+      return res.status(400).json({ error: "schoolId, toGroupId va date kerak" });
+    }
+    const result = await transferStudent({
+      studentId: req.params.id,
+      fromGroupId, toGroupId, date,
+      schoolId: parseInt(schoolId),
+      apply: preview !== true,
+    });
+    if (result.error) return res.status(400).json(result);
+    res.json(result);
+  } catch (error) { next(error); }
+});
+
+// O'qishni to'xtatgan o'quvchiga o'tilmagan darslar uchun pulni qaytarish.
+app.post('/api/students/:id/refund', authenticate, requireRole(...STAFF_MANAGERS), async (req, res, next) => {
+  try {
+    const { schoolId, date, mode, preview, groupIds } = req.body;
+    if (!schoolId || !date) return res.status(400).json({ error: "schoolId va date kerak" });
+    if (mode && !['cash', 'balance'].includes(mode)) {
+      return res.status(400).json({ error: "mode faqat 'cash' yoki 'balance' bo'lishi mumkin" });
+    }
+    const result = await refundStudent({
+      studentId: req.params.id,
+      date, groupIds,
+      mode: mode || 'balance',
+      schoolId: parseInt(schoolId),
+      apply: preview !== true,
+    });
+    if (result.error) return res.status(400).json(result);
+    res.json(result);
   } catch (error) { next(error); }
 });
 

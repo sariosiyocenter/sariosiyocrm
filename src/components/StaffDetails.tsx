@@ -279,9 +279,12 @@ export default function StaffDetails() {
     const baseSalary  = staffUser.salary || 0;
     const kpiPercent  = staffUser.kpiPercent || 0;
     const kpiAmount   = kpiData?.kpiAmount || 0;
+    const lessonPay   = kpiData?.lessonPay || 0;
+    const lessonFee   = kpiData?.lessonFee || 0;
+    const totalLessons = kpiData?.totalLessons || 0;
     const totalBonus  = bonuses.reduce((s, b) => s + b.amount, 0);
     const totalFine   = fines.reduce((s, f) => s + f.amount, 0);
-    const totalSalary = baseSalary + kpiAmount + totalBonus - totalFine;
+    const totalSalary = baseSalary + kpiAmount + lessonPay + totalBonus - totalFine;
 
     // Attendance summary for current month
     const presentDays = staffAtt.filter(a => a.status === 'Keldi').length;
@@ -998,6 +1001,7 @@ export default function StaffDetails() {
                                                                     <tr className="bg-ichki/80 border-b border-chiziq">
                                                                         <th className="p-3 text-[11px] font-bold text-matn-xira">{t('group')}</th>
                                                                         <th className="p-3 text-[11px] font-bold text-matn-xira">{t('students')}</th>
+                                                                        <th className="p-3 text-[11px] font-bold text-matn-xira text-right">Darslar</th>
                                                                         <th className="p-3 text-[11px] font-bold text-matn-xira text-right">{t('payments')}</th>
                                                                         <th className="p-3 text-[11px] font-bold text-matn-xira text-right">KPI ({kpiPercent}%)</th>
                                                                     </tr>
@@ -1007,6 +1011,7 @@ export default function StaffDetails() {
                                                                         <tr key={g.id} className="hover:bg-gray-50/50 dark:hover:bg-gray-800/30">
                                                                             <td className="p-3 text-[11px] font-bold text-matn">{g.name}</td>
                                                                             <td className="p-3 text-[11px] font-bold text-matn-sokin">{g.studentCount}</td>
+                                                                            <td className="p-3 num text-[11px] font-bold text-matn-sokin text-right">{g.lessons ?? 0}</td>
                                                                             <td className="p-3 text-[11px] font-bold text-matn-2 text-right">{g.total.toLocaleString()}</td>
                                                                             <td className="p-3 text-[11px] font-bold text-brand text-right">+{Math.round(g.total * kpiPercent / 100).toLocaleString()}</td>
                                                                         </tr>
@@ -1015,6 +1020,7 @@ export default function StaffDetails() {
                                                                 <tfoot>
                                                                     <tr className="border-t border-chiziq bg-brand/5">
                                                                         <td colSpan={2} className="p-3 text-[11px] font-extrabold text-brand">{t('total_kpi')}</td>
+                                                                        <td className="p-3 num text-[11px] font-bold text-matn-sokin text-right">{kpiData.totalLessons ?? 0}</td>
                                                                         <td className="p-3 text-[11px] font-bold text-matn-2 text-right">{kpiData.totalPayments?.toLocaleString()}</td>
                                                                         <td className="p-3 text-[12px] font-bold text-brand text-right">+{kpiAmount.toLocaleString()} UZS</td>
                                                                     </tr>
@@ -1086,6 +1092,14 @@ export default function StaffDetails() {
                                                                 <div className="flex justify-between">
                                                                     <span className="text-[11px] font-bold text-brand">KPI ({kpiPercent}%)</span>
                                                                     <span className="text-xs font-extrabold text-brand">+{kpiAmount.toLocaleString()}</span>
+                                                                </div>
+                                                            )}
+                                                            {lessonPay > 0 && (
+                                                                <div className="flex justify-between">
+                                                                    <span className="text-[11px] font-bold text-brand">
+                                                                        Dars haqi ({totalLessons} × {lessonFee.toLocaleString()})
+                                                                    </span>
+                                                                    <span className="text-xs font-extrabold text-brand">+{lessonPay.toLocaleString()}</span>
                                                                 </div>
                                                             )}
                                                             <div className="flex justify-between">

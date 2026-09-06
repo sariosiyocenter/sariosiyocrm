@@ -31,10 +31,20 @@ export async function processMonthlyBilling(schoolId, month) {
   const monthNames = ['Yanvar','Fevral','Mart','Aprel','May','Iyun','Iyul','Avgust','Sentabr','Oktabr','Noyabr','Dekabr'];
   const monthLabel = `${monthNames[monthNum - 1]} ${year}`;
 
-  const existing = await prisma.payment.findFirst({
-    where: { schoolId, type: 'Oylik', date: { startsWith: month } }
+  // Shu oyda allaqachon hisoblangan (o'quvchi, guruh) juftliklari. Guruhlar
+  // orasida ko'chirishda hisob o'sha zahoti yozilgani uchun, oy yopilganda
+  // ularni ikkinchi marta hisoblab yubormaslik kerak.
+  const already = await prisma.payment.findMany({
+    where: { schoolId, type: 'Oylik', date: { startsWith: month }, groupId: { not: null } },
+    select: { studentId: true, groupId: true }
   });
-  if (existing) return { alreadyDone: true, month };
+  const alreadyBilled = new Set(already.map(r => r.studentId + ':' + r.groupId));
+
+  // Eski yozuvlarda guruh ko'rsatilmagan — ular bo'yicha oy allaqachon yopilgan.
+  const legacy = await prisma.payment.findFirst({
+    where: { schoolId, type: 'Oylik', date: { startsWith: month }, groupId: null }
+  });
+  if (legacy) return { alreadyDone: true, month };
 
   const groups = await prisma.group.findMany({
     where: { schoolId },
@@ -51,6 +61,8 @@ export async function processMonthlyBilling(schoolId, month) {
 
   for (const group of groups) {
     for (const student of group.students) {
+      if (alreadyBilled.has(student.id + ':' + group.id)) continue;
+
       const customPrices = (student.customPrices && typeof student.customPrices === 'object') ? student.customPrices : {};
       const customPrice = customPrices[group.id];
       const price = customPrice !== undefined ? customPrice : group.course.price;
@@ -62,6 +74,8 @@ export async function processMonthlyBilling(schoolId, month) {
         type: 'Oylik',
         date: dateStr,
         description: `[OYLIK HISOB] ${group.course.name} — ${monthLabel}`,
+        groupId: group.id,
+        courseId: group.courseId,
         schoolId
       });
       totalPerStudent.set(student.id, (totalPerStudent.get(student.id) || 0) + price);

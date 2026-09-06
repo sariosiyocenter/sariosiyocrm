@@ -18,6 +18,7 @@ import { activeCourses } from '../lib/activeCourses';
 import FaceEnroll from './FaceEnroll';
 import PhotoViewer from './PhotoViewer';
 import DiscountModal from './DiscountModal';
+import StudentMoveModal from './StudentMoveModal';
 
 const UZB_REGIONS: Record<string, string[]> = {
   "Surxondaryo": [
@@ -106,6 +107,8 @@ export default function StudentDetails() {
     const [isPhotoModalOpen, setIsPhotoModalOpen] = useState(false);
     const [isFaceEnrollOpen, setIsFaceEnrollOpen] = useState(false);
     const [showDiscountModal, setShowDiscountModal] = useState(false);
+    // Guruhlar orasida ko'chirish / o'qishni to'xtatib pulni qayta hisoblash.
+    const [moveMode, setMoveMode] = useState<'transfer' | 'refund' | null>(null);
     const [isPhotoViewerOpen, setIsPhotoViewerOpen] = useState(false);
     const [showSmsModal, setShowSmsModal] = useState(false);
     const [smsData, setSmsData] = useState({ phone: '', type: '' });
@@ -627,6 +630,16 @@ export default function StudentDetails() {
                         title="Kelmagan darslar uchun chegirma"
                         className="h-9 px-4 border border-chiziq-kuchli text-brand hover:bg-brand hover:text-white rounded-lg text-[13px] font-semibold transition-colors cursor-pointer">
                         Chegirma
+                    </button>
+                    <button onClick={() => setMoveMode('transfer')}
+                        title="Boshqa guruhga ko'chirish — pul dars kunlari bo'yicha qayta hisoblanadi"
+                        className="h-9 px-4 border border-chiziq-kuchli text-brand hover:bg-brand hover:text-white rounded-lg text-[13px] font-semibold transition-colors cursor-pointer">
+                        Guruhni almashtirish
+                    </button>
+                    <button onClick={() => setMoveMode('refund')}
+                        title="O'qishni to'xtatish va o'tilmagan darslar uchun pulni qaytarish"
+                        className="h-9 px-4 border border-chiziq-kuchli text-matn-sokin hover:bg-rose-500 hover:text-white hover:border-rose-500 rounded-lg text-[13px] font-semibold transition-colors cursor-pointer">
+                        Chiqish / qaytarish
                     </button>
                     <a href={student.phone ? `tel:${student.phone.replace(/\s/g, '')}` : undefined}
                         aria-disabled={!student.phone}
@@ -2037,6 +2050,9 @@ export default function StudentDetails() {
             )}
             {showDiscountModal && (
                 <DiscountModal studentId={student.id} onClose={() => setShowDiscountModal(false)} onAdd={addPayment} />
+            )}
+            {moveMode && (
+                <StudentMoveModal studentId={student.id} mode={moveMode} onClose={() => setMoveMode(null)} />
             )}
             {showScoreModal && (
                 <div className="fixed inset-0 z-[200] flex items-start sm:items-center justify-center overflow-y-auto p-4">
