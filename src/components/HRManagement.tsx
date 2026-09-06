@@ -279,9 +279,13 @@ export default function HRManagement() {
     // Merge User records + Teacher model records from context
     // Exclude teachers whose name already matches a User record (no duplicates)
     const userNames = new Set(users.map(u => u.name.toLowerCase().trim()));
-    const arxivSoni = users.filter((u: any) => u.status === 'Arxiv').length;
+    // Arxivdagi ustoz ham ro'yxatda qolsin. Ilgari bu yerda `status !== 'Arxiv'`
+    // turardi: xodim yozuvi o'chirilib, ustoz yozuvi arxivga olinsa (guruhlari
+    // bori shunday bo'ladi) odam ro'yxatdan butunlay yo'qolib ketardi — na
+    // "Arxiv" tugmasida ko'rinardi, na tiklab bo'lardi. Guruhlari esa o'shanda
+    // ham unga biriktirilgan turaverardi.
     const uniqueTeacherRows = (teachers || [])
-        .filter(t => t.status !== 'Arxiv' && !userNames.has(t.name.toLowerCase().trim()))
+        .filter(t => !userNames.has(t.name.toLowerCase().trim()))
         .map(t => ({
             _source:  'teacher',
             _tid:     t.id,
@@ -291,9 +295,12 @@ export default function HRManagement() {
             photo:    t.photo || null,
             salary:   t.salary || 0,
             role:     'TEACHER',
+            status:   t.status || 'Faol',
             email:    null,
             position: null,
         }));
+    const arxivSoni = users.filter((u: any) => u.status === 'Arxiv').length
+        + uniqueTeacherRows.filter((u: any) => u.status === 'Arxiv').length;
     const allStaff = [...users, ...uniqueTeacherRows];
 
     // Filtered by selected role
@@ -514,9 +521,18 @@ export default function HRManagement() {
                                                             {/* O'zini o'zi o'chira olmaydi. Aynan shu holat
                                                                 sodir bo'lgan: markaz rahbari o'z hisobini
                                                                 o'chirib, markaz boshsiz qolgan. */}
-                                                            {isAdmin && !ozHisobi && !isLegacy && (
+                                                            {isAdmin && !ozHisobi && (
                                                                 <button
-                                                                    onClick={() => setUserStatus(u.id, (u as any).status === 'Arxiv' ? 'Faol' : 'Arxiv')}
+                                                                    onClick={async () => {
+                                                                        const yangi = (u as any).status === 'Arxiv' ? 'Faol' : 'Arxiv';
+                                                                        if (!isLegacy) { setUserStatus(u.id, yangi); return; }
+                                                                        if (await setTeacherStatus(u._tid, yangi)) {
+                                                                            showNotification(yangi === 'Arxiv'
+                                                                                ? "O'qituvchi arxivga olindi"
+                                                                                : "O'qituvchi faol holatga qaytarildi", 'success');
+                                                                            window.location.reload();
+                                                                        }
+                                                                    }}
                                                                     title={(u as any).status === 'Arxiv' ? "Faol holatga qaytarish" : "Arxivga olish"}
                                                                     className="w-7 h-7 rounded-lg text-matn-xira hover:text-white hover:bg-brand flex items-center justify-center transition-colors cursor-pointer">
                                                                     {(u as any).status === 'Arxiv' ? <RotateCcw size={13} /> : <Archive size={13} />}
