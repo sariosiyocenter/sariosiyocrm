@@ -3,6 +3,7 @@ import { Search, Plus, X, Users, Layers, ChevronRight, SlidersHorizontal, BookOp
 import { useCRM } from '../context/CRMContext';
 import { useLang } from '../context/LanguageContext';
 import { useNavigate } from 'react-router-dom';
+import { groupHasTeacher, teacherProblem } from '../lib/teacherState';
 
 const inp = "w-full px-4 py-3 bg-ichki border border-gray-100 dark:border-gray-750 rounded-2xl text-xs font-bold text-matn focus:border-brand focus:ring-4 focus:ring-[#1b6b6b]/10 outline-none transition-all";
 const lbl = "block text-[11px] font-extrabold   text-matn-xira mb-2";
@@ -152,7 +153,7 @@ export default function Courses() {
      *  ustozsiz guruh alohida ajratiladi, o'quvchisi yo'q guruh hali
      *  to'planmoqda, qolgani faol. */
     const groupState = (g: any): 'faol' | 'toplanmoqda' | 'ustozsiz' => {
-        if (!teachers.find(tc => tc.id === g.teacherId)) return 'ustozsiz';
+        if (!groupHasTeacher(g, teachers)) return 'ustozsiz';
         if (((g.studentIds || []).length) === 0) return 'toplanmoqda';
         return 'faol';
     };
@@ -399,9 +400,16 @@ export default function Courses() {
                                     </div>
                                     <div className="min-w-0 flex-1">
                                         <h3 className="text-[14px] font-semibold text-matn truncate group-hover:text-brand transition-colors">{group.name}</h3>
-                                        <p className={`text-[11px] truncate ${teachers.find(tc => tc.id === group.teacherId) ? 'text-matn-xira' : 'text-amber-500'}`}>
-                                            {teachers.find(tc => tc.id === group.teacherId)?.name || "Ustoz biriktirilmagan"}
-                                        </p>
+                                        {(() => {
+                                            const problem = teacherProblem(group, teachers);
+                                            const tName = teachers.find(tc => tc.id === group.teacherId)?.name;
+                                            return (
+                                                <p className={`text-[11px] truncate ${problem ? 'text-amber-500' : 'text-matn-xira'}`}
+                                                    title={problem || tName || ''}>
+                                                    {problem || tName}
+                                                </p>
+                                            );
+                                        })()}
                                     </div>
                                     <span className="text-[11px] font-medium px-2 py-0.5 rounded-md border bg-emerald-50 text-emerald-600 border-emerald-100 dark:bg-emerald-950/20 dark:text-emerald-400 dark:border-emerald-900/40 shrink-0">
                                         {t('status_active')}

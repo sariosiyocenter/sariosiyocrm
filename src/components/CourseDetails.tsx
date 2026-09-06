@@ -3,6 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { useCRM } from '../context/CRMContext';
 import StatTile from './ui/StatTile';
 import { displayName } from '../lib/displayName';
+import { teacherProblem } from '../lib/teacherState';
 import { useConfirm } from './ConfirmDialog';
 import {
     Users, Calendar, Clock, BookOpen, Plus,
@@ -492,9 +493,11 @@ export default function CourseDetails() {
                                 title="O'qituvchini o'zgartirish"
                                 className="inline-flex items-center gap-1 hover:text-brand transition-colors cursor-pointer"
                             >
-                                {teacher?.name
-                                    ? <span className="text-matn-2">{displayName(teacher.name)}</span>
-                                    : <span className="text-ogoh">Ustoz biriktirilmagan</span>}
+                                {(() => {
+                                    const problem = teacherProblem(group, teachers);
+                                    if (problem) return <span className="text-ogoh">{problem}</span>;
+                                    return <span className="text-matn-2">{displayName(teacher!.name)}</span>;
+                                })()}
                                 <Pencil size={11} className="text-matn-xira" />
                             </button>
                             {group.room && (
