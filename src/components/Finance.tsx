@@ -3,7 +3,7 @@ import {
     TrendingUp, TrendingDown, DollarSign, Wallet,
     Plus, X, Trash2, Search, ChevronRight, BarChart2,
     AlertCircle, CreditCard, ArrowUpRight, Calendar,
-    RefreshCw, CheckCircle2, MessageSquare, ChevronLeft, Users
+    RefreshCw, CheckCircle2, MessageSquare, ChevronLeft, Users, Banknote
 } from 'lucide-react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useCRM } from '../context/CRMContext';
@@ -16,6 +16,7 @@ import { StatCard, BarChart, DonutChart, LineChart } from './reports/shared';
 import { printReceipt } from '../lib/receipt';
 import { activeCourses } from '../lib/activeCourses';
 import { isCashIncome } from '../lib/money';
+import KassaPanel from './KassaPanel';
 
 const inp = "w-full px-4 py-3 bg-slate-50 dark:bg-[#1a2232] border border-chiziq rounded-xl text-sm font-semibold text-slate-900 dark:text-white focus:border-brand focus:ring-2 focus:ring-brand/20 outline-none transition-all";
 const lbl = "block text-[11px] font-extrabold   text-matn-xira mb-2";
@@ -51,7 +52,7 @@ export default function Finance() {
     // Bir qarashda o'qish uchun aniq so'm kerak emas, kattalik kerak.
     const mln = (n: number) => (n / 1000000).toFixed(1).replace('.', ',');
     const [searchParams] = useSearchParams();
-    const [activeTab, setActiveTab] = useState<'reports' | 'billing' | 'payments' | 'expenses'>('reports');
+    const [activeTab, setActiveTab] = useState<'reports' | 'billing' | 'payments' | 'expenses' | 'kassa'>('reports');
 
     // Auto-open expense modal when navigated from HR with ?openExpense=1
     useEffect(() => {
@@ -521,9 +522,17 @@ export default function Finance() {
                             <TrendingDown size={12} className="shrink-0" />
                             <span>{t('expenses_tab')}</span>
                         </button>
+                        <button onClick={() => setActiveTab('kassa')} className={`flex items-center gap-1.5 px-3.5 py-2 rounded-lg text-[11px] font-black transition-all duration-200 cursor-pointer whitespace-nowrap transform active:scale-95 ${
+                            activeTab === 'kassa'
+                                ? 'bg-sirt text-brand dark:text-emerald-400 shadow-sm border border-gray-200/50 dark:border-gray-800/50 scale-[1.01]'
+                                : 'text-matn-xira hover:text-gray-700 dark:hover:text-gray-300'
+                        }`}>
+                            <Banknote size={12} className="shrink-0" />
+                            <span>Kassa</span>
+                        </button>
                     </div>
 
-                    {activeTab !== 'billing' && (
+                    {activeTab !== 'billing' && activeTab !== 'kassa' && (
                         <div className="flex flex-wrap items-center gap-3">
                             {/* Presets */}
                             <div className="flex items-center gap-1 bg-ichki p-1 rounded-xl border border-chiziq">
@@ -1078,8 +1087,8 @@ export default function Finance() {
                             return (
                                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
                                     <StatCard label="Kutilgan tushum" value={totalExpected.toLocaleString() + ' UZS'} sub={`${billingData.students.length} ta o'quvchi`} icon={<DollarSign size={18} />} color="violet" />
-                                    <StatCard label="Haqiqiy tushum" value={totalPaid.toLocaleString() + ' UZS'} sub="bu oy to'langan" icon={<TrendingUp size={18} />} color="emerald" />
-                                    <StatCard label="To'lanmagan" value={(totalExpected - totalPaid).toLocaleString() + ' UZS'} sub={`${unpaidStudents} ta to'lamagan`} icon={<AlertCircle size={18} />} color="rose" />
+                                    <StatCard label="Yopilgan hisob" value={totalPaid.toLocaleString() + ' UZS'} sub="to'lov yoki avansdan" icon={<TrendingUp size={18} />} color="emerald" />
+                                    <StatCard label="Ochiq hisob" value={(totalExpected - totalPaid).toLocaleString() + ' UZS'} sub={`${unpaidStudents} ta to'lamagan`} icon={<AlertCircle size={18} />} color="rose" />
                                     <StatCard label="To'lagan o'quvchi" value={`${paidStudents} / ${billingData.students.length}`} sub="to'liq to'lagan" icon={<Users size={18} />} color="sky" />
                                 </div>
                             );
@@ -1115,7 +1124,7 @@ export default function Finance() {
                                     <table className="w-full text-left">
                                         <thead>
                                             <tr className="border-b border-chiziq">
-                                                {["O'QUVCHI", "GURUHLAR", "KUTILGAN", "TO'LANGAN", "BALANS", "HOLAT"].map(h => (
+                                                {["O'QUVCHI", "GURUHLAR", "HISOBLANGAN", "YOPILGAN", "BALANS", "HOLAT"].map(h => (
                                                     <th key={h} className="py-3 px-4 text-[11px] font-bold text-matn-xira whitespace-nowrap">{h}</th>
                                                 ))}
                                             </tr>
@@ -1143,6 +1152,8 @@ export default function Finance() {
                                                         <td className="py-3 px-4 text-xs font-black text-emerald-600 tabular-nums">{st.paid.toLocaleString()} UZS</td>
                                                         <td className={`py-3 px-4 text-xs font-black tabular-nums ${st.balance < 0 ? 'text-rose-600' : st.balance > 0 ? 'text-emerald-600' : 'text-matn-xira'}`}>
                                                             {st.balance.toLocaleString()} UZS
+                                                            {(st as any).wallet > 0 && <span className="block text-[10px] font-bold text-emerald-500">avans {(st as any).wallet.toLocaleString()}</span>}
+                                                            {(st as any).debt > 0 && <span className="block text-[10px] font-bold text-rose-500">qarz {(st as any).debt.toLocaleString()}</span>}
                                                         </td>
                                                         <td className="py-3 px-4">
                                                             <span className={`px-2 py-1 text-[10px] font-bold rounded-lg ${st.status === 'paid' ? 'bg-emerald-50 text-emerald-600 dark:bg-emerald-950/20 dark:text-emerald-400' : st.status === 'partial' ? 'bg-amber-50 text-amber-600 dark:bg-amber-950/20 dark:text-amber-400' : 'bg-rose-50 text-rose-600 dark:bg-rose-950/20 dark:text-rose-400'}`}>
@@ -1213,6 +1224,8 @@ export default function Finance() {
                         )}
                     </div>
                 )}
+
+                {activeTab === 'kassa' && <KassaPanel />}
 
                 {/* Summary row — only for payments/expenses */}
                 {(activeTab === 'payments' || activeTab === 'expenses') && (
@@ -1505,7 +1518,7 @@ ${e.description || e.category} — ${Number(e.amount).toLocaleString()} so'm`)) 
                                     {/* Qaysi kurs uchun. O'quvchining guruhlaridan olinadi;
                                         birortasiga a'zo bo'lmasa markazning barcha kurslari. */}
                                     <div>
-                                        <label className={lbl}>Qaysi kurs uchun</label>
+                                        <label className={lbl}>Qaysi kurs uchun <span className="font-bold text-matn-xira">(ixtiyoriy)</span></label>
                                         <select
                                             className={inp}
                                             value={newPayment.groupId ?? ''}
@@ -1518,13 +1531,16 @@ ${e.description || e.category} — ${Number(e.amount).toLocaleString()} so'm`)) 
                                                 });
                                             }}
                                         >
-                                            <option value="">Umumiy to'lov (kurs tanlanmagan)</option>
+                                            <option value="">Umumiy — o'quvchining hisobiga tushadi</option>
                                             {paymentCourseOptions.map(c => (
                                                 <option key={c.id} value={c.id}>
                                                     {c.name + (c.price ? ' — ' + c.price.toLocaleString() + ' UZS/oy' : '')}
                                                 </option>
                                             ))}
                                         </select>
+                                        <p className="text-[10px] text-matn-xira mt-1.5">
+                                            Pul har doim o'quvchining hisobiga tushadi. Kurs tanlansa — avval shu kursning hisobi yopiladi, ortgani boshqa kurslar va keyingi oylarga qoladi.
+                                        </p>
                                     </div>
 
                                     <div>
@@ -1643,6 +1659,20 @@ ${e.description || e.category} — ${Number(e.amount).toLocaleString()} so'm`)) 
                                 <input type="number" required placeholder="Masalan: 100 000" className={inp}
                                     value={newExpense.amount || ''}
                                     onChange={(e) => setNewExpense({ ...newExpense, amount: Number(e.target.value) })} />
+                            </div>
+                            {/* Naqd chiqim kassadan ketadi, karta/o'tkazma — bankdan.
+                                Kassadagi naqd qoldiq shunga qarab hisoblanadi. */}
+                            <div>
+                                <label className={lbl}>Qayerdan to'landi *</label>
+                                <div className="grid grid-cols-3 gap-2">
+                                    {(['Naqd', 'Karta', "O'tkazma"] as const).map(m => (
+                                        <button key={m} type="button"
+                                            onClick={() => setNewExpense({ ...newExpense, method: m })}
+                                            className={`py-2.5 rounded-xl text-xs font-extrabold transition-all border cursor-pointer ${(newExpense.method || 'Naqd') === m ? 'bg-rose-500 border-rose-500 text-white shadow-sm' : 'bg-sirt border-chiziq text-matn-xira hover:bg-gray-50'}`}>
+                                            {m === 'Naqd' ? 'Naqd (kassadan)' : m}
+                                        </button>
+                                    ))}
+                                </div>
                             </div>
                             <div>
                                 <label className={lbl}>Sana *</label>

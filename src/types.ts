@@ -118,7 +118,8 @@ export interface Payment {
     amount: number;
     // 'Chegirma' — pul kirmagan qayta hisob (dars qoldirgani uchun).
     // 'Oylik' — billing yozadigan manfiy hisob.
-    type: 'Naqd' | 'Karta' | 'Peyme' | 'Klik' | 'O\'tkazma' | 'Chegirma' | 'Oylik';
+    // 'Qaytarish' — o'quvchiga naqd qaytarilgan pul (manfiy).
+    type: 'Naqd' | 'Karta' | 'Peyme' | 'Klik' | 'O\'tkazma' | 'Chegirma' | 'Oylik' | 'Qaytarish';
     date: string;
     description: string;
     /** Qaysi kurs uchun to'langani. Tanlanmagan bo'lsa null. */
@@ -138,6 +139,8 @@ export interface Expense {
     category: string; // Ish haqi, Ijara, Kommunal, Marketing, Boshqa
     date: string;
     description: string;
+    /** Pul qayerdan chiqdi: Naqd — kassadan, qolganlari bankdan. */
+    method?: 'Naqd' | 'Karta' | 'O\'tkazma';
     schoolId: number;
     staffId?: number | null;   // "Ish haqi" uchun xodim ID
     staffName?: string | null; // "Ish haqi" uchun xodim ismi

@@ -112,6 +112,9 @@ model Expense {
   category    String   // Ish haqi, Ijara, Kommunal, Marketing, Boshqa
   date        String
   description String?
+  // Pul qayerdan chiqqani: Naqd (kassadan) yoki Karta / O'tkazma (bankdan).
+  // Kassadagi naqd qoldiq faqat "Naqd" chiqimlarni hisobga oladi.
+  method      String   @default("Naqd")
   
   schoolId    Int
   school      School   @relation(fields: [schoolId], references: [id])
@@ -332,6 +335,8 @@ model School {
   messageTemplates MessageTemplate[]
   messageCampaigns MessageCampaign[]
   autoMessageRules AutoMessageRule[]
+  cashHandovers    CashHandover[]
+  cashDayCloses    CashDayClose[]
 }
 
 model SmsLog {
@@ -699,4 +704,38 @@ model ApplyToken {
   school    School   @relation(fields: [schoolId], references: [id], onDelete: Cascade)
   used      Boolean  @default(false)
   createdAt DateTime @default(now())
+}
+
+// Kassa: naqd pulni bankka yoki rahbarga topshirish (inkassatsiya).
+// Kassadagi naqd = naqd kirim − naqd chiqim − inkassatsiya.
+model CashHandover {
+  id          Int      @id @default(autoincrement())
+  amount      Float
+  date        String   // "2026-09-07"
+  toWhom      String   // "Bank", "Rahbar" yoki ism
+  note        String?
+  createdById Int?
+  createdAt   DateTime @default(now())
+
+  schoolId    Int
+  school      School   @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+
+  @@index([schoolId, date])
+}
+
+// Kassa: kunni yopish. Administrator kassadagi naqd pulni sanaydi, tizim
+// kutilgan summani biladi — farq shu yerda qoladi.
+model CashDayClose {
+  id          Int      @id @default(autoincrement())
+  date        String   // "2026-09-07"
+  expected    Float    // tizim bo'yicha kun oxirida bo'lishi kerak bo'lgan naqd
+  counted     Float    // qo'lda sanalgan
+  note        String?
+  closedById  Int?
+  createdAt   DateTime @default(now())
+
+  schoolId    Int
+  school      School   @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+
+  @@unique([schoolId, date])
 }

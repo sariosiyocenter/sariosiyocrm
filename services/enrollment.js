@@ -202,7 +202,7 @@ export async function transferStudent({ studentId, fromGroupId, toGroupId, date,
         },
       },
     });
-  });
+  }, { timeout: 20000, maxWait: 10000 });
 
   result.applied = true;
   return result;
@@ -318,8 +318,176 @@ export async function refundStudent({ studentId, date, schoolId, mode, apply, gr
       where: { id: student.id },
       data: { balance: { increment: balanceDelta - cashOut } },
     });
-  });
+  }, { timeout: 20000, maxWait: 10000 });
 
   result.applied = true;
   return result;
+}
+
+/** Bugungi sana Toshkent vaqti bilan (server UTC da ishlaydi). */
+export function todayTashkent() {
+  return new Date(Date.now() + 5 * 3600 * 1000).toISOString().slice(0, 10);
+}
+
+/**
+ * O'quvchini guruhga qo'shish — va o'sha zahoti oyning qolgan darslari uchun
+ * hisob yozish. 7-sentabrda qo'shilsa, 7-sidan oy oxirigacha nechta dars
+ * bo'lsa, shuncha dars uchun. Hamyonida avans bo'lsa hisob o'zi shundan
+ * yopiladi (lib/allocation.js), bo'lmasa o'quvchi darhol qarzdor ko'rinadi.
+ *
+ * Ilgari guruhga qo'shish faqat bog'lanish edi: oy o'rtasida kelgan o'quvchi
+ * keyingi oyning 1-sanasigacha hech narsa to'lamasdi, ustozga ham hech narsa
+ * hisoblanmasdi.
+ *
+ * Jadvali belgilanmagan guruh uchun dars sonini bilib bo'lmaydi — o'quvchi
+ * qo'shiladi, lekin hisob yozilmaydi va `warning` qaytadi.
+ */
+export async function enrollStudent({ studentId, groupId, date, schoolId, apply = true }) {
+  const day = date || todayTashkent();
+  const month = day.slice(0, 7);
+  const bounds = monthBounds(month);
+  if (!bounds) return { error: "Sana noto'g'ri" };
+
+  const student = await prisma.student.findFirst({
+    where: { id: Number(studentId), ...(schoolId ? { schoolId } : {}) },
+    include: { groups: { select: { id: true } } },
+  });
+  if (!student) return { error: "O'quvchi topilmadi" };
+  const group = await loadGroup(groupId, student.schoolId);
+  if (!group) return { error: 'Guruh topilmadi' };
+
+  const already = student.groups.some(g => g.id === group.id);
+  const result = { studentId: student.id, groupId: group.id, groupName: group.name, date: day, charge: 0, lessons: 0, warning: null, applied: false };
+
+  let write = null;
+  if (!already) {
+    if (!hasSchedule(group.days)) {
+      result.warning = `${group.name} guruhining jadvali belgilanmagan — bu oy uchun hisob yozilmadi. Guruh kunlarini (Toq / Juft / Har kuni) belgilang.`;
+    } else {
+      const rest = periodDue(student, group, month, day, bounds.last);
+      if (rest && rest.due > 0) {
+        // Shu oyda shu guruh uchun allaqachon yechilgan bo'lsa (masalan chiqib
+        // qayta kirdi, yoki oylik hisob o'tib bo'lgan) — ustiga yozmaymiz.
+        const ch = await chargedSoFar(student.id, group.id, month, rest.monthlyPrice, new Set());
+        const charge = Math.max(0, rest.due - ch.total);
+        result.charge = charge; result.lessons = rest.lessons; result.lessonsInMonth = rest.lessonsInMonth;
+        result.perLesson = rest.perLesson; result.alreadyCharged = ch.total;
+        if (charge > 0) {
+          write = {
+            studentId: student.id, groupId: group.id, courseId: group.courseId,
+            amount: -charge, type: 'Oylik', date: day,
+            description: `${CHARGE_PREFIX} ${group.name} — qo'shilish ${day.slice(8, 10)}.${day.slice(5, 7)} dan (${rest.lessons} dars)`,
+            schoolId: student.schoolId,
+          };
+        }
+      }
+    }
+  }
+
+  if (!apply) return result;
+
+  // Interaktiv tranzaksiya uzoq (Singapur) bazada 5 soniyada yopilib
+  // qolardi (P2028). Ro'yxat shaklida bitta paketda yuboriladi.
+  const ops = [];
+  if (!already || write) {
+    ops.push(prisma.student.update({
+      where: { id: student.id },
+      data: {
+        ...(already ? {} : { groups: { connect: { id: group.id } } }),
+        ...(write ? { balance: { decrement: -write.amount } } : {}),
+      },
+    }));
+  }
+  if (write) ops.push(prisma.payment.create({ data: write }));
+  if (ops.length) await prisma.$transaction(ops);
+  result.applied = true;
+  return result;
+}
+
+/**
+ * O'quvchini guruhdan chiqarish — o'tilmagan darslar puli hisobiga
+ * qaytariladi (chiqarilgan kundan oy oxirigacha bo'lgan darslar).
+ */
+export async function unenrollStudent({ studentId, groupId, date, schoolId, apply = true }) {
+  const day = date || todayTashkent();
+  const month = day.slice(0, 7);
+  const bounds = monthBounds(month);
+  if (!bounds) return { error: "Sana noto'g'ri" };
+
+  const student = await prisma.student.findFirst({
+    where: { id: Number(studentId), ...(schoolId ? { schoolId } : {}) },
+    include: { groups: { select: { id: true } } },
+  });
+  if (!student) return { error: "O'quvchi topilmadi" };
+  const group = await loadGroup(groupId, student.schoolId);
+  if (!group) return { error: 'Guruh topilmadi' };
+
+  const member = student.groups.some(g => g.id === group.id);
+  const result = { studentId: student.id, groupId: group.id, groupName: group.name, date: day, refund: 0, lessons: 0, warning: null, applied: false };
+
+  let write = null;
+  if (member) {
+    if (!hasSchedule(group.days)) {
+      result.warning = `${group.name} guruhining jadvali belgilanmagan — o'tilmagan darslar puli qayta hisoblanmadi.`;
+    } else {
+      const used = periodDue(student, group, month, bounds.first, dayBefore(day));
+      const ch = await chargedSoFar(student.id, group.id, month, used.monthlyPrice, new Set());
+      const adjust = ch.total - used.due;   // ortiqcha yechilgan qism qaytadi
+      result.lessons = used.lessons; result.alreadyCharged = ch.total; result.refund = Math.max(0, adjust);
+      if (adjust > 0) {
+        write = {
+          studentId: student.id, groupId: group.id, courseId: group.courseId,
+          amount: adjust, type: 'Oylik', date: day,
+          description: `${CHARGE_PREFIX} ${group.name} — guruhdan chiqarildi, ${used.lessons} dars uchun qayta hisob`,
+          schoolId: student.schoolId,
+        };
+      }
+    }
+  }
+
+  if (!apply) return result;
+
+  const ops = [];
+  if (member || write) {
+    ops.push(prisma.student.update({
+      where: { id: student.id },
+      data: {
+        ...(member ? { groups: { disconnect: { id: group.id } } } : {}),
+        ...(write ? { balance: { increment: write.amount } } : {}),
+      },
+    }));
+  }
+  if (write) ops.push(prisma.payment.create({ data: write }));
+  if (ops.length) await prisma.$transaction(ops);
+  result.applied = true;
+  return result;
+}
+
+/**
+ * Guruh a'zolarini yangi ro'yxatga keltirish: qo'shilganlarga hisob,
+ * chiqarilganlarga qaytarish. Guruh tahrirlash oynasi uchun.
+ */
+export async function syncGroupMembers({ groupId, studentIds, date, schoolId }) {
+  const group = await prisma.group.findFirst({
+    where: { id: Number(groupId), ...(schoolId ? { schoolId } : {}) },
+    include: { students: { select: { id: true } } },
+  });
+  if (!group) return { error: 'Guruh topilmadi' };
+  const wanted = new Set((studentIds || []).map(Number).filter(Number.isInteger));
+  const current = new Set(group.students.map(s => s.id));
+  const warnings = [];
+  const results = [];
+  for (const sid of wanted) {
+    if (current.has(sid)) continue;
+    const r = await enrollStudent({ studentId: sid, groupId: group.id, date, schoolId: group.schoolId });
+    if (r.warning) warnings.push(r.warning);
+    results.push(r);
+  }
+  for (const sid of current) {
+    if (wanted.has(sid)) continue;
+    const r = await unenrollStudent({ studentId: sid, groupId: group.id, date, schoolId: group.schoolId });
+    if (r.warning) warnings.push(r.warning);
+    results.push(r);
+  }
+  return { results, warning: [...new Set(warnings)].join(' ') || null };
 }

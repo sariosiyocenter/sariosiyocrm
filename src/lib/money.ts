@@ -13,7 +13,8 @@ import { Payment } from '../types';
  * bo'lib hisobotlarga tushib ketardi.
  */
 export function isCashIncome(p: Pick<Payment, 'amount' | 'type'>): boolean {
-    return p.amount > 0 && p.type !== 'Chegirma';
+    // Musbat `Oylik` — ko'chirish/chiqishdagi qayta hisob (kredit), pul emas.
+    return p.amount > 0 && p.type !== 'Chegirma' && p.type !== 'Oylik';
 }
 
 /** Chegirma (qayta hisob) yozuvimi. */

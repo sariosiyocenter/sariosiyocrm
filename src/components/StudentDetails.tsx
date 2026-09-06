@@ -19,6 +19,7 @@ import FaceEnroll from './FaceEnroll';
 import PhotoViewer from './PhotoViewer';
 import DiscountModal from './DiscountModal';
 import StudentMoveModal from './StudentMoveModal';
+import StudentLedger from './StudentLedger';
 
 const UZB_REGIONS: Record<string, string[]> = {
   "Surxondaryo": [
@@ -1397,6 +1398,8 @@ export default function StudentDetails() {
                                         </div>
 
                                         <div className="space-y-4">
+                                            <span className="text-[11px] font-bold text-matn-xira block pb-2 border-b border-gray-55 dark:border-gray-800/50">Hisob — oylar bo'yicha</span>
+                                            <StudentLedger studentId={student.id} refreshKey={studentPayments.length + ':' + student.balance} />
                                             <span className="text-[11px] font-bold text-matn-xira block pb-2 border-b border-gray-55 dark:border-gray-800/50">{t('latest_payments')}</span>
                                             <div className="space-y-3">
                                                 {studentPayments.slice(0, 4).map(p => {
@@ -2574,7 +2577,7 @@ function PaymentAddModal({ studentId, onClose, onAdd }: { studentId: number; onC
                                     onChange={e => setCourseId(e.target.value ? Number(e.target.value) : '')}
                                     className={inputCls}
                                 >
-                                    <option value="">Umumiy to'lov (kurs tanlanmagan)</option>
+                                    <option value="">Umumiy — o'quvchining hisobiga tushadi</option>
                                     {studentCourses.map(c => (
                                         <option key={c.id} value={c.id}>
                                             {c.name + (c.price ? ' — ' + c.price.toLocaleString() + ' UZS/oy' : '')}

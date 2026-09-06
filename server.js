@@ -4,12 +4,13 @@ import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
 import prisma from './lib/prisma.js';
 import { JWT_SECRET, TOKEN_TTL, attendanceWindowStart, redactBody, isAdmin, stripSettingSecrets, cronRequestRejected } from './lib/config.js';
-import { authenticate, requireRole, STAFF_MANAGERS } from './middleware/auth.js';
+import { authenticate, requireRole, STAFF_MANAGERS, canAccessSchool, allowedSchoolIds, ALL_BRANCHES } from './middleware/auth.js';
 import { encryptSecret, decryptSecret } from './lib/secrets.js';
 import { claimBillingRun, releaseBillingRun, processMonthlyBilling } from './services/billing.js';
 import jwt from 'jsonwebtoken';
 import bot, { startBot, notifyAdmins, getTelegramBot } from './src/bot/bot.js';
-import { transferStudent, refundStudent } from './services/enrollment.js';
+import { transferStudent, refundStudent, enrollStudent, unenrollStudent, syncGroupMembers } from './services/enrollment.js';
+import { studentLedger, receivedForGroups, monthCoverage } from './services/ledger.js';
 import bcrypt from 'bcryptjs';
 import helmet from 'helmet';
 import rateLimit from 'express-rate-limit';
@@ -861,71 +862,15 @@ app.get('/api/kpi-calculation', authenticate, async (req, res, next) => {
     const chargedByGroup = new Map(charged.map(r => [r.groupId, -(r._sum.amount || 0)]));
 
     // Ustoz guruhiga TUSHGAN pul. Foiz aynan shundan olinadi: hisoblangan
-    // summadan emas. Sentabrda hisoblangan 127.5 mln bo'lsa, kassaga 1.95 mln
-    // tushgan — farq juda katta, shuning uchun bu muhim.
+    // summadan emas.
     //
-    // To'lov qaysi guruhga tegishli ekani shu tartibda aniqlanadi:
-    //   1) to'lovda guruh ko'rsatilgan bo'lsa — o'sha guruh;
-    //   2) kurs ko'rsatilgan bo'lsa — o'quvchining o'sha kursdagi guruhi;
-    //   3) aks holda — o'quvchining guruhlari bo'yicha hisoblangan summaga
-    //      proporsional taqsimlanadi (guruh bitta bo'lsa hammasi o'shanga).
+    // "Tushgan" — o'quvchining puli shu oyda shu guruhning hisobini YOPGAN
+    // qismi (services/ledger.js → lib/allocation.js). Avans oldindan
+    // berilgan bo'lsa ham u faqat o'z oyida hisobga kiradi: 2 mln berib
+    // 4 oy o'qiydigan o'quvchi uchun ustoz har oy 500 mingdan oladi.
+    // Qarz kech to'langan bo'lsa — to'langan oyga yoziladi.
     const studentIds = [...new Set(groups.flatMap(g => g.students.map(s => s.id)))];
-
-    const payers = studentIds.length
-      ? await prisma.student.findMany({
-          where: { id: { in: studentIds } },
-          select: { id: true, groups: { select: { id: true, courseId: true } } },
-        })
-      : [];
-    const groupsOfStudent = new Map(payers.map(s => [s.id, s.groups]));
-
-    // Har bir (o'quvchi, guruh) uchun shu oyda hisoblangan summa — taqsimlash og'irligi.
-    const perStudentCharge = studentIds.length
-      ? await prisma.payment.groupBy({
-          by: ['studentId', 'groupId'],
-          where: { studentId: { in: studentIds }, type: 'Oylik', date: { startsWith: String(month) }, groupId: { not: null } },
-          _sum: { amount: true },
-        })
-      : [];
-    const chargeWeight = new Map();
-    perStudentCharge.forEach(r => chargeWeight.set(r.studentId + ':' + r.groupId, Math.max(0, -(r._sum.amount || 0))));
-
-    // Kassaga tushgan to'lovlar. Chegirma pul emas, shuning uchun kirmaydi.
-    const receipts = studentIds.length
-      ? await prisma.payment.findMany({
-          where: {
-            studentId: { in: studentIds },
-            date: { startsWith: String(month) },
-            amount: { gt: 0 },
-            type: { notIn: ['Chegirma', 'Oylik'] },
-          },
-          select: { studentId: true, amount: true, courseId: true, groupId: true },
-        })
-      : [];
-
-    const receivedByGroup = new Map();
-    const addReceived = (gid, amount) => receivedByGroup.set(gid, (receivedByGroup.get(gid) || 0) + amount);
-
-    for (const p of receipts) {
-      const sGroups = groupsOfStudent.get(p.studentId) || [];
-      if (sGroups.length === 0) continue;
-
-      if (p.groupId) { addReceived(p.groupId, p.amount); continue; }
-
-      let targets = sGroups;
-      if (p.courseId) {
-        const byCourse = sGroups.filter(g => g.courseId === p.courseId);
-        if (byCourse.length) targets = byCourse;
-      }
-      if (targets.length === 1) { addReceived(targets[0].id, p.amount); continue; }
-
-      const weights = targets.map(g => chargeWeight.get(p.studentId + ':' + g.id) || 0);
-      const sum = weights.reduce((s, w) => s + w, 0);
-      targets.forEach((g, i) => {
-        const share = sum > 0 ? (weights[i] / sum) : (1 / targets.length);
-        addReceived(g.id, p.amount * share);
-      });
-    }
+    const receivedByGroup = await receivedForGroups(studentIds, String(month));
 
     // O'tkazilgan darslar — ma'lumot uchun (oylikka qo'shilmaydi).
     const lessonRows = groupIds.length
@@ -1074,17 +1019,17 @@ app.post('/api/students', authenticate, async (req, res, next) => {
       data: { ...data, schoolId: parsedSchoolId }
     });
     const groupIds = (groups || selectedGroupIds || []).map(id => parseInt(id)).filter(id => !isNaN(id));
-    if (groupIds.length > 0) {
-      await prisma.student.update({
-        where: { id: student.id },
-        data: { groups: { connect: groupIds.map(id => ({ id })) } }
-      });
+    // Guruhga qo'shilishi bilan oyning qolgan darslari uchun hisob yoziladi.
+    const warnings = [];
+    for (const gid of groupIds) {
+      const r = await enrollStudent({ studentId: student.id, groupId: gid, schoolId: parsedSchoolId });
+      if (r.warning) warnings.push(r.warning);
     }
     const updatedStudent = await prisma.student.findUnique({
       where: { id: student.id },
       include: { groups: { select: { id: true } } }
     });
-    res.json({ ...updatedStudent, groups: updatedStudent.groups.map(g => g.id) });
+    res.json({ ...updatedStudent, groups: updatedStudent.groups.map(g => g.id), warning: warnings.join(' ') || undefined });
   } catch (error) {
     console.error('POST /api/students error:', error.message);
     next(error);
@@ -1479,12 +1424,10 @@ app.post('/api/groups', authenticate, async (req, res, next) => {
     const group = await prisma.group.create({ data: prismaData });
     console.log('Success: Group created with ID:', group.id);
     
+    let memberWarning = null;
     if (studentIds && studentIds.length > 0) {
-      console.log('Connecting students:', studentIds);
-      await prisma.group.update({
-        where: { id: group.id },
-        data: { students: { connect: studentIds.map(id => ({ id })) } }
-      });
+      const sync = await syncGroupMembers({ groupId: group.id, studentIds, schoolId: group.schoolId });
+      memberWarning = sync.warning || null;
     }
 
     const updatedGroup = await prisma.group.findUnique({ 
@@ -1499,7 +1442,8 @@ app.post('/api/groups', authenticate, async (req, res, next) => {
     res.json({ 
       ...updatedGroup, 
       studentIds: updatedGroup.students.map(s => s.id),
-      courseName: updatedGroup.course?.name
+      courseName: updatedGroup.course?.name,
+      warning: memberWarning || undefined,
     });
   } catch (error) {
     console.error('CRITICAL ERROR in [POST /api/groups]:', error);
@@ -1514,9 +1458,11 @@ app.post('/api/groups/:id/students', authenticate, async (req, res, next) => {
     const { studentId } = req.body;
     if (!studentId) return res.status(400).json({ error: 'studentId required' });
 
-    const updatedGroup = await prisma.group.update({
+    const enrol = await enrollStudent({ studentId: parseInt(studentId), groupId });
+    if (enrol.error) return res.status(400).json({ error: enrol.error });
+
+    const updatedGroup = await prisma.group.findUnique({
       where: { id: groupId },
-      data: { students: { connect: { id: parseInt(studentId) } } },
       include: {
         students: { select: { id: true } },
         course: { select: { name: true } }
@@ -1526,7 +1472,8 @@ app.post('/api/groups/:id/students', authenticate, async (req, res, next) => {
     res.json({
       ...updatedGroup,
       studentIds: updatedGroup.students.map(s => s.id),
-      courseName: updatedGroup.course?.name
+      courseName: updatedGroup.course?.name,
+      charge: enrol.charge, lessons: enrol.lessons, warning: enrol.warning || undefined,
     });
   } catch (error) {
     console.error('Error connecting student to group:', error);
@@ -1540,9 +1487,11 @@ app.delete('/api/groups/:id/students/:studentId', authenticate, requireRole(...S
     const groupId = parseInt(req.params.id);
     const studentId = parseInt(req.params.studentId);
 
-    const updatedGroup = await prisma.group.update({
+    const out = await unenrollStudent({ studentId, groupId });
+    if (out.error) return res.status(400).json({ error: out.error });
+
+    const updatedGroup = await prisma.group.findUnique({
       where: { id: groupId },
-      data: { students: { disconnect: { id: studentId } } },
       include: {
         students: { select: { id: true } },
         course: { select: { name: true } }
@@ -1552,7 +1501,8 @@ app.delete('/api/groups/:id/students/:studentId', authenticate, requireRole(...S
     res.json({
       ...updatedGroup,
       studentIds: updatedGroup.students.map(s => s.id),
-      courseName: updatedGroup.course?.name
+      courseName: updatedGroup.course?.name,
+      refund: out.refund, warning: out.warning || undefined,
     });
   } catch (error) {
     console.error('Error disconnecting student from group:', error);
@@ -1606,15 +1556,12 @@ app.put('/api/groups/:id', authenticate, async (req, res, next) => {
       data: prismaData
     });
 
+    // A'zolar ro'yxati o'zgarsa: yangi kelganlarga oyning qolgan darslari
+    // uchun hisob, chiqarilganlarga o'tilmagan darslar puli qaytadi.
+    let memberWarning = null;
     if (studentIds) {
-      await prisma.group.update({
-        where: { id: group.id },
-        data: { 
-          students: { 
-            set: studentIds.map(sid => ({ id: sid })) 
-          } 
-        }
-      });
+      const sync = await syncGroupMembers({ groupId: group.id, studentIds, schoolId: group.schoolId });
+      memberWarning = sync.warning || null;
     }
 
     const updatedGroup = await prisma.group.findUnique({
@@ -1628,7 +1575,8 @@ app.put('/api/groups/:id', authenticate, async (req, res, next) => {
     res.json({
       ...updatedGroup,
       studentIds: updatedGroup.students.map(s => s.id),
-      courseName: updatedGroup.course?.name
+      courseName: updatedGroup.course?.name,
+      warning: memberWarning || undefined,
     });
   } catch (error) {
     console.error('Error updating group:', error);
@@ -1869,10 +1817,7 @@ app.post('/api/public/schools/:schoolId/leads', publicFormLimiter, async (req, r
     if (!isNaN(wantedGroupId)) {
       const joinedGroup = await prisma.group.findFirst({ where: { id: wantedGroupId, schoolId } });
       if (joinedGroup) {
-        await prisma.student.update({
-          where: { id: student.id },
-          data: { groups: { connect: { id: joinedGroup.id } } }
-        });
+        await enrollStudent({ studentId: student.id, groupId: joinedGroup.id, schoolId });
         notifyAdmins("👥 Guruh: " + joinedGroup.name + " (" + student.name + ")", schoolId);
       }
     }
@@ -1911,7 +1856,7 @@ app.get('/api/payments', authenticate, async (req, res, next) => {
 // To'lov turlari. "Chegirma" — pul kirmagan, lekin o'quvchining hisobiga
 // yozilgan qayta hisob (masalan kasal bo'lib dars qoldirgan). U balansni
 // oshiradi, lekin kassa tushumi sifatida hisoblanmaydi.
-const PAYMENT_TYPES = ['Naqd', 'Karta', "O'tkazma", 'Peyme', 'Klik', 'Chegirma', 'Oylik'];
+const PAYMENT_TYPES = ['Naqd', 'Karta', "O'tkazma", 'Peyme', 'Klik', 'Chegirma', 'Oylik', 'Qaytarish'];
 
 app.post('/api/payments', authenticate, async (req, res, next) => {
   try {
@@ -1924,6 +1869,7 @@ app.post('/api/payments', authenticate, async (req, res, next) => {
       return res.status(400).json({ error: "Summa noto'g'ri" });
     }
     data.amount = parsedAmount;
+    if (data.type === 'Plastik') data.type = 'Karta';
     if (data.type && !PAYMENT_TYPES.includes(data.type)) {
       return res.status(400).json({ error: "To'lov turi noto'g'ri" });
     }
@@ -1967,7 +1913,21 @@ app.post('/api/payments', authenticate, async (req, res, next) => {
   } catch (error) { next(error); }
 });
 
+// O'quvchining hisobi: qaysi oy uchun qancha hisoblangan, qanchasi yopilgan,
+// hamyonida qancha avans turibdi. Balans raqamining ochib berilgani.
+app.get('/api/students/:id/ledger', authenticate, async (req, res, next) => {
+  try {
+    const id = parseInt(req.params.id);
+    const student = await prisma.student.findUnique({ where: { id }, select: { id: true, schoolId: true, balance: true, name: true } });
+    if (!student) return res.status(404).json({ error: "O'quvchi topilmadi" });
+    if (!(await canAccessSchool(req.user, student.schoolId))) return res.status(403).json({ error: 'Ruxsat yo\'q' });
+    const ledger = await studentLedger(id);
+    res.json({ studentId: id, balance: student.balance, ...ledger });
+  } catch (error) { next(error); }
+});
+
 // Expenses
+const EXPENSE_METHODS = ['Naqd', 'Karta', "O'tkazma"];
 app.get('/api/expenses', authenticate, async (req, res, next) => {
   try {
     const { schoolId } = req.query;
@@ -1979,7 +1939,7 @@ app.get('/api/expenses', authenticate, async (req, res, next) => {
 
 app.post('/api/expenses', authenticate, requireRole(...STAFF_MANAGERS), async (req, res, next) => {
   try {
-    const { schoolId, amount, category, date, description } = req.body;
+    const { schoolId, amount, category, date, description, method } = req.body;
     const parsedSchoolId = parseInt(schoolId);
     if (!parsedSchoolId || isNaN(parsedSchoolId) || parsedSchoolId <= 0) {
       return res.status(400).json({ error: 'Valid schoolId required' });
@@ -1990,6 +1950,8 @@ app.post('/api/expenses', authenticate, requireRole(...STAFF_MANAGERS), async (r
         category: category || 'Boshqa',
         date: date || new Date().toISOString().split('T')[0],
         description: description || null,
+        // Naqd — kassadan chiqadi, qolganlari bankdan.
+        method: EXPENSE_METHODS.includes(method) ? method : 'Naqd',
         schoolId: parsedSchoolId
       }
     });
@@ -2002,6 +1964,155 @@ app.delete('/api/expenses/:id', authenticate, requireRole(...STAFF_MANAGERS), as
     const { id } = req.params;
     await prisma.expense.delete({ where: { id: parseInt(id) } });
     res.json({ success: true });
+  } catch (error) { next(error); }
+});
+
+// ---------------------------------------------------------------------------
+// Kassa — naqd pul.
+//
+// Tizim ilgari "to'lov bo'ldi"ni bilardi, lekin "hozir seyfda qancha naqd
+// turishi kerak" degan savolga javob bera olmasdi. Kassadagi naqd =
+// naqd kirim − naqd chiqim (Expense.method = Naqd) − inkassatsiya.
+// Kunni yopishda administrator pulni sanaydi, tizim kutilgan summani
+// beradi, farq yozib qo'yiladi.
+// ---------------------------------------------------------------------------
+
+/** So'ralgan filial(lar): 0 — foydalanuvchining barcha filiallari. */
+async function kassaSchools(req) {
+  const wanted = parseInt(req.query.schoolId ?? req.body?.schoolId);
+  if (!Number.isInteger(wanted)) return null;
+  if (wanted === ALL_BRANCHES) return allowedSchoolIds(req.user);
+  return [wanted];
+}
+
+/** Kun bo'yicha naqd kirim / chiqim / inkassatsiya. */
+async function kassaByDay(schoolIds, from, to) {
+  const dateFilter = { ...(from ? { gte: from } : {}), ...(to ? { lte: to } : {}) };
+  const [pay, exp, hand] = await Promise.all([
+    prisma.payment.groupBy({
+      by: ['date'],
+      where: { schoolId: { in: schoolIds }, type: 'Naqd', amount: { gt: 0 }, date: dateFilter },
+      _sum: { amount: true }, _count: true,
+    }),
+    prisma.expense.groupBy({
+      by: ['date'],
+      where: { schoolId: { in: schoolIds }, method: 'Naqd', date: dateFilter },
+      _sum: { amount: true }, _count: true,
+    }),
+    prisma.cashHandover.groupBy({
+      by: ['date'],
+      where: { schoolId: { in: schoolIds }, date: dateFilter },
+      _sum: { amount: true }, _count: true,
+    }),
+  ]);
+  const days = new Map();
+  const day = (d) => { if (!days.has(d)) days.set(d, { date: d, in: 0, inCount: 0, out: 0, outCount: 0, handover: 0 }); return days.get(d); };
+  pay.forEach(r => { const d = day(r.date); d.in += r._sum.amount || 0; d.inCount += r._count; });
+  exp.forEach(r => { const d = day(r.date); d.out += r._sum.amount || 0; d.outCount += r._count; });
+  hand.forEach(r => { const d = day(r.date); d.handover += r._sum.amount || 0; });
+  return [...days.values()].sort((a, b) => a.date.localeCompare(b.date));
+}
+
+/** Berilgan kun oxirida kassada bo'lishi kerak bo'lgan naqd. */
+async function cashOnHandAt(schoolIds, date) {
+  const rows = await kassaByDay(schoolIds, null, date);
+  return Math.round(rows.reduce((s, d) => s + d.in - d.out - d.handover, 0));
+}
+
+app.get('/api/kassa', authenticate, async (req, res, next) => {
+  try {
+    const schoolIds = await kassaSchools(req);
+    if (!schoolIds) return res.status(400).json({ error: 'schoolId kerak' });
+    const daysBack = Math.min(90, Math.max(7, parseInt(req.query.days) || 30));
+    const today = new Date(Date.now() + 5 * 3600 * 1000).toISOString().slice(0, 10);
+    const from = new Date(Date.now() + 5 * 3600 * 1000 - daysBack * 86400000).toISOString().slice(0, 10);
+
+    const [all, closes, handovers, nonCashToday] = await Promise.all([
+      kassaByDay(schoolIds, null, null),
+      prisma.cashDayClose.findMany({ where: { schoolId: { in: schoolIds }, date: { gte: from } }, orderBy: { date: 'desc' } }),
+      prisma.cashHandover.findMany({ where: { schoolId: { in: schoolIds }, date: { gte: from } }, orderBy: [{ date: 'desc' }, { id: 'desc' }] }),
+      prisma.payment.groupBy({
+        by: ['type'],
+        where: { schoolId: { in: schoolIds }, date: today, amount: { gt: 0 }, type: { in: ['Karta', "O'tkazma", 'Peyme', 'Klik'] } },
+        _sum: { amount: true },
+      }),
+    ]);
+
+    // Kun oxiridagi qoldiq — boshidan yig'ib boriladi.
+    let running = 0;
+    const withRunning = all.map(d => { running += d.in - d.out - d.handover; return { ...d, endBalance: Math.round(running) }; });
+    const cashOnHand = Math.round(running);
+    const closeByDate = new Map(closes.map(c => [c.date, c]));
+    const recent = withRunning.filter(d => d.date >= from).reverse().map(d => {
+      const c = closeByDate.get(d.date);
+      return {
+        ...d,
+        in: Math.round(d.in), out: Math.round(d.out), handover: Math.round(d.handover),
+        close: c ? { id: c.id, expected: c.expected, counted: c.counted, diff: Math.round(c.counted - c.expected), note: c.note } : null,
+      };
+    });
+    const todayRow = withRunning.find(d => d.date === today) || { in: 0, inCount: 0, out: 0, outCount: 0, handover: 0 };
+    const nonCash = nonCashToday.reduce((s, r) => s + (r._sum.amount || 0), 0);
+
+    res.json({
+      today,
+      cashOnHand,
+      todayIn: Math.round(todayRow.in), todayInCount: todayRow.inCount,
+      todayOut: Math.round(todayRow.out), todayOutCount: todayRow.outCount,
+      todayHandover: Math.round(todayRow.handover),
+      todayNonCash: Math.round(nonCash),
+      todayClosed: closeByDate.has(today),
+      days: recent,
+      handovers,
+      closes,
+    });
+  } catch (error) { next(error); }
+});
+
+app.post('/api/kassa/handover', authenticate, requireRole(...STAFF_MANAGERS), async (req, res, next) => {
+  try {
+    const { schoolId, amount, date, toWhom, note } = req.body;
+    const sid = parseInt(schoolId);
+    if (!Number.isInteger(sid) || sid <= 0) return res.status(400).json({ error: 'Filialni tanlang' });
+    if (!(await canAccessSchool(req.user, sid))) return res.status(403).json({ error: 'Ruxsat yo\'q' });
+    const sum = Math.round(parseFloat(amount));
+    if (!Number.isFinite(sum) || sum <= 0) return res.status(400).json({ error: "Summa noto'g'ri" });
+    const day = date || new Date(Date.now() + 5 * 3600 * 1000).toISOString().slice(0, 10);
+    const have = await cashOnHandAt([sid], day);
+    if (sum > have) return res.status(400).json({ error: `Kassada bu kunga ${have.toLocaleString('ru-RU')} so'm bor, ${sum.toLocaleString('ru-RU')} topshirib bo'lmaydi` });
+    const row = await prisma.cashHandover.create({
+      data: { schoolId: sid, amount: sum, date: day, toWhom: String(toWhom || 'Rahbar').trim(), note: note || null, createdById: req.user.id },
+    });
+    res.json(row);
+  } catch (error) { next(error); }
+});
+
+app.delete('/api/kassa/handover/:id', authenticate, requireRole(...STAFF_MANAGERS), async (req, res, next) => {
+  try {
+    const row = await prisma.cashHandover.findUnique({ where: { id: parseInt(req.params.id) } });
+    if (!row) return res.status(404).json({ error: 'Topilmadi' });
+    if (!(await canAccessSchool(req.user, row.schoolId))) return res.status(403).json({ error: 'Ruxsat yo\'q' });
+    await prisma.cashHandover.delete({ where: { id: row.id } });
+    res.json({ success: true });
+  } catch (error) { next(error); }
+});
+
+app.post('/api/kassa/close', authenticate, requireRole(...STAFF_MANAGERS), async (req, res, next) => {
+  try {
+    const { schoolId, date, counted, note } = req.body;
+    const sid = parseInt(schoolId);
+    if (!Number.isInteger(sid) || sid <= 0) return res.status(400).json({ error: 'Filialni tanlang' });
+    if (!(await canAccessSchool(req.user, sid))) return res.status(403).json({ error: 'Ruxsat yo\'q' });
+    const day = date || new Date(Date.now() + 5 * 3600 * 1000).toISOString().slice(0, 10);
+    const sum = Math.round(parseFloat(counted));
+    if (!Number.isFinite(sum) || sum < 0) return res.status(400).json({ error: 'Sanalgan summani kiriting' });
+    const expected = await cashOnHandAt([sid], day);
+    const row = await prisma.cashDayClose.upsert({
+      where: { schoolId_date: { schoolId: sid, date: day } },
+      create: { schoolId: sid, date: day, expected, counted: sum, note: note || null, closedById: req.user.id },
+      update: { expected, counted: sum, note: note || null, closedById: req.user.id },
+    });
+    res.json({ ...row, diff: Math.round(sum - expected) });
   } catch (error) { next(error); }
 });
 
@@ -5101,9 +5212,10 @@ app.get('/api/billing/status', authenticate, async (req, res, next) => {
       include: { course: true, students: { where: { status: { in: ['Faol', 'Sinov'] } } } }
     });
 
-    let allPayments = await prisma.payment.findMany({ where: { schoolId: sid } });
-    let positiveThisMonth = allPayments.filter(p => p.amount > 0 && p.date.startsWith(month));
-    let billingDone = allPayments.some(p => p.type === 'Oylik' && p.description?.startsWith('[OYLIK HISOB]') && p.date.startsWith(month));
+    let billingDone = !!(await prisma.payment.findFirst({
+      where: { schoolId: sid, type: 'Oylik', date: { startsWith: month }, description: { startsWith: '[OYLIK HISOB]' } },
+      select: { id: true },
+    }));
 
     const now = new Date();
     const currentMonthStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
@@ -5115,8 +5227,6 @@ app.get('/api/billing/status', authenticate, async (req, res, next) => {
       if (await claimBillingRun(sid, month)) {
         await processMonthlyBilling(sid, month);
       }
-      allPayments = await prisma.payment.findMany({ where: { schoolId: sid } });
-      positiveThisMonth = allPayments.filter(p => p.amount > 0 && p.date.startsWith(month));
       billingDone = true;
     }
 
@@ -5132,23 +5242,37 @@ app.get('/api/billing/status', authenticate, async (req, res, next) => {
       }
     }
 
+    // Holat "shu oyda qancha to'lagan"ga emas, "shu oyning hisobi yopilganmi"ga
+    // qarab chiqadi. Avgustda 2 mln avans bergan o'quvchi sentabrda hech
+    // narsa to'lamasa ham "to'langan" — hisobi hamyonidan yopilgan.
+    const coverage = await monthCoverage(Object.keys(studentMap).map(Number), month);
+
     const students = Object.values(studentMap).map(({ student, groupEntries }) => {
-      const expected = groupEntries.reduce((s, g) => s + g.price, 0);
-      const paid = positiveThisMonth.filter(p => p.studentId === student.id).reduce((s, p) => s + p.amount, 0);
-      const status = paid >= expected && expected > 0 ? 'paid' : paid > 0 ? 'partial' : 'unpaid';
-      return { studentId: student.id, name: student.name, phone: student.phone, balance: student.balance, groups: groupEntries, expected, paid, status };
+      const cov = coverage.get(student.id);
+      const expected = cov && cov.due > 0 ? cov.due : groupEntries.reduce((s, g) => s + g.price, 0);
+      const paid = cov ? Math.min(cov.covered, expected) : 0;
+      const status = expected > 0 && paid >= expected ? 'paid' : paid > 0 ? 'partial' : 'unpaid';
+      return {
+        studentId: student.id, name: student.name, phone: student.phone, balance: student.balance,
+        groups: groupEntries.map(g => ({ ...g, ...(cov?.groups.get(g.groupId) || {}) })),
+        expected, paid, status,
+        debt: cov ? cov.debt : 0, wallet: cov ? cov.wallet : 0,
+      };
     });
 
     const groupBreakdown = groups.map(group => {
       const active = group.students;
-      const cp = (s) => { const p = (s.customPrices && typeof s.customPrices === 'object') ? s.customPrices : {}; return p[group.id] !== undefined ? p[group.id] : group.course.price; };
-      const expected = active.reduce((s, st) => s + cp(st), 0);
-      const actual = positiveThisMonth.filter(p => active.some(st => st.id === p.studentId)).reduce((s, p) => s + p.amount, 0);
-      const paidStudents = active.filter(st => positiveThisMonth.filter(p => p.studentId === st.id).reduce((s, p) => s + p.amount, 0) >= cp(st));
+      let expected = 0, actual = 0, paidCount = 0;
+      for (const st of active) {
+        const g = coverage.get(st.id)?.groups.get(group.id);
+        if (!g) continue;
+        expected += g.due; actual += g.covered;
+        if (g.remaining <= 0 && g.due > 0) paidCount++;
+      }
       return {
         groupId: group.id, groupName: group.name, courseName: group.course.name,
-        totalStudents: active.length, paidCount: paidStudents.length,
-        unpaidCount: active.length - paidStudents.length, expected, actual
+        totalStudents: active.length, paidCount,
+        unpaidCount: active.length - paidCount, expected, actual
       };
     });
 
@@ -5175,9 +5299,6 @@ app.post('/api/billing/notify-debtors', authenticate, requireRole(...STAFF_MANAG
       include: { course: true, students: { where: { status: { in: statusList } } } }
     });
 
-    const allPayments = await prisma.payment.findMany({ where: { schoolId: sid } });
-    const positiveThisMonth = allPayments.filter(p => p.amount > 0 && p.date.startsWith(month));
-
     const studentMap = {};
     for (const group of groups) {
       for (const student of group.students) {
@@ -5190,13 +5311,16 @@ app.post('/api/billing/notify-debtors', authenticate, requireRole(...STAFF_MANAG
       }
     }
 
+    const coverage = await monthCoverage(Object.keys(studentMap).map(Number), month);
     const debtors = Object.values(studentMap).map(({ student, groupEntries }) => {
-      const expected = groupEntries.reduce((s, g) => s + g.price, 0);
-      const paid = positiveThisMonth.filter(p => p.studentId === student.id).reduce((s, p) => s + p.amount, 0);
-      const status = paid >= expected && expected > 0 ? 'paid' : paid > 0 ? 'partial' : 'unpaid';
-      const debt = expected - paid;
+      const cov = coverage.get(student.id);
+      const expected = cov && cov.due > 0 ? cov.due : groupEntries.reduce((s, g) => s + g.price, 0);
+      const paid = cov ? Math.min(cov.covered, expected) : 0;
+      const status = expected > 0 && paid >= expected ? 'paid' : paid > 0 ? 'partial' : 'unpaid';
+      // Xabardagi qarz — o'quvchining umumiy yopilmagan hisobi (eski oylar ham).
+      const debt = cov ? cov.debt : expected - paid;
       return { student, expected, paid, status, debt };
-    }).filter(d => d.status !== 'paid');
+    }).filter(d => d.status !== 'paid' && d.debt > 0);
 
     const school = await prisma.school.findUnique({ where: { id: sid } });
     const schoolBot = await getTelegramBot(sid);
