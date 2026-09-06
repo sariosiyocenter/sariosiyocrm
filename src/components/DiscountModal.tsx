@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { X } from 'lucide-react';
+import { X, Check } from 'lucide-react';
 import { useCRM } from '../context/CRMContext';
 
 /**
@@ -10,9 +10,14 @@ import { useCRM } from '../context/CRMContext';
  * `type: 'Chegirma'` bilan saqlanadi — balansni oshiradi, lekin tushum
  * hisobotlariga tushmaydi (`src/lib/money.ts`).
  *
+ * Chegirma HAR BIR KURS uchun alohida yoziladi. Ilgari hamma guruhning
+ * summasi bitta yozuvga qo'shib yuborilardi va unda qaysi kurs ekani umuman
+ * saqlanmasdi: keyinchalik chegirma qaysi kursga tegishli ekanini bilib
+ * bo'lmasdi, ustozning guruhiga tushgan pul ham to'g'ri kamaymasdi.
+ *
  * Summa qoldirilgan darslar bo'yicha taklif qilinadi: o'quvchining o'sha oydagi
  * yo'qlama yozuvlari darslar sonini beradi, kurs narxi esa bitta dars narxini.
- * Taklifni qo'lda o'zgartirish mumkin.
+ * Har bir kursning summasini qo'lda o'zgartirish mumkin.
  */
 export default function DiscountModal({ studentId, onClose, onAdd }: {
     studentId: number;
@@ -26,21 +31,27 @@ export default function DiscountModal({ studentId, onClose, onAdd }: {
     const [month, setMonth] = useState(
         today.getFullYear() + '-' + String(today.getMonth() + 1).padStart(2, '0')
     );
-    const [amount, setAmount] = useState('');
     const [reason, setReason] = useState('');
     const [saving, setSaving] = useState(false);
-    const [touched, setTouched] = useState(false);
+
+    /** Qaysi kurslar tanlangan va har biriga qancha summa. */
+    const [picked, setPicked] = useState<Record<number, boolean>>({});
+    const [sums, setSums] = useState<Record<number, string>>({});
+    const [edited, setEdited] = useState<Record<number, boolean>>({});
 
     // O'quvchining tanlangan oydagi guruh bo'yicha yo'qlamasi.
     const perGroup = React.useMemo(() => {
         const rows = (attendances || []).filter(
             a => a.studentId === studentId && (a.date || '').startsWith(month)
         );
-        const byGroup = new Map<number, { total: number; missed: number }>();
+        const byGroup = new Map<number, { total: number; missed: number; dates: string[] }>();
         rows.forEach(a => {
-            const cur = byGroup.get(a.groupId) || { total: 0, missed: 0 };
+            const cur = byGroup.get(a.groupId) || { total: 0, missed: 0, dates: [] };
             cur.total += 1;
-            if (a.status === 'Kelmapdi' || a.status === 'Sababli') cur.missed += 1;
+            if (a.status === 'Kelmapdi' || a.status === 'Sababli') {
+                cur.missed += 1;
+                cur.dates.push(a.date);
+            }
             byGroup.set(a.groupId, cur);
         });
 
@@ -55,21 +66,34 @@ export default function DiscountModal({ studentId, onClose, onAdd }: {
             const perLesson = v.total > 0 ? price / v.total : 0;
             return {
                 groupId,
+                courseId: group?.courseId ?? null,
                 name: group?.name || ('#' + groupId),
+                courseName: course?.name || '',
                 total: v.total,
                 missed: v.missed,
+                dates: v.dates.sort(),
                 sum: Math.round(perLesson * v.missed),
             };
         }).filter(r => r.missed > 0);
     }, [attendances, studentId, month, groups, courses, student]);
 
-    const suggested = perGroup.reduce((s, r) => s + r.sum, 0);
-
-    // Oy o'zgarsa taklif yangilanadi, lekin summa qo'lda kiritilgan bo'lsa
-    // ustidan yozilmaydi.
+    // Oy o'zgarsa taklif qayta hisoblanadi. Qo'lda o'zgartirilgan summa saqlanadi.
     React.useEffect(() => {
-        if (!touched) setAmount(suggested > 0 ? String(suggested) : '');
-    }, [suggested, touched]);
+        setPicked(prev => {
+            const next: Record<number, boolean> = {};
+            perGroup.forEach(r => { next[r.groupId] = prev[r.groupId] ?? true; });
+            return next;
+        });
+        setSums(prev => {
+            const next: Record<number, string> = {};
+            perGroup.forEach(r => { next[r.groupId] = edited[r.groupId] ? (prev[r.groupId] ?? '') : String(r.sum); });
+            return next;
+        });
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [perGroup]);
+
+    const chosen = perGroup.filter(r => picked[r.groupId]);
+    const total = chosen.reduce((s, r) => s + (Number(sums[r.groupId]) || 0), 0);
 
     const monthLabel = (() => {
         const [y, m] = month.split('-').map(Number);
@@ -77,28 +101,52 @@ export default function DiscountModal({ studentId, onClose, onAdd }: {
         return new Date(y, m - 1, 1).toLocaleDateString('uz-UZ', { month: 'long', year: 'numeric' });
     })();
 
+    const shortDate = (d: string) => {
+        const [, m, day] = d.split('-');
+        return `${day}.${m}`;
+    };
+
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         if (saving) return;
-        const val = Math.round(Number(amount));
-        if (!Number.isFinite(val) || val <= 0) {
-            showNotification('Summani kiriting', 'error');
+        if (chosen.length === 0) {
+            showNotification('Kamida bitta kursni tanlang', 'error');
             return;
         }
         if (!reason.trim()) {
             showNotification('Sababni yozing', 'error');
             return;
         }
+        const rows = chosen
+            .map(r => ({ ...r, val: Math.round(Number(sums[r.groupId])) }))
+            .filter(r => Number.isFinite(r.val) && r.val > 0);
+        if (rows.length === 0) {
+            showNotification('Summani kiriting', 'error');
+            return;
+        }
+
         setSaving(true);
         try {
-            await onAdd({
-                studentId,
-                amount: val,
-                type: 'Chegirma',
-                date: new Date().toISOString().split('T')[0],
-                description: '[CHEGIRMA] ' + monthLabel + ' — ' + reason.trim(),
-            });
-            showNotification('Chegirma hisobga olindi', 'success');
+            const date = new Date().toISOString().split('T')[0];
+            // Har bir kurs uchun alohida yozuv — shunda chegirma qaysi guruhga
+            // tegishli ekani ham, ustozning hisobi ham to'g'ri chiqadi.
+            for (const r of rows) {
+                await onAdd({
+                    studentId,
+                    amount: r.val,
+                    type: 'Chegirma',
+                    groupId: r.groupId,
+                    courseId: r.courseId,
+                    date,
+                    description: `[CHEGIRMA] ${r.name} — ${monthLabel}, ${r.missed} dars (${reason.trim()})`,
+                });
+            }
+            showNotification(
+                rows.length > 1
+                    ? `${rows.length} ta kurs bo'yicha chegirma hisobga olindi`
+                    : 'Chegirma hisobga olindi',
+                'success'
+            );
             onClose();
         } catch (err: any) {
             showNotification("Saqlab bo'lmadi: " + (err?.message || 'xatolik'), 'error');
@@ -114,7 +162,7 @@ export default function DiscountModal({ studentId, onClose, onAdd }: {
         <div className="fixed inset-0 z-[200] flex items-start sm:items-center justify-center overflow-y-auto p-4">
             <div className="absolute inset-0 bg-gray-900/60 backdrop-blur-sm" onClick={onClose} />
             <form onSubmit={handleSubmit}
-                className="relative bg-sirt rounded-[2rem] border border-chiziq shadow-2xl w-full max-w-md p-8 space-y-4 my-auto">
+                className="relative bg-sirt rounded-[2rem] border border-chiziq shadow-2xl w-full max-w-lg p-8 space-y-4 my-auto">
                 <div className="flex items-center justify-between pb-4 border-b border-chiziq-mayin/50">
                     <div>
                         <h3 className="text-lg font-black text-matn tracking-tight">Chegirma</h3>
@@ -128,43 +176,62 @@ export default function DiscountModal({ studentId, onClose, onAdd }: {
 
                 <div>
                     <label className={labelCls}>Qaysi oy uchun</label>
-                    <input type="month" value={month} onChange={e => { setMonth(e.target.value); setTouched(false); }}
-                        className={inputCls} />
+                    <input type="month" value={month} onChange={e => setMonth(e.target.value)} className={inputCls} />
                 </div>
 
-                <div className="p-4 bg-ichki rounded-2xl border border-chiziq/80">
-                    <span className="text-[10px] font-bold text-matn-xira block mb-2">Qoldirilgan darslar</span>
+                <div>
+                    <label className={labelCls}>Qaysi kurs uchun chegirma</label>
                     {perGroup.length === 0 ? (
-                        <p className="text-[11px] text-matn-xira italic">
-                            Bu oyda qoldirilgan dars topilmadi — summani o'zingiz kiriting.
-                        </p>
+                        <div className="p-4 bg-ichki rounded-2xl border border-chiziq/80">
+                            <p className="text-[11px] text-matn-xira italic">
+                                Bu oyda qoldirilgan dars topilmadi. Yo'qlama belgilanmagan bo'lishi mumkin —
+                                summani o'zingiz kiritolmaysiz, avval yo'qlamani to'ldiring.
+                            </p>
+                        </div>
                     ) : (
-                        <div className="space-y-1.5">
-                            {perGroup.map(r => (
-                                <div key={r.groupId} className="flex items-center justify-between gap-2 text-[11px]">
-                                    <span className="font-bold text-matn truncate">{r.name}</span>
-                                    <span className="text-matn-xira shrink-0">
-                                        <span className="num">{r.missed}</span>/<span className="num">{r.total}</span> dars &middot;{' '}
-                                        <span className="num font-bold text-matn-2">{r.sum.toLocaleString()}</span> so'm
-                                    </span>
-                                </div>
-                            ))}
+                        <div className="space-y-2">
+                            {perGroup.map(r => {
+                                const on = !!picked[r.groupId];
+                                return (
+                                    <div key={r.groupId}
+                                        className={`rounded-2xl border transition-all ${on ? 'border-brand/50 bg-brand/5' : 'border-chiziq bg-ichki'}`}>
+                                        <div className="flex items-center gap-3 p-3">
+                                            <button type="button"
+                                                onClick={() => setPicked(p => ({ ...p, [r.groupId]: !on }))}
+                                                className={`w-5 h-5 rounded-md border flex items-center justify-center shrink-0 cursor-pointer transition-colors ${
+                                                    on ? 'bg-brand border-brand text-white' : 'border-chiziq-kuchli text-transparent'
+                                                }`}>
+                                                <Check size={12} />
+                                            </button>
+                                            <div className="min-w-0 flex-1">
+                                                <p className="text-[12px] font-bold text-matn truncate">{r.name}</p>
+                                                <p className="text-[10px] text-matn-xira truncate">
+                                                    <span className="num">{r.missed}</span>/<span className="num">{r.total}</span> dars qoldirgan
+                                                    {r.dates.length > 0 && ' · ' + r.dates.slice(0, 4).map(shortDate).join(', ')}
+                                                    {r.dates.length > 4 && ' …'}
+                                                </p>
+                                            </div>
+                                            <input type="number" value={sums[r.groupId] ?? ''}
+                                                disabled={!on}
+                                                onChange={e => {
+                                                    setSums(s => ({ ...s, [r.groupId]: e.target.value }));
+                                                    setEdited(x => ({ ...x, [r.groupId]: true }));
+                                                }}
+                                                className="w-32 px-3 py-2 bg-sirt border border-chiziq rounded-xl text-[12px] font-bold text-matn text-right outline-none focus:border-brand disabled:opacity-40 transition-all" />
+                                        </div>
+                                    </div>
+                                );
+                            })}
                         </div>
                     )}
                 </div>
 
-                <div>
-                    <label className={labelCls}>Summa (UZS)</label>
-                    <input type="number" value={amount} required
-                        onChange={e => { setAmount(e.target.value); setTouched(true); }}
-                        placeholder="Masalan: 125 000" className={inputCls} />
-                    {suggested > 0 && (
-                        <button type="button" onClick={() => { setAmount(String(suggested)); setTouched(false); }}
-                            className="mt-2 text-[11px] font-bold text-brand hover:underline cursor-pointer">
-                            Taklif: {suggested.toLocaleString()} so'm
-                        </button>
-                    )}
-                </div>
+                {chosen.length > 0 && (
+                    <div className="flex items-center justify-between px-4 py-3 bg-ichki rounded-2xl border border-chiziq">
+                        <span className="text-[12px] font-bold text-matn-sokin">Jami chegirma</span>
+                        <span className="num text-[15px] font-bold text-brand">{total.toLocaleString('ru-RU')} so'm</span>
+                    </div>
+                )}
 
                 <div>
                     <label className={labelCls}>Sabab *</label>
@@ -174,6 +241,7 @@ export default function DiscountModal({ studentId, onClose, onAdd }: {
 
                 <p className="text-[10px] text-matn-xira">
                     Chegirma o'quvchining balansini oshiradi, lekin kassa tushumi sifatida hisoblanmaydi.
+                    Har bir kurs uchun alohida yozuv qoladi.
                 </p>
 
                 <div className="flex gap-3 pt-4 border-t border-dashed border-chiziq/50">
@@ -181,8 +249,8 @@ export default function DiscountModal({ studentId, onClose, onAdd }: {
                         className="flex-1 py-3 bg-chiziq text-gray-700 dark:text-white text-xs font-extrabold rounded-2xl cursor-pointer hover:bg-gray-200 dark:hover:bg-gray-600 transition-all">
                         Bekor
                     </button>
-                    <button type="submit" disabled={saving}
-                        className="flex-1 py-3 bg-brand hover:bg-brand-dark disabled:opacity-50 text-white text-xs font-extrabold rounded-2xl cursor-pointer transition-all">
+                    <button type="submit" disabled={saving || chosen.length === 0}
+                        className="flex-1 py-3 bg-brand hover:bg-brand-dark disabled:opacity-50 disabled:cursor-not-allowed text-white text-xs font-extrabold rounded-2xl cursor-pointer transition-all">
                         {saving ? 'Saqlanmoqda…' : 'Saqlash'}
                     </button>
                 </div>
