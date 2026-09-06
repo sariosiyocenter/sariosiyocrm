@@ -169,6 +169,14 @@ model Group {
   syllabusId Int?
   syllabus   Syllabus? @relation(fields: [syllabusId], references: [id])
 
+  // Ustozga shu guruh uchun qanday haq to'lanadi:
+  //   null          - xodim kartasidagi umumiy KPI foizi (guruhga tushgan puldan)
+  //   'Belgilangan' - payValue: oyiga belgilangan summa (masalan 2 000 000)
+  //   'Foiz'        - payValue: shu guruhga tushgan puldan foiz
+  // Har guruhga alohida qo'yish mumkin: bir guruh 2 mln, ikkinchisi 3 mln.
+  payType    String?
+  payValue   Float     @default(0)
+
   schoolId   Int
   school     School    @relation(fields: [schoolId], references: [id])
   students   Student[] @relation("StudentGroups")

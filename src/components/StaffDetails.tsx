@@ -169,6 +169,12 @@ export default function StaffDetails() {
     const [kpiData,    setKpiData]    = useState<any>(null);
     const [kpiLoading, setKpiLoading] = useState(false);
 
+    // Guruh bo'yicha ustoz haqi: qaysi qator tahrirlanmoqda va qanday qiymat.
+    const [payEditId,   setPayEditId]   = useState<number | null>(null);
+    const [payEditType, setPayEditType] = useState<string>('');
+    const [payEditVal,  setPayEditVal]  = useState<string>('');
+    const [savingPay,   setSavingPay]   = useState(false);
+
     // Edit modal
     const [isEditOpen, setIsEditOpen] = useState(false);
     const [editData,   setEditData]   = useState<any>({});
@@ -235,6 +241,7 @@ export default function StaffDetails() {
 
     // KPI hisobi sahifa ochilishi bilan yuklanadi: "Umumiy" tabidagi oylik
     // hisob-kitobi kartasi ham shu ma'lumotga tayanadi.
+    const [kpiReload, setKpiReload] = useState(0);
     useEffect(() => {
         if (!staffUser || !token) return;
         const month = `${payYear}-${String(payMonth + 1).padStart(2, '0')}`;
@@ -246,7 +253,54 @@ export default function StaffDetails() {
         .then(data => setKpiData(data))
         .catch(() => setKpiData(null))
         .finally(() => setKpiLoading(false));
-    }, [staffUser?.id, token, payMonth, payYear]);
+    }, [staffUser?.id, token, payMonth, payYear, kpiReload]);
+
+    // Guruh uchun ustoz haqini saqlash. Bo'sh tur tanlansa guruh xodimning
+    // umumiy KPI foiziga qaytadi.
+    const saveGroupPay = async (groupId: number) => {
+        const raw = parseFloat(payEditVal.replace(/\s/g, ''));
+        const value = Number.isFinite(raw) && raw > 0 ? raw : 0;
+        if (payEditType && value <= 0) {
+            showNotification(payEditType === 'Foiz' ? "Foizni kiriting" : "Summani kiriting", 'error');
+            return;
+        }
+        if (payEditType === 'Foiz' && value > 100) {
+            showNotification("Foiz 100 dan katta bo'lmasin", 'error');
+            return;
+        }
+        setSavingPay(true);
+        try {
+            const res = await fetch(`/api/groups/${groupId}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+                body: JSON.stringify({ payType: payEditType || null, payValue: payEditType ? value : 0 }),
+            });
+            const data = await res.json().catch(() => ({}));
+            if (!res.ok) { showNotification("Saqlanmadi: " + (data.error || 'server xatosi'), 'error'); return; }
+            setPayEditId(null);
+            // Jadvalni darhol yangilaymiz: serverdan qayta so'rash bir necha soniya
+            // olishi mumkin va shu vaqt ichida jadval "Yuklanmoqda" bo'lib turardi.
+            setKpiData((prev: any) => {
+                if (!prev?.groups) return prev;
+                const type = payEditType || null;
+                const groups = prev.groups.map((g: any) => {
+                    if (g.id !== groupId) return g;
+                    const pay = type === 'Belgilangan' ? Math.round(value)
+                        : type === 'Foiz' ? Math.round(g.total * value / 100)
+                        : Math.round(g.total * (prev.kpiPercent || 0) / 100);
+                    return { ...g, payType: type, payValue: type ? value : 0, pay };
+                });
+                return { ...prev, groups, kpiAmount: groups.reduce((n: number, g: any) => n + (g.pay || 0), 0) };
+            });
+            setKpiReload(n => n + 1);
+            retryLoad?.();
+            showNotification("Guruh uchun to'lov turi saqlandi", 'success');
+        } catch (err: any) {
+            showNotification("Saqlanmadi: " + (err?.message || 'aloqa xatosi'), 'error');
+        } finally {
+            setSavingPay(false);
+        }
+    };
 
     if (loading) {
         return <div className="py-20 text-center text-brand text-xs font-bold">{t('loading')}</div>;
@@ -279,6 +333,10 @@ export default function StaffDetails() {
     const baseSalary  = staffUser.salary || 0;
     const kpiPercent  = staffUser.kpiPercent || 0;
     const kpiAmount   = kpiData?.kpiAmount || 0;
+    const hasOwnGroupPay = (kpiData?.groups || []).some((g: any) => g.payType);
+    const groupPayLabel = hasOwnGroupPay || kpiPercent === 0
+        ? 'Guruhlar uchun'
+        : `KPI (${kpiPercent}%)`;
     const totalBonus  = bonuses.reduce((s, b) => s + b.amount, 0);
     const totalFine   = fines.reduce((s, f) => s + f.amount, 0);
     const totalSalary = baseSalary + kpiAmount + totalBonus - totalFine;
@@ -711,7 +769,7 @@ export default function StaffDetails() {
                                                 <StatCard label="Haftalik dars" value={weeklyLessons} sub="guruh jadvalidan" color="" />
                                             </>
                                         )}
-                                        <StatCard label={`${getMonthName(payMonth)} oyligi`} value={totalSalary >= 1000000 ? `${(totalSalary / 1000000).toFixed(1)} mln` : totalSalary.toLocaleString()} sub={kpiPercent ? `asosiy + ${kpiPercent}% ulush` : 'asosiy oylik'} color="emerald" />
+                                        <StatCard label={`${getMonthName(payMonth)} oyligi`} value={totalSalary >= 1000000 ? `${(totalSalary / 1000000).toFixed(1)} mln` : totalSalary.toLocaleString()} sub={kpiPercent ? `asosiy + ${kpiPercent}% ulush` : (kpiAmount > 0 ? 'asosiy + guruhlar' : 'asosiy oylik')} color="emerald" />
                                         <StatCard label={t('attendance')} value={`${presentDays} kun`} sub={absentDays > 0 ? `${absentDays} kun kelmagan` : t('present_this_month_sub')} color={absentDays > 0 ? 'amber' : ''} />
                                     </div>
 
@@ -797,14 +855,14 @@ export default function StaffDetails() {
                                                         <span className="text-matn-sokin">Asosiy</span>
                                                         <span className="num text-matn">{baseSalary.toLocaleString()}</span>
                                                     </div>
-                                                    {kpiPercent > 0 && (
+                                                    {(kpiPercent > 0 || kpiAmount > 0) && (
                                                         <>
                                                             <div className="flex items-center justify-between gap-3">
                                                                 <span className="text-matn-sokin">Guruhlardan tushum</span>
                                                                 <span className="num text-matn">{kpiLoading ? '…' : (kpiData?.totalPayments || 0).toLocaleString()}</span>
                                                             </div>
                                                             <div className="flex items-center justify-between gap-3">
-                                                                <span className="text-matn-sokin">Ulush ({kpiPercent}%)</span>
+                                                                <span className="text-matn-sokin">{hasOwnGroupPay || kpiPercent === 0 ? 'Guruhlar uchun haq' : `Ulush (${kpiPercent}%)`}</span>
                                                                 <span className="num text-brand">{kpiLoading ? '…' : `+${kpiAmount.toLocaleString()}`}</span>
                                                             </div>
                                                         </>
@@ -985,12 +1043,8 @@ export default function StaffDetails() {
                                                     <p className="text-[11px] font-extrabold text-matn-xira flex items-center gap-1.5">
                                                         <Target size={11} /> {t('kpi_calculation')} — {getMonthName(payMonth)} {payYear}
                                                     </p>
-                                                    {kpiLoading ? (
+                                                    {kpiLoading && !kpiData?.groups?.length ? (
                                                         <div className="py-8 text-center text-[11px] text-matn-xira font-bold">{t('loading')}</div>
-                                                    ) : kpiPercent === 0 ? (
-                                                        <div className="p-4 bg-ichki border border-dashed border-chiziq rounded-2xl text-center">
-                                                            <p className="text-[11px] text-matn-xira font-bold">{t('kpi_percent_not_set')}</p>
-                                                        </div>
                                                     ) : kpiData?.groups?.length > 0 ? (
                                                         <div className="bg-sirt border border-chiziq rounded-2xl overflow-hidden">
                                                             <table className="w-full text-left">
@@ -1001,7 +1055,8 @@ export default function StaffDetails() {
                                                                         <th className="p-3 text-[11px] font-bold text-matn-xira text-right">Darslar</th>
                                                                         <th className="p-3 text-[11px] font-bold text-matn-xira text-right">Hisoblangan</th>
                                                                         <th className="p-3 text-[11px] font-bold text-matn-xira text-right">Tushgan</th>
-                                                                        <th className="p-3 text-[11px] font-bold text-matn-xira text-right">KPI ({kpiPercent}%)</th>
+                                                                        <th className="p-3 text-[11px] font-bold text-matn-xira text-center">Hisob turi</th>
+                                                                        <th className="p-3 text-[11px] font-bold text-matn-xira text-right">Ustozga</th>
                                                                     </tr>
                                                                 </thead>
                                                                 <tbody className="divide-y divide-gray-50 dark:divide-gray-800">
@@ -1012,7 +1067,53 @@ export default function StaffDetails() {
                                                                             <td className="p-3 num text-[11px] font-bold text-matn-sokin text-right">{g.lessons ?? 0}</td>
                                                                             <td className="p-3 num text-[11px] font-bold text-matn-xira text-right">{(g.charged ?? 0).toLocaleString()}</td>
                                                                             <td className="p-3 text-[11px] font-bold text-matn-2 text-right">{g.total.toLocaleString()}</td>
-                                                                            <td className="p-3 text-[11px] font-bold text-brand text-right">+{Math.round(g.total * kpiPercent / 100).toLocaleString()}</td>
+                                                                            <td className="p-3 text-center">
+                                                                                {payEditId === g.id ? (
+                                                                                    <div className="flex items-center justify-center gap-1.5">
+                                                                                        <select
+                                                                                            aria-label="Hisob turi"
+                                                                                            className="bg-ichki border border-chiziq rounded-lg px-2 py-1.5 text-[11px] font-bold text-matn cursor-pointer"
+                                                                                            value={payEditType}
+                                                                                            onChange={e => setPayEditType(e.target.value)}>
+                                                                                            <option value="">Umumiy KPI ({kpiPercent}%)</option>
+                                                                                            <option value="Belgilangan">Belgilangan summa</option>
+                                                                                            <option value="Foiz">Foiz</option>
+                                                                                        </select>
+                                                                                        {payEditType && (
+                                                                                            <input
+                                                                                                type="number" autoFocus
+                                                                                                aria-label={payEditType === 'Foiz' ? 'Foiz' : 'Summa'}
+                                                                                                placeholder={payEditType === 'Foiz' ? '%' : '2000000'}
+                                                                                                className="w-24 bg-ichki border border-chiziq rounded-lg px-2 py-1.5 text-[11px] font-bold text-matn"
+                                                                                                value={payEditVal}
+                                                                                                onChange={e => setPayEditVal(e.target.value)}
+                                                                                                onKeyDown={e => { if (e.key === 'Enter') saveGroupPay(g.id); if (e.key === 'Escape') setPayEditId(null); }}
+                                                                                            />
+                                                                                        )}
+                                                                                        <button disabled={savingPay} onClick={() => saveGroupPay(g.id)}
+                                                                                            className="px-2.5 py-1.5 bg-brand hover:bg-brand-dark disabled:opacity-50 text-white text-[11px] font-extrabold rounded-lg cursor-pointer">
+                                                                                            {t('save')}
+                                                                                        </button>
+                                                                                        <button onClick={() => setPayEditId(null)} aria-label={t('cancel')}
+                                                                                            className="text-matn-xira hover:text-rose-500 cursor-pointer"><X size={16} /></button>
+                                                                                    </div>
+                                                                                ) : (
+                                                                                    <button
+                                                                                        onClick={() => {
+                                                                                            setPayEditId(g.id);
+                                                                                            setPayEditType(g.payType || '');
+                                                                                            setPayEditVal(g.payValue ? String(g.payValue) : '');
+                                                                                        }}
+                                                                                        className={`px-2.5 py-1 rounded-lg text-[11px] font-bold cursor-pointer transition-colors ${g.payType ? 'bg-brand/10 text-brand hover:bg-brand/20' : 'text-matn-xira hover:text-brand hover:bg-brand/5'}`}>
+                                                                                        {g.payType === 'Belgilangan'
+                                                                                            ? `${(g.payValue || 0).toLocaleString()} so'm`
+                                                                                            : g.payType === 'Foiz'
+                                                                                                ? `${g.payValue || 0}% (guruh)`
+                                                                                                : `${kpiPercent}% umumiy`}
+                                                                                    </button>
+                                                                                )}
+                                                                            </td>
+                                                                            <td className="p-3 text-[11px] font-bold text-brand text-right">+{(g.pay ?? 0).toLocaleString()}</td>
                                                                         </tr>
                                                                     ))}
                                                                 </tbody>
@@ -1022,6 +1123,7 @@ export default function StaffDetails() {
                                                                         <td className="p-3 num text-[11px] font-bold text-matn-sokin text-right">{kpiData.totalLessons ?? 0}</td>
                                                                         <td className="p-3 num text-[11px] font-bold text-matn-xira text-right">{(kpiData.totalCharged ?? 0).toLocaleString()}</td>
                                                                         <td className="p-3 text-[11px] font-bold text-matn-2 text-right">{kpiData.totalPayments?.toLocaleString()}</td>
+                                                                        <td />
                                                                         <td className="p-3 text-[12px] font-bold text-brand text-right">+{kpiAmount.toLocaleString()} UZS</td>
                                                                     </tr>
                                                                 </tfoot>
@@ -1090,7 +1192,7 @@ export default function StaffDetails() {
                                                             </div>
                                                             {kpiAmount > 0 && (
                                                                 <div className="flex justify-between">
-                                                                    <span className="text-[11px] font-bold text-brand">KPI ({kpiPercent}%)</span>
+                                                                    <span className="text-[11px] font-bold text-brand">{groupPayLabel}</span>
                                                                     <span className="text-xs font-extrabold text-brand">+{kpiAmount.toLocaleString()}</span>
                                                                 </div>
                                                             )}

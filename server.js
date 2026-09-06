@@ -873,11 +873,33 @@ app.get('/api/kpi-calculation', authenticate, async (req, res, next) => {
         lessons,
         charged: groupCharged,
         total: received,
+        payType: g.payType || null,
+        payValue: g.payValue || 0,
       };
     });
 
     const kpiPercent = employee.kpiPercent || 0;
-    const kpiAmount  = Math.round(totalPayments * kpiPercent / 100);
+
+    // Har bir guruh uchun ustozga qancha to'lanadi. Rahbar aytgan uchta hol:
+    //   'Belgilangan' — guruh uchun oyiga belgilangan summa (masalan 2 mln).
+    //                   Guruhlar har xil bo'lishi mumkin: biriga 2, boshqasiga 3 mln.
+    //   'Foiz'        — aynan shu guruhga tushgan puldan foiz.
+    //   belgilanmagan — xodim kartasidagi umumiy KPI foizi.
+    // Faqat oklad oladigan ustozda hech biri qo'yilmaydi va KPI foizi 0 bo'ladi,
+    // shunda bu yerdan 0 chiqadi — oylik faqat asosiy maoshdan iborat bo'ladi.
+    groupBreakdown.forEach(g => {
+      if (g.payType === 'Belgilangan') {
+        g.pay = Math.round(g.payValue || 0);
+        g.payLabel = 'Belgilangan';
+      } else if (g.payType === 'Foiz') {
+        g.pay = Math.round(g.total * (g.payValue || 0) / 100);
+        g.payLabel = (g.payValue || 0) + '%';
+      } else {
+        g.pay = Math.round(g.total * kpiPercent / 100);
+        g.payLabel = kpiPercent + '%';
+      }
+    });
+    const kpiAmount = groupBreakdown.reduce((s, g) => s + g.pay, 0);
 
     res.json({ groups: groupBreakdown, totalPayments, totalCharged, kpiPercent, kpiAmount, totalLessons });
   } catch (error) { next(error); }
@@ -1377,7 +1399,8 @@ app.delete('/api/groups/:id/students/:studentId', authenticate, requireRole(...S
 app.put('/api/groups/:id', authenticate, async (req, res, next) => {
   try {
     const { id } = req.params;
-    let { studentIds, schoolId, name, teacherId, courseId, schedule, days, room, syllabusId } = req.body;
+    let { studentIds, schoolId, name, teacherId, courseId, schedule, days, room, syllabusId,
+          payType, payValue } = req.body;
     
     // Prepare data for Prisma - ONLY include fields that are in the schema
     const prismaData = {};
@@ -1388,6 +1411,15 @@ app.put('/api/groups/:id', authenticate, async (req, res, next) => {
     if (days !== undefined) prismaData.days = days;
     if (syllabusId !== undefined) {
       prismaData.syllabusId = (syllabusId === null || syllabusId === '') ? null : parseInt(syllabusId) || null;
+    }
+
+    // Ustozga shu guruh uchun to'lov turi. Bo'sh qiymat "umumiy KPI foizi"ga qaytaradi.
+    if (payType !== undefined) {
+      prismaData.payType = (payType === 'Belgilangan' || payType === 'Foiz') ? payType : null;
+    }
+    if (payValue !== undefined) {
+      const v = parseFloat(payValue);
+      prismaData.payValue = Number.isFinite(v) && v > 0 ? v : 0;
     }
 
     // "Nothing selected" arrives as 0 or '' from the form. There is no room with id 0, so

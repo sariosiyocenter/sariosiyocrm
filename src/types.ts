@@ -77,6 +77,10 @@ export interface Group {
     studentIds: number[];
     room?: number;
     syllabusId?: number | null;
+    // Ustozga shu guruh uchun to'lov: bo'sh — xodimning umumiy KPI foizi,
+    // 'Belgilangan' — payValue summa, 'Foiz' — payValue foiz.
+    payType?: 'Belgilangan' | 'Foiz' | null;
+    payValue?: number;
     schoolId: number;
 }
 

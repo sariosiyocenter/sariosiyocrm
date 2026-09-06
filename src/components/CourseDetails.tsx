@@ -29,7 +29,9 @@ export default function CourseDetails() {
         endTime: '',
         room: 0,
         coursePrice: 0,
-        syllabusId: '' as number | ''
+        syllabusId: '' as number | '',
+        payType: '' as string,
+        payValue: '' as string
     });
     const [activeTab, setActiveTab] = useState('umumiy');
     const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
@@ -325,7 +327,9 @@ export default function CourseDetails() {
             endTime: end || '',
             room: group.room || 0,
             coursePrice: course?.price || 0,
-            syllabusId: group.syllabusId || ''
+            syllabusId: group.syllabusId || '',
+            payType: group.payType || '',
+            payValue: group.payValue ? String(group.payValue) : ''
         });
         setIsEditingInfo(true);
     };
@@ -346,7 +350,9 @@ export default function CourseDetails() {
                 days: editForm.days,
                 schedule: `${editForm.startTime} - ${editForm.endTime}`,
                 room: roomId,
-                syllabusId: editForm.syllabusId === '' ? null : Number(editForm.syllabusId)
+                syllabusId: editForm.syllabusId === '' ? null : Number(editForm.syllabusId),
+                payType: (editForm.payType || null) as 'Belgilangan' | 'Foiz' | null,
+                payValue: editForm.payType ? Number(editForm.payValue) || 0 : 0
             });
             if (course) {
                 const courseChanges: Record<string, any> = {};
@@ -755,6 +761,30 @@ export default function CourseDetails() {
                                                     />
                                                 </div>
                                                 <div>
+                                                    <label className={labelCls}>Ustoz haqi</label>
+                                                    <select
+                                                        value={editForm.payType}
+                                                        onChange={e => setEditForm({ ...editForm, payType: e.target.value })}
+                                                        className={inputCls}
+                                                    >
+                                                        <option value="">Xodim kartasidagi umumiy KPI foizi</option>
+                                                        <option value="Belgilangan">Shu guruh uchun belgilangan summa</option>
+                                                        <option value="Foiz">Shu guruh uchun alohida foiz</option>
+                                                    </select>
+                                                    {editForm.payType && (
+                                                        <input
+                                                            type="number"
+                                                            placeholder={editForm.payType === 'Foiz' ? 'Masalan: 30' : 'Masalan: 2000000'}
+                                                            value={editForm.payValue}
+                                                            onChange={e => setEditForm({ ...editForm, payValue: e.target.value })}
+                                                            className={inputCls + ' mt-2'}
+                                                        />
+                                                    )}
+                                                    <p className="text-[10px] text-matn-xira mt-1">
+                                                        Foiz guruhga tushgan puldan olinadi. Belgilangan summa oyiga bir marta qo'shiladi.
+                                                    </p>
+                                                </div>
+                                                <div>
                                                     <label className={labelCls}>O'quv programmasi (Syllabus)</label>
                                                     <select
                                                         value={editForm.syllabusId}
@@ -775,6 +805,13 @@ export default function CourseDetails() {
                                                 <InfoItem icon={<Presentation size={13} />} label="Xona" value={rooms.find(r => r.id === group.room)?.name || `#${group.room || '-'}`} />
                                                 <InfoItem icon={<DollarSign size={13} />} label="Kurs narxi" value={course?.price ? `${course.price.toLocaleString()} UZS` : "Belgilanmagan"} />
                                                 <InfoItem icon={<BookOpen size={13} />} label="O'quv programmasi" value={activeSyllabus ? activeSyllabus.name : "Kurs mavzulari (Dastursiz)"} />
+                                                <InfoItem icon={<DollarSign size={13} />} label="Ustoz haqi" value={
+                                                    group.payType === 'Belgilangan'
+                                                        ? (group.payValue || 0).toLocaleString() + " UZS/oy"
+                                                        : group.payType === 'Foiz'
+                                                            ? (group.payValue || 0) + "% (tushgan puldan)"
+                                                            : "Umumiy KPI foizi"
+                                                } />
                                             </>
                                         )}
                                     </div>
