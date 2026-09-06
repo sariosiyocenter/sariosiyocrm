@@ -777,7 +777,74 @@ app.get('/api/kpi-calculation', authenticate, async (req, res, next) => {
       : [];
     const chargedByGroup = new Map(charged.map(r => [r.groupId, -(r._sum.amount || 0)]));
 
-    // O'tkazilgan darslar: yo'qlama belgilangan kunlar soni.
+    // Ustoz guruhiga TUSHGAN pul. Foiz aynan shundan olinadi: hisoblangan
+    // summadan emas. Sentabrda hisoblangan 127.5 mln bo'lsa, kassaga 1.95 mln
+    // tushgan — farq juda katta, shuning uchun bu muhim.
+    //
+    // To'lov qaysi guruhga tegishli ekani shu tartibda aniqlanadi:
+    //   1) to'lovda guruh ko'rsatilgan bo'lsa — o'sha guruh;
+    //   2) kurs ko'rsatilgan bo'lsa — o'quvchining o'sha kursdagi guruhi;
+    //   3) aks holda — o'quvchining guruhlari bo'yicha hisoblangan summaga
+    //      proporsional taqsimlanadi (guruh bitta bo'lsa hammasi o'shanga).
+    const studentIds = [...new Set(groups.flatMap(g => g.students.map(s => s.id)))];
+
+    const payers = studentIds.length
+      ? await prisma.student.findMany({
+          where: { id: { in: studentIds } },
+          select: { id: true, groups: { select: { id: true, courseId: true } } },
+        })
+      : [];
+    const groupsOfStudent = new Map(payers.map(s => [s.id, s.groups]));
+
+    // Har bir (o'quvchi, guruh) uchun shu oyda hisoblangan summa — taqsimlash og'irligi.
+    const perStudentCharge = studentIds.length
+      ? await prisma.payment.groupBy({
+          by: ['studentId', 'groupId'],
+          where: { studentId: { in: studentIds }, type: 'Oylik', date: { startsWith: String(month) }, groupId: { not: null } },
+          _sum: { amount: true },
+        })
+      : [];
+    const chargeWeight = new Map();
+    perStudentCharge.forEach(r => chargeWeight.set(r.studentId + ':' + r.groupId, Math.max(0, -(r._sum.amount || 0))));
+
+    // Kassaga tushgan to'lovlar. Chegirma pul emas, shuning uchun kirmaydi.
+    const receipts = studentIds.length
+      ? await prisma.payment.findMany({
+          where: {
+            studentId: { in: studentIds },
+            date: { startsWith: String(month) },
+            amount: { gt: 0 },
+            type: { notIn: ['Chegirma', 'Oylik'] },
+          },
+          select: { studentId: true, amount: true, courseId: true, groupId: true },
+        })
+      : [];
+
+    const receivedByGroup = new Map();
+    const addReceived = (gid, amount) => receivedByGroup.set(gid, (receivedByGroup.get(gid) || 0) + amount);
+
+    for (const p of receipts) {
+      const sGroups = groupsOfStudent.get(p.studentId) || [];
+      if (sGroups.length === 0) continue;
+
+      if (p.groupId) { addReceived(p.groupId, p.amount); continue; }
+
+      let targets = sGroups;
+      if (p.courseId) {
+        const byCourse = sGroups.filter(g => g.courseId === p.courseId);
+        if (byCourse.length) targets = byCourse;
+      }
+      if (targets.length === 1) { addReceived(targets[0].id, p.amount); continue; }
+
+      const weights = targets.map(g => chargeWeight.get(p.studentId + ':' + g.id) || 0);
+      const sum = weights.reduce((s, w) => s + w, 0);
+      targets.forEach((g, i) => {
+        const share = sum > 0 ? (weights[i] / sum) : (1 / targets.length);
+        addReceived(g.id, p.amount * share);
+      });
+    }
+
+    // O'tkazilgan darslar — ma'lumot uchun (oylikka qo'shilmaydi).
     const lessonRows = groupIds.length
       ? await prisma.attendance.findMany({
           where: { groupId: { in: groupIds }, date: { startsWith: String(month) } },
@@ -788,14 +855,15 @@ app.get('/api/kpi-calculation', authenticate, async (req, res, next) => {
     const lessonsByGroup = new Map();
     lessonRows.forEach(r => lessonsByGroup.set(r.groupId, (lessonsByGroup.get(r.groupId) || 0) + 1));
 
-    const lessonFee = Number(teacher.lessonFee || 0);
-
     let totalPayments = 0;
+    let totalCharged = 0;
     let totalLessons = 0;
     const groupBreakdown = groups.map(g => {
-      const groupTotal = chargedByGroup.get(g.id) || 0;
+      const received = Math.round(receivedByGroup.get(g.id) || 0);
+      const groupCharged = chargedByGroup.get(g.id) || 0;
       const lessons = lessonsByGroup.get(g.id) || 0;
-      totalPayments += groupTotal;
+      totalPayments += received;
+      totalCharged += groupCharged;
       totalLessons += lessons;
       return {
         id: g.id,
@@ -803,15 +871,15 @@ app.get('/api/kpi-calculation', authenticate, async (req, res, next) => {
         course: g.course?.name || '',
         studentCount: g.students.length,
         lessons,
-        total: groupTotal,
+        charged: groupCharged,
+        total: received,
       };
     });
 
     const kpiPercent = employee.kpiPercent || 0;
     const kpiAmount  = Math.round(totalPayments * kpiPercent / 100);
-    const lessonPay  = Math.round(totalLessons * lessonFee);
 
-    res.json({ groups: groupBreakdown, totalPayments, kpiPercent, kpiAmount, totalLessons, lessonFee, lessonPay });
+    res.json({ groups: groupBreakdown, totalPayments, totalCharged, kpiPercent, kpiAmount, totalLessons });
   } catch (error) { next(error); }
 });
 
@@ -1663,6 +1731,30 @@ app.post('/api/payments', authenticate, async (req, res, next) => {
       return res.status(400).json({ error: "To'lov turi noto'g'ri" });
     }
     if (data.studentId) data.studentId = parseInt(data.studentId);
+
+    // To'lovni guruhga bog'lab qo'yamiz — ustozning ulushi aynan guruhga
+    // tushgan pul bo'yicha hisoblanadi. Aniq bo'lmasa (o'quvchi bir nechta
+    // guruhda va kurs tanlanmagan) bo'sh qoldiramiz: KPI hisobida bunday
+    // to'lov hisoblangan summaga proporsional taqsimlanadi.
+    if (data.groupId === undefined && data.studentId) {
+      try {
+        const st = await prisma.student.findUnique({
+          where: { id: data.studentId },
+          select: { groups: { select: { id: true, courseId: true } } },
+        });
+        const sGroups = st?.groups || [];
+        const candidates = data.courseId
+          ? sGroups.filter(g => g.courseId === data.courseId)
+          : sGroups;
+        if (candidates.length === 1) data.groupId = candidates[0].id;
+      } catch (e) {
+        console.error('Guruhni aniqlashda xato:', e.message);
+      }
+    }
+    if (data.groupId !== undefined) {
+      const gid = parseInt(data.groupId);
+      data.groupId = Number.isInteger(gid) && gid > 0 ? gid : null;
+    }
     // Kurs ixtiyoriy: tanlanmasa null, noto'g'ri qiymat ham null bo'ladi
     // (0 yoki bo'sh satr foreign key xatosini keltirib chiqarardi).
     if (data.courseId !== undefined) {
