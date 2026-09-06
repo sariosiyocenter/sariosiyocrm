@@ -215,7 +215,7 @@ export default function Finance() {
     const [selectedStudent, setSelectedStudent] = useState<any>(null);
     const [createdPaymentForReceipt, setCreatedPaymentForReceipt] = useState<any>(null);
     const [newPayment, setNewPayment] = useState<Omit<Payment, 'id' | 'schoolId'>>({
-        studentId: 0, amount: 0, type: 'Naqd', description: '', courseId: null, date: new Date().toISOString().split('T')[0]
+        studentId: 0, amount: 0, type: 'Naqd', description: '', courseId: null, groupId: null, date: new Date().toISOString().split('T')[0]
     });
     const [newExpense, setNewExpense] = useState<Omit<Expense, 'id' | 'schoolId'>>({
         amount: 0, category: 'Boshqa', description: '', date: new Date().toISOString().split('T')[0],
@@ -224,15 +224,22 @@ export default function Finance() {
 
     /** To'lov modalidagi kurs ro'yxati: avval o'quvchi a'zo bo'lgan guruhlarning
      *  kurslari, ular yo'q bo'lsa markazdagi barcha kurslar. */
+    // Markazda "kurs" deb guruh tushuniladi (CRM dagi "Kurslar" bo'limi ham
+    // guruhlarni ko'rsatadi), shuning uchun to'lov ham aynan guruh uchun
+    // tanlanadi. Bu ustoz ulushini hisoblash uchun ham muhim: pul qaysi
+    // guruhga tushgani shu yerdan aniq bo'ladi.
     const paymentCourseOptions = useMemo(() => {
-        // O'quvchi tanlanmagan bo'lsa — markazda haqiqatan o'qitilayotgan
-        // kurslar; tanlangach — faqat o'shaning kurslari.
-        if (!selectedStudent) return activeCourses(courses, groups);
-        const ids = new Set(
-            groups.filter(g => (g.studentIds || []).includes(selectedStudent.id)).map(g => g.courseId)
-        );
-        const own = courses.filter(c => ids.has(c.id));
-        return own.length > 0 ? own : activeCourses(courses, groups);
+        const bilanNarx = (gs: typeof groups) => gs.map(g => ({
+            id: g.id,
+            name: g.name,
+            courseId: g.courseId,
+            price: courses.find(c => c.id === g.courseId)?.price ?? 0,
+        }));
+        // O'quvchi tanlanmagan bo'lsa — markazdagi barcha kurslar;
+        // tanlangach — faqat o'sha o'quvchi a'zo bo'lganlari.
+        if (!selectedStudent) return bilanNarx(groups);
+        const own = groups.filter(g => (g.studentIds || []).includes(selectedStudent.id));
+        return bilanNarx(own.length > 0 ? own : groups);
     }, [selectedStudent, groups, courses]);
 
     // All staff for salary expense selector (users + legacy teachers)
@@ -267,7 +274,7 @@ export default function Finance() {
         setCreatedPaymentForReceipt(null);
         setSelectedStudent(null);
         setStudentSearch('');
-        setNewPayment({ studentId: 0, amount: 0, type: 'Naqd', description: '', courseId: null, date: new Date().toISOString().split('T')[0] });
+        setNewPayment({ studentId: 0, amount: 0, type: 'Naqd', description: '', courseId: null, groupId: null, date: new Date().toISOString().split('T')[0] });
     };
 
     // ─── Date helpers ─────────────────────────────────────────────
@@ -1501,8 +1508,15 @@ ${e.description || e.category} — ${Number(e.amount).toLocaleString()} so'm`)) 
                                         <label className={lbl}>Qaysi kurs uchun</label>
                                         <select
                                             className={inp}
-                                            value={newPayment.courseId ?? ''}
-                                            onChange={(e) => setNewPayment({ ...newPayment, courseId: e.target.value ? Number(e.target.value) : null })}
+                                            value={newPayment.groupId ?? ''}
+                                            onChange={(e) => {
+                                                const g = paymentCourseOptions.find(x => String(x.id) === e.target.value);
+                                                setNewPayment({
+                                                    ...newPayment,
+                                                    groupId: g ? g.id : null,
+                                                    courseId: g ? g.courseId : null,
+                                                });
+                                            }}
                                         >
                                             <option value="">Umumiy to'lov (kurs tanlanmagan)</option>
                                             {paymentCourseOptions.map(c => (

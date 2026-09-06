@@ -2283,16 +2283,32 @@ function PaymentAddModal({ studentId, onClose, onAdd }: { studentId: number; onC
 
     const student = students.find(s => s.id === studentId);
 
-    /** Kurs ro'yxati: avval o'quvchining guruhlaridagi kurslar, ular yo'q bo'lsa hammasi. */
+    /**
+     * Markazda "kurs" deb aynan guruh tushuniladi, shuning uchun ro'yxatda
+     * guruhlar turadi: avval o'quvchining o'zi a'zo bo'lganlari, ular yo'q
+     * bo'lsa markazdagi hammasi. To'lov guruhga bog'lansa ustoz ulushi ham
+     * to'g'ri hisoblanadi.
+     */
     const studentCourses = (() => {
-        const ids = new Set(groups.filter(g => (g.studentIds || []).includes(studentId)).map(g => g.courseId));
-        const own = courses.filter(c => ids.has(c.id));
-        return own.length > 0 ? own : activeCourses(courses, groups);
+        const bilanNarx = (gs: typeof groups) => gs.map(g => ({
+            id: g.id,
+            name: g.name,
+            courseId: g.courseId,
+            price: courses.find(c => c.id === g.courseId)?.price ?? 0,
+        }));
+        const own = groups.filter(g => (g.studentIds || []).includes(studentId));
+        return bilanNarx(own.length > 0 ? own : groups);
     })();
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-        const paymentData = { studentId, amount: Number(amount), type, courseId: courseId === '' ? null : Number(courseId), date: new Date().toISOString().split('T')[0], description: '' };
+        const tanlangan = studentCourses.find(g => g.id === Number(courseId));
+        const paymentData = {
+            studentId, amount: Number(amount), type,
+            groupId: tanlangan ? tanlangan.id : null,
+            courseId: tanlangan ? tanlangan.courseId : null,
+            date: new Date().toISOString().split('T')[0], description: ''
+        };
         const created = await onAdd(paymentData);
         setCreatedPaymentForReceipt(created);
 

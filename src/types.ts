@@ -123,6 +123,12 @@ export interface Payment {
     description: string;
     /** Qaysi kurs uchun to'langani. Tanlanmagan bo'lsa null. */
     courseId?: number | null;
+    /**
+     * Qaysi guruhga tegishli. Markazda "kurs" deb aynan guruh tushuniladi,
+     * shuning uchun to'lov shu maydon bilan bog'lanadi — ustoz ulushi
+     * hisoblanganda pul qaysi guruhga tushgani shundan aniqlanadi.
+     */
+    groupId?: number | null;
     schoolId: number;
 }
 
