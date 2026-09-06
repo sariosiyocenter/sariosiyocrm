@@ -213,18 +213,63 @@ export default function HRManagement() {
         }
     };
 
-    const handleDeleteTeacher = async (tid: number) => {
-        if (!await confirm("O'qituvchini o'chirmoqchimisiz?")) return;
+    // Ustoz yozuvini arxivga olish. Faol ro'yxatdan chiqadi, guruhlari va
+    // davomat tarixi joyida qoladi.
+    const setTeacherStatus = async (tid: number, status: string) => {
+        const res = await fetch(`/api/teachers/${tid}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+            body: JSON.stringify({ status })
+        });
+        if (!res.ok) {
+            const d = await res.json().catch(() => ({}));
+            showNotification(d.error || 'Xatolik yuz berdi', 'error');
+            return false;
+        }
+        return true;
+    };
+
+    // Server endi nima uchun o'chirib bo'lmasligini aytadi (guruhi bormi,
+    // davomati bormi) — shuning uchun bu yerda ham xodimnikiga o'xshash
+    // "Arxivga olish / Butunlay o'chirish" tanlovi ko'rsatiladi.
+    const handleDeleteTeacher = async (tid: number, force = false) => {
+        if (!force && !await confirm("O'qituvchini o'chirmoqchimisiz?")) return;
         try {
-            const res = await fetch(`/api/teachers/${tid}`, { method: 'DELETE', headers: { Authorization: `Bearer ${token}` } });
-            if (!res.ok) {
-                const d = await res.json().catch(() => ({}));
-                showNotification(d.error || "O'qituvchini o'chirib bo'lmadi", 'error');
+            const res = await fetch(`/api/teachers/${tid}${force ? '?force=1' : ''}`, {
+                method: 'DELETE', headers: { Authorization: `Bearer ${token}` }
+            });
+            if (res.ok) {
+                // Ilgari bu yerda javob tekshirilmasdan sahifa qayta yuklanardi va
+                // muvaffaqiyatsiz o'chirish ham muvaffaqiyatli ko'rinardi.
+                showNotification("O'qituvchi o'chirildi", 'success');
+                window.location.reload();
                 return;
             }
-            // Ilgari bu yerda javob tekshirilmasdan sahifa qayta yuklanardi va
-            // muvaffaqiyatsiz o'chirish ham muvaffaqiyatli ko'rinardi.
-            window.location.reload();
+            const d = await res.json().catch(() => ({}));
+            if (d.canArchive) {
+                const javob = await confirm({
+                    title: "O'qituvchini o'chirish",
+                    message: d.error,
+                    confirmLabel: 'Arxivga olish',
+                    altLabel: d.canForce ? "Butunlay o'chirish" : undefined,
+                    cancelLabel: 'Bekor qilish',
+                });
+                if (javob === 'alt') {
+                    if (!await confirm({
+                        title: 'Yana bir bor tasdiqlang',
+                        message: "O'qituvchi va uning barcha davomat yozuvlari butunlay o'chadi. Bu amalni ortga qaytarib bo'lmaydi.",
+                        confirmLabel: "Ha, butunlay o'chir",
+                    })) return;
+                    await handleDeleteTeacher(tid, true);
+                } else if (javob === true) {
+                    if (await setTeacherStatus(tid, 'Arxiv')) {
+                        showNotification("O'qituvchi arxivga olindi", 'success');
+                        window.location.reload();
+                    }
+                }
+                return;
+            }
+            showNotification(d.error || "O'qituvchini o'chirib bo'lmadi", 'error');
         } catch (err) {
             console.error('Delete teacher failed', err);
             showNotification("Aloqa xatosi", 'error');
