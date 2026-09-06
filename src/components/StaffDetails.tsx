@@ -559,7 +559,16 @@ export default function StaffDetails() {
             setBonuses([]);
             setFines([]);
             setPayConfirm(false);
-            showNotification("Oylik berildi va Moliyaga xarajat sifatida yozildi", 'success');
+            // Telegram xabari yuborilgani ham aytilsin: rahbar "telegramdan aks
+            // etmayapdi" deganda aynan shu ko'rinmasligi muammo bo'lgan.
+            showNotification(
+                payment?.telegram?.sent
+                    ? "Oylik berildi, Moliyaga yozildi va xodimga Telegram xabari yuborildi"
+                    : "Oylik berildi va Moliyaga xarajat sifatida yozildi"
+                      + (payment?.telegram?.reason === 'telegram ulanmagan'
+                          ? " (xodim Telegram botga ulanmagani uchun xabar yuborilmadi)" : ""),
+                'success'
+            );
             // Moliyadagi xarajatlar ro'yxati faqat /api/init dan keladi, shuning
             // uchun yangi xarajat ko'rinishi uchun ma'lumotni yangilaymiz.
             retryLoad();

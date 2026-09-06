@@ -171,20 +171,39 @@ export default function HRManagement() {
         }
     };
 
-    const handleDeleteUser = async (id: number) => {
-        if (!await confirm("Xodimni butunlay o'chirmoqchimisiz?")) return;
+    const handleDeleteUser = async (id: number, force = false) => {
+        if (!force && !await confirm("Xodimni butunlay o'chirmoqchimisiz?")) return;
         try {
-            const res = await fetch(`/api/users/${id}`, { method: 'DELETE', headers: { 'Authorization': `Bearer ${token}` } });
+            const res = await fetch(`/api/users/${id}${force ? '?force=1' : ''}`, {
+                method: 'DELETE', headers: { 'Authorization': `Bearer ${token}` }
+            });
             if (res.ok) {
                 fetchUsers();
                 showNotification("Xodim o'chirildi", 'success');
                 return;
             }
             const d = await res.json().catch(() => ({}));
-            // Davomat yoki oylik yozuvi bor xodimni o'chirib bo'lmaydi —
-            // shu yerning o'zida arxivga olishni taklif qilamiz.
+            // Davomat yoki oylik yozuvi bor xodim. Ilgari faqat arxiv taklif
+            // qilinardi va rahbar "o'chirib bo'lmayapti" deb qolardi — endi
+            // butunlay o'chirish ham shu yerda tanlanadi.
             if (d.canArchive) {
-                if (await confirm(d.error + "\n\nArxivga olinsinmi?")) await setUserStatus(id, 'Arxiv');
+                const javob = await confirm({
+                    title: "Xodimni o'chirish",
+                    message: d.error,
+                    confirmLabel: 'Arxivga olish',
+                    altLabel: d.canForce ? "Butunlay o'chirish" : undefined,
+                    cancelLabel: 'Bekor qilish',
+                });
+                if (javob === 'alt') {
+                    if (!await confirm({
+                        title: 'Yana bir bor tasdiqlang',
+                        message: "Xodim va uning barcha davomat hamda oylik yozuvlari butunlay o'chadi. Bu amalni ortga qaytarib bo'lmaydi.",
+                        confirmLabel: "Ha, butunlay o'chir",
+                    })) return;
+                    await handleDeleteUser(id, true);
+                } else if (javob === true) {
+                    await setUserStatus(id, 'Arxiv');
+                }
                 return;
             }
             showNotification(d.error || "Xatolik yuz berdi", 'error');

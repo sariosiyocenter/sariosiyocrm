@@ -505,13 +505,30 @@ app.delete('/api/users/:id', authenticate, async (req, res, next) => {
       prisma.staffAttendance.count({ where: { userId: targetId } }),
       prisma.salaryPayment.count({ where: { userId: targetId } })
     ]);
-    if (davomatSoni > 0 || oylikSoni > 0) {
+    // Rahbar baribir butunlay o'chirishni tanlasa (force), bog'langan yozuvlarni
+    // ham olib tashlaymiz. Oylik yozuvi Moliyadagi xarajat bilan bog'langan —
+    // u ham ketadi, aks holda kassada egasiz xarajat qolib ketadi.
+    const majburiy = String(req.query.force || '') === '1' || req.body?.force === true;
+
+    if ((davomatSoni > 0 || oylikSoni > 0) && majburiy) {
+      const oyliklar = await prisma.salaryPayment.findMany({
+        where: { userId: targetId },
+        select: { expenseId: true }
+      });
+      const xarajatIds = oyliklar.map(o => o.expenseId).filter(Boolean);
+      await prisma.$transaction(async (tx) => {
+        await tx.staffAttendance.deleteMany({ where: { userId: targetId } });
+        await tx.salaryPayment.deleteMany({ where: { userId: targetId } });
+        if (xarajatIds.length) await tx.expense.deleteMany({ where: { id: { in: xarajatIds } } });
+      });
+    } else if (davomatSoni > 0 || oylikSoni > 0) {
       const qismlar = [];
       if (davomatSoni > 0) qismlar.push(davomatSoni + ' ta davomat');
       if (oylikSoni > 0) qismlar.push(oylikSoni + ' ta oylik');
       return res.status(400).json({
-        error: 'Bu xodimda ' + qismlar.join(' va ') + ' yozuvi bor, shuning uchun butunlay o\'chirib bo\'lmaydi. Uni arxivga oling — ro\'yxatdan yo\'qoladi, tarix esa saqlanib qoladi.',
-        canArchive: true
+        error: 'Bu xodimda ' + qismlar.join(' va ') + ' yozuvi bor. Arxivga olsangiz ro\'yxatdan yo\'qoladi, tarix saqlanadi. Butunlay o\'chirsangiz shu yozuvlar ham, Moliyadagi oylik xarajati bilan birga, o\'chib ketadi.',
+        canArchive: true,
+        canForce: true
       });
     }
 
@@ -526,7 +543,8 @@ app.delete('/api/users/:id', authenticate, async (req, res, next) => {
         if (teacher) {
           const guruhSoni = await prisma.group.count({ where: { teacherId: teacher.id } });
           const tDavomat = await prisma.teacherAttendance.count({ where: { teacherId: teacher.id } });
-          if (guruhSoni === 0 && tDavomat === 0) {
+          if (guruhSoni === 0 && (tDavomat === 0 || majburiy)) {
+            if (tDavomat > 0) await prisma.teacherAttendance.deleteMany({ where: { teacherId: teacher.id } });
             await prisma.teacher.delete({ where: { id: teacher.id } });
           } else {
             // Guruhi bor ustozni o'chirib bo'lmaydi — arxivga olamiz.
@@ -607,6 +625,43 @@ app.get('/api/salary-payments', authenticate, async (req, res, next) => {
   } catch (error) { next(error); }
 });
 
+/**
+ * Oylik haqida xodimning o'ziga Telegram xabari.
+ *
+ * Telegram id ikki joyda bo'lishi mumkin: xodim yozuvida (User) yoki unga
+ * bog'langan ustoz yozuvida (Teacher) — bot ustozni aynan o'sha yerga
+ * bog'laydi. Xabar yuborilmasa oylik baribir berilgan bo'ladi, shuning uchun
+ * bu yerdagi xato butun amalni to'xtatmaydi.
+ */
+async function oylikXabariniYubor(userId, schoolId, matn) {
+  try {
+    const xodim = await prisma.user.findUnique({
+      where: { id: userId },
+      select: { name: true, telegramId: true, schoolId: true }
+    });
+    if (!xodim) return { sent: false, reason: 'xodim topilmadi' };
+
+    let chatId = xodim.telegramId;
+    if (!chatId) {
+      const ustoz = await prisma.teacher.findFirst({
+        where: { name: xodim.name, schoolId: xodim.schoolId || schoolId },
+        select: { telegramId: true }
+      });
+      chatId = ustoz?.telegramId || null;
+    }
+    if (!chatId) return { sent: false, reason: 'telegram ulanmagan' };
+
+    const schoolBot = await getTelegramBot(schoolId);
+    if (!schoolBot) return { sent: false, reason: 'bot sozlanmagan' };
+
+    await schoolBot.telegram.sendMessage(chatId, matn);
+    return { sent: true };
+  } catch (e) {
+    console.error('[Oylik xabari]', e.message);
+    return { sent: false, reason: e.message };
+  }
+}
+
 // Oylik berish. Xarajat va oylik yozuvi bitta tranzaksiyada yaratiladi:
 // ilgari xarajat avval yozilar, oylik yozuvi yiqilsa (masalan o'sha oy uchun
 // allaqachon to'langan bo'lsa) Moliyada yetim xarajat qolib ketardi va har
@@ -661,7 +716,22 @@ app.post('/api/salary-payments', authenticate, async (req, res, next) => {
           }
         });
       });
-      res.json(payment);
+
+      // Xodim oylik olganini bilsin. Rahbar aynan shuni so'ragan edi:
+      // "moliya bo'limida ham telegramdan ham aks etmayapdi".
+      const satrlar = [
+        '\u{1F4B0} Oylik berildi',
+        '',
+        '\u{1F464} ' + empName,
+        '\u{1F4C5} Oy: ' + month,
+        '\u{1F4B5} Summa: ' + parsedAmount.toLocaleString('ru-RU') + " so'm",
+      ];
+      if (parseInt(bonuses) > 0) satrlar.push('⭐ Bonus: ' + parseInt(bonuses).toLocaleString('ru-RU'));
+      if (parseInt(fines) > 0)   satrlar.push('⚠️ Ushlanma: ' + parseInt(fines).toLocaleString('ru-RU'));
+      if (note) satrlar.push('\u{1F4DD} ' + note);
+      const xabar = await oylikXabariniYubor(parsedUserId, schoolId, satrlar.join(String.fromCharCode(10)));
+
+      res.json({ ...payment, telegram: xabar });
     } catch (err) {
       if (err.code === 'P2002') {
         return res.status(400).json({ error: "Bu oy uchun oylik allaqachon berilgan. O'zgartirish uchun \"Tahrirlash\" tugmasidan foydalaning." });
@@ -710,7 +780,20 @@ app.put('/api/salary-payments/:id', authenticate, async (req, res, next) => {
       }
       return await tx.salaryPayment.update({ where: { id: pid }, data });
     });
-    res.json(updated);
+
+    // Tuzatilgan summani ham xodim bilsin — aks holda u eski summani biladi.
+    let telegram = { sent: false, reason: 'summa o\'zgarmadi' };
+    if (data.amount !== undefined) {
+      const satrlar = [
+        '\u{1F504} Oylik tuzatildi',
+        '',
+        '\u{1F4C5} Oy: ' + existing.month,
+        '\u{1F4B5} Yangi summa: ' + updated.amount.toLocaleString('ru-RU') + " so'm",
+      ];
+      if (updated.note) satrlar.push('\u{1F4DD} ' + updated.note);
+      telegram = await oylikXabariniYubor(existing.userId, existing.schoolId, satrlar.join(String.fromCharCode(10)));
+    }
+    res.json({ ...updated, telegram });
   } catch (error) { next(error); }
 });
 

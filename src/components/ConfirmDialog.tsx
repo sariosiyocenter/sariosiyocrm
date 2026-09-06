@@ -15,11 +15,18 @@ type ConfirmOptions = {
   confirmLabel?: string;
   cancelLabel?: string;
   danger?: boolean;
+  /**
+   * Uchinchi tugma. Ba'zan "ha/yo'q" yetmaydi: masalan xodimni arxivga olish
+   * yoki butunlay o'chirish — ikkalasi ham amal, bekor qilish esa uchinchi.
+   * Tanlansa javob 'alt' bo'ladi.
+   */
+  altLabel?: string;
 };
 
-type Resolver = (answer: boolean) => void;
+type Answer = boolean | 'alt';
+type Resolver = (answer: Answer) => void;
 
-const ConfirmContext = createContext<((opts: string | ConfirmOptions) => Promise<boolean>) | null>(null);
+const ConfirmContext = createContext<((opts: string | ConfirmOptions) => Promise<Answer>) | null>(null);
 
 export function ConfirmProvider({ children }: { children: React.ReactNode }) {
   const [open, setOpen] = useState<ConfirmOptions | null>(null);
@@ -27,10 +34,10 @@ export function ConfirmProvider({ children }: { children: React.ReactNode }) {
 
   const confirm = useCallback((opts: string | ConfirmOptions) => {
     setOpen(typeof opts === 'string' ? { message: opts } : opts);
-    return new Promise<boolean>(resolve => { resolverRef.current = resolve; });
+    return new Promise<Answer>(resolve => { resolverRef.current = resolve; });
   }, []);
 
-  const answer = (value: boolean) => {
+  const answer = (value: Answer) => {
     setOpen(null);
     resolverRef.current?.(value);
     resolverRef.current = null;
@@ -71,7 +78,7 @@ export function ConfirmProvider({ children }: { children: React.ReactNode }) {
               {open.message}
             </p>
 
-            <div className="mt-6 flex gap-3">
+            <div className={`mt-6 flex gap-3 ${open.altLabel ? 'flex-col-reverse sm:flex-row' : ''}`}>
               <button
                 type="button"
                 onClick={() => answer(false)}
@@ -79,6 +86,15 @@ export function ConfirmProvider({ children }: { children: React.ReactNode }) {
               >
                 {open.cancelLabel || 'Bekor qilish'}
               </button>
+              {open.altLabel && (
+                <button
+                  type="button"
+                  onClick={() => answer('alt')}
+                  className="flex-1 rounded-2xl border border-rose-200 dark:border-rose-900/50 py-3 text-xs font-extrabold text-rose-600 dark:text-rose-400 transition-all hover:bg-rose-50 dark:hover:bg-rose-950/30 cursor-pointer"
+                >
+                  {open.altLabel}
+                </button>
+              )}
               <button
                 type="button"
                 autoFocus
