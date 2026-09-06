@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import {
     ArrowLeft, Phone, Mail, Layers, Wallet,
-    Plus, X, Save, Target, Star, AlertCircle, GraduationCap, Pencil, Camera, Sparkles,
+    Plus, X, Save, Target, Star, AlertCircle, Pencil, Camera, Sparkles,
     CheckCircle2, XCircle, ChevronLeft, ChevronRight, CalendarDays,
-    Banknote, Clock, Trash2, Maximize2
+    Banknote, Clock, Trash2, Maximize2, Send
 } from 'lucide-react';
 import { useCRM } from '../context/CRMContext';
 import { useConfirm } from './ConfirmDialog';
@@ -58,7 +58,7 @@ const lbl = "block text-[11px] font-extrabold   text-matn-xira mb-2";
 export default function StaffDetails() {
     const { id } = useParams<{ id: string }>();
     const navigate = useNavigate();
-    const { teachers, groups, attendances, token, user: currentUser, showNotification, retryLoad } = useCRM();
+    const { teachers, groups, attendances, token, user: currentUser, showNotification, retryLoad, updateTeacher } = useCRM();
     const confirm = useConfirm();
     const { t } = useLang();
 
@@ -168,6 +168,12 @@ export default function StaffDetails() {
     // KPI calculation from groups
     const [kpiData,    setKpiData]    = useState<any>(null);
     const [kpiLoading, setKpiLoading] = useState(false);
+
+    // Ustoz kartasi: holat (Faol/Passiv/Arxiv) va davomatni Telegramga yuborish.
+    // Ilgari bular alohida "o'qituvchi profili" sahifasida edi va bir odam uchun
+    // ikkita profil ochilardi — chalkash edi, shuning uchun shu yerga ko'chirildi.
+    const [editingStatus, setEditingStatus] = useState(false);
+    const [isNotifying,   setIsNotifying]   = useState(false);
 
     // Guruh bo'yicha ustoz haqi: qaysi qator tahrirlanmoqda va qanday qiymat.
     const [payEditId,   setPayEditId]   = useState<number | null>(null);
@@ -316,6 +322,47 @@ export default function StaffDetails() {
     const linkedTeacher = (staffUser.role === 'TEACHER' || staffUser.role === 'SUPPORT_TEACHER')
         ? teachers.find(t => t.name.toLowerCase().trim() === staffUser.name.toLowerCase().trim())
         : null;
+
+    /** Tanlangan kun davomatini ustozning o'ziga Telegram orqali yuborish. */
+    const notifyTeacher = async () => {
+        if (!linkedTeacher || isNotifying) return;
+        setIsNotifying(true);
+        try {
+            const res = await fetch('/api/teacher-attendances/notify', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+                body: JSON.stringify({
+                    schoolId: linkedTeacher.schoolId || staffUser.schoolId,
+                    date: todayStr,
+                    teacherId: linkedTeacher.id,
+                    userId: staffUser.id,
+                }),
+            });
+            const data = await res.json().catch(() => ({}));
+            if (!res.ok || !data.success) {
+                showNotification('Xatolik: ' + (data.error || 'xabar yuborilmadi'), 'error');
+            } else if (data.total === 0) {
+                showNotification("Bugunga davomat qo'yilmagan", 'info');
+            } else if (data.sent === 0) {
+                showNotification("Ustoz Telegram botga ulanmagan", 'info');
+            } else {
+                showNotification(data.sent + " ta xabar yuborildi", 'success');
+            }
+        } catch (err: any) {
+            showNotification('Xabar yuborishda xatolik: ' + (err?.message || 'aloqa xatosi'), 'error');
+        } finally {
+            setIsNotifying(false);
+        }
+    };
+
+    /** Ustoz holatini almashtirish (Faol / Passiv / Arxiv). */
+    const changeTeacherStatus = async (next: string) => {
+        setEditingStatus(false);
+        if (!linkedTeacher || next === linkedTeacher.status) return;
+        try {
+            await updateTeacher(linkedTeacher.id, { status: next as any });
+        } catch { /* xabar CRMContext da chiqadi */ }
+    };
 
     // Ustoz yuritayotgan guruhlar va ular bo'yicha ko'rsatkichlar.
     // Hammasi mavjud yozuvlardan; reyting kabi bazada yo'q qiymat ko'rsatilmaydi.
@@ -661,6 +708,28 @@ export default function StaffDetails() {
                             <span className={`px-2 py-0.5 rounded-md text-[11px] border ${ROLE_COLORS[staffUser.role] || ''}`}>
                                 {getRoleLabel(staffUser.role)}
                             </span>
+                            {linkedTeacher && (editingStatus ? (
+                                <select
+                                    autoFocus
+                                    aria-label="Ustoz holati"
+                                    value={linkedTeacher.status}
+                                    onChange={e => changeTeacherStatus(e.target.value)}
+                                    onBlur={() => setEditingStatus(false)}
+                                    className="px-2 py-0.5 bg-ichki border border-chiziq rounded-md text-[11px] text-matn outline-none focus:border-brand cursor-pointer"
+                                >
+                                    <option value="Faol">Faol</option>
+                                    <option value="Passiv">Passiv</option>
+                                    <option value="Arxiv">Arxiv</option>
+                                </select>
+                            ) : (
+                                <button
+                                    onClick={() => isAdminOrManager && setEditingStatus(true)}
+                                    title={isAdminOrManager ? "Holatni o'zgartirish" : undefined}
+                                    className={`px-2 py-0.5 rounded-md text-[11px] border inline-flex items-center gap-1 ${isAdminOrManager ? 'cursor-pointer' : 'cursor-default'} ${linkedTeacher.status === 'Faol' ? 'bg-emerald-50 text-emerald-600 border-emerald-100 dark:bg-emerald-950/20 dark:text-emerald-400 dark:border-emerald-900/40' : linkedTeacher.status === 'Passiv' ? 'bg-amber-50 text-amber-600 border-amber-100 dark:bg-amber-950/20 dark:text-amber-400 dark:border-amber-900/40' : 'bg-gray-55 text-matn-xira border-chiziq dark:bg-gray-900/50'}`}>
+                                    {linkedTeacher.status}
+                                    {isAdminOrManager && <Pencil size={9} className="opacity-60" />}
+                                </button>
+                            ))}
                             {staffUser.position && (
                                 <>
                                     <span className="w-1 h-1 rounded-full bg-matn-xira" />
@@ -832,13 +901,8 @@ export default function StaffDetails() {
                                                     <InfoBox label="Lavozim"      value={getRoleLabel(staffUser.role)} />
                                                     {staffUser.position && <InfoBox label="Vazifa" value={staffUser.position} />}
                                                     {staffUser.phone && <InfoBox label={t('phone')} value={staffUser.phone} />}
-                                                    {linkedTeacher && (
-                                                        <button onClick={() => navigate(`/teachers/${linkedTeacher.id}`)}
-                                                            className="sm:col-span-2 flex items-center justify-between px-4 py-3 rounded-xl border border-chiziq text-[13px] text-brand hover:bg-brand/5 transition-colors cursor-pointer">
-                                                            <span className="flex items-center gap-2"><GraduationCap size={15} /> {t('view_teacher_profile')}</span>
-                                                            <ChevronRight size={15} />
-                                                        </button>
-                                                    )}
+                                                    {linkedTeacher?.birthDate && <InfoBox label="Tug'ilgan sana" value={linkedTeacher.birthDate} />}
+                                                    {linkedTeacher?.hiredDate && <InfoBox label="Ish boshlagan"  value={linkedTeacher.hiredDate} />}
                                                 </div>
                                             </div>
                                         </div>
@@ -1341,7 +1405,17 @@ export default function StaffDetails() {
                                     <div className="space-y-4">
                                         {/* Month selector */}
                                         <div className="flex items-center justify-between">
-                                            <span className="text-[11px] font-extrabold text-matn-xira">{t('attendance')}</span>
+                                            <div className="flex items-center gap-2">
+                                                <span className="text-[11px] font-extrabold text-matn-xira">{t('attendance')}</span>
+                                                {linkedTeacher && (
+                                                    <button onClick={notifyTeacher} disabled={isNotifying}
+                                                        title="Bugungi davomatni ustozning Telegramiga yuborish"
+                                                        className="px-3 py-1.5 bg-sky-50 dark:bg-sky-950/20 text-sky-600 dark:text-sky-400 border border-sky-100 dark:border-sky-900/40 rounded-xl text-[11px] font-extrabold hover:bg-sky-600 hover:text-white transition-all cursor-pointer disabled:opacity-50 inline-flex items-center gap-1.5">
+                                                        <Send size={12} />
+                                                        {isNotifying ? 'Yuborilmoqda…' : 'Telegramga yuborish'}
+                                                    </button>
+                                                )}
+                                            </div>
                                             <div className="flex items-center gap-2">
                                                 <button onClick={prevMonth} className="w-8 h-8 flex items-center justify-center rounded-xl bg-ichki border border-chiziq text-matn-sokin hover:border-brand hover:text-brand transition-all cursor-pointer">
                                                     <ChevronLeft size={14} />

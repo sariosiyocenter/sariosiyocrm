@@ -3172,16 +3172,46 @@ app.post('/api/teacher-attendances', authenticate, async (req, res, next) => {
 // hech qanday xabar yo'q edi. Xabar faqat ustozning o'ziga boradi.
 app.post('/api/teacher-attendances/notify', authenticate, async (req, res, next) => {
   try {
-    const { schoolId, date, teacherId } = req.body;
+    const { schoolId, date, teacherId, userId } = req.body;
     if (!schoolId || !date) return res.status(400).json({ error: "schoolId va date kerak" });
 
     const where = { schoolId: parseInt(schoolId), date };
     if (teacherId) where.teacherId = parseInt(teacherId);
 
-    const records = await prisma.teacherAttendance.findMany({
+    const rows = await prisma.teacherAttendance.findMany({
       where,
       include: { teacher: { select: { name: true, telegramId: true } } }
     });
+    const records = rows.map(r => ({
+      status: r.status,
+      name: r.teacher?.name,
+      telegramId: r.teacher?.telegramId,
+    }));
+
+    // Ustoz davomati ikki joyda belgilanishi mumkin: eski "o'qituvchi profili"
+    // (TeacherAttendance) va xodim profilidagi kalendar (StaffAttendance).
+    // Profillar birlashtirilgach xodim kalendari asosiy bo'ldi, shuning uchun
+    // o'sha kunga ustoz jurnalida yozuv bo'lmasa xodim jurnalidan olamiz.
+    if (records.length === 0 && userId) {
+      const staffRows = await prisma.staffAttendance.findMany({
+        where: { userId: parseInt(userId), date },
+        include: { user: { select: { name: true, telegramId: true } } },
+      });
+      // Telegram id ustoz yozuvida bo'lishi mumkin (bot ustozni shu yerga bog'laydi).
+      let teacherTg = null;
+      if (teacherId) {
+        const t = await prisma.teacher.findUnique({
+          where: { id: parseInt(teacherId) },
+          select: { telegramId: true },
+        });
+        teacherTg = t?.telegramId || null;
+      }
+      staffRows.forEach(r => records.push({
+        status: r.status,
+        name: r.user?.name,
+        telegramId: r.user?.telegramId || teacherTg,
+      }));
+    }
 
     if (records.length === 0) {
       return res.json({ success: true, sent: 0, skipped: 0, total: 0, message: "Bu kunga davomat qo'yilmagan" });
@@ -3195,23 +3225,22 @@ app.post('/api/teacher-attendances/notify', authenticate, async (req, res, next)
     let skipped = 0;
 
     for (const record of records) {
-      const teacher = record.teacher;
-      if (!teacher || !teacher.telegramId) { skipped++; continue; }
+      if (!record.telegramId) { skipped++; continue; }
 
       const icon = ICONS[record.status] || "\u2139\uFE0F";
       const message = [
         icon + " Davomat xabarnomasi",
         "",
-        "\u{1F464} " + teacher.name,
+        "\u{1F464} " + record.name,
         "\u{1F4CC} Holat: " + record.status,
         "\u{1F4C5} Sana: " + date
       ].join(String.fromCharCode(10));
 
       try {
-        await schoolBot.telegram.sendMessage(teacher.telegramId, message);
+        await schoolBot.telegram.sendMessage(record.telegramId, message);
         sent++;
       } catch (e) {
-        console.error('[Teacher notify] ' + teacher.name + ':', e.message);
+        console.error('[Teacher notify] ' + record.name + ':', e.message);
         skipped++;
       }
     }

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
     ArrowLeft, Phone, Calendar, UserCheck, GraduationCap,
     Presentation, Wallet, TrendingUp, Clock, CheckCircle, XCircle, Layers, ClipboardCheck, ChevronRight, Users,
@@ -12,7 +12,7 @@ export default function TeacherDetails() {
     const { id } = useParams<{ id: string }>();
     const navigate = useNavigate();
     const { teachers, groups, students, payments, teacherAttendances, addTeacherAttendance,
-        updateTeacher, showNotification, selectedSchoolId, user } = useCRM();
+        updateTeacher, showNotification, selectedSchoolId, user, users } = useCRM();
     const [activeTab, setActiveTab] = useState('umumiy');
     const [showAttendanceModal, setShowAttendanceModal] = useState(false);
     const [isPhotoViewerOpen, setIsPhotoViewerOpen] = useState(false);
@@ -21,6 +21,17 @@ export default function TeacherDetails() {
     const isAdminOrManager = user?.role === 'ADMIN' || user?.role === 'MANAGER';
 
     const teacher = teachers.find(t => t.id === Number(id));
+
+    // Bir ustoz uchun ikkita profil bo'lib qolgandi: xodim kartasi (/hr/:id) va
+    // shu sahifa. Chalkash edi, shuning uchun xodim kartasi yagona profil bo'ldi
+    // va bu manzil o'shanga yo'naltiradi. Eski havolalar ishlab turaveradi.
+    const linkedUser = teacher
+        ? (users || []).find((u: any) =>
+            String(u.name || '').toLowerCase().trim() === teacher.name.toLowerCase().trim())
+        : null;
+    useEffect(() => {
+        if (linkedUser) navigate(`/hr/${linkedUser.id}`, { replace: true });
+    }, [linkedUser?.id]);
 
     /** Bugungi davomatni ustozning o'ziga Telegram orqali yuborish. */
     const notifyTeacher = async () => {
