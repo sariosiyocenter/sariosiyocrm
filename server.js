@@ -1318,12 +1318,70 @@ app.put('/api/teachers/:id', authenticate, requireRole(...STAFF_MANAGERS), async
     res.json(teacher);
   } catch (error) { next(error); }
 });
+// Ustozni o'chirish. Ilgari bu shunchaki prisma.teacher.delete edi: guruhi yoki
+// davomati bor ustozda Prisma foreign key xatosi qaytarar, u global error
+// handler'ga tushib "Serverda xatolik yuz berdi" (500) bo'lib ko'rinardi va
+// rahbar nima qilish kerakligini bilmasdi. Endi sabab oldindan aytiladi —
+// xuddi /api/users/:id dagidek: arxiv yoki (davomat bo'lsa) butunlay o'chirish.
 app.delete('/api/teachers/:id', authenticate, requireRole(...STAFF_MANAGERS), async (req, res, next) => {
   try {
-    const { id } = req.params;
-    await prisma.teacher.delete({ where: { id: parseInt(id) } });
+    const teacherId = parseInt(req.params.id);
+    if (!Number.isInteger(teacherId)) return res.status(400).json({ error: "Ustoz raqami noto'g'ri" });
+
+    const teacher = await prisma.teacher.findUnique({ where: { id: teacherId } });
+    if (!teacher) return res.status(404).json({ error: 'Ustoz topilmadi' });
+
+    // Filial chegarasi: bir filial admini boshqa filialning ustozini o'chirmasin.
+    if (req.user.role !== 'SUPERADMIN' && teacher.schoolId !== req.user.schoolId) {
+      return res.status(403).json({ error: 'Bu ustoz boshqa filialga tegishli' });
+    }
+
+    const [guruhlar, davomatSoni] = await Promise.all([
+      prisma.group.findMany({ where: { teacherId }, select: { name: true } }),
+      prisma.teacherAttendance.count({ where: { teacherId } })
+    ]);
+
+    // Guruhda ustoz majburiy (Group.teacherId nullable emas), shuning uchun
+    // guruhi bor ustozni o'chirishning iloji yo'q — guruhlar egasiz qolardi.
+    // Bunday holatda faqat arxiv taklif qilinadi va qaysi guruhlar ekani aytiladi.
+    if (guruhlar.length > 0) {
+      const nomlar = guruhlar.map(g => g.name).join(', ');
+      return res.status(400).json({
+        error: "Bu ustozga " + guruhlar.length + " ta guruh biriktirilgan: " + nomlar +
+               ". Avval o'sha guruhlarga boshqa ustoz tayinlang, keyin o'chirasiz. " +
+               "Arxivga olsangiz ro'yxatdan yo'qoladi, guruhlar esa joyida qoladi.",
+        canArchive: true,
+        canForce: false
+      });
+    }
+
+    const majburiy = String(req.query.force || '') === '1' || req.body?.force === true;
+
+    if (davomatSoni > 0 && !majburiy) {
+      return res.status(400).json({
+        error: "Bu ustozda " + davomatSoni + " ta davomat yozuvi bor. Arxivga olsangiz " +
+               "ro'yxatdan yo'qoladi, tarix saqlanadi. Butunlay o'chirsangiz davomat ham o'chib ketadi.",
+        canArchive: true,
+        canForce: true
+      });
+    }
+
+    // Bitta tranzaksiya: davomat o'chib, ustoz qolib ketmasin.
+    await prisma.$transaction(async (tx) => {
+      if (davomatSoni > 0) await tx.teacherAttendance.deleteMany({ where: { teacherId } });
+      await tx.teacher.delete({ where: { id: teacherId } });
+    });
     res.json({ success: true });
-  } catch (error) { next(error); }
+  } catch (error) {
+    // Yuqorida sanab bo'lmagan bog'lanish qo'shilsa ham 500 emas, tushunarli javob.
+    if (error.code === 'P2003' || error.code === 'P2014') {
+      return res.status(400).json({
+        error: "Bu ustozga bog'langan yozuvlar bor, shuning uchun o'chirib bo'lmaydi. Uni arxivga oling.",
+        canArchive: true
+      });
+    }
+    next(error);
+  }
 });
 
 // Groups
@@ -1662,7 +1720,7 @@ app.get('/api/public/schools/:schoolId/groups', async (req, res, next) => {
       where: { schoolId },
       select: {
         id: true, name: true, schedule: true, days: true, courseId: true,
-        course: { select: { name: true } },
+        course: { select: { name: true, price: true } },
         teacher: { select: { name: true } },
         roomRel: { select: { capacity: true } },
         _count: { select: { students: true } }
@@ -1677,6 +1735,7 @@ app.get('/api/public/schools/:schoolId/groups', async (req, res, next) => {
       days: g.days,
       courseId: g.courseId,
       courseName: g.course?.name || '',
+      price: g.course?.price ?? null,
       teacherName: g.teacher?.name || '',
       studentCount: g._count.students,
       capacity: g.roomRel?.capacity ?? null

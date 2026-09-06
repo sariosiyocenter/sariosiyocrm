@@ -16,6 +16,7 @@ interface PublicGroup {
     days: string;
     courseId: number;
     courseName: string;
+    price: number | null;
     teacherName: string;
     studentCount: number;
     capacity: number | null;
@@ -215,10 +216,12 @@ export default function PublicApply() {
         );
     }
 
-    // Tanlangan kursning guruhlari. Kurs tanlanmagan bo'lsa hech narsa ko'rsatilmaydi.
-    const courseGroups = form.course
-        ? groups.filter(g => g.courseName === form.course)
-        : [];
+    // Markazda "kurs" deb aynan guruh tushuniladi: CRM dagi "Kurslar" bo'limi
+    // ham guruhlarni ko'rsatadi. Shuning uchun ariza beruvchiga ham o'sha
+    // ro'yxatning o'zi beriladi — ilgari avval kurs turkumi (Matematika),
+    // keyin alohida guruh so'ralardi va ro'yxat markazdagidan farq qilardi.
+    const applyGroups = groups;
+    const selectedGroup = applyGroups.find(g => g.id === form.groupId) || null;
 
     const inp = "w-full pl-10 pr-4 py-3.5 bg-ichki border border-chiziq rounded-2xl text-xs font-bold text-gray-950 dark:text-white focus:border-[var(--brand-color,#1b6b6b)] focus:ring-4 focus:ring-[var(--brand-color,#1b6b6b)]/10 outline-none transition-all";
     const lbl = "block text-[11px] font-extrabold uppercase tracking-wider text-matn-xira mb-2";
@@ -552,58 +555,47 @@ export default function PublicApply() {
                                     <select
                                         required
                                         className={`${inp} appearance-none cursor-pointer`}
-                                        value={form.course}
-                                        onChange={e => setForm({ ...form, course: e.target.value, groupId: '' })}
+                                        value={applyGroups.length ? form.groupId : form.course}
+                                        onChange={e => {
+                                            if (!applyGroups.length) {
+                                                // Markazda hali birorta kurs ochilmagan bo'lsa ariza
+                                                // berib bo'lmay qolmasin: turkum nomi bo'yicha olamiz.
+                                                setForm({ ...form, course: e.target.value, groupId: '' });
+                                                return;
+                                            }
+                                            const g = applyGroups.find(x => String(x.id) === e.target.value);
+                                            setForm({ ...form, groupId: g ? g.id : '', course: g ? g.courseName : '' });
+                                        }}
                                     >
                                         <option value="">Kursni tanlang</option>
-                                        {courses.map(c => (
-                                            <option key={c.id} value={c.name}>{c.name}</option>
-                                        ))}
+                                        {applyGroups.length
+                                            ? applyGroups.map(g => (
+                                                <option key={g.id} value={g.id}>
+                                                    {[g.name,
+                                                      DAY_LABELS[g.days] || (g.days === 'Belgilanmagan' ? '' : g.days),
+                                                      g.schedule && !String(g.schedule).includes('Belgilanmagan') ? g.schedule : '',
+                                                      g.price ? g.price.toLocaleString('ru-RU') + " so'm/oy" : '',
+                                                    ].filter(Boolean).join(' — ')}
+                                                </option>
+                                            ))
+                                            : courses.map(c => (
+                                                <option key={c.id} value={c.name}>{c.name}</option>
+                                            ))}
                                     </select>
                                 </div>
+                                {selectedGroup && (
+                                    <p className="text-[11px] font-bold text-matn-xira mt-2">
+                                        {[selectedGroup.teacherName && 'Ustoz: ' + selectedGroup.teacherName,
+                                          selectedGroup.capacity !== null
+                                            ? (selectedGroup.studentCount >= selectedGroup.capacity
+                                                ? "Guruh to'lgan"
+                                                : (selectedGroup.capacity - selectedGroup.studentCount) + ' ta joy bor')
+                                            : '',
+                                        ].filter(Boolean).join(' · ')}
+                                    </p>
+                                )}
                             </div>
 
-                            {/* Hozir ochiq guruhlar. Kurs tanlangach faqat o'sha kursnikilari
-                                ko'rsatiladi; guruh tanlash ixtiyoriy. */}
-                            {courseGroups.length > 0 && (
-                                <div>
-                                    <label className={lbl}>Guruhni tanlang (ixtiyoriy)</label>
-                                    <div className="space-y-2">
-                                        {courseGroups.map(g => {
-                                            const isFull = g.capacity !== null && g.studentCount >= g.capacity;
-                                            const selected = form.groupId === g.id;
-                                            return (
-                                                <button
-                                                    key={g.id}
-                                                    type="button"
-                                                    onClick={() => setForm({ ...form, groupId: selected ? '' : g.id })}
-                                                    className={`w-full text-left px-4 py-3 rounded-2xl border transition-all cursor-pointer ${
-                                                        selected
-                                                            ? 'border-[var(--brand-color,#1b6b6b)] bg-[var(--brand-color,#1b6b6b)]/8'
-                                                            : 'border-chiziq bg-ichki hover:border-[var(--brand-color,#1b6b6b)]/50'
-                                                    }`}
-                                                >
-                                                    <div className="flex items-center justify-between gap-2">
-                                                        <span className="text-xs font-extrabold text-gray-950 dark:text-white truncate">{g.name}</span>
-                                                        {isFull
-                                                            ? <span className="text-[10px] font-extrabold text-rose-500 shrink-0">To'lgan</span>
-                                                            : g.capacity !== null && (
-                                                                <span className="text-[10px] font-bold text-matn-xira shrink-0 tabular-nums">
-                                                                    {g.capacity - g.studentCount} ta joy
-                                                                </span>
-                                                            )}
-                                                    </div>
-                                                    <div className="text-[11px] font-bold text-matn-xira mt-1 truncate">
-                                                        {[DAY_LABELS[g.days] || g.days, g.schedule, g.teacherName]
-                                                            .filter(Boolean)
-                                                            .join(' · ')}
-                                                    </div>
-                                                </button>
-                                            );
-                                        })}
-                                    </div>
-                                </div>
-                            )}
 
                             <div>
                                 <label className={lbl}>Yashash manzilingiz</label>
