@@ -48,7 +48,9 @@ export async function processMonthlyBilling(schoolId, month) {
 
   const groups = await prisma.group.findMany({
     where: { schoolId },
-    include: { course: true, students: { where: { status: { in: ['Faol', 'Sinov'] } } } }
+    // Sinov o'quvchilari hisoblanmaydi: sinov darsi bepul, "Faol" bo'lganda
+    // o'sha kundan boshlab yoziladi (services/enrollment.js → activateStudent).
+    include: { course: true, students: { where: { status: 'Faol' } } }
   });
 
   // Work out every charge first, then write once. The previous version issued two

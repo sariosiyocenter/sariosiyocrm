@@ -9,7 +9,7 @@ import { encryptSecret, decryptSecret } from './lib/secrets.js';
 import { claimBillingRun, releaseBillingRun, processMonthlyBilling } from './services/billing.js';
 import jwt from 'jsonwebtoken';
 import bot, { startBot, notifyAdmins, getTelegramBot } from './src/bot/bot.js';
-import { transferStudent, refundStudent, enrollStudent, unenrollStudent, syncGroupMembers } from './services/enrollment.js';
+import { transferStudent, refundStudent, enrollStudent, unenrollStudent, syncGroupMembers, activateStudent, syncStudentGroups } from './services/enrollment.js';
 import { studentLedger, receivedForGroups, monthCoverage } from './services/ledger.js';
 import bcrypt from 'bcryptjs';
 import helmet from 'helmet';
@@ -1132,10 +1132,13 @@ app.put('/api/students/:id', authenticate, async (req, res, next) => {
     }
 
     // If status is changing, update statusChangedAt
+    let activating = false;
     if (data.status) {
       const oldStudent = await prisma.student.findUnique({ where: { id: studentId } });
       if (oldStudent && oldStudent.status !== data.status) {
         data.statusChangedAt = new Date();
+        // Sinov → Faol: sinov darslari bepul edi, endi hisob boshlanadi.
+        activating = oldStudent.status === 'Sinov' && data.status === 'Faol';
       }
     }
 
@@ -1170,16 +1173,25 @@ app.put('/api/students/:id', authenticate, async (req, res, next) => {
       data
     });
 
+    // Guruhlar ro'yxati o'zgarsa — qo'shilganlarga oyning qolgan darslari
+    // uchun hisob, chiqarilganlarga qaytarish. Ilgari shunchaki "set" edi.
+    const notes = [];
+    let ledgerChanged = false;
     if (groups) {
-      console.log(`Setting groups for student ${studentId}:`, groups);
-      await prisma.student.update({
-        where: { id: studentId },
-        data: {
-          groups: {
-            set: groups.map(gId => ({ id: parseInt(gId) }))
-          }
-        }
-      });
+      const sync = await syncStudentGroups({ studentId, groupIds: groups.map(gId => parseInt(gId)) });
+      if (sync.error) notes.push(sync.error);
+      if (sync.warning) notes.push(sync.warning);
+      if (sync.moved) ledgerChanged = true;
+    }
+
+    let activation = null;
+    if (activating) {
+      activation = await activateStudent({ studentId });
+      if (activation.error) { notes.push(activation.error); activation = null; }
+      else {
+        if (activation.warning) notes.push(activation.warning);
+        if (activation.total > 0) ledgerChanged = true;
+      }
     }
 
     const updatedStudent = await prisma.student.findUnique({
@@ -1189,7 +1201,10 @@ app.put('/api/students/:id', authenticate, async (req, res, next) => {
 
     res.json({
       ...updatedStudent,
-      groups: updatedStudent.groups.map(g => g.id)
+      groups: updatedStudent.groups.map(g => g.id),
+      activation: activation || undefined,
+      warning: notes.join(' ') || undefined,
+      ledgerChanged: ledgerChanged || undefined,
     });
   } catch (error) {
     console.error(`Error updating student ${req.params.id}:`, error);
@@ -1474,6 +1489,7 @@ app.post('/api/groups/:id/students', authenticate, async (req, res, next) => {
       studentIds: updatedGroup.students.map(s => s.id),
       courseName: updatedGroup.course?.name,
       charge: enrol.charge, lessons: enrol.lessons, warning: enrol.warning || undefined,
+      trial: enrol.trial || undefined,
     });
   } catch (error) {
     console.error('Error connecting student to group:', error);
@@ -5207,9 +5223,10 @@ app.get('/api/billing/status', authenticate, async (req, res, next) => {
     if (!schoolId || !month) return res.status(400).json({ error: 'schoolId and month required' });
     const sid = parseInt(schoolId);
 
+    // Sinov o'quvchilari bu jadvalga kirmaydi — ularga hisob yozilmaydi.
     const groups = await prisma.group.findMany({
       where: { schoolId: sid },
-      include: { course: true, students: { where: { status: { in: ['Faol', 'Sinov'] } } } }
+      include: { course: true, students: { where: { status: 'Faol' } } }
     });
 
     let billingDone = !!(await prisma.payment.findFirst({
@@ -5292,7 +5309,7 @@ app.post('/api/billing/notify-debtors', authenticate, requireRole(...STAFF_MANAG
       ? ['Passiv', 'Ketgan']
       : statusFilter === 'all'
         ? ['Faol', 'Sinov', 'Passiv', 'Ketgan']
-        : ['Faol', 'Sinov'];
+        : ['Faol'];
 
     const groups = await prisma.group.findMany({
       where: { schoolId: sid },

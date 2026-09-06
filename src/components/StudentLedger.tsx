@@ -40,7 +40,7 @@ const monthLabel = (m: string) => {
     return `${MONTHS[mm - 1]} ${y}`;
 };
 
-export default function StudentLedger({ studentId, refreshKey }: { studentId: number; refreshKey?: any }) {
+export default function StudentLedger({ studentId, refreshKey, trial }: { studentId: number; refreshKey?: any; trial?: boolean }) {
     const [data, setData] = useState<Ledger | null>(null);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
@@ -84,6 +84,11 @@ export default function StudentLedger({ studentId, refreshKey }: { studentId: nu
 
     return (
         <div className="space-y-3">
+            {trial && (
+                <p className="px-4 py-3 rounded-xl bg-ogoh-fon border border-ogoh/30 text-[11px] font-bold text-ogoh">
+                    Sinov davri — hisob yozilmaydi. Holati "Faol" qilinganda o'sha kundan oy oxirigacha bo'lgan darslar uchun hisob yoziladi.
+                </p>
+            )}
             <div className="grid grid-cols-2 gap-3">
                 <div className="px-4 py-3 rounded-xl border bg-yaxshi-fon border-yaxshi/25">
                     <span className="text-[11px] text-matn-sokin flex items-center gap-1"><Wallet size={12} /> Hisobdagi avans</span>

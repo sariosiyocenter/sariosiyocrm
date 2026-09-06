@@ -648,9 +648,10 @@ export const CRMProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
     const addStudent = async (student: Omit<Student, 'id' | 'schoolId'> & { schoolId?: number }) => {
         try {
-            const newStudent = await apiCall('students', 'POST', student);
+            const { warning, ...newStudent } = await apiCall('students', 'POST', student);
             setState(prev => ({ ...prev, students: [...prev.students, newStudent] }));
             showNotification("Yangi o'quvchi muvaffaqiyatli qo'shildi", "success");
+            if (warning) showNotification(warning, 'error');
         } catch (err: any) {
             showNotification("O'quvchini qo'shishda xatolik: " + err.message, "error");
             throw err;
@@ -659,9 +660,18 @@ export const CRMProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
     const updateStudent = async (id: number, student: Partial<Student>) => {
         try {
-            const updated = await apiCall(`students/${id}`, 'PUT', student);
+            const { activation, warning, ledgerChanged, ...updated } = await apiCall(`students/${id}`, 'PUT', student);
             setState(prev => ({ ...prev, students: prev.students.map(s => s.id === id ? updated : s) }));
-            showNotification("O'quvchi ma'lumotlari yangilandi", "success");
+            // Sinov → Faol: shu kundan oy oxirigacha hisob yozildi — rahbar buni ko'rsin.
+            if (activation && activation.total > 0) {
+                const parts = (activation.charges || []).map((c: any) => `${c.groupName}: ${c.lessons} dars`).join(', ');
+                showNotification(`Faol qilindi — ${parts}; jami ${Number(activation.total).toLocaleString('ru-RU')} so'm hisoblandi`, 'success');
+            } else {
+                showNotification("O'quvchi ma'lumotlari yangilandi", "success");
+            }
+            if (warning) showNotification(warning, 'error');
+            // Yangi hisob yozuvlari to'lovlar ro'yxatiga ham tushsin.
+            if (ledgerChanged) retryLoad();
         } catch (err: any) {
             showNotification("O'quvchini yangilashda xatolik: " + err.message, "error");
             throw err;
@@ -739,10 +749,21 @@ export const CRMProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             setState(prev => ({
                 ...prev,
                 groups: prev.groups.map(g => g.id === groupId ? groupRes : g),
-                students: prev.students.map(s => s.id === studentId ? { ...s, groups: [...(s.groups || []), groupId] } : s)
+                students: prev.students.map(s => s.id === studentId
+                    ? { ...s, groups: [...(s.groups || []), groupId], balance: (s.balance || 0) - (groupRes.charge || 0) }
+                    : s)
             }));
-            
-            showNotification("O'quvchi kursga biriktirildi", "success");
+
+            // Qo'shilgan kundan oy oxirigacha hisob yozildi (yoki sinov — yozilmadi).
+            if (groupRes.trial) {
+                showNotification("Kursga biriktirildi. Sinov o'quvchi — hisob yozilmadi, Faol qilinganda yoziladi", "info");
+            } else if (groupRes.charge > 0) {
+                showNotification(`Kursga biriktirildi — ${groupRes.lessons} dars uchun ${Number(groupRes.charge).toLocaleString('ru-RU')} so'm hisoblandi`, "success");
+                retryLoad();
+            } else {
+                showNotification("O'quvchi kursga biriktirildi", "success");
+            }
+            if (groupRes.warning) showNotification(groupRes.warning, 'error');
         } catch (err: any) {
             showNotification("Xatolik: " + err.message, "error");
         }

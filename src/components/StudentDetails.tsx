@@ -1399,7 +1399,7 @@ export default function StudentDetails() {
 
                                         <div className="space-y-4">
                                             <span className="text-[11px] font-bold text-matn-xira block pb-2 border-b border-gray-55 dark:border-gray-800/50">Hisob — oylar bo'yicha</span>
-                                            <StudentLedger studentId={student.id} refreshKey={studentPayments.length + ':' + student.balance} />
+                                            <StudentLedger studentId={student.id} trial={student.status === 'Sinov'} refreshKey={studentPayments.length + ':' + student.balance} />
                                             <span className="text-[11px] font-bold text-matn-xira block pb-2 border-b border-gray-55 dark:border-gray-800/50">{t('latest_payments')}</span>
                                             <div className="space-y-3">
                                                 {studentPayments.slice(0, 4).map(p => {

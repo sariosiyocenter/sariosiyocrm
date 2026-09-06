@@ -112,6 +112,22 @@ export async function transferStudent({ studentId, fromGroupId, toGroupId, date,
   if (!to) return { error: 'Yangi guruh topilmadi' };
   if (from && from.id === to.id) return { error: 'Guruhlar bir xil' };
 
+  // Sinov o'quvchisi guruhdan guruhga o'tsa — hisob yo'q, faqat a'zolik.
+  if (student.status === 'Sinov') {
+    const result = {
+      month, date, trial: true,
+      student: { id: student.id, name: student.name, balanceBefore: student.balance },
+      lines: [], balanceDelta: 0, balanceAfter: student.balance, applied: false,
+    };
+    if (!apply) return result;
+    await prisma.student.update({
+      where: { id: student.id },
+      data: { groups: { ...(from ? { disconnect: { id: from.id } } : {}), connect: { id: to.id } } },
+    });
+    result.applied = true;
+    return result;
+  }
+
   // Jadvalsiz guruhda dars sonini bilib bo'lmaydi — taxmin qilish pul
   // masalasida yaramaydi, shuning uchun aniq aytamiz.
   const noSchedule = [from, to].filter(g => g && !hasSchedule(g.days));
@@ -227,6 +243,8 @@ export async function refundStudent({ studentId, date, schoolId, mode, apply, gr
     }
   });
   if (!student) return { error: 'O\'quvchi topilmadi' };
+  // Sinov o'quvchisidan hech narsa yechilmagan — qaytarish ham, hisob ham yo'q.
+  const trial = student.status === 'Sinov';
 
   const wanted = Array.isArray(groupIds) && groupIds.length
     ? student.groups.filter(g => groupIds.map(Number).includes(g.id))
@@ -252,7 +270,7 @@ export async function refundStudent({ studentId, date, schoolId, mode, apply, gr
     const ch = await chargedSoFar(student.id, group.id, month, used.monthlyPrice, claimed);
     const charged = ch.total;
     claimIds.push(...ch.legacyIds.map(id => ({ id, groupId: group.id, courseId: group.courseId })));
-    const adjust = charged - used.due;
+    const adjust = trial ? 0 : charged - used.due;
     lines.push({
       groupId: group.id, groupName: group.name, teacher: group.teacher?.name || null,
       ...used, alreadyCharged: charged, adjust,
@@ -330,6 +348,37 @@ export function todayTashkent() {
 }
 
 /**
+ * Shu kundan oy oxirigacha bo'lgan darslar uchun hisob (yozuv tayyorlanadi,
+ * bazaga yozilmaydi). Shu oyda shu guruh uchun allaqachon yechilgan qism
+ * ayiriladi — chiqib qayta kirgan yoki oylik hisob o'tib bo'lgan
+ * o'quvchidan ikki marta olinmaydi.
+ */
+async function remainingMonthCharge(student, group, day, reason) {
+  const month = day.slice(0, 7);
+  const bounds = monthBounds(month);
+  const out = { write: null, warning: null, info: { charge: 0, lessons: 0 } };
+  if (!bounds) return out;
+  if (!hasSchedule(group.days)) {
+    out.warning = `${group.name} guruhining jadvali belgilanmagan — bu oy uchun hisob yozilmadi. Guruh kunlarini (Toq / Juft / Har kuni) belgilang.`;
+    return out;
+  }
+  const rest = periodDue(student, group, month, day, bounds.last);
+  if (!rest || rest.due <= 0) return out;
+  const ch = await chargedSoFar(student.id, group.id, month, rest.monthlyPrice, new Set());
+  const charge = Math.max(0, rest.due - ch.total);
+  out.info = { charge, lessons: rest.lessons, lessonsInMonth: rest.lessonsInMonth, perLesson: rest.perLesson, alreadyCharged: ch.total };
+  if (charge > 0) {
+    out.write = {
+      studentId: student.id, groupId: group.id, courseId: group.courseId,
+      amount: -charge, type: 'Oylik', date: day,
+      description: `${CHARGE_PREFIX} ${group.name} — ${reason} ${day.slice(8, 10)}.${day.slice(5, 7)} dan (${rest.lessons} dars)`,
+      schoolId: student.schoolId,
+    };
+  }
+  return out;
+}
+
+/**
  * O'quvchini guruhga qo'shish — va o'sha zahoti oyning qolgan darslari uchun
  * hisob yozish. 7-sentabrda qo'shilsa, 7-sidan oy oxirigacha nechta dars
  * bo'lsa, shuncha dars uchun. Hamyonida avans bo'lsa hisob o'zi shundan
@@ -361,26 +410,16 @@ export async function enrollStudent({ studentId, groupId, date, schoolId, apply 
 
   let write = null;
   if (!already) {
-    if (!hasSchedule(group.days)) {
-      result.warning = `${group.name} guruhining jadvali belgilanmagan — bu oy uchun hisob yozilmadi. Guruh kunlarini (Toq / Juft / Har kuni) belgilang.`;
+    if (student.status === 'Sinov') {
+      // Sinov darsiga kelgan o'quvchi — hisob yozilmaydi. "Faol" qilinganda
+      // o'sha kundan oy oxirigacha bo'lgan darslar uchun yoziladi
+      // (activateStudent).
+      result.trial = true;
     } else {
-      const rest = periodDue(student, group, month, day, bounds.last);
-      if (rest && rest.due > 0) {
-        // Shu oyda shu guruh uchun allaqachon yechilgan bo'lsa (masalan chiqib
-        // qayta kirdi, yoki oylik hisob o'tib bo'lgan) — ustiga yozmaymiz.
-        const ch = await chargedSoFar(student.id, group.id, month, rest.monthlyPrice, new Set());
-        const charge = Math.max(0, rest.due - ch.total);
-        result.charge = charge; result.lessons = rest.lessons; result.lessonsInMonth = rest.lessonsInMonth;
-        result.perLesson = rest.perLesson; result.alreadyCharged = ch.total;
-        if (charge > 0) {
-          write = {
-            studentId: student.id, groupId: group.id, courseId: group.courseId,
-            amount: -charge, type: 'Oylik', date: day,
-            description: `${CHARGE_PREFIX} ${group.name} — qo'shilish ${day.slice(8, 10)}.${day.slice(5, 7)} dan (${rest.lessons} dars)`,
-            schoolId: student.schoolId,
-          };
-        }
-      }
+      const c = await remainingMonthCharge(student, group, day, "qo'shilish");
+      Object.assign(result, c.info);
+      result.warning = c.warning;
+      write = c.write;
     }
   }
 
@@ -490,4 +529,74 @@ export async function syncGroupMembers({ groupId, studentIds, date, schoolId }) 
     results.push(r);
   }
   return { results, warning: [...new Set(warnings)].join(' ') || null };
+}
+
+/**
+ * Sinov o'quvchisi "Faol" bo'ldi: hamma guruhi uchun shu kundan oy oxirigacha
+ * hisob yoziladi. Sinov darslari bepul — hisob faollashgan kundan boshlanadi.
+ * Shu oyda allaqachon yechilgan guruh (masalan Faol paytida qo'shilgan)
+ * ikkinchi marta hisoblanmaydi.
+ */
+export async function activateStudent({ studentId, date, schoolId }) {
+  const day = date || todayTashkent();
+  const student = await prisma.student.findFirst({
+    where: { id: Number(studentId), ...(schoolId ? { schoolId } : {}) },
+    include: {
+      groups: { include: { course: { select: { name: true, price: true } }, teacher: { select: { id: true, name: true } } } },
+    },
+  });
+  if (!student) return { error: "O'quvchi topilmadi" };
+
+  const charges = [];
+  const writes = [];
+  const warnings = [];
+  for (const group of student.groups) {
+    const c = await remainingMonthCharge(student, group, day, 'faollashdi');
+    if (c.warning) warnings.push(c.warning);
+    if (c.write) {
+      writes.push(c.write);
+      charges.push({ groupId: group.id, groupName: group.name, ...c.info });
+    }
+  }
+  const total = writes.reduce((s, w) => s - w.amount, 0);
+  if (writes.length) {
+    await prisma.$transaction([
+      prisma.payment.createMany({ data: writes }),
+      prisma.student.update({ where: { id: student.id }, data: { balance: { decrement: total } } }),
+    ]);
+  }
+  return { date: day, charges, total, warning: [...new Set(warnings)].join(' ') || null };
+}
+
+/**
+ * O'quvchining guruhlar ro'yxatini yangi holatga keltirish (o'quvchi
+ * tahrirlash oynasi): qo'shilganlarga hisob, chiqarilganlarga qaytarish.
+ * Ilgari bu yerda shunchaki "set" bo'lardi — hisobsiz.
+ */
+export async function syncStudentGroups({ studentId, groupIds, date, schoolId }) {
+  const student = await prisma.student.findFirst({
+    where: { id: Number(studentId), ...(schoolId ? { schoolId } : {}) },
+    include: { groups: { select: { id: true } } },
+  });
+  if (!student) return { error: "O'quvchi topilmadi" };
+  const wanted = new Set((groupIds || []).map(Number).filter(Number.isInteger));
+  const current = new Set(student.groups.map(g => g.id));
+  const warnings = [];
+  const results = [];
+  for (const gid of wanted) {
+    if (current.has(gid)) continue;
+    const r = await enrollStudent({ studentId: student.id, groupId: gid, date, schoolId: student.schoolId });
+    if (r.error) { warnings.push(r.error); continue; }
+    if (r.warning) warnings.push(r.warning);
+    results.push(r);
+  }
+  for (const gid of current) {
+    if (wanted.has(gid)) continue;
+    const r = await unenrollStudent({ studentId: student.id, groupId: gid, date, schoolId: student.schoolId });
+    if (r.error) { warnings.push(r.error); continue; }
+    if (r.warning) warnings.push(r.warning);
+    results.push(r);
+  }
+  const moved = results.some(r => (r.charge || 0) > 0 || (r.refund || 0) > 0);
+  return { results, moved, warning: [...new Set(warnings)].join(' ') || null };
 }
