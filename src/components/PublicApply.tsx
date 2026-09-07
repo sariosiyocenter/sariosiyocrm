@@ -226,6 +226,8 @@ export default function PublicApply() {
     // keyin alohida guruh so'ralardi va ro'yxat markazdagidan farq qilardi.
     const applyGroups = groups;
     const selectedGroup = applyGroups.find(g => g.id === form.groupId) || null;
+    // Tanlash uchun birorta guruh yoki kurs bormi.
+    const kursTanlovi = applyGroups.length > 0 || courses.length > 0;
 
     const inp = "w-full pl-10 pr-4 py-3.5 bg-ichki border border-chiziq rounded-2xl text-xs font-bold text-gray-950 dark:text-white focus:border-[var(--brand-color,#1b6b6b)] focus:ring-4 focus:ring-[var(--brand-color,#1b6b6b)]/10 outline-none transition-all";
     const lbl = "block text-[11px] font-extrabold uppercase tracking-wider text-matn-xira mb-2";
@@ -567,11 +569,26 @@ export default function PublicApply() {
                             <span className={secTitle}>Kurs va manzil</span>
 
                             <div>
-                                <label className={lbl}>Qaysi kursda o'qimoqchisiz? *</label>
+                                <label className={lbl}>
+                                    Qaysi kursda o'qimoqchisiz?{kursTanlovi ? ' *' : ''}
+                                </label>
                                 <div className="relative">
                                     <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-matn-xira">
                                         <BookOpen size={15} />
                                     </div>
+                                    {/* Yangi ochilgan filialda hali birorta guruh ham, kurs ham
+                                        bo'lmasligi mumkin. O'shanda ro'yxat bo'sh, maydon esa
+                                        majburiy bo'lib qolar va ariza umuman yuborilmasdi.
+                                        Bunday holatda oddiy matn maydoni beriladi. */}
+                                    {!kursTanlovi ? (
+                                        <input
+                                            type="text"
+                                            className={inp}
+                                            placeholder="Masalan: Ingliz tili"
+                                            value={form.course}
+                                            onChange={e => setForm({ ...form, course: e.target.value, groupId: '' })}
+                                        />
+                                    ) : (
                                     <select
                                         required
                                         className={`${inp} appearance-none cursor-pointer`}
@@ -602,7 +619,13 @@ export default function PublicApply() {
                                                 <option key={c.id} value={c.name}>{c.name}</option>
                                             ))}
                                     </select>
+                                    )}
                                 </div>
+                                {!kursTanlovi && (
+                                    <p className="text-[11px] font-bold text-matn-xira mt-2">
+                                        Bu filialda hozircha guruhlar ochilmagan — qiziqqan yo'nalishingizni yozib qoldiring.
+                                    </p>
+                                )}
                                 {selectedGroup && (
                                     <p className="text-[11px] font-bold text-matn-xira mt-2">
                                         {[selectedGroup.teacherName && 'Ustoz: ' + selectedGroup.teacherName,

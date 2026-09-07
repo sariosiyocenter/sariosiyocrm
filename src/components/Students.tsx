@@ -166,9 +166,6 @@ export default function Students() {
     const [isLinkModalOpen, setIsLinkModalOpen] = useState(false);
     const [qrCodeDataUrl, setQrCodeDataUrl] = useState('');
     const [copySuccess, setCopySuccess] = useState(false);
-    const [applyUrl, setApplyUrl] = useState('');
-
-    const LINK_ROTATE_MS = 30 * 60 * 1000;
 
     // Havola doim bitta filialga tegishli. Yuqoridagi tanlagichda "To'liq
     // o'quv markazi" turgan bo'lsa selectedSchoolId 0 bo'lardi va havola
@@ -182,66 +179,36 @@ export default function Students() {
             : (schools?.[0]?.id ?? null)));
     }, [isLinkModalOpen, selectedSchoolId, schools]);
 
+    // Bitta havola — QR ham, nusxalanadigan manzil ham shu.
+    //
+    // Ilgari 30 daqiqada yangilanadigan "bir martalik" token ham bor edi,
+    // lekin u himoya bermasdi: tokensiz /apply/:filial manzili baribir ochiq
+    // ishlardi. Foydasi yo'q, ziyoni bor edi — yuborilgan havola yarim
+    // soatdan keyin "eskirgan" bo'lib qolardi. Ariza beruvchidan himoya
+    // serverda: soatiga 20 ta so'rov cheklovi va bir xil ism-telefon
+    // uchun takroriylik tekshiruvi.
+    const applyUrl = linkSchoolId
+        ? `${window.location.origin}/apply/${linkSchoolId}`
+        : '';
+
     useEffect(() => {
-        if (!isLinkModalOpen || !linkSchoolId) {
-            setApplyUrl('');
+        if (!isLinkModalOpen || !applyUrl) {
             setQrCodeDataUrl('');
             return;
         }
-
         let cancelled = false;
-
-        const generateLink = async () => {
+        (async () => {
             try {
-                const authToken = localStorage.getItem('token');
-                const res = await fetch(`/api/public/schools/${linkSchoolId}/tokens`, {
-                    method: 'POST',
-                    headers: { 'Authorization': `Bearer ${authToken}` }
-                });
-                const data = await res.json().catch(() => ({}));
-                if (cancelled) return;
-                if (!res.ok || !data.token) {
-                    showNotification(data.error || "Havolani yaratib bo'lmadi", 'error');
-                    return;
-                }
-
-                const url = `${window.location.origin}/apply/${linkSchoolId}?token=${data.token}`;
-                setApplyUrl(url);
-
                 const QRCodeLib = await import('qrcode');
                 const QRCode = QRCodeLib.default || QRCodeLib;
-                const qrUrl = await QRCode.toDataURL(url, { width: 200, margin: 2 });
+                const qrUrl = await QRCode.toDataURL(applyUrl, { width: 200, margin: 2 });
                 if (!cancelled) setQrCodeDataUrl(qrUrl);
             } catch (err) {
-                console.error(err);
+                console.error('QR yaratilmadi', err);
             }
-        };
-
-        generateLink();
-        const interval = setInterval(generateLink, LINK_ROTATE_MS);
-
-        return () => {
-            cancelled = true;
-            clearInterval(interval);
-        };
-    }, [isLinkModalOpen, linkSchoolId]);
-
-    // Yuborish uchun eskirmaydigan havola. QR resepshn stolida turadi va
-    // xavfsizlik uchun 30 daqiqada yangilanadi, lekin ota-onaga Telegramdan
-    // tashlangan havola yarim soatdan keyin "eskirgan" bo'lib qolardi.
-    const doimiyUrl = linkSchoolId
-        ? `${window.location.origin}/apply/${linkSchoolId}`
-        : '';
-    const [doimiyCopied, setDoimiyCopied] = useState(false);
-    const copyDoimiyLink = () => {
-        if (!doimiyUrl) return;
-        navigator.clipboard.writeText(doimiyUrl)
-            .then(() => {
-                setDoimiyCopied(true);
-                setTimeout(() => setDoimiyCopied(false), 2000);
-            })
-            .catch(() => showNotification("Nusxalab bo'lmadi", 'error'));
-    };
+        })();
+        return () => { cancelled = true; };
+    }, [isLinkModalOpen, applyUrl]);
 
     const copyLinkToClipboard = () => {
         if (!applyUrl) return;
@@ -250,7 +217,7 @@ export default function Students() {
                 setCopySuccess(true);
                 setTimeout(() => setCopySuccess(false), 2000);
             })
-            .catch(err => console.error("Havolani nusxalashda xatolik:", err));
+            .catch(() => showNotification("Nusxalab bo'lmadi", 'error'));
     };
 
     const [quickFilter, setQuickFilter] = useState<'all' | 'qarzdor' | 'kelmayotgan' | 'faol' | 'arxiv'>('all');
@@ -1568,35 +1535,9 @@ export default function Students() {
                                 ))}
                             </select>
                         </div>
-                        {/* Doimiy havola — ota-onaga yuborish uchun. Eskirmaydi. */}
-                        <div className="text-left bg-ichki border border-chiziq rounded-2xl p-4 mb-6">
-                            <p className="text-[11px] font-black text-matn mb-1">Doimiy havola</p>
-                            <p className="text-[11px] font-bold text-matn-xira leading-relaxed mb-3 normal-case">
-                                Eskirmaydi — Telegram yoki SMS orqali yuborish uchun shu havoladan foydalaning.
-                            </p>
-                            <div className="flex items-center gap-2 bg-sirt p-3 rounded-xl border border-chiziq mb-3">
-                                <input
-                                    readOnly
-                                    type="text"
-                                    value={doimiyUrl}
-                                    className="bg-transparent border-none text-[11px] font-extrabold text-gray-700 dark:text-white outline-none w-full select-all"
-                                />
-                            </div>
-                            <button
-                                onClick={copyDoimiyLink}
-                                className={`w-full py-3 rounded-xl text-[11px] font-black transition-all cursor-pointer ${
-                                    doimiyCopied
-                                        ? 'bg-emerald-600 text-white'
-                                        : 'bg-brand hover:bg-brand-dark text-white'
-                                }`}
-                            >
-                                {doimiyCopied ? t('copied') : t('copy_link')}
-                            </button>
-                        </div>
-
-                        <p className="text-[11px] font-black text-matn mb-1">Resepshn uchun QR</p>
-                        <p className="text-[11px] font-bold text-amber-500 leading-relaxed mb-6 normal-case">
-                            {t('reception_link_rotate')}
+                        <p className="text-[11px] font-bold text-matn-xira leading-relaxed mb-6 normal-case">
+                            QR kodni resepshnda ko'rsating yoki havolani Telegram/SMS orqali yuboring —
+                            ikkalasi ham bir xil, eskirmaydi.
                         </p>
 
                         <div className="bg-white p-4 rounded-2xl border border-gray-100 dark:border-gray-200 w-fit mx-auto mb-6 shadow-sm">

@@ -2061,7 +2061,10 @@ app.get('/api/public/schools/:schoolId/groups', async (req, res, next) => {
   } catch (error) { next(error); }
 });
 
-// Registration QR/link rotates every 30 minutes for security
+// Eskirgan: ariza havolasi endi doimiy, tokensiz. Bu yo'l faqat ilgari
+// tarqatilgan QR kodlar uchun qoldi — token bo'lmasa ham forma ochiladi va
+// ariza qabul qilinadi. Himoya serverda: so'rov cheklovi (soatiga 20 ta) va
+// bir xil ism-telefon uchun takroriylik tekshiruvi.
 const APPLY_TOKEN_TTL_MS = 30 * 60 * 1000;
 
 // POST create single-use registration token (Authenticated)
