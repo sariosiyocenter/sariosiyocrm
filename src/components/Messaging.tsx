@@ -71,7 +71,7 @@ interface AutoRule {
   enabled: boolean;
   body: string;
   channel: 'SMS' | 'TELEGRAM' | 'BOTH';
-  recipientTo: 'PARENT' | 'STUDENT';
+  recipientTo: 'PARENT' | 'STUDENT' | 'FATHER' | 'MOTHER';
   time: string;
   config?: {
     dayOfMonth?: number;
@@ -123,7 +123,7 @@ export default function Messaging() {
   // Tab 1: New Message state
   const [filters, setFilters] = useState({
     status: 'all',
-    groupId: 'all',
+    groupIds: [] as string[], // empty = all groups (multi-select)
     courseId: 'all',
     gender: 'all',
     balanceType: 'all', // all, debtors, advance
@@ -131,6 +131,7 @@ export default function Messaging() {
     birthday: 'all', // all, today, week, month
     contact: 'all', // all, phone, telegram
   });
+  const [groupDropdownOpen, setGroupDropdownOpen] = useState(false);
 
   const [channel, setChannel] = useState<'SMS' | 'TELEGRAM' | 'BOTH'>('SMS');
   const [useSmsFallback, setUseSmsFallback] = useState(true);
@@ -162,7 +163,7 @@ export default function Messaging() {
     enabled: true,
     body: '',
     channel: 'BOTH' as 'SMS' | 'TELEGRAM' | 'BOTH',
-    recipientTo: 'PARENT' as 'PARENT' | 'STUDENT',
+    recipientTo: 'PARENT' as 'PARENT' | 'STUDENT' | 'FATHER' | 'MOTHER',
     time: '09:00',
     minDebt: 0,
     dayOfMonth: 1
@@ -174,6 +175,7 @@ export default function Messaging() {
   const [logs, setLogs] = useState<SmsLog[]>([]);
   const [searchLogQuery, setSearchLogQuery] = useState('');
   const [statusLogFilter, setStatusLogFilter] = useState('all');
+  const [channelLogFilter, setChannelLogFilter] = useState<'all' | 'SMS' | 'TELEGRAM'>('all');
 
   // Resend and checkbox states
   const [selectedLogIds, setSelectedLogIds] = useState<Record<number, boolean>>({});
@@ -374,11 +376,11 @@ export default function Messaging() {
         if (!hasCourse) return false;
       }
 
-      // Group
-      if (filters.groupId !== 'all') {
+      // Group — multi-select
+      if (filters.groupIds.length > 0) {
         const hasGroup = (st.groups || []).some(g => {
           const groupIdVal = typeof g === 'object' && g !== null ? g.id : Number(g);
-          return groupIdVal === Number(filters.groupId);
+          return filters.groupIds.includes(String(groupIdVal));
         });
         if (!hasGroup) return false;
       }
@@ -851,7 +853,7 @@ export default function Messaging() {
     } catch (e: any) { showNotification("Xatolik: " + e.message, 'error'); }
   };
 
-  // History Tab: Filter logs by selected campaign ID
+  // History Tab: Filter logs by selected campaign ID, status, and channel
   const getFilteredLogs = () => {
     return logs.filter(log => {
       const matchesCampaign = selectedCampaignId === null || log.campaignId === selectedCampaignId;
@@ -861,7 +863,8 @@ export default function Messaging() {
         (log.toName || '').toLowerCase().includes(sQuery) ||
         log.message.toLowerCase().includes(sQuery);
       const matchesStatus = statusLogFilter === 'all' || log.status.toLowerCase() === statusLogFilter.toLowerCase();
-      return matchesCampaign && matchesSearch && matchesStatus;
+      const matchesChannel = channelLogFilter === 'all' || log.channel === channelLogFilter;
+      return matchesCampaign && matchesSearch && matchesStatus && matchesChannel;
     });
   };
 
@@ -954,7 +957,7 @@ export default function Messaging() {
               </div>
             </div>
 
-            {/* Qabul qiluvchi tomon */}
+            {/* Qabul qiluvchi tomon — faqat STUDENTS uchun */}
             {audience === 'STUDENTS' && (
               <div>
                 <label className={lbl}>Qabul qiluvchi tomon</label>
@@ -987,6 +990,13 @@ export default function Messaging() {
               </div>
             )}
 
+            {/* O'qituvchi/Xodim auditoriyasida: qabul qiluvchi o'zlari */}
+            {(audience === 'TEACHERS' || audience === 'STAFF') && (
+              <div className="px-3 py-2 bg-slate-50 dark:bg-slate-800/40 rounded-xl border border-slate-100 dark:border-slate-800 text-[11px] font-bold text-slate-400 dark:text-slate-500">
+                📱 Xabar bevosita {audience === 'TEACHERS' ? "o'qituvchining" : "xodimning"} o'z telefoniga yuboriladi
+              </div>
+            )}
+
             {/* Form Fields */}
             {audience === 'STUDENTS' ? (
               <div className="grid grid-cols-2 gap-4">
@@ -1012,7 +1022,7 @@ export default function Messaging() {
                   <label className={lbl}>Kurs bo'yicha</label>
                   <select
                     value={filters.courseId}
-                    onChange={e => setFilters({ ...filters, courseId: e.target.value, groupId: 'all' })}
+                    onChange={e => setFilters({ ...filters, courseId: e.target.value, groupIds: [] })}
                     className={inp}
                   >
                     <option value="all">Barcha kurslar</option>
@@ -1024,16 +1034,73 @@ export default function Messaging() {
 
                 <div className="col-span-2">
                   <label className={lbl}>Guruh bo'yicha</label>
-                  <select
-                    value={filters.groupId}
-                    onChange={e => setFilters({ ...filters, groupId: e.target.value })}
-                    className={inp}
-                  >
-                    <option value="all">Barcha guruhlar</option>
-                    {(groups || []).filter(g => filters.courseId === 'all' || g.courseId === Number(filters.courseId)).map(g => (
-                      <option key={g.id} value={g.id}>{g.name}</option>
-                    ))}
-                  </select>
+                  {/* Multi-select guruh dropdown */}
+                  <div className="relative">
+                    <button
+                      type="button"
+                      onClick={() => setGroupDropdownOpen(prev => !prev)}
+                      className={`${inp} flex items-center justify-between text-left`}
+                    >
+                      <span className={filters.groupIds.length === 0 ? 'text-slate-400' : ''}>
+                        {filters.groupIds.length === 0
+                          ? 'Barcha guruhlar'
+                          : filters.groupIds.length === 1
+                            ? (groups || []).find(g => String(g.id) === filters.groupIds[0])?.name || 'Noma\'lum'
+                            : `${filters.groupIds.length} ta guruh tanlandi`
+                        }
+                      </span>
+                      <svg className={`w-3.5 h-3.5 text-slate-400 transition-transform ${groupDropdownOpen ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
+                    </button>
+
+                    {groupDropdownOpen && (
+                      <div className="absolute z-50 mt-1 w-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl shadow-xl overflow-hidden">
+                        {/* Barchasi checkbox */}
+                        <label className="flex items-center gap-2.5 px-3 py-2.5 hover:bg-slate-50 dark:hover:bg-slate-700/50 cursor-pointer border-b border-slate-100 dark:border-slate-700">
+                          <input
+                            type="checkbox"
+                            checked={filters.groupIds.length === 0}
+                            onChange={() => setFilters({ ...filters, groupIds: [] })}
+                            className="w-3.5 h-3.5 rounded border-slate-300 text-brand focus:ring-brand cursor-pointer"
+                          />
+                          <span className="text-[11px] font-bold text-slate-700 dark:text-slate-200">Barcha guruhlar</span>
+                        </label>
+                        {/* Individual groups */}
+                        <div className="max-h-48 overflow-y-auto">
+                          {(groups || []).filter(g => filters.courseId === 'all' || g.courseId === Number(filters.courseId)).map(g => {
+                            const isSelected = filters.groupIds.includes(String(g.id));
+                            return (
+                              <label key={g.id} className="flex items-center gap-2.5 px-3 py-2 hover:bg-slate-50 dark:hover:bg-slate-700/50 cursor-pointer">
+                                <input
+                                  type="checkbox"
+                                  checked={isSelected}
+                                  onChange={() => {
+                                    setFilters(prev => ({
+                                      ...prev,
+                                      groupIds: isSelected
+                                        ? prev.groupIds.filter(id => id !== String(g.id))
+                                        : [...prev.groupIds, String(g.id)]
+                                    }));
+                                  }}
+                                  className="w-3.5 h-3.5 rounded border-slate-300 text-brand focus:ring-brand cursor-pointer"
+                                />
+                                <span className="text-[11px] font-bold text-slate-700 dark:text-slate-200">{g.name}</span>
+                              </label>
+                            );
+                          })}
+                        </div>
+                        {/* Yopish */}
+                        <div className="border-t border-slate-100 dark:border-slate-700 p-2">
+                          <button
+                            type="button"
+                            onClick={() => setGroupDropdownOpen(false)}
+                            className="w-full py-1.5 text-[11px] font-bold text-slate-500 hover:text-brand transition-colors cursor-pointer"
+                          >
+                            Yopish
+                          </button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
                 </div>
 
                 <div>
@@ -1564,8 +1631,19 @@ export default function Messaging() {
                     className="w-full pl-9 pr-4 py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold text-slate-900 dark:text-white placeholder:text-slate-400 focus:border-brand outline-none transition-all"
                   />
                 </div>
-                <div className="flex items-center gap-3 w-full md:w-auto justify-end">
+                <div className="flex items-center gap-3 w-full md:w-auto justify-end flex-wrap">
                   <Filter size={14} className="text-slate-400" />
+                  {/* Kanal filtri */}
+                  <select
+                    value={channelLogFilter}
+                    onChange={e => setChannelLogFilter(e.target.value as any)}
+                    className="px-3 py-1.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-[11px] font-bold outline-none focus:border-brand text-slate-900 dark:text-white cursor-pointer"
+                  >
+                    <option value="all">Barcha kanallar</option>
+                    <option value="SMS">📱 SMS</option>
+                    <option value="TELEGRAM">✈️ Telegram</option>
+                  </select>
+                  {/* Holat filtri */}
                   <select
                     value={statusLogFilter}
                     onChange={e => setStatusLogFilter(e.target.value)}
@@ -1946,8 +2024,10 @@ export default function Messaging() {
                   onChange={e => setAutoRuleForm({ ...autoRuleForm, recipientTo: e.target.value as any })}
                   className={inp}
                 >
-                  <option value="PARENT">Ota-onasi</option>
-                  <option value="STUDENT">O'quvchi</option>
+                  <option value="PARENT">Ota-onasi (Ota yoki Ona)</option>
+                  <option value="FATHER">Otasi</option>
+                  <option value="MOTHER">Onasi</option>
+                  <option value="STUDENT">O'quvchi (o'zi)</option>
                 </select>
               </div>
             </div>
