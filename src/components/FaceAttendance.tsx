@@ -153,7 +153,16 @@ export default function FaceAttendance({ students, attendanceStatus, onMatch, on
                 ctx.fillRect(box.x, box.y - textH, box.width, textH);
                 ctx.fillStyle = 'white';
                 ctx.font = 'bold 13px Arial';
+                // Old kamerada kanvas video bilan birga ko'zguda aks etadi —
+                // ramka to'g'ri turadi, lekin matn teskari o'qilardi. Matnni
+                // ramka o'rtasiga nisbatan qaytadan aks ettiramiz.
+                ctx.save();
+                if (facingMode === 'user') {
+                    ctx.translate(2 * (box.x + box.width / 2), 0);
+                    ctx.scale(-1, 1);
+                }
                 ctx.fillText(student.name, box.x + 6, box.y - 5);
+                ctx.restore();
 
                 // Auto-mark if not already detected in this session
                 if (!markedRef.current.has(studentId)) {
@@ -165,7 +174,7 @@ export default function FaceAttendance({ students, attendanceStatus, onMatch, on
                 }
             }
         });
-    }, [labeledDescriptors, students, attendanceStatus, onMatch]);
+    }, [labeledDescriptors, students, attendanceStatus, onMatch, facingMode]);
 
     // Detection loop
     useEffect(() => {
