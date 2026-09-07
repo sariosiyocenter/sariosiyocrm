@@ -16,8 +16,11 @@ export default function StudentsPaymentReport({ startDate, endDate }: Props) {
     // Payment status per student
     const studentRows = useMemo(() => {
         return students.map(s => {
+            // Haqiqiy to'lov: "Oylik" yozuvlari o'quvchiga yozilgan hisob
+            // (manfiy), to'lov emas. Ular ham sanalganda "So'nggi to'lov"
+            // ustunida kelasi oydagi sana va manfiy summa chiqardi.
             const lastPay = payments
-                .filter(p => p.studentId === s.id)
+                .filter(p => p.studentId === s.id && p.type !== 'Oylik' && p.amount > 0)
                 .sort((a, b) => b.date.localeCompare(a.date))[0];
             return {
                 name: s.name,

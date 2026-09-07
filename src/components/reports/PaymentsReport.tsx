@@ -128,7 +128,13 @@ export default function PaymentsReport({ startDate, endDate }: Props) {
                 <DataTable
                     columns={[
                         { key: 'student', label: "O'quvchi" },
-                        { key: 'amount', label: 'Summa', render: r => <span className="text-emerald-600 dark:text-emerald-400 font-extrabold">+{r.amount.toLocaleString()} UZS</span> },
+                        // "Oylik" yozuvlari manfiy bo'ladi (o'quvchiga yozilgan hisob).
+                        // Ilgari ularga ham "+" qo'yilar va jadvalda "+-423 077" chiqardi.
+                        { key: 'amount', label: 'Summa', render: r => (
+                            <span className={`font-extrabold ${r.amount < 0 ? 'text-rose-600 dark:text-rose-400' : 'text-emerald-600 dark:text-emerald-400'}`}>
+                                {r.amount < 0 ? '' : '+'}{r.amount.toLocaleString()} UZS
+                            </span>
+                        ) },
                         { key: 'type', label: 'Turi', render: r => <span className="px-2 py-0.5 bg-chiziq rounded-lg text-[11px] font-bold">{r.type}</span> },
                         { key: 'date', label: 'Sana' },
                         { key: 'desc', label: 'Izoh' }
