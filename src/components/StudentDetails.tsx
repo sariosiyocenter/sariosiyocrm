@@ -15,11 +15,11 @@ import PhotoCapture from './PhotoCapture';
 import { uploadProfilePhoto } from '../lib/image';
 import { printReceipt } from '../lib/receipt';
 import { activeCourses } from '../lib/activeCourses';
-import FaceEnroll from './FaceEnroll';
 import PhotoViewer from './PhotoViewer';
 import DiscountModal from './DiscountModal';
 import StudentMoveModal from './StudentMoveModal';
 import StudentLedger from './StudentLedger';
+import { loadFaceModels, descriptorFromPhoto, saveFaceProfiles, faceFailText } from '../lib/faceDescriptor';
 
 const UZB_REGIONS: Record<string, string[]> = {
   "Surxondaryo": [
@@ -106,9 +106,9 @@ export default function StudentDetails() {
     const [isSaving, setIsSaving] = useState(false);
     const [isRemovingBg, setIsRemovingBg] = useState(false);
     const [isPhotoModalOpen, setIsPhotoModalOpen] = useState(false);
-    const [isFaceEnrollOpen, setIsFaceEnrollOpen] = useState(false);
     /** Bu o'quvchi Face ID ga qo'shilganmi (alohida jadvaldan tekshiriladi). */
     const [faceEnrolled, setFaceEnrolled] = useState(false);
+    const [faceBusy, setFaceBusy] = useState(false);
     const [showDiscountModal, setShowDiscountModal] = useState(false);
     // Guruhlar orasida ko'chirish / o'qishni to'xtatib pulni qayta hisoblash.
     const [moveMode, setMoveMode] = useState<'transfer' | 'refund' | null>(null);
@@ -159,27 +159,45 @@ export default function StudentDetails() {
         }
     };
 
-    /** Face ID yo'qlamasi shu belgi bo'yicha o'quvchini tanaydi.
-     *  Belgi alohida jadvalda (FaceProfile) saqlanadi — ilgari u o'quvchi
-     *  yozuvining ichida turgani uchun /api/init bilan hammasi yuborilardi. */
-    const handleFaceEnroll = async (descriptor: number[], photo: string) => {
-        const url = await uploadProfilePhoto(photo, "face-" + student!.id + ".jpg");
-        const r = await fetch('/api/face-profiles', {
-            method: 'POST',
-            headers: { Authorization: `Bearer ${localStorage.getItem('token')}`, 'Content-Type': 'application/json' },
-            body: JSON.stringify({ schoolId: student!.schoolId, profiles: [{ studentId: student!.id, descriptor, source: 'kamera' }] }),
-        });
-        const j = await r.json().catch(() => ({}));
-        if (!r.ok) { showNotification(j.error || "Yuzni saqlab bo'lmadi", 'error'); return; }
-        // Suratsiz o'quvchi uchun shu kadr profil surati bo'lib qoladi.
-        if (!student!.photo) await updateStudent(student!.id, { photo: url });
-        setFaceEnrolled(true);
-        showNotification("Yuz saqlandi — endi Face ID yo'qlamasi bu o'quvchini taniydi", 'success');
+    /**
+     * Face ID belgisini PROFIL RASMIDAN oladi.
+     *
+     * Ilgari buning uchun alohida suratga tushish oynasi bor edi — o'quvchini
+     * ikki marta suratga olish kerak bo'lardi. Endi manba bitta: profil rasmi.
+     * Rasm almashtirilsa belgi ham shu yerdan qayta hisoblanadi.
+     *
+     * `quiet` — rasm almashtirilganda avtomatik chaqiriladi: muvaffaqiyat
+     * haqida ortiqcha xabar chiqarmaydi, faqat muammoni aytadi.
+     */
+    const syncFaceFromPhoto = async (photoUrl?: string, quiet = false) => {
+        const src = photoUrl || student?.photo;
+        if (!student || !src) {
+            if (!quiet) showNotification("Avval profil rasmini qo'ying", 'error');
+            return;
+        }
+        setFaceBusy(true);
+        try {
+            await loadFaceModels();
+            const res = await descriptorFromPhoto(src);
+            if (!res.descriptor) {
+                showNotification(`Face ID yangilanmadi — ${faceFailText(res.reason || 'rasm')}. Aniqroq rasm qo'ying.`, 'error');
+                return;
+            }
+            await saveFaceProfiles(student.schoolId, [{ studentId: student.id, descriptor: res.descriptor }]);
+            setFaceEnrolled(true);
+            if (!quiet) showNotification("Face ID rasmdan olindi — yo'qlamada shu o'quvchi tanaladi", 'success');
+        } catch (err: any) {
+            showNotification(err?.message || "Face ID yangilanmadi", 'error');
+        } finally {
+            setFaceBusy(false);
+        }
     };
 
     const handlePhotoCapture = async (base64: string) => {
         const url = await uploadProfilePhoto(base64, `student-${student!.id}.jpg`);
-        updateStudent(student!.id, { photo: url });
+        await updateStudent(student!.id, { photo: url });
+        // Yangi rasm — Face ID belgisi ham shu rasmdan qayta olinadi.
+        syncFaceFromPhoto(url, true);
     };
 
 
@@ -413,6 +431,8 @@ export default function StudentDetails() {
             const data = await response.json();
             if (data.success) {
                 await updateStudent(student.id, { photo: data.image });
+                // Fon o'zgargani belgiga ham ta'sir qiladi — qayta hisoblanadi.
+                syncFaceFromPhoto(data.image, true);
                 showNotification(t('bg_cleared_success'), 'info');
             } else {
                 showNotification(t('error_occurred') + ": " + data.error, 'error');
@@ -431,7 +451,8 @@ export default function StudentDetails() {
             const reader = new FileReader();
             reader.onloadend = async () => {
                 const url = await uploadProfilePhoto(reader.result as string, file.name);
-                updateStudent(student.id, { photo: url });
+                await updateStudent(student.id, { photo: url });
+                syncFaceFromPhoto(url, true);
             };
             reader.readAsDataURL(file);
         }
@@ -800,14 +821,6 @@ export default function StudentDetails() {
                                 />
                             )}
 
-                            {isFaceEnrollOpen && (
-                                <FaceEnroll
-                                    studentName={displayName(student.name)}
-                                    onEnroll={handleFaceEnroll}
-                                    onClose={() => setIsFaceEnrollOpen(false)}
-                                />
-                            )}
-
                         </div>
 
                         <div className="px-6 pb-5 space-y-1 border-t border-chiziq pt-3">
@@ -1144,8 +1157,8 @@ export default function StudentDetails() {
                                             </span>
                                         </div>
                                     )}
-                                    {/* Face ID. Yuz belgisi customPrices ichida saqlanadi;
-                                        u yozilmasa Face ID yo'qlamasi o'quvchini tanimaydi. */}
+                    {/* Face ID. Belgi profil rasmidan olinadi — alohida suratga
+                                        tushish yo'q. Rasm almashtirilsa o'zi yangilanadi. */}
                                     <div className="flex items-center justify-between gap-2 py-1">
                                         <div className="flex items-center gap-2 text-matn-xira">
                                             <ScanFace className="w-3.5 h-3.5" />
@@ -1153,14 +1166,17 @@ export default function StudentDetails() {
                                         </div>
                                         <div className="flex items-center gap-2">
                                             <span className={"text-[11px] font-bold " + (isFaceEnrolled ? 'text-emerald-600 dark:text-emerald-400' : 'text-matn-xira')}>
-                                                {isFaceEnrolled ? "Ro'yxatdan o'tgan" : "Ro'yxatdan o'tmagan"}
+                                                {isFaceEnrolled ? 'Rasmdan olingan' : student.photo ? 'Olinmagan' : "Rasm yo'q"}
                                             </span>
-                                            <button
-                                                onClick={() => setIsFaceEnrollOpen(true)}
-                                                className="text-[11px] font-bold text-brand hover:underline cursor-pointer"
-                                            >
-                                                {isFaceEnrolled ? 'Yangilash' : "Ro'yxatdan o'tkazish"}
-                                            </button>
+                                            {student.photo && (
+                                                <button
+                                                    onClick={() => syncFaceFromPhoto()}
+                                                    disabled={faceBusy}
+                                                    className="text-[11px] font-bold text-brand hover:underline cursor-pointer disabled:opacity-50"
+                                                >
+                                                    {faceBusy ? 'Olinmoqda…' : isFaceEnrolled ? 'Yangilash' : 'Rasmdan olish'}
+                                                </button>
+                                            )}
                                         </div>
                                     </div>
                                     <InfoRow

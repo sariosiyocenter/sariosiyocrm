@@ -1,9 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
-import * as faceapi from 'face-api.js';
 import { X, ScanFace, Play, Square, CheckCircle2, AlertTriangle } from 'lucide-react';
 import { useCRM } from '../context/CRMContext';
-
-const MODEL_URL = 'https://cdn.jsdelivr.net/gh/justadudewhohacks/face-api.js@0.22.2/weights';
+import { loadFaceModels, descriptorFromPhoto, saveFaceProfiles } from '../lib/faceDescriptor';
 
 /**
  * Face ID ni mavjud profil rasmlaridan to'ldirish.
@@ -76,13 +74,7 @@ export default function FaceBulkEnroll({ onClose }: { onClose: (saved: number) =
 
     const send = async (batch: { studentId: number; descriptor: number[] }[]) => {
         if (!batch.length) return;
-        const r = await fetch('/api/face-profiles', {
-            method: 'POST', headers: auth(),
-            body: JSON.stringify({ schoolId: selectedSchoolId, profiles: batch.map(b => ({ ...b, source: 'rasm' })) }),
-        });
-        const j = await r.json();
-        if (!r.ok) throw new Error(j.error || 'Saqlanmadi');
-        savedRef.current += j.saved || 0;
+        savedRef.current += await saveFaceProfiles(selectedSchoolId, batch);
         setSaved(savedRef.current);
     };
 
@@ -90,10 +82,7 @@ export default function FaceBulkEnroll({ onClose }: { onClose: (saved: number) =
         stopRef.current = false;
         setPhase('ishlamoqda');
         try {
-            setMsg('Modellar yuklanmoqda…');
-            await faceapi.nets.tinyFaceDetector.loadFromUri(MODEL_URL);
-            await faceapi.nets.faceLandmark68TinyNet.loadFromUri(MODEL_URL);
-            await faceapi.nets.faceRecognitionNet.loadFromUri(MODEL_URL);
+            await loadFaceModels(setMsg);
         } catch {
             setMsg('Modellarni yuklab bo\'lmadi. Internet aloqasini tekshiring.');
             setPhase('xato');
@@ -106,29 +95,13 @@ export default function FaceBulkEnroll({ onClose }: { onClose: (saved: number) =
         for (let i = 0; i < rows.length; i++) {
             if (stopRef.current) break;
             const row = rows[i];
-            let state: Row['state'] = 'xato';
-            try {
-                const img = await new Promise<HTMLImageElement>((ok, no) => {
-                    const el = new Image();
-                    el.crossOrigin = 'anonymous';
-                    el.onload = () => ok(el);
-                    el.onerror = () => no(new Error('rasm yuklanmadi'));
-                    el.src = row.photo;
-                    setTimeout(() => no(new Error('rasm juda sekin')), 20000);
-                });
-                const det = await faceapi
-                    .detectAllFaces(img, new faceapi.TinyFaceDetectorOptions({ inputSize: 416, scoreThreshold: 0.5 }))
-                    .withFaceLandmarks(true)
-                    .withFaceDescriptors();
-
-                if (det.length === 1) {
-                    batch.push({ studentId: row.id, descriptor: Array.from(det[0].descriptor) });
-                    state = 'topildi';
-                } else {
-                    state = det.length === 0 ? 'topilmadi' : 'kop';
-                }
-            } catch {
-                state = 'xato';
+            const res = await descriptorFromPhoto(row.photo);
+            let state: Row['state'];
+            if (res.descriptor) {
+                batch.push({ studentId: row.id, descriptor: res.descriptor });
+                state = 'topildi';
+            } else {
+                state = res.reason === 'topilmadi' ? 'topilmadi' : res.reason === 'kop' ? 'kop' : 'xato';
             }
 
             setRows(prev => prev.map((r, idx) => idx === i ? { ...r, state } : r));
