@@ -384,6 +384,12 @@ model MessageTemplate {
   autoConfig    Json?
   autoTime      String?  @default("09:00")  // e.g. "09:00"
   lastRunDate   String?
+
+  // Eskiz moderatsiyasi. SMS matni operator tomonidan tasdiqlanmaguncha
+  // yuborilmaydi, shuning uchun shablon yaratilishi bilan Eskizga jo'natiladi.
+  //   moderation | confirmed | rejected | service | xato matni
+  eskizStatus     String?
+  eskizTemplateId String?
   schoolId      Int
   school        School   @relation(fields: [schoolId], references: [id])
   createdAt     DateTime @default(now())

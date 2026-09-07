@@ -7,6 +7,96 @@ import { useCRM } from '../context/CRMContext';
 import { useConfirm } from './ConfirmDialog';
 import { useLang } from '../context/LanguageContext';
 
+/**
+ * Bir nechta qiymat tanlanadigan ro'yxat. Bo'sh tanlov "barchasi" degani.
+ *
+ * Status ham, kurslar ham shu ko'rinishda: ilgari status faqat bittadan
+ * tanlanardi va shuning uchun "Faol + Sinov" kabi qo'shma variantlar
+ * qo'shilgan edi. Endi kerakli statuslarni birga belgilash mumkin, qo'shma
+ * variantlar esa ortiqcha.
+ */
+function KopTanlov({ variantlar, tanlangan, ozgartir, hammasiMatni, birlik, inpClass }: {
+  variantlar: { id: string; nom: string }[];
+  tanlangan: string[];
+  ozgartir: (v: string[]) => void;
+  hammasiMatni: string;
+  birlik: string;
+  inpClass: string;
+}) {
+  const [ochiq, setOchiq] = useState(false);
+  const sarlavha = tanlangan.length === 0
+    ? hammasiMatni
+    : tanlangan.length === 1
+      ? (variantlar.find(v => v.id === tanlangan[0])?.nom || "Noma'lum")
+      : `${tanlangan.length} ta ${birlik} tanlandi`;
+
+  return (
+    <div className="relative">
+      <button type="button" onClick={() => setOchiq(o => !o)}
+        className={`${inpClass} flex items-center justify-between text-left`}>
+        <span className={tanlangan.length === 0 ? 'text-slate-400' : ''}>{sarlavha}</span>
+        <svg className={`w-3.5 h-3.5 text-slate-400 transition-transform ${ochiq ? 'rotate-180' : ''}`}
+          fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+        </svg>
+      </button>
+
+      {ochiq && (
+        <div className="absolute z-50 mt-1 w-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl shadow-xl overflow-hidden">
+          <label className="flex items-center gap-2.5 px-3 py-2.5 hover:bg-slate-50 dark:hover:bg-slate-700/50 cursor-pointer border-b border-slate-100 dark:border-slate-700">
+            <input type="checkbox" checked={tanlangan.length === 0} onChange={() => ozgartir([])}
+              className="w-3.5 h-3.5 rounded border-slate-300 text-brand focus:ring-brand cursor-pointer" />
+            <span className="text-[11px] font-bold text-slate-700 dark:text-slate-200">{hammasiMatni}</span>
+          </label>
+          <div className="max-h-48 overflow-y-auto">
+            {variantlar.map(v => {
+              const belgilangan = tanlangan.includes(v.id);
+              return (
+                <label key={v.id} className="flex items-center gap-2.5 px-3 py-2 hover:bg-slate-50 dark:hover:bg-slate-700/50 cursor-pointer">
+                  <input type="checkbox" checked={belgilangan}
+                    onChange={() => ozgartir(belgilangan
+                      ? tanlangan.filter(x => x !== v.id)
+                      : [...tanlangan, v.id])}
+                    className="w-3.5 h-3.5 rounded border-slate-300 text-brand focus:ring-brand cursor-pointer" />
+                  <span className="text-[11px] font-bold text-slate-700 dark:text-slate-200">{v.nom}</span>
+                </label>
+              );
+            })}
+            {variantlar.length === 0 && (
+              <p className="px-3 py-3 text-[11px] font-bold text-slate-400">Ro'yxat bo'sh</p>
+            )}
+          </div>
+          <div className="border-t border-slate-100 dark:border-slate-700 p-2">
+            <button type="button" onClick={() => setOchiq(false)}
+              className="w-full py-1.5 text-[11px] font-bold text-slate-500 hover:text-brand transition-colors cursor-pointer">
+              Yopish
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+/**
+ * Eskiz moderatsiyasining holati.
+ *
+ * SMS matni operator tomonidan tasdiqlanmaguncha yuborilmaydi, shuning uchun
+ * shablon kartochkasida holat ko'rinib turadi. Telegram uchun moderatsiya
+ * kerak emas — bu faqat SMS ga tegishli.
+ */
+function eskizHolatBelgisi(holat?: string | null) {
+  if (!holat) return { matn: 'Eskizga yuborilmagan', rang: 'text-slate-400', nuqta: 'bg-slate-300' };
+  if (holat === 'confirmed') return { matn: 'SMS: tasdiqlangan', rang: 'text-emerald-500', nuqta: 'bg-emerald-500' };
+  if (holat === 'moderation') return { matn: 'SMS: moderatsiyada', rang: 'text-amber-500', nuqta: 'bg-amber-500' };
+  if (holat === 'rejected') return { matn: 'SMS: rad etilgan', rang: 'text-rose-500', nuqta: 'bg-rose-500' };
+  if (holat === 'service') return { matn: 'SMS: xizmat matni', rang: 'text-sky-500', nuqta: 'bg-sky-500' };
+  return { matn: holat, rang: 'text-rose-500', nuqta: 'bg-rose-500' };
+}
+
+const OQUVCHI_STATUSLARI = ['Faol', 'Sinov', 'Passiv', 'Muzlatilgan', 'Ketgan'];
+const USTOZ_STATUSLARI = ['Faol', 'Nofaol'];
+
 interface Student {
   id: number;
   name: string;
@@ -37,6 +127,9 @@ interface MessageTemplate {
   autoRecipient: 'PARENT' | 'STUDENT';
   autoConfig?: { dayOfMonth?: number; minDebt?: number } | null;
   autoTime?: string | null;
+  // Eskiz moderatsiyasi: moderation | confirmed | rejected | service | xato matni
+  eskizStatus?: string | null;
+  eskizTemplateId?: string | null;
 }
 
 interface MessageCampaign {
@@ -122,20 +215,34 @@ export default function Messaging() {
 
   // Tab 1: New Message state
   const [filters, setFilters] = useState({
-    status: 'all',
-    groupIds: [] as string[], // empty = all groups (multi-select)
-    courseId: 'all',
+    // Bo'sh massiv = barchasi. Ilgari bitta qiymat edi va "Faol + Sinov" kabi
+    // qo'shma variantlar shuning uchun kerak bo'lgan.
+    statuses: [] as string[],
+    groupIds: [] as string[], // bo'sh = barcha kurslar (ko'p tanlov)
     gender: 'all',
     balanceType: 'all', // all, debtors, advance
     minDebt: 0,
     birthday: 'all', // all, today, week, month
     contact: 'all', // all, phone, telegram
   });
-  const [groupDropdownOpen, setGroupDropdownOpen] = useState(false);
 
   const [channel, setChannel] = useState<'SMS' | 'TELEGRAM' | 'BOTH'>('SMS');
   const [useSmsFallback, setUseSmsFallback] = useState(true);
   const [recipientTo, setRecipientTo] = useState<'PARENT' | 'STUDENT' | 'FATHER' | 'MOTHER'>('PARENT');
+  // "Qabul qiluvchi tomon" faqat o'quvchilar uchun ma'noga ega. Ilgari u
+  // o'qituvchilarga o'tilganda ham "Otasi" bo'lib qolar va ro'yxat bo'shab
+  // ketardi — o'qituvchida ota telefoni yo'q. Xabar ularning o'ziga boradi.
+  const oluvchiTomoni: 'PARENT' | 'STUDENT' | 'FATHER' | 'MOTHER' =
+    audience === 'STUDENTS' ? recipientTo : 'STUDENT';
+
+  /** Auditoriya almashganda o'tgan auditoriyaga xos filtrlar tozalanadi:
+   *  o'quvchining "Sinov" statusi yoki tanlangan kurslar o'qituvchilar
+   *  ro'yxatini bo'shatib qo'yardi. */
+  const auditoriyaniAlmashtir = (yangi: 'STUDENTS' | 'TEACHERS' | 'STAFF') => {
+    if (yangi === audience) return;
+    setAudience(yangi);
+    setFilters(prev => ({ ...prev, statuses: [], groupIds: [] }));
+  };
   const [messageText, setMessageText] = useState('');
   const [selectedTemplateId, setSelectedTemplateId] = useState<string>('');
   const [isSending, setIsSending] = useState(false);
@@ -309,7 +416,7 @@ export default function Messaging() {
   };
 
   // Helper: Resolve Phone number like backend
-  const resolveRecipientPhone = (st: any, target: string = recipientTo) => {
+  const resolveRecipientPhone = (st: any, target: string = oluvchiTomoni) => {
     if (audience !== 'STUDENTS') {
       return st.phone || '';
     }
@@ -327,8 +434,8 @@ export default function Messaging() {
         // School check
         if (selectedSchoolId !== 0 && item.schoolId !== selectedSchoolId) return false;
 
-        // Status
-        if (filters.status !== 'all' && item.status !== filters.status) return false;
+        // Status — bo'sh tanlov barchasini bildiradi
+        if (filters.statuses.length > 0 && !filters.statuses.includes(item.status)) return false;
 
         // Aloqa kanali
         if (filters.contact === 'phone' && !item.phone) return false;
@@ -359,24 +466,10 @@ export default function Messaging() {
       // School check
       if (selectedSchoolId !== 0 && st.schoolId !== selectedSchoolId) return false;
 
-      // Status
-      if (filters.status === 'active_group') {
-        if (!['Faol', 'Sinov'].includes(st.status)) return false;
-      } else if (filters.status === 'passive_group') {
-        if (!['Passiv', 'Ketgan'].includes(st.status)) return false;
-      } else if (filters.status !== 'all' && st.status !== filters.status) return false;
+      // Status — bo'sh tanlov barchasini bildiradi
+      if (filters.statuses.length > 0 && !filters.statuses.includes(st.status)) return false;
 
-      // Course
-      if (filters.courseId !== 'all') {
-        const hasCourse = (st.groups || []).some(g => {
-          const groupIdVal = typeof g === 'object' && g !== null ? g.id : Number(g);
-          const groupRel = (groups || []).find(gr => gr.id === groupIdVal);
-          return groupRel?.courseId === Number(filters.courseId);
-        });
-        if (!hasCourse) return false;
-      }
-
-      // Group — multi-select
+      // Kurs (guruh) — ko'p tanlov
       if (filters.groupIds.length > 0) {
         const hasGroup = (st.groups || []).some(g => {
           const groupIdVal = typeof g === 'object' && g !== null ? g.id : Number(g);
@@ -421,21 +514,21 @@ export default function Messaging() {
       if (filters.contact === 'phone') {
         if (!st.phone && !st.fatherPhone && !st.motherPhone) return false;
       } else if (filters.contact === 'telegram') {
-        if (recipientTo === 'PARENT') {
+        if (oluvchiTomoni === 'PARENT') {
           if (!st.fatherTelegramId && !st.motherTelegramId) return false;
-        } else if (recipientTo === 'FATHER') {
+        } else if (oluvchiTomoni === 'FATHER') {
           if (!st.fatherTelegramId) return false;
-        } else if (recipientTo === 'MOTHER') {
+        } else if (oluvchiTomoni === 'MOTHER') {
           if (!st.motherTelegramId) return false;
         } else {
           if (!st.telegramId) return false;
         }
       } else if (filters.contact === 'no_telegram') {
-        if (recipientTo === 'PARENT') {
+        if (oluvchiTomoni === 'PARENT') {
           if (st.fatherTelegramId || st.motherTelegramId) return false;
-        } else if (recipientTo === 'FATHER') {
+        } else if (oluvchiTomoni === 'FATHER') {
           if (st.fatherTelegramId) return false;
-        } else if (recipientTo === 'MOTHER') {
+        } else if (oluvchiTomoni === 'MOTHER') {
           if (st.motherTelegramId) return false;
         } else {
           if (st.telegramId) return false;
@@ -454,7 +547,7 @@ export default function Messaging() {
   };
 
   const filteredRecipients = getFilteredRecipients();
-  const filteredRecipientsKey = filteredRecipients.map(r => r.id).join(',') + recipientTo;
+  const filteredRecipientsKey = filteredRecipients.map(r => r.id).join(',') + oluvchiTomoni;
 
   // Expanded recipient entries — in PARENT mode each student becomes 1-2 rows
   type RecipientEntry = {
@@ -472,7 +565,7 @@ export default function Messaging() {
     const entries: RecipientEntry[] = [];
     for (const st of filteredRecipients) {
       const balance = Number(st.balance || 0);
-      if (recipientTo === 'PARENT') {
+      if (oluvchiTomoni === 'PARENT') {
         // Father row — only if fatherPhone exists
         if (st.fatherPhone && st.fatherPhone.trim() !== '') {
           entries.push({
@@ -499,7 +592,7 @@ export default function Messaging() {
             entryType: 'MOTHER',
           });
         }
-      } else if (recipientTo === 'FATHER') {
+      } else if (oluvchiTomoni === 'FATHER') {
         // Father only — only if fatherPhone exists
         if (st.fatherPhone && st.fatherPhone.trim() !== '') {
           entries.push({
@@ -513,7 +606,7 @@ export default function Messaging() {
             entryType: 'FATHER',
           });
         }
-      } else if (recipientTo === 'MOTHER') {
+      } else if (oluvchiTomoni === 'MOTHER') {
         // Mother only — only if motherPhone exists
         if (st.motherPhone && st.motherPhone.trim() !== '') {
           entries.push({
@@ -646,7 +739,7 @@ export default function Messaging() {
           audience,
           message: messageText,
           channel: channel === 'TELEGRAM' ? (useSmsFallback ? 'BOTH' : 'TELEGRAM') : channel,
-          recipientTo,
+          recipientTo: oluvchiTomoni,
           filters
         })
       });
@@ -937,19 +1030,19 @@ export default function Messaging() {
               <label className={lbl}>Kimlarga yuborish (Auditoriya)</label>
               <div className="grid grid-cols-3 gap-2 bg-slate-55 dark:bg-slate-800/80 p-1 rounded-xl border border-slate-200 dark:border-slate-700/50 mb-3">
                 <button
-                  onClick={() => setAudience('STUDENTS')}
+                  onClick={() => auditoriyaniAlmashtir('STUDENTS')}
                   className={`py-1.5 rounded-lg text-[11px] font-bold cursor-pointer transition-all ${audience === 'STUDENTS' ? 'bg-white dark:bg-slate-700 text-brand dark:text-brand shadow-sm' : 'text-slate-500'}`}
                 >
                   O'quvchilar
                 </button>
                 <button
-                  onClick={() => setAudience('TEACHERS')}
+                  onClick={() => auditoriyaniAlmashtir('TEACHERS')}
                   className={`py-1.5 rounded-lg text-[11px] font-bold cursor-pointer transition-all ${audience === 'TEACHERS' ? 'bg-white dark:bg-slate-700 text-brand dark:text-brand shadow-sm' : 'text-slate-500'}`}
                 >
                   O'qituvchilar
                 </button>
                 <button
-                  onClick={() => setAudience('STAFF')}
+                  onClick={() => auditoriyaniAlmashtir('STAFF')}
                   className={`py-1.5 rounded-lg text-[11px] font-bold cursor-pointer transition-all ${audience === 'STAFF' ? 'bg-white dark:bg-slate-700 text-brand dark:text-brand shadow-sm' : 'text-slate-500'}`}
                 >
                   Xodimlar
@@ -1002,106 +1095,31 @@ export default function Messaging() {
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className={lbl}>O'quvchi statusi</label>
-                  <select
-                    value={filters.status}
-                    onChange={e => setFilters({ ...filters, status: e.target.value })}
-                    className={inp}
-                  >
-                    <option value="all">Barchasi</option>
-                    <option value="active_group">✅ Faol o'quvchilar (Faol + Sinov)</option>
-                    <option value="passive_group">🚪 Ketgan/Passiv o'quvchilar</option>
-                    <option value="Faol">Faol</option>
-                    <option value="Sinov">Sinov</option>
-                    <option value="Passiv">Passiv</option>
-                    <option value="Muzlatilgan">Muzlatilgan</option>
-                    <option value="Ketgan">Ketgan</option>
-                  </select>
+                  <KopTanlov
+                    variantlar={OQUVCHI_STATUSLARI.map(x => ({ id: x, nom: x }))}
+                    tanlangan={filters.statuses}
+                    ozgartir={v => setFilters({ ...filters, statuses: v })}
+                    hammasiMatni="Barchasi"
+                    birlik="status"
+                    inpClass={inp}
+                  />
                 </div>
 
+                {/* Markazda "kurs" deb aynan guruh tushuniladi — "Kurslar"
+                    bo'limi ham guruhlarni ko'rsatadi. Ilgari bu yerda ikkita
+                    ro'yxat bor edi: kurs turkumi va guruh; birinchisi ortiqcha. */}
                 <div>
                   <label className={lbl}>Kurs bo'yicha</label>
-                  <select
-                    value={filters.courseId}
-                    onChange={e => setFilters({ ...filters, courseId: e.target.value, groupIds: [] })}
-                    className={inp}
-                  >
-                    <option value="all">Barcha kurslar</option>
-                    {(courses || []).filter(c => c.name !== 'birinchi').map(c => (
-                      <option key={c.id} value={c.id}>{c.name}</option>
-                    ))}
-                  </select>
+                  <KopTanlov
+                    variantlar={(groups || []).map(g => ({ id: String(g.id), nom: g.name }))}
+                    tanlangan={filters.groupIds}
+                    ozgartir={v => setFilters({ ...filters, groupIds: v })}
+                    hammasiMatni="Barcha kurslar"
+                    birlik="kurs"
+                    inpClass={inp}
+                  />
                 </div>
 
-                <div className="col-span-2">
-                  <label className={lbl}>Guruh bo'yicha</label>
-                  {/* Multi-select guruh dropdown */}
-                  <div className="relative">
-                    <button
-                      type="button"
-                      onClick={() => setGroupDropdownOpen(prev => !prev)}
-                      className={`${inp} flex items-center justify-between text-left`}
-                    >
-                      <span className={filters.groupIds.length === 0 ? 'text-slate-400' : ''}>
-                        {filters.groupIds.length === 0
-                          ? 'Barcha guruhlar'
-                          : filters.groupIds.length === 1
-                            ? (groups || []).find(g => String(g.id) === filters.groupIds[0])?.name || 'Noma\'lum'
-                            : `${filters.groupIds.length} ta guruh tanlandi`
-                        }
-                      </span>
-                      <svg className={`w-3.5 h-3.5 text-slate-400 transition-transform ${groupDropdownOpen ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
-                    </button>
-
-                    {groupDropdownOpen && (
-                      <div className="absolute z-50 mt-1 w-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl shadow-xl overflow-hidden">
-                        {/* Barchasi checkbox */}
-                        <label className="flex items-center gap-2.5 px-3 py-2.5 hover:bg-slate-50 dark:hover:bg-slate-700/50 cursor-pointer border-b border-slate-100 dark:border-slate-700">
-                          <input
-                            type="checkbox"
-                            checked={filters.groupIds.length === 0}
-                            onChange={() => setFilters({ ...filters, groupIds: [] })}
-                            className="w-3.5 h-3.5 rounded border-slate-300 text-brand focus:ring-brand cursor-pointer"
-                          />
-                          <span className="text-[11px] font-bold text-slate-700 dark:text-slate-200">Barcha guruhlar</span>
-                        </label>
-                        {/* Individual groups */}
-                        <div className="max-h-48 overflow-y-auto">
-                          {(groups || []).filter(g => filters.courseId === 'all' || g.courseId === Number(filters.courseId)).map(g => {
-                            const isSelected = filters.groupIds.includes(String(g.id));
-                            return (
-                              <label key={g.id} className="flex items-center gap-2.5 px-3 py-2 hover:bg-slate-50 dark:hover:bg-slate-700/50 cursor-pointer">
-                                <input
-                                  type="checkbox"
-                                  checked={isSelected}
-                                  onChange={() => {
-                                    setFilters(prev => ({
-                                      ...prev,
-                                      groupIds: isSelected
-                                        ? prev.groupIds.filter(id => id !== String(g.id))
-                                        : [...prev.groupIds, String(g.id)]
-                                    }));
-                                  }}
-                                  className="w-3.5 h-3.5 rounded border-slate-300 text-brand focus:ring-brand cursor-pointer"
-                                />
-                                <span className="text-[11px] font-bold text-slate-700 dark:text-slate-200">{g.name}</span>
-                              </label>
-                            );
-                          })}
-                        </div>
-                        {/* Yopish */}
-                        <div className="border-t border-slate-100 dark:border-slate-700 p-2">
-                          <button
-                            type="button"
-                            onClick={() => setGroupDropdownOpen(false)}
-                            className="w-full py-1.5 text-[11px] font-bold text-slate-500 hover:text-brand transition-colors cursor-pointer"
-                          >
-                            Yopish
-                          </button>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                </div>
 
                 <div>
                   <label className={lbl}>Balans holati</label>
@@ -1173,15 +1191,14 @@ export default function Messaging() {
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className={lbl}>O'qituvchi statusi</label>
-                  <select
-                    value={filters.status}
-                    onChange={e => setFilters({ ...filters, status: e.target.value })}
-                    className={inp}
-                  >
-                    <option value="all">Barchasi</option>
-                    <option value="Faol">Faol</option>
-                    <option value="Nofaol">Nofaol</option>
-                  </select>
+                  <KopTanlov
+                    variantlar={USTOZ_STATUSLARI.map(x => ({ id: x, nom: x }))}
+                    tanlangan={filters.statuses}
+                    ozgartir={v => setFilters({ ...filters, statuses: v })}
+                    hammasiMatni="Barchasi"
+                    birlik="status"
+                    inpClass={inp}
+                  />
                 </div>
                 <div>
                   <label className={lbl}>Aloqa kanali</label>
@@ -1430,8 +1447,17 @@ export default function Messaging() {
                     {t.body}
                   </p>
                 </div>
-                <div className="text-[11px] font-bold pt-2 border-t border-dashed border-slate-100 dark:border-slate-800 text-slate-400 dark:text-slate-500">
-                  <span>O'zgaruvchilar: {"{ism}"}, {"{qarz}"}, {"{balans}"}, {"{guruh}"}, {"{markaz}"}</span>
+                <div className="text-[11px] font-bold pt-2 border-t border-dashed border-slate-100 dark:border-slate-800 text-slate-400 dark:text-slate-500 space-y-2">
+                  {(() => {
+                    const h = eskizHolatBelgisi(t.eskizStatus);
+                    return (
+                      <span className={`flex items-center gap-1.5 ${h.rang}`}>
+                        <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${h.nuqta}`} />
+                        <span className="truncate" title={t.eskizStatus || undefined}>{h.matn}</span>
+                      </span>
+                    );
+                  })()}
+                  <span className="block">O'zgaruvchilar: {"{ism}"}, {"{qarz}"}, {"{balans}"}, {"{guruh}"}, {"{markaz}"}</span>
                 </div>
               </div>
             ))}
@@ -1859,7 +1885,7 @@ export default function Messaging() {
                   <div>
                     <p className="font-bold text-slate-850 dark:text-white">{st.name}</p>
                     <p className="text-[11px] font-semibold text-slate-400 mt-0.5 tabular-nums">
-                      Tel: {resolveRecipientPhone(st, recipientTo) || 'Raqam kiritilmagan'}
+                      Tel: {resolveRecipientPhone(st, oluvchiTomoni) || 'Raqam kiritilmagan'}
                     </p>
                   </div>
                   <div className="flex items-center gap-1.5">

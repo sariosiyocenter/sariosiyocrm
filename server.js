@@ -4912,12 +4912,103 @@ app.post('/api/messaging/send-batch', authenticate, requireRole(...STAFF_MANAGER
   } catch (err) { next(err); }
 });
 
+// --- Eskiz shablon moderatsiyasi -------------------------------------------
+//
+// Eskiz tasdiqlanmagan matnli SMS ni yubormaydi. Ilgari shablon faqat CRM
+// bazasiga yozilar, moderatsiyaga esa qo'lda, Eskiz kabinetidan yuborish
+// kerak edi — buni unutish oson va SMS "sababsiz" yetib bormasdi.
+
+// Raqamga aylanadigan o'zgaruvchilar: Eskizda ular %d bilan belgilanadi.
+const ESKIZ_RAQAMLI = ['qarz', 'balans', 'to_lov_summa', 'imtihon_ball', 'imtihon_foiz', 'bahosi'];
+
+/**
+ * CRM shablonini Eskiz andozasiga aylantiradi.
+ * {ism} kabi o'rinbosarlar Eskizda %w (so'z) yoki %d (son) bo'ladi.
+ */
+function eskizMatniga(body) {
+  return String(body || '').replace(/\{([a-zA-Z_]+)\}/g, (_, nom) =>
+    ESKIZ_RAQAMLI.includes(String(nom).toLowerCase()) ? '%d' : '%w{1,5}'
+  ).trim();
+}
+
+/**
+ * Shablonni Eskizga moderatsiyaga yuboradi.
+ * Xatolik butun amalni to'xtatmaydi: shablon CRM da baribir saqlanadi,
+ * holati esa yozuvda ko'rinib turadi.
+ */
+async function eskizShablonYubor(body, schoolId) {
+  const matn = eskizMatniga(body);
+  if (matn.length < 10) {
+    return { status: "Eskiz uchun juda qisqa (kamida 10 belgi)", id: null };
+  }
+  try {
+    const token = await getEskizToken(schoolId);
+    const params = new URLSearchParams();
+    params.append('template', matn);
+
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 12000);
+    const res = await fetch('https://notify.eskiz.uz/api/user/template', {
+      method: 'POST',
+      headers: { Authorization: 'Bearer ' + token, 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: params,
+      signal: controller.signal,
+    });
+    clearTimeout(timeout);
+    const data = await res.json().catch(() => ({}));
+
+    if (!res.ok || data.status === 'fail') {
+      const xato = data?.data?.errors
+        ? Object.values(data.data.errors).flat().join(', ')
+        : (data?.message || 'Eskiz rad etdi');
+      console.warn('[Eskiz shablon]', xato);
+      return { status: 'xato: ' + xato, id: null };
+    }
+    const id = data?.data?.id ?? data?.id ?? null;
+    return { status: data?.data?.status || 'moderation', id: id ? String(id) : null };
+  } catch (err) {
+    console.error('[Eskiz shablon]', err.message);
+    return { status: 'xato: ' + err.message, id: null };
+  }
+}
+
 // Shablonlar CRUD
 app.get('/api/messaging/templates', authenticate, async (req, res, next) => {
   try {
-    const templates = await prisma.messageTemplate.findMany({
+    let templates = await prisma.messageTemplate.findMany({
       where: { schoolId: req.user.schoolId }, orderBy: { createdAt: 'desc' }
     });
+
+    // Moderatsiyada turgan shablonlarning holati Eskiz tomonida o'zgaradi,
+    // shuning uchun ro'yxat ochilganda yangilab olamiz. Eskizga murojaat
+    // qilib bo'lmasa ro'yxat baribir ko'rsatiladi.
+    const kutilayotgan = templates.filter(t => t.eskizTemplateId && t.eskizStatus !== 'confirmed');
+    if (kutilayotgan.length > 0) {
+      try {
+        const token = await getEskizToken(req.user.schoolId);
+        const r = await fetch('https://notify.eskiz.uz/api/user/templates', {
+          headers: { Authorization: 'Bearer ' + token },
+        });
+        const d = await r.json().catch(() => ({}));
+        const holatlar = new Map((d?.result || []).map(x => [String(x.id), x.status]));
+        const yangilangan = [];
+        for (const t of kutilayotgan) {
+          const holat = holatlar.get(String(t.eskizTemplateId));
+          if (holat && holat !== t.eskizStatus) yangilangan.push({ id: t.id, holat });
+        }
+        if (yangilangan.length > 0) {
+          await Promise.all(yangilangan.map(y =>
+            prisma.messageTemplate.update({ where: { id: y.id }, data: { eskizStatus: y.holat } })
+          ));
+          templates = await prisma.messageTemplate.findMany({
+            where: { schoolId: req.user.schoolId }, orderBy: { createdAt: 'desc' }
+          });
+        }
+      } catch (e) {
+        console.warn('[Eskiz shablon holati]', e.message);
+      }
+    }
+
     res.json(templates);
   } catch (err) { next(err); }
 });
@@ -4926,6 +5017,10 @@ app.post('/api/messaging/templates', authenticate, async (req, res, next) => {
   try {
     const { name, body, category, isAuto, autoType, autoChannel, autoRecipient, autoConfig, autoTime } = req.body;
     if (!name || !body) return res.status(400).json({ error: 'name va body kerak' });
+
+    // Shablon yaratilishi bilan Eskizga moderatsiyaga ketadi.
+    const eskiz = await eskizShablonYubor(body, req.user.schoolId);
+
     const template = await prisma.messageTemplate.create({
       data: {
         name,
@@ -4937,6 +5032,8 @@ app.post('/api/messaging/templates', authenticate, async (req, res, next) => {
         autoRecipient: autoRecipient || 'PARENT',
         autoConfig: autoConfig || null,
         autoTime: autoTime || '09:00',
+        eskizStatus: eskiz.status,
+        eskizTemplateId: eskiz.id,
         schoolId: req.user.schoolId
       }
     });
@@ -4958,6 +5055,21 @@ app.put('/api/messaging/templates/:id', authenticate, async (req, res, next) => 
       ...(autoConfig !== undefined && { autoConfig }),
       ...(autoTime !== undefined && { autoTime })
     };
+
+    // Matn o'zgargan bo'lsa eski moderatsiya kuchini yo'qotadi — qaytadan
+    // yuboriladi. Faqat nomi tahrirlansa Eskizga tegilmaydi.
+    if (body !== undefined) {
+      const oldingi = await prisma.messageTemplate.findUnique({
+        where: { id: parseInt(req.params.id) },
+        select: { body: true },
+      });
+      if (oldingi && oldingi.body !== body) {
+        const eskiz = await eskizShablonYubor(body, req.user.schoolId);
+        data.eskizStatus = eskiz.status;
+        data.eskizTemplateId = eskiz.id;
+      }
+    }
+
     const template = await prisma.messageTemplate.update({
       where: { id: parseInt(req.params.id) },
       data
