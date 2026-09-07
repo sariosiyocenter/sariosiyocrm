@@ -37,6 +37,25 @@ export function loadFaceModels(onStep?: (msg: string) => void): Promise<void> {
 
 export type FaceFail = 'topilmadi' | 'kop' | 'rasm';
 
+/**
+ * Shu seansda qaysi (o'quvchi, rasm) juftligi uchun urinib ko'rilgan.
+ *
+ * Rasmida yuz aniqlanmaydigan o'quvchi bor — ularni har safar (profil ochilganda
+ * ham, yo'qlama ochilganda ham) qaytadan hisoblab o'tirish behuda vaqt.
+ */
+const tried = new Map<string, boolean>();
+
+const triedKey = (studentId: number, photo: string) => studentId + ':' + photo;
+
+/** Shu rasm bo'yicha urinib ko'rilgan va yuz topilmaganmi. */
+export function faceFailedBefore(studentId: number, photo: string): boolean {
+    return tried.get(triedKey(studentId, photo)) === false;
+}
+
+export function rememberFaceTry(studentId: number, photo: string, ok: boolean): void {
+    tried.set(triedKey(studentId, photo), ok);
+}
+
 /** `descriptor` bo'lsa — topildi; aks holda `reason` sababni aytadi. */
 export interface FaceResult {
     descriptor?: number[];

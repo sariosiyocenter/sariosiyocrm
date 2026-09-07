@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState, useCallback } from 'react';
 import * as faceapi from 'face-api.js';
 import { X, Camera, UserCheck, Users, CheckCircle2, SwitchCamera, AlertTriangle } from 'lucide-react';
+import { descriptorFromPhoto, saveFaceProfiles, faceFailedBefore, rememberFaceTry } from '../lib/faceDescriptor';
 
 const MODEL_URL = 'https://cdn.jsdelivr.net/gh/justadudewhohacks/face-api.js@0.22.2/weights';
 
@@ -32,6 +33,8 @@ const euclid = (a: Float32Array, b: Float32Array) => {
 interface StudentInfo {
     id: number;
     name: string;
+    /** Yuz belgisi shu rasmdan olinadi. */
+    photo?: string;
     customPrices?: any;
 }
 
@@ -104,6 +107,36 @@ export default function FaceAttendance({ students, groupId, schoolId, attendance
                         descriptor: new Float32Array(p.descriptor),
                         limit: p.source === 'rasm' ? LIMIT_PHOTO : LIMIT_CAMERA,
                     }));
+
+                // Belgisi yo'q, lekin rasmi bor o'quvchilar — shu yerda, o'sha
+                // zahoti rasmidan olinadi. Alohida "Face ID ga qo'shish"
+                // qadami yo'q: yangi o'quvchi guruhga qo'shilsa, birinchi
+                // yo'qlamada o'zi ro'yxatga tushadi. Rasmida yuz topilmaganlar
+                // shu seansda qayta urinilmaydi.
+                const have = new Set(parsed.map(p => p.studentId));
+                const missing = students.filter(s =>
+                    !have.has(s.id) && typeof s.photo === 'string' && s.photo.length > 100
+                    && !faceFailedBefore(s.id, s.photo)
+                );
+                const fresh: { studentId: number; descriptor: number[] }[] = [];
+                for (let i = 0; i < missing.length; i++) {
+                    const s = missing[i];
+                    setLoadMsg(`Yangi o'quvchilar rasmidan belgi olinmoqda… ${i + 1}/${missing.length}`);
+                    const res = await descriptorFromPhoto(s.photo as string);
+                    rememberFaceTry(s.id, s.photo as string, !!res.descriptor);
+                    if (!res.descriptor) continue;
+                    fresh.push({ studentId: s.id, descriptor: res.descriptor });
+                    parsed.push({ studentId: s.id, descriptor: new Float32Array(res.descriptor), limit: LIMIT_PHOTO });
+                }
+                if (fresh.length) {
+                    // Saqlanmasa ham yo'qlama ishlayveradi — belgilar xotirada bor.
+                    try {
+                        for (let i = 0; i < fresh.length; i += 25) {
+                            await saveFaceProfiles(schoolId, fresh.slice(i, i + 25));
+                        }
+                    } catch { /* keyingi safar qayta urinadi */ }
+                }
+
                 setTotalEnrolled(parsed.length);
                 setProfiles(parsed);
                 setPhase('ready');
@@ -113,6 +146,7 @@ export default function FaceAttendance({ students, groupId, schoolId, attendance
             }
         };
         load();
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [schoolId, groupId]);
 
     // Start camera after models ready — kamera almashtirilganda ham qayta ishga tushadi
@@ -313,7 +347,7 @@ export default function FaceAttendance({ students, groupId, schoolId, attendance
                 <div className="flex items-center gap-3 px-5 py-2.5 bg-amber-500/10 border-b border-amber-500/20">
                     <Users size={13} className="text-amber-400 shrink-0" />
                     <p className="text-amber-300 text-[11px] font-bold">
-                        Bu guruhda hech kim yuz ro'yxatidan o'tmagan — <span className="text-white">O'quvchilar</span> sahifasidagi <span className="text-white">"Rasmlardan Face ID"</span> tugmasi bilan hammasini bir yo'la qo'shing
+                        Bu guruhda hech kimning yuzi aniqlanmadi — o'quvchilarning <span className="text-white">profil rasmi</span> yo'q yoki rasmda yuz ko'rinmayapti. Aniqroq rasm qo'ysangiz Face ID o'zi ishlaydi.
                     </p>
                 </div>
             )}

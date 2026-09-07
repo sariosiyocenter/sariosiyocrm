@@ -19,20 +19,13 @@ import PhotoViewer from './PhotoViewer';
 import DiscountModal from './DiscountModal';
 import StudentMoveModal from './StudentMoveModal';
 import StudentLedger from './StudentLedger';
-import { loadFaceModels, descriptorFromPhoto, saveFaceProfiles, faceFailText } from '../lib/faceDescriptor';
+import { loadFaceModels, descriptorFromPhoto, saveFaceProfiles, faceFailText, faceFailedBefore, rememberFaceTry } from '../lib/faceDescriptor';
 
 /**
  * Face ID holati. Alohida "rasmga tushish" ham, tugma ham yo'q: belgi profil
  * rasmidan o'zi olinadi, bu yer faqat natijani aytadi.
  */
 type FaceState = 'tekshirilmoqda' | 'tayyor' | 'yuzYoq' | 'rasmYoq';
-
-/**
- * Qaysi (o'quvchi, rasm) juftligi uchun urinib ko'rilgan. Rasmida yuz
- * topilmaydigan o'quvchining sahifasi har ochilganda modellarni qayta yuklab,
- * behuda hisoblab o'tirmaslik uchun.
- */
-const faceTried = new Map<string, FaceState>();
 
 const UZB_REGIONS: Record<string, string[]> = {
   "Surxondaryo": [
@@ -183,22 +176,21 @@ export default function StudentDetails() {
     const syncFaceFromPhoto = async (photoUrl?: string, warn = false) => {
         const src = photoUrl || student?.photo;
         if (!student || !src) { setFaceState('rasmYoq'); return; }
-        const key = student.id + ':' + src;
         setFaceState('tekshirilmoqda');
         try {
             await loadFaceModels();
             const res = await descriptorFromPhoto(src);
             if (!res.descriptor) {
-                faceTried.set(key, 'yuzYoq');
+                rememberFaceTry(student.id, src, false);
                 setFaceState('yuzYoq');
                 if (warn) showNotification(`Face ID olinmadi — ${faceFailText(res.reason || 'rasm')}. Aniqroq rasm qo'ying.`, 'error');
                 return;
             }
             await saveFaceProfiles(student.schoolId, [{ studentId: student.id, descriptor: res.descriptor }]);
-            faceTried.set(key, 'tayyor');
+            rememberFaceTry(student.id, src, true);
             setFaceState('tayyor');
         } catch (err: any) {
-            faceTried.set(key, 'yuzYoq');
+            rememberFaceTry(student.id, src, false);
             setFaceState('yuzYoq');
             if (warn) showNotification(err?.message || 'Face ID olinmadi', 'error');
         }
@@ -258,9 +250,7 @@ export default function StudentDetails() {
     React.useEffect(() => {
         if (!student?.id || !student?.schoolId) return;
         if (!student.photo) { setFaceState('rasmYoq'); return; }
-        const key = student.id + ':' + student.photo;
-        const known = faceTried.get(key);
-        if (known === 'yuzYoq') { setFaceState('yuzYoq'); return; }
+        if (faceFailedBefore(student.id, student.photo)) { setFaceState('yuzYoq'); return; }
 
         let off = false;
         (async () => {
@@ -270,7 +260,7 @@ export default function StudentDetails() {
                 });
                 const j = await r.json();
                 if (off) return;
-                if (r.ok && (j.profiles || []).length > 0) { faceTried.set(key, 'tayyor'); setFaceState('tayyor'); return; }
+                if (r.ok && (j.profiles || []).length > 0) { setFaceState('tayyor'); return; }
                 if (r.ok) await syncFaceFromPhoto(student.photo);
             } catch { /* holat noma'lum qoladi */ }
         })();

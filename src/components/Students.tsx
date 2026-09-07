@@ -1,8 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { Search, Plus, FileSpreadsheet, MoreVertical, X, Image as ImageIcon, MapPin, GraduationCap, QrCode, Trash2, SlidersHorizontal, ScanFace
+import { Search, Plus, FileSpreadsheet, MoreVertical, X, Image as ImageIcon, MapPin, GraduationCap, QrCode, Trash2, SlidersHorizontal
 } from 'lucide-react';
 import { useCRM } from '../context/CRMContext';
-import FaceBulkEnroll from './FaceBulkEnroll';
 import { useConfirm } from './ConfirmDialog';
 import { useLang } from '../context/LanguageContext';
 import { useNavigate, useSearchParams } from 'react-router-dom';
@@ -160,8 +159,6 @@ export default function Students() {
     };
     const [isRemovingBg, setIsRemovingBg] = useState(false);
     const [isImporting, setIsImporting] = useState(false);
-    /** Mavjud profil rasmlaridan Face ID belgilarini olish oynasi. */
-    const [isFaceBulkOpen, setIsFaceBulkOpen] = useState(false);
     const [search, setSearch] = useState('');
     const [page, setPage] = useState(1);
 
@@ -677,15 +674,6 @@ export default function Students() {
                             <FileSpreadsheet size={14} /> {t('import')}
                         </button>
                         <input type="file" id="import-excel-input" accept=".xlsx, .xls, .csv" className="hidden" onChange={handleImportChange} />
-                        {selectedSchoolId !== 0 && (
-                            <button
-                                onClick={() => setIsFaceBulkOpen(true)}
-                                title="Profil rasmlaridan yuz belgilarini olish"
-                                className="flex items-center gap-2 px-3 py-2.5 bg-sirt border border-chiziq text-matn-2 hover:border-brand hover:text-brand rounded-xl text-xs font-bold transition-all cursor-pointer"
-                            >
-                                <ScanFace size={14} /> Rasmlardan Face ID
-                            </button>
-                        )}
                         {selectedSchoolId !== 0 && (
                             <button
                                 onClick={() => setIsLinkModalOpen(true)}
@@ -1520,13 +1508,6 @@ export default function Students() {
                     </div>
                 </div>
             )}
-            {isFaceBulkOpen && (
-                <FaceBulkEnroll onClose={(saved) => {
-                    setIsFaceBulkOpen(false);
-                    if (saved > 0) showNotification(`${saved} ta o'quvchi Face ID ga qo'shildi`, 'success');
-                }} />
-            )}
-
             {isLinkModalOpen && (
                 <div className="fixed inset-0 z-[200] flex items-start sm:items-center justify-center overflow-y-auto p-4">
                     <div className="absolute inset-0 bg-gray-900/60 backdrop-blur-sm" onClick={() => setIsLinkModalOpen(false)} />
