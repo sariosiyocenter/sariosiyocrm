@@ -127,6 +127,10 @@ model Teacher {
   id              Int       @id @default(autoincrement())
   name            String
   phone           String
+  // Eskirgan maosh maydonlari. Oylik xodim kartasidan (User.salary,
+  // User.kpiPercent) va guruhga belgilangan haqdan (Group.payType/payValue)
+  // hisoblanadi. Bular faqat eski kod uchun qoldi va User dan nusxa qilib
+  // turiladi — ikki xil raqam paydo bo'lmasligi uchun.
   salary          Float
   sharePercentage Float
   lessonFee       Float     @default(0)

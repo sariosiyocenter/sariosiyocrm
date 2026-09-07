@@ -2,7 +2,7 @@ import React, { useState, useMemo } from 'react';
 import {
   Users, GraduationCap, Target,
   TrendingUp, TrendingDown, ArrowUpRight,
-  Activity, Calendar, Clock, ChevronRight, BookOpen, BarChart3, FileText, UserMinus, Award, Star, MoreHorizontal, ChevronDown
+  Activity, Calendar, Clock, ChevronRight, BookOpen, BarChart3, FileText, UserMinus, Award, Star, MoreHorizontal, ChevronDown, CreditCard
 } from 'lucide-react';
 import { useCRM } from '../context/CRMContext';
 import { activeCourses } from '../lib/activeCourses';
@@ -14,6 +14,10 @@ import { displayName } from '../lib/displayName';
 
 import LeftStudentsReport from './reports/LeftStudentsReport';
 import StaffAttendanceReport from './reports/StaffAttendanceReport';
+// To'lov hisobotlari ilgari faqat alohida Reports.tsx sahifasida edi, u esa
+// marshrutda yo'q — ya'ni ularni ochib bo'lmasdi. Hisobotlar bitta joyda tursin.
+import PaymentsReport from './reports/PaymentsReport';
+import StudentsPaymentReport from './reports/StudentsPaymentReport';
 import StudentBonusReport from './reports/StudentBonusReport';
 import LeadsReport from './reports/LeadsReport';
 import StudentsGeneralReport from './reports/StudentsGeneralReport';
@@ -308,6 +312,8 @@ export default function Dashboard() {
         { id: 'graduates', label: t('rep_graduates'), icon: <GraduationCap size={12} /> },
         { id: 'staff_attendance', label: t('rep_staff_attendance'), icon: <Activity size={12} /> },
         { id: 'bonuses', label: t('rep_bonuses'), icon: <Star size={12} /> },
+        { id: 'payments', label: t('rep_payments'), icon: <CreditCard size={12} /> },
+        { id: 'students_payment', label: t('rep_students_payment'), icon: <Users size={12} /> },
     ];
 
     const renderReportContent = () => {
@@ -315,6 +321,8 @@ export default function Dashboard() {
             case 'left_students': return <LeftStudentsReport startDate={startDate} endDate={endDate} />;
             case 'staff_attendance': return <StaffAttendanceReport startDate={startDate} endDate={endDate} />;
             case 'bonuses': return <StudentBonusReport startDate={startDate} endDate={endDate} />;
+            case 'payments': return <PaymentsReport startDate={startDate} endDate={endDate} />;
+            case 'students_payment': return <StudentsPaymentReport startDate={startDate} endDate={endDate} />;
             case 'leads': return <LeadsReport startDate={startDate} endDate={endDate} />;
             case 'students_general': return <StudentsGeneralReport startDate={startDate} endDate={endDate} />;
             case 'graduates': return <GraduatesReport startDate={startDate} endDate={endDate} />;

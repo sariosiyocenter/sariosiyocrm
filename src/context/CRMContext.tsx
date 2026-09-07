@@ -122,7 +122,7 @@ function storedBranchId(): number | null {
 export const CRMProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
     const [state, setState] = useState<CRMState>({
         students: [], teachers: [], groups: [], leads: [], payments: [], courses: [], rooms: [], schools: [],
-        attendances: [], scores: [], teacherAttendances: [], expenses: [],
+        attendances: [], scores: [], teacherAttendances: [], staffAttendances: [], expenses: [],
         transports: [], deliveryLogs: [], routes: [], users: [],
         questions: [], exams: [], examResults: [],
         topics: [],
@@ -383,6 +383,7 @@ export const CRMProvider: React.FC<{ children: React.ReactNode }> = ({ children 
                 attendances:        data.attendances    || [],
                 scores:             data.scores         || [],
                 teacherAttendances: data.teacherAttendances || [],
+                staffAttendances: data.staffAttendances || [],
                 expenses:           data.expenses       || [],
                 transports:         data.transports     || [],
                 routes:             data.routes         || [],
@@ -474,6 +475,7 @@ export const CRMProvider: React.FC<{ children: React.ReactNode }> = ({ children 
                             attendances:        data.attendances    || [],
                             scores:             data.scores         || [],
                             teacherAttendances: data.teacherAttendances || [],
+                            staffAttendances:   data.staffAttendances || [],
                             expenses:           data.expenses       || [],
                             transports:         data.transports     || [],
                             routes:             data.routes         || [],
@@ -604,7 +606,7 @@ export const CRMProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         try { localStorage.removeItem(BRANCH_KEY); } catch { /* private mode */ }
         setState({
             students: [], teachers: [], groups: [], leads: [], payments: [], courses: [], rooms: [], schools: [],
-            attendances: [], scores: [], teacherAttendances: [], expenses: [],
+            attendances: [], scores: [], teacherAttendances: [], staffAttendances: [], expenses: [],
             transports: [], deliveryLogs: [], routes: [], users: [],
             questions: [], exams: [], examResults: [],
             topics: [],

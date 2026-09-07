@@ -31,7 +31,6 @@ function lazyRetry<T extends React.ComponentType<any>>(componentImport: () => Pr
 // Lazy (faqat kirish kerak bo'lganda yuklanadi)
 const LandingPage     = lazyRetry(() => import('./components/LandingPage'));
 const Dashboard       = lazyRetry(() => import('./components/Dashboard'));
-const Teachers        = lazyRetry(() => import('./components/Teachers'));
 const TeacherDetails  = lazyRetry(() => import('./components/TeacherDetails'));
 const Courses          = lazyRetry(() => import('./components/Courses'));
 const CourseDetails    = lazyRetry(() => import('./components/CourseDetails'));
@@ -41,13 +40,11 @@ const StudentDetails  = lazyRetry(() => import('./components/StudentDetails'));
 const Leads           = lazyRetry(() => import('./components/Leads'));
 const Finance         = lazyRetry(() => import('./components/Finance'));
 const Settings        = lazyRetry(() => import('./components/Settings'));
-const Reports         = lazyRetry(() => import('./components/Reports'));
 const Logistics       = lazyRetry(() => import('./components/Logistics'));
 const Messaging       = lazyRetry(() => import('./components/Messaging'));
 const ExamsList       = lazyRetry(() => import('./components/ExamsList'));
 const ExamBuilder     = lazyRetry(() => import('./components/ExamBuilder'));
 const ExamDetail      = lazyRetry(() => import('./components/ExamDetail'));
-const Scanner         = lazyRetry(() => import('./components/Scanner'));
 const QuestionsList   = lazyRetry(() => import('./components/QuestionsList'));
 const QuestionEditor  = lazyRetry(() => import('./components/QuestionEditor'));
 const ExamResults     = lazyRetry(() => import('./components/ExamResults'));

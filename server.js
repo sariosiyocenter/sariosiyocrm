@@ -283,6 +283,25 @@ app.post('/api/auth/change-password', authenticate, async (req, res, next) => {
 // bog'lanmagan eski yozuvlar uchun qoladi.
 const USTOZ_ROLLAR = ['TEACHER', 'SUPPORT_TEACHER'];
 
+/**
+ * Ustoz yozuvidagi maosh maydonlarini xodim kartasiga moslaydi.
+ *
+ * Teacher.salary / sharePercentage / salaryType eskirgan: oylik xodim
+ * kartasidagi salary va kpiPercent dan hisoblanadi. Ustunlarni o'chirib
+ * tashlash o'rniga (eski kod va Telegram bot ularni o'qiydi) ular shu yerda
+ * nusxa qilib turiladi — shunda ikki xil raqam paydo bo'lmaydi.
+ */
+function ustozMaoshi(user, ustoz) {
+  const maosh = Math.round(Number(user.salary) || 0);
+  const foiz = Math.round(Number(user.kpiPercent) || 0);
+  const turi = maosh > 0 && foiz > 0 ? 'FIXED_KPI' : foiz > 0 ? 'KPI' : 'FIXED';
+  const data = {};
+  if (!ustoz || Math.round(Number(ustoz.salary) || 0) !== maosh) data.salary = maosh;
+  if (!ustoz || Math.round(Number(ustoz.sharePercentage) || 0) !== foiz) data.sharePercentage = foiz;
+  if (!ustoz || ustoz.salaryType !== turi) data.salaryType = turi;
+  return data;
+}
+
 /** Xodim yozuviga tegishli ustoz yozuvi. */
 async function ustozniTop(user, db = prisma) {
   if (!user) return null;
@@ -625,6 +644,11 @@ app.put('/api/users/:id', authenticate, async (req, res, next) => {
         if (data.status === 'Arxiv' && ustoz.status !== 'Arxiv') ustozData.status = 'Arxiv';
         if (data.status === 'Faol' && ustoz.status === 'Arxiv') ustozData.status = 'Faol';
         if (!ustoz.userId) ustozData.userId = user.id;
+        // Maosh raqamlari ikki jadvalda yotardi va bir-biriga mos kelmasdi:
+        // CRM User.salary/kpiPercent dan hisoblar, Telegram bot esa
+        // Teacher.salary/sharePercentage ni ko'rsatar edi. Endi yagona manba
+        // xodim kartasi, ustoz yozuvi esa undan nusxa oladi.
+        Object.assign(ustozData, ustozMaoshi(user, ustoz));
         if (Object.keys(ustozData).length) {
           await prisma.teacher.update({ where: { id: ustoz.id }, data: ustozData });
         }
@@ -1154,9 +1178,72 @@ app.post('/api/admin/sync-teachers', authenticate, async (req, res, next) => {
       }
     }
 
-    res.json({ success: true, linkedCount: boglanganSoni, createdCount });
+    // 3) Eski ustoz davomatini xodim jurnaliga ko'chiramiz. Davomat endi
+    //    faqat StaffAttendance da yuritiladi (profildagi "Ish grafigi"),
+    //    TeacherAttendance esa tarix bo'lib qoladi.
+    const kochirilgan = await ustozDavomatiniKochir(schoolIds);
+
+    // 4) Ustoz yozuvidagi eski maosh raqamlarini xodim kartasiga moslaymiz.
+    //    Ular allaqachon bir-biriga mos kelmay qolgan edi (masalan ulush
+    //    xodim kartasida 20%, ustoz yozuvida 0%) va Telegram bot eskisini
+    //    ko'rsatardi.
+    let maoshTuzatildi = 0;
+    const boglanganlar = await prisma.teacher.findMany({
+      where: {
+        userId: { not: null },
+        ...(schoolIds && schoolIds.length ? { schoolId: { in: schoolIds } } : {})
+      },
+      include: { user: { select: { salary: true, kpiPercent: true } } }
+    });
+    for (const ustoz of boglanganlar) {
+      if (!ustoz.user) continue;
+      const data = ustozMaoshi(ustoz.user, ustoz);
+      if (Object.keys(data).length === 0) continue;
+      await prisma.teacher.update({ where: { id: ustoz.id }, data });
+      maoshTuzatildi++;
+    }
+
+    res.json({
+      success: true, linkedCount: boglanganSoni, createdCount,
+      movedAttendance: kochirilgan, salaryFixed: maoshTuzatildi
+    });
   } catch (error) { next(error); }
 });
+
+/**
+ * TeacherAttendance yozuvlarini StaffAttendance ga ko'chiradi.
+ *
+ * Ustoz davomati ikki jadvalda yuritilardi va hisobot eskisidan o'qirdi.
+ * Endi manba bitta; bu yerda eski yozuvlar yo'qolib ketmasligi uchun
+ * ko'chiriladi. Takroran chaqirilsa hech narsa o'zgartirmaydi.
+ */
+async function ustozDavomatiniKochir(schoolIds) {
+  const HOLAT = { Keldi: 'Keldi', Kelmapdi: 'Kelmadi', Kelmadi: 'Kelmadi', Sababli: 'Sababli' };
+  const rows = await prisma.teacherAttendance.findMany({
+    where: schoolIds && schoolIds.length ? { schoolId: { in: schoolIds } } : {},
+    include: { teacher: { select: { userId: true } } }
+  });
+  let kochdi = 0;
+  for (const r of rows) {
+    const userId = r.teacher?.userId;
+    const status = HOLAT[r.status];
+    // Bog'lanmagan ustoz yoki "Dars bo'lmadi" kabi xodim jurnalida yo'q holat
+    // ko'chirilmaydi — noto'g'ri kun qo'shib qo'ymaslik uchun.
+    if (!userId || !status) continue;
+    try {
+      const bor = await prisma.staffAttendance.findFirst({ where: { userId, date: r.date } });
+      if (bor) continue;
+      await prisma.staffAttendance.create({
+        data: { userId, date: r.date, status, schoolId: r.schoolId }
+      });
+      kochdi++;
+    } catch (e) {
+      // Bir vaqtda yozilib qolsa unique cheklovi ushlaydi — o'tkazib yuboramiz.
+      if (e.code !== 'P2002') console.error("[Davomatni ko'chirish]", r.id, e.message);
+    }
+  }
+  return kochdi;
+}
 
 // --- API Routes ---
 
@@ -1524,6 +1611,9 @@ app.put('/api/teachers/:id', authenticate, requireRole(...STAFF_MANAGERS), async
         if ((teacher.photo || null) !== xodim.photo) xodimData.photo = teacher.photo || null;
         if (teacher.status === 'Arxiv' && xodim.status !== 'Arxiv') xodimData.status = 'Arxiv';
         if (teacher.status !== 'Arxiv' && xodim.status === 'Arxiv') xodimData.status = 'Faol';
+        if (Math.round(teacher.salary || 0) !== (xodim.salary || 0)) {
+          xodimData.salary = Math.round(teacher.salary || 0);
+        }
         if (Object.keys(xodimData).length) {
           await prisma.user.update({ where: { id: xodim.id }, data: xodimData });
         }
@@ -1637,14 +1727,18 @@ app.post('/api/groups', authenticate, async (req, res, next) => {
     
     // Resolve courseId
     if (!courseId && courseName) {
-      console.log('Resolving courseName:', courseName);
+      // Kurs nomi katta-kichik harf va ortiqcha bo'shliqqa qaramay topilsin.
+      // Ilgari aynan mos kelmasa yangi kurs ochilardi: "Matematika" va
+      // "matematika " ikkita alohida kurs bo'lib qolar, ro'yxatda takrorlanar
+      // va tushum ikkiga bo'linib ketardi.
+      const nom = String(courseName).trim();
       let course = await prisma.course.findFirst({
-        where: { name: courseName, schoolId: sId }
+        where: { name: { equals: nom, mode: 'insensitive' }, schoolId: sId }
       });
       if (!course) {
-        console.log('Creating new course:', courseName);
+        console.log('Creating new course:', nom);
         course = await prisma.course.create({
-          data: { name: courseName, price: 0, schoolId: sId }
+          data: { name: nom, price: 0, schoolId: sId }
         });
       }
       courseId = course.id;
@@ -3188,7 +3282,7 @@ app.get('/api/init', authenticate, async (req, res, next) => {
     // All queries run in parallel — only 1 DB round-trip overhead
     const [
       students, teachers, groups, leads, payments, courses, rooms,
-      settings, attendances, scores, teacherAttendances, expenses,
+      settings, attendances, scores, teacherAttendances, staffAttendances, expenses,
       transports, routes, users, questions, exams, examResults, schools,
       topics, syllabuses
     ] = await Promise.all([
@@ -3216,6 +3310,10 @@ app.get('/api/init', authenticate, async (req, res, next) => {
       prisma.attendance.findMany({ where: { ...whereQuery, date: { gte: attendanceWindowStart() } } }),
       prisma.score.findMany({ where: whereQuery }),
       prisma.teacherAttendance.findMany({ where: whereQuery }),
+      // Xodim davomati (profildagi "Ish grafigi" kalendari yozadigan jadval).
+      // Hisobot ilgari TeacherAttendance dan o'qir edi, unga esa hech narsa
+      // yozilmay qolgan — shuning uchun hamma xodim 0% ko'rinardi.
+      prisma.staffAttendance.findMany({ where: whereQuery }),
       prisma.expense.findMany({ where: whereQuery }),
       prisma.transport.findMany({
         where: whereQuery,
@@ -3274,7 +3372,7 @@ app.get('/api/init', authenticate, async (req, res, next) => {
       // Admins configure SMS/Telegram from the settings screen and need the real values;
       // every other role gets the masked copy.
       settings: isAdmin(req.user) ? settings : stripSettingSecrets(settings),
-      attendances, scores, teacherAttendances, expenses,
+      attendances, scores, teacherAttendances, staffAttendances, expenses,
       transports, routes, questions, exams, examResults, schools,
       topics, syllabuses,
       users: users.map(u => {
@@ -3809,41 +3907,44 @@ app.post('/api/teacher-attendances/notify', authenticate, async (req, res, next)
     const { schoolId, date, teacherId, userId } = req.body;
     if (!schoolId || !date) return res.status(400).json({ error: "schoolId va date kerak" });
 
-    const where = { schoolId: parseInt(schoolId), date };
-    if (teacherId) where.teacherId = parseInt(teacherId);
+    const records = [];
 
-    const rows = await prisma.teacherAttendance.findMany({
-      where,
-      include: { teacher: { select: { name: true, telegramId: true } } }
-    });
-    const records = rows.map(r => ({
-      status: r.status,
-      name: r.teacher?.name,
-      telegramId: r.teacher?.telegramId,
-    }));
+    // Davomat endi xodim jurnalida (StaffAttendance) yuritiladi — profildagi
+    // "Ish grafigi" kalendari o'sha yerga yozadi. Shuning uchun avval shu
+    // yerdan qaraymiz, eski TeacherAttendance esa faqat tarix uchun qoladi.
+    let teacherTg = null;
+    if (teacherId) {
+      const t = await prisma.teacher.findUnique({
+        where: { id: parseInt(teacherId) },
+        select: { telegramId: true },
+      });
+      teacherTg = t?.telegramId || null;
+    }
 
-    // Ustoz davomati ikki joyda belgilanishi mumkin: eski "o'qituvchi profili"
-    // (TeacherAttendance) va xodim profilidagi kalendar (StaffAttendance).
-    // Profillar birlashtirilgach xodim kalendari asosiy bo'ldi, shuning uchun
-    // o'sha kunga ustoz jurnalida yozuv bo'lmasa xodim jurnalidan olamiz.
-    if (records.length === 0 && userId) {
+    if (userId) {
       const staffRows = await prisma.staffAttendance.findMany({
         where: { userId: parseInt(userId), date },
         include: { user: { select: { name: true, telegramId: true } } },
       });
       // Telegram id ustoz yozuvida bo'lishi mumkin (bot ustozni shu yerga bog'laydi).
-      let teacherTg = null;
-      if (teacherId) {
-        const t = await prisma.teacher.findUnique({
-          where: { id: parseInt(teacherId) },
-          select: { telegramId: true },
-        });
-        teacherTg = t?.telegramId || null;
-      }
       staffRows.forEach(r => records.push({
         status: r.status,
         name: r.user?.name,
         telegramId: r.user?.telegramId || teacherTg,
+      }));
+    }
+
+    if (records.length === 0) {
+      const where = { schoolId: parseInt(schoolId), date };
+      if (teacherId) where.teacherId = parseInt(teacherId);
+      const rows = await prisma.teacherAttendance.findMany({
+        where,
+        include: { teacher: { select: { name: true, telegramId: true } } }
+      });
+      rows.forEach(r => records.push({
+        status: r.status,
+        name: r.teacher?.name,
+        telegramId: r.teacher?.telegramId,
       }));
     }
 

@@ -280,6 +280,16 @@ export interface TeacherAttendance {
     schoolId: number;
 }
 
+// Xodim davomati. Ustoz davomati ham shu yerda: profil bitta bo'lgani kabi
+// jurnal ham bitta. Eski TeacherAttendance faqat tarix uchun qoldi.
+export interface StaffAttendance {
+    id: number;
+    userId: number;
+    date: string;
+    status: 'Keldi' | 'Kelmadi' | 'Sababli';
+    schoolId: number;
+}
+
 export interface CRMState {
     students: Student[];
     teachers: Teacher[];
@@ -292,6 +302,9 @@ export interface CRMState {
     attendances: Attendance[];
     scores: Score[];
     teacherAttendances: TeacherAttendance[];
+    // Xodim davomati — profildagi "Ish grafigi" kalendari yozadigan jadval.
+    // Ustoz davomati ham shu yerda: ustoz ham xodim, profili bitta.
+    staffAttendances: StaffAttendance[];
     expenses: Expense[];
     transports: Transport[];
     deliveryLogs: DeliveryLog[];

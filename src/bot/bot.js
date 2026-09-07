@@ -420,11 +420,14 @@ export const setupBotHandlers = (botInstance, schoolId) => {
         // SalaryPayment User ga bog'langan, Teacher ga emas: ikkalasi ism
         // bo'yicha topiladi (server.js dagi KPI hisobi ham shunday qiladi).
         let paid = [];
+        let staff = null;
         try {
-            const staff = await prisma.user.findFirst({
-                where: { name: teacher.name, schoolId: teacher.schoolId },
-                select: { id: true }
-            });
+            // Xodim yozuvi Teacher.userId orqali topiladi. Ilgari u ism bo'yicha
+            // qidirilardi: ism biroz boshqacha yozilgan bo'lsa bot "berilgan
+            // oylik yozuvi yo'q" der, CRM da esa oylik berilgan bo'lardi.
+            staff = teacher.userId
+                ? await prisma.user.findUnique({ where: { id: teacher.userId } })
+                : await prisma.user.findFirst({ where: { name: teacher.name, schoolId: teacher.schoolId } });
             if (staff) {
                 paid = await prisma.salaryPayment.findMany({
                     where: { userId: staff.id },
@@ -452,17 +455,32 @@ export const setupBotHandlers = (botInstance, schoolId) => {
 
         lines.push('');
         lines.push('📋 Shartnoma bo\'yicha:');
-        const turi = teacher.salaryType === 'KPI' ? 'KPI (foizli)'
-            : teacher.salaryType === 'FIXED_KPI' ? 'Belgilangan + KPI'
-            : 'Belgilangan';
-        lines.push('💳 Turi: ' + turi);
-        if (teacher.salaryType !== 'FIXED') {
-            lines.push('📈 Ulush: ' + teacher.sharePercentage + '%');
+        // Shartnoma ma'lumoti CRM ning o'zi hisoblaydigan joydan olinadi:
+        // xodim kartasidagi asosiy maosh va KPI foizi, hamda guruhga alohida
+        // belgilangan haq. Ilgari bu yerda Teacher jadvalidagi eski maydonlar
+        // ko'rsatilar va CRM dagidan boshqa raqam chiqardi.
+        lines.push('\u{1F4B5} Asosiy oylik: ' + (staff?.salary || 0).toLocaleString() + ' UZS');
+
+        const guruhlar = await prisma.group.findMany({
+            where: { teacherId: teacher.id },
+            select: { name: true, payType: true, payValue: true }
+        });
+        const umumiyFoiz = staff?.kpiPercent || 0;
+
+        if (guruhlar.length > 0 && (guruhlar.some(g => g.payType) || umumiyFoiz > 0)) {
+            lines.push('\u{1F465} Guruhlar uchun:');
+            guruhlar.forEach(g => {
+                if (g.payType === 'Belgilangan') {
+                    lines.push('  \u25AB\uFE0F ' + g.name + ': ' + Math.round(g.payValue || 0).toLocaleString() + ' UZS/oy');
+                } else if (g.payType === 'Foiz') {
+                    lines.push('  \u25AB\uFE0F ' + g.name + ': ' + (g.payValue || 0) + '%');
+                } else if (umumiyFoiz > 0) {
+                    lines.push('  \u25AB\uFE0F ' + g.name + ': ' + umumiyFoiz + '% (umumiy ulush)');
+                }
+            });
+        } else if (umumiyFoiz > 0) {
+            lines.push('\u{1F4C8} Guruhlardan ulush: ' + umumiyFoiz + '%');
         }
-        if (teacher.salaryType !== 'KPI') {
-            lines.push('💵 Oylik: ' + (teacher.salary || 0).toLocaleString() + ' UZS');
-        }
-        lines.push('📖 Dars haqi: ' + (teacher.lessonFee || 0).toLocaleString() + ' UZS');
 
         ctx.reply(lines.join(NL));
     });
