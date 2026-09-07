@@ -284,8 +284,11 @@ export default function HRManagement() {
     // bori shunday bo'ladi) odam ro'yxatdan butunlay yo'qolib ketardi — na
     // "Arxiv" tugmasida ko'rinardi, na tiklab bo'lardi. Guruhlari esa o'shanda
     // ham unga biriktirilgan turaverardi.
+    // Xodim yozuvi bor ustoz bu yerda takrorlanmaydi. Endi bog'lanish
+    // Teacher.userId orqali aniq bilinadi; ism bo'yicha tekshiruv esa server
+    // hali bog'lab ulgurmagan lahza uchun qoladi.
     const uniqueTeacherRows = (teachers || [])
-        .filter(t => !userNames.has(t.name.toLowerCase().trim()))
+        .filter(t => !t.userId && !userNames.has(t.name.toLowerCase().trim()))
         .map(t => ({
             _source:  'teacher',
             _tid:     t.id,

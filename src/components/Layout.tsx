@@ -258,7 +258,7 @@ export default function Layout({ children, onLogout }: LayoutProps) {
                         <div className="p-2">
                           <p className="text-[11px] font-semibold text-slate-400 px-3 py-2">Ustozlar</p>
                           {results.teachers.map(t => (
-                            <div key={t.id} onClick={() => handleResultClick(`/teachers/${t.id}`)} className="flex items-center gap-3 px-3 py-2.5 hover:bg-violet-50 dark:hover:bg-violet-950/40 rounded-lg cursor-pointer transition-colors">
+                            <div key={t.id} onClick={() => handleResultClick(t.userId ? `/hr/${t.userId}` : `/teachers/${t.id}`)} className="flex items-center gap-3 px-3 py-2.5 hover:bg-violet-50 dark:hover:bg-violet-950/40 rounded-lg cursor-pointer transition-colors">
                               <div className="w-8 h-8 rounded-lg bg-violet-100 dark:bg-violet-900/40 text-violet-600 dark:text-violet-400 flex items-center justify-center shrink-0"><GraduationCap size={16}/></div>
                               <div>
                                 <p className="text-sm font-medium text-slate-800 dark:text-white">{t.name}</p>

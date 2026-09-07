@@ -136,6 +136,13 @@ model Teacher {
   status          String    @default("Faol")
   telegramId      String?   @unique
 
+  // Ustoz yozuvi va xodim yozuvi bitta odam. Ilgari ular faqat ism bo'yicha
+  // topilardi: ismi o'zgargan yoki xodim yozuvi umuman yo'q ustoz "eski" ustoz
+  // bo'lib qolar, unga alohida (kambag'al) profil ochilardi va oylik ham,
+  // davomat ham, Telegram xabari ham ishlamasdi. Endi bog'lanish shu maydonda.
+  userId          Int?      @unique
+  user            User?     @relation("TeacherAccount", fields: [userId], references: [id])
+
   schoolId        Int
   school          School    @relation(fields: [schoolId], references: [id])
   groups          Group[]
@@ -533,6 +540,7 @@ model User {
   sellerLeads      SaaSLead[]       @relation("SellerLeads")
   staffAttendances StaffAttendance[]
   salaryPayments   SalaryPayment[]
+  teacherProfile   Teacher?         @relation("TeacherAccount")
 
   @@index([schoolId])
 }

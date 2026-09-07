@@ -270,6 +270,125 @@ app.post('/api/auth/change-password', authenticate, async (req, res, next) => {
   } catch (error) { next(error); }
 });
 
+// --- Ustoz <-> xodim bog'lanishi -------------------------------------------
+//
+// Bazada bir odam ikki joyda turadi: Teacher (guruh, davomat, dars haqi) va
+// User (kirish, oylik, ish grafigi). Ilgari ular faqat ISM bo'yicha
+// topishardi. Natijada Teacher yozuvi bor, User yozuvi yo'q "eski" ustozlar
+// paydo bo'lgan: ularga alohida, qashshoq profil ochilardi — oylik berish
+// tugmasi ham, davomat ham, Telegram xabari ham yo'q edi. Rahbar aynan shuni
+// ko'rgan: "nimaga bir xil interfeys emas".
+//
+// Endi bog'lanish Teacher.userId da. Ismga qarab qidirish faqat hali
+// bog'lanmagan eski yozuvlar uchun qoladi.
+const USTOZ_ROLLAR = ['TEACHER', 'SUPPORT_TEACHER'];
+
+/** Xodim yozuviga tegishli ustoz yozuvi. */
+async function ustozniTop(user, db = prisma) {
+  if (!user) return null;
+  const bogliq = await db.teacher.findFirst({ where: { userId: user.id } });
+  if (bogliq) return bogliq;
+  if (user.schoolId == null) return null;
+  return await db.teacher.findFirst({
+    where: { name: user.name, schoolId: user.schoolId, userId: null }
+  });
+}
+
+/** Ustoz yozuviga tegishli xodim yozuvi. */
+async function xodimniTop(teacher, db = prisma) {
+  if (!teacher) return null;
+  if (teacher.userId) return await db.user.findUnique({ where: { id: teacher.userId } });
+  return await db.user.findFirst({
+    where: { name: teacher.name, schoolId: teacher.schoolId, teacherProfile: { is: null } }
+  });
+}
+
+/**
+ * Ustozga xodim hisobi ochadi. Email va parol o'ylab topiladi: ustoz tizimga
+ * kirmasligi mumkin, lekin oylik, davomat va Telegram xabari uchun User yozuvi
+ * shart. Parolni keyin rahbar HR bo'limidan o'zgartiradi.
+ */
+async function ustozgaXodimYarat(teacher, db = prisma) {
+  const belgi = Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
+  const user = await db.user.create({
+    data: {
+      email: 'ustoz_' + teacher.id + '_' + belgi + '@internal.local',
+      password: await bcrypt.hash(Math.random().toString(36).slice(2) + Math.random().toString(36).slice(2), 10),
+      name: teacher.name,
+      phone: teacher.phone || null,
+      photo: teacher.photo || null,
+      position: "O'qituvchi",
+      salary: Math.round(Number(teacher.salary) || 0),
+      kpiPercent: Math.round(Number(teacher.sharePercentage) || 0),
+      role: 'TEACHER',
+      status: teacher.status === 'Arxiv' ? 'Arxiv' : 'Faol',
+      schoolId: teacher.schoolId,
+      telegramId: null
+    }
+  });
+  // Bog'lashni faqat userId hali bo'sh bo'lsa bajaramiz. Sahifa ochilganda
+  // /api/init va /api/teachers deyarli bir vaqtda keladi va ikkalasi ham shu
+  // yerga tushardi: natijada bitta ustozga ikkita xodim yozuvi yaratilib
+  // qolgan edi. Yutqazgan urinish o'zi yaratgan yozuvni olib tashlaydi.
+  const natija = await db.teacher.updateMany({
+    where: { id: teacher.id, userId: null },
+    data: { userId: user.id }
+  });
+  if (natija.count === 0) {
+    await db.user.delete({ where: { id: user.id } }).catch(() => {});
+    return null;
+  }
+  return user;
+}
+
+/**
+ * Bog'lanmagan ustozlarni xodim yozuvi bilan bog'laydi, mos xodim topilmasa
+ * yangisini ochadi. Har safar chaqirilavermaydi: chaqiruvchi avval
+ * `userId === null` ustoz borligini tekshiradi, shuning uchun bir marta
+ * tuzalgandan keyin bu kod umuman ishlamaydi.
+ */
+// Bir vaqtning o'zida bittadan ortiq tuzatish ishlamasin: sahifa ochilganda
+// /api/init va /api/teachers deyarli bir paytda keladi.
+let boglashJarayoni = null;
+function ustozlarniXodimgaBogla(schoolIds) {
+  if (boglashJarayoni) return boglashJarayoni;
+  boglashJarayoni = ustozlarniXodimgaBoglaIchki(schoolIds)
+    .finally(() => { boglashJarayoni = null; });
+  return boglashJarayoni;
+}
+
+async function ustozlarniXodimgaBoglaIchki(schoolIds) {
+  const bogsizlar = await prisma.teacher.findMany({
+    where: { userId: null, ...(schoolIds && schoolIds.length ? { schoolId: { in: schoolIds } } : {}) }
+  });
+  if (bogsizlar.length === 0) return 0;
+
+  let ozgardi = 0;
+  for (const ustoz of bogsizlar) {
+    try {
+      const mavjud = await prisma.user.findFirst({
+        where: {
+          name: ustoz.name,
+          schoolId: ustoz.schoolId,
+          teacherProfile: { is: null }
+        }
+      });
+      if (mavjud) {
+        await prisma.teacher.updateMany({
+          where: { id: ustoz.id, userId: null },
+          data: { userId: mavjud.id }
+        });
+      } else {
+        await ustozgaXodimYarat(ustoz);
+      }
+      ozgardi++;
+    } catch (e) {
+      console.error("[Ustozni bog'lash]", ustoz.id, e.message);
+    }
+  }
+  return ozgardi;
+}
+
 // --- User Management (Admin only) ---
 app.get('/api/users', authenticate, async (req, res, next) => {
   try {
@@ -289,11 +408,22 @@ app.get('/api/users', authenticate, async (req, res, next) => {
       where = { schoolId: parseInt(schoolId) };
     }
 
+    // teacherProfile ham qaytadi: HR ro'yxatidagi "Guruh" va "Haftalik yuklama"
+    // ustunlari ustoz yozuvining raqamiga tayanadi. Ilgari bu maydon javobda
+    // yo'q edi va ustozlarning guruhlari ro'yxatda hech qachon ko'rinmasdi.
     const users = await prisma.user.findMany({
       where,
-      select: { id: true, email: true, name: true, phone: true, photo: true, position: true, salary: true, workDays: true, kpiPercent: true, role: true, createdAt: true, schoolId: true, status: true }
+      select: {
+        id: true, email: true, name: true, phone: true, photo: true, position: true,
+        salary: true, workDays: true, kpiPercent: true, role: true, createdAt: true,
+        schoolId: true, status: true, telegramId: true,
+        teacherProfile: { select: { id: true } }
+      }
     });
-    res.json(users);
+    res.json(users.map(u => {
+      const { teacherProfile, ...qolgan } = u;
+      return { ...qolgan, teacherId: teacherProfile?.id ?? null };
+    }));
   } catch (error) { next(error); }
 });
 
@@ -344,22 +474,32 @@ app.post('/api/users', authenticate, async (req, res, next) => {
       throw createErr;
     }
 
-    // Auto-create Teacher profile for TEACHER and SUPPORT_TEACHER roles
-    if ((role === 'TEACHER' || role === 'SUPPORT_TEACHER') && targetSchoolId) {
+    // Ustoz roli uchun Teacher yozuvi ham ochiladi va darhol shu xodimga
+    // bog'lanadi (userId). Ilgari bog'lanish yo'q edi — ism o'zgarishi bilan
+    // ikkovi bir-birini "yo'qotardi".
+    if (USTOZ_ROLLAR.includes(role) && targetSchoolId) {
       try {
-        await prisma.teacher.create({
-          data: {
-            name: user.name,
-            phone: user.phone || '',
-            salary: user.salary || 0,
-            sharePercentage: 0,
-            lessonFee: 0,
-            birthDate: '',
-            hiredDate: new Date().toISOString().split('T')[0],
-            status: 'Faol',
-            schoolId: targetSchoolId
-          }
+        const mavjud = await prisma.teacher.findFirst({
+          where: { name: user.name, schoolId: targetSchoolId, userId: null }
         });
+        if (mavjud) {
+          await prisma.teacher.update({ where: { id: mavjud.id }, data: { userId: user.id } });
+        } else {
+          await prisma.teacher.create({
+            data: {
+              name: user.name,
+              phone: user.phone || '',
+              salary: user.salary || 0,
+              sharePercentage: user.kpiPercent || 0,
+              lessonFee: 0,
+              birthDate: '',
+              hiredDate: new Date().toISOString().split('T')[0],
+              status: 'Faol',
+              schoolId: targetSchoolId,
+              userId: user.id
+            }
+          });
+        }
       } catch (teacherError) {
         console.error('Failed to auto-create teacher profile:', teacherError);
       }
@@ -470,6 +610,46 @@ app.put('/api/users/:id', authenticate, async (req, res, next) => {
       if (updateErr.code === 'P2002') return res.status(400).json({ error: 'Bu email allaqachon ro\'yxatdan o\'tgan' });
       throw updateErr;
     }
+
+    // Ustoz yozuvi xodim yozuvidan ortda qolmasin: ism guruh kartochkalarida,
+    // telefon va surat esa dars jadvalida ko'rinadi. Ilgari xodimning ismi
+    // o'zgartirilsa, ustoz yozuvi eski ism bilan qolib ketardi va ikkovining
+    // bog'lanishi (o'shanda ism bo'yicha edi) butunlay uzilardi.
+    try {
+      const ustoz = await ustozniTop(user);
+      if (ustoz) {
+        const ustozData = {};
+        if (name !== undefined && name !== ustoz.name) ustozData.name = name;
+        if (phone !== undefined && (phone || '') !== ustoz.phone) ustozData.phone = phone || '';
+        if (photo !== undefined && photo !== ustoz.photo) ustozData.photo = photo || null;
+        if (data.status === 'Arxiv' && ustoz.status !== 'Arxiv') ustozData.status = 'Arxiv';
+        if (data.status === 'Faol' && ustoz.status === 'Arxiv') ustozData.status = 'Faol';
+        if (!ustoz.userId) ustozData.userId = user.id;
+        if (Object.keys(ustozData).length) {
+          await prisma.teacher.update({ where: { id: ustoz.id }, data: ustozData });
+        }
+      } else if (USTOZ_ROLLAR.includes(user.role) && user.schoolId) {
+        // Lavozimi o'qituvchiga o'zgartirilgan xodimga ustoz yozuvi ochiladi,
+        // aks holda unga guruh biriktirib bo'lmaydi.
+        await prisma.teacher.create({
+          data: {
+            name: user.name,
+            phone: user.phone || '',
+            salary: user.salary || 0,
+            sharePercentage: user.kpiPercent || 0,
+            lessonFee: 0,
+            birthDate: '',
+            hiredDate: new Date().toISOString().split('T')[0],
+            status: user.status === 'Arxiv' ? 'Arxiv' : 'Faol',
+            schoolId: user.schoolId,
+            userId: user.id
+          }
+        });
+      }
+    } catch (e) {
+      console.error('[Ustoz yozuvini moslash]', e.message);
+    }
+
     res.json(user);
   } catch (error) { next(error); }
 });
@@ -536,11 +716,9 @@ app.delete('/api/users/:id', authenticate, async (req, res, next) => {
     // TEACHER roli uchun avtomatik yaratilgan Teacher yozuvi ham ketsin, aks
     // holda u HR ro'yxatida "eski" qator bo'lib qaytib chiqadi. Ikkalasi ism
     // bo'yicha bog'langan, shuning uchun qidiruv ham ism bo'yicha.
-    if (target.role === 'TEACHER' || target.role === 'SUPPORT_TEACHER') {
+    if (USTOZ_ROLLAR.includes(target.role)) {
       try {
-        const teacher = await prisma.teacher.findFirst({
-          where: { name: target.name, schoolId: target.schoolId }
-        });
+        const teacher = await ustozniTop(target);
         if (teacher) {
           const guruhSoni = await prisma.group.count({ where: { teacherId: teacher.id } });
           const tDavomat = await prisma.teacherAttendance.count({ where: { teacherId: teacher.id } });
@@ -638,16 +816,13 @@ async function oylikXabariniYubor(userId, schoolId, matn) {
   try {
     const xodim = await prisma.user.findUnique({
       where: { id: userId },
-      select: { name: true, telegramId: true, schoolId: true }
+      select: { id: true, name: true, telegramId: true, schoolId: true }
     });
     if (!xodim) return { sent: false, reason: 'xodim topilmadi' };
 
     let chatId = xodim.telegramId;
     if (!chatId) {
-      const ustoz = await prisma.teacher.findFirst({
-        where: { name: xodim.name, schoolId: xodim.schoolId || schoolId },
-        select: { telegramId: true }
-      });
+      const ustoz = await ustozniTop({ id: userId, name: xodim.name, schoolId: xodim.schoolId || schoolId });
       chatId = ustoz?.telegramId || null;
     }
     if (!chatId) return { sent: false, reason: 'telegram ulanmagan' };
@@ -826,7 +1001,7 @@ app.get('/api/kpi-calculation', authenticate, async (req, res, next) => {
 
     const employee = await prisma.user.findUnique({
       where: { id: parseInt(userId) },
-      select: { name: true, schoolId: true, kpiPercent: true }
+      select: { id: true, name: true, schoolId: true, kpiPercent: true }
     });
     if (!employee) return res.json({ groups: [], totalPayments: 0, kpiAmount: 0 });
     // Filialsiz xodimni ustoz yozuvi bilan bog'lab bo'lmaydi: bog'lash
@@ -834,10 +1009,7 @@ app.get('/api/kpi-calculation', authenticate, async (req, res, next) => {
     // `schoolId: null` ni rad etib, 500 qaytarardi.
     if (employee.schoolId == null) return res.json({ groups: [], totalPayments: 0, kpiAmount: 0 });
 
-    // Find linked Teacher by name
-    const teacher = await prisma.teacher.findFirst({
-      where: { name: employee.name, schoolId: employee.schoolId }
-    });
+    const teacher = await ustozniTop(employee);
     if (!teacher) return res.json({ groups: [], totalPayments: 0, kpiAmount: 0 });
 
     // Ustozning guruhlari. Ilgari bu yerda har guruh uchun o'quvchining
@@ -933,40 +1105,56 @@ app.get('/api/kpi-calculation', authenticate, async (req, res, next) => {
   } catch (error) { next(error); }
 });
 
-// Endpoint to sync missing teacher profiles (one-time fix or utility)
+// Ustoz va xodim yozuvlarini qo'lda moslashtirish. Odatda kerak emas —
+// /api/teachers o'zi tuzatadi — lekin bir chetda qolib ketgan yozuv uchun
+// qo'lda ishga tushirish yo'li ochiq tursin.
 app.post('/api/admin/sync-teachers', authenticate, async (req, res, next) => {
   try {
-    if (req.user.role !== 'ADMIN') return res.status(403).json({ error: 'Only ADMIN can sync' });
+    if (req.user.role !== 'ADMIN' && req.user.role !== 'SUPERADMIN') {
+      return res.status(403).json({ error: 'Only ADMIN can sync' });
+    }
+    const schoolIds = req.user.role === 'SUPERADMIN'
+      ? null
+      : [req.user.schoolId].filter(Boolean);
 
-    const users = await prisma.user.findMany({ 
-      where: { role: 'TEACHER', schoolId: { not: null } } 
+    // 1) Xodim yozuvi yo'q ustozlarga xodim yozuvi.
+    const boglanganSoni = await ustozlarniXodimgaBogla(schoolIds);
+
+    // 2) Ustoz yozuvi yo'q o'qituvchi-xodimlarga ustoz yozuvi.
+    const users = await prisma.user.findMany({
+      where: {
+        role: { in: USTOZ_ROLLAR },
+        schoolId: schoolIds ? { in: schoolIds } : { not: null },
+        teacherProfile: { is: null }
+      }
     });
-    
     let createdCount = 0;
     for (const user of users) {
-      const existing = await prisma.teacher.findFirst({
-        where: { name: user.name, schoolId: user.schoolId }
+      const mavjud = await prisma.teacher.findFirst({
+        where: { name: user.name, schoolId: user.schoolId, userId: null }
       });
-      
-      if (!existing) {
+      if (mavjud) {
+        await prisma.teacher.update({ where: { id: mavjud.id }, data: { userId: user.id } });
+      } else {
         await prisma.teacher.create({
           data: {
             name: user.name,
             phone: user.phone || '',
-            salary: 0,
-            sharePercentage: 0,
+            salary: user.salary || 0,
+            sharePercentage: user.kpiPercent || 0,
             lessonFee: 0,
             birthDate: '',
             hiredDate: new Date().toISOString().split('T')[0],
-            status: 'Faol',
-            schoolId: user.schoolId
+            status: user.status === 'Arxiv' ? 'Arxiv' : 'Faol',
+            schoolId: user.schoolId,
+            userId: user.id
           }
         });
         createdCount++;
       }
     }
-    
-    res.json({ success: true, createdCount });
+
+    res.json({ success: true, linkedCount: boglanganSoni, createdCount });
   } catch (error) { next(error); }
 });
 
@@ -1260,7 +1448,16 @@ app.get('/api/teachers', authenticate, async (req, res, next) => {
   try {
     const { schoolId } = req.query;
     if (!schoolId) return res.status(400).json({ error: 'schoolId required' });
-    const teachers = await prisma.teacher.findMany({ where: { schoolId: parseInt(schoolId) } });
+    const sid = parseInt(schoolId);
+    let teachers = await prisma.teacher.findMany({ where: { schoolId: sid } });
+    // Xodim yozuvi yo'q ustozni bir martada tuzatamiz — usiz unga oylik ham,
+    // davomat ham qo'yib bo'lmaydi. Hammasi bog'langandan keyin bu shart
+    // hech qachon bajarilmaydi, ya'ni qo'shimcha so'rov ham bo'lmaydi.
+    if (teachers.some(t => !t.userId)) {
+      if (await ustozlarniXodimgaBogla([sid])) {
+        teachers = await prisma.teacher.findMany({ where: { schoolId: sid } });
+      }
+    }
     res.json(teachers);
   } catch (error) { next(error); }
 });
@@ -1288,6 +1485,24 @@ app.post('/api/teachers', authenticate, requireRole(...STAFF_MANAGERS), async (r
     const data = pickTeacherFields(req.body);
     if (!data.salaryType) data.salaryType = 'FIXED';
     const teacher = await prisma.teacher.create({ data: { ...data, schoolId: parseInt(schoolId) } });
+    // Ustozga darhol xodim yozuvi ham ochiladi. Ilgari bu yerdan qo'shilgan
+    // ustoz "yarim odam" bo'lib qolardi: HR ro'yxatida boshqacha ko'rinar,
+    // profili boshqacha ochilar, oylik berish tugmasi esa umuman yo'q edi.
+    try {
+      const mavjud = await xodimniTop(teacher);
+      if (mavjud) {
+        await prisma.teacher.updateMany({
+          where: { id: teacher.id, userId: null },
+          data: { userId: mavjud.id }
+        });
+        teacher.userId = mavjud.id;
+      } else {
+        const xodim = await ustozgaXodimYarat(teacher);
+        if (xodim) teacher.userId = xodim.id;
+      }
+    } catch (e) {
+      console.error("[Ustozga xodim yozuvi]", e.message);
+    }
     res.json(teacher);
   } catch (error) { next(error); }
 });
@@ -1298,6 +1513,28 @@ app.put('/api/teachers/:id', authenticate, requireRole(...STAFF_MANAGERS), async
       where: { id: parseInt(id) },
       data: pickTeacherFields(req.body),
     });
+    // Xodim yozuvi ham ergashsin: profil bitta bo'lgani uchun ism yoki telefon
+    // ikki xil bo'lib qolsa, o'sha bitta sahifada qarama-qarshi ma'lumot chiqadi.
+    try {
+      const xodim = await xodimniTop(teacher);
+      if (xodim) {
+        const xodimData = {};
+        if (teacher.name !== xodim.name) xodimData.name = teacher.name;
+        if ((teacher.phone || null) !== xodim.phone) xodimData.phone = teacher.phone || null;
+        if ((teacher.photo || null) !== xodim.photo) xodimData.photo = teacher.photo || null;
+        if (teacher.status === 'Arxiv' && xodim.status !== 'Arxiv') xodimData.status = 'Arxiv';
+        if (teacher.status !== 'Arxiv' && xodim.status === 'Arxiv') xodimData.status = 'Faol';
+        if (Object.keys(xodimData).length) {
+          await prisma.user.update({ where: { id: xodim.id }, data: xodimData });
+        }
+        if (!teacher.userId) {
+          await prisma.teacher.update({ where: { id: teacher.id }, data: { userId: xodim.id } });
+          teacher.userId = xodim.id;
+        }
+      }
+    } catch (e) {
+      console.error('[Xodim yozuvini moslash]', e.message);
+    }
     res.json(teacher);
   } catch (error) { next(error); }
 });
@@ -2906,7 +3143,8 @@ app.get('/api/init', authenticate, async (req, res, next) => {
         select: {
           id: true, email: true, name: true, phone: true, photo: true, position: true,
           salary: true, role: true, createdAt: true, telegramId: true, schoolId: true,
-          workDays: true, kpiPercent: true
+          workDays: true, kpiPercent: true, status: true,
+          teacherProfile: { select: { id: true } }
         }
       }),
       prisma.question.findMany({ where: whereQuery }),
@@ -2916,6 +3154,16 @@ app.get('/api/init', authenticate, async (req, res, next) => {
       prisma.topic.findMany({ where: whereQuery }),
       prisma.syllabus.findMany({ where: whereQuery, include: { topics: { orderBy: { order: 'asc' } } } }),
     ]);
+
+    // Xodim yozuvi yo'q ustoz qolib ketmasin: aks holda uning profili boshqacha
+    // ochiladi va oylik berib bo'lmaydi. Bir marta tuzalgandan keyin bu shart
+    // hech qachon bajarilmaydi.
+    let teachersRoyxati = teachers;
+    if (teachersRoyxati.some(t => !t.userId)) {
+      if (await ustozlarniXodimgaBogla(targetSchoolIds)) {
+        teachersRoyxati = await prisma.teacher.findMany({ where: whereQuery });
+      }
+    }
 
     // Map relations to flat IDs / names just like individual endpoints do
     const mappedStudents = students.map(s => ({
@@ -2930,15 +3178,19 @@ app.get('/api/init', authenticate, async (req, res, next) => {
 
     res.json({
       students: mappedStudents,
-      teachers,
+      teachers: teachersRoyxati,
       groups: mappedGroups,
       leads, payments, courses, rooms,
       // Admins configure SMS/Telegram from the settings screen and need the real values;
       // every other role gets the masked copy.
       settings: isAdmin(req.user) ? settings : stripSettingSecrets(settings),
       attendances, scores, teacherAttendances, expenses,
-      transports, routes, users, questions, exams, examResults, schools,
-      topics, syllabuses
+      transports, routes, questions, exams, examResults, schools,
+      topics, syllabuses,
+      users: users.map(u => {
+        const { teacherProfile, ...qolgan } = u;
+        return { ...qolgan, teacherId: teacherProfile?.id ?? null };
+      })
     });
   } catch (error) { next(error); }
 });

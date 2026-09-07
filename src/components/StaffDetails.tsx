@@ -191,6 +191,12 @@ export default function StaffDetails() {
 
     const isAdminOrManager = currentUser?.role === 'ADMIN' || currentUser?.role === 'MANAGER';
 
+    // Ustozga xodim yozuvi avtomatik ochilganda email ham o'ylab topiladi
+    // (...@internal.local). U hech kimga xat yubormaydi, shuning uchun profilda
+    // haqiqiy email kiritilmagan deb ko'rsatiladi.
+    const haqiqiyEmail = (e?: string | null) =>
+        e && !e.endsWith('@internal.local') ? e : '';
+
     // Load user
     useEffect(() => {
         if (!id || !token) return;
@@ -319,9 +325,14 @@ export default function StaffDetails() {
         );
     }
 
-    const linkedTeacher = (staffUser.role === 'TEACHER' || staffUser.role === 'SUPPORT_TEACHER')
-        ? teachers.find(t => t.name.toLowerCase().trim() === staffUser.name.toLowerCase().trim())
-        : null;
+    // Ustoz yozuvi endi userId orqali topiladi. Ilgari faqat ism solishtirilar
+    // va xodimning ismi biroz o'zgarsa (yoki ustoz yozuvi boshqa ism bilan
+    // kiritilgan bo'lsa) guruhlar, davomat va KPI shu profildan yo'qolardi.
+    const linkedTeacher = (teachers || []).find(t => t.userId === staffUser.id)
+        || ((staffUser.role === 'TEACHER' || staffUser.role === 'SUPPORT_TEACHER')
+            ? teachers.find(t => t.name.toLowerCase().trim() === staffUser.name.toLowerCase().trim())
+            : null)
+        || null;
 
     /** Tanlangan kun davomatini ustozning o'ziga Telegram orqali yuborish. */
     const notifyTeacher = async () => {
@@ -759,10 +770,10 @@ export default function StaffDetails() {
                             : 'border-chiziq text-matn-xira pointer-events-none'}`}>
                         <Phone size={15} />
                     </a>
-                    <a href={staffUser.email ? `mailto:${staffUser.email}` : undefined}
-                        aria-disabled={!staffUser.email}
-                        title={staffUser.email || 'Email kiritilmagan'}
-                        className={`w-9 h-9 flex items-center justify-center rounded-lg border transition-colors ${staffUser.email
+                    <a href={haqiqiyEmail(staffUser.email) ? `mailto:${staffUser.email}` : undefined}
+                        aria-disabled={!haqiqiyEmail(staffUser.email)}
+                        title={haqiqiyEmail(staffUser.email) || 'Email kiritilmagan'}
+                        className={`w-9 h-9 flex items-center justify-center rounded-lg border transition-colors ${haqiqiyEmail(staffUser.email)
                             ? 'border-chiziq-kuchli text-brand hover:bg-brand hover:text-white cursor-pointer'
                             : 'border-chiziq text-matn-xira pointer-events-none'}`}>
                         <Mail size={15} />
@@ -806,7 +817,7 @@ export default function StaffDetails() {
                             </h3>
                             <DetailRow icon={<Phone className="w-3.5 h-3.5" />} label={t('phone')} value={staffUser.phone || ''} />
                             {staffUser.role !== 'TECH_STAFF' && (
-                                <DetailRow icon={<Mail className="w-3.5 h-3.5" />} label="Email" value={staffUser.email || ''} />
+                                <DetailRow icon={<Mail className="w-3.5 h-3.5" />} label="Email" value={haqiqiyEmail(staffUser.email)} />
                             )}
                             <DetailRow icon={<Layers className="w-3.5 h-3.5" />} label="Lavozim" value={staffUser.position || ''} />
                             <DetailRow
@@ -847,7 +858,19 @@ export default function StaffDetails() {
                                                 <StatCard label="Haftalik dars" value={weeklyLessons} sub="guruh jadvalidan" color="" />
                                             </>
                                         )}
-                                        <StatCard label={`${getMonthName(payMonth)} oyligi`} value={totalSalary >= 1000000 ? `${(totalSalary / 1000000).toFixed(1)} mln` : totalSalary.toLocaleString()} sub={kpiPercent ? `asosiy + ${kpiPercent}% ulush` : (kpiAmount > 0 ? 'asosiy + guruhlar' : 'asosiy oylik')} color="emerald" />
+                                        {/* Oylik berilgan bo'lsa aynan berilgan summa ko'rsatiladi.
+                                            Ilgari bu yerda doim qayta hisoblangan summa turardi va
+                                            oylik to'langanidan keyin ham "to'lanadi" bo'lib ko'rinardi. */}
+                                        <StatCard
+                                            label={`${getMonthName(payMonth)} oyligi`}
+                                            value={(() => {
+                                                const v = currentPayment ? currentPayment.amount : totalSalary;
+                                                return v >= 1000000 ? `${(v / 1000000).toFixed(1)} mln` : v.toLocaleString();
+                                            })()}
+                                            sub={currentPayment
+                                                ? `to'langan · ${new Date(currentPayment.paidAt).toLocaleDateString('uz-UZ')}`
+                                                : (kpiPercent ? `asosiy + ${kpiPercent}% ulush` : (kpiAmount > 0 ? 'asosiy + guruhlar' : 'asosiy oylik'))}
+                                            color="emerald" />
                                         <StatCard label={t('attendance')} value={`${presentDays} kun`} sub={absentDays > 0 ? `${absentDays} kun kelmagan` : t('present_this_month_sub')} color={absentDays > 0 ? 'amber' : ''} />
                                     </div>
 
@@ -953,9 +976,18 @@ export default function StaffDetails() {
                                                         </div>
                                                     )}
                                                     <div className="flex items-center justify-between gap-3 pt-2 mt-1 border-t border-chiziq">
-                                                        <span className="font-semibold text-matn">To'lanadi</span>
-                                                        <span className="num font-semibold text-brand">{totalSalary.toLocaleString()}</span>
+                                                        <span className="font-semibold text-matn">
+                                                            {currentPayment ? "To'langan ✓" : "To'lanadi"}
+                                                        </span>
+                                                        <span className={`num font-semibold ${currentPayment ? 'text-emerald-500' : 'text-brand'}`}>
+                                                            {(currentPayment ? currentPayment.amount : totalSalary).toLocaleString()}
+                                                        </span>
                                                     </div>
+                                                    {currentPayment && (
+                                                        <p className="text-[11px] text-matn-xira mt-1 text-right">
+                                                            {new Date(currentPayment.paidAt).toLocaleDateString('uz-UZ')} · Moliyaga yozilgan
+                                                        </p>
+                                                    )}
                                                 </div>
                                                 <button onClick={() => setActiveTab('maosh')}
                                                     className="mt-4 w-full py-2 rounded-xl text-[12px] text-brand border border-chiziq hover:bg-brand/5 transition-colors cursor-pointer">

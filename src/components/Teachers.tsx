@@ -157,7 +157,9 @@ export default function Teachers() {
             ) : (
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
                     {filteredTeachers.map(teacher => (
-                        <div key={teacher.id} onClick={() => navigate(`/teachers/${teacher.id}`)}
+                        // Ustozning profili — xodim kartasi. Ikkita alohida profil
+                        // yo'q: oylik, davomat va Telegram o'sha yerda.
+                        <div key={teacher.id} onClick={() => navigate(teacher.userId ? `/hr/${teacher.userId}` : `/teachers/${teacher.id}`)}
                             className="group bg-sirt rounded-2xl border border-chiziq shadow-sm hover:shadow-xl hover:border-violet-300 dark:hover:border-violet-700/50 hover:-translate-y-0.5 transition-all duration-300 cursor-pointer p-5 flex flex-col">
                             <div className="flex items-start justify-between mb-4">
                                 <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-violet-600 to-violet-400 flex items-center justify-center text-white font-black text-lg shadow-lg shadow-violet-500/20 group-hover:scale-105 transition-transform overflow-hidden shrink-0">

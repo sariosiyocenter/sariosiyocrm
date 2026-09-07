@@ -65,6 +65,10 @@ export interface Teacher {
     // "Faol" hisoblanmaydi. Arxiv — butunlay ishdan chiqqan.
     status: 'Faol' | 'Passiv' | 'Arxiv';
     schoolId: number;
+    // Shu ustozning xodim yozuvi. Profil, oylik, davomat va Telegram — hammasi
+    // o'sha yozuvga bog'langan, shuning uchun ustoz sahifasi ham o'shanga
+    // yo'naltiriladi. Server bo'sh qolmasligini o'zi ta'minlaydi.
+    userId?: number | null;
 }
 
 export interface Group {
