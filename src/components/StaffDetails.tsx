@@ -152,9 +152,14 @@ export default function StaffDetails() {
     const [payConfirm, setPayConfirm] = useState(false);
     const [paying,     setPaying]     = useState(false);
 
-    // Berilgan oylikni tuzatish oynasi.
+    // Berilgan oylikni tuzatish oynasi. Ilgari faqat umumiy summa
+    // o'zgartirilardi: bonus qo'shish yoki jarimani tuzatishning yo'li yo'q edi.
+    // Endi tarkibiy qismlar alohida tahrirlanadi, jami esa o'zi hisoblanadi.
     const [editingPayment, setEditingPayment] = useState<any>(null);
-    const [editPayAmount, setEditPayAmount] = useState('');
+    const [editPayBase,  setEditPayBase]  = useState('');
+    const [editPayKpi,   setEditPayKpi]   = useState('');
+    const [editPayBonus, setEditPayBonus] = useState('');
+    const [editPayFine,  setEditPayFine]  = useState('');
     const [editPayNote, setEditPayNote] = useState('');
     const [savingPayEdit, setSavingPayEdit] = useState(false);
 
@@ -543,6 +548,36 @@ export default function StaffDetails() {
     // Salary payment helpers
     const payMonthStr = `${payYear}-${String(payMonth + 1).padStart(2, '0')}`;
     const currentPayment = salaryPayments.find(p => p.month === payMonthStr) || null;
+
+    /**
+     * To'langan oylikning tarkibi.
+     *
+     * Bazada guruhlar ulushi alohida saqlanmaydi — u qolgan qismdan kelib
+     * chiqadi: jami = asosiy + guruhlar + bonus − jarima. Shu sababli
+     * ko'rsatilgan raqamlar doim jami bilan mos tushadi.
+     */
+    const paymentTarkibi = (p: any) => {
+        const asosiy = Number(p?.baseSalary) || 0;
+        const bonus  = Number(p?.bonuses) || 0;
+        const jarima = Number(p?.fines) || 0;
+        const jami   = Number(p?.amount) || 0;
+        return { asosiy, bonus, jarima, jami, guruhlar: jami - asosiy - bonus + jarima };
+    };
+
+    /** Tahrir oynasini berilgan oylik bilan to'ldirib ochadi. */
+    const openPaymentEdit = (p: any) => {
+        const t = paymentTarkibi(p);
+        setEditingPayment(p);
+        setEditPayBase(String(t.asosiy));
+        setEditPayKpi(String(t.guruhlar));
+        setEditPayBonus(String(t.bonus));
+        setEditPayFine(String(t.jarima));
+        setEditPayNote(p.note || '');
+    };
+
+    const editPayJami =
+        (parseInt(editPayBase) || 0) + (parseInt(editPayKpi) || 0)
+        + (parseInt(editPayBonus) || 0) - (parseInt(editPayFine) || 0);
     const prevPayMonth = () => { if (payMonth === 0) { setPayMonth(11); setPayYear(y => y-1); } else setPayMonth(m => m-1); };
     const nextPayMonth = () => { if (payMonth === 11) { setPayMonth(0); setPayYear(y => y+1); } else setPayMonth(m => m+1); };
 
@@ -593,14 +628,21 @@ export default function StaffDetails() {
      *  o'chirib, qaytadan berish mumkin edi. */
     const saveSalaryEdit = async () => {
         if (!editingPayment || savingPayEdit) return;
-        const val = parseInt(editPayAmount);
+        const asosiy = parseInt(editPayBase)  || 0;
+        const guruh  = parseInt(editPayKpi)   || 0;
+        const bonus  = parseInt(editPayBonus) || 0;
+        const jarima = parseInt(editPayFine)  || 0;
+        const val = asosiy + guruh + bonus - jarima;
         if (!Number.isFinite(val)) { showNotification("Summa noto'g'ri", 'error'); return; }
+        if (val < 0) { showNotification("Jami summa manfiy bo'lmasin", 'error'); return; }
         setSavingPayEdit(true);
         try {
             const res = await fetch(`/api/salary-payments/${editingPayment.id}`, {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-                body: JSON.stringify({ amount: val, note: editPayNote })
+                body: JSON.stringify({
+                    amount: val, baseSalary: asosiy, bonuses: bonus, fines: jarima, note: editPayNote
+                })
             });
             if (!res.ok) {
                 const d = await res.json().catch(() => ({}));
@@ -946,12 +988,27 @@ export default function StaffDetails() {
                                                     <h3 className="text-[14px] font-semibold text-matn">Oylik hisob-kitobi</h3>
                                                     <span className="text-[12px] text-matn-xira">{getMonthName(payMonth)}</span>
                                                 </div>
+                                                {/* Oylik berilgan bo'lsa aynan to'langan tarkib
+                                                    ko'rsatiladi, hozirgi hisob emas: ular bir-biriga
+                                                    mos kelmasligi mumkin. */}
                                                 <div className="space-y-2 text-[13px]">
                                                     <div className="flex items-center justify-between gap-3">
                                                         <span className="text-matn-sokin">Asosiy</span>
-                                                        <span className="num text-matn">{baseSalary.toLocaleString()}</span>
+                                                        <span className="num text-matn">
+                                                            {(currentPayment ? paymentTarkibi(currentPayment).asosiy : baseSalary).toLocaleString()}
+                                                        </span>
                                                     </div>
-                                                    {(kpiPercent > 0 || kpiAmount > 0) && (
+                                                    {currentPayment ? (
+                                                        paymentTarkibi(currentPayment).guruhlar !== 0 && (
+                                                            <div className="flex items-center justify-between gap-3">
+                                                                <span className="text-matn-sokin">Guruhlar uchun</span>
+                                                                <span className="num text-brand">
+                                                                    {paymentTarkibi(currentPayment).guruhlar > 0 ? '+' : ''}
+                                                                    {paymentTarkibi(currentPayment).guruhlar.toLocaleString()}
+                                                                </span>
+                                                            </div>
+                                                        )
+                                                    ) : (kpiPercent > 0 || kpiAmount > 0) && (
                                                         <>
                                                             <div className="flex items-center justify-between gap-3">
                                                                 <span className="text-matn-sokin">Guruhlardan tushum</span>
@@ -963,16 +1020,20 @@ export default function StaffDetails() {
                                                             </div>
                                                         </>
                                                     )}
-                                                    {totalBonus > 0 && (
+                                                    {(currentPayment ? paymentTarkibi(currentPayment).bonus : totalBonus) > 0 && (
                                                         <div className="flex items-center justify-between gap-3">
                                                             <span className="text-matn-sokin">Bonus</span>
-                                                            <span className="num text-emerald-500">+{totalBonus.toLocaleString()}</span>
+                                                            <span className="num text-emerald-500">
+                                                                +{(currentPayment ? paymentTarkibi(currentPayment).bonus : totalBonus).toLocaleString()}
+                                                            </span>
                                                         </div>
                                                     )}
-                                                    {totalFine > 0 && (
+                                                    {(currentPayment ? paymentTarkibi(currentPayment).jarima : totalFine) > 0 && (
                                                         <div className="flex items-center justify-between gap-3">
                                                             <span className="text-matn-sokin">Ushlanma</span>
-                                                            <span className="num text-rose-500">-{totalFine.toLocaleString()}</span>
+                                                            <span className="num text-rose-500">
+                                                                -{(currentPayment ? paymentTarkibi(currentPayment).jarima : totalFine).toLocaleString()}
+                                                            </span>
                                                         </div>
                                                     )}
                                                     <div className="flex items-center justify-between gap-3 pt-2 mt-1 border-t border-chiziq">
@@ -1111,14 +1172,10 @@ export default function StaffDetails() {
                                             </div>
                                             {isAdminOrManager && (
                                                 <div className="flex items-center gap-1 shrink-0">
-                                                    <button onClick={() => {
-                                                        setEditingPayment(currentPayment);
-                                                        setEditPayAmount(String(currentPayment.amount));
-                                                        setEditPayNote(currentPayment.note || '');
-                                                    }}
-                                                        title="Tahrirlash"
-                                                        className="text-matn-xira hover:text-brand transition-colors cursor-pointer p-2 rounded-xl hover:bg-brand/10">
-                                                        <Pencil size={14} />
+                                                    <button onClick={() => openPaymentEdit(currentPayment)}
+                                                        title="Bonus, jarima va summani tuzatish"
+                                                        className="flex items-center gap-1.5 text-[11px] font-bold text-brand border border-brand/30 hover:bg-brand/10 transition-colors cursor-pointer px-3 py-1.5 rounded-xl">
+                                                        <Pencil size={12} /> Tahrirlash
                                                     </button>
                                                     <button onClick={() => deleteSalaryPayment(currentPayment.id)}
                                                         title="O'chirish"
@@ -1139,10 +1196,64 @@ export default function StaffDetails() {
                                         </div>
                                     )}
 
-                                    {/* KPI + adjustments + summary (only if not paid yet) */}
-                                    {!currentPayment && (
-                                        <div className="space-y-6">
-                                            {/* KPI group breakdown — teachers only */}
+                                    {/* To'langan oylikning tarkibi. Ilgari oylik berilgach bu
+                                        bo'lim butunlay yo'qolar va "qaysi guruhdan qancha"
+                                        degan savolga javob qolmasdi. */}
+                                    {currentPayment && (() => {
+                                        const tk = paymentTarkibi(currentPayment);
+                                        return (
+                                            <div className="bg-sirt border border-chiziq rounded-2xl p-5">
+                                                <div className="flex items-baseline justify-between mb-4">
+                                                    <h3 className="text-[13px] font-semibold text-matn">Maosh strukturasi</h3>
+                                                    <span className="text-[11px] text-matn-xira">to'langan · {getMonthName(payMonth)} {payYear}</span>
+                                                </div>
+                                                <div className="space-y-2.5 text-[13px]">
+                                                    <div className="flex justify-between gap-3">
+                                                        <span className="text-matn-sokin">{t('base_salary_short')}</span>
+                                                        <span className="num text-matn">{tk.asosiy.toLocaleString()}</span>
+                                                    </div>
+                                                    {tk.guruhlar !== 0 && (
+                                                        <div className="flex justify-between gap-3">
+                                                            <span className="text-matn-sokin">Guruhlar uchun</span>
+                                                            <span className="num text-brand">{tk.guruhlar > 0 ? '+' : ''}{tk.guruhlar.toLocaleString()}</span>
+                                                        </div>
+                                                    )}
+                                                    {tk.bonus > 0 && (
+                                                        <div className="flex justify-between gap-3">
+                                                            <span className="text-matn-sokin">{t('additional_bonus')}</span>
+                                                            <span className="num text-emerald-500">+{tk.bonus.toLocaleString()}</span>
+                                                        </div>
+                                                    )}
+                                                    {tk.jarima > 0 && (
+                                                        <div className="flex justify-between gap-3">
+                                                            <span className="text-matn-sokin">{t('fine')}</span>
+                                                            <span className="num text-rose-500">-{tk.jarima.toLocaleString()}</span>
+                                                        </div>
+                                                    )}
+                                                    <div className="flex justify-between gap-3 pt-2.5 mt-1 border-t border-chiziq">
+                                                        <span className="font-semibold text-matn">Jami to'langan</span>
+                                                        <span className="num font-semibold text-emerald-500">{tk.jami.toLocaleString()} UZS</span>
+                                                    </div>
+                                                </div>
+                                                {currentPayment.note && (
+                                                    <p className="text-[11px] text-matn-xira mt-3 pt-3 border-t border-dashed border-chiziq">
+                                                        {currentPayment.note}
+                                                    </p>
+                                                )}
+                                                {isAdminOrManager && (
+                                                    <button onClick={() => openPaymentEdit(currentPayment)}
+                                                        className="mt-4 w-full py-2 rounded-xl text-[12px] text-brand border border-chiziq hover:bg-brand/5 transition-colors cursor-pointer">
+                                                        Bonus / jarima qo'shish yoki tuzatish →
+                                                    </button>
+                                                )}
+                                            </div>
+                                        );
+                                    })()}
+
+                                    <div className="space-y-6">
+                                            {/* Guruhlar bo'yicha hisob — ustozlar uchun. Oylik
+                                                berilgandan keyin ham ko'rinadi: qaysi guruh
+                                                qancha keltirgani baribir kerak bo'ladi. */}
                                             {(staffUser.role === 'TEACHER' || staffUser.role === 'SUPPORT_TEACHER') && (
                                                 <div className="space-y-3">
                                                     <p className="text-[11px] font-extrabold text-matn-xira flex items-center gap-1.5">
@@ -1242,7 +1353,10 @@ export default function StaffDetails() {
                                                 </div>
                                             )}
 
-                                            {/* Manual adjustments + summary */}
+                                            {/* Qo'lda bonus/jarima va to'lash tugmasi — faqat
+                                                hali to'lanmagan oy uchun. To'langanidan keyin
+                                                ular yuqoridagi "Tahrirlash" orqali o'zgaradi. */}
+                                            {!currentPayment && (
                                             <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
                                                 <div className="space-y-4">
                                                     {/* Manual bonus */}
@@ -1342,8 +1456,8 @@ export default function StaffDetails() {
                                                     )}
                                                 </div>
                                             </div>
+                                            )}
                                         </div>
-                                    )}
 
                                     {/* Payment history */}
                                     {salaryPayments.length > 0 && (
@@ -1663,12 +1777,39 @@ export default function StaffDetails() {
                                 <X size={18} />
                             </button>
                         </div>
-                        <div>
-                            <label className="block text-[11px] font-extrabold text-matn-xira mb-2">Summa (UZS)</label>
-                            <input type="number" value={editPayAmount} onChange={e => setEditPayAmount(e.target.value)}
-                                className="w-full px-4 py-3 bg-ichki border border-chiziq rounded-2xl text-xs font-bold text-matn outline-none focus:border-brand transition-all" />
-                            <p className="text-[10px] text-matn-xira mt-1">Moliyadagi xarajat ham shu summaga o'zgaradi.</p>
+                        {/* Tarkibiy qismlar alohida: ilgari faqat umumiy summa
+                            o'zgartirilar, bonus yoki jarimani tuzatishning yo'li yo'q edi. */}
+                        <div className="grid grid-cols-2 gap-3">
+                            <div>
+                                <label className="block text-[11px] font-extrabold text-matn-xira mb-2">Asosiy maosh</label>
+                                <input type="number" value={editPayBase} onChange={e => setEditPayBase(e.target.value)}
+                                    className="w-full px-4 py-3 bg-ichki border border-chiziq rounded-2xl text-xs font-bold text-matn outline-none focus:border-brand transition-all" />
+                            </div>
+                            <div>
+                                <label className="block text-[11px] font-extrabold text-matn-xira mb-2">Guruhlar uchun</label>
+                                <input type="number" value={editPayKpi} onChange={e => setEditPayKpi(e.target.value)}
+                                    className="w-full px-4 py-3 bg-ichki border border-chiziq rounded-2xl text-xs font-bold text-matn outline-none focus:border-brand transition-all" />
+                            </div>
+                            <div>
+                                <label className="block text-[11px] font-extrabold text-emerald-600 mb-2">Bonus</label>
+                                <input type="number" value={editPayBonus} onChange={e => setEditPayBonus(e.target.value)}
+                                    className="w-full px-4 py-3 bg-ichki border border-chiziq rounded-2xl text-xs font-bold text-matn outline-none focus:border-emerald-500 transition-all" />
+                            </div>
+                            <div>
+                                <label className="block text-[11px] font-extrabold text-rose-600 mb-2">Jarima</label>
+                                <input type="number" value={editPayFine} onChange={e => setEditPayFine(e.target.value)}
+                                    className="w-full px-4 py-3 bg-ichki border border-chiziq rounded-2xl text-xs font-bold text-matn outline-none focus:border-rose-500 transition-all" />
+                            </div>
                         </div>
+                        <div className="flex items-center justify-between px-4 py-3 bg-ichki border border-chiziq rounded-2xl">
+                            <span className="text-[11px] font-extrabold text-matn-xira">Jami</span>
+                            <span className={`num text-lg font-black ${editPayJami < 0 ? 'text-rose-500' : 'text-brand'}`}>
+                                {editPayJami.toLocaleString()} UZS
+                            </span>
+                        </div>
+                        <p className="text-[10px] text-matn-xira -mt-1">
+                            Asosiy + guruhlar + bonus − jarima. Moliyadagi xarajat ham shu summaga o'zgaradi.
+                        </p>
                         <div>
                             <label className="block text-[11px] font-extrabold text-matn-xira mb-2">Izoh</label>
                             <input type="text" value={editPayNote} onChange={e => setEditPayNote(e.target.value)}
