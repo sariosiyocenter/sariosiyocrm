@@ -64,6 +64,34 @@ async function chargedSoFar(studentId, groupId, month, monthlyPrice, claimed) {
 }
 
 /**
+ * O'quvchi shu oyda shu guruhda qaysi kundan boshlab hisoblangani.
+ *
+ * Guruhga qo'shilgan sana bazada saqlanmaydi — a'zolik oddiy bog'lanish,
+ * shuning uchun uni hisob yozuvlaridan tiklaymiz:
+ *   - to'liq oylik summasi yozilgan bo'lsa (services/billing.js uni oyning
+ *     oxirgi kuni sanasi bilan yozadi) — o'quvchi oy boshidan guruhda bo'lgan;
+ *   - aks holda eng erta hisob yozuvining sanasi qo'shilgan kun bo'ladi
+ *     (enrollStudent -> remainingMonthCharge o'sha kun bilan yozadi).
+ *
+ * Busiz oy o'rtasida kelgan o'quvchidan, ko'chirishda yoki chiqishda, u umuman
+ * qatnashmagan oy boshidagi darslar uchun ham haq olinardi: 7-sentabrda
+ * qo'shilib o'sha kuni ko'chirilgan o'quvchidan 2 va 4-sentabr darslarining
+ * puli yechilib qolardi.
+ */
+async function billedFrom(studentId, groupId, month, monthlyPrice, bounds, hasLegacy) {
+  if (hasLegacy) return bounds.first;   // guruhsiz eski yozuv — to'liq oylik
+  const rows = await prisma.payment.findMany({
+    where: { studentId, groupId, type: 'Oylik', date: { startsWith: month }, amount: { lt: 0 } },
+    select: { date: true, amount: true },
+    orderBy: { date: 'asc' },
+  });
+  if (!rows.length) return bounds.first;
+  const full = Math.round(monthlyPrice);
+  if (full > 0 && rows.some(r => Math.round(-r.amount) === full)) return bounds.first;
+  return rows[0].date > bounds.first ? rows[0].date : bounds.first;
+}
+
+/**
  * Bitta guruh uchun oyning bir qismini hisoblash.
  * `from`..`to` — o'quvchi guruhda bo'lgan kunlar oralig'i.
  */
@@ -145,12 +173,15 @@ export async function transferStudent({ studentId, fromGroupId, toGroupId, date,
   const claimed = new Set();
   const claimIds = [];
 
-  // Eski guruh: faqat ko'chirish kunigacha bo'lgan darslar uchun haq.
+  // Eski guruh: guruhga qo'shilgan kundan ko'chirish kunigacha bo'lgan darslar
+  // uchun haq. Oy boshidan emas — o'quvchi oy o'rtasida kelgan bo'lishi mumkin.
   if (from) {
-    const used = periodDue(student, from, month, bounds.first, dayBefore(date));
-    const ch = await chargedSoFar(student.id, from.id, month, used.monthlyPrice, claimed);
+    const fromPrice = monthlyPriceFor(student, from);
+    const ch = await chargedSoFar(student.id, from.id, month, fromPrice, claimed);
     const charged = ch.total;
     claimIds.push(...ch.legacyIds.map(id => ({ id, groupId: from.id, courseId: from.courseId })));
+    const since = await billedFrom(student.id, from.id, month, fromPrice, bounds, ch.legacyIds.length > 0);
+    const used = periodDue(student, from, month, since, dayBefore(date));
     const adjust = charged - used.due;   // musbat bo'lsa — ortiqcha yechilgan, qaytariladi
     lines.push({
       groupId: from.id, groupName: from.name, teacher: from.teacher?.name || null,
@@ -266,10 +297,12 @@ export async function refundStudent({ studentId, date, schoolId, mode, apply, gr
   const claimIds = [];
 
   for (const group of wanted) {
-    const used = periodDue(student, group, month, bounds.first, dayBefore(date));
-    const ch = await chargedSoFar(student.id, group.id, month, used.monthlyPrice, claimed);
+    const price = monthlyPriceFor(student, group);
+    const ch = await chargedSoFar(student.id, group.id, month, price, claimed);
     const charged = ch.total;
     claimIds.push(...ch.legacyIds.map(id => ({ id, groupId: group.id, courseId: group.courseId })));
+    const since = await billedFrom(student.id, group.id, month, price, bounds, ch.legacyIds.length > 0);
+    const used = periodDue(student, group, month, since, dayBefore(date));
     const adjust = trial ? 0 : charged - used.due;
     lines.push({
       groupId: group.id, groupName: group.name, teacher: group.teacher?.name || null,
@@ -469,8 +502,10 @@ export async function unenrollStudent({ studentId, groupId, date, schoolId, appl
     if (!hasSchedule(group.days)) {
       result.warning = `${group.name} guruhining jadvali belgilanmagan — o'tilmagan darslar puli qayta hisoblanmadi.`;
     } else {
-      const used = periodDue(student, group, month, bounds.first, dayBefore(day));
-      const ch = await chargedSoFar(student.id, group.id, month, used.monthlyPrice, new Set());
+      const price = monthlyPriceFor(student, group);
+      const ch = await chargedSoFar(student.id, group.id, month, price, new Set());
+      const since = await billedFrom(student.id, group.id, month, price, bounds, ch.legacyIds.length > 0);
+      const used = periodDue(student, group, month, since, dayBefore(day));
       const adjust = ch.total - used.due;   // ortiqcha yechilgan qism qaytadi
       result.lessons = used.lessons; result.alreadyCharged = ch.total; result.refund = Math.max(0, adjust);
       if (adjust > 0) {
