@@ -65,6 +65,7 @@ model Student {
   scores      Score[]
   deliveryLogs DeliveryLog[]
   examResults ExamResult[]
+  faceProfile FaceProfile?
 
   @@index([schoolId])
 }
@@ -344,6 +345,7 @@ model School {
   autoMessageRules AutoMessageRule[]
   cashHandovers    CashHandover[]
   cashDayCloses    CashDayClose[]
+  faceProfiles     FaceProfile[]
 }
 
 model SmsLog {
@@ -746,4 +748,24 @@ model CashDayClose {
   school      School   @relation(fields: [schoolId], references: [id], onDelete: Cascade)
 
   @@unique([schoolId, date])
+}
+
+// Face ID yuz belgisi (128 ta son).
+//
+// Alohida jadvalda turadi, chunki /api/init hamma o'quvchini to'liq yuboradi:
+// 235 ta belgi qo'shilsa javob ~0.5 MB ga og'irlashardi (Vercel chegarasi
+// 4.5 MB). Belgilar faqat Face ID yo'qlamasi ochilganda, o'sha guruh uchun
+// yuklanadi.
+model FaceProfile {
+  id         Int      @id @default(autoincrement())
+  studentId  Int      @unique
+  student    Student  @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  descriptor Json     // 128 ta son
+  source     String   @default("kamera")  // "kamera" | "rasm" — qayerdan olingani
+  updatedAt  DateTime @default(now()) @updatedAt
+
+  schoolId   Int
+  school     School   @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+
+  @@index([schoolId])
 }

@@ -107,6 +107,8 @@ export default function StudentDetails() {
     const [isRemovingBg, setIsRemovingBg] = useState(false);
     const [isPhotoModalOpen, setIsPhotoModalOpen] = useState(false);
     const [isFaceEnrollOpen, setIsFaceEnrollOpen] = useState(false);
+    /** Bu o'quvchi Face ID ga qo'shilganmi (alohida jadvaldan tekshiriladi). */
+    const [faceEnrolled, setFaceEnrolled] = useState(false);
     const [showDiscountModal, setShowDiscountModal] = useState(false);
     // Guruhlar orasida ko'chirish / o'qishni to'xtatib pulni qayta hisoblash.
     const [moveMode, setMoveMode] = useState<'transfer' | 'refund' | null>(null);
@@ -158,18 +160,20 @@ export default function StudentDetails() {
     };
 
     /** Face ID yo'qlamasi shu belgi bo'yicha o'quvchini tanaydi.
-     *  customPrices ichida boshqa qiymatlar ham bor (guruh narxlari, izohlar) —
-     *  shuning uchun ustidan yozilmaydi, faqat qo'shiladi. */
+     *  Belgi alohida jadvalda (FaceProfile) saqlanadi — ilgari u o'quvchi
+     *  yozuvining ichida turgani uchun /api/init bilan hammasi yuborilardi. */
     const handleFaceEnroll = async (descriptor: number[], photo: string) => {
-        const previous = (student!.customPrices && typeof student!.customPrices === 'object')
-            ? student!.customPrices as Record<string, any>
-            : {};
         const url = await uploadProfilePhoto(photo, "face-" + student!.id + ".jpg");
-        await updateStudent(student!.id, {
-            customPrices: { ...previous, faceDescriptor: descriptor },
-            // Suratsiz o'quvchi uchun shu kadr profil surati bo'lib qoladi.
-            ...(student!.photo ? {} : { photo: url })
+        const r = await fetch('/api/face-profiles', {
+            method: 'POST',
+            headers: { Authorization: `Bearer ${localStorage.getItem('token')}`, 'Content-Type': 'application/json' },
+            body: JSON.stringify({ schoolId: student!.schoolId, profiles: [{ studentId: student!.id, descriptor, source: 'kamera' }] }),
         });
+        const j = await r.json().catch(() => ({}));
+        if (!r.ok) { showNotification(j.error || "Yuzni saqlab bo'lmadi", 'error'); return; }
+        // Suratsiz o'quvchi uchun shu kadr profil surati bo'lib qoladi.
+        if (!student!.photo) await updateStudent(student!.id, { photo: url });
+        setFaceEnrolled(true);
         showNotification("Yuz saqlandi — endi Face ID yo'qlamasi bu o'quvchini taniydi", 'success');
     };
 
@@ -210,11 +214,7 @@ export default function StudentDetails() {
 
     const student = students.find(s => s.id === Number(id));
 
-    const isFaceEnrolled = Boolean(
-        student?.customPrices
-        && typeof student.customPrices === 'object'
-        && Array.isArray((student.customPrices as Record<string, any>).faceDescriptor)
-    );
+    const isFaceEnrolled = faceEnrolled;
 
 
     // Ismni oddiy yozuvga keltirish — umumiy yordamchi (src/lib/displayName).
@@ -224,6 +224,23 @@ export default function StudentDetails() {
     React.useEffect(() => {
         if (student?.id) loadAttendanceFor({ studentId: student.id });
     }, [student?.id]);
+
+    // Face ID belgisi alohida jadvalda — o'quvchi yozuvida yo'q, shuning uchun
+    // holat alohida so'raladi (juda yengil javob: faqat ID lar).
+    React.useEffect(() => {
+        if (!student?.id || !student?.schoolId) return;
+        let off = false;
+        (async () => {
+            try {
+                const r = await fetch(`/api/face-profiles?schoolId=${student.schoolId}&studentId=${student.id}&ids=1`, {
+                    headers: { Authorization: `Bearer ${localStorage.getItem('token')}` },
+                });
+                const j = await r.json();
+                if (!off && r.ok) setFaceEnrolled((j.profiles || []).length > 0);
+            } catch { /* holat noma'lum qoladi */ }
+        })();
+        return () => { off = true; };
+    }, [student?.id, student?.schoolId]);
 
     if (!student) {
         return (

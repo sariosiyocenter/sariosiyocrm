@@ -1,8 +1,33 @@
 import React, { useEffect, useRef, useState, useCallback } from 'react';
 import * as faceapi from 'face-api.js';
-import { X, Camera, UserCheck, Users, CheckCircle2, SwitchCamera } from 'lucide-react';
+import { X, Camera, UserCheck, Users, CheckCircle2, SwitchCamera, AlertTriangle } from 'lucide-react';
 
 const MODEL_URL = 'https://cdn.jsdelivr.net/gh/justadudewhohacks/face-api.js@0.22.2/weights';
+
+/**
+ * Tanish qoidasi.
+ *
+ * Bitta chegara yetarli emas: markazdagi 220 ta belgi tekshirilganda, bitta
+ * guruh ichida 146 ta juft o'quvchining belgilari 0.55 dan yaqin chiqdi —
+ * ya'ni eski qoida bilan tizim ishonch bilan boshqa bolani belgilab yuborishi
+ * mumkin edi. Shuning uchun ikkita shart:
+ *   1) eng yaqin belgi chegaradan yaqin bo'lsin;
+ *   2) ikkinchi o'ringa qaraganda sezilarli yaqin bo'lsin (MARGIN).
+ * Ikkinchi shart bajarilmasa o'quvchi "shubhali" deb sariq ramka bilan
+ * ko'rsatiladi va avtomatik belgilanmaydi — xodim o'zi tanlaydi.
+ *
+ * Rasmdan olingan belgi kamera bilan olinganidan ishonchsizroq (surat eski,
+ * sifati past bo'lishi mumkin), shuning uchun unga qattiqroq chegara.
+ */
+const LIMIT_CAMERA = 0.55;
+const LIMIT_PHOTO = 0.48;
+const MARGIN = 0.06;
+
+const euclid = (a: Float32Array, b: Float32Array) => {
+    let s = 0;
+    for (let i = 0; i < a.length; i++) { const d = a[i] - b[i]; s += d * d; }
+    return Math.sqrt(s);
+};
 
 interface StudentInfo {
     id: number;
@@ -12,13 +37,16 @@ interface StudentInfo {
 
 interface Props {
     students: StudentInfo[];
+    /** Yuz belgilari shu guruh va filial uchun yuklanadi. */
+    groupId: number;
+    schoolId: number;
     attendanceStatus: Record<number, string>;
     onMatch: (studentId: number) => void;
     onUnmatch: (studentId: number) => void;
     onClose: (markedIds: number[]) => void;
 }
 
-export default function FaceAttendance({ students, attendanceStatus, onMatch, onUnmatch, onClose }: Props) {
+export default function FaceAttendance({ students, groupId, schoolId, attendanceStatus, onMatch, onUnmatch, onClose }: Props) {
     const videoRef = useRef<HTMLVideoElement>(null);
     const canvasRef = useRef<HTMLCanvasElement>(null);
     const streamRef = useRef<MediaStream | null>(null);
@@ -28,7 +56,9 @@ export default function FaceAttendance({ students, attendanceStatus, onMatch, on
     const [phase, setPhase] = useState<'loading' | 'ready' | 'error'>('loading');
     const [loadMsg, setLoadMsg] = useState('Modellar yuklanmoqda...');
     const [lastMatched, setLastMatched] = useState<StudentInfo | null>(null);
-    const [labeledDescriptors, setLabeledDescriptors] = useState<faceapi.LabeledFaceDescriptors[]>([]);
+    const [profiles, setProfiles] = useState<{ studentId: number; descriptor: Float32Array; limit: number }[]>([]);
+    /** Tanildi, lekin ishonch past — xodim o'zi tasdiqlashi kerak. */
+    const [uncertain, setUncertain] = useState<string | null>(null);
     const [markedSet, setMarkedSet] = useState<Set<number>>(new Set());
     /** Qaysi kamera ishlayapti. Telefonda old kamera bilan yuzni tutish noqulay —
      *  xodim odatda o'quvchiga orqa kamerani qaratadi, shuning uchun almashtirish
@@ -41,13 +71,25 @@ export default function FaceAttendance({ students, attendanceStatus, onMatch, on
         }
     });
 
-    const enrolledStudents = students.filter(s => s.customPrices?.faceDescriptor);
-    const totalEnrolled = enrolledStudents.length;
+    // Ro'yxatdan o'tgan o'quvchilar soni — belgilar serverdan kelgach ma'lum bo'ladi.
+    const [totalEnrolled, setTotalEnrolled] = useState(0);
 
-    // Load models + build descriptors
+    // Yuz belgilarini yuklash + modellar.
+    //
+    // Belgilar ilgari o'quvchi yozuvining ichida (customPrices) kelardi va
+    // /api/init bilan hamma o'quvchi uchun yuborilardi. Endi alohida jadvalda
+    // va faqat shu guruh uchun so'raladi.
     useEffect(() => {
         const load = async () => {
             try {
+                setLoadMsg('Yuz belgilari yuklanmoqda...');
+                const r = await fetch(`/api/face-profiles?schoolId=${schoolId}&groupId=${groupId}`, {
+                    headers: { Authorization: `Bearer ${localStorage.getItem('token')}` },
+                });
+                const j = await r.json();
+                if (!r.ok) throw new Error(j.error || 'Yuz belgilarini yuklab bo\'lmadi');
+                const list: { studentId: number; descriptor: number[]; source?: string }[] = j.profiles || [];
+
                 setLoadMsg('Yuz aniqlash modeli...');
                 await faceapi.nets.tinyFaceDetector.loadFromUri(MODEL_URL);
                 setLoadMsg('Yuz belgilari modeli...');
@@ -55,21 +97,23 @@ export default function FaceAttendance({ students, attendanceStatus, onMatch, on
                 setLoadMsg("Yuz tanish modeli...");
                 await faceapi.nets.faceRecognitionNet.loadFromUri(MODEL_URL);
 
-                const labeled = enrolledStudents.map(s =>
-                    new faceapi.LabeledFaceDescriptors(
-                        String(s.id),
-                        [new Float32Array(s.customPrices.faceDescriptor)]
-                    )
-                );
-                setLabeledDescriptors(labeled);
+                const parsed = list
+                    .filter(p => Array.isArray(p.descriptor) && p.descriptor.length === 128)
+                    .map(p => ({
+                        studentId: p.studentId,
+                        descriptor: new Float32Array(p.descriptor),
+                        limit: p.source === 'rasm' ? LIMIT_PHOTO : LIMIT_CAMERA,
+                    }));
+                setTotalEnrolled(parsed.length);
+                setProfiles(parsed);
                 setPhase('ready');
-            } catch (err) {
-                setLoadMsg('Model yuklab bo\'lmadi. Internet aloqasini tekshiring.');
+            } catch (err: any) {
+                setLoadMsg(err?.message || 'Model yuklab bo\'lmadi. Internet aloqasini tekshiring.');
                 setPhase('error');
             }
         };
         load();
-    }, []);
+    }, [schoolId, groupId]);
 
     // Start camera after models ready — kamera almashtirilganda ham qayta ishga tushadi
     useEffect(() => {
@@ -113,13 +157,16 @@ export default function FaceAttendance({ students, attendanceStatus, onMatch, on
     const detect = useCallback(async () => {
         const video = videoRef.current;
         const canvas = canvasRef.current;
-        if (!video || !canvas || video.readyState < 2 || labeledDescriptors.length === 0) return;
+        if (!video || !canvas || video.readyState < 2 || profiles.length === 0) return;
 
         const displaySize = { width: video.videoWidth || 640, height: video.videoHeight || 480 };
         faceapi.matchDimensions(canvas, displaySize);
 
+        // inputSize 320 da detektor yuzni tez-tez o'tkazib yuborardi: sinovda
+        // ekranni to'ldirib turgan yuz ham topilmadi, 416 da esa 0.9 ishonch
+        // bilan topildi. Tezlik farqi sezilmaydi (har 250 ms da bir marta).
         const detections = await faceapi
-            .detectAllFaces(video, new faceapi.TinyFaceDetectorOptions({ inputSize: 320, scoreThreshold: 0.6 }))
+            .detectAllFaces(video, new faceapi.TinyFaceDetectorOptions({ inputSize: 416, scoreThreshold: 0.5 }))
             .withFaceLandmarks(true)
             .withFaceDescriptors();
 
@@ -130,22 +177,51 @@ export default function FaceAttendance({ students, attendanceStatus, onMatch, on
         if (detections.length === 0) return;
 
         const resized = faceapi.resizeResults(detections, displaySize);
-        const matcher = new faceapi.FaceMatcher(labeledDescriptors, 0.55);
 
         resized.forEach(det => {
-            const match = matcher.findBestMatch(det.descriptor);
-            const box = det.detection.box;
-            const isKnown = match.label !== 'unknown';
+            // Eng yaqin ikkita belgi. Ikkinchisi kerak: agar u ham deyarli
+            // shunday yaqin bo'lsa, qaysi biri ekanini ayta olmaymiz.
+            let best: { studentId: number; dist: number; limit: number } | null = null;
+            let secondDist = Infinity;
+            for (const p of profiles) {
+                const dist = euclid(det.descriptor as Float32Array, p.descriptor);
+                if (!best || dist < best.dist) {
+                    if (best) secondDist = best.dist;
+                    best = { studentId: p.studentId, dist, limit: p.limit };
+                } else if (dist < secondDist) {
+                    secondDist = dist;
+                }
+            }
 
-            // Draw bounding box
-            ctx.strokeStyle = isKnown ? '#22c55e' : '#ef4444';
+            const box = det.detection.box;
+            const student = best ? students.find(s => s.id === best!.studentId) : undefined;
+            const close = !!best && best.dist < best.limit;
+            const clear = !!best && (secondDist - best.dist) >= MARGIN;
+            const isKnown = close && clear && !!student;
+            // Yaqin, lekin ikkinchisidan ajratib bo'lmadi — noto'g'ri belgilashdan
+            // ko'ra so'ragan yaxshi.
+            const isDoubtful = close && !clear && !!student;
+
+            ctx.strokeStyle = isKnown ? '#22c55e' : isDoubtful ? '#f59e0b' : '#ef4444';
             ctx.lineWidth = 3;
             ctx.strokeRect(box.x, box.y, box.width, box.height);
 
-            if (isKnown) {
-                const studentId = parseInt(match.label);
-                const student = students.find(s => s.id === studentId);
-                if (!student) return;
+            if (isDoubtful && student) {
+                ctx.fillStyle = '#f59e0b';
+                const th = 22;
+                ctx.fillRect(box.x, box.y - th, box.width, th);
+                ctx.fillStyle = 'white';
+                ctx.font = 'bold 13px Arial';
+                ctx.save();
+                if (facingMode === 'user') { ctx.translate(2 * (box.x + box.width / 2), 0); ctx.scale(-1, 1); }
+                ctx.fillText(student.name + ' ?', box.x + 6, box.y - 5);
+                ctx.restore();
+                setUncertain(student.name);
+                return;
+            }
+
+            if (isKnown && student) {
+                const studentId = best!.studentId;
 
                 // Name label background
                 ctx.fillStyle = '#22c55e';
@@ -174,7 +250,7 @@ export default function FaceAttendance({ students, attendanceStatus, onMatch, on
                 }
             }
         });
-    }, [labeledDescriptors, students, attendanceStatus, onMatch, facingMode]);
+    }, [profiles, students, attendanceStatus, onMatch, facingMode]);
 
     // Detection loop
     useEffect(() => {
@@ -182,6 +258,13 @@ export default function FaceAttendance({ students, attendanceStatus, onMatch, on
         intervalRef.current = setInterval(detect, 250);
         return () => { if (intervalRef.current) clearInterval(intervalRef.current); };
     }, [phase, detect]);
+
+    // "Shubhali" ogohlantirishi bir necha soniyadan keyin o'chadi.
+    useEffect(() => {
+        if (!uncertain) return;
+        const t = setTimeout(() => setUncertain(null), 3000);
+        return () => clearTimeout(t);
+    }, [uncertain]);
 
     const markedThisSession = students.filter(s => markedSet.has(s.id));
 
@@ -230,7 +313,18 @@ export default function FaceAttendance({ students, attendanceStatus, onMatch, on
                 <div className="flex items-center gap-3 px-5 py-2.5 bg-amber-500/10 border-b border-amber-500/20">
                     <Users size={13} className="text-amber-400 shrink-0" />
                     <p className="text-amber-300 text-[11px] font-bold">
-                        Hech bir o'quvchi yuz ro'yxatidan o'tmagan — avval har bir o'quvchi sahifasida <span className="text-white">"Face ID ro'yxatdan o'tkazish"</span> tugmasini bosing
+                        Bu guruhda hech kim yuz ro'yxatidan o'tmagan — <span className="text-white">O'quvchilar</span> sahifasidagi <span className="text-white">"Rasmlardan Face ID"</span> tugmasi bilan hammasini bir yo'la qo'shing
+                    </p>
+                </div>
+            )}
+
+            {/* Ishonch past bo'lgan tanish — avtomatik belgilanmaydi */}
+            {uncertain && (
+                <div className="flex items-center gap-3 px-5 py-2.5 bg-amber-500/10 border-b border-amber-500/20">
+                    <AlertTriangle size={13} className="text-amber-400 shrink-0" />
+                    <p className="text-amber-300 text-[11px] font-bold">
+                        <span className="text-white">{uncertain}</span> ga o'xshaydi, lekin guruhda unga o'xshash boshqa o'quvchi ham bor —
+                        avtomatik belgilanmadi. Yaqinroq turing yoki ro'yxatdan qo'lda belgilang.
                     </p>
                 </div>
             )}

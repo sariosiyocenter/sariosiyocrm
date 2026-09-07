@@ -2179,6 +2179,96 @@ app.get('/api/students/:id/ledger', authenticate, async (req, res, next) => {
   } catch (error) { next(error); }
 });
 
+// ---------------------------------------------------------------------------
+// Face ID — yuz belgilari.
+//
+// Belgi 128 ta sondan iborat. Ilgari u Student.customPrices ichida saqlanardi
+// va /api/init bilan har bir o'quvchi uchun yuborilardi: 235 ta o'quvchi
+// ro'yxatdan o'tsa javob yarim megabaytga og'irlashardi. Endi alohida
+// jadvalda va faqat kerak bo'lganda — yo'qlama oynasi ochilganda, o'sha
+// guruh uchun — yuklanadi.
+// ---------------------------------------------------------------------------
+
+/** Belgi haqiqiy 128 sonli vektormi. */
+function validDescriptor(d) {
+  return Array.isArray(d) && d.length === 128 && d.every(n => typeof n === 'number' && Number.isFinite(n));
+}
+
+app.get('/api/face-profiles', authenticate, async (req, res, next) => {
+  try {
+    const schoolId = parseInt(req.query.schoolId);
+    if (!Number.isInteger(schoolId) || schoolId <= 0) return res.status(400).json({ error: 'schoolId kerak' });
+    if (!(await canAccessSchool(req.user, schoolId))) return res.status(403).json({ error: 'Ruxsat yo\'q' });
+
+    const groupId = parseInt(req.query.groupId);
+    const studentId = parseInt(req.query.studentId);
+    const where = { schoolId };
+    if (Number.isInteger(studentId) && studentId > 0) {
+      where.studentId = studentId;
+    } else if (Number.isInteger(groupId) && groupId > 0) {
+      where.student = { groups: { some: { id: groupId } } };
+    }
+
+    // ids=1 — faqat kim ro'yxatdan o'tganini bilish uchun (yengil javob).
+    if (String(req.query.ids || '') === '1') {
+      const rows = await prisma.faceProfile.findMany({ where, select: { studentId: true, source: true, updatedAt: true } });
+      return res.json({ profiles: rows });
+    }
+
+    const rows = await prisma.faceProfile.findMany({ where, select: { studentId: true, descriptor: true, source: true } });
+    res.json({ profiles: rows });
+  } catch (error) { next(error); }
+});
+
+app.post('/api/face-profiles', authenticate, requireRole(...STAFF_MANAGERS), async (req, res, next) => {
+  try {
+    const schoolId = parseInt(req.body.schoolId);
+    if (!Number.isInteger(schoolId) || schoolId <= 0) return res.status(400).json({ error: 'schoolId kerak' });
+    if (!(await canAccessSchool(req.user, schoolId))) return res.status(403).json({ error: 'Ruxsat yo\'q' });
+
+    const list = Array.isArray(req.body.profiles) ? req.body.profiles : [];
+    if (!list.length) return res.status(400).json({ error: "Bo'sh ro'yxat" });
+    if (list.length > 50) return res.status(400).json({ error: "Bir so'rovda 50 tadan ko'p emas" });
+
+    const clean = [];
+    for (const item of list) {
+      const studentId = parseInt(item.studentId);
+      if (!Number.isInteger(studentId)) continue;
+      if (!validDescriptor(item.descriptor)) continue;
+      clean.push({ studentId, descriptor: item.descriptor, source: item.source === 'rasm' ? 'rasm' : 'kamera' });
+    }
+    if (!clean.length) return res.status(400).json({ error: "Yuz belgisi noto'g'ri" });
+
+    // Faqat shu filialdagi o'quvchilar.
+    const allowed = await prisma.student.findMany({
+      where: { id: { in: clean.map(c => c.studentId) }, schoolId },
+      select: { id: true },
+    });
+    const allowedIds = new Set(allowed.map(a => a.id));
+    const rows = clean.filter(c => allowedIds.has(c.studentId));
+    if (!rows.length) return res.status(400).json({ error: "O'quvchilar bu filialda topilmadi" });
+
+    await prisma.$transaction(rows.map(r => prisma.faceProfile.upsert({
+      where: { studentId: r.studentId },
+      create: { studentId: r.studentId, descriptor: r.descriptor, source: r.source, schoolId },
+      update: { descriptor: r.descriptor, source: r.source, schoolId },
+    })));
+
+    res.json({ saved: rows.length });
+  } catch (error) { next(error); }
+});
+
+app.delete('/api/face-profiles/:studentId', authenticate, requireRole(...STAFF_MANAGERS), async (req, res, next) => {
+  try {
+    const studentId = parseInt(req.params.studentId);
+    const student = await prisma.student.findUnique({ where: { id: studentId }, select: { schoolId: true } });
+    if (!student) return res.status(404).json({ error: "O'quvchi topilmadi" });
+    if (!(await canAccessSchool(req.user, student.schoolId))) return res.status(403).json({ error: 'Ruxsat yo\'q' });
+    await prisma.faceProfile.deleteMany({ where: { studentId } });
+    res.json({ success: true });
+  } catch (error) { next(error); }
+});
+
 // Expenses
 const EXPENSE_METHODS = ['Naqd', 'Karta', "O'tkazma"];
 app.get('/api/expenses', authenticate, async (req, res, next) => {

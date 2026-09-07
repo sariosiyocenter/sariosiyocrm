@@ -1413,6 +1413,8 @@ export default function CourseDetails() {
             {isFaceAttendanceOpen && (
                 <FaceAttendance
                     students={groupStudents}
+                    groupId={group.id}
+                    schoolId={group.schoolId}
                     attendanceStatus={Object.fromEntries(
                         groupStudents.map(s => {
                             const rec = attendances.find(a => a.groupId === group.id && a.date === selectedDate && a.studentId === s.id);
