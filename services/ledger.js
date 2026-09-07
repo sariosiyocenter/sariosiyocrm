@@ -22,11 +22,23 @@ export function withOpening(rows, balance) {
   return [...rows, { id: null, amount: diff, type: 'Oylik', date: '0000-00-01', groupId: null, courseId: null, description: "[BOSHLANG'ICH QOLDIQ] (hisoblangan)" }];
 }
 
-/** Berilgan o'quvchilarning barcha yozuvlari, o'quvchi bo'yicha guruhlangan. */
+/**
+ * Berilgan o'quvchilarning barcha yozuvlari, o'quvchi bo'yicha guruhlangan.
+ *
+ * Tartib muhim: bir oyda ikki guruhning hisobi ochiq bo'lsa (masalan o'quvchi
+ * oy o'rtasida ko'chirilgan), pul yetmaganda qaysi guruh birinchi yopilishi
+ * shu tartibga bog'liq — ya'ni ustozlar orasidagi bo'linishga. ORDER BY
+ * bo'lmasa Postgres tartibni kafolatlamaydi va bitta o'quvchi uchun oylik
+ * ikki xil chiqishi mumkin edi. studentLedger() bilan bir xil tartib.
+ */
 export async function loadRowsByStudent(studentIds) {
   if (!studentIds.length) return new Map();
   const [rows, students] = await Promise.all([
-    prisma.payment.findMany({ where: { studentId: { in: studentIds } }, select: ROW_SELECT }),
+    prisma.payment.findMany({
+      where: { studentId: { in: studentIds } },
+      select: ROW_SELECT,
+      orderBy: [{ date: 'asc' }, { id: 'asc' }],
+    }),
     prisma.student.findMany({ where: { id: { in: studentIds } }, select: { id: true, balance: true } }),
   ]);
   const map = groupRows(rows);
