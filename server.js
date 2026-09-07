@@ -2070,6 +2070,15 @@ app.post('/api/public/schools/:schoolId/tokens', authenticate, async (req, res, 
     const schoolId = parseInt(req.params.schoolId);
     if (isNaN(schoolId)) return res.status(400).json({ error: 'Mavjud bo\'lmagan filial ID' });
 
+    // "To'liq o'quv markazi" tanlanganda klient bu yerga 0 yuborardi: Prisma
+    // foreign key xatosi 500 bo'lib qaytar, havola oynasi esa abadiy
+    // "Yuklanmoqda" bo'lib turardi. Ariza havolasi doim bitta filialga tegishli.
+    if (schoolId <= 0) {
+      return res.status(400).json({ error: "Havola uchun filialni tanlang" });
+    }
+    const school = await prisma.school.findUnique({ where: { id: schoolId }, select: { id: true } });
+    if (!school) return res.status(404).json({ error: 'Filial topilmadi' });
+
     const token = await prisma.applyToken.create({
       data: { schoolId }
     });

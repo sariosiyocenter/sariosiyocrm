@@ -109,18 +109,23 @@ export default function PublicApply() {
 
     const searchParams = new URLSearchParams(window.location.search);
     const token = searchParams.get('token');
+    // QR havolasidagi token 30 daqiqada eskiradi. Ilgari eskirgan token
+    // sahifani butunlay to'sib qo'yardi va ota-ona faqat "havola eskirgan"
+    // degan yozuvni ko'rardi. Tokensiz havola baribir ochiq, ya'ni to'siqning
+    // himoya sifatida foydasi yo'q edi — endi eskirgan token shunchaki
+    // e'tiborga olinmaydi va oddiy forma ochiladi.
+    const [tokenAmal, setTokenAmal] = useState<string | null>(token);
 
     useEffect(() => {
         if (!schoolId) return;
 
-        // If they already submitted successfully in this session/browser, bypass API checks
-        const sessionKey = `submitted_apply_${schoolId}`;
-        if (localStorage.getItem(sessionKey)) {
-            setSubmitted(true);
-            setLoading(false);
-            return;
-        }
-
+        // Ilgari bu yerda localStorage tekshirilar va bir marta ariza bergan
+        // qurilmada forma boshqa ochilmasdi. Ikki muammo bor edi: bitta oiladan
+        // ikkinchi bolani yozdirib bo'lmasdi (yoki resepshndagi bitta planshetdan
+        // umuman bir kishi), ustiga ma'lumot yuklanmagani uchun ekranda
+        // "Arizangiz qabul qilindi" emas, "Xatolik — Filial topilmadi" chiqardi.
+        // Takroriy arizadan server himoya qiladi: so'rov cheklovi va bir xil
+        // ism-telefon uchun tekshiruv bor.
         const fetchData = async () => {
             try {
                 setLoading(true);
@@ -128,9 +133,9 @@ export default function PublicApply() {
                 // Token is optional — permanent links work without token
                 if (token) {
                     const tokenRes = await fetch(`/api/public/tokens/${token}`);
-                    const tokenData = await tokenRes.json();
+                    const tokenData = await tokenRes.json().catch(() => ({ valid: false }));
                     if (!tokenData.valid || tokenData.schoolId !== parseInt(schoolId)) {
-                        throw new Error('Ro\'yxatdan o\'tish havolasi eskirgan yoki noto\'g\'ri.');
+                        setTokenAmal(null);
                     }
                 }
 
@@ -172,13 +177,12 @@ export default function PublicApply() {
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     ...form,
-                    source: `Bir martalik QR Havola`,
-                    token: token
+                    source: tokenAmal ? 'QR havola' : 'Onlayn havola',
+                    token: tokenAmal
                 })
             });
             if (res.ok) {
                 setSubmitted(true);
-                localStorage.setItem(`submitted_apply_${schoolId}`, 'true');
             } else {
                 const data = await res.json().catch(() => ({}));
                 alert(data.error || 'Yuborishda xatolik yuz berdi. Iltimos qaytadan urining.');
@@ -261,6 +265,22 @@ export default function PublicApply() {
                             <p className="text-[11px] font-bold text-matn-xira uppercase tracking-wider leading-relaxed">
                                 Tez orada administratorlarimiz siz bilan bog'lanishadi va kursga qo'shishadi.
                             </p>
+                            {/* Bir oilada ikki bola bo'lishi mumkin, resepshnda esa
+                                bitta planshetdan ketma-ket ariza qabul qilinadi. */}
+                            <button
+                                type="button"
+                                onClick={() => {
+                                    setSubmitted(false);
+                                    setForm(prev => ({
+                                        ...prev,
+                                        name: '', phone: '', birthDate: '', studentSchool: '',
+                                        address: '', notes: '', photo: '', certificates: [],
+                                    }));
+                                    window.scrollTo(0, 0);
+                                }}
+                                className="mt-6 text-[11px] font-black uppercase tracking-wider text-[var(--brand-color,#1b6b6b)] hover:underline cursor-pointer">
+                                Yana ariza topshirish
+                            </button>
                         </div>
                     ) : (
                         <form onSubmit={handleSubmit} className="space-y-4 animate-in fade-in duration-500 text-left">

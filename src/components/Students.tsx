@@ -170,8 +170,20 @@ export default function Students() {
 
     const LINK_ROTATE_MS = 30 * 60 * 1000;
 
+    // Havola doim bitta filialga tegishli. Yuqoridagi tanlagichda "To'liq
+    // o'quv markazi" turgan bo'lsa selectedSchoolId 0 bo'lardi va havola
+    // /apply/0 ga ketardi: server 500 qaytarar, oyna esa abadiy
+    // "Yuklanmoqda" bo'lib turardi. Endi filial shu yerda tanlanadi.
+    const [linkSchoolId, setLinkSchoolId] = useState<number | null>(null);
     useEffect(() => {
-        if (!isLinkModalOpen || !selectedSchoolId) {
+        if (!isLinkModalOpen) return;
+        setLinkSchoolId(prev => prev ?? (selectedSchoolId && selectedSchoolId > 0
+            ? selectedSchoolId
+            : (schools?.[0]?.id ?? null)));
+    }, [isLinkModalOpen, selectedSchoolId, schools]);
+
+    useEffect(() => {
+        if (!isLinkModalOpen || !linkSchoolId) {
             setApplyUrl('');
             setQrCodeDataUrl('');
             return;
@@ -182,14 +194,18 @@ export default function Students() {
         const generateLink = async () => {
             try {
                 const authToken = localStorage.getItem('token');
-                const res = await fetch(`/api/public/schools/${selectedSchoolId}/tokens`, {
+                const res = await fetch(`/api/public/schools/${linkSchoolId}/tokens`, {
                     method: 'POST',
                     headers: { 'Authorization': `Bearer ${authToken}` }
                 });
-                const data = await res.json();
-                if (cancelled || !data.token) return;
+                const data = await res.json().catch(() => ({}));
+                if (cancelled) return;
+                if (!res.ok || !data.token) {
+                    showNotification(data.error || "Havolani yaratib bo'lmadi", 'error');
+                    return;
+                }
 
-                const url = `${window.location.origin}/apply/${selectedSchoolId}?token=${data.token}`;
+                const url = `${window.location.origin}/apply/${linkSchoolId}?token=${data.token}`;
                 setApplyUrl(url);
 
                 const QRCodeLib = await import('qrcode');
@@ -208,7 +224,24 @@ export default function Students() {
             cancelled = true;
             clearInterval(interval);
         };
-    }, [isLinkModalOpen, selectedSchoolId]);
+    }, [isLinkModalOpen, linkSchoolId]);
+
+    // Yuborish uchun eskirmaydigan havola. QR resepshn stolida turadi va
+    // xavfsizlik uchun 30 daqiqada yangilanadi, lekin ota-onaga Telegramdan
+    // tashlangan havola yarim soatdan keyin "eskirgan" bo'lib qolardi.
+    const doimiyUrl = linkSchoolId
+        ? `${window.location.origin}/apply/${linkSchoolId}`
+        : '';
+    const [doimiyCopied, setDoimiyCopied] = useState(false);
+    const copyDoimiyLink = () => {
+        if (!doimiyUrl) return;
+        navigator.clipboard.writeText(doimiyUrl)
+            .then(() => {
+                setDoimiyCopied(true);
+                setTimeout(() => setDoimiyCopied(false), 2000);
+            })
+            .catch(() => showNotification("Nusxalab bo'lmadi", 'error'));
+    };
 
     const copyLinkToClipboard = () => {
         if (!applyUrl) return;
@@ -1518,9 +1551,50 @@ export default function Students() {
                                 <X size={18} />
                             </button>
                         </div>
-                        <p className="text-[11px] font-bold text-matn-xira leading-relaxed mb-2">
+                        <p className="text-[11px] font-bold text-matn-xira leading-relaxed mb-4">
                             {t('reception_link_desc')}
                         </p>
+
+                        <div className="text-left mb-6">
+                            <label className="block text-[11px] font-extrabold text-matn-xira mb-2">Qaysi filialga</label>
+                            <select
+                                value={linkSchoolId ?? ''}
+                                onChange={e => setLinkSchoolId(Number(e.target.value) || null)}
+                                className="w-full px-4 py-3 bg-ichki border border-chiziq rounded-2xl text-[12px] font-bold text-matn outline-none focus:border-brand cursor-pointer"
+                            >
+                                <option value="" disabled>Filialni tanlang</option>
+                                {(schools || []).map(sc => (
+                                    <option key={sc.id} value={sc.id}>{sc.name}</option>
+                                ))}
+                            </select>
+                        </div>
+                        {/* Doimiy havola — ota-onaga yuborish uchun. Eskirmaydi. */}
+                        <div className="text-left bg-ichki border border-chiziq rounded-2xl p-4 mb-6">
+                            <p className="text-[11px] font-black text-matn mb-1">Doimiy havola</p>
+                            <p className="text-[11px] font-bold text-matn-xira leading-relaxed mb-3 normal-case">
+                                Eskirmaydi — Telegram yoki SMS orqali yuborish uchun shu havoladan foydalaning.
+                            </p>
+                            <div className="flex items-center gap-2 bg-sirt p-3 rounded-xl border border-chiziq mb-3">
+                                <input
+                                    readOnly
+                                    type="text"
+                                    value={doimiyUrl}
+                                    className="bg-transparent border-none text-[11px] font-extrabold text-gray-700 dark:text-white outline-none w-full select-all"
+                                />
+                            </div>
+                            <button
+                                onClick={copyDoimiyLink}
+                                className={`w-full py-3 rounded-xl text-[11px] font-black transition-all cursor-pointer ${
+                                    doimiyCopied
+                                        ? 'bg-emerald-600 text-white'
+                                        : 'bg-brand hover:bg-brand-dark text-white'
+                                }`}
+                            >
+                                {doimiyCopied ? t('copied') : t('copy_link')}
+                            </button>
+                        </div>
+
+                        <p className="text-[11px] font-black text-matn mb-1">Resepshn uchun QR</p>
                         <p className="text-[11px] font-bold text-amber-500 leading-relaxed mb-6 normal-case">
                             {t('reception_link_rotate')}
                         </p>
