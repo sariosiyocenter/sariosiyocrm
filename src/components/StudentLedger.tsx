@@ -1,5 +1,5 @@
 import { useEffect, useState, useCallback } from 'react';
-import { RefreshCw, Wallet, AlertCircle, CheckCircle2 } from 'lucide-react';
+import { RefreshCw, Wallet, AlertCircle, CheckCircle2, CalendarCheck2, BookOpen } from 'lucide-react';
 
 /**
  * O'quvchining hisobi — balans raqamining ochib berilgani.
@@ -23,14 +23,47 @@ interface Bucket {
     status: 'paid' | 'partial' | 'unpaid';
 }
 
+/** Bitta kurs bo'yicha holat. Pul kursga biriktirilgani uchun har biri mustaqil. */
+interface CourseStanding {
+    groupId: number;
+    groupName: string;
+    courseName: string;
+    teacher: string | null;
+    monthlyPrice: number;
+    debt: number;
+    advance: number;
+    balance: number;
+    /** Shu sanagacha (shu kun ham) darsga kiradi. */
+    paidUntil: string | null;
+    /** Guruh jadvali to'ldirilmagan — sanani hisoblab bo'lmaydi. */
+    accessUnknown: boolean;
+    openDebt: boolean;
+}
+
 interface Ledger {
     balance: number;
     wallet: number;
     debt: number;
     buckets: Bucket[];
+    courses?: CourseStanding[];
+    generalWallet?: number;
 }
 
 const money = (n: number) => Math.round(n).toLocaleString('ru-RU');
+
+/** "2026-10-30" → "30.10.2026". */
+const sana = (d: string) => {
+    const [y, m, dd] = d.split('-');
+    return dd && m && y ? `${dd}.${m}.${y}` : d;
+};
+
+/** Muddat tugashiga necha kun qoldi (o'tib ketgan bo'lsa manfiy). */
+const kunQoldi = (d: string) => {
+    const bugun = new Date(); bugun.setHours(0, 0, 0, 0);
+    const [y, m, dd] = d.split('-').map(Number);
+    const oxir = new Date(y, (m || 1) - 1, dd || 1);
+    return Math.round((oxir.getTime() - bugun.getTime()) / 86400000);
+};
 
 const MONTHS = ['Yanvar', 'Fevral', 'Mart', 'Aprel', 'May', 'Iyun', 'Iyul', 'Avgust', 'Sentabr', 'Oktabr', 'Noyabr', 'Dekabr'];
 const monthLabel = (m: string) => {
@@ -102,6 +135,65 @@ export default function StudentLedger({ studentId, refreshKey, trial }: { studen
                 </div>
             </div>
 
+            {/* Kurslar bo'yicha. Pul qaysi kursga to'langan bo'lsa o'sha kursda
+                qoladi, shuning uchun har bir kursning qarzi, avansi va darsga
+                kirish muddati alohida ko'rsatiladi. */}
+            {(data.courses || []).length > 0 && (
+                <div className="space-y-2">
+                    <p className="text-[11px] text-matn-sokin flex items-center gap-1.5 pt-1">
+                        <BookOpen size={12} /> Kurslar bo'yicha
+                    </p>
+                    {(data.courses || []).map(c => {
+                        const qoldi = c.paidUntil ? kunQoldi(c.paidUntil) : null;
+                        return (
+                            <div key={c.groupId} className="px-4 py-3 rounded-xl border border-chiziq bg-ichki/40">
+                                <div className="flex items-start justify-between gap-3">
+                                    <div className="min-w-0">
+                                        <p className="text-[12px] font-bold text-matn truncate">{c.groupName}</p>
+                                        <p className="text-[10px] text-matn-xira mt-0.5 truncate">
+                                            {[c.courseName, c.teacher, c.monthlyPrice > 0 ? money(c.monthlyPrice) + " so'm/oy" : ''].filter(Boolean).join(' · ')}
+                                        </p>
+                                    </div>
+                                    <div className="text-right shrink-0">
+                                        <p className={`raqam text-[14px] font-semibold leading-tight ${c.debt > 0 ? 'text-xato' : c.advance > 0 ? 'text-yaxshi' : 'text-matn-xira'}`}>
+                                            {c.debt > 0 ? '−' + money(c.debt) : c.advance > 0 ? '+' + money(c.advance) : '0'}
+                                        </p>
+                                        <p className="text-[10px] text-matn-xira">
+                                            {c.debt > 0 ? 'qarz' : c.advance > 0 ? 'avans' : "qarz yo'q"}
+                                        </p>
+                                    </div>
+                                </div>
+                                {/* Darsga kirish muddati — "1 000 000 to'ladi, qachongacha
+                                    dostupi bor" degan savolning javobi. */}
+                                <div className="mt-2 pt-2 border-t border-dashed border-chiziq/60 flex items-center gap-1.5">
+                                    <CalendarCheck2 size={12} className={
+                                        !c.paidUntil ? 'text-xato' : qoldi !== null && qoldi < 0 ? 'text-xato'
+                                            : qoldi !== null && qoldi <= 5 ? 'text-ogoh' : 'text-yaxshi'} />
+                                    {c.accessUnknown ? (
+                                        <span className="text-[11px] font-bold text-matn-xira">
+                                            Guruh jadvali belgilanmagan — muddatni hisoblab bo'lmaydi
+                                        </span>
+                                    ) : !c.paidUntil ? (
+                                        <span className="text-[11px] font-bold text-xato">To'lanmagan — darsga kirish muddati yo'q</span>
+                                    ) : (
+                                        <span className={`text-[11px] font-bold ${qoldi !== null && qoldi < 0 ? 'text-xato' : qoldi !== null && qoldi <= 5 ? 'text-ogoh' : 'text-matn-2'}`}>
+                                            {sana(c.paidUntil)} gacha
+                                            {qoldi !== null && (
+                                                <span className="font-normal text-matn-xira">
+                                                    {qoldi < 0 ? ` · ${-qoldi} kun oldin tugagan`
+                                                        : qoldi === 0 ? ' · bugun oxirgi kun'
+                                                            : ` · ${qoldi} kun qoldi`}
+                                                </span>
+                                            )}
+                                        </span>
+                                    )}
+                                </div>
+                            </div>
+                        );
+                    })}
+                </div>
+            )}
+
             {rows.length === 0 ? (
                 <p className="text-center py-4 text-[11px] text-matn-xira font-bold">Hali hisob yozilmagan</p>
             ) : (
@@ -140,8 +232,9 @@ export default function StudentLedger({ studentId, refreshKey, trial }: { studen
             )}
 
             <p className="text-[10px] text-matn-xira">
-                To'lov hisobga tushadi, hisob esa har oyning 1-sanasida (yoki guruhga qo'shilgan kuni) yoziladi va
-                hisobdagi puldan yopiladi. Balans = avans − yopilmagan hisob.
+                To'lov qaysi kursga qilingan bo'lsa, o'sha kursda qoladi — boshqa kursning qarzini yopmaydi.
+                Ortgan pul o'sha kursning keyingi oylariga o'tadi. Hisob har oyning 1-sanasida (yoki guruhga
+                qo'shilgan kuni) yoziladi. Balans = avans − yopilmagan hisob.
                 {loading && ' (yangilanmoqda…)'}
             </p>
         </div>

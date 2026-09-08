@@ -1,9 +1,10 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
   Send, FileText, Settings, History, Search, RefreshCw, Zap, CheckCircle,
   XCircle, Clock, Filter, Plus, Trash2, Edit, AlertCircle, HelpCircle, User, Info, Check, MessageSquare
 } from 'lucide-react';
 import { useCRM } from '../context/CRMContext';
+import { allocate, groupRows, withOpening, groupStanding } from '../../lib/allocation.js';
 import { useConfirm } from './ConfirmDialog';
 import { useLang } from '../context/LanguageContext';
 import { displayName as ismniKorsat } from '../lib/displayName';
@@ -230,7 +231,7 @@ const getTriggerTypeMeta = (type: string) => {
 
 export default function Messaging() {
   const { t } = useLang();
-  const { students, groups, courses, selectedSchoolId, schools, teachers, users, showNotification } = useCRM();
+  const { students, groups, courses, payments, selectedSchoolId, schools, teachers, users, showNotification } = useCRM();
     const confirm = useConfirm();
 
   const [activeTab, setActiveTab] = useState<'new' | 'templates' | 'auto' | 'history'>('new');
@@ -250,6 +251,48 @@ export default function Messaging() {
     birthday: 'all', // all, today, week, month
     contact: 'all', // all, phone, telegram
   });
+
+  /**
+   * Kurs kesimidagi qarz: Map<studentId, Map<groupId, qarz>>.
+   *
+   * Pul endi kursga biriktiriladi (lib/allocation.js), shuning uchun "qarzdor"
+   * degani umumiy balansdan emas, TANLANGAN KURSdan kelib chiqadi. Egasi
+   * (2026-09-09): o'quvchi 1 000 000 ni matematikaga, 500 000 ni fizikaga
+   * to'lagan bo'lsa — fizika bo'yicha filtrda qarzdor bo'lib chiqishi, lekin
+   * matematika bo'yicha chiqmasligi kerak.
+   *
+   * Hisob serverdagi bilan bir xil funksiya orqali qilinadi (lib/allocation.js
+   * ikkala tomon uchun umumiy), yozuvlar esa /api/init bilan allaqachon
+   * kelgan — qo'shimcha so'rov kerak emas.
+   */
+  const debtByStudentGroup = useMemo(() => {
+    const out = new Map<number, Map<number | null, number>>();
+    const byStudent = groupRows((payments || []) as any[]);
+    for (const st of (students || []) as Student[]) {
+      const rows = withOpening(byStudent.get(st.id) || [], st.balance);
+      const res = allocate(rows);
+      const m = new Map<number | null, number>();
+      for (const x of res.debtByGroup) m.set(x.groupId, x.amount);
+      out.set(st.id, m);
+    }
+    return out;
+  }, [students, payments]);
+
+  /** Tanlangan kurslar bo'yicha qarz (kurs tanlanmagan bo'lsa — umumiy qarz). */
+  const qarzMiqdori = (st: Student): number => {
+    const perGroup = debtByStudentGroup.get(st.id);
+    if (!perGroup) return st.balance < 0 ? -st.balance : 0;
+    if (filters.groupIds.length === 0) {
+      let jami = 0;
+      for (const v of perGroup.values()) jami += v;
+      return jami;
+    }
+    let jami = 0;
+    for (const gid of filters.groupIds) {
+      jami += perGroup.get(Number(gid)) || 0;
+    }
+    return jami;
+  };
 
   const [channel, setChannel] = useState<'SMS' | 'TELEGRAM' | 'BOTH'>('SMS');
   const [useSmsFallback, setUseSmsFallback] = useState(true);
@@ -506,12 +549,12 @@ export default function Messaging() {
       // Gender
       if (filters.gender !== 'all' && st.gender !== filters.gender) return false;
 
-      // Balance
-      const bal = Number(st.balance || 0);
+      // Balans. Kurs tanlangan bo'lsa qarz aynan o'sha kurs bo'yicha
+      // hisoblanadi — umumiy balans emas.
       if (filters.balanceType === 'debtors') {
-        if (bal >= -Number(filters.minDebt)) return false;
+        if (qarzMiqdori(st) <= Number(filters.minDebt)) return false;
       } else if (filters.balanceType === 'advance') {
-        if (bal <= 0) return false;
+        if (Number(st.balance || 0) <= 0) return false;
       }
 
       // Birthday
@@ -721,7 +764,9 @@ export default function Messaging() {
     const entry = recipientEntries.find(e => selectedRecipientIds[e.key]);
     const st = entry ? filteredRecipients.find(r => r.id === entry.studentId) || filteredRecipients[0] : filteredRecipients[0];
     const balance = Number(st.balance || 0);
-    const debt = balance < 0 ? Math.abs(balance) : 0;
+    // {qarz} — tanlangan kurs bo'yicha qarz. Fizika uchun xabar yuborilayotgan
+    // bo'lsa matematikaning qarzi qo'shilib ketmaydi.
+    const debt = qarzMiqdori(st) || (balance < 0 ? Math.abs(balance) : 0);
     const groupNames = (st.groups || [])
       .map(g => {
         const groupIdVal = typeof g === 'object' && g !== null ? g.id : Number(g);
@@ -1155,7 +1200,12 @@ export default function Messaging() {
 
 
                 <div>
-                  <label className={lbl}>Balans holati</label>
+                  <label className={lbl}>
+                    Balans holati
+                    {filters.groupIds.length > 0 && (
+                      <span className="font-normal text-matn-xira"> · qarz tanlangan kurs bo'yicha</span>
+                    )}
+                  </label>
                   <select
                     value={filters.balanceType}
                     onChange={e => setFilters({ ...filters, balanceType: e.target.value })}

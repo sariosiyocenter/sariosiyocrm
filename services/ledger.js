@@ -1,26 +1,14 @@
 import prisma from '../lib/prisma.js';
-import { allocate, groupRows, LEGACY_KEY } from '../lib/allocation.js';
+import { allocate, groupRows, groupStanding, withOpening, LEGACY_KEY } from '../lib/allocation.js';
+import { paidUntil } from '../lib/access.js';
+
+export { withOpening };
 
 // O'quvchi hisobi (daftari) bazadan o'qilib, `lib/allocation.js` orqali
 // taqsimlanadi. Bu yerda faqat bazaga murojaat va natijani bezash bor;
 // hisobning o'zi allocation.js da.
 
 const ROW_SELECT = { id: true, studentId: true, amount: true, type: true, date: true, groupId: true, courseId: true, description: true };
-
-/**
- * Balans bilan yozuvlar yig'indisi mos kelmasa — farq "boshlang'ich qoldiq"
- * sifatida qo'shiladi. O'quvchilar bazaga tayyor balans bilan kiritilgan
- * (import), o'sha balansni tashkil qilgan eski hisoblar yozuv sifatida yo'q.
- * `scripts/opening-balance.js` buni bazaga doimiy yozadi; yozilmagan bo'lsa
- * ham hisob to'g'ri chiqsin deb shu yerda ham hisoblanadi. Qo'lda tuzatilgan
- * balans ham shu yo'l bilan yozuvlarga "yetib oladi".
- */
-export function withOpening(rows, balance) {
-  const sum = rows.reduce((a, r) => a + (Number(r.amount) || 0), 0);
-  const diff = Math.round((Number(balance) || 0) - sum);
-  if (Math.abs(diff) < 1) return rows;
-  return [...rows, { id: null, amount: diff, type: 'Oylik', date: '0000-00-01', groupId: null, courseId: null, description: "[BOSHLANG'ICH QOLDIQ] (hisoblangan)" }];
-}
 
 /**
  * Berilgan o'quvchilarning barcha yozuvlari, o'quvchi bo'yicha guruhlangan.
@@ -60,14 +48,53 @@ export async function studentLedger(studentId) {
   const rows = withOpening(stored, student?.balance || 0);
   const result = allocate(rows);
 
-  const groupIds = [...new Set(result.buckets.map(b => b.groupId).filter(Boolean))];
+  // Chelaklardagi guruhlar + o'quvchi hozir a'zo bo'lgan guruhlar. Ikkinchisi
+  // kerak: yangi qo'shilgan kursda hali hisob yo'q bo'lishi mumkin, lekin
+  // uning muddati (avansdan) ko'rsatilishi kerak.
+  const member = await prisma.student.findUnique({
+    where: { id: studentId },
+    select: { customPrices: true, groups: { select: { id: true } } },
+  });
+  const groupIds = [...new Set([
+    ...result.buckets.map(b => b.groupId).filter(Boolean),
+    ...(member?.groups || []).map(g => g.id),
+  ])];
   const groups = groupIds.length
     ? await prisma.group.findMany({
         where: { id: { in: groupIds } },
-        select: { id: true, name: true, course: { select: { name: true } }, teacher: { select: { name: true } } },
+        select: {
+          id: true, name: true, days: true, courseId: true,
+          course: { select: { name: true, price: true } },
+          teacher: { select: { name: true } },
+        },
       })
     : [];
   const gmap = new Map(groups.map(g => [g.id, g]));
+
+  // Har bir kurs alohida: o'z qarzi, o'z avansi, o'z muddati. Pul kursga
+  // biriktirilgani uchun bular bir-biriga bog'liq emas — o'quvchi
+  // matematikada avansda, fizikada qarzdor bo'lishi mumkin.
+  const custom = (member?.customPrices && typeof member.customPrices === 'object') ? member.customPrices : {};
+  const courses = groups.map(g => {
+    const standing = groupStanding(result, g.id);
+    const price = custom[g.id] !== undefined ? Number(custom[g.id]) : (g.course?.price || 0);
+    const access = paidUntil(
+      result.buckets.filter(b => b.groupId === g.id),
+      { days: g.days, monthlyPrice: price, advance: standing.advance },
+    );
+    return {
+      groupId: g.id,
+      groupName: g.name,
+      courseId: g.courseId,
+      courseName: g.course?.name || '',
+      teacher: g.teacher?.name || null,
+      monthlyPrice: price,
+      ...standing,
+      paidUntil: access.until,
+      accessUnknown: access.unknown,
+      openDebt: access.openDebt,
+    };
+  }).sort((a, b) => a.groupName.localeCompare(b.groupName));
 
   // Har bir to'lov qayerga ketgani — yozuv qatorida ko'rsatish uchun.
   const usedBy = new Map();
@@ -80,6 +107,9 @@ export async function studentLedger(studentId) {
   return {
     wallet: result.wallet,
     debt: result.debt,
+    courses,
+    // Kursga biriktirilmagan avans — "umumiy" to'lovlardan qolgani.
+    generalWallet: (result.walletByGroup.find(x => x.groupId === null) || {}).amount || 0,
     buckets: result.buckets.map(b => ({
       ...b,
       groupName: b.groupId ? (gmap.get(b.groupId)?.name || '#' + b.groupId) : (b.key === LEGACY_KEY ? "Eski qoldiq (01.09.2026 gacha)" : 'Qaytarish'),

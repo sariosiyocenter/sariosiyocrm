@@ -225,6 +225,19 @@ export default function Finance() {
     const [studentSearch, setStudentSearch] = useState('');
     const [selectedStudent, setSelectedStudent] = useState<any>(null);
     const [createdPaymentForReceipt, setCreatedPaymentForReceipt] = useState<any>(null);
+    /**
+     * To'lov endi kurslarga bo'lib qabul qilinadi (egasi, 2026-09-09):
+     * "пусть сам скажет, куда и сколько". 1 500 000 keltirsa — 1 000 000
+     * matematikaga, 500 000 fizikaga deb ko'rsatiladi va ikkita alohida
+     * yozuv yoziladi. Pul boshqa kursga o'zi o'tib ketmaydi.
+     *
+     * Kalit — guruh id si, `umumiy` esa kursga bog'lanmagan qism (eski
+     * qoldiqni yopish uchun).
+     */
+    const [payLines, setPayLines] = useState<Record<string, number>>({});
+    /** Tanlangan o'quvchining kurs kesimidagi holati (/api/students/:id/ledger). */
+    const [payLedger, setPayLedger] = useState<any>(null);
+    const [payLedgerLoading, setPayLedgerLoading] = useState(false);
     const [newPayment, setNewPayment] = useState<Omit<Payment, 'id' | 'schoolId'>>({
         studentId: 0, amount: 0, type: 'Naqd', description: '', courseId: null, groupId: null, date: new Date().toISOString().split('T')[0]
     });
@@ -232,26 +245,6 @@ export default function Finance() {
         amount: 0, category: 'Boshqa', description: '', date: new Date().toISOString().split('T')[0],
         staffId: null, staffName: null
     });
-
-    /** To'lov modalidagi kurs ro'yxati: avval o'quvchi a'zo bo'lgan guruhlarning
-     *  kurslari, ular yo'q bo'lsa markazdagi barcha kurslar. */
-    // Markazda "kurs" deb guruh tushuniladi (CRM dagi "Kurslar" bo'limi ham
-    // guruhlarni ko'rsatadi), shuning uchun to'lov ham aynan guruh uchun
-    // tanlanadi. Bu ustoz ulushini hisoblash uchun ham muhim: pul qaysi
-    // guruhga tushgani shu yerdan aniq bo'ladi.
-    const paymentCourseOptions = useMemo(() => {
-        const bilanNarx = (gs: typeof groups) => gs.map(g => ({
-            id: g.id,
-            name: g.name,
-            courseId: g.courseId,
-            price: courses.find(c => c.id === g.courseId)?.price ?? 0,
-        }));
-        // O'quvchi tanlanmagan bo'lsa — markazdagi barcha kurslar;
-        // tanlangach — faqat o'sha o'quvchi a'zo bo'lganlari.
-        if (!selectedStudent) return bilanNarx(groups);
-        const own = groups.filter(g => (g.studentIds || []).includes(selectedStudent.id));
-        return bilanNarx(own.length > 0 ? own : groups);
-    }, [selectedStudent, groups, courses]);
 
     // All staff for salary expense selector (users + legacy teachers)
     const userNames = new Set(hrUsers.map(u => u.name.toLowerCase().trim()));
@@ -280,11 +273,86 @@ export default function Finance() {
         });
     };
 
+    // O'quvchi tanlangach uning kurs kesimidagi qarzi so'raladi: xodim qaysi
+    // kursga qancha kerakligini ko'rib turib taqsimlaydi.
+    useEffect(() => {
+        if (!selectedStudent) { setPayLedger(null); setPayLines({}); return; }
+        let off = false;
+        setPayLedgerLoading(true);
+        (async () => {
+            try {
+                const r = await fetch(`/api/students/${selectedStudent.id}/ledger`, {
+                    headers: { Authorization: `Bearer ${localStorage.getItem('token')}` },
+                });
+                const j = await r.json();
+                if (off) return;
+                setPayLedger(r.ok ? j : null);
+            } catch {
+                if (!off) setPayLedger(null);
+            } finally {
+                if (!off) setPayLedgerLoading(false);
+            }
+        })();
+        return () => { off = true; };
+    }, [selectedStudent?.id]);
+
+    /** To'lov oynasidagi qatorlar: o'quvchining kurslari + eski qoldiq. */
+    const payRows = useMemo(() => {
+        if (!selectedStudent) return [];
+        const rows = (payLedger?.courses || []).map((c: any) => ({
+            key: String(c.groupId),
+            groupId: c.groupId as number,
+            courseId: c.courseId as number | null,
+            title: c.groupName,
+            subtitle: c.courseName,
+            debt: c.debt as number,
+            advance: c.advance as number,
+            paidUntil: c.paidUntil as string | null,
+            monthlyPrice: c.monthlyPrice as number,
+        }));
+        // Ledger hali kelmagan bo'lsa — hech bo'lmasa guruhlar ro'yxati.
+        if (!payLedger) {
+            for (const g of groups.filter(g => (g.studentIds || []).includes(selectedStudent.id))) {
+                rows.push({
+                    key: String(g.id), groupId: g.id, courseId: g.courseId,
+                    title: g.name, subtitle: courses.find(c => c.id === g.courseId)?.name || '',
+                    debt: 0, advance: 0, paidUntil: null,
+                    monthlyPrice: courses.find(c => c.id === g.courseId)?.price || 0,
+                });
+            }
+        }
+        const legacyDebt = (payLedger?.buckets || [])
+            .filter((b: any) => !b.groupId)
+            .reduce((sum: number, b: any) => sum + (b.remaining || 0), 0);
+        if (legacyDebt > 0) {
+            rows.push({
+                key: 'umumiy', groupId: null, courseId: null,
+                title: 'Eski qoldiq', subtitle: 'Kursga bog\'lanmagan qarz',
+                debt: legacyDebt, advance: 0, paidUntil: null, monthlyPrice: 0,
+            });
+        }
+        // Kursi ham, eski qarzi ham yo'q o'quvchidan pul olishning iloji
+        // qolmasin: bunday holatda kursga bog'lanmagan bitta qator beriladi.
+        // Pul keyin qaysi kursga kerak bo'lsa, o'sha kursning hisobini yopadi.
+        if (rows.length === 0) {
+            rows.push({
+                key: 'umumiy', groupId: null, courseId: null,
+                title: 'Umumiy hisob', subtitle: "Kursga bog'lanmagan — o'quvchi hali kursga yozilmagan",
+                debt: 0, advance: payLedger?.generalWallet || 0, paidUntil: null, monthlyPrice: 0,
+            });
+        }
+        return rows;
+    }, [selectedStudent, payLedger, groups, courses]);
+
+    const payTotal = Object.values(payLines).reduce((sum, v) => sum + (Number(v) || 0), 0);
+
     const closePaymentModal = () => {
         setIsPaymentModalOpen(false);
         setCreatedPaymentForReceipt(null);
         setSelectedStudent(null);
         setStudentSearch('');
+        setPayLines({});
+        setPayLedger(null);
         setNewPayment({ studentId: 0, amount: 0, type: 'Naqd', description: '', courseId: null, groupId: null, date: new Date().toISOString().split('T')[0] });
     };
 
@@ -1418,17 +1486,38 @@ ${e.description || e.category} — ${Number(e.amount).toLocaleString()} so'm`)) 
                                     // Guard against a second submit: on a slow phone the first tap can
                                     // still be in flight, and two taps used to mean two payments.
                                     if (!selectedStudent || isSavingPayment) return;
+                                    // Har bir kurs uchun alohida yozuv. Ilgari bitta yozuv
+                                    // ketardi va tanlangan kurs (groupId) umuman
+                                    // yuborilmasdi — shuning uchun pul hamma kursga
+                                    // tarqalib ketardi.
+                                    const lines = payRows
+                                        .map(r => ({ row: r, amount: Math.round(Number(payLines[r.key]) || 0) }))
+                                        .filter(x => x.amount > 0);
+                                    if (!lines.length) {
+                                        showNotification('Qaysi kursga qancha to\'layotganini ko\'rsating', 'error');
+                                        return;
+                                    }
                                     setIsSavingPayment(true);
                                     try {
-                                        const created = await addPayment({
-                                            studentId: selectedStudent.id,
-                                            amount: newPayment.amount,
-                                            type: newPayment.type,
-                                            description: newPayment.description || '',
-                                            courseId: newPayment.courseId ?? null,
-                                            date: newPayment.date
+                                        const saved = [];
+                                        for (const { row, amount } of lines) {
+                                            saved.push(await addPayment({
+                                                studentId: selectedStudent.id,
+                                                amount,
+                                                type: newPayment.type,
+                                                description: newPayment.description || '',
+                                                // groupId — pul aynan shu kursda qoladi.
+                                                groupId: row.groupId,
+                                                courseId: row.courseId ?? null,
+                                                date: newPayment.date
+                                            }));
+                                        }
+                                        // Kvitansiya bitta: jami summa va kurslar ro'yxati bilan.
+                                        setCreatedPaymentForReceipt(lines.length === 1 ? saved[0] : {
+                                            ...saved[0],
+                                            amount: lines.reduce((sum, l) => sum + l.amount, 0),
+                                            description: lines.map(l => `${l.row.title}: ${l.amount.toLocaleString()}`).join(', '),
                                         });
-                                        setCreatedPaymentForReceipt(created);
                                     } catch (err: any) {
                                         showNotification("To'lovni saqlab bo'lmadi: " + (err?.message || "noma'lum xatolik"), 'error');
                                     } finally {
@@ -1513,49 +1602,82 @@ ${e.description || e.category} — ${Number(e.amount).toLocaleString()} so'm`)) 
                                         </div>
                                     )}
 
-                                    <div>
-                                        <label className={lbl}>Summa (UZS) *</label>
-                                        <input type="number" required placeholder="Masalan: 500 000" className={inp}
-                                            value={newPayment.amount || ''}
-                                            onChange={(e) => setNewPayment({ ...newPayment, amount: Number(e.target.value) })} />
-                                        <div className="flex flex-wrap gap-1.5 mt-2">
-                                            {[300000, 400000, 500000, 600000, 800000].map(amt => (
-                                                <button key={amt} type="button"
-                                                    onClick={() => setNewPayment({ ...newPayment, amount: amt })}
-                                                    className={`px-3 py-1.5 text-[11px] font-bold border rounded-xl transition-all cursor-pointer ${newPayment.amount === amt ? 'bg-brand border-brand text-white shadow-sm' : 'bg-ichki/30 dark:border-gray-800 hover:bg-gray-100 text-matn-sokin'}`}>
-                                                    {amt.toLocaleString()}
-                                                </button>
-                                            ))}
-                                        </div>
-                                    </div>
+                                    {/* Qaysi kursga qancha. Pul aynan shu kursda qoladi:
+                                        matematikaga berilgani fizikaning qarzini yopmaydi.
+                                        Shuning uchun summa bitta emas, kurs bo'yicha
+                                        alohida so'raladi. */}
+                                    {selectedStudent && (
+                                        <div>
+                                            <label className={lbl}>Qaysi kursga qancha *</label>
+                                            {payLedgerLoading && (
+                                                <p className="text-[11px] text-matn-xira font-bold py-3">Hisob yuklanmoqda…</p>
+                                            )}
 
-                                    {/* Qaysi kurs uchun. O'quvchining guruhlaridan olinadi;
-                                        birortasiga a'zo bo'lmasa markazning barcha kurslari. */}
-                                    <div>
-                                        <label className={lbl}>Qaysi kurs uchun <span className="font-bold text-matn-xira">(ixtiyoriy)</span></label>
-                                        <select
-                                            className={inp}
-                                            value={newPayment.groupId ?? ''}
-                                            onChange={(e) => {
-                                                const g = paymentCourseOptions.find(x => String(x.id) === e.target.value);
-                                                setNewPayment({
-                                                    ...newPayment,
-                                                    groupId: g ? g.id : null,
-                                                    courseId: g ? g.courseId : null,
-                                                });
-                                            }}
-                                        >
-                                            <option value="">Umumiy — o'quvchining hisobiga tushadi</option>
-                                            {paymentCourseOptions.map(c => (
-                                                <option key={c.id} value={c.id}>
-                                                    {c.name + (c.price ? ' — ' + c.price.toLocaleString() + ' UZS/oy' : '')}
-                                                </option>
-                                            ))}
-                                        </select>
-                                        <p className="text-[10px] text-matn-xira mt-1.5">
-                                            Pul har doim o'quvchining hisobiga tushadi. Kurs tanlansa — avval shu kursning hisobi yopiladi, ortgani boshqa kurslar va keyingi oylarga qoladi.
-                                        </p>
-                                    </div>
+                                            <div className="space-y-2">
+                                                {payRows.map(row => {
+                                                    const val = payLines[row.key] || 0;
+                                                    return (
+                                                        <div key={row.key} className="p-3 bg-ichki rounded-2xl border border-chiziq/80">
+                                                            <div className="flex items-start justify-between gap-3">
+                                                                <div className="min-w-0">
+                                                                    <p className="text-[12px] font-bold text-matn truncate">{row.title}</p>
+                                                                    <p className="text-[10px] font-bold text-matn-xira mt-0.5 truncate">
+                                                                        {row.subtitle}
+                                                                        {row.monthlyPrice > 0 && ` · ${row.monthlyPrice.toLocaleString()} so'm/oy`}
+                                                                    </p>
+                                                                    <p className="text-[10px] font-bold mt-1 tabular-nums">
+                                                                        {row.debt > 0
+                                                                            ? <span className="text-rose-500">Qarz: {row.debt.toLocaleString()} so'm</span>
+                                                                            : row.advance > 0
+                                                                                ? <span className="text-emerald-600">Avans: {row.advance.toLocaleString()} so'm</span>
+                                                                                : <span className="text-matn-xira">Qarz yo'q</span>}
+                                                                        {row.paidUntil && <span className="text-matn-xira"> · {row.paidUntil} gacha</span>}
+                                                                    </p>
+                                                                </div>
+                                                                <input
+                                                                    type="number"
+                                                                    min={0}
+                                                                    placeholder="0"
+                                                                    className="w-32 shrink-0 px-3 py-2 bg-sirt border border-chiziq rounded-xl text-xs font-bold text-matn text-right tabular-nums outline-none focus:border-brand"
+                                                                    value={val || ''}
+                                                                    onChange={e => setPayLines(prev => ({ ...prev, [row.key]: Number(e.target.value) || 0 }))}
+                                                                />
+                                                            </div>
+                                                            <div className="flex flex-wrap gap-1.5 mt-2">
+                                                                {row.debt > 0 && (
+                                                                    <button type="button"
+                                                                        onClick={() => setPayLines(prev => ({ ...prev, [row.key]: row.debt }))}
+                                                                        className="px-2.5 py-1 text-[10px] font-bold border border-rose-200 dark:border-rose-900/50 text-rose-500 rounded-lg hover:bg-rose-50 dark:hover:bg-rose-950/20 transition-colors cursor-pointer">
+                                                                        Qarzni yopish · {row.debt.toLocaleString()}
+                                                                    </button>
+                                                                )}
+                                                                {row.monthlyPrice > 0 && [1, 2, 3].map(n => (
+                                                                    <button key={n} type="button"
+                                                                        onClick={() => setPayLines(prev => ({ ...prev, [row.key]: row.monthlyPrice * n }))}
+                                                                        className="px-2.5 py-1 text-[10px] font-bold border border-chiziq text-matn-sokin rounded-lg hover:border-brand hover:text-brand transition-colors cursor-pointer">
+                                                                        {n} oy
+                                                                    </button>
+                                                                ))}
+                                                                {val > 0 && (
+                                                                    <button type="button"
+                                                                        onClick={() => setPayLines(prev => ({ ...prev, [row.key]: 0 }))}
+                                                                        className="px-2.5 py-1 text-[10px] font-bold text-matn-xira rounded-lg hover:text-rose-500 transition-colors cursor-pointer">
+                                                                        Tozalash
+                                                                    </button>
+                                                                )}
+                                                            </div>
+                                                        </div>
+                                                    );
+                                                })}
+                                            </div>
+                                            <div className="flex items-center justify-between mt-3 pt-3 border-t border-dashed border-chiziq/50">
+                                                <span className="text-[11px] font-bold text-matn-xira">Jami qabul qilinadi</span>
+                                                <span className={`text-sm font-black tabular-nums ${payTotal > 0 ? 'text-brand' : 'text-matn-xira'}`}>
+                                                    {payTotal.toLocaleString()} so'm
+                                                </span>
+                                            </div>
+                                        </div>
+                                    )}
 
                                     <div>
                                         <label className={lbl}>To'lov usuli *</label>
@@ -1582,7 +1704,7 @@ ${e.description || e.category} — ${Number(e.amount).toLocaleString()} so'm`)) 
                                             className="flex-1 py-3 bg-chiziq text-gray-700 dark:text-white text-xs font-extrabold rounded-2xl transition-all cursor-pointer hover:bg-gray-200 dark:hover:bg-gray-600">
                                             {t('cancel')}
                                         </button>
-                                        <button type="submit" disabled={!selectedStudent || isSavingPayment}
+                                        <button type="submit" disabled={!selectedStudent || isSavingPayment || payTotal <= 0}
                                             className="flex-1 py-3 bg-brand hover:bg-brand-dark disabled:opacity-50 disabled:cursor-not-allowed text-white text-xs font-extrabold rounded-2xl shadow-sm shadow-[#1b6b6b]/20 transition-all cursor-pointer">
                                             {isSavingPayment ? 'Saqlanmoqda…' : t('save')}
                                         </button>
