@@ -521,6 +521,11 @@ export default function Students() {
 
     // Memoised: with 266 students and eleven filters, re-running this on every render
     // (including every keystroke elsewhere on the page) was visible as input lag.
+    //
+    // Bog'liqlar ro'yxati to'liq bo'lishi shart. `quickFilter` va `attendances`
+    // unda yo'q edi: tez filtr chipi bosilganda chip yonar, lekin useMemo eski
+    // natijani qaytaraverardi va jadval o'zgarmasdi. "Kelmayotgan" chipi
+    // davomatdan hisoblanadi, shuning uchun `attendances` ham kerak.
     const filteredStudents = React.useMemo(() => students.filter(s => {
         const lowerSearch = search.toLowerCase();
         const matchesSearch = (s.name || '').toLowerCase().includes(lowerSearch) ||
@@ -578,7 +583,7 @@ export default function Students() {
         }
 
         return matchesSearch && matchesStatus && matchesGroup && matchesBalance && matchesDate && matchesOrgType && matchesMuassasa && matchesRegion && matchesDistrict && matchesLocation && matchesMissingInfo && matchesGoal && matchesDirection;
-    }), [students, search, filters]);
+    }), [students, search, filters, quickFilter, attendances]);
 
     // The table used to render every match at once — 266 rows, each with a photo.
     const PER_PAGE = 50;
