@@ -6,6 +6,7 @@ import {
 import { useCRM } from '../context/CRMContext';
 import { useConfirm } from './ConfirmDialog';
 import { useLang } from '../context/LanguageContext';
+import { displayName as ismniKorsat } from '../lib/displayName';
 
 /**
  * Bir nechta qiymat tanlanadigan ro'yxat. Bo'sh tanlov "barchasi" degani.
@@ -554,6 +555,10 @@ export default function Messaging() {
     key: string;
     studentId: number;
     displayName: string;
+    // Ota-onaning o'z ismi — bilingan bo'lsa telefon yonida qo'shimcha
+    // ma'lumot sifatida ko'rsatiladi. Asosiy qatorda o'quvchining ismi
+    // turadi: markaz ota-onalarni ismidan emas, farzandidan taniydi.
+    qoshimchaIsm?: string | null;
     displayPhone: string | null | undefined;
     telegramId: string | null | undefined;
     balance: number;
@@ -571,7 +576,8 @@ export default function Messaging() {
           entries.push({
             key: `${st.id}-FATHER`,
             studentId: st.id,
-            displayName: st.fatherName ? `${st.fatherName} (Otasi)` : `${st.name} (Otasi)`,
+            displayName: `${ismniKorsat(st.name)} — Otasi`,
+            qoshimchaIsm: st.fatherName || null,
             displayPhone: st.fatherPhone,
             telegramId: st.fatherTelegramId,
             balance,
@@ -584,7 +590,8 @@ export default function Messaging() {
           entries.push({
             key: `${st.id}-MOTHER`,
             studentId: st.id,
-            displayName: st.motherName ? `${st.motherName} (Onasi)` : `${st.name} (Onasi)`,
+            displayName: `${ismniKorsat(st.name)} — Onasi`,
+            qoshimchaIsm: st.motherName || null,
             displayPhone: st.motherPhone,
             telegramId: st.motherTelegramId,
             balance,
@@ -598,7 +605,8 @@ export default function Messaging() {
           entries.push({
             key: `${st.id}`,
             studentId: st.id,
-            displayName: st.fatherName ? `${st.fatherName} (Otasi)` : `${st.name} (Otasi)`,
+            displayName: `${ismniKorsat(st.name)} — Otasi`,
+            qoshimchaIsm: st.fatherName || null,
             displayPhone: st.fatherPhone,
             telegramId: st.fatherTelegramId,
             balance,
@@ -612,7 +620,8 @@ export default function Messaging() {
           entries.push({
             key: `${st.id}`,
             studentId: st.id,
-            displayName: st.motherName ? `${st.motherName} (Onasi)` : `${st.name} (Onasi)`,
+            displayName: `${ismniKorsat(st.name)} — Onasi`,
+            qoshimchaIsm: st.motherName || null,
             displayPhone: st.motherPhone,
             telegramId: st.motherTelegramId,
             balance,
@@ -622,7 +631,7 @@ export default function Messaging() {
         }
       } else {
         // Student/Teacher/Staff — standard logic
-        const displayName = st.name;
+        const displayName = ismniKorsat(st.name);
         const displayPhone = st.phone;
         entries.push({
           key: `${st.id}`,
@@ -1264,6 +1273,9 @@ export default function Messaging() {
                               {entry.displayPhone
                                 ? <span className="text-slate-450 dark:text-slate-500">{entry.displayPhone}</span>
                                 : <span className="text-rose-500">Raqam yo'q</span>}
+                              {entry.qoshimchaIsm && (
+                                <span className="text-slate-400 dark:text-slate-600"> · {ismniKorsat(entry.qoshimchaIsm)}</span>
+                              )}
                             </p>
                           </div>
                         </div>
