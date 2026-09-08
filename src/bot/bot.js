@@ -760,8 +760,18 @@ export const setupBotHandlers = (botInstance, schoolId) => {
         await replyWithLogo(ctx, schoolId, lines.join(NL).trim());
     });
 
-    botInstance.hears('📍 Geolokatsiya', (ctx) => {
-        ctx.replyWithLocation(38.4833, 67.9333);
+    // Markaz nuqtasi Sozlamalarda belgilansa o'sha yuboriladi; belgilanmagan
+    // bo'lsa eski qattiq yozilgan nuqta — CRM xaritasi ham aynan shunday
+    // ishlaydi (StudentLocationMap dagi ZAXIRA_MARKAZ).
+    botInstance.hears('📍 Geolokatsiya', async (ctx) => {
+        const settings = await getSchoolSettings(schoolId);
+        let lat = 38.4833, lng = 67.9333;
+        const belgilangan = settings && settings.centerLocation;
+        if (belgilangan && belgilangan.includes(',')) {
+            const [a, b] = belgilangan.split(',').map(Number);
+            if (isFinite(a) && isFinite(b)) { lat = a; lng = b; }
+        }
+        ctx.replyWithLocation(lat, lng);
     });
 
     botInstance.hears('📞 Kontaktlar', (ctx) => {

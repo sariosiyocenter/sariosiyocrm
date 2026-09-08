@@ -22,6 +22,13 @@ interface Props {
     onClose: () => void;
 }
 
+/**
+ * Markaz nuqtasi Sozlamalarda belgilanmagan bo'lsa shu ishlatiladi — bot
+ * "Geolokatsiya" tugmasida ota-onalarga aynan shu nuqtani yuboradi. Taxminiy:
+ * tuman markazi, bino emas. Sozlamalardagi qiymat undan ustun turadi.
+ */
+const ZAXIRA_MARKAZ: [number, number] = [38.4833, 67.9333];
+
 /** "38.47,67.95" → [38.47, 67.95]; noto'g'ri qiymat uchun null. */
 function parseLatLng(value?: string): [number, number] | null {
     if (!value || !value.includes(',')) return null;
@@ -84,8 +91,11 @@ export default function StudentLocationMap({ studentName, studentPhoto, location
     const [xatolik, setXatolik] = useState('');
 
     const uy = parseLatLng(location);
-    const markaz = parseLatLng(centerLocation);
-    const masofa = uy && markaz ? distanceKm(uy, markaz) : null;
+    // Belgilangan nuqta bo'lmasa ham markaz xaritada ko'rinsin: usiz o'quvchi
+    // qayerda turgani hech narsaga nisbatan bo'lmay qoladi.
+    const belgilangan = parseLatLng(centerLocation);
+    const markaz = belgilangan || ZAXIRA_MARKAZ;
+    const masofa = uy ? distanceKm(uy, markaz) : null;
 
     useEffect(() => {
         if (!mapRef.current || !uy) return;
@@ -102,7 +112,7 @@ export default function StudentLocationMap({ studentName, studentPhoto, location
             title: studentName,
         }).addTo(map).bindPopup(`<b>${esc(studentName)}</b><br/>O'quvchi uyi`);
 
-        if (markaz) {
+        {
             L.marker(markaz, {
                 icon: avatarIcon(L, { image: logo, fallback: initials(orgName || 'Markaz'), ring: '#0ea5e9', label: orgName || 'Markaz', white: true }),
                 title: orgName || "O'quv markazi",
@@ -119,11 +129,7 @@ export default function StudentLocationMap({ studentName, studentPhoto, location
     }, [location, centerLocation, studentPhoto, logo, studentName, orgName]);
 
     const kartaHavolasi = uy ? `https://www.google.com/maps?q=${uy[0]},${uy[1]}` : '';
-    const yolHavolasi = uy
-        ? (markaz
-            ? `https://www.google.com/maps/dir/${markaz[0]},${markaz[1]}/${uy[0]},${uy[1]}`
-            : `https://www.google.com/maps/dir/?api=1&destination=${uy[0]},${uy[1]}`)
-        : '';
+    const yolHavolasi = uy ? `https://www.google.com/maps/dir/${markaz[0]},${markaz[1]}/${uy[0]},${uy[1]}` : '';
 
     return (
         <div className="fixed inset-0 z-[300] flex items-start sm:items-center justify-center overflow-y-auto p-4 bg-gray-900/60 backdrop-blur-md animate-in fade-in duration-300" onClick={onClose}>
@@ -135,9 +141,8 @@ export default function StudentLocationMap({ studentName, studentPhoto, location
                             <span className="truncate">{studentName}</span>
                         </h2>
                         <p className="text-[11px] font-bold text-matn-xira mt-1 leading-none pt-1">
-                            {masofa !== null
-                                ? `Markazdan ${masofa < 1 ? Math.round(masofa * 1000) + ' m' : masofa.toFixed(1) + ' km'} uzoqlikda`
-                                : "Markaz joylashuvi Sozlamalarda belgilanmagan"}
+                            {masofa !== null && `Markazdan ${masofa < 1 ? Math.round(masofa * 1000) + ' m' : masofa.toFixed(1) + ' km'} uzoqlikda`}
+                            {!belgilangan && <span className="text-amber-600 dark:text-amber-500"> · markaz nuqtasi taxminiy, Sozlamalardan aniqlang</span>}
                         </p>
                     </div>
                     <button onClick={onClose} className="w-10 h-10 shrink-0 flex items-center justify-center hover:bg-white dark:hover:bg-gray-700 rounded-2xl text-matn-xira hover:text-gray-900 dark:hover:text-white transition-all border border-transparent hover:border-gray-100 dark:hover:border-gray-600" aria-label="Yopish">
