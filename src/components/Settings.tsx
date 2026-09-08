@@ -9,6 +9,7 @@ import { useNavigate } from 'react-router-dom';
 import { useCRM, THEMES } from '../context/CRMContext';
 import { useLang } from '../context/LanguageContext';
 import { compressAndUpload } from '../lib/image';
+import MapPicker from './MapPicker';
 
 type SectionId = 'profil' | 'xonalar' | 'filiallar' | 'ruxsatlar' | 'dizayn'
     | 'integratsiyalar' | 'avtomatlashtirish' | 'xavfsizlik' | 'yonalishlar';
@@ -55,6 +56,8 @@ export default function Settings() {
     const [profileForm, setProfileForm] = useState({ ...settings });
     const [isSaving, setIsSaving] = useState(false);
     const logoInputRef = useRef<HTMLInputElement>(null);
+    // Markaz binosining nuqtasi — o'quvchi joylashuvi shunga nisbatan ko'rsatiladi.
+    const [isCenterMapOpen, setIsCenterMapOpen] = useState(false);
 
     const [isAddModalOpen, setIsAddModalOpen] = useState(false);
     // Tahrirlanayotgan filial. null bo'lsa modal "qo'shish" rejimida ishlaydi.
@@ -298,6 +301,22 @@ export default function Settings() {
                     <div className="sm:col-span-2">
                         <label className={lbl}>{t('address')}</label>
                         <input type="text" className={inp} value={profileForm?.address || ''} onChange={e => setProfileForm(p => ({ ...p, address: e.target.value }))} />
+                    </div>
+                    <div className="sm:col-span-2">
+                        <label className={lbl}>Markaz joylashuvi</label>
+                        <button type="button" onClick={() => setIsCenterMapOpen(true)}
+                            className={`w-full px-4 py-3 border rounded-2xl flex items-center justify-between gap-2 text-xs font-bold transition-all cursor-pointer ${profileForm?.centerLocation ? 'bg-teal-50 dark:bg-teal-950/20 text-brand border-teal-100 dark:border-teal-900/40' : 'bg-ichki text-matn-xira border-chiziq hover:bg-gray-50 dark:hover:bg-gray-700'}`}>
+                            <span className="flex items-center gap-2 truncate">
+                                <MapPin size={14} className="shrink-0" />
+                                {profileForm?.centerLocation || "Xaritadan belgilanmagan"}
+                            </span>
+                            <span className="text-[10px] font-extrabold uppercase tracking-wider shrink-0">
+                                {profileForm?.centerLocation ? t('edit') : t('select_from_map')}
+                            </span>
+                        </button>
+                        <p className="text-[10px] font-bold text-matn-xira mt-2 ml-1">
+                            Belgilangach o'quvchi profilidagi xaritada markaz logo bilan turadi va uygacha bo'lgan masofa yoziladi.
+                        </p>
                     </div>
                     <div>
                         <label className={lbl}>{t('work_hours_label')}</label>
@@ -817,6 +836,14 @@ export default function Settings() {
                         </form>
                     </div>
                 </div>
+            )}
+
+            {isCenterMapOpen && (
+                <MapPicker
+                    initialLocation={profileForm?.centerLocation}
+                    onSelect={(loc) => setProfileForm(p => ({ ...p, centerLocation: loc }))}
+                    onClose={() => setIsCenterMapOpen(false)}
+                />
             )}
         </div>
     );

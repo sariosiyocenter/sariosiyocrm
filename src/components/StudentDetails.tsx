@@ -11,6 +11,7 @@ import { useConfirm } from './ConfirmDialog';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useLang } from '../context/LanguageContext';
 import MapPicker from './MapPicker';
+import StudentLocationMap from './StudentLocationMap';
 import PhotoCapture from './PhotoCapture';
 import { uploadProfilePhoto } from '../lib/image';
 import { printReceipt } from '../lib/receipt';
@@ -34,7 +35,7 @@ export default function StudentDetails() {
     const { id } = useParams<{ id: string }>();
     const navigate = useNavigate();
     const { t } = useLang();
-    const { students, groups, teachers, courses, payments, attendances, scores, transports, directions, addPayment, addAttendance, addScore, updateStudent, addStudentToGroup, deleteStudent, setStudentStatus, topics, updateAttendance, showNotification, loadAttendanceFor } = useCRM();
+    const { students, groups, teachers, courses, payments, attendances, scores, transports, directions, settings, addPayment, addAttendance, addScore, updateStudent, addStudentToGroup, deleteStudent, setStudentStatus, topics, updateAttendance, showNotification, loadAttendanceFor } = useCRM();
     const confirm = useConfirm();
     const [activeTab, setActiveTab] = useState('umumiy');
     const [showPaymentModal, setShowPaymentModal] = useState(false);
@@ -153,6 +154,7 @@ export default function StudentDetails() {
 
 
     const [isMapOpen, setIsMapOpen] = useState(false);
+    const [isLocationViewOpen, setIsLocationViewOpen] = useState(false);
     const [editForm, setEditForm] = useState({
         name: '',
         status: 'Faol' as 'Faol' | 'Arxiv' | 'Sinov' | 'Bitiruvchi' | 'Passiv' | 'Muzlatilgan' | 'Sertifikatli',
@@ -243,10 +245,11 @@ export default function StudentDetails() {
         .filter(a => a.studentId === Number(id))
         .sort((a, b) => b.date.localeCompare(a.date));
 
+    // Xarita CRM ichida ochiladi: o'quvchi portreti va markaz logosi bilan.
+    // Google Maps'ga o'tish shu oynadagi tugmada qoldi.
     const handleOpenMap = () => {
         if (!student.location) return;
-        const [lat, lng] = student.location.split(',');
-        window.open(`https://www.google.com/maps?q=${lat},${lng}`, '_blank');
+        setIsLocationViewOpen(true);
     };
 
     const handleStartEdit = () => {
@@ -2214,6 +2217,18 @@ export default function StudentDetails() {
                     studentName={student.name}
                     onClose={() => setShowSmsModal(false)}
                     onConfirm={confirmSendSms}
+                />
+            )}
+
+            {isLocationViewOpen && student.location && (
+                <StudentLocationMap
+                    studentName={student.name}
+                    studentPhoto={student.photo}
+                    location={student.location}
+                    centerLocation={settings?.centerLocation}
+                    orgName={settings?.orgName}
+                    logo={settings?.logo}
+                    onClose={() => setIsLocationViewOpen(false)}
                 />
             )}
 

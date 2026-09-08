@@ -338,6 +338,8 @@ export interface CRMState {
         logo?: string;
         adminPhone?: string;
         address?: string;
+        /** Markaz binosi: "kenglik,uzunlik". Sozlamalarda xaritadan belgilanadi. */
+        centerLocation?: string;
         telegram?: string;
         instagram?: string;
         workingHours?: string;

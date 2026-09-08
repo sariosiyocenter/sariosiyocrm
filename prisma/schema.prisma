@@ -527,6 +527,10 @@ model Setting {
   logo             String?
   adminPhone       String?
   address          String?
+  // O'quv markazi binosining koordinatasi ("kenglik,uzunlik"). Admin uni
+  // Sozlamalardan xaritada bir marta belgilaydi; o'quvchi joylashuvi shu
+  // nuqtaga nisbatan ko'rsatiladi.
+  centerLocation   String?
   telegram         String?
   instagram        String?
   workingHours     String?
