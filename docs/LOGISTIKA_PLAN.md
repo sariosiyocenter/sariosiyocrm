@@ -114,7 +114,7 @@ ko'rildi.
 Qolgani (1-bosqichda hal bo'ladi): X1 (ikki haqiqat), X4 (kuniga bitta yozuv),
 X11 (reys vaqti), X12 (sig'im chegarasi), X13 (xarita).
 
-### 1-bosqich. Ma'lumot modeli — bitta haqiqat (X1, X4, X11) ⬜  · Hajm: M
+### 1-bosqich. Ma'lumot modeli — bitta haqiqat ✅ (2026-09-09)
 
 ```
 Route         + direction   KETISH | QAYTISH        (ertalab olib kelish / darsdan keyin qaytarish)
@@ -134,6 +134,44 @@ Student.transportId  → olib tashlanadi (yoki faqat o'qish uchun: marshrutdan h
 - `Student.transportId` ni ishlatgan 4 forma (o'quvchi qo'shish, tahrirlash, ariza, profil kartasi) → "marshrut" tanlovi yoki faqat ko'rsatish.
 - Bot va Logistika **bitta** `services/logistics.js` dan oladi: `bugungiReyslar(schoolId, date)`, `reysOquvchilari(runId)`.
 - **Natija:** admin ham, haydovchi ham, ota-ona ham bitta ro'yxatni ko'radi.
+
+**Bajarildi.** Baza faqat kengaydi — hech qaysi ustun yoki jadval
+o'chirilmadi (`prisma migrate diff` bilan SQL oldindan ko'rildi):
+
+- `RouteStop` — marshrut bekatlari, tartibi bilan. O'quvchi o'chirilsa bekat
+  ham ketadi (Cascade), ya'ni "ro'yxatda bor, bazada yo'q" holati qaytmaydi.
+  Mavjud `Route.studentIds` ma'lumoti ko'chirildi (`scratch/migrate_stops.js`).
+- `RouteRun` — bir kunning bir reysi (marshrut + sana, unique). Birinchi
+  belgilashda o'zi yaratiladi; mashina va haydovchi o'sha ondagi marshrutdan
+  ko'chiriladi, keyin marshrut o'zgarsa ham tarix saqlanadi. `startedAt` /
+  `finishedAt` 2-bosqichdagi bot tugmalari uchun tayyor.
+- `DeliveryLog` + `runId`, `markedById`, `markedAt`, `note`; `transportId`
+  endi ixtiyoriy. **X4 yopildi:** ertalabki "Olib ketildi" kechqurungi
+  "Uyiga yetkazildi" ni bosib ketmaydi — ular ikki xil reysning yozuvi
+  (`@@unique([runId, studentId])`).
+- `Route.direction` — KETISH / QAYTISH, formada tanlanadi va ro'yxatda
+  ko'rinadi.
+
+**X1 yopildi:** bot endi `transport.students` emas, marshrut bekatlarini
+o'qiydi (haydovchining o'z marshruti yoki mashinasi bo'yicha), har reysni
+alohida xabar qilib yuboradi va o'quvchining koordinatasi bo'lsa Google
+Maps havolasini beradi.
+
+`Route.studentIds` ustuni ataylab joyida qoldirildi — endi hech kim uni
+o'qimaydi, lekin API javobida `studentIds` bekatlardan hisoblanib qaytadi,
+shuning uchun sahifaning qolgan qismi va tashqi so'rovlar buzilmadi.
+Ustunning o'zi keyingi bosqichda, `Student.transportId` bilan birga
+olib tashlanadi.
+
+Tekshiruv: `scratch/test_logistics_1.mjs` — 23 holat (bekat tartibi,
+ikki reysning yozuvi, qayta belgilash, begona marshrut, o'chirish),
+hammasi o'tdi; `scratch/test_bot_query.js` — botning yangi so'rovi;
+brauzerda sahifa va belgilash.
+
+**Qolgani:** `Student.transportId` hali 4 ta formada turibdi (o'quvchi
+qo'shish, profil tahriri, ariza, profil kartasi) — u endi logistikaga
+ta'sir qilmaydi, lekin foydalanuvchini chalg'itadi. 4-bosqichda,
+sahifa qayta yozilganda olib tashlanadi.
 
 ### 2-bosqich. Haydovchi — Telegram bot ⬜  · Hajm: L
 

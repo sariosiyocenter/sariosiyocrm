@@ -4334,12 +4334,59 @@ app.put('/api/students/:id/transport', authenticate, async (req, res, next) => {
 });
 
 // ========== MARSHRUTLAR (LOGISTIKA) ==========
-const ROUTE_FIELDS = ['name', 'startTime', 'transportId', 'driverId', 'days', 'studentIds'];
+const ROUTE_FIELDS = ['name', 'startTime', 'transportId', 'driverId', 'days', 'direction', 'studentIds'];
 const ROUTE_DAYS = ['TOQ', 'JUFT', 'HAR_KUNI'];
+const ROUTE_DIRECTIONS = ['KETISH', 'QAYTISH'];
 const ROUTE_INCLUDE = {
   transport: true,
   driver: { select: DRIVER_SELECT },
+  stops: {
+    orderBy: { tartib: 'asc' },
+    include: { student: { select: { id: true, name: true, phone: true, photo: true, address: true, location: true } } },
+  },
 };
+
+/**
+ * Marshrutni brauzer kutgan shaklga keltiradi.
+ *
+ * Bekatlar endi RouteStop jadvalida, lekin javobdagi `studentIds` o'z
+ * o'rnida qoladi — endi u saqlanadigan ustun emas, bekatlardan hisoblanadi.
+ * Shu sabab sahifaning qolgan qismini o'zgartirmasdan ham to'g'ri ishlaydi.
+ */
+function marshrutJavobi(route) {
+  const stops = route.stops || [];
+  return {
+    ...route,
+    stops,
+    studentIds: stops.map(x => x.studentId),
+  };
+}
+
+/**
+ * Bekatlarni berilgan tartibda qayta yozadi.
+ *
+ * Ro'yxatdan chiqarilgani o'chadi, qolganining tartibi yangilanadi. Hammasi
+ * bitta tranzaksiyada: yarim yozilgan marshrut qolib ketmasin.
+ */
+async function bekatlarniYozish(routeId, studentIds) {
+  const hozirgi = await prisma.routeStop.findMany({ where: { routeId }, select: { studentId: true } });
+  const hozirgiSet = new Set(hozirgi.map(x => x.studentId));
+  const yangiSet = new Set(studentIds);
+
+  const ochiriladi = [...hozirgiSet].filter(id => !yangiSet.has(id));
+  await prisma.$transaction([
+    ...(ochiriladi.length
+      ? [prisma.routeStop.deleteMany({ where: { routeId, studentId: { in: ochiriladi } } })]
+      : []),
+    ...studentIds.map((studentId, i) =>
+      prisma.routeStop.upsert({
+        where: { routeId_studentId: { routeId, studentId } },
+        create: { routeId, studentId, tartib: i },
+        update: { tartib: i },
+      })
+    ),
+  ]);
+}
 
 /**
  * Marshrut ma'lumotini tekshiradi va sonlarni joyiga qo'yadi (data o'zgaradi).
@@ -4355,6 +4402,9 @@ async function marshrutXatosi(data, schoolId) {
   }
   if (data.days !== undefined && !ROUTE_DAYS.includes(data.days)) {
     return 'Kunlar notanish: ' + data.days;
+  }
+  if (data.direction !== undefined && !ROUTE_DIRECTIONS.includes(data.direction)) {
+    return "Yo'nalish notanish: " + data.direction;
   }
   if (data.startTime !== undefined) {
     const vaqt = String(data.startTime || '').trim();
@@ -4394,7 +4444,7 @@ app.get('/api/routes', authenticate, async (req, res, next) => {
       include: ROUTE_INCLUDE,
       orderBy: [{ startTime: 'asc' }, { id: 'asc' }],
     });
-    res.json(routes);
+    res.json(routes.map(marshrutJavobi));
   } catch (error) { next(error); }
 });
 
@@ -4410,11 +4460,13 @@ app.post('/api/routes', authenticate, async (req, res, next) => {
     const xato = await marshrutXatosi(data, schoolId);
     if (xato) return res.status(400).json({ error: xato });
 
-    const route = await prisma.route.create({
-      data: { ...data, schoolId },
-      include: ROUTE_INCLUDE,
-    });
-    res.json(route);
+    // studentIds endi ustun emas — bekat jadvaliga yoziladi.
+    const { studentIds, ...routeData } = data;
+    const route = await prisma.route.create({ data: { ...routeData, schoolId } });
+    if (studentIds && studentIds.length) await bekatlarniYozish(route.id, studentIds);
+
+    const toliq = await prisma.route.findUnique({ where: { id: route.id }, include: ROUTE_INCLUDE });
+    res.json(marshrutJavobi(toliq));
   } catch (error) { next(error); }
 });
 
@@ -4429,8 +4481,12 @@ app.put('/api/routes/:id', authenticate, async (req, res, next) => {
     const xato = await marshrutXatosi(data, mavjud.schoolId);
     if (xato) return res.status(400).json({ error: xato });
 
-    const route = await prisma.route.update({ where: { id }, data, include: ROUTE_INCLUDE });
-    res.json(route);
+    const { studentIds, ...routeData } = data;
+    if (Object.keys(routeData).length) await prisma.route.update({ where: { id }, data: routeData });
+    if (studentIds !== undefined) await bekatlarniYozish(id, studentIds);
+
+    const toliq = await prisma.route.findUnique({ where: { id }, include: ROUTE_INCLUDE });
+    res.json(marshrutJavobi(toliq));
   } catch (error) { next(error); }
 });
 
@@ -4446,13 +4502,39 @@ app.delete('/api/routes/:id', authenticate, requireRole(...STAFF_MANAGERS), asyn
 });
 
 // ========== YETKAZISH YOZUVLARI ==========
+
+/**
+ * Shu marshrutning shu kundagi reysi. Bo'lmasa yaratiladi.
+ *
+ * Reys birinchi belgilash paytida o'zi paydo bo'ladi — hech kim uni qo'lda
+ * ochmaydi. Mashina va haydovchi marshrutdan ko'chiriladi: keyin marshrut
+ * o'zgarsa ham o'tgan kun kim qatnaganini saqlab qoladi.
+ */
+async function reysniOlish({ route, date, schoolId, transportId = null }) {
+  const bor = await prisma.routeRun.findUnique({ where: { routeId_date: { routeId: route.id, date } } });
+  if (bor) return bor;
+  return prisma.routeRun.create({
+    data: {
+      routeId: route.id,
+      date,
+      driverId: route.driverId || null,
+      transportId: transportId || route.transportId || null,
+      schoolId,
+    },
+  });
+}
 app.get('/api/delivery-logs', authenticate, async (req, res, next) => {
   try {
     const { schoolId, date } = req.query;
     if (!schoolId) return res.status(400).json({ error: 'schoolId required' });
     const where = { schoolId: parseInt(schoolId) };
     if (date) where.date = String(date);
-    const logs = await prisma.deliveryLog.findMany({ where });
+    // Reysning marshruti kerak: bitta o'quvchining bir kunda ertalabki va
+    // kechqurungi yozuvi bo'lishi mumkin, sahifa ularni ajrata olsin.
+    const logs = await prisma.deliveryLog.findMany({
+      where,
+      include: { run: { select: { routeId: true } } },
+    });
     res.json(logs);
   } catch (error) { next(error); }
 });
@@ -4480,18 +4562,35 @@ app.post('/api/delivery-logs', authenticate, async (req, res, next) => {
     if (!student) return res.status(404).json({ error: "O'quvchi shu filialda topilmadi" });
     if (!transport) return res.status(404).json({ error: 'Transport shu filialda topilmadi' });
 
-    // TODO(1-bosqich): kuniga bitta yozuv — ertalabki "Olib ketildi" kechqurungi
-    // "Uyiga yetkazildi" bilan almashadi. RouteRun kelgach har reysga alohida
-    // yozuv bo'ladi.
-    const existing = await prisma.deliveryLog.findFirst({ where: { studentId, date, schoolId } });
+    // Yozuv reysga bog'lanadi: ertalabki "Olib ketildi" endi kechqurungi
+    // "Uyiga yetkazildi" ni bosib ketmaydi — ular ikki xil reysning yozuvi.
+    // routeId yuborilmasa eski xatti-harakat saqlanadi (kuniga bitta yozuv).
+    const routeId = parseInt(req.body.routeId);
+    let run = null;
+    if (Number.isInteger(routeId)) {
+      const route = await prisma.route.findFirst({ where: { id: routeId, schoolId }, select: { id: true, transportId: true, driverId: true } });
+      if (!route) return res.status(404).json({ error: 'Marshrut shu filialda topilmadi' });
+      run = await reysniOlish({ route, date, schoolId, transportId });
+    }
+
+    const qidiruv = run
+      ? { runId: run.id, studentId }
+      : { studentId, date, schoolId, runId: null };
+    const existing = await prisma.deliveryLog.findFirst({ where: qidiruv });
+
+    const yozuv = {
+      status,
+      transportId: transportId || run?.transportId || null,
+      markedById: req.user?.id || null,
+      markedAt: new Date(),
+    };
     if (existing) {
-      const updated = await prisma.deliveryLog.update({
-        where: { id: existing.id },
-        data: { status, transportId },
-      });
+      const updated = await prisma.deliveryLog.update({ where: { id: existing.id }, data: yozuv });
       return res.json(updated);
     }
-    const log = await prisma.deliveryLog.create({ data: { studentId, transportId, date, status, schoolId } });
+    const log = await prisma.deliveryLog.create({
+      data: { ...yozuv, studentId, date, schoolId, runId: run?.id || null },
+    });
     res.json(log);
   } catch (error) { next(error); }
 });

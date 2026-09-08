@@ -52,7 +52,7 @@ export default function LogisticsHub() {
         name: '', model: '', number: '', capacity: 15, driverName: '', driverPhone: '', status: 'Faol', driverId: null
     });
     const [routeFormData, setRouteFormData] = useState<Omit<Route, 'id' | 'schoolId' | 'createdAt' | 'updatedAt'>>({
-        name: '', transportId: null, driverId: null, days: 'HAR_KUNI', studentIds: [], startTime: ''
+        name: '', transportId: null, driverId: null, days: 'HAR_KUNI', direction: 'KETISH', studentIds: [], startTime: ''
     });
 
     useEffect(() => {
@@ -80,7 +80,7 @@ export default function LogisticsHub() {
     // --- ROUTE LOGIC ---
     const resetRouteForm = () => {
         setRouteFormData({
-            name: '', transportId: null, driverId: null, days: 'HAR_KUNI', studentIds: [], startTime: ''
+            name: '', transportId: null, driverId: null, days: 'HAR_KUNI', direction: 'KETISH', studentIds: [], startTime: ''
         });
         setEditingRoute(null);
     };
@@ -93,6 +93,7 @@ export default function LogisticsHub() {
             transportId: routeFormData.transportId,
             driverId: routeFormData.driverId,
             days: routeFormData.days,
+            direction: routeFormData.direction,
             studentIds: routeFormData.studentIds,
             startTime: routeFormData.startTime
         };
@@ -124,8 +125,20 @@ export default function LogisticsHub() {
         await updateRoute(route.id, { studentIds });
     };
 
-    const getDeliveryStatus = (studentId: number) => {
-        return deliveryLogs.find(l => l.studentId === studentId && l.date === selectedDate)?.status;
+    /**
+     * Shu marshrutdagi shu o'quvchining bugungi holati.
+     *
+     * Marshrut ham hisobga olinadi: bir o'quvchi ertalabki va kechqurungi
+     * reysda ham bo'lishi mumkin, ilgari ikkalasi bitta yozuvni bo'lishardi.
+     * Reysga bog'lanmagan eski yozuvlar (runId yo'q) har ikkalasiga to'g'ri
+     * keladi — ular 1-bosqichdan oldingi ma'lumot.
+     */
+    const getDeliveryStatus = (route: Route, studentId: number) => {
+        return deliveryLogs.find(l =>
+            l.studentId === studentId
+            && l.date === selectedDate
+            && (!l.run || l.run.routeId === route.id)
+        )?.status;
     };
 
     const isRouteActiveOnDate = (route: Route, dateStr: string) => isLessonDay(route.days, dateStr);
@@ -151,7 +164,7 @@ export default function LogisticsHub() {
             showNotification("Avval marshrutga mashina biriktiring", "error");
             return;
         }
-        await addDeliveryLog({ studentId, transportId, date: selectedDate, status });
+        await addDeliveryLog({ studentId, transportId, routeId: route.id, date: selectedDate, status });
     };
 
     return (
@@ -292,9 +305,10 @@ Unga biriktirilgan o'quvchilar bo'shatiladi.`)) deleteTransport(item.id); }} cla
                                                 transportId: route.transportId,
                                                 driverId: route.driverId,
                                                 days: route.days,
+                                                direction: route.direction || 'KETISH',
                                                 studentIds: route.studentIds,
                                                 startTime: route.startTime || ''
-                                            }); 
+                                            });
                                         }}
                                     >
                                         <div className="flex justify-between items-start">
@@ -303,7 +317,7 @@ Unga biriktirilgan o'quvchilar bo'shatiladi.`)) deleteTransport(item.id); }} cla
                                                     {route.name}
                                                 </h3>
                                                 <span className="text-[11px] text-matn-xira font-bold block mt-0.5">
-                                                    {route.days === 'HAR_KUNI' ? t('every_day') : route.days === 'TOQ' ? t('odd_days') : route.days === 'JUFT' ? t('even_days') : route.days} • {route.startTime || '--:--'} • {routeStudents(route).length} {t('student').toLowerCase()}
+                                                    {route.direction === 'QAYTISH' ? '🏠 Uyga' : '🏫 Markazga'} • {route.days === 'HAR_KUNI' ? t('every_day') : route.days === 'TOQ' ? t('odd_days') : route.days === 'JUFT' ? t('even_days') : route.days} • {route.startTime || '--:--'} • {routeStudents(route).length} {t('student').toLowerCase()}
                                                 </span>
                                             </div>
                                             <div className="w-8 h-8 rounded-lg bg-sirt border border-chiziq flex items-center justify-center text-brand">
@@ -491,7 +505,7 @@ Unga biriktirilgan o'quvchilar bo'shatiladi.`)) deleteTransport(item.id); }} cla
                                     {expandedRouteId === route.id && (
                                         <div className="p-4 pt-0 border-t border-chiziq-mayin/50 space-y-2">
                                             {routeStudents(route).map(student => {
-                                                const status = getDeliveryStatus(student.id);
+                                                const status = getDeliveryStatus(route, student.id);
                                                 return (
                                                     <div key={student.id} className="p-3 bg-gray-55/50 dark:bg-gray-900/40 rounded-2xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
                                                         <div>
@@ -624,6 +638,13 @@ Unga biriktirilgan o'quvchilar bo'shatiladi.`)) deleteTransport(item.id); }} cla
                                         <option value="JUFT">{t('even_days')}</option>
                                     </select>
                                 </div>
+                            </div>
+                            <div>
+                                <label className={lbl}>Yo'nalish</label>
+                                <select className={inp} value={routeFormData.direction || 'KETISH'} onChange={e => setRouteFormData({...routeFormData, direction: e.target.value as any})}>
+                                    <option value="KETISH">Ertalab — uydan markazga</option>
+                                    <option value="QAYTISH">Darsdan keyin — uyga</option>
+                                </select>
                             </div>
                             <div className="grid grid-cols-2 gap-4">
                                 <div>

@@ -1,6 +1,6 @@
 import { Telegraf, Markup } from 'telegraf';
 import prisma from '../../lib/prisma.js';
-import { isLessonDay } from '../../lib/lessons.js';
+import { isLessonDay, toDateStr } from '../../lib/lessons.js';
 
 const bot = new Telegraf(process.env.TELEGRAM_BOT_TOKEN || 'fake_token_for_init');
 
@@ -610,59 +610,68 @@ export const setupBotHandlers = (botInstance, schoolId) => {
         const user = await findUser(ctx.from.id, schoolId);
         if (!user || user.type !== 'driver') return;
 
-        const transport = await prisma.transport.findFirst({
-            where: { driverId: user.data.id, schoolId },
-            include: { 
-                students: {
-                    include: { groups: true }
-                }
-            }
-        });
-
-        if (!transport) return ctx.reply("Sizga hali hech qanday transport biriktirilmagan.");
-        if (transport.students.length === 0) return ctx.reply("Sizning transportingizda hali o'quvchilar yo'q.");
-
-        // Toq/juft hafta kuni bo'yicha hisoblanadi (Du/Cho/Ju — toq), aynan
-        // guruh jadvali va Logistika sahifasidagidek. Ilgari bu yerda oy
-        // kunining juftligi (sana % 2) olinardi va bir kunda admin bir
-        // ro'yxatni, haydovchi butunlay boshqasini ko'rardi. Guruh kunlari
-        // 'HAR_KUNI' saqlanadi — bu yerdagi 'HAR KUNI' (bo'sh joy bilan)
-        // solishtiruvi esa hech qachon to'g'ri kelmasdi.
+        // Ro'yxat marshrut bekatlaridan olinadi. Ilgari bu yerda
+        // transport.students (ya'ni Student.transportId) o'qilardi, Logistika
+        // esa marshrutga yozardi — ikki manba bir-biridan ajralib ketgan edi
+        // va marshrutga qo'shilgan o'quvchi haydovchida umuman ko'rinmasdi.
         const today = new Date();
-        const dayNum = today.getDate();
-        const sana = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(dayNum).padStart(2, '0')}`;
+        const sana = toDateStr(today);
         const dayType = isLessonDay('TOQ', sana) ? 'TOQ' : isLessonDay('JUFT', sana) ? 'JUFT' : 'Dam olish';
-
         const months = ['Yanvar','Fevral','Mart','Aprel','May','Iyun','Iyul','Avgust','Sentabr','Oktabr','Noyabr','Dekabr'];
-        const dateLabel = `${dayNum}-${months[today.getMonth()]}`;
+        const dateLabel = `${today.getDate()}-${months[today.getMonth()]}`;
 
-        const todayStudents = transport.students.filter(s => {
-            if (!s.groups || s.groups.length === 0) return true;
-            return s.groups.some(g => isLessonDay(g.days, sana));
+        const routes = await prisma.route.findMany({
+            where: {
+                schoolId,
+                OR: [
+                    { driverId: user.data.id },
+                    { transport: { driverId: user.data.id } },
+                ],
+            },
+            include: {
+                transport: { select: { name: true } },
+                stops: {
+                    orderBy: { tartib: 'asc' },
+                    include: { student: { select: { name: true, phone: true, address: true, location: true, studentSchool: true } } },
+                },
+            },
+            orderBy: [{ startTime: 'asc' }, { id: 'asc' }],
         });
 
-        if (todayStudents.length === 0) {
+        if (routes.length === 0) return ctx.reply('Sizga hali hech qanday marshrut biriktirilmagan.');
+
+        const bugungi = routes.filter(r => isLessonDay(r.days, sana));
+        if (bugungi.length === 0) {
             return ctx.reply(
                 `🗓 Bugun: ${dateLabel}, ${dayType} kun\n\n` +
-                `✅ Bugun ushbu transportda olib boriladigan o'quvchi yo'q.`
+                `✅ Bugun sizda reys yo'q.`
             );
         }
 
-        let msg = `🗓 Bugun: ${dateLabel}, ${dayType} kun\n`;
-        msg += `🚍 ${transport.name} — ${todayStudents.length} ta o'quvchi:\n\n`;
+        for (const route of bugungi) {
+            const yonalish = route.direction === 'QAYTISH' ? 'uyga qaytish' : 'markazga olib kelish';
+            let msg = `🗓 ${dateLabel}, ${dayType} kun\n`;
+            msg += `🚌 ${route.name} — ${route.startTime || '--:--'} (${yonalish})\n`;
+            msg += `🚍 ${route.transport?.name || 'mashina biriktirilmagan'} — ${route.stops.length} ta o'quvchi:\n\n`;
 
-        todayStudents.forEach((s, idx) => {
-            msg += `${idx + 1}. 👤 ${s.name}\n`;
-            msg += `   🏫 ${s.studentSchool || 'Maktab noma\'lum'}\n`;
-            msg += `   🏠 ${s.address || 'Manzil kiritilmagan'}\n`;
-            if (s.location || s.address) {
-                const loc = encodeURIComponent((s.location || s.address).trim());
-                msg += `   🗺 https://yandex.uz/maps/?text=${loc}\n`;
+            if (route.stops.length === 0) {
+                msg += "Bu marshrutda hali o'quvchi yo'q.\n";
             }
-            msg += `   📞 ${s.phone}\n\n`;
-        });
+            route.stops.forEach((stop, idx) => {
+                const st = stop.student;
+                msg += `${idx + 1}. 👤 ${st.name}\n`;
+                msg += `   🏫 ${st.studentSchool || 'Maktab noma\'lum'}\n`;
+                msg += `   🏠 ${st.address || 'Manzil kiritilmagan'}\n`;
+                if (st.location) {
+                    msg += `   🗺 https://www.google.com/maps?q=${st.location}\n`;
+                } else if (st.address) {
+                    msg += `   🗺 https://yandex.uz/maps/?text=${encodeURIComponent(st.address.trim())}\n`;
+                }
+                msg += `   📞 ${st.phone}\n\n`;
+            });
 
-        ctx.reply(msg, { disable_web_page_preview: true });
+            await ctx.reply(msg, { disable_web_page_preview: true });
+        }
     });
 
     botInstance.hears('🚍 Mening Transportim', async (ctx) => {

@@ -72,6 +72,7 @@ model Student {
   attendances Attendance[]
   scores      Score[]
   deliveryLogs DeliveryLog[]
+  routeStops  RouteStop[]
   examResults ExamResult[]
   faceProfile FaceProfile?
 
@@ -96,23 +97,38 @@ model Transport {
   students    Student[]
   deliveryLogs DeliveryLog[]
   routes      Route[]
+  routeRuns   RouteRun[]
 
   @@index([schoolId])
 }
 
 model DeliveryLog {
   id          Int      @id @default(autoincrement())
-  transportId Int
-  transport   Transport @relation(fields: [transportId], references: [id])
+  // Mashina reysdan ham kelishi mumkin, shuning uchun ixtiyoriy.
+  transportId Int?
+  transport   Transport? @relation(fields: [transportId], references: [id])
   studentId   Int
   student     Student   @relation(fields: [studentId], references: [id])
   date        String
   status      String    // Olib ketildi, Uyiga yetkazildi, Kelmadi
-  
+
+  // Qaysi reysga tegishli. Ilgari yozuv faqat (o'quvchi, sana) bilan
+  // topilardi va ertalabki holat kechqurun ustidan yozilib ketardi.
+  runId       Int?
+  run         RouteRun? @relation(fields: [runId], references: [id], onDelete: Cascade)
+
+  // Kim va qachon belgiladi (haydovchi botdan yoki admin sahifadan).
+  markedById  Int?
+  markedBy    User?     @relation("DeliveryMarker", fields: [markedById], references: [id])
+  markedAt    DateTime  @default(now())
+  note        String?
+
   schoolId    Int
   school      School    @relation(fields: [schoolId], references: [id])
 
+  @@unique([runId, studentId])
   @@index([schoolId])
+  @@index([schoolId, date])
 }
 
 model Expense {
@@ -345,6 +361,7 @@ model School {
   transports  Transport[]
   deliveryLogs DeliveryLog[]
   routes      Route[]
+  routeRuns   RouteRun[]
   smsLogs     SmsLog[]
   questions   Question[]
   exams       Exam[]
@@ -565,6 +582,8 @@ model User {
 
   driverTransport  Transport?       @relation("DriverTransport")
   driverRoutes     Route[]          @relation("DriverRoutes")
+  driverRuns       RouteRun[]       @relation("DriverRuns")
+  markedDeliveries DeliveryLog[]    @relation("DeliveryMarker")
   sellerLeads      SaaSLead[]       @relation("SellerLeads")
   staffAttendances StaffAttendance[]
   salaryPayments   SalaryPayment[]
@@ -627,13 +646,68 @@ model Route {
   driverId    Int?
   driver      User?    @relation("DriverRoutes", fields: [driverId], references: [id])
   days        String   // TOQ, JUFT, HAR_KUNI
-  studentIds  Int[]    // Ordered students
+
+  // Ertalab uydan markazga (KETISH) yoki darsdan keyin uyga (QAYTISH).
+  // Ikkalasi alohida marshrut: vaqti ham, tartibi ham boshqacha bo'ladi.
+  direction   String   @default("KETISH")
+
+  // Bekatlar. Ilgari bu `studentIds Int[]` edi — o'chirilgan o'quvchi ham
+  // ro'yxatda qolib ketardi va sanoq yolg'on chiqardi. Ustun hozircha
+  // saqlanib turibdi (endi o'qilmaydi), keyingi bosqichda olib tashlanadi.
+  studentIds  Int[]
+  stops       RouteStop[]
+  runs        RouteRun[]
+
   schoolId    Int
   school      School   @relation(fields: [schoolId], references: [id])
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
   @@index([schoolId])
+}
+
+/// Marshrutdagi bitta bekat: qaysi o'quvchi, nechanchi bo'lib.
+///
+/// O'quvchi o'chirilsa bekat ham ketadi (Cascade) — shuning uchun "ro'yxatda
+/// bor, lekin bazada yo'q" holati boshqa bo'lmaydi.
+model RouteStop {
+  id        Int      @id @default(autoincrement())
+  routeId   Int
+  route     Route    @relation(fields: [routeId], references: [id], onDelete: Cascade)
+  studentId Int
+  student   Student  @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  tartib    Int      @default(0)
+  createdAt DateTime @default(now())
+
+  @@unique([routeId, studentId])
+  @@index([routeId])
+}
+
+/// Bir kunning bir reysi: shu marshrut, shu sana.
+///
+/// Yetkazish yozuvlari shunga bog'lanadi, shuning uchun ertalabki "olib
+/// ketildi" kechqurungi "uyiga yetkazildi" ni bosib ketmaydi. startedAt /
+/// finishedAt — haydovchi botda "boshladim" va "tugatdim" bosgan vaqt.
+model RouteRun {
+  id          Int      @id @default(autoincrement())
+  routeId     Int
+  route       Route    @relation(fields: [routeId], references: [id], onDelete: Cascade)
+  date        String   // "YYYY-MM-DD", mahalliy vaqt bo'yicha
+  driverId    Int?
+  driver      User?    @relation("DriverRuns", fields: [driverId], references: [id])
+  transportId Int?
+  transport   Transport? @relation(fields: [transportId], references: [id])
+  startedAt   DateTime?
+  finishedAt  DateTime?
+
+  schoolId    Int
+  school      School   @relation(fields: [schoolId], references: [id])
+  createdAt   DateTime @default(now())
+
+  deliveryLogs DeliveryLog[]
+
+  @@unique([routeId, date])
+  @@index([schoolId, date])
 }
 
 model Question {

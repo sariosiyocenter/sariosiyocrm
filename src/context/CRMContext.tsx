@@ -96,7 +96,7 @@ interface CRMContextType extends CRMState {
     updateQuestion: (id: number, question: Partial<Question>) => Promise<void>;
     deleteQuestion: (id: number) => Promise<void>;
     addExamResult: (result: Omit<ExamResult, 'id' | 'schoolId'>) => Promise<ExamResult>;
-    addDeliveryLog: (log: Omit<DeliveryLog, 'id' | 'schoolId'>) => Promise<void>;
+    addDeliveryLog: (log: Omit<DeliveryLog, 'id' | 'schoolId'> & { routeId?: number }) => Promise<void>;
     fetchDeliveryLogs: (date: string) => Promise<DeliveryLog[]>;
     notification: { message: string, type: 'success' | 'error' | 'info' } | null;
     showNotification: (message: string, type: 'success' | 'error' | 'info') => void;
@@ -1244,10 +1244,13 @@ export const CRMProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         showNotification("Transport o'chirildi", "info");
     };
 
-    const addDeliveryLog = async (log: Omit<DeliveryLog, 'id' | 'schoolId'>) => {
+    const addDeliveryLog = async (log: Omit<DeliveryLog, 'id' | 'schoolId'> & { routeId?: number }) => {
         const result = await apiCall('delivery-logs', 'POST', log);
         setState(prev => {
-            const filtered = prev.deliveryLogs.filter(l => !(l.studentId === result.studentId && l.date === result.date));
+            // Faqat aynan shu yozuv almashtiriladi: bir o'quvchining ertalabki
+            // va kechqurungi reysi alohida yozuv, biri ikkinchisini o'chirmasin.
+            const filtered = prev.deliveryLogs.filter(l => l.id !== result.id
+                && !(l.studentId === result.studentId && l.date === result.date && (l.runId ?? null) === (result.runId ?? null)));
             return { ...prev, deliveryLogs: [...filtered, result] };
         });
     };

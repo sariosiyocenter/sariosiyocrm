@@ -183,11 +183,29 @@ export interface Transport {
 
 export interface DeliveryLog {
     id: number;
-    transportId: number;
+    /** Mashina reysdan ham kelishi mumkin. */
+    transportId?: number | null;
     studentId: number;
     date: string;
     status: 'Olib ketildi' | 'Uyiga yetkazildi' | 'Kelmadi';
+    /** Qaysi reysga tegishli — ertalabki va kechqurungi yozuv shu bilan ajraladi. */
+    runId?: number | null;
+    run?: { routeId: number } | null;
+    /** Yozuvni yuborishda: qaysi marshrut. Server shu kunning reysini topadi. */
+    routeId?: number;
+    markedById?: number | null;
+    markedAt?: string;
+    note?: string | null;
     schoolId: number;
+}
+
+/** Marshrutdagi bitta bekat. */
+export interface RouteStop {
+    id: number;
+    routeId: number;
+    studentId: number;
+    tartib: number;
+    student?: Student;
 }
 
 export interface Route {
@@ -199,6 +217,10 @@ export interface Route {
     driverId?: number | null;
     driver?: User;
     days: 'TOQ' | 'JUFT' | 'HAR_KUNI';
+    /** KETISH — uydan markazga, QAYTISH — darsdan keyin uyga. */
+    direction?: 'KETISH' | 'QAYTISH';
+    /** Bekatlar tartibi bilan. `studentIds` shundan hisoblanadi. */
+    stops?: RouteStop[];
     studentIds: number[];
     schoolId: number;
     createdAt: string;
