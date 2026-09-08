@@ -165,13 +165,37 @@ interface AutoRule {
   enabled: boolean;
   body: string;
   channel: 'SMS' | 'TELEGRAM' | 'BOTH';
-  recipientTo: 'PARENT' | 'STUDENT' | 'FATHER' | 'MOTHER';
+  /** Vergul bilan ajratilgan ro'yxat: "FATHER,MOTHER". Eski qoidalarda bitta qiymat. */
+  recipientTo: string;
   time: string;
   config?: {
     dayOfMonth?: number;
     minDebt?: number;
   } | null;
 }
+
+// Avtomatik qoidada bir nechta qabul qiluvchi bo'lishi mumkin. Bazada vergul
+// bilan saqlanadi ("FATHER,MOTHER"); eski qoidalarda bitta qiymat turadi va
+// "PARENT" ota bilan onani bildiradi.
+const QABUL_QILUVCHILAR = [
+  { value: 'FATHER', label: 'Otasi' },
+  { value: 'MOTHER', label: 'Onasi' },
+  { value: 'STUDENT', label: "O'quvchi" },
+];
+
+const qabulQiluvchilarniOqish = (value: string): string[] => {
+  const list = String(value || '')
+    .split(',')
+    .map(v => v.trim().toUpperCase())
+    .flatMap(v => (v === 'PARENT' ? ['FATHER', 'MOTHER'] : [v]))
+    .filter(v => QABUL_QILUVCHILAR.some(q => q.value === v));
+  return list.length ? Array.from(new Set(list)) : ['FATHER', 'MOTHER'];
+};
+
+const qabulQiluvchilarMatni = (value: string) =>
+  qabulQiluvchilarniOqish(value)
+    .map(v => QABUL_QILUVCHILAR.find(q => q.value === v)?.label)
+    .join(', ');
 
 const getTriggerTypeMeta = (type: string) => {
   switch (type) {
@@ -271,7 +295,7 @@ export default function Messaging() {
     enabled: true,
     body: '',
     channel: 'BOTH' as 'SMS' | 'TELEGRAM' | 'BOTH',
-    recipientTo: 'PARENT' as 'PARENT' | 'STUDENT' | 'FATHER' | 'MOTHER',
+    recipientTo: 'FATHER,MOTHER',
     time: '09:00',
     minDebt: 0,
     dayOfMonth: 1
@@ -795,7 +819,7 @@ export default function Messaging() {
         enabled: true,
         body: '',
         channel: 'BOTH',
-        recipientTo: 'PARENT',
+        recipientTo: 'FATHER,MOTHER',
         time: '09:00',
         minDebt: 0,
         dayOfMonth: 1
@@ -1531,7 +1555,7 @@ export default function Messaging() {
                     <div className="grid grid-cols-2 gap-2 text-[11px] font-semibold text-slate-500 dark:text-slate-400 bg-slate-50 dark:bg-slate-950/20 p-2.5 rounded-xl border border-slate-100 dark:border-slate-800">
                       <div>Kanal: <span className="font-bold text-slate-700 dark:text-slate-300">{rule.channel}</span></div>
                       <div>Vaqt: <span className="font-bold text-slate-700 dark:text-slate-300">{rule.time || '09:00'}</span></div>
-                      <div className="col-span-2">Kimga: <span className="font-bold text-slate-700 dark:text-slate-300">{rule.recipientTo === 'PARENT' ? 'Ota-onasi' : 'O\'quvchi'}</span></div>
+                      <div className="col-span-2">Kimga: <span className="font-bold text-slate-700 dark:text-slate-300">{qabulQiluvchilarMatni(rule.recipientTo)}</span></div>
                       {isDebt && rule.config && (
                         <>
                           <div>Kun: <span className="font-bold text-slate-700 dark:text-slate-300">{rule.config.dayOfMonth || 1}</span></div>
@@ -2056,17 +2080,34 @@ export default function Messaging() {
               </div>
 
               <div>
-                <label className={lbl}>Qabul qiluvchi *</label>
-                <select
-                  value={autoRuleForm.recipientTo}
-                  onChange={e => setAutoRuleForm({ ...autoRuleForm, recipientTo: e.target.value as any })}
-                  className={inp}
-                >
-                  <option value="PARENT">Ota-onasi (Ota yoki Ona)</option>
-                  <option value="FATHER">Otasi</option>
-                  <option value="MOTHER">Onasi</option>
-                  <option value="STUDENT">O'quvchi (o'zi)</option>
-                </select>
+                <label className={lbl}>Qabul qiluvchi * <span className="font-semibold text-slate-500">(bir nechta)</span></label>
+                <div className="flex flex-wrap gap-1.5">
+                  {QABUL_QILUVCHILAR.map(q => {
+                    const tanlangan = qabulQiluvchilarniOqish(autoRuleForm.recipientTo).includes(q.value);
+                    return (
+                      <button
+                        key={q.value}
+                        type="button"
+                        aria-pressed={tanlangan}
+                        onClick={() => {
+                          const hozir = qabulQiluvchilarniOqish(autoRuleForm.recipientTo);
+                          const yangi = tanlangan ? hozir.filter(v => v !== q.value) : [...hozir, q.value];
+                          // Kamida bittasi tanlangan turishi kerak — aks holda
+                          // qoida hech kimga yubormaydi.
+                          if (!yangi.length) return;
+                          setAutoRuleForm({ ...autoRuleForm, recipientTo: yangi.join(',') });
+                        }}
+                        className={`px-2.5 py-2 rounded-xl text-xs font-bold border transition-all cursor-pointer ${
+                          tanlangan
+                            ? 'bg-brand/10 border-brand text-brand'
+                            : 'bg-slate-50 dark:bg-slate-800/80 border-slate-200 dark:border-slate-700/80 text-slate-500 dark:text-slate-400 hover:border-slate-300 dark:hover:border-slate-600'
+                        }`}
+                      >
+                        {q.label}
+                      </button>
+                    );
+                  })}
+                </div>
               </div>
             </div>
 

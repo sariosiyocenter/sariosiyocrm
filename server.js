@@ -4729,24 +4729,37 @@ function withTimeout(promise, ms, label = 'timeout') {
   ]);
 }
 
+// Xabar kimga ketishi. Bitta qoidada bir nechta qabul qiluvchi bo'lishi mumkin,
+// shuning uchun bazada vergul bilan saqlanadi: "FATHER,MOTHER". Eski yozuvlarda
+// bitta qiymat turadi va "PARENT" — ota va ona degani, shu yerda ochiladi.
+const RECIPIENT_KINDS = ['STUDENT', 'FATHER', 'MOTHER'];
+
+function parseRecipients(value) {
+  const list = String(value || '')
+    .split(',')
+    .map(v => v.trim().toUpperCase())
+    .flatMap(v => (v === 'PARENT' ? ['FATHER', 'MOTHER'] : [v]))
+    .filter(v => RECIPIENT_KINDS.includes(v));
+  return list.length ? [...new Set(list)] : ['FATHER', 'MOTHER'];
+}
+
+/** Bazaga yozish uchun bir xil ko'rinishga keltirish. */
+const normalizeRecipients = (value) => parseRecipients(value).join(',');
+
 async function sendToOne({ student, message, channel, recipientTo, type, schoolId, campaignId }) {
   let anySuccess = false;
   let attempted = false;
+  const kinds = parseRecipients(recipientTo);
 
   // Telegram
   if (channel === 'TELEGRAM' || channel === 'BOTH') {
     const tids = [];
-    if (recipientTo === 'PARENT') {
-      if (student.fatherTelegramId) tids.push({ id: student.fatherTelegramId, name: `${student.name} (Otasi)` });
-      if (student.motherTelegramId) tids.push({ id: student.motherTelegramId, name: `${student.name} (Onasi)` });
-    } else if (recipientTo === 'STUDENT') {
-      if (student.telegramId) tids.push({ id: student.telegramId, name: student.name });
-    } else {
-      // BOTH or not specified
-      if (student.telegramId) tids.push({ id: student.telegramId, name: student.name });
-      if (student.fatherTelegramId) tids.push({ id: student.fatherTelegramId, name: `${student.name} (Otasi)` });
-      if (student.motherTelegramId) tids.push({ id: student.motherTelegramId, name: `${student.name} (Onasi)` });
-    }
+    const qoshTid = (id, name) => {
+      if (id && !tids.some(t => String(t.id) === String(id))) tids.push({ id, name });
+    };
+    if (kinds.includes('STUDENT')) qoshTid(student.telegramId, student.name);
+    if (kinds.includes('FATHER')) qoshTid(student.fatherTelegramId, `${student.name} (Otasi)`);
+    if (kinds.includes('MOTHER')) qoshTid(student.motherTelegramId, `${student.name} (Onasi)`);
 
     const schoolBot = tids.length > 0 ? await getTelegramBot(schoolId) : null;
     for (const target of tids) {
@@ -4777,33 +4790,19 @@ async function sendToOne({ student, message, channel, recipientTo, type, schoolI
 
   // SMS
   if (channel === 'SMS' || (channel === 'BOTH' && !anySuccess)) {
-    if (recipientTo === 'PARENT') {
-      const phones = [];
-      if (student.fatherPhone) phones.push(student.fatherPhone);
-      if (student.motherPhone) phones.push(student.motherPhone);
-      if (phones.length === 0 && student.phone) phones.push(student.phone);
+    const phones = [];
+    const qoshRaqam = (raqam) => { if (raqam && !phones.includes(raqam)) phones.push(raqam); };
+    if (kinds.includes('STUDENT')) qoshRaqam(student.phone);
+    if (kinds.includes('FATHER')) qoshRaqam(student.fatherPhone);
+    if (kinds.includes('MOTHER')) qoshRaqam(student.motherPhone);
+    // Tanlanganlarning birortasida ham raqam bo'lmasa — o'quvchining o'z
+    // raqamiga ketsin, xabar yo'qolib qolmasin.
+    if (!phones.length) qoshRaqam(student.phone);
 
-      for (const phone of phones) {
-        attempted = true;
-        const r = await sendSms(phone, message, type || 'MANUAL', student.id, schoolId, campaignId);
-        if (r.success) anySuccess = true;
-      }
-    } else {
-      let phone;
-      if (recipientTo === 'STUDENT') {
-        phone = student.phone;
-      } else if (recipientTo === 'FATHER') {
-        phone = student.fatherPhone || student.phone;
-      } else if (recipientTo === 'MOTHER') {
-        phone = student.motherPhone || student.phone;
-      } else {
-        phone = resolveRecipientPhone(student);
-      }
-      if (phone) {
-        attempted = true;
-        const r = await sendSms(phone, message, type || 'MANUAL', student.id, schoolId, campaignId);
-        if (r.success) anySuccess = true;
-      }
+    for (const phone of phones) {
+      attempted = true;
+      const r = await sendSms(phone, message, type || 'MANUAL', student.id, schoolId, campaignId);
+      if (r.success) anySuccess = true;
     }
   }
 
@@ -5117,7 +5116,7 @@ app.post('/api/messaging/auto-rules', authenticate, requireRole(...STAFF_MANAGER
         enabled: !!enabled,
         body,
         channel: channel || 'BOTH',
-        recipientTo: recipientTo || 'PARENT',
+        recipientTo: normalizeRecipients(recipientTo),
         config: config || null,
         time: time || '09:00',
         schoolId: req.user.schoolId
@@ -5137,7 +5136,7 @@ app.put('/api/messaging/auto-rules/:id', authenticate, requireRole(...STAFF_MANA
       ...(enabled !== undefined && { enabled: !!enabled }),
       ...(body !== undefined && { body }),
       ...(channel !== undefined && { channel }),
-      ...(recipientTo !== undefined && { recipientTo }),
+      ...(recipientTo !== undefined && { recipientTo: normalizeRecipients(recipientTo) }),
       ...(config !== undefined && { config }),
       ...(time !== undefined && { time })
     };
