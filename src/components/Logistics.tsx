@@ -9,6 +9,8 @@ import {
     Clock, ChevronDown
 } from 'lucide-react';
 import { Transport, DeliveryLog, Route } from '../types';
+// Kun jadvali guruhlar, marshrutlar va bot uchun bitta joyda.
+import { isLessonDay, toDateStr } from '../../lib/lessons.js';
 
 type TabType = 'flot' | 'marshrutlar' | 'yetkazish';
 
@@ -21,13 +23,20 @@ export default function LogisticsHub() {
         transports, students, users, routes, deliveryLogs,
         addTransport, updateTransport, deleteTransport,
         addRoute, updateRoute, deleteRoute,
-        addDeliveryLog, fetchDeliveryLogs
+        addDeliveryLog, fetchDeliveryLogs, showNotification
     } = useCRM();
     const confirm = useConfirm();
 
     const [activeTab, setActiveTab] = useState<TabType>('marshrutlar');
     const [searchTerm, setSearchTerm] = useState('');
-    const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
+    // O'quvchi tanlash oynasining qidiruvi alohida: ilgari ikkalasi bitta
+    // holatni bo'lishardi va flotda yozilgan matn ro'yxatni ham filtrlardi.
+    const [studentSearch, setStudentSearch] = useState('');
+    // Mahalliy sana: toISOString() UTC beradi va UTC+5 da ertalab soat 5
+    // gacha kechagi kunni ochib qo'yardi.
+    const [selectedDate, setSelectedDate] = useState(toDateStr());
+    // null — hamma marshrutlar. Ilgari birinchi mashina avtomatik tanlanardi
+    // va boshqasiga biriktirilgan marshrutlar ko'rinmasdi.
     const [selectedTransportId, setSelectedTransportId] = useState<number | null>(null);
     const [expandedRouteId, setExpandedRouteId] = useState<number | null>(null);
 
@@ -51,12 +60,6 @@ export default function LogisticsHub() {
             fetchDeliveryLogs(selectedDate);
         }
     }, [selectedDate, activeTab]);
-
-    useEffect(() => {
-        if (!selectedTransportId && transports.length > 0) {
-            setSelectedTransportId(transports[0].id);
-        }
-    }, [transports]);
 
     // --- TRANSPORT LOGIC ---
     const resetTransportForm = () => {
@@ -125,18 +128,30 @@ export default function LogisticsHub() {
         return deliveryLogs.find(l => l.studentId === studentId && l.date === selectedDate)?.status;
     };
 
-    const isRouteActiveOnDate = (route: Route, dateStr: string) => {
-        if (route.days === 'HAR_KUNI') return true;
-        const date = new Date(dateStr);
-        const day = date.getDay(); 
-        if (route.days === 'TOQ') return [1, 3, 5].includes(day);
-        if (route.days === 'JUFT') return [2, 4, 6].includes(day);
-        return false;
-    };
+    const isRouteActiveOnDate = (route: Route, dateStr: string) => isLessonDay(route.days, dateStr);
 
-    const handleDeliveryUpdate = async (studentId: number, status: DeliveryLog['status']) => {
-        if (!selectedTransportId) return;
-        await addDeliveryLog({ studentId, transportId: selectedTransportId, date: selectedDate, status });
+    /**
+     * Marshrutdagi haqiqiy bekatlar: bazada yo'q yoki arxivga olingan o'quvchi
+     * `studentIds` da qolib ketardi — sanoq "5 o'quvchi" deb turar, ro'yxatda
+     * esa 3 tasi chiqardi.
+     */
+    const routeStudents = (route: Route) =>
+        route.studentIds
+            .map(id => students.find(st => st.id === id))
+            .filter((st): st is NonNullable<typeof st> => !!st && st.status !== 'Arxiv');
+
+    /**
+     * Holatni belgilash. Mashina marshrutnikidan olinadi: "Hamma marshrutlar"
+     * tanlanganda `selectedTransportId` null bo'ladi va ilgari bu yerda
+     * jimgina return qilinardi — tugma bosilar, hech narsa yozilmasdi.
+     */
+    const handleDeliveryUpdate = async (route: Route, studentId: number, status: DeliveryLog['status']) => {
+        const transportId = route.transportId ?? selectedTransportId;
+        if (!transportId) {
+            showNotification("Avval marshrutga mashina biriktiring", "error");
+            return;
+        }
+        await addDeliveryLog({ studentId, transportId, date: selectedDate, status });
     };
 
     return (
@@ -288,7 +303,7 @@ Unga biriktirilgan o'quvchilar bo'shatiladi.`)) deleteTransport(item.id); }} cla
                                                     {route.name}
                                                 </h3>
                                                 <span className="text-[11px] text-matn-xira font-bold block mt-0.5">
-                                                    {route.days === 'HAR_KUNI' ? t('every_day') : route.days === 'TOQ' ? t('odd_days') : route.days === 'JUFT' ? t('even_days') : route.days} • {route.startTime || '--:--'} • {route.studentIds.length} {t('student').toLowerCase()}
+                                                    {route.days === 'HAR_KUNI' ? t('every_day') : route.days === 'TOQ' ? t('odd_days') : route.days === 'JUFT' ? t('even_days') : route.days} • {route.startTime || '--:--'} • {routeStudents(route).length} {t('student').toLowerCase()}
                                                 </span>
                                             </div>
                                             <div className="w-8 h-8 rounded-lg bg-sirt border border-chiziq flex items-center justify-center text-brand">
@@ -299,8 +314,13 @@ Unga biriktirilgan o'quvchilar bo'shatiladi.`)) deleteTransport(item.id); }} cla
                                             <span className="text-[11px] font-bold text-matn-sokin">
                                                 🚌 {route.transport?.name || t('not_marked')}
                                             </span>
-                                            <button 
-                                                onClick={(e) => { e.stopPropagation(); deleteRoute(route.id); if(editingRoute?.id === route.id) resetRouteForm(); }}
+                                            <button
+                                                onClick={async (e) => {
+                                                    e.stopPropagation();
+                                                    if (!await confirm(`Marshrut o'chirilsinmi?\n\n${route.name}`)) return;
+                                                    await deleteRoute(route.id);
+                                                    if (editingRoute?.id === route.id) resetRouteForm();
+                                                }}
                                                 className="w-6 h-6 rounded-md hover:bg-rose-50 dark:hover:bg-rose-950/20 text-rose-500 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer"
                                             >
                                                 <Trash2 size={12} />
@@ -334,7 +354,7 @@ Unga biriktirilgan o'quvchilar bo'shatiladi.`)) deleteTransport(item.id); }} cla
                                             {t('edit')}
                                         </button>
                                         <button 
-                                            onClick={() => setIsStudentSelectorOpen(true)}
+                                            onClick={() => { setStudentSearch(''); setIsStudentSelectorOpen(true); }}
                                             className="px-3.5 py-2 bg-brand hover:bg-brand-dark text-white rounded-xl text-[11px] font-extrabold shadow-sm shadow-[#1b6b6b]/20 transition-all cursor-pointer"
                                         >
                                             {t('add_student')}
@@ -343,9 +363,8 @@ Unga biriktirilgan o'quvchilar bo'shatiladi.`)) deleteTransport(item.id); }} cla
                                 </div>
 
                                 <div className="space-y-2">
-                                    {editingRoute.studentIds.map((sid, index) => {
-                                        const student = students.find(s => s.id === sid);
-                                        if (!student) return null;
+                                    {routeStudents(editingRoute).map((student, index, ruyxat) => {
+                                        const sid = student.id;
                                         return (
                                             <div key={sid} className="flex items-center justify-between p-4 bg-gray-50/50 dark:bg-gray-900/40 rounded-2xl hover:border-gray-100 border border-transparent transition-all group">
                                                 <div className="flex items-center gap-3">
@@ -370,7 +389,7 @@ Unga biriktirilgan o'quvchilar bo'shatiladi.`)) deleteTransport(item.id); }} cla
                                                     </button>
                                                     <button 
                                                         onClick={() => moveStudentInRoute(editingRoute, sid, 'down')}
-                                                        disabled={index === editingRoute.studentIds.length - 1}
+                                                        disabled={index === ruyxat.length - 1}
                                                         className="w-7 h-7 rounded-lg text-matn-xira hover:text-brand hover:bg-gray-50 dark:hover:bg-gray-950 flex items-center justify-center transition-all cursor-pointer disabled:opacity-30"
                                                     >
                                                         <ArrowDown size={14} />
@@ -388,7 +407,7 @@ Unga biriktirilgan o'quvchilar bo'shatiladi.`)) deleteTransport(item.id); }} cla
                                             </div>
                                         );
                                     })}
-                                    {editingRoute.studentIds.length === 0 && (
+                                    {routeStudents(editingRoute).length === 0 && (
                                         <p className="text-center py-12 text-[11px] text-matn-xira font-bold">{t('no_students_in_route')}</p>
                                     )}
                                 </div>
@@ -409,6 +428,19 @@ Unga biriktirilgan o'quvchilar bo'shatiladi.`)) deleteTransport(item.id); }} cla
                         <div className="bg-sirt rounded-2xl border border-chiziq p-5 shadow-sm">
                             <span className="text-[11px] font-bold text-matn-xira block mb-4">{t('transport_selection')}</span>
                             <div className="space-y-2">
+                                {/* Transporti tanlanmagan marshrut hech qaysi mashina
+                                    ostiga tushmay yo'qolib qolardi. */}
+                                <button
+                                    onClick={() => setSelectedTransportId(null)}
+                                    className={`w-full flex items-center gap-3 p-3 rounded-2xl transition-all cursor-pointer ${
+                                        selectedTransportId === null
+                                        ? 'bg-brand/10 border border-brand text-brand'
+                                        : 'bg-ichki border border-transparent text-matn-2'
+                                    }`}
+                                >
+                                    <Navigation size={16} />
+                                    <span className="text-xs font-black tracking-tight truncate">Hamma marshrutlar</span>
+                                </button>
                                 {transports.map(t => (
                                     <button
                                         key={t.id}
@@ -427,16 +459,17 @@ Unga biriktirilgan o'quvchilar bo'shatiladi.`)) deleteTransport(item.id); }} cla
                         </div>
 
                         <div className="flex items-center justify-between bg-sirt rounded-2xl border border-chiziq p-3 shadow-sm">
-                            <button onClick={() => { const d = new Date(selectedDate); d.setDate(d.getDate() - 1); setSelectedDate(d.toISOString().split('T')[0]); }} className="w-8 h-8 rounded-lg hover:bg-chiziq flex items-center justify-center transition-colors cursor-pointer"><ChevronLeft size={16} /></button>
+                            <button onClick={() => { const d = new Date(selectedDate); d.setDate(d.getDate() - 1); setSelectedDate(toDateStr(d)); }}className="w-8 h-8 rounded-lg hover:bg-chiziq flex items-center justify-center transition-colors cursor-pointer"><ChevronLeft size={16} /></button>
                             <span className="text-[11px] font-extrabold text-matn-2">{selectedDate}</span>
-                            <button onClick={() => { const d = new Date(selectedDate); d.setDate(d.getDate() + 1); setSelectedDate(d.toISOString().split('T')[0]); }} className="w-8 h-8 rounded-lg hover:bg-chiziq flex items-center justify-center transition-colors cursor-pointer"><ChevronRight size={16} /></button>
+                            <button onClick={() => { const d = new Date(selectedDate); d.setDate(d.getDate() + 1); setSelectedDate(toDateStr(d)); }}className="w-8 h-8 rounded-lg hover:bg-chiziq flex items-center justify-center transition-colors cursor-pointer"><ChevronRight size={16} /></button>
                         </div>
                     </div>
 
                     {/* Delivery updates accordion */}
                     <div className="lg:col-span-3 space-y-4">
                         {routes
-                            .filter(r => r.transportId === selectedTransportId && isRouteActiveOnDate(r, selectedDate))
+                            .filter(r => (selectedTransportId === null || r.transportId === selectedTransportId)
+                                && isRouteActiveOnDate(r, selectedDate))
                             .map(route => (
                                 <div key={route.id} className="bg-sirt rounded-2xl border border-chiziq overflow-hidden shadow-sm">
                                     <button 
@@ -449,7 +482,7 @@ Unga biriktirilgan o'quvchilar bo'shatiladi.`)) deleteTransport(item.id); }} cla
                                             </div>
                                             <div className="text-left">
                                                 <h4 className="text-xs font-black text-matn tracking-wide">{route.name}</h4>
-                                                <span className="text-[11px] font-bold text-matn-xira block mt-0.5">{route.studentIds.length} {t('student').toLowerCase()}</span>
+                                                <span className="text-[11px] font-bold text-matn-xira block mt-0.5">{routeStudents(route).length} {t('student').toLowerCase()}</span>
                                             </div>
                                         </div>
                                         <ChevronDown size={16} className={`text-matn-xira transition-transform ${expandedRouteId === route.id ? 'rotate-180' : ''}`} />
@@ -457,9 +490,7 @@ Unga biriktirilgan o'quvchilar bo'shatiladi.`)) deleteTransport(item.id); }} cla
 
                                     {expandedRouteId === route.id && (
                                         <div className="p-4 pt-0 border-t border-chiziq-mayin/50 space-y-2">
-                                            {route.studentIds.map(sid => {
-                                                const student = students.find(s => s.id === sid);
-                                                if (!student) return null;
+                                            {routeStudents(route).map(student => {
                                                 const status = getDeliveryStatus(student.id);
                                                 return (
                                                     <div key={student.id} className="p-3 bg-gray-55/50 dark:bg-gray-900/40 rounded-2xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
@@ -475,7 +506,7 @@ Unga biriktirilgan o'quvchilar bo'shatiladi.`)) deleteTransport(item.id); }} cla
                                                             ].map(opt => (
                                                                 <button 
                                                                     key={opt.status}
-                                                                    onClick={() => handleDeliveryUpdate(student.id, opt.status as any)}
+                                                                    onClick={() => handleDeliveryUpdate(route, student.id, opt.status as any)}
                                                                     className={`flex-1 sm:flex-none px-3 py-1.5 rounded-xl text-[11px] font-extrabold transition-all cursor-pointer ${
                                                                         status === opt.status 
                                                                         ? 'bg-brand text-brand-ust' 
@@ -642,13 +673,14 @@ Unga biriktirilgan o'quvchilar bo'shatiladi.`)) deleteTransport(item.id); }} cla
                                 type="text"
                                 placeholder={t('search')}
                                 className="w-full pl-9 pr-4 py-2.5 bg-ichki border border-chiziq rounded-xl text-xs font-bold text-matn outline-none focus:border-brand transition-all"
-                                value={searchTerm}
-                                onChange={(e) => setSearchTerm(e.target.value)}
+                                value={studentSearch}
+                                onChange={(e) => setStudentSearch(e.target.value)}
                             />
                         </div>
                         <div className="flex-1 overflow-y-auto custom-scrollbar space-y-2">
                             {students
-                                .filter(s => s.name.toLowerCase().includes(searchTerm.toLowerCase()))
+                                .filter(s => s.status !== 'Arxiv')
+                                .filter(s => s.name.toLowerCase().includes(studentSearch.toLowerCase()))
                                 .filter(s => !editingRoute.studentIds.includes(s.id))
                                 .map(student => (
                                     <button

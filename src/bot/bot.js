@@ -1,5 +1,6 @@
 import { Telegraf, Markup } from 'telegraf';
 import prisma from '../../lib/prisma.js';
+import { isLessonDay } from '../../lib/lessons.js';
 
 const bot = new Telegraf(process.env.TELEGRAM_BOT_TOKEN || 'fake_token_for_init');
 
@@ -621,20 +622,23 @@ export const setupBotHandlers = (botInstance, schoolId) => {
         if (!transport) return ctx.reply("Sizga hali hech qanday transport biriktirilmagan.");
         if (transport.students.length === 0) return ctx.reply("Sizning transportingizda hali o'quvchilar yo'q.");
 
+        // Toq/juft hafta kuni bo'yicha hisoblanadi (Du/Cho/Ju — toq), aynan
+        // guruh jadvali va Logistika sahifasidagidek. Ilgari bu yerda oy
+        // kunining juftligi (sana % 2) olinardi va bir kunda admin bir
+        // ro'yxatni, haydovchi butunlay boshqasini ko'rardi. Guruh kunlari
+        // 'HAR_KUNI' saqlanadi — bu yerdagi 'HAR KUNI' (bo'sh joy bilan)
+        // solishtiruvi esa hech qachon to'g'ri kelmasdi.
         const today = new Date();
         const dayNum = today.getDate();
-        const isOdd = dayNum % 2 !== 0;
-        const dayType = isOdd ? 'TOQ' : 'JUFT';
-        
+        const sana = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(dayNum).padStart(2, '0')}`;
+        const dayType = isLessonDay('TOQ', sana) ? 'TOQ' : isLessonDay('JUFT', sana) ? 'JUFT' : 'Dam olish';
+
         const months = ['Yanvar','Fevral','Mart','Aprel','May','Iyun','Iyul','Avgust','Sentabr','Oktabr','Noyabr','Dekabr'];
         const dateLabel = `${dayNum}-${months[today.getMonth()]}`;
-        
+
         const todayStudents = transport.students.filter(s => {
             if (!s.groups || s.groups.length === 0) return true;
-            return s.groups.some(g => {
-                const d = (g.days || '').trim().toUpperCase();
-                return d === 'HAR KUNI' || d === dayType;
-            });
+            return s.groups.some(g => isLessonDay(g.days, sana));
         });
 
         if (todayStudents.length === 0) {
