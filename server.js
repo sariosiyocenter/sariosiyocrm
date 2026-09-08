@@ -2152,7 +2152,7 @@ app.post('/api/public/schools/:schoolId/leads', publicFormLimiter, async (req, r
       preferredTime, notes, photo, certificates,
       // CRM dagi "o'quvchi qo'shish" oynasidagi bilan bir xil maydonlar —
       // ariza orqali kelgan o'quvchi ham to'liq yozilsin.
-      orgType, region, district, studyGoal, directionId, transportId, privileges
+      orgType, region, district, studyGoal, directionId, transportId, privileges, location
     } = req.body;
 
     if (!name || !phone) return res.status(400).json({ error: 'Ism va telefon raqami majburiy' });
@@ -2224,6 +2224,10 @@ app.post('/api/public/schools/:schoolId/leads', publicFormLimiter, async (req, r
         motherName: motherName || null,
         motherPhone: motherPhone || null,
         studentSchool: studentSchool || null,
+        // Xaritadan belgilangan joy: "38.4833,67.9333". Boshqa shakldagi
+        // matnni saqlamaymiz.
+        location: (typeof location === 'string' && /^-?\d+(\.\d+)?,-?\d+(\.\d+)?$/.test(location.trim()))
+          ? location.trim() : null,
         orgType: orgType || null,
         region: region || null,
         district: district || null,

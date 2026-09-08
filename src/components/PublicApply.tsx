@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
 import { Building2, Phone, CheckCircle2, ChevronRight, User, BookOpen, Clock, MessageSquare, Calendar, MapPin, GraduationCap, Image as ImageIcon, Plus, Trash2, Target, Compass, Bus, Award } from 'lucide-react';
 import PhotoCapture from './PhotoCapture';
+import MapPicker from './MapPicker';
 import { compressImage } from '../lib/image';
 import { STUDY_GOALS, UZB_REGIONS, ORG_TYPES, PRIVILEGES } from '../lib/studentFields';
 
@@ -79,6 +80,7 @@ export default function PublicApply() {
         groupId: '' as number | '',
         notes: '',
         photo: '',
+        location: '',
         // CRM dagi "o'quvchi qo'shish" oynasidagi maydonlar. Ilgari ariza
         // formasi ulardan yarmini so'ramasdi va xodim har bir arizadan keyin
         // qolganini qo'lda to'ldirib chiqardi.
@@ -127,6 +129,9 @@ export default function PublicApply() {
     };
 
     const [isPhotoModalOpen, setIsPhotoModalOpen] = useState(false);
+    // Xaritadan uy joyi - CRM dagi qo'shish oynasida bor edi, arizada yo'q edi.
+    // Transport marshrutini tuzayotgan xodimga aynan shu kerak.
+    const [isMapOpen, setIsMapOpen] = useState(false);
 
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [submitted, setSubmitted] = useState(false);
@@ -310,7 +315,7 @@ export default function PublicApply() {
                                         ...prev,
                                         name: '', phone: '', birthDate: '', studentSchool: '',
                                         address: '', notes: '', photo: '', certificates: [],
-                                        studyGoal: '', directionId: '', privileges: [],
+                                        studyGoal: '', directionId: '', privileges: [], location: '',
                                     }));
                                     window.scrollTo(0, 0);
                                 }}
@@ -795,6 +800,19 @@ export default function PublicApply() {
                                 </div>
                             </div>
 
+                            <button
+                                type="button"
+                                onClick={() => setIsMapOpen(true)}
+                                className={`w-full py-3 rounded-2xl border flex items-center justify-center gap-2 text-[11px] font-bold uppercase tracking-wider cursor-pointer transition-all ${
+                                    form.location
+                                        ? 'bg-[var(--brand-color,#1b6b6b)]/10 text-[var(--brand-color,#1b6b6b)] border-[var(--brand-color,#1b6b6b)]'
+                                        : 'bg-ichki border-chiziq text-matn-sokin hover:border-[var(--brand-color,#1b6b6b)]'
+                                }`}
+                            >
+                                <MapPin size={14} />
+                                {form.location ? 'Xaritada belgilandi' : 'Xaritadan tanlash'}
+                            </button>
+
                             {transports.length > 0 && (
                                 <div>
                                     <label className={lbl}>Transport kerakmi?</label>
@@ -843,6 +861,13 @@ export default function PublicApply() {
                     )}
                 </div>
             </div>
+            {isMapOpen && (
+                <MapPicker
+                    initialLocation={form.location}
+                    onSelect={loc => setForm(prev => ({ ...prev, location: loc }))}
+                    onClose={() => setIsMapOpen(false)}
+                />
+            )}
             {isPhotoModalOpen && (
                 <PhotoCapture
                     onCapture={async (photo) => {
