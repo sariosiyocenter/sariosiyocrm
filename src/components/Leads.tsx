@@ -283,6 +283,10 @@ export default function Leads() {
         orgType: conversionData.orgType || null,
         region: conversionData.region || null,
         district: conversionData.district || null,
+        // Lidda maqsad va yo'nalish bo'lsa o'quvchiga ham o'tsin — aks holda
+        // xodim o'sha ikkita maydonni qaytadan to'ldirib chiqardi.
+        studyGoal: (selectedLead as any).studyGoal || null,
+        directionId: (selectedLead as any).directionId || null,
         customPrices: {}
       });
 

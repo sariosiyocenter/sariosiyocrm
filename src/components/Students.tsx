@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { Search, Plus, FileSpreadsheet, MoreVertical, X, Image as ImageIcon, MapPin, GraduationCap, QrCode, Trash2, SlidersHorizontal
+import { Search, Plus, FileSpreadsheet, MoreVertical, X, Image as ImageIcon, MapPin, GraduationCap, QrCode, Trash2, SlidersHorizontal, ScanFace
 } from 'lucide-react';
 import { useCRM } from '../context/CRMContext';
 import { useConfirm } from './ConfirmDialog';
@@ -9,82 +9,17 @@ import { displayName } from '../lib/displayName';
 import Avatar from './ui/Avatar';
 import PhotoCapture from './PhotoCapture';
 import MapPicker from './MapPicker';
+import FaceSearch from './FaceSearch';
 import { uploadProfilePhoto } from '../lib/image';
 import * as XLSX from 'xlsx';
+import { STUDY_GOALS, UZB_REGIONS, ORG_TYPES, PRIVILEGES } from '../lib/studentFields';
 
 const inp = "w-full px-4 py-3 bg-ichki border border-chiziq rounded-2xl text-xs font-bold text-matn focus:border-brand focus:ring-4 focus:ring-[#1b6b6b]/10 outline-none transition-all";
 const lbl = "block text-[11px] text-matn-xira mb-1.5";
 
-const UZB_REGIONS: Record<string, string[]> = {
-  "Surxondaryo": [
-    "Sariosiyo", "Denov", "Uzun", "Sho'rchi", "Termiz", "Qumqo'rg'on",
-    "Jarqo'rg'on", "Sherobod", "Boysun", "Muzrabot", "Angor", "Qiziriq",
-    "Oltinsoy", "Bandixon"
-  ],
-  "Toshkent shahri": [
-    "Yunusobod", "Chilonzor", "Mirzo Ulug'bek", "Yashnobod", "Mirobod",
-    "Uchtepa", "Shayxontohur", "Olmazor", "Sergeli", "Yakkasaroy",
-    "Bektemir", "Yangihayot"
-  ],
-  "Toshkent viloyati": [
-    "Chirchiq", "Angren", "Olmaliq", "Bekobod", "Keles", "Zangiota",
-    "Qibray", "Bo'stonliq", "Parkent", "Piskent", "O'rtachirchiq",
-    "Yuqorichirchiq", "Quyichirchiq", "Oqqo'rg'on", "Bo'ka", "Yangiyo'l"
-  ],
-  "Samarqand": [
-    "Samarqand shahri", "Bulung'ur", "Ishtixon", "Jomboy", "Kattaqo'rg'on",
-    "Narpay", "Nurobod", "Oqdaryo", "Payariq", "Pastdarg'om", "Paxtachi",
-    "Toyloq", "Qo'shrabot", "Urgut"
-  ],
-  "Farg'ona": [
-    "Farg'ona shahri", "Marg'ilon", "Qo'qon", "Bog'dod", "Beshariq",
-    "Buvayda", "Dang'ara", "Quva", "Rishton", "Toshloq", "Uchko'prik",
-    "O'zbekiston", "Yozyovon", "So'x"
-  ],
-  "Andijon": [
-    "Andijon shahri", "Asaka", "Baliqchi", "Buloqboshi", "Bo'ston",
-    "Jalaquduq", "Izboskan", "Marhamat", "Oltinko'l", "Paxtaobod",
-    "Ulug'nor", "Xo'jaobod", "Shahrixon", "Qo'rg'ontepa"
-  ],
-  "Namangan": [
-    "Namangan shahri", "Kosonsoy", "Mingbuloq", "Pop", "To'raqo'rg'on",
-    "Uychi", "Uchqo'rg'on", "Chortoq", "Chust", "Yangiqo'rg'on", "Davlatobod"
-  ],
-  "Qashqadaryo": [
-    "Karshi shahri", "Dehqonobod", "Kamashi", "Kasbi", "Kitob",
-    "Koson", "Ko'kdala", "Mirishkor", "Muborak", "Nishon",
-    "Chiroqchi", "Shahrisabz", "Yakkabog'"
-  ],
-  "Buxoro": [
-    "Buxoro shahri", "Gijduvon", "Jondor", "Kogon", "Kofirnihon",
-    "Qorako'l", "Qoravulbozor", "Olot", "Peshku", "Romitan",
-    "Shofirkon", "Vobkent"
-  ],
-  "Xorazm": [
-    "Urganch shahri", "Xiva", "Bog'ot", "Gurlan", "Qo'shko'pir",
-    "Shovot", "Toza bozor", "Xonqa", "Hazorasp", "Yangiariq", "Yangibozor"
-  ],
-  "Navoiy": [
-    "Navoiy shahri", "Karmana", "Konimex", "Nurota", "Qiziltepa",
-    "Tomdi", "Uchquduq", "Xatirchi"
-  ],
-  "Jizzax": [
-    "Jizzax shahri", "Arnasoy", "Baxmal", "Do'stlik", "Forish",
-    "G'allaorol", "Sharof Rashidov", "Mirzacho'l", "Paxtakor", "Yangiobod"
-  ],
-  "Sirdaryo": [
-    "Guliston shahri", "Shirin", "Yangiyer", "Boyovut", "Oqoltin",
-    "Sardoba", "Sayxunobod", "Sirdaryo tumani", "Xovost"
-  ],
-  "Qoraqalpog'iston": [
-    "Nukus shahri", "Amudaryo", "Beruniy", "Chimboy", "Ellikqala",
-    "Kegeyli", "Mo'ynoq", "Qonliko'l", "Qo'ng'irot", "Shumanay",
-    "Taxtako'pir", "To'rtko'l", "Xo'jayli"
-  ]
-};
 
 export default function Students() {
-    const { students, groups, teachers, transports, attendances, addStudent, deleteStudent, setStudentStatus, importStudents, selectedSchoolId, schools, user, showNotification } = useCRM();
+    const { students, groups, teachers, transports, attendances, directions, addStudent, deleteStudent, setStudentStatus, importStudents, selectedSchoolId, schools, user, showNotification } = useCRM();
     const confirm = useConfirm();
     const { t } = useLang();
     const navigate = useNavigate();
@@ -106,6 +41,8 @@ export default function Students() {
         orgType: '',
         region: '',
         district: '',
+        studyGoal: '',
+        directionId: '' as string | number,
         selectedGroupIds: [] as number[],
         certificates: [] as Array<{ category: 'Milliy' | 'Xalqaro'; subject?: string; type?: string; score?: string }>
     });
@@ -157,6 +94,9 @@ export default function Students() {
             })
         }));
     };
+    // Face ID bo'yicha qidirish. Ism ham, telefon ham yodda bo'lmaganda —
+    // kameraga tutib profilni ochish.
+    const [isFaceSearchOpen, setIsFaceSearchOpen] = useState(false);
     const [isRemovingBg, setIsRemovingBg] = useState(false);
     const [isImporting, setIsImporting] = useState(false);
     const [search, setSearch] = useState('');
@@ -230,6 +170,7 @@ export default function Students() {
     const DEFAULT_FILTERS = {
         status: '', groupId: '', balanceStatus: 'all', dateRange: 'all', orgType: '',
         muassasaSearch: '', region: '', district: '', location: '', missingInfo: '',
+        studyGoal: '', directionId: '',
     };
 
     /** Tez filtr chiplari uchun sanoq. Ular joriy filtrga bog'liq emas —
@@ -259,7 +200,9 @@ export default function Students() {
         region: '',
         district: '',
         location: '',
-        missingInfo: ''
+        missingInfo: '',
+        studyGoal: '',
+        directionId: ''
     });
 
     // Ro'yxat allaqachon ochiq bo'lsa komponent qayta yaratilmaydi, shuning uchun
@@ -340,6 +283,8 @@ export default function Students() {
                 orgType: newStudent.orgType,
                 region: newStudent.region,
                 district: newStudent.district,
+                studyGoal: newStudent.studyGoal || null,
+                directionId: newStudent.directionId ? Number(newStudent.directionId) : null,
                 customPrices: {},
                 certificates: newStudent.certificates
             });
@@ -358,6 +303,8 @@ export default function Students() {
                 orgType: '',
                 region: '',
                 district: '',
+                studyGoal: '',
+                directionId: '',
                 selectedGroupIds: [],
                 certificates: []
             });
@@ -386,6 +333,8 @@ export default function Students() {
                     "Telefon": student.phone,
                     "Jins": student.gender || 'Erkak',
                     "Tug'ilgan sana": student.birthDate || '',
+                    "Maqsad": student.studyGoal || '',
+                    "Yo'nalish": (directions || []).find(d => d.id === student.directionId)?.name || '',
                     "Ta'lim muassasasi turi": student.orgType || '',
                     "Muassasa nomi": student.studentSchool || '',
                     "Viloyat": student.region || '',
@@ -585,6 +534,8 @@ export default function Students() {
         const matchesRegion = !filters.region || s.region === filters.region;
         const matchesDistrict = !filters.district || s.district === filters.district;
         const matchesLocation = !filters.location || s.location === filters.location;
+        const matchesGoal = !filters.studyGoal || s.studyGoal === filters.studyGoal;
+        const matchesDirection = !filters.directionId || String(s.directionId ?? '') === filters.directionId;
 
         let matchesBalance = true;
         // Tez filtr chiplari asosiy filtrlardan mustaqil ishlaydi.
@@ -626,7 +577,7 @@ export default function Students() {
             matchesMissingInfo = fatherMissing || motherMissing;
         }
 
-        return matchesSearch && matchesStatus && matchesGroup && matchesBalance && matchesDate && matchesOrgType && matchesMuassasa && matchesRegion && matchesDistrict && matchesLocation && matchesMissingInfo;
+        return matchesSearch && matchesStatus && matchesGroup && matchesBalance && matchesDate && matchesOrgType && matchesMuassasa && matchesRegion && matchesDistrict && matchesLocation && matchesMissingInfo && matchesGoal && matchesDirection;
     }), [students, search, filters]);
 
     // The table used to render every match at once — 266 rows, each with a photo.
@@ -732,6 +683,14 @@ export default function Students() {
                         />
                     </div>
                         <button
+                            onClick={() => setIsFaceSearchOpen(true)}
+                            title="Face ID bo'yicha qidirish"
+                            className="flex items-center gap-2 px-3.5 py-2.5 rounded-xl border border-chiziq bg-sirt text-matn-sokin hover:text-brand hover:border-brand text-[13px] font-medium transition-colors cursor-pointer shrink-0"
+                        >
+                            <ScanFace size={14} />
+                            <span className="hidden sm:inline">Face ID</span>
+                        </button>
+                        <button
                             onClick={() => setShowFilters(v => !v)}
                             className={`flex items-center gap-2 px-3.5 py-2.5 rounded-xl border text-[13px] font-medium transition-colors cursor-pointer shrink-0 ${showFilters || activeFilterCount > 0
                                 ? 'bg-brand border-brand text-white'
@@ -753,16 +712,22 @@ export default function Students() {
                     </div>
 
                     {showFilters && (
-                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 xl:grid-cols-9 gap-3">
+                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 xl:grid-cols-6 gap-3">
                         <div>
                             <label className={lbl}>{t('filter_status')}</label>
                             <select value={filters.status} onChange={e => setFilters({...filters, status: e.target.value})}
                                 className="w-full px-3 py-2 bg-ichki border border-chiziq rounded-xl text-[11px] font-bold text-gray-700 dark:text-white outline-none focus:border-brand transition-all cursor-pointer">
                                 <option value="">{t('all')}</option>
                                 <option value="Faol">{t('status_active')}</option>
+                                {/* Sinov davridagilar ilgari bu ro'yxatda yo'q edi, holbuki
+                                    onlayn ariza bergan har bir o'quvchi aynan shu holatda
+                                    boshlanadi — ya'ni ularni ajratib ko'rib bo'lmasdi. */}
+                                <option value="Sinov">{t('status_test')}</option>
                                 <option value="Passiv">{t('status_passive')}</option>
                                 <option value="Muzlatilgan">{t('status_frozen')}</option>
                                 <option value="Sertifikatli">{t('status_certified')}</option>
+                                <option value="Bitiruvchi">{t('status_graduated')}</option>
+                                <option value="Arxiv">{t('status_archive')}</option>
                             </select>
                         </div>
                         <div>
@@ -783,15 +748,27 @@ export default function Students() {
                             </select>
                         </div>
                         <div>
+                            <label className={lbl}>Maqsad</label>
+                            <select value={filters.studyGoal} onChange={e => setFilters({...filters, studyGoal: e.target.value})}
+                                className="w-full px-3 py-2 bg-ichki border border-chiziq rounded-xl text-[11px] font-bold text-gray-700 dark:text-white outline-none focus:border-brand transition-all cursor-pointer">
+                                <option value="">Barchasi</option>
+                                {STUDY_GOALS.map(g => <option key={g} value={g}>{g}</option>)}
+                            </select>
+                        </div>
+                        <div>
+                            <label className={lbl}>Yo'nalish</label>
+                            <select value={filters.directionId} onChange={e => setFilters({...filters, directionId: e.target.value})}
+                                className="w-full px-3 py-2 bg-ichki border border-chiziq rounded-xl text-[11px] font-bold text-gray-700 dark:text-white outline-none focus:border-brand transition-all cursor-pointer">
+                                <option value="">Barchasi</option>
+                                {(directions || []).map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
+                            </select>
+                        </div>
+                        <div>
                             <label className={lbl}>Muassasa turi</label>
                             <select value={filters.orgType} onChange={e => setFilters({...filters, orgType: e.target.value})}
                                 className="w-full px-3 py-2 bg-ichki border border-chiziq rounded-xl text-[11px] font-bold text-gray-700 dark:text-white outline-none focus:border-brand transition-all cursor-pointer">
                                 <option value="">Barchasi</option>
-                                <option value="Maktab">Maktab</option>
-                                <option value="Prezident maktabi">Prezident maktabi</option>
-                                <option value="Kollej / Litsey">Kollej / Litsey</option>
-                                <option value="Oliy o'quv yurti">Oliy o'quv yurti</option>
-                                <option value="Boshqa">Boshqa</option>
+                                {ORG_TYPES.map(o => <option key={o} value={o}>{o}</option>)}
                             </select>
                         </div>
                         <div>
@@ -1112,16 +1089,48 @@ export default function Students() {
                                             className={inp}
                                         >
                                             <option value="">Tanlang...</option>
-                                            <option value="Maktab">Maktab</option>
-                                            <option value="Prezident maktabi">Prezident maktabi</option>
-                                            <option value="Kollej / Litsey">Kollej / Litsey</option>
-                                            <option value="Oliy o'quv yurti">Oliy o'quv yurti</option>
-                                            <option value="Boshqa">Boshqa</option>
+                                            {ORG_TYPES.map(o => <option key={o} value={o}>{o}</option>)}
                                         </select>
                                     </div>
                                     <div>
                                         <label className={lbl}>Muassasa nomi</label>
                                         <input type="text" placeholder="42-maktab" className={inp} value={newStudent.studentSchool} onChange={e => setNewStudent({ ...newStudent, studentSchool: e.target.value })} />
+                                    </div>
+                                </div>
+                                {/* Maqsad va yo'nalish. Ro'yxatni admin Sozlamalar →
+                                    Yo'nalishlar bo'limida boshqaradi; onlayn ariza formasi
+                                    ham xuddi shu ro'yxatni ko'rsatadi. */}
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div>
+                                        <label className={lbl}>Maqsad</label>
+                                        <select
+                                            value={newStudent.studyGoal}
+                                            onChange={e => setNewStudent({ ...newStudent, studyGoal: e.target.value })}
+                                            className={inp}
+                                        >
+                                            <option value="">Tanlang...</option>
+                                            {STUDY_GOALS.map(g => <option key={g} value={g}>{g}</option>)}
+                                        </select>
+                                    </div>
+                                    <div>
+                                        <label className={lbl}>Yo'nalish</label>
+                                        <select
+                                            value={newStudent.directionId}
+                                            onChange={e => setNewStudent({ ...newStudent, directionId: e.target.value })}
+                                            className={inp}
+                                        >
+                                            <option value="">Tanlang...</option>
+                                            {(directions || []).map(d => (
+                                                <option key={d.id} value={d.id}>
+                                                    {d.name}{d.subjects ? ` (${d.subjects})` : ''}
+                                                </option>
+                                            ))}
+                                        </select>
+                                        {(directions || []).length === 0 && (
+                                            <p className="text-[11px] text-matn-xira mt-1.5">
+                                                Yo'nalishlar Sozlamalar → Yo'nalishlar bo'limida qo'shiladi.
+                                            </p>
+                                        )}
                                     </div>
                                 </div>
                                 <div className="grid grid-cols-2 gap-4">
@@ -1173,7 +1182,7 @@ export default function Students() {
                                 <div>
                                     <label className={lbl}>Imtiyoz turi (bir nechtasini tanlash mumkin)</label>
                                     <div className="flex flex-wrap gap-2 mt-1">
-                                        {['Nogironligi bor', 'Harbiy oila', 'Xotin-qizlar daftari', 'Sertifikat'].map(priv => {
+                                        {PRIVILEGES.map(priv => {
                                             const checked = newStudent.selectedPrivileges.includes(priv);
                                             return (
                                                 <button
@@ -1469,6 +1478,15 @@ export default function Students() {
                         </div>
                     </div>
                 </div>
+            )}
+
+            {isFaceSearchOpen && (
+                <FaceSearch
+                    students={students}
+                    schoolId={(selectedSchoolId && selectedSchoolId > 0) ? selectedSchoolId : (user?.schoolId ?? schools[0]?.id ?? 0)}
+                    onPick={id => { setIsFaceSearchOpen(false); navigate(`/students/${id}`); }}
+                    onClose={() => setIsFaceSearchOpen(false)}
+                />
             )}
 
             {isPhotoModalOpen && (

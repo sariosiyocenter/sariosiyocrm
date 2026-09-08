@@ -37,6 +37,22 @@ export interface Student {
     orgType?: string;
     region?: string;
     district?: string;
+    /** Nima maqsadda o'qiyapti: "Asosiy fan" | "Majburiy fan" | "Mustaqil". */
+    studyGoal?: string;
+    /** Qaysi yo'nalishga tayyorlanmoqda (Direction.id). */
+    directionId?: number | null;
+}
+
+/**
+ * Kirish yo'nalishi: "Iqtisodiyot (Matematika + Ingliz tili)".
+ * Ro'yxatni admin Sozlamalardan boshqaradi.
+ */
+export interface Direction {
+    id: number;
+    name: string;
+    /** Yo'nalish fanlari, ko'rsatish uchun matn: "Matematika + Ingliz tili". */
+    subjects?: string | null;
+    schoolId: number;
 }
 
 export interface User {
@@ -114,6 +130,8 @@ export interface Lead {
     orgType?: string;
     region?: string;
     district?: string;
+    studyGoal?: string;
+    directionId?: number | null;
 }
 
 export interface Payment {
@@ -312,6 +330,7 @@ export interface CRMState {
     users: User[];
     selectedSchoolId: number | null;
     syllabuses: Syllabus[];
+    directions: Direction[];
     settings: {
         id: number;
         schoolId: number;

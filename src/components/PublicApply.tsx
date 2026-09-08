@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
-import { Building2, Phone, CheckCircle2, ChevronRight, User, BookOpen, Clock, MessageSquare, Calendar, MapPin, GraduationCap, Image as ImageIcon, Plus, Trash2 } from 'lucide-react';
+import { Building2, Phone, CheckCircle2, ChevronRight, User, BookOpen, Clock, MessageSquare, Calendar, MapPin, GraduationCap, Image as ImageIcon, Plus, Trash2, Target, Compass, Bus, Award } from 'lucide-react';
 import PhotoCapture from './PhotoCapture';
 import { compressImage } from '../lib/image';
+import { STUDY_GOALS, UZB_REGIONS, ORG_TYPES, PRIVILEGES } from '../lib/studentFields';
 
 interface Course {
     id: number;
@@ -42,11 +43,24 @@ interface Certificate {
     score?: string;
 }
 
+interface PublicDirection {
+    id: number;
+    name: string;
+    subjects?: string | null;
+}
+
+interface PublicTransport {
+    id: number;
+    name: string;
+}
+
 export default function PublicApply() {
     const { schoolId } = useParams<{ schoolId: string }>();
     const [schoolInfo, setSchoolInfo] = useState<SchoolInfo | null>(null);
     const [courses, setCourses] = useState<Course[]>([]);
     const [groups, setGroups] = useState<PublicGroup[]>([]);
+    const [directions, setDirections] = useState<PublicDirection[]>([]);
+    const [transports, setTransports] = useState<PublicTransport[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
 
@@ -65,6 +79,16 @@ export default function PublicApply() {
         groupId: '' as number | '',
         notes: '',
         photo: '',
+        // CRM dagi "o'quvchi qo'shish" oynasidagi maydonlar. Ilgari ariza
+        // formasi ulardan yarmini so'ramasdi va xodim har bir arizadan keyin
+        // qolganini qo'lda to'ldirib chiqardi.
+        orgType: '',
+        region: '',
+        district: '',
+        studyGoal: '',
+        directionId: '' as number | '',
+        transportId: '' as number | '',
+        privileges: [] as string[],
         certificates: [] as Certificate[]
     });
 
@@ -157,6 +181,13 @@ export default function PublicApply() {
                 if (groupsRes.ok) {
                     setGroups(await groupsRes.json());
                 }
+
+                // Yo'nalish va transport ro'yxatlari markazda sozlanadi —
+                // shuning uchun formaga qattiq yozilmaydi.
+                const dirRes = await fetch(`/api/public/schools/${schoolId}/directions`);
+                if (dirRes.ok) setDirections(await dirRes.json());
+                const trRes = await fetch(`/api/public/schools/${schoolId}/transports`);
+                if (trRes.ok) setTransports(await trRes.json());
             } catch (err: any) {
                 setError(err.message || 'Xatolik yuz berdi');
             } finally {
@@ -230,6 +261,8 @@ export default function PublicApply() {
     const kursTanlovi = applyGroups.length > 0 || courses.length > 0;
 
     const inp = "w-full pl-10 pr-4 py-3.5 bg-ichki border border-chiziq rounded-2xl text-xs font-bold text-gray-950 dark:text-white focus:border-[var(--brand-color,#1b6b6b)] focus:ring-4 focus:ring-[var(--brand-color,#1b6b6b)]/10 outline-none transition-all";
+    // Ikonkasiz maydonlar uchun - chapdagi bo'sh joy kerak emas.
+    const sel = "w-full px-4 py-3.5 bg-ichki border border-chiziq rounded-2xl text-xs font-bold text-gray-950 dark:text-white focus:border-[var(--brand-color,#1b6b6b)] focus:ring-4 focus:ring-[var(--brand-color,#1b6b6b)]/10 outline-none transition-all cursor-pointer";
     const lbl = "block text-[11px] font-extrabold uppercase tracking-wider text-matn-xira mb-2";
     const secTitle = "block text-[11px] font-bold uppercase text-brand tracking-wider border-b border-dashed border-gray-150 dark:border-gray-750 pb-2 mb-4 mt-6 first:mt-0";
 
@@ -277,6 +310,7 @@ export default function PublicApply() {
                                         ...prev,
                                         name: '', phone: '', birthDate: '', studentSchool: '',
                                         address: '', notes: '', photo: '', certificates: [],
+                                        studyGoal: '', directionId: '', privileges: [],
                                     }));
                                     window.scrollTo(0, 0);
                                 }}
@@ -353,19 +387,124 @@ export default function PublicApply() {
                                 </div>
                             </div>
 
-                            <div>
-                                <label className={lbl}>Maktab / Bog'cha</label>
-                                <div className="relative">
-                                    <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-matn-xira">
-                                        <GraduationCap size={15} />
+                            <div className="grid grid-cols-2 gap-4">
+                                <div>
+                                    <label className={lbl}>Ta'lim muassasasi turi</label>
+                                    <select
+                                        className={sel}
+                                        value={form.orgType}
+                                        onChange={e => setForm({ ...form, orgType: e.target.value })}
+                                    >
+                                        <option value="">Tanlang...</option>
+                                        {ORG_TYPES.map(o => <option key={o} value={o}>{o}</option>)}
+                                    </select>
+                                </div>
+                                <div>
+                                    <label className={lbl}>Muassasa nomi</label>
+                                    <div className="relative">
+                                        <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-matn-xira">
+                                            <GraduationCap size={15} />
+                                        </div>
+                                        <input
+                                            type="text"
+                                            placeholder="42-maktab"
+                                            className={inp}
+                                            value={form.studentSchool}
+                                            onChange={e => setForm({ ...form, studentSchool: e.target.value })}
+                                        />
                                     </div>
-                                    <input
-                                        type="text"
-                                        placeholder="42-maktab"
-                                        className={inp}
-                                        value={form.studentSchool}
-                                        onChange={e => setForm({ ...form, studentSchool: e.target.value })}
-                                    />
+                                </div>
+                            </div>
+
+                            {/* Maqsad va yo'nalish - CRM dagi o'quvchi qo'shish oynasida
+                                ham xuddi shu ikkita maydon bor. Yo'nalishlar ro'yxatini
+                                markaz o'zi sozlaydi, shuning uchun bo'sh bo'lsa maydon
+                                umuman ko'rsatilmaydi. */}
+                            <div className={directions.length > 0 ? 'grid grid-cols-2 gap-4' : ''}>
+                                <div>
+                                    <label className={lbl}>Maqsadingiz</label>
+                                    <select
+                                        className={sel}
+                                        value={form.studyGoal}
+                                        onChange={e => setForm({ ...form, studyGoal: e.target.value })}
+                                    >
+                                        <option value="">Tanlang...</option>
+                                        {STUDY_GOALS.map(g => <option key={g} value={g}>{g}</option>)}
+                                    </select>
+                                </div>
+                                {directions.length > 0 && (
+                                    <div>
+                                        <label className={lbl}>Yo'nalish</label>
+                                        <select
+                                            className={sel}
+                                            value={form.directionId}
+                                            onChange={e => setForm({ ...form, directionId: e.target.value ? Number(e.target.value) : '' })}
+                                        >
+                                            <option value="">Tanlang...</option>
+                                            {directions.map(d => (
+                                                <option key={d.id} value={d.id}>
+                                                    {d.name}{d.subjects ? ' (' + d.subjects + ')' : ''}
+                                                </option>
+                                            ))}
+                                        </select>
+                                    </div>
+                                )}
+                            </div>
+
+                            <div className="grid grid-cols-2 gap-4">
+                                <div>
+                                    <label className={lbl}>Viloyat</label>
+                                    <select
+                                        className={sel}
+                                        value={form.region}
+                                        onChange={e => setForm({ ...form, region: e.target.value, district: '' })}
+                                    >
+                                        <option value="">Tanlang...</option>
+                                        {Object.keys(UZB_REGIONS).map(r => <option key={r} value={r}>{r}</option>)}
+                                    </select>
+                                </div>
+                                <div>
+                                    <label className={lbl}>Tuman</label>
+                                    <select
+                                        className={sel}
+                                        disabled={!form.region}
+                                        value={form.district}
+                                        onChange={e => setForm({ ...form, district: e.target.value })}
+                                    >
+                                        <option value="">Tanlang...</option>
+                                        {form.region && UZB_REGIONS[form.region]?.map(d => <option key={d} value={d}>{d}</option>)}
+                                    </select>
+                                </div>
+                            </div>
+
+                            {/* Imtiyozlar. "Sertifikat" belgilansa pastdagi sertifikat
+                                bo'limi allaqachon bor - server ham sertifikat qo'shilsa
+                                imtiyozni o'zi qo'shadi. */}
+                            <div>
+                                <label className={lbl}>Imtiyozingiz bormi?</label>
+                                <div className="flex flex-wrap gap-2">
+                                    {PRIVILEGES.map(priv => {
+                                        const checked = form.privileges.includes(priv);
+                                        return (
+                                            <button
+                                                key={priv}
+                                                type="button"
+                                                onClick={() => setForm({
+                                                    ...form,
+                                                    privileges: checked
+                                                        ? form.privileges.filter(p => p !== priv)
+                                                        : [...form.privileges, priv],
+                                                })}
+                                                className={`px-3 py-2 rounded-xl text-[11px] font-bold border transition-all cursor-pointer ${
+                                                    checked
+                                                        ? 'bg-[var(--brand-color,#1b6b6b)] text-white border-[var(--brand-color,#1b6b6b)]'
+                                                        : 'bg-transparent text-matn-xira border-chiziq hover:border-[var(--brand-color,#1b6b6b)]'
+                                                }`}
+                                            >
+                                                {checked ? '\u2713 ' : ''}{priv}
+                                            </button>
+                                        );
+                                    })}
                                 </div>
                             </div>
 
@@ -655,6 +794,25 @@ export default function PublicApply() {
                                     />
                                 </div>
                             </div>
+
+                            {transports.length > 0 && (
+                                <div>
+                                    <label className={lbl}>Transport kerakmi?</label>
+                                    <div className="relative">
+                                        <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-matn-xira">
+                                            <Bus size={15} />
+                                        </div>
+                                        <select
+                                            className={`${inp} appearance-none cursor-pointer`}
+                                            value={form.transportId}
+                                            onChange={e => setForm({ ...form, transportId: e.target.value ? Number(e.target.value) : '' })}
+                                        >
+                                            <option value="">Kerak emas</option>
+                                            {transports.map(tr => <option key={tr.id} value={tr.id}>{tr.name}</option>)}
+                                        </select>
+                                    </div>
+                                </div>
+                            )}
 
                             <div>
                                 <label className={lbl}>Savollaringiz yoki qo'shimcha izohlar</label>

@@ -56,6 +56,14 @@ model Student {
   region        String?
   district      String?
 
+  // Nima maqsadda o'qiyapti: "Asosiy fan" (yo'nalishning asosiy fani),
+  // "Majburiy fan" (blok imtihonining majburiy fani) yoki "Mustaqil"
+  // (kirish imtihoniga bog'liq emas, o'zi uchun).
+  studyGoal     String?
+  // Qaysi yo'nalishga tayyorlanmoqda (masalan "Iqtisodiyot").
+  directionId   Int?
+  direction     Direction? @relation(fields: [directionId], references: [id])
+
   // Relations
   schoolId   Int
   school     School    @relation(fields: [schoolId], references: [id])
@@ -234,6 +242,9 @@ model Lead {
   certType      String?
   certificates  Json?     @default("[]")
 
+  studyGoal     String?
+  directionId   Int?
+
   schoolId      Int
   school        School   @relation(fields: [schoolId], references: [id])
 
@@ -350,6 +361,7 @@ model School {
   cashHandovers    CashHandover[]
   cashDayCloses    CashDayClose[]
   faceProfiles     FaceProfile[]
+  directions       Direction[]
 }
 
 model SmsLog {
@@ -776,6 +788,24 @@ model FaceProfile {
 
   schoolId   Int
   school     School   @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+
+  @@index([schoolId])
+}
+
+// O'qish yo'nalishi: "Iqtisodiyot (Matematika + Ingliz tili)".
+//
+// Admin sozlamalardan o'zi qo'shadi — ro'yxat markazdan markazga farq qiladi.
+// `subjects` shunchaki ko'rsatiladigan matn: qaysi fanlar juftligi ekani
+// o'quvchini yozayotgan xodimga ham, ariza beruvchiga ham shu yerda ko'rinadi.
+model Direction {
+  id        Int      @id @default(autoincrement())
+  name      String
+  subjects  String?
+  createdAt DateTime @default(now())
+
+  schoolId  Int
+  school    School   @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  students  Student[]
 
   @@index([schoolId])
 }

@@ -3,7 +3,7 @@ import {
     Building2, Plus, ChevronDown, ChevronRight, ShieldCheck, Trash2, Save, X,
     Layout, MapPin, Bus, BookOpen, DoorOpen, Globe, Phone, Clock, Camera,
     Instagram, Send, Shield, ToggleLeft, ToggleRight, Pencil,
-    Zap, Lock, Link2, ExternalLink, MessageSquare
+    Zap, Lock, Link2, ExternalLink, MessageSquare, Compass
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useCRM, THEMES } from '../context/CRMContext';
@@ -11,7 +11,7 @@ import { useLang } from '../context/LanguageContext';
 import { compressAndUpload } from '../lib/image';
 
 type SectionId = 'profil' | 'xonalar' | 'filiallar' | 'ruxsatlar' | 'dizayn'
-    | 'integratsiyalar' | 'avtomatlashtirish' | 'xavfsizlik';
+    | 'integratsiyalar' | 'avtomatlashtirish' | 'xavfsizlik' | 'yonalishlar';
 
 const DEFAULT_PERMISSIONS: Record<string, Record<string, boolean>> = {
     ADMIN:        { dashboard: true,  students: true,  teachers: true,  groups: true,  finance: true,  exams: true,  leads: true,  hr: true,  reports: true,  settings: true  },
@@ -31,6 +31,7 @@ const lbl = "block text-[11px] font-extrabold   text-matn-xira mb-2";
 export default function Settings() {
     const { settings, updateSettings, rooms, schools,
         addRoom, deleteRoom, addSchool, updateSchool, deleteSchool,
+        directions, addDirection, updateDirection, deleteDirection,
         themeColor, setThemeColor } = useCRM();
     const { user: currentUser, token } = useCRM();
     const { t } = useLang();
@@ -58,6 +59,8 @@ export default function Settings() {
     const [isAddModalOpen, setIsAddModalOpen] = useState(false);
     // Tahrirlanayotgan filial. null bo'lsa modal "qo'shish" rejimida ishlaydi.
     const [editingSchool, setEditingSchool] = useState<any>(null);
+    // Tahrirlanayotgan yo'nalish — xuddi shu modal ishlatiladi.
+    const [editingDirection, setEditingDirection] = useState<any>(null);
     const [newItem, setNewItem] = useState<any>({});
 
     const [permissions, setPermissions] = useState<Record<string, Record<string, boolean>>>(() => {
@@ -201,6 +204,12 @@ export default function Settings() {
         try {
             if (activeSection === 'xonalar') {
                 await addRoom({ ...newItem, capacity: Number(newItem.capacity) });
+            } else if (activeSection === 'yonalishlar') {
+                if (editingDirection) {
+                    await updateDirection(editingDirection.id, { name: newItem.name, subjects: newItem.subjects || null });
+                } else {
+                    await addDirection({ name: newItem.name, subjects: newItem.subjects || null });
+                }
             } else if (activeSection === 'filiallar') {
                 if (editingSchool) {
                     await updateSchool(editingSchool.id, { name: newItem.name, address: newItem.address });
@@ -210,6 +219,7 @@ export default function Settings() {
             }
             setIsAddModalOpen(false);
             setEditingSchool(null);
+            setEditingDirection(null);
             setNewItem({});
         } catch (err: any) {
             console.error('Add failed', err);
@@ -229,6 +239,7 @@ export default function Settings() {
             id: 'ofis', label: t('settings_section_office'), icon: <DoorOpen size={16} />,
             items: [
                 { id: 'xonalar' as SectionId, label: t('settings_rooms'), icon: <DoorOpen size={14} />, count: rooms?.length },
+                { id: 'yonalishlar' as SectionId, label: "Yo'nalishlar", icon: <Compass size={14} />, count: directions?.length },
             ]
         },
         ...(isAdminOrManager ? [{
@@ -540,6 +551,27 @@ export default function Settings() {
         );
 
 
+        if (activeSection === 'yonalishlar') return (
+            <ListSection
+                title="Yo'nalishlar"
+                subtitle="Kirish yo'nalishlari: nomi va qaysi fanlardan iborat. Bu ro'yxat o'quvchi qo'shish oynasida ham, onlayn ariza formasida ham chiqadi."
+                icon={<Compass size={16} />}
+                onAdd={() => { setEditingDirection(null); setNewItem({}); setIsAddModalOpen(true); }}
+                items={directions || []}
+                emptyText="Hali yo'nalish qo'shilmagan"
+                renderItem={(item: any) => (
+                    <ItemCard key={item.id} icon={<Compass size={16} />} iconBg="bg-sky-50 text-sky-600 border-sky-100 dark:bg-sky-950/20 dark:text-sky-400 dark:border-sky-900/40"
+                        title={item.name} subtitle={item.subjects || "Fanlar ko'rsatilmagan"}
+                        onEdit={() => {
+                            setEditingDirection(item);
+                            setNewItem({ name: item.name, subjects: item.subjects || '' });
+                            setIsAddModalOpen(true);
+                        }}
+                        onDelete={() => deleteDirection(item.id)} />
+                )}
+            />
+        );
+
         if (activeSection === 'filiallar') return (
             <ListSection
                 title={t('settings_branches')} subtitle={t('branches_subtitle')}
@@ -673,7 +705,9 @@ export default function Settings() {
 
     const addModalTitle = activeSection === 'xonalar'
         ? t('add_room')
-        : (editingSchool ? 'Filialni tahrirlash' : t('add_branch'));
+        : activeSection === 'yonalishlar'
+            ? (editingDirection ? "Yo'nalishni tahrirlash" : "Yangi yo'nalish")
+            : (editingSchool ? 'Filialni tahrirlash' : t('add_branch'));
 
     return (
         <div className="space-y-6 animate-in fade-in duration-500">
@@ -740,7 +774,7 @@ export default function Settings() {
                                     {editingSchool ? "Nomi va manzilini o'zgartirish" : t('add_data_subtitle')}
                                 </p>
                             </div>
-                            <button aria-label="Yopish" onClick={() => { setIsAddModalOpen(false); setEditingSchool(null); }} className="w-9 h-9 flex items-center justify-center text-matn-xira hover:bg-gray-55 dark:hover:bg-gray-700 rounded-xl cursor-pointer"><X size={18} /></button>
+                            <button aria-label="Yopish" onClick={() => { setIsAddModalOpen(false); setEditingSchool(null); setEditingDirection(null); }} className="w-9 h-9 flex items-center justify-center text-matn-xira hover:bg-gray-55 dark:hover:bg-gray-700 rounded-xl cursor-pointer"><X size={18} /></button>
                         </div>
                         <form onSubmit={handleAddItem} className="space-y-4">
                             <div>
@@ -753,6 +787,17 @@ export default function Settings() {
                                     <input required type="number" className={inp} value={newItem.capacity || ''} onChange={e => setNewItem({ ...newItem, capacity: e.target.value })} />
                                 </div>
                             )}
+                            {activeSection === 'yonalishlar' && (
+                                <div>
+                                    <label className={lbl}>Fanlari</label>
+                                    <input type="text" placeholder="Matematika + Ingliz tili" className={inp}
+                                        value={newItem.subjects || ''}
+                                        onChange={e => setNewItem({ ...newItem, subjects: e.target.value })} />
+                                    <p className="text-[11px] font-bold text-matn-xira mt-2">
+                                        Masalan: "Iqtisodiyot" yo'nalishi uchun "Matematika + Ingliz tili".
+                                    </p>
+                                </div>
+                            )}
                             {activeSection === 'filiallar' && (
                                 <div>
                                     <label className={lbl}>{t('address')}</label>
@@ -760,7 +805,7 @@ export default function Settings() {
                                 </div>
                             )}
                             <div className="flex gap-3 pt-4 border-t border-dashed border-chiziq/50">
-                                <button type="button" onClick={() => { setIsAddModalOpen(false); setEditingSchool(null); }}
+                                <button type="button" onClick={() => { setIsAddModalOpen(false); setEditingSchool(null); setEditingDirection(null); }}
                                     className="flex-1 py-3 bg-chiziq text-gray-700 dark:text-white text-xs font-extrabold rounded-2xl transition-all cursor-pointer hover:bg-gray-200 dark:hover:bg-gray-600">
                                     {t('cancel')}
                                 </button>

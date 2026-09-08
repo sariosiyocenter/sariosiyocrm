@@ -19,6 +19,7 @@ const MODEL_URL = 'https://cdn.jsdelivr.net/gh/justadudewhohacks/face-api.js@0.2
 export const FACE_INPUT_SIZE = 416;
 
 let modelsPromise: Promise<void> | null = null;
+let ssdPromise: Promise<void> | null = null;
 
 /** Modellarni bir marta yuklaydi (takroriy chaqiruvlar o'sha va'dani kutadi). */
 export function loadFaceModels(onStep?: (msg: string) => void): Promise<void> {
@@ -33,6 +34,23 @@ export function loadFaceModels(onStep?: (msg: string) => void): Promise<void> {
         })().catch(err => { modelsPromise = null; throw err; });
     }
     return modelsPromise;
+}
+
+/**
+ * Kuchliroq (va og'irroq) detektor — faqat tiny detektor yuzni topa olmaganda.
+ *
+ * Tiny detektor tez, lekin rasmda yuz kichik bo'lsa yoki bosh biroz burilgan
+ * bo'lsa uni o'tkazib yuboradi: profil rasmida yuz aniq ko'rinib turgani
+ * holda ham "yuz topilmadi" chiqardi. SSD MobileNet o'sha rasmlarni topadi.
+ * Vazni ~5 MB, shuning uchun oldindan emas, kerak bo'lganda va bir marta
+ * yuklanadi.
+ */
+function loadSsd(): Promise<void> {
+    if (!ssdPromise) {
+        ssdPromise = faceapi.nets.ssdMobilenetv1.loadFromUri(MODEL_URL)
+            .catch(err => { ssdPromise = null; throw err; });
+    }
+    return ssdPromise;
 }
 
 export type FaceFail = 'topilmadi' | 'kop' | 'rasm';
@@ -54,6 +72,11 @@ export function faceFailedBefore(studentId: number, photo: string): boolean {
 
 export function rememberFaceTry(studentId: number, photo: string, ok: boolean): void {
     tried.set(triedKey(studentId, photo), ok);
+}
+
+/** Xodim "qayta urinish" bosganda: kesh o'chadi, rasm boshqatdan tekshiriladi. */
+export function forgetFaceTry(studentId: number, photo: string): void {
+    tried.delete(triedKey(studentId, photo));
 }
 
 /** `descriptor` bo'lsa — topildi; aks holda `reason` sababni aytadi. */
@@ -82,7 +105,39 @@ function loadImage(src: string): Promise<HTMLImageElement> {
     });
 }
 
-/** Rasmdagi yagona yuzning belgisi. Modellar oldindan yuklangan bo'lishi kerak. */
+/**
+ * Aniqlash urinishlari ketma-ketligi.
+ *
+ * Bitta sozlama hamma rasmga to'g'ri kelmaydi: 416 katta yuzni yaxshi topadi,
+ * 608 esa kadrning kichik qismini egallagan yuzni. Chegara ham pasayib boradi —
+ * oxirgi urinishda "bo'lsa bo'ldi" deb qaraladi, chunki muqobili baribir
+ * "yuz topilmadi".
+ */
+const TINY_TRIES: { inputSize: number; scoreThreshold: number }[] = [
+    { inputSize: FACE_INPUT_SIZE, scoreThreshold: 0.5 },
+    { inputSize: 608, scoreThreshold: 0.4 },
+    { inputSize: 320, scoreThreshold: 0.3 },
+];
+
+/**
+ * Bir nechta yuz topilganda qaysi biri o'quvchi ekanini tanlaydi.
+ *
+ * Profil rasmida odatda bitta odam bo'ladi, lekin orqa fonda tasodifiy yuz
+ * (devordagi surat, yonidagi odam) ham topilishi mumkin. Agar eng katta yuz
+ * ikkinchisidan ikki barobar katta bo'lsa — o'quvchi o'sha, chunki suratga
+ * aynan u tushgan. Aks holda taxmin qilmaymiz: noto'g'ri yuz yozib qo'yilsa
+ * yo'qlama boshqa bolani belgilab yuboradi.
+ */
+function pickMain<T extends { detection: { box: { width: number; height: number } } }>(found: T[]): T | null {
+    if (found.length === 1) return found[0];
+    const byArea = [...found].sort((a, b) =>
+        (b.detection.box.width * b.detection.box.height) - (a.detection.box.width * a.detection.box.height));
+    const first = byArea[0].detection.box.width * byArea[0].detection.box.height;
+    const second = byArea[1].detection.box.width * byArea[1].detection.box.height;
+    return first >= second * 2 ? byArea[0] : null;
+}
+
+/** Rasmdagi asosiy yuzning belgisi. Modellar oldindan yuklangan bo'lishi kerak. */
 export async function descriptorFromPhoto(src: string): Promise<FaceResult> {
     let img: HTMLImageElement;
     try {
@@ -91,15 +146,34 @@ export async function descriptorFromPhoto(src: string): Promise<FaceResult> {
         return { reason: 'rasm' };
     }
     try {
-        const found = await faceapi
-            .detectAllFaces(img, new faceapi.TinyFaceDetectorOptions({ inputSize: FACE_INPUT_SIZE, scoreThreshold: 0.5 }))
-            .withFaceLandmarks(true)
-            .withFaceDescriptors();
+        let tooMany = false;
 
-        if (found.length === 0) return { reason: 'topilmadi' };
-        // Ikki kishilik rasmda kim kimligini aytib bo'lmaydi — taxmin qilmaymiz.
-        if (found.length > 1) return { reason: 'kop' };
-        return { descriptor: Array.from(found[0].descriptor) };
+        for (const opts of TINY_TRIES) {
+            const found = await faceapi
+                .detectAllFaces(img, new faceapi.TinyFaceDetectorOptions(opts))
+                .withFaceLandmarks(true)
+                .withFaceDescriptors();
+            if (found.length === 0) continue;
+            const main = pickMain(found);
+            if (main) return { descriptor: Array.from(main.descriptor) };
+            tooMany = true;
+        }
+
+        // Tiny detektor topa olmadi — kuchliroq modelga o'tamiz.
+        try {
+            await loadSsd();
+            const found = await faceapi
+                .detectAllFaces(img, new faceapi.SsdMobilenetv1Options({ minConfidence: 0.4 }))
+                .withFaceLandmarks(true)
+                .withFaceDescriptors();
+            if (found.length > 0) {
+                const main = pickMain(found);
+                if (main) return { descriptor: Array.from(main.descriptor) };
+                tooMany = true;
+            }
+        } catch { /* og'ir model yuklanmadi — tiny natijasi bilan qolamiz */ }
+
+        return { reason: tooMany ? 'kop' : 'topilmadi' };
     } catch {
         return { reason: 'rasm' };
     }

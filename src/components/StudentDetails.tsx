@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import {
     ArrowLeft, Phone, Calendar, MapPin, BookOpen, CreditCard, ReceiptText,
-    Clock, CheckCircle, XCircle, Plus, Award, ClipboardCheck, Users, Layers, ChevronRight, Save, Edit, Bus, Sparkles, Image as ImageIcon, Camera, X, Send, Trash2, Star, ScanFace, Maximize2
+    Clock, CheckCircle, XCircle, Plus, Award, ClipboardCheck, Users, Layers, ChevronRight, Save, Edit, Bus, Sparkles, Image as ImageIcon, Camera, X, Send, Trash2, Star, ScanFace, Maximize2, Target, Compass
 } from 'lucide-react';
 import { useCRM } from '../context/CRMContext';
 import StatTile from './ui/StatTile';
@@ -18,8 +18,10 @@ import { activeCourses } from '../lib/activeCourses';
 import PhotoViewer from './PhotoViewer';
 import DiscountModal from './DiscountModal';
 import StudentMoveModal from './StudentMoveModal';
+import { STUDY_GOALS, UZB_REGIONS, ORG_TYPES } from '../lib/studentFields';
 import StudentLedger from './StudentLedger';
-import { loadFaceModels, descriptorFromPhoto, saveFaceProfiles, faceFailText, faceFailedBefore, rememberFaceTry } from '../lib/faceDescriptor';
+import { loadFaceModels, descriptorFromPhoto, saveFaceProfiles, faceFailText, faceFailedBefore, rememberFaceTry, forgetFaceTry } from '../lib/faceDescriptor';
+import type { FaceFail } from '../lib/faceDescriptor';
 
 /**
  * Face ID holati. Alohida "rasmga tushish" ham, tugma ham yo'q: belgi profil
@@ -27,79 +29,12 @@ import { loadFaceModels, descriptorFromPhoto, saveFaceProfiles, faceFailText, fa
  */
 type FaceState = 'tekshirilmoqda' | 'tayyor' | 'yuzYoq' | 'rasmYoq';
 
-const UZB_REGIONS: Record<string, string[]> = {
-  "Surxondaryo": [
-    "Sariosiyo", "Denov", "Uzun", "Sho'rchi", "Termiz", "Qumqo'rg'on",
-    "Jarqo'rg'on", "Sherobod", "Boysun", "Muzrabot", "Angor", "Qiziriq",
-    "Oltinsoy", "Bandixon"
-  ],
-  "Toshkent shahri": [
-    "Yunusobod", "Chilonzor", "Mirzo Ulug'bek", "Yashnobod", "Mirobod",
-    "Uchtepa", "Shayxontohur", "Olmazor", "Sergeli", "Yakkasaroy",
-    "Bektemir", "Yangihayot"
-  ],
-  "Toshkent viloyati": [
-    "Chirchiq", "Angren", "Olmaliq", "Bekobod", "Keles", "Zangiota",
-    "Qibray", "Bo'stonliq", "Parkent", "Piskent", "O'rtachirchiq",
-    "Yuqorichirchiq", "Quyichirchiq", "Oqqo'rg'on", "Bo'ka", "Yangiyo'l"
-  ],
-  "Samarqand": [
-    "Samarqand shahri", "Bulung'ur", "Ishtixon", "Jomboy", "Kattaqo'rg'on",
-    "Narpay", "Nurobod", "Oqdaryo", "Payariq", "Pastdarg'om", "Paxtachi",
-    "Toyloq", "Qo'shrabot", "Urgut"
-  ],
-  "Farg'ona": [
-    "Farg'ona shahri", "Marg'ilon", "Qo'qon", "Bog'dod", "Beshariq",
-    "Buvayda", "Dang'ara", "Quva", "Rishton", "Toshloq", "Uchko'prik",
-    "O'zbekiston", "Yozyovon", "So'x"
-  ],
-  "Andijon": [
-    "Andijon shahri", "Asaka", "Baliqchi", "Buloqboshi", "Bo'ston",
-    "Jalaquduq", "Izboskan", "Marhamat", "Oltinko'l", "Paxtaobod",
-    "Ulug'nor", "Xo'jaobod", "Shahrixon", "Qo'rg'ontepa"
-  ],
-  "Namangan": [
-    "Namangan shahri", "Kosonsoy", "Mingbuloq", "Pop", "To'raqo'rg'on",
-    "Uychi", "Uchqo'rg'on", "Chortoq", "Chust", "Yangiqo'rg'on", "Davlatobod"
-  ],
-  "Qashqadaryo": [
-    "Karshi shahri", "Dehqonobod", "Kamashi", "Kasbi", "Kitob",
-    "Koson", "Ko'kdala", "Mirishkor", "Muborak", "Nishon",
-    "Chiroqchi", "Shahrisabz", "Yakkabog'"
-  ],
-  "Buxoro": [
-    "Buxoro shahri", "Gijduvon", "Jondor", "Kogon", "Kofirnihon",
-    "Qorako'l", "Qoravulbozor", "Olot", "Peshku", "Romitan",
-    "Shofirkon", "Vobkent"
-  ],
-  "Xorazm": [
-    "Urganch shahri", "Xiva", "Bog'ot", "Gurlan", "Qo'shko'pir",
-    "Shovot", "Toza bozor", "Xonqa", "Hazorasp", "Yangiariq", "Yangibozor"
-  ],
-  "Navoiy": [
-    "Navoiy shahri", "Karmana", "Konimex", "Nurota", "Qiziltepa",
-    "Tomdi", "Uchquduq", "Xatirchi"
-  ],
-  "Jizzax": [
-    "Jizzax shahri", "Arnasoy", "Baxmal", "Do'stlik", "Forish",
-    "G'allaorol", "Sharof Rashidov", "Mirzacho'l", "Paxtakor", "Yangiobod"
-  ],
-  "Sirdaryo": [
-    "Guliston shahri", "Shirin", "Yangiyer", "Boyovut", "Oqoltin",
-    "Sardoba", "Sayxunobod", "Sirdaryo tumani", "Xovost"
-  ],
-  "Qoraqalpog'iston": [
-    "Nukus shahri", "Amudaryo", "Beruniy", "Chimboy", "Ellikqala",
-    "Kegeyli", "Mo'ynoq", "Qonliko'l", "Qo'ng'irot", "Shumanay",
-    "Taxtako'pir", "To'rtko'l", "Xo'jayli"
-  ]
-};
 
 export default function StudentDetails() {
     const { id } = useParams<{ id: string }>();
     const navigate = useNavigate();
     const { t } = useLang();
-    const { students, groups, teachers, courses, payments, attendances, scores, transports, addPayment, addAttendance, addScore, updateStudent, addStudentToGroup, deleteStudent, setStudentStatus, topics, updateAttendance, showNotification, loadAttendanceFor } = useCRM();
+    const { students, groups, teachers, courses, payments, attendances, scores, transports, directions, addPayment, addAttendance, addScore, updateStudent, addStudentToGroup, deleteStudent, setStudentStatus, topics, updateAttendance, showNotification, loadAttendanceFor } = useCRM();
     const confirm = useConfirm();
     const [activeTab, setActiveTab] = useState('umumiy');
     const [showPaymentModal, setShowPaymentModal] = useState(false);
@@ -114,6 +49,10 @@ export default function StudentDetails() {
     const [isPhotoModalOpen, setIsPhotoModalOpen] = useState(false);
     /** Bu o'quvchi Face ID ga qo'shilganmi (alohida jadvaldan tekshiriladi). */
     const [faceState, setFaceState] = useState<FaceState>('tekshirilmoqda');
+    /** Nega olinmadi. Ilgari har qanday xato "rasmda yuz aniqlanmadi" deb
+     *  ko'rsatilardi — rasm umuman ochilmagan holat ham shunday chiqib,
+     *  xodim aybsiz rasmni almashtirib yurardi. */
+    const [faceFail, setFaceFail] = useState<FaceFail>('topilmadi');
     const [showDiscountModal, setShowDiscountModal] = useState(false);
     // Guruhlar orasida ko'chirish / o'qishni to'xtatib pulni qayta hisoblash.
     const [moveMode, setMoveMode] = useState<'transfer' | 'refund' | null>(null);
@@ -182,6 +121,7 @@ export default function StudentDetails() {
             const res = await descriptorFromPhoto(src);
             if (!res.descriptor) {
                 rememberFaceTry(student.id, src, false);
+                setFaceFail(res.reason || 'rasm');
                 setFaceState('yuzYoq');
                 if (warn) showNotification(`Face ID olinmadi — ${faceFailText(res.reason || 'rasm')}. Aniqroq rasm qo'ying.`, 'error');
                 return;
@@ -191,9 +131,17 @@ export default function StudentDetails() {
             setFaceState('tayyor');
         } catch (err: any) {
             rememberFaceTry(student.id, src, false);
+            setFaceFail('rasm');
             setFaceState('yuzYoq');
             if (warn) showNotification(err?.message || 'Face ID olinmadi', 'error');
         }
+    };
+
+    /** "Qayta urinish": seans keshini tozalab, belgini yangidan hisoblaydi. */
+    const retryFace = () => {
+        if (!student?.photo) return;
+        forgetFaceTry(student.id, student.photo);
+        syncFaceFromPhoto(student.photo, true);
     };
 
     const handlePhotoCapture = async (base64: string) => {
@@ -227,6 +175,8 @@ export default function StudentDetails() {
         orgType: '',
         region: '',
         district: '',
+        studyGoal: '',
+        directionId: '' as string | number,
         telegramId: '',
         fatherTelegramId: '',
         motherTelegramId: '',
@@ -234,6 +184,7 @@ export default function StudentDetails() {
     });
 
     const student = students.find(s => s.id === Number(id));
+    const studentDirection = (directions || []).find(d => d.id === student?.directionId) || null;
 
 
     // Ismni oddiy yozuvga keltirish — umumiy yordamchi (src/lib/displayName).
@@ -332,6 +283,8 @@ export default function StudentDetails() {
             orgType: student.orgType || '',
             region: student.region || '',
             district: student.district || '',
+            studyGoal: student.studyGoal || '',
+            directionId: student.directionId ?? '',
             telegramId: student.telegramId || '',
             fatherTelegramId: student.fatherTelegramId || '',
             motherTelegramId: student.motherTelegramId || '',
@@ -400,7 +353,9 @@ export default function StudentDetails() {
             // tegilmagan maydonlar umuman yuborilmaydi.
             const payload: Record<string, any> = {
                 ...editForm,
-                transportId: editForm.transportId ? Number(editForm.transportId) : null
+                transportId: editForm.transportId ? Number(editForm.transportId) : null,
+                studyGoal: editForm.studyGoal || null,
+                directionId: editForm.directionId ? Number(editForm.directionId) : null
             };
             const telegramFields = ['telegramId', 'fatherTelegramId', 'motherTelegramId'] as const;
             for (const key of telegramFields) {
@@ -864,6 +819,30 @@ export default function StudentDetails() {
                                         <label className={labelCls}>{t('address')}</label>
                                         <input type="text" value={editForm.address} onChange={e => setEditForm({...editForm, address: e.target.value})} className={inputCls} />
                                     </div>
+                                    <div className="grid grid-cols-2 gap-2">
+                                        <div>
+                                            <label className={labelCls}>Maqsad</label>
+                                            <select
+                                                value={editForm.studyGoal}
+                                                onChange={e => setEditForm({...editForm, studyGoal: e.target.value})}
+                                                className={inputCls}
+                                            >
+                                                <option value="">Tanlang...</option>
+                                                {STUDY_GOALS.map(g => <option key={g} value={g}>{g}</option>)}
+                                            </select>
+                                        </div>
+                                        <div>
+                                            <label className={labelCls}>Yo'nalish</label>
+                                            <select
+                                                value={editForm.directionId}
+                                                onChange={e => setEditForm({...editForm, directionId: e.target.value})}
+                                                className={inputCls}
+                                            >
+                                                <option value="">Tanlang...</option>
+                                                {(directions || []).map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
+                                            </select>
+                                        </div>
+                                    </div>
                                     <div>
                                         <label className={labelCls}>Ta'lim muassasasi turi</label>
                                         <select
@@ -872,11 +851,7 @@ export default function StudentDetails() {
                                             className={inputCls}
                                         >
                                             <option value="">Tanlang...</option>
-                                            <option value="Maktab">Maktab</option>
-                                            <option value="Bog'cha">Bog'cha</option>
-                                            <option value="Oliy o'quv yurti">Oliy o'quv yurti</option>
-                                            <option value="Kollej / Litsey">Kollej / Litsey</option>
-                                            <option value="Boshqa">Boshqa</option>
+                                            {ORG_TYPES.map(o => <option key={o} value={o}>{o}</option>)}
                                         </select>
                                     </div>
                                     <div>
@@ -1169,21 +1144,32 @@ export default function StudentDetails() {
                                         rasmidan o'zi olinadi. Bu qator faqat natijani aytadi. */}
                                     <div className="flex items-center justify-between gap-2 py-1"
                                         title={faceState === 'yuzYoq'
-                                            ? "Profil rasmida yuz aniqlanmadi — aniqroq rasm qo'ysangiz Face ID o'zi ishlaydi"
+                                            ? "Face ID belgisi profil rasmidan olinmadi — " + faceFailText(faceFail)
                                             : "Yuz belgisi profil rasmidan avtomatik olinadi"}>
                                         <div className="flex items-center gap-2 text-matn-xira">
                                             <ScanFace className="w-3.5 h-3.5" />
                                             <span className="text-[12px]">Face ID</span>
                                         </div>
-                                        <span className={"text-[11px] font-bold " + (
-                                            faceState === 'tayyor' ? 'text-emerald-600 dark:text-emerald-400'
-                                                : faceState === 'yuzYoq' ? 'text-amber-500'
-                                                    : 'text-matn-xira')}>
-                                            {faceState === 'tayyor' ? 'Tayyor'
-                                                : faceState === 'yuzYoq' ? "Rasmda yuz aniqlanmadi"
-                                                    : faceState === 'rasmYoq' ? "Rasm yo'q"
-                                                        : 'Tekshirilmoqda…'}
-                                        </span>
+                                        <div className="flex items-center gap-2">
+                                            <span className={"text-[11px] font-bold " + (
+                                                faceState === 'tayyor' ? 'text-emerald-600 dark:text-emerald-400'
+                                                    : faceState === 'yuzYoq' ? 'text-amber-500'
+                                                        : 'text-matn-xira')}>
+                                                {faceState === 'tayyor' ? 'Tayyor'
+                                                    : faceState === 'yuzYoq'
+                                                        ? (faceFail === 'rasm' ? "Rasm ochilmadi"
+                                                            : faceFail === 'kop' ? "Rasmda bir nechta yuz bor"
+                                                                : "Rasmda yuz aniqlanmadi")
+                                                        : faceState === 'rasmYoq' ? "Rasm yo'q"
+                                                            : 'Tekshirilmoqda…'}
+                                            </span>
+                                            {faceState === 'yuzYoq' && (
+                                                <button onClick={retryFace} title="Belgini qaytadan hisoblash"
+                                                    className="text-[11px] font-bold text-brand hover:underline cursor-pointer">
+                                                    Qayta urinish
+                                                </button>
+                                            )}
+                                        </div>
                                     </div>
                                     <InfoRow
                                         icon={<Bus className="w-3.5 h-3.5" />}
@@ -1242,6 +1228,13 @@ export default function StudentDetails() {
                                             </div>
                                         )}
                                     </div>
+                                    {student.studyGoal && (
+                                        <InfoRow icon={<Target className="w-3.5 h-3.5" />} label="Maqsad" value={student.studyGoal} />
+                                    )}
+                                    {studentDirection && (
+                                        <InfoRow icon={<Compass className="w-3.5 h-3.5" />} label="Yo'nalish"
+                                            value={studentDirection.name + (studentDirection.subjects ? ` (${studentDirection.subjects})` : '')} />
+                                    )}
                                     {student.orgType && (
                                         <InfoRow icon={<BookOpen className="w-3.5 h-3.5" />} label="Muassasa turi" value={student.orgType} />
                                     )}

@@ -1270,13 +1270,14 @@ app.post('/api/students', authenticate, async (req, res, next) => {
       'balance','photo','comment','rating','gender','fatherName','fatherPhone','motherName','motherPhone',
       'studentSchool','privilegeType','certCategory','certSubject','certType','certScore',
       'customPrices','orgType','region','district','transportId','statusChangedAt','leaveReason',
-      'certificates'];
+      'certificates','studyGoal','directionId'];
     const data = {};
     for (const key of ALLOWED) {
       if (rest[key] !== undefined) data[key] = rest[key];
     }
     if (data.balance !== undefined) data.balance = parseFloat(data.balance) || 0;
     if (data.transportId !== undefined) data.transportId = data.transportId ? parseInt(data.transportId) : null;
+    if (data.directionId !== undefined) data.directionId = data.directionId ? parseInt(data.directionId) : null;
     if (data.customPrices !== undefined && typeof data.customPrices !== 'object') delete data.customPrices;
     if (data.certificates !== undefined) {
       if (typeof data.certificates === 'string') {
@@ -1399,7 +1400,8 @@ app.put('/api/students/:id', authenticate, async (req, res, next) => {
       'balance','photo','rating','comment','gender','fatherName','fatherPhone','motherName','motherPhone',
       'studentSchool','privilegeType','certCategory','certSubject','certType','certScore',
       'customPrices','orgType','region','district','transportId','statusChangedAt',
-      'leaveReason','certificates','telegramId','fatherTelegramId','motherTelegramId'
+      'leaveReason','certificates','telegramId','fatherTelegramId','motherTelegramId',
+      'studyGoal','directionId'
     ];
     const data = {};
     for (const key of ALLOWED_STUDENT_FIELDS) {
@@ -1419,6 +1421,9 @@ app.put('/api/students/:id', authenticate, async (req, res, next) => {
 
     if (data.transportId !== undefined) {
       data.transportId = data.transportId ? parseInt(data.transportId) : null;
+    }
+    if (data.directionId !== undefined) {
+      data.directionId = data.directionId ? parseInt(data.directionId) : null;
     }
     // Telegram ID lar unique: bo'sh satr NULL emas, shuning uchun ikkinchi
     // o'quvchini bo'sh qiymat bilan saqlashda baza xato berardi. "Ulanmagan" —
@@ -2061,6 +2066,35 @@ app.get('/api/public/schools/:schoolId/groups', async (req, res, next) => {
   } catch (error) { next(error); }
 });
 
+// Ariza formasidagi yo'nalish va transport ro'yxatlari. Ikkalasi ham CRM dagi
+// "o'quvchi qo'shish" oynasidagi bilan bir xil bo'lishi kerak — shuning uchun
+// ochiq forma ham xuddi shu jadvallardan o'qiydi. Faqat nom chiqadi.
+app.get('/api/public/schools/:schoolId/directions', async (req, res, next) => {
+  try {
+    const schoolId = parseInt(req.params.schoolId);
+    if (isNaN(schoolId)) return res.status(400).json({ error: "Mavjud bo'lmagan filial ID" });
+    const rows = await prisma.direction.findMany({
+      where: { schoolId },
+      select: { id: true, name: true, subjects: true },
+      orderBy: { name: 'asc' }
+    });
+    res.json(rows);
+  } catch (error) { next(error); }
+});
+
+app.get('/api/public/schools/:schoolId/transports', async (req, res, next) => {
+  try {
+    const schoolId = parseInt(req.params.schoolId);
+    if (isNaN(schoolId)) return res.status(400).json({ error: "Mavjud bo'lmagan filial ID" });
+    const rows = await prisma.transport.findMany({
+      where: { schoolId, status: 'Faol' },
+      select: { id: true, name: true },
+      orderBy: { name: 'asc' }
+    });
+    res.json(rows);
+  } catch (error) { next(error); }
+});
+
 // Eskirgan: ariza havolasi endi doimiy, tokensiz. Bu yo'l faqat ilgari
 // tarqatilgan QR kodlar uchun qoldi — token bo'lmasa ham forma ochiladi va
 // ariza qabul qilinadi. Himoya serverda: so'rov cheklovi (soatiga 20 ta) va
@@ -2115,7 +2149,10 @@ app.post('/api/public/schools/:schoolId/leads', publicFormLimiter, async (req, r
       name, phone, course, source, token, groupId,
       birthDate, address, gender, studentSchool,
       fatherName, fatherPhone, motherName, motherPhone,
-      preferredTime, notes, photo, certificates
+      preferredTime, notes, photo, certificates,
+      // CRM dagi "o'quvchi qo'shish" oynasidagi bilan bir xil maydonlar —
+      // ariza orqali kelgan o'quvchi ham to'liq yozilsin.
+      orgType, region, district, studyGoal, directionId, transportId, privileges
     } = req.body;
 
     if (!name || !phone) return res.status(400).json({ error: 'Ism va telefon raqami majburiy' });
@@ -2147,6 +2184,30 @@ app.post('/api/public/schools/:schoolId/leads', publicFormLimiter, async (req, r
 
     const certList = Array.isArray(certificates) ? certificates : [];
 
+    // Imtiyozlar formadagi belgilangan tugmalardan keladi. "Sertifikat" esa
+    // sertifikat qo'shilgan bo'lsa o'zi qo'shiladi.
+    const PRIVILEGES = ['Nogironligi bor', 'Harbiy oila', "Xotin-qizlar daftari", 'Sertifikat'];
+    const privList = (Array.isArray(privileges) ? privileges : []).filter(p => PRIVILEGES.includes(p));
+    if (certList.length > 0 && !privList.includes('Sertifikat')) privList.push('Sertifikat');
+
+    const GOALS = ['Asosiy fan', 'Majburiy fan', 'Mustaqil'];
+
+    // Yo'nalish va transport — faqat shu filialnikilari qabul qilinadi.
+    let wantedDirectionId = parseInt(directionId);
+    if (Number.isInteger(wantedDirectionId) && wantedDirectionId > 0) {
+      const dir = await prisma.direction.findFirst({ where: { id: wantedDirectionId, schoolId }, select: { id: true } });
+      if (!dir) wantedDirectionId = null;
+    } else {
+      wantedDirectionId = null;
+    }
+    let wantedTransportId = parseInt(transportId);
+    if (Number.isInteger(wantedTransportId) && wantedTransportId > 0) {
+      const tr = await prisma.transport.findFirst({ where: { id: wantedTransportId, schoolId }, select: { id: true } });
+      if (!tr) wantedTransportId = null;
+    } else {
+      wantedTransportId = null;
+    }
+
     const student = await prisma.student.create({
       data: {
         name: cleanName,
@@ -2163,7 +2224,13 @@ app.post('/api/public/schools/:schoolId/leads', publicFormLimiter, async (req, r
         motherName: motherName || null,
         motherPhone: motherPhone || null,
         studentSchool: studentSchool || null,
-        privilegeType: certList.length > 0 ? 'Sertifikat' : 'None',
+        orgType: orgType || null,
+        region: region || null,
+        district: district || null,
+        studyGoal: GOALS.includes(studyGoal) ? studyGoal : null,
+        directionId: wantedDirectionId,
+        transportId: wantedTransportId,
+        privilegeType: privList.length > 0 ? privList.join(',') : 'None',
         certificates: certList,
         comment: `[Onlayn Ariza] Kurs: ${course || 'Aniqlanmagan'}.${notes ? ` Izoh: ${notes}` : ''}`,
         schoolId
@@ -2570,6 +2637,63 @@ app.post('/api/kassa/close', authenticate, requireRole(...STAFF_MANAGERS), async
 // further down (it omitted the driver relation and deleted a transport without first
 // detaching its students and delivery logs, so DELETE failed on a foreign key).
 // The later definition is now the only one — see the transport block below.
+
+// ===================== YO'NALISHLAR (DIRECTIONS) =====================
+//
+// "Iqtisodiyot (Matematika + Ingliz tili)" kabi kirish yo'nalishlari. Har bir
+// markazda o'z ro'yxati bo'lgani uchun qattiq yozib qo'yilmaydi — admin
+// sozlamalardan o'zi qo'shadi.
+app.get('/api/directions', authenticate, async (req, res, next) => {
+  try {
+    const schoolId = parseInt(req.query.schoolId);
+    if (!Number.isInteger(schoolId) || schoolId <= 0) return res.status(400).json({ error: 'schoolId required' });
+    if (!(await canAccessSchool(req.user, schoolId))) return res.status(403).json({ error: "Ruxsat yo'q" });
+    res.json(await prisma.direction.findMany({ where: { schoolId }, orderBy: { name: 'asc' } }));
+  } catch (error) { next(error); }
+});
+
+app.post('/api/directions', authenticate, requireRole(...STAFF_MANAGERS), async (req, res, next) => {
+  try {
+    const schoolId = parseInt(req.body.schoolId);
+    if (!Number.isInteger(schoolId) || schoolId <= 0) return res.status(400).json({ error: 'schoolId required' });
+    if (!(await canAccessSchool(req.user, schoolId))) return res.status(403).json({ error: "Ruxsat yo'q" });
+    const name = String(req.body.name || '').trim();
+    if (!name) return res.status(400).json({ error: "Yo'nalish nomi kerak" });
+    const subjects = req.body.subjects ? String(req.body.subjects).trim() : null;
+    res.json(await prisma.direction.create({ data: { name, subjects, schoolId } }));
+  } catch (error) { next(error); }
+});
+
+app.put('/api/directions/:id', authenticate, requireRole(...STAFF_MANAGERS), async (req, res, next) => {
+  try {
+    const id = parseInt(req.params.id);
+    const found = await prisma.direction.findUnique({ where: { id }, select: { schoolId: true } });
+    if (!found) return res.status(404).json({ error: "Yo'nalish topilmadi" });
+    if (!(await canAccessSchool(req.user, found.schoolId))) return res.status(403).json({ error: "Ruxsat yo'q" });
+    const data = {};
+    if (req.body.name !== undefined) {
+      const name = String(req.body.name).trim();
+      if (!name) return res.status(400).json({ error: "Yo'nalish nomi kerak" });
+      data.name = name;
+    }
+    if (req.body.subjects !== undefined) data.subjects = req.body.subjects ? String(req.body.subjects).trim() : null;
+    res.json(await prisma.direction.update({ where: { id }, data }));
+  } catch (error) { next(error); }
+});
+
+// O'chirilgan yo'nalish o'quvchilarni olib ketmaydi: ularning directionId si
+// NULL bo'ladi (schema: onDelete SetNull), ya'ni "yo'nalish tanlanmagan".
+app.delete('/api/directions/:id', authenticate, requireRole(...STAFF_MANAGERS), async (req, res, next) => {
+  try {
+    const id = parseInt(req.params.id);
+    const found = await prisma.direction.findUnique({ where: { id }, select: { schoolId: true } });
+    if (!found) return res.status(404).json({ error: "Yo'nalish topilmadi" });
+    if (!(await canAccessSchool(req.user, found.schoolId))) return res.status(403).json({ error: "Ruxsat yo'q" });
+    await prisma.student.updateMany({ where: { directionId: id }, data: { directionId: null } });
+    await prisma.direction.delete({ where: { id } });
+    res.json({ success: true });
+  } catch (error) { next(error); }
+});
 
 // Specific Types API
 // Specific Types API
@@ -3296,7 +3420,7 @@ app.get('/api/init', authenticate, async (req, res, next) => {
       students, teachers, groups, leads, payments, courses, rooms,
       settings, attendances, scores, teacherAttendances, staffAttendances, expenses,
       transports, routes, users, questions, exams, examResults, schools,
-      topics, syllabuses
+      topics, syllabuses, directions
     ] = await Promise.all([
       prisma.student.findMany({
         where: whereQuery,
@@ -3353,6 +3477,7 @@ app.get('/api/init', authenticate, async (req, res, next) => {
       prisma.school.findMany({ where: schoolsWhere }),
       prisma.topic.findMany({ where: whereQuery }),
       prisma.syllabus.findMany({ where: whereQuery, include: { topics: { orderBy: { order: 'asc' } } } }),
+      prisma.direction.findMany({ where: whereQuery, orderBy: { name: 'asc' } }),
     ]);
 
     // Xodim yozuvi yo'q ustoz qolib ketmasin: aks holda uning profili boshqacha
@@ -3386,7 +3511,7 @@ app.get('/api/init', authenticate, async (req, res, next) => {
       settings: isAdmin(req.user) ? settings : stripSettingSecrets(settings),
       attendances, scores, teacherAttendances, staffAttendances, expenses,
       transports, routes, questions, exams, examResults, schools,
-      topics, syllabuses,
+      topics, syllabuses, directions,
       users: users.map(u => {
         const { teacherProfile, ...qolgan } = u;
         return { ...qolgan, teacherId: teacherProfile?.id ?? null };

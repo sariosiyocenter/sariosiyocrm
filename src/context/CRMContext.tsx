@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
-import { Student, Teacher, Group, Lead, Payment, CRMState, Course, Room, School, UserRole, Attendance, Score, TeacherAttendance, Expense, Transport, DeliveryLog, Route, Question, Exam, ExamResult, Variant, Topic, Syllabus } from '../types';
+import { Student, Teacher, Group, Lead, Payment, CRMState, Course, Room, School, UserRole, Attendance, Score, TeacherAttendance, Expense, Transport, DeliveryLog, Route, Question, Exam, ExamResult, Variant, Topic, Syllabus, Direction } from '../types';
 import { generateVariants } from '../lib/shuffler';
 
 export const THEMES = [
@@ -70,6 +70,9 @@ interface CRMContextType extends CRMState {
     addTopic: (topic: Omit<Topic, 'id' | 'schoolId'>) => Promise<void>;
     updateTopic: (id: number, topic: Partial<Topic>) => Promise<void>;
     deleteTopic: (id: number) => Promise<void>;
+    addDirection: (direction: Omit<Direction, 'id' | 'schoolId'>) => Promise<void>;
+    updateDirection: (id: number, direction: Partial<Direction>) => Promise<void>;
+    deleteDirection: (id: number) => Promise<void>;
     addSyllabus: (syllabus: Omit<Syllabus, 'id' | 'schoolId'>) => Promise<Syllabus>;
     updateSyllabus: (id: number, syllabus: Partial<Syllabus>) => Promise<void>;
     deleteSyllabus: (id: number) => Promise<void>;
@@ -127,6 +130,7 @@ export const CRMProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         questions: [], exams: [], examResults: [],
         topics: [],
         syllabuses: [],
+        directions: [],
         selectedSchoolId: null,
         settings: {
             id: 0,
@@ -393,6 +397,7 @@ export const CRMProvider: React.FC<{ children: React.ReactNode }> = ({ children 
                 examResults:        data.examResults    || [],
                 topics:             data.topics         || [],
                 syllabuses:         data.syllabuses     || [],
+                directions:         data.directions     || [],
                 deliveryLogs:       [],
                 selectedSchoolId:   schoolIdToUse
             }));
@@ -485,6 +490,7 @@ export const CRMProvider: React.FC<{ children: React.ReactNode }> = ({ children 
                             examResults:        data.examResults    || [],
                             topics:             data.topics         || [],
                             syllabuses:         data.syllabuses     || [],
+                directions:         data.directions     || [],
                             deliveryLogs:       [],
                             selectedSchoolId:   predictedSchoolId
                         }));
@@ -611,6 +617,7 @@ export const CRMProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             questions: [], exams: [], examResults: [],
             topics: [],
             syllabuses: [],
+            directions: [],
             selectedSchoolId: null,
             settings: {
                 id: 0,
@@ -1046,6 +1053,47 @@ export const CRMProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         }
     };
 
+    // Yo'nalishlar (Sozlamalar → Yo'nalishlar). Ro'yxat o'quvchi qo'shish
+    // oynasida ham, ochiq ariza formasida ham shu yerdan chiqadi.
+    const addDirection = async (direction: Omit<Direction, 'id' | 'schoolId'>) => {
+        try {
+            const created = await apiCall('directions', 'POST', direction);
+            setState(prev => ({ ...prev, directions: [...prev.directions, created] }));
+            showNotification("Yo'nalish qo'shildi", 'success');
+        } catch (err: any) {
+            showNotification("Yo'nalish qo'shishda xatolik: " + err.message, 'error');
+            throw err;
+        }
+    };
+
+    const updateDirection = async (id: number, direction: Partial<Direction>) => {
+        try {
+            const updated = await apiCall(`directions/${id}`, 'PUT', direction);
+            setState(prev => ({ ...prev, directions: prev.directions.map(d => d.id === id ? updated : d) }));
+            showNotification("Yo'nalish yangilandi", 'success');
+        } catch (err: any) {
+            showNotification("Yo'nalishni yangilashda xatolik: " + err.message, 'error');
+            throw err;
+        }
+    };
+
+    const deleteDirection = async (id: number) => {
+        try {
+            await apiCall(`directions/${id}`, 'DELETE');
+            // Server o'quvchilarning directionId sini bo'shatadi — bu yerda ham
+            // shunday qilamiz, aks holda ro'yxat o'chgan yo'nalishni ko'rsatib turardi.
+            setState(prev => ({
+                ...prev,
+                directions: prev.directions.filter(d => d.id !== id),
+                students: prev.students.map(st => st.directionId === id ? { ...st, directionId: null } : st),
+            }));
+            showNotification("Yo'nalish o'chirildi", 'success');
+        } catch (err: any) {
+            showNotification("Yo'nalishni o'chirishda xatolik: " + err.message, 'error');
+            throw err;
+        }
+    };
+
     // Returns the created record so callers that need its id (e.g. duplicating a
     // syllabus together with its topics) don't have to hunt for it in state.
     const addSyllabus = async (syllabus: Omit<Syllabus, 'id' | 'schoolId'>): Promise<Syllabus> => {
@@ -1350,6 +1398,7 @@ export const CRMProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             addAttendance, updateAttendance, addBatchAttendance, deleteBatchAttendance, updateDayTopic, addScore, loadAttendanceFor, retryLoad,
             addTopic, updateTopic, deleteTopic,
             addSyllabus, updateSyllabus, deleteSyllabus,
+            addDirection, updateDirection, deleteDirection,
             addTeacherAttendance,
             addExpense, deleteExpense,
             addTransport, updateTransport, deleteTransport,
