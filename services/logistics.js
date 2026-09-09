@@ -241,8 +241,14 @@ export async function marshrutlarniRejalash({
   if (!apply) return javob;
 
   // --- yozamiz ---
+  // Faqat shu rejalashtirishda qatnashgan mashinalarning marshrutlari
+  // yangilanadi. Boshqa mashinaning marshruti chetda qoladi — admin bitta
+  // mashinani rejalashtirganda qolganlarining bekatlari o'chib ketmasin.
   const mavjud = await prisma.route.findMany({
-    where: { schoolId, direction, autoPlanned: true },
+    where: {
+      schoolId, direction, autoPlanned: true,
+      ...(mashinalar.length ? { transportId: { in: mashinalar.map(m => m.id) } } : {}),
+    },
     select: { id: true, transportId: true, navbat: true },
   });
   const ishlatilgan = new Set();
@@ -272,7 +278,8 @@ export async function marshrutlarniRejalash({
     r.routeId = route.id;
   }
 
-  // Rejadan tushib qolgan eski avtomatik marshrutlar bo'shatiladi. O'chirilmaydi:
+  // Shu mashinalarning rejadan tushib qolgan marshrutlari bo'shatiladi
+  // (masalan avval ikki reys kerak edi, endi bittasi yetadi). O'chirilmaydi:
   // ularda o'tgan kunlarning reys tarixi bor.
   const bosharaydiganlar = mavjud.filter(m => !ishlatilgan.has(m.id));
   for (const m of bosharaydiganlar) {
