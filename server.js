@@ -216,6 +216,15 @@ app.post('/api/auth/login', loginLimiter, async (req, res, next) => {
       return res.status(401).json({ error: 'Email yoki parol xato' });
     }
 
+    // Haydovchi CRM ga kirmaydi: uning butun ishi Telegram botda —
+    // bugungi reyslar, navigatsiya va belgilash. Web'da unga ko'rsatadigan
+    // narsa yo'q, ochiq qoldirilsa esa ortiqcha ma'lumot ko'rinib qolardi.
+    if (user.role === 'DRIVER') {
+      return res.status(403).json({
+        error: "Haydovchilar CRM ga kirmaydi. Telegram botni oching va kontaktingizni ulashing — bugungi reyslar o'sha yerda.",
+      });
+    }
+
     if (user.school && user.school.organization) {
       const org = user.school.organization;
       if (org.status === 'Muzlatilgan') {

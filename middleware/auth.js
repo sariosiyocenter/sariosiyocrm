@@ -95,6 +95,13 @@ export const authenticate = (req, res, next) => {
       return res.status(401).json({ error: 'Sessiya eskirgan, qaytadan kiring' });
     }
 
+    // Haydovchi uchun web CRM yopiq (u faqat Telegram botda ishlaydi).
+    // Login ham rad etadi; bu — ilgari berilgan token bilan kirishning oldini
+    // oladi.
+    if (user?.role === 'DRIVER') {
+      return res.status(403).json({ error: "Haydovchilar Telegram bot orqali ishlaydi" });
+    }
+
     req.user = user;
     try {
       const wanted = requestedSchoolId(req);
