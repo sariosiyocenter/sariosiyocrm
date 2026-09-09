@@ -287,11 +287,24 @@ Qo'shimcha:
   (X13 ning bir qismi): ilgari u `Student.transportId` ni ko'rsatardi va
   marshrutga qo'shilgan o'quvchida ham "Transport yo'q" deb turardi.
 
-**Qolgani:** sudrab tartiblash va "yaqinidan boshlab tartibla" tugmasi;
-Flot kartochkalarining E4 uslubiga o'tishi; Dashboard plitkasi; E9
-`PageHeader`. `Student.transportId` hali qo'shish/tahrirlash/ariza
-formalarida turibdi — endi hech narsaga ta'sir qilmaydi, lekin
-chalg'itadi.
+**Keyin qo'shildi (2026-09-09):**
+
+- **Formalarda marshrut.** O'quvchi qo'shish va profil tahririda "Transport"
+  o'rniga marshrut tanlanadi va u haqiqiy bekat bo'lib yoziladi. Bir
+  o'quvchi ertalabki va kechqurungi marshrutda bo'lishi mumkin, shuning
+  uchun ro'yxatdan bosib tanlanadi. `Student.transportId` ustuni
+  o'chirilmadi, formalar endi unga yozmaydi. (`routeIds` — POST/PUT
+  `/api/students`, javobda ham qaytadi.)
+- **Sudrab tartiblash** va **"Yaqindan tartibla"** (markazdan boshlab eng
+  yaqin keyingi bekat). Koordinatasi yo'q o'quvchilar oxiriga tushadi.
+- Ikkita xato: `/api/init` marshrutlarni eski `studentIds` ustunidan
+  qaytarardi (yangi marshrutga qo'shilganlar sahifa yangilangach yo'qolib
+  ko'rinardi); o'ng paneldagi ro'yxat marshrutning eski nusxasidan
+  chizilardi va o'zgarishdan keyin yangilanmasdi (↑↓ da ham).
+
+**Qolgani:** Avtopark kartochkalarining E4 uslubiga o'tishi; Dashboard
+plitkasi; E9 `PageHeader`. Ochiq ariza formasida (`PublicApply`) hali
+transport tanlovi turibdi.
 
 Tekshiruv: `scratch/test_stats_full.mjs` — 13 holat (jamlanma, o'rtacha
 davomiylik, oraliq filtri), hammasi o'tdi; brauzerda uchala tab va
