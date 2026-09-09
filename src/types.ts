@@ -29,6 +29,8 @@ export interface Student {
     transportId?: number | null;
     /** Qaysi marshrutlarning bekati (ertalabki va/yoki kechqurungi). */
     routeIds?: number[];
+    /** Transportda qatnaydimi — avtomatik rejalashtirish shunga qaraydi. */
+    needsTransport?: boolean;
     studentSchool?: string;
     privilegeType?: string;
     certCategory?: string;
@@ -252,6 +254,10 @@ export interface Route {
     direction?: 'KETISH' | 'QAYTISH';
     /** Tartibni tizim o'zi quradimi (qo'lda surilsa false). */
     autoOrder?: boolean;
+    /** Avtomatik rejalashtirish yaratganmi. */
+    autoPlanned?: boolean;
+    /** Shu mashinaning nechanchi reysi. */
+    navbat?: number;
     /** Bekatlar tartibi bilan. `studentIds` shundan hisoblanadi. */
     stops?: RouteStop[];
     studentIds: number[];

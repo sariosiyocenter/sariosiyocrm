@@ -8,6 +8,7 @@
 import prisma from '../lib/prisma.js';
 import { isLessonDay } from '../lib/lessons.js';
 import { bekatlarniTartiblash, parseLatLng } from '../lib/tartib.js';
+import { reyalarniTuzish } from '../lib/rejalash.js';
 import { yetkazishXabari } from './transportNotify.js';
 
 /**
@@ -176,6 +177,110 @@ export async function marshrutHolati({ routeId, date }) {
   const holatlarMap = {};
   for (const l of logs) holatlarMap[l.studentId] = l.status;
   return { run, holatlar: holatlarMap };
+}
+
+/**
+ * Avtomatik rejalashtirish: transportga muhtoj o'quvchilarni tanlangan
+ * mashinalarga taqsimlaydi va marshrutlarni tuzadi.
+ *
+ * Qo'lda tuzilgan marshrutlarga tegilmaydi — ulardagi o'quvchilar rejadan
+ * chetda qoladi (ular allaqachon joylashgan). Tizim faqat o'zi yaratgan
+ * marshrutlarni (autoPlanned) yangilaydi: eskilari o'chirilmaydi, chunki
+ * ularda reys tarixi bor — o'rniga bekatlari qayta yoziladi.
+ *
+ * `apply: false` bo'lsa hech narsa yozilmaydi — faqat reja qaytadi.
+ */
+export async function marshrutlarniRejalash({
+  schoolId, direction = 'KETISH', transportIds = [], startTime = '07:30',
+  days = 'HAR_KUNI', rejim = 'tez', apply = false,
+}) {
+  const markaz = await markazNuqtasi(schoolId);
+
+  const mashinalar = await prisma.transport.findMany({
+    where: { schoolId, status: 'Faol', ...(transportIds.length ? { id: { in: transportIds } } : {}) },
+    select: { id: true, name: true, capacity: true, driverId: true },
+    orderBy: { capacity: 'desc' },
+  });
+
+  // Qo'lda tuzilgan marshrutda turgan o'quvchi rejaga kirmaydi.
+  const qoldagilar = await prisma.routeStop.findMany({
+    where: { route: { schoolId, direction, autoPlanned: false } },
+    select: { studentId: true },
+  });
+  const qolda = new Set(qoldagilar.map(x => x.studentId));
+
+  const oquvchilar = (await prisma.student.findMany({
+    where: { schoolId, needsTransport: true, status: { in: ['Faol', 'Sinov'] } },
+    select: { id: true, name: true, location: true, address: true },
+    orderBy: { name: 'asc' },
+  })).filter(o => !qolda.has(o.id));
+
+  const natija = reyalarniTuzish({ markaz, oquvchilar, mashinalar, direction, startTime, rejim });
+  const ism = new Map(oquvchilar.map(o => [o.id, o.name]));
+  const yonalishNomi = direction === 'QAYTISH' ? 'kechqurun' : 'ertalab';
+
+  const rejalar = natija.rejalar.map(r => ({
+    ...r,
+    nomi: `${r.transportName} — ${yonalishNomi}${r.navbat > 1 ? ` (${r.navbat}-reys)` : ''}`,
+    oquvchilar: r.studentIds.map(id => ({ id, name: ism.get(id) })),
+  }));
+
+  const javob = {
+    rejalar,
+    sigmaganlar: natija.sigmaganlar.map(id => ({ id, name: ism.get(id) })),
+    nuqtasiz: natija.nuqtasiz.map(id => ({ id, name: ism.get(id) })),
+    jami: {
+      oquvchi: oquvchilar.length,
+      qoldaJoylashgan: qolda.size,
+      marshrut: rejalar.length,
+      km: rejalar.reduce((s, r) => s + r.km, 0),
+      engUzunDaqiqa: rejalar.length ? Math.max(...rejalar.map(r => r.daqiqa)) : 0,
+    },
+    qollandi: false,
+  };
+  if (!apply) return javob;
+
+  // --- yozamiz ---
+  const mavjud = await prisma.route.findMany({
+    where: { schoolId, direction, autoPlanned: true },
+    select: { id: true, transportId: true, navbat: true },
+  });
+  const ishlatilgan = new Set();
+
+  for (const r of rejalar) {
+    const bor = mavjud.find(m => m.transportId === r.transportId && m.navbat === r.navbat);
+    const mashina = mashinalar.find(m => m.id === r.transportId);
+    const data = {
+      name: r.nomi, startTime: r.startTime, days, direction,
+      transportId: r.transportId, driverId: mashina?.driverId || null,
+      autoPlanned: true, navbat: r.navbat, autoOrder: true, schoolId,
+    };
+    const route = bor
+      ? await prisma.route.update({ where: { id: bor.id }, data })
+      : await prisma.route.create({ data });
+    ishlatilgan.add(route.id);
+
+    // Bekatlar: rejadagi tartib bilan.
+    await prisma.routeStop.deleteMany({ where: { routeId: route.id, studentId: { notIn: r.studentIds } } });
+    for (let i = 0; i < r.studentIds.length; i++) {
+      await prisma.routeStop.upsert({
+        where: { routeId_studentId: { routeId: route.id, studentId: r.studentIds[i] } },
+        create: { routeId: route.id, studentId: r.studentIds[i], tartib: i },
+        update: { tartib: i },
+      });
+    }
+    r.routeId = route.id;
+  }
+
+  // Rejadan tushib qolgan eski avtomatik marshrutlar bo'shatiladi. O'chirilmaydi:
+  // ularda o'tgan kunlarning reys tarixi bor.
+  const bosharaydiganlar = mavjud.filter(m => !ishlatilgan.has(m.id));
+  for (const m of bosharaydiganlar) {
+    await prisma.routeStop.deleteMany({ where: { routeId: m.id } });
+  }
+  javob.bosharatilgan = bosharaydiganlar.length;
+  javob.qollandi = true;
+  return javob;
 }
 
 /** Reysni boshlash / tugatish vaqtini yozadi. */

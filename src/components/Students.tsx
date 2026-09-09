@@ -33,6 +33,7 @@ export default function Students() {
         fatherName: '', fatherPhone: '', motherName: '', motherPhone: '',
         transportId: '' as string | number,
         routeIds: [] as number[],
+        needsTransport: false,
         studentSchool: '',
         selectedPrivileges: [] as string[],
         certCategory: '',
@@ -298,6 +299,7 @@ export default function Students() {
                 fatherName: '', fatherPhone: '', motherName: '', motherPhone: '',
                 transportId: '',
                 routeIds: [],
+                needsTransport: false,
                 studentSchool: '',
                 selectedPrivileges: [],
                 certCategory: '',
@@ -1173,7 +1175,18 @@ export default function Students() {
                                 </div>
                                 <div className="grid grid-cols-2 gap-4">
                                     <div>
-                                        <label className={lbl}>Transport marshruti</label>
+                                        <label className={lbl}>Transport</label>
+                                        {/* Avtomatik rejalashtirish shu belgiga qaraydi: marshrutni
+                                            qo'lda tanlash shart emas, tizim o'zi taqsimlaydi. */}
+                                        <button type="button"
+                                            onClick={() => setNewStudent({ ...newStudent, needsTransport: !newStudent.needsTransport })}
+                                            className={`w-full mb-2 flex items-center justify-between gap-2 px-3 py-2.5 rounded-xl border text-[11px] font-bold transition-all cursor-pointer ${newStudent.needsTransport
+                                                ? 'bg-teal-50 dark:bg-teal-950/20 text-brand border-teal-100 dark:border-teal-900/40'
+                                                : 'bg-ichki text-matn-xira border-chiziq'}`}>
+                                            <span>🚌 Transportda qatnaydi</span>
+                                            <span>{newStudent.needsTransport ? '✓' : '+'}</span>
+                                        </button>
+                                        <label className={lbl}>Marshrut (ixtiyoriy)</label>
                                         {/* Ilgari bu yerda mashina tanlanardi va u hech
                                             narsaga ta'sir qilmasdi: haydovchi ro'yxati
                                             marshrutdan olinadi. Endi marshrut tanlanadi. */}

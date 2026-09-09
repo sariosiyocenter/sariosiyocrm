@@ -169,6 +169,7 @@ export default function StudentDetails() {
         motherPhone: '',
         transportId: '' as string | number,
         routeIds: [] as number[],
+        needsTransport: false,
         studentSchool: '',
         privilegeType: 'None',
         certCategory: '',
@@ -279,6 +280,7 @@ export default function StudentDetails() {
             motherPhone: student.motherPhone || '',
             transportId: student.transportId || '',
             routeIds: student.routeIds || [],
+            needsTransport: !!student.needsTransport,
             studentSchool: student.studentSchool || '',
             privilegeType: student.privilegeType || 'None',
             certCategory: student.certCategory || '',
@@ -729,7 +731,16 @@ export default function StudentDetails() {
                                         </select>
                                     </div>
                                     <div>
-                                        <label className={labelCls}>Transport marshruti</label>
+                                        <label className={labelCls}>Transport</label>
+                                        <button type="button"
+                                            onClick={() => setEditForm({ ...editForm, needsTransport: !editForm.needsTransport })}
+                                            className={`w-full mb-2 flex items-center justify-between gap-2 px-3 py-2.5 rounded-xl border text-[11px] font-bold transition-all cursor-pointer ${editForm.needsTransport
+                                                ? 'bg-teal-50 dark:bg-teal-950/20 text-brand border-teal-100 dark:border-teal-900/40'
+                                                : 'bg-ichki text-matn-xira border-chiziq'}`}>
+                                            <span>🚌 Transportda qatnaydi</span>
+                                            <span>{editForm.needsTransport ? '✓' : '+'}</span>
+                                        </button>
+                                        <label className={labelCls}>Marshrut (ixtiyoriy)</label>
                                         {/* Marshrut — yagona manba. Ilgari bu yerda mashina
                                             tanlanardi va hech narsaga ta'sir qilmasdi. */}
                                         {(routes || []).length === 0 ? (

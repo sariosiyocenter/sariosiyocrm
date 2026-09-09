@@ -11,7 +11,7 @@ import jwt from 'jsonwebtoken';
 import bot, { startBot, notifyAdmins, getTelegramBot } from './src/bot/bot.js';
 import { transferStudent, refundStudent, enrollStudent, unenrollStudent, syncGroupMembers, activateStudent, syncStudentGroups } from './services/enrollment.js';
 import { studentLedger, receivedForGroups, monthCoverage } from './services/ledger.js';
-import { holatniYozish, marshrutniTartiblash } from './services/logistics.js';
+import { holatniYozish, marshrutniTartiblash, marshrutlarniRejalash } from './services/logistics.js';
 import { smsYuboruvchiniUlash } from './services/transportNotify.js';
 import bcrypt from 'bcryptjs';
 import helmet from 'helmet';
@@ -1276,7 +1276,7 @@ app.post('/api/students', authenticate, async (req, res, next) => {
     if (!parsedSchoolId || isNaN(parsedSchoolId) || parsedSchoolId <= 0) {
       return res.status(400).json({ error: 'Valid schoolId required' });
     }
-    const ALLOWED = ['name','phone','birthDate','address','location','status','joinedDate',
+    const ALLOWED = ['name','phone','birthDate','address','location','status','joinedDate','needsTransport',
       'balance','photo','comment','rating','gender','fatherName','fatherPhone','motherName','motherPhone',
       'studentSchool','privilegeType','certCategory','certSubject','certType','certScore',
       'customPrices','orgType','region','district','transportId','statusChangedAt','leaveReason',
@@ -1410,7 +1410,7 @@ app.put('/api/students/:id', authenticate, async (req, res, next) => {
 
     // Whitelist only known Student schema fields
     const ALLOWED_STUDENT_FIELDS = [
-      'name','phone','birthDate','address','location','status','joinedDate',
+      'name','phone','birthDate','address','location','status','joinedDate','needsTransport',
       'balance','photo','rating','comment','gender','fatherName','fatherPhone','motherName','motherPhone',
       'studentSchool','privilegeType','certCategory','certSubject','certType','certScore',
       'customPrices','orgType','region','district','transportId','statusChangedAt',
@@ -4577,6 +4577,32 @@ app.delete('/api/routes/:id', authenticate, requireRole(...STAFF_MANAGERS), asyn
     if (!(await canAccessSchool(req.user, mavjud.schoolId))) return res.status(403).json({ error: "Ruxsat yo'q" });
     await prisma.route.delete({ where: { id } });
     res.json({ success: true });
+  } catch (error) { next(error); }
+});
+
+/**
+ * Avtomatik rejalashtirish. `apply: true` bo'lmasa hech narsa yozilmaydi —
+ * admin avval rejani ko'radi, keyin tasdiqlaydi.
+ */
+app.post('/api/logistics/plan', authenticate, requireRole(...STAFF_MANAGERS), async (req, res, next) => {
+  try {
+    const schoolId = parseInt(req.body.schoolId);
+    if (!schoolId) return res.status(400).json({ error: 'schoolId required' });
+    if (!(await canAccessSchool(req.user, schoolId))) return res.status(403).json({ error: "Ruxsat yo'q" });
+
+    const direction = ROUTE_DIRECTIONS.includes(req.body.direction) ? req.body.direction : 'KETISH';
+    const days = ROUTE_DAYS.includes(req.body.days) ? req.body.days : 'HAR_KUNI';
+    const rejim = req.body.rejim === 'arzon' ? 'arzon' : 'tez';
+    const startTime = /^([01][0-9]|2[0-3]):[0-5][0-9]$/.test(String(req.body.startTime || ''))
+      ? req.body.startTime : '07:30';
+    const transportIds = Array.isArray(req.body.transportIds)
+      ? req.body.transportIds.map(x => parseInt(x)).filter(Number.isInteger) : [];
+
+    const natija = await marshrutlarniRejalash({
+      schoolId, direction, transportIds, startTime, days, rejim,
+      apply: req.body.apply === true,
+    });
+    res.json(natija);
   } catch (error) { next(error); }
 });
 

@@ -46,6 +46,10 @@ model Student {
   statusChangedAt DateTime? @default(now())
   leaveReason     String?
 
+  // Transportda qatnaydimi. Avtomatik rejalashtirish shu belgiga qarab
+  // o'quvchini mashinalarga taqsimlaydi.
+  needsTransport Boolean @default(false)
+
   // Transport Relation
   transportId Int?
   transport   Transport? @relation(fields: [transportId], references: [id])
@@ -661,6 +665,12 @@ model Route {
   // Bekatlar tartibini tizim o'zi quradi (masofa bo'yicha). Admin qo'lda
   // sursa false bo'ladi va tizim endi aralashmaydi.
   autoOrder   Boolean  @default(true)
+
+  // Avtomatik rejalashtirish yaratgan marshrut: qayta rejalashtirilganda
+  // shular yangilanadi, qo'lda tuzilganlariga tegilmaydi.
+  autoPlanned Boolean  @default(false)
+  // Shu mashinaning nechanchi reysi (bir mashina bir necha marta qatnasa).
+  navbat      Int      @default(1)
 
   // Bekatlar. Ilgari bu `studentIds Int[]` edi — o'chirilgan o'quvchi ham
   // ro'yxatda qolib ketardi va sanoq yolg'on chiqardi. Ustun hozircha
