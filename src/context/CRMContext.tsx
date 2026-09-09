@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
-import { Student, Teacher, Group, Lead, Payment, CRMState, Course, Room, School, UserRole, Attendance, Score, TeacherAttendance, Expense, Transport, DeliveryLog, Route, Question, Exam, ExamResult, Variant, Topic, Syllabus, Direction } from '../types';
+import { Student, Teacher, Group, Lead, Payment, CRMState, Course, Room, School, UserRole, Attendance, Score, TeacherAttendance, Expense, Transport, DeliveryLog, Route, RouteRun, Question, Exam, ExamResult, Variant, Topic, Syllabus, Direction } from '../types';
 import { generateVariants } from '../lib/shuffler';
 
 export const THEMES = [
@@ -98,6 +98,8 @@ interface CRMContextType extends CRMState {
     addExamResult: (result: Omit<ExamResult, 'id' | 'schoolId'>) => Promise<ExamResult>;
     addDeliveryLog: (log: Omit<DeliveryLog, 'id' | 'schoolId'> & { routeId?: number }) => Promise<void>;
     fetchDeliveryLogs: (date: string) => Promise<DeliveryLog[]>;
+    routeRuns: RouteRun[];
+    fetchRouteRuns: (date: string) => Promise<RouteRun[]>;
     notification: { message: string, type: 'success' | 'error' | 'info' } | null;
     showNotification: (message: string, type: 'success' | 'error' | 'info') => void;
     themeColor: string;
@@ -126,7 +128,7 @@ export const CRMProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     const [state, setState] = useState<CRMState>({
         students: [], teachers: [], groups: [], leads: [], payments: [], courses: [], rooms: [], schools: [],
         attendances: [], scores: [], teacherAttendances: [], staffAttendances: [], expenses: [],
-        transports: [], deliveryLogs: [], routes: [], users: [],
+        transports: [], deliveryLogs: [], routeRuns: [], routes: [], users: [],
         questions: [], exams: [], examResults: [],
         topics: [],
         syllabuses: [],
@@ -613,7 +615,7 @@ export const CRMProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         setState({
             students: [], teachers: [], groups: [], leads: [], payments: [], courses: [], rooms: [], schools: [],
             attendances: [], scores: [], teacherAttendances: [], staffAttendances: [], expenses: [],
-            transports: [], deliveryLogs: [], routes: [], users: [],
+            transports: [], deliveryLogs: [], routeRuns: [], routes: [], users: [],
             questions: [], exams: [], examResults: [],
             topics: [],
             syllabuses: [],
@@ -1255,6 +1257,23 @@ export const CRMProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         });
     };
 
+    /**
+     * Shu kundagi reyslar: qaysi biri boshlangan, qachon tugagan.
+     *
+     * Yetkazish yozuvlaridan alohida — reys yozuvsiz ham bo'ladi (haydovchi
+     * "boshladim" bosgan, hali hech kimni belgilamagan).
+     */
+    const fetchRouteRuns = async (date: string): Promise<RouteRun[]> => {
+        if (!token || !state.selectedSchoolId) return [];
+        try {
+            const runs = await apiCall(`route-runs?schoolId=${state.selectedSchoolId}&date=${date}`, 'GET');
+            setState(prev => ({ ...prev, routeRuns: runs || [] }));
+            return runs || [];
+        } catch {
+            return [];
+        }
+    };
+
     const fetchDeliveryLogs = async (date: string) => {
         if (!token || !state.selectedSchoolId) return [];
         const logs = await fetch(`${API_BASE}/delivery-logs?schoolId=${state.selectedSchoolId}&date=${date}`, {
@@ -1409,7 +1428,7 @@ export const CRMProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             addExam, updateExam, deleteExam, generateExamVariants,
             addQuestion, updateQuestion, deleteQuestion,
             addExamResult,
-            addDeliveryLog, fetchDeliveryLogs,
+            addDeliveryLog, fetchDeliveryLogs, fetchRouteRuns,
             darkMode, toggleDarkMode,
             notification, showNotification,
             themeColor, setThemeColor

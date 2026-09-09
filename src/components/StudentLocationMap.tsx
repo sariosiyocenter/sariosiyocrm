@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { X, Navigation, ExternalLink, MapPin } from 'lucide-react';
+import { ZAXIRA_MARKAZ, RANG_OQUVCHI, RANG_MARKAZ, parseLatLng, distanceKm, masofaMatni, esc, initials, avatarIcon } from '../lib/mapMarkers';
 
 /**
  * O'quvchining uyi va o'quv markazi bitta xaritada.
@@ -20,70 +21,6 @@ interface Props {
     orgName?: string;
     logo?: string;
     onClose: () => void;
-}
-
-/**
- * Markaz nuqtasi Sozlamalarda belgilanmagan bo'lsa shu ishlatiladi — bot
- * "Geolokatsiya" tugmasida ota-onalarga aynan shu nuqtani yuboradi. Taxminiy:
- * tuman markazi, bino emas. Sozlamalardagi qiymat undan ustun turadi.
- */
-const ZAXIRA_MARKAZ: [number, number] = [38.4833, 67.9333];
-
-/** "38.47,67.95" → [38.47, 67.95]; noto'g'ri qiymat uchun null. */
-function parseLatLng(value?: string): [number, number] | null {
-    if (!value || !value.includes(',')) return null;
-    const [lat, lng] = value.split(',').map(Number);
-    if (!isFinite(lat) || !isFinite(lng)) return null;
-    return [lat, lng];
-}
-
-/** Ikki nuqta orasidagi masofa, km (haversine). */
-function distanceKm(a: [number, number], b: [number, number]): number {
-    const R = 6371;
-    const dLat = (b[0] - a[0]) * Math.PI / 180;
-    const dLng = (b[1] - a[1]) * Math.PI / 180;
-    const lat1 = a[0] * Math.PI / 180;
-    const lat2 = b[0] * Math.PI / 180;
-    const h = Math.sin(dLat / 2) ** 2 + Math.sin(dLng / 2) ** 2 * Math.cos(lat1) * Math.cos(lat2);
-    return 2 * R * Math.asin(Math.sqrt(h));
-}
-
-/** Marker HTML ichiga tushadigan matn — ism ham, rasm manzili ham. */
-function esc(text: string): string {
-    return text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
-}
-
-/** Ism-familiyadan ikki harfli bosh harf: rasm bo'lmasa shu chiqadi. */
-function initials(name: string): string {
-    return name.trim().split(/\s+/).slice(0, 2).map(w => w[0] || '').join('').toUpperCase();
-}
-
-/**
- * Dumaloq rasmli marker. Leaflet ikonkasi — oddiy HTML, shuning uchun
- * portret ham, logo ham shu yerda `img` bo'lib turadi.
- */
-function avatarIcon(L: any, opts: { image?: string; fallback: string; ring: string; label: string; white?: boolean }) {
-    const size = 54;
-    const inner = opts.image
-        ? `<img src="${esc(opts.image)}" alt="" style="width:100%;height:100%;object-fit:${opts.white ? 'contain' : 'cover'};${opts.white ? 'padding:5px;' : ''}display:block" />`
-        : `<span style="font:700 15px/1 system-ui,sans-serif;color:${opts.ring}">${esc(opts.fallback)}</span>`;
-    return L.divIcon({
-        className: '',
-        iconSize: [size, size + 10],
-        iconAnchor: [size / 2, size + 10],
-        popupAnchor: [0, -size],
-        html: `
-          <div style="position:relative;width:${size}px;height:${size + 10}px">
-            <div style="width:${size}px;height:${size}px;border-radius:50%;overflow:hidden;
-                        background:${opts.white ? '#fff' : '#e2e8f0'};border:3px solid ${opts.ring};
-                        box-shadow:0 6px 16px rgba(15,23,42,.35);display:flex;align-items:center;justify-content:center">
-              ${inner}
-            </div>
-            <div style="position:absolute;left:50%;bottom:0;width:0;height:0;transform:translateX(-50%);
-                        border-left:7px solid transparent;border-right:7px solid transparent;
-                        border-top:11px solid ${opts.ring}"></div>
-          </div>`,
-    });
 }
 
 export default function StudentLocationMap({ studentName, studentPhoto, location, centerLocation, orgName, logo, onClose }: Props) {
@@ -108,13 +45,13 @@ export default function StudentLocationMap({ studentName, studentPhoto, location
         }).addTo(map);
 
         L.marker(uy, {
-            icon: avatarIcon(L, { image: studentPhoto, fallback: initials(studentName), ring: '#1b6b6b', label: studentName }),
+            icon: avatarIcon(L, { image: studentPhoto, fallback: initials(studentName), ring: RANG_OQUVCHI }),
             title: studentName,
         }).addTo(map).bindPopup(`<b>${esc(studentName)}</b><br/>O'quvchi uyi`);
 
         {
             L.marker(markaz, {
-                icon: avatarIcon(L, { image: logo, fallback: initials(orgName || 'Markaz'), ring: '#0ea5e9', label: orgName || 'Markaz', white: true }),
+                icon: avatarIcon(L, { image: logo, fallback: initials(orgName || 'Markaz'), ring: RANG_MARKAZ, white: true }),
                 title: orgName || "O'quv markazi",
             }).addTo(map).bindPopup(`<b>${esc(orgName || "O'quv markazi")}</b><br/>O'quv markazi`);
 
@@ -141,7 +78,7 @@ export default function StudentLocationMap({ studentName, studentPhoto, location
                             <span className="truncate">{studentName}</span>
                         </h2>
                         <p className="text-[11px] font-bold text-matn-xira mt-1 leading-none pt-1">
-                            {masofa !== null && `Markazdan ${masofa < 1 ? Math.round(masofa * 1000) + ' m' : masofa.toFixed(1) + ' km'} uzoqlikda`}
+                            {masofa !== null && `Markazdan ${masofaMatni(masofa)} uzoqlikda`}
                             {!belgilangan && <span className="text-amber-600 dark:text-amber-500"> · markaz nuqtasi taxminiy, Sozlamalardan aniqlang</span>}
                         </p>
                     </div>

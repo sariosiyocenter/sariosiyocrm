@@ -10,7 +10,8 @@ import {
 } from 'lucide-react';
 import { Transport, DeliveryLog, Route } from '../types';
 // Kun jadvali guruhlar, marshrutlar va bot uchun bitta joyda.
-import { isLessonDay, toDateStr } from '../../lib/lessons.js';
+import { isLessonDay, toDateStr, toTimeStr } from '../../lib/lessons.js';
+import RouteMap from './RouteMap';
 
 type TabType = 'flot' | 'marshrutlar' | 'yetkazish';
 
@@ -20,10 +21,10 @@ const lbl = "block text-[11px] font-extrabold   text-matn-xira mb-2";
 export default function LogisticsHub() {
     const { t } = useLang();
     const {
-        transports, students, users, routes, deliveryLogs,
+        transports, students, users, routes, deliveryLogs, routeRuns, settings,
         addTransport, updateTransport, deleteTransport,
         addRoute, updateRoute, deleteRoute,
-        addDeliveryLog, fetchDeliveryLogs, showNotification
+        addDeliveryLog, fetchDeliveryLogs, fetchRouteRuns, showNotification
     } = useCRM();
     const confirm = useConfirm();
 
@@ -58,6 +59,7 @@ export default function LogisticsHub() {
     useEffect(() => {
         if (activeTab === 'yetkazish') {
             fetchDeliveryLogs(selectedDate);
+            fetchRouteRuns(selectedDate);
         }
     }, [selectedDate, activeTab]);
 
@@ -142,6 +144,28 @@ export default function LogisticsHub() {
     };
 
     const isRouteActiveOnDate = (route: Route, dateStr: string) => isLessonDay(route.days, dateStr);
+
+    /** Shu marshrutning tanlangan kundagi reysi (haydovchi boshlagan bo'lsa). */
+    const routeRun = (route: Route) => routeRuns.find(r => r.routeId === route.id && r.date === selectedDate);
+
+    /**
+     * Reys kechikdimi: boshlanish vaqtidan 15 daqiqa o'tgan, lekin hali
+     * boshlanmagan bo'lsa. Faqat bugungi kun uchun ma'noli.
+     */
+    const kechikdi = (route: Route) => {
+        if (selectedDate !== toDateStr() || !route.startTime || routeRun(route)?.startedAt) return false;
+        const [h, m] = route.startTime.split(':').map(Number);
+        if (!Number.isFinite(h)) return false;
+        const [hh, mm] = toTimeStr().split(':').map(Number);
+        return (hh * 60 + mm) > (h * 60 + m + 15);
+    };
+
+    /** Marshrutdagi belgilangan / jami. */
+    const progress = (route: Route) => {
+        const jami = routeStudents(route);
+        const belgilangan = jami.filter(st => getDeliveryStatus(route, st.id));
+        return { jami: jami.length, belgilangan: belgilangan.length, kelmagan: belgilangan.filter(st => getDeliveryStatus(route, st.id) === 'Kelmadi') };
+    };
 
     /**
      * Marshrutdagi haqiqiy bekatlar: bazada yo'q yoki arxivga olingan o'quvchi
@@ -359,6 +383,20 @@ Unga biriktirilgan o'quvchilar bo'shatiladi.`)) deleteTransport(item.id); }} cla
                                             {editingRoute.name}
                                         </h3>
                                         <span className="text-[11px] font-bold text-brand mt-0.5">{t('start_time')}: {editingRoute.startTime || t('not_marked')}</span>
+                                        {(() => {
+                                            // Sig'im: 6 o'rinli mashinaga 8 o'quvchi qo'shib qo'yish oson edi.
+                                            const sigim = transports.find(tr => tr.id === editingRoute.transportId)?.capacity;
+                                            if (!sigim) return null;
+                                            const soni = routeStudents(editingRoute).length;
+                                            const toldi = soni > sigim;
+                                            return (
+                                                <span className={`ml-2 px-2 py-0.5 rounded-md text-[10px] font-black border ${toldi
+                                                    ? 'bg-rose-50 text-rose-600 border-rose-100 dark:bg-rose-950/20 dark:text-rose-400 dark:border-rose-900/40'
+                                                    : 'bg-gray-55 text-matn-xira border-gray-100 dark:bg-gray-900 dark:border-gray-800'}`}>
+                                                    {soni}/{sigim} o'rin{toldi ? " — sig'imdan oshdi" : ''}
+                                                </span>
+                                            );
+                                        })()}
                                     </div>
                                     <div className="flex gap-2">
                                         <button 
@@ -375,6 +413,19 @@ Unga biriktirilgan o'quvchilar bo'shatiladi.`)) deleteTransport(item.id); }} cla
                                         </button>
                                     </div>
                                 </div>
+
+                                {/* Xaritada bekatlar tartib bilan: kim qayerda turgani va
+                                    tartib mantiqiymi yo'qmi shundan ko'rinadi. */}
+                                <RouteMap
+                                    className="mb-5"
+                                    stops={routeStudents(editingRoute).map(st => ({
+                                        studentId: st.id, name: st.name, photo: st.photo, location: st.location,
+                                    }))}
+                                    centerLocation={settings?.centerLocation}
+                                    orgName={settings?.orgName}
+                                    logo={settings?.logo}
+                                    direction={editingRoute.direction === 'QAYTISH' ? 'QAYTISH' : 'KETISH'}
+                                />
 
                                 <div className="space-y-2">
                                     {routeStudents(editingRoute).map((student, index, ruyxat) => {
@@ -481,6 +532,14 @@ Unga biriktirilgan o'quvchilar bo'shatiladi.`)) deleteTransport(item.id); }} cla
 
                     {/* Delivery updates accordion */}
                     <div className="lg:col-span-3 space-y-4">
+                        {routes.filter(r => (selectedTransportId === null || r.transportId === selectedTransportId)
+                            && isRouteActiveOnDate(r, selectedDate)).length === 0 && (
+                            <div className="bg-sirt rounded-2xl border border-chiziq p-12 text-center shadow-sm">
+                                <p className="text-[11px] font-bold text-matn-xira">
+                                    {selectedDate} kuni bu yerda reys yo'q — marshrut kunlari boshqa yoki mashina tanlangan.
+                                </p>
+                            </div>
+                        )}
                         {routes
                             .filter(r => (selectedTransportId === null || r.transportId === selectedTransportId)
                                 && isRouteActiveOnDate(r, selectedDate))
@@ -490,16 +549,46 @@ Unga biriktirilgan o'quvchilar bo'shatiladi.`)) deleteTransport(item.id); }} cla
                                         onClick={() => setExpandedRouteId(expandedRouteId === route.id ? null : route.id)}
                                         className="w-full flex items-center justify-between p-5 hover:bg-gray-55 dark:hover:bg-gray-750 transition-colors cursor-pointer"
                                     >
-                                        <div className="flex items-center gap-3">
-                                            <div className="w-8 h-8 rounded-lg bg-brand/10 text-brand flex items-center justify-center">
-                                                <Navigation size={16} />
+                                        <div className="flex items-center gap-3 min-w-0">
+                                            <div className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 border ${
+                                                progress(route).jami > 0 && progress(route).belgilangan === progress(route).jami
+                                                    ? 'bg-emerald-50 text-emerald-600 border-emerald-100 dark:bg-emerald-950/20 dark:text-emerald-400 dark:border-emerald-900/40'
+                                                    : 'bg-brand/10 text-brand border-transparent'
+                                            }`}>
+                                                {route.direction === 'QAYTISH' ? <Home size={16} /> : <Navigation size={16} />}
                                             </div>
-                                            <div className="text-left">
-                                                <h4 className="text-xs font-black text-matn tracking-wide">{route.name}</h4>
-                                                <span className="text-[11px] font-bold text-matn-xira block mt-0.5">{routeStudents(route).length} {t('student').toLowerCase()}</span>
+                                            <div className="text-left min-w-0">
+                                                <h4 className="text-xs font-black text-matn tracking-wide truncate">{route.name}</h4>
+                                                <span className="text-[11px] font-bold text-matn-xira block mt-0.5 truncate">
+                                                    {route.direction === 'QAYTISH' ? 'Uyga' : 'Markazga'} · {route.startTime || '--:--'} · {route.transport?.name || 'mashina yo\'q'}
+                                                    {route.driver?.name ? ` · ${route.driver.name}` : ''}
+                                                </span>
                                             </div>
                                         </div>
-                                        <ChevronDown size={16} className={`text-matn-xira transition-transform ${expandedRouteId === route.id ? 'rotate-180' : ''}`} />
+
+                                        <div className="flex items-center gap-2 shrink-0">
+                                            {/* Kechikish: vaqti o'tgan, lekin haydovchi hali boshlamagan. */}
+                                            {kechikdi(route) && (
+                                                <span className="px-2 py-1 rounded-lg text-[10px] font-black bg-amber-50 text-amber-600 border border-amber-100 dark:bg-amber-950/20 dark:text-amber-400 dark:border-amber-900/40">
+                                                    kechikmoqda
+                                                </span>
+                                            )}
+                                            {routeRun(route)?.startedAt && (
+                                                <span className="px-2 py-1 rounded-lg text-[10px] font-black bg-gray-55 text-matn-xira border border-gray-100 dark:bg-gray-900 dark:border-gray-800 tabular-nums">
+                                                    ▶ {toTimeStr(routeRun(route)!.startedAt!)}
+                                                    {routeRun(route)?.finishedAt ? ` · ⏹ ${toTimeStr(routeRun(route)!.finishedAt!)}` : ''}
+                                                </span>
+                                            )}
+                                            {progress(route).kelmagan.length > 0 && (
+                                                <span className="px-2 py-1 rounded-lg text-[10px] font-black bg-rose-50 text-rose-600 border border-rose-100 dark:bg-rose-950/20 dark:text-rose-400 dark:border-rose-900/40">
+                                                    {progress(route).kelmagan.length} kelmadi
+                                                </span>
+                                            )}
+                                            <span className="px-2.5 py-1 rounded-lg text-[10px] font-black bg-ichki text-matn-2 border border-chiziq tabular-nums">
+                                                {progress(route).belgilangan}/{progress(route).jami}
+                                            </span>
+                                            <ChevronDown size={16} className={`text-matn-xira transition-transform ${expandedRouteId === route.id ? 'rotate-180' : ''}`} />
+                                        </div>
                                     </button>
 
                                     {expandedRouteId === route.id && (
@@ -508,9 +597,19 @@ Unga biriktirilgan o'quvchilar bo'shatiladi.`)) deleteTransport(item.id); }} cla
                                                 const status = getDeliveryStatus(route, student.id);
                                                 return (
                                                     <div key={student.id} className="p-3 bg-gray-55/50 dark:bg-gray-900/40 rounded-2xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
-                                                        <div>
-                                                            <h5 className="text-xs font-black text-matn tracking-tight">{student.name}</h5>
-                                                            <span className="text-[11px] text-matn-xira font-bold block mt-0.5">{student.address || t('no_address')}</span>
+                                                        <div className="min-w-0">
+                                                            <h5 className="text-xs font-black text-matn tracking-tight truncate">{student.name}</h5>
+                                                            <span className="text-[11px] text-matn-xira font-bold block mt-0.5 truncate">
+                                                                {student.address || t('no_address')}
+                                                                {/* Kim va qachon belgilagani — janjal chiqsa shu yerda javob bor. */}
+                                                                {(() => {
+                                                                    const log = deliveryLogs.find(l => l.studentId === student.id && l.date === selectedDate
+                                                                        && (!l.run || l.run.routeId === route.id));
+                                                                    if (!log?.markedAt) return null;
+                                                                    const kim = users.find(u => u.id === log.markedById)?.name;
+                                                                    return ` · ${toTimeStr(log.markedAt)}${kim ? ` (${kim})` : ''}`;
+                                                                })()}
+                                                            </span>
                                                         </div>
                                                         <div className="flex items-center gap-1.5 w-full sm:w-auto">
                                                             {[

@@ -199,6 +199,34 @@ export interface DeliveryLog {
     schoolId: number;
 }
 
+/** Bir kunning bir reysi. */
+export interface RouteRun {
+    id: number;
+    routeId: number;
+    date: string;
+    driverId?: number | null;
+    transportId?: number | null;
+    startedAt?: string | null;
+    finishedAt?: string | null;
+    driver?: { id: number; name: string; phone?: string } | null;
+    transport?: { id: number; name: string } | null;
+    schoolId: number;
+}
+
+/** Bir kunning bir reysi. */
+export interface RouteRun {
+    id: number;
+    routeId: number;
+    date: string;
+    driverId?: number | null;
+    transportId?: number | null;
+    startedAt?: string | null;
+    finishedAt?: string | null;
+    driver?: { id: number; name: string; phone?: string } | null;
+    transport?: { id: number; name: string } | null;
+    schoolId: number;
+}
+
 /** Marshrutdagi bitta bekat. */
 export interface RouteStop {
     id: number;
@@ -348,6 +376,7 @@ export interface CRMState {
     expenses: Expense[];
     transports: Transport[];
     deliveryLogs: DeliveryLog[];
+    routeRuns: RouteRun[];
     routes: Route[];
     users: User[];
     selectedSchoolId: number | null;

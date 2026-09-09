@@ -4503,6 +4503,28 @@ app.delete('/api/routes/:id', authenticate, requireRole(...STAFF_MANAGERS), asyn
   } catch (error) { next(error); }
 });
 
+// ========== REYSLAR ==========
+//
+// "Bugun" doskasi uchun: qaysi reys boshlangan, qachon tugagan, kim
+// haydagan. Yetkazish yozuvlari alohida endpointda keladi.
+app.get('/api/route-runs', authenticate, async (req, res, next) => {
+  try {
+    const { schoolId, date } = req.query;
+    if (!schoolId) return res.status(400).json({ error: 'schoolId required' });
+    const where = { schoolId: parseInt(schoolId) };
+    if (date) where.date = String(date);
+    const runs = await prisma.routeRun.findMany({
+      where,
+      include: {
+        driver: { select: DRIVER_SELECT },
+        transport: { select: { id: true, name: true } },
+      },
+      orderBy: { id: 'asc' },
+    });
+    res.json(runs);
+  } catch (error) { next(error); }
+});
+
 // ========== YETKAZISH YOZUVLARI ==========
 
 // Reys va yozuv mantig'i services/logistics.js da: bot ham xuddi shu
