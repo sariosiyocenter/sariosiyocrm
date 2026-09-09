@@ -75,13 +75,18 @@ export async function studentLedger(studentId) {
   // biriktirilgani uchun bular bir-biriga bog'liq emas — o'quvchi
   // matematikada avansda, fizikada qarzdor bo'lishi mumkin.
   const custom = (member?.customPrices && typeof member.customPrices === 'object') ? member.customPrices : {};
+  const memberOf = new Set((member?.groups || []).map(g => g.id));
+  const today = new Date().toISOString().slice(0, 10);
   const courses = groups.map(g => {
     const standing = groupStanding(result, g.id);
     const price = custom[g.id] !== undefined ? Number(custom[g.id]) : (g.course?.price || 0);
     const access = paidUntil(
       result.buckets.filter(b => b.groupId === g.id),
-      { days: g.days, monthlyPrice: price, advance: standing.advance },
+      { days: g.days, monthlyPrice: price, advance: standing.advance, today },
     );
+    // O'quvchi guruhdan chiqib ketgan bo'lsa muddat ko'rsatilmaydi: u yerda
+    // darsga kirmaydi, faqat pul hisobi qolgan (qarz yoki ortgan pul).
+    const member = memberOf.has(g.id);
     return {
       groupId: g.id,
       groupName: g.name,
@@ -89,12 +94,15 @@ export async function studentLedger(studentId) {
       courseName: g.course?.name || '',
       teacher: g.teacher?.name || null,
       monthlyPrice: price,
+      isMember: member,
       ...standing,
-      paidUntil: access.until,
-      accessUnknown: access.unknown,
+      paidUntil: member ? access.until : null,
+      accessUnknown: member && access.unknown,
+      noCharge: access.noCharge,
       openDebt: access.openDebt,
     };
-  }).sort((a, b) => a.groupName.localeCompare(b.groupName));
+  }).sort((a, b) => (a.isMember === b.isMember ? 0 : a.isMember ? -1 : 1)
+    || a.groupName.localeCompare(b.groupName));
 
   // Har bir to'lov qayerga ketgani — yozuv qatorida ko'rsatish uchun.
   const usedBy = new Map();

@@ -37,6 +37,10 @@ interface CourseStanding {
     paidUntil: string | null;
     /** Guruh jadvali to'ldirilmagan — sanani hisoblab bo'lmaydi. */
     accessUnknown: boolean;
+    /** Bu kursda hali umuman oylik hisob yozilmagan. */
+    noCharge?: boolean;
+    /** O'quvchi hozir shu guruhda turibdimi. */
+    isMember?: boolean;
     openDebt: boolean;
 }
 
@@ -149,7 +153,12 @@ export default function StudentLedger({ studentId, refreshKey, trial }: { studen
                             <div key={c.groupId} className="px-4 py-3 rounded-xl border border-chiziq bg-ichki/40">
                                 <div className="flex items-start justify-between gap-3">
                                     <div className="min-w-0">
-                                        <p className="text-[12px] font-bold text-matn truncate">{c.groupName}</p>
+                                        <p className="text-[12px] font-bold text-matn truncate">
+                                            {c.groupName}
+                                            {c.isMember === false && (
+                                                <span className="ml-1.5 text-[10px] font-bold text-matn-xira">· guruhdan chiqqan</span>
+                                            )}
+                                        </p>
                                         <p className="text-[10px] text-matn-xira mt-0.5 truncate">
                                             {[c.courseName, c.teacher, c.monthlyPrice > 0 ? money(c.monthlyPrice) + " so'm/oy" : ''].filter(Boolean).join(' · ')}
                                         </p>
@@ -167,11 +176,23 @@ export default function StudentLedger({ studentId, refreshKey, trial }: { studen
                                     dostupi bor" degan savolning javobi. */}
                                 <div className="mt-2 pt-2 border-t border-dashed border-chiziq/60 flex items-center gap-1.5">
                                     <CalendarCheck2 size={12} className={
-                                        !c.paidUntil ? 'text-xato' : qoldi !== null && qoldi < 0 ? 'text-xato'
-                                            : qoldi !== null && qoldi <= 5 ? 'text-ogoh' : 'text-yaxshi'} />
-                                    {c.accessUnknown ? (
+                                        c.isMember === false || c.accessUnknown || (!c.paidUntil && c.noCharge) ? 'text-matn-xira'
+                                            : !c.paidUntil ? 'text-xato'
+                                                : qoldi !== null && qoldi < 0 ? 'text-xato'
+                                                    : qoldi !== null && qoldi <= 5 ? 'text-ogoh' : 'text-yaxshi'} />
+                                    {c.isMember === false ? (
+                                        <span className="text-[11px] font-bold text-matn-xira">
+                                            Guruhdan chiqqan — faqat pul hisobi qoldi
+                                        </span>
+                                    ) : c.accessUnknown ? (
                                         <span className="text-[11px] font-bold text-matn-xira">
                                             Guruh jadvali belgilanmagan — muddatni hisoblab bo'lmaydi
+                                        </span>
+                                    ) : !c.paidUntil && c.noCharge ? (
+                                        /* Bu kursda hali oylik hisob yozilmagan — "to'lamagan" deyish
+                                           noto'g'ri bo'lardi. */
+                                        <span className="text-[11px] font-bold text-matn-xira">
+                                            Hali hisob yozilmagan
                                         </span>
                                     ) : !c.paidUntil ? (
                                         <span className="text-[11px] font-bold text-xato">To'lanmagan — darsga kirish muddati yo'q</span>
