@@ -12,7 +12,7 @@ import { Transport, DeliveryLog, Route } from '../types';
 // Kun jadvali guruhlar, marshrutlar va bot uchun bitta joyda.
 import { isLessonDay, toDateStr, toTimeStr } from '../../lib/lessons.js';
 import RouteMap from './RouteMap';
-import { parseLatLng } from '../lib/mapMarkers';
+import { parseLatLng, distanceKm, masofaMatni, ZAXIRA_MARKAZ } from '../lib/mapMarkers';
 
 type TabType = 'flot' | 'marshrutlar' | 'yetkazish' | 'tarix';
 
@@ -588,6 +588,16 @@ Unga biriktirilgan o'quvchilar bo'shatiladi.`)) deleteTransport(item.id); }} cla
                                     </div>
                                 </div>
 
+                                {/* Raqamlar masofa emas, navbat — buni aytib qo'yish kerak:
+                                    ertalabki marshrutda 1-bekat eng chekkada turadi va
+                                    xaritaga qarab "xato" bo'lib ko'rinadi. */}
+                                <p className="text-[11px] font-bold text-matn-xira mb-3 flex items-start gap-1.5">
+                                    <Navigation size={12} className="text-brand shrink-0 mt-0.5" />
+                                    {tanlangan.direction === 'QAYTISH'
+                                        ? "Raqamlar — tushirish navbati: mashina markazdan chiqib, eng yaqin uydan boshlab tarqatadi."
+                                        : "Raqamlar — olib ketish navbati: mashina eng chekka uydan boshlaydi va markazga yaqinlashib boradi, oxirgi bola eng kam yo'l yuradi."}
+                                </p>
+
                                 {/* Xaritada bekatlar tartib bilan: kim qayerda turgani va
                                     tartib mantiqiymi yo'qmi shundan ko'rinadi. */}
                                 <RouteMap
@@ -623,6 +633,13 @@ Unga biriktirilgan o'quvchilar bo'shatiladi.`)) deleteTransport(item.id); }} cla
                                                         <h4 className="text-xs font-black text-matn tracking-tight">{student.name}</h4>
                                                         <div className="flex items-center gap-2 mt-0.5">
                                                             <span className="text-[11px] text-matn-xira font-bold flex items-center gap-0.5"><MapPin size={9} /> {student.address || '—'}</span>
+                                                            {/* Markazdan masofa — tartib nega shunday ekani ko'rinsin. */}
+                                                            {(() => {
+                                                                const uy = parseLatLng(student.location);
+                                                                if (!uy) return <span className="text-[11px] font-bold text-amber-600 dark:text-amber-500">joylashuvi yo'q</span>;
+                                                                const markaz = parseLatLng(settings?.centerLocation) || ZAXIRA_MARKAZ;
+                                                                return <span className="text-[11px] text-matn-xira font-bold tabular-nums">markazdan {masofaMatni(distanceKm(markaz, uy))}</span>;
+                                                            })()}
                                                             <span className="text-[11px] text-matn-xira font-bold flex items-center gap-0.5"><Phone size={9} /> {student.phone}</span>
                                                         </div>
                                                     </div>
