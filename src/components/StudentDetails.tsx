@@ -35,7 +35,7 @@ export default function StudentDetails() {
     const { id } = useParams<{ id: string }>();
     const navigate = useNavigate();
     const { t } = useLang();
-    const { students, groups, teachers, courses, payments, attendances, scores, transports, directions, settings, addPayment, addAttendance, addScore, updateStudent, addStudentToGroup, deleteStudent, setStudentStatus, topics, updateAttendance, showNotification, loadAttendanceFor } = useCRM();
+    const { students, groups, teachers, courses, payments, attendances, scores, transports, routes, directions, settings, addPayment,addAttendance, addScore, updateStudent, addStudentToGroup, deleteStudent, setStudentStatus, topics, updateAttendance, showNotification, loadAttendanceFor } = useCRM();
     const confirm = useConfirm();
     const [activeTab, setActiveTab] = useState('umumiy');
     const [showPaymentModal, setShowPaymentModal] = useState(false);
@@ -1174,11 +1174,34 @@ export default function StudentDetails() {
                                             )}
                                         </div>
                                     </div>
-                                    <InfoRow
-                                        icon={<Bus className="w-3.5 h-3.5" />}
-                                        label={t('transport')}
-                                        value={transports.find(t => t.id === student.transportId)?.name || t('transport_none')}
-                                    />
+                                    {(() => {
+                                        // Transport marshrutdan olinadi: o'quvchi qaysi
+                                        // marshrutning bekati ekani yagona haqiqat.
+                                        // Ilgari bu yerda Student.transportId turardi va
+                                        // marshrutga qo'shilgan o'quvchida ham "yo'q" deb
+                                        // ko'rsatardi.
+                                        const oqMarshrutlari = (routes || []).filter(r => (r.studentIds || []).includes(student.id));
+                                        if (oqMarshrutlari.length === 0) {
+                                            return <InfoRow icon={<Bus className="w-3.5 h-3.5" />} label={t('transport')} value={t('transport_none')} />;
+                                        }
+                                        return (
+                                            <div className="flex items-start gap-2.5 py-2 border-b border-chiziq-mayin/60 last:border-0">
+                                                <span className="text-matn-xira mt-0.5 shrink-0"><Bus className="w-3.5 h-3.5" /></span>
+                                                <span className="text-[11px] font-bold text-matn-xira shrink-0">{t('transport')}</span>
+                                                <span className="flex-1 text-right space-y-1">
+                                                    {oqMarshrutlari.map(r => (
+                                                        <span key={r.id} className="block text-[11px] font-bold text-matn-2">
+                                                            {r.direction === 'QAYTISH' ? '🏠' : '🏫'} {r.name}
+                                                            <span className="text-matn-xira font-bold">
+                                                                {r.startTime ? ` · ${r.startTime}` : ''}
+                                                                {r.transport?.name ? ` · ${r.transport.name}` : ''}
+                                                            </span>
+                                                        </span>
+                                                    ))}
+                                                </span>
+                                            </div>
+                                        );
+                                    })()}
                                     <InfoRow icon={<Calendar className="w-3.5 h-3.5" />} label={t('birth_date')} value={student.birthDate} />
                                     <InfoRow icon={<Users className="w-3.5 h-3.5" />} label="Jins" value={student.gender === 'Ayol' ? '♀ Ayol' : '♂ Erkak'} />
                                     <div className="space-y-2">

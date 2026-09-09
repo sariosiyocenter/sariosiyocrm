@@ -4525,6 +4525,105 @@ app.get('/api/route-runs', authenticate, async (req, res, next) => {
   } catch (error) { next(error); }
 });
 
+/**
+ * Logistika statistikasi: sana oralig'i bo'yicha tarix.
+ *
+ * Bir so'rovda hammasi keladi — o'quvchi bo'yicha jamlanma, haydovchi
+ * bo'yicha reyslar va kun bo'yicha yig'indi. Oraliq berilmasa boshidan
+ * hisoblanadi: markaz nechta reys qilgani va kim necha marta chiqmagani
+ * ko'rinsin.
+ */
+app.get('/api/logistics/stats', authenticate, async (req, res, next) => {
+  try {
+    const schoolId = parseInt(req.query.schoolId);
+    if (!schoolId) return res.status(400).json({ error: 'schoolId required' });
+    if (!(await canAccessSchool(req.user, schoolId))) return res.status(403).json({ error: "Ruxsat yo'q" });
+
+    const where = { schoolId };
+    const { from, to } = req.query;
+    if (from || to) {
+      where.date = {};
+      if (from) where.date.gte = String(from);
+      if (to) where.date.lte = String(to);
+    }
+
+    const [logs, runs] = await Promise.all([
+      prisma.deliveryLog.findMany({
+        where,
+        select: {
+          id: true, date: true, status: true, studentId: true, markedAt: true,
+          student: { select: { id: true, name: true } },
+          run: { select: { routeId: true, route: { select: { name: true, direction: true } } } },
+        },
+        orderBy: [{ date: 'desc' }, { id: 'desc' }],
+      }),
+      prisma.routeRun.findMany({
+        where,
+        select: {
+          id: true, date: true, routeId: true, startedAt: true, finishedAt: true,
+          driver: { select: { id: true, name: true } },
+          route: { select: { name: true, direction: true } },
+        },
+        orderBy: [{ date: 'desc' }, { id: 'desc' }],
+      }),
+    ]);
+
+    // O'quvchi bo'yicha: necha marta qatnagan, necha marta chiqmagan.
+    const oquvchilar = {};
+    for (const l of logs) {
+      const k = l.studentId;
+      if (!oquvchilar[k]) oquvchilar[k] = { studentId: k, name: l.student?.name || '', olindi: 0, yetkazildi: 0, kelmadi: 0 };
+      if (l.status === 'Olib ketildi') oquvchilar[k].olindi++;
+      else if (l.status === 'Uyiga yetkazildi') oquvchilar[k].yetkazildi++;
+      else if (l.status === 'Kelmadi') oquvchilar[k].kelmadi++;
+    }
+
+    // Haydovchi bo'yicha: reyslar soni va o'rtacha davomiylik (daqiqa).
+    const haydovchilar = {};
+    for (const r of runs) {
+      const k = r.driver?.id || 0;
+      if (!haydovchilar[k]) haydovchilar[k] = { driverId: k, name: r.driver?.name || 'Belgilanmagan', reys: 0, tugagan: 0, jamiDaqiqa: 0 };
+      haydovchilar[k].reys++;
+      if (r.startedAt && r.finishedAt) {
+        haydovchilar[k].tugagan++;
+        haydovchilar[k].jamiDaqiqa += Math.round((new Date(r.finishedAt) - new Date(r.startedAt)) / 60000);
+      }
+    }
+    for (const h of Object.values(haydovchilar)) {
+      h.ortachaDaqiqa = h.tugagan > 0 ? Math.round(h.jamiDaqiqa / h.tugagan) : null;
+    }
+
+    // Kun bo'yicha yig'indi — grafik yoki jadval uchun.
+    const kunlar = {};
+    for (const l of logs) {
+      if (!kunlar[l.date]) kunlar[l.date] = { date: l.date, olindi: 0, yetkazildi: 0, kelmadi: 0, reys: 0 };
+      if (l.status === 'Olib ketildi') kunlar[l.date].olindi++;
+      else if (l.status === 'Uyiga yetkazildi') kunlar[l.date].yetkazildi++;
+      else if (l.status === 'Kelmadi') kunlar[l.date].kelmadi++;
+    }
+    for (const r of runs) {
+      if (!kunlar[r.date]) kunlar[r.date] = { date: r.date, olindi: 0, yetkazildi: 0, kelmadi: 0, reys: 0 };
+      kunlar[r.date].reys++;
+    }
+
+    res.json({
+      jami: {
+        reys: runs.length,
+        yozuv: logs.length,
+        olindi: logs.filter(l => l.status === 'Olib ketildi').length,
+        yetkazildi: logs.filter(l => l.status === 'Uyiga yetkazildi').length,
+        kelmadi: logs.filter(l => l.status === 'Kelmadi').length,
+        oquvchi: Object.keys(oquvchilar).length,
+        birinchiKun: [...runs, ...logs].map(x => x.date).sort()[0] || null,
+      },
+      oquvchilar: Object.values(oquvchilar).sort((a, b) => b.kelmadi - a.kelmadi || b.olindi - a.olindi),
+      haydovchilar: Object.values(haydovchilar).sort((a, b) => b.reys - a.reys),
+      kunlar: Object.values(kunlar).sort((a, b) => b.date.localeCompare(a.date)),
+      reyslar: runs.slice(0, 200),
+    });
+  } catch (error) { next(error); }
+});
+
 // ========== YETKAZISH YOZUVLARI ==========
 
 // Reys va yozuv mantig'i services/logistics.js da: bot ham xuddi shu

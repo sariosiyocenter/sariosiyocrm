@@ -6,14 +6,14 @@ import {
     Bus, Plus, Search, User, Phone, Trash2, Edit2, 
     AlertCircle, Users, X, UserMinus, Truck, Calendar, ChevronLeft, ChevronRight, 
     Home, XCircle, MapPin, Navigation, ArrowUp, ArrowDown,
-    Clock, ChevronDown
+    Clock, ChevronDown, BarChart3, Download, CalendarRange
 } from 'lucide-react';
 import { Transport, DeliveryLog, Route } from '../types';
 // Kun jadvali guruhlar, marshrutlar va bot uchun bitta joyda.
 import { isLessonDay, toDateStr, toTimeStr } from '../../lib/lessons.js';
 import RouteMap from './RouteMap';
 
-type TabType = 'flot' | 'marshrutlar' | 'yetkazish';
+type TabType = 'flot' | 'marshrutlar' | 'yetkazish' | 'tarix';
 
 const inp = "w-full px-4 py-3 bg-ichki border border-chiziq rounded-2xl text-xs font-bold text-matn focus:border-brand focus:ring-4 focus:ring-[#1b6b6b]/10 outline-none transition-all";
 const lbl = "block text-[11px] font-extrabold   text-matn-xira mb-2";
@@ -24,7 +24,8 @@ export default function LogisticsHub() {
         transports, students, users, routes, deliveryLogs, routeRuns, settings,
         addTransport, updateTransport, deleteTransport,
         addRoute, updateRoute, deleteRoute,
-        addDeliveryLog, fetchDeliveryLogs, fetchRouteRuns, showNotification
+        addDeliveryLog, fetchDeliveryLogs, fetchRouteRuns, showNotification,
+        token, selectedSchoolId
     } = useCRM();
     const confirm = useConfirm();
 
@@ -40,6 +41,12 @@ export default function LogisticsHub() {
     // va boshqasiga biriktirilgan marshrutlar ko'rinmasdi.
     const [selectedTransportId, setSelectedTransportId] = useState<number | null>(null);
     const [expandedRouteId, setExpandedRouteId] = useState<number | null>(null);
+
+    // Tarix: sana oralig'i bo'sh bo'lsa boshidan hisoblanadi.
+    const [statsFrom, setStatsFrom] = useState('');
+    const [statsTo, setStatsTo] = useState('');
+    const [stats, setStats] = useState<any>(null);
+    const [statsYuklanmoqda, setStatsYuklanmoqda] = useState(false);
 
     // Modal states
     const [isTransportModalOpen, setIsTransportModalOpen] = useState(false);
@@ -182,6 +189,53 @@ export default function LogisticsHub() {
      * tanlanganda `selectedTransportId` null bo'ladi va ilgari bu yerda
      * jimgina return qilinardi — tugma bosilar, hech narsa yozilmasdi.
      */
+    /**
+     * Statistikani yuklaydi. Oraliq ko'rsatilmasa — butun tarix bo'yicha.
+     */
+    const statsniYuklash = async () => {
+        setStatsYuklanmoqda(true);
+        try {
+            const q = new URLSearchParams({ schoolId: String(selectedSchoolId || '') });
+            if (statsFrom) q.set('from', statsFrom);
+            if (statsTo) q.set('to', statsTo);
+            const r = await fetch(`/api/logistics/stats?${q}`, { headers: { Authorization: `Bearer ${token}` } });
+            if (!r.ok) throw new Error('so\'rov muvaffaqiyatsiz');
+            setStats(await r.json());
+        } catch (e) {
+            showNotification('Statistikani yuklab bo\'lmadi', 'error');
+        } finally {
+            setStatsYuklanmoqda(false);
+        }
+    };
+
+    useEffect(() => {
+        if (activeTab === 'tarix' && !stats && !statsYuklanmoqda) statsniYuklash();
+    }, [activeTab]);
+
+    /** Jadvalni Excel ga chiqarish — hisobot qog'ozga ham ketadi. */
+    const excelgaChiqarish = async () => {
+        if (!stats) return;
+        const XLSX = await import('xlsx');
+        const kitob = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(kitob, XLSX.utils.json_to_sheet(
+            (stats.oquvchilar || []).map((x: any) => ({
+                "O'quvchi": x.name, 'Olib ketildi': x.olindi, 'Uyiga yetkazildi': x.yetkazildi, 'Kelmadi': x.kelmadi,
+            }))
+        ), "O'quvchilar");
+        XLSX.utils.book_append_sheet(kitob, XLSX.utils.json_to_sheet(
+            (stats.haydovchilar || []).map((x: any) => ({
+                'Haydovchi': x.name, 'Reyslar': x.reys, 'Tugatilgan': x.tugagan, "O'rtacha (daqiqa)": x.ortachaDaqiqa ?? '',
+            }))
+        ), 'Haydovchilar');
+        XLSX.utils.book_append_sheet(kitob, XLSX.utils.json_to_sheet(
+            (stats.kunlar || []).map((x: any) => ({
+                'Sana': x.date, 'Reys': x.reys, 'Olib ketildi': x.olindi, 'Uyiga yetkazildi': x.yetkazildi, 'Kelmadi': x.kelmadi,
+            }))
+        ), 'Kunlar');
+        const nom = `logistika-${statsFrom || stats.jami?.birinchiKun || 'boshidan'}_${statsTo || toDateStr()}.xlsx`;
+        XLSX.writeFile(kitob, nom);
+    };
+
     const handleDeliveryUpdate = async (route: Route, studentId: number, status: DeliveryLog['status']) => {
         const transportId = route.transportId ?? selectedTransportId;
         if (!transportId) {
@@ -212,6 +266,7 @@ export default function LogisticsHub() {
                         {[
                             { id: 'marshrutlar', label: t('tab_routes') },
                             { id: 'yetkazish', label: t('tab_daily_status') },
+                            { id: 'tarix', label: 'Tarix' },
                             { id: 'flot', label: t('tab_fleet') },
                         ].map(tab => (
                             <button
@@ -638,6 +693,117 @@ Unga biriktirilgan o'quvchilar bo'shatiladi.`)) deleteTransport(item.id); }} cla
                                 </div>
                             ))}
                     </div>
+                </div>
+            )}
+
+            {activeTab === 'tarix' && (
+                <div className="space-y-4">
+                    {/* Oraliq bo'sh bo'lsa boshidan: markaz umuman nechta reys
+                        qilgani va kim necha marta chiqmagani ko'rinsin. */}
+                    <div className="bg-sirt rounded-2xl border border-chiziq p-4 shadow-sm flex flex-wrap items-end gap-3">
+                        <div>
+                            <label className={lbl}>Boshlanishi</label>
+                            <input type="date" className={inp + ' w-auto'} value={statsFrom} onChange={e => setStatsFrom(e.target.value)} />
+                        </div>
+                        <div>
+                            <label className={lbl}>Tugashi</label>
+                            <input type="date" className={inp + ' w-auto'} value={statsTo} onChange={e => setStatsTo(e.target.value)} />
+                        </div>
+                        <button onClick={statsniYuklash} disabled={statsYuklanmoqda}
+                            className="px-4 py-3 bg-brand hover:bg-brand-dark disabled:opacity-50 text-white rounded-2xl text-[11px] font-extrabold flex items-center gap-2 shadow-sm shadow-[#1b6b6b]/20 transition-all cursor-pointer">
+                            <BarChart3 size={14} /> {statsYuklanmoqda ? 'Yuklanmoqda…' : "Ko'rsatish"}
+                        </button>
+                        {(statsFrom || statsTo) && (
+                            <button onClick={() => { setStatsFrom(''); setStatsTo(''); }}
+                                className="px-4 py-3 bg-ichki border border-chiziq text-matn-sokin rounded-2xl text-[11px] font-extrabold flex items-center gap-2 transition-all cursor-pointer">
+                                <CalendarRange size={14} /> Boshidan
+                            </button>
+                        )}
+                        <div className="flex-1" />
+                        <button onClick={excelgaChiqarish} disabled={!stats}
+                            className="px-4 py-3 bg-ichki border border-chiziq text-matn-sokin hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-50 rounded-2xl text-[11px] font-extrabold flex items-center gap-2 transition-all cursor-pointer">
+                            <Download size={14} /> Excel
+                        </button>
+                    </div>
+
+                    {!stats ? (
+                        <div className="bg-sirt rounded-2xl border border-chiziq p-12 text-center shadow-sm">
+                            <p className="text-[11px] font-bold text-matn-xira">{statsYuklanmoqda ? 'Yuklanmoqda…' : "Ma'lumot yo'q"}</p>
+                        </div>
+                    ) : (
+                        <>
+                            <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
+                                {[
+                                    { yorliq: 'Reyslar', qiymat: stats.jami?.reys ?? 0, izoh: stats.jami?.birinchiKun ? `${stats.jami.birinchiKun} dan beri` : '' },
+                                    { yorliq: 'Olib ketildi', qiymat: stats.jami?.olindi ?? 0 },
+                                    { yorliq: 'Uyiga yetkazildi', qiymat: stats.jami?.yetkazildi ?? 0 },
+                                    { yorliq: 'Kelmadi', qiymat: stats.jami?.kelmadi ?? 0, qizil: true },
+                                    { yorliq: "O'quvchilar", qiymat: stats.jami?.oquvchi ?? 0 },
+                                ].map(k => (
+                                    <div key={k.yorliq} className="bg-sirt rounded-2xl border border-chiziq p-4 shadow-sm">
+                                        <p className="text-[10px] font-bold text-matn-xira uppercase tracking-wider">{k.yorliq}</p>
+                                        <p className={`text-2xl font-black tabular-nums mt-1 ${k.qizil && k.qiymat > 0 ? 'text-rose-600 dark:text-rose-400' : 'text-matn'}`}>{k.qiymat}</p>
+                                        {k.izoh && <p className="text-[10px] font-bold text-matn-xira mt-1">{k.izoh}</p>}
+                                    </div>
+                                ))}
+                            </div>
+
+                            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                                <div className="bg-sirt rounded-2xl border border-chiziq shadow-sm overflow-hidden">
+                                    <p className="px-5 py-4 text-xs font-black text-matn border-b border-chiziq-mayin">O'quvchilar bo'yicha</p>
+                                    <div className="max-h-[420px] overflow-y-auto custom-scrollbar divide-y divide-chiziq-mayin dark:divide-gray-700/50">
+                                        {(stats.oquvchilar || []).length === 0 && <p className="p-6 text-center text-[11px] font-bold text-matn-xira">Yozuv yo'q</p>}
+                                        {(stats.oquvchilar || []).map((o: any) => (
+                                            <div key={o.studentId} className="flex items-center justify-between gap-3 px-5 py-3">
+                                                <span className="text-xs font-bold text-matn truncate">{o.name}</span>
+                                                <span className="flex items-center gap-2 shrink-0 tabular-nums text-[11px] font-black">
+                                                    <span className="text-brand">{o.olindi}</span>
+                                                    <span className="text-emerald-600 dark:text-emerald-400">{o.yetkazildi}</span>
+                                                    <span className={o.kelmadi > 0 ? 'text-rose-600 dark:text-rose-400' : 'text-matn-xira'}>{o.kelmadi}</span>
+                                                </span>
+                                            </div>
+                                        ))}
+                                    </div>
+                                    <p className="px-5 py-2 text-[10px] font-bold text-matn-xira border-t border-chiziq-mayin">
+                                        olindi · yetkazildi · kelmadi
+                                    </p>
+                                </div>
+
+                                <div className="space-y-4">
+                                    <div className="bg-sirt rounded-2xl border border-chiziq shadow-sm overflow-hidden">
+                                        <p className="px-5 py-4 text-xs font-black text-matn border-b border-chiziq-mayin">Haydovchilar</p>
+                                        <div className="divide-y divide-chiziq-mayin dark:divide-gray-700/50">
+                                            {(stats.haydovchilar || []).length === 0 && <p className="p-6 text-center text-[11px] font-bold text-matn-xira">Reys yo'q</p>}
+                                            {(stats.haydovchilar || []).map((h: any) => (
+                                                <div key={h.driverId} className="flex items-center justify-between gap-3 px-5 py-3">
+                                                    <span className="text-xs font-bold text-matn truncate">{h.name}</span>
+                                                    <span className="text-[11px] font-bold text-matn-xira tabular-nums shrink-0">
+                                                        {h.reys} reys{h.ortachaDaqiqa !== null ? ` · ~${h.ortachaDaqiqa} daq` : ''}
+                                                    </span>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </div>
+
+                                    <div className="bg-sirt rounded-2xl border border-chiziq shadow-sm overflow-hidden">
+                                        <p className="px-5 py-4 text-xs font-black text-matn border-b border-chiziq-mayin">Kunlar</p>
+                                        <div className="max-h-[240px] overflow-y-auto custom-scrollbar divide-y divide-chiziq-mayin dark:divide-gray-700/50">
+                                            {(stats.kunlar || []).length === 0 && <p className="p-6 text-center text-[11px] font-bold text-matn-xira">Yozuv yo'q</p>}
+                                            {(stats.kunlar || []).map((k: any) => (
+                                                <div key={k.date} className="flex items-center justify-between gap-3 px-5 py-2.5">
+                                                    <span className="text-[11px] font-bold text-matn tabular-nums">{k.date}</span>
+                                                    <span className="text-[11px] font-bold text-matn-xira tabular-nums">
+                                                        {k.reys} reys · {k.olindi + k.yetkazildi} yozuv
+                                                        {k.kelmadi > 0 && <span className="text-rose-600 dark:text-rose-400"> · {k.kelmadi} kelmadi</span>}
+                                                    </span>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </>
+                    )}
                 </div>
             )}
 

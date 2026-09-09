@@ -251,7 +251,7 @@ ketmasligi uchun sinov o'z o'quvchisini yaratib, unga mavjud bo'lmagan
 Telegram ID beradi: Telegram «chat not found» qaytaradi, ya'ni butun yo'l
 tekshiriladi, lekin hech kimga hech narsa bormaydi.
 
-### 4-bosqich. Admin sahifasi — `Logistics.tsx` qayta ⬜  · Hajm: L
+### 4-bosqich. Admin sahifasi — `Logistics.tsx` qayta 🟡 (2026-09-09)
 
 Sahifa E9 `PageHeader` uslubiga o'tadi (UI rejasi bilan bir vaqtda). Tablar:
 
@@ -264,6 +264,38 @@ Qo'shimcha:
 - O'quvchi profili → "Transport" kartasi: marshruti, haydovchi, so'nggi 10 reys.
 - Dashboard → "Bugungi reyslar 3/4 · 2 kelmadi" plitka (Logistika sahifasiga havola).
 - **Natija:** admin bir ekranda hamma narsani ko'radi.
+
+**Bajarildi:**
+
+- **Kunlik holat → reys doskasi.** Kartochka sarlavhasida yo'nalish, vaqt,
+  mashina va haydovchi; o'ngda `belgilangan/jami`, kelmaganlar soni,
+  haydovchi boshlagan va tugatgan vaqt. Boshlanish vaqtidan 15 daqiqa
+  o'tgan, lekin boshlanmagan reys "kechikmoqda" deb belgilanadi. O'quvchi
+  qatorida kim va qachon belgilagani yoziladi.
+- **Marshrutlar — xarita.** Bekatlar tartib raqami va o'quvchi portreti
+  bilan, markaz logosi bilan, orasida chiziq va yo'l uzunligi.
+  Koordinatasi yo'q o'quvchilar soni alohida aytiladi. Marker kodi
+  `src/lib/mapMarkers.ts` da — profil xaritasi bilan bir xil.
+- **Sig'im ko'rsatkichi** (X12): 6 o'rinli mashinaga 8 o'quvchi qo'shilsa
+  qizil rangda ogohlantiradi.
+- **Tarix tabi** — sana oralig'i yoki **boshidan**: reyslar, olib
+  ketilgan/yetkazilgan/kelmagan soni, o'quvchi bo'yicha jamlanma,
+  haydovchi bo'yicha reys soni va o'rtacha davomiylik, kun bo'yicha
+  yig'indi. Excel ga chiqariladi (uch varaq).
+  Yangi endpointlar: `GET /api/route-runs`, `GET /api/logistics/stats`.
+- **O'quvchi profilidagi Transport qatori** endi marshrutdan olinadi
+  (X13 ning bir qismi): ilgari u `Student.transportId` ni ko'rsatardi va
+  marshrutga qo'shilgan o'quvchida ham "Transport yo'q" deb turardi.
+
+**Qolgani:** sudrab tartiblash va "yaqinidan boshlab tartibla" tugmasi;
+Flot kartochkalarining E4 uslubiga o'tishi; Dashboard plitkasi; E9
+`PageHeader`. `Student.transportId` hali qo'shish/tahrirlash/ariza
+formalarida turibdi — endi hech narsaga ta'sir qilmaydi, lekin
+chalg'itadi.
+
+Tekshiruv: `scratch/test_stats_full.mjs` — 13 holat (jamlanma, o'rtacha
+davomiylik, oraliq filtri), hammasi o'tdi; brauzerda uchala tab va
+o'quvchi profili.
 
 ### 5-bosqich. Transport to'lovi (ixtiyoriy, qaror kerak) ⬜  · Hajm: M
 
