@@ -12,6 +12,7 @@ import bot, { startBot, notifyAdmins, getTelegramBot } from './src/bot/bot.js';
 import { transferStudent, refundStudent, enrollStudent, unenrollStudent, syncGroupMembers, activateStudent, syncStudentGroups } from './services/enrollment.js';
 import { studentLedger, receivedForGroups, monthCoverage } from './services/ledger.js';
 import { holatniYozish } from './services/logistics.js';
+import { smsYuboruvchiniUlash } from './services/transportNotify.js';
 import bcrypt from 'bcryptjs';
 import helmet from 'helmet';
 import rateLimit from 'express-rate-limit';
@@ -4868,6 +4869,11 @@ function resolveRecipientPhone(student) {
 }
 
 // Bitta raqamga SMS yuborish
+// Transport xabarlari SMS ga tushishi uchun: servis server.js ga bog'liq
+// bo'lib qolmasin deb, aksincha, server o'zini ro'yxatdan o'tkazadi.
+smsYuboruvchiniUlash((phone, message, type, studentId, schoolId) =>
+  sendSms(phone, message, type, studentId, schoolId));
+
 async function sendSms(phone, message, type, studentId, schoolId, campaignId = null) {
   let from = process.env.ESKIZ_FROM || '4546';
   

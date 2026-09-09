@@ -362,6 +362,10 @@ export interface CRMState {
         address?: string;
         /** Markaz binosi: "kenglik,uzunlik". Sozlamalarda xaritadan belgilanadi. */
         centerLocation?: string;
+        /** Haydovchi belgilaganda ota-onaga xabar ketsinmi. */
+        transportNotify?: boolean;
+        /** TELEGRAM | SMS | BOTH. */
+        transportChannel?: string;
         telegram?: string;
         instagram?: string;
         workingHours?: string;

@@ -1,6 +1,6 @@
 import { Telegraf, Markup } from 'telegraf';
 import prisma from '../../lib/prisma.js';
-import { isLessonDay, toDateStr } from '../../lib/lessons.js';
+import { isLessonDay, toDateStr, toTimeStr } from '../../lib/lessons.js';
 import { bugungiReyslar, marshrutHolati, holatniYozish, holatniOchirish, reysVaqti, holatlar as yonalishHolatlari } from '../../services/logistics.js';
 
 const bot = new Telegraf(process.env.TELEGRAM_BOT_TOKEN || 'fake_token_for_init');
@@ -616,11 +616,12 @@ export const setupBotHandlers = (botInstance, schoolId) => {
         // transport.students (ya'ni Student.transportId) o'qilardi, Logistika
         // esa marshrutga yozardi — ikki manba bir-biridan ajralib ketgan edi
         // va marshrutga qo'shilgan o'quvchi haydovchida umuman ko'rinmasdi.
-        const today = new Date();
-        const sana = toDateStr(today);
+        const sana = toDateStr();
         const dayType = isLessonDay('TOQ', sana) ? 'TOQ' : isLessonDay('JUFT', sana) ? 'JUFT' : 'Dam olish';
         const months = ['Yanvar','Fevral','Mart','Aprel','May','Iyun','Iyul','Avgust','Sentabr','Oktabr','Noyabr','Dekabr'];
-        const dateLabel = `${today.getDate()}-${months[today.getMonth()]}`;
+        // Yorliq ham UZ sanasidan olinadi, server soatidan emas.
+        const [, oy, kun] = sana.split('-');
+        const dateLabel = `${Number(kun)}-${months[Number(oy) - 1]}`;
 
         const routes = await prisma.route.findMany({
             where: {
@@ -691,12 +692,9 @@ export const setupBotHandlers = (botInstance, schoolId) => {
         matn += `${yonalish} · ${route.startTime || '--:--'} · ${sana}\n`;
         matn += `🚍 ${route.transport?.name || 'mashina biriktirilmagan'}\n`;
         matn += `✔️ ${belgilangan}/${route.stops.length} belgilandi\n`;
-        if (holat.run?.startedAt) {
-            matn += `▶️ boshlandi: ${new Date(holat.run.startedAt).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })}\n`;
-        }
-        if (holat.run?.finishedAt) {
-            matn += `⏹ tugadi: ${new Date(holat.run.finishedAt).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })}\n`;
-        }
+        // Vaqt O'zbekiston bo'yicha: server UTC da ishlaydi.
+        if (holat.run?.startedAt) matn += `▶️ boshlandi: ${toTimeStr(holat.run.startedAt)}\n`;
+        if (holat.run?.finishedAt) matn += `⏹ tugadi: ${toTimeStr(holat.run.finishedAt)}\n`;
         matn += `\n`;
 
         route.stops.forEach((st, idx) => {

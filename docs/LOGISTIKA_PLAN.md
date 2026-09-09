@@ -210,12 +210,46 @@ haydovchi bo'lmagan foydalanuvchi), hammasi o'tdi. Sinov haydovchining
 **Haydovchini botga ulash:** botni ochib, kontaktini ulashadi — raqami
 `User.phone` bilan solishtiriladi va haydovchi menyusi chiqadi.
 
-### 3-bosqich. Ota-onaga xabar ⬜  · Hajm: M
+### 3-bosqich. Ota-onaga xabar ✅ (2026-09-09)
 
 - `sendToOne` (Xabarlar moduli) orqali: kanal Telegram (ota/ona/o'quvchi ulangan bo'lsa), keyin SMS (Eskiz — pullik, sozlamada yoqish/o'chirish).
 - Trigger: `OLINDI` va `YETKAZILDI` yozilganda. `KELMADI` → adminlarga (`notifyAdmins`) va ota-onaga "bugun mashina keldi, chiqmadi".
 - Shablonlar Xabarlar → Shablonlar ichida (`{oquvchi}`, `{vaqt}`, `{transport}`, `{haydovchi}`), avtomatik qoida sifatida — mavjud `AutoMessageRule` mexanizmiga yangi hodisa turi.
 - **Natija:** ota-ona hech narsa so'ramay xabardor.
+
+**Bajarildi.** Xabar yozuv yozilgan ondayoq ketadi — `holatniYozish` ichidan,
+ya'ni haydovchi botdan bossa ham, admin sahifadan bossa ham bir xil; bir
+yo'lni unutib qo'yish imkoni yo'q.
+
+- Matnlar: «🚌 Elyorbek 07:52 da olib ketildi (DAMAS, Alijon aka)» ·
+  «🏠 … uyiga yetkazildi» · «❗️ … bugun … da mashinaga chiqmadi».
+- Qabul qiluvchi: ota, ona, keyin o'quvchining o'zi (Telegramga ulanganlari).
+- Takror yubormaydi: xabar faqat holat **o'zgarganda** ketadi, bir xil
+  tugmani qayta bosish yoki ro'yxatni yangilash yangi xabar hosil qilmaydi.
+- Har xabar `SmsLog` ga `type: TRANSPORT` bilan yoziladi (Xabarlar
+  modulidagi tarixda ko'rinadi), yuborilmasa sababi bilan.
+- Xato yuz bersa haydovchining tugmasi baribir ishlaydi — xabar chaqiruvi
+  kutilmaydi.
+
+Sozlama: **Sozlamalar → Avtomatlashtirish → Transport xabarlari**. Ataylab
+**o'chiq** holda keladi (haqiqiy ota-onaga xabar ketadi — admin o'zi
+yoqsin). Kanal: faqat Telegram (bepul) · Telegram, ulanmagan bo'lsa SMS ·
+faqat SMS. `BOTH` da SMS faqat Telegram ishlamaganda ketadi — xabar ikki
+marta bormasin va bekorga pul ketmasin.
+
+SMS Eskiz orqali: server ishga tushganda o'z yuboruvchisini servisga
+ro'yxatdan o'tkazadi, shuning uchun xabarlar modulini ko'chirish shart
+bo'lmadi va bot ham SMS yubora oladi.
+
+**Yo'l-yo'lakay topilgan xato:** vaqt va sana server soatidan olinardi,
+Vercel esa UTC da ishlaydi — ota-onaga «02:52 da olib ketildi» ketardi va
+yarim kechadan keyin reys kechagi kunga yozilardi. Endi ikkalasi ham
+O'zbekiston vaqtida (`toDateStr`, `toTimeStr` — loyihadagi UTC+5 usuli).
+
+Tekshiruv: `scratch/test_notify.mjs` — 12 holat. Haqiqiy ota-onaga xabar
+ketmasligi uchun sinov o'z o'quvchisini yaratib, unga mavjud bo'lmagan
+Telegram ID beradi: Telegram «chat not found» qaytaradi, ya'ni butun yo'l
+tekshiriladi, lekin hech kimga hech narsa bormaydi.
 
 ### 4-bosqich. Admin sahifasi — `Logistics.tsx` qayta ⬜  · Hajm: L
 

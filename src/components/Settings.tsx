@@ -455,6 +455,55 @@ export default function Settings() {
                     </button>
                 </div>
 
+                {/* Transport xabari jadval bo'yicha emas, hodisa bo'yicha ketadi:
+                    haydovchi tugmani bosgan ondayoq. Shuning uchun u avtomatik
+                    qoidalar ro'yxatida emas, alohida turadi. */}
+                <div className="bg-sirt border border-chiziq rounded-2xl p-5 shadow-sm space-y-4">
+                    <div className="flex items-start justify-between gap-4">
+                        <div className="min-w-0">
+                            <p className="text-xs font-black text-matn tracking-wide flex items-center gap-2">
+                                <Bus size={14} className="text-brand shrink-0" /> Transport xabarlari
+                            </p>
+                            <p className="text-[11px] font-bold text-matn-xira mt-1 leading-relaxed">
+                                Haydovchi o'quvchini olganda yoki uyiga yetkazganda ota-onaga darhol xabar ketadi.
+                                Masalan: «🚌 Elyorbek 07:52 da olib ketildi (DAMAS, Alijon aka)».
+                            </p>
+                        </div>
+                        <button type="button" aria-label="Transport xabarlari"
+                            onClick={() => setProfileForm(p => ({ ...p, transportNotify: !p?.transportNotify }))}
+                            className="shrink-0 cursor-pointer text-brand">
+                            {profileForm?.transportNotify ? <ToggleRight size={34} /> : <ToggleLeft size={34} className="text-gray-300 dark:text-gray-600" />}
+                        </button>
+                    </div>
+
+                    {profileForm?.transportNotify && (
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-4 border-t border-dashed border-chiziq/50">
+                            <div>
+                                <label className={lbl}>Kanal</label>
+                                <select className={inp} value={profileForm?.transportChannel || 'TELEGRAM'}
+                                    onChange={e => setProfileForm(p => ({ ...p, transportChannel: e.target.value }))}>
+                                    <option value="TELEGRAM">Faqat Telegram (bepul)</option>
+                                    <option value="BOTH">Telegram, ulanmagan bo'lsa SMS</option>
+                                    <option value="SMS">Faqat SMS (pullik)</option>
+                                </select>
+                            </div>
+                            <div className="flex items-end">
+                                <p className="text-[10px] font-bold text-matn-xira leading-relaxed">
+                                    SMS har bir xabar uchun pul yechadi — kuniga ikki marta, har o'quvchiga.
+                                    Telegramga ulangan ota-onaga bepul ketadi.
+                                </p>
+                            </div>
+                        </div>
+                    )}
+
+                    <div className="flex justify-end pt-3 border-t border-dashed border-chiziq/50">
+                        <button type="button" disabled={isSaving} onClick={() => { setIsSaving(true); updateSettings(profileForm).finally(() => setIsSaving(false)); }}
+                            className="px-5 py-2.5 bg-brand hover:bg-brand-dark disabled:opacity-50 text-white rounded-xl text-[11px] font-extrabold flex items-center gap-2 shadow-sm shadow-[#1b6b6b]/20 transition-all cursor-pointer">
+                            <Save size={13} />{isSaving ? t('saving') : t('save')}
+                        </button>
+                    </div>
+                </div>
+
                 <p className="text-[11px] font-bold text-matn-xira leading-relaxed">
                     Avtomatik qoidalar Xabarlar modulida yaratiladi va tahrirlanadi — bu yerda ularning joriy holati ko'rinadi.
                 </p>

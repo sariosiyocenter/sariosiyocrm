@@ -7,6 +7,7 @@
  */
 import prisma from '../lib/prisma.js';
 import { isLessonDay } from '../lib/lessons.js';
+import { yetkazishXabari } from './transportNotify.js';
 
 /** Ertalabki reysda o'quvchi olinadi yoki chiqmaydi. */
 export const KETISH_HOLATLAR = ['Olib ketildi', 'Kelmadi'];
@@ -71,12 +72,28 @@ export async function holatniYozish({ route, studentId, status, date, schoolId, 
     markedById,
     markedAt: new Date(),
   };
-  if (mavjud) {
-    return prisma.deliveryLog.update({ where: { id: mavjud.id }, data: yozuv });
+  const log = mavjud
+    ? await prisma.deliveryLog.update({ where: { id: mavjud.id }, data: yozuv })
+    : await prisma.deliveryLog.create({ data: { ...yozuv, studentId, date, schoolId, runId: run.id } });
+
+  // Ota-onaga xabar faqat holat haqiqatan o'zgarganda: bir xil tugmani qayta
+  // bosish yoki ro'yxatni yangilash ikkinchi xabar yubormasin.
+  if (!mavjud || mavjud.status !== status) {
+    const student = await prisma.student.findUnique({
+      where: { id: studentId },
+      select: {
+        id: true, name: true, phone: true,
+        telegramId: true, fatherTelegramId: true, motherTelegramId: true,
+        fatherPhone: true, motherPhone: true,
+      },
+    });
+    if (student) {
+      // Kutilmaydi: xabar ketmasa ham tugma ishlagani qolsin.
+      yetkazishXabari({ student, status, route, schoolId }).catch(() => {});
+    }
   }
-  return prisma.deliveryLog.create({
-    data: { ...yozuv, studentId, date, schoolId, runId: run.id },
-  });
+
+  return log;
 }
 
 /** Yozuvni butunlay o'chirish — haydovchi noto'g'ri bosgan bo'lsa. */

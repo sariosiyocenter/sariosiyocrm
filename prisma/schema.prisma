@@ -548,6 +548,13 @@ model Setting {
   // Sozlamalardan xaritada bir marta belgilaydi; o'quvchi joylashuvi shu
   // nuqtaga nisbatan ko'rsatiladi.
   centerLocation   String?
+
+  // Transport xabarlari: haydovchi o'quvchini olganda yoki uyiga
+  // yetkazganda ota-onaga darhol xabar ketadimi. Ota-onaga haqiqiy xabar
+  // ketishi uchun ataylab o'chiq holda keladi — admin o'zi yoqadi.
+  transportNotify  Boolean  @default(false)
+  // TELEGRAM | SMS | BOTH. SMS pullik, shuning uchun sukut bo'yicha Telegram.
+  transportChannel String   @default("TELEGRAM")
   telegram         String?
   instagram        String?
   workingHours     String?
