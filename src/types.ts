@@ -250,6 +250,8 @@ export interface Route {
     days: 'TOQ' | 'JUFT' | 'HAR_KUNI';
     /** KETISH — uydan markazga, QAYTISH — darsdan keyin uyga. */
     direction?: 'KETISH' | 'QAYTISH';
+    /** Tartibni tizim o'zi quradimi (qo'lda surilsa false). */
+    autoOrder?: boolean;
     /** Bekatlar tartibi bilan. `studentIds` shundan hisoblanadi. */
     stops?: RouteStop[];
     studentIds: number[];

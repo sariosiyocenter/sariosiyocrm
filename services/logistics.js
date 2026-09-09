@@ -7,7 +7,48 @@
  */
 import prisma from '../lib/prisma.js';
 import { isLessonDay } from '../lib/lessons.js';
+import { bekatlarniTartiblash, parseLatLng } from '../lib/tartib.js';
 import { yetkazishXabari } from './transportNotify.js';
+
+/**
+ * Markaz nuqtasi Sozlamalarda belgilanmagan bo'lsa shu ishlatiladi — bot
+ * "Geolokatsiya" tugmasida ota-onalarga aynan shu nuqtani yuboradi.
+ */
+export const ZAXIRA_MARKAZ = [38.4833, 67.9333];
+
+/** Filialning markaz koordinatasi (Sozlamalardan, bo'lmasa zaxira). */
+export async function markazNuqtasi(schoolId) {
+  const s = await prisma.setting.findUnique({ where: { schoolId }, select: { centerLocation: true } });
+  return parseLatLng(s?.centerLocation) || ZAXIRA_MARKAZ;
+}
+
+/**
+ * Marshrut bekatlarini masofa bo'yicha qayta tartiblaydi va yozadi.
+ *
+ * Haydovchi qaysi uydan boshlab qaysi uyga borishini tizim o'zi hal qiladi:
+ * ertalab eng chekkadan boshlab markazga yaqinlashib keladi, kechqurun
+ * markazdan boshlab tarqatadi. Koordinatasi yo'q o'quvchilar oxirida qoladi.
+ * Qaytaradi: yangi tartib (o'quvchi id lari) va yo'l uzunligi.
+ */
+export async function marshrutniTartiblash(routeId) {
+  const route = await prisma.route.findUnique({
+    where: { id: routeId },
+    include: { stops: { include: { student: { select: { id: true, location: true } } } } },
+  });
+  if (!route) return null;
+  const markaz = await markazNuqtasi(route.schoolId);
+  const natija = bekatlarniTartiblash(
+    route.stops.map(s => ({ id: s.studentId, location: s.student?.location })),
+    markaz,
+    route.direction,
+  );
+  await prisma.$transaction(
+    natija.tartib.map((studentId, i) =>
+      prisma.routeStop.update({ where: { routeId_studentId: { routeId, studentId } }, data: { tartib: i } })
+    )
+  );
+  return natija;
+}
 
 /** Ertalabki reysda o'quvchi olinadi yoki chiqmaydi. */
 export const KETISH_HOLATLAR = ['Olib ketildi', 'Kelmadi'];

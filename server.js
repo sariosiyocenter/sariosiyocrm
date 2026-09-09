@@ -11,7 +11,7 @@ import jwt from 'jsonwebtoken';
 import bot, { startBot, notifyAdmins, getTelegramBot } from './src/bot/bot.js';
 import { transferStudent, refundStudent, enrollStudent, unenrollStudent, syncGroupMembers, activateStudent, syncStudentGroups } from './services/enrollment.js';
 import { studentLedger, receivedForGroups, monthCoverage } from './services/ledger.js';
-import { holatniYozish } from './services/logistics.js';
+import { holatniYozish, marshrutniTartiblash } from './services/logistics.js';
 import { smsYuboruvchiniUlash } from './services/transportNotify.js';
 import bcrypt from 'bcryptjs';
 import helmet from 'helmet';
@@ -4247,6 +4247,13 @@ async function oquvchiMarshrutlari(studentId, routeIds, schoolId) {
       data: { routeId, studentId, tartib: (oxirgi?.tartib ?? -1) + 1 },
     });
   }
+
+  // O'zgargan marshrutlarda tartib qayta quriladi (avtomatik bo'lsa).
+  const ozgargan = [...new Set([...ochiriladi, ...haqiqiy.filter(id => !hozirgiSet.has(id))])];
+  for (const routeId of ozgargan) {
+    const r = await prisma.route.findUnique({ where: { id: routeId }, select: { autoOrder: true } });
+    if (r?.autoOrder) await marshrutniTartiblash(routeId).catch(e => console.error('[Tartib]', e.message));
+  }
   return haqiqiy;
 }
 
@@ -4394,7 +4401,7 @@ app.put('/api/students/:id/transport', authenticate, async (req, res, next) => {
 });
 
 // ========== MARSHRUTLAR (LOGISTIKA) ==========
-const ROUTE_FIELDS = ['name', 'startTime', 'transportId', 'driverId', 'days', 'direction', 'studentIds'];
+const ROUTE_FIELDS = ['name', 'startTime', 'transportId', 'driverId', 'days', 'direction', 'autoOrder', 'studentIds'];
 const ROUTE_DAYS = ['TOQ', 'JUFT', 'HAR_KUNI'];
 const ROUTE_DIRECTIONS = ['KETISH', 'QAYTISH'];
 const ROUTE_INCLUDE = {
@@ -4466,6 +4473,7 @@ async function marshrutXatosi(data, schoolId) {
   if (data.direction !== undefined && !ROUTE_DIRECTIONS.includes(data.direction)) {
     return "Yo'nalish notanish: " + data.direction;
   }
+  if (data.autoOrder !== undefined) data.autoOrder = Boolean(data.autoOrder);
   if (data.startTime !== undefined) {
     const vaqt = String(data.startTime || '').trim();
     if (vaqt && !/^([01][0-9]|2[0-3]):[0-5][0-9]$/.test(vaqt)) return 'Vaqt SS:DD ko‘rinishida bo‘lsin';
@@ -4524,6 +4532,8 @@ app.post('/api/routes', authenticate, async (req, res, next) => {
     const { studentIds, ...routeData } = data;
     const route = await prisma.route.create({ data: { ...routeData, schoolId } });
     if (studentIds && studentIds.length) await bekatlarniYozish(route.id, studentIds);
+    // Tartibni tizim quradi (autoOrder yoqiq bo'lsa).
+    if (route.autoOrder !== false) await marshrutniTartiblash(route.id);
 
     const toliq = await prisma.route.findUnique({ where: { id: route.id }, include: ROUTE_INCLUDE });
     res.json(marshrutJavobi(toliq));
@@ -4544,6 +4554,15 @@ app.put('/api/routes/:id', authenticate, async (req, res, next) => {
     const { studentIds, ...routeData } = data;
     if (Object.keys(routeData).length) await prisma.route.update({ where: { id }, data: routeData });
     if (studentIds !== undefined) await bekatlarniYozish(id, studentIds);
+
+    // Tartib: `autoOrder: false` bilan kelgan so'rov — admin qo'lda surgan,
+    // tizim aralashmaydi. Aks holda (o'quvchi qo'shildi/olindi, yo'nalish
+    // o'zgardi, markaz ko'chdi yoki "avtomatik" qayta yoqildi) tartib
+    // qaytadan quriladi.
+    const yangilangan = await prisma.route.findUnique({ where: { id }, select: { autoOrder: true, direction: true } });
+    const qoldaSurildi = data.autoOrder === false;
+    const tartibgaTegdi = studentIds !== undefined || data.direction !== undefined || data.autoOrder === true;
+    if (!qoldaSurildi && yangilangan?.autoOrder && tartibgaTegdi) await marshrutniTartiblash(id);
 
     const toliq = await prisma.route.findUnique({ where: { id }, include: ROUTE_INCLUDE });
     res.json(marshrutJavobi(toliq));

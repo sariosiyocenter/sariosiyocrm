@@ -12,7 +12,7 @@ import { Transport, DeliveryLog, Route } from '../types';
 // Kun jadvali guruhlar, marshrutlar va bot uchun bitta joyda.
 import { isLessonDay, toDateStr, toTimeStr } from '../../lib/lessons.js';
 import RouteMap from './RouteMap';
-import { parseLatLng, distanceKm, ZAXIRA_MARKAZ } from '../lib/mapMarkers';
+import { parseLatLng } from '../lib/mapMarkers';
 
 type TabType = 'flot' | 'marshrutlar' | 'yetkazish' | 'tarix';
 
@@ -127,8 +127,10 @@ export default function LogisticsHub() {
      * Faqat `routes` holatiga tayanish yetmadi: panel bosilgan zahoti eski
      * tartibni ko'rsatib turardi.
      */
-    const bekatlarniSaqlash = async (route: Route, studentIds: number[]) => {
-        const yangi = await updateRoute(route.id, { studentIds });
+    const bekatlarniSaqlash = async (route: Route, studentIds: number[], qolda = false) => {
+        // Qo'lda surish tizim tartibini o'chiradi: admin o'zi biladi.
+        // Qo'shish/olib tashlashda esa tartib serverda qayta quriladi.
+        const yangi = await updateRoute(route.id, qolda ? { studentIds, autoOrder: false } : { studentIds });
         if (yangi) setEditingRoute(yangi);
     };
 
@@ -145,7 +147,7 @@ export default function LogisticsHub() {
         studentIds[index] = studentIds[newIndex];
         studentIds[newIndex] = temp;
 
-        await bekatlarniSaqlash(route, studentIds);
+        await bekatlarniSaqlash(route, studentIds, true);
     };
 
     /**
@@ -169,46 +171,22 @@ export default function LogisticsHub() {
         const to = ids.indexOf(toId);
         if (from === -1 || to === -1) return;
         ids.splice(to, 0, ids.splice(from, 1)[0]);
-        await bekatlarniSaqlash(route, ids);
+        await bekatlarniSaqlash(route, ids, true);
     };
 
     /**
-     * Bekatlarni "eng yaqindan" tartiblash: markazdan boshlab har safar eng
-     * yaqin keyingi bekat olinadi (oddiy ochko'z algoritm).
-     *
-     * Bu eng qisqa yo'lni kafolatlamaydi, lekin qo'lda terilgan tasodifiy
-     * tartibdan ancha yaxshi va bir bosishda bo'ladi. Koordinatasi yo'q
-     * o'quvchilar tartibni buzmasligi uchun oxiriga qo'yiladi.
+     * Tartibni tizimga topshirish: server masofa bo'yicha qayta quradi
+     * (ertalab chekkadan markazga, kechqurun markazdan chekkaga) va bundan
+     * keyin o'quvchi qo'shilsa/olinsa o'zi yangilab turadi.
      */
     const yaqindanTartiblash = async (route: Route) => {
-        const hammasi = routeStudents(route);
-        const nuqtali = hammasi.filter(st => parseLatLng(st.location));
-        const nuqtasiz = hammasi.filter(st => !parseLatLng(st.location));
-        if (nuqtali.length < 2) {
+        const nuqtali = routeStudents(route).filter(st => parseLatLng(st.location)).length;
+        if (nuqtali < 2) {
             showNotification("Tartiblash uchun kamida ikkita o'quvchida joylashuv bo'lishi kerak", 'error');
             return;
         }
-
-        const markaz = parseLatLng(settings?.centerLocation) || ZAXIRA_MARKAZ;
-        const qolgan = [...nuqtali];
-        const tartib: typeof nuqtali = [];
-        // Qaytish reysi markazdan chiqadi va uyda tugaydi — ikkalasida ham
-        // boshlanish nuqtasi markaz, shuning uchun hisob bir xil.
-        let joriy = markaz;
-        while (qolgan.length) {
-            let eng = 0;
-            let engMasofa = Infinity;
-            qolgan.forEach((st, i) => {
-                const d = distanceKm(joriy, parseLatLng(st.location)!);
-                if (d < engMasofa) { engMasofa = d; eng = i; }
-            });
-            const [tanlangan] = qolgan.splice(eng, 1);
-            tartib.push(tanlangan);
-            joriy = parseLatLng(tanlangan.location)!;
-        }
-
-        await bekatlarniSaqlash(route, [...tartib, ...nuqtasiz].map(st => st.id));
-        showNotification('Bekatlar masofa bo\'yicha tartiblandi', 'success');
+        const yangi = await updateRoute(route.id, { autoOrder: true });
+        if (yangi) setEditingRoute(yangi);
     };
 
     /**
@@ -515,6 +493,12 @@ Unga biriktirilgan o'quvchilar bo'shatiladi.`)) deleteTransport(item.id); }} cla
                                             {tanlangan.name}
                                         </h3>
                                         <span className="text-[11px] font-bold text-brand mt-0.5">{t('start_time')}: {tanlangan.startTime || t('not_marked')}</span>
+                                        {/* Tartibni kim quradi: tizim yoki admin. */}
+                                        <span className={`ml-2 px-2 py-0.5 rounded-md text-[10px] font-black border ${tanlangan.autoOrder === false
+                                            ? 'bg-amber-50 text-amber-600 border-amber-100 dark:bg-amber-950/20 dark:text-amber-400 dark:border-amber-900/40'
+                                            : 'bg-teal-50 text-brand border-teal-100 dark:bg-teal-950/20 dark:border-teal-900/40'}`}>
+                                            {tanlangan.autoOrder === false ? "qo'lda tartib" : 'avtomatik tartib'}
+                                        </span>
                                         {(() => {
                                             // Sig'im: 6 o'rinli mashinaga 8 o'quvchi qo'shib qo'yish oson edi.
                                             const sigim = transports.find(tr => tr.id === tanlangan.transportId)?.capacity;
@@ -542,7 +526,7 @@ Unga biriktirilgan o'quvchilar bo'shatiladi.`)) deleteTransport(item.id); }} cla
                                             title="Markazdan boshlab eng yaqin bekatlar ketma-ketligi"
                                             className="px-3.5 py-2 bg-ichki hover:bg-gray-100 border border-gray-100 dark:border-gray-750 text-gray-700 dark:text-white rounded-xl text-[11px] font-extrabold transition-all cursor-pointer flex items-center gap-1.5"
                                         >
-                                            <Sparkles size={13} /> Yaqindan tartibla
+                                            <Sparkles size={13} /> {tanlangan.autoOrder === false ? 'Avtomatik tartibga qaytar' : 'Qayta tartibla'}
                                         </button>
                                         <button
                                             onClick={() => { setStudentSearch(''); setIsStudentSelectorOpen(true); }}

@@ -658,6 +658,10 @@ model Route {
   // Ikkalasi alohida marshrut: vaqti ham, tartibi ham boshqacha bo'ladi.
   direction   String   @default("KETISH")
 
+  // Bekatlar tartibini tizim o'zi quradi (masofa bo'yicha). Admin qo'lda
+  // sursa false bo'ladi va tizim endi aralashmaydi.
+  autoOrder   Boolean  @default(true)
+
   // Bekatlar. Ilgari bu `studentIds Int[]` edi — o'chirilgan o'quvchi ham
   // ro'yxatda qolib ketardi va sanoq yolg'on chiqardi. Ustun hozircha
   // saqlanib turibdi (endi o'qilmaydi), keyingi bosqichda olib tashlanadi.

@@ -1,7 +1,8 @@
 import { Telegraf, Markup } from 'telegraf';
 import prisma from '../../lib/prisma.js';
 import { isLessonDay, toDateStr, toTimeStr } from '../../lib/lessons.js';
-import { bugungiReyslar, marshrutHolati, holatniYozish, holatniOchirish, reysVaqti, holatlar as yonalishHolatlari } from '../../services/logistics.js';
+import { bugungiReyslar, marshrutHolati, holatniYozish, holatniOchirish, reysVaqti, holatlar as yonalishHolatlari, markazNuqtasi } from '../../services/logistics.js';
+import { parseLatLng, distanceKm } from '../../lib/tartib.js';
 
 const bot = new Telegraf(process.env.TELEGRAM_BOT_TOKEN || 'fake_token_for_init');
 
@@ -722,6 +723,8 @@ export const setupBotHandlers = (botInstance, schoolId) => {
                 ? Markup.button.callback('⏹ Tugatdim', `reys_tugat_${route.id}`)
                 : Markup.button.callback('✅ Reys tugagan', `reys_yangi_${route.id}`);
         tugmalar.unshift([vaqtTugma]);
+        // Asosiy ish rejimi: bittadan bekat, navigatsiya bilan.
+        tugmalar.unshift([Markup.button.callback('🧭 Qadam-baqadam boshlash', `reys_qadam_${route.id}_0`)]);
         tugmalar.push([Markup.button.callback('🔄 Yangilash', `reys_yangi_${route.id}`)]);
 
         return { matn, tugmalar };
@@ -844,6 +847,165 @@ export const setupBotHandlers = (botInstance, schoolId) => {
         if (!topilgan) return ctx.answerCbQuery('Bu marshrut sizga biriktirilmagan');
         await ctx.answerCbQuery('Yangilandi');
         await reysniQaytaChizish(ctx, topilgan.route, toDateStr());
+    });
+
+    // ===== Qadam-baqadam rejim =====
+    //
+    // Haydovchi butun ro'yxat bilan emas, KEYINGI bekat bilan ishlaydi: kim,
+    // qayerda, telefoni, navigatsiya. "Oldim"/"Chiqmadi" bosildi — o'sha xabar
+    // keyingi bekatga almashadi. Tartib serverda masofa bo'yicha qurilgan.
+
+    /** Navigatsiya havolalari: koordinata bo'lsa aniq nuqta, bo'lmasa manzil. */
+    const navHavolalar = (student) => {
+        const k = parseLatLng(student.location);
+        if (k) {
+            return {
+                google: `https://www.google.com/maps/dir/?api=1&destination=${k[0]},${k[1]}&travelmode=driving`,
+                yandex: `https://yandex.uz/maps/?rtext=~${k[0]},${k[1]}&rtt=auto`,
+            };
+        }
+        const q = encodeURIComponent((student.address || '').trim() || student.name);
+        return {
+            google: `https://www.google.com/maps/search/?api=1&query=${q}`,
+            yandex: `https://yandex.uz/maps/?text=${q}`,
+        };
+    };
+
+    /**
+     * Keyingi bekat: tartib bo'yicha hali belgilanmagan birinchisi.
+     * `keyin` berilsa — o'sha o'quvchidan keyingi belgilanmagani (o'tkazib
+     * yuborish uchun), oxiriga yetsa boshidan.
+     */
+    const keyingiBekat = (route, holat, keyin = 0) => {
+        const ochiq = route.stops.filter(st => !holat.holatlar[st.studentId]);
+        if (ochiq.length === 0) return null;
+        if (!keyin) return ochiq[0];
+        const idx = ochiq.findIndex(st => st.studentId === keyin);
+        return ochiq[(idx + 1) % ochiq.length];
+    };
+
+    /** Qadam xabari: matn va tugmalar. */
+    const qadamKorinishi = async (route, holat, bekat, sana) => {
+        const belgilangan = route.stops.filter(st => holat.holatlar[st.studentId]).length;
+        const yonalish = route.direction === 'QAYTISH';
+        const st = bekat.student;
+        const raqam = route.stops.findIndex(x => x.studentId === bekat.studentId) + 1;
+
+        // Oldingi nuqta: oxirgi belgilangan bekat, bo'lmasa markaz.
+        const markaz = await markazNuqtasi(schoolId);
+        let oldingi = markaz;
+        let oldingiNom = 'markazdan';
+        const belgilanganlar = route.stops.filter(x => holat.holatlar[x.studentId] && parseLatLng(x.student.location));
+        if (belgilanganlar.length) {
+            const oxirgi = belgilanganlar[belgilanganlar.length - 1];
+            oldingi = parseLatLng(oxirgi.student.location);
+            oldingiNom = 'oldingi bekatdan';
+        }
+        const k = parseLatLng(st.location);
+        const masofa = k ? distanceKm(oldingi, k) : null;
+
+        let matn = `🚌 <b>${route.name}</b> · ${belgilangan}/${route.stops.length}\n`;
+        matn += `${yonalish ? '🏠 uyga tarqatish' : '🏫 markazga olib kelish'} · ${sana}\n\n`;
+        matn += `➡️ <b>Keyingi bekat (${raqam}/${route.stops.length})</b>\n`;
+        matn += `👤 <b>${st.name}</b>\n`;
+        matn += `🏠 ${st.address || 'manzil kiritilmagan'}\n`;
+        matn += `📞 ${st.phone}\n`;
+        if (masofa !== null) {
+            matn += `📍 ${oldingiNom} ${masofa < 1 ? Math.round(masofa * 1000) + ' m' : masofa.toFixed(1) + ' km'}\n`;
+        } else {
+            matn += `⚠️ Xaritadagi joylashuvi belgilanmagan\n`;
+        }
+
+        const nav = navHavolalar(st);
+        const [olindi] = yonalishHolatlari(route.direction);
+        const tugmalar = [
+            [Markup.button.url('🗺 Google Maps', nav.google), Markup.button.url('🗺 Yandex', nav.yandex)],
+            [
+                Markup.button.callback(`✅ ${olindi === 'Olib ketildi' ? 'Oldim' : 'Yetkazdim'}`, `reys_q_${route.id}_${bekat.studentId}_ok`),
+                Markup.button.callback('❌ Chiqmadi', `reys_q_${route.id}_${bekat.studentId}_yoq`),
+            ],
+            [
+                Markup.button.callback('⏭ Keyinroq', `reys_qadam_${route.id}_${bekat.studentId}`),
+                Markup.button.callback('📋 Ro\'yxat', `reys_yangi_${route.id}`),
+            ],
+        ];
+        return { matn, tugmalar };
+    };
+
+    /** Reys tugagandagi xulosa. */
+    const xulosaKorinishi = (route, holat) => {
+        const kelmagan = route.stops.filter(st => holat.holatlar[st.studentId] === 'Kelmadi');
+        let matn = `✅ <b>${route.name}</b> — reys tugadi\n`;
+        matn += `${route.stops.length - kelmagan.length}/${route.stops.length} ${route.direction === 'QAYTISH' ? 'yetkazildi' : 'olindi'}`;
+        if (kelmagan.length) {
+            matn += `\n\n❌ Chiqmaganlar:\n` + kelmagan.map(st => `• ${st.student.name}`).join('\n');
+        }
+        if (holat.run?.startedAt && holat.run?.finishedAt) {
+            const daq = Math.round((new Date(holat.run.finishedAt) - new Date(holat.run.startedAt)) / 60000);
+            matn += `\n\n⏱ ${toTimeStr(holat.run.startedAt)} – ${toTimeStr(holat.run.finishedAt)} (${daq} daqiqa)`;
+        }
+        return { matn, tugmalar: [[Markup.button.callback('📋 Ro\'yxat', `reys_yangi_${route.id}`)]] };
+    };
+
+    /** Qadam xabarini chizadi (yangi yoki joyida). */
+    const qadamniChizish = async (ctx, route, sana, keyin = 0, yangiXabar = false) => {
+        let holat = await marshrutHolati({ routeId: route.id, date: sana });
+        const bekat = keyingiBekat(route, holat, keyin);
+
+        let korinish;
+        if (!bekat) {
+            // Hammasi belgilandi — reys o'zi tugaydi.
+            if (holat.run && !holat.run.finishedAt) {
+                await reysVaqti({ route, date: sana, schoolId, maydon: 'finishedAt' });
+                holat = await marshrutHolati({ routeId: route.id, date: sana });
+            }
+            korinish = xulosaKorinishi(route, holat);
+        } else {
+            korinish = await qadamKorinishi(route, holat, bekat, sana);
+        }
+
+        const extra = { parse_mode: 'HTML', disable_web_page_preview: true, ...Markup.inlineKeyboard(korinish.tugmalar) };
+        if (yangiXabar) return ctx.reply(korinish.matn, extra);
+        try {
+            await ctx.editMessageText(korinish.matn, extra);
+        } catch (e) {
+            if (!String(e.message || '').includes('not modified')) throw e;
+        }
+    };
+
+    // Qadam rejimiga kirish / keyingisiga o'tish (o'tkazib yuborish)
+    botInstance.action(/^reys_qadam_(\d+)_(\d+)$/, async (ctx) => {
+        const topilgan = await haydovchiMarshruti(ctx, parseInt(ctx.match[1]));
+        if (!topilgan) return ctx.answerCbQuery('Bu marshrut sizga biriktirilmagan');
+        const keyin = parseInt(ctx.match[2]) || 0;
+        const sana = toDateStr();
+
+        // Reys hali boshlanmagan bo'lsa — hozir boshlandi.
+        const holat = await marshrutHolati({ routeId: topilgan.route.id, date: sana });
+        if (!holat.run?.startedAt) await reysVaqti({ route: topilgan.route, date: sana, schoolId, maydon: 'startedAt' });
+
+        await ctx.answerCbQuery(keyin ? 'Keyingisi' : 'Reys boshlandi');
+        // Ro'yxat xabaridan kirilganda alohida xabar ochiladi; qadam ichida
+        // "keyinroq" bosilsa o'sha xabar almashadi.
+        await qadamniChizish(ctx, topilgan.route, sana, keyin, !keyin);
+    });
+
+    // Bekatni belgilash: ok — olindi/yetkazildi, yoq — chiqmadi
+    botInstance.action(/^reys_q_(\d+)_(\d+)_(ok|yoq)$/, async (ctx) => {
+        const topilgan = await haydovchiMarshruti(ctx, parseInt(ctx.match[1]));
+        if (!topilgan) return ctx.answerCbQuery('Bu marshrut sizga biriktirilmagan');
+        const { user, route } = topilgan;
+        const studentId = parseInt(ctx.match[2]);
+        const sana = toDateStr();
+        const [olindi] = yonalishHolatlari(route.direction);
+        const status = ctx.match[3] === 'ok' ? olindi : 'Kelmadi';
+
+        await holatniYozish({
+            route, studentId, status, date: sana, schoolId,
+            markedById: user.data.id, transportId: route.transportId,
+        });
+        await ctx.answerCbQuery(status);
+        await qadamniChizish(ctx, route, sana);
     });
 
     botInstance.hears('🚍 Mening Transportim', async (ctx) => {
