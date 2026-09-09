@@ -191,7 +191,7 @@ export async function marshrutHolati({ routeId, date }) {
  * `apply: false` bo'lsa hech narsa yozilmaydi — faqat reja qaytadi.
  */
 export async function marshrutlarniRejalash({
-  schoolId, direction = 'KETISH', transportIds = [], startTime = '07:30',
+  schoolId, direction = 'QAYTISH', transportIds = [], startTime = '18:00',
   days = 'HAR_KUNI', rejim = 'tez', apply = false,
 }) {
   const markaz = await markazNuqtasi(schoolId);

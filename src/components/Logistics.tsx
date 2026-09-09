@@ -48,8 +48,9 @@ export default function LogisticsHub() {
     // Avtomatik rejalashtirish oynasi.
     const [rejaOchiq, setRejaOchiq] = useState(false);
     const [rejaShakl, setRejaShakl] = useState({
-        direction: 'KETISH' as 'KETISH' | 'QAYTISH',
-        startTime: '07:30',
+        // Asosiy ish — dars tugagach uyga yetkazish.
+        direction: 'QAYTISH' as 'KETISH' | 'QAYTISH',
+        startTime: '18:00',
         days: 'HAR_KUNI',
         rejim: 'tez' as 'tez' | 'arzon',
         transportIds: [] as number[],
@@ -75,7 +76,7 @@ export default function LogisticsHub() {
         name: '', model: '', number: '', capacity: 15, driverName: '', driverPhone: '', status: 'Faol', driverId: null
     });
     const [routeFormData, setRouteFormData] = useState<Omit<Route, 'id' | 'schoolId' | 'createdAt' | 'updatedAt'>>({
-        name: '', transportId: null, driverId: null, days: 'HAR_KUNI', direction: 'KETISH', studentIds: [], startTime: ''
+        name: '', transportId: null, driverId: null, days: 'HAR_KUNI', direction: 'QAYTISH', studentIds: [], startTime: ''
     });
 
     useEffect(() => {
@@ -104,7 +105,7 @@ export default function LogisticsHub() {
     // --- ROUTE LOGIC ---
     const resetRouteForm = () => {
         setRouteFormData({
-            name: '', transportId: null, driverId: null, days: 'HAR_KUNI', direction: 'KETISH', studentIds: [], startTime: ''
+            name: '', transportId: null, driverId: null, days: 'HAR_KUNI', direction: 'QAYTISH', studentIds: [], startTime: ''
         });
         setEditingRoute(null);
     };
@@ -490,7 +491,7 @@ Unga biriktirilgan o'quvchilar bo'shatiladi.`)) deleteTransport(item.id); }} cla
                                                 transportId: route.transportId,
                                                 driverId: route.driverId,
                                                 days: route.days,
-                                                direction: route.direction || 'KETISH',
+                                                direction: route.direction || 'QAYTISH',
                                                 studentIds: route.studentIds,
                                                 startTime: route.startTime || ''
                                             });
@@ -860,13 +861,13 @@ Unga biriktirilgan o'quvchilar bo'shatiladi.`)) deleteTransport(item.id); }} cla
                         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-4">
                             <div>
                                 <label className={lbl}>Yo'nalish</label>
-                                <select className={inp} value={rejaShakl.direction} onChange={e => { setReja(null); setRejaShakl({ ...rejaShakl, direction: e.target.value as any, startTime: e.target.value === 'QAYTISH' ? '12:40' : '07:30' }); }}>
+                                <select className={inp} value={rejaShakl.direction} onChange={e => { setReja(null); setRejaShakl({ ...rejaShakl, direction: e.target.value as any, startTime: e.target.value === 'QAYTISH' ? '18:00' : '07:30' }); }}>
+                                    <option value="QAYTISH">Dars tugagach — uyga</option>
                                     <option value="KETISH">Ertalab — markazga</option>
-                                    <option value="QAYTISH">Kechqurun — uyga</option>
                                 </select>
                             </div>
                             <div>
-                                <label className={lbl}>Chiqish vaqti</label>
+                                <label className={lbl}>{rejaShakl.direction === 'QAYTISH' ? 'Dars tugash vaqti' : 'Chiqish vaqti'}</label>
                                 <input type="time" className={inp} value={rejaShakl.startTime} onChange={e => { setReja(null); setRejaShakl({ ...rejaShakl, startTime: e.target.value }); }} />
                             </div>
                             <div>
@@ -1178,9 +1179,9 @@ Unga biriktirilgan o'quvchilar bo'shatiladi.`)) deleteTransport(item.id); }} cla
                             </div>
                             <div>
                                 <label className={lbl}>Yo'nalish</label>
-                                <select className={inp} value={routeFormData.direction || 'KETISH'} onChange={e => setRouteFormData({...routeFormData, direction: e.target.value as any})}>
+                                <select className={inp} value={routeFormData.direction || 'QAYTISH'} onChange={e => setRouteFormData({...routeFormData, direction: e.target.value as any})}>
+                                    <option value="QAYTISH">Darsdan keyin — uyga yetkazish</option>
                                     <option value="KETISH">Ertalab — uydan markazga</option>
-                                    <option value="QAYTISH">Darsdan keyin — uyga</option>
                                 </select>
                             </div>
                             <div className="grid grid-cols-2 gap-4">

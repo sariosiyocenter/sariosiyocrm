@@ -4590,11 +4590,12 @@ app.post('/api/logistics/plan', authenticate, requireRole(...STAFF_MANAGERS), as
     if (!schoolId) return res.status(400).json({ error: 'schoolId required' });
     if (!(await canAccessSchool(req.user, schoolId))) return res.status(403).json({ error: "Ruxsat yo'q" });
 
-    const direction = ROUTE_DIRECTIONS.includes(req.body.direction) ? req.body.direction : 'KETISH';
+    const direction = ROUTE_DIRECTIONS.includes(req.body.direction) ? req.body.direction : 'QAYTISH';
     const days = ROUTE_DAYS.includes(req.body.days) ? req.body.days : 'HAR_KUNI';
     const rejim = req.body.rejim === 'arzon' ? 'arzon' : 'tez';
+    // Vaqt berilmasa yo'nalishga qarab: uyga tarqatish kechqurun, yig'ish ertalab.
     const startTime = /^([01][0-9]|2[0-3]):[0-5][0-9]$/.test(String(req.body.startTime || ''))
-      ? req.body.startTime : '07:30';
+      ? req.body.startTime : (direction === 'QAYTISH' ? '18:00' : '07:30');
     const transportIds = Array.isArray(req.body.transportIds)
       ? req.body.transportIds.map(x => parseInt(x)).filter(Number.isInteger) : [];
 

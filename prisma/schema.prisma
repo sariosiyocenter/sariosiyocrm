@@ -658,9 +658,10 @@ model Route {
   driver      User?    @relation("DriverRoutes", fields: [driverId], references: [id])
   days        String   // TOQ, JUFT, HAR_KUNI
 
-  // Ertalab uydan markazga (KETISH) yoki darsdan keyin uyga (QAYTISH).
-  // Ikkalasi alohida marshrut: vaqti ham, tartibi ham boshqacha bo'ladi.
-  direction   String   @default("KETISH")
+  // Darsdan keyin uyga (QAYTISH) yoki ertalab uydan markazga (KETISH).
+  // Asosiy ish — uyga tarqatish: markazga o'quvchilar o'zi keladi, kechqurun
+  // esa taksi topilmaydi. Shuning uchun sukut bo'yicha QAYTISH.
+  direction   String   @default("QAYTISH")
 
   // Bekatlar tartibini tizim o'zi quradi (masofa bo'yicha). Admin qo'lda
   // sursa false bo'ladi va tizim endi aralashmaydi.
