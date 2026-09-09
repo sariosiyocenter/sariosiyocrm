@@ -86,7 +86,7 @@ interface CRMContextType extends CRMState {
     updateTransport: (id: number, transport: Partial<Transport>) => Promise<void>;
     deleteTransport: (id: number) => Promise<void>;
     addRoute: (route: Omit<Route, 'id' | 'schoolId' | 'createdAt' | 'updatedAt'>) => Promise<void>;
-    updateRoute: (id: number, route: Partial<Route>) => Promise<void>;
+    updateRoute: (id: number, route: Partial<Route>) => Promise<Route | void>;
     deleteRoute: (id: number) => Promise<void>;
     addExam: (exam: Omit<Exam, 'id' | 'schoolId'>) => Promise<void>;
     updateExam: (id: number, exam: Partial<Exam>) => Promise<void>;
@@ -1293,6 +1293,8 @@ export const CRMProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         const updated = await apiCall(`routes/${id}`, 'PUT', route);
         setState(prev => ({ ...prev, routes: prev.routes.map(r => r.id === id ? updated : r) }));
         showNotification("Marshrut yangilandi", "success");
+        // Chaqiruvchi ochiq turgan panelni shu javob bilan yangilaydi.
+        return updated as Route;
     };
 
     const deleteRoute = async (id: number) => {

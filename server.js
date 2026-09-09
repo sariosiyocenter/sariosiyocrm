@@ -3482,10 +3482,10 @@ app.get('/api/init', authenticate, async (req, res, next) => {
       }),
       prisma.route.findMany({
         where: whereQuery,
-        include: {
-          transport: true,
-          driver: { select: { id: true, name: true, phone: true } }
-        }
+        // Bekatlar bilan: `studentIds` endi ustundan emas, shu yerdan
+        // hisoblanadi (pastda marshrutJavobi). Aks holda sahifa yangilangach
+        // yangi marshrutlar bo'sh ko'rinardi.
+        include: ROUTE_INCLUDE
       }),
       prisma.user.findMany({
         where: whereQuery,
@@ -3521,6 +3521,7 @@ app.get('/api/init', authenticate, async (req, res, next) => {
       groups: s.groups.map(g => g.id),
       routeIds: (s.routeStops || []).map(x => x.routeId)
     }));
+    const mappedRoutes = routes.map(marshrutJavobi);
     const mappedGroups = groups.map(g => ({
       ...g,
       studentIds: g.students.map(s => s.id),
@@ -3536,7 +3537,7 @@ app.get('/api/init', authenticate, async (req, res, next) => {
       // every other role gets the masked copy.
       settings: isAdmin(req.user) ? settings : stripSettingSecrets(settings),
       attendances, scores, teacherAttendances, staffAttendances, expenses,
-      transports, routes, questions, exams, examResults, schools,
+      transports, routes: mappedRoutes, questions, exams, examResults, schools,
       topics, syllabuses, directions,
       users: users.map(u => {
         const { teacherProfile, ...qolgan } = u;

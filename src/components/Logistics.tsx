@@ -6,12 +6,13 @@ import {
     Bus, Plus, Search, User, Phone, Trash2, Edit2, 
     AlertCircle, Users, X, UserMinus, Truck, Calendar, ChevronLeft, ChevronRight, 
     Home, XCircle, MapPin, Navigation, ArrowUp, ArrowDown,
-    Clock, ChevronDown, BarChart3, Download, CalendarRange
+    Clock, ChevronDown, BarChart3, Download, CalendarRange, GripVertical, Sparkles
 } from 'lucide-react';
 import { Transport, DeliveryLog, Route } from '../types';
 // Kun jadvali guruhlar, marshrutlar va bot uchun bitta joyda.
 import { isLessonDay, toDateStr, toTimeStr } from '../../lib/lessons.js';
 import RouteMap from './RouteMap';
+import { parseLatLng, distanceKm, ZAXIRA_MARKAZ } from '../lib/mapMarkers';
 
 type TabType = 'flot' | 'marshrutlar' | 'yetkazish' | 'tarix';
 
@@ -41,6 +42,8 @@ export default function LogisticsHub() {
     // va boshqasiga biriktirilgan marshrutlar ko'rinmasdi.
     const [selectedTransportId, setSelectedTransportId] = useState<number | null>(null);
     const [expandedRouteId, setExpandedRouteId] = useState<number | null>(null);
+    // Sudralayotgan bekatning o'quvchi id si.
+    const [dragStudentId, setDragStudentId] = useState<number | null>(null);
 
     // Tarix: sana oralig'i bo'sh bo'lsa boshidan hisoblanadi.
     const [statsFrom, setStatsFrom] = useState('');
@@ -118,6 +121,17 @@ export default function LogisticsHub() {
         }
     };
 
+    /**
+     * Bekatlar ro'yxatini saqlaydi va ochiq panelni javob bilan yangilaydi.
+     *
+     * Faqat `routes` holatiga tayanish yetmadi: panel bosilgan zahoti eski
+     * tartibni ko'rsatib turardi.
+     */
+    const bekatlarniSaqlash = async (route: Route, studentIds: number[]) => {
+        const yangi = await updateRoute(route.id, { studentIds });
+        if (yangi) setEditingRoute(yangi);
+    };
+
     const moveStudentInRoute = async (route: Route, studentId: number, direction: 'up' | 'down') => {
         const studentIds = [...route.studentIds];
         const index = studentIds.indexOf(studentId);
@@ -131,7 +145,7 @@ export default function LogisticsHub() {
         studentIds[index] = studentIds[newIndex];
         studentIds[newIndex] = temp;
 
-        await updateRoute(route.id, { studentIds });
+        await bekatlarniSaqlash(route, studentIds);
     };
 
     /**
@@ -142,6 +156,69 @@ export default function LogisticsHub() {
      * Reysga bog'lanmagan eski yozuvlar (runId yo'q) har ikkalasiga to'g'ri
      * keladi — ular 1-bosqichdan oldingi ma'lumot.
      */
+    /**
+     * Bekatni sudrab boshqa o'ringa qo'yish.
+     *
+     * Uzun marshrutda ↑↓ bilan bitta bekatni bir necha pog'ona ko'chirish
+     * ko'p bosishni talab qilardi.
+     */
+    const bekatniKochirish = async (route: Route, fromId: number, toId: number) => {
+        if (fromId === toId) return;
+        const ids = routeStudents(route).map(st => st.id);
+        const from = ids.indexOf(fromId);
+        const to = ids.indexOf(toId);
+        if (from === -1 || to === -1) return;
+        ids.splice(to, 0, ids.splice(from, 1)[0]);
+        await bekatlarniSaqlash(route, ids);
+    };
+
+    /**
+     * Bekatlarni "eng yaqindan" tartiblash: markazdan boshlab har safar eng
+     * yaqin keyingi bekat olinadi (oddiy ochko'z algoritm).
+     *
+     * Bu eng qisqa yo'lni kafolatlamaydi, lekin qo'lda terilgan tasodifiy
+     * tartibdan ancha yaxshi va bir bosishda bo'ladi. Koordinatasi yo'q
+     * o'quvchilar tartibni buzmasligi uchun oxiriga qo'yiladi.
+     */
+    const yaqindanTartiblash = async (route: Route) => {
+        const hammasi = routeStudents(route);
+        const nuqtali = hammasi.filter(st => parseLatLng(st.location));
+        const nuqtasiz = hammasi.filter(st => !parseLatLng(st.location));
+        if (nuqtali.length < 2) {
+            showNotification("Tartiblash uchun kamida ikkita o'quvchida joylashuv bo'lishi kerak", 'error');
+            return;
+        }
+
+        const markaz = parseLatLng(settings?.centerLocation) || ZAXIRA_MARKAZ;
+        const qolgan = [...nuqtali];
+        const tartib: typeof nuqtali = [];
+        // Qaytish reysi markazdan chiqadi va uyda tugaydi — ikkalasida ham
+        // boshlanish nuqtasi markaz, shuning uchun hisob bir xil.
+        let joriy = markaz;
+        while (qolgan.length) {
+            let eng = 0;
+            let engMasofa = Infinity;
+            qolgan.forEach((st, i) => {
+                const d = distanceKm(joriy, parseLatLng(st.location)!);
+                if (d < engMasofa) { engMasofa = d; eng = i; }
+            });
+            const [tanlangan] = qolgan.splice(eng, 1);
+            tartib.push(tanlangan);
+            joriy = parseLatLng(tanlangan.location)!;
+        }
+
+        await bekatlarniSaqlash(route, [...tartib, ...nuqtasiz].map(st => st.id));
+        showNotification('Bekatlar masofa bo\'yicha tartiblandi', 'success');
+    };
+
+    /**
+     * Tanlangan marshrut — har doim `routes` dagi yangi holat.
+     *
+     * `editingRoute` faqat qaysi marshrut tanlanganini eslab qoladi; uning
+     * ichidagi ma'lumot eskirgan bo'lishi mumkin.
+     */
+    const tanlangan = editingRoute ? (routes.find(r => r.id === editingRoute.id) || editingRoute) : null;
+
     const getDeliveryStatus = (route: Route, studentId: number) => {
         return deliveryLogs.find(l =>
             l.studentId === studentId
@@ -430,19 +507,19 @@ Unga biriktirilgan o'quvchilar bo'shatiladi.`)) deleteTransport(item.id); }} cla
 
                     {/* Right: Route stops detail */}
                     <div className="lg:col-span-8">
-                        {editingRoute ? (
+                        {tanlangan ? (
                             <div className="bg-sirt rounded-2xl border border-chiziq p-4 shadow-sm animate-in fade-in duration-300">
                                 <div className="flex justify-between items-start mb-6 pb-4 border-b border-chiziq-mayin/50">
                                     <div>
                                         <h3 className="text-sm font-black text-matn tracking-tight">
-                                            {editingRoute.name}
+                                            {tanlangan.name}
                                         </h3>
-                                        <span className="text-[11px] font-bold text-brand mt-0.5">{t('start_time')}: {editingRoute.startTime || t('not_marked')}</span>
+                                        <span className="text-[11px] font-bold text-brand mt-0.5">{t('start_time')}: {tanlangan.startTime || t('not_marked')}</span>
                                         {(() => {
                                             // Sig'im: 6 o'rinli mashinaga 8 o'quvchi qo'shib qo'yish oson edi.
-                                            const sigim = transports.find(tr => tr.id === editingRoute.transportId)?.capacity;
+                                            const sigim = transports.find(tr => tr.id === tanlangan.transportId)?.capacity;
                                             if (!sigim) return null;
-                                            const soni = routeStudents(editingRoute).length;
+                                            const soni = routeStudents(tanlangan).length;
                                             const toldi = soni > sigim;
                                             return (
                                                 <span className={`ml-2 px-2 py-0.5 rounded-md text-[10px] font-black border ${toldi
@@ -460,7 +537,14 @@ Unga biriktirilgan o'quvchilar bo'shatiladi.`)) deleteTransport(item.id); }} cla
                                         >
                                             {t('edit')}
                                         </button>
-                                        <button 
+                                        <button
+                                            onClick={() => yaqindanTartiblash(tanlangan)}
+                                            title="Markazdan boshlab eng yaqin bekatlar ketma-ketligi"
+                                            className="px-3.5 py-2 bg-ichki hover:bg-gray-100 border border-gray-100 dark:border-gray-750 text-gray-700 dark:text-white rounded-xl text-[11px] font-extrabold transition-all cursor-pointer flex items-center gap-1.5"
+                                        >
+                                            <Sparkles size={13} /> Yaqindan tartibla
+                                        </button>
+                                        <button
                                             onClick={() => { setStudentSearch(''); setIsStudentSelectorOpen(true); }}
                                             className="px-3.5 py-2 bg-brand hover:bg-brand-dark text-white rounded-xl text-[11px] font-extrabold shadow-sm shadow-[#1b6b6b]/20 transition-all cursor-pointer"
                                         >
@@ -473,21 +557,30 @@ Unga biriktirilgan o'quvchilar bo'shatiladi.`)) deleteTransport(item.id); }} cla
                                     tartib mantiqiymi yo'qmi shundan ko'rinadi. */}
                                 <RouteMap
                                     className="mb-5"
-                                    stops={routeStudents(editingRoute).map(st => ({
+                                    stops={routeStudents(tanlangan).map(st => ({
                                         studentId: st.id, name: st.name, photo: st.photo, location: st.location,
                                     }))}
                                     centerLocation={settings?.centerLocation}
                                     orgName={settings?.orgName}
                                     logo={settings?.logo}
-                                    direction={editingRoute.direction === 'QAYTISH' ? 'QAYTISH' : 'KETISH'}
+                                    direction={tanlangan.direction === 'QAYTISH' ? 'QAYTISH' : 'KETISH'}
                                 />
 
                                 <div className="space-y-2">
-                                    {routeStudents(editingRoute).map((student, index, ruyxat) => {
+                                    {routeStudents(tanlangan).map((student, index, ruyxat) => {
                                         const sid = student.id;
                                         return (
-                                            <div key={sid} className="flex items-center justify-between p-4 bg-gray-50/50 dark:bg-gray-900/40 rounded-2xl hover:border-gray-100 border border-transparent transition-all group">
+                                            <div key={sid}
+                                                draggable
+                                                onDragStart={() => setDragStudentId(sid)}
+                                                onDragOver={e => e.preventDefault()}
+                                                onDrop={e => { e.preventDefault(); if (dragStudentId !== null) bekatniKochirish(tanlangan, dragStudentId, sid); setDragStudentId(null); }}
+                                                onDragEnd={() => setDragStudentId(null)}
+                                                className={`flex items-center justify-between p-4 bg-gray-50/50 dark:bg-gray-900/40 rounded-2xl hover:border-gray-100 border transition-all group ${
+                                                    dragStudentId === sid ? 'border-brand opacity-60' : 'border-transparent'
+                                                }`}>
                                                 <div className="flex items-center gap-3">
+                                                    <GripVertical size={14} className="text-matn-xira cursor-grab active:cursor-grabbing shrink-0" />
                                                     <div className="w-8 h-8 rounded-lg bg-sirt border border-chiziq flex items-center justify-center font-black text-xs text-brand">
                                                         {index + 1}
                                                     </div>
@@ -501,14 +594,14 @@ Unga biriktirilgan o'quvchilar bo'shatiladi.`)) deleteTransport(item.id); }} cla
                                                 </div>
                                                 <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                                                     <button 
-                                                        onClick={() => moveStudentInRoute(editingRoute, sid, 'up')}
+                                                        onClick={() => moveStudentInRoute(tanlangan, sid, 'up')}
                                                         disabled={index === 0}
                                                         className="w-7 h-7 rounded-lg text-matn-xira hover:text-brand hover:bg-gray-50 dark:hover:bg-gray-950 flex items-center justify-center transition-all cursor-pointer disabled:opacity-30"
                                                     >
                                                         <ArrowUp size={14} />
                                                     </button>
                                                     <button 
-                                                        onClick={() => moveStudentInRoute(editingRoute, sid, 'down')}
+                                                        onClick={() => moveStudentInRoute(tanlangan, sid, 'down')}
                                                         disabled={index === ruyxat.length - 1}
                                                         className="w-7 h-7 rounded-lg text-matn-xira hover:text-brand hover:bg-gray-50 dark:hover:bg-gray-950 flex items-center justify-center transition-all cursor-pointer disabled:opacity-30"
                                                     >
@@ -516,8 +609,8 @@ Unga biriktirilgan o'quvchilar bo'shatiladi.`)) deleteTransport(item.id); }} cla
                                                     </button>
                                                     <button 
                                                         onClick={async () => {
-                                                            const studentIds = editingRoute.studentIds.filter(id => id !== sid);
-                                                            await updateRoute(editingRoute.id, { studentIds });
+                                                            const studentIds = tanlangan.studentIds.filter(id => id !== sid);
+                                                            await bekatlarniSaqlash(tanlangan, studentIds);
                                                         }}
                                                         className="w-7 h-7 rounded-lg text-rose-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/20 flex items-center justify-center transition-all cursor-pointer"
                                                     >
@@ -527,7 +620,7 @@ Unga biriktirilgan o'quvchilar bo'shatiladi.`)) deleteTransport(item.id); }} cla
                                             </div>
                                         );
                                     })}
-                                    {routeStudents(editingRoute).length === 0 && (
+                                    {routeStudents(tanlangan).length === 0 && (
                                         <p className="text-center py-12 text-[11px] text-matn-xira font-bold">{t('no_students_in_route')}</p>
                                     )}
                                 </div>
@@ -967,13 +1060,13 @@ Unga biriktirilgan o'quvchilar bo'shatiladi.`)) deleteTransport(item.id); }} cla
                             {students
                                 .filter(s => s.status !== 'Arxiv')
                                 .filter(s => s.name.toLowerCase().includes(studentSearch.toLowerCase()))
-                                .filter(s => !editingRoute.studentIds.includes(s.id))
+                                .filter(s => !(tanlangan || editingRoute).studentIds.includes(s.id))
                                 .map(student => (
                                     <button
                                         key={student.id}
                                         onClick={async () => {
-                                            const studentIds = [...editingRoute.studentIds, student.id];
-                                            await updateRoute(editingRoute.id, { studentIds });
+                                            const studentIds = [...(tanlangan || editingRoute).studentIds, student.id];
+                                            await bekatlarniSaqlash(tanlangan || editingRoute, studentIds);
                                         }}
                                         className="w-full flex items-center justify-between p-3 bg-gray-50/50 dark:bg-gray-900/40 hover:bg-brand/5 border border-transparent hover:border-gray-100 rounded-2xl transition-all cursor-pointer text-left"
                                     >
