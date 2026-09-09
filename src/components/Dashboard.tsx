@@ -29,8 +29,10 @@ export default function Dashboard() {
     const { t } = useLang();
     const navigate = useNavigate();
 
-    // Date preset states
-    const [selectedPreset, setSelectedPreset] = useState<'this_month' | 'last_30' | 'this_year' | 'all' | 'custom'>('this_month');
+    // Date preset states.
+    // "Kun" va "Hafta" Moliyadagi bilan bir xil bo'lishi uchun shu yerda ham
+    // bor: ikkala sahifada muddat tanlagichi turlicha bo'lsa chalkashtiradi.
+    const [selectedPreset, setSelectedPreset] = useState<'today' | 'this_week' | 'this_month' | 'last_30' | 'this_year' | 'all' | 'custom'>('this_month');
     const [startDate, setStartDate] = useState(() => {
         const d = new Date();
         d.setDate(1);
@@ -38,13 +40,21 @@ export default function Dashboard() {
     });
     const [endDate, setEndDate] = useState(() => new Date().toISOString().split('T')[0]);
 
-    const handlePreset = (type: 'this_month' | 'last_30' | 'this_year' | 'all') => {
+    const handlePreset = (type: 'today' | 'this_week' | 'this_month' | 'last_30' | 'this_year' | 'all') => {
         setSelectedPreset(type);
         const today = new Date();
         const todayStr = today.toISOString().split('T')[0];
         setEndDate(todayStr);
 
-        if (type === 'this_month') {
+        if (type === 'today') {
+            setStartDate(todayStr);
+        } else if (type === 'this_week') {
+            // Hafta dushanbadan boshlanadi (getDay(): yakshanba = 0).
+            const start = new Date(today);
+            const shift = (today.getDay() + 6) % 7;
+            start.setDate(today.getDate() - shift);
+            setStartDate(start.toISOString().split('T')[0]);
+        } else if (type === 'this_month') {
             const start = new Date(today.getFullYear(), today.getMonth(), 1);
             setStartDate(start.toISOString().split('T')[0]);
         } else if (type === 'last_30') {
@@ -351,8 +361,10 @@ export default function Dashboard() {
                     <div className="flex flex-wrap items-center gap-3">
                         {/* Presets */}
                         <div className="flex items-center gap-1 bg-ichki p-1 rounded-xl border border-chiziq">
-                            {['this_month', 'last_30', 'this_year', 'all', 'custom'].map((type) => {
-                                const label = type === 'this_month' ? t('preset_this_month')
+                            {['today', 'this_week', 'this_month', 'last_30', 'this_year', 'all', 'custom'].map((type) => {
+                                const label = type === 'today' ? 'Kun'
+                                    : type === 'this_week' ? 'Hafta'
+                                    : type === 'this_month' ? t('preset_this_month')
                                     : type === 'last_30' ? t('preset_30_days')
                                     : type === 'this_year' ? t('preset_this_year')
                                     : type === 'all' ? t('preset_all')
