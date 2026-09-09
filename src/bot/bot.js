@@ -1,6 +1,7 @@
 import { Telegraf, Markup } from 'telegraf';
 import prisma from '../../lib/prisma.js';
 import { isLessonDay, toDateStr } from '../../lib/lessons.js';
+import { bugungiReyslar, marshrutHolati, holatniYozish, holatniOchirish, reysVaqti, holatlar as yonalishHolatlari } from '../../services/logistics.js';
 
 const bot = new Telegraf(process.env.TELEGRAM_BOT_TOKEN || 'fake_token_for_init');
 
@@ -30,6 +31,7 @@ const getAdminMenu = () => Markup.keyboard([
 ]).resize();
 
 const getDriverMenu = () => Markup.keyboard([
+    ['🚌 Bugungi reyslar'],
     ['📍 O\'quvchilar lokatsiyasi', '🚍 Mening Transportim'],
     ['👤 Profil', '🚪 Chiqish']
 ]).resize();
@@ -672,6 +674,178 @@ export const setupBotHandlers = (botInstance, schoolId) => {
 
             await ctx.reply(msg, { disable_web_page_preview: true });
         }
+    });
+
+    // ===== Haydovchining bugungi reyslari =====
+    //
+    // Butun holat bazada: tugma bosilganda yozuv yoziladi va xabar qayta
+    // chiziladi. Xotirada hech narsa saqlanmaydi, shuning uchun bot qayta
+    // ishga tushsa ham eski xabardagi tugmalar ishlayveradi.
+
+    /** Reys xabarining matni va tugmalari. */
+    const reysKorinishi = (route, holat, sana) => {
+        const yonalish = route.direction === 'QAYTISH' ? '🏠 uyga qaytish' : '🏫 markazga olib kelish';
+        const belgilangan = route.stops.filter(st => holat.holatlar[st.studentId]).length;
+
+        let matn = `🚌 <b>${route.name}</b>\n`;
+        matn += `${yonalish} · ${route.startTime || '--:--'} · ${sana}\n`;
+        matn += `🚍 ${route.transport?.name || 'mashina biriktirilmagan'}\n`;
+        matn += `✔️ ${belgilangan}/${route.stops.length} belgilandi\n`;
+        if (holat.run?.startedAt) {
+            matn += `▶️ boshlandi: ${new Date(holat.run.startedAt).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })}\n`;
+        }
+        if (holat.run?.finishedAt) {
+            matn += `⏹ tugadi: ${new Date(holat.run.finishedAt).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })}\n`;
+        }
+        matn += `\n`;
+
+        route.stops.forEach((st, idx) => {
+            const s2 = st.student;
+            const belgi = holat.holatlar[st.studentId];
+            const icon = !belgi ? '⬜' : belgi === 'Kelmadi' ? '❌' : '✅';
+            matn += `${icon} <b>${idx + 1}. ${s2.name}</b>\n`;
+            matn += `   🏠 ${s2.address || 'manzil kiritilmagan'}\n`;
+            if (s2.location) matn += `   🗺 https://www.google.com/maps?q=${s2.location}\n`;
+            matn += `   📞 ${s2.phone}\n`;
+        });
+        if (route.stops.length === 0) matn += "Bu marshrutda hali o'quvchi yo'q.\n";
+
+        const tugmalar = route.stops.map((st, idx) => {
+            const belgi = holat.holatlar[st.studentId];
+            const icon = !belgi ? '⬜' : belgi === 'Kelmadi' ? '❌' : '✅';
+            // Ism qisqartiriladi: tugma matni telefon ekraniga sig'sin.
+            const ism = st.student.name.length > 22 ? st.student.name.slice(0, 21) + '…' : st.student.name;
+            return [Markup.button.callback(`${icon} ${idx + 1}. ${ism}`, `reys_h_${route.id}_${st.studentId}`)];
+        });
+
+        const vaqtTugma = !holat.run?.startedAt
+            ? Markup.button.callback('▶️ Boshladim', `reys_bosh_${route.id}`)
+            : !holat.run?.finishedAt
+                ? Markup.button.callback('⏹ Tugatdim', `reys_tugat_${route.id}`)
+                : Markup.button.callback('✅ Reys tugagan', `reys_yangi_${route.id}`);
+        tugmalar.unshift([vaqtTugma]);
+        tugmalar.push([Markup.button.callback('🔄 Yangilash', `reys_yangi_${route.id}`)]);
+
+        return { matn, tugmalar };
+    };
+
+    /** Haydovchi va uning shu marshrutga haqqi bormi. */
+    const haydovchiMarshruti = async (ctx, routeId) => {
+        const user = await findUser(ctx.from.id, schoolId);
+        if (!user || user.type !== 'driver') return null;
+        const route = await prisma.route.findFirst({
+            where: {
+                id: routeId,
+                schoolId,
+                OR: [{ driverId: user.data.id }, { transport: { driverId: user.data.id } }],
+            },
+            include: {
+                transport: { select: { id: true, name: true } },
+                stops: {
+                    orderBy: { tartib: 'asc' },
+                    include: { student: { select: { id: true, name: true, phone: true, address: true, location: true } } },
+                },
+            },
+        });
+        if (!route) return null;
+        return { user, route };
+    };
+
+    /** Xabarni joyida qayta chizadi. */
+    const reysniQaytaChizish = async (ctx, route, sana) => {
+        const holat = await marshrutHolati({ routeId: route.id, date: sana });
+        const { matn, tugmalar } = reysKorinishi(route, holat, sana);
+        try {
+            await ctx.editMessageText(matn, {
+                parse_mode: 'HTML',
+                disable_web_page_preview: true,
+                ...Markup.inlineKeyboard(tugmalar),
+            });
+        } catch (e) {
+            // "message is not modified" — foydalanuvchi bir xil tugmani bossa.
+            if (!String(e.message || '').includes('not modified')) throw e;
+        }
+    };
+
+    botInstance.hears('🚌 Bugungi reyslar', async (ctx) => {
+        const user = await findUser(ctx.from.id, schoolId);
+        if (!user || user.type !== 'driver') return;
+
+        const sana = toDateStr();
+        const reyslar = await bugungiReyslar({ schoolId, date: sana, driverId: user.data.id });
+
+        if (reyslar.length === 0) {
+            return ctx.reply(`🗓 ${sana}\n\nBugun sizda reys yo'q.`);
+        }
+
+        for (const route of reyslar) {
+            const holat = await marshrutHolati({ routeId: route.id, date: sana });
+            const { matn, tugmalar } = reysKorinishi(route, holat, sana);
+            await ctx.reply(matn, {
+                parse_mode: 'HTML',
+                disable_web_page_preview: true,
+                ...Markup.inlineKeyboard(tugmalar),
+            });
+        }
+    });
+
+    // O'quvchi tugmasi: belgilanmagan -> olindi/yetkazildi -> kelmadi -> belgilanmagan
+    botInstance.action(/^reys_h_(\d+)_(\d+)$/, async (ctx) => {
+        const routeId = parseInt(ctx.match[1]);
+        const studentId = parseInt(ctx.match[2]);
+        const topilgan = await haydovchiMarshruti(ctx, routeId);
+        if (!topilgan) return ctx.answerCbQuery('Bu marshrut sizga biriktirilmagan');
+        const { user, route } = topilgan;
+
+        const sana = toDateStr();
+        const holat = await marshrutHolati({ routeId, date: sana });
+        const hozirgi = holat.holatlar[studentId];
+        const [birinchi] = yonalishHolatlari(route.direction);
+
+        if (!hozirgi) {
+            await holatniYozish({
+                route, studentId, status: birinchi, date: sana, schoolId,
+                markedById: user.data.id, transportId: route.transportId,
+            });
+            await ctx.answerCbQuery(birinchi);
+        } else if (hozirgi !== 'Kelmadi') {
+            await holatniYozish({
+                route, studentId, status: 'Kelmadi', date: sana, schoolId,
+                markedById: user.data.id, transportId: route.transportId,
+            });
+            await ctx.answerCbQuery('Kelmadi');
+        } else {
+            // Uchinchi bosishda belgi olib tashlanadi — xato bosgan bo'lsa.
+            await holatniOchirish({ runId: holat.run?.id, studentId });
+            await ctx.answerCbQuery('Belgi olib tashlandi');
+        }
+
+        await reysniQaytaChizish(ctx, route, sana);
+    });
+
+    botInstance.action(/^reys_bosh_(\d+)$/, async (ctx) => {
+        const topilgan = await haydovchiMarshruti(ctx, parseInt(ctx.match[1]));
+        if (!topilgan) return ctx.answerCbQuery('Bu marshrut sizga biriktirilmagan');
+        const sana = toDateStr();
+        await reysVaqti({ route: topilgan.route, date: sana, schoolId, maydon: 'startedAt' });
+        await ctx.answerCbQuery('Reys boshlandi');
+        await reysniQaytaChizish(ctx, topilgan.route, sana);
+    });
+
+    botInstance.action(/^reys_tugat_(\d+)$/, async (ctx) => {
+        const topilgan = await haydovchiMarshruti(ctx, parseInt(ctx.match[1]));
+        if (!topilgan) return ctx.answerCbQuery('Bu marshrut sizga biriktirilmagan');
+        const sana = toDateStr();
+        await reysVaqti({ route: topilgan.route, date: sana, schoolId, maydon: 'finishedAt' });
+        await ctx.answerCbQuery('Reys tugadi');
+        await reysniQaytaChizish(ctx, topilgan.route, sana);
+    });
+
+    botInstance.action(/^reys_yangi_(\d+)$/, async (ctx) => {
+        const topilgan = await haydovchiMarshruti(ctx, parseInt(ctx.match[1]));
+        if (!topilgan) return ctx.answerCbQuery('Bu marshrut sizga biriktirilmagan');
+        await ctx.answerCbQuery('Yangilandi');
+        await reysniQaytaChizish(ctx, topilgan.route, toDateStr());
     });
 
     botInstance.hears('🚍 Mening Transportim', async (ctx) => {

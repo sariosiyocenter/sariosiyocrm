@@ -173,7 +173,7 @@ qo'shish, profil tahriri, ariza, profil kartasi) — u endi logistikaga
 ta'sir qilmaydi, lekin foydalanuvchini chalg'itadi. 4-bosqichda,
 sahifa qayta yozilganda olib tashlanadi.
 
-### 2-bosqich. Haydovchi — Telegram bot ⬜  · Hajm: L
+### 2-bosqich. Haydovchi — Telegram bot ✅ (2026-09-09)
 
 - Haydovchini botga ulash (xodimlar uchun mavjud ulash yo'li tekshiriladi; yo'q bo'lsa HR'dan bir martalik kod).
 - "🚌 Bugungi marshrutlar" → reyslar ro'yxati (kun filtri 0-bosqichdagi funksiya bilan) → reys → **inline tugmalar**: `▶️ Boshladim`, har o'quvchi uchun `✅ Oldim | ❌ Kelmadi | 🗺 Yo'l` (Google/Yandex havolasi `Student.location`, bo'lmasa manzil), oxirida `⏹ Tugatdim`.
@@ -181,6 +181,34 @@ sahifa qayta yozilganda olib tashlanadi.
 - Har bosish → `DeliveryLog` (runId, markedById = haydovchi, markedAt = hozir).
 - Xatoga chidamli: qayta bosish holatni o'zgartiradi, eskisini yozib qo'ymaydi; 4096 belgi chegarasi uchun bo'laklab yuborish.
 - **Natija:** yetkazish yozuvi haydovchi qo'lida paydo bo'ladi — modul "tirik" bo'ladi.
+
+**Bajarildi.** Menyuda yangi tugma: **🚌 Bugungi reyslar**. Har reys alohida
+xabar bo'lib keladi — marshrut, yo'nalish, vaqt, mashina, `2/5 belgilandi`,
+so'ng har o'quvchi manzili, xarita havolasi va telefoni bilan.
+
+Tugmalar:
+- **▶️ Boshladim** → **⏹ Tugatdim** — reys vaqti (`RouteRun.startedAt` /
+  `finishedAt`) yoziladi va xabarda ko'rinadi.
+- Har o'quvchi uchun bitta tugma, bosilgan sari holat aylanadi:
+  ⬜ belgilanmagan → ✅ olindi (KETISH) yoki yetkazildi (QAYTISH) →
+  ❌ kelmadi → yana ⬜ (xato bosilgani uchun orqaga qaytish yo'li).
+- 🔄 Yangilash — boshqa joyda o'zgargan bo'lsa.
+
+Butun holat bazada, xotirada emas: bot qayta ishga tushsa ham eski
+xabardagi tugmalar ishlayveradi. Har bosishda marshrut haydovchiniki
+ekani qayta tekshiriladi.
+
+Reys va yozuv mantig'i endi `services/logistics.js` da — admin sahifasi
+(server.js endpointlari) va bot aynan shu funksiyalarni chaqiradi, ikkinchi
+nusxa yozilmadi.
+
+Tekshiruv: `scratch/test_bot_reys.mjs` — soxta bot obyekti bilan 24 holat
+(ro'yxat, boshlash, uch bosqichli belgilash, tugatish, begona marshrut,
+haydovchi bo'lmagan foydalanuvchi), hammasi o'tdi. Sinov haydovchining
+`telegramId` sini vaqtincha yozib, oxirida qaytaradi.
+
+**Haydovchini botga ulash:** botni ochib, kontaktini ulashadi — raqami
+`User.phone` bilan solishtiriladi va haydovchi menyusi chiqadi.
 
 ### 3-bosqich. Ota-onaga xabar ⬜  · Hajm: M
 

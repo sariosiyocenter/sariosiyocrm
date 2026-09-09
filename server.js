@@ -11,6 +11,7 @@ import jwt from 'jsonwebtoken';
 import bot, { startBot, notifyAdmins, getTelegramBot } from './src/bot/bot.js';
 import { transferStudent, refundStudent, enrollStudent, unenrollStudent, syncGroupMembers, activateStudent, syncStudentGroups } from './services/enrollment.js';
 import { studentLedger, receivedForGroups, monthCoverage } from './services/ledger.js';
+import { holatniYozish } from './services/logistics.js';
 import bcrypt from 'bcryptjs';
 import helmet from 'helmet';
 import rateLimit from 'express-rate-limit';
@@ -4503,26 +4504,8 @@ app.delete('/api/routes/:id', authenticate, requireRole(...STAFF_MANAGERS), asyn
 
 // ========== YETKAZISH YOZUVLARI ==========
 
-/**
- * Shu marshrutning shu kundagi reysi. Bo'lmasa yaratiladi.
- *
- * Reys birinchi belgilash paytida o'zi paydo bo'ladi — hech kim uni qo'lda
- * ochmaydi. Mashina va haydovchi marshrutdan ko'chiriladi: keyin marshrut
- * o'zgarsa ham o'tgan kun kim qatnaganini saqlab qoladi.
- */
-async function reysniOlish({ route, date, schoolId, transportId = null }) {
-  const bor = await prisma.routeRun.findUnique({ where: { routeId_date: { routeId: route.id, date } } });
-  if (bor) return bor;
-  return prisma.routeRun.create({
-    data: {
-      routeId: route.id,
-      date,
-      driverId: route.driverId || null,
-      transportId: transportId || route.transportId || null,
-      schoolId,
-    },
-  });
-}
+// Reys va yozuv mantig'i services/logistics.js da: bot ham xuddi shu
+// funksiyalarni chaqiradi.
 app.get('/api/delivery-logs', authenticate, async (req, res, next) => {
   try {
     const { schoolId, date } = req.query;
@@ -4566,31 +4549,27 @@ app.post('/api/delivery-logs', authenticate, async (req, res, next) => {
     // "Uyiga yetkazildi" ni bosib ketmaydi — ular ikki xil reysning yozuvi.
     // routeId yuborilmasa eski xatti-harakat saqlanadi (kuniga bitta yozuv).
     const routeId = parseInt(req.body.routeId);
-    let run = null;
     if (Number.isInteger(routeId)) {
-      const route = await prisma.route.findFirst({ where: { id: routeId, schoolId }, select: { id: true, transportId: true, driverId: true } });
+      const route = await prisma.route.findFirst({
+        where: { id: routeId, schoolId },
+        select: { id: true, transportId: true, driverId: true, direction: true },
+      });
       if (!route) return res.status(404).json({ error: 'Marshrut shu filialda topilmadi' });
-      run = await reysniOlish({ route, date, schoolId, transportId });
+      const log = await holatniYozish({
+        route, studentId, status, date, schoolId,
+        markedById: req.user?.id || null,
+        transportId,
+      });
+      return res.json(log);
     }
 
-    const qidiruv = run
-      ? { runId: run.id, studentId }
-      : { studentId, date, schoolId, runId: null };
-    const existing = await prisma.deliveryLog.findFirst({ where: qidiruv });
-
-    const yozuv = {
-      status,
-      transportId: transportId || run?.transportId || null,
-      markedById: req.user?.id || null,
-      markedAt: new Date(),
-    };
+    const existing = await prisma.deliveryLog.findFirst({ where: { studentId, date, schoolId, runId: null } });
+    const yozuv = { status, transportId: transportId || null, markedById: req.user?.id || null, markedAt: new Date() };
     if (existing) {
       const updated = await prisma.deliveryLog.update({ where: { id: existing.id }, data: yozuv });
       return res.json(updated);
     }
-    const log = await prisma.deliveryLog.create({
-      data: { ...yozuv, studentId, date, schoolId, runId: run?.id || null },
-    });
+    const log = await prisma.deliveryLog.create({ data: { ...yozuv, studentId, date, schoolId } });
     res.json(log);
   } catch (error) { next(error); }
 });
