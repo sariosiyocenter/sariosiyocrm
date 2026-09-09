@@ -19,7 +19,7 @@ const lbl = "block text-[11px] text-matn-xira mb-1.5";
 
 
 export default function Students() {
-    const { students, groups, teachers, transports, attendances, directions, addStudent, deleteStudent, setStudentStatus, importStudents, selectedSchoolId, schools, user, showNotification } = useCRM();
+    const { students, groups, teachers, transports, routes, attendances, directions, addStudent,deleteStudent, setStudentStatus, importStudents, selectedSchoolId, schools, user, showNotification } = useCRM();
     const confirm = useConfirm();
     const { t } = useLang();
     const navigate = useNavigate();
@@ -32,6 +32,7 @@ export default function Students() {
         gender: 'Erkak' as 'Erkak' | 'Ayol',
         fatherName: '', fatherPhone: '', motherName: '', motherPhone: '',
         transportId: '' as string | number,
+        routeIds: [] as number[],
         studentSchool: '',
         selectedPrivileges: [] as string[],
         certCategory: '',
@@ -273,7 +274,9 @@ export default function Students() {
                 joinedDate: new Date().toISOString().split('T')[0],
                 balance: 0,
                 groups: newStudent.selectedGroupIds,
-                transportId: newStudent.transportId ? Number(newStudent.transportId) : null,
+                routeIds: newStudent.routeIds,
+                // Eski maydon endi ishlatilmaydi (logistika marshrutdan oladi).
+                transportId: null,
                 studentSchool: newStudent.studentSchool,
                 privilegeType: newStudent.selectedPrivileges.length ? newStudent.selectedPrivileges.join(',') : 'None',
                 certCategory: newStudent.certCategory,
@@ -294,6 +297,7 @@ export default function Students() {
                 gender: 'Erkak',
                 fatherName: '', fatherPhone: '', motherName: '', motherPhone: '',
                 transportId: '',
+                routeIds: [],
                 studentSchool: '',
                 selectedPrivileges: [],
                 certCategory: '',
@@ -1169,8 +1173,40 @@ export default function Students() {
                                 </div>
                                 <div className="grid grid-cols-2 gap-4">
                                     <div>
-                                        <label className={lbl}>{t('transport')}</label>
-                                        <select className={inp} value={newStudent.transportId} onChange={e => setNewStudent({...newStudent, transportId: e.target.value})}>
+                                        <label className={lbl}>Transport marshruti</label>
+                                        {/* Ilgari bu yerda mashina tanlanardi va u hech
+                                            narsaga ta'sir qilmasdi: haydovchi ro'yxati
+                                            marshrutdan olinadi. Endi marshrut tanlanadi. */}
+                                        {(routes || []).length === 0 ? (
+                                            <p className="text-[11px] font-bold text-matn-xira py-2">
+                                                Marshrut yo'q — Logistika bo'limida qo'shiladi
+                                            </p>
+                                        ) : (
+                                            <div className="space-y-1.5 max-h-32 overflow-y-auto custom-scrollbar">
+                                                {(routes || []).map(r => {
+                                                    const tanlangan = newStudent.routeIds.includes(r.id);
+                                                    return (
+                                                        <button key={r.id} type="button"
+                                                            onClick={() => setNewStudent({
+                                                                ...newStudent,
+                                                                routeIds: tanlangan
+                                                                    ? newStudent.routeIds.filter(id => id !== r.id)
+                                                                    : [...newStudent.routeIds, r.id],
+                                                            })}
+                                                            className={`w-full flex items-center justify-between gap-2 px-3 py-2 rounded-xl border text-[11px] font-bold transition-all cursor-pointer ${tanlangan
+                                                                ? 'bg-teal-50 dark:bg-teal-950/20 text-brand border-teal-100 dark:border-teal-900/40'
+                                                                : 'bg-ichki text-matn-xira border-chiziq hover:bg-gray-50 dark:hover:bg-gray-700'}`}>
+                                                            <span className="truncate">
+                                                                {r.direction === 'QAYTISH' ? '🏠' : '🏫'} {r.name}
+                                                                {r.startTime ? ` · ${r.startTime}` : ''}
+                                                            </span>
+                                                            <span className="shrink-0">{tanlangan ? '✓' : '+'}</span>
+                                                        </button>
+                                                    );
+                                                })}
+                                            </div>
+                                        )}
+                                        <select className="hidden" value={newStudent.transportId} onChange={e => setNewStudent({...newStudent, transportId: e.target.value})}>
                                             <option value="">{t('not_needed')}</option>
                                             {transports.map(tr => <option key={tr.id} value={tr.id}>{tr.name} ({tr.number})</option>)}
                                         </select>

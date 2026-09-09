@@ -1256,14 +1256,22 @@ app.get('/api/students', authenticate, async (req, res, next) => {
     if (!schoolId) return res.status(400).json({ error: 'schoolId required' });
     const students = await prisma.student.findMany({
       where: { schoolId: parseInt(schoolId) },
-      include: { groups: { select: { id: true } } }
+      include: {
+        groups: { select: { id: true } },
+        // Qaysi marshrutlarda ekani — profil va formalar uchun.
+        routeStops: { select: { routeId: true } },
+      }
     });
-    res.json(students.map(s => ({ ...s, groups: s.groups.map(g => g.id) })));
+    res.json(students.map(s => ({
+      ...s,
+      groups: s.groups.map(g => g.id),
+      routeIds: s.routeStops.map(x => x.routeId),
+    })));
   } catch (error) { next(error); }
 });
 app.post('/api/students', authenticate, async (req, res, next) => {
   try {
-    const { groups, schoolId, selectedGroupIds, selectedPrivileges, ...rest } = req.body;
+    const { groups, schoolId, selectedGroupIds, selectedPrivileges, routeIds, ...rest } = req.body;
     const parsedSchoolId = parseInt(schoolId);
     if (!parsedSchoolId || isNaN(parsedSchoolId) || parsedSchoolId <= 0) {
       return res.status(400).json({ error: 'Valid schoolId required' });
@@ -1296,6 +1304,10 @@ app.post('/api/students', authenticate, async (req, res, next) => {
     const student = await prisma.student.create({
       data: { ...data, schoolId: parsedSchoolId }
     });
+    // Transport marshruti: forma tanlagan bo'lsa bekat qilib yoziladi.
+    if (routeIds !== undefined) {
+      await oquvchiMarshrutlari(student.id, routeIds, parsedSchoolId).catch(e => console.error('[Marshrut]', e.message));
+    }
     const groupIds = (groups || selectedGroupIds || []).map(id => parseInt(id)).filter(id => !isNaN(id));
     // Guruhga qo'shilishi bilan oyning qolgan darslari uchun hisob yoziladi.
     const warnings = [];
@@ -1393,7 +1405,7 @@ app.put('/api/students/:id', authenticate, async (req, res, next) => {
       return res.status(400).json({ error: 'Valid student ID talab qilinadi' });
     }
 
-    const { groups, schoolId, ...rest } = req.body;
+    const { groups, schoolId, routeIds, ...rest } = req.body;
     console.log(`Updating student ${studentId}`);
 
     // Whitelist only known Student schema fields
@@ -1454,6 +1466,11 @@ app.put('/api/students/:id', authenticate, async (req, res, next) => {
       where: { id: studentId },
       data
     });
+
+    if (routeIds !== undefined) {
+      const oquvchi = await prisma.student.findUnique({ where: { id: studentId }, select: { schoolId: true } });
+      await oquvchiMarshrutlari(studentId, routeIds, oquvchi.schoolId).catch(e => console.error('[Marshrut]', e.message));
+    }
 
     // Guruhlar ro'yxati o'zgarsa — qo'shilganlarga oyning qolgan darslari
     // uchun hisob, chiqarilganlarga qaytarish. Ilgari shunchaki "set" edi.
@@ -3430,7 +3447,9 @@ app.get('/api/init', authenticate, async (req, res, next) => {
     ] = await Promise.all([
       prisma.student.findMany({
         where: whereQuery,
-        include: { groups: { select: { id: true } } }
+        // Marshrut bekatlari ham kerak: o'quvchi qaysi marshrutda ekani
+        // formalarda va profilda shu yerdan ko'rinadi.
+        include: { groups: { select: { id: true } }, routeStops: { select: { routeId: true } } }
       }),
       prisma.teacher.findMany({ where: whereQuery }),
       prisma.group.findMany({
@@ -3499,7 +3518,8 @@ app.get('/api/init', authenticate, async (req, res, next) => {
     // Map relations to flat IDs / names just like individual endpoints do
     const mappedStudents = students.map(s => ({
       ...s,
-      groups: s.groups.map(g => g.id)
+      groups: s.groups.map(g => g.id),
+      routeIds: (s.routeStops || []).map(x => x.routeId)
     }));
     const mappedGroups = groups.map(g => ({
       ...g,
@@ -4192,6 +4212,43 @@ app.post('/api/scores', authenticate, async (req, res, next) => {
 
 
 // ========== TRANSPORT ROUTES (UPDATED) ==========
+/**
+ * O'quvchini berilgan marshrutlarga biriktiradi (boshqalaridan chiqaradi).
+ *
+ * Forma marshrut ro'yxatini butunicha yuboradi: ro'yxatda yo'q marshrutdan
+ * bekat o'chadi, yangisiga oxiriga qo'shiladi. Faqat shu filialning
+ * marshrutlari qabul qilinadi.
+ */
+async function oquvchiMarshrutlari(studentId, routeIds, schoolId) {
+  const soralgan = [...new Set((routeIds || []).map(x => parseInt(x)).filter(Number.isInteger))];
+  const haqiqiy = soralgan.length
+    ? (await prisma.route.findMany({ where: { id: { in: soralgan }, schoolId }, select: { id: true } })).map(r => r.id)
+    : [];
+
+  const hozirgi = await prisma.routeStop.findMany({
+    where: { studentId, route: { schoolId } },
+    select: { routeId: true },
+  });
+  const hozirgiSet = new Set(hozirgi.map(x => x.routeId));
+
+  const ochiriladi = [...hozirgiSet].filter(id => !haqiqiy.includes(id));
+  if (ochiriladi.length) {
+    await prisma.routeStop.deleteMany({ where: { studentId, routeId: { in: ochiriladi } } });
+  }
+
+  for (const routeId of haqiqiy) {
+    if (hozirgiSet.has(routeId)) continue;
+    // Yangi bekat oxiriga qo'shiladi — tartibni Logistikada o'zgartiriladi.
+    const oxirgi = await prisma.routeStop.findFirst({
+      where: { routeId }, orderBy: { tartib: 'desc' }, select: { tartib: true },
+    });
+    await prisma.routeStop.create({
+      data: { routeId, studentId, tartib: (oxirgi?.tartib ?? -1) + 1 },
+    });
+  }
+  return haqiqiy;
+}
+
 // ========== LOGISTIKA: umumiy yordamchilar ==========
 //
 // Ilgari transport va marshrut endpointlari req.body ni to'g'ridan-to'g'ri

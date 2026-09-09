@@ -168,6 +168,7 @@ export default function StudentDetails() {
         motherName: '',
         motherPhone: '',
         transportId: '' as string | number,
+        routeIds: [] as number[],
         studentSchool: '',
         privilegeType: 'None',
         certCategory: '',
@@ -277,6 +278,7 @@ export default function StudentDetails() {
             motherName: student.motherName || '',
             motherPhone: student.motherPhone || '',
             transportId: student.transportId || '',
+            routeIds: student.routeIds || [],
             studentSchool: student.studentSchool || '',
             privilegeType: student.privilegeType || 'None',
             certCategory: student.certCategory || '',
@@ -356,7 +358,7 @@ export default function StudentDetails() {
             // tegilmagan maydonlar umuman yuborilmaydi.
             const payload: Record<string, any> = {
                 ...editForm,
-                transportId: editForm.transportId ? Number(editForm.transportId) : null,
+                routeIds: editForm.routeIds,
                 studyGoal: editForm.studyGoal || null,
                 directionId: editForm.directionId ? Number(editForm.directionId) : null
             };
@@ -727,17 +729,38 @@ export default function StudentDetails() {
                                         </select>
                                     </div>
                                     <div>
-                                        <label className={labelCls}>{t('transport')}</label>
-                                        <select
-                                            value={editForm.transportId}
-                                            onChange={e => setEditForm({...editForm, transportId: e.target.value})}
-                                            className={inputCls}
-                                        >
-                                            <option value="">{t('transport_none')}</option>
-                                            {transports.map(t => (
-                                                <option key={t.id} value={t.id}>{t.name} ({t.number})</option>
-                                            ))}
-                                        </select>
+                                        <label className={labelCls}>Transport marshruti</label>
+                                        {/* Marshrut — yagona manba. Ilgari bu yerda mashina
+                                            tanlanardi va hech narsaga ta'sir qilmasdi. */}
+                                        {(routes || []).length === 0 ? (
+                                            <p className="text-[11px] font-bold text-matn-xira py-2">
+                                                Marshrut yo'q — Logistika bo'limida qo'shiladi
+                                            </p>
+                                        ) : (
+                                            <div className="space-y-1.5 max-h-32 overflow-y-auto custom-scrollbar">
+                                                {(routes || []).map(r => {
+                                                    const tanlangan = (editForm.routeIds || []).includes(r.id);
+                                                    return (
+                                                        <button key={r.id} type="button"
+                                                            onClick={() => setEditForm({
+                                                                ...editForm,
+                                                                routeIds: tanlangan
+                                                                    ? editForm.routeIds.filter(id => id !== r.id)
+                                                                    : [...editForm.routeIds, r.id],
+                                                            })}
+                                                            className={`w-full flex items-center justify-between gap-2 px-3 py-2 rounded-xl border text-[11px] font-bold transition-all cursor-pointer ${tanlangan
+                                                                ? 'bg-teal-50 dark:bg-teal-950/20 text-brand border-teal-100 dark:border-teal-900/40'
+                                                                : 'bg-ichki text-matn-xira border-chiziq hover:bg-gray-50 dark:hover:bg-gray-700'}`}>
+                                                            <span className="truncate">
+                                                                {r.direction === 'QAYTISH' ? '🏠' : '🏫'} {r.name}
+                                                                {r.startTime ? ` · ${r.startTime}` : ''}
+                                                            </span>
+                                                            <span className="shrink-0">{tanlangan ? '✓' : '+'}</span>
+                                                        </button>
+                                                    );
+                                                })}
+                                            </div>
+                                        )}
                                     </div>
                                 </div>
                             ) : null}

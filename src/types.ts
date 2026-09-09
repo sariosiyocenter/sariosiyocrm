@@ -25,7 +25,10 @@ export interface Student {
     schoolId: number;
     statusChangedAt?: string;
     leaveReason?: string;
+    /** @deprecated Logistika endi marshrutdan oladi — `routeIds`. */
     transportId?: number | null;
+    /** Qaysi marshrutlarning bekati (ertalabki va/yoki kechqurungi). */
+    routeIds?: number[];
     studentSchool?: string;
     privilegeType?: string;
     certCategory?: string;
