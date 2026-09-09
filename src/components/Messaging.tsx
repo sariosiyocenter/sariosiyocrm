@@ -578,9 +578,21 @@ export default function Messaging() {
         } catch (_) { return false; }
       }
 
-      // Contact Type
+      // Aloqa kanali. Tekshiruv XABAR KIMGA ketayotganiga qarab bo'lishi kerak:
+      // "Qabul qiluvchi tomon = O'quvchi" bo'lsa o'quvchining o'z raqami
+      // kerak, otasiniki emas. Ilgari oiladagi istalgan raqam yetarli edi va
+      // "Telefoni borlar" filtri yoqilgani holda ro'yxatda "Raqam yo'q"
+      // o'quvchilar turaverardi.
       if (filters.contact === 'phone') {
-        if (!st.phone && !st.fatherPhone && !st.motherPhone) return false;
+        if (oluvchiTomoni === 'PARENT') {
+          if (!st.fatherPhone && !st.motherPhone) return false;
+        } else if (oluvchiTomoni === 'FATHER') {
+          if (!st.fatherPhone) return false;
+        } else if (oluvchiTomoni === 'MOTHER') {
+          if (!st.motherPhone) return false;
+        } else {
+          if (!st.phone) return false;
+        }
       } else if (filters.contact === 'telegram') {
         if (oluvchiTomoni === 'PARENT') {
           if (!st.fatherTelegramId && !st.motherTelegramId) return false;
@@ -715,22 +727,40 @@ export default function Messaging() {
     return entries;
   })();
 
+  /**
+   * Shu qabul qiluvchiga tanlangan kanal orqali xabar yetib boradimi.
+   *
+   * Raqami yo'q odamga SMS ketmaydi — ilgari ular ham belgilangan turar va
+   * "59 ta xabar" deb sanalardi, keyin server ularni "yuborilmadi" qilib
+   * qaytarardi. Endi bunday qator belgilanmaydi va sanoqqa kirmaydi.
+   */
+  const yetibBoradi = (e: RecipientEntry): boolean => {
+    const smsBor = !!(e.displayPhone && String(e.displayPhone).trim());
+    const tgBor = !!(e.telegramId && String(e.telegramId).trim());
+    if (channel === 'SMS') return smsBor;
+    if (channel === 'TELEGRAM') return useSmsFallback ? (tgBor || smsBor) : tgBor;
+    return tgBor || smsBor;   // BOTH
+  };
+
   useEffect(() => {
     const nextMap: Record<string, boolean> = {};
     recipientEntries.forEach(e => {
-      nextMap[e.key] = true;
+      nextMap[e.key] = yetibBoradi(e);
     });
     setSelectedRecipientIds(nextMap);
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [filteredRecipientsKey]);
+  }, [filteredRecipientsKey, channel, useSmsFallback]);
 
-  const activeSelectedCount = recipientEntries.filter(e => selectedRecipientIds[e.key]).length;
+  const activeSelectedCount = recipientEntries.filter(e => selectedRecipientIds[e.key] && yetibBoradi(e)).length;
   const activeSelectedTargetCount = activeSelectedCount;
-  const allChecked = recipientEntries.length > 0 && recipientEntries.every(e => selectedRecipientIds[e.key]);
+  /** Aloqasi yo'qlar sanoqdan tashqarida — ularni belgilab ham bo'lmaydi. */
+  const yuborilmaydiganSoni = recipientEntries.filter(e => !yetibBoradi(e)).length;
+  const belgilanadiganlar = recipientEntries.filter(yetibBoradi);
+  const allChecked = belgilanadiganlar.length > 0 && belgilanadiganlar.every(e => selectedRecipientIds[e.key]);
   const toggleAll = (checked: boolean) => {
     const nextMap: Record<string, boolean> = {};
     recipientEntries.forEach(e => {
-      nextMap[e.key] = checked;
+      nextMap[e.key] = checked && yetibBoradi(e);
     });
     setSelectedRecipientIds(nextMap);
   };
@@ -1315,6 +1345,9 @@ export default function Messaging() {
                 </div>
                 <span className="text-[11px] font-bold tabular-nums text-brand">
                   {activeSelectedTargetCount} ta xabar / {filteredRecipients.length} ta o'quvchi
+                  {yuborilmaydiganSoni > 0 && (
+                    <span className="text-rose-500"> · {yuborilmaydiganSoni} tasiga aloqa yo'q</span>
+                  )}
                 </span>
               </div>
 
@@ -1322,8 +1355,9 @@ export default function Messaging() {
                 <div className="max-h-[280px] overflow-y-auto divide-y divide-slate-100/80 dark:divide-slate-800/80 pr-1 border border-slate-100 dark:border-slate-800 rounded-2xl p-2 bg-slate-50/40 dark:bg-slate-950/20">
                   {recipientEntries.map(entry => {
                     const isDebtor = entry.balance < 0;
+                    const bogSizemas = !yetibBoradi(entry);
                     return (
-                      <div key={entry.key} className="py-2.5 flex items-center justify-between text-[12px] hover:bg-white dark:hover:bg-slate-800/40 px-2 rounded-xl transition-all">
+                      <div key={entry.key} className={`py-2.5 flex items-center justify-between text-[12px] px-2 rounded-xl transition-all ${bogSizemas ? 'opacity-50' : 'hover:bg-white dark:hover:bg-slate-800/40'}`}>
                         <div className="flex items-center gap-2.5">
                           <input
                             type="checkbox"
@@ -1334,7 +1368,8 @@ export default function Messaging() {
                                 [entry.key]: e.target.checked
                               }));
                             }}
-                            className="w-3.5 h-3.5 rounded border-slate-300 dark:border-slate-700 text-brand focus:ring-brand cursor-pointer bg-white dark:bg-slate-800"
+                            disabled={bogSizemas}
+                            className="w-3.5 h-3.5 rounded border-slate-300 dark:border-slate-700 text-brand focus:ring-brand cursor-pointer bg-white dark:bg-slate-800 disabled:cursor-not-allowed"
                           />
                           <div className={`w-6 h-6 rounded-full flex items-center justify-center text-[11px] font-bold ${entry.gender === 'Ayol' ? 'bg-pink-100 dark:bg-pink-950/30 text-pink-500' : 'bg-brand/15 dark:bg-brand/30 text-brand'}`}>
                             {entry.displayName.charAt(0)}
@@ -1347,6 +1382,9 @@ export default function Messaging() {
                               {entry.displayPhone
                                 ? <span className="text-slate-450 dark:text-slate-500">{entry.displayPhone}</span>
                                 : <span className="text-rose-500">Raqam yo'q</span>}
+                              {bogSizemas && (
+                                <span className="text-rose-500 font-bold"> · yuborib bo'lmaydi</span>
+                              )}
                               {entry.qoshimchaIsm && (
                                 <span className="text-slate-400 dark:text-slate-600"> · {ismniKorsat(entry.qoshimchaIsm)}</span>
                               )}
