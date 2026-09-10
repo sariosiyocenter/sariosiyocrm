@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import {
   Users, GraduationCap, Target,
   TrendingUp, TrendingDown, ArrowUpRight,
@@ -11,6 +11,8 @@ import { useLang } from '../context/LanguageContext';
 import { useNavigate } from 'react-router-dom';
 import RoomSchedule from './RoomSchedule';
 import { displayName } from '../lib/displayName';
+import { isLessonDay, toDateStr, toTimeStr } from '../../lib/lessons.js';
+import { jadvalVaqti, daqiqaga } from '../../lib/jadval.js';
 
 import LeftStudentsReport from './reports/LeftStudentsReport';
 import StaffAttendanceReport from './reports/StaffAttendanceReport';
@@ -28,6 +30,14 @@ export default function Dashboard() {
     const { students, groups, teachers, leads, payments, courses, rooms, attendances, user } = useCRM();
     const { t } = useLang();
     const navigate = useNavigate();
+
+    // Hozirgi vaqt (O'zbekiston), daqiqada bir yangilanadi — "hozir ketyapti"
+    // belgisi sahifa ochiq turganda ham to'g'ri qolsin.
+    const [nowTime, setNowTime] = useState(() => toTimeStr());
+    useEffect(() => {
+        const timer = setInterval(() => setNowTime(toTimeStr()), 60000);
+        return () => clearInterval(timer);
+    }, []);
 
     // Date preset states.
     // "Kun" va "Hafta" Moliyadagi bilan bir xil bo'lishi uchun shu yerda ham
@@ -256,21 +266,25 @@ export default function Dashboard() {
     // Faqat jadvali kiritilgan guruhlar. "Belgilanmagan" kunli guruh uchun
     // dars bor deb taxmin qilinmaydi — aks holda ro'yxat o'ylab topilgan
     // bo'lib chiqadi.
-    const dowToday = new Date().getDay();
-    const todayISO = new Date().toISOString().slice(0, 10);
-    const yesterdayISO = new Date(Date.now() - 86400000).toISOString().slice(0, 10);
+    // Sana O'zbekiston vaqti bo'yicha: `toISOString()` UTC beradi va
+    // ertalab soat 5 gacha kechagi kunni ko'rsatardi.
+    const todayISO = toDateStr();
+    const yesterdayISO = toDateStr(new Date(Date.now() - 86400000));
 
-    const runsToday = (days: string) => {
-        if (days === 'TOQ') return [1, 3, 5].includes(dowToday);
-        if (days === 'JUFT') return [2, 4, 6].includes(dowToday);
-        if (days === 'HAR_KUNI' || days === 'HARKUNI') return dowToday !== 0;
-        return false;
-    };
+    const hozirDaq = daqiqaga(nowTime) ?? 0;
 
-    const todayLessons = groups.filter(g => runsToday(g.days)).map(g => {
+    const todayLessons = groups.filter(g => isLessonDay(g.days, todayISO)).map(g => {
         const sched = (g.schedule || '').trim();
         const teacher = teachers.find(tt => tt.id === g.teacherId);
         const room = rooms.find(r => r.id === g.room);
+        const { boshi, oxiri } = jadvalVaqti(g.schedule);
+        const boshDaq = daqiqaga(boshi);
+        const oxirDaq = daqiqaga(oxiri);
+        // Dars qaysi bosqichda: tugagan, ketayotgan, yoki hali oldinda.
+        // Vaqti kiritilmagan guruhda holat aniqlanmaydi.
+        const holat = boshDaq === null || oxirDaq === null ? null
+            : hozirDaq > oxirDaq ? 'tugadi'
+            : hozirDaq >= boshDaq ? 'hozir' : 'keladi';
         return {
             id: g.id,
             name: g.name,
@@ -278,8 +292,15 @@ export default function Dashboard() {
             teacher: teacher ? displayName(teacher.name) : null,
             room: room ? room.name : null,
             marked: (attendances || []).some(a => a.groupId === g.id && (a.date || '').slice(0, 10) === todayISO),
+            holat,
+            boshDaq,
+            oxirDaq,
+            // Logistika rejasi shu bolalardan tuziladi — soni shu yerda ko'rinsin.
+            transport: (students || []).filter(st => (g.studentIds || []).includes(st.id) && st.needsTransport).length,
         };
     }).sort((a, b) => (a.time || 'zz').localeCompare(b.time || 'zz'));
+
+    const hozirKetayotgan = todayLessons.filter(l => l.holat === 'hozir').length;
 
     const unmarkedToday = todayLessons.filter(l => !l.marked).length;
 
@@ -548,6 +569,7 @@ export default function Dashboard() {
                             {todayLessons.length > 0 && (
                                 <span className="text-[12px] text-matn-sokin">
                                     <span className="raqam">{todayLessons.length}</span> ta dars
+                                    {hozirKetayotgan > 0 && <> · <span className="raqam text-yaxshi">{hozirKetayotgan}</span> tasi hozir ketyapti</>}
                                     {unmarkedToday > 0 && <> · <span className="raqam">{unmarkedToday}</span> tasida davomat yo'q</>}
                                 </span>
                             )}
@@ -564,9 +586,21 @@ export default function Dashboard() {
                                     {l.time || 'vaqt yo\u2019q'}
                                 </span>
                                 <span className="min-w-0 flex-1">
-                                    <span className="text-[13px] text-matn block truncate">{l.name}</span>
+                                    <span className="text-[13px] text-matn block truncate">
+                                        {l.name}
+                                        {/* Dars hozir ketyaptimi — ro'yxatdan darrov ko'rinsin. */}
+                                        {l.holat === 'hozir' && (
+                                            <span className="ml-2 px-1.5 py-0.5 rounded text-[10px] font-bold bg-yaxshi/15 text-yaxshi align-middle">
+                                                hozir ketyapti
+                                            </span>
+                                        )}
+                                        {l.holat === 'tugadi' && (
+                                            <span className="ml-2 text-[11px] text-matn-xira align-middle">tugadi</span>
+                                        )}
+                                    </span>
                                     <span className="text-[11px] text-matn-xira block truncate">
                                         {[l.teacher, l.room].filter(Boolean).join(' \u00b7 ') || 'ustoz va xona kiritilmagan'}
+                                        {l.transport > 0 && <>{' \u00b7 '}<span className="text-brand">{l.transport} bola transportda</span></>}
                                     </span>
                                 </span>
                                 <span className={`flex items-center gap-2 text-[12px] shrink-0 ${l.marked ? 'text-yaxshi' : 'text-ogoh'}`}>

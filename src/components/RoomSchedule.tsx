@@ -2,6 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { useCRM } from '../context/CRMContext';
 import { Clock, MapPin, Calendar, X, Users, Edit2, Save, Sun, Sunset, Filter, LayoutGrid, CalendarRange, Info } from 'lucide-react';
 import { Group } from '../types';
+import { toDateStr, toTimeStr } from '../../lib/lessons.js';
+import { daqiqaga } from '../../lib/jadval.js';
 
 const WEEK_DAYS = [
     { id: 'ALL', label: 'Barchasi', short: 'Barch' },
@@ -39,7 +41,10 @@ export default function RoomSchedule() {
     const { groups, rooms, teachers, courses, updateGroup } = useCRM();
 
     const [viewMode, setViewMode] = useState<'day' | 'week'>('day');
-    const [selectedDayType, setSelectedDayType] = useState<'TOQ' | 'JUFT'>('TOQ');
+    // Bugungi kun turi bilan ochiladi. Ilgari doim 'TOQ' edi — juft kuni
+    // kirgan odam boshqa kunning jadvalini ko'rib turardi.
+    const [selectedDayType, setSelectedDayType] = useState<'TOQ' | 'JUFT'>(
+        [2, 4, 6].includes(new Date(toDateStr() + 'T12:00:00Z').getUTCDay()) ? 'JUFT' : 'TOQ');
     const [selectedRoom, setSelectedRoom] = useState<typeof rooms[0] | null>(null);
     const [editingGroup, setEditingGroup] = useState<Group | null>(null);
     const [editSchedule, setEditSchedule] = useState({ start: '', end: '' });
@@ -76,7 +81,10 @@ export default function RoomSchedule() {
         const parts = g.schedule?.split(' - ') || [];
         if (parts.length < 2) return false;
 
-        const currentMin = currentTime.getHours() * 60 + currentTime.getMinutes();
+        // Brauzer boshqa mintaqada bo'lsa ham O'zbekiston vaqti olinadi —
+        // `currentTime` faqat qayta chizishni qo'zg'atish uchun.
+        void currentTime;
+        const currentMin = daqiqaga(toTimeStr()) ?? 0;
         const startMin = timeToMinutes(parts[0]);
         const endMin = timeToMinutes(parts[1]);
 
