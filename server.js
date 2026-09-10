@@ -3532,6 +3532,7 @@ app.get('/api/init', authenticate, async (req, res, next) => {
       groups: s.groups.map(g => g.id),
       routeIds: (s.routeStops || []).map(x => x.routeId)
     }));
+    sorashniQozgatish();
     const mappedRoutes = routes.map(marshrutJavobi);
     const mappedGroups = groups.map(g => ({
       ...g,
@@ -4604,6 +4605,8 @@ app.get('/api/logistics/waves', authenticate, async (req, res, next) => {
     if (!(await canAccessSchool(req.user, schoolId))) return res.status(403).json({ error: "Ruxsat yo'q" });
     const date = /^\d{4}-\d{2}-\d{2}$/.test(String(req.query.date || '')) ? String(req.query.date) : undefined;
 
+    // Sahifa ochilishi — so'rash vaqti kelganini tekshirish uchun ham sabab.
+    sorashniQozgatish();
     const { tolqinlar, jadvalsiz } = await kunlikTolqinlar({ schoolId, date });
     // Har to'lqin uchun haydovchi javoblari qisqacha.
     const javoblar = await prisma.driverAvailability.findMany({
@@ -4666,6 +4669,22 @@ app.post('/api/logistics/daily-plan', authenticate, requireRole(...STAFF_MANAGER
     res.json(natija);
   } catch (error) { next(error); }
 });
+
+/**
+ * Haydovchilardan so'rashni fon rejimida ishga tushiradi.
+ *
+ * Vercel bepul tarifida cron kuniga bir marta ishlaydi, "2 soat oldin" esa
+ * kun davomida istalgan payt kelishi mumkin. Shuning uchun tekshiruv
+ * CRM ochilganda ham yuriladi — ofisda kimdir doim ochiq turadi. Ortiqcha
+ * yuk bo'lmasligi uchun 5 daqiqada bir martadan tez chaqirilmaydi.
+ */
+let sorashOxirgi = 0;
+function sorashniQozgatish() {
+  const hozir = Date.now();
+  if (hozir - sorashOxirgi < 5 * 60 * 1000) return;
+  sorashOxirgi = hozir;
+  avtoJarayon({}).catch(e => console.error('[Logistika avto]', e.message));
+}
 
 /**
  * Vercel cron: yaqinlashib kelayotgan to'lqinlar uchun haydovchilardan
