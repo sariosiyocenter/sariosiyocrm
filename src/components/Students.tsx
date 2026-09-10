@@ -20,6 +20,11 @@ const lbl = "block text-[11px] text-matn-xira mb-1.5";
 
 export default function Students() {
     const { students, groups, teachers, transports, routes, attendances, directions, addStudent,deleteStudent, setStudentStatus, importStudents, selectedSchoolId, schools, user, showNotification } = useCRM();
+    // Doimiy marshrutlar: qo'lda tuzilgan, takrorlanuvchi (`date` yo'q).
+    // Kunlik reja yaratganlari bu yerga tushmaydi — ular bir kunlik va
+    // keyingi rejada bekatlari qayta yoziladi.
+    const doimiyMarshrutlar = (routes || []).filter(r => !r.date && !r.autoPlanned);
+
     const confirm = useConfirm();
     const { t } = useLang();
     const navigate = useNavigate();
@@ -1186,17 +1191,21 @@ export default function Students() {
                                             <span>🚌 Transportda qatnaydi</span>
                                             <span>{newStudent.needsTransport ? '✓' : '+'}</span>
                                         </button>
-                                        <label className={lbl}>Marshrut (ixtiyoriy)</label>
-                                        {/* Ilgari bu yerda mashina tanlanardi va u hech
-                                            narsaga ta'sir qilmasdi: haydovchi ro'yxati
-                                            marshrutdan olinadi. Endi marshrut tanlanadi. */}
-                                        {(routes || []).length === 0 ? (
+                                        <label className={lbl}>Doimiy marshrut (ixtiyoriy)</label>
+                                        {/* Faqat qo'lda tuzilgan takrorlanuvchi marshrutlar.
+                                            Kechki tarqatish har kuni davomat va haydovchi
+                                            javobiga qarab o'zi taqsimlanadi — u yerga qo'lda
+                                            biriktirish keyingi rejada o'chib ketadi. */}
+                                        <p className="text-[10px] font-bold text-matn-xira mb-1.5">
+                                            Bu yerga biriktirilgan bola kunlik avtomatik rejaga tushmaydi
+                                        </p>
+                                        {doimiyMarshrutlar.length === 0 ? (
                                             <p className="text-[11px] font-bold text-matn-xira py-2">
-                                                Marshrut yo'q — Logistika bo'limida qo'shiladi
+                                                Doimiy marshrut yo'q — kechki tarqatish avtomatik
                                             </p>
                                         ) : (
                                             <div className="space-y-1.5 max-h-32 overflow-y-auto custom-scrollbar">
-                                                {(routes || []).map(r => {
+                                                {doimiyMarshrutlar.map(r => {
                                                     const tanlangan = newStudent.routeIds.includes(r.id);
                                                     return (
                                                         <button key={r.id} type="button"

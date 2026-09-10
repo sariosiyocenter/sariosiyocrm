@@ -4638,6 +4638,7 @@ app.get('/api/logistics/waves', authenticate, async (req, res, next) => {
           phone: o.phone || null, guruh: o.guruh || null, nuqta: !!o.location,
         })),
         kelmaganlar: t.kelmaganlar,
+        doimiylar: t.doimiylar,
         javoblar: {
           jami: javoblar.filter(j => j.endTime === t.endTime).length,
           ha: javoblar.filter(j => j.endTime === t.endTime && j.status === 'HA').length,

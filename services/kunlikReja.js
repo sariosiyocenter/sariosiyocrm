@@ -74,14 +74,34 @@ export async function kunlikTolqinlar({ schoolId, date = toDateStr() }) {
   // Sababi ham kerak: admin ro'yxatda "Kelmapdi" mi, "Sababli" mi ko'rsin.
   const kelmagan = new Map(kelmaganYozuv.map(x => [x.studentId, x.status]));
 
+  // Doimiy marshrutga (qo'lda tuzilgan, takrorlanuvchi) biriktirilgan
+  // bolalar kunlik rejaga tushmaydi — ular allaqachon mashinaga yozilgan,
+  // aks holda bir bola ikki yo'nalishga bo'linib qolardi.
+  const doimiyMarshrut = await prisma.route.findMany({
+    where: { schoolId, date: null, autoPlanned: false, direction: 'QAYTISH' },
+    select: { name: true, days: true, stops: { select: { studentId: true } } },
+  });
+  const doimiyda = new Map();
+  for (const r of doimiyMarshrut) {
+    if (!isLessonDay(r.days, date)) continue;
+    for (const st of r.stops) if (!doimiyda.has(st.studentId)) doimiyda.set(st.studentId, r.name);
+  }
+
   const birlashgan = tolqinlarniBirlashtirish([...vaqtBoyicha.keys()]);
   const tolqinlar = birlashgan.map(t => {
     const guruhRoyxat = t.ichidagilar.flatMap(v => vaqtBoyicha.get(v) || []);
     // Bir o'quvchi ikki guruhda bo'lishi mumkin — bir marta olinadi.
     const koringan = new Map();
     const chiqmaganlar = [];
+    const doimiylar = [];
     for (const g of guruhRoyxat) {
       for (const st of g.students) {
+        if (doimiyda.has(st.id)) {
+          if (!doimiylar.some(x => x.id === st.id)) {
+            doimiylar.push({ id: st.id, name: st.name, marshrut: doimiyda.get(st.id) });
+          }
+          continue;
+        }
         if (kelmagan.has(st.id)) {
           if (!chiqmaganlar.some(x => x.id === st.id)) {
             chiqmaganlar.push({ id: st.id, name: st.name, guruh: g.name, sabab: kelmagan.get(st.id) });
@@ -97,6 +117,7 @@ export async function kunlikTolqinlar({ schoolId, date = toDateStr() }) {
       guruhlar: guruhRoyxat.map(g => ({ id: g.id, name: g.name, tugashi: darsTugashi(g.schedule) })),
       oquvchilar: [...koringan.values()],
       kelmaganlar: chiqmaganlar,
+      doimiylar,
     };
   }).sort((a, b) => a.endTime.localeCompare(b.endTime));
 

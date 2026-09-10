@@ -36,6 +36,11 @@ export default function StudentDetails() {
     const navigate = useNavigate();
     const { t } = useLang();
     const { students, groups, teachers, courses, payments, attendances, scores, transports, routes, directions, settings, addPayment,addAttendance, addScore, updateStudent, addStudentToGroup, deleteStudent, setStudentStatus, topics, updateAttendance, showNotification, loadAttendanceFor } = useCRM();
+    // Doimiy marshrutlar: qo'lda tuzilgan, takrorlanuvchi (`date` yo'q).
+    // Kunlik reja yaratganlari bu yerga tushmaydi — ular bir kunlik va
+    // keyingi rejada bekatlari qayta yoziladi.
+    const doimiyMarshrutlar = (routes || []).filter(r => !r.date && !r.autoPlanned);
+
     const confirm = useConfirm();
     const [activeTab, setActiveTab] = useState('umumiy');
     const [showPaymentModal, setShowPaymentModal] = useState(false);
@@ -740,16 +745,21 @@ export default function StudentDetails() {
                                             <span>🚌 Transportda qatnaydi</span>
                                             <span>{editForm.needsTransport ? '✓' : '+'}</span>
                                         </button>
-                                        <label className={labelCls}>Marshrut (ixtiyoriy)</label>
-                                        {/* Marshrut — yagona manba. Ilgari bu yerda mashina
-                                            tanlanardi va hech narsaga ta'sir qilmasdi. */}
-                                        {(routes || []).length === 0 ? (
+                                        <label className={labelCls}>Doimiy marshrut (ixtiyoriy)</label>
+                                        {/* Faqat qo'lda tuzilgan takrorlanuvchi marshrutlar.
+                                            Kechki tarqatish har kuni davomat va haydovchi
+                                            javobiga qarab o'zi taqsimlanadi — u yerga qo'lda
+                                            biriktirish keyingi rejada o'chib ketadi. */}
+                                        <p className="text-[10px] font-bold text-matn-xira mb-1.5">
+                                            Bu yerga biriktirilgan bola kunlik avtomatik rejaga tushmaydi
+                                        </p>
+                                        {doimiyMarshrutlar.length === 0 ? (
                                             <p className="text-[11px] font-bold text-matn-xira py-2">
-                                                Marshrut yo'q — Logistika bo'limida qo'shiladi
+                                                Doimiy marshrut yo'q — kechki tarqatish avtomatik
                                             </p>
                                         ) : (
                                             <div className="space-y-1.5 max-h-32 overflow-y-auto custom-scrollbar">
-                                                {(routes || []).map(r => {
+                                                {doimiyMarshrutlar.map(r => {
                                                     const tanlangan = (editForm.routeIds || []).includes(r.id);
                                                     return (
                                                         <button key={r.id} type="button"

@@ -846,6 +846,19 @@ Unga biriktirilgan o'quvchilar bo'shatiladi.`)) deleteTransport(item.id); }} cla
                                                         </div>
                                                     ))}
                                                 </div>
+                                                {(t.doimiylar || []).length > 0 && (
+                                                    <>
+                                                        <p className="text-[10px] font-black text-matn-xira pt-2">DOIMIY MARSHRUTDA · {(t.doimiylar || []).length}</p>
+                                                        <div className="space-y-1">
+                                                            {(t.doimiylar || []).map((o: any) => (
+                                                                <p key={o.id} className="text-[11px] font-bold text-matn-xira truncate">
+                                                                    {o.name}
+                                                                    <span className="text-brand"> · {o.marshrut}</span>
+                                                                </p>
+                                                            ))}
+                                                        </div>
+                                                    </>
+                                                )}
                                                 {(t.kelmaganlar || []).length > 0 && (
                                                     <>
                                                         <p className="text-[10px] font-black text-matn-xira pt-2">CHIQIB QOLGANLAR · {(t.kelmaganlar || []).length}</p>
