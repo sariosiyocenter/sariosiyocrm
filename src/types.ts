@@ -258,6 +258,13 @@ export interface Route {
     autoPlanned?: boolean;
     /** Shu mashinaning nechanchi reysi. */
     navbat?: number;
+    /**
+     * Kunlik reja marshruti aynan shu kunga tegishli ("YYYY-MM-DD").
+     * null — takrorlanuvchi marshrut, `days` bo'yicha ishlaydi.
+     */
+    date?: string | null;
+    /** Qaysi dars tugash to'lqiniga tegishli ("21:00"). */
+    tolqin?: string | null;
     /** Bekatlar tartibi bilan. `studentIds` shundan hisoblanadi. */
     stops?: RouteStop[];
     studentIds: number[];

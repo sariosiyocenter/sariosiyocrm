@@ -46,23 +46,14 @@ export default function LogisticsHub() {
     // Sudralayotgan bekatning o'quvchi id si.
     const [dragStudentId, setDragStudentId] = useState<number | null>(null);
 
-    // Avtomatik rejalashtirish oynasi.
-    const [rejaOchiq, setRejaOchiq] = useState(false);
-    const [rejaShakl, setRejaShakl] = useState({
-        // Asosiy ish — dars tugagach uyga yetkazish.
-        direction: 'QAYTISH' as 'KETISH' | 'QAYTISH',
-        startTime: '18:00',
-        days: 'HAR_KUNI',
-        rejim: 'tez' as 'tez' | 'arzon',
-        transportIds: [] as number[],
-    });
-    const [reja, setReja] = useState<any>(null);
-    const [rejaYuklanmoqda, setRejaYuklanmoqda] = useState(false);
 
     // Kunlik to'lqinlar: dars tugash vaqtlari va ular bo'yicha reja.
     const [tolqinlar, setTolqinlar] = useState<any>(null);
     const [kunlikReja, setKunlikReja] = useState<any>(null);
     const [kunlikBand, setKunlikBand] = useState('');
+    // "tez" — mashinalar bir vaqtda chiqadi, bolalar tezroq uyda; "arzon" —
+    // kamroq mashina ishlatiladi, lekin oxirgi bola kech boradi.
+    const [kunRejim, setKunRejim] = useState<'tez' | 'arzon'>('tez');
 
     // Tarix: sana oralig'i bo'sh bo'lsa boshidan hisoblanadi.
     const [statsFrom, setStatsFrom] = useState('');
@@ -216,36 +207,6 @@ export default function LogisticsHub() {
      */
     const tanlangan = editingRoute ? (routes.find(r => r.id === editingRoute.id) || editingRoute) : null;
 
-    /**
-     * Rejani hisoblash yoki qo'llash.
-     *
-     * `apply: false` — server hech narsa yozmaydi, faqat taqsimotni qaytaradi;
-     * admin ko'rib, keyin tasdiqlaydi.
-     */
-    const rejaniHisoblash = async (apply: boolean) => {
-        setRejaYuklanmoqda(true);
-        try {
-            const r = await fetch('/api/logistics/plan', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-                body: JSON.stringify({ schoolId: selectedSchoolId, ...rejaShakl, apply }),
-            });
-            if (!r.ok) throw new Error('xatolik');
-            const natija = await r.json();
-            setReja(natija);
-            if (apply) {
-                showNotification(`${natija.rejalar.length} ta marshrut tuzildi`, 'success');
-                setRejaOchiq(false);
-                setReja(null);
-                await retryLoad();
-            }
-        } catch {
-            showNotification('Rejani hisoblab bo\'lmadi', 'error');
-        } finally {
-            setRejaYuklanmoqda(false);
-        }
-    };
-
     /** So'rov yuborish yordamchisi. */
     const soro = async (yol: string, tana?: any) => {
         const r = await fetch(`/api/logistics/${yol}`, {
@@ -286,7 +247,7 @@ export default function LogisticsHub() {
     const kunlikRejaniOlish = async (endTime: string, apply: boolean) => {
         setKunlikBand('reja' + endTime);
         try {
-            const r = await soro('daily-plan', { date: selectedDate, endTime, apply, rejim: rejaShakl.rejim });
+            const r = await soro('daily-plan', { date: selectedDate, endTime, apply, rejim: kunRejim });
             setKunlikReja(r);
             if (apply) {
                 showNotification(`${r.rejalar.length} ta marshrut tuzildi`, 'success');
@@ -306,7 +267,23 @@ export default function LogisticsHub() {
         )?.status;
     };
 
-    const isRouteActiveOnDate = (route: Route, dateStr: string) => isLessonDay(route.days, dateStr);
+    /**
+     * Marshrut shu kuni ishlaydimi.
+     *
+     * Kunlik reja marshrutida `date` aniq bir kunga qo'yiladi — u faqat
+     * o'sha kuni ko'rinadi. Qolganlari `days` (TOQ/JUFT/HAR_KUNI) bo'yicha.
+     */
+    const isRouteActiveOnDate = (route: Route, dateStr: string) =>
+        route.date ? route.date === dateStr : isLessonDay(route.days, dateStr);
+
+    /**
+     * Marshrutlar ro'yxatida ko'rinadiganlari.
+     *
+     * Kunlik reja har kuni yangi marshrut yaratadi; hammasi ko'rsatilsa
+     * ro'yxat bir necha kunning nusxalari bilan to'lib ketadi va qaysi biri
+     * bugungisi ekani bilinmaydi.
+     */
+    const korinadiganMarshrutlar = routes.filter(r => isRouteActiveOnDate(r, selectedDate) || !r.date);
 
     /** Shu marshrutning tanlangan kundagi reysi (haydovchi boshlagan bo'lsa). */
     const routeRun = (route: Route) => routeRuns.find(r => r.routeId === route.id && r.date === selectedDate);
@@ -516,25 +493,16 @@ Unga biriktirilgan o'quvchilar bo'shatiladi.`)) deleteTransport(item.id); }} cla
                         <div className="bg-sirt rounded-2xl border border-chiziq p-4 shadow-sm">
                             <div className="flex justify-between items-center mb-6">
                                 <span className="text-[11px] font-bold text-matn-xira">{t('routes')}</span>
-                                <div className="flex items-center gap-2">
-                                <button
-                                    onClick={() => { setReja(null); setRejaShakl(f => ({ ...f, transportIds: transports.filter(tr => tr.status === 'Faol').map(tr => tr.id) })); setRejaOchiq(true); }}
-                                    title="O'quvchilarni mashinalarga o'zi taqsimlaydi"
-                                    className="h-8 px-3 rounded-lg bg-ichki border border-chiziq text-matn-sokin hover:bg-gray-50 dark:hover:bg-gray-700 flex items-center gap-1.5 text-[11px] font-extrabold transition-all cursor-pointer"
-                                >
-                                    <Wand2 size={13} /> Avtomatik
-                                </button>
                                 <button
                                     onClick={() => { resetRouteForm(); setIsRouteModalOpen(true); }}
                                     className="w-8 h-8 rounded-lg bg-brand text-brand-ust flex items-center justify-center shadow transition-all cursor-pointer"
                                 >
                                     <Plus size={16} />
                                 </button>
-                                </div>
                             </div>
                             
                             <div className="space-y-2">
-                                {routes.map(route => (
+                                {korinadiganMarshrutlar.map(route => (
                                     <div 
                                         key={route.id}
                                         className={`p-4 rounded-2xl border transition-all cursor-pointer group ${
@@ -557,11 +525,22 @@ Unga biriktirilgan o'quvchilar bo'shatiladi.`)) deleteTransport(item.id); }} cla
                                     >
                                         <div className="flex justify-between items-start">
                                             <div>
-                                                <h3 className="text-xs font-black text-matn tracking-tight">
+                                                <h3 className="text-xs font-black text-matn tracking-tight flex items-center gap-1.5">
                                                     {route.name}
+                                                    {/* Kunlik reja marshruti faqat shu kunga — takrorlanuvchisidan
+                                                        ajralib tursin, aks holda ikkalasi bir xil ko'rinadi. */}
+                                                    {route.date && (
+                                                        <span className="px-1.5 py-0.5 rounded-md text-[9px] font-black bg-teal-50 text-brand border border-teal-100 dark:bg-teal-950/20 dark:border-teal-900/40">
+                                                            {route.date} rejasi
+                                                        </span>
+                                                    )}
                                                 </h3>
                                                 <span className="text-[11px] text-matn-xira font-bold block mt-0.5">
-                                                    {route.direction === 'QAYTISH' ? '🏠 Uyga' : '🏫 Markazga'} • {route.days === 'HAR_KUNI' ? t('every_day') : route.days === 'TOQ' ? t('odd_days') : route.days === 'JUFT' ? t('even_days') : route.days} • {route.startTime || '--:--'} • {routeStudents(route).length} {t('student').toLowerCase()}
+                                                    {route.direction === 'QAYTISH' ? '🏠 Uyga' : '🏫 Markazga'}
+                                                    {/* Kunlik marshrut faqat bir kunga — unga "Har kuni" deb
+                                                        yozish chalg'itadi; sana yorlig'i sarlavhada turibdi. */}
+                                                    {!route.date && ` • ${route.days === 'HAR_KUNI' ? t('every_day') : route.days === 'TOQ' ? t('odd_days') : route.days === 'JUFT' ? t('even_days') : route.days}`}
+                                                    {` • ${route.startTime || '--:--'} • ${routeStudents(route).length} ${t('student').toLowerCase()}`}
                                                 </span>
                                             </div>
                                             <div className="w-8 h-8 rounded-lg bg-sirt border border-chiziq flex items-center justify-center text-brand">
@@ -586,7 +565,7 @@ Unga biriktirilgan o'quvchilar bo'shatiladi.`)) deleteTransport(item.id); }} cla
                                         </div>
                                     </div>
                                 ))}
-                                {routes.length === 0 && (
+                                {korinadiganMarshrutlar.length === 0 && (
                                     <p className="text-center py-8 text-[11px] text-matn-xira font-bold">{t('no_routes_found')}</p>
                                 )}
                             </div>
@@ -747,6 +726,30 @@ Unga biriktirilgan o'quvchilar bo'shatiladi.`)) deleteTransport(item.id); }} cla
 
             {activeTab === 'yetkazish' && tolqinlar && (
                 <div className="space-y-4">
+                    {/* Rejim: mashinalar bir vaqtda chiqsinmi (bolalar tez uyda,
+                        hamma mashina band) yoki kamroq mashina bilanmi (arzon,
+                        lekin oxirgi bola kech boradi). */}
+                    <div className="bg-sirt rounded-2xl border border-chiziq p-3 shadow-sm flex flex-wrap items-center gap-2">
+                        <span className="text-[11px] font-bold text-matn-xira mr-1">Rejalash usuli</span>
+                        {([
+                            { k: 'tez', nom: 'Tez', izoh: 'Mashinalar bir vaqtda chiqadi — bolalar tezroq uyda' },
+                            { k: 'arzon', nom: 'Tejamkor', izoh: 'Kamroq mashina — oxirgi bola kechroq boradi' },
+                        ] as const).map(v => (
+                            <button key={v.k} onClick={() => setKunRejim(v.k)} title={v.izoh}
+                                className={`h-8 px-3 rounded-lg text-[11px] font-extrabold transition-all cursor-pointer border ${
+                                    kunRejim === v.k
+                                        ? 'bg-brand text-brand-ust border-brand shadow-sm'
+                                        : 'bg-ichki border-chiziq text-matn-sokin hover:bg-gray-50 dark:hover:bg-gray-700'}`}>
+                                {v.nom}
+                            </button>
+                        ))}
+                        <span className="text-[11px] font-bold text-matn-xira">
+                            {kunRejim === 'tez'
+                                ? 'Mashinalar bir vaqtda chiqadi — bolalar tezroq uyda'
+                                : "Kamroq mashina — oxirgi bola kechroq boradi"}
+                        </span>
+                    </div>
+
                     {/* Jadvali to'ldirilmagan guruhlar — ular hech qaysi to'lqinga
                         tushmaydi, ya'ni bolalari transportsiz qoladi. */}
                     {(tolqinlar.jadvalsiz || []).length > 0 && (
@@ -1029,133 +1032,6 @@ Unga biriktirilgan o'quvchilar bo'shatiladi.`)) deleteTransport(item.id); }} cla
                                     )}
                                 </div>
                             ))}
-                    </div>
-                </div>
-            )}
-
-            {rejaOchiq && (
-                <div className="fixed inset-0 z-[120] flex items-start sm:items-center justify-center overflow-y-auto p-4">
-                    <div className="absolute inset-0 bg-gray-900/60 backdrop-blur-sm" onClick={() => setRejaOchiq(false)} />
-                    <div className="relative bg-sirt rounded-[2rem] border border-chiziq shadow-2xl w-full max-w-2xl p-8 my-8">
-                        <div className="flex items-center justify-between mb-6 pb-4 border-b border-chiziq-mayin/50">
-                            <div>
-                                <h3 className="text-lg font-black text-matn tracking-tight flex items-center gap-2">
-                                    <Wand2 size={18} className="text-brand" /> Avtomatik rejalashtirish
-                                </h3>
-                                <p className="text-[11px] font-bold text-brand mt-0.5">
-                                    "Transportda qatnaydi" deb belgilangan o'quvchilarni mashinalarga taqsimlaydi
-                                </p>
-                            </div>
-                            <button aria-label="Yopish" onClick={() => setRejaOchiq(false)} className="w-9 h-9 flex items-center justify-center text-matn-xira hover:bg-gray-55 dark:hover:bg-gray-700 rounded-xl cursor-pointer"><X size={18} /></button>
-                        </div>
-
-                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-4">
-                            <div>
-                                <label className={lbl}>Yo'nalish</label>
-                                <select className={inp} value={rejaShakl.direction} onChange={e => { setReja(null); setRejaShakl({ ...rejaShakl, direction: e.target.value as any, startTime: e.target.value === 'QAYTISH' ? '18:00' : '07:30' }); }}>
-                                    <option value="QAYTISH">Dars tugagach — uyga</option>
-                                    <option value="KETISH">Ertalab — markazga</option>
-                                </select>
-                            </div>
-                            <div>
-                                <label className={lbl}>{rejaShakl.direction === 'QAYTISH' ? 'Dars tugash vaqti' : 'Chiqish vaqti'}</label>
-                                <input type="time" className={inp} value={rejaShakl.startTime} onChange={e => { setReja(null); setRejaShakl({ ...rejaShakl, startTime: e.target.value }); }} />
-                            </div>
-                            <div>
-                                <label className={lbl}>{t('days')}</label>
-                                <select className={inp} value={rejaShakl.days} onChange={e => { setReja(null); setRejaShakl({ ...rejaShakl, days: e.target.value }); }}>
-                                    <option value="HAR_KUNI">{t('every_day')}</option>
-                                    <option value="TOQ">{t('odd_days')}</option>
-                                    <option value="JUFT">{t('even_days')}</option>
-                                </select>
-                            </div>
-                            <div>
-                                <label className={lbl}>Rejim</label>
-                                <select className={inp} value={rejaShakl.rejim} onChange={e => { setReja(null); setRejaShakl({ ...rejaShakl, rejim: e.target.value as any }); }}>
-                                    <option value="tez">Tezroq — ko'p mashina</option>
-                                    <option value="arzon">Arzonroq — kam mashina</option>
-                                </select>
-                            </div>
-                        </div>
-
-                        <div className="mb-4">
-                            <label className={lbl}>Qatnashadigan mashinalar</label>
-                            <div className="flex flex-wrap gap-2">
-                                {transports.filter(tr => tr.status === 'Faol').map(tr => {
-                                    const tanlangan = rejaShakl.transportIds.includes(tr.id);
-                                    return (
-                                        <button key={tr.id} type="button"
-                                            onClick={() => { setReja(null); setRejaShakl({ ...rejaShakl, transportIds: tanlangan ? rejaShakl.transportIds.filter(x => x !== tr.id) : [...rejaShakl.transportIds, tr.id] }); }}
-                                            className={`px-3 py-2 rounded-xl border text-[11px] font-bold transition-all cursor-pointer ${tanlangan
-                                                ? 'bg-teal-50 dark:bg-teal-950/20 text-brand border-teal-100 dark:border-teal-900/40'
-                                                : 'bg-ichki text-matn-xira border-chiziq'}`}>
-                                            🚌 {tr.name} · {tr.capacity} o'rin {tanlangan ? '✓' : ''}
-                                        </button>
-                                    );
-                                })}
-                                {transports.filter(tr => tr.status === 'Faol').length === 0 && (
-                                    <p className="text-[11px] font-bold text-matn-xira">Faol mashina yo'q — Avtopark bo'limida qo'shiladi</p>
-                                )}
-                            </div>
-                        </div>
-
-                        {reja && (
-                            <div className="space-y-3 mb-4 pt-4 border-t border-dashed border-chiziq/50">
-                                <div className="flex flex-wrap gap-4 text-[11px] font-bold text-matn-xira">
-                                    <span><b className="text-matn">{reja.jami.oquvchi}</b> o'quvchi</span>
-                                    <span><b className="text-matn">{reja.rejalar.length}</b> reys</span>
-                                    <span>jami <b className="text-matn">{reja.jami.km.toFixed(1)} km</b></span>
-                                    <span>eng uzun reys <b className="text-matn">~{reja.jami.engUzunDaqiqa} daq</b></span>
-                                    {reja.jami.qoldaJoylashgan > 0 && <span>{reja.jami.qoldaJoylashgan} tasi qo'lda joylashgan</span>}
-                                </div>
-
-                                {reja.rejalar.map((r: any, i: number) => (
-                                    <div key={i} className="bg-ichki rounded-2xl border border-chiziq p-4">
-                                        <div className="flex items-center justify-between gap-3 mb-2">
-                                            <span className="text-xs font-black text-matn">{r.nomi}</span>
-                                            <span className="text-[11px] font-bold text-matn-xira tabular-nums shrink-0">
-                                                {r.startTime} · {r.oquvchilar.length}/{r.capacity} o'rin · {r.km.toFixed(1)} km · ~{r.daqiqa} daq
-                                            </span>
-                                        </div>
-                                        <p className="text-[11px] font-bold text-matn-sokin leading-relaxed">
-                                            {r.oquvchilar.map((o: any, k: number) => `${k + 1}. ${o.name}`).join(' · ')}
-                                        </p>
-                                    </div>
-                                ))}
-
-                                {(reja.sigmaganlar.length > 0 || reja.nuqtasiz.length > 0) && (
-                                    <div className="bg-amber-50 dark:bg-amber-950/20 border border-amber-100 dark:border-amber-900/40 rounded-2xl p-4 space-y-1">
-                                        {reja.sigmaganlar.length > 0 && (
-                                            <p className="text-[11px] font-bold text-amber-700 dark:text-amber-400 flex items-start gap-2">
-                                                <AlertTriangle size={13} className="shrink-0 mt-0.5" />
-                                                Sig'im yetmadi ({reja.sigmaganlar.length}): {reja.sigmaganlar.map((o: any) => o.name).join(', ')}
-                                            </p>
-                                        )}
-                                        {reja.nuqtasiz.length > 0 && (
-                                            <p className="text-[11px] font-bold text-amber-700 dark:text-amber-400 flex items-start gap-2">
-                                                <AlertTriangle size={13} className="shrink-0 mt-0.5" />
-                                                Joylashuvi belgilanmagan ({reja.nuqtasiz.length}): {reja.nuqtasiz.map((o: any) => o.name).join(', ')}
-                                            </p>
-                                        )}
-                                    </div>
-                                )}
-                            </div>
-                        )}
-
-                        <div className="flex gap-3 pt-4 border-t border-dashed border-chiziq/50">
-                            <button type="button" onClick={() => setRejaOchiq(false)}
-                                className="flex-1 py-3 bg-chiziq text-gray-700 dark:text-white text-xs font-extrabold rounded-2xl transition-all cursor-pointer hover:bg-gray-200 dark:hover:bg-gray-600">
-                                {t('cancel')}
-                            </button>
-                            <button type="button" disabled={rejaYuklanmoqda || rejaShakl.transportIds.length === 0} onClick={() => rejaniHisoblash(false)}
-                                className="flex-1 py-3 bg-ichki border border-chiziq text-matn-sokin disabled:opacity-50 text-xs font-extrabold rounded-2xl transition-all cursor-pointer">
-                                {rejaYuklanmoqda ? 'Hisoblanmoqda…' : 'Hisoblash'}
-                            </button>
-                            <button type="button" disabled={!reja || rejaYuklanmoqda} onClick={() => rejaniHisoblash(true)}
-                                className="flex-1 py-3 bg-brand hover:bg-brand-dark disabled:opacity-50 text-white text-xs font-extrabold rounded-2xl shadow-sm shadow-[#1b6b6b]/20 transition-all cursor-pointer">
-                                Tasdiqlash
-                            </button>
-                        </div>
                     </div>
                 </div>
             )}

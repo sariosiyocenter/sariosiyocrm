@@ -678,6 +678,12 @@ model Route {
   // kelgan, kim transportga yozilgan. null bo'lsa — takrorlanuvchi marshrut
   // (qo'lda tuzilgan), `days` bo'yicha ishlaydi.
   date        String?
+
+  // Qaysi to'lqinga (dars tugash vaqtiga) tegishli. `startTime` bilan bir xil
+  // emas: ikkinchi reys kechroq chiqadi (21:00 to'lqini, 22:18 da chiqish).
+  // Shu maydonsiz qayta rejalashtirishda ikkinchi reys topilmay, har safar
+  // yangi marshrut yaratilardi.
+  tolqin      String?
   // Shu mashinaning nechanchi reysi (bir mashina bir necha marta qatnasa).
   navbat      Int      @default(1)
 

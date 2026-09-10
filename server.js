@@ -11,7 +11,7 @@ import jwt from 'jsonwebtoken';
 import bot, { startBot, notifyAdmins, getTelegramBot } from './src/bot/bot.js';
 import { transferStudent, refundStudent, enrollStudent, unenrollStudent, syncGroupMembers, activateStudent, syncStudentGroups } from './services/enrollment.js';
 import { studentLedger, receivedForGroups, monthCoverage } from './services/ledger.js';
-import { holatniYozish, marshrutniTartiblash, marshrutlarniRejalash } from './services/logistics.js';
+import { holatniYozish, marshrutniTartiblash } from './services/logistics.js';
 import { kunlikTolqinlar, haydovchilardanSorash, kunlikRejaniTuzish, avtoJarayon } from './services/kunlikReja.js';
 import { toDateStr } from './lib/lessons.js';
 import { smsYuboruvchiniUlash } from './services/transportNotify.js';
@@ -4696,33 +4696,6 @@ app.get('/api/logistics/auto-process', async (req, res, next) => {
     if (cronError) return res.status(401).json({ error: cronError });
     const natija = await avtoJarayon({});
     res.json({ ok: true, natija });
-  } catch (error) { next(error); }
-});
-
-/**
- * Avtomatik rejalashtirish. `apply: true` bo'lmasa hech narsa yozilmaydi —
- * admin avval rejani ko'radi, keyin tasdiqlaydi.
- */
-app.post('/api/logistics/plan', authenticate, requireRole(...STAFF_MANAGERS), async (req, res, next) => {
-  try {
-    const schoolId = parseInt(req.body.schoolId);
-    if (!schoolId) return res.status(400).json({ error: 'schoolId required' });
-    if (!(await canAccessSchool(req.user, schoolId))) return res.status(403).json({ error: "Ruxsat yo'q" });
-
-    const direction = ROUTE_DIRECTIONS.includes(req.body.direction) ? req.body.direction : 'QAYTISH';
-    const days = ROUTE_DAYS.includes(req.body.days) ? req.body.days : 'HAR_KUNI';
-    const rejim = req.body.rejim === 'arzon' ? 'arzon' : 'tez';
-    // Vaqt berilmasa yo'nalishga qarab: uyga tarqatish kechqurun, yig'ish ertalab.
-    const startTime = /^([01][0-9]|2[0-3]):[0-5][0-9]$/.test(String(req.body.startTime || ''))
-      ? req.body.startTime : (direction === 'QAYTISH' ? '18:00' : '07:30');
-    const transportIds = Array.isArray(req.body.transportIds)
-      ? req.body.transportIds.map(x => parseInt(x)).filter(Number.isInteger) : [];
-
-    const natija = await marshrutlarniRejalash({
-      schoolId, direction, transportIds, startTime, days, rejim,
-      apply: req.body.apply === true,
-    });
-    res.json(natija);
   } catch (error) { next(error); }
 });
 

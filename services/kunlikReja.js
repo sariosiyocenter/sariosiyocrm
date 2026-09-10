@@ -266,18 +266,28 @@ export async function kunlikRejaniTuzish({ schoolId, date = toDateStr(), endTime
   if (!apply) return javob;
 
   // --- marshrutlarni yozamiz ---
+  // Qidiruv to'lqin bo'yicha: ikkinchi reysning `startTime` i kechroq
+  // (22:18), shuning uchun startTime bo'yicha qidirilsa u topilmay, har
+  // safar yangi marshrut yaratilardi.
   const mavjud = await prisma.route.findMany({
-    where: { schoolId, date, autoPlanned: true, startTime: endTime },
+    where: { schoolId, date, autoPlanned: true, tolqin: endTime },
     select: { id: true, transportId: true, navbat: true },
   });
   const ishlatilgan = new Set();
 
+  // Bir mashina + navbat uchun bittadan ortiq marshrut chiqib qolgan bo'lsa
+  // (eski xatodan qolgan dublikat), birinchisini ishlatamiz — qolganlari
+  // pastda bo'shatiladi va o'chiriladi.
+  const olingan = new Set();
+
   for (const r of rejalar) {
-    const bor = mavjud.find(m => m.transportId === r.transportId && m.navbat === r.navbat);
+    const bor = mavjud.find(m =>
+      m.transportId === r.transportId && m.navbat === r.navbat && !olingan.has(m.id));
+    if (bor) olingan.add(bor.id);
     const data = {
       name: r.nomi, startTime: r.startTime, days: 'HAR_KUNI', direction: 'QAYTISH',
       transportId: r.transportId, driverId: r.driverId,
-      autoPlanned: true, autoOrder: true, navbat: r.navbat, date, schoolId,
+      autoPlanned: true, autoOrder: true, navbat: r.navbat, date, tolqin: endTime, schoolId,
     };
     const route = bor
       ? await prisma.route.update({ where: { id: bor.id }, data })
@@ -295,9 +305,13 @@ export async function kunlikRejaniTuzish({ schoolId, date = toDateStr(), endTime
     r.routeId = route.id;
   }
 
-  // Rejadan tushib qolganlari bo'shatiladi (reys tarixi saqlanadi).
+  // Rejadan tushib qolganlari bo'shatiladi. Reys boshlanib bo'lgan bo'lsa
+  // (RouteRun bor) marshrut turadi — tarix yo'qolmasin; tegilmagani esa
+  // butunlay o'chiriladi, aks holda ro'yxatda bo'sh qatorlar yig'ilaveradi.
   for (const m of mavjud.filter(x => !ishlatilgan.has(x.id))) {
     await prisma.routeStop.deleteMany({ where: { routeId: m.id } });
+    const reysBor = await prisma.routeRun.count({ where: { routeId: m.id } });
+    if (!reysBor) await prisma.route.delete({ where: { id: m.id } });
   }
   javob.qollandi = true;
   return javob;
