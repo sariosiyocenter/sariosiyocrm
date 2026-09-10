@@ -159,7 +159,10 @@ export async function bugungiReyslar({ schoolId, date, driverId = null }) {
     include: MARSHRUT_INCLUDE,
     orderBy: [{ startTime: 'asc' }, { id: 'asc' }],
   });
-  return marshrutlar.filter(r => isLessonDay(r.days, date));
+  // Kunlik reja marshruti (`date` bor) faqat o'z kunida ko'rinadi. Uning
+  // `days` i HAR_KUNI bo'lgani uchun faqat kun turi tekshirilsa, kechagi
+  // reja haydovchining botida ertaga ham chiqaverardi.
+  return marshrutlar.filter(r => (r.date ? r.date === date : isLessonDay(r.days, date)));
 }
 
 /**

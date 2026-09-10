@@ -21,6 +21,15 @@ import { markazNuqtasi } from './logistics.js';
 export const SORASH_OLDIN_DAQIQA = 120;
 
 /**
+ * Dars oxirida bola markazda YO'Q degan davomat holatlari — ularga mashina
+ * kerak emas. "Kelmadi" — eski yozuvlardagi nom (AttendanceMatrix uni
+ * "Kelmapdi" ga normallashtiradi, lekin bazada eskisi qolgan bo'lishi mumkin).
+ * Faqat "Kelmapdi" tekshirilgani uchun sababli kelmagan yoki erta ketgan
+ * bola ham mashinaga yozilib qolardi.
+ */
+export const DARSDA_YOQ = ['Kelmapdi', 'Kelmadi', 'Sababli', "Dars bo'lmadi", 'ErtaKetdi'];
+
+/**
  * Bugungi to'lqinlar: qaysi vaqtda nechta bola uyga ketishi kerak.
  *
  * @returns {Promise<{tolqinlar: object[], jadvalsiz: object[]}>}
@@ -55,9 +64,11 @@ export async function kunlikTolqinlar({ schoolId, date = toDateStr() }) {
     vaqtBoyicha.get(oxiri).push(g);
   }
 
-  // Bugun "Kelmapdi" deb belgilanganlar reja tashqarisida.
+  // Davomati "darsda yo'q" deganlar reja tashqarisida. Davomat umuman
+  // belgilanmagan bo'lsa (ustoz hali qo'ymagan) bola kelgan deb olinadi —
+  // aks holda davomat kechiksa hech kimga mashina chiqmay qolardi.
   const kelmaganYozuv = await prisma.attendance.findMany({
-    where: { schoolId, date, status: 'Kelmapdi' },
+    where: { schoolId, date, status: { in: DARSDA_YOQ } },
     select: { studentId: true },
   });
   const kelmagan = new Set(kelmaganYozuv.map(x => x.studentId));
