@@ -51,6 +51,8 @@ export default function LogisticsHub() {
     const [tolqinlar, setTolqinlar] = useState<any>(null);
     const [kunlikReja, setKunlikReja] = useState<any>(null);
     const [kunlikBand, setKunlikBand] = useState('');
+    // Qaysi to'lqinning o'quvchilar ro'yxati ochilgan ("21:00" yoki bo'sh).
+    const [ochiqTolqin, setOchiqTolqin] = useState('');
     // "tez" — mashinalar bir vaqtda chiqadi, bolalar tezroq uyda; "arzon" —
     // kamroq mashina ishlatiladi, lekin oxirgi bola kech boradi.
     const [kunRejim, setKunRejim] = useState<'tez' | 'arzon'>('tez');
@@ -783,9 +785,18 @@ Unga biriktirilgan o'quvchilar bo'shatiladi.`)) deleteTransport(item.id); }} cla
                                                     {t.guruhlar.map((g: any) => g.name).join(', ')}
                                                 </p>
                                             </div>
-                                            <span className="px-2.5 py-1 rounded-lg text-[11px] font-black bg-ichki text-matn-2 border border-chiziq tabular-nums shrink-0">
+                                            {/* Son bosiladigan: kimligini ko'rish uchun "Reja" ni kutish
+                                                shart emas, kelmaganlar ham shu yerda. */}
+                                            <button
+                                                onClick={() => setOchiqTolqin(ochiqTolqin === t.endTime ? '' : t.endTime)}
+                                                title="Ro'yxatni ochish"
+                                                className={`px-2.5 py-1 rounded-lg text-[11px] font-black border tabular-nums shrink-0 flex items-center gap-1 transition-all cursor-pointer ${
+                                                    ochiqTolqin === t.endTime
+                                                        ? 'bg-brand/10 text-brand border-brand'
+                                                        : 'bg-ichki text-matn-2 border-chiziq hover:border-brand'}`}>
                                                 {t.oquvchi} bola
-                                            </span>
+                                                <ChevronDown size={11} className={ochiqTolqin === t.endTime ? 'rotate-180 transition-transform' : 'transition-transform'} />
+                                            </button>
                                         </div>
 
                                         <div className="flex flex-wrap items-center gap-2 mt-3 text-[10px] font-bold">
@@ -815,6 +826,41 @@ Unga biriktirilgan o'quvchilar bo'shatiladi.`)) deleteTransport(item.id); }} cla
                                                 <Wand2 size={12} /> {kunlikBand === 'reja' + t.endTime ? '…' : 'Reja'}
                                             </button>
                                         </div>
+
+                                        {/* Kim ketadi, kim chiqib qoldi. Joylashuvi yo'q bola
+                                            rejaga tusha olmaydi — shu yerda ko'rinib tursin. */}
+                                        {ochiqTolqin === t.endTime && (
+                                            <div className="mt-3 pt-3 border-t border-dashed border-chiziq space-y-2">
+                                                <p className="text-[10px] font-black text-matn-xira">KETADIGANLAR · {(t.oquvchilar || []).length}</p>
+                                                <div className="space-y-1 max-h-64 overflow-y-auto">
+                                                    {(t.oquvchilar || []).map((o: any, i: number) => (
+                                                        <div key={o.id} className="flex items-start gap-2 text-[11px]">
+                                                            <span className="text-matn-xira tabular-nums shrink-0 w-4 text-right">{i + 1}.</span>
+                                                            <div className="min-w-0">
+                                                                <p className="font-bold text-matn truncate">{o.name}</p>
+                                                                <p className="text-[10px] font-bold text-matn-xira truncate">
+                                                                    {o.guruh}{o.address ? ` · ${o.address}` : ''}
+                                                                    {!o.nuqta && <span className="text-amber-600 dark:text-amber-500"> · joylashuvi yo'q</span>}
+                                                                </p>
+                                                            </div>
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                                {(t.kelmaganlar || []).length > 0 && (
+                                                    <>
+                                                        <p className="text-[10px] font-black text-matn-xira pt-2">CHIQIB QOLGANLAR · {(t.kelmaganlar || []).length}</p>
+                                                        <div className="space-y-1">
+                                                            {(t.kelmaganlar || []).map((o: any) => (
+                                                                <p key={o.id} className="text-[11px] font-bold text-matn-xira truncate">
+                                                                    <span className="line-through">{o.name}</span>
+                                                                    <span className="text-rose-500 dark:text-rose-400"> · {o.sabab}</span>
+                                                                </p>
+                                                            ))}
+                                                        </div>
+                                                    </>
+                                                )}
+                                            </div>
+                                        )}
                                     </div>
                                 );
                             })}

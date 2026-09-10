@@ -69,9 +69,10 @@ export async function kunlikTolqinlar({ schoolId, date = toDateStr() }) {
   // aks holda davomat kechiksa hech kimga mashina chiqmay qolardi.
   const kelmaganYozuv = await prisma.attendance.findMany({
     where: { schoolId, date, status: { in: DARSDA_YOQ } },
-    select: { studentId: true },
+    select: { studentId: true, status: true },
   });
-  const kelmagan = new Set(kelmaganYozuv.map(x => x.studentId));
+  // Sababi ham kerak: admin ro'yxatda "Kelmapdi" mi, "Sababli" mi ko'rsin.
+  const kelmagan = new Map(kelmaganYozuv.map(x => [x.studentId, x.status]));
 
   const birlashgan = tolqinlarniBirlashtirish([...vaqtBoyicha.keys()]);
   const tolqinlar = birlashgan.map(t => {
@@ -82,10 +83,13 @@ export async function kunlikTolqinlar({ schoolId, date = toDateStr() }) {
     for (const g of guruhRoyxat) {
       for (const st of g.students) {
         if (kelmagan.has(st.id)) {
-          if (!chiqmaganlar.some(x => x.id === st.id)) chiqmaganlar.push({ id: st.id, name: st.name });
+          if (!chiqmaganlar.some(x => x.id === st.id)) {
+            chiqmaganlar.push({ id: st.id, name: st.name, guruh: g.name, sabab: kelmagan.get(st.id) });
+          }
           continue;
         }
-        if (!koringan.has(st.id)) koringan.set(st.id, st);
+        // Qaysi guruhdan kelgani ro'yxatda ko'rsatiladi.
+        if (!koringan.has(st.id)) koringan.set(st.id, { ...st, guruh: g.name });
       }
     }
     return {

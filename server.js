@@ -464,6 +464,7 @@ app.post('/api/users', authenticate, async (req, res, next) => {
     if (req.user.role !== 'ADMIN' && req.user.role !== 'MANAGER' && req.user.role !== 'SUPERADMIN') return res.status(403).json({ error: 'Ruhsat yo' });
 
     let { email, password, name, phone, photo, position, salary, role, schoolId, kpiPercent } = req.body;
+    photo = await rasmQiymatiniTozala(photo, 'user');
 
     if (req.user.role === 'MANAGER' && (role === 'ADMIN' || role === 'MANAGER')) {
       return res.status(403).json({ error: 'Menejer faqat o\'qituvchi va resepshn qo\'sha oladi' });
@@ -586,7 +587,8 @@ app.put('/api/users/:id', authenticate, async (req, res, next) => {
     if (tekshir.error) return res.status(tekshir.status).json({ error: tekshir.error });
     const { target } = tekshir;
 
-    const { email, name, phone, photo, position, salary, role, password, workDays, kpiPercent, status } = req.body;
+    let { email, name, phone, photo, position, salary, role, password, workDays, kpiPercent, status } = req.body;
+    photo = await rasmQiymatiniTozala(photo, 'user');
 
     if (role !== undefined && role !== target.role) {
       // Menejer o'zini yoki boshqani ADMIN/MANAGER qilib ko'tara olmaydi.
@@ -1296,6 +1298,8 @@ app.post('/api/students', authenticate, async (req, res, next) => {
     for (const key of ALLOWED) {
       if (rest[key] !== undefined) data[key] = rest[key];
     }
+    // A base64 photo never reaches the row: it becomes a Storage URL first.
+    await rasmMaydoniniTozala(data, 'photo', 'student');
     if (data.balance !== undefined) data.balance = parseFloat(data.balance) || 0;
     if (data.transportId !== undefined) data.transportId = data.transportId ? parseInt(data.transportId) : null;
     if (data.directionId !== undefined) data.directionId = data.directionId ? parseInt(data.directionId) : null;
@@ -1432,6 +1436,8 @@ app.put('/api/students/:id', authenticate, async (req, res, next) => {
     for (const key of ALLOWED_STUDENT_FIELDS) {
       if (rest[key] !== undefined) data[key] = rest[key];
     }
+    // A base64 photo never reaches the row: it becomes a Storage URL first.
+    await rasmMaydoniniTozala(data, 'photo', 'student');
 
     // If status is changing, update statusChangedAt
     let activating = false;
@@ -1605,6 +1611,7 @@ app.post('/api/teachers', authenticate, requireRole(...STAFF_MANAGERS), async (r
     const { schoolId } = req.body;
     if (!schoolId) return res.status(400).json({ error: 'schoolId required' });
     const data = pickTeacherFields(req.body);
+    await rasmMaydoniniTozala(data, 'photo', 'teacher');
     if (!data.salaryType) data.salaryType = 'FIXED';
     const teacher = await prisma.teacher.create({ data: { ...data, schoolId: parseInt(schoolId) } });
     // Ustozga darhol xodim yozuvi ham ochiladi. Ilgari bu yerdan qo'shilgan
@@ -1631,9 +1638,11 @@ app.post('/api/teachers', authenticate, requireRole(...STAFF_MANAGERS), async (r
 app.put('/api/teachers/:id', authenticate, requireRole(...STAFF_MANAGERS), async (req, res, next) => {
   try {
     const { id } = req.params;
+    const ustozData = pickTeacherFields(req.body);
+    await rasmMaydoniniTozala(ustozData, 'photo', 'teacher');
     const teacher = await prisma.teacher.update({
       where: { id: parseInt(id) },
-      data: pickTeacherFields(req.body),
+      data: ustozData,
     });
     // Xodim yozuvi ham ergashsin: profil bitta bo'lgani uchun ism yoki telefon
     // ikki xil bo'lib qolsa, o'sha bitta sahifada qarama-qarshi ma'lumot chiqadi.
@@ -1997,6 +2006,7 @@ app.post('/api/leads', authenticate, async (req, res, next) => {
     const { schoolId, ...data } = req.body;
     if (!schoolId) return res.status(400).json({ error: 'schoolId required' });
     if (data.createdAt) data.createdAt = new Date(data.createdAt);
+    await rasmMaydoniniTozala(data, 'photo', 'lead');
     const lead = await prisma.lead.create({ data: { ...data, schoolId: parseInt(schoolId) } });
     
     // Telegram Notification
@@ -2291,6 +2301,7 @@ app.put('/api/leads/:id', authenticate, async (req, res, next) => {
     const { id } = req.params;
     const data = { ...req.body };
     if (data.createdAt) data.createdAt = new Date(data.createdAt);
+    await rasmMaydoniniTozala(data, 'photo', 'lead');
     const lead = await prisma.lead.update({ where: { id: parseInt(id) }, data });
     res.json({ ...lead, createdAt: lead.createdAt.toISOString() });
   } catch (error) { next(error); }
@@ -3785,6 +3796,7 @@ app.put('/api/settings', authenticate, async (req, res, next) => {
     if (!isAdmin(req.user)) return res.status(403).json({ error: 'Faqat administrator sozlamalarni o\'zgartira oladi' });
     const { schoolId, eskizPasswordSet, telegramSet, ...data } = req.body;
     if (!schoolId) return res.status(400).json({ error: 'schoolId required' });
+    await rasmMaydoniniTozala(data, 'logo', 'logo');
 
     // An empty secret means "unchanged" — never let a blank field wipe stored credentials.
     for (const key of ['eskizPassword', 'telegram']) {
@@ -4619,6 +4631,13 @@ app.get('/api/logistics/waves', authenticate, async (req, res, next) => {
         guruhlar: t.guruhlar,
         oquvchi: t.oquvchilar.length,
         kelmagan: t.kelmaganlar.length,
+        // Ro'yxatning o'zi ham: kartochka ostidan ochilib ko'rsatiladi.
+        // `nuqta` — joylashuvi bormi; bo'lmasa bola rejaga tusha olmaydi.
+        oquvchilar: t.oquvchilar.map(o => ({
+          id: o.id, name: o.name, address: o.address || null,
+          phone: o.phone || null, guruh: o.guruh || null, nuqta: !!o.location,
+        })),
+        kelmaganlar: t.kelmaganlar,
         javoblar: {
           jami: javoblar.filter(j => j.endTime === t.endTime).length,
           ha: javoblar.filter(j => j.endTime === t.endTime && j.status === 'HA').length,
@@ -6177,10 +6196,11 @@ app.get('/api/questions', authenticate, async (req, res, next) => {
 
 app.post('/api/questions', authenticate, async (req, res, next) => {
   try {
-    const { text, imageUrl, optionA, optionB, optionC, optionD, correctAnswer, difficulty, subject, topic, schoolId } = req.body;
+    let { text, imageUrl, optionA, optionB, optionC, optionD, correctAnswer, difficulty, subject, topic, schoolId } = req.body;
     if (!text || !optionA || !optionB || !optionC || !optionD || !correctAnswer || !subject || !topic || !schoolId) {
       return res.status(400).json({ error: 'Barcha maydonlar to\'ldirilishi shart' });
     }
+    imageUrl = await rasmQiymatiniTozala(imageUrl, 'question');
     const question = await prisma.question.create({
       data: { text, imageUrl: imageUrl || null, optionA, optionB, optionC, optionD, correctAnswer, difficulty: difficulty || 1, subject, topic, schoolId: parseInt(schoolId) }
     });
@@ -6206,7 +6226,8 @@ app.post('/api/questions/bulk', authenticate, async (req, res, next) => {
 app.put('/api/questions/:id', authenticate, async (req, res, next) => {
   try {
     const id = parseInt(req.params.id);
-    const { text, imageUrl, optionA, optionB, optionC, optionD, correctAnswer, difficulty, subject, topic } = req.body;
+    let { text, imageUrl, optionA, optionB, optionC, optionD, correctAnswer, difficulty, subject, topic } = req.body;
+    imageUrl = await rasmQiymatiniTozala(imageUrl, 'question');
     const question = await prisma.question.update({
       where: { id },
       data: { text, imageUrl: imageUrl || null, optionA, optionB, optionC, optionD, correctAnswer, difficulty, subject, topic }
@@ -6404,6 +6425,63 @@ function sniffImageType(buf) {
 }
 
 const MAX_UPLOAD_BYTES = 3 * 1024 * 1024;
+
+/**
+ * A photo may still reach a write endpoint as a base64 data URL: the browser uploads to
+ * /api/upload first, but compressAndUpload keeps the inline copy when that request fails
+ * (src/lib/image.ts). Stored as-is the whole image sits in the row and then rides inside
+ * every /api/init response for every user on every load — three such rows once accounted
+ * for 68% of a 1.9 MB payload. Moving it here means a row never holds more than a URL.
+ *
+ * Returns the public URL, or null when the image could not be moved. Callers drop the
+ * field on null rather than writing an image into the row: a photo that has to be picked
+ * again is a smaller loss than a payload every user pays for on every page load.
+ */
+async function dataUrlniStoragega(qiymat, nomAsosi) {
+  const mos = /^data:image\/[\w+]+;base64,(.*)$/s.exec(qiymat);
+  if (!mos) return null;
+
+  try {
+    const buffer = Buffer.from(mos[1], 'base64');
+    if (buffer.length === 0 || buffer.length > MAX_UPLOAD_BYTES) return null;
+
+    // Trust the bytes, not the declared type — same rule as /api/upload.
+    const ext = sniffImageType(buffer);
+    if (!ext) return null;
+
+    const nom = `${nomAsosi}_${Date.now()}_${Math.random().toString(36).slice(2)}.${ext}`;
+    const { error } = await supabaseAdmin.storage
+      .from('uploads')
+      .upload(nom, buffer, { contentType: ALLOWED_UPLOADS[ext], upsert: true });
+    if (error) throw error;
+
+    const { data } = supabaseAdmin.storage.from('uploads').getPublicUrl(nom);
+    return data?.publicUrl || null;
+  } catch (e) {
+    console.error('[rasm] data URL Storage ga ko\'chmadi:', e.message);
+    return null;
+  }
+}
+
+/**
+ * The same conversion for a standalone value rather than a field. Returns the value
+ * untouched when it is not a data URL, and undefined when it was one that could not be
+ * moved — the caller then leaves the stored photo as it was.
+ */
+async function rasmQiymatiniTozala(qiymat, nomAsosi) {
+  if (typeof qiymat !== 'string' || !qiymat.startsWith('data:')) return qiymat;
+  return (await dataUrlniStoragega(qiymat, nomAsosi)) ?? undefined;
+}
+
+/** Swaps a base64 photo field for its Storage URL in place. Other values are left alone. */
+async function rasmMaydoniniTozala(data, maydon, nomAsosi) {
+  const qiymat = data[maydon];
+  if (typeof qiymat !== 'string' || !qiymat.startsWith('data:')) return;
+
+  const url = await dataUrlniStoragega(qiymat, nomAsosi);
+  if (url) data[maydon] = url;
+  else delete data[maydon];
+}
 
 // Upload endpoint — Supabase Storage
 app.post('/api/upload', authenticate, async (req, res, next) => {
