@@ -12,6 +12,8 @@ import bot, { startBot, notifyAdmins, getTelegramBot } from './src/bot/bot.js';
 import { transferStudent, refundStudent, enrollStudent, unenrollStudent, syncGroupMembers, activateStudent, syncStudentGroups } from './services/enrollment.js';
 import { studentLedger, receivedForGroups, monthCoverage } from './services/ledger.js';
 import { holatniYozish, marshrutniTartiblash, marshrutlarniRejalash } from './services/logistics.js';
+import { kunlikTolqinlar, haydovchilardanSorash, kunlikRejaniTuzish, avtoJarayon } from './services/kunlikReja.js';
+import { toDateStr } from './lib/lessons.js';
 import { smsYuboruvchiniUlash } from './services/transportNotify.js';
 import bcrypt from 'bcryptjs';
 import helmet from 'helmet';
@@ -4586,6 +4588,95 @@ app.delete('/api/routes/:id', authenticate, requireRole(...STAFF_MANAGERS), asyn
     if (!(await canAccessSchool(req.user, mavjud.schoolId))) return res.status(403).json({ error: "Ruxsat yo'q" });
     await prisma.route.delete({ where: { id } });
     res.json({ success: true });
+  } catch (error) { next(error); }
+});
+
+/**
+ * Bugungi to'lqinlar: qaysi vaqtda nechta bola uyga ketadi.
+ *
+ * Dars tugash vaqti guruh jadvalidan olinadi; jadvali to'ldirilmagan
+ * guruhlar alohida qaytadi — admin ularni to'g'rilashi kerak.
+ */
+app.get('/api/logistics/waves', authenticate, async (req, res, next) => {
+  try {
+    const schoolId = parseInt(req.query.schoolId);
+    if (!schoolId) return res.status(400).json({ error: 'schoolId required' });
+    if (!(await canAccessSchool(req.user, schoolId))) return res.status(403).json({ error: "Ruxsat yo'q" });
+    const date = /^\d{4}-\d{2}-\d{2}$/.test(String(req.query.date || '')) ? String(req.query.date) : undefined;
+
+    const { tolqinlar, jadvalsiz } = await kunlikTolqinlar({ schoolId, date });
+    // Har to'lqin uchun haydovchi javoblari qisqacha.
+    const javoblar = await prisma.driverAvailability.findMany({
+      where: { schoolId, date: date || undefined },
+      select: { endTime: true, status: true, date: true },
+    });
+    res.json({
+      tolqinlar: tolqinlar.map(t => ({
+        endTime: t.endTime,
+        guruhlar: t.guruhlar,
+        oquvchi: t.oquvchilar.length,
+        kelmagan: t.kelmaganlar.length,
+        javoblar: {
+          jami: javoblar.filter(j => j.endTime === t.endTime).length,
+          ha: javoblar.filter(j => j.endTime === t.endTime && j.status === 'HA').length,
+          yoq: javoblar.filter(j => j.endTime === t.endTime && j.status === 'YOQ').length,
+        },
+      })),
+      jadvalsiz,
+    });
+  } catch (error) { next(error); }
+});
+
+/** Haydovchilardan shu to'lqin uchun so'rash (bot orqali). */
+app.post('/api/logistics/ask-drivers', authenticate, requireRole(...STAFF_MANAGERS), async (req, res, next) => {
+  try {
+    const schoolId = parseInt(req.body.schoolId);
+    if (!schoolId) return res.status(400).json({ error: 'schoolId required' });
+    if (!(await canAccessSchool(req.user, schoolId))) return res.status(403).json({ error: "Ruxsat yo'q" });
+    const endTime = String(req.body.endTime || '');
+    if (!/^([01][0-9]|2[0-3]):[0-5][0-9]$/.test(endTime)) return res.status(400).json({ error: "Vaqt noto'g'ri" });
+    const date = /^\d{4}-\d{2}-\d{2}$/.test(String(req.body.date || '')) ? String(req.body.date) : undefined;
+
+    const { tolqinlar } = await kunlikTolqinlar({ schoolId, date });
+    const tolqin = tolqinlar.find(t => t.endTime === endTime);
+    const natija = await haydovchilardanSorash({
+      schoolId, date: date || toDateStr(), endTime,
+      oquvchiSoni: tolqin?.oquvchilar.length || 0,
+    });
+    res.json(natija);
+  } catch (error) { next(error); }
+});
+
+/** Kunlik reja: tasdiqlagan haydovchilar bo'yicha taqsimot. */
+app.post('/api/logistics/daily-plan', authenticate, requireRole(...STAFF_MANAGERS), async (req, res, next) => {
+  try {
+    const schoolId = parseInt(req.body.schoolId);
+    if (!schoolId) return res.status(400).json({ error: 'schoolId required' });
+    if (!(await canAccessSchool(req.user, schoolId))) return res.status(403).json({ error: "Ruxsat yo'q" });
+    const endTime = String(req.body.endTime || '');
+    if (!/^([01][0-9]|2[0-3]):[0-5][0-9]$/.test(endTime)) return res.status(400).json({ error: "Vaqt noto'g'ri" });
+    const date = /^\d{4}-\d{2}-\d{2}$/.test(String(req.body.date || '')) ? String(req.body.date) : undefined;
+
+    const natija = await kunlikRejaniTuzish({
+      schoolId, date, endTime,
+      rejim: req.body.rejim === 'arzon' ? 'arzon' : 'tez',
+      apply: req.body.apply === true,
+    });
+    if (natija.xato) return res.status(400).json({ error: natija.xato });
+    res.json(natija);
+  } catch (error) { next(error); }
+});
+
+/**
+ * Vercel cron: yaqinlashib kelayotgan to'lqinlar uchun haydovchilardan
+ * so'raydi. Bir necha marta chaqirilsa ham xavfsiz.
+ */
+app.get('/api/logistics/auto-process', async (req, res, next) => {
+  try {
+    const cronError = cronRequestRejected(req);
+    if (cronError) return res.status(401).json({ error: cronError });
+    const natija = await avtoJarayon({});
+    res.json({ ok: true, natija });
   } catch (error) { next(error); }
 });
 

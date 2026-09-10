@@ -383,6 +383,7 @@ model School {
   cashDayCloses    CashDayClose[]
   faceProfiles     FaceProfile[]
   directions       Direction[]
+  driverAvailability DriverAvailability[]
 }
 
 model SmsLog {
@@ -594,6 +595,7 @@ model User {
   driverTransport  Transport?       @relation("DriverTransport")
   driverRoutes     Route[]          @relation("DriverRoutes")
   driverRuns       RouteRun[]       @relation("DriverRuns")
+  driverAvailability DriverAvailability[] @relation("DriverAvailability")
   markedDeliveries DeliveryLog[]    @relation("DeliveryMarker")
   sellerLeads      SaaSLead[]       @relation("SellerLeads")
   staffAttendances StaffAttendance[]
@@ -670,6 +672,12 @@ model Route {
   // Avtomatik rejalashtirish yaratgan marshrut: qayta rejalashtirilganda
   // shular yangilanadi, qo'lda tuzilganlariga tegilmaydi.
   autoPlanned Boolean  @default(false)
+
+  // Kunlik reja marshruti aynan shu kunga tegishli ("YYYY-MM-DD"). Har kuni
+  // qaytadan hisoblanadi, chunki yo'lovchilar har kuni boshqacha: kim darsga
+  // kelgan, kim transportga yozilgan. null bo'lsa — takrorlanuvchi marshrut
+  // (qo'lda tuzilgan), `days` bo'yicha ishlaydi.
+  date        String?
   // Shu mashinaning nechanchi reysi (bir mashina bir necha marta qatnasa).
   navbat      Int      @default(1)
 
@@ -703,6 +711,29 @@ model RouteStop {
 
   @@unique([routeId, studentId])
   @@index([routeId])
+}
+
+/// Haydovchining kunlik javobi: bugun shu to'lqinda qatnasha oladimi.
+///
+/// Dars tugashidan ~2 soat oldin bot so'raydi. Reja faqat "HA" deganlardan
+/// tuziladi — javob bermaganlar adminning ro'yxatida qoladi, u qo'ng'iroq
+/// qiladi. Har (haydovchi, sana, to'lqin) uchun bitta yozuv.
+model DriverAvailability {
+  id         Int      @id @default(autoincrement())
+  driverId   Int
+  driver     User     @relation("DriverAvailability", fields: [driverId], references: [id], onDelete: Cascade)
+  date       String   // "YYYY-MM-DD"
+  endTime    String   // to'lqin vaqti, "21:00"
+  status     String   @default("KUTILMOQDA") // KUTILMOQDA | HA | YOQ
+  askedAt    DateTime @default(now())
+  answeredAt DateTime?
+  izoh       String?
+
+  schoolId   Int
+  school     School   @relation(fields: [schoolId], references: [id])
+
+  @@unique([driverId, date, endTime])
+  @@index([schoolId, date])
 }
 
 /// Bir kunning bir reysi: shu marshrut, shu sana.

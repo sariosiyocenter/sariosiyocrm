@@ -2,6 +2,7 @@ import { Telegraf, Markup } from 'telegraf';
 import prisma from '../../lib/prisma.js';
 import { isLessonDay, toDateStr, toTimeStr } from '../../lib/lessons.js';
 import { bugungiReyslar, marshrutHolati, holatniYozish, holatniOchirish, reysVaqti, holatlar as yonalishHolatlari, markazNuqtasi } from '../../services/logistics.js';
+import { javobniYozish } from '../../services/kunlikReja.js';
 import { parseLatLng, distanceKm } from '../../lib/tartib.js';
 
 const bot = new Telegraf(process.env.TELEGRAM_BOT_TOKEN || 'fake_token_for_init');
@@ -848,6 +849,38 @@ export const setupBotHandlers = (botInstance, schoolId) => {
         await ctx.answerCbQuery('Yangilandi');
         await reysniQaytaChizish(ctx, topilgan.route, toDateStr());
     });
+
+    // ===== Haydovchining kunlik tasdiqlashi =====
+    //
+    // Dars tugashidan ~2 soat oldin bot so'raydi: bugun shu to'lqinda
+    // qatnasha olasizmi. Reja faqat "HA" deganlardan tuziladi — javob
+    // bermaganlarni admin ro'yxatda ko'radi va qo'ng'iroq qiladi.
+
+    const tasdiqJavobi = async (ctx, status) => {
+        const user = await findUser(ctx.from.id, schoolId);
+        if (!user || user.type !== 'driver') return ctx.answerCbQuery('Bu tugma haydovchilar uchun');
+        const sana = ctx.match[1];
+        const vaqt = ctx.match[2];
+
+        await javobniYozish({ driverId: user.data.id, date: sana, endTime: vaqt, status, schoolId });
+        await ctx.answerCbQuery(status === 'HA' ? 'Yozib oldik, rahmat' : 'Yozib oldik');
+
+        const belgi = status === 'HA' ? '✅' : '❌';
+        const izoh = status === 'HA'
+            ? `Rahmat! ${vaqt} ga yaqin marshrutingiz shu yerda chiqadi.`
+            : 'Yaxshi, bugun bu vaqtda hisobga olmaymiz.';
+        try {
+            await ctx.editMessageText(
+                `${belgi} <b>${vaqt}</b> · ${status === 'HA' ? 'qatnashaman' : 'qatnasha olmayman'}\n\n${izoh}`,
+                { parse_mode: 'HTML' }
+            );
+        } catch (e) {
+            if (!String(e.message || '').includes('not modified')) throw e;
+        }
+    };
+
+    botInstance.action(/^hd_ha_(\d{4}-\d{2}-\d{2})_(\d{2}:\d{2})$/, ctx => tasdiqJavobi(ctx, 'HA'));
+    botInstance.action(/^hd_yoq_(\d{4}-\d{2}-\d{2})_(\d{2}:\d{2})$/, ctx => tasdiqJavobi(ctx, 'YOQ'));
 
     // ===== Qadam-baqadam rejim =====
     //
