@@ -36,10 +36,6 @@ export default function StudentDetails() {
     const navigate = useNavigate();
     const { t } = useLang();
     const { students, groups, teachers, courses, payments, attendances, scores, transports, routes, directions, settings, addPayment,addAttendance, addScore, updateStudent, addStudentToGroup, deleteStudent, setStudentStatus, topics, updateAttendance, showNotification, loadAttendanceFor } = useCRM();
-    // Doimiy marshrutlar: qo'lda tuzilgan, takrorlanuvchi (`date` yo'q).
-    // Kunlik reja yaratganlari bu yerga tushmaydi — ular bir kunlik va
-    // keyingi rejada bekatlari qayta yoziladi.
-    const doimiyMarshrutlar = (routes || []).filter(r => !r.date && !r.autoPlanned);
 
     const confirm = useConfirm();
     const [activeTab, setActiveTab] = useState('umumiy');
@@ -739,49 +735,17 @@ export default function StudentDetails() {
                                         <label className={labelCls}>Transport</label>
                                         <button type="button"
                                             onClick={() => setEditForm({ ...editForm, needsTransport: !editForm.needsTransport })}
-                                            className={`w-full mb-2 flex items-center justify-between gap-2 px-3 py-2.5 rounded-xl border text-[11px] font-bold transition-all cursor-pointer ${editForm.needsTransport
+                                            className={`w-full flex items-center justify-between gap-2 px-3 py-2.5 rounded-xl border text-[11px] font-bold transition-all cursor-pointer ${editForm.needsTransport
                                                 ? 'bg-teal-50 dark:bg-teal-950/20 text-brand border-teal-100 dark:border-teal-900/40'
                                                 : 'bg-ichki text-matn-xira border-chiziq'}`}>
                                             <span>🚌 Transportda qatnaydi</span>
                                             <span>{editForm.needsTransport ? '✓' : '+'}</span>
                                         </button>
-                                        <label className={labelCls}>Doimiy marshrut (ixtiyoriy)</label>
-                                        {/* Faqat qo'lda tuzilgan takrorlanuvchi marshrutlar.
-                                            Kechki tarqatish har kuni davomat va haydovchi
-                                            javobiga qarab o'zi taqsimlanadi — u yerga qo'lda
-                                            biriktirish keyingi rejada o'chib ketadi. */}
-                                        <p className="text-[10px] font-bold text-matn-xira mb-1.5">
-                                            Bu yerga biriktirilgan bola kunlik avtomatik rejaga tushmaydi
+                                        {/* Qaysi mashinaga tushishini tizim har kuni o'zi hal
+                                            qiladi: davomat, haydovchi javobi va sig'imga qarab. */}
+                                        <p className="text-[10px] font-bold text-matn-xira mt-1.5">
+                                            Mashina har kuni davomatga qarab avtomatik taqsimlanadi
                                         </p>
-                                        {doimiyMarshrutlar.length === 0 ? (
-                                            <p className="text-[11px] font-bold text-matn-xira py-2">
-                                                Doimiy marshrut yo'q — kechki tarqatish avtomatik
-                                            </p>
-                                        ) : (
-                                            <div className="space-y-1.5 max-h-32 overflow-y-auto custom-scrollbar">
-                                                {doimiyMarshrutlar.map(r => {
-                                                    const tanlangan = (editForm.routeIds || []).includes(r.id);
-                                                    return (
-                                                        <button key={r.id} type="button"
-                                                            onClick={() => setEditForm({
-                                                                ...editForm,
-                                                                routeIds: tanlangan
-                                                                    ? editForm.routeIds.filter(id => id !== r.id)
-                                                                    : [...editForm.routeIds, r.id],
-                                                            })}
-                                                            className={`w-full flex items-center justify-between gap-2 px-3 py-2 rounded-xl border text-[11px] font-bold transition-all cursor-pointer ${tanlangan
-                                                                ? 'bg-teal-50 dark:bg-teal-950/20 text-brand border-teal-100 dark:border-teal-900/40'
-                                                                : 'bg-ichki text-matn-xira border-chiziq hover:bg-gray-50 dark:hover:bg-gray-700'}`}>
-                                                            <span className="truncate">
-                                                                {r.direction === 'QAYTISH' ? '🏠' : '🏫'} {r.name}
-                                                                {r.startTime ? ` · ${r.startTime}` : ''}
-                                                            </span>
-                                                            <span className="shrink-0">{tanlangan ? '✓' : '+'}</span>
-                                                        </button>
-                                                    );
-                                                })}
-                                            </div>
-                                        )}
                                     </div>
                                 </div>
                             ) : null}
