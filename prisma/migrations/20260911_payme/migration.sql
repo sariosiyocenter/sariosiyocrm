@@ -11,6 +11,8 @@ ALTER TABLE "Setting" ADD COLUMN IF NOT EXISTS "paymeMxik" TEXT;
 ALTER TABLE "Setting" ADD COLUMN IF NOT EXISTS "paymePackageCode" TEXT;
 ALTER TABLE "Setting" ADD COLUMN IF NOT EXISTS "paymeVatPercent" INTEGER NOT NULL DEFAULT 0;
 CREATE INDEX IF NOT EXISTS "Setting_paymeEndpointToken_idx" ON "Setting"("paymeEndpointToken");
+-- Telegram webhook siri (setWebhook secret_token) — soxta update'lar rad etiladi.
+ALTER TABLE "Setting" ADD COLUMN IF NOT EXISTS "telegramWebhookSecret" TEXT;
 
 -- Buyurtma: o'quvchi + guruh + summa. ID — tasodifiy 16 belgili token (Payme account.order_id).
 CREATE TABLE IF NOT EXISTS "PaymeOrder" (

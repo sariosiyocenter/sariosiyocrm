@@ -564,6 +564,9 @@ model Setting {
   // TELEGRAM | SMS | BOTH. SMS pullik, shuning uchun sukut bo'yicha Telegram.
   transportChannel String   @default("TELEGRAM")
   telegram         String?
+  // Telegram webhook siri (setWebhook secret_token). Har update sarlavhasi
+  // shu bilan solishtiriladi; brauzerga qaytarilmaydi.
+  telegramWebhookSecret String?
   instagram        String?
   workingHours     String?
   eskizEmail       String?

@@ -5,6 +5,7 @@ import { dirname, join } from 'path';
 import prisma from './lib/prisma.js';
 import { JWT_SECRET, TOKEN_TTL, attendanceWindowStart, redactBody, isAdmin, stripSettingSecrets, hidePaymeSecrets, cronRequestRejected } from './lib/config.js';
 import { registerPaymeRoutes } from './routes/payme.js';
+import { webhookSecretOk, registerSchoolWebhook, selfHealWebhook } from './lib/telegramWebhook.js';
 import { MODES as PAYME_MODES, generateEndpointToken as generatePaymeEndpointToken } from './services/payme.js';
 import { authenticate, requireRole, STAFF_MANAGERS, canAccessSchool, allowedSchoolIds, ALL_BRANCHES } from './middleware/auth.js';
 import { encryptSecret, decryptSecret, secretsEncryptionEnabled } from './lib/secrets.js';
@@ -132,13 +133,22 @@ app.get('/api/status', async (req, res) => {
 });
 
 // --- Telegram Bot Webhook & Setup ---
+//
+// Har bir update Telegram bergan sir bilan keladi (lib/telegramWebhook.js).
+// Sarlavha mos kelmasa — 403, update qayta ishlanmaydi. Ilgari tekshiruv
+// yo'q edi: soxta update bilan admin/ustoz/haydovchi nomidan amal
+// bajarish mumkin edi.
+
+// Sukut bo'yicha bot (TELEGRAM_BOT_TOKEN): siri muhit o'zgaruvchisida.
 app.post('/api/telegram-webhook', async (req, res) => {
   try {
-    if (process.env.TELEGRAM_BOT_TOKEN) {
-      await bot.handleUpdate(req.body, res);
-    } else {
-      res.status(500).json({ error: 'Telegram Bot Token not configured' });
+    // Avval sir, keyin token: sozlanmagan bo'lsa ham javob bir xil 403 —
+    // tashqaridan nima yetishmayotganini bilib bo'lmasin.
+    if (!webhookSecretOk(req, process.env.TELEGRAM_WEBHOOK_SECRET)) {
+      return res.status(403).json({ error: 'Webhook siri mos emas' });
     }
+    if (!process.env.TELEGRAM_BOT_TOKEN) return res.status(500).json({ error: 'Telegram Bot Token not configured' });
+    await bot.handleUpdate(req.body, res);
   } catch (error) {
     console.error('Telegram Webhook error:', error);
     if (!res.headersSent) {
@@ -150,6 +160,21 @@ app.post('/api/telegram-webhook', async (req, res) => {
 app.post('/api/telegram-webhook/:schoolId', async (req, res) => {
   try {
     const schoolId = parseInt(req.params.schoolId);
+    if (!Number.isInteger(schoolId)) return res.status(404).json({ error: 'Filial topilmadi' });
+    const setting = await prisma.setting.findUnique({
+      where: { schoolId },
+      select: { telegram: true, telegramWebhookSecret: true },
+    });
+    const secret = setting?.telegramWebhookSecret;
+    if (!secret || secret === 'pending' || !webhookSecretOk(req, secret)) {
+      // Siri hali yo'q filial: webhook'ni sir bilan qayta ro'yxatdan
+      // o'tkazamiz. Telegram rad etilgan update'ni qayta yuboradi — u endi
+      // sarlavha bilan keladi. Sir bor-u mos emas — bu soxta so'rov.
+      if ((!secret || secret === 'pending') && setting?.telegram) {
+        await selfHealWebhook(schoolId, setting.telegram);
+      }
+      return res.status(403).json({ error: 'Webhook siri mos emas' });
+    }
     const schoolBot = await getTelegramBot(schoolId);
     if (schoolBot) {
       await schoolBot.handleUpdate(req.body, res);
@@ -164,27 +189,33 @@ app.post('/api/telegram-webhook/:schoolId', async (req, res) => {
   }
 });
 
-app.get('/api/telegram-setup', async (req, res) => {
+// Webhook'ni qo'lda (qayta) ro'yxatdan o'tkazish — faqat administrator.
+// Ilgari kirishsiz edi va Host sarlavhasidan manzil olardi: istalgan kishi
+// botni o'z serveriga burib qo'yishi mumkin edi.
+app.get('/api/telegram-setup', authenticate, async (req, res) => {
   try {
-    const { schoolId } = req.query;
-    const sId = schoolId ? parseInt(schoolId) : 1;
-    const schoolBot = await getTelegramBot(sId);
-    if (!schoolBot) {
-      return res.status(400).json({ success: false, error: `Telegram Bot not configured for school ${sId}` });
+    if (!isAdmin(req.user)) return res.status(403).json({ success: false, error: 'Faqat administrator' });
+    const sId = parseInt(req.query.schoolId) || req.user.schoolId;
+    if (!sId || !(await canAccessSchool(req.user, sId))) return res.status(403).json({ success: false, error: 'Ruxsat yo\'q' });
+    const setting = await prisma.setting.findUnique({ where: { schoolId: sId }, select: { telegram: true } });
+    if (!setting?.telegram || !setting.telegram.includes(':')) {
+      return res.status(400).json({ success: false, error: `Telegram bot tokeni kiritilmagan (filial ${sId})` });
     }
-    const host = req.headers.host;
-    const protocol = req.headers['x-forwarded-proto'] || 'https';
-    
-    const webhookUrl = sId === 1 
-      ? `${protocol}://${host}/api/telegram-webhook`
-      : `${protocol}://${host}/api/telegram-webhook/${sId}`;
-    
-    await schoolBot.telegram.setWebhook(webhookUrl);
-    res.json({ success: true, message: `Telegram Webhook set to: ${webhookUrl}` });
+    const webhookUrl = `${appBaseUrl(req)}/api/telegram-webhook/${sId}`;
+    const r = await registerSchoolWebhook({ schoolId: sId, token: setting.telegram, url: webhookUrl });
+    if (!r.ok) return res.status(500).json({ success: false, error: r.reason });
+    res.json({ success: true, message: `Telegram webhook sir bilan o'rnatildi: ${webhookUrl}` });
   } catch (error) {
     res.status(500).json({ success: false, error: error.message });
   }
 });
+
+// Saytning o'z manzili: APP_URL bo'lsa o'sha (ishonchli), bo'lmasa so'rovdan —
+// bu faqat administrator so'rovlarida ishlatiladi.
+function appBaseUrl(req) {
+  if (process.env.APP_URL) return process.env.APP_URL.replace(/\/+$/, '');
+  return `${req.headers['x-forwarded-proto'] || req.protocol || 'https'}://${req.headers.host}`;
+}
 
 // --- Auth Routes ---
 app.post('/api/auth/login', loginLimiter, async (req, res, next) => {
@@ -2333,7 +2364,10 @@ app.get('/api/payments', authenticate, async (req, res, next) => {
 // oshiradi, lekin kassa tushumi sifatida hisoblanmaydi.
 const PAYMENT_TYPES = ['Naqd', 'Karta', "O'tkazma", 'Peyme', 'Klik', 'Chegirma', 'Oylik', 'Qaytarish'];
 
-app.post('/api/payments', authenticate, async (req, res, next) => {
+// To'lovni qabul qiladiganlar: admin, menejer, receptionist. Ustoz, yordamchi
+// ustoz, texnik xodim va sotuvchi yoza olmaydi — kassa/xarajat bilan bir xil
+// qoida (ilgari har qanday kirgan foydalanuvchi yoza olardi).
+app.post('/api/payments', authenticate, requireRole('ADMIN', 'MANAGER', 'RECEPTIONIST'), async (req, res, next) => {
   try {
     const { schoolId, ...data } = req.body;
     if (!schoolId) return res.status(400).json({ error: 'schoolId required' });
@@ -3798,7 +3832,8 @@ app.get('/api/settings', authenticate, async (req, res, next) => {
 app.put('/api/settings', authenticate, async (req, res, next) => {
   try {
     if (!isAdmin(req.user)) return res.status(403).json({ error: 'Faqat administrator sozlamalarni o\'zgartira oladi' });
-    const { schoolId, eskizPasswordSet, telegramSet, paymeKeySet, paymeTestKeySet, paymeEndpointToken, ...data } = req.body;
+    // Server boshqaradigan maydonlar mijozdan qabul qilinmaydi.
+    const { schoolId, eskizPasswordSet, telegramSet, paymeKeySet, paymeTestKeySet, paymeEndpointToken, telegramWebhookSecret, settingsEncryption, ...data } = req.body;
     if (!schoolId) return res.status(400).json({ error: 'schoolId required' });
     await rasmMaydoniniTozala(data, 'logo', 'logo');
 
@@ -3851,20 +3886,13 @@ app.put('/api/settings', authenticate, async (req, res, next) => {
       create: { ...data, schoolId: parseInt(schoolId) }
     });
 
-    // If telegram token changed and is valid, set webhook automatically
+    // If telegram token changed and is valid, set webhook automatically — with a
+    // fresh secret, so updates from anyone but Telegram are refused.
     if (settings.telegram && settings.telegram.includes(':') && (!oldSettings || oldSettings.telegram !== settings.telegram)) {
-      try {
-        const host = req.headers.host;
-        const protocol = req.headers['x-forwarded-proto'] || 'https';
-        const webhookUrl = `${protocol}://${host}/api/telegram-webhook/${schoolId}`;
-        
-        const { Telegraf } = await import('telegraf');
-        const tempBot = new Telegraf(settings.telegram.trim());
-        await tempBot.telegram.setWebhook(webhookUrl);
-        console.log(`Successfully registered Telegram Webhook for school ${schoolId} to: ${webhookUrl}`);
-      } catch (err) {
-        console.error(`Failed to register Telegram Webhook for school ${schoolId}:`, err.message);
-      }
+      const webhookUrl = `${appBaseUrl(req)}/api/telegram-webhook/${schoolId}`;
+      const r = await registerSchoolWebhook({ schoolId: parseInt(schoolId), token: settings.telegram, url: webhookUrl });
+      if (r.ok) console.log(`Telegram webhook (sir bilan) ro'yxatdan o'tdi, filial ${schoolId}: ${webhookUrl}`);
+      else console.error(`Telegram webhook ro'yxatdan o'tmadi, filial ${schoolId}:`, r.reason);
     }
 
     res.json(hidePaymeSecrets(settings));
