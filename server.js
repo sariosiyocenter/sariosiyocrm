@@ -7,7 +7,7 @@ import { JWT_SECRET, TOKEN_TTL, attendanceWindowStart, redactBody, isAdmin, stri
 import { registerPaymeRoutes } from './routes/payme.js';
 import { MODES as PAYME_MODES, generateEndpointToken as generatePaymeEndpointToken } from './services/payme.js';
 import { authenticate, requireRole, STAFF_MANAGERS, canAccessSchool, allowedSchoolIds, ALL_BRANCHES } from './middleware/auth.js';
-import { encryptSecret, decryptSecret } from './lib/secrets.js';
+import { encryptSecret, decryptSecret, secretsEncryptionEnabled } from './lib/secrets.js';
 import { claimBillingRun, releaseBillingRun, processMonthlyBilling } from './services/billing.js';
 import jwt from 'jsonwebtoken';
 import bot, { startBot, notifyAdmins, getTelegramBot } from './src/bot/bot.js';
@@ -3809,6 +3809,11 @@ app.put('/api/settings', authenticate, async (req, res, next) => {
     // Stored encrypted when SETTINGS_KEY is configured, so a leaked database does not
     // hand over the SMS account. Without the key this is a no-op and behaviour is unchanged.
     if (data.eskizPassword !== undefined) data.eskizPassword = encryptSecret(data.eskizPassword);
+    // Payme kaliti bilan pul olinadi — u ochiq matnda bazaga tushmasligi kerak.
+    // SETTINGS_KEY bo'lmasa saqlamaymiz (fail-closed), sabab aniq aytiladi.
+    if ((data.paymeKey !== undefined || data.paymeTestKey !== undefined) && !secretsEncryptionEnabled()) {
+      return res.status(400).json({ error: "SETTINGS_KEY muhit o'zgaruvchisi o'rnatilmagan — Payme kalitlari shifrlanmasdan saqlanmaydi. Vercel → Environment Variables ga SETTINGS_KEY qo'shing." });
+    }
     for (const key of ['paymeKey', 'paymeTestKey']) {
       if (data[key] !== undefined) data[key] = encryptSecret(String(data[key]).trim());
     }

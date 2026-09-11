@@ -1033,6 +1033,9 @@ model PaymeTransaction {
   cancelTime  BigInt   @default(0)
   paymentId   Int?     // Payment (Peyme) qatori
   refundPaymentId Int? // Payment (Qaytarish) qatori — state -2 da
+  // SetFiscalData orqali kelgan fiskal chek (GNK): oplata va bekor alohida.
+  fiscalPerform Json?
+  fiscalCancel  Json?
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
@@ -1041,6 +1044,7 @@ model PaymeTransaction {
 
   @@index([orderId])
   @@index([schoolId, createTime])
+  @@index([schoolId, paymeTime])
 }
 
 // Har bir Payme so'rovining izi (audit). Authorization sarlavhasi

@@ -140,8 +140,10 @@ export function registerPaymeRoutes(app) {
       meta = { ok: true, paymeId: out.paymeId, orderId: out.orderId, fresh: out.fresh };
     } catch (err) {
       const known = err instanceof payme.PaymeError;
+      // Kutilmagan xato (baza, kod) — hujjat bo'yicha -32400 "системная ошибка":
+      // Payme uni vaqtinchalik deb biladi va so'rovni qayta yuboradi.
       if (!known) console.error('[payme] ichki xato:', err);
-      response = payme.rpcError(rpcId, known ? err : payme.ERR.cannotPerform());
+      response = payme.rpcError(rpcId, known ? err : payme.ERR.system());
       meta = { ok: false, errorCode: response.error.code };
     }
 
@@ -156,7 +158,9 @@ export function registerPaymeRoutes(app) {
       ok: meta.ok,
       errorCode: meta.errorCode,
       request: payme.logSafeRequest(body),
-      response: response.error ? { error: { code: response.error.code, message: response.error.message.uz } } : { result: response.result },
+      response: response.error
+        ? { error: { code: response.error.code, message: typeof response.error.message === 'string' ? response.error.message : response.error.message.uz } }
+        : { result: response.result },
       durationMs: Date.now() - started,
     });
     if (meta.fresh && settings) await notify(meta.fresh, settings.schoolId);
@@ -224,7 +228,7 @@ export function registerPaymeRoutes(app) {
     } catch (e) { next(e); }
   });
 
-  app.get('/api/payme/orders', authenticate, async (req, res, next) => {
+  app.get('/api/payme/orders', authenticate, requireRole(...LINK_ROLES), async (req, res, next) => {
     try {
       const studentId = parseInt(req.query.studentId);
       if (!Number.isInteger(studentId)) return res.status(400).json({ error: 'studentId required' });
@@ -325,6 +329,7 @@ export function registerPaymeRoutes(app) {
         id: t.id, paymeId: t.paymeId, orderId: t.orderId, amount: t.amount, state: t.state, reason: t.reason,
         createTime: Number(t.createTime), performTime: Number(t.performTime), cancelTime: Number(t.cancelTime),
         paymentId: t.paymentId, refundPaymentId: t.refundPaymentId,
+        fiscalUrl: t.fiscalPerform?.qr_code_url || null,
         studentId: t.order.studentId, studentName: t.order.student?.name || '', groupName: gname.get(t.order.groupId) || '',
         source: t.order.source, test: t.order.test,
       })));
@@ -364,4 +369,9 @@ export function registerPaymeRoutes(app) {
   });
 
   app.post('/api/payme/:token([A-Za-z0-9_-]{24,128})', webhookLimiter, webhook);
+  // Hujjat: POST bo'lmagan so'rov — -32300. Token tekshirilmaydi, shuning
+  // uchun bu javob manzil mavjudligini ham oshkor qilmaydi.
+  app.all('/api/payme/:token([A-Za-z0-9_-]{24,128})', webhookLimiter, (req, res) => {
+    res.status(200).json(payme.rpcError(null, payme.ERR.notPost()));
+  });
 }

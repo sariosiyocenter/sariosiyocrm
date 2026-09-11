@@ -425,6 +425,8 @@ export interface CRMState {
         paymeTestKey?: string;
         paymeKeySet?: boolean;
         paymeTestKeySet?: boolean;
+        /** Serverda SETTINGS_KEY bormi — bo'lmasa kalitlar saqlanmaydi. */
+        settingsEncryption?: boolean;
         paymeMode?: 'off' | 'test' | 'live';
         paymeEndpointToken?: string | null;
         paymeAllowRefund?: boolean;

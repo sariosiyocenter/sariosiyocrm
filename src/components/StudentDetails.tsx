@@ -36,7 +36,7 @@ export default function StudentDetails() {
     const { id } = useParams<{ id: string }>();
     const navigate = useNavigate();
     const { t } = useLang();
-    const { students, groups, teachers, courses, payments, attendances, scores, transports, routes, directions, settings, addPayment,addAttendance, addScore, updateStudent, addStudentToGroup, deleteStudent, setStudentStatus, topics, updateAttendance, showNotification, loadAttendanceFor } = useCRM();
+    const { students, groups, teachers, courses, payments, attendances, scores, transports, routes, directions, settings, addPayment,addAttendance, addScore, updateStudent, addStudentToGroup, deleteStudent, setStudentStatus, topics, updateAttendance, showNotification, loadAttendanceFor, user: currentUser } = useCRM();
 
     const confirm = useConfirm();
     const [activeTab, setActiveTab] = useState('umumiy');
@@ -661,7 +661,7 @@ export default function StudentDetails() {
                         className="h-9 px-4 bg-brand hover:bg-brand-dark text-white rounded-lg text-[13px] font-semibold transition-colors cursor-pointer">
                         {t('add_payment')}
                     </button>
-                    {(settings.paymeMode === 'live' || settings.paymeMode === 'test') && (
+                    {(settings.paymeMode === 'live' || settings.paymeMode === 'test') && ['ADMIN', 'MANAGER', 'RECEPTIONIST', 'SUPERADMIN'].includes(currentUser?.role || '') && (
                         <button onClick={() => setShowPaymeModal(true)}
                             title="Payme orqali to'lash uchun havola yoki QR"
                             className="h-9 px-4 border border-chiziq-kuchli text-brand hover:bg-brand hover:text-white rounded-lg text-[13px] font-semibold transition-colors cursor-pointer">

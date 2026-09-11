@@ -24,10 +24,12 @@ bizning webhook'ga natijani yuboradi.
      yaratiladi; "almashtirish" tugmasi bilan yangilanadi (keyin kabinetda ham).
    - Hisob (account) maydoni: `order_id`.
 2. **CRM Sozlamalar → Payme**: Merchant ID, jonli kalit, test kalit. Rejim: `Test`.
-   Kalitlar `SETTINGS_KEY` bilan shifrlanadi va brauzerga qaytmaydi.
+   Kalitlar `SETTINGS_KEY` bilan shifrlanadi va brauzerga qaytmaydi. **`SETTINGS_KEY`
+   Vercel'da o'rnatilmagan bo'lsa server kalitni saqlamaydi** (fail-closed) — avval
+   uzun tasodifiy qiymat qo'shib deploy qiling.
 3. **Sandbox** (test.paycom.uz): webhook manzili + test kaliti bilan avtomatik
    testlar. Buyurtma ID si — o'quvchi kartochkasi → "Payme havola" (test rejimda
-   havola `checkout.test.paycom.uz` ga boradi, Payment yozilmaydi, balans o'zgarmaydi).
+   havola `test.paycom.uz` ga boradi, Payment yozilmadi, balans o'zgarmaydi).
 4. Testlar o'tgach rejim → `Jonli`. Shu paytdan bot ham tugma ko'rsatadi.
 
 Ixtiyoriy env: `APP_URL=https://sariosiyocrm.vercel.app` — bot yaratgan
@@ -37,16 +39,28 @@ havola buni so'rovdan o'zi oladi.
 ## Metodlar
 
 `CheckPerformTransaction`, `CreateTransaction`, `PerformTransaction`,
-`CancelTransaction`, `CheckTransaction`, `GetStatement`. Boshqalari `-32601`.
+`CancelTransaction`, `CheckTransaction`, `GetStatement` (majburiy) va ixtiyoriy
+`SetFiscalData` (fiskal chek ma'lumoti `PaymeTransaction.fiscalPerform/fiscalCancel`
+ga saqlanadi). Boshqalari `-32601` (`data` = metod nomi).
 
 Holatlar: `1` yaratildi → `2` o'tkazildi; `-1` o'tkazilmay bekor; `-2` o'tgach bekor
-(faqat `paymeAllowRefund` yoqiq bo'lsa, aks holda `-31007`). Taymaut 12 soat
-(`time` dan), muddati o'tgan `-1` / sabab `4`.
+(jonli rejimda faqat `paymeAllowRefund` yoqiq bo'lsa, aks holda `-31007`; test
+rejimda doim — sandbox'ning 2-ssenariysi shuni kutadi). Taymaut 12 soat (Payme
+`time` dan), muddati o'tgan `-1` / sabab `4`. `GetStatement` Payme `time` bo'yicha
+`from <= time <= to`, o'sish tartibida.
 
-Xato kodlari: `-32504` auth, `-32600/-32601/-32700` so'rov, `-31001` summa,
-`-31003` tranzaksiya topilmadi, `-31008` bajarib bo'lmaydi (faol emas, muddati
-o'tgan, buyurtmada boshqa faol tranzaksiya), `-31050..-31054` buyurtma
-(topilmadi / muddati o'tgan / to'langan / bekor / boshqa rejim).
+Xato kodlari: `-32300` POST emas, `-32504` auth, `-32600/-32601/-32700` so'rov,
+`-32400` ichki (baza) xato — Payme qayta yuboradi, `-31001` summa, `-31003`
+tranzaksiya topilmadi, `-31007` bekor qilib bo'lmaydi, `-31008` bajarib bo'lmaydi
+(faol emas, muddati o'tgan, buyurtmada boshqa faol tranzaksiya),
+`-31050..-31054` buyurtma (topilmadi / muddati o'tgan / to'langan / bekor / boshqa
+rejim). Auth: `Basic base64(login:KEY)` — login solishtirilmaydi (Payme beradi),
+kalit `timingSafeEqual`.
+
+Hujjat manbalari (developer.help.paycom.uz, 2026-09-11 da o'qilgan): Протокол
+Merchant API (формат запроса/ответа, общие ошибки, схема взаимодействия), Методы
+Merchant API (7 sahifa + ошибки + типы данных), Песочница, Инициализация платежей
+(GET/POST, кнопка/QR, ошибки чека).
 
 ## Pul
 
@@ -76,7 +90,7 @@ adminlarga Telegram xabar.
 
 ## Test
 
-`scratch/test_payme.mjs` — Payme rolini o'ynab lokal serverga 87 ta tekshiruv
+`scratch/test_payme.mjs` — Payme rolini o'ynab lokal serverga 108 ta tekshiruv
 (auth, buyurtma, create/perform/cancel, parallel so'rovlar, taymaut, statement,
 IP, test rejim, CRM API, ochiq sahifa). `scratch/test_payme_bot.mjs` — bot oqimi.
 Ikkalasi ham production bazaga ishlaydi va faqat o'zi yaratganini o'chiradi.

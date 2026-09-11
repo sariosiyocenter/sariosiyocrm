@@ -50,15 +50,20 @@ CREATE TABLE IF NOT EXISTS "PaymeTransaction" (
   "cancelTime" BIGINT NOT NULL DEFAULT 0,
   "paymentId" INTEGER,
   "refundPaymentId" INTEGER,
+  "fiscalPerform" JSONB,
+  "fiscalCancel" JSONB,
   "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
   "updatedAt" TIMESTAMP(3) NOT NULL,
   "schoolId" INTEGER NOT NULL,
   CONSTRAINT "PaymeTransaction_orderId_fkey" FOREIGN KEY ("orderId") REFERENCES "PaymeOrder"("id") ON DELETE CASCADE ON UPDATE CASCADE,
   CONSTRAINT "PaymeTransaction_schoolId_fkey" FOREIGN KEY ("schoolId") REFERENCES "School"("id") ON DELETE CASCADE ON UPDATE CASCADE
 );
+ALTER TABLE "PaymeTransaction" ADD COLUMN IF NOT EXISTS "fiscalPerform" JSONB;
+ALTER TABLE "PaymeTransaction" ADD COLUMN IF NOT EXISTS "fiscalCancel" JSONB;
 CREATE UNIQUE INDEX IF NOT EXISTS "PaymeTransaction_paymeId_key" ON "PaymeTransaction"("paymeId");
 CREATE INDEX IF NOT EXISTS "PaymeTransaction_orderId_idx" ON "PaymeTransaction"("orderId");
 CREATE INDEX IF NOT EXISTS "PaymeTransaction_schoolId_createTime_idx" ON "PaymeTransaction"("schoolId", "createTime");
+CREATE INDEX IF NOT EXISTS "PaymeTransaction_schoolId_paymeTime_idx" ON "PaymeTransaction"("schoolId", "paymeTime");
 
 -- Har bir Payme so'rovining izi (Authorization sarlavhasisiz).
 CREATE TABLE IF NOT EXISTS "PaymeLog" (

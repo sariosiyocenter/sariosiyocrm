@@ -38,7 +38,7 @@ function Toggle({ value, onChange, label, hint }: { value: boolean; onChange: (v
 
 type Tx = {
     id: number; paymeId: string; amount: number; state: number; performTime: number; createTime: number;
-    studentName: string; groupName: string; source: string; test: boolean;
+    studentName: string; groupName: string; source: string; test: boolean; fiscalUrl?: string | null;
 };
 
 export default function PaymeSettings() {
@@ -140,6 +140,13 @@ export default function PaymeSettings() {
                 <p className="text-[11px] font-bold text-matn-xira mt-0.5">Ota-onalar Payme orqali to'laydi — pul avtomatik o'quvchining hisobiga tushadi</p>
             </div>
 
+            {settings.settingsEncryption === false && (
+                <div className="p-4 rounded-2xl border border-rose-200 dark:border-rose-900/50 bg-rose-50 dark:bg-rose-950/20 text-[11px] font-bold text-rose-600 dark:text-rose-400">
+                    Serverda <span className="font-mono">SETTINGS_KEY</span> o'rnatilmagan — Payme kalitlari shifrlanmasdan saqlanmaydi, saqlash rad etiladi.
+                    Vercel → Settings → Environment Variables ga uzun tasodifiy <span className="font-mono">SETTINGS_KEY</span> qo'shib, qayta deploy qiling.
+                </div>
+            )}
+
             {/* Holat va manzil */}
             <div className={card}>
                 <div className="flex items-center justify-between gap-3">
@@ -222,7 +229,7 @@ export default function PaymeSettings() {
                     <Toggle value={form.paymeIpCheck} onChange={v => setForm(f => ({ ...f, paymeIpCheck: v }))}
                         label="Faqat Payme IP manzillari" hint="Jonli rejimda 185.234.113.1–15 dan boshqa so'rovlar rad etiladi" />
                     <Toggle value={form.paymeAllowRefund} onChange={v => setForm(f => ({ ...f, paymeAllowRefund: v }))}
-                        label="Qaytarishga ruxsat" hint="Payme o'tgan to'lovni bekor qilsa balansdan ayiriladi; o'chiq bo'lsa rad etiladi" />
+                        label="Qaytarishga ruxsat" hint="Payme o'tgan to'lovni bekor qilsa balansdan ayiriladi; o'chiq bo'lsa rad etiladi (-31007). Test rejimda doim ruxsat — sandbox shuni tekshiradi" />
                 </div>
             </div>
 
@@ -230,7 +237,7 @@ export default function PaymeSettings() {
             <div className={card}>
                 <div>
                     <p className="text-xs font-black text-matn tracking-wide">Fiskal chek (ixtiyoriy)</p>
-                    <p className="text-[11px] font-bold text-matn-xira mt-0.5">Payme fiskalizatsiya talab qilsa — xizmatning IKPU (MXIK) kodi</p>
+                    <p className="text-[11px] font-bold text-matn-xira mt-0.5">Payme fiskalizatsiya talab qilsa — xizmatning IKPU (MXIK) kodi va package code. Ikkalasi ham kiritilsagina chekka qo'shiladi (Payme'da ikkalasi majburiy).</p>
                 </div>
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                     <div>
@@ -295,7 +302,12 @@ export default function PaymeSettings() {
                                             <td className="py-2 pr-3">{t.groupName}</td>
                                             <td className="py-2 pr-3 text-right whitespace-nowrap">{money(t.amount)}</td>
                                             <td className="py-2 pr-3"><span className={`px-2 py-0.5 rounded-md border text-[10px] font-black ${s.cls}`}>{s.text}</span></td>
-                                            <td className="py-2 font-mono text-[10px] text-matn-xira">{t.paymeId.slice(0, 10)}…</td>
+                                            <td className="py-2 font-mono text-[10px] text-matn-xira whitespace-nowrap">
+                                                {t.paymeId.slice(0, 10)}…
+                                                {t.fiscalUrl && (
+                                                    <a href={t.fiscalUrl} target="_blank" rel="noopener noreferrer" title="Fiskal chek" className="ml-2 text-brand underline font-sans">chek</a>
+                                                )}
+                                            </td>
                                         </tr>
                                     );
                                 })}

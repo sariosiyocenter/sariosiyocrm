@@ -37,7 +37,11 @@ export const ORDER_TTL_MS = 7 * 24 * 3600_000; // havola shuncha amal qiladi
 export const MIN_AMOUNT = 1_000;               // so'm
 export const MAX_AMOUNT = 50_000_000;          // so'm — xato kiritishdan himoya
 export const MODES = ['off', 'test', 'live'];
-export const CHECKOUT_HOST = { live: 'https://checkout.paycom.uz', test: 'https://checkout.test.paycom.uz' };
+// developer.help.paycom.uz → "Песочница": chek yuborish manzili sandbox uchun
+// https://test.paycom.uz, jonli uchun https://checkout.paycom.uz.
+export const CHECKOUT_HOST = { live: 'https://checkout.paycom.uz', test: 'https://test.paycom.uz' };
+// Timestamp — 13 xonali musbat son (ms). Undan kattasi BIGINT ga ham sig'maydi.
+const MAX_TIMESTAMP = 9_999_999_999_999;
 
 // Payme so'rovlarni faqat shu manzillardan yuboradi (developer.help.paycom.uz,
 // "Схема взаимодействия"). O'zgarsa — sozlamalarda tekshiruvni o'chirib turish mumkin.
@@ -53,21 +57,28 @@ export const REASON_TIMEOUT = 4;
 // ---------------------------------------------------------------------------
 
 export class PaymeError extends Error {
-  constructor(code, message, data) {
+  /** @param plainMessage SetFiscalData uchun: `message` lokalizatsiyasiz oddiy satr. */
+  constructor(code, message, data, plainMessage = false) {
     super(typeof message === 'string' ? message : message.uz);
     this.code = code;
     this.rpcMessage = typeof message === 'string' ? { uz: message, ru: message, en: message } : message;
     this.data = data;
+    this.plainMessage = plainMessage;
   }
 }
 
 const msg = (uz, ru, en) => ({ uz, ru, en });
 
 export const ERR = {
+  notPost: () => new PaymeError(-32300, msg('Faqat POST', 'Метод запроса не POST', 'Request method must be POST')),
   parse: () => new PaymeError(-32700, msg('JSON o\'qib bo\'lmadi', 'Ошибка разбора JSON', 'Parse error')),
   request: (what = '') => new PaymeError(-32600, msg(`So'rov noto'g'ri ${what}`.trim(), `Неверный запрос ${what}`.trim(), `Invalid request ${what}`.trim())),
-  method: () => new PaymeError(-32601, msg('Metod topilmadi', 'Метод не найден', 'Method not found')),
+  // Hujjat: "-32601 ... имя запрашиваемого метода содержится в поле data".
+  method: (name = '') => new PaymeError(-32601, msg('Metod topilmadi', 'Метод не найден', 'Method not found'), String(name).slice(0, 64)),
   auth: () => new PaymeError(-32504, msg('Ruxsat yo\'q', 'Недостаточно привилегий', 'Insufficient privileges')),
+  // Baza, fayl tizimi, kutilmagan holat — "системная ошибка". Payme buni
+  // vaqtinchalik deb biladi va so'rovni qayta yuboradi.
+  system: () => new PaymeError(-32400, msg('Tizim xatosi', 'Системная ошибка', 'System error')),
   amount: () => new PaymeError(-31001, msg('Summa noto\'g\'ri', 'Неверная сумма', 'Invalid amount')),
   notFound: () => new PaymeError(-31003, msg('Tranzaksiya topilmadi', 'Транзакция не найдена', 'Transaction not found')),
   cannotCancel: () => new PaymeError(-31007, msg('To\'lovni bekor qilib bo\'lmaydi', 'Невозможно отменить транзакцию', 'Unable to cancel transaction')),
@@ -141,8 +152,11 @@ export function safeEqual(a, b) {
 }
 
 /**
- * `Authorization: Basic base64("Paycom:KEY")`. Login har doim "Paycom".
- * Kalitda ':' bo'lishi mumkin — birinchi ':' dan bo'linadi.
+ * `Authorization: Basic base64("login:KEY")`. Hujjat: login Payme texnik
+ * mutaxassisidan olinadi (odatda "Paycom"), parol — kassaning 36 belgili
+ * kaliti. Sir — kalit; login solishtirilmaydi, aks holda Payme boshqa login
+ * bersa hamma so'rov rad etilardi. Kalitda ':' bo'lishi mumkin — birinchi
+ * ':' dan bo'linadi.
  */
 export function checkBasicAuth(header, expectedKey) {
   if (!expectedKey || typeof header !== 'string') return false;
@@ -152,9 +166,7 @@ export function checkBasicAuth(header, expectedKey) {
   try { decoded = Buffer.from(m[1], 'base64').toString('utf8'); } catch { return false; }
   const i = decoded.indexOf(':');
   if (i < 0) return false;
-  const loginOk = safeEqual(decoded.slice(0, i), 'Paycom');
-  const keyOk = safeEqual(decoded.slice(i + 1), expectedKey);
-  return loginOk && keyOk;
+  return safeEqual(decoded.slice(i + 1), expectedKey);
 }
 
 export function normalizeIp(ip) {
@@ -279,7 +291,7 @@ function requireId(params) {
 }
 
 function requireInt(v, name) {
-  if (typeof v !== 'number' || !Number.isFinite(v) || !Number.isInteger(v) || v < 0) throw ERR.request(`(${name})`);
+  if (typeof v !== 'number' || !Number.isFinite(v) || !Number.isInteger(v) || v < 0 || v > MAX_TIMESTAMP) throw ERR.request(`(${name})`);
   return v;
 }
 
@@ -303,9 +315,13 @@ async function loadPayableOrder(db, orderId, schoolId, settings, amountTiyin, no
   return order;
 }
 
-/** Fiskal chek qatori — IKPU kodi kiritilgan bo'lsa. */
+/**
+ * Fiskal chek qatori. Hujjat bo'yicha `code` (IKPU), `package_code` va
+ * `vat_percent` majburiy — ikkala kod ham kiritilgan bo'lsagina yuboriladi,
+ * yarim to'ldirilgan `detail` Payme tomonida chekni buzadi.
+ */
 async function receiptDetail(settings, order) {
-  if (!settings.paymeMxik) return undefined;
+  if (!settings.paymeMxik || !settings.paymePackageCode) return undefined;
   const course = order.courseId ? await prisma.course.findUnique({ where: { id: order.courseId }, select: { name: true } }) : null;
   return {
     receipt_type: 0,
@@ -314,7 +330,7 @@ async function receiptDetail(settings, order) {
       price: order.amount * 100,
       count: 1,
       code: settings.paymeMxik,
-      package_code: settings.paymePackageCode || undefined,
+      package_code: settings.paymePackageCode,
       vat_percent: settings.paymeVatPercent || 0,
     }],
   };
@@ -450,7 +466,9 @@ export async function handleRpc({ settings, method, params, now = Date.now() }) 
         }
 
         if (tx.state === STATE.PERFORMED) {
-          if (!settings.paymeAllowRefund) throw ERR.cannotCancel();
+          // Sandbox'ning 2-ssenariysi o'tgan tranzaksiyani bekor qilishni
+          // kutadi — test buyurtmasida sozlama e'tiborga olinmaydi (pul yo'q).
+          if (!settings.paymeAllowRefund && !tx.order.test) throw ERR.cannotCancel();
           const r = await db.paymeTransaction.updateMany({
             where: { id: tx.id, state: STATE.PERFORMED },
             data: { state: STATE.CANCELLED_AFTER_PERFORM, reason, cancelTime: BigInt(now) },
@@ -502,9 +520,12 @@ export async function handleRpc({ settings, method, params, now = Date.now() }) 
     case 'GetStatement': {
       const from = requireInt(params?.from, 'from');
       const to = requireInt(params?.to, 'to');
+      // Hujjat: qidiruv Payme'dagi yaratilish vaqti (`time`) bo'yicha,
+      // from <= time <= to, o'sish tartibida. Yaratilmay qolgan (xato bilan
+      // tugagan) tranzaksiyalar bazada yo'q, demak ro'yxatga tushmaydi.
       const rows = await prisma.paymeTransaction.findMany({
-        where: { schoolId, createTime: { gte: BigInt(from), lte: BigInt(to) } },
-        orderBy: { createTime: 'asc' },
+        where: { schoolId, paymeTime: { gte: BigInt(from), lte: BigInt(to) } },
+        orderBy: [{ paymeTime: 'asc' }, { id: 'asc' }],
         take: 5000,
       });
       return {
@@ -521,14 +542,38 @@ export async function handleRpc({ settings, method, params, now = Date.now() }) 
       };
     }
 
+    case 'SetFiscalData': {
+      // Ixtiyoriy metod: chek fiskallashtirilgach Payme uni yuboradi (PERFORM
+      // yoki CANCEL). Bu metodning xato formati boshqacha — `message` oddiy satr.
+      const id = requireId(params);
+      const type = params?.type;
+      const data = params?.fiscal_data;
+      if ((type !== 'PERFORM' && type !== 'CANCEL') || !data || typeof data !== 'object' || Array.isArray(data)) {
+        throw new PaymeError(-32602, "Noto'g'ri parametrlar (type yoki fiscal_data)", undefined, true);
+      }
+      const tx = await prisma.paymeTransaction.findUnique({ where: { paymeId: id } });
+      if (!tx || tx.schoolId !== schoolId) throw new PaymeError(-32001, 'Chek topilmadi', undefined, true);
+      const fiscal = {};
+      for (const k of ['receipt_id', 'status_code', 'message', 'terminal_id', 'fiscal_sign', 'qr_code_url', 'date']) {
+        if (data[k] !== undefined) fiscal[k] = typeof data[k] === 'string' ? data[k].slice(0, 500) : data[k];
+      }
+      // Oplata va bekor cheklari GNK tomonida alohida — alohida saqlanadi.
+      await prisma.paymeTransaction.update({
+        where: { id: tx.id },
+        data: type === 'PERFORM' ? { fiscalPerform: fiscal } : { fiscalCancel: fiscal },
+      });
+      return { result: { success: true }, paymeId: id, orderId: tx.orderId };
+    }
+
     default:
-      throw ERR.method();
+      throw ERR.method(method);
   }
 }
 
 export function rpcError(id, err) {
-  const e = err instanceof PaymeError ? err : ERR.cannotPerform();
-  return { jsonrpc: '2.0', id: id ?? null, error: { code: e.code, message: e.rpcMessage, ...(e.data ? { data: e.data } : {}) } };
+  const e = err instanceof PaymeError ? err : ERR.system();
+  const message = e.plainMessage ? e.rpcMessage.uz : e.rpcMessage;
+  return { jsonrpc: '2.0', id: id ?? null, error: { code: e.code, message, ...(e.data ? { data: e.data } : {}) } };
 }
 
 export function rpcResult(id, result) {
@@ -563,9 +608,13 @@ export function logSafeRequest(body) {
   const params = body.params && typeof body.params === 'object' ? body.params : undefined;
   const slim = {};
   if (params) {
-    for (const k of ['id', 'time', 'amount', 'account', 'reason', 'from', 'to']) {
-      if (params[k] !== undefined) slim[k] = params[k];
+    for (const k of ['id', 'time', 'amount', 'reason', 'from', 'to', 'type']) {
+      if (params[k] !== undefined) slim[k] = typeof params[k] === 'string' ? params[k].slice(0, 64) : params[k];
+    }
+    // account faqat bizning maydonimiz bilan — yot/katta obyekt jurnalga tushmasin.
+    if (params.account && typeof params.account === 'object') {
+      slim.account = { [ACCOUNT_FIELD]: String(params.account[ACCOUNT_FIELD] ?? '').slice(0, 32) };
     }
   }
-  return { method: body.method, id: body.id, params: slim };
+  return { method: typeof body.method === 'string' ? body.method.slice(0, 64) : body.method, id: body.id, params: slim };
 }
