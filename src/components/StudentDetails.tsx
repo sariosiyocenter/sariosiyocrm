@@ -19,6 +19,7 @@ import { activeCourses } from '../lib/activeCourses';
 import PhotoViewer from './PhotoViewer';
 import DiscountModal from './DiscountModal';
 import StudentMoveModal from './StudentMoveModal';
+import PaymeLinkModal from './PaymeLinkModal';
 import { STUDY_GOALS, UZB_REGIONS, ORG_TYPES } from '../lib/studentFields';
 import StudentLedger from './StudentLedger';
 import { loadFaceModels, descriptorFromPhoto, saveFaceProfiles, faceFailText, faceFailedBefore, rememberFaceTry, forgetFaceTry } from '../lib/faceDescriptor';
@@ -56,6 +57,8 @@ export default function StudentDetails() {
      *  xodim aybsiz rasmni almashtirib yurardi. */
     const [faceFail, setFaceFail] = useState<FaceFail>('topilmadi');
     const [showDiscountModal, setShowDiscountModal] = useState(false);
+    // Payme havolasi / QR — ota-ona o'zi to'laydi, pul avtomatik tushadi.
+    const [showPaymeModal, setShowPaymeModal] = useState(false);
     // Guruhlar orasida ko'chirish / o'qishni to'xtatib pulni qayta hisoblash.
     const [moveMode, setMoveMode] = useState<'transfer' | 'refund' | null>(null);
     const [isPhotoViewerOpen, setIsPhotoViewerOpen] = useState(false);
@@ -658,6 +661,13 @@ export default function StudentDetails() {
                         className="h-9 px-4 bg-brand hover:bg-brand-dark text-white rounded-lg text-[13px] font-semibold transition-colors cursor-pointer">
                         {t('add_payment')}
                     </button>
+                    {(settings.paymeMode === 'live' || settings.paymeMode === 'test') && (
+                        <button onClick={() => setShowPaymeModal(true)}
+                            title="Payme orqali to'lash uchun havola yoki QR"
+                            className="h-9 px-4 border border-chiziq-kuchli text-brand hover:bg-brand hover:text-white rounded-lg text-[13px] font-semibold transition-colors cursor-pointer">
+                            Payme havola
+                        </button>
+                    )}
                     {/* Dars qoldirgani uchun qayta hisob: pul kirmaydi, lekin
                         o'quvchining hisobiga yoziladi. */}
                     <button onClick={() => setShowDiscountModal(true)}
@@ -2143,6 +2153,9 @@ export default function StudentDetails() {
             )}
             {showDiscountModal && (
                 <DiscountModal studentId={student.id} onClose={() => setShowDiscountModal(false)} onAdd={addPayment} />
+            )}
+            {showPaymeModal && (
+                <PaymeLinkModal studentId={student.id} onClose={() => setShowPaymeModal(false)} />
             )}
             {moveMode && (
                 <StudentMoveModal studentId={student.id} mode={moveMode} onClose={() => setMoveMode(null)} />

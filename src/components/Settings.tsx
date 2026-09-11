@@ -3,16 +3,17 @@ import {
     Building2, Plus, ChevronDown, ChevronRight, ShieldCheck, Trash2, Save, X,
     Layout, MapPin, Bus, BookOpen, DoorOpen, Globe, Phone, Clock, Camera,
     Instagram, Send, Shield, ToggleLeft, ToggleRight, Pencil,
-    Zap, Lock, Link2, ExternalLink, MessageSquare, Compass
+    Zap, Lock, Link2, ExternalLink, MessageSquare, Compass, CreditCard
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useCRM, THEMES } from '../context/CRMContext';
 import { useLang } from '../context/LanguageContext';
 import { compressAndUpload } from '../lib/image';
 import MapPicker from './MapPicker';
+import PaymeSettings from './PaymeSettings';
 
 type SectionId = 'profil' | 'xonalar' | 'filiallar' | 'ruxsatlar' | 'dizayn'
-    | 'integratsiyalar' | 'avtomatlashtirish' | 'xavfsizlik' | 'yonalishlar';
+    | 'integratsiyalar' | 'payme' | 'avtomatlashtirish' | 'xavfsizlik' | 'yonalishlar';
 
 const DEFAULT_PERMISSIONS: Record<string, Record<string, boolean>> = {
     ADMIN:        { dashboard: true,  students: true,  teachers: true,  groups: true,  finance: true,  exams: true,  leads: true,  hr: true,  reports: true,  settings: true  },
@@ -236,6 +237,7 @@ export default function Settings() {
                 { id: 'profil' as SectionId, label: t('settings_profile'), icon: <Globe size={14} /> },
                 { id: 'dizayn' as SectionId, label: t('settings_design'), icon: <Layout size={14} /> },
                 { id: 'integratsiyalar' as SectionId, label: 'Integratsiyalar', icon: <Link2 size={14} /> },
+                ...(isAdmin ? [{ id: 'payme' as SectionId, label: 'Payme', icon: <CreditCard size={14} /> }] : []),
             ]
         },
         {
@@ -441,6 +443,8 @@ export default function Settings() {
                 </div>
             </form>
         );
+
+        if (activeSection === 'payme') return <PaymeSettings />;
 
         if (activeSection === 'avtomatlashtirish') return (
             <div className="space-y-6">

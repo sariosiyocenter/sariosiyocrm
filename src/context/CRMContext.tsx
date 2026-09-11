@@ -653,7 +653,12 @@ export const CRMProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             },
             body: dataWithSchoolId ? JSON.stringify(dataWithSchoolId) : undefined,
         });
-        if (!res.ok) throw new Error(`API Error: ${res.statusText}`);
+        if (!res.ok) {
+            // Server o'z sababini yozadi ("Jonli rejim uchun avval kalitni kiriting") —
+            // "Bad Request" o'rniga o'sha ko'rsatilsin.
+            const body = await res.json().catch(() => null);
+            throw new Error(body?.error || `API Error: ${res.statusText}`);
+        }
         return method !== 'DELETE' ? await res.json() : null;
     };
 

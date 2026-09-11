@@ -79,6 +79,7 @@ model Student {
   routeStops  RouteStop[]
   examResults ExamResult[]
   faceProfile FaceProfile?
+  paymeOrders PaymeOrder[]
 
   @@index([schoolId])
 }
@@ -384,6 +385,8 @@ model School {
   faceProfiles     FaceProfile[]
   directions       Direction[]
   driverAvailability DriverAvailability[]
+  paymeOrders      PaymeOrder[]
+  paymeTransactions PaymeTransaction[]
 }
 
 model SmsLog {
@@ -566,6 +569,32 @@ model Setting {
   eskizEmail       String?
   eskizPassword    String?
   eskizFrom        String?
+
+  // Payme (Merchant API). Kalitlar SETTINGS_KEY bilan shifrlanadi va
+  // brauzerga hech qachon qaytarilmaydi — adminga ham faqat "o'rnatilgan"
+  // belgisi ko'rinadi. `paymeMode`: off | test | live. Test rejimda faqat
+  // test kaliti qabul qilinadi va havolalar sandbox kassaga olib boradi.
+  paymeMerchantId    String?
+  paymeKey           String?
+  paymeTestKey       String?
+  paymeMode          String   @default("off")
+  // Webhook manzilining maxfiy qismi: /api/payme/<token>. Tasodifiy (192 bit),
+  // taxmin qilib bo'lmaydi; almashtirilsa Payme kabinetida ham yangilanadi.
+  // @unique emas — Vercel'dagi `prisma db push` unique qo'shishda "data loss"
+  // ogohlantirishi bilan to'xtab qolardi; indeks yetarli.
+  paymeEndpointToken String?
+  // Payme o'tgan to'lovni bekor qilmoqchi bo'lsa (chargeback) rozimizmi.
+  // Rozi bo'lsak manfiy "Qaytarish" yozuvi yoziladi, bo'lmasak -31007.
+  paymeAllowRefund   Boolean  @default(true)
+  // Jonli rejimda so'rov faqat Payme IP manzillaridan qabul qilinadi.
+  paymeIpCheck       Boolean  @default(true)
+  // Fiskal chek uchun IKPU (MXIK) kodi — to'ldirilsa CheckPerformTransaction
+  // javobiga `detail` qo'shiladi.
+  paymeMxik          String?
+  paymePackageCode   String?
+  paymeVatPercent    Int      @default(0)
+
+  @@index([paymeEndpointToken])
 }
 
 model User {
@@ -945,4 +974,91 @@ model Direction {
   students  Student[]
 
   @@index([schoolId])
+}
+
+// ---------------------------------------------------------------------------
+// Payme (Merchant API).
+//
+// Pul kursga biriktiriladi (lib/allocation.js), shuning uchun buyurtma ham
+// o'quvchi + guruh + summa bilan yaratiladi. Payme'ga faqat buyurtmaning
+// tasodifiy ID si va summa ketadi — ism, telefon ketmaydi. Summani Payme
+// tomonida o'zgartirib bo'lmaydi: CheckPerformTransaction buyurtmadagi
+// summa bilan tiyinigacha solishtiradi.
+// ---------------------------------------------------------------------------
+
+// Bizning tomonimizda yaratilgan "to'lov niyati". ID — 16 belgili tasodifiy
+// token (Payme "account.order_id"). Ketma-ket raqam emas: o'quvchi ID sini
+// ham, buyurtmalar sonini ham oshkor qilmaydi.
+model PaymeOrder {
+  id          String   @id
+  studentId   Int
+  student     Student  @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  groupId     Int?
+  courseId    Int?
+  amount      Int      // so'm (butun). Payme bilan tiyinda (x100) solishtiriladi.
+  status      String   @default("new")  // new | paid | refunded | cancelled
+  source      String   @default("crm")  // crm | bot
+  createdById Int?     // havolani yaratgan xodim (User.id); bot orqali bo'lsa null
+  chatId      String?  // bot orqali yaratilgan bo'lsa — kimga natijani yozish
+  test        Boolean  @default(false)  // test rejimda yaratilgan (pul haqiqiy emas)
+  paymentId   Int?     @unique          // to'lov o'tganda yozilgan Payment qatori
+  expiresAt   DateTime
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  schoolId    Int
+  school      School   @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  transactions PaymeTransaction[]
+
+  @@index([schoolId, studentId])
+  @@index([schoolId, createdAt])
+}
+
+// Payme tranzaksiyasi (protokoldagi holat mashinasi):
+//   1 — yaratildi, 2 — o'tkazildi, -1 — o'tkazilmay bekor, -2 — o'tgach bekor.
+// `paymeId` unique: bir xil so'rov ikki marta kelsa (Payme qayta yuboradi)
+// ikkinchi yozuv yaratilmaydi. Holat o'tishlari `updateMany WHERE state = ?`
+// bilan atomar — parallel PerformTransaction ikki marta kreditlay olmaydi.
+model PaymeTransaction {
+  id          Int      @id @default(autoincrement())
+  paymeId     String   @unique
+  orderId     String
+  order       PaymeOrder @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  amount      Int      // so'm
+  state       Int
+  reason      Int?
+  paymeTime   BigInt   // Payme yuborgan `time` (ms) — 12 soatlik taymaut shundan
+  createTime  BigInt
+  performTime BigInt   @default(0)
+  cancelTime  BigInt   @default(0)
+  paymentId   Int?     // Payment (Peyme) qatori
+  refundPaymentId Int? // Payment (Qaytarish) qatori — state -2 da
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  schoolId    Int
+  school      School   @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+
+  @@index([orderId])
+  @@index([schoolId, createTime])
+}
+
+// Har bir Payme so'rovining izi (audit). Authorization sarlavhasi
+// yozilmaydi. School o'chirilsa ham qoladi — bu moliyaviy jurnal.
+model PaymeLog {
+  id         Int      @id @default(autoincrement())
+  schoolId   Int?
+  method     String?
+  paymeId    String?
+  orderId    String?
+  ip         String?
+  ok         Boolean
+  errorCode  Int?
+  request    Json?
+  response   Json?
+  durationMs Int?
+  createdAt  DateTime @default(now())
+
+  @@index([schoolId, createdAt])
+  @@index([paymeId])
 }

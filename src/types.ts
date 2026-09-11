@@ -419,6 +419,19 @@ export interface CRMState {
         eskizEmail?: string;
         eskizPassword?: string;
         eskizFrom?: string;
+        /** Payme. Kalitlarning o'zi serverdan qaytmaydi — faqat `...Set` belgilari. */
+        paymeMerchantId?: string | null;
+        paymeKey?: string;
+        paymeTestKey?: string;
+        paymeKeySet?: boolean;
+        paymeTestKeySet?: boolean;
+        paymeMode?: 'off' | 'test' | 'live';
+        paymeEndpointToken?: string | null;
+        paymeAllowRefund?: boolean;
+        paymeIpCheck?: boolean;
+        paymeMxik?: string | null;
+        paymePackageCode?: string | null;
+        paymeVatPercent?: number;
     };
     questions: Question[];
     exams: Exam[];

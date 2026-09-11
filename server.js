@@ -3,7 +3,9 @@ import express from 'express';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
 import prisma from './lib/prisma.js';
-import { JWT_SECRET, TOKEN_TTL, attendanceWindowStart, redactBody, isAdmin, stripSettingSecrets, cronRequestRejected } from './lib/config.js';
+import { JWT_SECRET, TOKEN_TTL, attendanceWindowStart, redactBody, isAdmin, stripSettingSecrets, hidePaymeSecrets, cronRequestRejected } from './lib/config.js';
+import { registerPaymeRoutes } from './routes/payme.js';
+import { MODES as PAYME_MODES, generateEndpointToken as generatePaymeEndpointToken } from './services/payme.js';
 import { authenticate, requireRole, STAFF_MANAGERS, canAccessSchool, allowedSchoolIds, ALL_BRANCHES } from './middleware/auth.js';
 import { encryptSecret, decryptSecret } from './lib/secrets.js';
 import { claimBillingRun, releaseBillingRun, processMonthlyBilling } from './services/billing.js';
@@ -103,7 +105,9 @@ const publicFormLimiter = rateLimit({
 // Lazy Cron background execution for automatic message rules (throttled to once every 10 minutes)
 let lastLazyCronRun = 0;
 app.use((req, res, next) => {
-  if (req.path.startsWith('/api/') && Date.now() - lastLazyCronRun > 10 * 60 * 1000) {
+  // Payme webhook'i istisno: u tez va bir xil javob berishi kerak, orqa fon
+  // ishi unga kechikish qo'shmasin.
+  if (req.path.startsWith('/api/') && !req.path.startsWith('/api/payme/') && Date.now() - lastLazyCronRun > 10 * 60 * 1000) {
     lastLazyCronRun = Date.now();
     (async () => {
       try {
@@ -3558,7 +3562,7 @@ app.get('/api/init', authenticate, async (req, res, next) => {
       leads, payments, courses, rooms,
       // Admins configure SMS/Telegram from the settings screen and need the real values;
       // every other role gets the masked copy.
-      settings: isAdmin(req.user) ? settings : stripSettingSecrets(settings),
+      settings: isAdmin(req.user) ? hidePaymeSecrets(settings) : stripSettingSecrets(settings),
       attendances, scores, teacherAttendances, staffAttendances, expenses,
       transports, routes: mappedRoutes, questions, exams, examResults, schools,
       topics, syllabuses, directions,
@@ -3787,26 +3791,54 @@ app.get('/api/settings', authenticate, async (req, res, next) => {
         data: { schoolId: parseInt(schoolId), orgName: "QUANTUM EDU" }
       });
     }
-    res.json(isAdmin(req.user) ? settings : stripSettingSecrets(settings));
+    res.json(isAdmin(req.user) ? hidePaymeSecrets(settings) : stripSettingSecrets(settings));
   } catch (error) { next(error); }
 });
 
 app.put('/api/settings', authenticate, async (req, res, next) => {
   try {
     if (!isAdmin(req.user)) return res.status(403).json({ error: 'Faqat administrator sozlamalarni o\'zgartira oladi' });
-    const { schoolId, eskizPasswordSet, telegramSet, ...data } = req.body;
+    const { schoolId, eskizPasswordSet, telegramSet, paymeKeySet, paymeTestKeySet, paymeEndpointToken, ...data } = req.body;
     if (!schoolId) return res.status(400).json({ error: 'schoolId required' });
     await rasmMaydoniniTozala(data, 'logo', 'logo');
 
     // An empty secret means "unchanged" — never let a blank field wipe stored credentials.
-    for (const key of ['eskizPassword', 'telegram']) {
+    for (const key of ['eskizPassword', 'telegram', 'paymeKey', 'paymeTestKey']) {
       if (data[key] !== undefined && String(data[key]).trim() === '') delete data[key];
     }
     // Stored encrypted when SETTINGS_KEY is configured, so a leaked database does not
     // hand over the SMS account. Without the key this is a no-op and behaviour is unchanged.
     if (data.eskizPassword !== undefined) data.eskizPassword = encryptSecret(data.eskizPassword);
+    for (const key of ['paymeKey', 'paymeTestKey']) {
+      if (data[key] !== undefined) data[key] = encryptSecret(String(data[key]).trim());
+    }
+    if (data.paymeMerchantId !== undefined) data.paymeMerchantId = String(data.paymeMerchantId || '').trim() || null;
+    if (data.paymeMode !== undefined && !PAYME_MODES.includes(data.paymeMode)) {
+      return res.status(400).json({ error: "Payme rejimi noto'g'ri" });
+    }
+    if (data.paymeVatPercent !== undefined) {
+      const vat = parseInt(data.paymeVatPercent);
+      data.paymeVatPercent = Number.isInteger(vat) && vat >= 0 && vat <= 100 ? vat : 0;
+    }
+    for (const key of ['paymeMxik', 'paymePackageCode']) {
+      if (data[key] !== undefined) data[key] = String(data[key] || '').trim() || null;
+    }
+    for (const key of ['paymeIpCheck', 'paymeAllowRefund']) {
+      if (data[key] !== undefined) data[key] = data[key] === true || data[key] === 'true';
+    }
 
     const oldSettings = await prisma.setting.findUnique({ where: { schoolId: parseInt(schoolId) } });
+
+    // Jonli rejimga o'tish uchun jonli kalit, testga — test kaliti kerak.
+    // Aks holda webhook hamma so'rovni rad etib, "nega ishlamayapti" bo'lardi.
+    if (data.paymeMode === 'live' && !(data.paymeKey || oldSettings?.paymeKey)) {
+      return res.status(400).json({ error: 'Jonli rejim uchun avval Payme kalitini kiriting' });
+    }
+    if (data.paymeMode === 'test' && !(data.paymeTestKey || oldSettings?.paymeTestKey)) {
+      return res.status(400).json({ error: 'Test rejimi uchun avval Payme test kalitini kiriting' });
+    }
+    // Webhook manzilining maxfiy qismi bir marta yaratiladi; mijoz uni o'zgartira olmaydi.
+    if (!oldSettings?.paymeEndpointToken) data.paymeEndpointToken = generatePaymeEndpointToken();
 
     const settings = await prisma.setting.upsert({
       where: { schoolId: parseInt(schoolId) },
@@ -3830,7 +3862,7 @@ app.put('/api/settings', authenticate, async (req, res, next) => {
       }
     }
 
-    res.json(settings);
+    res.json(hidePaymeSecrets(settings));
   } catch (error) { next(error); }
 });
 
@@ -6770,6 +6802,9 @@ app.get('/api/billing/auto-process', async (req, res, next) => {
 });
 
 // ==================== END BILLING MODULE ====================
+
+// Payme: webhook, havola yaratish, ochiq holat sahifasi (routes/payme.js).
+registerPaymeRoutes(app);
 
 // Serve static React files
 app.use('/uploads', express.static(join(__dirname, 'public', 'uploads')));

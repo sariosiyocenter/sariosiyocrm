@@ -53,6 +53,7 @@ const OrgDetail       = lazyRetry(() => import('./components/OrgDetail'));
 const HRManagement    = lazyRetry(() => import('./components/HRManagement'));
 const StaffDetails    = lazyRetry(() => import('./components/StaffDetails'));
 const PublicApply     = lazyRetry(() => import('./components/PublicApply'));
+const PublicPay       = lazyRetry(() => import('./components/PublicPay'));
 
 function PageLoader() {
   return (
@@ -73,20 +74,25 @@ export default function App() {
   }, []);
 
   const isApplyRoute = window.location.pathname.startsWith('/apply');
+  // Payme to'lovidan keyin qaytish sahifasi — kirishsiz, faqat buyurtma holati.
+  const isPayRoute = window.location.pathname.startsWith('/pay/');
 
-  if (loading) {
-    return <PageLoader />;
-  }
-
-  if (isApplyRoute) {
+  // Ochiq sahifalar sessiya yuklanishini kutmaydi: ota-ona Payme'dan qaytganda
+  // (brauzerida CRM tokeni bo'lsa ham) darhol natijani ko'rsin.
+  if (isApplyRoute || isPayRoute) {
     return (
       <Suspense fallback={<PageLoader />}>
         <Routes>
           <Route path="/apply/:schoolId" element={<PublicApply />} />
+          <Route path="/pay/:orderId" element={<PublicPay />} />
           <Route path="*" element={<Navigate to="/login" replace />} />
         </Routes>
       </Suspense>
     );
+  }
+
+  if (loading) {
+    return <PageLoader />;
   }
 
   // Sessiya bor, lekin server javob bermadi. Ilgari bunday holatda foydalanuvchi
