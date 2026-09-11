@@ -6823,10 +6823,19 @@ app.get('/api/billing/auto-process', async (req, res, next) => {
     const cronError = cronRequestRejected(req);
     if (cronError) return res.status(401).json({ error: cronError });
     const schools = await prisma.school.findMany({ select: { id: true, name: true } });
-    const now = new Date();
-    const month = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+    // Oy O'zbekiston vaqti bo'yicha: Vercel UTC da ishlaydi, 1-kuni 00:00 UTC
+    // allaqachon 05:00 mahalliy — baribir yangi oy, lekin boshqa vaqtda
+    // chaqirilsa ham to'g'ri oy olinsin.
+    const month = toDateStr().slice(0, 7);
     const results = [];
     for (const school of schools) {
+      // /api/billing/status bilan bir xil qulf: (filial, oy) bir marta. Ilgari
+      // qulfsiz edi — har chaqiruv o'sha oyda hali hisoblanmagan juftliklarni
+      // qayta ko'rib chiqardi (masalan oy o'rtasida qo'shilganlarni ham).
+      if (!(await claimBillingRun(school.id, month))) {
+        results.push({ schoolId: school.id, schoolName: school.name, skipped: 'already-claimed', month });
+        continue;
+      }
       const result = await processMonthlyBilling(school.id, month);
       results.push({ schoolId: school.id, schoolName: school.name, ...result });
     }
