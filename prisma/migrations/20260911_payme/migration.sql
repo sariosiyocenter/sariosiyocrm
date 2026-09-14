@@ -84,3 +84,15 @@ CREATE TABLE IF NOT EXISTS "PaymeLog" (
 );
 CREATE INDEX IF NOT EXISTS "PaymeLog_schoolId_createdAt_idx" ON "PaymeLog"("schoolId", "createdAt");
 CREATE INDEX IF NOT EXISTS "PaymeLog_paymeId_idx" ON "PaymeLog"("paymeId");
+
+-- Payme ilovasi katalogi (student_id bilan to'lov): buyurtmasiz tranzaksiya.
+ALTER TABLE "PaymeTransaction" ALTER COLUMN "orderId" DROP NOT NULL;
+ALTER TABLE "PaymeTransaction" ADD COLUMN IF NOT EXISTS "studentId" INTEGER;
+ALTER TABLE "PaymeTransaction" ADD COLUMN IF NOT EXISTS "groupId" INTEGER;
+ALTER TABLE "PaymeTransaction" ADD COLUMN IF NOT EXISTS "courseId" INTEGER;
+ALTER TABLE "PaymeTransaction" ADD COLUMN IF NOT EXISTS "test" BOOLEAN NOT NULL DEFAULT false;
+ALTER TABLE "PaymeTransaction" ADD COLUMN IF NOT EXISTS "account" JSONB;
+UPDATE "PaymeTransaction" t SET "studentId" = o."studentId", "groupId" = o."groupId", "courseId" = o."courseId", "test" = o."test",
+  "account" = jsonb_build_object('order_id', o."id")
+  FROM "PaymeOrder" o WHERE t."orderId" = o."id" AND t."studentId" IS NULL;
+CREATE INDEX IF NOT EXISTS "PaymeTransaction_studentId_idx" ON "PaymeTransaction"("studentId");

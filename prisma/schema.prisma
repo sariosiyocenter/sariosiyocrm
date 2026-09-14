@@ -1025,8 +1025,16 @@ model PaymeOrder {
 model PaymeTransaction {
   id          Int      @id @default(autoincrement())
   paymeId     String   @unique
-  orderId     String
-  order       PaymeOrder @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  // Ikki xil hisob: havola bo'yicha (orderId bor) yoki Payme ilovasi katalogi
+  // orqali (orderId yo'q, to'lovchi o'quvchi ID sini kiritadi). Pul qayerga
+  // tushishi tranzaksiyaning o'zida: studentId/groupId/courseId.
+  orderId     String?
+  order       PaymeOrder? @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  studentId   Int?
+  groupId     Int?
+  courseId    Int?     // null — "umumiy" to'lov (kurs tanlanmagan, bir nechta kurs)
+  test        Boolean  @default(false) // test rejimida — Payment yozilmaydi
+  account     Json?    // Payme yuborgan account obyekti (GetStatement uchun)
   amount      Int      // so'm
   state       Int
   reason      Int?
@@ -1046,6 +1054,7 @@ model PaymeTransaction {
   school      School   @relation(fields: [schoolId], references: [id], onDelete: Cascade)
 
   @@index([orderId])
+  @@index([studentId])
   @@index([schoolId, createTime])
   @@index([schoolId, paymeTime])
 }

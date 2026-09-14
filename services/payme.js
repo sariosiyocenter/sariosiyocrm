@@ -32,6 +32,11 @@ import { decryptSecret } from '../lib/secrets.js';
 import { toDateStr } from '../lib/lessons.js';
 
 export const ACCOUNT_FIELD = 'order_id';
+// Payme ilovasi katalogi: to'lovchi o'quvchi raqamini (va ixtiyoriy kursni)
+// kiritadi — buyurtmasiz, "накопительный" hisob. Bitta kassada ikkala
+// maydon ham bo'ladi: havola `order_id` yuboradi, katalog `student_id`.
+export const STUDENT_FIELD = 'student_id';
+export const COURSE_FIELD = 'course';
 export const TIMEOUT_MS = 43_200_000;          // 12 soat — protokol talabi
 export const ORDER_TTL_MS = 7 * 24 * 3600_000; // havola shuncha amal qiladi
 export const MIN_AMOUNT = 1_000;               // so'm
@@ -89,6 +94,8 @@ export const ERR = {
   orderPaid: () => new PaymeError(-31052, msg('Bu buyurtma allaqachon to\'langan', 'Этот заказ уже оплачен', 'This order is already paid'), ACCOUNT_FIELD),
   orderClosed: () => new PaymeError(-31053, msg('Buyurtma bekor qilingan', 'Заказ отменён', 'Order cancelled'), ACCOUNT_FIELD),
   orderMode: () => new PaymeError(-31054, msg('Buyurtma boshqa rejimda yaratilgan', 'Заказ создан в другом режиме', 'Order was created in a different mode'), ACCOUNT_FIELD),
+  studentNotFound: () => new PaymeError(-31055, msg("O'quvchi topilmadi — ID ni tekshiring", 'Ученик не найден — проверьте ID', 'Student not found — check the ID'), STUDENT_FIELD),
+  courseNotFound: () => new PaymeError(-31056, msg("Bu o'quvchi bunday kursda o'qimaydi", 'Ученик не учится на этом курсе', 'Student is not enrolled in this course'), COURSE_FIELD),
 };
 
 // ---------------------------------------------------------------------------
@@ -302,6 +309,74 @@ function requireOrderId(params) {
   return id;
 }
 
+const hasField = (params, f) => !!params?.account && params.account[f] !== undefined && params.account[f] !== null && params.account[f] !== '';
+
+/** "ABDUHAYEVA SHAHNOZA ERKIN QIZI" → "ABDUHAYEVA S." — tasdiqlash uchun yetarli, ortiqcha oshkor emas. */
+function shortName(name) {
+  const parts = String(name || '').trim().split(/\s+/).filter(Boolean);
+  if (!parts.length) return '';
+  return parts.length > 1 ? `${parts[0]} ${parts[1][0]}.` : parts[0];
+}
+
+/**
+ * Payme ilovasi katalogi: account = { student_id, course? }.
+ * O'quvchi raqami — Student.id. Kurs berilsa o'quvchi o'sha kursning
+ * guruhida bo'lishi shart; berilmasa va o'quvchi bitta kursda o'qisa — o'sha
+ * kurs; bir nechta bo'lsa — "umumiy" to'lov (courseId null, hamyon).
+ * Summa — to'lovchi o'zi yozadi: butun so'm, chegaralar ichida.
+ */
+async function loadCatalogAccount(db, params, schoolId, settings, amountTiyin) {
+  const rawId = params.account[STUDENT_FIELD];
+  const studentId = typeof rawId === 'number' ? rawId : parseInt(String(rawId).trim(), 10);
+  if (!Number.isInteger(studentId) || studentId <= 0 || studentId > 1e9 || String(rawId).trim() !== String(studentId)) throw ERR.studentNotFound();
+  const student = await db.student.findFirst({
+    where: { id: studentId, schoolId, NOT: { status: 'Ochirilgan' } },
+    select: { id: true, name: true, groups: { select: { id: true, courseId: true } } },
+  });
+  if (!student) throw ERR.studentNotFound();
+
+  requireInt(amountTiyin, 'amount');
+  if (amountTiyin % 100 !== 0) throw ERR.amount();
+  const amount = amountTiyin / 100;
+  if (amount < MIN_AMOUNT || amount > MAX_AMOUNT) throw ERR.amount();
+
+  let group = null;
+  if (hasField(params, COURSE_FIELD)) {
+    const rawC = params.account[COURSE_FIELD];
+    const courseId = typeof rawC === 'number' ? rawC : parseInt(String(rawC).trim(), 10);
+    if (!Number.isInteger(courseId)) throw ERR.courseNotFound();
+    group = student.groups.find(g => g.courseId === courseId) || null;
+    if (!group) throw ERR.courseNotFound();
+  } else {
+    const courses = [...new Set(student.groups.map(g => g.courseId))];
+    if (courses.length === 1) group = student.groups[0];
+  }
+  const account = { [STUDENT_FIELD]: String(studentId) };
+  if (group && hasField(params, COURSE_FIELD)) account[COURSE_FIELD] = String(group.courseId);
+  return {
+    kind: 'catalog', student, amount, account,
+    studentId: student.id, groupId: group?.id ?? null, courseId: group?.courseId ?? null,
+    test: settings.paymeMode === 'test',
+  };
+}
+
+/**
+ * Hisobni aniqlash: `order_id` bo'lsa buyurtma (havola/QR), bo'lmasa
+ * `student_id` (Payme ilovasi katalogi). Ikkalasi ham yo'q — buyurtma topilmadi.
+ */
+async function resolveAccount(db, params, schoolId, settings, amountTiyin, now) {
+  if (hasField(params, ACCOUNT_FIELD)) {
+    const orderId = requireOrderId(params);
+    const order = await loadPayableOrder(db, orderId, schoolId, settings, amountTiyin, now);
+    return {
+      kind: 'order', order, amount: order.amount, account: { [ACCOUNT_FIELD]: orderId },
+      studentId: order.studentId, groupId: order.groupId, courseId: order.courseId, test: order.test,
+    };
+  }
+  if (hasField(params, STUDENT_FIELD)) return loadCatalogAccount(db, params, schoolId, settings, amountTiyin);
+  throw ERR.orderNotFound();
+}
+
 /** Buyurtma bormi va shu summaga to'lasa bo'ladimi. */
 async function loadPayableOrder(db, orderId, schoolId, settings, amountTiyin, now) {
   const order = await db.paymeOrder.findFirst({ where: { id: orderId, schoolId } });
@@ -320,14 +395,14 @@ async function loadPayableOrder(db, orderId, schoolId, settings, amountTiyin, no
  * `vat_percent` majburiy — ikkala kod ham kiritilgan bo'lsagina yuboriladi,
  * yarim to'ldirilgan `detail` Payme tomonida chekni buzadi.
  */
-async function receiptDetail(settings, order) {
+async function receiptDetail(settings, { courseId, amount }) {
   if (!settings.paymeMxik || !settings.paymePackageCode) return undefined;
-  const course = order.courseId ? await prisma.course.findUnique({ where: { id: order.courseId }, select: { name: true } }) : null;
+  const course = courseId ? await prisma.course.findUnique({ where: { id: courseId }, select: { name: true } }) : null;
   return {
     receipt_type: 0,
     items: [{
       title: course ? `${course.name} — o'quv xizmati` : "O'quv xizmati",
-      price: order.amount * 100,
+      price: amount * 100,
       count: 1,
       code: settings.paymeMxik,
       package_code: settings.paymePackageCode,
@@ -346,22 +421,27 @@ export async function handleRpc({ settings, method, params, now = Date.now() }) 
 
   switch (method) {
     case 'CheckPerformTransaction': {
-      const orderId = requireOrderId(params);
-      const order = await loadPayableOrder(prisma, orderId, schoolId, settings, params.amount, now);
-      const detail = await receiptDetail(settings, order);
-      return { result: detail ? { allow: true, detail } : { allow: true }, orderId };
+      const acc = await resolveAccount(prisma, params, schoolId, settings, params?.amount, now);
+      const detail = await receiptDetail(settings, acc);
+      const result = { allow: true };
+      // Katalogda to'lovchi ID ni qo'lda yozadi — kim ekanini ko'rsin (qisqa
+      // ism, moliyaviy ma'lumot yo'q: ID ketma-ket raqam, terib chiqish oson).
+      if (acc.kind === 'catalog') result.additional = { oquvchi: shortName(acc.student.name) };
+      if (detail) result.detail = detail;
+      return { result, orderId: acc.order?.id, studentId: acc.studentId };
     }
 
     case 'CreateTransaction': {
       const id = requireId(params);
       const time = requireInt(params.time, 'time');
-      const orderId = requireOrderId(params);
+      // Qulf kaliti: buyurtma bo'lsa buyurtma (bitta faol tranzaksiya), aks
+      // holda Payme tranzaksiya ID si (takroriy so'rovlar navbatga turadi).
+      const lockKey = hasField(params, ACCOUNT_FIELD) ? requireOrderId(params) : id;
 
       const result = await prisma.$transaction(async (db) => {
-        // Bir buyurtma bo'yicha parallel so'rovlar navbatga turadi — ikkita
-        // faol tranzaksiya yaratilib qolmaydi. Qulf tranzaksiya bilan ochiladi.
+        // Parallel so'rovlar navbatga turadi. Qulf tranzaksiya bilan ochiladi.
         // $executeRaw: funksiya `void` qaytaradi, $queryRaw uni o'qiy olmaydi.
-        await db.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${orderId}))`;
+        await db.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${lockKey}))`;
 
         const existing = await db.paymeTransaction.findUnique({ where: { paymeId: id } });
         if (existing) {
@@ -371,28 +451,35 @@ export async function handleRpc({ settings, method, params, now = Date.now() }) 
           return { create_time: toNum(existing.createTime), transaction: String(existing.id), state: STATE.CREATED };
         }
 
-        const order = await loadPayableOrder(db, orderId, schoolId, settings, params.amount, now);
+        const acc = await resolveAccount(db, params, schoolId, settings, params.amount, now);
         if (expired(time, now)) throw ERR.cannotPerform('Tranzaksiya muddati o\'tgan', 'Срок транзакции истёк', 'Transaction expired');
 
-        const active = await db.paymeTransaction.findFirst({ where: { orderId, state: STATE.CREATED } });
-        if (active) throw ERR.cannotPerform("Bu buyurtma bo'yicha boshqa to'lov kutilmoqda", 'По этому заказу уже есть активная транзакция', 'Order already has an active transaction');
+        if (acc.kind === 'order') {
+          // Bir buyurtma — bir vaqtda bitta faol tranzaksiya. Katalogda cheklov
+          // yo'q: накопительный hisobga pul istalgancha marta tushadi.
+          const active = await db.paymeTransaction.findFirst({ where: { orderId: acc.order.id, state: STATE.CREATED } });
+          if (active) throw ERR.cannotPerform("Bu buyurtma bo'yicha boshqa to'lov kutilmoqda", 'По этому заказу уже есть активная транзакция', 'Order already has an active transaction');
+        }
 
         const row = await db.paymeTransaction.create({
           data: {
-            paymeId: id, orderId, schoolId,
-            amount: order.amount, state: STATE.CREATED,
+            paymeId: id, orderId: acc.order?.id ?? null, schoolId,
+            studentId: acc.studentId, groupId: acc.groupId, courseId: acc.courseId,
+            test: acc.test, account: acc.account,
+            amount: acc.amount, state: STATE.CREATED,
             paymeTime: BigInt(time), createTime: BigInt(now),
           },
         });
-        return { create_time: now, transaction: String(row.id), state: STATE.CREATED };
+        return { create_time: now, transaction: String(row.id), state: STATE.CREATED, _orderId: acc.order?.id, _studentId: acc.studentId };
       }, { timeout: 15_000 });
-      return { result, orderId, paymeId: id };
+      const { _orderId, _studentId, ...rpc } = result;
+      return { result: rpc, orderId: _orderId, studentId: _studentId, paymeId: id };
     }
 
     case 'PerformTransaction': {
       const id = requireId(params);
       const out = await prisma.$transaction(async (db) => {
-        const tx = await db.paymeTransaction.findUnique({ where: { paymeId: id }, include: { order: true } });
+        const tx = await db.paymeTransaction.findUnique({ where: { paymeId: id }, include: { order: { select: { chatId: true, source: true } } } });
         if (!tx || tx.schoolId !== schoolId) throw ERR.notFound();
         if (tx.state === STATE.PERFORMED) {
           return { result: { transaction: String(tx.id), perform_time: toNum(tx.performTime), state: STATE.PERFORMED } };
@@ -416,39 +503,40 @@ export async function handleRpc({ settings, method, params, now = Date.now() }) 
         }
 
         let paymentId = null;
-        if (!tx.order.test) {
-          // Pul kursga biriktirilgan: groupId/courseId buyurtmadan. Yozuv
-          // turi 'Peyme' — kassa uni naqd emas deb hisoblaydi.
+        if (!tx.test && tx.studentId) {
+          // Pul kursga biriktirilgan: groupId/courseId tranzaksiyada (buyurtmadan
+          // yoki katalogdagi tanlovdan). courseId null — "umumiy" to'lov, hamyon.
+          // Yozuv turi 'Peyme' — kassa uni naqd emas deb hisoblaydi.
           const payment = await db.payment.create({
             data: {
-              studentId: tx.order.studentId,
+              studentId: tx.studentId,
               amount: tx.amount,
               type: 'Peyme',
               date: toDateStr(new Date(now)),
-              description: `Payme orqali to'lov (${id})`,
-              groupId: tx.order.groupId,
-              courseId: tx.order.courseId,
+              description: tx.orderId ? `Payme orqali to'lov (${id})` : `Payme ilovasi orqali to'lov (${id})`,
+              groupId: tx.groupId,
+              courseId: tx.courseId,
               schoolId,
             },
           });
-          await db.student.update({ where: { id: tx.order.studentId }, data: { balance: { increment: tx.amount } } });
+          await db.student.update({ where: { id: tx.studentId }, data: { balance: { increment: tx.amount } } });
           paymentId = payment.id;
         }
-        await db.paymeOrder.update({ where: { id: tx.orderId }, data: { status: 'paid', paymentId } });
+        if (tx.orderId) await db.paymeOrder.update({ where: { id: tx.orderId }, data: { status: 'paid', paymentId } });
         await db.paymeTransaction.update({ where: { id: tx.id }, data: { paymentId } });
         return {
           result: { transaction: String(tx.id), perform_time: now, state: STATE.PERFORMED },
-          fresh: { kind: 'performed', order: tx.order, amount: tx.amount, paymentId },
+          fresh: { kind: 'performed', tx, amount: tx.amount, paymentId },
         };
       }, { timeout: 15_000 });
-      return { ...out, paymeId: id, orderId: out.fresh?.order?.id };
+      return { ...out, paymeId: id, orderId: out.fresh?.tx?.orderId, studentId: out.fresh?.tx?.studentId };
     }
 
     case 'CancelTransaction': {
       const id = requireId(params);
       const reason = Number.isInteger(params?.reason) ? params.reason : null;
       const out = await prisma.$transaction(async (db) => {
-        const tx = await db.paymeTransaction.findUnique({ where: { paymeId: id }, include: { order: true } });
+        const tx = await db.paymeTransaction.findUnique({ where: { paymeId: id }, include: { order: { select: { chatId: true, source: true } } } });
         if (!tx || tx.schoolId !== schoolId) throw ERR.notFound();
 
         if (tx.state === STATE.CREATED) {
@@ -468,7 +556,7 @@ export async function handleRpc({ settings, method, params, now = Date.now() }) 
         if (tx.state === STATE.PERFORMED) {
           // Sandbox'ning 2-ssenariysi o'tgan tranzaksiyani bekor qilishni
           // kutadi — test buyurtmasida sozlama e'tiborga olinmaydi (pul yo'q).
-          if (!settings.paymeAllowRefund && !tx.order.test) throw ERR.cannotCancel();
+          if (!settings.paymeAllowRefund && !tx.test) throw ERR.cannotCancel();
           const r = await db.paymeTransaction.updateMany({
             where: { id: tx.id, state: STATE.PERFORMED },
             data: { state: STATE.CANCELLED_AFTER_PERFORM, reason, cancelTime: BigInt(now) },
@@ -478,36 +566,36 @@ export async function handleRpc({ settings, method, params, now = Date.now() }) 
             return { result: { transaction: String(tx.id), cancel_time: toNum(again.cancelTime), state: again.state } };
           }
           let refundPaymentId = null;
-          if (!tx.order.test) {
+          if (!tx.test && tx.studentId) {
             // Pul to'lovchiga qaytdi: manfiy 'Qaytarish' yozuvi. Avans
             // sarflangan bo'lsa allocation.js buni alohida qarz qilib qo'yadi.
             const refund = await db.payment.create({
               data: {
-                studentId: tx.order.studentId,
+                studentId: tx.studentId,
                 amount: -tx.amount,
                 type: 'Qaytarish',
                 date: toDateStr(new Date(now)),
                 description: `Payme to'lovi bekor qilindi (${id})`,
-                groupId: tx.order.groupId,
-                courseId: tx.order.courseId,
+                groupId: tx.groupId,
+                courseId: tx.courseId,
                 schoolId,
               },
             });
-            await db.student.update({ where: { id: tx.order.studentId }, data: { balance: { decrement: tx.amount } } });
+            await db.student.update({ where: { id: tx.studentId }, data: { balance: { decrement: tx.amount } } });
             refundPaymentId = refund.id;
           }
-          await db.paymeOrder.update({ where: { id: tx.orderId }, data: { status: 'refunded' } });
+          if (tx.orderId) await db.paymeOrder.update({ where: { id: tx.orderId }, data: { status: 'refunded' } });
           await db.paymeTransaction.update({ where: { id: tx.id }, data: { refundPaymentId } });
           return {
             result: { transaction: String(tx.id), cancel_time: now, state: STATE.CANCELLED_AFTER_PERFORM },
-            fresh: { kind: 'refunded', order: tx.order, amount: tx.amount, refundPaymentId },
+            fresh: { kind: 'refunded', tx, amount: tx.amount, refundPaymentId },
           };
         }
 
         // Allaqachon bekor qilingan — o'sha natija.
         return { result: { transaction: String(tx.id), cancel_time: toNum(tx.cancelTime), state: tx.state } };
       }, { timeout: 15_000 });
-      return { ...out, paymeId: id, orderId: out.fresh?.order?.id };
+      return { ...out, paymeId: id, orderId: out.fresh?.tx?.orderId, studentId: out.fresh?.tx?.studentId };
     }
 
     case 'CheckTransaction': {
@@ -534,7 +622,7 @@ export async function handleRpc({ settings, method, params, now = Date.now() }) 
             id: tx.paymeId,
             time: toNum(tx.paymeTime),
             amount: tx.amount * 100,
-            account: { [ACCOUNT_FIELD]: tx.orderId },
+            account: tx.account || { [ACCOUNT_FIELD]: tx.orderId },
             ...txResult(tx),
             receivers: null,
           })),
@@ -611,9 +699,12 @@ export function logSafeRequest(body) {
     for (const k of ['id', 'time', 'amount', 'reason', 'from', 'to', 'type']) {
       if (params[k] !== undefined) slim[k] = typeof params[k] === 'string' ? params[k].slice(0, 64) : params[k];
     }
-    // account faqat bizning maydonimiz bilan — yot/katta obyekt jurnalga tushmasin.
+    // account faqat bizning maydonlarimiz bilan — yot/katta obyekt jurnalga tushmasin.
     if (params.account && typeof params.account === 'object') {
-      slim.account = { [ACCOUNT_FIELD]: String(params.account[ACCOUNT_FIELD] ?? '').slice(0, 32) };
+      slim.account = {};
+      for (const f of [ACCOUNT_FIELD, STUDENT_FIELD, COURSE_FIELD]) {
+        if (params.account[f] !== undefined) slim.account[f] = String(params.account[f] ?? '').slice(0, 32);
+      }
     }
   }
   return { method: typeof body.method === 'string' ? body.method.slice(0, 64) : body.method, id: body.id, params: slim };

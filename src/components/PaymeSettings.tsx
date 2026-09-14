@@ -42,7 +42,7 @@ type Tx = {
 };
 
 export default function PaymeSettings() {
-    const { settings, updateSettings, selectedSchoolId, user, showNotification } = useCRM();
+    const { settings, updateSettings, selectedSchoolId, user, showNotification, courses } = useCRM();
     const confirm = useConfirm();
     const schoolId = (!selectedSchoolId || selectedSchoolId === 0) ? user?.schoolId : selectedSchoolId;
 
@@ -180,7 +180,7 @@ export default function PaymeSettings() {
                         <p className="text-[11px] font-bold text-matn-xira">Merchant ID ni kiritib saqlagach manzil yaratiladi.</p>
                     )}
                     <p className="text-[10px] font-bold text-matn-xira mt-2 ml-1">
-                        Hisob maydoni (account field) nomi: <span className="font-mono text-matn">order_id</span>. Manzil tasodifiy va maxfiy — hech kimga yubormang.
+                        Hisob maydonlari (account): <span className="font-mono text-matn">order_id</span> (havola/QR) va <span className="font-mono text-matn">student_id</span> (ilova katalogi). Manzil tasodifiy va maxfiy — faqat Payme kabinetiga.
                     </p>
                 </div>
 
@@ -258,10 +258,13 @@ export default function PaymeSettings() {
             {/* Yo'riqnoma */}
             <div className="p-5 border border-dashed border-chiziq rounded-2xl text-[11px] font-bold text-matn-xira space-y-1.5">
                 <p className="text-xs font-black text-matn">Ulash tartibi</p>
-                <p>1. <a href="https://merchant.paycom.uz" target="_blank" rel="noopener noreferrer" className="text-brand underline inline-flex items-center gap-1">Payme Business kabineti <ExternalLink size={10} /></a> da kassa yarating; Endpoint URL ga yuqoridagi webhook manzilini, hisob maydoniga <span className="font-mono text-matn">order_id</span> ni kiriting.</p>
+                <p>1. <a href="https://merchant.paycom.uz" target="_blank" rel="noopener noreferrer" className="text-brand underline inline-flex items-center gap-1">Payme Business kabineti <ExternalLink size={10} /></a> da kassa yarating; Endpoint URL ga yuqoridagi webhook manzilini, hisob maydonlariga <span className="font-mono text-matn">order_id</span> (havola/QR) va <span className="font-mono text-matn">student_id</span> (Payme ilovasi katalogi, o'quvchi raqami) ni kiriting — ikkalasi ham ixtiyoriy, biri to'ldiriladi. Ixtiyoriy uchinchi maydon <span className="font-mono text-matn">course</span> — kurs kodi (pastdagi jadval).</p>
                 <p>2. Merchant ID, jonli va test kalitlarini shu yerga kiriting, rejimni "Test" qilib saqlang.</p>
                 <p>3. <a href="https://test.paycom.uz" target="_blank" rel="noopener noreferrer" className="text-brand underline inline-flex items-center gap-1">Sandbox <ExternalLink size={10} /></a> da webhook manzili va test kaliti bilan avtomatik testlarni o'tkazing (buyurtma ID sini o'quvchi kartochkasidan "Payme havola" orqali oling).</p>
                 <p>4. Testlar o'tgach rejimni "Jonli" qiling — botda "Payme orqali to'lash" tugmasi paydo bo'ladi.</p>
+                <p className="text-xs font-black text-matn pt-2">Payme ilovasi katalogi</p>
+                <p>Ota-ona Payme ilovasida markazni topib o'quvchi raqamini (kartochkadagi №) kiritadi, summani o'zi yozadi. Kurs tanlanmasa: o'quvchi bitta kursda o'qisa — o'sha kursga, bir nechta bo'lsa — "umumiy" to'lov. Kurs kodlari (Payme'ga ro'yxat sifatida beriladi):</p>
+                <p className="font-mono text-[10px] text-matn break-words">{courses.filter(c => c.schoolId === selectedSchoolId).map(c => `${c.id} — ${c.name}`).join(' · ') || '—'}</p>
             </div>
 
             <div className="flex justify-end pt-4 border-t border-dashed border-chiziq/50">

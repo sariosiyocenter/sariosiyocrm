@@ -314,6 +314,8 @@ export const setupBotHandlers = (botInstance, schoolId) => {
         // Kesh emas, to'g'ridan-to'g'ri: admin rejimni o'zgartirsa darhol ko'rinsin.
         const paymeSettings = await paymeLoadSettings(schoolId);
         if (paymeIsConfigured(paymeSettings) && paymeSettings.paymeMode === 'live') {
+            // Payme ilovasi katalogidan to'lash uchun o'quvchi raqami kerak.
+            msg += `\n🆔 Payme ilovasida to'lash uchun o'quvchi ID: ${student.id}`;
             return ctx.reply(msg, Markup.inlineKeyboard([[Markup.button.callback("💳 Payme orqali to'lash", 'payme_start')]]));
         }
         ctx.reply(msg);

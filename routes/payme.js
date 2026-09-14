@@ -50,15 +50,16 @@ function shapeOrder(o, settings, returnBase) {
  * Payme javob kutib turibdi, shuning uchun qisqa muddat (4 s) bilan chegaralangan.
  */
 async function notify(fresh, schoolId) {
+  if (!fresh?.tx?.studentId) return;
   try {
     await withTimeout((async () => {
       const [student, group, settings] = await Promise.all([
         prisma.student.findUnique({
-          where: { id: fresh.order.studentId },
+          where: { id: fresh.tx.studentId },
           select: { name: true, telegramId: true, fatherTelegramId: true, motherTelegramId: true },
         }),
-        fresh.order.groupId
-          ? prisma.group.findUnique({ where: { id: fresh.order.groupId }, select: { name: true, course: { select: { name: true } } } })
+        fresh.tx.groupId
+          ? prisma.group.findUnique({ where: { id: fresh.tx.groupId }, select: { name: true, course: { select: { name: true } } } })
           : null,
         prisma.setting.findUnique({ where: { schoolId }, select: { orgName: true } }),
       ]);
@@ -75,7 +76,7 @@ async function notify(fresh, schoolId) {
       const { getTelegramBot, notifyAdmins } = await import('../src/bot/bot.js');
       const bot = await getTelegramBot(schoolId);
       if (bot) {
-        const targets = new Set([fresh.order.chatId, student.telegramId, student.fatherTelegramId, student.motherTelegramId].filter(Boolean));
+        const targets = new Set([fresh.tx.order?.chatId, student.telegramId, student.fatherTelegramId, student.motherTelegramId].filter(Boolean));
         for (const t of targets) {
           await bot.telegram.sendMessage(t, parentText).catch(e => console.error('[payme] xabar ketmadi:', e.message));
         }
@@ -320,18 +321,25 @@ export function registerPaymeRoutes(app) {
         where: { schoolId },
         orderBy: { id: 'desc' },
         take: Math.min(parseInt(req.query.limit) || 50, 200),
-        include: { order: { select: { studentId: true, amount: true, source: true, test: true, groupId: true, student: { select: { name: true } } } } },
+        include: { order: { select: { source: true } } },
       });
-      const groupIds = [...new Set(rows.map(r => r.order.groupId).filter(Boolean))];
-      const groups = groupIds.length ? await prisma.group.findMany({ where: { id: { in: groupIds } }, select: { id: true, name: true } }) : [];
+      const groupIds = [...new Set(rows.map(r => r.groupId).filter(Boolean))];
+      const studentIds = [...new Set(rows.map(r => r.studentId).filter(Boolean))];
+      const [groups, students] = await Promise.all([
+        groupIds.length ? prisma.group.findMany({ where: { id: { in: groupIds } }, select: { id: true, name: true } }) : [],
+        studentIds.length ? prisma.student.findMany({ where: { id: { in: studentIds } }, select: { id: true, name: true } }) : [],
+      ]);
       const gname = new Map(groups.map(g => [g.id, g.name]));
+      const sname = new Map(students.map(s => [s.id, s.name]));
       res.json(rows.map(t => ({
         id: t.id, paymeId: t.paymeId, orderId: t.orderId, amount: t.amount, state: t.state, reason: t.reason,
         createTime: Number(t.createTime), performTime: Number(t.performTime), cancelTime: Number(t.cancelTime),
         paymentId: t.paymentId, refundPaymentId: t.refundPaymentId,
         fiscalUrl: t.fiscalPerform?.qr_code_url || null,
-        studentId: t.order.studentId, studentName: t.order.student?.name || '', groupName: gname.get(t.order.groupId) || '',
-        source: t.order.source, test: t.order.test,
+        studentId: t.studentId, studentName: sname.get(t.studentId) || '',
+        groupName: gname.get(t.groupId) || (t.courseId ? '' : 'Umumiy'),
+        // 'ilova' — Payme ilovasi katalogidan (buyurtmasiz), aks holda crm/bot.
+        source: t.orderId ? (t.order?.source || 'crm') : 'ilova', test: t.test,
       })));
     } catch (e) { next(e); }
   });
