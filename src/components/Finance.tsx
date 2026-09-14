@@ -17,6 +17,7 @@ import { printReceipt } from '../lib/receipt';
 import { activeCourses } from '../lib/activeCourses';
 import { isCashIncome } from '../lib/money';
 import KassaPanel from './KassaPanel';
+import PaymeLinkModal from './PaymeLinkModal';
 
 const inp = "w-full px-4 py-3 bg-slate-50 dark:bg-[#1a2232] border border-chiziq rounded-xl text-sm font-semibold text-slate-900 dark:text-white focus:border-brand focus:ring-2 focus:ring-brand/20 outline-none transition-all";
 const lbl = "block text-[11px] font-extrabold   text-matn-xira mb-2";
@@ -224,6 +225,9 @@ export default function Finance() {
     // Payment modal state
     const [studentSearch, setStudentSearch] = useState('');
     const [selectedStudent, setSelectedStudent] = useState<any>(null);
+    // Payme havola/QR — tanlangan o'quvchi uchun (pul webhook orqali o'zi tushadi).
+    const [paymeFor, setPaymeFor] = useState<number | null>(null);
+    const paymeOn = settings.paymeMode === 'live' || settings.paymeMode === 'test';
     const [createdPaymentForReceipt, setCreatedPaymentForReceipt] = useState<any>(null);
     /**
      * To'lov endi kurslarga bo'lib qabul qilinadi (egasi, 2026-09-09):
@@ -1690,6 +1694,14 @@ ${e.description || e.category} — ${Number(e.amount).toLocaleString()} so'm`)) 
                                                 </button>
                                             ))}
                                         </div>
+                                        {paymeOn && (
+                                            <button type="button" disabled={!selectedStudent}
+                                                onClick={() => selectedStudent && setPaymeFor(selectedStudent.id)}
+                                                title={selectedStudent ? "Payme havola yoki QR yaratish" : "Avval o'quvchini tanlang"}
+                                                className="mt-2 w-full py-2.5 rounded-xl text-xs font-extrabold border border-dashed border-brand/60 text-brand hover:bg-brand hover:text-white disabled:opacity-40 disabled:hover:bg-transparent disabled:hover:text-brand transition-all cursor-pointer">
+                                                💳 Payme — havola / QR (to'lov Payme'dan o'zi tushadi)
+                                            </button>
+                                        )}
                                     </div>
 
                                     <div>
@@ -1713,6 +1725,7 @@ ${e.description || e.category} — ${Number(e.amount).toLocaleString()} so'm`)) 
                             </>
                         )}
                     </div>
+                    {paymeFor && <PaymeLinkModal studentId={paymeFor} onClose={() => setPaymeFor(null)} />}
                 </div>
             )}
 

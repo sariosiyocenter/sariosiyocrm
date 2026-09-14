@@ -2393,9 +2393,12 @@ export default function StudentDetails() {
 
 
 function PaymentAddModal({ studentId, onClose, onAdd }: { studentId: number; onClose: () => void; onAdd: (data: any) => void }) {
-    const { students, groups, courses, payments, settings } = useCRM();
+    const { students, groups, courses, payments, settings, user: crmUser } = useCRM();
     const [amount, setAmount] = useState('');
     const [type, setType] = useState('Naqd');
+    // Payme orqali: havola/QR — pul Payme'dan webhook bilan o'zi tushadi, qo'lda yozilmaydi.
+    const [showPayme, setShowPayme] = useState(false);
+    const paymeOn = (settings.paymeMode === 'live' || settings.paymeMode === 'test') && ['ADMIN', 'MANAGER', 'RECEPTIONIST', 'SUPERADMIN'].includes(crmUser?.role || '');
     const [courseId, setCourseId] = useState<number | ''>('');
     const [createdPaymentForReceipt, setCreatedPaymentForReceipt] = useState<any>(null);
 
@@ -2687,6 +2690,12 @@ function PaymentAddModal({ studentId, onClose, onAdd }: { studentId: number; onC
                                         </button>
                                     ))}
                                 </div>
+                                {paymeOn && (
+                                    <button type="button" onClick={() => setShowPayme(true)}
+                                        className="mt-2 w-full py-2.5 rounded-xl text-xs font-bold border border-dashed border-brand/60 text-brand hover:bg-brand hover:text-white transition-all cursor-pointer">
+                                        💳 Payme — havola / QR (to'lov Payme'dan o'zi tushadi)
+                                    </button>
+                                )}
                             </div>
 
                             <div className="pt-4 border-t border-dashed border-chiziq">
@@ -2699,6 +2708,7 @@ function PaymentAddModal({ studentId, onClose, onAdd }: { studentId: number; onC
                     </>
                 )}
             </div>
+            {showPayme && <PaymeLinkModal studentId={studentId} onClose={() => setShowPayme(false)} />}
         </div>
     );
 }
