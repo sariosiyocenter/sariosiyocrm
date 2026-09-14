@@ -322,20 +322,33 @@ function shortName(name) {
   return parts.length > 1 ? `${parts[0]} ${parts[1][0]}.` : parts[0];
 }
 
+/**
+ * CRM'dagi kurs nomi (bazada Group): "Matematika 2-Guruh". Nomida fan yo'q
+ * bo'lsa fan bilan: "Turk tili (DEMO Kechki guruh)". `group.course.name` kerak.
+ */
+export function kursLabel(group) {
+  if (!group) return '';
+  const fan = group.course?.name || '';
+  if (!fan || group.name.toLowerCase().includes(fan.toLowerCase())) return group.name;
+  return `${fan} (${group.name})`;
+}
+
 /** CheckPerformTransaction `additional`: kim uchun va qaysi kurs uchun. */
 async function payerInfo(acc) {
-  const [student, course] = await Promise.all([
+  const [student, group] = await Promise.all([
     acc.student ? acc.student : prisma.student.findUnique({ where: { id: acc.studentId }, select: { name: true } }),
-    acc.courseId ? prisma.course.findUnique({ where: { id: acc.courseId }, select: { name: true } }) : null,
+    acc.groupId ? prisma.group.findUnique({ where: { id: acc.groupId }, select: { name: true, course: { select: { name: true } } } }) : null,
   ]);
-  return { oquvchi: shortName(student?.name), kurs: course?.name || 'Umumiy' };
+  return { oquvchi: shortName(student?.name), kurs: group ? kursLabel(group) : 'Umumiy' };
 }
 
 /**
  * Payme ilovasi katalogi: account = { student_id, course_id? }.
- * O'quvchi raqami — Student.id. Kurs berilsa o'quvchi o'sha kursning
- * guruhida bo'lishi shart; berilmasa va o'quvchi bitta kursda o'qisa — o'sha
- * kurs; bir nechta bo'lsa — "umumiy" to'lov (courseId null, hamyon).
+ * O'quvchi raqami: Student.id. `course_id`: CRM'dagi kurs raqami (Group.id);
+ * bir fandagi "Matematika 2-Guruh" va "Matematika 3-Guruh" alohida kurslar,
+ * narxi ham alohida. Berilsa o'quvchi aynan shu kursda o'qishi shart;
+ * berilmasa va o'quvchi bitta kursda o'qisa, o'sha kurs; bir nechta bo'lsa,
+ * "umumiy" to'lov (groupId/courseId null, hamyon qoidasi).
  * Summa — to'lovchi o'zi yozadi: butun so'm, chegaralar ichida.
  */
 async function loadCatalogAccount(db, params, schoolId, settings, amountTiyin) {
@@ -356,16 +369,15 @@ async function loadCatalogAccount(db, params, schoolId, settings, amountTiyin) {
   let group = null;
   if (hasField(params, COURSE_FIELD)) {
     const rawC = params.account[COURSE_FIELD];
-    const courseId = typeof rawC === 'number' ? rawC : parseInt(String(rawC).trim(), 10);
-    if (!Number.isInteger(courseId)) throw ERR.courseNotFound();
-    group = student.groups.find(g => g.courseId === courseId) || null;
+    const kursId = typeof rawC === 'number' ? rawC : parseInt(String(rawC).trim(), 10);
+    if (!Number.isInteger(kursId) || String(rawC).trim() !== String(kursId)) throw ERR.courseNotFound();
+    group = student.groups.find(g => g.id === kursId) || null;
     if (!group) throw ERR.courseNotFound();
-  } else {
-    const courses = [...new Set(student.groups.map(g => g.courseId))];
-    if (courses.length === 1) group = student.groups[0];
+  } else if (student.groups.length === 1) {
+    group = student.groups[0];
   }
   const account = { [STUDENT_FIELD]: String(studentId) };
-  if (group && hasField(params, COURSE_FIELD)) account[COURSE_FIELD] = String(group.courseId);
+  if (group && hasField(params, COURSE_FIELD)) account[COURSE_FIELD] = String(group.id);
   return {
     kind: 'catalog', student, amount, account,
     studentId: student.id, groupId: group?.id ?? null, courseId: group?.courseId ?? null,

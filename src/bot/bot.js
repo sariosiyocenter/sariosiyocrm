@@ -7,7 +7,7 @@ import { parseLatLng, distanceKm } from '../../lib/tartib.js';
 import { studentLedger } from '../../services/ledger.js';
 import {
     createOrder as paymeCreateOrder, loadSettings as paymeLoadSettings, isConfigured as paymeIsConfigured,
-    MIN_AMOUNT as PAYME_MIN, MAX_AMOUNT as PAYME_MAX,
+    MIN_AMOUNT as PAYME_MIN, MAX_AMOUNT as PAYME_MAX, kursLabel as paymeKursLabel,
 } from '../../services/payme.js';
 
 const somFmt = (n) => Number(n || 0).toLocaleString('ru-RU');
@@ -314,8 +314,18 @@ export const setupBotHandlers = (botInstance, schoolId) => {
         // Kesh emas, to'g'ridan-to'g'ri: admin rejimni o'zgartirsa darhol ko'rinsin.
         const paymeSettings = await paymeLoadSettings(schoolId);
         if (paymeIsConfigured(paymeSettings) && paymeSettings.paymeMode === 'live') {
-            // Payme ilovasi katalogidan to'lash uchun o'quvchi raqami kerak.
+            // Payme ilovasi katalogidan to'lash: o'quvchi ID si va (bir nechta kursda
+            // o'qisa) kurs raqami. Raqamlar shu yerda CRM'dan olinadi: Payme'da
+            // ro'yxat yo'q, yangi kurs qo'shilsa u yerda hech narsa o'zgarmaydi.
+            const kurslar = await prisma.group.findMany({
+                where: { students: { some: { id: student.id } } },
+                select: { id: true, name: true, course: { select: { name: true } } },
+                orderBy: { id: 'asc' },
+            });
             msg += `\n🆔 Payme ilovasida to'lash uchun o'quvchi ID: ${student.id}`;
+            if (kurslar.length > 1) {
+                msg += `\n\u{1F4DA} Kurs raqami (qaysi kursga to'layotganingiz): ${kurslar.map(g => `${paymeKursLabel(g)} \u2014 ${g.id}`).join(', ')}`;
+            }
             return ctx.reply(msg, Markup.inlineKeyboard([[Markup.button.callback("💳 Payme orqali to'lash", 'payme_start')]]));
         }
         ctx.reply(msg);

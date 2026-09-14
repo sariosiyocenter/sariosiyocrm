@@ -42,7 +42,7 @@ type Tx = {
 };
 
 export default function PaymeSettings() {
-    const { settings, updateSettings, selectedSchoolId, user, showNotification, courses } = useCRM();
+    const { settings, updateSettings, selectedSchoolId, user, showNotification, courses, groups } = useCRM();
     const confirm = useConfirm();
     const schoolId = (!selectedSchoolId || selectedSchoolId === 0) ? user?.schoolId : selectedSchoolId;
 
@@ -263,8 +263,8 @@ export default function PaymeSettings() {
                 <p>3. <a href="https://test.paycom.uz" target="_blank" rel="noopener noreferrer" className="text-brand underline inline-flex items-center gap-1">Sandbox <ExternalLink size={10} /></a> da webhook manzili va test kaliti bilan avtomatik testlarni o'tkazing (buyurtma ID sini o'quvchi kartochkasidan "Payme havola" orqali oling).</p>
                 <p>4. Testlar o'tgach rejimni "Jonli" qiling — botda "Payme orqali to'lash" tugmasi paydo bo'ladi.</p>
                 <p className="text-xs font-black text-matn pt-2">Payme ilovasi katalogi</p>
-                <p>Ota-ona Payme ilovasida markazni topib o'quvchi raqamini (kartochkadagi №) kiritadi, summani o'zi yozadi. Kurs tanlanmasa: o'quvchi bitta kursda o'qisa — o'sha kursga, bir nechta bo'lsa — "umumiy" to'lov. Kurs kodlari (Payme'ga ro'yxat sifatida beriladi):</p>
-                <p className="font-mono text-[10px] text-matn break-words">{courses.filter(c => c.schoolId === selectedSchoolId).map(c => `${c.id} — ${c.name}`).join(' · ') || '—'}</p>
+                <p>Ota-ona Payme ilovasida markazni topib o'quvchi raqamini (kartochkadagi №) kiritadi, summani o'zi yozadi. Kurs tanlanmasa: o'quvchi bitta kursda o'qisa — o'sha kursga, bir nechta bo'lsa — "umumiy" to'lov. Kurs raqamlari Payme'da ro'yxat qilinmaydi: ota-ona o'z kurslari raqamini botdagi balans xabarida ko'radi, yangi kurs qo'shilsa Payme'da hech narsa o'zgartirilmaydi. Raqamlar:</p>
+                <p className="font-mono text-[10px] text-matn break-words">{groups.filter(g => courses.some(c => c.id === g.courseId && c.schoolId === selectedSchoolId)).map(g => { const fan = courses.find(c => c.id === g.courseId)?.name || ''; const nom = fan && !g.name.toLowerCase().includes(fan.toLowerCase()) ? `${fan} (${g.name})` : g.name; return `${g.id} — ${nom}`; }).join(' · ') || '—'}</p>
             </div>
 
             <div className="flex justify-end pt-4 border-t border-dashed border-chiziq/50">

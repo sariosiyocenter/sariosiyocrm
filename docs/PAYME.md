@@ -42,19 +42,19 @@ havola buni so'rovdan o'zi oladi.
   buyurtma yaratadi (o'quvchi + kurs + summa), summa qat'iy, bir marta to'lanadi
   (одноразовый). Buyurtma bo'yicha bir vaqtda bitta faol tranzaksiya.
 - **Payme ilovasi katalogi** — `account.student_id` (Student.id, kartochkadagi №)
-  + ixtiyoriy `account.course_id` (Course.id). To'lovchi summani o'zi yozadi (butun
+  + ixtiyoriy `account.course_id` (CRM'dagi kurs raqami, bazada Group.id: "Matematika 2-Guruh" va "Matematika 3-Guruh" alohida kurslar). To'lovchi summani o'zi yozadi (butun
   so'm, `MIN_AMOUNT..MAX_AMOUNT`), накопительный — istalgancha marta.
   Kurs berilmasa: o'quvchi bitta kursda bo'lsa o'sha kurs, bir nechta bo'lsa
   `courseId = null` ("umumiy" to'lov — lib/allocation.js hamyon qoidasi).
   CheckPerformTransaction ikkala holatda ham `additional: { oquvchi: "FAMILIYA I.",
-  kurs: "Matematika" | "Umumiy" }` qaytaradi — ID ketma-ket raqam, shuning uchun
+  kurs: "Matematika 2-Guruh" | "Umumiy" }` qaytaradi — ID ketma-ket raqam, shuning uchun
   to'liq ism/qarz/guruh ko'rsatilmaydi. Payme uni to'lov sahifasida ko'rsatishi uchun
   ularning texnik mutaxassisiga aytiladi (hujjat talabi).
   Xatolar: `-31055` o'quvchi topilmadi (`data: student_id`), `-31056` kurs
   (`data: course_id`).
 
 Payme kabinetida ikkala maydon ham ixtiyoriy qilib sozlanadi (biri to'ldiriladi);
-`course_id` — Payme ro'yxat qilib bersa, kodlar Sozlamalar → Payme'da ko'rinadi.
+`course_id` Payme'da ro'yxat qilinmaydi (kurslar qo'shilib turadi): ota-ona o'z kurslari raqamini botdagi balans xabarida ko'radi, to'liq ro'yxat Sozlamalar > Payme'da.
 Tranzaksiya (`PaymeTransaction`) o'zida `studentId/groupId/courseId/test/account`
 saqlaydi — Perform/Cancel buyurtmaga qaramaydi.
 
