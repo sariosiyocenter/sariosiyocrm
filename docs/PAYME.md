@@ -72,9 +72,11 @@ rejimda doim — sandbox'ning 2-ssenariysi shuni kutadi). Taymaut 12 soat (Payme
 Xato kodlari: `-32300` POST emas, `-32504` auth, `-32600/-32601/-32700` so'rov,
 `-32400` ichki (baza) xato — Payme qayta yuboradi, `-31001` summa, `-31003`
 tranzaksiya topilmadi, `-31007` bekor qilib bo'lmaydi, `-31008` bajarib bo'lmaydi
-(faol emas, muddati o'tgan, buyurtmada boshqa faol tranzaksiya),
+(faol emas, muddati o'tgan),
 `-31050..-31054` buyurtma (topilmadi / muddati o'tgan / to'langan / bekor / boshqa
-rejim). Auth: `Basic base64(login:KEY)` — login solishtirilmaydi (Payme beradi),
+rejim), `-31055/-31056` katalog (o'quvchi / kurs), `-31057` buyurtmada boshqa faol
+tranzaksiya — sandbox shu holatda `-31050..-31099` kutadi (hujjat matnidagi `-31008`
+emas; 2026-09-14 da sandbox'da tekshirilgan). Auth: `Basic base64(login:KEY)` — login solishtirilmaydi (Payme beradi),
 kalit `timingSafeEqual`.
 
 Hujjat manbalari (developer.help.paycom.uz, 2026-09-11 da o'qilgan): Протокол

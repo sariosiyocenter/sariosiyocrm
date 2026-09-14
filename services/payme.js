@@ -96,6 +96,10 @@ export const ERR = {
   orderMode: () => new PaymeError(-31054, msg('Buyurtma boshqa rejimda yaratilgan', 'Заказ создан в другом режиме', 'Order was created in a different mode'), ACCOUNT_FIELD),
   studentNotFound: () => new PaymeError(-31055, msg("O'quvchi topilmadi — ID ni tekshiring", 'Ученик не найден — проверьте ID', 'Student not found — check the ID'), STUDENT_FIELD),
   courseNotFound: () => new PaymeError(-31056, msg("Bu o'quvchi bunday kursda o'qimaydi", 'Ученик не учится на этом курсе', 'Student is not enrolled in this course'), COURSE_FIELD),
+  // Buyurtmada boshqa faol tranzaksiya bor. Sandbox ("CreateTransaction с новой
+  // транзакцией, состояние счёта «В ожидании оплаты»") -31050..-31099 kutadi —
+  // hujjat matnidagi -31008 emas; Payme'ning PHP shablonida ham -31050.
+  orderBusy: () => new PaymeError(-31057, msg("Bu buyurtma bo'yicha to'lov jarayonda — biroz kutib qayta urinib ko'ring", 'По этому заказу уже идёт оплата — повторите позже', 'Payment for this order is already in progress'), ACCOUNT_FIELD),
 };
 
 // ---------------------------------------------------------------------------
@@ -458,7 +462,7 @@ export async function handleRpc({ settings, method, params, now = Date.now() }) 
           // Bir buyurtma — bir vaqtda bitta faol tranzaksiya. Katalogda cheklov
           // yo'q: накопительный hisobga pul istalgancha marta tushadi.
           const active = await db.paymeTransaction.findFirst({ where: { orderId: acc.order.id, state: STATE.CREATED } });
-          if (active) throw ERR.cannotPerform("Bu buyurtma bo'yicha boshqa to'lov kutilmoqda", 'По этому заказу уже есть активная транзакция', 'Order already has an active transaction');
+          if (active) throw ERR.orderBusy();
         }
 
         const row = await db.paymeTransaction.create({
