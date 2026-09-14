@@ -36,7 +36,7 @@ export const ACCOUNT_FIELD = 'order_id';
 // kiritadi — buyurtmasiz, "накопительный" hisob. Bitta kassada ikkala
 // maydon ham bo'ladi: havola `order_id` yuboradi, katalog `student_id`.
 export const STUDENT_FIELD = 'student_id';
-export const COURSE_FIELD = 'course';
+export const COURSE_FIELD = 'course_id';
 export const TIMEOUT_MS = 43_200_000;          // 12 soat — protokol talabi
 export const ORDER_TTL_MS = 7 * 24 * 3600_000; // havola shuncha amal qiladi
 export const MIN_AMOUNT = 1_000;               // so'm
@@ -322,8 +322,17 @@ function shortName(name) {
   return parts.length > 1 ? `${parts[0]} ${parts[1][0]}.` : parts[0];
 }
 
+/** CheckPerformTransaction `additional`: kim uchun va qaysi kurs uchun. */
+async function payerInfo(acc) {
+  const [student, course] = await Promise.all([
+    acc.student ? acc.student : prisma.student.findUnique({ where: { id: acc.studentId }, select: { name: true } }),
+    acc.courseId ? prisma.course.findUnique({ where: { id: acc.courseId }, select: { name: true } }) : null,
+  ]);
+  return { oquvchi: shortName(student?.name), kurs: course?.name || 'Umumiy' };
+}
+
 /**
- * Payme ilovasi katalogi: account = { student_id, course? }.
+ * Payme ilovasi katalogi: account = { student_id, course_id? }.
  * O'quvchi raqami — Student.id. Kurs berilsa o'quvchi o'sha kursning
  * guruhida bo'lishi shart; berilmasa va o'quvchi bitta kursda o'qisa — o'sha
  * kurs; bir nechta bo'lsa — "umumiy" to'lov (courseId null, hamyon).
@@ -427,10 +436,11 @@ export async function handleRpc({ settings, method, params, now = Date.now() }) 
     case 'CheckPerformTransaction': {
       const acc = await resolveAccount(prisma, params, schoolId, settings, params?.amount, now);
       const detail = await receiptDetail(settings, acc);
-      const result = { allow: true };
-      // Katalogda to'lovchi ID ni qo'lda yozadi — kim ekanini ko'rsin (qisqa
-      // ism, moliyaviy ma'lumot yo'q: ID ketma-ket raqam, terib chiqish oson).
-      if (acc.kind === 'catalog') result.additional = { oquvchi: shortName(acc.student.name) };
+      // To'lovchi kim uchun va qaysi kurs uchun to'layotganini ko'rsin. Faqat
+      // qisqa ism va kurs nomi — qarz, guruh, ustoz emas (katalogda ID ketma-ket
+      // raqam, terib chiqish oson). Payme `additional` ni sahifada ko'rsatishi
+      // uchun buni ularning texnik mutaxassisiga aytish kerak (hujjat talabi).
+      const result = { allow: true, additional: await payerInfo(acc) };
       if (detail) result.detail = detail;
       return { result, orderId: acc.order?.id, studentId: acc.studentId };
     }

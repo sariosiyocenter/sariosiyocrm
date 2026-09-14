@@ -42,17 +42,19 @@ havola buni so'rovdan o'zi oladi.
   buyurtma yaratadi (o'quvchi + kurs + summa), summa qat'iy, bir marta to'lanadi
   (одноразовый). Buyurtma bo'yicha bir vaqtda bitta faol tranzaksiya.
 - **Payme ilovasi katalogi** — `account.student_id` (Student.id, kartochkadagi №)
-  + ixtiyoriy `account.course` (Course.id). To'lovchi summani o'zi yozadi (butun
+  + ixtiyoriy `account.course_id` (Course.id). To'lovchi summani o'zi yozadi (butun
   so'm, `MIN_AMOUNT..MAX_AMOUNT`), накопительный — istalgancha marta.
   Kurs berilmasa: o'quvchi bitta kursda bo'lsa o'sha kurs, bir nechta bo'lsa
   `courseId = null` ("umumiy" to'lov — lib/allocation.js hamyon qoidasi).
-  CheckPerformTransaction `additional: { oquvchi: "FAMILIYA I." }` qaytaradi —
-  ID ketma-ket raqam, shuning uchun to'liq ism/qarz ko'rsatilmaydi.
+  CheckPerformTransaction ikkala holatda ham `additional: { oquvchi: "FAMILIYA I.",
+  kurs: "Matematika" | "Umumiy" }` qaytaradi — ID ketma-ket raqam, shuning uchun
+  to'liq ism/qarz/guruh ko'rsatilmaydi. Payme uni to'lov sahifasida ko'rsatishi uchun
+  ularning texnik mutaxassisiga aytiladi (hujjat talabi).
   Xatolar: `-31055` o'quvchi topilmadi (`data: student_id`), `-31056` kurs
-  (`data: course`).
+  (`data: course_id`).
 
 Payme kabinetida ikkala maydon ham ixtiyoriy qilib sozlanadi (biri to'ldiriladi);
-`course` — Payme ro'yxat qilib bersa, kodlar Sozlamalar → Payme'da ko'rinadi.
+`course_id` — Payme ro'yxat qilib bersa, kodlar Sozlamalar → Payme'da ko'rinadi.
 Tranzaksiya (`PaymeTransaction`) o'zida `studentId/groupId/courseId/test/account`
 saqlaydi — Perform/Cancel buyurtmaga qaramaydi.
 
@@ -112,7 +114,7 @@ adminlarga Telegram xabar.
 
 ## Test
 
-`scratch/test_payme.mjs` — Payme rolini o'ynab lokal serverga 139 ta tekshiruv
+`scratch/test_payme.mjs` — Payme rolini o'ynab lokal serverga 143 ta tekshiruv
 (auth, buyurtma, create/perform/cancel, parallel so'rovlar, taymaut, statement,
 IP, test rejim, CRM API, ochiq sahifa). `scratch/test_payme_bot.mjs` — bot oqimi.
 Ikkalasi ham production bazaga ishlaydi va faqat o'zi yaratganini o'chiradi.
