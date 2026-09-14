@@ -51,6 +51,9 @@ function shapeOrder(o, settings, returnBase) {
  */
 async function notify(fresh, schoolId) {
   if (!fresh?.tx?.studentId) return;
+  // Lokal testlar production bazaga ulanadi va maktabning haqiqiy botini
+  // ishlatadi — PAYME_NOTIFY=off bilan xabar yuborilmaydi.
+  if (process.env.PAYME_NOTIFY === 'off') return;
   try {
     await withTimeout((async () => {
       const [student, group, settings] = await Promise.all([
@@ -74,6 +77,13 @@ async function notify(fresh, schoolId) {
         : `↩️ Payme QAYTARISH: ${student.name} — ${fmt(fresh.amount)} so'm (${course}). Balansdan ayirildi.`;
 
       const { getTelegramBot, notifyAdmins } = await import('../src/bot/bot.js');
+      // Test rejimi (sandbox): pul yurmagan. Ota-onaga "to'lov qabul qilindi"
+      // yuborilmaydi — faqat adminlarga, TEST belgisi bilan.
+      if (fresh.tx.test) {
+        const what = fresh.kind === 'performed' ? "o'tkazildi" : 'bekor qilindi';
+        await notifyAdmins(`🧪 Payme TEST (${what}): ${student.name} — ${fmt(fresh.amount)} so'm (${course}). Haqiqiy pul emas, balans o'zgarmadi.`, schoolId);
+        return;
+      }
       const bot = await getTelegramBot(schoolId);
       if (bot) {
         const targets = new Set([fresh.tx.order?.chatId, student.telegramId, student.fatherTelegramId, student.motherTelegramId].filter(Boolean));
