@@ -324,7 +324,7 @@ export const setupBotHandlers = (botInstance, schoolId) => {
             });
             if (paymeSettings.paymeScheme === 'student') {
                 msg += `\n\u{1F194} Payme ilovasida o'quvchi ID: ${student.id}`;
-                if (kurslar.length) msg += `\n\u{1F4DA} Kurs (ro'yxatdan tanlanadi): ${kurslar.map(g => paymeKursLabel(g)).join(', ')}`;
+                if (kurslar.length) msg += `\n\u{1F4DA} Kurs raqami: ${kurslar.map(g => `${paymeKursLabel(g)} — ${g.id}`).join(', ')}`;
             } else {
                 msg += `\n\u{1F194} Payme ilovasida to'lov raqami: ${student.id}`;
                 if (kurslar.length > 1) {

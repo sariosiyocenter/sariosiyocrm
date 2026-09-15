@@ -71,8 +71,10 @@ Payme integratsiya jamoasi taklif qilgan sxema. Sozlamalar > Payme > "Kassadagi 
 maydonlari" = `student` (`Setting.paymeScheme`, sukut `order`).
 
 - Kassa: hisob turi jamg'armali, maydonlar `student_id` (o'quvchi ID si) va `course_id`
-  (CRM'dagi kurs raqami = Group.id, Payme ilovasida dropdown). Narx fiksirlanmaydi.
-- Payme ilovasi: ota-ona ID yozadi, kursni tanlaydi, summani kiritadi.
+  (CRM'dagi kurs raqami = Group.id). Ikkalasi ham oddiy raqam maydoni, dropdown emas:
+  yangi kurs Payme'da hech narsa o'zgartirmasdan ishlaydi, ota-ona raqamlarni botdagi
+  balans xabarida ko'radi (2026-09-15, egasi qarori). Narx fiksirlanmaydi.
+- Payme ilovasi: ota-ona o'quvchi ID si va kurs raqamini yozadi, summani kiritadi.
 - Bot va CRM havolasi: `orderUrl` `ac.student_id` + `ac.course_id` yuboradi (order_id emas).
   Buyurtma yozuvi baribir yaratiladi; tranzaksiya kelganda `resolveAccount` shu o'quvchi,
   kurs, summa va test belgisi bo'yicha eng eski ochiq buyurtmani topib unga bog'laydi.
