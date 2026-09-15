@@ -38,6 +38,13 @@ havola buni so'rovdan o'zi oladi.
 
 ## Ikki xil hisob (bitta kassa)
 
+**Asosiy sxema (2026-09-15):** Payme kassada hisob maydonini ixtiyoriy qila olmaydi, shuning uchun
+hammasi bitta `order_id` maydonida. Havola/QR unga 16 belgili buyurtma kodini qo'yadi; Payme
+ilovasida ota-ona o'quvchi kodini yozadi: `299` (o'quvchi) yoki `299-7` (o'quvchi-kurs, kurs =
+Group.id). `parseStudentCode` ajratadi: o'quvchi kodi 9 xonagacha raqam(lar), buyurtma kodi 16
+belgi. Xato `data` si va GetStatement `account` i qiymat kelgan maydon nomi bilan (`order_id`).
+Pastdagi alohida `student_id`/`course_id` maydonlari faqat kassada shunday sozlansa ishlatiladi.
+
 - **Havola/QR** — `account.order_id` (16 belgili buyurtma ID). CRM yoki bot
   buyurtma yaratadi (o'quvchi + kurs + summa), summa qat'iy, bir marta to'lanadi
   (одноразовый). Buyurtma bo'yicha bir vaqtda bitta faol tranzaksiya.

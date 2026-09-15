@@ -94,8 +94,8 @@ export const ERR = {
   orderPaid: () => new PaymeError(-31052, msg('Bu buyurtma allaqachon to\'langan', 'Этот заказ уже оплачен', 'This order is already paid'), ACCOUNT_FIELD),
   orderClosed: () => new PaymeError(-31053, msg('Buyurtma bekor qilingan', 'Заказ отменён', 'Order cancelled'), ACCOUNT_FIELD),
   orderMode: () => new PaymeError(-31054, msg('Buyurtma boshqa rejimda yaratilgan', 'Заказ создан в другом режиме', 'Order was created in a different mode'), ACCOUNT_FIELD),
-  studentNotFound: () => new PaymeError(-31055, msg("O'quvchi topilmadi — ID ni tekshiring", 'Ученик не найден — проверьте ID', 'Student not found — check the ID'), STUDENT_FIELD),
-  courseNotFound: () => new PaymeError(-31056, msg("Bu o'quvchi bunday kursda o'qimaydi", 'Ученик не учится на этом курсе', 'Student is not enrolled in this course'), COURSE_FIELD),
+  studentNotFound: (field = STUDENT_FIELD) => new PaymeError(-31055, msg("O'quvchi topilmadi — raqamni tekshiring", 'Ученик не найден — проверьте номер', 'Student not found — check the number'), field),
+  courseNotFound: (field = COURSE_FIELD) => new PaymeError(-31056, msg("Bu o'quvchi bunday kursda o'qimaydi", 'Ученик не учится на этом курсе', 'Student is not enrolled in this course'), field),
   // Buyurtmada boshqa faol tranzaksiya bor. Sandbox ("CreateTransaction с новой
   // транзакцией, состояние счёта «В ожидании оплаты»") -31050..-31099 kutadi —
   // hujjat matnidagi -31008 emas; Payme'ning PHP shablonida ham -31050.
@@ -343,23 +343,32 @@ async function payerInfo(acc) {
 }
 
 /**
- * Payme ilovasi katalogi: account = { student_id, course_id? }.
- * O'quvchi raqami: Student.id. `course_id`: CRM'dagi kurs raqami (Group.id);
- * bir fandagi "Matematika 2-Guruh" va "Matematika 3-Guruh" alohida kurslar,
- * narxi ham alohida. Berilsa o'quvchi aynan shu kursda o'qishi shart;
- * berilmasa va o'quvchi bitta kursda o'qisa, o'sha kurs; bir nechta bo'lsa,
- * "umumiy" to'lov (groupId/courseId null, hamyon qoidasi).
- * Summa — to'lovchi o'zi yozadi: butun so'm, chegaralar ichida.
+ * O'quvchi kodi: "299" (o'quvchi raqami) yoki "299-7" (o'quvchi va kurs raqami;
+ * kurs — CRM'dagi kurs, bazada Group.id). Ajratuvchi: "-", "/" yoki bo'sh joy.
+ * Kod bo'lmasa null. Buyurtma kodi (16 belgi) bunga hech qachon mos kelmaydi.
  */
-async function loadCatalogAccount(db, params, schoolId, settings, amountTiyin) {
-  const rawId = params.account[STUDENT_FIELD];
-  const studentId = typeof rawId === 'number' ? rawId : parseInt(String(rawId).trim(), 10);
-  if (!Number.isInteger(studentId) || studentId <= 0 || studentId > 1e9 || String(rawId).trim() !== String(studentId)) throw ERR.studentNotFound();
+export function parseStudentCode(raw) {
+  const m = /^(\d{1,9})(?:\s*[-\/\s]\s*(\d{1,9}))?$/.exec(String(raw ?? '').trim());
+  if (!m) return null;
+  return { studentId: Number(m[1]), kursId: m[2] ? Number(m[2]) : null };
+}
+
+/**
+ * Payme ilovasida to'lov: to'lovchi o'quvchi raqamini (va ixtiyoriy kurs
+ * raqamini) o'zi yozadi, summani ham o'zi kiritadi (накопительный hisob).
+ * `field` / `courseField` — qiymat qaysi maydondan kelgani: xato `data` si
+ * hujjat bo'yicha aynan shu maydon nomi bo'lishi kerak.
+ * Kurs berilsa o'quvchi aynan shu kursda o'qishi shart; berilmasa va bitta
+ * kursda o'qisa — o'sha kurs; bir nechta bo'lsa — "umumiy" to'lov
+ * (groupId/courseId null, hamyon qoidasi).
+ */
+async function loadCatalogAccount(db, { field, courseField, studentId, kursId }, schoolId, settings, amountTiyin) {
+  if (!Number.isInteger(studentId) || studentId <= 0) throw ERR.studentNotFound(field);
   const student = await db.student.findFirst({
     where: { id: studentId, schoolId, NOT: { status: 'Ochirilgan' } },
     select: { id: true, name: true, groups: { select: { id: true, courseId: true } } },
   });
-  if (!student) throw ERR.studentNotFound();
+  if (!student) throw ERR.studentNotFound(field);
 
   requireInt(amountTiyin, 'amount');
   if (amountTiyin % 100 !== 0) throw ERR.amount();
@@ -367,30 +376,35 @@ async function loadCatalogAccount(db, params, schoolId, settings, amountTiyin) {
   if (amount < MIN_AMOUNT || amount > MAX_AMOUNT) throw ERR.amount();
 
   let group = null;
-  if (hasField(params, COURSE_FIELD)) {
-    const rawC = params.account[COURSE_FIELD];
-    const kursId = typeof rawC === 'number' ? rawC : parseInt(String(rawC).trim(), 10);
-    if (!Number.isInteger(kursId) || String(rawC).trim() !== String(kursId)) throw ERR.courseNotFound();
+  if (kursId !== null) {
     group = student.groups.find(g => g.id === kursId) || null;
-    if (!group) throw ERR.courseNotFound();
+    if (!group) throw ERR.courseNotFound(courseField);
   } else if (student.groups.length === 1) {
     group = student.groups[0];
   }
-  const account = { [STUDENT_FIELD]: String(studentId) };
-  if (group && hasField(params, COURSE_FIELD)) account[COURSE_FIELD] = String(group.id);
   return {
-    kind: 'catalog', student, amount, account,
+    kind: 'catalog', student, amount,
     studentId: student.id, groupId: group?.id ?? null, courseId: group?.courseId ?? null,
     test: settings.paymeMode === 'test',
   };
 }
 
 /**
- * Hisobni aniqlash: `order_id` bo'lsa buyurtma (havola/QR), bo'lmasa
- * `student_id` (Payme ilovasi katalogi). Ikkalasi ham yo'q — buyurtma topilmadi.
+ * Hisobni aniqlash. Payme kassasida bitta majburiy maydon — `order_id`
+ * (Payme maydonni ixtiyoriy qila olmaydi), unga ikki xil qiymat keladi:
+ *   - havola/QR: 16 belgili buyurtma kodi (summa va kurs buyurtmada);
+ *   - Payme ilovasi: ota-ona yozgan o'quvchi kodi "299" yoki "299-7".
+ * Format bilan aniq ajraladi. Kassada alohida `student_id`/`course_id`
+ * maydonlari sozlansa, ular ham qabul qilinadi.
  */
 async function resolveAccount(db, params, schoolId, settings, amountTiyin, now) {
   if (hasField(params, ACCOUNT_FIELD)) {
+    const code = parseStudentCode(params.account[ACCOUNT_FIELD]);
+    if (code) {
+      const acc = await loadCatalogAccount(db, { field: ACCOUNT_FIELD, courseField: ACCOUNT_FIELD, ...code }, schoolId, settings, amountTiyin);
+      acc.account = { [ACCOUNT_FIELD]: code.kursId !== null ? `${code.studentId}-${code.kursId}` : String(code.studentId) };
+      return acc;
+    }
     const orderId = requireOrderId(params);
     const order = await loadPayableOrder(db, orderId, schoolId, settings, amountTiyin, now);
     return {
@@ -398,7 +412,20 @@ async function resolveAccount(db, params, schoolId, settings, amountTiyin, now) 
       studentId: order.studentId, groupId: order.groupId, courseId: order.courseId, test: order.test,
     };
   }
-  if (hasField(params, STUDENT_FIELD)) return loadCatalogAccount(db, params, schoolId, settings, amountTiyin);
+  if (hasField(params, STUDENT_FIELD)) {
+    const rawId = String(params.account[STUDENT_FIELD]).trim();
+    const studentId = /^\d{1,9}$/.test(rawId) ? Number(rawId) : NaN;
+    let kursId = null;
+    if (hasField(params, COURSE_FIELD)) {
+      const rawC = String(params.account[COURSE_FIELD]).trim();
+      if (!/^\d{1,9}$/.test(rawC)) throw ERR.courseNotFound(COURSE_FIELD);
+      kursId = Number(rawC);
+    }
+    const acc = await loadCatalogAccount(db, { field: STUDENT_FIELD, courseField: COURSE_FIELD, studentId, kursId }, schoolId, settings, amountTiyin);
+    acc.account = { [STUDENT_FIELD]: String(acc.studentId) };
+    if (kursId !== null) acc.account[COURSE_FIELD] = String(kursId);
+    return acc;
+  }
   throw ERR.orderNotFound();
 }
 
@@ -462,7 +489,7 @@ export async function handleRpc({ settings, method, params, now = Date.now() }) 
       const time = requireInt(params.time, 'time');
       // Qulf kaliti: buyurtma bo'lsa buyurtma (bitta faol tranzaksiya), aks
       // holda Payme tranzaksiya ID si (takroriy so'rovlar navbatga turadi).
-      const lockKey = hasField(params, ACCOUNT_FIELD) ? requireOrderId(params) : id;
+      const lockKey = hasField(params, ACCOUNT_FIELD) && !parseStudentCode(params.account[ACCOUNT_FIELD]) ? requireOrderId(params) : id;
 
       const result = await prisma.$transaction(async (db) => {
         // Parallel so'rovlar navbatga turadi. Qulf tranzaksiya bilan ochiladi.

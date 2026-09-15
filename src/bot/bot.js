@@ -322,9 +322,9 @@ export const setupBotHandlers = (botInstance, schoolId) => {
                 select: { id: true, name: true, course: { select: { name: true } } },
                 orderBy: { id: 'asc' },
             });
-            msg += `\n🆔 Payme ilovasida to'lash uchun o'quvchi ID: ${student.id}`;
+            msg += `\n\u{1F194} Payme ilovasida to'lov raqami: ${student.id}`;
             if (kurslar.length > 1) {
-                msg += `\n\u{1F4DA} Kurs raqami (qaysi kursga to'layotganingiz): ${kurslar.map(g => `${paymeKursLabel(g)} \u2014 ${g.id}`).join(', ')}`;
+                msg += `\n\u{1F4DA} Aniq kursga to'lash uchun: ${kurslar.map(g => `${paymeKursLabel(g)} — ${student.id}-${g.id}`).join(', ')}`;
             }
             return ctx.reply(msg, Markup.inlineKeyboard([[Markup.button.callback("💳 Payme orqali to'lash", 'payme_start')]]));
         }
