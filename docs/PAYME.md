@@ -65,6 +65,22 @@ Payme kabinetida ikkala maydon ham ixtiyoriy qilib sozlanadi (biri to'ldiriladi)
 Tranzaksiya (`PaymeTransaction`) o'zida `studentId/groupId/courseId/test/account`
 saqlaydi — Perform/Cancel buyurtmaga qaramaydi.
 
+## Jamg'armali sxema: student_id + course_id (Payme tavsiyasi, 2026-09-15)
+
+Payme integratsiya jamoasi taklif qilgan sxema. Sozlamalar > Payme > "Kassadagi hisob
+maydonlari" = `student` (`Setting.paymeScheme`, sukut `order`).
+
+- Kassa: hisob turi jamg'armali, maydonlar `student_id` (o'quvchi ID si) va `course_id`
+  (CRM'dagi kurs raqami = Group.id, Payme ilovasida dropdown). Narx fiksirlanmaydi.
+- Payme ilovasi: ota-ona ID yozadi, kursni tanlaydi, summani kiritadi.
+- Bot va CRM havolasi: `orderUrl` `ac.student_id` + `ac.course_id` yuboradi (order_id emas).
+  Buyurtma yozuvi baribir yaratiladi; tranzaksiya kelganda `resolveAccount` shu o'quvchi,
+  kurs, summa va test belgisi bo'yicha eng eski ochiq buyurtmani topib unga bog'laydi.
+  Shuning uchun /pay sahifasi va so'ragan chatga Telegram xabari o'zgarmaydi.
+- `createOrder` bu sxemada kurssiz havola yaratmaydi (kassada course_id majburiy).
+- Perform buyurtmani faqat `status = 'new'` bo'lsa `paid` qiladi: bitta buyurtmaga ikki
+  tranzaksiya bog'lansa, birinchi to'lov yozuvi ustidan yozilmaydi.
+
 ## Metodlar
 
 `CheckPerformTransaction`, `CreateTransaction`, `PerformTransaction`,

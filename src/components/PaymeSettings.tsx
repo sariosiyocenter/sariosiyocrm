@@ -50,7 +50,7 @@ export default function PaymeSettings() {
         paymeMerchantId: settings.paymeMerchantId || '',
         paymeKey: '',
         paymeTestKey: '',
-        paymeMode: settings.paymeMode || 'off',
+        paymeMode: settings.paymeMode || 'off', paymeScheme: settings.paymeScheme || 'order',
         paymeAllowRefund: settings.paymeAllowRefund ?? true,
         paymeIpCheck: settings.paymeIpCheck ?? true,
         paymeMxik: settings.paymeMxik || '',
@@ -66,7 +66,7 @@ export default function PaymeSettings() {
         setForm(f => ({
             ...f,
             paymeMerchantId: settings.paymeMerchantId || '',
-            paymeMode: settings.paymeMode || 'off',
+            paymeMode: settings.paymeMode || 'off', paymeScheme: settings.paymeScheme || 'order',
             paymeAllowRefund: settings.paymeAllowRefund ?? true,
             paymeIpCheck: settings.paymeIpCheck ?? true,
             paymeMxik: settings.paymeMxik || '',
@@ -208,6 +208,16 @@ export default function PaymeSettings() {
                         <input type="password" placeholder={settings.paymeTestKeySet ? "•••••••• (o'zgartirish uchun yangisini yozing)" : 'Sandbox uchun'} className={inp}
                             value={form.paymeTestKey} onChange={e => setForm(f => ({ ...f, paymeTestKey: e.target.value }))} autoComplete="new-password" />
                     </div>
+                    <div className="sm:col-span-2">
+                        <label className={lbl}>Kassadagi hisob maydonlari</label>
+                        <select className={inp} value={form.paymeScheme} onChange={e => setForm(f => ({ ...f, paymeScheme: e.target.value as any }))}>
+                            <option value="order">Buyurtma kodi: order_id</option>
+                            <option value="student">O'quvchi ID + kurs: student_id, course_id (jamg'armali)</option>
+                        </select>
+                        <p className="text-[10px] font-bold text-matn-xira mt-2 ml-1">
+                            Payme kassani qaysi maydonlar bilan sozlagan bo'lsa, shuni tanlang. Bot va CRM yaratgan havolalar shu maydonlar bilan ketadi.
+                        </p>
+                    </div>
                 </div>
                 <p className="text-[10px] font-bold text-matn-xira ml-1">
                     Kalitlar shifrlangan holda saqlanadi va bu sahifaga qaytib chiqmaydi. Test rejimda faqat test kaliti, jonlida faqat jonli kalit qabul qilinadi.
@@ -263,7 +273,11 @@ export default function PaymeSettings() {
                 <p>3. <a href="https://test.paycom.uz" target="_blank" rel="noopener noreferrer" className="text-brand underline inline-flex items-center gap-1">Sandbox <ExternalLink size={10} /></a> da webhook manzili va test kaliti bilan avtomatik testlarni o'tkazing (buyurtma ID sini o'quvchi kartochkasidan "Payme havola" orqali oling).</p>
                 <p>4. Testlar o'tgach rejimni "Jonli" qiling — botda "Payme orqali to'lash" tugmasi paydo bo'ladi.</p>
                 <p className="text-xs font-black text-matn pt-2">Payme ilovasi katalogi</p>
-                <p>Kassa Payme ilovasida chiqsa, ota-ona o'sha <span className="font-mono text-matn">order_id</span> maydoniga o'quvchi raqamini (kartochkadagi №, masalan <span className="font-mono text-matn">299</span>) yoki aniq kurs uchun <span className="font-mono text-matn">299-7</span> ni yozadi va summani o'zi kiritadi. Havola va QR shu maydonga 16 belgili buyurtma kodini qo'yadi — server ikkalasini o'zi ajratadi. Kurs ko'rsatilmasa: bitta kursda o'qisa o'sha kursga, bir nechtada "umumiy". Ota-ona o'z kodlarini botdagi balans xabarida ko'radi. Kurs raqamlari:</p>
+                {form.paymeScheme === 'student' ? (
+                    <p>Payme ilovasida ota-ona o'quvchi ID sini (kartochkadagi raqam, masalan <span className="font-mono text-matn">299</span>) yozadi, kursni ro'yxatdan tanlaydi (<span className="font-mono text-matn">course_id</span>) va summani o'zi kiritadi. Bot va CRM havolasi ham shu ikki maydon bilan ketadi, to'lov kelganda server uni havola buyurtmasiga o'zi bog'laydi. Yangi kurs ochilsa, uni Payme'dagi ro'yxatga ham qo'shtiring. Kurs raqamlari:</p>
+                ) : (
+                    <p>Kassa Payme ilovasida chiqsa, ota-ona o'sha <span className="font-mono text-matn">order_id</span> maydoniga o'quvchi raqamini (kartochkadagi №, masalan <span className="font-mono text-matn">299</span>) yoki aniq kurs uchun <span className="font-mono text-matn">299-7</span> ni yozadi va summani o'zi kiritadi. Havola va QR shu maydonga 16 belgili buyurtma kodini qo'yadi — server ikkalasini o'zi ajratadi. Kurs ko'rsatilmasa: bitta kursda o'qisa o'sha kursga, bir nechtada "umumiy". Ota-ona o'z kodlarini botdagi balans xabarida ko'radi. Kurs raqamlari:</p>
+                )}
                 <p className="font-mono text-[10px] text-matn break-words">{groups.filter(g => courses.some(c => c.id === g.courseId && c.schoolId === selectedSchoolId)).map(g => { const fan = courses.find(c => c.id === g.courseId)?.name || ''; const nom = fan && !g.name.toLowerCase().includes(fan.toLowerCase()) ? `${fan} (${g.name})` : g.name; return `${g.id} — ${nom}`; }).join(' · ') || '—'}</p>
             </div>
 

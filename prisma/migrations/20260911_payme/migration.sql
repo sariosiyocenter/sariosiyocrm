@@ -96,3 +96,6 @@ UPDATE "PaymeTransaction" t SET "studentId" = o."studentId", "groupId" = o."grou
   "account" = jsonb_build_object('order_id', o."id")
   FROM "PaymeOrder" o WHERE t."orderId" = o."id" AND t."studentId" IS NULL;
 CREATE INDEX IF NOT EXISTS "PaymeTransaction_studentId_idx" ON "PaymeTransaction"("studentId");
+
+-- Kassa hisob maydonlari sxemasi: order (order_id) | student (student_id + course_id).
+ALTER TABLE "Setting" ADD COLUMN IF NOT EXISTS "paymeScheme" TEXT NOT NULL DEFAULT 'order';

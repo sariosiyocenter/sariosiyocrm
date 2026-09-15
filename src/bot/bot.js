@@ -322,9 +322,14 @@ export const setupBotHandlers = (botInstance, schoolId) => {
                 select: { id: true, name: true, course: { select: { name: true } } },
                 orderBy: { id: 'asc' },
             });
-            msg += `\n\u{1F194} Payme ilovasida to'lov raqami: ${student.id}`;
-            if (kurslar.length > 1) {
-                msg += `\n\u{1F4DA} Aniq kursga to'lash uchun: ${kurslar.map(g => `${paymeKursLabel(g)} — ${student.id}-${g.id}`).join(', ')}`;
+            if (paymeSettings.paymeScheme === 'student') {
+                msg += `\n\u{1F194} Payme ilovasida o'quvchi ID: ${student.id}`;
+                if (kurslar.length) msg += `\n\u{1F4DA} Kurs (ro'yxatdan tanlanadi): ${kurslar.map(g => paymeKursLabel(g)).join(', ')}`;
+            } else {
+                msg += `\n\u{1F194} Payme ilovasida to'lov raqami: ${student.id}`;
+                if (kurslar.length > 1) {
+                    msg += `\n\u{1F4DA} Aniq kursga to'lash uchun: ${kurslar.map(g => `${paymeKursLabel(g)} — ${student.id}-${g.id}`).join(', ')}`;
+                }
             }
             return ctx.reply(msg, Markup.inlineKeyboard([[Markup.button.callback("💳 Payme orqali to'lash", 'payme_start')]]));
         }

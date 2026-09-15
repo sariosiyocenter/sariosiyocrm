@@ -42,6 +42,9 @@ export const ORDER_TTL_MS = 7 * 24 * 3600_000; // havola shuncha amal qiladi
 export const MIN_AMOUNT = 1_000;               // so'm
 export const MAX_AMOUNT = 50_000_000;          // so'm — xato kiritishdan himoya
 export const MODES = ['off', 'test', 'live'];
+// Kassa hisob maydonlari: 'order' — order_id (buyurtma kodi, bir martalik);
+// 'student' — jamg'armali hisob, student_id + course_id (Payme tavsiyasi).
+export const SCHEMES = ['order', 'student'];
 // developer.help.paycom.uz → "Песочница": chek yuborish manzili sandbox uchun
 // https://test.paycom.uz, jonli uchun https://checkout.paycom.uz.
 export const CHECKOUT_HOST = { live: 'https://checkout.paycom.uz', test: 'https://test.paycom.uz' };
@@ -127,9 +130,10 @@ export function generateEndpointToken() {
  *   m — merchant ID, ac.order_id — buyurtma, a — summa (tiyin), l — til,
  *   c — to'lovdan keyin qaytish manzili, ct — qaytishgacha kutish (ms).
  */
-export function checkoutUrl({ merchantId, mode, orderId, amount, returnUrl }) {
+export function checkoutUrl({ merchantId, mode, orderId, account, amount, returnUrl }) {
   const host = CHECKOUT_HOST[mode === 'test' ? 'test' : 'live'];
-  const parts = [`m=${merchantId}`, `ac.${ACCOUNT_FIELD}=${orderId}`, `a=${amount * 100}`, 'l=uz'];
+  const acc = account || { [ACCOUNT_FIELD]: orderId };
+  const parts = [`m=${merchantId}`, ...Object.entries(acc).map(([k, v]) => `ac.${k}=${v}`), `a=${amount * 100}`, 'l=uz'];
   if (returnUrl) parts.push(`c=${returnUrl}`, 'ct=15000');
   return `${host}/${Buffer.from(parts.join(';'), 'utf8').toString('base64')}`;
 }
@@ -228,6 +232,9 @@ export async function createOrder({ schoolId, studentId, groupId, amount, source
   } else if (student.groups.length) {
     return { error: 'Qaysi kurs uchun ekanini tanlang' };
   }
+  if (settings.paymeScheme === 'student' && !group) {
+    return { error: "Payme uchun kurs kerak — o'quvchi hech bir kursda emas" };
+  }
 
   const order = await prisma.paymeOrder.create({
     data: {
@@ -249,10 +256,15 @@ export async function createOrder({ schoolId, studentId, groupId, amount, source
 }
 
 export function orderUrl(settings, order, returnBase = '') {
+  // 'student' sxemasida kassa order_id ni bilmaydi: havola o'quvchi va kurs
+  // raqamini yuboradi, tranzaksiya kelganda buyurtmaga server o'zi bog'laydi.
+  const account = settings.paymeScheme === 'student' && order.groupId
+    ? { [STUDENT_FIELD]: order.studentId, [COURSE_FIELD]: order.groupId }
+    : { [ACCOUNT_FIELD]: order.id };
   return checkoutUrl({
     merchantId: settings.paymeMerchantId,
     mode: settings.paymeMode,
-    orderId: order.id,
+    account,
     amount: order.amount,
     returnUrl: returnBase ? `${returnBase}/pay/${order.id}` : '',
   });
@@ -424,6 +436,16 @@ async function resolveAccount(db, params, schoolId, settings, amountTiyin, now) 
     const acc = await loadCatalogAccount(db, { field: STUDENT_FIELD, courseField: COURSE_FIELD, studentId, kursId }, schoolId, settings, amountTiyin);
     acc.account = { [STUDENT_FIELD]: String(acc.studentId) };
     if (kursId !== null) acc.account[COURSE_FIELD] = String(kursId);
+    // Botdan yoki CRM'dan yaratilgan havola ('student' sxemasi): shu o'quvchi,
+    // kurs va summa bo'yicha ochiq buyurtma bo'lsa, tranzaksiya unga bog'lanadi —
+    // /pay sahifasi va so'ragan chatga xabar avvalgidek ishlaydi.
+    if (acc.groupId) {
+      const match = await db.paymeOrder.findFirst({
+        where: { schoolId, studentId: acc.studentId, groupId: acc.groupId, amount: acc.amount, status: 'new', test: acc.test, expiresAt: { gt: new Date(now) } },
+        orderBy: { createdAt: 'asc' },
+      });
+      if (match) acc.order = match;
+    }
     return acc;
   }
   throw ERR.orderNotFound();
@@ -575,7 +597,9 @@ export async function handleRpc({ settings, method, params, now = Date.now() }) 
           await db.student.update({ where: { id: tx.studentId }, data: { balance: { increment: tx.amount } } });
           paymentId = payment.id;
         }
-        if (tx.orderId) await db.paymeOrder.update({ where: { id: tx.orderId }, data: { status: 'paid', paymentId } });
+        // updateMany + status 'new': jamg'armali hisobda bitta buyurtmaga ikki
+        // tranzaksiya bog'lanib qolsa, birinchi to'lov yozuvi ustidan yozilmaydi.
+        if (tx.orderId) await db.paymeOrder.updateMany({ where: { id: tx.orderId, status: 'new' }, data: { status: 'paid', paymentId } });
         await db.paymeTransaction.update({ where: { id: tx.id }, data: { paymentId } });
         return {
           result: { transaction: String(tx.id), perform_time: now, state: STATE.PERFORMED },

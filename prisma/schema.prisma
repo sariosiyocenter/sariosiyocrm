@@ -581,6 +581,9 @@ model Setting {
   paymeKey           String?
   paymeTestKey       String?
   paymeMode          String   @default("off")
+  // Kassa hisob maydonlari: "order" = order_id (buyurtma kodi); "student" =
+  // jamgarmali hisob, student_id + course_id (Payme tavsiyasi, 2026-09-15).
+  paymeScheme        String   @default("order")
   // Webhook manzilining maxfiy qismi: /api/payme/<token>. Tasodifiy (192 bit),
   // taxmin qilib bo'lmaydi; almashtirilsa Payme kabinetida ham yangilanadi.
   // @unique emas — Vercel'dagi `prisma db push` unique qo'shishda "data loss"

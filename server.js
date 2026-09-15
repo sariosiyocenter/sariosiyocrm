@@ -6,7 +6,7 @@ import prisma from './lib/prisma.js';
 import { JWT_SECRET, TOKEN_TTL, attendanceWindowStart, redactBody, isAdmin, stripSettingSecrets, hidePaymeSecrets, cronRequestRejected } from './lib/config.js';
 import { registerPaymeRoutes } from './routes/payme.js';
 import { webhookSecretOk, registerSchoolWebhook, selfHealWebhook } from './lib/telegramWebhook.js';
-import { MODES as PAYME_MODES, generateEndpointToken as generatePaymeEndpointToken } from './services/payme.js';
+import { MODES as PAYME_MODES, SCHEMES as PAYME_SCHEMES, generateEndpointToken as generatePaymeEndpointToken } from './services/payme.js';
 import { authenticate, requireRole, STAFF_MANAGERS, canAccessSchool, allowedSchoolIds, ALL_BRANCHES } from './middleware/auth.js';
 import { encryptSecret, decryptSecret, secretsEncryptionEnabled } from './lib/secrets.js';
 import { claimBillingRun, releaseBillingRun, processMonthlyBilling } from './services/billing.js';
@@ -3853,6 +3853,9 @@ app.put('/api/settings', authenticate, async (req, res, next) => {
       if (data[key] !== undefined) data[key] = encryptSecret(String(data[key]).trim());
     }
     if (data.paymeMerchantId !== undefined) data.paymeMerchantId = String(data.paymeMerchantId || '').trim() || null;
+    if (data.paymeScheme !== undefined && !PAYME_SCHEMES.includes(data.paymeScheme)) {
+      return res.status(400).json({ error: "Payme hisob maydonlari sxemasi noto'g'ri" });
+    }
     if (data.paymeMode !== undefined && !PAYME_MODES.includes(data.paymeMode)) {
       return res.status(400).json({ error: "Payme rejimi noto'g'ri" });
     }

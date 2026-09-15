@@ -428,6 +428,8 @@ export interface CRMState {
         /** Serverda SETTINGS_KEY bormi — bo'lmasa kalitlar saqlanmaydi. */
         settingsEncryption?: boolean;
         paymeMode?: 'off' | 'test' | 'live';
+        /** Kassa hisob maydonlari: order_id yoki student_id + course_id. */
+        paymeScheme?: 'order' | 'student';
         paymeEndpointToken?: string | null;
         paymeAllowRefund?: boolean;
         paymeIpCheck?: boolean;
