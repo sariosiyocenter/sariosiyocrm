@@ -39,13 +39,14 @@ export default function Finance() {
     const { students, payments, expenses, addPayment, addExpense, deleteExpense, groups, courses, token, selectedSchoolId, teachers, settings, showNotification } = useCRM();
     const confirm = useConfirm();
 
-    // HR users (staff list for salary expense)
+    // HR users (staff list for salary expense) — faqat tanlangan filial xodimlari.
     const [hrUsers, setHrUsers] = useState<any[]>([]);
     useEffect(() => {
         if (!token) return;
-        fetch('/api/users', { headers: { Authorization: `Bearer ${token}` } })
+        const branch = selectedSchoolId === null || selectedSchoolId === undefined ? '' : `?schoolId=${selectedSchoolId}`;
+        fetch(`/api/users${branch}`, { headers: { Authorization: `Bearer ${token}` } })
             .then(r => r.json()).then(d => setHrUsers(Array.isArray(d) ? d : [])).catch(() => {});
-    }, [token]);
+    }, [token, selectedSchoolId]);
     const { t } = useLang();
     const navigate = useNavigate();
 

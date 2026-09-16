@@ -8,7 +8,7 @@ import { useConfirm } from './ConfirmDialog';
 import {
     Users, Calendar, Clock, BookOpen, Plus,
     XCircle, ArrowLeft, Search, ClipboardCheck, ChevronRight, Presentation, Check, Sparkles,
-    CreditCard, DollarSign, Wallet, Trash2, Send, Pencil
+    CreditCard, DollarSign, Wallet, Trash2, Send, Pencil, Printer
 } from 'lucide-react';
 import AttendanceMatrix from './AttendanceMatrix';
 import GroupAttendanceCalendar from './GroupAttendanceCalendar';
@@ -440,21 +440,30 @@ export default function CourseDetails() {
                     <ArrowLeft size={14} className="group-hover:-translate-x-1 transition-transform" />
                     Orqaga
                 </button>
-                <button
-                    onClick={async () => {
-                        if (!await confirm(`"${group.name}" guruhini o'chirishni tasdiqlaysizmi? Bu amalni ortga qaytarib bo'lmaydi.`)) return;
-                        try {
-                            await deleteGroup(group.id);
-                            navigate('/courses');
-                        } catch {
-                            showNotification("Guruhni o'chirishda xatolik yuz berdi", "error");
-                        }
-                    }}
-                    className="flex items-center gap-1.5 px-3 py-1.5 text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/20 rounded-xl transition-all text-[11px] font-extrabold cursor-pointer"
-                >
-                    <Trash2 size={13} />
-                    Guruhni o'chirish
-                </button>
+                <div className="flex items-center gap-1">
+                    <button
+                        onClick={() => navigate(`/daily?kurs=${group.id}`)}
+                        className="flex items-center gap-1.5 px-3 py-1.5 text-matn-sokin hover:text-brand hover:bg-ichki rounded-xl transition-all text-[11px] font-extrabold cursor-pointer"
+                    >
+                        <Printer size={13} />
+                        Kunlik ro'yxat
+                    </button>
+                    <button
+                        onClick={async () => {
+                            if (!await confirm(`"${group.name}" guruhini o'chirishni tasdiqlaysizmi? Bu amalni ortga qaytarib bo'lmaydi.`)) return;
+                            try {
+                                await deleteGroup(group.id);
+                                navigate('/courses');
+                            } catch {
+                                showNotification("Guruhni o'chirishda xatolik yuz berdi", "error");
+                            }
+                        }}
+                        className="flex items-center gap-1.5 px-3 py-1.5 text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/20 rounded-xl transition-all text-[11px] font-extrabold cursor-pointer"
+                    >
+                        <Trash2 size={13} />
+                        Guruhni o'chirish
+                    </button>
+                </div>
             </div>
 
             <div className="bg-sirt rounded-2xl border border-chiziq shadow-sm overflow-hidden">

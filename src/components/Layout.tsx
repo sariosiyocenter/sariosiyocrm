@@ -2,7 +2,8 @@ import React, { useState } from 'react';
 import {
   Users, GraduationCap, Target, Settings,
   LayoutDashboard, Wallet, Search, Sun, Moon, LogOut, X, ChevronRight, User, MapPin,
-  CheckCircle2, AlertCircle, AlertTriangle, Info, Menu, BarChart3, Bus, FileText, Shield, Atom, Users2, Globe, BookOpen, MessageSquare
+  CheckCircle2, AlertCircle, AlertTriangle, Info, Menu, BarChart3, Bus, FileText, Shield, Atom, Users2, Globe, BookOpen, MessageSquare,
+  Printer, History
 } from 'lucide-react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useCRM } from '../context/CRMContext';
@@ -45,12 +46,15 @@ export default function Layout({ children, onLogout }: LayoutProps) {
     { label: t('nav_leads'),     icon: Target,          path: '/leads' },
     { label: t('nav_groups'),    icon: Users,           path: '/courses' },
     { label: t('nav_students'),  icon: User,            path: '/students' },
+    { label: t('nav_daily'),     icon: Printer,         path: '/daily' },
     { label: t('nav_syllabus'),  icon: BookOpen,        path: '/syllabus' },
     { label: t('nav_finance'),   icon: Wallet,          path: '/finance' },
     { label: t('nav_logistics'), icon: Bus,             path: '/logistics' },
     { label: t('nav_exams'),     icon: FileText,        path: '/exams' },
     { label: t('nav_messaging'), icon: MessageSquare,   path: '/messaging' },
     { label: t('nav_hr'),        icon: Users2,          path: '/hr' },
+    // Jurnal — rahbarning nazorat vositasi, faqat ADMIN'ga.
+    ...(user?.role === 'ADMIN' ? [{ label: t('nav_journal'), icon: History, path: '/journal' }] : []),
     { label: t('nav_settings'),  icon: Settings,        path: '/settings' },
   ];
 
@@ -162,8 +166,15 @@ export default function Layout({ children, onLogout }: LayoutProps) {
               <span className="text-[11px] font-medium text-slate-400 dark:text-slate-500">O'quv markazi CRM</span>
             </div>
 
+            {/* Filial xodimi faqat o'z filialida ishlaydi — tanlagich o'rniga nomi. */}
+            {user?.role !== 'SUPERADMIN' && user?.role !== 'SELLER' && user?.role !== 'ADMIN' && schools.length > 0 && (
+              <div className="hidden lg:flex items-center gap-2 pl-4 border-l border-slate-200 dark:border-slate-700 text-xs font-semibold text-matn-sokin">
+                <MapPin className="w-3.5 h-3.5 text-slate-400" />
+                {schools.find(s => s.id === user?.schoolId)?.name || schools[0]?.name}
+              </div>
+            )}
             {/* Branch selector */}
-            {user?.role !== 'SUPERADMIN' && user?.role !== 'SELLER' && (
+            {user?.role === 'ADMIN' && (
               <div className="hidden lg:flex items-center pl-4 border-l border-slate-200 dark:border-slate-700">
                 <div className="relative">
                   <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400" />

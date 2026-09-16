@@ -14,10 +14,22 @@ export function requestedSchoolId(req) {
   return isNaN(id) ? null : id;
 }
 
-// Which schools this user may touch. Staff may move between branches of their own
-// organization (the branch switcher in the UI), but never into another customer's data.
+// Filiallar orasida yuradigan rol. Egasi (2026-09-16) "Faqat o'z filiali"ni tanladi:
+// filial almashtirish, "To'liq o'quv markazi" va boshqa filial xodimlarini boshqarish
+// faqat ADMIN'da. Menejer, resepshn, o'qituvchi faqat o'z filialida ishlaydi — ilgari
+// Langar filiali menejeri tanlagichdan asosiy filialning to'lovlarini ham ochardi.
+export const ORG_WIDE_ROLES = ['ADMIN'];
+
+export function isOrgWide(user) {
+  return ORG_WIDE_ROLES.includes(user?.role);
+}
+
+// Which schools this user may touch. An ADMIN may move between branches of their own
+// organization (the branch switcher in the UI); everyone else stays in their own branch,
+// and nobody ever reaches another customer's data.
 export async function allowedSchoolIds(user) {
   if (!user?.schoolId) return [];
+  if (!isOrgWide(user)) return [user.schoolId];
   const own = await prisma.school.findUnique({
     where: { id: user.schoolId },
     select: { organizationId: true }
@@ -39,9 +51,38 @@ export const ALL_BRANCHES = 0;
 export async function canAccessSchool(user, schoolId) {
   if (CROSS_SCHOOL_ROLES.includes(user?.role)) return true;
   if (schoolId === null) return true;              // request is not school-scoped
-  if (schoolId === ALL_BRANCHES) return true;      // "all my branches", not one branch
+  if (schoolId === ALL_BRANCHES) return true;      // "all my branches" — handlers narrow it via allowedSchoolIds
   if (user?.schoolId === schoolId) return true;    // own branch — no lookup needed
+  if (!isOrgWide(user)) return false;              // branch staff never leave their branch
   return (await allowedSchoolIds(user)).includes(schoolId);
+}
+
+// Token 90 kun yashaydi, xodimning filiali, roli va holati esa bu orada o'zgaradi:
+// boshqa filialga o'tkaziladi, arxivga olinadi. Filial chegarasi tokendagi eski
+// qiymatga emas, bazadagi joriy qiymatga tayanishi kerak — aks holda arxivdagi xodim
+// 90 kun ichida bemalol kirib yuraverardi. Har so'rovda bazaga bormaslik uchun qisqa kesh.
+const USER_TTL_MS = 30 * 1000;
+const userCache = new Map();
+
+/** Xodim yozuvi o'zgarganda (tahrir, arxiv, o'chirish) keshdan olib tashlanadi. */
+export function forgetUser(id) {
+  userCache.delete(Number(id));
+}
+
+async function freshUser(payload) {
+  // SUPERADMIN bazada saqlanmaydi (id 0).
+  if (payload?.role === 'SUPERADMIN' || !Number.isInteger(payload?.id) || payload.id <= 0) return payload;
+  const hit = userCache.get(payload.id);
+  let row = hit && Date.now() - hit.at < USER_TTL_MS ? hit.row : undefined;
+  if (row === undefined) {
+    row = await prisma.user.findUnique({
+      where: { id: payload.id },
+      select: { role: true, schoolId: true, status: true, name: true }
+    });
+    userCache.set(payload.id, { at: Date.now(), row: row || null });
+  }
+  if (!row || row.status === 'Arxiv') return null;
+  return { ...payload, role: row.role, schoolId: row.schoolId, name: row.name };
 }
 
 // Routes addressed by record id (/api/students/42) carry no schoolId, so the tenancy
@@ -86,24 +127,30 @@ export const authenticate = (req, res, next) => {
 
   if (!token) return res.status(401).json({ error: 'Token required' });
 
-  jwt.verify(token, JWT_SECRET, async (err, user) => {
+  jwt.verify(token, JWT_SECRET, async (err, payload) => {
     if (err) return res.status(403).json({ error: 'Invalid token' });
 
     // Tokens issued before sessions had an expiry never run out on their own.
     // Rejecting them once sends those users back through login for a fresh 90-day token.
-    if (!user?.exp) {
+    if (!payload?.exp) {
       return res.status(401).json({ error: 'Sessiya eskirgan, qaytadan kiring' });
     }
 
-    // Haydovchi uchun web CRM yopiq (u faqat Telegram botda ishlaydi).
-    // Login ham rad etadi; bu — ilgari berilgan token bilan kirishning oldini
-    // oladi.
-    if (user?.role === 'DRIVER') {
-      return res.status(403).json({ error: "Haydovchilar Telegram bot orqali ishlaydi" });
-    }
-
-    req.user = user;
     try {
+      // O'chirilgan yoki arxivga olingan xodimning tokeni endi ishlamaydi.
+      const user = await freshUser(payload);
+      if (!user) {
+        return res.status(401).json({ error: 'Hisobingiz faol emas, administrator bilan bog\'laning' });
+      }
+
+      // Haydovchi uchun web CRM yopiq (u faqat Telegram botda ishlaydi).
+      // Login ham rad etadi; bu — ilgari berilgan token bilan kirishning oldini
+      // oladi.
+      if (user.role === 'DRIVER') {
+        return res.status(403).json({ error: "Haydovchilar Telegram bot orqali ishlaydi" });
+      }
+
+      req.user = user;
       const wanted = requestedSchoolId(req);
       if (!(await canAccessSchool(user, wanted))) {
         return res.status(403).json({ error: 'Bu filial ma\'lumotlariga ruxsatingiz yo\'q' });

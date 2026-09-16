@@ -349,10 +349,8 @@ export const CRMProvider: React.FC<{ children: React.ReactNode }> = ({ children 
                     headers: { 'Authorization': `Bearer ${currentToken}` }
                 });
                 if (schoolsRes.status === 401 || schoolsRes.status === 403) { logout(); return; }
-                let schools: School[] = await schoolsRes.json();
-                if (activeRole === 'MANAGER') {
-                    schools = schools.filter(s => s.id === (overrideSchoolId ?? state.selectedSchoolId));
-                }
+                // Server filial xodimiga faqat o'z filialini qaytaradi.
+                const schools: School[] = await schoolsRes.json();
                 schoolIdToUse = schools[0]?.id ?? null;
                 if (schoolIdToUse) setSelectedSchoolId(schoolIdToUse);
             }
@@ -437,7 +435,11 @@ export const CRMProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             const predictedRole = decoded?.role;
             // The branch the user last chose wins over the one baked into the token —
             // otherwise the switcher resets to the home branch on every reload.
-            const savedBranch = storedBranchId();
+            // Faqat ADMIN filial almashtiradi: filial xodimining brauzerida eski tanlov
+            // (masalan boshqa filial) qolgan bo'lsa, server uni rad etadi va sessiya
+            // yopilib qolardi — shuning uchun ularda doim o'z filiali.
+            const orgWide = predictedRole === 'ADMIN';
+            const savedBranch = orgWide ? storedBranchId() : null;
             const predictedSchoolId = savedBranch !== null ? savedBranch : decoded?.schoolId;
             const headers = { 'Authorization': `Bearer ${token}` };
 

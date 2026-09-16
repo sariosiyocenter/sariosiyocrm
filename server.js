@@ -5,9 +5,11 @@ import { dirname, join } from 'path';
 import prisma from './lib/prisma.js';
 import { JWT_SECRET, TOKEN_TTL, attendanceWindowStart, redactBody, isAdmin, stripSettingSecrets, hidePaymeSecrets, cronRequestRejected } from './lib/config.js';
 import { registerPaymeRoutes } from './routes/payme.js';
+import { registerAuditRoutes } from './routes/audit.js';
+import { auditMiddleware } from './lib/audit.js';
 import { webhookSecretOk, registerSchoolWebhook, selfHealWebhook } from './lib/telegramWebhook.js';
 import { MODES as PAYME_MODES, SCHEMES as PAYME_SCHEMES, generateEndpointToken as generatePaymeEndpointToken } from './services/payme.js';
-import { authenticate, requireRole, STAFF_MANAGERS, canAccessSchool, allowedSchoolIds, ALL_BRANCHES } from './middleware/auth.js';
+import { authenticate, requireRole, STAFF_MANAGERS, canAccessSchool, allowedSchoolIds, ALL_BRANCHES, isOrgWide, forgetUser } from './middleware/auth.js';
 import { encryptSecret, decryptSecret, secretsEncryptionEnabled } from './lib/secrets.js';
 import { claimBillingRun, releaseBillingRun, processMonthlyBilling } from './services/billing.js';
 import jwt from 'jsonwebtoken';
@@ -84,6 +86,10 @@ app.use(helmet({
 
 app.use(express.json({ limit: '3mb' }));
 app.use(express.urlencoded({ limit: '3mb', extended: true }));
+
+// Amallar jurnali: kim nimani kiritdi, o'zgartirdi, o'chirdi (lib/audit.js).
+// Marshrutlardan oldin turadi — o'zgartirishdan avvalgi holatni o'qishi kerak.
+app.use(auditMiddleware);
 
 // Brute-force guard: the login route was previously unlimited.
 const loginLimiter = rateLimit({
@@ -466,13 +472,19 @@ app.get('/api/users', authenticate, async (req, res, next) => {
       return res.status(403).json({ error: 'Ruhsat yo' });
     }
 
-    const { schoolId } = req.query;
-    let where = {};
-
-    if (req.user.role === 'MANAGER') {
-      where = { schoolId: req.user.schoolId, role: { not: 'ADMIN' } };
-    } else if (schoolId && !isNaN(parseInt(schoolId))) {
-      where = { schoolId: parseInt(schoolId) };
+    // Har filialning xodimlari alohida. Ilgari ADMIN uchun `where` bo'sh qolardi va
+    // ro'yxatga bazadagi BARCHA xodimlar — boshqa filiallarniki ham — tushardi; filial
+    // almashtirilganda ham ro'yxat o'zgarmasdi.
+    const wanted = parseInt(req.query.schoolId);
+    let where;
+    if (req.user.role === 'SUPERADMIN') {
+      where = wanted > 0 ? { schoolId: wanted } : {};
+    } else if (req.user.role === 'MANAGER') {
+      where = { schoolId: req.user.schoolId ?? -1, role: { not: 'ADMIN' } };
+    } else {
+      // ADMIN: tanlangan filial (ruxsat authenticate'da tekshirilgan) yoki 0 /
+      // ko'rsatilmagan — tashkilotning barcha filiallari.
+      where = { schoolId: { in: wanted > 0 ? [wanted] : await allowedSchoolIds(req.user) } };
     }
 
     // teacherProfile ham qaytadi: HR ro'yxatidagi "Guruh" va "Haftalik yuklama"
@@ -514,10 +526,25 @@ app.post('/api/users', authenticate, async (req, res, next) => {
     if (!email) return res.status(400).json({ error: 'Email majburiy' });
     if (!password) return res.status(400).json({ error: 'Parol majburiy' });
 
-    const hashedPassword = await bcrypt.hash(password, 10);
-    const targetSchoolId = req.user.role === 'MANAGER' ? req.user.schoolId : (schoolId ? parseInt(schoolId) : null);
+    // Xodim aniq bitta filialda ishlaydi. Ilgari "To'liq o'quv markazi" tanlangan
+    // holda qo'shilgan xodim (schoolId 0) filialsiz yozilib qolardi: hech bir
+    // filial ro'yxatida chiqmas, tahrirlashda esa "boshqa filialga tegishli" derdi.
+    let targetSchoolId;
+    if (req.user.role === 'MANAGER') {
+      targetSchoolId = req.user.schoolId;
+    } else if (req.user.role === 'SUPERADMIN') {
+      targetSchoolId = schoolId ? parseInt(schoolId) : null;
+      if (isNaN(targetSchoolId) && targetSchoolId !== null) return res.status(400).json({ error: 'Invalid schoolId' });
+    } else {
+      const wanted = parseInt(schoolId);
+      if (!(wanted > 0)) return res.status(400).json({ error: 'Xodim qaysi filialda ishlashini tanlang' });
+      if (!(await allowedSchoolIds(req.user)).includes(wanted)) {
+        return res.status(403).json({ error: 'Bu filialga xodim qo\'sha olmaysiz' });
+      }
+      targetSchoolId = wanted;
+    }
 
-    if (isNaN(targetSchoolId) && targetSchoolId !== null) return res.status(400).json({ error: 'Invalid schoolId' });
+    const hashedPassword = await bcrypt.hash(password, 10);
 
     let user;
     try {
@@ -585,10 +612,15 @@ async function xodimAmaliTekshir(req, targetId) {
 
   const isSuper = req.user.role === 'SUPERADMIN';
 
-  // Filial chegarasi. Ilgari bu yo'q edi: bir filial admini boshqa
-  // filialning xodimini ham tahrirlay va o'chira olardi.
-  if (!isSuper && target.schoolId !== req.user.schoolId) {
-    return { status: 403, error: 'Bu xodim boshqa filialga tegishli' };
+  // Filial chegarasi. ADMIN tashkilotning barcha filiallari xodimlarini
+  // boshqaradi (Langar filiali menejerini ham); menejer esa faqat o'z filialini.
+  // Ilgari ADMIN ham faqat o'z filialidagi xodimni tahrirlay olardi — boshqa
+  // filial xodimining parolini tiklab ham bo'lmasdi.
+  if (!isSuper) {
+    const ruxsat = target.schoolId != null && (isOrgWide(req.user)
+      ? (await allowedSchoolIds(req.user)).includes(target.schoolId)
+      : target.schoolId === req.user.schoolId);
+    if (!ruxsat) return { status: 403, error: 'Bu xodim boshqa filialga tegishli' };
   }
 
   // Menejer ADMIN ustida hech qanday amal qila olmaydi.
@@ -641,7 +673,36 @@ app.put('/api/users/:id', authenticate, async (req, res, next) => {
       }
     }
 
+    // Boshqa filialga o'tkazish — faqat ADMIN. Xato filialda ochilgan xodimni
+    // o'chirib qayta yaratmaslik uchun. Ustoz yozuvi ham birga ko'chadi, lekin
+    // kurslari bo'lsa ko'chirilmaydi: kurs eski filialda boshqa filial ustoziga
+    // bog'lanib qolardi.
+    let yangiFilial = null;
+    const soralganFilial = parseInt(req.body.schoolId);
+    if (soralganFilial > 0 && soralganFilial !== target.schoolId) {
+      if (req.user.role === 'MANAGER') {
+        return res.status(403).json({ error: "Xodimni boshqa filialga faqat administrator o'tkaza oladi" });
+      }
+      if (req.user.role !== 'SUPERADMIN' && !(await allowedSchoolIds(req.user)).includes(soralganFilial)) {
+        return res.status(403).json({ error: "Bu filialga ruxsatingiz yo'q" });
+      }
+      if (target.id === req.user.id) {
+        return res.status(400).json({ error: "O'zingizni boshqa filialga o'tkaza olmaysiz" });
+      }
+      const ustozYozuvi = await ustozniTop(target);
+      if (ustozYozuvi) {
+        const kursSoni = await prisma.group.count({ where: { teacherId: ustozYozuvi.id } });
+        if (kursSoni > 0) {
+          return res.status(400).json({
+            error: `Bu ustozga ${kursSoni} ta kurs biriktirilgan. Avval kurslarni boshqa ustozga o'tkazing, keyin filialni almashtiring`
+          });
+        }
+      }
+      yangiFilial = soralganFilial;
+    }
+
     const data = {};
+    if (yangiFilial) data.schoolId = yangiFilial;
     if (email !== undefined) data.email = email;
     if (name !== undefined) data.name = name;
     if (phone !== undefined) data.phone = phone;
@@ -679,6 +740,8 @@ app.put('/api/users/:id', authenticate, async (req, res, next) => {
       if (updateErr.code === 'P2002') return res.status(400).json({ error: 'Bu email allaqachon ro\'yxatdan o\'tgan' });
       throw updateErr;
     }
+    // Rol, holat yoki filial o'zgargan bo'lsa keyingi so'rovdanoq kuchga kirsin.
+    forgetUser(user.id);
 
     // Ustoz yozuvi xodim yozuvidan ortda qolmasin: ism guruh kartochkalarida,
     // telefon va surat esa dars jadvalida ko'rinadi. Ilgari xodimning ismi
@@ -693,6 +756,7 @@ app.put('/api/users/:id', authenticate, async (req, res, next) => {
         if (photo !== undefined && photo !== ustoz.photo) ustozData.photo = photo || null;
         if (data.status === 'Arxiv' && ustoz.status !== 'Arxiv') ustozData.status = 'Arxiv';
         if (data.status === 'Faol' && ustoz.status === 'Arxiv') ustozData.status = 'Faol';
+        if (yangiFilial && ustoz.schoolId !== yangiFilial) ustozData.schoolId = yangiFilial;
         if (!ustoz.userId) ustozData.userId = user.id;
         // Maosh raqamlari ikki jadvalda yotardi va bir-biriga mos kelmasdi:
         // CRM User.salary/kpiPercent dan hisoblar, Telegram bot esa
@@ -811,6 +875,7 @@ app.delete('/api/users/:id', authenticate, async (req, res, next) => {
 
     try {
       await prisma.user.delete({ where: { id: targetId } });
+      forgetUser(targetId);
     } catch (delErr) {
       if (delErr.code === 'P2003' || delErr.code === 'P2014') {
         return res.status(400).json({
@@ -824,11 +889,30 @@ app.delete('/api/users/:id', authenticate, async (req, res, next) => {
   } catch (error) { next(error); }
 });
 
+/**
+ * So'rovdagi `userId` xodimi shu foydalanuvchining filialidami. Davomat, oylik va KPI
+ * yo'llari xodimni query/body orqali oladi, shuning uchun authenticate'dagi yozuv
+ * tekshiruvi ularga yetib bormaydi: Langar menejeri boshqa filial xodimining
+ * oyligini ko'ra olardi. SUPERADMIN hammasini ko'radi.
+ */
+async function xodimFilialiXatosi(req, userId) {
+  if (req.user.role === 'SUPERADMIN') return null;
+  const id = parseInt(userId);
+  if (!Number.isInteger(id)) return null;   // handler o'zi "userId kerak" deydi
+  const xodim = await prisma.user.findUnique({ where: { id }, select: { schoolId: true } });
+  if (!xodim) return null;                  // handler o'zi 404 qaytaradi
+  const ruxsat = xodim.schoolId != null && (xodim.schoolId === req.user.schoolId
+    || (isOrgWide(req.user) && (await allowedSchoolIds(req.user)).includes(xodim.schoolId)));
+  return ruxsat ? null : 'Bu xodim boshqa filialga tegishli';
+}
+
 app.get('/api/staff-attendance', authenticate, async (req, res, next) => {
   try {
     if (req.user.role !== 'ADMIN' && req.user.role !== 'MANAGER') return res.status(403).json({ error: 'Ruhsat yo' });
     const { userId, month } = req.query;
     if (!userId) return res.status(400).json({ error: 'userId required' });
+    const filialXatosi = await xodimFilialiXatosi(req, userId);
+    if (filialXatosi) return res.status(403).json({ error: filialXatosi });
     const where = { userId: parseInt(userId) };
     if (month) where.date = { startsWith: String(month) };
     const records = await prisma.staffAttendance.findMany({ where, orderBy: { date: 'asc' } });
@@ -840,7 +924,12 @@ app.post('/api/staff-attendance', authenticate, async (req, res, next) => {
   try {
     if (req.user.role !== 'ADMIN' && req.user.role !== 'MANAGER') return res.status(403).json({ error: 'Ruhsat yo' });
     const { userId, date, status } = req.body;
-    const schoolId = req.user.schoolId;
+    const filialXatosi = await xodimFilialiXatosi(req, userId);
+    if (filialXatosi) return res.status(403).json({ error: filialXatosi });
+    // Yozuv xodimning o'z filialiga tushadi. Ilgari belgilayotgan adminning
+    // filiali olinardi: Langar xodimining davomati asosiy filialga yozilardi.
+    const xodim = await prisma.user.findUnique({ where: { id: parseInt(userId) }, select: { schoolId: true } });
+    const schoolId = xodim?.schoolId || req.user.schoolId;
     const record = await prisma.staffAttendance.upsert({
       where: { userId_date: { userId: parseInt(userId), date } },
       update: { status },
@@ -854,6 +943,8 @@ app.delete('/api/staff-attendance', authenticate, async (req, res, next) => {
   try {
     if (req.user.role !== 'ADMIN' && req.user.role !== 'MANAGER') return res.status(403).json({ error: 'Ruhsat yo' });
     const { userId, date } = req.query;
+    const filialXatosi = await xodimFilialiXatosi(req, userId);
+    if (filialXatosi) return res.status(403).json({ error: filialXatosi });
     await prisma.staffAttendance.deleteMany({ where: { userId: parseInt(userId), date: String(date) } });
     res.json({ success: true });
   } catch (error) { next(error); }
@@ -870,6 +961,8 @@ app.get('/api/salary-payments', authenticate, async (req, res, next) => {
     }
     const { userId } = req.query;
     if (!userId) return res.status(400).json({ error: 'userId required' });
+    const filialXatosi = await xodimFilialiXatosi(req, userId);
+    if (filialXatosi) return res.status(403).json({ error: filialXatosi });
     const payments = await prisma.salaryPayment.findMany({
       where: { userId: parseInt(userId) },
       orderBy: { month: 'desc' }
@@ -927,6 +1020,8 @@ app.post('/api/salary-payments', authenticate, async (req, res, next) => {
     if (!Number.isInteger(parsedUserId)) return res.status(400).json({ error: "Xodim tanlanmagan" });
     if (!month) return res.status(400).json({ error: "Oy ko'rsatilmagan" });
     if (!Number.isFinite(parsedAmount)) return res.status(400).json({ error: "Summa noto'g'ri" });
+    const filialXatosi = await xodimFilialiXatosi(req, parsedUserId);
+    if (filialXatosi) return res.status(403).json({ error: filialXatosi });
 
     const employee = await prisma.user.findUnique({
       where: { id: parsedUserId },
@@ -1072,6 +1167,8 @@ app.get('/api/kpi-calculation', authenticate, async (req, res, next) => {
     if (req.user.role !== 'ADMIN' && req.user.role !== 'MANAGER') return res.status(403).json({ error: 'Ruhsat yo' });
     const { userId, month } = req.query;
     if (!userId || !month) return res.status(400).json({ error: 'userId and month required' });
+    const filialXatosi = await xodimFilialiXatosi(req, userId);
+    if (filialXatosi) return res.status(403).json({ error: filialXatosi });
 
     const employee = await prisma.user.findUnique({
       where: { id: parseInt(userId) },
@@ -1189,7 +1286,7 @@ app.post('/api/admin/sync-teachers', authenticate, async (req, res, next) => {
     }
     const schoolIds = req.user.role === 'SUPERADMIN'
       ? null
-      : [req.user.schoolId].filter(Boolean);
+      : await allowedSchoolIds(req.user);
 
     // 1) Xodim yozuvi yo'q ustozlarga xodim yozuvi.
     const boglanganSoni = await ustozlarniXodimgaBogla(schoolIds);
@@ -3465,26 +3562,12 @@ app.get('/api/init', authenticate, async (req, res, next) => {
     let targetSchoolIds = [];
 
     if (req.user.role !== 'SUPERADMIN' && req.user.role !== 'SELLER') {
-      const userSchoolId = req.user.schoolId || (schoolId > 0 ? schoolId : null);
-      if (userSchoolId) {
-        const userSchool = await prisma.school.findUnique({
-          where: { id: userSchoolId }
-        });
-        if (userSchool && userSchool.organizationId) {
-          schoolsWhere = { organizationId: userSchool.organizationId };
-          const orgSchools = await prisma.school.findMany({
-            where: { organizationId: userSchool.organizationId },
-            select: { id: true }
-          });
-          targetSchoolIds = orgSchools.map(s => s.id);
-        } else {
-          schoolsWhere = { id: userSchoolId };
-          targetSchoolIds = [userSchoolId];
-        }
-      }
-      if (schoolId > 0) {
-        targetSchoolIds = [schoolId];
-      }
+      // ADMIN — tashkilotning filiallari (tanlangani yoki 0 bo'lsa hammasi).
+      // Qolgan xodimlar — faqat o'z filiali: filial tanlagichda ham faqat o'zi
+      // chiqadi, brauzerda eski tanlov (0) saqlanib qolgan bo'lsa ham.
+      const ruxsatli = await allowedSchoolIds(req.user);
+      schoolsWhere = { id: { in: ruxsatli } };
+      targetSchoolIds = isOrgWide(req.user) && schoolId > 0 ? [schoolId] : ruxsatli;
     } else {
       if (schoolId > 0) {
         schoolsWhere = { id: schoolId };
@@ -3637,21 +3720,9 @@ app.get('/api/schools', authenticate, async (req, res, next) => {
       })));
     }
 
-    let schoolsWhere = {};
-    if (req.user.schoolId) {
-      const userSchool = await prisma.school.findUnique({
-        where: { id: req.user.schoolId }
-      });
-      if (userSchool && userSchool.organizationId) {
-        schoolsWhere = { organizationId: userSchool.organizationId };
-      } else {
-        schoolsWhere = { id: req.user.schoolId };
-      }
-    } else {
-      schoolsWhere = { id: -1 };
-    }
-
-    const schools = await prisma.school.findMany({ where: schoolsWhere });
+    // ADMIN tashkilotning barcha filiallarini, qolganlar faqat o'z filialini ko'radi.
+    const ruxsatli = await allowedSchoolIds(req.user);
+    const schools = await prisma.school.findMany({ where: { id: { in: ruxsatli.length ? ruxsatli : [-1] } } });
     res.json(schools);
   } catch (error) { next(error); }
 });
@@ -6850,6 +6921,7 @@ app.get('/api/billing/auto-process', async (req, res, next) => {
 
 // Payme: webhook, havola yaratish, ochiq holat sahifasi (routes/payme.js).
 registerPaymeRoutes(app);
+registerAuditRoutes(app);
 
 // Serve static React files
 app.use('/uploads', express.static(join(__dirname, 'public', 'uploads')));

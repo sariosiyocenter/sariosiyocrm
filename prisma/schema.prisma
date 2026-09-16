@@ -1062,6 +1062,35 @@ model PaymeTransaction {
   @@index([schoolId, paymeTime])
 }
 
+// Amallar jurnali: kim, qachon, nimani kiritdi, o'zgartirdi yoki o'chirdi.
+//
+// Har bir o'zgartiruvchi API so'rovi (lib/audit.js) shu yerga bitta qator
+// yozadi. Bog'lanishlar (relation) ataylab yo'q: xodim, o'quvchi yoki filial
+// o'chirilsa ham jurnal qolishi kerak — shuning uchun ism va nom shu yerda
+// nusxa qilib saqlanadi. `changes` — [{ field, label, from, to }], qiymatlar
+// ko'rsatishga tayyor matn (parol va kalitlar hech qachon yozilmaydi).
+model AuditLog {
+  id        Int      @id @default(autoincrement())
+  createdAt DateTime @default(now())
+  schoolId  Int?
+  userId    Int?     // null — tizimdan tashqari (onlayn ariza)
+  userName  String?
+  userRole  String?
+  action    String   // create | update | delete | action
+  entity    String   // student | payment | group | user | ...
+  entityId  Int?
+  title     String?  // yozuv nomi: "ALIYEV VALI", "Matematika-1"
+  summary   String?  // qisqa tafsilot: "500 000 so'm · Naqd"
+  link      String?  // jurnaldan ochiladigan sahifa: "/students/12" (to'lov — o'quvchisi)
+  changes   Json?
+  method    String
+  path      String
+
+  @@index([schoolId, createdAt])
+  @@index([entity, entityId])
+  @@index([userId, createdAt])
+}
+
 // Har bir Payme so'rovining izi (audit). Authorization sarlavhasi
 // yozilmaydi. School o'chirilsa ham qoladi — bu moliyaviy jurnal.
 model PaymeLog {

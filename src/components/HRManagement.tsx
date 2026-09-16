@@ -50,7 +50,7 @@ const inp = "w-full px-4 py-3 bg-ichki border border-chiziq rounded-2xl text-xs 
 const lbl = "block text-[11px] font-extrabold   text-matn-xira mb-2";
 
 export default function HRManagement() {
-    const { teachers, groups, selectedSchoolId, user: currentUser, token, showNotification } = useCRM();
+    const { teachers, groups, selectedSchoolId, schools, user: currentUser, token, showNotification } = useCRM();
     const confirm = useConfirm();
     const { t } = useLang();
     const navigate = useNavigate();
@@ -68,6 +68,11 @@ export default function HRManagement() {
 
     const isAdmin           = currentUser?.role === 'ADMIN';
     const isAdminOrManager  = isAdmin || currentUser?.role === 'MANAGER';
+    // Bir nechta filial bo'lsa ADMIN xodimni qaysi filialga yozishni tanlaydi va
+    // "To'liq o'quv markazi" rejimida har xodimning filiali ko'rinadi.
+    const multiBranch = isAdmin && (schools || []).length > 1;
+    const allBranches = selectedSchoolId === 0;
+    const branchName = (id?: number | null) => (schools || []).find(s => s.id === id)?.name || '—';
 
     const getRoleLabel = (role: string) => {
         switch (role) {
@@ -82,20 +87,37 @@ export default function HRManagement() {
         }
     };
 
+    // Ro'yxat tanlangan filialniki. Ilgari so'rov filialsiz ketardi va har bir
+    // filialda hamma filialning xodimlari aralash chiqardi. Filial tez-tez
+    // almashtirilsa kechikib kelgan eski javob yangisini bosib ketmasin.
+    const usersRequest = useRef(0);
     const fetchUsers = async () => {
+        const so = ++usersRequest.current;
         try {
             setLoadingUsers(true);
-            const res = await fetch('/api/users', { headers: { 'Authorization': `Bearer ${token}` } });
-            if (res.ok) setUsers(await res.json());
+            const branch = selectedSchoolId === null || selectedSchoolId === undefined ? '' : `?schoolId=${selectedSchoolId}`;
+            const res = await fetch(`/api/users${branch}`, { headers: { 'Authorization': `Bearer ${token}` } });
+            if (res.ok && so === usersRequest.current) setUsers(await res.json());
         } catch (err) { console.error('Failed to fetch users', err); }
-        finally { setLoadingUsers(false); }
+        finally { if (so === usersRequest.current) setLoadingUsers(false); }
     };
 
-    useEffect(() => { fetchUsers(); }, [token]);
+    useEffect(() => { fetchUsers(); }, [token, selectedSchoolId]);
 
+    const openAddModal = () => {
+        setNewUser({ role: 'RECEPTIONIST', schoolId: selectedSchoolId && selectedSchoolId > 0 ? selectedSchoolId : '' });
+        setIsAddOpen(true);
+    };
 
     const handleAddUser = async (e: React.FormEvent) => {
         e.preventDefault();
+        const schoolId = currentUser?.role === 'MANAGER'
+            ? currentUser.schoolId
+            : Number(newUser.schoolId) || (selectedSchoolId && selectedSchoolId > 0 ? selectedSchoolId : null);
+        if (!schoolId) {
+            showNotification("Xodim qaysi filialda ishlashini tanlang", 'error');
+            return;
+        }
         try {
             const res = await fetch('/api/users', {
                 method: 'POST',
@@ -104,7 +126,7 @@ export default function HRManagement() {
                     ...newUser,
                     role:     newUser.role || 'RECEPTIONIST',
                     password: newUser.password || (newUser.role === 'TECH_STAFF' ? undefined : 'admin123'),
-                    schoolId: currentUser?.role === 'MANAGER' ? currentUser.schoolId : selectedSchoolId
+                    schoolId
                 })
             });
             if (res.ok) { setIsAddOpen(false); setNewUser({ role: 'RECEPTIONIST' }); fetchUsers(); }
@@ -141,6 +163,11 @@ export default function HRManagement() {
                     kpiPercent: editingUser.kpiPercent ?? 0,
                 };
                 if (editingUser.password) body.password = editingUser.password;
+                // Filial faqat o'zgartirilgan bo'lsa yuboriladi (boshqa filialga o'tkazish).
+                if (multiBranch && Number(editingUser.schoolId) > 0
+                    && Number(editingUser.schoolId) !== users.find(x => x.id === editingUser.id)?.schoolId) {
+                    body.schoolId = Number(editingUser.schoolId);
+                }
                 const res = await fetch(`/api/users/${editingUser.id}`, {
                     method: 'PUT',
                     headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
@@ -301,6 +328,7 @@ export default function HRManagement() {
             status:   t.status || 'Faol',
             email:    null,
             position: null,
+            schoolId: t.schoolId,
         }));
     const arxivSoni = users.filter((u: any) => u.status === 'Arxiv').length
         + uniqueTeacherRows.filter((u: any) => u.status === 'Arxiv').length;
@@ -341,12 +369,14 @@ export default function HRManagement() {
                         <div>
                             <h1 className="text-[26px] font-bold text-matn tracking-tight leading-tight">{t('hr_title')}</h1>
                             <p className="text-[13px] text-matn-sokin mt-1">
-                                {t('hr_subtitle')}
+                                {multiBranch
+                                    ? (allBranches ? 'Barcha filiallar xodimlari' : `${branchName(selectedSchoolId)} xodimlari`)
+                                    : t('hr_subtitle')}
                             </p>
                         </div>
                     </div>
                     {isAdminOrManager && (
-                        <button onClick={() => { setNewUser({ role: 'RECEPTIONIST' }); setIsAddOpen(true); }}
+                        <button onClick={openAddModal}
                             className="flex items-center gap-2 px-4 py-2.5 bg-brand hover:bg-brand-dark text-white rounded-xl text-xs font-extrabold shadow-sm shadow-[#1b6b6b]/20 transition-all cursor-pointer">
                             <Plus size={14} /> {t('new_staff')}
                         </button>
@@ -441,6 +471,9 @@ export default function HRManagement() {
                                     <thead>
                                         <tr className="border-b border-chiziq">
                                             <th className="px-5 py-3 text-[11px] font-medium text-matn-xira">Xodim</th>
+                                            {multiBranch && allBranches && (
+                                                <th className="px-3 py-3 text-[11px] font-medium text-matn-xira">Filial</th>
+                                            )}
                                             <th className="px-3 py-3 text-[11px] font-medium text-matn-xira">Lavozim</th>
                                             <th className="px-3 py-3 text-[11px] font-medium text-matn-xira">Rol</th>
                                             <th className="px-3 py-3 text-[11px] font-medium text-matn-xira text-right">Guruh</th>
@@ -471,6 +504,9 @@ export default function HRManagement() {
                                                             </div>
                                                         </div>
                                                     </td>
+                                                    {multiBranch && allBranches && (
+                                                        <td className="px-3 py-3 text-[12px] text-matn-sokin align-middle whitespace-nowrap">{branchName(u.schoolId)}</td>
+                                                    )}
                                                     <td className="px-3 py-3 text-[12px] text-matn-sokin align-middle">{u.position || '—'}</td>
                                                     <td className="px-3 py-3 align-middle">
                                                         {/* Rang endi ma'no bermaydi: yetti xil rangli
@@ -610,6 +646,7 @@ export default function HRManagement() {
                     onSubmit={handleAddUser}
                     currentUserRole={currentUser?.role}
                     showPassword
+                    branches={multiBranch ? schools : undefined}
                 />
             )}
 
@@ -622,6 +659,8 @@ export default function HRManagement() {
                     onSubmit={handleEditUser}
                     currentUserRole={currentUser?.role}
                     showPassword={false}
+                    // Eski (xodim yozuvisiz) ustoz qatori filialga ko'chirilmaydi.
+                    branches={multiBranch && editingUser._source !== 'teacher' ? schools : undefined}
                 />
             )}
         </div>
@@ -638,11 +677,13 @@ function InfoRow({ label, value }: { label: string; value: string }) {
 }
 
 function UserModal({
-    title, subtitle, user, onChange, onClose, onSubmit, currentUserRole, showPassword
+    title, subtitle, user, onChange, onClose, onSubmit, currentUserRole, showPassword, branches
 }: {
     title: string; subtitle: string; user: any; onChange: (v: any) => void;
     onClose: () => void; onSubmit: (e: React.FormEvent) => void;
     currentUserRole?: string; showPassword: boolean;
+    /** Bir nechta filial bo'lsa (faqat ADMIN) — xodim qaysi filialda ishlaydi. */
+    branches?: { id: number; name: string }[];
 }) {
     const { t } = useLang();
     const { showNotification } = useCRM();
@@ -746,6 +787,19 @@ function UserModal({
                         <label className={lbl}>{t('full_name')} *</label>
                         <input required type="text" className={inp} value={user.name || ''} onChange={e => onChange({ ...user, name: e.target.value })} />
                     </div>
+
+                    {branches && (
+                        <div>
+                            <label className={lbl}>Filial *</label>
+                            <select required className={inp} value={user.schoolId || ''} onChange={e => onChange({ ...user, schoolId: e.target.value ? Number(e.target.value) : '' })}>
+                                <option value="" disabled>Filialni tanlang</option>
+                                {branches.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}
+                            </select>
+                            {user.role !== 'ADMIN' && (
+                                <p className="text-[11px] text-matn-xira mt-1.5">Xodim faqat shu filial ma'lumotlarini ko'radi.</p>
+                            )}
+                        </div>
+                    )}
 
                     <div className="grid grid-cols-2 gap-4">
                         <div>

@@ -53,6 +53,8 @@ const OrgDetail       = lazyRetry(() => import('./components/OrgDetail'));
 const HRManagement    = lazyRetry(() => import('./components/HRManagement'));
 const StaffDetails    = lazyRetry(() => import('./components/StaffDetails'));
 const PublicApply     = lazyRetry(() => import('./components/PublicApply'));
+const DailySheet      = lazyRetry(() => import('./components/DailySheet'));
+const AuditLog        = lazyRetry(() => import('./components/AuditLog'));
 const PublicPay       = lazyRetry(() => import('./components/PublicPay'));
 
 function PageLoader() {
@@ -161,6 +163,8 @@ export default function App() {
             <Route path="/syllabus"             element={<SyllabusManager />} />
             <Route path="/students"             element={<Students />} />
             <Route path="/students/:id"         element={<StudentDetails />} />
+            <Route path="/daily"                element={<DailySheet />} />
+            <Route path="/journal"              element={isAdmin ? <AuditLog /> : <Navigate to="/" replace />} />
             <Route path="/hr"                   element={isAdminOrManager ? <HRManagement /> : <Navigate to="/" replace />} />
             <Route path="/hr/:id"              element={isAdminOrManager ? <StaffDetails />  : <Navigate to="/" replace />} />
             <Route path="/settings"             element={isAdminOrManager ? <Settings />   : <Navigate to="/" replace />} />
