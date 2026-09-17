@@ -38,20 +38,28 @@ export const ORG_TYPES = [
 ] as const;
 
 /**
- * Sinf / bosqich. Egasi (2026-09-17): maktabda 7–11-sinf, kollejda 1–2-kurs,
- * o'qishni tugatgan bo'lsa "Bitirgan". Server (ochiq ariza) ham shu ro'yxatni
- * qabul qiladi.
+ * Sinf / kurs. Egasi (2026-09-17): maktabda 7–11-sinf, kollejda 1–2-kurs,
+ * oliy o'quv yurtida 1–4-kurs, o'qishni tugatgan bo'lsa "Bitirgan". Bog'cha,
+ * "Boshqa" yoki tur tanlanmagan bo'lsa bu maydon umuman chiqmaydi. Server
+ * (ochiq ariza) ham shu ro'yxatni qabul qiladi.
  */
 export const SCHOOL_GRADES = ['7-sinf', '8-sinf', '9-sinf', '10-sinf', '11-sinf'] as const;
 export const COLLEGE_GRADES = ['1-kurs', '2-kurs'] as const;
+export const UNIVERSITY_GRADES = ['1-kurs', '2-kurs', '3-kurs', '4-kurs'] as const;
 export const GRADUATED = 'Bitirgan';
-export const ALL_GRADES: string[] = [...SCHOOL_GRADES, ...COLLEGE_GRADES, GRADUATED];
+export const ALL_GRADES: string[] = [...SCHOOL_GRADES, ...UNIVERSITY_GRADES, GRADUATED];
 
-/** Muassasa turiga mos sinflar. Tur tanlanmagan (yoki boshqa) bo'lsa — hammasi. */
+/** Muassasa turiga mos variantlar. Bo'sh ro'yxat — maydon ko'rsatilmaydi. */
 export function gradeOptions(orgType?: string | null): string[] {
     if (orgType === 'Maktab' || orgType === 'Prezident maktabi') return [...SCHOOL_GRADES, GRADUATED];
     if (orgType === 'Kollej / Litsey') return [...COLLEGE_GRADES, GRADUATED];
-    return ALL_GRADES;
+    if (orgType === "Oliy o'quv yurti") return [...UNIVERSITY_GRADES, GRADUATED];
+    return [];
+}
+
+/** Maydon yorlig'i: maktabda "Sinf", kollej va oliy o'quv yurtida "Kurs". */
+export function gradeLabel(orgType?: string | null): string {
+    return orgType === 'Kollej / Litsey' || orgType === "Oliy o'quv yurti" ? 'Kurs' : 'Sinf';
 }
 
 /** Muassasa turi o'zgarganda: tanlangan sinf yangi ro'yxatda bo'lmasa tozalanadi. */

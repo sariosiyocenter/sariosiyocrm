@@ -10,16 +10,12 @@ interface PhotoCaptureProps {
 const FRAME_RATIO = 3 / 4;
 
 /**
- * Yuz siluetining shakli (viewBox 300×400 — oynaning o'zi). Bosh ovali yuqori
- * o'rtada: kvadrat avatar ham shu qismni kesib oladi, Face ID esa yuz rasmning
- * yarmiga yaqinini egallaganda eng ishonchli topadi.
+ * Yuz ovali (viewBox 300×400 — oynaning o'zi). Egasi (2026-09-17): "asosan yuzi
+ * ko'rinsin" — yelka chizig'i yo'q, oval katta: yuz kadrning ko'p qismini
+ * egallaydi, tepada soch va pastda iyak uchun ozgina joy qoladi. Oval kvadrat
+ * avatar kesimining (y 50…350) ichida turadi, Face ID ham katta yuzni oson topadi.
  */
-const HEAD = { cx: 150, cy: 150, rx: 72, ry: 92 };
-// Bo'yin va yelkalar: to'ldirilgani — xiralashtirishdan kesib olinadi (bo'yin
-// tepasi bosh ovalining ichiga kiradi), chiziqlari — faqat tashqi kontur.
-const BODY = 'M 16 400 C 20 336 68 312 114 302 C 125 299 128 290 128 280 L 128 226 L 172 226 L 172 280 C 172 290 175 299 186 302 C 232 312 280 336 284 400 Z';
-const BODY_LEFT = 'M 16 400 C 20 336 68 312 114 302 C 125 299 128 290 128 280 L 128 238';
-const BODY_RIGHT = 'M 172 238 L 172 280 C 172 290 175 299 186 302 C 232 312 280 336 284 400';
+const FACE = { cx: 150, cy: 200, rx: 110, ry: 145 };
 
 function FaceGuide() {
     return (
@@ -27,17 +23,13 @@ function FaceGuide() {
             <defs>
                 <mask id="photo-face-cutout">
                     <rect width="300" height="400" fill="white" />
-                    <ellipse cx={HEAD.cx} cy={HEAD.cy} rx={HEAD.rx} ry={HEAD.ry} fill="black" />
-                    <path d={BODY} fill="black" />
+                    <ellipse cx={FACE.cx} cy={FACE.cy} rx={FACE.rx} ry={FACE.ry} fill="black" />
                 </mask>
             </defs>
-            {/* Siluetdan tashqarisi xiralashadi — yuzni qayerga qo'yish darhol ko'rinadi. */}
-            <rect width="300" height="400" fill="rgba(15,23,42,0.55)" mask="url(#photo-face-cutout)" />
-            <g fill="none" stroke="white" strokeWidth="2.5" strokeDasharray="7 6" strokeLinecap="round">
-                <ellipse cx={HEAD.cx} cy={HEAD.cy} rx={HEAD.rx} ry={HEAD.ry} vectorEffect="non-scaling-stroke" />
-                <path d={BODY_LEFT} vectorEffect="non-scaling-stroke" />
-                <path d={BODY_RIGHT} vectorEffect="non-scaling-stroke" />
-            </g>
+            {/* Ovaldan tashqarisi xiralashadi — yuzni qayerga qo'yish darhol ko'rinadi. */}
+            <rect width="300" height="400" fill="rgba(15,23,42,0.5)" mask="url(#photo-face-cutout)" />
+            <ellipse cx={FACE.cx} cy={FACE.cy} rx={FACE.rx} ry={FACE.ry} fill="none"
+                stroke="white" strokeWidth="2.5" strokeDasharray="7 6" strokeLinecap="round" vectorEffect="non-scaling-stroke" />
         </svg>
     );
 }

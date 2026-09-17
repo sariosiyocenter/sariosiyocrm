@@ -20,7 +20,7 @@ import PhotoViewer from './PhotoViewer';
 import DiscountModal from './DiscountModal';
 import StudentMoveModal from './StudentMoveModal';
 import PaymeLinkModal from './PaymeLinkModal';
-import { STUDY_GOALS, UZB_REGIONS, ORG_TYPES, gradeOptions, keepGrade } from '../lib/studentFields';
+import { STUDY_GOALS, UZB_REGIONS, ORG_TYPES, gradeOptions, gradeLabel, keepGrade } from '../lib/studentFields';
 import StudentLedger from './StudentLedger';
 import { loadFaceModels, descriptorFromPhoto, saveFaceProfiles, faceFailText, faceFailedBefore, rememberFaceTry, forgetFaceTry } from '../lib/faceDescriptor';
 import type { FaceFail } from '../lib/faceDescriptor';
@@ -878,21 +878,24 @@ export default function StudentDetails() {
                                             {ORG_TYPES.map(o => <option key={o} value={o}>{o}</option>)}
                                         </select>
                                     </div>
-                                    <div>
-                                        <label className={labelCls}>Sinf</label>
-                                        <select
-                                            value={editForm.grade}
-                                            onChange={e => setEditForm({...editForm, grade: e.target.value})}
-                                            className={inputCls}
-                                        >
-                                            <option value="">Tanlang...</option>
-                                            {/* Eski qiymat yangi ro'yxatda bo'lmasa ham ko'rinib tursin. */}
-                                            {editForm.grade && !gradeOptions(editForm.orgType).includes(editForm.grade) && (
-                                                <option value={editForm.grade}>{editForm.grade}</option>
-                                            )}
-                                            {gradeOptions(editForm.orgType).map(g => <option key={g} value={g}>{g}</option>)}
-                                        </select>
-                                    </div>
+                                    {/* Bog'cha va boshqa turlarda chiqmaydi; eski (Excel'dan kelgan)
+                                        qiymat bo'lsa, o'chirib qo'yish uchun ko'rinib turadi. */}
+                                    {(gradeOptions(editForm.orgType).length > 0 || !!editForm.grade) && (
+                                        <div>
+                                            <label className={labelCls}>{gradeLabel(editForm.orgType)}</label>
+                                            <select
+                                                value={editForm.grade}
+                                                onChange={e => setEditForm({...editForm, grade: e.target.value})}
+                                                className={inputCls}
+                                            >
+                                                <option value="">Tanlang...</option>
+                                                {editForm.grade && !gradeOptions(editForm.orgType).includes(editForm.grade) && (
+                                                    <option value={editForm.grade}>{editForm.grade}</option>
+                                                )}
+                                                {gradeOptions(editForm.orgType).map(g => <option key={g} value={g}>{g}</option>)}
+                                            </select>
+                                        </div>
+                                    )}
                                     <div>
                                         <label className={labelCls}>Muassasa nomi</label>
                                         <input type="text" value={editForm.studentSchool} onChange={e => setEditForm({...editForm, studentSchool: e.target.value})} className={inputCls} placeholder="45-maktab" />
@@ -1301,7 +1304,7 @@ export default function StudentDetails() {
                                         <InfoRow icon={<BookOpen className="w-3.5 h-3.5" />} label="Muassasa turi" value={student.orgType} />
                                     )}
                                     {student.grade && (
-                                        <InfoRow icon={<GraduationCap className="w-3.5 h-3.5" />} label="Sinf" value={student.grade} />
+                                        <InfoRow icon={<GraduationCap className="w-3.5 h-3.5" />} label={gradeLabel(student.orgType)} value={student.grade} />
                                     )}
                                     <InfoRow icon={<BookOpen className="w-3.5 h-3.5" />} label="Muassasa nomi" value={student.studentSchool || "-"} />
                                     {(student.region || student.district) && (

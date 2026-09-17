@@ -4,7 +4,7 @@ import { Building2, Phone, CheckCircle2, ChevronRight, User, BookOpen, Clock, Me
 import PhotoCapture from './PhotoCapture';
 import MapPicker from './MapPicker';
 import { compressImage } from '../lib/image';
-import { STUDY_GOALS, UZB_REGIONS, ORG_TYPES, PRIVILEGES, gradeOptions, keepGrade } from '../lib/studentFields';
+import { STUDY_GOALS, UZB_REGIONS, ORG_TYPES, PRIVILEGES, gradeOptions, gradeLabel, keepGrade } from '../lib/studentFields';
 
 interface Course {
     id: number;
@@ -455,19 +455,21 @@ export default function PublicApply() {
                                         {ORG_TYPES.map(o => <option key={o} value={o}>{o}</option>)}
                                     </select>
                                 </div>
-                                {/* Sinf: maktabda 7–11, kollejda 1–2-kurs, yoki bitirgan
-                                    (CRM dagi oynada ham xuddi shunday). */}
-                                <div>
-                                    <label className={lbl}>Sinf</label>
-                                    <select
-                                        className={sel}
-                                        value={form.grade}
-                                        onChange={e => setForm({ ...form, grade: e.target.value })}
-                                    >
-                                        <option value="">Tanlang...</option>
-                                        {gradeOptions(form.orgType).map(g => <option key={g} value={g}>{g}</option>)}
-                                    </select>
-                                </div>
+                                {/* Sinf / kurs: maktab 7–11, kollej 1–2, oliy o'quv yurti 1–4, yoki
+                                    bitirgan. Bog'cha va boshqa turlarda chiqmaydi (CRM dagi oynada ham). */}
+                                {gradeOptions(form.orgType).length > 0 && (
+                                    <div>
+                                        <label className={lbl}>{gradeLabel(form.orgType)}</label>
+                                        <select
+                                            className={sel}
+                                            value={form.grade}
+                                            onChange={e => setForm({ ...form, grade: e.target.value })}
+                                        >
+                                            <option value="">Tanlang...</option>
+                                            {gradeOptions(form.orgType).map(g => <option key={g} value={g}>{g}</option>)}
+                                        </select>
+                                    </div>
+                                )}
                             </div>
 
                             <div>

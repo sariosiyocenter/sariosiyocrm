@@ -12,7 +12,7 @@ import MapPicker from './MapPicker';
 import FaceSearch from './FaceSearch';
 import { uploadProfilePhoto } from '../lib/image';
 import * as XLSX from 'xlsx';
-import { STUDY_GOALS, UZB_REGIONS, ORG_TYPES, PRIVILEGES, ALL_GRADES, gradeOptions, keepGrade } from '../lib/studentFields';
+import { STUDY_GOALS, UZB_REGIONS, ORG_TYPES, PRIVILEGES, ALL_GRADES, gradeOptions, gradeLabel, keepGrade } from '../lib/studentFields';
 
 const inp = "w-full px-4 py-3 bg-ichki border border-chiziq rounded-2xl text-xs font-bold text-matn focus:border-brand focus:ring-4 focus:ring-[#1b6b6b]/10 outline-none transition-all";
 const lbl = "block text-[11px] text-matn-xira mb-1.5";
@@ -795,7 +795,7 @@ export default function Students() {
                             </select>
                         </div>
                         <div>
-                            <label className={lbl}>Sinf</label>
+                            <label className={lbl}>Sinf / kurs</label>
                             <select value={filters.grade} onChange={e => setFilters({...filters, grade: e.target.value})}
                                 className="w-full px-3 py-2 bg-ichki border border-chiziq rounded-xl text-[11px] font-bold text-gray-700 dark:text-white outline-none focus:border-brand transition-all cursor-pointer">
                                 <option value="">Barchasi</option>
@@ -1146,18 +1146,21 @@ export default function Students() {
                                             {ORG_TYPES.map(o => <option key={o} value={o}>{o}</option>)}
                                         </select>
                                     </div>
-                                    {/* Sinf: maktabda 7–11, kollejda 1–2-kurs, yoki bitirgan. */}
-                                    <div>
-                                        <label className={lbl}>Sinf</label>
-                                        <select
-                                            value={newStudent.grade}
-                                            onChange={e => setNewStudent({ ...newStudent, grade: e.target.value })}
-                                            className={inp}
-                                        >
-                                            <option value="">Tanlang...</option>
-                                            {gradeOptions(newStudent.orgType).map(g => <option key={g} value={g}>{g}</option>)}
-                                        </select>
-                                    </div>
+                                    {/* Sinf / kurs: maktab 7–11, kollej 1–2, oliy o'quv yurti 1–4, yoki bitirgan.
+                                        Bog'cha va boshqa turlarda maydon chiqmaydi. */}
+                                    {gradeOptions(newStudent.orgType).length > 0 && (
+                                        <div>
+                                            <label className={lbl}>{gradeLabel(newStudent.orgType)}</label>
+                                            <select
+                                                value={newStudent.grade}
+                                                onChange={e => setNewStudent({ ...newStudent, grade: e.target.value })}
+                                                className={inp}
+                                            >
+                                                <option value="">Tanlang...</option>
+                                                {gradeOptions(newStudent.orgType).map(g => <option key={g} value={g}>{g}</option>)}
+                                            </select>
+                                        </div>
+                                    )}
                                 </div>
                                 <div>
                                     <label className={lbl}>Muassasa nomi</label>

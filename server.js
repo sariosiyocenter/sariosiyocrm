@@ -2434,7 +2434,7 @@ app.post('/api/public/schools/:schoolId/leads', publicFormLimiter, async (req, r
 
     const GOALS = ['Asosiy fan', 'Majburiy fan', 'Mustaqil'];
     // src/lib/studentFields.ts dagi ALL_GRADES bilan bir xil.
-    const GRADES = ['7-sinf', '8-sinf', '9-sinf', '10-sinf', '11-sinf', '1-kurs', '2-kurs', 'Bitirgan'];
+    const GRADES = ['7-sinf', '8-sinf', '9-sinf', '10-sinf', '11-sinf', '1-kurs', '2-kurs', '3-kurs', '4-kurs', 'Bitirgan'];
 
     // Yo'nalish va transport — faqat shu filialnikilari qabul qilinadi.
     let wantedDirectionId = parseInt(directionId);
