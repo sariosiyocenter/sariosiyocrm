@@ -27,19 +27,19 @@ export function isOrgWide(user) {
 // Which schools this user may touch. An ADMIN may move between branches of their own
 // organization (the branch switcher in the UI); everyone else stays in their own branch,
 // and nobody ever reaches another customer's data.
+//
+// Egasi (2026-09-17): ikkala filialda ishlaydigan xodim bor. ADMIN unga HR'da
+// galochka bilan qo'shimcha filial beradi (User.branches) — shunda xodim o'sha
+// filiallar orasida ham almashadi. Asosiy filial doim birinchi turadi.
+// Qo'shimcha filiallar yozishda (POST/PUT /api/users) tashkilot ichida ekani
+// tekshiriladi, shuning uchun bu yerda qayta so'rov yo'q.
 export async function allowedSchoolIds(user) {
   if (!user?.schoolId) return [];
-  if (!isOrgWide(user)) return [user.schoolId];
-  const own = await prisma.school.findUnique({
-    where: { id: user.schoolId },
-    select: { organizationId: true }
-  });
-  if (!own?.organizationId) return [user.schoolId];
-  const siblings = await prisma.school.findMany({
-    where: { organizationId: own.organizationId },
-    select: { id: true }
-  });
-  return siblings.map(s => s.id);
+  if (!isOrgWide(user)) {
+    const extra = (user.branchIds || []).filter(id => id !== user.schoolId);
+    return [user.schoolId, ...extra];
+  }
+  return organizationSchoolIds(user);
 }
 
 // The branch switcher's "To'liq o'quv markazi" option sends schoolId 0. It is not a
@@ -53,8 +53,40 @@ export async function canAccessSchool(user, schoolId) {
   if (schoolId === null) return true;              // request is not school-scoped
   if (schoolId === ALL_BRANCHES) return true;      // "all my branches" — handlers narrow it via allowedSchoolIds
   if (user?.schoolId === schoolId) return true;    // own branch — no lookup needed
-  if (!isOrgWide(user)) return false;              // branch staff never leave their branch
+  // Filial xodimi faqat o'z filiallarida (asosiy + galochka qo'yilganlari).
   return (await allowedSchoolIds(user)).includes(schoolId);
+}
+
+// O'quv dasturi (va uning mavzulari) butun markazniki: egasi "o'quv programmasi
+// hamma filial uchun ko'rinsin" dedi. Bitta dastur Sariosiyoda ham, Langarda ham
+// ishlatiladi, shuning uchun uni tashkilotning istalgan filiali xodimi ochadi.
+// Boshqa tashkilot (boshqa mijoz) esa baribir ko'rmaydi.
+export async function sameOrganization(user, schoolId) {
+  if (CROSS_SCHOOL_ROLES.includes(user?.role)) return true;
+  if (!user?.schoolId || schoolId == null) return false;
+  if (user.schoolId === schoolId) return true;
+  const rows = await prisma.school.findMany({
+    where: { id: { in: [user.schoolId, schoolId] } },
+    select: { id: true, organizationId: true }
+  });
+  const own = rows.find(r => r.id === user.schoolId);
+  const other = rows.find(r => r.id === schoolId);
+  return !!(own?.organizationId && other && own.organizationId === other.organizationId);
+}
+
+/** Tashkilotning barcha filiallari (rolga qaramay) — umumiy o'quv dasturi uchun. */
+export async function organizationSchoolIds(user) {
+  if (!user?.schoolId) return [];
+  const own = await prisma.school.findUnique({
+    where: { id: user.schoolId },
+    select: { organizationId: true }
+  });
+  if (!own?.organizationId) return [user.schoolId];
+  const siblings = await prisma.school.findMany({
+    where: { organizationId: own.organizationId },
+    select: { id: true }
+  });
+  return siblings.map(s => s.id);
 }
 
 // Token 90 kun yashaydi, xodimning filiali, roli va holati esa bu orada o'zgaradi:
@@ -77,13 +109,19 @@ async function freshUser(payload) {
   if (row === undefined) {
     row = await prisma.user.findUnique({
       where: { id: payload.id },
-      select: { role: true, schoolId: true, status: true, name: true }
+      select: { role: true, schoolId: true, status: true, name: true, branches: { select: { id: true } } }
     });
     userCache.set(payload.id, { at: Date.now(), row: row || null });
   }
   if (!row || row.status === 'Arxiv') return null;
-  return { ...payload, role: row.role, schoolId: row.schoolId, name: row.name };
+  return {
+    ...payload, role: row.role, schoolId: row.schoolId, name: row.name,
+    branchIds: (row.branches || []).map(b => b.id),
+  };
 }
+
+// Tashkilot bo'ylab umumiy yozuvlar: ruxsat filial emas, tashkilot bo'yicha.
+const ORG_SHARED_RESOURCES = new Set(['syllabuses', 'topics']);
 
 // Routes addressed by record id (/api/students/42) carry no schoolId, so the tenancy
 // check has to come from the record itself. Anything not in this map is left alone.
@@ -115,6 +153,9 @@ export async function recordAccessError(req) {
   const record = await prisma[model].findUnique({ where: { id }, select: { schoolId: true } });
   if (!record) return null;                    // let the handler answer 404 in its own words
   if (record.schoolId === null) return null;   // rows not bound to a school (e.g. superadmin users)
+  if (ORG_SHARED_RESOURCES.has(parts[1])) {
+    return (await sameOrganization(req.user, record.schoolId)) ? null : 'Bu yozuvga ruxsatingiz yo\'q';
+  }
   return (await canAccessSchool(req.user, record.schoolId)) ? null : 'Bu yozuvga ruxsatingiz yo\'q';
 }
 

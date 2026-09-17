@@ -484,14 +484,30 @@ export default function StaffDetails() {
             photo: editData.photo, position: editData.position, salary: editData.salary,
         };
         if (editData.password) body.password = editData.password;
+        // Email — tizimga kirish logini. Avtomatik (…@internal.local) manzil
+        // maydonda bo'sh ko'rinadi: bo'sh qoldirilsa o'zgarmaydi.
+        const email = (editData.email || '').trim();
+        if (email && email !== staffUser.email) body.email = email;
         try {
             const res = await fetch(`/api/users/${staffUser.id}`, {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
                 body: JSON.stringify(body),
             });
-            if (res.ok) { setStaffUser(await res.json()); setIsEditOpen(false); }
-        } catch { /* ignore */ }
+            if (res.ok) {
+                const saved = await res.json();
+                setStaffUser((p: any) => ({ ...p, ...saved }));
+                setIsEditOpen(false);
+                showNotification("Ma'lumotlar saqlandi", 'success');
+            } else {
+                // Ilgari xato jimgina yutilardi — masalan band email kiritilsa
+                // oyna shunchaki yopilmay qolardi.
+                const d = await res.json().catch(() => ({}));
+                showNotification(d.error || "Saqlab bo'lmadi", 'error');
+            }
+        } catch {
+            showNotification("Aloqa xatosi", 'error');
+        }
     };
 
     const handlePhoto = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -757,7 +773,7 @@ export default function StaffDetails() {
                             <h1 className="text-[22px] font-semibold text-matn tracking-tight leading-tight truncate">{displayName(staffUser.name)}</h1>
                             {isAdminOrManager && (
                                 <button
-                                    onClick={() => { setEditData({ ...staffUser, password: '' }); setIsEditOpen(true); }}
+                                    onClick={() => { setEditData({ ...staffUser, password: '', email: haqiqiyEmail(staffUser.email) }); setIsEditOpen(true); }}
                                     title={t('edit')}
                                     className="text-matn-xira hover:text-brand cursor-pointer shrink-0">
                                     <Pencil size={13} />
@@ -1737,6 +1753,7 @@ export default function StaffDetails() {
                                 <div><label className={lbl}>Asosiy Maosh</label><input type="number" className={inp} value={editData.salary||''} onChange={e => setEditData((p:any)=>({...p,salary:e.target.value}))} /></div>
                             </div>
                             <div><label className={lbl}>Vazifa / Mutaxassislik</label><input type="text" className={inp} value={editData.position||''} onChange={e => setEditData((p:any)=>({...p,position:e.target.value}))} /></div>
+                            <div><label className={lbl}>Email (tizimga kirish logini)</label><input type="email" placeholder="xodim@example.uz" className={inp} value={editData.email||''} onChange={e => setEditData((p:any)=>({...p,email:e.target.value}))} /></div>
                             <div><label className={lbl}>Yangi Parol (ixtiyoriy)</label><input type="password" placeholder="O'zgartirish uchun to'ldiring" className={inp} value={editData.password||''} onChange={e => setEditData((p:any)=>({...p,password:e.target.value}))} /></div>
                             <div className="flex gap-3 pt-4 border-t border-dashed border-chiziq">
                                 <button type="button" onClick={() => setIsEditOpen(false)} className="flex-1 py-3 bg-chiziq text-gray-700 dark:text-white text-xs font-extrabold rounded-2xl cursor-pointer hover:bg-gray-200">Bekor</button>

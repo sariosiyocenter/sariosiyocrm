@@ -12,7 +12,7 @@ import MapPicker from './MapPicker';
 import FaceSearch from './FaceSearch';
 import { uploadProfilePhoto } from '../lib/image';
 import * as XLSX from 'xlsx';
-import { STUDY_GOALS, UZB_REGIONS, ORG_TYPES, PRIVILEGES } from '../lib/studentFields';
+import { STUDY_GOALS, UZB_REGIONS, ORG_TYPES, PRIVILEGES, ALL_GRADES, gradeOptions, keepGrade } from '../lib/studentFields';
 
 const inp = "w-full px-4 py-3 bg-ichki border border-chiziq rounded-2xl text-xs font-bold text-matn focus:border-brand focus:ring-4 focus:ring-[#1b6b6b]/10 outline-none transition-all";
 const lbl = "block text-[11px] text-matn-xira mb-1.5";
@@ -31,6 +31,8 @@ export default function Students() {
     const [newStudent, setNewStudent] = useState({
         name: '', phone: '', address: '', birthDate: '', location: '', photo: '',
         gender: 'Erkak' as 'Erkak' | 'Ayol',
+        // Formada darhol belgilanadi: faol o'quvchi (hisob bugundan) yoki sinov darsiga.
+        status: 'Faol' as 'Faol' | 'Sinov',
         fatherName: '', fatherPhone: '', motherName: '', motherPhone: '',
         transportId: '' as string | number,
         routeIds: [] as number[],
@@ -42,6 +44,7 @@ export default function Students() {
         certType: '',
         certScore: '',
         orgType: '',
+        grade: '',
         region: '',
         district: '',
         studyGoal: '',
@@ -173,7 +176,7 @@ export default function Students() {
     const DEFAULT_FILTERS = {
         status: '', groupId: '', balanceStatus: 'all', dateRange: 'all', orgType: '',
         muassasaSearch: '', region: '', district: '', location: '', missingInfo: '',
-        studyGoal: '', directionId: '',
+        studyGoal: '', directionId: '', grade: '',
     };
 
     /** Tez filtr chiplari uchun sanoq. Ular joriy filtrga bog'liq emas —
@@ -205,7 +208,8 @@ export default function Students() {
         location: '',
         missingInfo: '',
         studyGoal: '',
-        directionId: ''
+        directionId: '',
+        grade: ''
     });
 
     // Ro'yxat allaqachon ochiq bo'lsa komponent qayta yaratilmaydi, shuning uchun
@@ -272,7 +276,7 @@ export default function Students() {
                 // Filial aniqlanmagan bo'lsa maydonni umuman yubormaymiz —
                 // shunda joriy filial ishlatiladi.
                 ...(branchId > 0 ? { schoolId: branchId } : {}),
-                status: 'Faol',
+                status: newStudent.status,
                 joinedDate: new Date().toISOString().split('T')[0],
                 balance: 0,
                 groups: newStudent.selectedGroupIds,
@@ -286,6 +290,7 @@ export default function Students() {
                 certType: newStudent.certType,
                 certScore: newStudent.certScore,
                 orgType: newStudent.orgType,
+                grade: newStudent.grade || null,
                 region: newStudent.region,
                 district: newStudent.district,
                 studyGoal: newStudent.studyGoal || null,
@@ -297,6 +302,7 @@ export default function Students() {
             setNewStudent({
                 name: '', phone: '', address: '', birthDate: '', location: '', photo: '',
                 gender: 'Erkak',
+                status: 'Faol',
                 fatherName: '', fatherPhone: '', motherName: '', motherPhone: '',
                 transportId: '',
                 routeIds: [],
@@ -308,6 +314,7 @@ export default function Students() {
                 certType: '',
                 certScore: '',
                 orgType: '',
+                grade: '',
                 region: '',
                 district: '',
                 studyGoal: '',
@@ -343,6 +350,7 @@ export default function Students() {
                     "Maqsad": student.studyGoal || '',
                     "Yo'nalish": (directions || []).find(d => d.id === student.directionId)?.name || '',
                     "Ta'lim muassasasi turi": student.orgType || '',
+                    "Sinf": student.grade || '',
                     "Muassasa nomi": student.studentSchool || '',
                     "Viloyat": student.region || '',
                     "Tuman": student.district || '',
@@ -408,6 +416,7 @@ export default function Students() {
                         const phone = row["Telefon"] || row["phone"] || row["Phone"] || row["Telefon raqami"] || row["Tel"];
                         const birthDate = row["Tug'ilgan sana"] || row["birthDate"] || row["Birth Date"] || row["Tug'ilgan yili"];
                         const orgType = row["Ta'lim muassasasi turi"] || row["orgType"] || row["Muassasa turi"] || '';
+                        const grade = row["Sinf"] || row["grade"] || '';
                         const studentSchool = row["Muassasa nomi"] || row["Maktab/Bog'cha"] || row["Maktab"] || row["Bog'cha"] || row["studentSchool"] || row["School"];
                         const region = row["Viloyat"] || row["region"] || '';
                         const district = row["Tuman"] || row["district"] || '';
@@ -427,6 +436,7 @@ export default function Students() {
                             gender: ['Erkak','Ayol'].includes(String(gender)) ? String(gender) : 'Erkak',
                             birthDate: birthDate ? String(birthDate) : '',
                             orgType: orgType ? String(orgType) : '',
+                            grade: grade ? String(grade) : '',
                             studentSchool: studentSchool ? String(studentSchool) : '',
                             region: region ? String(region) : '',
                             district: district ? String(district) : '',
@@ -542,6 +552,7 @@ export default function Students() {
         const matchesStatus = !filters.status || s.status === filters.status;
         const matchesGroup = !filters.groupId || (s.groups || []).includes(Number(filters.groupId));
         const matchesOrgType = !filters.orgType || s.orgType === filters.orgType;
+        const matchesGrade = !filters.grade || s.grade === filters.grade;
         const matchesMuassasa = !filters.muassasaSearch || (s.studentSchool || '').toLowerCase().includes(filters.muassasaSearch.toLowerCase());
         const matchesRegion = !filters.region || s.region === filters.region;
         const matchesDistrict = !filters.district || s.district === filters.district;
@@ -589,7 +600,7 @@ export default function Students() {
             matchesMissingInfo = fatherMissing || motherMissing;
         }
 
-        return matchesSearch && matchesStatus && matchesGroup && matchesBalance && matchesDate && matchesOrgType && matchesMuassasa && matchesRegion && matchesDistrict && matchesLocation && matchesMissingInfo && matchesGoal && matchesDirection;
+        return matchesSearch && matchesStatus && matchesGroup && matchesBalance && matchesDate && matchesOrgType && matchesGrade && matchesMuassasa && matchesRegion && matchesDistrict && matchesLocation && matchesMissingInfo && matchesGoal && matchesDirection;
     }), [students, search, filters, quickFilter, attendances]);
 
     // The table used to render every match at once — 266 rows, each with a photo.
@@ -781,6 +792,14 @@ export default function Students() {
                                 className="w-full px-3 py-2 bg-ichki border border-chiziq rounded-xl text-[11px] font-bold text-gray-700 dark:text-white outline-none focus:border-brand transition-all cursor-pointer">
                                 <option value="">Barchasi</option>
                                 {ORG_TYPES.map(o => <option key={o} value={o}>{o}</option>)}
+                            </select>
+                        </div>
+                        <div>
+                            <label className={lbl}>Sinf</label>
+                            <select value={filters.grade} onChange={e => setFilters({...filters, grade: e.target.value})}
+                                className="w-full px-3 py-2 bg-ichki border border-chiziq rounded-xl text-[11px] font-bold text-gray-700 dark:text-white outline-none focus:border-brand transition-all cursor-pointer">
+                                <option value="">Barchasi</option>
+                                {ALL_GRADES.map(g => <option key={g} value={g}>{g}</option>)}
                             </select>
                         </div>
                         <div>
@@ -1066,6 +1085,29 @@ export default function Students() {
                                         </select>
                                     </div>
                                 )}
+                                {/* Onlayn ariza formasida ham xuddi shu tanlov bor. */}
+                                <div>
+                                    <label className={lbl}>Qanday qo'shiladi?</label>
+                                    <div className="grid grid-cols-2 gap-2">
+                                        {([
+                                            { v: 'Faol', label: "✓ Faol o'quvchi" },
+                                            { v: 'Sinov', label: '⏳ Sinov darsiga' },
+                                        ] as const).map(o => (
+                                            <button key={o.v} type="button"
+                                                onClick={() => setNewStudent({ ...newStudent, status: o.v })}
+                                                className={`py-2.5 rounded-xl text-xs font-extrabold transition-all border cursor-pointer ${newStudent.status === o.v
+                                                    ? (o.v === 'Faol' ? 'bg-brand border-brand text-white shadow' : 'bg-amber-500 border-amber-500 text-white shadow')
+                                                    : 'bg-ichki/30 border-chiziq text-matn-xira hover:text-gray-600'}`}>
+                                                {o.label}
+                                            </button>
+                                        ))}
+                                    </div>
+                                    <p className="text-[10px] font-bold text-matn-xira mt-1.5">
+                                        {newStudent.status === 'Faol'
+                                            ? "Tanlangan kurslar uchun bugundan oy oxirigacha hisob yoziladi"
+                                            : "Sinov darslari bepul — «Faol» qilinganda hisob boshlanadi"}
+                                    </p>
+                                </div>
                                 <div>
                                     <label className={lbl}>{t('full_name')}</label>
                                     <input required type="text" placeholder="Jasur Alimov" className={inp} value={newStudent.name} onChange={e => setNewStudent({ ...newStudent, name: e.target.value })} />
@@ -1097,17 +1139,29 @@ export default function Students() {
                                         <label className={lbl}>Ta'lim muassasasi turi</label>
                                         <select
                                             value={newStudent.orgType}
-                                            onChange={e => setNewStudent({...newStudent, orgType: e.target.value})}
+                                            onChange={e => setNewStudent({...newStudent, orgType: e.target.value, grade: keepGrade(newStudent.grade, e.target.value)})}
                                             className={inp}
                                         >
                                             <option value="">Tanlang...</option>
                                             {ORG_TYPES.map(o => <option key={o} value={o}>{o}</option>)}
                                         </select>
                                     </div>
+                                    {/* Sinf: maktabda 7–11, kollejda 1–2-kurs, yoki bitirgan. */}
                                     <div>
-                                        <label className={lbl}>Muassasa nomi</label>
-                                        <input type="text" placeholder="42-maktab" className={inp} value={newStudent.studentSchool} onChange={e => setNewStudent({ ...newStudent, studentSchool: e.target.value })} />
+                                        <label className={lbl}>Sinf</label>
+                                        <select
+                                            value={newStudent.grade}
+                                            onChange={e => setNewStudent({ ...newStudent, grade: e.target.value })}
+                                            className={inp}
+                                        >
+                                            <option value="">Tanlang...</option>
+                                            {gradeOptions(newStudent.orgType).map(g => <option key={g} value={g}>{g}</option>)}
+                                        </select>
                                     </div>
+                                </div>
+                                <div>
+                                    <label className={lbl}>Muassasa nomi</label>
+                                    <input type="text" placeholder="42-maktab" className={inp} value={newStudent.studentSchool} onChange={e => setNewStudent({ ...newStudent, studentSchool: e.target.value })} />
                                 </div>
                                 {/* Maqsad va yo'nalish. Ro'yxatni admin Sozlamalar →
                                     Yo'nalishlar bo'limida boshqaradi; onlayn ariza formasi

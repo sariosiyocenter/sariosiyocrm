@@ -73,6 +73,11 @@ export default function HRManagement() {
     const multiBranch = isAdmin && (schools || []).length > 1;
     const allBranches = selectedSchoolId === 0;
     const branchName = (id?: number | null) => (schools || []).find(s => s.id === id)?.name || '—';
+    // Xodimning barcha filiallari: asosiysi birinchi, keyin galochka qo'yilganlari.
+    const userBranchIds = (u: any): number[] =>
+        [u.schoolId, ...(u.branchIds || [])].filter((id, i, arr) => id && arr.indexOf(id) === i);
+    const branchLabel = (u: any, sep: string) =>
+        userBranchIds(u).map(id => (schools || []).find(s => s.id === id)?.name || 'boshqa filial').join(sep);
 
     const getRoleLabel = (role: string) => {
         switch (role) {
@@ -105,16 +110,19 @@ export default function HRManagement() {
     useEffect(() => { fetchUsers(); }, [token, selectedSchoolId]);
 
     const openAddModal = () => {
-        setNewUser({ role: 'RECEPTIONIST', schoolId: selectedSchoolId && selectedSchoolId > 0 ? selectedSchoolId : '' });
+        setNewUser({ role: 'RECEPTIONIST', schoolIds: selectedSchoolId && selectedSchoolId > 0 ? [selectedSchoolId] : [] });
         setIsAddOpen(true);
     };
 
     const handleAddUser = async (e: React.FormEvent) => {
         e.preventDefault();
-        const schoolId = currentUser?.role === 'MANAGER'
-            ? currentUser.schoolId
-            : Number(newUser.schoolId) || (selectedSchoolId && selectedSchoolId > 0 ? selectedSchoolId : null);
-        if (!schoolId) {
+        // Bir nechta filial bo'lsa ADMIN galochka bilan tanlaydi (birinchisi — asosiy).
+        const schoolIds: number[] = currentUser?.role === 'MANAGER'
+            ? [currentUser.schoolId].filter(Boolean) as number[]
+            : multiBranch
+                ? (newUser.schoolIds || [])
+                : [selectedSchoolId && selectedSchoolId > 0 ? selectedSchoolId : currentUser?.schoolId].filter(Boolean) as number[];
+        if (!schoolIds.length) {
             showNotification("Xodim qaysi filialda ishlashini tanlang", 'error');
             return;
         }
@@ -126,7 +134,8 @@ export default function HRManagement() {
                     ...newUser,
                     role:     newUser.role || 'RECEPTIONIST',
                     password: newUser.password || (newUser.role === 'TECH_STAFF' ? undefined : 'admin123'),
-                    schoolId
+                    schoolId: schoolIds[0],
+                    schoolIds
                 })
             });
             if (res.ok) { setIsAddOpen(false); setNewUser({ role: 'RECEPTIONIST' }); fetchUsers(); }
@@ -163,10 +172,13 @@ export default function HRManagement() {
                     kpiPercent: editingUser.kpiPercent ?? 0,
                 };
                 if (editingUser.password) body.password = editingUser.password;
-                // Filial faqat o'zgartirilgan bo'lsa yuboriladi (boshqa filialga o'tkazish).
-                if (multiBranch && Number(editingUser.schoolId) > 0
-                    && Number(editingUser.schoolId) !== users.find(x => x.id === editingUser.id)?.schoolId) {
-                    body.schoolId = Number(editingUser.schoolId);
+                // Filiallar (galochkalar). Server faqat o'zgargan bo'lsa qo'llaydi.
+                if (multiBranch) {
+                    if (!editingUser.schoolIds?.length) {
+                        showNotification("Xodim kamida bitta filialda ishlashi kerak", 'error');
+                        return;
+                    }
+                    body.schoolIds = editingUser.schoolIds;
                 }
                 const res = await fetch(`/api/users/${editingUser.id}`, {
                     method: 'PUT',
@@ -501,11 +513,17 @@ export default function HRManagement() {
                                                             <div className="min-w-0">
                                                                 <p className="text-[13px] font-medium text-matn truncate group-hover:text-brand transition-colors">{displayName(u.name)}</p>
                                                                 {u.phone && <p className="num text-[11px] text-matn-xira truncate">{u.phone}</p>}
+                                                                {/* Ikki filialda ishlaydigan xodim — bitta filial ro'yxatida ham belgi. */}
+                                                                {!allBranches && userBranchIds(u).length > 1 && (
+                                                                    <p className="text-[10px] font-semibold text-brand truncate" title="Ishlaydigan filiallari">
+                                                                        {branchLabel(u, ' · ')}
+                                                                    </p>
+                                                                )}
                                                             </div>
                                                         </div>
                                                     </td>
                                                     {multiBranch && allBranches && (
-                                                        <td className="px-3 py-3 text-[12px] text-matn-sokin align-middle whitespace-nowrap">{branchName(u.schoolId)}</td>
+                                                        <td className="px-3 py-3 text-[12px] text-matn-sokin align-middle whitespace-nowrap">{branchLabel(u, ', ') || '—'}</td>
                                                     )}
                                                     <td className="px-3 py-3 text-[12px] text-matn-sokin align-middle">{u.position || '—'}</td>
                                                     <td className="px-3 py-3 align-middle">
@@ -546,7 +564,7 @@ export default function HRManagement() {
                                                                 </button>
                                                             )}
                                                             {isAdminOrManager && (
-                                                                <button onClick={() => { setEditingUser({ ...u, password: '' }); setIsEditOpen(true); }}
+                                                                <button onClick={() => { setEditingUser({ ...u, password: '', schoolIds: userBranchIds(u) }); setIsEditOpen(true); }}
                                                                     title="Tahrirlash"
                                                                     className="w-7 h-7 rounded-lg text-matn-xira hover:text-brand hover:bg-ichki flex items-center justify-center transition-colors cursor-pointer">
                                                                     <Pencil size={13} />
@@ -788,18 +806,49 @@ function UserModal({
                         <input required type="text" className={inp} value={user.name || ''} onChange={e => onChange({ ...user, name: e.target.value })} />
                     </div>
 
-                    {branches && (
-                        <div>
-                            <label className={lbl}>Filial *</label>
-                            <select required className={inp} value={user.schoolId || ''} onChange={e => onChange({ ...user, schoolId: e.target.value ? Number(e.target.value) : '' })}>
-                                <option value="" disabled>Filialni tanlang</option>
-                                {branches.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}
-                            </select>
-                            {user.role !== 'ADMIN' && (
-                                <p className="text-[11px] text-matn-xira mt-1.5">Xodim faqat shu filial ma'lumotlarini ko'radi.</p>
-                            )}
-                        </div>
-                    )}
+                    {branches && (() => {
+                        // Galochkalar: xodim bir nechta filialda ishlashi mumkin.
+                        // Asosiy filial — joriysi (belgilangan bo'lsa) yoki birinchi belgilangani.
+                        const ids: number[] = user.schoolIds || [];
+                        const asosiyId = ids.includes(user.schoolId) ? user.schoolId : ids[0];
+                        const nomi = (id: number) => branches.find(b => b.id === id)?.name || '';
+                        const toggle = (id: number) => onChange({
+                            ...user,
+                            schoolIds: ids.includes(id) ? ids.filter(x => x !== id) : [...ids, id],
+                        });
+                        return (
+                            <div>
+                                <label className={lbl}>Qaysi filiallarda ishlaydi? *</label>
+                                <div className="flex flex-wrap gap-2">
+                                    {branches.map(b => {
+                                        const checked = ids.includes(b.id);
+                                        return (
+                                            <label key={b.id}
+                                                className={`flex items-center gap-2 px-3 py-2.5 rounded-xl border text-xs font-bold cursor-pointer transition-all select-none ${checked
+                                                    ? 'bg-brand/10 border-brand text-brand'
+                                                    : 'bg-ichki border-chiziq text-matn-sokin hover:border-brand'}`}>
+                                                <input type="checkbox" className="w-4 h-4 accent-[#1b6b6b] cursor-pointer"
+                                                    checked={checked} onChange={() => toggle(b.id)} />
+                                                {b.name}
+                                                {checked && ids.length > 1 && asosiyId === b.id && (
+                                                    <span className="text-[10px] font-semibold text-matn-xira">(asosiy)</span>
+                                                )}
+                                            </label>
+                                        );
+                                    })}
+                                </div>
+                                <p className={`text-[11px] mt-1.5 ${ids.length ? 'text-matn-xira' : 'text-rose-500 font-bold'}`}>
+                                    {!ids.length
+                                        ? 'Kamida bitta filialni belgilang'
+                                        : user.role === 'ADMIN'
+                                            ? "Administrator barcha filiallarni ko'radi."
+                                            : ids.length > 1
+                                                ? `Xodim belgilangan filiallar orasida almashib ishlaydi. Oylik va davomat asosiy filialda (${nomi(asosiyId)}) yuritiladi.`
+                                                : "Xodim faqat shu filial ma'lumotlarini ko'radi."}
+                                </p>
+                            </div>
+                        );
+                    })()}
 
                     <div className="grid grid-cols-2 gap-4">
                         <div>

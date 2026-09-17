@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import {
     ArrowLeft, Phone, Calendar, MapPin, BookOpen, CreditCard, ReceiptText,
-    Clock, CheckCircle, XCircle, Plus, Award, ClipboardCheck, Users, Layers, ChevronRight, Save, Edit, Bus, Sparkles, Image as ImageIcon, Camera, X, Send, Trash2, Star, ScanFace, Maximize2, Target, Compass
+    Clock, CheckCircle, XCircle, Plus, Award, ClipboardCheck, Users, Layers, ChevronRight, Save, Edit, Bus, Sparkles, Image as ImageIcon, Camera, X, Send, Trash2, Star, ScanFace, Maximize2, Target, Compass, GraduationCap
 } from 'lucide-react';
 import { useCRM } from '../context/CRMContext';
 import StatTile from './ui/StatTile';
@@ -20,7 +20,7 @@ import PhotoViewer from './PhotoViewer';
 import DiscountModal from './DiscountModal';
 import StudentMoveModal from './StudentMoveModal';
 import PaymeLinkModal from './PaymeLinkModal';
-import { STUDY_GOALS, UZB_REGIONS, ORG_TYPES } from '../lib/studentFields';
+import { STUDY_GOALS, UZB_REGIONS, ORG_TYPES, gradeOptions, keepGrade } from '../lib/studentFields';
 import StudentLedger from './StudentLedger';
 import { loadFaceModels, descriptorFromPhoto, saveFaceProfiles, faceFailText, faceFailedBefore, rememberFaceTry, forgetFaceTry } from '../lib/faceDescriptor';
 import type { FaceFail } from '../lib/faceDescriptor';
@@ -181,6 +181,7 @@ export default function StudentDetails() {
         certType: '',
         certScore: '',
         orgType: '',
+        grade: '',
         region: '',
         district: '',
         studyGoal: '',
@@ -292,6 +293,7 @@ export default function StudentDetails() {
             certType: student.certType || '',
             certScore: student.certScore || '',
             orgType: student.orgType || '',
+            grade: student.grade || '',
             region: student.region || '',
             district: student.district || '',
             studyGoal: student.studyGoal || '',
@@ -366,6 +368,7 @@ export default function StudentDetails() {
                 ...editForm,
                 routeIds: editForm.routeIds,
                 studyGoal: editForm.studyGoal || null,
+                grade: editForm.grade || null,
                 directionId: editForm.directionId ? Number(editForm.directionId) : null
             };
             const telegramFields = ['telegramId', 'fatherTelegramId', 'motherTelegramId'] as const;
@@ -643,11 +646,11 @@ export default function StudentDetails() {
                                  student.status === 'Sertifikatli' ? t('status_certified') :
                                  student.status}
                             </span>
-                            {[student.studentSchool, student.orgType].filter(Boolean).length > 0 && (
+                            {[student.studentSchool, student.orgType, student.grade].filter(Boolean).length > 0 && (
                                 <>
                                     <span className="w-1 h-1 rounded-full bg-matn-xira" />
                                     <span className="text-[12px] text-matn-sokin truncate">
-                                        {[student.studentSchool, student.orgType].filter(Boolean).join(' \u00b7 ')}
+                                        {[student.studentSchool, student.orgType, student.grade].filter(Boolean).join(' \u00b7 ')}
                                     </span>
                                 </>
                             )}
@@ -868,11 +871,26 @@ export default function StudentDetails() {
                                         <label className={labelCls}>Ta'lim muassasasi turi</label>
                                         <select
                                             value={editForm.orgType}
-                                            onChange={e => setEditForm({...editForm, orgType: e.target.value})}
+                                            onChange={e => setEditForm({...editForm, orgType: e.target.value, grade: keepGrade(editForm.grade, e.target.value)})}
                                             className={inputCls}
                                         >
                                             <option value="">Tanlang...</option>
                                             {ORG_TYPES.map(o => <option key={o} value={o}>{o}</option>)}
+                                        </select>
+                                    </div>
+                                    <div>
+                                        <label className={labelCls}>Sinf</label>
+                                        <select
+                                            value={editForm.grade}
+                                            onChange={e => setEditForm({...editForm, grade: e.target.value})}
+                                            className={inputCls}
+                                        >
+                                            <option value="">Tanlang...</option>
+                                            {/* Eski qiymat yangi ro'yxatda bo'lmasa ham ko'rinib tursin. */}
+                                            {editForm.grade && !gradeOptions(editForm.orgType).includes(editForm.grade) && (
+                                                <option value={editForm.grade}>{editForm.grade}</option>
+                                            )}
+                                            {gradeOptions(editForm.orgType).map(g => <option key={g} value={g}>{g}</option>)}
                                         </select>
                                     </div>
                                     <div>
@@ -1281,6 +1299,9 @@ export default function StudentDetails() {
                                     )}
                                     {student.orgType && (
                                         <InfoRow icon={<BookOpen className="w-3.5 h-3.5" />} label="Muassasa turi" value={student.orgType} />
+                                    )}
+                                    {student.grade && (
+                                        <InfoRow icon={<GraduationCap className="w-3.5 h-3.5" />} label="Sinf" value={student.grade} />
                                     )}
                                     <InfoRow icon={<BookOpen className="w-3.5 h-3.5" />} label="Muassasa nomi" value={student.studentSchool || "-"} />
                                     {(student.region || student.district) && (

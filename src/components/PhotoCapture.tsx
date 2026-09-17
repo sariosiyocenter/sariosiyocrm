@@ -6,6 +6,42 @@ interface PhotoCaptureProps {
     onClose: () => void;
 }
 
+/** Ko'rinish oynasi va saqlanadigan rasm nisbati: portret 3:4. */
+const FRAME_RATIO = 3 / 4;
+
+/**
+ * Yuz siluetining shakli (viewBox 300×400 — oynaning o'zi). Bosh ovali yuqori
+ * o'rtada: kvadrat avatar ham shu qismni kesib oladi, Face ID esa yuz rasmning
+ * yarmiga yaqinini egallaganda eng ishonchli topadi.
+ */
+const HEAD = { cx: 150, cy: 150, rx: 72, ry: 92 };
+// Bo'yin va yelkalar: to'ldirilgani — xiralashtirishdan kesib olinadi (bo'yin
+// tepasi bosh ovalining ichiga kiradi), chiziqlari — faqat tashqi kontur.
+const BODY = 'M 16 400 C 20 336 68 312 114 302 C 125 299 128 290 128 280 L 128 226 L 172 226 L 172 280 C 172 290 175 299 186 302 C 232 312 280 336 284 400 Z';
+const BODY_LEFT = 'M 16 400 C 20 336 68 312 114 302 C 125 299 128 290 128 280 L 128 238';
+const BODY_RIGHT = 'M 172 238 L 172 280 C 172 290 175 299 186 302 C 232 312 280 336 284 400';
+
+function FaceGuide() {
+    return (
+        <svg viewBox="0 0 300 400" preserveAspectRatio="none" className="absolute inset-0 w-full h-full pointer-events-none" aria-hidden="true">
+            <defs>
+                <mask id="photo-face-cutout">
+                    <rect width="300" height="400" fill="white" />
+                    <ellipse cx={HEAD.cx} cy={HEAD.cy} rx={HEAD.rx} ry={HEAD.ry} fill="black" />
+                    <path d={BODY} fill="black" />
+                </mask>
+            </defs>
+            {/* Siluetdan tashqarisi xiralashadi — yuzni qayerga qo'yish darhol ko'rinadi. */}
+            <rect width="300" height="400" fill="rgba(15,23,42,0.55)" mask="url(#photo-face-cutout)" />
+            <g fill="none" stroke="white" strokeWidth="2.5" strokeDasharray="7 6" strokeLinecap="round">
+                <ellipse cx={HEAD.cx} cy={HEAD.cy} rx={HEAD.rx} ry={HEAD.ry} vectorEffect="non-scaling-stroke" />
+                <path d={BODY_LEFT} vectorEffect="non-scaling-stroke" />
+                <path d={BODY_RIGHT} vectorEffect="non-scaling-stroke" />
+            </g>
+        </svg>
+    );
+}
+
 export default function PhotoCapture({ onCapture, onClose }: PhotoCaptureProps) {
     const videoRef = useRef<HTMLVideoElement>(null);
     const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -60,18 +96,30 @@ export default function PhotoCapture({ onCapture, onClose }: PhotoCaptureProps) 
         }
     };
 
+    // Oynada ko'ringan qism aynan saqlanadi. Ilgari kameraning butun kadri
+    // (keng, yon tomonlari bilan) olinardi va yuz rasmda kichkina chiqardi.
+    // Endi 3:4 portret markazdan kesiladi — siluetga joylashgan yuz rasmning
+    // ham markazida turadi.
     const capturePhoto = () => {
-        if (videoRef.current && canvasRef.current) {
-            const context = canvasRef.current.getContext('2d');
-            if (context) {
-                canvasRef.current.width = videoRef.current.videoWidth;
-                canvasRef.current.height = videoRef.current.videoHeight;
-                context.drawImage(videoRef.current, 0, 0);
-                const dataUrl = canvasRef.current.toDataURL('image/jpeg', 0.8);
-                setCapturedImage(dataUrl);
-                stopCamera();
-            }
-        }
+        const video = videoRef.current;
+        const canvas = canvasRef.current;
+        if (!video || !canvas || !video.videoWidth || !video.videoHeight) return;
+        const context = canvas.getContext('2d');
+        if (!context) return;
+
+        const vw = video.videoWidth;
+        const vh = video.videoHeight;
+        let sw = vw, sh = vh;
+        if (vw / vh > FRAME_RATIO) sw = Math.round(vh * FRAME_RATIO);
+        else sh = Math.round(vw / FRAME_RATIO);
+        const sx = Math.round((vw - sw) / 2);
+        const sy = Math.round((vh - sh) / 2);
+
+        canvas.width = sw;
+        canvas.height = sh;
+        context.drawImage(video, sx, sy, sw, sh, 0, 0, sw, sh);
+        setCapturedImage(canvas.toDataURL('image/jpeg', 0.9));
+        stopCamera();
     };
 
     const handleConfirm = () => {
@@ -94,7 +142,7 @@ export default function PhotoCapture({ onCapture, onClose }: PhotoCaptureProps) 
 
     return (
         <div className="fixed inset-0 bg-slate-900/90 backdrop-blur-md z-[300] flex flex-col items-center justify-center p-4">
-            <div className="bg-white rounded-[2.5rem] w-full max-w-xl overflow-hidden shadow-2xl flex flex-col items-center">
+            <div className="bg-white rounded-[2.5rem] w-full max-w-xl max-h-full overflow-y-auto shadow-2xl flex flex-col items-center">
                 <div className="w-full p-4 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
                     <h3 className="text-xl font-black text-slate-800 tracking-tight">Rasmga olish</h3>
                     <div className="flex items-center gap-1">
@@ -114,28 +162,37 @@ export default function PhotoCapture({ onCapture, onClose }: PhotoCaptureProps) 
                     </div>
                 </div>
 
-                <div className="relative w-full aspect-video bg-slate-900 flex items-center justify-center overflow-hidden">
-                    {error ? (
-                        <div className="text-center p-10">
-                            <XCircle className="w-16 h-16 text-red-500 mx-auto mb-4" />
-                            <p className="text-white font-bold">{error}</p>
-                        </div>
-                    ) : capturedImage ? (
-                        <img src={capturedImage} className="w-full h-full object-cover" alt="Captured" />
-                    ) : (
-                        <video
-                            ref={videoRef}
-                            autoPlay
-                            playsInline
-                            muted
-                            className="w-full h-full object-cover"
-                            style={{ transform: facingMode === 'user' ? 'scaleX(-1)' : 'none' }}
-                        />
-                    )}
-                    <canvas ref={canvasRef} className="hidden" />
+                <div className="w-full bg-slate-900 flex justify-center">
+                    {/* Portret oyna: balandligi ekranga sig'adi, eni nisbatdan chiqadi. */}
+                    <div className="relative aspect-[3/4] overflow-hidden" style={{ width: 'min(100%, calc(60vh * 0.75))' }}>
+                        {error ? (
+                            <div className="absolute inset-0 flex flex-col items-center justify-center text-center p-10">
+                                <XCircle className="w-16 h-16 text-red-500 mx-auto mb-4" />
+                                <p className="text-white font-bold">{error}</p>
+                            </div>
+                        ) : capturedImage ? (
+                            <img src={capturedImage} className="absolute inset-0 w-full h-full object-cover" alt="Olingan rasm" />
+                        ) : (
+                            <>
+                                <video
+                                    ref={videoRef}
+                                    autoPlay
+                                    playsInline
+                                    muted
+                                    className="absolute inset-0 w-full h-full object-cover"
+                                    style={{ transform: facingMode === 'user' ? 'scaleX(-1)' : 'none' }}
+                                />
+                                <FaceGuide />
+                                <p className="absolute top-3 left-1/2 -translate-x-1/2 whitespace-nowrap px-3 py-1.5 rounded-full bg-slate-900/70 text-white text-[11px] font-bold">
+                                    Yuzni ramka ichiga joylashtiring
+                                </p>
+                            </>
+                        )}
+                        <canvas ref={canvasRef} className="hidden" />
+                    </div>
                 </div>
 
-                <div className="p-8 w-full flex items-center justify-center gap-4">
+                <div className="p-6 w-full flex items-center justify-center gap-4">
                     {!capturedImage ? (
                         <button
                             onClick={capturePhoto}

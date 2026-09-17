@@ -21,6 +21,8 @@ interface AuthenticatedUser {
     name: string;
     role: UserRole;
     schoolId: number | null;
+    /** Qo'shimcha filiallar (ikki filialda ishlaydigan xodim). */
+    branchIds?: number[];
 }
 
 interface CRMContextType extends CRMState {
@@ -58,6 +60,7 @@ interface CRMContextType extends CRMState {
     updateCourse: (id: number, course: Partial<Course>) => Promise<void>;
     deleteCourse: (id: number) => Promise<void>;
     addRoom: (room: Omit<Room, 'id' | 'schoolId'>) => Promise<void>;
+    updateRoom: (id: number, room: Partial<Omit<Room, 'id' | 'schoolId'>>) => Promise<void>;
     deleteRoom: (id: number) => Promise<void>;
     addSchool: (school: Omit<School, 'id'>) => Promise<void>;
     updateSchool: (id: number, school: Partial<Omit<School, 'id'>>) => Promise<void>;
@@ -458,10 +461,19 @@ export const CRMProvider: React.FC<{ children: React.ReactNode }> = ({ children 
                 const userData = await res.json();
                 setUser(userData);
 
+                // Bir nechta filialda ishlaydigan xodim: oxirgi tanlagan filiali hali
+                // unga tegishli bo'lsa o'sha ochiladi. Ruxsat server javobidan
+                // (branchIds) tekshiriladi — olib tashlangan filial so'ralmaydi.
+                const stored = orgWide ? null : storedBranchId();
+                const staffBranch = stored !== null && stored > 0 && stored !== userData.schoolId
+                    && (userData.branchIds || []).includes(stored) ? stored : null;
+
                 if (userData.role === 'SUPERADMIN') {
                     // SUPERADMIN — data organizations sahifasida yuklanadi, bu yerda hech narsa kerak emas
                     setLoading(false);
                     return;
+                } else if (staffBranch !== null) {
+                    await fetchData(token, staffBranch, userData.role);
                 } else if (initPromise && predictedSchoolId !== undefined && predictedSchoolId !== null) {
                     // Init response allaqachon yuborilgan, faqat kutamiz
                     activeBranchRef.current = predictedSchoolId;
@@ -906,6 +918,11 @@ export const CRMProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     const addRoom = async (room: Omit<Room, 'id' | 'schoolId'>) => {
         const newRoom = await apiCall('rooms', 'POST', room);
         setState(prev => ({ ...prev, rooms: [...prev.rooms, newRoom] }));
+    };
+
+    const updateRoom = async (id: number, room: Partial<Omit<Room, 'id' | 'schoolId'>>) => {
+        const updated = await apiCall(`rooms/${id}`, 'PUT', room);
+        setState(prev => ({ ...prev, rooms: prev.rooms.map(r => r.id === id ? updated : r) }));
     };
 
     const deleteRoom = async (id: number) => {
@@ -1424,7 +1441,7 @@ export const CRMProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             addPayment,
             updateSettings,
             addCourse, updateCourse, deleteCourse,
-            addRoom, deleteRoom,
+            addRoom, updateRoom, deleteRoom,
             addSchool, updateSchool, deleteSchool,
             addAttendance, updateAttendance, addBatchAttendance, deleteBatchAttendance, updateDayTopic, addScore, loadAttendanceFor, retryLoad,
             addTopic, updateTopic, deleteTopic,

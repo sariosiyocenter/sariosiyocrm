@@ -32,10 +32,10 @@ const lbl = "block text-[11px] font-extrabold   text-matn-xira mb-2";
 
 export default function Settings() {
     const { settings, updateSettings, rooms, schools,
-        addRoom, deleteRoom, addSchool, updateSchool, deleteSchool,
+        addRoom, updateRoom, deleteRoom, addSchool, updateSchool, deleteSchool,
         directions, addDirection, updateDirection, deleteDirection,
         themeColor, setThemeColor } = useCRM();
-    const { user: currentUser, token } = useCRM();
+    const { user: currentUser, token, showNotification } = useCRM();
     const { t } = useLang();
 
     const MODULES = [
@@ -65,6 +65,7 @@ export default function Settings() {
     const [editingSchool, setEditingSchool] = useState<any>(null);
     // Tahrirlanayotgan yo'nalish — xuddi shu modal ishlatiladi.
     const [editingDirection, setEditingDirection] = useState<any>(null);
+    const [editingRoom, setEditingRoom] = useState<any>(null);
     const [newItem, setNewItem] = useState<any>({});
 
     const [permissions, setPermissions] = useState<Record<string, Record<string, boolean>>>(() => {
@@ -207,7 +208,11 @@ export default function Settings() {
         e.preventDefault();
         try {
             if (activeSection === 'xonalar') {
-                await addRoom({ ...newItem, capacity: Number(newItem.capacity) });
+                if (editingRoom) {
+                    await updateRoom(editingRoom.id, { name: newItem.name, capacity: Number(newItem.capacity) });
+                } else {
+                    await addRoom({ ...newItem, capacity: Number(newItem.capacity) });
+                }
             } else if (activeSection === 'yonalishlar') {
                 if (editingDirection) {
                     await updateDirection(editingDirection.id, { name: newItem.name, subjects: newItem.subjects || null });
@@ -224,9 +229,12 @@ export default function Settings() {
             setIsAddModalOpen(false);
             setEditingSchool(null);
             setEditingDirection(null);
+            setEditingRoom(null);
             setNewItem({});
         } catch (err: any) {
             console.error('Add failed', err);
+            // Xona funksiyalari xabar ko'rsatmaydi — xato jimgina yutilib qolmasin.
+            if (activeSection === 'xonalar') showNotification(err?.message || 'Saqlab bo\'lmadi', 'error');
         }
     };
 
@@ -612,11 +620,16 @@ export default function Settings() {
         if (activeSection === 'xonalar') return (
             <ListSection
                 title={t('rooms_title')} subtitle={t('rooms_subtitle')}
-                icon={<DoorOpen size={16} />} onAdd={() => { setNewItem({}); setIsAddModalOpen(true); }}
+                icon={<DoorOpen size={16} />} onAdd={() => { setEditingRoom(null); setNewItem({}); setIsAddModalOpen(true); }}
                 items={rooms || []} emptyText={t('no_rooms_found')}
                 renderItem={(item: any) => (
                     <ItemCard key={item.id} icon={<DoorOpen size={16} />} iconBg="bg-purple-50 text-purple-600 border-purple-100 dark:bg-purple-950/20 dark:text-purple-400 dark:border-purple-900/40"
                         title={item.name} subtitle={t('capacity_persons_unit').replace('{count}', item.capacity)}
+                        onEdit={() => {
+                            setEditingRoom(item);
+                            setNewItem({ name: item.name, capacity: item.capacity });
+                            setIsAddModalOpen(true);
+                        }}
                         onDelete={() => deleteRoom(item.id)} />
                 )}
             />
@@ -776,7 +789,7 @@ export default function Settings() {
     };
 
     const addModalTitle = activeSection === 'xonalar'
-        ? t('add_room')
+        ? (editingRoom ? 'Xonani tahrirlash' : t('add_room'))
         : activeSection === 'yonalishlar'
             ? (editingDirection ? "Yo'nalishni tahrirlash" : "Yangi yo'nalish")
             : (editingSchool ? 'Filialni tahrirlash' : t('add_branch'));
@@ -843,10 +856,10 @@ export default function Settings() {
                             <div>
                                 <h3 className="text-lg font-black text-matn tracking-tight">{addModalTitle}</h3>
                                 <p className="text-[11px] font-bold text-brand mt-0.5">
-                                    {editingSchool ? "Nomi va manzilini o'zgartirish" : t('add_data_subtitle')}
+                                    {editingSchool ? "Nomi va manzilini o'zgartirish" : editingRoom ? "Nomi va sig'imini o'zgartirish" : t('add_data_subtitle')}
                                 </p>
                             </div>
-                            <button aria-label="Yopish" onClick={() => { setIsAddModalOpen(false); setEditingSchool(null); setEditingDirection(null); }} className="w-9 h-9 flex items-center justify-center text-matn-xira hover:bg-gray-55 dark:hover:bg-gray-700 rounded-xl cursor-pointer"><X size={18} /></button>
+                            <button aria-label="Yopish" onClick={() => { setIsAddModalOpen(false); setEditingSchool(null); setEditingDirection(null); setEditingRoom(null); }} className="w-9 h-9 flex items-center justify-center text-matn-xira hover:bg-gray-55 dark:hover:bg-gray-700 rounded-xl cursor-pointer"><X size={18} /></button>
                         </div>
                         <form onSubmit={handleAddItem} className="space-y-4">
                             <div>
@@ -856,7 +869,7 @@ export default function Settings() {
                             {activeSection === 'xonalar' && (
                                 <div>
                                     <label className={lbl}>{t('capacity_persons_label')}</label>
-                                    <input required type="number" className={inp} value={newItem.capacity || ''} onChange={e => setNewItem({ ...newItem, capacity: e.target.value })} />
+                                    <input required type="number" min="1" className={inp} value={newItem.capacity || ''} onChange={e => setNewItem({ ...newItem, capacity: e.target.value })} />
                                 </div>
                             )}
                             {activeSection === 'yonalishlar' && (
@@ -877,7 +890,7 @@ export default function Settings() {
                                 </div>
                             )}
                             <div className="flex gap-3 pt-4 border-t border-dashed border-chiziq/50">
-                                <button type="button" onClick={() => { setIsAddModalOpen(false); setEditingSchool(null); setEditingDirection(null); }}
+                                <button type="button" onClick={() => { setIsAddModalOpen(false); setEditingSchool(null); setEditingDirection(null); setEditingRoom(null); }}
                                     className="flex-1 py-3 bg-chiziq text-gray-700 dark:text-white text-xs font-extrabold rounded-2xl transition-all cursor-pointer hover:bg-gray-200 dark:hover:bg-gray-600">
                                     {t('cancel')}
                                 </button>

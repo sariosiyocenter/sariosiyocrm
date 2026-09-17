@@ -42,6 +42,8 @@ export interface Student {
     orgType?: string;
     region?: string;
     district?: string;
+    /** Sinf / bosqich: "7-sinf" … "11-sinf", "1-kurs" | "2-kurs", "Bitirgan". */
+    grade?: string | null;
     /** Nima maqsadda o'qiyapti: "Asosiy fan" | "Majburiy fan" | "Mustaqil". */
     studyGoal?: string;
     /** Qaysi yo'nalishga tayyorlanmoqda (Direction.id). */
@@ -67,6 +69,8 @@ export interface User {
     phone?: string;
     role: UserRole;
     schoolId: number | null;
+    /** Qo'shimcha filiallar (ikki filialda ishlaydigan xodim). Asosiysi — schoolId. */
+    branchIds?: number[];
     createdAt: string;
     driverRoutes?: Route[];
 }

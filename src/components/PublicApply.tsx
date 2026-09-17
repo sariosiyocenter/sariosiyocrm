@@ -1,10 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
-import { Building2, Phone, CheckCircle2, ChevronRight, User, BookOpen, Clock, MessageSquare, Calendar, MapPin, GraduationCap, Image as ImageIcon, Plus, Trash2, Target, Compass, Bus, Award } from 'lucide-react';
+import { Building2, Phone, CheckCircle2, ChevronRight, User, BookOpen, Clock, MessageSquare, Calendar, MapPin, GraduationCap, Image as ImageIcon, Plus, Trash2, Target, Compass, Bus, Award, Sparkles } from 'lucide-react';
 import PhotoCapture from './PhotoCapture';
 import MapPicker from './MapPicker';
 import { compressImage } from '../lib/image';
-import { STUDY_GOALS, UZB_REGIONS, ORG_TYPES, PRIVILEGES } from '../lib/studentFields';
+import { STUDY_GOALS, UZB_REGIONS, ORG_TYPES, PRIVILEGES, gradeOptions, keepGrade } from '../lib/studentFields';
 
 interface Course {
     id: number;
@@ -50,10 +50,6 @@ interface PublicDirection {
     subjects?: string | null;
 }
 
-interface PublicTransport {
-    id: number;
-    name: string;
-}
 
 export default function PublicApply() {
     const { schoolId } = useParams<{ schoolId: string }>();
@@ -61,7 +57,6 @@ export default function PublicApply() {
     const [courses, setCourses] = useState<Course[]>([]);
     const [groups, setGroups] = useState<PublicGroup[]>([]);
     const [directions, setDirections] = useState<PublicDirection[]>([]);
-    const [transports, setTransports] = useState<PublicTransport[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
 
@@ -85,11 +80,16 @@ export default function PublicApply() {
         // formasi ulardan yarmini so'ramasdi va xodim har bir arizadan keyin
         // qolganini qo'lda to'ldirib chiqardi.
         orgType: '',
+        grade: '',
         region: '',
         district: '',
         studyGoal: '',
         directionId: '' as number | '',
-        transportId: '' as number | '',
+        // Transport kerakmi — faqat ha/yo'q. Mashinani tizim o'zi taqsimlaydi,
+        // ariza beruvchi marshrut tanlamaydi (CRM dagi oynada ham shunday).
+        needsTransport: false,
+        // Sinov darsiga yoki darhol faol o'quvchi — CRM dagi oyna bilan bir xil.
+        status: 'Sinov' as 'Sinov' | 'Faol',
         privileges: [] as string[],
         certificates: [] as Certificate[]
     });
@@ -129,6 +129,32 @@ export default function PublicApply() {
     };
 
     const [isPhotoModalOpen, setIsPhotoModalOpen] = useState(false);
+    const [isRemovingBg, setIsRemovingBg] = useState(false);
+    const [bgError, setBgError] = useState<string | null>(null);
+
+    // Rasm fonini tozalash (CRM dagi oynadagi tugma bilan bir xil xizmat).
+    const handleRemoveBg = async () => {
+        if (!form.photo || isRemovingBg) return;
+        setBgError(null);
+        setIsRemovingBg(true);
+        try {
+            const res = await fetch('/api/public/remove-bg', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ image: form.photo }),
+            });
+            const data = await res.json().catch(() => ({}));
+            if (res.ok && data.success && data.image) {
+                setForm(prev => ({ ...prev, photo: data.image }));
+            } else {
+                setBgError(data.error || "Fonni tozalab bo'lmadi. Birozdan keyin qayta urinib ko'ring.");
+            }
+        } catch {
+            setBgError('Aloqa muammosi yuz berdi.');
+        } finally {
+            setIsRemovingBg(false);
+        }
+    };
     // Xaritadan uy joyi - CRM dagi qo'shish oynasida bor edi, arizada yo'q edi.
     // Transport marshrutini tuzayotgan xodimga aynan shu kerak.
     const [isMapOpen, setIsMapOpen] = useState(false);
@@ -191,8 +217,6 @@ export default function PublicApply() {
                 // shuning uchun formaga qattiq yozilmaydi.
                 const dirRes = await fetch(`/api/public/schools/${schoolId}/directions`);
                 if (dirRes.ok) setDirections(await dirRes.json());
-                const trRes = await fetch(`/api/public/schools/${schoolId}/transports`);
-                if (trRes.ok) setTransports(await trRes.json());
             } catch (err: any) {
                 setError(err.message || 'Xatolik yuz berdi');
             } finally {
@@ -313,10 +337,12 @@ export default function PublicApply() {
                                     setSubmitted(false);
                                     setForm(prev => ({
                                         ...prev,
-                                        name: '', phone: '', birthDate: '', studentSchool: '',
+                                        name: '', phone: '', birthDate: '', studentSchool: '', grade: '',
                                         address: '', notes: '', photo: '', certificates: [],
                                         studyGoal: '', directionId: '', privileges: [], location: '',
+                                        needsTransport: false, status: 'Sinov',
                                     }));
+                                    setBgError(null);
                                     window.scrollTo(0, 0);
                                 }}
                                 className="mt-6 text-[11px] font-black uppercase tracking-wider text-[var(--brand-color,#1b6b6b)] hover:underline cursor-pointer">
@@ -328,6 +354,30 @@ export default function PublicApply() {
                             
                             {/* SECTION 1: STUDENT */}
                             <span className={secTitle}>O'quvchi ma'lumotlari</span>
+
+                            {/* CRM dagi "o'quvchi qo'shish" oynasida ham xuddi shu tanlov. */}
+                            <div>
+                                <label className={lbl}>Qanday qo'shilasiz?</label>
+                                <div className="grid grid-cols-2 gap-2">
+                                    {([
+                                        { v: 'Sinov', label: '⏳ Sinov darsiga' },
+                                        { v: 'Faol', label: "✓ Faol o'quvchi" },
+                                    ] as const).map(o => (
+                                        <button key={o.v} type="button"
+                                            onClick={() => setForm({ ...form, status: o.v })}
+                                            className={`py-3 rounded-xl text-xs font-extrabold transition-all border cursor-pointer ${form.status === o.v
+                                                ? (o.v === 'Faol' ? 'bg-brand border-brand text-white shadow' : 'bg-amber-500 border-amber-500 text-white shadow')
+                                                : 'bg-gray-50 border-gray-200 text-matn-xira hover:text-gray-600'}`}>
+                                            {o.label}
+                                        </button>
+                                    ))}
+                                </div>
+                                <p className="text-[11px] font-bold text-matn-xira mt-2">
+                                    {form.status === 'Faol'
+                                        ? "Tanlangan kursda darhol o'qishni boshlaydi"
+                                        : 'Avval bepul sinov darsiga keladi'}
+                                </p>
+                            </div>
                             
                             <div>
                                 <label className={lbl}>Ism-sharifingiz *</label>
@@ -392,32 +442,47 @@ export default function PublicApply() {
                                 </div>
                             </div>
 
-                            <div className="grid grid-cols-2 gap-4">
+                            {/* items-end: telefonda uzun yorliq ikki qatorga tushadi — selectlar baribir bir chiziqda turadi. */}
+                            <div className="grid grid-cols-2 gap-4 items-end">
                                 <div>
                                     <label className={lbl}>Ta'lim muassasasi turi</label>
                                     <select
                                         className={sel}
                                         value={form.orgType}
-                                        onChange={e => setForm({ ...form, orgType: e.target.value })}
+                                        onChange={e => setForm({ ...form, orgType: e.target.value, grade: keepGrade(form.grade, e.target.value) })}
                                     >
                                         <option value="">Tanlang...</option>
                                         {ORG_TYPES.map(o => <option key={o} value={o}>{o}</option>)}
                                     </select>
                                 </div>
+                                {/* Sinf: maktabda 7–11, kollejda 1–2-kurs, yoki bitirgan
+                                    (CRM dagi oynada ham xuddi shunday). */}
                                 <div>
-                                    <label className={lbl}>Muassasa nomi</label>
-                                    <div className="relative">
-                                        <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-matn-xira">
-                                            <GraduationCap size={15} />
-                                        </div>
-                                        <input
-                                            type="text"
-                                            placeholder="42-maktab"
-                                            className={inp}
-                                            value={form.studentSchool}
-                                            onChange={e => setForm({ ...form, studentSchool: e.target.value })}
-                                        />
+                                    <label className={lbl}>Sinf</label>
+                                    <select
+                                        className={sel}
+                                        value={form.grade}
+                                        onChange={e => setForm({ ...form, grade: e.target.value })}
+                                    >
+                                        <option value="">Tanlang...</option>
+                                        {gradeOptions(form.orgType).map(g => <option key={g} value={g}>{g}</option>)}
+                                    </select>
+                                </div>
+                            </div>
+
+                            <div>
+                                <label className={lbl}>Muassasa nomi</label>
+                                <div className="relative">
+                                    <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-matn-xira">
+                                        <GraduationCap size={15} />
                                     </div>
+                                    <input
+                                        type="text"
+                                        placeholder="42-maktab"
+                                        className={inp}
+                                        value={form.studentSchool}
+                                        onChange={e => setForm({ ...form, studentSchool: e.target.value })}
+                                    />
                                 </div>
                             </div>
 
@@ -541,10 +606,20 @@ export default function PublicApply() {
                                             </button>
                                         </div>
                                         {form.photo && (
-                                            <button type="button" onClick={() => setForm({ ...form, photo: '' })}
+                                            <button type="button" onClick={handleRemoveBg} disabled={isRemovingBg}
+                                                className="w-full flex items-center justify-center gap-1.5 py-2 bg-violet-50 dark:bg-violet-950/20 text-violet-600 dark:text-violet-400 border border-violet-100 dark:border-violet-900/30 rounded-xl text-[11px] font-bold uppercase tracking-wider hover:bg-violet-600 hover:text-white transition-all disabled:opacity-50 cursor-pointer">
+                                                <Sparkles size={12} className={isRemovingBg ? 'animate-spin' : ''} />
+                                                {isRemovingBg ? 'Tozalanmoqda...' : 'Fonni tozalash'}
+                                            </button>
+                                        )}
+                                        {form.photo && (
+                                            <button type="button" onClick={() => { setForm({ ...form, photo: '' }); setBgError(null); }}
                                                 className="w-full py-1.5 bg-red-50 text-red-600 dark:bg-red-950/20 dark:text-red-400 rounded-xl border border-red-100 dark:border-red-900/40 text-[11px] font-bold uppercase tracking-wider cursor-pointer">
                                                 Rasmni o'chirish
                                             </button>
+                                        )}
+                                        {bgError && (
+                                            <p className="text-[11px] font-bold text-red-500">{bgError}</p>
                                         )}
                                     </div>
                                 </div>
@@ -813,24 +888,24 @@ export default function PublicApply() {
                                 {form.location ? 'Xaritada belgilandi' : 'Xaritadan tanlash'}
                             </button>
 
-                            {transports.length > 0 && (
-                                <div>
-                                    <label className={lbl}>Transport kerakmi?</label>
-                                    <div className="relative">
-                                        <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-matn-xira">
-                                            <Bus size={15} />
-                                        </div>
-                                        <select
-                                            className={`${inp} appearance-none cursor-pointer`}
-                                            value={form.transportId}
-                                            onChange={e => setForm({ ...form, transportId: e.target.value ? Number(e.target.value) : '' })}
-                                        >
-                                            <option value="">Kerak emas</option>
-                                            {transports.map(tr => <option key={tr.id} value={tr.id}>{tr.name}</option>)}
-                                        </select>
-                                    </div>
+                            <div>
+                                <label className={lbl}>Transport kerakmi?</label>
+                                <div className="grid grid-cols-2 gap-2">
+                                    {([
+                                        { v: true, label: 'Ha, kerak' },
+                                        { v: false, label: "Yo'q" },
+                                    ] as const).map(o => (
+                                        <button key={String(o.v)} type="button"
+                                            onClick={() => setForm({ ...form, needsTransport: o.v })}
+                                            className={`py-3 rounded-xl text-xs font-extrabold transition-all border cursor-pointer flex items-center justify-center gap-1.5 ${form.needsTransport === o.v
+                                                ? 'bg-brand border-brand text-white shadow'
+                                                : 'bg-gray-50 border-gray-200 text-matn-xira hover:text-gray-600'}`}>
+                                            {o.v && <Bus size={14} />}
+                                            {o.label}
+                                        </button>
+                                    ))}
                                 </div>
-                            )}
+                            </div>
 
                             <div>
                                 <label className={lbl}>Savollaringiz yoki qo'shimcha izohlar</label>

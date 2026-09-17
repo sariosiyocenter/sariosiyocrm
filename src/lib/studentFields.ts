@@ -37,6 +37,28 @@ export const ORG_TYPES = [
     'Boshqa',
 ] as const;
 
+/**
+ * Sinf / bosqich. Egasi (2026-09-17): maktabda 7–11-sinf, kollejda 1–2-kurs,
+ * o'qishni tugatgan bo'lsa "Bitirgan". Server (ochiq ariza) ham shu ro'yxatni
+ * qabul qiladi.
+ */
+export const SCHOOL_GRADES = ['7-sinf', '8-sinf', '9-sinf', '10-sinf', '11-sinf'] as const;
+export const COLLEGE_GRADES = ['1-kurs', '2-kurs'] as const;
+export const GRADUATED = 'Bitirgan';
+export const ALL_GRADES: string[] = [...SCHOOL_GRADES, ...COLLEGE_GRADES, GRADUATED];
+
+/** Muassasa turiga mos sinflar. Tur tanlanmagan (yoki boshqa) bo'lsa — hammasi. */
+export function gradeOptions(orgType?: string | null): string[] {
+    if (orgType === 'Maktab' || orgType === 'Prezident maktabi') return [...SCHOOL_GRADES, GRADUATED];
+    if (orgType === 'Kollej / Litsey') return [...COLLEGE_GRADES, GRADUATED];
+    return ALL_GRADES;
+}
+
+/** Muassasa turi o'zgarganda: tanlangan sinf yangi ro'yxatda bo'lmasa tozalanadi. */
+export function keepGrade(grade: string | null | undefined, orgType?: string | null): string {
+    return grade && gradeOptions(orgType).includes(grade) ? grade : '';
+}
+
 /** Imtiyoz turlari. Server ham aynan shu ro'yxatni qabul qiladi. */
 export const PRIVILEGES = [
     'Nogironligi bor',
