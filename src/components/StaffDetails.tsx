@@ -3,7 +3,7 @@ import {
     ArrowLeft, Phone, Mail, Layers, Wallet,
     Plus, X, Save, Target, Star, AlertCircle, Pencil, Camera, Sparkles,
     CheckCircle2, XCircle, ChevronLeft, ChevronRight, CalendarDays,
-    Banknote, Clock, Trash2, Maximize2, Send
+    Banknote, Clock, Trash2, Maximize2, Send, MapPin
 } from 'lucide-react';
 import { useCRM } from '../context/CRMContext';
 import { useConfirm } from './ConfirmDialog';
@@ -13,6 +13,7 @@ import PhotoViewer from './PhotoViewer';
 import Avatar from './ui/Avatar';
 import { displayName } from '../lib/displayName';
 import PhotoCapture from './PhotoCapture';
+import BranchCheckboxes from './ui/BranchCheckboxes';
 import { useLang } from '../context/LanguageContext';
 
 const ROLE_LABELS: Record<string, string> = {
@@ -58,7 +59,7 @@ const lbl = "block text-[11px] font-extrabold   text-matn-xira mb-2";
 export default function StaffDetails() {
     const { id } = useParams<{ id: string }>();
     const navigate = useNavigate();
-    const { teachers, groups, attendances, token, user: currentUser, showNotification, retryLoad, updateTeacher } = useCRM();
+    const { teachers, groups, attendances, token, user: currentUser, showNotification, retryLoad, updateTeacher, schools } = useCRM();
     const confirm = useConfirm();
     const { t } = useLang();
 
@@ -195,6 +196,11 @@ export default function StaffDetails() {
     const fileRef = React.useRef<HTMLInputElement>(null);
 
     const isAdminOrManager = currentUser?.role === 'ADMIN' || currentUser?.role === 'MANAGER';
+    // Filiallarni (ikki filialda ishlash) faqat ADMIN belgilaydi — HR ro'yxatidagi
+    // oynada ham, shu profil oynasida ham.
+    const multiBranch = currentUser?.role === 'ADMIN' && (schools || []).length > 1;
+    const staffBranchIds = (u: any): number[] =>
+        [u?.schoolId, ...(u?.branchIds || [])].filter((id, i, arr) => id && arr.indexOf(id) === i);
 
     // Ustozga xodim yozuvi avtomatik ochilganda email ham o'ylab topiladi
     // (...@internal.local). U hech kimga xat yubormaydi, shuning uchun profilda
@@ -488,6 +494,13 @@ export default function StaffDetails() {
         // maydonda bo'sh ko'rinadi: bo'sh qoldirilsa o'zgarmaydi.
         const email = (editData.email || '').trim();
         if (email && email !== staffUser.email) body.email = email;
+        if (multiBranch) {
+            if (!editData.schoolIds?.length) {
+                showNotification("Xodim kamida bitta filialda ishlashi kerak", 'error');
+                return;
+            }
+            body.schoolIds = editData.schoolIds;
+        }
         try {
             const res = await fetch(`/api/users/${staffUser.id}`, {
                 method: 'PUT',
@@ -773,7 +786,7 @@ export default function StaffDetails() {
                             <h1 className="text-[22px] font-semibold text-matn tracking-tight leading-tight truncate">{displayName(staffUser.name)}</h1>
                             {isAdminOrManager && (
                                 <button
-                                    onClick={() => { setEditData({ ...staffUser, password: '', email: haqiqiyEmail(staffUser.email) }); setIsEditOpen(true); }}
+                                    onClick={() => { setEditData({ ...staffUser, password: '', email: haqiqiyEmail(staffUser.email), schoolIds: staffBranchIds(staffUser) }); setIsEditOpen(true); }}
                                     title={t('edit')}
                                     className="text-matn-xira hover:text-brand cursor-pointer shrink-0">
                                     <Pencil size={13} />
@@ -878,6 +891,11 @@ export default function StaffDetails() {
                                 <DetailRow icon={<Mail className="w-3.5 h-3.5" />} label="Email" value={haqiqiyEmail(staffUser.email)} />
                             )}
                             <DetailRow icon={<Layers className="w-3.5 h-3.5" />} label="Lavozim" value={staffUser.position || ''} />
+                            {(schools || []).length > 1 && (
+                                <DetailRow icon={<MapPin className="w-3.5 h-3.5" />}
+                                    label={staffBranchIds(staffUser).length > 1 ? 'Filiallar' : 'Filial'}
+                                    value={staffBranchIds(staffUser).map(id => (schools || []).find(s => s.id === id)?.name || 'boshqa filial').join(', ')} />
+                            )}
                             <DetailRow
                                 icon={<CalendarDays className="w-3.5 h-3.5" />}
                                 label={t('work_schedule')}
@@ -1748,6 +1766,16 @@ export default function StaffDetails() {
                                 <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={handlePhoto} />
                             </div>
                             <div><label className={lbl}>Ism Familiya</label><input type="text" className={inp} value={editData.name||''} onChange={e => setEditData((p:any)=>({...p,name:e.target.value}))} /></div>
+                            {multiBranch && (
+                                <BranchCheckboxes
+                                    branches={schools}
+                                    value={editData.schoolIds || []}
+                                    currentPrimaryId={staffUser.schoolId}
+                                    role={staffUser.role}
+                                    onChange={ids => setEditData((p: any) => ({ ...p, schoolIds: ids }))}
+                                    labelClassName={lbl}
+                                />
+                            )}
                             <div className="grid grid-cols-2 gap-4">
                                 <div><label className={lbl}>Telefon</label><input type="text" className={inp} value={editData.phone||''} onChange={e => setEditData((p:any)=>({...p,phone:e.target.value}))} /></div>
                                 <div><label className={lbl}>Asosiy Maosh</label><input type="number" className={inp} value={editData.salary||''} onChange={e => setEditData((p:any)=>({...p,salary:e.target.value}))} /></div>

@@ -13,6 +13,7 @@ import { useLang } from '../context/LanguageContext';
 import { useNavigate } from 'react-router-dom';
 import { uploadProfilePhoto } from '../lib/image';
 import PhotoCapture from './PhotoCapture';
+import BranchCheckboxes from './ui/BranchCheckboxes';
 
 
 const ROLE_LABELS: Record<string, string> = {
@@ -806,49 +807,16 @@ function UserModal({
                         <input required type="text" className={inp} value={user.name || ''} onChange={e => onChange({ ...user, name: e.target.value })} />
                     </div>
 
-                    {branches && (() => {
-                        // Galochkalar: xodim bir nechta filialda ishlashi mumkin.
-                        // Asosiy filial — joriysi (belgilangan bo'lsa) yoki birinchi belgilangani.
-                        const ids: number[] = user.schoolIds || [];
-                        const asosiyId = ids.includes(user.schoolId) ? user.schoolId : ids[0];
-                        const nomi = (id: number) => branches.find(b => b.id === id)?.name || '';
-                        const toggle = (id: number) => onChange({
-                            ...user,
-                            schoolIds: ids.includes(id) ? ids.filter(x => x !== id) : [...ids, id],
-                        });
-                        return (
-                            <div>
-                                <label className={lbl}>Qaysi filiallarda ishlaydi? *</label>
-                                <div className="flex flex-wrap gap-2">
-                                    {branches.map(b => {
-                                        const checked = ids.includes(b.id);
-                                        return (
-                                            <label key={b.id}
-                                                className={`flex items-center gap-2 px-3 py-2.5 rounded-xl border text-xs font-bold cursor-pointer transition-all select-none ${checked
-                                                    ? 'bg-brand/10 border-brand text-brand'
-                                                    : 'bg-ichki border-chiziq text-matn-sokin hover:border-brand'}`}>
-                                                <input type="checkbox" className="w-4 h-4 accent-[#1b6b6b] cursor-pointer"
-                                                    checked={checked} onChange={() => toggle(b.id)} />
-                                                {b.name}
-                                                {checked && ids.length > 1 && asosiyId === b.id && (
-                                                    <span className="text-[10px] font-semibold text-matn-xira">(asosiy)</span>
-                                                )}
-                                            </label>
-                                        );
-                                    })}
-                                </div>
-                                <p className={`text-[11px] mt-1.5 ${ids.length ? 'text-matn-xira' : 'text-rose-500 font-bold'}`}>
-                                    {!ids.length
-                                        ? 'Kamida bitta filialni belgilang'
-                                        : user.role === 'ADMIN'
-                                            ? "Administrator barcha filiallarni ko'radi."
-                                            : ids.length > 1
-                                                ? `Xodim belgilangan filiallar orasida almashib ishlaydi. Oylik va davomat asosiy filialda (${nomi(asosiyId)}) yuritiladi.`
-                                                : "Xodim faqat shu filial ma'lumotlarini ko'radi."}
-                                </p>
-                            </div>
-                        );
-                    })()}
+                    {branches && (
+                        <BranchCheckboxes
+                            branches={branches}
+                            value={user.schoolIds || []}
+                            currentPrimaryId={user.schoolId}
+                            role={user.role}
+                            onChange={ids => onChange({ ...user, schoolIds: ids })}
+                            labelClassName={lbl}
+                        />
+                    )}
 
                     <div className="grid grid-cols-2 gap-4">
                         <div>
