@@ -88,7 +88,7 @@ interface CRMContextType extends CRMState {
     addTransport: (transport: Omit<Transport, 'id' | 'schoolId'>) => Promise<void>;
     updateTransport: (id: number, transport: Partial<Transport>) => Promise<void>;
     deleteTransport: (id: number) => Promise<void>;
-    addRoute: (route: Omit<Route, 'id' | 'schoolId' | 'createdAt' | 'updatedAt'>) => Promise<void>;
+    addRoute: (route: Omit<Route, 'id' | 'schoolId' | 'createdAt' | 'updatedAt'>) => Promise<Route>;
     updateRoute: (id: number, route: Partial<Route>) => Promise<Route | void>;
     deleteRoute: (id: number) => Promise<void>;
     addExam: (exam: Omit<Exam, 'id' | 'schoolId'>) => Promise<void>;
@@ -103,6 +103,9 @@ interface CRMContextType extends CRMState {
     fetchDeliveryLogs: (date: string) => Promise<DeliveryLog[]>;
     routeRuns: RouteRun[];
     fetchRouteRuns: (date: string) => Promise<RouteRun[]>;
+    startRouteRun: (routeId: number, date: string, transportId?: number | null) => Promise<RouteRun | null>;
+    finishRouteRun: (routeId: number, date: string) => Promise<RouteRun | null>;
+    sendDriverLocation: (lat: number, lng: number) => Promise<void>;
     notification: { message: string, type: 'success' | 'error' | 'info' } | null;
     showNotification: (message: string, type: 'success' | 'error' | 'info') => void;
     themeColor: string;
@@ -1307,10 +1310,46 @@ export const CRMProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         return logs;
     };
 
-    const addRoute = async (route: Omit<Route, 'id' | 'schoolId' | 'createdAt' | 'updatedAt'>) => {
+    const startRouteRun = async (routeId: number, date: string, transportId?: number | null): Promise<RouteRun | null> => {
+        if (!token || !state.selectedSchoolId) return null;
+        try {
+            const run = await apiCall('route-runs/start', 'POST', { routeId, date, schoolId: state.selectedSchoolId, transportId });
+            setState(prev => ({ ...prev, routeRuns: prev.routeRuns.map(r => r.id === run.id ? run : r).concat(prev.routeRuns.find(r => r.id === run.id) ? [] : [run]) }));
+            return run as RouteRun;
+        } catch (e: any) {
+            showNotification(e.message || "Xatolik", 'error');
+            return null;
+        }
+    };
+
+    const finishRouteRun = async (routeId: number, date: string): Promise<RouteRun | null> => {
+        if (!token || !state.selectedSchoolId) return null;
+        try {
+            const run = await apiCall('route-runs/finish', 'POST', { routeId, date, schoolId: state.selectedSchoolId });
+            setState(prev => ({ ...prev, routeRuns: prev.routeRuns.map(r => r.id === run.id ? run : r) }));
+            return run as RouteRun;
+        } catch (e: any) {
+            showNotification(e.message || "Xatolik", 'error');
+            return null;
+        }
+    };
+
+    const sendDriverLocation = async (lat: number, lng: number): Promise<void> => {
+        if (!token) return;
+        try {
+            await fetch(`${API_BASE}/driver-location`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+                body: JSON.stringify({ lat, lng }),
+            });
+        } catch { /* lokatsiya yuborish jimgina muvaffaqiyatsiz bo'lishi mumkin */ }
+    };
+
+    const addRoute = async (route: Omit<Route, 'id' | 'schoolId' | 'createdAt' | 'updatedAt'>): Promise<Route> => {
         const newRoute = await apiCall('routes', 'POST', route);
         setState(prev => ({ ...prev, routes: [...prev.routes, newRoute] }));
         showNotification("Yangi marshrut qo'shildi", "success");
+        return newRoute as Route;
     };
 
     const updateRoute = async (id: number, route: Partial<Route>) => {
@@ -1455,6 +1494,7 @@ export const CRMProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             addQuestion, updateQuestion, deleteQuestion,
             addExamResult,
             addDeliveryLog, fetchDeliveryLogs, fetchRouteRuns,
+            startRouteRun, finishRouteRun, sendDriverLocation,
             darkMode, toggleDarkMode,
             notification, showNotification,
             themeColor, setThemeColor

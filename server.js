@@ -549,7 +549,7 @@ app.post('/api/users', authenticate, async (req, res, next) => {
   try {
     if (req.user.role !== 'ADMIN' && req.user.role !== 'MANAGER' && req.user.role !== 'SUPERADMIN') return res.status(403).json({ error: 'Ruhsat yo' });
 
-    let { email, password, name, phone, photo, position, salary, role, schoolId, kpiPercent } = req.body;
+    let { email, password, name, phone, photo, position, salary, role, schoolId, kpiPercent, vehicleModel, vehicleNumber, vehicleCapacity } = req.body;
     photo = await rasmQiymatiniTozala(photo, 'user');
 
     if (req.user.role === 'MANAGER' && (role === 'ADMIN' || role === 'MANAGER')) {
@@ -644,6 +644,24 @@ app.post('/api/users', authenticate, async (req, res, next) => {
       }
     }
 
+    if (role === 'DRIVER' && targetSchoolId) {
+      try {
+        await prisma.transport.create({
+          data: {
+            name: `${user.name} mashinasi`,
+            model: vehicleModel || '',
+            number: vehicleNumber || '',
+            capacity: vehicleCapacity ? parseInt(vehicleCapacity) : 4,
+            status: 'Faol',
+            driverId: user.id,
+            schoolId: targetSchoolId
+          }
+        });
+      } catch (e) {
+        console.error("Haydovchi transportini yaratishda xatolik:", e.message);
+      }
+    }
+
     res.json({ ...user, password: undefined, branchIds: qoshimchaFiliallar });
   } catch (error) { next(error); }
 });
@@ -698,7 +716,7 @@ app.put('/api/users/:id', authenticate, async (req, res, next) => {
     if (tekshir.error) return res.status(tekshir.status).json({ error: tekshir.error });
     const { target } = tekshir;
 
-    let { email, name, phone, photo, position, salary, role, password, workDays, kpiPercent, status } = req.body;
+    let { email, name, phone, photo, position, salary, role, password, workDays, kpiPercent, status, vehicleModel, vehicleNumber, vehicleCapacity } = req.body;
     photo = await rasmQiymatiniTozala(photo, 'user');
 
     if (role !== undefined && role !== target.role) {
@@ -807,6 +825,37 @@ app.put('/api/users/:id', authenticate, async (req, res, next) => {
       if (updateErr.code === 'P2002') return res.status(400).json({ error: 'Bu email allaqachon ro\'yxatdan o\'tgan' });
       throw updateErr;
     }
+
+    if (user.role === 'DRIVER' || target.role === 'DRIVER') {
+      try {
+        const tr = await prisma.transport.findFirst({ where: { driverId: user.id } });
+        if (tr) {
+          await prisma.transport.update({
+            where: { id: tr.id },
+            data: {
+              ...(vehicleModel !== undefined && { model: vehicleModel }),
+              ...(vehicleNumber !== undefined && { number: vehicleNumber }),
+              ...(vehicleCapacity !== undefined && { capacity: parseInt(vehicleCapacity) || tr.capacity }),
+            }
+          });
+        } else if (user.role === 'DRIVER') {
+          await prisma.transport.create({
+            data: {
+              name: `${user.name} mashinasi`,
+              model: vehicleModel || '',
+              number: vehicleNumber || '',
+              capacity: vehicleCapacity ? parseInt(vehicleCapacity) : 4,
+              status: 'Faol',
+              driverId: user.id,
+              schoolId: user.schoolId
+            }
+          });
+        }
+      } catch (e) {
+        console.error("Haydovchi transportini yangilashda xatolik:", e.message);
+      }
+    }
+
     // Rol, holat yoki filial o'zgargan bo'lsa keyingi so'rovdanoq kuchga kirsin.
     forgetUser(user.id);
 
@@ -5027,6 +5076,103 @@ app.get('/api/route-runs', authenticate, async (req, res, next) => {
     });
     res.json(runs);
   } catch (error) { next(error); }
+});
+
+/**
+ * Haydovchi "Qabul qildim" bosadi — reys boshlanadi.
+ *
+ * routeId + date + schoolId bo'yicha reys topilmasa yangi yaratiladi.
+ * startedAt allaqachon yozilgan bo'lsa o'zgartirilmaydi.
+ */
+app.post('/api/route-runs/start', authenticate, async (req, res, next) => {
+  try {
+    const schoolId = parseInt(req.body.schoolId);
+    if (!schoolId) return res.status(400).json({ error: 'schoolId required' });
+    if (!(await canAccessSchool(req.user, schoolId))) return res.status(403).json({ error: "Ruxsat yo'q" });
+
+    const routeId = parseInt(req.body.routeId);
+    const date = String(req.body.date || toDateStr());
+    const driverId = req.user?.id || null;
+    const transportId = req.body.transportId ? parseInt(req.body.transportId) : null;
+
+    if (!Number.isInteger(routeId)) return res.status(400).json({ error: 'routeId required' });
+
+    let run = await prisma.routeRun.findFirst({
+      where: { routeId, date, schoolId },
+      include: { driver: { select: DRIVER_SELECT }, transport: { select: { id: true, name: true } } },
+    });
+
+    if (run) {
+      // Allaqachon boshlangan bo'lsa qayta bosmasin
+      if (run.startedAt) return res.json(run);
+      run = await prisma.routeRun.update({
+        where: { id: run.id },
+        data: { startedAt: new Date(), driverId, ...(transportId ? { transportId } : {}) },
+        include: { driver: { select: DRIVER_SELECT }, transport: { select: { id: true, name: true } } },
+      });
+    } else {
+      run = await prisma.routeRun.create({
+        data: { routeId, date, schoolId, driverId, transportId: transportId || null, startedAt: new Date() },
+        include: { driver: { select: DRIVER_SELECT }, transport: { select: { id: true, name: true } } },
+      });
+    }
+    res.json(run);
+  } catch (error) { next(error); }
+});
+
+/**
+ * Haydovchi "Yetkazdim" bosadi — reys tugaydi.
+ *
+ * Reys topilmasa yoki allaqachon tugagan bo'lsa xato qaytarilmaydi.
+ */
+app.post('/api/route-runs/finish', authenticate, async (req, res, next) => {
+  try {
+    const schoolId = parseInt(req.body.schoolId);
+    if (!schoolId) return res.status(400).json({ error: 'schoolId required' });
+    if (!(await canAccessSchool(req.user, schoolId))) return res.status(403).json({ error: "Ruxsat yo'q" });
+
+    const routeId = parseInt(req.body.routeId);
+    const date = String(req.body.date || toDateStr());
+    if (!Number.isInteger(routeId)) return res.status(400).json({ error: 'routeId required' });
+
+    let run = await prisma.routeRun.findFirst({ where: { routeId, date, schoolId } });
+    if (!run) return res.status(404).json({ error: "Reys topilmadi — avval 'Qabul qildim' bosing" });
+    if (run.finishedAt) return res.json(run);
+
+    run = await prisma.routeRun.update({
+      where: { id: run.id },
+      data: { finishedAt: new Date() },
+      include: { driver: { select: DRIVER_SELECT }, transport: { select: { id: true, name: true } } },
+    });
+    res.json(run);
+  } catch (error) { next(error); }
+});
+
+/**
+ * Haydovchi lokatsiyasini yuboradi (in-memory, sahifa yopilsa yo'qoladi).
+ * Admin GET bilan ko'ra oladi.
+ */
+const driverLocations = new Map();
+
+app.post('/api/driver-location', authenticate, async (req, res) => {
+  const { lat, lng } = req.body;
+  if (!lat || !lng) return res.status(400).json({ error: 'lat va lng kerak' });
+  driverLocations.set(req.user.id, { lat: parseFloat(lat), lng: parseFloat(lng), updatedAt: new Date().toISOString(), name: req.user.name });
+  res.json({ ok: true });
+});
+
+app.get('/api/driver-location', authenticate, async (req, res) => {
+  const { driverId } = req.query;
+  if (driverId) {
+    const loc = driverLocations.get(parseInt(driverId));
+    return res.json(loc || null);
+  }
+  // Barcha haydovchilar
+  const all = [];
+  for (const [id, loc] of driverLocations.entries()) {
+    all.push({ driverId: id, ...loc });
+  }
+  res.json(all);
 });
 
 /**

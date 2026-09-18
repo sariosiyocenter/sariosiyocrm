@@ -1,332 +1,270 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useCRM } from '../context/CRMContext';
-import { useConfirm } from './ConfirmDialog';
 import { useLang } from '../context/LanguageContext';
-import { 
-    Bus, Plus, Search, User, Phone, Trash2, Edit2, 
-    AlertCircle, Users, X, UserMinus, Truck, Calendar, ChevronLeft, ChevronRight, 
-    Home, XCircle, MapPin, Navigation, ArrowUp, ArrowDown,
-    Clock, ChevronDown, BarChart3, Download, CalendarRange, GripVertical, Sparkles, Wand2, AlertTriangle,
-    Send, CheckCircle2, HelpCircle
+import {
+    Bus, Search, User, Phone, Truck, Calendar, ChevronLeft, ChevronRight,
+    BarChart3, Download, CalendarRange, CheckCircle2, XCircle,
+    X, MapPin, Navigation, Clock, Users, Check, Loader2,
+    Car, AlertTriangle, ChevronDown, PlayCircle, StopCircle,
+    UserCheck, Package, Send, Eye
 } from 'lucide-react';
-import { Transport, DeliveryLog, Route } from '../types';
-// Kun jadvali guruhlar, marshrutlar va bot uchun bitta joyda.
-import { isLessonDay, toDateStr, toTimeStr } from '../../lib/lessons.js';
-import RouteMap from './RouteMap';
-import { parseLatLng, distanceKm, masofaMatni, ZAXIRA_MARKAZ } from '../lib/mapMarkers';
+import { DeliveryLog, RouteRun } from '../types';
+import { toDateStr, toTimeStr } from '../../lib/lessons.js';
 
-type TabType = 'flot' | 'marshrutlar' | 'yetkazish' | 'tarix';
+type TabType = 'asosiy' | 'tarix';
 
 const inp = "w-full px-4 py-3 bg-ichki border border-chiziq rounded-2xl text-xs font-bold text-matn focus:border-brand focus:ring-4 focus:ring-[#1b6b6b]/10 outline-none transition-all";
-const lbl = "block text-[11px] font-extrabold   text-matn-xira mb-2";
+const lbl = "block text-[11px] font-extrabold text-matn-xira mb-2";
+
+// Bugungi rejaning holati
+type RejaHolati = 'draft' | 'active' | 'done';
+
+interface KunlikReja {
+    routeId: number;
+    haydovchiId: number;
+    haydovchiIsmi: string;
+    vehicleModel?: string;
+    vehicleNumber?: string;
+    vehicleCapacity?: number;
+    transportId?: number | null;
+    oquvchilar: number[]; // student IDs
+    sana: string;
+    holat: RejaHolati;
+}
 
 export default function LogisticsHub() {
     const { t } = useLang();
     const {
-        transports, students, users, routes, deliveryLogs, routeRuns, settings,
-        addTransport, updateTransport, deleteTransport,
-        addRoute, updateRoute, deleteRoute,
-        addDeliveryLog, fetchDeliveryLogs, fetchRouteRuns, showNotification,
-        token, selectedSchoolId, retryLoad
+        students, users, groups, attendances, routes, routeRuns, deliveryLogs,
+        transports, settings,
+        addRoute, updateRoute,
+        addDeliveryLog, fetchDeliveryLogs, fetchRouteRuns,
+        startRouteRun, finishRouteRun, sendDriverLocation,
+        showNotification, token, selectedSchoolId, user
     } = useCRM();
-    const confirm = useConfirm();
 
-    const [activeTab, setActiveTab] = useState<TabType>('marshrutlar');
-    const [searchTerm, setSearchTerm] = useState('');
-    // O'quvchi tanlash oynasining qidiruvi alohida: ilgari ikkalasi bitta
-    // holatni bo'lishardi va flotda yozilgan matn ro'yxatni ham filtrlardi.
-    const [studentSearch, setStudentSearch] = useState('');
-    // Mahalliy sana: toISOString() UTC beradi va UTC+5 da ertalab soat 5
-    // gacha kechagi kunni ochib qo'yardi.
+    const [activeTab, setActiveTab] = useState<TabType>('asosiy');
     const [selectedDate, setSelectedDate] = useState(toDateStr());
-    // null — hamma marshrutlar. Ilgari birinchi mashina avtomatik tanlanardi
-    // va boshqasiga biriktirilgan marshrutlar ko'rinmasdi.
-    const [selectedTransportId, setSelectedTransportId] = useState<number | null>(null);
-    const [expandedRouteId, setExpandedRouteId] = useState<number | null>(null);
-    // Sudralayotgan bekatning o'quvchi id si.
-    const [dragStudentId, setDragStudentId] = useState<number | null>(null);
 
+    // ===== ASOSIY TAB HOLATI =====
+    // 1-qadam: Guruh tanlab kelganlar
+    const [tanlanganGuruhlar, setTanlanganGuruhlar] = useState<number[]>([]);
+    const [guruhQidiruv, setGuruhQidiruv] = useState('');
 
-    // Kunlik to'lqinlar: dars tugash vaqtlari va ular bo'yicha reja.
-    const [tolqinlar, setTolqinlar] = useState<any>(null);
-    const [kunlikReja, setKunlikReja] = useState<any>(null);
-    const [kunlikBand, setKunlikBand] = useState('');
-    // Qaysi to'lqinning o'quvchilar ro'yxati ochilgan ("21:00" yoki bo'sh).
-    const [ochiqTolqin, setOchiqTolqin] = useState('');
-    // "tez" — mashinalar bir vaqtda chiqadi, bolalar tezroq uyda; "arzon" —
-    // kamroq mashina ishlatiladi, lekin oxirgi bola kech boradi.
-    const [kunRejim, setKunRejim] = useState<'tez' | 'arzon'>('tez');
+    // 2-qadam: Transport kerak bo'lganlar (filtr + qo'lda chiqarish)
+    const [chiqarilganOquvchilar, setChiqarilganOquvchilar] = useState<Set<number>>(new Set());
+    const [oquvchiQidiruv, setOquvchiQidiruv] = useState('');
 
-    // Tarix: sana oralig'i bo'sh bo'lsa boshidan hisoblanadi.
+    // 3-qadam: Haydovchi tanlash
+    const [tanlanganHaydovchiId, setTanlanganHaydovchiId] = useState<number | null>(null);
+
+    // Reja holati (saqlangan yoki yangi)
+    const [saqlangan, setSaqlangan] = useState<KunlikReja | null>(null);
+    const [rejaBand, setRejaBand] = useState('');
+
+    // Haydovchi lokatsiyasi
+    const [haydovchiLok, setHaydovchiLok] = useState<{ lat: number; lng: number } | null>(null);
+    const lokIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+    // ===== TARIX TAB HOLATI =====
     const [statsFrom, setStatsFrom] = useState('');
     const [statsTo, setStatsTo] = useState('');
     const [stats, setStats] = useState<any>(null);
     const [statsYuklanmoqda, setStatsYuklanmoqda] = useState(false);
 
-    // Modal states
-    const [isTransportModalOpen, setIsTransportModalOpen] = useState(false);
-    const [isRouteModalOpen, setIsRouteModalOpen] = useState(false);
-    const [isStudentSelectorOpen, setIsStudentSelectorOpen] = useState(false);
-    const [editingTransport, setEditingTransport] = useState<Transport | null>(null);
-    const [editingRoute, setEditingRoute] = useState<Route | null>(null);
+    // ===== HISOBLAR =====
 
-    // Form states
-    const [transportFormData, setTransportFormData] = useState<Omit<Transport, 'id' | 'schoolId'>>({
-        name: '', model: '', number: '', capacity: 15, driverName: '', driverPhone: '', status: 'Faol', driverId: null
-    });
-    const [routeFormData, setRouteFormData] = useState<Omit<Route, 'id' | 'schoolId' | 'createdAt' | 'updatedAt'>>({
-        name: '', transportId: null, driverId: null, days: 'HAR_KUNI', direction: 'QAYTISH', studentIds: [], startTime: ''
-    });
+    const haydovchilar = users.filter(u => u.role === 'DRIVER');
 
-    useEffect(() => {
-        if (activeTab === 'yetkazish') {
-            fetchDeliveryLogs(selectedDate);
-            fetchRouteRuns(selectedDate);
-        }
-    }, [selectedDate, activeTab]);
-
-    // --- TRANSPORT LOGIC ---
-    const resetTransportForm = () => {
-        setTransportFormData({
-            name: '', model: '', number: '', capacity: 15, driverName: '', driverPhone: '', status: 'Faol', driverId: null
-        });
-        setEditingTransport(null);
-    };
-
-    const handleTransportSubmit = async (e: React.FormEvent) => {
-        e.preventDefault();
-        if (editingTransport) await updateTransport(editingTransport.id, transportFormData);
-        else await addTransport(transportFormData);
-        setIsTransportModalOpen(false);
-        resetTransportForm();
-    };
-
-    // --- ROUTE LOGIC ---
-    const resetRouteForm = () => {
-        setRouteFormData({
-            name: '', transportId: null, driverId: null, days: 'HAR_KUNI', direction: 'QAYTISH', studentIds: [], startTime: ''
-        });
-        setEditingRoute(null);
-    };
-
-    const handleRouteSubmit = async (e: React.FormEvent) => {
-        e.preventDefault();
-        
-        const cleanData = {
-            name: routeFormData.name,
-            transportId: routeFormData.transportId,
-            driverId: routeFormData.driverId,
-            days: routeFormData.days,
-            direction: routeFormData.direction,
-            studentIds: routeFormData.studentIds,
-            startTime: routeFormData.startTime
-        };
-        
-        try {
-            if (editingRoute) await updateRoute(editingRoute.id, cleanData);
-            else await addRoute(cleanData as any);
-            
-            setIsRouteModalOpen(false);
-            resetRouteForm();
-        } catch (err) {
-            console.error("Route Submission Error:", err);
-        }
-    };
-
-    /**
-     * Bekatlar ro'yxatini saqlaydi va ochiq panelni javob bilan yangilaydi.
-     *
-     * Faqat `routes` holatiga tayanish yetmadi: panel bosilgan zahoti eski
-     * tartibni ko'rsatib turardi.
-     */
-    const bekatlarniSaqlash = async (route: Route, studentIds: number[], qolda = false) => {
-        // Qo'lda surish tizim tartibini o'chiradi: admin o'zi biladi.
-        // Qo'shish/olib tashlashda esa tartib serverda qayta quriladi.
-        const yangi = await updateRoute(route.id, qolda ? { studentIds, autoOrder: false } : { studentIds });
-        if (yangi) setEditingRoute(yangi);
-    };
-
-    const moveStudentInRoute = async (route: Route, studentId: number, direction: 'up' | 'down') => {
-        const studentIds = [...route.studentIds];
-        const index = studentIds.indexOf(studentId);
-        if (index === -1) return;
-        
-        const newIndex = direction === 'up' ? index - 1 : index + 1;
-        if (newIndex < 0 || newIndex >= studentIds.length) return;
-
-        // Swap
-        const temp = studentIds[index];
-        studentIds[index] = studentIds[newIndex];
-        studentIds[newIndex] = temp;
-
-        await bekatlarniSaqlash(route, studentIds, true);
-    };
-
-    /**
-     * Shu marshrutdagi shu o'quvchining bugungi holati.
-     *
-     * Marshrut ham hisobga olinadi: bir o'quvchi ertalabki va kechqurungi
-     * reysda ham bo'lishi mumkin, ilgari ikkalasi bitta yozuvni bo'lishardi.
-     * Reysga bog'lanmagan eski yozuvlar (runId yo'q) har ikkalasiga to'g'ri
-     * keladi — ular 1-bosqichdan oldingi ma'lumot.
-     */
-    /**
-     * Bekatni sudrab boshqa o'ringa qo'yish.
-     *
-     * Uzun marshrutda ↑↓ bilan bitta bekatni bir necha pog'ona ko'chirish
-     * ko'p bosishni talab qilardi.
-     */
-    const bekatniKochirish = async (route: Route, fromId: number, toId: number) => {
-        if (fromId === toId) return;
-        const ids = routeStudents(route).map(st => st.id);
-        const from = ids.indexOf(fromId);
-        const to = ids.indexOf(toId);
-        if (from === -1 || to === -1) return;
-        ids.splice(to, 0, ids.splice(from, 1)[0]);
-        await bekatlarniSaqlash(route, ids, true);
-    };
-
-    /**
-     * Tartibni tizimga topshirish: server masofa bo'yicha qayta quradi
-     * (ertalab chekkadan markazga, kechqurun markazdan chekkaga) va bundan
-     * keyin o'quvchi qo'shilsa/olinsa o'zi yangilab turadi.
-     */
-    const yaqindanTartiblash = async (route: Route) => {
-        const nuqtali = routeStudents(route).filter(st => parseLatLng(st.location)).length;
-        if (nuqtali < 2) {
-            showNotification("Tartiblash uchun kamida ikkita o'quvchida joylashuv bo'lishi kerak", 'error');
-            return;
-        }
-        const yangi = await updateRoute(route.id, { autoOrder: true });
-        if (yangi) setEditingRoute(yangi);
-    };
-
-    /**
-     * Tanlangan marshrut — har doim `routes` dagi yangi holat.
-     *
-     * `editingRoute` faqat qaysi marshrut tanlanganini eslab qoladi; uning
-     * ichidagi ma'lumot eskirgan bo'lishi mumkin.
-     */
-    const tanlangan = editingRoute ? (routes.find(r => r.id === editingRoute.id) || editingRoute) : null;
-
-    /** So'rov yuborish yordamchisi. */
-    const soro = async (yol: string, tana?: any) => {
-        const r = await fetch(`/api/logistics/${yol}`, {
-            method: tana ? 'POST' : 'GET',
-            headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-            body: tana ? JSON.stringify({ schoolId: selectedSchoolId, ...tana }) : undefined,
-        });
-        if (!r.ok) throw new Error((await r.json().catch(() => ({}))).error || 'xatolik');
-        return r.json();
-    };
-
-    /** Bugungi to'lqinlar: qaysi vaqtda nechta bola uyga ketadi. */
-    const tolqinlarniYuklash = async () => {
-        try {
-            setTolqinlar(await soro(`waves?schoolId=${selectedSchoolId}&date=${selectedDate}`));
-        } catch {
-            setTolqinlar({ tolqinlar: [], jadvalsiz: [] });
-        }
-    };
-
-    useEffect(() => {
-        if (activeTab === 'yetkazish' && selectedSchoolId) { setKunlikReja(null); tolqinlarniYuklash(); }
-    }, [activeTab, selectedDate, selectedSchoolId]);
-
-    /** Haydovchilardan shu to'lqin uchun so'rash. */
-    const haydovchilardanSorash = async (endTime: string) => {
-        setKunlikBand('sorash' + endTime);
-        try {
-            const r = await soro('ask-drivers', { date: selectedDate, endTime });
-            showNotification(`${r.sorandi} haydovchidan so'raldi (${r.yuborildi} tasiga Telegram ketdi)`, 'success');
-            await tolqinlarniYuklash();
-        } catch (e: any) {
-            showNotification(e.message, 'error');
-        } finally { setKunlikBand(''); }
-    };
-
-    /** Kunlik rejani hisoblash yoki qo'llash. */
-    const kunlikRejaniOlish = async (endTime: string, apply: boolean) => {
-        setKunlikBand('reja' + endTime);
-        try {
-            const r = await soro('daily-plan', { date: selectedDate, endTime, apply, rejim: kunRejim });
-            setKunlikReja(r);
-            if (apply) {
-                showNotification(`${r.rejalar.length} ta marshrut tuzildi`, 'success');
-                await retryLoad();
-                await fetchRouteRuns(selectedDate);
+    // Tanlangan guruhlarning barcha o'quvchilari (shu kuni kelganlar)
+    const kelganOquvchilar = useCallback(() => {
+        if (tanlanganGuruhlar.length === 0) return [];
+        const keldi = new Set<number>();
+        for (const att of attendances) {
+            if (att.date === selectedDate && att.status === 'Keldi' && tanlanganGuruhlar.includes(att.groupId)) {
+                keldi.add(att.studentId);
             }
-        } catch (e: any) {
-            showNotification(e.message, 'error');
-        } finally { setKunlikBand(''); }
-    };
+        }
+        return [...keldi].map(id => students.find(s => s.id === id)).filter((s): s is NonNullable<typeof s> => !!s && s.status !== 'Arxiv');
+    }, [tanlanganGuruhlar, selectedDate, attendances, students]);
 
-    const getDeliveryStatus = (route: Route, studentId: number) => {
+    // Transport kerak bo'lganlar (kelganlardan)
+    const transportKerakOquvchilar = useCallback(() => {
+        return kelganOquvchilar().filter(s => s.needsTransport);
+    }, [kelganOquvchilar]);
+
+    // Rejaga kiradigan o'quvchilar (qo'lda chiqarilganlar olib tashlangan)
+    const rejaOquvchilari = useCallback(() => {
+        return transportKerakOquvchilar().filter(s => !chiqarilganOquvchilar.has(s.id));
+    }, [transportKerakOquvchilar, chiqarilganOquvchilar]);
+
+    // Tanlangan haydovchi ma'lumotlari
+    const haydovchi = haydovchilar.find(h => h.id === tanlanganHaydovchiId) || null;
+
+    // Tanlangan haydovchiga biriktirilgan transport
+    const haydovchiTransport = transports.find(tr => tr.driverId === tanlanganHaydovchiId) || null;
+
+    // Saqlangan rejaning reysi
+    const saqlananReys = saqlangan
+        ? routeRuns.find(r => r.routeId === saqlangan.routeId && r.date === saqlangan.sana) || null
+        : null;
+
+    // Yetkazish yozuvlari (saqlangan reja uchun)
+    const rejaYozuvlari = useCallback(() => {
+        if (!saqlangan) return [];
+        return deliveryLogs.filter(l => l.date === saqlangan.sana
+            && (saqlananReys ? l.runId === saqlananReys.id || (!l.runId && l.date === saqlangan?.sana) : true));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [saqlangan, deliveryLogs, saqlananReys]);
+
+    // O'quvchining yetkazish holati
+    const oquvchiHolati = (studentId: number): DeliveryLog['status'] | undefined => {
         return deliveryLogs.find(l =>
-            l.studentId === studentId
-            && l.date === selectedDate
-            && (!l.run || l.run.routeId === route.id)
+            l.studentId === studentId &&
+            l.date === selectedDate &&
+            (saqlananReys ? l.runId === saqlananReys.id || !l.runId : true)
         )?.status;
     };
 
-    /**
-     * Marshrut shu kuni ishlaydimi.
-     *
-     * Kunlik reja marshrutida `date` aniq bir kunga qo'yiladi — u faqat
-     * o'sha kuni ko'rinadi. Qolganlari `days` (TOQ/JUFT/HAR_KUNI) bo'yicha.
-     */
-    const isRouteActiveOnDate = (route: Route, dateStr: string) =>
-        route.date ? route.date === dateStr : isLessonDay(route.days, dateStr);
+    // ===== EFFEKTLAR =====
 
-    /**
-     * Marshrutlar ro'yxatida ko'rinadiganlari.
-     *
-     * Kunlik reja har kuni yangi marshrut yaratadi; hammasi ko'rsatilsa
-     * ro'yxat bir necha kunning nusxalari bilan to'lib ketadi va qaysi biri
-     * bugungisi ekani bilinmaydi.
-     */
-    const korinadiganMarshrutlar = routes.filter(r => isRouteActiveOnDate(r, selectedDate) || !r.date);
+    useEffect(() => {
+        if (activeTab === 'asosiy') {
+            fetchRouteRuns(selectedDate);
+            fetchDeliveryLogs(selectedDate);
+        }
+    }, [selectedDate, activeTab]);
 
-    /** Shu marshrutning tanlangan kundagi reysi (haydovchi boshlagan bo'lsa). */
-    const routeRun = (route: Route) => routeRuns.find(r => r.routeId === route.id && r.date === selectedDate);
+    useEffect(() => {
+        if (activeTab === 'tarix' && !stats && !statsYuklanmoqda) statsniYuklash();
+    }, [activeTab]);
 
-    /**
-     * Reys kechikdimi: boshlanish vaqtidan 15 daqiqa o'tgan, lekin hali
-     * boshlanmagan bo'lsa. Faqat bugungi kun uchun ma'noli.
-     */
-    const kechikdi = (route: Route) => {
-        if (selectedDate !== toDateStr() || !route.startTime || routeRun(route)?.startedAt) return false;
-        const [h, m] = route.startTime.split(':').map(Number);
-        if (!Number.isFinite(h)) return false;
-        const [hh, mm] = toTimeStr().split(':').map(Number);
-        return (hh * 60 + mm) > (h * 60 + m + 15);
+    // Sana o'zgarganda reja va filtrlarni tozalash
+    useEffect(() => {
+        setSaqlangan(null);
+        setChiqarilganOquvchilar(new Set());
+        setTanlanganGuruhlar([]);
+        setTanlanganHaydovchiId(null);
+    }, [selectedDate]);
+
+    // Haydovchi lokatsiyasini har 30 sekundda yuborish (faqat haydovchi uchun)
+    useEffect(() => {
+        if (user?.role !== 'DRIVER' || !saqlananReys?.startedAt || saqlananReys.finishedAt) {
+            if (lokIntervalRef.current) clearInterval(lokIntervalRef.current);
+            return;
+        }
+        const yuborish = () => {
+            if (!navigator.geolocation) return;
+            navigator.geolocation.getCurrentPosition(pos => {
+                sendDriverLocation(pos.coords.latitude, pos.coords.longitude);
+                setHaydovchiLok({ lat: pos.coords.latitude, lng: pos.coords.longitude });
+            }, () => {});
+        };
+        yuborish();
+        lokIntervalRef.current = setInterval(yuborish, 30000);
+        return () => { if (lokIntervalRef.current) clearInterval(lokIntervalRef.current); };
+    }, [user?.role, saqlananReys?.startedAt, saqlananReys?.finishedAt]);
+
+    // ===== AMALLAR =====
+
+    const rejaTuzish = async () => {
+        const oquvchilar = rejaOquvchilari();
+        if (oquvchilar.length === 0) {
+            showNotification("Rejaga kiradigan o'quvchi yo'q", 'error');
+            return;
+        }
+        if (!tanlanganHaydovchiId) {
+            showNotification('Haydovchi tanlanmagan', 'error');
+            return;
+        }
+        setRejaBand('yaratilmoqda');
+        try {
+            // Yangi marshrut yaratish yoki mavjudini topish
+            const mavjud = routes.find(r =>
+                r.driverId === tanlanganHaydovchiId &&
+                r.date === selectedDate &&
+                r.autoPlanned
+            );
+            const routeData = {
+                name: `${selectedDate} вЂ” ${haydovchi?.name || 'Haydovchi'}`,
+                driverId: tanlanganHaydovchiId,
+                transportId: haydovchiTransport?.id || null,
+                studentIds: oquvchilar.map(s => s.id),
+                days: 'HAR_KUNI' as const,
+                direction: 'QAYTISH' as const,
+                date: selectedDate,
+                autoPlanned: true,
+            };
+            let marshrut;
+            if (mavjud) {
+                marshrut = await updateRoute(mavjud.id, routeData);
+            } else {
+                marshrut = await addRoute(routeData as any);
+            }
+            const routeId = mavjud?.id || (marshrut as any)?.id;
+            if (!routeId) throw new Error("Marshrut yaratilmadi");
+
+            setSaqlangan({
+                routeId,
+                haydovchiId: tanlanganHaydovchiId,
+                haydovchiIsmi: haydovchi?.name || '',
+                vehicleModel: haydovchiTransport?.model,
+                vehicleNumber: haydovchiTransport?.number,
+                vehicleCapacity: haydovchiTransport?.capacity,
+                transportId: haydovchiTransport?.id || null,
+                oquvchilar: oquvchilar.map(s => s.id),
+                sana: selectedDate,
+                holat: 'draft',
+            });
+            showNotification(`${oquvchilar.length} ta o'quvchi uchun reja tuzildi`, 'success');
+        } catch (e: any) {
+            showNotification(e.message || 'Xatolik', 'error');
+        } finally {
+            setRejaBand('');
+        }
     };
 
-    /** Marshrutdagi belgilangan / jami. */
-    const progress = (route: Route) => {
-        const jami = routeStudents(route);
-        const belgilangan = jami.filter(st => getDeliveryStatus(route, st.id));
-        return { jami: jami.length, belgilangan: belgilangan.length, kelmagan: belgilangan.filter(st => getDeliveryStatus(route, st.id) === 'Kelmadi') };
+    const qabulQildim = async () => {
+        if (!saqlangan) return;
+        setRejaBand('qabul');
+        try {
+            const reys = await startRouteRun(saqlangan.routeId, saqlangan.sana, saqlangan.transportId);
+            if (reys) {
+                setSaqlangan(prev => prev ? { ...prev, holat: 'active' } : prev);
+                showNotification("Reys boshlandi! Haydovchi yo'lda.", 'success');
+                await fetchRouteRuns(selectedDate);
+            }
+        } finally {
+            setRejaBand('');
+        }
     };
 
-    /**
-     * Marshrutdagi haqiqiy bekatlar: bazada yo'q yoki arxivga olingan o'quvchi
-     * `studentIds` da qolib ketardi — sanoq "5 o'quvchi" deb turar, ro'yxatda
-     * esa 3 tasi chiqardi.
-     */
-    const routeStudents = (route: Route) =>
-        route.studentIds
-            .map(id => students.find(st => st.id === id))
-            .filter((st): st is NonNullable<typeof st> => !!st && st.status !== 'Arxiv');
+    const yetkazdim = async () => {
+        if (!saqlangan) return;
+        setRejaBand('tugat');
+        try {
+            const reys = await finishRouteRun(saqlangan.routeId, saqlangan.sana);
+            if (reys) {
+                setSaqlangan(prev => prev ? { ...prev, holat: 'done' } : prev);
+                showNotification("Reys tugadi! Barcha yetkazildi.", 'success');
+                await fetchRouteRuns(selectedDate);
+            }
+        } finally {
+            setRejaBand('');
+        }
+    };
 
-    /**
-     * Holatni belgilash. Mashina marshrutnikidan olinadi: "Hamma marshrutlar"
-     * tanlanganda `selectedTransportId` null bo'ladi va ilgari bu yerda
-     * jimgina return qilinardi — tugma bosilar, hech narsa yozilmasdi.
-     */
-    /**
-     * Statistikani yuklaydi. Oraliq ko'rsatilmasa — butun tarix bo'yicha.
-     */
+    const holatBelgilash = async (studentId: number, status: DeliveryLog['status']) => {
+        if (!saqlangan?.routeId) return;
+        await addDeliveryLog({
+            studentId,
+            transportId: saqlangan?.transportId || transports[0]?.id || undefined,
+            routeId: saqlangan?.routeId,
+            date: saqlangan?.sana || selectedDate,
+            status,
+        });
+    };
+
     const statsniYuklash = async () => {
         setStatsYuklanmoqda(true);
         try {
@@ -334,20 +272,15 @@ export default function LogisticsHub() {
             if (statsFrom) q.set('from', statsFrom);
             if (statsTo) q.set('to', statsTo);
             const r = await fetch(`/api/logistics/stats?${q}`, { headers: { Authorization: `Bearer ${token}` } });
-            if (!r.ok) throw new Error('so\'rov muvaffaqiyatsiz');
+            if (!r.ok) throw new Error("So'rov muvaffaqiyatsiz");
             setStats(await r.json());
-        } catch (e) {
-            showNotification('Statistikani yuklab bo\'lmadi', 'error');
+        } catch {
+            showNotification("Statistikani yuklab bo'lmadi", 'error');
         } finally {
             setStatsYuklanmoqda(false);
         }
     };
 
-    useEffect(() => {
-        if (activeTab === 'tarix' && !stats && !statsYuklanmoqda) statsniYuklash();
-    }, [activeTab]);
-
-    /** Jadvalni Excel ga chiqarish — hisobot qog'ozga ham ketadi. */
     const excelgaChiqarish = async () => {
         if (!stats) return;
         const XLSX = await import('xlsx');
@@ -362,23 +295,45 @@ export default function LogisticsHub() {
                 'Haydovchi': x.name, 'Reyslar': x.reys, 'Tugatilgan': x.tugagan, "O'rtacha (daqiqa)": x.ortachaDaqiqa ?? '',
             }))
         ), 'Haydovchilar');
-        XLSX.utils.book_append_sheet(kitob, XLSX.utils.json_to_sheet(
-            (stats.kunlar || []).map((x: any) => ({
-                'Sana': x.date, 'Reys': x.reys, 'Olib ketildi': x.olindi, 'Uyiga yetkazildi': x.yetkazildi, 'Kelmadi': x.kelmadi,
-            }))
-        ), 'Kunlar');
-        const nom = `logistika-${statsFrom || stats.jami?.birinchiKun || 'boshidan'}_${statsTo || toDateStr()}.xlsx`;
+        const nom = `logistika-${statsFrom || 'boshidan'}_${statsTo || toDateStr()}.xlsx`;
         XLSX.writeFile(kitob, nom);
     };
 
-    const handleDeliveryUpdate = async (route: Route, studentId: number, status: DeliveryLog['status']) => {
-        const transportId = route.transportId ?? selectedTransportId;
-        if (!transportId) {
-            showNotification("Avval marshrutga mashina biriktiring", "error");
-            return;
-        }
-        await addDeliveryLog({ studentId, transportId, routeId: route.id, date: selectedDate, status });
+    // ===== RENDER YORDAMCHILARI =====
+
+    const kunlarOldin = (n: number) => {
+        const d = new Date(selectedDate);
+        d.setDate(d.getDate() + n);
+        return toDateStr(d);
     };
+
+    // Tanlangan guruhlar uchun davomad yozuvi bor kunmi
+    const guruhKelganlarSoni = (guruhId: number) => {
+        return attendances.filter(a => a.date === selectedDate && a.groupId === guruhId && a.status === 'Keldi').length;
+    };
+
+    // Mavjud guruhlar (faol, shu filial)
+    const mavjudGuruhlar = groups.filter(g => {
+        if (!g.studentIds?.length) return false;
+        const nom = g.name?.toLowerCase() || '';
+        return nom.includes(guruhQidiruv.toLowerCase());
+    });
+
+    // Aktiv haydovchiga biriktirilgan transport ma'lumoti
+    const haydovchiVehicleInfo = (driverId: number) => {
+        const tr = transports.find(t => t.driverId === driverId);
+        if (!tr) return 'Mashina biriktirilmagan';
+        return `${tr.model || ''} ${tr.number || ''} В· ${tr.capacity} o'rin`.trim();
+    };
+
+    const statusRenk = (status?: DeliveryLog['status']) => {
+        if (status === 'Olib ketildi') return 'bg-sky-50 text-sky-600 border-sky-100 dark:bg-sky-950/20 dark:text-sky-400 dark:border-sky-900/40';
+        if (status === 'Uyiga yetkazildi') return 'bg-emerald-50 text-emerald-600 border-emerald-100 dark:bg-emerald-950/20 dark:text-emerald-400 dark:border-emerald-900/40';
+        if (status === 'Kelmadi') return 'bg-rose-50 text-rose-600 border-rose-100 dark:bg-rose-950/20 dark:text-rose-400 dark:border-rose-900/40';
+        return 'bg-gray-50 text-matn-xira border-gray-100 dark:bg-gray-900 dark:border-gray-800';
+    };
+
+    // ===== JSX =====
 
     return (
         <div className="space-y-6 animate-in fade-in duration-500">
@@ -390,715 +345,485 @@ export default function LogisticsHub() {
                             <Navigation size={22} className="text-white" />
                         </div>
                         <div>
-                            <h1 className="text-lg font-black text-matn tracking-tight">{t('logistics_title')}</h1>
-                            <p className="text-[11px] font-bold text-matn-xira mt-0.5">
-                                {t('logistics_subtitle')}
-                            </p>
+                            <h1 className="text-lg font-black text-matn tracking-tight">Logistika</h1>
+                            <p className="text-[11px] font-bold text-matn-xira mt-0.5">Transport va yetkazish boshqaruvi</p>
                         </div>
                     </div>
 
                     <div className="flex bg-ichki p-1 rounded-xl border border-chiziq w-fit">
                         {[
-                            { id: 'marshrutlar', label: t('tab_routes') },
-                            { id: 'yetkazish', label: t('tab_daily_status') },
-                            { id: 'tarix', label: 'Tarix' },
-                            { id: 'flot', label: t('tab_fleet') },
+                            { id: 'asosiy', label: 'Asosiy', icon: <Bus size={13} /> },
+                            { id: 'tarix', label: 'Tarix', icon: <BarChart3 size={13} /> },
                         ].map(tab => (
                             <button
                                 key={tab.id}
                                 onClick={() => setActiveTab(tab.id as TabType)}
-                                className={`px-5 py-2 rounded-lg text-[11px] font-extrabold transition-all cursor-pointer ${
-                                    activeTab === tab.id 
-                                    ? 'bg-brand text-brand-ust shadow' 
+                                className={`flex items-center gap-1.5 px-5 py-2 rounded-lg text-[11px] font-extrabold transition-all cursor-pointer ${
+                                    activeTab === tab.id
+                                    ? 'bg-brand text-brand-ust shadow'
                                     : 'text-matn-xira hover:text-gray-600'
                                 }`}
                             >
-                                {tab.label}
+                                {tab.icon} {tab.label}
                             </button>
                         ))}
                     </div>
                 </div>
             </div>
 
-            {/* Content Switcher */}
-            {activeTab === 'flot' && (
-                <div className="space-y-6">
-                    <div className="bg-sirt p-4 rounded-2xl border border-chiziq flex flex-wrap items-center justify-between gap-4">
-                        <div className="relative flex-1 max-w-xs">
-                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-matn-xira" size={14} />
-                            <input 
-                                type="text" 
-                                placeholder={t('search')} 
-                                value={searchTerm}
-                                onChange={(e) => setSearchTerm(e.target.value)}
-                                className="w-full pl-9 pr-4 py-2 bg-ichki border border-chiziq rounded-xl text-xs font-bold text-matn outline-none focus:border-brand transition-all"
-                            />
+            {/* ===== ASOSIY TAB ===== */}
+            {activeTab === 'asosiy' && (
+                <div className="space-y-4">
+                    {/* Sana tanlash */}
+                    <div className="bg-sirt rounded-2xl border border-chiziq p-4 shadow-sm flex items-center justify-between gap-4">
+                        <div className="flex items-center gap-2">
+                            <Calendar size={16} className="text-brand" />
+                            <span className="text-xs font-black text-matn">Bugun:</span>
                         </div>
-                        <button 
-                            onClick={() => { resetTransportForm(); setIsTransportModalOpen(true); }}
-                            className="flex items-center gap-2 px-4 py-2.5 bg-brand hover:bg-brand-dark text-white rounded-xl text-xs font-extrabold shadow-sm shadow-[#1b6b6b]/20 transition-all cursor-pointer"
-                        >
-                            <Plus size={14} /> {t('add')}
-                        </button>
+                        <div className="flex items-center gap-2">
+                            <button
+                                onClick={() => setSelectedDate(kunlarOldin(-1))}
+                                className="w-8 h-8 rounded-lg hover:bg-chiziq flex items-center justify-center transition-colors cursor-pointer"
+                            >
+                                <ChevronLeft size={16} />
+                            </button>
+                            <span className="text-sm font-black text-matn tabular-nums px-2">{selectedDate}</span>
+                            <button
+                                onClick={() => setSelectedDate(kunlarOldin(1))}
+                                className="w-8 h-8 rounded-lg hover:bg-chiziq flex items-center justify-center transition-colors cursor-pointer"
+                            >
+                                <ChevronRight size={16} />
+                            </button>
+                            <button
+                                onClick={() => setSelectedDate(toDateStr())}
+                                className="px-3 py-1.5 bg-ichki border border-chiziq rounded-xl text-[11px] font-extrabold text-matn-xira hover:border-brand transition-all cursor-pointer"
+                            >
+                                Bugun
+                            </button>
+                        </div>
                     </div>
 
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                        {transports.filter(t => t.name.toLowerCase().includes(searchTerm.toLowerCase())).map(item => (
-                            <div key={item.id} className="bg-sirt rounded-2xl border border-chiziq p-4 hover:border-gray-200 dark:hover:border-gray-700 transition-colors group relative">
-                                <div>
-                                    <div className="flex justify-between items-start mb-4">
-                                        <div className="w-10 h-10 rounded-xl bg-ichki border border-chiziq flex items-center justify-center text-brand">
-                                            <Bus size={18} />
+                    {saqlangan ? (
+                        /* ===== TUZILGAN REJA KO'RINISHI ===== */
+                        <div className="space-y-4">
+                            {/* Reja sarlavhasi */}
+                            <div className="bg-sirt rounded-2xl border border-chiziq shadow-sm overflow-hidden">
+                                <div className="px-6 py-5 flex items-start justify-between gap-4">
+                                    <div className="flex items-center gap-4">
+                                        <div className={`w-12 h-12 rounded-2xl flex items-center justify-center border-2 ${
+                                            saqlangan?.holat === 'done'
+                                                ? 'bg-emerald-50 border-emerald-200 text-emerald-600 dark:bg-emerald-950/20 dark:border-emerald-900/40 dark:text-emerald-400'
+                                                : saqlangan?.holat === 'active'
+                                                    ? 'bg-brand/10 border-brand text-brand animate-pulse'
+                                                    : 'bg-gray-50 border-gray-200 text-matn-xira dark:bg-gray-900 dark:border-gray-800'
+                                        }`}>
+                                            {saqlangan?.holat === 'done' ? <CheckCircle2 size={22} /> : saqlangan?.holat === 'active' ? <Navigation size={22} /> : <Package size={22} />}
                                         </div>
-                                        <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                                            <button onClick={() => { setEditingTransport(item); setTransportFormData(item); setIsTransportModalOpen(true); }} className="w-7 h-7 rounded-lg text-matn-xira hover:text-brand hover:bg-gray-50 dark:hover:bg-gray-950 flex items-center justify-center transition-colors cursor-pointer"><Edit2 size={13} /></button>
-                                            <button onClick={async () => { if (await confirm(`Transport o'chirilsinmi?
-
-${item.name}
-
-Unga biriktirilgan o'quvchilar bo'shatiladi.`)) deleteTransport(item.id); }} className="w-7 h-7 rounded-lg text-rose-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/20 flex items-center justify-center transition-colors cursor-pointer"><Trash2 size={13} /></button>
-                                        </div>
-                                    </div>
-                                    <div>
-                                        <h3 className="text-xs font-black text-matn tracking-wide">{item.name}</h3>
-                                        <p className="text-[11px] font-bold text-matn-xira mt-1">{item.model} • {item.number}</p>
-                                    </div>
-                                </div>
-                                <div className="mt-4 pt-4 border-t border-dashed border-chiziq grid grid-cols-2 gap-4">
-                                    <div>
-                                        <span className="text-[10px] font-bold text-matn-xira block mb-0.5">{t('driver')}</span>
-                                        <span className="text-xs font-bold text-matn-2 tracking-tight">{item.driverName || t('unknown_teacher')}</span>
-                                    </div>
-                                    <div>
-                                        <span className="text-[10px] font-bold text-matn-xira block mb-0.5">{t('capacity')}</span>
-                                        <span className="text-xs font-bold text-matn-2 tabular-nums">{t('capacity_unit').replace('{count}', String(item.capacity))}</span>
-                                    </div>
-                                </div>
-                                <div className="mt-4 flex items-center justify-between">
-                                    <span className={`px-2 py-0.5 rounded-md text-[10px] font-black border ${
-                                        item.status === 'Faol' ? 'bg-emerald-50 text-emerald-600 border-emerald-100 dark:bg-emerald-950/20 dark:text-emerald-400' : 'bg-gray-50 text-matn-xira border-gray-100 dark:bg-gray-900/50'
-                                    }`}>
-                                        {item.status === 'Faol' ? t('status_active') : item.status === 'Ta\'mirda' ? t('status_repair') : item.status === 'Arxiv' ? t('status_archive') : item.status}
-                                    </span>
-                                    <div className="flex items-center gap-1 text-[11px] font-bold text-matn-sokin tabular-nums">
-                                        <Phone size={10} className="text-brand" /> {item.driverPhone}
-                                    </div>
-                                </div>
-                            </div>
-                        ))}
-                    </div>
-                </div>
-            )}            {activeTab === 'marshrutlar' && (
-                <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
-                    {/* Left: Route list */}
-                    <div className="lg:col-span-4 space-y-4">
-                        <div className="bg-sirt rounded-2xl border border-chiziq p-4 shadow-sm">
-                            <div className="flex justify-between items-center mb-6">
-                                <span className="text-[11px] font-bold text-matn-xira">{t('routes')}</span>
-                                <button
-                                    onClick={() => { resetRouteForm(); setIsRouteModalOpen(true); }}
-                                    className="w-8 h-8 rounded-lg bg-brand text-brand-ust flex items-center justify-center shadow transition-all cursor-pointer"
-                                >
-                                    <Plus size={16} />
-                                </button>
-                            </div>
-                            
-                            <div className="space-y-2">
-                                {korinadiganMarshrutlar.map(route => (
-                                    <div 
-                                        key={route.id}
-                                        className={`p-4 rounded-2xl border transition-all cursor-pointer group ${
-                                            editingRoute?.id === route.id 
-                                            ? 'bg-brand/10 border-brand' 
-                                            : 'bg-gray-50/50 dark:bg-gray-900/40 border-transparent hover:border-gray-100'
-                                        }`}
-                                        onClick={() => { 
-                                            setEditingRoute(route); 
-                                            setRouteFormData({
-                                                name: route.name,
-                                                transportId: route.transportId,
-                                                driverId: route.driverId,
-                                                days: route.days,
-                                                direction: route.direction || 'QAYTISH',
-                                                studentIds: route.studentIds,
-                                                startTime: route.startTime || ''
-                                            });
-                                        }}
-                                    >
-                                        <div className="flex justify-between items-start">
-                                            <div>
-                                                <h3 className="text-xs font-black text-matn tracking-tight flex items-center gap-1.5">
-                                                    {route.name}
-                                                    {/* Kunlik reja marshruti faqat shu kunga — takrorlanuvchisidan
-                                                        ajralib tursin, aks holda ikkalasi bir xil ko'rinadi. */}
-                                                    {route.date && (
-                                                        <span className="px-1.5 py-0.5 rounded-md text-[9px] font-black bg-teal-50 text-brand border border-teal-100 dark:bg-teal-950/20 dark:border-teal-900/40">
-                                                            {route.date} rejasi
-                                                        </span>
-                                                    )}
-                                                </h3>
-                                                <span className="text-[11px] text-matn-xira font-bold block mt-0.5">
-                                                    {route.direction === 'QAYTISH' ? '🏠 Uyga' : '🏫 Markazga'}
-                                                    {/* Kunlik marshrut faqat bir kunga — unga "Har kuni" deb
-                                                        yozish chalg'itadi; sana yorlig'i sarlavhada turibdi. */}
-                                                    {!route.date && ` • ${route.days === 'HAR_KUNI' ? t('every_day') : route.days === 'TOQ' ? t('odd_days') : route.days === 'JUFT' ? t('even_days') : route.days}`}
-                                                    {` • ${route.startTime || '--:--'} • ${routeStudents(route).length} ${t('student').toLowerCase()}`}
+                                        <div>
+                                            <div className="flex items-center gap-2 flex-wrap">
+                                                <h3 className="text-sm font-black text-matn">{saqlangan?.haydovchiIsmi}</h3>
+                                                <span className={`px-2 py-0.5 rounded-md text-[10px] font-black border ${
+                                                    saqlangan?.holat === 'done' ? 'bg-emerald-50 text-emerald-600 border-emerald-100 dark:bg-emerald-950/20 dark:text-emerald-400' :
+                                                    saqlangan?.holat === 'active' ? 'bg-brand/10 text-brand border-brand/20' :
+                                                    'bg-gray-50 text-matn-xira border-gray-100 dark:bg-gray-900 dark:border-gray-800'
+                                                }`}>
+                                                    {saqlangan?.holat === 'done' ? 'вњ“ Tugadi' : saqlangan?.holat === 'active' ? 'в–¶ Yo\'lda' : 'Tayyor'}
                                                 </span>
                                             </div>
-                                            <div className="w-8 h-8 rounded-lg bg-sirt border border-chiziq flex items-center justify-center text-brand">
-                                                <Navigation size={14} />
-                                            </div>
-                                        </div>
-                                        <div className="mt-4 flex items-center justify-between pt-2 border-t border-dashed border-chiziq">
-                                            <span className="text-[11px] font-bold text-matn-sokin">
-                                                🚌 {route.transport?.name || t('not_marked')}
-                                            </span>
-                                            <button
-                                                onClick={async (e) => {
-                                                    e.stopPropagation();
-                                                    if (!await confirm(`Marshrut o'chirilsinmi?\n\n${route.name}`)) return;
-                                                    await deleteRoute(route.id);
-                                                    if (editingRoute?.id === route.id) resetRouteForm();
-                                                }}
-                                                className="w-6 h-6 rounded-md hover:bg-rose-50 dark:hover:bg-rose-950/20 text-rose-500 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer"
-                                            >
-                                                <Trash2 size={12} />
-                                            </button>
+                                            <p className="text-[11px] font-bold text-matn-xira mt-0.5">
+                                                <Car size={10} className="inline mr-1" />
+                                                {saqlangan?.vehicleModel} {saqlangan?.vehicleNumber}
+                                                {saqlangan?.vehicleCapacity ? ` В· ${saqlangan.vehicleCapacity} o'rin` : ''}
+                                            </p>
+                                            <p className="text-[11px] font-bold text-matn-xira mt-0.5">
+                                                <Users size={10} className="inline mr-1" />
+                                                {saqlangan?.oquvchilar.length} ta o'quvchi В· {saqlangan?.sana}
+                                            </p>
+                                            {saqlananReys?.startedAt && (
+                                                <p className="text-[11px] font-bold text-brand mt-0.5">
+                                                    <Clock size={10} className="inline mr-1" />
+                                                    Boshlandi: {toTimeStr(saqlananReys.startedAt)}
+                                                    {saqlananReys.finishedAt && ` В· Tugadi: ${toTimeStr(saqlananReys.finishedAt)}`}
+                                                </p>
+                                            )}
                                         </div>
                                     </div>
-                                ))}
-                                {korinadiganMarshrutlar.length === 0 && (
-                                    <p className="text-center py-8 text-[11px] text-matn-xira font-bold">{t('no_routes_found')}</p>
+                                    <button
+                                        onClick={() => { setSaqlangan(null); setChiqarilganOquvchilar(new Set()); }}
+                                        className="w-8 h-8 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 text-matn-xira flex items-center justify-center transition-colors cursor-pointer shrink-0"
+                                    >
+                                        <X size={16} />
+                                    </button>
+                                </div>
+
+                                {/* Haydovchi tugmalari */}
+                                {saqlangan?.holat !== 'done' && (
+                                    <div className="px-6 pb-5 flex gap-3">
+                                        {!saqlananReys?.startedAt ? (
+                                            <button
+                                                onClick={qabulQildim}
+                                                disabled={!!rejaBand}
+                                                className="flex-1 py-3 bg-brand hover:bg-brand-dark disabled:opacity-50 text-white rounded-2xl text-xs font-extrabold flex items-center justify-center gap-2 shadow-sm shadow-[#1b6b6b]/20 transition-all cursor-pointer"
+                                            >
+                                                {rejaBand === 'qabul' ? <Loader2 size={16} className="animate-spin" /> : <PlayCircle size={16} />}
+                                                Qabul qildim (yo'lga chiqdim)
+                                            </button>
+                                        ) : (
+                                            <>
+                                                <div className="flex-1 py-3 bg-emerald-50 dark:bg-emerald-950/20 border border-emerald-100 dark:border-emerald-900/40 rounded-2xl text-xs font-extrabold text-emerald-600 dark:text-emerald-400 flex items-center justify-center gap-2">
+                                                    <CheckCircle2 size={16} /> Qabul qilingan В· {toTimeStr(saqlananReys.startedAt)}
+                                                </div>
+                                                <button
+                                                    onClick={yetkazdim}
+                                                    disabled={!!rejaBand}
+                                                    className="flex-1 py-3 bg-teal-600 hover:bg-teal-700 disabled:opacity-50 text-white rounded-2xl text-xs font-extrabold flex items-center justify-center gap-2 shadow-sm transition-all cursor-pointer"
+                                                >
+                                                    {rejaBand === 'tugat' ? <Loader2 size={16} className="animate-spin" /> : <StopCircle size={16} />}
+                                                    Yetkazdim (hammani)
+                                                </button>
+                                            </>
+                                        )}
+                                    </div>
                                 )}
                             </div>
-                        </div>
-                    </div>
 
-                    {/* Right: Route stops detail */}
-                    <div className="lg:col-span-8">
-                        {tanlangan ? (
-                            <div className="bg-sirt rounded-2xl border border-chiziq p-4 shadow-sm animate-in fade-in duration-300">
-                                <div className="flex justify-between items-start mb-6 pb-4 border-b border-chiziq-mayin/50">
-                                    <div>
-                                        <h3 className="text-sm font-black text-matn tracking-tight">
-                                            {tanlangan.name}
-                                        </h3>
-                                        <span className="text-[11px] font-bold text-brand mt-0.5">{t('start_time')}: {tanlangan.startTime || t('not_marked')}</span>
-                                        {/* Tartibni kim quradi: tizim yoki admin. */}
-                                        <span className={`ml-2 px-2 py-0.5 rounded-md text-[10px] font-black border ${tanlangan.autoOrder === false
-                                            ? 'bg-amber-50 text-amber-600 border-amber-100 dark:bg-amber-950/20 dark:text-amber-400 dark:border-amber-900/40'
-                                            : 'bg-teal-50 text-brand border-teal-100 dark:bg-teal-950/20 dark:border-teal-900/40'}`}>
-                                            {tanlangan.autoOrder === false ? "qo'lda tartib" : 'avtomatik tartib'}
+                            {/* O'quvchilar ro'yxati va holat belgilash */}
+                            <div className="bg-sirt rounded-2xl border border-chiziq shadow-sm overflow-hidden">
+                                <div className="px-5 py-4 border-b border-chiziq-mayin/50 flex items-center justify-between">
+                                    <div className="flex items-center gap-2">
+                                        <Users size={15} className="text-brand" />
+                                        <span className="text-xs font-black text-matn">O'quvchilar</span>
+                                        <span className="px-2 py-0.5 bg-brand/10 text-brand rounded-md text-[10px] font-black">
+                                            {saqlangan?.oquvchilar.length}
                                         </span>
-                                        {(() => {
-                                            // Sig'im: 6 o'rinli mashinaga 8 o'quvchi qo'shib qo'yish oson edi.
-                                            const sigim = transports.find(tr => tr.id === tanlangan.transportId)?.capacity;
-                                            if (!sigim) return null;
-                                            const soni = routeStudents(tanlangan).length;
-                                            const toldi = soni > sigim;
-                                            return (
-                                                <span className={`ml-2 px-2 py-0.5 rounded-md text-[10px] font-black border ${toldi
-                                                    ? 'bg-rose-50 text-rose-600 border-rose-100 dark:bg-rose-950/20 dark:text-rose-400 dark:border-rose-900/40'
-                                                    : 'bg-gray-55 text-matn-xira border-gray-100 dark:bg-gray-900 dark:border-gray-800'}`}>
-                                                    {soni}/{sigim} o'rin{toldi ? " — sig'imdan oshdi" : ''}
-                                                </span>
-                                            );
-                                        })()}
                                     </div>
-                                    <div className="flex gap-2">
-                                        <button 
-                                            onClick={() => setIsRouteModalOpen(true)}
-                                            className="px-3.5 py-2 bg-ichki hover:bg-gray-100 border border-gray-100 dark:border-gray-750 text-gray-700 dark:text-white rounded-xl text-[11px] font-extrabold transition-all cursor-pointer"
-                                        >
-                                            {t('edit')}
-                                        </button>
-                                        <button
-                                            onClick={() => yaqindanTartiblash(tanlangan)}
-                                            title="Markazdan boshlab eng yaqin bekatlar ketma-ketligi"
-                                            className="px-3.5 py-2 bg-ichki hover:bg-gray-100 border border-gray-100 dark:border-gray-750 text-gray-700 dark:text-white rounded-xl text-[11px] font-extrabold transition-all cursor-pointer flex items-center gap-1.5"
-                                        >
-                                            <Sparkles size={13} /> {tanlangan.autoOrder === false ? 'Avtomatik tartibga qaytar' : 'Qayta tartibla'}
-                                        </button>
-                                        <button
-                                            onClick={() => { setStudentSearch(''); setIsStudentSelectorOpen(true); }}
-                                            className="px-3.5 py-2 bg-brand hover:bg-brand-dark text-white rounded-xl text-[11px] font-extrabold shadow-sm shadow-[#1b6b6b]/20 transition-all cursor-pointer"
-                                        >
-                                            {t('add_student')}
-                                        </button>
-                                    </div>
+                                    {/* Progress bar */}
+                                    {saqlananReys?.startedAt && (
+                                        <div className="flex items-center gap-2 text-[11px] font-bold text-matn-xira">
+                                            {(() => {
+                                                const yetkazildi = (saqlangan?.oquvchilar || []).filter(id => oquvchiHolati(id) === 'Uyiga yetkazildi').length;
+                                                const jami = saqlangan?.oquvchilar.length || 1;
+                                                return <><span className="text-emerald-600 font-black">{yetkazildi}</span>/{jami} yetkazildi</>;
+                                            })()}
+                                        </div>
+                                    )}
                                 </div>
-
-                                {/* Raqamlar masofa emas, navbat — buni aytib qo'yish kerak:
-                                    ertalabki marshrutda 1-bekat eng chekkada turadi va
-                                    xaritaga qarab "xato" bo'lib ko'rinadi. */}
-                                <p className="text-[11px] font-bold text-matn-xira mb-3 flex items-start gap-1.5">
-                                    <Navigation size={12} className="text-brand shrink-0 mt-0.5" />
-                                    {tanlangan.direction === 'QAYTISH'
-                                        ? "Raqamlar — tushirish navbati: mashina markazdan chiqib, eng yaqin uydan boshlab tarqatadi."
-                                        : "Raqamlar — olib ketish navbati: mashina eng chekka uydan boshlaydi va markazga yaqinlashib boradi, oxirgi bola eng kam yo'l yuradi."}
-                                </p>
-
-                                {/* Xaritada bekatlar tartib bilan: kim qayerda turgani va
-                                    tartib mantiqiymi yo'qmi shundan ko'rinadi. */}
-                                <RouteMap
-                                    className="mb-5"
-                                    stops={routeStudents(tanlangan).map(st => ({
-                                        studentId: st.id, name: st.name, photo: st.photo, location: st.location,
-                                    }))}
-                                    centerLocation={settings?.centerLocation}
-                                    orgName={settings?.orgName}
-                                    logo={settings?.logo}
-                                    direction={tanlangan.direction === 'QAYTISH' ? 'QAYTISH' : 'KETISH'}
-                                />
-
-                                <div className="space-y-2">
-                                    {routeStudents(tanlangan).map((student, index, ruyxat) => {
-                                        const sid = student.id;
+                                <div className="divide-y divide-chiziq-mayin/50">
+                                    {(saqlangan?.oquvchilar || []).map((sid, idx) => {
+                                        const st = students.find(s => s.id === sid);
+                                        if (!st) return null;
+                                        const holat = oquvchiHolati(sid);
                                         return (
-                                            <div key={sid}
-                                                draggable
-                                                onDragStart={() => setDragStudentId(sid)}
-                                                onDragOver={e => e.preventDefault()}
-                                                onDrop={e => { e.preventDefault(); if (dragStudentId !== null) bekatniKochirish(tanlangan, dragStudentId, sid); setDragStudentId(null); }}
-                                                onDragEnd={() => setDragStudentId(null)}
-                                                className={`flex items-center justify-between p-4 bg-gray-50/50 dark:bg-gray-900/40 rounded-2xl hover:border-gray-100 border transition-all group ${
-                                                    dragStudentId === sid ? 'border-brand opacity-60' : 'border-transparent'
-                                                }`}>
-                                                <div className="flex items-center gap-3">
-                                                    <GripVertical size={14} className="text-matn-xira cursor-grab active:cursor-grabbing shrink-0" />
-                                                    <div className="w-8 h-8 rounded-lg bg-sirt border border-chiziq flex items-center justify-center font-black text-xs text-brand">
-                                                        {index + 1}
+                                            <div key={sid} className="flex items-center justify-between px-5 py-3 gap-3 hover:bg-gray-50/50 dark:hover:bg-gray-900/30 transition-colors">
+                                                <div className="flex items-center gap-3 min-w-0">
+                                                    <div className="w-7 h-7 rounded-lg bg-ichki border border-chiziq flex items-center justify-center font-black text-[11px] text-brand shrink-0">
+                                                        {idx + 1}
                                                     </div>
-                                                    <div>
-                                                        <h4 className="text-xs font-black text-matn tracking-tight">{student.name}</h4>
-                                                        <div className="flex items-center gap-2 mt-0.5">
-                                                            <span className="text-[11px] text-matn-xira font-bold flex items-center gap-0.5"><MapPin size={9} /> {student.address || '—'}</span>
-                                                            {/* Markazdan masofa — tartib nega shunday ekani ko'rinsin. */}
-                                                            {(() => {
-                                                                const uy = parseLatLng(student.location);
-                                                                if (!uy) return <span className="text-[11px] font-bold text-amber-600 dark:text-amber-500">joylashuvi yo'q</span>;
-                                                                const markaz = parseLatLng(settings?.centerLocation) || ZAXIRA_MARKAZ;
-                                                                return <span className="text-[11px] text-matn-xira font-bold tabular-nums">markazdan {masofaMatni(distanceKm(markaz, uy))}</span>;
-                                                            })()}
-                                                            <span className="text-[11px] text-matn-xira font-bold flex items-center gap-0.5"><Phone size={9} /> {student.phone}</span>
-                                                        </div>
+                                                    <div className="min-w-0">
+                                                        <p className="text-xs font-black text-matn truncate">{st.name}</p>
+                                                        <p className="text-[11px] font-bold text-matn-xira truncate flex items-center gap-1">
+                                                            <Phone size={9} /> {st.phone}
+                                                            {st.address && <><MapPin size={9} className="ml-1" /> {st.address}</>}
+                                                        </p>
                                                     </div>
                                                 </div>
-                                                <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                                                    <button 
-                                                        onClick={() => moveStudentInRoute(tanlangan, sid, 'up')}
-                                                        disabled={index === 0}
-                                                        className="w-7 h-7 rounded-lg text-matn-xira hover:text-brand hover:bg-gray-50 dark:hover:bg-gray-950 flex items-center justify-center transition-all cursor-pointer disabled:opacity-30"
-                                                    >
-                                                        <ArrowUp size={14} />
-                                                    </button>
-                                                    <button 
-                                                        onClick={() => moveStudentInRoute(tanlangan, sid, 'down')}
-                                                        disabled={index === ruyxat.length - 1}
-                                                        className="w-7 h-7 rounded-lg text-matn-xira hover:text-brand hover:bg-gray-50 dark:hover:bg-gray-950 flex items-center justify-center transition-all cursor-pointer disabled:opacity-30"
-                                                    >
-                                                        <ArrowDown size={14} />
-                                                    </button>
-                                                    <button 
-                                                        onClick={async () => {
-                                                            const studentIds = tanlangan.studentIds.filter(id => id !== sid);
-                                                            await bekatlarniSaqlash(tanlangan, studentIds);
-                                                        }}
-                                                        className="w-7 h-7 rounded-lg text-rose-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/20 flex items-center justify-center transition-all cursor-pointer"
-                                                    >
-                                                        <UserMinus size={14} />
-                                                    </button>
+                                                <div className="flex items-center gap-1 shrink-0">
+                                                    {holat && (
+                                                        <span className={`px-2 py-0.5 rounded-md text-[10px] font-black border mr-1 ${statusRenk(holat)}`}>
+                                                            {holat === 'Olib ketildi' ? 'Olib ketildi' : holat === 'Uyiga yetkazildi' ? 'Yetkazildi' : 'Kelmadi'}
+                                                        </span>
+                                                    )}
+                                                    {[
+                                                        { label: 'в†—', title: 'Olib ketildi', status: 'Olib ketildi' as const, aktiv: holat === 'Olib ketildi', renk: 'hover:bg-sky-50 hover:text-sky-600 dark:hover:bg-sky-950/20' },
+                                                        { label: 'вњ“', title: 'Uyiga yetkazildi', status: 'Uyiga yetkazildi' as const, aktiv: holat === 'Uyiga yetkazildi', renk: 'hover:bg-emerald-50 hover:text-emerald-600 dark:hover:bg-emerald-950/20' },
+                                                        { label: 'вњ—', title: 'Kelmadi', status: 'Kelmadi' as const, aktiv: holat === 'Kelmadi', renk: 'hover:bg-rose-50 hover:text-rose-600 dark:hover:bg-rose-950/20' },
+                                                    ].map(opt => (
+                                                        <button
+                                                            key={opt.status}
+                                                            title={opt.title}
+                                                            onClick={() => holatBelgilash(sid, opt.status)}
+                                                            className={`w-7 h-7 rounded-lg text-sm font-black border flex items-center justify-center transition-all cursor-pointer ${
+                                                                opt.aktiv
+                                                                    ? `${statusRenk(opt.status)} border-current`
+                                                                    : `bg-ichki border-chiziq text-matn-xira ${opt.renk}`
+                                                            }`}
+                                                        >
+                                                            {opt.label}
+                                                        </button>
+                                                    ))}
                                                 </div>
                                             </div>
                                         );
                                     })}
-                                    {routeStudents(tanlangan).length === 0 && (
-                                        <p className="text-center py-12 text-[11px] text-matn-xira font-bold">{t('no_students_in_route')}</p>
+                                </div>
+                            </div>
+                        </div>
+                    ) : (
+                        /* ===== REJA TUZISH OQIMI ===== */
+                        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+                            {/* 1-qadam: Guruh tanlash */}
+                            <div className="bg-sirt rounded-2xl border border-chiziq shadow-sm overflow-hidden">
+                                <div className="px-5 py-4 border-b border-chiziq-mayin/50">
+                                    <div className="flex items-center justify-between mb-3">
+                                        <div className="flex items-center gap-2">
+                                            <div className="w-6 h-6 rounded-lg bg-brand text-brand-ust flex items-center justify-center text-[10px] font-black">1</div>
+                                            <span className="text-xs font-black text-matn">Guruh tanlang</span>
+                                        </div>
+                                        {tanlanganGuruhlar.length > 0 && (
+                                            <span className="px-2 py-0.5 bg-brand/10 text-brand rounded-md text-[10px] font-black">
+                                                {tanlanganGuruhlar.length} ta
+                                            </span>
+                                        )}
+                                    </div>
+                                    <div className="relative">
+                                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-matn-xira" size={13} />
+                                        <input
+                                            type="text"
+                                            placeholder="Guruh qidiring..."
+                                            value={guruhQidiruv}
+                                            onChange={e => setGuruhQidiruv(e.target.value)}
+                                            className="w-full pl-8 pr-3 py-2 bg-ichki border border-chiziq rounded-xl text-xs font-bold text-matn outline-none focus:border-brand transition-all"
+                                        />
+                                    </div>
+                                </div>
+                                <div className="max-h-80 overflow-y-auto divide-y divide-chiziq-mayin/50">
+                                    {mavjudGuruhlar.length === 0 && (
+                                        <p className="p-6 text-center text-[11px] font-bold text-matn-xira">Guruh topilmadi</p>
+                                    )}
+                                    {mavjudGuruhlar.map(g => {
+                                        const keldi = guruhKelganlarSoni(g.id);
+                                        const tanlandi = tanlanganGuruhlar.includes(g.id);
+                                        return (
+                                            <button
+                                                key={g.id}
+                                                onClick={() => setTanlanganGuruhlar(prev =>
+                                                    prev.includes(g.id) ? prev.filter(id => id !== g.id) : [...prev, g.id]
+                                                )}
+                                                className={`w-full flex items-center justify-between px-5 py-3 text-left transition-all cursor-pointer ${
+                                                    tanlandi ? 'bg-brand/5 dark:bg-brand/10' : 'hover:bg-gray-50/50 dark:hover:bg-gray-900/30'
+                                                }`}
+                                            >
+                                                <div className="flex items-center gap-3">
+                                                    <div className={`w-5 h-5 rounded-md border-2 flex items-center justify-center transition-all ${
+                                                        tanlandi ? 'bg-brand border-brand text-white' : 'border-chiziq'
+                                                    }`}>
+                                                        {tanlandi && <Check size={11} />}
+                                                    </div>
+                                                    <div>
+                                                        <p className="text-xs font-black text-matn">{g.name}</p>
+                                                        <p className="text-[11px] font-bold text-matn-xira">{g.studentIds?.length || 0} o'quvchi</p>
+                                                    </div>
+                                                </div>
+                                                <div className="text-right">
+                                                    {keldi > 0 ? (
+                                                        <span className="px-2 py-0.5 bg-emerald-50 text-emerald-600 border border-emerald-100 dark:bg-emerald-950/20 dark:text-emerald-400 rounded-md text-[10px] font-black">
+                                                            {keldi} keldi
+                                                        </span>
+                                                    ) : (
+                                                        <span className="text-[10px] font-bold text-matn-xira">yozuv yo'q</span>
+                                                    )}
+                                                </div>
+                                            </button>
+                                        );
+                                    })}
+                                </div>
+                            </div>
+
+                            {/* 2-qadam: Transport kerak bo'lganlar */}
+                            <div className="bg-sirt rounded-2xl border border-chiziq shadow-sm overflow-hidden">
+                                <div className="px-5 py-4 border-b border-chiziq-mayin/50">
+                                    <div className="flex items-center justify-between mb-3">
+                                        <div className="flex items-center gap-2">
+                                            <div className="w-6 h-6 rounded-lg bg-brand text-brand-ust flex items-center justify-center text-[10px] font-black">2</div>
+                                            <span className="text-xs font-black text-matn">Transport keraklars</span>
+                                        </div>
+                                        <div className="flex items-center gap-2">
+                                            {chiqarilganOquvchilar.size > 0 && (
+                                                <button
+                                                    onClick={() => setChiqarilganOquvchilar(new Set())}
+                                                    className="text-[10px] font-bold text-brand hover:underline cursor-pointer"
+                                                >
+                                                    Hammasini qaytarish
+                                                </button>
+                                            )}
+                                            <span className="px-2 py-0.5 bg-brand/10 text-brand rounded-md text-[10px] font-black">
+                                                {rejaOquvchilari().length} ta
+                                            </span>
+                                        </div>
+                                    </div>
+                                    {tanlanganGuruhlar.length === 0 ? (
+                                        <p className="text-[11px] font-bold text-matn-xira">Avval guruh tanlang</p>
+                                    ) : (
+                                        <div className="relative">
+                                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-matn-xira" size={13} />
+                                            <input
+                                                type="text"
+                                                placeholder="O'quvchi qidiring..."
+                                                value={oquvchiQidiruv}
+                                                onChange={e => setOquvchiQidiruv(e.target.value)}
+                                                className="w-full pl-8 pr-3 py-2 bg-ichki border border-chiziq rounded-xl text-xs font-bold text-matn outline-none focus:border-brand transition-all"
+                                            />
+                                        </div>
+                                    )}
+                                </div>
+                                <div className="max-h-80 overflow-y-auto divide-y divide-chiziq-mayin/50">
+                                    {tanlanganGuruhlar.length === 0 ? (
+                                        <div className="p-6 text-center">
+                                            <Bus size={28} className="text-matn-xira mx-auto mb-2" />
+                                            <p className="text-[11px] font-bold text-matn-xira">1-qadamdan guruh tanlang</p>
+                                        </div>
+                                    ) : transportKerakOquvchilar().length === 0 ? (
+                                        <div className="p-6 text-center">
+                                            <AlertTriangle size={28} className="text-amber-400 mx-auto mb-2" />
+                                            <p className="text-[11px] font-bold text-matn-xira">
+                                                {kelganOquvchilar().length > 0
+                                                    ? `${kelganOquvchilar().length} ta kelgan, lekin hech birida "transport kerak" belgisi yo'q`
+                                                    : 'Shu kuni kelgan o\'quvchi topilmadi'
+                                                }
+                                            </p>
+                                        </div>
+                                    ) : (
+                                        transportKerakOquvchilar()
+                                            .filter(s => s.name.toLowerCase().includes(oquvchiQidiruv.toLowerCase()))
+                                            .map(st => {
+                                                const chiqarilgan = chiqarilganOquvchilar.has(st.id);
+                                                return (
+                                                    <div
+                                                        key={st.id}
+                                                        className={`flex items-center justify-between px-5 py-3 transition-all ${
+                                                            chiqarilgan ? 'opacity-40 bg-gray-50/50 dark:bg-gray-900/30' : 'hover:bg-gray-50/30 dark:hover:bg-gray-900/20'
+                                                        }`}
+                                                    >
+                                                        <div className="min-w-0">
+                                                            <p className={`text-xs font-black text-matn truncate ${chiqarilgan ? 'line-through' : ''}`}>{st.name}</p>
+                                                            <p className="text-[11px] font-bold text-matn-xira truncate">
+                                                                {st.phone}{st.address ? ` В· ${st.address}` : ''}
+                                                            </p>
+                                                        </div>
+                                                        <button
+                                                            onClick={() => setChiqarilganOquvchilar(prev => {
+                                                                const next = new Set(prev);
+                                                                if (next.has(st.id)) next.delete(st.id);
+                                                                else next.add(st.id);
+                                                                return next;
+                                                            })}
+                                                            title={chiqarilgan ? "Qaytarish" : "Chiqarish"}
+                                                            className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0 cursor-pointer transition-all ${
+                                                                chiqarilgan
+                                                                    ? 'bg-brand/10 text-brand hover:bg-brand/20'
+                                                                    : 'bg-rose-50 text-rose-500 hover:bg-rose-100 dark:bg-rose-950/20 dark:hover:bg-rose-950/30'
+                                                            }`}
+                                                        >
+                                                            {chiqarilgan ? <Check size={13} /> : <X size={13} />}
+                                                        </button>
+                                                    </div>
+                                                );
+                                            })
                                     )}
                                 </div>
                             </div>
-                        ) : (
-                            <div className="bg-sirt rounded-2xl border border-chiziq p-12 text-center shadow-sm">
-                                <p className="text-[11px] font-bold text-matn-xira">{t('select_route_prompt')}</p>
-                            </div>
-                        )}
-                    </div>
-                </div>
-            )}
 
-            {activeTab === 'yetkazish' && tolqinlar && (
-                <div className="space-y-4">
-                    {/* Rejim: mashinalar bir vaqtda chiqsinmi (bolalar tez uyda,
-                        hamma mashina band) yoki kamroq mashina bilanmi (arzon,
-                        lekin oxirgi bola kech boradi). */}
-                    <div className="bg-sirt rounded-2xl border border-chiziq p-3 shadow-sm flex flex-wrap items-center gap-2">
-                        <span className="text-[11px] font-bold text-matn-xira mr-1">Rejalash usuli</span>
-                        {([
-                            { k: 'tez', nom: 'Tez', izoh: 'Mashinalar bir vaqtda chiqadi — bolalar tezroq uyda' },
-                            { k: 'arzon', nom: 'Tejamkor', izoh: 'Kamroq mashina — oxirgi bola kechroq boradi' },
-                        ] as const).map(v => (
-                            <button key={v.k} onClick={() => setKunRejim(v.k)} title={v.izoh}
-                                className={`h-8 px-3 rounded-lg text-[11px] font-extrabold transition-all cursor-pointer border ${
-                                    kunRejim === v.k
-                                        ? 'bg-brand text-brand-ust border-brand shadow-sm'
-                                        : 'bg-ichki border-chiziq text-matn-sokin hover:bg-gray-50 dark:hover:bg-gray-700'}`}>
-                                {v.nom}
-                            </button>
-                        ))}
-                        <span className="text-[11px] font-bold text-matn-xira">
-                            {kunRejim === 'tez'
-                                ? 'Mashinalar bir vaqtda chiqadi — bolalar tezroq uyda'
-                                : "Kamroq mashina — oxirgi bola kechroq boradi"}
-                        </span>
-                    </div>
+                            {/* 3-qadam: Haydovchi tanlash + reja tuzish */}
+                            <div className="space-y-4">
+                                <div className="bg-sirt rounded-2xl border border-chiziq shadow-sm overflow-hidden">
+                                    <div className="px-5 py-4 border-b border-chiziq-mayin/50">
+                                        <div className="flex items-center gap-2">
+                                            <div className="w-6 h-6 rounded-lg bg-brand text-brand-ust flex items-center justify-center text-[10px] font-black">3</div>
+                                            <span className="text-xs font-black text-matn">Haydovchi tanlang</span>
+                                        </div>
+                                    </div>
+                                    <div className="divide-y divide-chiziq-mayin/50">
+                                        {haydovchilar.length === 0 && (
+                                            <p className="p-6 text-center text-[11px] font-bold text-matn-xira">
+                                                Haydovchi (DRIVER) rol berilgan xodim yo'q
+                                            </p>
+                                        )}
+                                        {haydovchilar.map(h => {
+                                            const tr = transports.find(t => t.driverId === h.id);
+                                            const tanlandi = tanlanganHaydovchiId === h.id;
+                                            return (
+                                                <button
+                                                    key={h.id}
+                                                    onClick={() => setTanlanganHaydovchiId(tanlandi ? null : h.id)}
+                                                    className={`w-full flex items-center justify-between px-5 py-3 text-left transition-all cursor-pointer ${
+                                                        tanlandi ? 'bg-brand/5 dark:bg-brand/10' : 'hover:bg-gray-50/50 dark:hover:bg-gray-900/30'
+                                                    }`}
+                                                >
+                                                    <div className="flex items-center gap-3">
+                                                        <div className={`w-9 h-9 rounded-xl flex items-center justify-center border-2 transition-all ${
+                                                            tanlandi ? 'bg-brand border-brand text-white' : 'bg-ichki border-chiziq text-matn-xira'
+                                                        }`}>
+                                                            <User size={16} />
+                                                        </div>
+                                                        <div>
+                                                            <p className="text-xs font-black text-matn">{h.name}</p>
+                                                            <p className="text-[11px] font-bold text-matn-xira">
+                                                                {tr ? (
+                                                                    <><Car size={9} className="inline mr-0.5" />
+                                                                    {tr.model} {tr.number} В· {tr.capacity} o'rin</>
+                                                                ) : (
+                                                                    <span className="text-amber-500">mashina biriktirilmagan</span>
+                                                                )}
+                                                            </p>
+                                                        </div>
+                                                    </div>
+                                                    {tanlandi && <Check size={16} className="text-brand shrink-0" />}
+                                                </button>
+                                            );
+                                        })}
+                                    </div>
+                                </div>
 
-                    {/* Jadvali to'ldirilmagan guruhlar — ular hech qaysi to'lqinga
-                        tushmaydi, ya'ni bolalari transportsiz qoladi. */}
-                    {(tolqinlar.jadvalsiz || []).length > 0 && (
-                        <div className="bg-amber-50 dark:bg-amber-950/20 border border-amber-100 dark:border-amber-900/40 rounded-2xl p-4">
-                            <p className="text-[11px] font-bold text-amber-700 dark:text-amber-400 flex items-start gap-2">
-                                <AlertTriangle size={14} className="shrink-0 mt-0.5" />
-                                <span>
-                                    Dars tugash vaqti belgilanmagan guruhlar: {(tolqinlar.jadvalsiz || []).map((g: any) => `${g.name} (${g.oquvchi} ta)`).join(', ')}.
-                                    Ular rejaga tushmaydi — guruh jadvaliga vaqt qo'ying.
-                                </span>
-                            </p>
-                        </div>
-                    )}
-
-                    {(tolqinlar.tolqinlar || []).length === 0 ? (
-                        <div className="bg-sirt rounded-2xl border border-chiziq p-8 text-center shadow-sm">
-                            <p className="text-[11px] font-bold text-matn-xira">
-                                {selectedDate} kuni jadval bo'yicha tugaydigan dars topilmadi
-                            </p>
-                        </div>
-                    ) : (
-                        <div className="grid grid-cols-1 lg:grid-cols-3 gap-3">
-                            {(tolqinlar.tolqinlar || []).map((t: any) => {
-                                const tanlangan = kunlikReja?.endTime === t.endTime;
-                                return (
-                                    <div key={t.endTime} className={`bg-sirt rounded-2xl border p-4 shadow-sm ${tanlangan ? 'border-brand' : 'border-chiziq'}`}>
-                                        <div className="flex items-start justify-between gap-2">
-                                            <div>
-                                                <p className="text-lg font-black text-matn tabular-nums">{t.endTime}</p>
-                                                <p className="text-[11px] font-bold text-matn-xira mt-0.5">
-                                                    {t.guruhlar.map((g: any) => g.name).join(', ')}
-                                                </p>
+                                {/* Reja tuzish tugmasi */}
+                                <div className="bg-sirt rounded-2xl border border-chiziq shadow-sm p-5 space-y-4">
+                                    {/* Xulosa */}
+                                    <div className="space-y-2">
+                                        <div className="flex items-center justify-between text-[11px] font-bold">
+                                            <span className="text-matn-xira">Tanlangan guruhlar:</span>
+                                            <span className="text-matn">{tanlanganGuruhlar.length} ta</span>
+                                        </div>
+                                        <div className="flex items-center justify-between text-[11px] font-bold">
+                                            <span className="text-matn-xira">Transport kerak:</span>
+                                            <span className="text-matn">{transportKerakOquvchilar().length} ta</span>
+                                        </div>
+                                        {chiqarilganOquvchilar.size > 0 && (
+                                            <div className="flex items-center justify-between text-[11px] font-bold">
+                                                <span className="text-matn-xira">Chiqarilganlar:</span>
+                                                <span className="text-rose-600 dark:text-rose-400">-{chiqarilganOquvchilar.size} ta</span>
                                             </div>
-                                            {/* Son bosiladigan: kimligini ko'rish uchun "Reja" ni kutish
-                                                shart emas, kelmaganlar ham shu yerda. */}
-                                            <button
-                                                onClick={() => setOchiqTolqin(ochiqTolqin === t.endTime ? '' : t.endTime)}
-                                                title="Ro'yxatni ochish"
-                                                className={`px-2.5 py-1 rounded-lg text-[11px] font-black border tabular-nums shrink-0 flex items-center gap-1 transition-all cursor-pointer ${
-                                                    ochiqTolqin === t.endTime
-                                                        ? 'bg-brand/10 text-brand border-brand'
-                                                        : 'bg-ichki text-matn-2 border-chiziq hover:border-brand'}`}>
-                                                {t.oquvchi} bola
-                                                <ChevronDown size={11} className={ochiqTolqin === t.endTime ? 'rotate-180 transition-transform' : 'transition-transform'} />
-                                            </button>
+                                        )}
+                                        <div className="border-t border-dashed border-chiziq pt-2 flex items-center justify-between text-xs font-black">
+                                            <span className="text-matn">Rejaga kiradi:</span>
+                                            <span className={rejaOquvchilari().length > 0 ? 'text-brand' : 'text-matn-xira'}>{rejaOquvchilari().length} ta</span>
                                         </div>
-
-                                        <div className="flex flex-wrap items-center gap-2 mt-3 text-[10px] font-bold">
-                                            {t.javoblar.jami === 0 ? (
-                                                <span className="text-matn-xira">haydovchilardan so'ralmagan</span>
-                                            ) : (
-                                                <>
-                                                    <span className="text-emerald-600 dark:text-emerald-400 flex items-center gap-1"><CheckCircle2 size={11} /> {t.javoblar.ha} ha</span>
-                                                    {t.javoblar.yoq > 0 && <span className="text-rose-600 dark:text-rose-400">{t.javoblar.yoq} yo'q</span>}
-                                                    {t.javoblar.jami - t.javoblar.ha - t.javoblar.yoq > 0 && (
-                                                        <span className="text-amber-600 dark:text-amber-500 flex items-center gap-1">
-                                                            <HelpCircle size={11} /> {t.javoblar.jami - t.javoblar.ha - t.javoblar.yoq} javob yo'q
-                                                        </span>
-                                                    )}
-                                                </>
-                                            )}
-                                            {t.kelmagan > 0 && <span className="text-matn-xira">· {t.kelmagan} kelmagan</span>}
-                                        </div>
-
-                                        <div className="flex gap-2 mt-3">
-                                            <button onClick={() => haydovchilardanSorash(t.endTime)} disabled={!!kunlikBand}
-                                                className="flex-1 py-2 bg-ichki border border-chiziq text-matn-sokin hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-50 rounded-xl text-[11px] font-extrabold flex items-center justify-center gap-1.5 transition-all cursor-pointer">
-                                                <Send size={12} /> {kunlikBand === 'sorash' + t.endTime ? '…' : "So'rash"}
-                                            </button>
-                                            <button onClick={() => kunlikRejaniOlish(t.endTime, false)} disabled={!!kunlikBand}
-                                                className="flex-1 py-2 bg-brand hover:bg-brand-dark disabled:opacity-50 text-white rounded-xl text-[11px] font-extrabold flex items-center justify-center gap-1.5 shadow-sm shadow-[#1b6b6b]/20 transition-all cursor-pointer">
-                                                <Wand2 size={12} /> {kunlikBand === 'reja' + t.endTime ? '…' : 'Reja'}
-                                            </button>
-                                        </div>
-
-                                        {/* Kim ketadi, kim chiqib qoldi. Joylashuvi yo'q bola
-                                            rejaga tusha olmaydi — shu yerda ko'rinib tursin. */}
-                                        {ochiqTolqin === t.endTime && (
-                                            <div className="mt-3 pt-3 border-t border-dashed border-chiziq space-y-2">
-                                                <p className="text-[10px] font-black text-matn-xira">KETADIGANLAR · {(t.oquvchilar || []).length}</p>
-                                                <div className="space-y-1 max-h-64 overflow-y-auto">
-                                                    {(t.oquvchilar || []).map((o: any, i: number) => (
-                                                        <div key={o.id} className="flex items-start gap-2 text-[11px]">
-                                                            <span className="text-matn-xira tabular-nums shrink-0 w-4 text-right">{i + 1}.</span>
-                                                            <div className="min-w-0">
-                                                                <p className="font-bold text-matn truncate">{o.name}</p>
-                                                                <p className="text-[10px] font-bold text-matn-xira truncate">
-                                                                    {o.guruh}{o.address ? ` · ${o.address}` : ''}
-                                                                    {!o.nuqta && <span className="text-amber-600 dark:text-amber-500"> · joylashuvi yo'q</span>}
-                                                                </p>
-                                                            </div>
-                                                        </div>
-                                                    ))}
-                                                </div>
-                                                {(t.doimiylar || []).length > 0 && (
-                                                    <>
-                                                        <p className="text-[10px] font-black text-matn-xira pt-2">DOIMIY MARSHRUTDA · {(t.doimiylar || []).length}</p>
-                                                        <div className="space-y-1">
-                                                            {(t.doimiylar || []).map((o: any) => (
-                                                                <p key={o.id} className="text-[11px] font-bold text-matn-xira truncate">
-                                                                    {o.name}
-                                                                    <span className="text-brand"> · {o.marshrut}</span>
-                                                                </p>
-                                                            ))}
-                                                        </div>
-                                                    </>
-                                                )}
-                                                {(t.kelmaganlar || []).length > 0 && (
-                                                    <>
-                                                        <p className="text-[10px] font-black text-matn-xira pt-2">CHIQIB QOLGANLAR · {(t.kelmaganlar || []).length}</p>
-                                                        <div className="space-y-1">
-                                                            {(t.kelmaganlar || []).map((o: any) => (
-                                                                <p key={o.id} className="text-[11px] font-bold text-matn-xira truncate">
-                                                                    <span className="line-through">{o.name}</span>
-                                                                    <span className="text-rose-500 dark:text-rose-400"> · {o.sabab}</span>
-                                                                </p>
-                                                            ))}
-                                                        </div>
-                                                    </>
-                                                )}
+                                        {tanlanganHaydovchiId && haydovchiTransport && rejaOquvchilari().length > haydovchiTransport.capacity && (
+                                            <div className="flex items-center gap-2 p-2 bg-amber-50 dark:bg-amber-950/20 border border-amber-100 dark:border-amber-900/40 rounded-xl">
+                                                <AlertTriangle size={13} className="text-amber-500 shrink-0" />
+                                                <p className="text-[10px] font-bold text-amber-700 dark:text-amber-400">
+                                                    Sig'imdan {rejaOquvchilari().length - haydovchiTransport.capacity} ta oshmoqda!
+                                                </p>
                                             </div>
                                         )}
                                     </div>
-                                );
-                            })}
-                        </div>
-                    )}
 
-                    {/* Hisoblangan reja */}
-                    {kunlikReja && (
-                        <div className="bg-sirt rounded-2xl border border-chiziq p-5 shadow-sm space-y-3">
-                            <div className="flex flex-wrap items-center justify-between gap-3">
-                                <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-[11px] font-bold text-matn-xira">
-                                    <span className="text-xs font-black text-matn">{kunlikReja.endTime} rejasi</span>
-                                    <span><b className="text-matn">{kunlikReja.jami.oquvchi}</b> bola</span>
-                                    <span><b className="text-matn">{kunlikReja.jami.haydovchiTasdiqlagan}</b> haydovchi · {kunlikReja.jami.orin} o'rin</span>
-                                    <span><b className="text-matn">{kunlikReja.rejalar.length}</b> reys</span>
-                                    {/* Eng muhim raqam. */}
-                                    {kunlikReja.jami.oxirgiBola && (
-                                        <span className="px-2 py-1 rounded-lg bg-teal-50 dark:bg-teal-950/20 text-brand border border-teal-100 dark:border-teal-900/40">
-                                            oxirgi bola uyda ~{kunlikReja.jami.oxirgiBola}
-                                        </span>
-                                    )}
-                                </div>
-                                <button onClick={() => kunlikRejaniOlish(kunlikReja.endTime, true)} disabled={!!kunlikBand || kunlikReja.rejalar.length === 0}
-                                    className="px-5 py-2.5 bg-brand hover:bg-brand-dark disabled:opacity-50 text-white rounded-xl text-[11px] font-extrabold shadow-sm shadow-[#1b6b6b]/20 transition-all cursor-pointer">
-                                    Tasdiqlash
-                                </button>
-                            </div>
-
-                            {kunlikReja.rejalar.map((r: any, i: number) => (
-                                <div key={i} className="bg-ichki rounded-2xl border border-chiziq p-3">
-                                    <div className="flex items-center justify-between gap-3">
-                                        <span className="text-xs font-black text-matn">{r.nomi} · {r.driverName || 'haydovchisiz'}</span>
-                                        <span className="text-[11px] font-bold text-matn-xira tabular-nums shrink-0">
-                                            {r.startTime}–{r.tugashi} · {r.oquvchilar.length}/{r.capacity} · {r.km.toFixed(1)} km
-                                        </span>
-                                    </div>
-                                    <p className="text-[11px] font-bold text-matn-sokin mt-1 leading-relaxed">
-                                        {r.oquvchilar.map((o: any, k: number) => `${k + 1}. ${o.name}`).join(' · ')}
-                                    </p>
-                                </div>
-                            ))}
-
-                            {(kunlikReja.sigmaganlar.length > 0 || kunlikReja.nuqtasiz.length > 0 || kunlikReja.jami.javobKutilmoqda > 0) && (
-                                <div className="bg-amber-50 dark:bg-amber-950/20 border border-amber-100 dark:border-amber-900/40 rounded-2xl p-3 space-y-1">
-                                    {kunlikReja.jami.javobKutilmoqda > 0 && (
-                                        <p className="text-[11px] font-bold text-amber-700 dark:text-amber-400">
-                                            {kunlikReja.jami.javobKutilmoqda} haydovchi hali javob bermadi — ular rejaga kirmadi
-                                        </p>
-                                    )}
-                                    {kunlikReja.sigmaganlar.length > 0 && (
-                                        <p className="text-[11px] font-bold text-amber-700 dark:text-amber-400">
-                                            Joy yetmadi ({kunlikReja.sigmaganlar.length}): {kunlikReja.sigmaganlar.map((o: any) => o.name).join(', ')}
-                                        </p>
-                                    )}
-                                    {kunlikReja.nuqtasiz.length > 0 && (
-                                        <p className="text-[11px] font-bold text-amber-700 dark:text-amber-400">
-                                            Joylashuvi yo'q ({kunlikReja.nuqtasiz.length}): {kunlikReja.nuqtasiz.map((o: any) => o.name).join(', ')}
-                                        </p>
-                                    )}
-                                </div>
-                            )}
-                        </div>
-                    )}
-                </div>
-            )}
-
-            {activeTab === 'yetkazish' && (
-                <div className="grid grid-cols-1 lg:grid-cols-4 gap-4">
-                    {/* Select Transport & Date */}
-                    <div className="lg:col-span-1 space-y-4">
-                        <div className="bg-sirt rounded-2xl border border-chiziq p-5 shadow-sm">
-                            <span className="text-[11px] font-bold text-matn-xira block mb-4">{t('transport_selection')}</span>
-                            <div className="space-y-2">
-                                {/* Transporti tanlanmagan marshrut hech qaysi mashina
-                                    ostiga tushmay yo'qolib qolardi. */}
-                                <button
-                                    onClick={() => setSelectedTransportId(null)}
-                                    className={`w-full flex items-center gap-3 p-3 rounded-2xl transition-all cursor-pointer ${
-                                        selectedTransportId === null
-                                        ? 'bg-brand/10 border border-brand text-brand'
-                                        : 'bg-ichki border border-transparent text-matn-2'
-                                    }`}
-                                >
-                                    <Navigation size={16} />
-                                    <span className="text-xs font-black tracking-tight truncate">Hamma marshrutlar</span>
-                                </button>
-                                {transports.map(t => (
                                     <button
-                                        key={t.id}
-                                        onClick={() => setSelectedTransportId(t.id)}
-                                        className={`w-full flex items-center gap-3 p-3 rounded-2xl transition-all cursor-pointer ${
-                                            selectedTransportId === t.id
-                                            ? 'bg-brand/10 border border-brand text-brand'
-                                            : 'bg-ichki border border-transparent text-matn-2'
-                                        }`}
+                                        onClick={rejaTuzish}
+                                        disabled={!!rejaBand || rejaOquvchilari().length === 0 || !tanlanganHaydovchiId}
+                                        className="w-full py-3.5 bg-brand hover:bg-brand-dark disabled:opacity-40 disabled:cursor-not-allowed text-white rounded-2xl text-xs font-extrabold flex items-center justify-center gap-2 shadow-sm shadow-[#1b6b6b]/20 transition-all cursor-pointer"
                                     >
-                                        <Bus size={16} />
-                                        <span className="text-xs font-black tracking-tight truncate">{t.name}</span>
+                                        {rejaBand === 'yaratilmoqda' ? <Loader2 size={16} className="animate-spin" /> : <Navigation size={16} />}
+                                        Reja tuzish
                                     </button>
-                                ))}
-                            </div>
-                        </div>
-
-                        <div className="flex items-center justify-between bg-sirt rounded-2xl border border-chiziq p-3 shadow-sm">
-                            <button onClick={() => { const d = new Date(selectedDate); d.setDate(d.getDate() - 1); setSelectedDate(toDateStr(d)); }}className="w-8 h-8 rounded-lg hover:bg-chiziq flex items-center justify-center transition-colors cursor-pointer"><ChevronLeft size={16} /></button>
-                            <span className="text-[11px] font-extrabold text-matn-2">{selectedDate}</span>
-                            <button onClick={() => { const d = new Date(selectedDate); d.setDate(d.getDate() + 1); setSelectedDate(toDateStr(d)); }}className="w-8 h-8 rounded-lg hover:bg-chiziq flex items-center justify-center transition-colors cursor-pointer"><ChevronRight size={16} /></button>
-                        </div>
-                    </div>
-
-                    {/* Delivery updates accordion */}
-                    <div className="lg:col-span-3 space-y-4">
-                        {routes.filter(r => (selectedTransportId === null || r.transportId === selectedTransportId)
-                            && isRouteActiveOnDate(r, selectedDate)).length === 0 && (
-                            <div className="bg-sirt rounded-2xl border border-chiziq p-12 text-center shadow-sm">
-                                <p className="text-[11px] font-bold text-matn-xira">
-                                    {selectedDate} kuni bu yerda reys yo'q — marshrut kunlari boshqa yoki mashina tanlangan.
-                                </p>
-                            </div>
-                        )}
-                        {routes
-                            .filter(r => (selectedTransportId === null || r.transportId === selectedTransportId)
-                                && isRouteActiveOnDate(r, selectedDate))
-                            .map(route => (
-                                <div key={route.id} className="bg-sirt rounded-2xl border border-chiziq overflow-hidden shadow-sm">
-                                    <button 
-                                        onClick={() => setExpandedRouteId(expandedRouteId === route.id ? null : route.id)}
-                                        className="w-full flex items-center justify-between p-5 hover:bg-gray-55 dark:hover:bg-gray-750 transition-colors cursor-pointer"
-                                    >
-                                        <div className="flex items-center gap-3 min-w-0">
-                                            <div className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 border ${
-                                                progress(route).jami > 0 && progress(route).belgilangan === progress(route).jami
-                                                    ? 'bg-emerald-50 text-emerald-600 border-emerald-100 dark:bg-emerald-950/20 dark:text-emerald-400 dark:border-emerald-900/40'
-                                                    : 'bg-brand/10 text-brand border-transparent'
-                                            }`}>
-                                                {route.direction === 'QAYTISH' ? <Home size={16} /> : <Navigation size={16} />}
-                                            </div>
-                                            <div className="text-left min-w-0">
-                                                <h4 className="text-xs font-black text-matn tracking-wide truncate">{route.name}</h4>
-                                                <span className="text-[11px] font-bold text-matn-xira block mt-0.5 truncate">
-                                                    {route.direction === 'QAYTISH' ? 'Uyga' : 'Markazga'} · {route.startTime || '--:--'} · {route.transport?.name || 'mashina yo\'q'}
-                                                    {route.driver?.name ? ` · ${route.driver.name}` : ''}
-                                                </span>
-                                            </div>
-                                        </div>
-
-                                        <div className="flex items-center gap-2 shrink-0">
-                                            {/* Kechikish: vaqti o'tgan, lekin haydovchi hali boshlamagan. */}
-                                            {kechikdi(route) && (
-                                                <span className="px-2 py-1 rounded-lg text-[10px] font-black bg-amber-50 text-amber-600 border border-amber-100 dark:bg-amber-950/20 dark:text-amber-400 dark:border-amber-900/40">
-                                                    kechikmoqda
-                                                </span>
-                                            )}
-                                            {routeRun(route)?.startedAt && (
-                                                <span className="px-2 py-1 rounded-lg text-[10px] font-black bg-gray-55 text-matn-xira border border-gray-100 dark:bg-gray-900 dark:border-gray-800 tabular-nums">
-                                                    ▶ {toTimeStr(routeRun(route)!.startedAt!)}
-                                                    {routeRun(route)?.finishedAt ? ` · ⏹ ${toTimeStr(routeRun(route)!.finishedAt!)}` : ''}
-                                                </span>
-                                            )}
-                                            {progress(route).kelmagan.length > 0 && (
-                                                <span className="px-2 py-1 rounded-lg text-[10px] font-black bg-rose-50 text-rose-600 border border-rose-100 dark:bg-rose-950/20 dark:text-rose-400 dark:border-rose-900/40">
-                                                    {progress(route).kelmagan.length} kelmadi
-                                                </span>
-                                            )}
-                                            <span className="px-2.5 py-1 rounded-lg text-[10px] font-black bg-ichki text-matn-2 border border-chiziq tabular-nums">
-                                                {progress(route).belgilangan}/{progress(route).jami}
-                                            </span>
-                                            <ChevronDown size={16} className={`text-matn-xira transition-transform ${expandedRouteId === route.id ? 'rotate-180' : ''}`} />
-                                        </div>
-                                    </button>
-
-                                    {expandedRouteId === route.id && (
-                                        <div className="p-4 pt-0 border-t border-chiziq-mayin/50 space-y-2">
-                                            {routeStudents(route).map(student => {
-                                                const status = getDeliveryStatus(route, student.id);
-                                                return (
-                                                    <div key={student.id} className="p-3 bg-gray-55/50 dark:bg-gray-900/40 rounded-2xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
-                                                        <div className="min-w-0">
-                                                            <h5 className="text-xs font-black text-matn tracking-tight truncate">{student.name}</h5>
-                                                            <span className="text-[11px] text-matn-xira font-bold block mt-0.5 truncate">
-                                                                {student.address || t('no_address')}
-                                                                {/* Kim va qachon belgilagani — janjal chiqsa shu yerda javob bor. */}
-                                                                {(() => {
-                                                                    const log = deliveryLogs.find(l => l.studentId === student.id && l.date === selectedDate
-                                                                        && (!l.run || l.run.routeId === route.id));
-                                                                    if (!log?.markedAt) return null;
-                                                                    const kim = users.find(u => u.id === log.markedById)?.name;
-                                                                    return ` · ${toTimeStr(log.markedAt)}${kim ? ` (${kim})` : ''}`;
-                                                                })()}
-                                                            </span>
-                                                        </div>
-                                                        <div className="flex items-center gap-1.5 w-full sm:w-auto">
-                                                            {[
-                                                                { label: t('status_picked_up'), status: 'Olib ketildi', color: 'sky' },
-                                                                { label: t('status_delivered'), status: 'Uyiga yetkazildi', color: 'emerald' },
-                                                                { label: t('status_not_come'), status: 'Kelmadi', color: 'rose' }
-                                                            ].map(opt => (
-                                                                <button 
-                                                                    key={opt.status}
-                                                                    onClick={() => handleDeliveryUpdate(route, student.id, opt.status as any)}
-                                                                    className={`flex-1 sm:flex-none px-3 py-1.5 rounded-xl text-[11px] font-extrabold transition-all cursor-pointer ${
-                                                                        status === opt.status 
-                                                                        ? 'bg-brand text-brand-ust' 
-                                                                        : 'bg-sirt text-matn-xira border border-chiziq'
-                                                                    }`}
-                                                                >
-                                                                    {opt.label}
-                                                                </button>
-                                                            ))}
-                                                        </div>
-                                                    </div>
-                                                );
-                                            })}
-                                        </div>
-                                    )}
                                 </div>
-                            ))}
-                    </div>
+                            </div>
+                        </div>
+                    )}
                 </div>
             )}
 
+            {/* ===== TARIX TAB ===== */}
             {activeTab === 'tarix' && (
                 <div className="space-y-4">
-                    {/* Oraliq bo'sh bo'lsa boshidan: markaz umuman nechta reys
-                        qilgani va kim necha marta chiqmagani ko'rinsin. */}
                     <div className="bg-sirt rounded-2xl border border-chiziq p-4 shadow-sm flex flex-wrap items-end gap-3">
                         <div>
                             <label className={lbl}>Boshlanishi</label>
@@ -1110,7 +835,7 @@ Unga biriktirilgan o'quvchilar bo'shatiladi.`)) deleteTransport(item.id); }} cla
                         </div>
                         <button onClick={statsniYuklash} disabled={statsYuklanmoqda}
                             className="px-4 py-3 bg-brand hover:bg-brand-dark disabled:opacity-50 text-white rounded-2xl text-[11px] font-extrabold flex items-center gap-2 shadow-sm shadow-[#1b6b6b]/20 transition-all cursor-pointer">
-                            <BarChart3 size={14} /> {statsYuklanmoqda ? 'Yuklanmoqda…' : "Ko'rsatish"}
+                            <BarChart3 size={14} /> {statsYuklanmoqda ? 'YuklanmoqdaвЂ¦' : "Ko'rsatish"}
                         </button>
                         {(statsFrom || statsTo) && (
                             <button onClick={() => { setStatsFrom(''); setStatsTo(''); }}
@@ -1127,7 +852,8 @@ Unga biriktirilgan o'quvchilar bo'shatiladi.`)) deleteTransport(item.id); }} cla
 
                     {!stats ? (
                         <div className="bg-sirt rounded-2xl border border-chiziq p-12 text-center shadow-sm">
-                            <p className="text-[11px] font-bold text-matn-xira">{statsYuklanmoqda ? 'Yuklanmoqda…' : "Ma'lumot yo'q"}</p>
+                            <BarChart3 size={36} className="text-matn-xira mx-auto mb-3" />
+                            <p className="text-[11px] font-bold text-matn-xira">{statsYuklanmoqda ? 'YuklanmoqdaвЂ¦' : "Sana tanlang va В«Ko'rsatishВ» bosing"}</p>
                         </div>
                     ) : (
                         <>
@@ -1135,7 +861,7 @@ Unga biriktirilgan o'quvchilar bo'shatiladi.`)) deleteTransport(item.id); }} cla
                                 {[
                                     { yorliq: 'Reyslar', qiymat: stats.jami?.reys ?? 0, izoh: stats.jami?.birinchiKun ? `${stats.jami.birinchiKun} dan beri` : '' },
                                     { yorliq: 'Olib ketildi', qiymat: stats.jami?.olindi ?? 0 },
-                                    { yorliq: 'Uyiga yetkazildi', qiymat: stats.jami?.yetkazildi ?? 0 },
+                                    { yorliq: 'Yetkazildi', qiymat: stats.jami?.yetkazildi ?? 0 },
                                     { yorliq: 'Kelmadi', qiymat: stats.jami?.kelmadi ?? 0, qizil: true },
                                     { yorliq: "O'quvchilar", qiymat: stats.jami?.oquvchi ?? 0 },
                                 ].map(k => (
@@ -1163,9 +889,7 @@ Unga biriktirilgan o'quvchilar bo'shatiladi.`)) deleteTransport(item.id); }} cla
                                             </div>
                                         ))}
                                     </div>
-                                    <p className="px-5 py-2 text-[10px] font-bold text-matn-xira border-t border-chiziq-mayin">
-                                        olindi · yetkazildi · kelmadi
-                                    </p>
+                                    <p className="px-5 py-2 text-[10px] font-bold text-matn-xira border-t border-chiziq-mayin">olindi В· yetkazildi В· kelmadi</p>
                                 </div>
 
                                 <div className="space-y-4">
@@ -1177,7 +901,7 @@ Unga biriktirilgan o'quvchilar bo'shatiladi.`)) deleteTransport(item.id); }} cla
                                                 <div key={h.driverId} className="flex items-center justify-between gap-3 px-5 py-3">
                                                     <span className="text-xs font-bold text-matn truncate">{h.name}</span>
                                                     <span className="text-[11px] font-bold text-matn-xira tabular-nums shrink-0">
-                                                        {h.reys} reys{h.ortachaDaqiqa !== null ? ` · ~${h.ortachaDaqiqa} daq` : ''}
+                                                        {h.reys} reys{h.ortachaDaqiqa !== null ? ` В· ~${h.ortachaDaqiqa} daq` : ''}
                                                     </span>
                                                 </div>
                                             ))}
@@ -1192,8 +916,8 @@ Unga biriktirilgan o'quvchilar bo'shatiladi.`)) deleteTransport(item.id); }} cla
                                                 <div key={k.date} className="flex items-center justify-between gap-3 px-5 py-2.5">
                                                     <span className="text-[11px] font-bold text-matn tabular-nums">{k.date}</span>
                                                     <span className="text-[11px] font-bold text-matn-xira tabular-nums">
-                                                        {k.reys} reys · {k.olindi + k.yetkazildi} yozuv
-                                                        {k.kelmadi > 0 && <span className="text-rose-600 dark:text-rose-400"> · {k.kelmadi} kelmadi</span>}
+                                                        {k.reys} reys В· {k.olindi + k.yetkazildi} yozuv
+                                                        {k.kelmadi > 0 && <span className="text-rose-600 dark:text-rose-400"> В· {k.kelmadi} kelmadi</span>}
                                                     </span>
                                                 </div>
                                             ))}
@@ -1205,188 +929,7 @@ Unga biriktirilgan o'quvchilar bo'shatiladi.`)) deleteTransport(item.id); }} cla
                     )}
                 </div>
             )}
-
-            {/* Transport Modal */}
-            {isTransportModalOpen && (
-                <div className="fixed inset-0 z-[100] flex items-start sm:items-center justify-center overflow-y-auto p-4">
-                    <div className="absolute inset-0 bg-gray-900/60 backdrop-blur-sm" onClick={() => setIsTransportModalOpen(false)} />
-                    <div className="relative bg-sirt rounded-[2rem] border border-chiziq shadow-2xl w-full max-w-md p-8">
-                        <div className="flex items-center justify-between mb-6 pb-4 border-b border-chiziq-mayin/50">
-                            <div>
-                                <h3 className="text-lg font-black text-matn tracking-tight">{editingTransport ? t('edit_transport') : t('new_transport')}</h3>
-                                <p className="text-[11px] font-bold text-brand mt-0.5">{t('fleet_subtitle')}</p>
-                            </div>
-                            <button aria-label="Yopish" onClick={() => setIsTransportModalOpen(false)} className="w-9 h-9 flex items-center justify-center text-matn-xira hover:bg-gray-55 dark:hover:bg-gray-700 rounded-xl cursor-pointer"><X size={18} /></button>
-                        </div>
-                        <form onSubmit={handleTransportSubmit} className="space-y-4">
-                            <div>
-                                <label className={lbl}>{t('transport_name')} *</label>
-                                <input required type="text" className={inp} placeholder="Sariq avtobus" value={transportFormData.name} onChange={e => setTransportFormData({...transportFormData, name: e.target.value})} />
-                            </div>
-                            <div className="grid grid-cols-2 gap-4">
-                                <div>
-                                    <label className={lbl}>{t('model')}</label>
-                                    <input type="text" className={inp} placeholder="Daewoo" value={transportFormData.model} onChange={e => setTransportFormData({...transportFormData, model: e.target.value})} />
-                                </div>
-                                <div>
-                                    <label className={lbl}>{t('plate_number')}</label>
-                                    <input type="text" className={inp} placeholder="70 A 777 AA" value={transportFormData.number} onChange={e => setTransportFormData({...transportFormData, number: e.target.value})} />
-                                </div>
-                            </div>
-                            <div className="grid grid-cols-2 gap-4">
-                                <div>
-                                    <label className={lbl}>{t('capacity')} ({t('capacity_unit').replace('{count}', '')})</label>
-                                    <input type="number" className={inp} value={transportFormData.capacity} onChange={e => setTransportFormData({...transportFormData, capacity: parseInt(e.target.value)})} />
-                                </div>
-                                <div>
-                                    <label className={lbl}>{t('status')}</label>
-                                    <select className={inp} value={transportFormData.status} onChange={e => setTransportFormData({...transportFormData, status: e.target.value as any})}>
-                                        <option value="Faol">{t('status_active')}</option>
-                                        <option value="Ta'mirda">{t('status_repair')}</option>
-                                        <option value="Arxiv">{t('status_archive')}</option>
-                                    </select>
-                                </div>
-                            </div>
-                            <div>
-                                <label className={lbl}>{t('driver')}</label>
-                                <select className={inp} value={transportFormData.driverId || ''} onChange={e => {
-                                    const did = e.target.value ? parseInt(e.target.value) : null;
-                                    const u = users.find(u => u.id === did);
-                                    setTransportFormData({...transportFormData, driverId: did, driverName: u?.name || '', driverPhone: u?.phone || ''});
-                                }}>
-                                    <option value="">{t('select_placeholder')}</option>
-                                    {users.filter(u => u.role === 'DRIVER').map(u => <option key={u.id} value={u.id}>{u.name}</option>)}
-                                </select>
-                            </div>
-                            <div className="flex gap-3 pt-4 border-t border-dashed border-chiziq/50">
-                                <button type="button" onClick={() => setIsTransportModalOpen(false)}
-                                    className="flex-1 py-3 bg-chiziq text-gray-700 dark:text-white text-xs font-extrabold rounded-2xl transition-all cursor-pointer hover:bg-gray-200 dark:hover:bg-gray-600">
-                                    {t('cancel')}
-                                </button>
-                                <button type="submit"
-                                    className="flex-1 py-3 bg-brand hover:bg-brand-dark text-white text-xs font-extrabold rounded-2xl shadow-sm shadow-[#1b6b6b]/20 transition-all cursor-pointer">
-                                    {t('save')}
-                                </button>
-                            </div>
-                        </form>
-                    </div>
-                </div>
-            )}
-
-            {isRouteModalOpen && (
-                <div className="fixed inset-0 z-[100] flex items-start sm:items-center justify-center overflow-y-auto p-4">
-                    <div className="absolute inset-0 bg-gray-900/60 backdrop-blur-sm" onClick={() => setIsRouteModalOpen(false)} />
-                    <div className="relative bg-sirt rounded-[2rem] border border-chiziq shadow-2xl w-full max-w-md p-8">
-                        <div className="flex items-center justify-between mb-6 pb-4 border-b border-chiziq-mayin/50">
-                            <div>
-                                <h3 className="text-lg font-black text-matn tracking-tight">{editingRoute ? t('edit_route') : t('new_route')}</h3>
-                                <p className="text-[11px] font-bold text-brand mt-0.5">{t('route_subtitle')}</p>
-                            </div>
-                            <button aria-label="Yopish" onClick={() => setIsRouteModalOpen(false)} className="w-9 h-9 flex items-center justify-center text-matn-xira hover:bg-gray-55 dark:hover:bg-gray-700 rounded-xl cursor-pointer"><X size={18} /></button>
-                        </div>
-                        <form onSubmit={handleRouteSubmit} className="space-y-4">
-                            <div>
-                                <label className={lbl}>{t('route_name')} *</label>
-                                <input required type="text" className={inp} placeholder="Sariosiyo yo'nalishi" value={routeFormData.name} onChange={e => setRouteFormData({...routeFormData, name: e.target.value})} />
-                            </div>
-                            <div className="grid grid-cols-2 gap-4">
-                                <div>
-                                    <label className={lbl}>{t('start_time')}</label>
-                                    <input type="time" className={inp} value={routeFormData.startTime || ''} onChange={e => setRouteFormData({...routeFormData, startTime: e.target.value})} />
-                                </div>
-                                <div>
-                                    <label className={lbl}>{t('days')}</label>
-                                    <select className={inp} value={routeFormData.days} onChange={e => setRouteFormData({...routeFormData, days: e.target.value as any})}>
-                                        <option value="HAR_KUNI">{t('every_day')}</option>
-                                        <option value="TOQ">{t('odd_days')}</option>
-                                        <option value="JUFT">{t('even_days')}</option>
-                                    </select>
-                                </div>
-                            </div>
-                            <div>
-                                <label className={lbl}>Yo'nalish</label>
-                                <select className={inp} value={routeFormData.direction || 'QAYTISH'} onChange={e => setRouteFormData({...routeFormData, direction: e.target.value as any})}>
-                                    <option value="QAYTISH">Darsdan keyin — uyga yetkazish</option>
-                                    <option value="KETISH">Ertalab — uydan markazga</option>
-                                </select>
-                            </div>
-                            <div className="grid grid-cols-2 gap-4">
-                                <div>
-                                    <label className={lbl}>{t('transport')}</label>
-                                    <select className={inp} value={routeFormData.transportId || ''} onChange={e => setRouteFormData({...routeFormData, transportId: e.target.value ? parseInt(e.target.value) : null})}>
-                                        <option value="">{t('select_placeholder')}</option>
-                                        {transports.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
-                                    </select>
-                                </div>
-                                <div>
-                                    <label className={lbl}>{t('driver')}</label>
-                                    <select className={inp} value={routeFormData.driverId || ''} onChange={e => setRouteFormData({...routeFormData, driverId: e.target.value ? parseInt(e.target.value) : null})}>
-                                        <option value="">{t('select_placeholder')}</option>
-                                        {users.filter(u => u.role === 'DRIVER').map(u => <option key={u.id} value={u.id}>{u.name}</option>)}
-                                    </select>
-                                </div>
-                            </div>
-                            <div className="flex gap-3 pt-4 border-t border-dashed border-chiziq/50">
-                                <button type="button" onClick={() => setIsRouteModalOpen(false)}
-                                    className="flex-1 py-3 bg-chiziq text-gray-700 dark:text-white text-xs font-extrabold rounded-2xl transition-all cursor-pointer hover:bg-gray-200 dark:hover:bg-gray-600">
-                                    {t('cancel')}
-                                </button>
-                                <button type="submit"
-                                    className="flex-1 py-3 bg-brand hover:bg-brand-dark text-white text-xs font-extrabold rounded-2xl shadow-sm shadow-[#1b6b6b]/20 transition-all cursor-pointer">
-                                    {t('save')}
-                                </button>
-                            </div>
-                        </form>
-                    </div>
-                </div>
-            )}
-
-            {isStudentSelectorOpen && editingRoute && (
-                <div className="fixed inset-0 z-[110] flex items-start sm:items-center justify-center overflow-y-auto p-4">
-                    <div className="absolute inset-0 bg-gray-900/60 backdrop-blur-sm" onClick={() => setIsStudentSelectorOpen(false)} />
-                    <div className="relative bg-sirt rounded-[2rem] border border-chiziq shadow-2xl w-full max-w-md p-8 max-h-[80vh] flex flex-col">
-                        <div className="flex items-center justify-between mb-6 pb-4 border-b border-chiziq-mayin/50 shrink-0">
-                            <div>
-                                <h3 className="text-lg font-black text-matn tracking-tight">{t('add_student')}</h3>
-                                <p className="text-[11px] font-bold text-brand mt-0.5">{t('assign_to_route')}</p>
-                            </div>
-                            <button aria-label="Yopish" onClick={() => setIsStudentSelectorOpen(false)} className="w-9 h-9 flex items-center justify-center text-matn-xira hover:bg-gray-55 dark:hover:bg-gray-700 rounded-xl cursor-pointer"><X size={18} /></button>
-                        </div>
-                        <div className="relative mb-4 shrink-0">
-                            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-matn-xira" size={14} />
-                            <input 
-                                type="text"
-                                placeholder={t('search')}
-                                className="w-full pl-9 pr-4 py-2.5 bg-ichki border border-chiziq rounded-xl text-xs font-bold text-matn outline-none focus:border-brand transition-all"
-                                value={studentSearch}
-                                onChange={(e) => setStudentSearch(e.target.value)}
-                            />
-                        </div>
-                        <div className="flex-1 overflow-y-auto custom-scrollbar space-y-2">
-                            {students
-                                .filter(s => s.status !== 'Arxiv')
-                                .filter(s => s.name.toLowerCase().includes(studentSearch.toLowerCase()))
-                                .filter(s => !(tanlangan || editingRoute).studentIds.includes(s.id))
-                                .map(student => (
-                                    <button
-                                        key={student.id}
-                                        onClick={async () => {
-                                            const studentIds = [...(tanlangan || editingRoute).studentIds, student.id];
-                                            await bekatlarniSaqlash(tanlangan || editingRoute, studentIds);
-                                        }}
-                                        className="w-full flex items-center justify-between p-3 bg-gray-50/50 dark:bg-gray-900/40 hover:bg-brand/5 border border-transparent hover:border-gray-100 rounded-2xl transition-all cursor-pointer text-left"
-                                    >
-                                        <div>
-                                            <p className="text-xs font-black text-matn tracking-tight">{student.name}</p>
-                                            <span className="text-[11px] text-matn-xira font-bold block mt-0.5">{student.phone}</span>
-                                        </div>
-                                        <Plus size={16} className="text-matn-xira" />
-                                    </button>
-                                ))}
-                        </div>
-                    </div>
-                </div>
-            )}
         </div>
     );
 }
+

@@ -848,6 +848,29 @@ function UserModal({
                         </div>
                     </div>
 
+                    {/* Haydovchi uchun mashina ma'lumotlari */}
+                    {user.role === 'DRIVER' && (
+                        <div className="space-y-3 p-4 bg-amber-50 dark:bg-amber-950/20 border border-amber-100 dark:border-amber-900/30 rounded-2xl">
+                            <p className="text-[11px] font-extrabold text-amber-700 dark:text-amber-400 flex items-center gap-1.5">
+                                🚗 Mashina ma'lumotlari
+                            </p>
+                            <div className="grid grid-cols-2 gap-3">
+                                <div>
+                                    <label className={lbl}>Mashina rusumi</label>
+                                    <input type="text" placeholder="Nexia, Damas, Cobalt..." className={inp} value={user.vehicleModel || ''} onChange={e => onChange({ ...user, vehicleModel: e.target.value })} />
+                                </div>
+                                <div>
+                                    <label className={lbl}>Mashina raqami</label>
+                                    <input type="text" placeholder="01 A 234 BC" className={inp} value={user.vehicleNumber || ''} onChange={e => onChange({ ...user, vehicleNumber: e.target.value })} />
+                                </div>
+                            </div>
+                            <div>
+                                <label className={lbl}>Sig'imi (kishi)</label>
+                                <input type="number" min="1" max="60" placeholder="8" className={inp} value={user.vehicleCapacity || ''} onChange={e => onChange({ ...user, vehicleCapacity: parseInt(e.target.value) || '' })} />
+                            </div>
+                        </div>
+                    )}
+
                     <div>
                         <label className={lbl}>{t('kpi_percent')}</label>
                         <input type="number" min="0" max="100" placeholder="0" className={inp} value={user.kpiPercent ?? ''} onChange={e => onChange({ ...user, kpiPercent: Number(e.target.value) })} />
