@@ -19,6 +19,8 @@ import { markazNuqtasi } from './logistics.js';
 
 /** Haydovchidan necha daqiqa oldin so'raladi. */
 export const SORASH_OLDIN_DAQIQA = 120;
+/** Haydovchilardan avtomatik so'rash (kron). Hozir o'chiq — avtoJarayon ga qarang. */
+const AVTO_SORASH = false;
 
 /**
  * Dars oxirida bola markazda YO'Q degan davomat holatlari — ularga mashina
@@ -361,6 +363,12 @@ export async function kunlikRejaniTuzish({ schoolId, date = toDateStr(), endTime
  * yozilmaydi.
  */
 export async function avtoJarayon({ schoolId = null } = {}) {
+  // O'chirilgan (2026-09-19): egasi "haydovchilarga avtomatik" dedi — reja
+  // Logistika sahifasida tuziladi va haydovchiga o'zi yuboriladi. Haydovchidan
+  // "bugun qatnasha olasizmi?" deb so'rash endi hech narsaga ta'sir qilmaydi,
+  // shuning uchun har kuni ularga ortiqcha xabar yubormaymiz. Kron manzili
+  // ishlashda davom etadi (xato bermasin), faqat hech narsa qilmaydi.
+  if (!AVTO_SORASH) return [];
   const natijalar = [];
   const filiallar = schoolId
     ? [{ id: schoolId }]

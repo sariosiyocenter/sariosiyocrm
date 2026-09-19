@@ -11,7 +11,7 @@ import Avatar from './ui/Avatar';
 import { useConfirm } from './ConfirmDialog';
 import { useLang } from '../context/LanguageContext';
 import { useNavigate } from 'react-router-dom';
-import { uploadProfilePhoto } from '../lib/image';
+import { uploadProfilePhoto, removeBackgroundHQ } from '../lib/image';
 import PhotoCapture from './PhotoCapture';
 import BranchCheckboxes from './ui/BranchCheckboxes';
 
@@ -173,6 +173,13 @@ export default function HRManagement() {
                     kpiPercent: editingUser.kpiPercent ?? 0,
                 };
                 if (editingUser.password) body.password = editingUser.password;
+                // Haydovchining mashinasi (Avtopark yo'q — shu yerda tahrirlanadi).
+                // Ilgari tahrirlashda bu maydonlar yuborilmasdi va o'zgarish yo'qolardi.
+                if (editingUser.role === 'DRIVER') {
+                    body.vehicleModel = editingUser.vehicleModel ?? '';
+                    body.vehicleNumber = editingUser.vehicleNumber ?? '';
+                    if (editingUser.vehicleCapacity) body.vehicleCapacity = editingUser.vehicleCapacity;
+                }
                 // Filiallar (galochkalar). Server faqat o'zgargan bo'lsa qo'llaydi.
                 if (multiBranch) {
                     if (!editingUser.schoolIds?.length) {
@@ -526,7 +533,16 @@ export default function HRManagement() {
                                                     {multiBranch && allBranches && (
                                                         <td className="px-3 py-3 text-[12px] text-matn-sokin align-middle whitespace-nowrap">{branchLabel(u, ', ') || '—'}</td>
                                                     )}
-                                                    <td className="px-3 py-3 text-[12px] text-matn-sokin align-middle">{u.position || '—'}</td>
+                                                    <td className="px-3 py-3 text-[12px] text-matn-sokin align-middle">
+                                                        {u.position || (u.role === 'DRIVER' ? '' : '—')}
+                                                        {u.role === 'DRIVER' && (
+                                                            <span className={`block text-[11px] ${u.vehicleCapacity ? 'text-matn-xira' : 'text-amber-600'}`}>
+                                                                {u.vehicleCapacity
+                                                                    ? [u.vehicleModel, u.vehicleNumber, `${u.vehicleCapacity} o'rin`].filter(Boolean).join(' · ')
+                                                                    : "mashina kiritilmagan"}
+                                                            </span>
+                                                        )}
+                                                    </td>
                                                     <td className="px-3 py-3 align-middle">
                                                         {/* Rang endi ma'no bermaydi: yetti xil rangli
                                                             belgi ro'yxatni bezakka aylantirardi. */}
@@ -715,20 +731,9 @@ function UserModal({
         if (!user.photo) return;
         try {
             setIsRemovingBg(true);
-            const token = localStorage.getItem('token');
-            const res = await fetch('/api/utils/remove-bg', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-                body: JSON.stringify({ image: user.photo }),
-            });
-            const data = await res.json();
-            if (data.success) {
-                onChange({ ...user, photo: data.image });
-            } else {
-                showNotification('Xatolik: ' + (data.error || 'Noma\'lum xatolik'), 'error');
-            }
-        } catch {
-            showNotification('Xatolik yuz berdi', 'error');
+            onChange({ ...user, photo: await removeBackgroundHQ(user.photo) });
+        } catch (err: any) {
+            showNotification('Xatolik: ' + (err?.message || "Noma'lum xatolik"), 'error');
         } finally {
             setIsRemovingBg(false);
         }

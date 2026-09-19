@@ -6,7 +6,7 @@
  * o'z hisobini yuritardi va bir kunda ikki xil ro'yxat chiqardi.
  */
 import prisma from '../lib/prisma.js';
-import { isLessonDay } from '../lib/lessons.js';
+import { toTimeStr } from '../lib/lessons.js';
 import { bekatlarniTartiblash, parseLatLng } from '../lib/tartib.js';
 import { yetkazishXabari } from './transportNotify.js';
 
@@ -144,25 +144,181 @@ export async function holatniOchirish({ runId, studentId }) {
 }
 
 /**
- * Haydovchining shu kundagi reyslari.
+ * Haydovchining shu kundagi rejalari.
  *
- * Marshrut haydovchiga to'g'ridan-to'g'ri (`driverId`) yoki mashinasi orqali
- * biriktirilgan bo'lishi mumkin — ikkalasi ham hisobga olinadi.
+ * Faqat shu kunga tuzilgan rejalar (`Route.date`). Takrorlanuvchi (qo'lda
+ * tuzilgan) marshrutlar endi yo'q — egasi 2026-09-19 da "marshrut o'zi
+ * kerakmas" dedi: reja har kuni Logistika sahifasida tuziladi. Eski
+ * marshrutlar bazada qoladi, lekin haydovchiga ko'rinmaydi.
  */
 export async function bugungiReyslar({ schoolId, date, driverId = null }) {
-  const where = { schoolId };
+  const where = { schoolId, date };
   if (driverId) {
     where.OR = [{ driverId }, { transport: { driverId } }];
   }
-  const marshrutlar = await prisma.route.findMany({
+  return prisma.route.findMany({
     where,
     include: MARSHRUT_INCLUDE,
     orderBy: [{ startTime: 'asc' }, { id: 'asc' }],
   });
-  // Kunlik reja marshruti (`date` bor) faqat o'z kunida ko'rinadi. Uning
-  // `days` i HAR_KUNI bo'lgani uchun faqat kun turi tekshirilsa, kechagi
-  // reja haydovchining botida ertaga ham chiqaverardi.
-  return marshrutlar.filter(r => (r.date ? r.date === date : isLessonDay(r.days, date)));
+}
+
+/**
+ * Bir nechta o'quvchining holatini birdaniga yozadi va ota-onalarga xabar
+ * beradi. "Qabul qildim" / "Yetkazdim" tugmalari uchun: 20 ta bolani bittalab
+ * `holatniYozish` bilan yozish Telegram webhook vaqtiga sig'masdi.
+ */
+async function ommaviyYozish({ route, run, studentIds, status, date, schoolId, markedById }) {
+  if (!studentIds.length) return 0;
+  const bor = await prisma.deliveryLog.findMany({
+    where: { runId: run.id, studentId: { in: studentIds } },
+    select: { studentId: true },
+  });
+  const borSet = new Set(bor.map(x => x.studentId));
+  const yozuv = { status, transportId: run.transportId || null, markedById, markedAt: new Date() };
+  await prisma.$transaction([
+    prisma.deliveryLog.updateMany({ where: { runId: run.id, studentId: { in: [...borSet] } }, data: yozuv }),
+    prisma.deliveryLog.createMany({
+      data: studentIds.filter(id => !borSet.has(id)).map(studentId => ({ ...yozuv, studentId, date, schoolId, runId: run.id })),
+    }),
+  ]);
+
+  // Ota-onaga xabar (Sozlamalarda yoqilgan bo'lsa — yetkazishXabari o'zi
+  // tekshiradi). Kutiladi: serverless javobdan keyin ishni to'xtatadi.
+  const oquvchilar = await prisma.student.findMany({
+    where: { id: { in: studentIds } },
+    select: {
+      id: true, name: true, phone: true,
+      telegramId: true, fatherTelegramId: true, motherTelegramId: true,
+      fatherPhone: true, motherPhone: true,
+    },
+  });
+  const vaqt = toTimeStr();
+  for (let i = 0; i < oquvchilar.length; i += 5) {
+    await Promise.allSettled(oquvchilar.slice(i, i + 5).map(student =>
+      yetkazishXabari({ student, status, route, schoolId, vaqt })));
+  }
+  return studentIds.length;
+}
+
+/** Rejaning joriy holati: bekatlar bo'yicha belgilar. */
+async function belgilar(runId) {
+  const logs = await prisma.deliveryLog.findMany({ where: { runId }, select: { studentId: true, status: true } });
+  return new Map(logs.map(l => [l.studentId, l.status]));
+}
+
+/**
+ * Haydovchi "Qabul qildim" bosdi — bolalarni mashinaga oldi.
+ *
+ * Reys boshlanadi, belgilanmagan har bir bola "Olib ketildi" bo'ladi.
+ * Oldindan "Kelmadi" deb belgilangani tegilmaydi. Qayta bosilsa hech narsa
+ * buzilmaydi.
+ */
+export async function rejaniQabulQilish({ route, date, schoolId, markedById = null }) {
+  let run = await reysniOlish({ route, date, schoolId });
+  if (!run.startedAt) {
+    run = await prisma.routeRun.update({ where: { id: run.id }, data: { startedAt: new Date(), driverId: run.driverId || route.driverId || null } });
+  }
+  const holat = await belgilar(run.id);
+  const olinadi = route.stops.map(s => s.studentId).filter(id => !holat.has(id));
+  const soni = await ommaviyYozish({ route, run, studentIds: olinadi, status: 'Olib ketildi', date, schoolId, markedById });
+  return { run, soni };
+}
+
+/**
+ * Haydovchi "Yetkazdim" bosdi — hammasini uyiga yetkazdi.
+ *
+ * Reys tugaydi; "Kelmadi" dan boshqa hamma bola "Uyiga yetkazildi" bo'ladi.
+ * "Qabul qildim" bosilmagan bo'lsa ham ishlaydi (boshlanish vaqti ham yoziladi).
+ */
+export async function rejaniYetkazish({ route, date, schoolId, markedById = null }) {
+  let run = await reysniOlish({ route, date, schoolId });
+  if (!run.finishedAt) {
+    const hozir = new Date();
+    run = await prisma.routeRun.update({
+      where: { id: run.id },
+      data: { startedAt: run.startedAt || hozir, finishedAt: hozir, driverId: run.driverId || route.driverId || null },
+    });
+  }
+  const holat = await belgilar(run.id);
+  const yetkaziladi = route.stops.map(s => s.studentId)
+    .filter(id => holat.get(id) !== 'Kelmadi' && holat.get(id) !== 'Uyiga yetkazildi');
+  const soni = await ommaviyYozish({ route, run, studentIds: yetkaziladi, status: 'Uyiga yetkazildi', date, schoolId, markedById });
+  return { run, soni };
+}
+
+/** Reja bilan birga o'qiladigan shakl (bot va Logistika sahifasi uchun). */
+export const REJA_INCLUDE = {
+  ...MARSHRUT_INCLUDE,
+  transport: { select: { id: true, name: true, model: true, number: true, capacity: true } },
+  driver: { select: { id: true, name: true, phone: true, telegramId: true } },
+};
+
+/**
+ * Kunlik rejalarni yozadi: har bir haydovchiga bitta reja (marshrut yozuvi
+ * `date` bilan). Bir haydovchi kuniga bir necha reja olishi mumkin (ikkinchi
+ * to'lqin) — `navbat` shuni sanaydi.
+ *
+ * @param {{driverId:number, studentIds:number[]}[]} rejalar
+ * @returns {Promise<{xato?:string, routeIds?:number[]}>}
+ */
+export async function rejalarniYozish({ schoolId, date, rejalar }) {
+  const driverIds = [...new Set(rejalar.map(r => r.driverId))];
+  const haydovchilar = await prisma.user.findMany({
+    where: {
+      id: { in: driverIds }, role: 'DRIVER', status: { not: 'Arxiv' },
+      OR: [{ schoolId }, { branches: { some: { id: schoolId } } }],
+    },
+    select: { id: true, name: true, driverTransport: { select: { id: true } } },
+  });
+  const hMap = new Map(haydovchilar.map(h => [h.id, h]));
+  const yoq = driverIds.filter(id => !hMap.has(id));
+  if (yoq.length) return { xato: 'Haydovchi shu filialda topilmadi' };
+
+  const hammasi = rejalar.flatMap(r => r.studentIds);
+  if (new Set(hammasi).size !== hammasi.length) return { xato: "Bir o'quvchi ikki rejaga tushib qolgan" };
+  const borOquvchi = await prisma.student.findMany({ where: { id: { in: hammasi }, schoolId }, select: { id: true } });
+  if (borOquvchi.length !== hammasi.length) return { xato: "O'quvchilardan biri shu filialda topilmadi" };
+
+  const routeIds = [];
+  for (const r of rejalar) {
+    const h = hMap.get(r.driverId);
+    const oldingi = await prisma.route.count({ where: { schoolId, date, driverId: h.id } });
+    const navbat = oldingi + 1;
+    const route = await prisma.route.create({
+      data: {
+        name: navbat > 1 ? `${h.name} — ${navbat}-reys` : h.name,
+        startTime: toTimeStr(), days: 'HAR_KUNI', direction: 'QAYTISH',
+        autoPlanned: true, autoOrder: true, navbat, date,
+        driverId: h.id, transportId: h.driverTransport?.id || null, schoolId,
+      },
+    });
+    await prisma.routeStop.createMany({
+      data: r.studentIds.map((studentId, tartib) => ({ routeId: route.id, studentId, tartib })),
+    });
+    // Tartib masofa bo'yicha: haydovchi ro'yxatni yaqinidan boshlab ko'radi.
+    await marshrutniTartiblash(route.id);
+    routeIds.push(route.id);
+  }
+  return { routeIds };
+}
+
+/**
+ * Haydovchi joylashuvini yozadi (botdan). `livePeriod` — Telegram jonli
+ * joylashuvining davomiyligi (soniya); 0x7FFFFFFF — "to'xtatmaguncha".
+ */
+export async function joylashuvniYozish({ driverId, schoolId, lat, lng, livePeriod = null, sentAt = null }) {
+  if (!Number.isFinite(lat) || !Number.isFinite(lng)) return null;
+  const live = Number(livePeriod) > 0;
+  const cheksiz = Number(livePeriod) >= 0x7FFFFFFF;
+  const boshi = sentAt ? new Date(sentAt * 1000) : new Date();
+  const liveUntil = live && !cheksiz ? new Date(boshi.getTime() + Number(livePeriod) * 1000) : null;
+  const data = { lat, lng, live, liveUntil, schoolId };
+  return prisma.driverLocation.upsert({
+    where: { driverId },
+    create: { driverId, ...data },
+    update: data,
+  });
 }
 
 /**

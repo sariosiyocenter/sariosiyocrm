@@ -13,7 +13,8 @@ import { useLang } from '../context/LanguageContext';
 import MapPicker from './MapPicker';
 import StudentLocationMap from './StudentLocationMap';
 import PhotoCapture from './PhotoCapture';
-import { uploadProfilePhoto } from '../lib/image';
+import { uploadProfilePhoto, removeBackgroundHQ } from '../lib/image';
+import { toDateStr } from '../../lib/lessons.js';
 import { printReceipt } from '../lib/receipt';
 import { activeCourses } from '../lib/activeCourses';
 import PhotoViewer from './PhotoViewer';
@@ -395,28 +396,15 @@ export default function StudentDetails() {
         if (!student.photo) return;
         try {
             setIsRemovingBg(true);
-            const token = localStorage.getItem('token');
-            const response = await fetch('/api/utils/remove-bg', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${token}`
-                },
-                body: JSON.stringify({ image: student.photo })
-            });
-
-            const data = await response.json();
-            if (data.success) {
-                await updateStudent(student.id, { photo: data.image });
-                // Fon o'zgargani belgiga ham ta'sir qiladi — qayta hisoblanadi.
-                syncFaceFromPhoto(data.image, true);
-                showNotification(t('bg_cleared_success'), 'info');
-            } else {
-                showNotification(t('error_occurred') + ": " + data.error, 'error');
-            }
-        } catch (err) {
+            // Sifat saqlanadi: modeldan faqat niqob olinadi (lib/image.ts).
+            const image = await removeBackgroundHQ(student.photo);
+            await updateStudent(student.id, { photo: image });
+            // Fon o'zgargani belgiga ham ta'sir qiladi — qayta hisoblanadi.
+            syncFaceFromPhoto(image, true);
+            showNotification(t('bg_cleared_success'), 'info');
+        } catch (err: any) {
             console.error("BG Removal failed", err);
-            showNotification(t('error_occurred'), 'error');
+            showNotification(t('error_occurred') + (err?.message ? ": " + err.message : ''), 'error');
         } finally {
             setIsRemovingBg(false);
         }
@@ -1214,14 +1202,14 @@ export default function StudentDetails() {
                                         </div>
                                     </div>
                                     {(() => {
-                                        // Transport marshrutdan olinadi: o'quvchi qaysi
-                                        // marshrutning bekati ekani yagona haqiqat.
-                                        // Ilgari bu yerda Student.transportId turardi va
-                                        // marshrutga qo'shilgan o'quvchida ham "yo'q" deb
-                                        // ko'rsatardi.
-                                        const oqMarshrutlari = (routes || []).filter(r => (r.studentIds || []).includes(student.id));
+                                        // Doimiy marshrutlar yo'q (egasi: "marshrut kerakmas") —
+                                        // reja har kuni Logistikada tuziladi. Shu yerda: transport
+                                        // kerakmi va bugun qaysi haydovchining rejasida.
+                                        const bugun = toDateStr();
+                                        const oqMarshrutlari = (routes || []).filter(r => r.date === bugun && (r.studentIds || []).includes(student.id));
                                         if (oqMarshrutlari.length === 0) {
-                                            return <InfoRow icon={<Bus className="w-3.5 h-3.5" />} label={t('transport')} value={t('transport_none')} />;
+                                            return <InfoRow icon={<Bus className="w-3.5 h-3.5" />} label={t('transport')}
+                                                value={student.needsTransport ? "Kerak · bugun rejada yo'q" : t('transport_none')} />;
                                         }
                                         return (
                                             <div className="flex items-start gap-2.5 py-2 border-b border-chiziq-mayin/60 last:border-0">
@@ -1230,10 +1218,9 @@ export default function StudentDetails() {
                                                 <span className="flex-1 text-right space-y-1">
                                                     {oqMarshrutlari.map(r => (
                                                         <span key={r.id} className="block text-[11px] font-bold text-matn-2">
-                                                            {r.direction === 'QAYTISH' ? '🏠' : '🏫'} {r.name}
+                                                            Bugun: {r.name}
                                                             <span className="text-matn-xira font-bold">
-                                                                {r.startTime ? ` · ${r.startTime}` : ''}
-                                                                {r.transport?.name ? ` · ${r.transport.name}` : ''}
+                                                                {r.transport?.number ? ` · ${r.transport.number}` : ''}
                                                             </span>
                                                         </span>
                                                     ))}

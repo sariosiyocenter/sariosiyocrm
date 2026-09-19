@@ -8,7 +8,7 @@ import {
 import { useCRM } from '../context/CRMContext';
 import { useConfirm } from './ConfirmDialog';
 import { useParams, useNavigate } from 'react-router-dom';
-import { uploadProfilePhoto } from '../lib/image';
+import { uploadProfilePhoto, removeBackgroundHQ } from '../lib/image';
 import PhotoViewer from './PhotoViewer';
 import Avatar from './ui/Avatar';
 import { displayName } from '../lib/displayName';
@@ -551,24 +551,15 @@ export default function StaffDetails() {
         if (!staffUser?.photo) return;
         try {
             setIsRemovingBg(true);
-            const res = await fetch('/api/utils/remove-bg', {
-                method: 'POST',
+            const image = await removeBackgroundHQ(staffUser.photo);
+            await fetch(`/api/users/${staffUser.id}`, {
+                method: 'PUT',
                 headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-                body: JSON.stringify({ image: staffUser.photo }),
+                body: JSON.stringify({ photo: image }),
             });
-            const data = await res.json();
-            if (data.success) {
-                await fetch(`/api/users/${staffUser.id}`, {
-                    method: 'PUT',
-                    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-                    body: JSON.stringify({ photo: data.image }),
-                });
-                setStaffUser((p: any) => ({ ...p, photo: data.image }));
-            } else {
-                showNotification('Xatolik: ' + (data.error || 'Noma\'lum xatolik'), 'error');
-            }
-        } catch {
-            showNotification('Xatolik yuz berdi', 'error');
+            setStaffUser((p: any) => ({ ...p, photo: image }));
+        } catch (err: any) {
+            showNotification('Xatolik: ' + (err?.message || "Noma'lum xatolik"), 'error');
         } finally {
             setIsRemovingBg(false);
         }

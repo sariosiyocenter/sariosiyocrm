@@ -13,10 +13,10 @@ import { authenticate, requireRole, STAFF_MANAGERS, canAccessSchool, allowedScho
 import { encryptSecret, decryptSecret, secretsEncryptionEnabled } from './lib/secrets.js';
 import { claimBillingRun, releaseBillingRun, processMonthlyBilling } from './services/billing.js';
 import jwt from 'jsonwebtoken';
-import bot, { startBot, notifyAdmins, getTelegramBot } from './src/bot/bot.js';
+import bot, { startBot, notifyAdmins, getTelegramBot, rejaniHaydovchigaYuborish, rejaBekorXabari } from './src/bot/bot.js';
 import { transferStudent, refundStudent, enrollStudent, unenrollStudent, syncGroupMembers, activateStudent, syncStudentGroups } from './services/enrollment.js';
 import { studentLedger, receivedForGroups, monthCoverage } from './services/ledger.js';
-import { holatniYozish, marshrutniTartiblash } from './services/logistics.js';
+import { holatniYozish, marshrutniTartiblash, marshrutHolati, rejalarniYozish, rejaniQabulQilish, rejaniYetkazish, REJA_INCLUDE } from './services/logistics.js';
 import { kunlikTolqinlar, haydovchilardanSorash, kunlikRejaniTuzish, avtoJarayon } from './services/kunlikReja.js';
 import { toDateStr } from './lib/lessons.js';
 import { smsYuboruvchiniUlash } from './services/transportNotify.js';
@@ -535,12 +535,21 @@ app.get('/api/users', authenticate, async (req, res, next) => {
         salary: true, workDays: true, kpiPercent: true, role: true, createdAt: true,
         schoolId: true, status: true, telegramId: true,
         teacherProfile: { select: { id: true } },
-        branches: { select: { id: true } }
+        branches: { select: { id: true } },
+        // Haydovchining mashinasi xodim kartasida tahrirlanadi (Avtopark yo'q):
+        // tahrirlash oynasi eski qiymatlarni ko'rsatishi uchun.
+        driverTransport: { select: { model: true, number: true, capacity: true } }
       }
     });
     res.json(users.map(u => {
-      const { teacherProfile, branches, ...qolgan } = u;
-      return { ...qolgan, teacherId: teacherProfile?.id ?? null, branchIds: branches.map(b => b.id) };
+      const { teacherProfile, branches, driverTransport, ...qolgan } = u;
+      return {
+        ...qolgan, teacherId: teacherProfile?.id ?? null, branchIds: branches.map(b => b.id),
+        ...(driverTransport ? {
+          vehicleModel: driverTransport.model || '', vehicleNumber: driverTransport.number || '',
+          vehicleCapacity: driverTransport.capacity,
+        } : {}),
+      };
     }));
   } catch (error) { next(error); }
 });
@@ -3815,7 +3824,10 @@ app.get('/api/init', authenticate, async (req, res, next) => {
         include: { driver: true }
       }),
       prisma.route.findMany({
-        where: whereQuery,
+        // Kunlik rejalar har kuni yangi yozuv: hammasini yuklash init javobini
+        // kundan-kunga og'irlashtirardi. Faqat bugungisi (o'quvchi profilidagi
+        // "Transport" qatori uchun); Logistika o'z sanasini alohida so'raydi.
+        where: { ...whereQuery, OR: [{ date: null }, { date: toDateStr() }] },
         // Bekatlar bilan: `studentIds` endi ustundan emas, shu yerdan
         // hisoblanadi (pastda marshrutJavobi). Aks holda sahifa yangilangach
         // yangi marshrutlar bo'sh ko'rinardi.
@@ -5078,101 +5090,158 @@ app.get('/api/route-runs', authenticate, async (req, res, next) => {
   } catch (error) { next(error); }
 });
 
+// ========== KUNLIK TRANSPORT REJASI ==========
+//
+// Egasining oqimi (2026-09-19): Logistika sahifasida o'quvchilar filtrlanadi
+// (kelganlar → transport kerak → kurs → qo'lda chiqarish), qolganlari
+// haydovchilarga avtomatik taqsimlanadi va reja har bir haydovchining
+// Telegramiga o'zi boradi. Haydovchi botda "Qabul qildim" (bolalarni oldi) va
+// "Yetkazdim" (hammasi uyida) bosadi. Reja — `Route` yozuvi (`date` bilan),
+// bekatlar — `RouteStop`, holatlar — shu kunning `RouteRun` / `DeliveryLog`.
+
+/** Sahifa uchun bitta reja: haydovchi, mashina, bolalar, holatlar. */
+async function rejaJavobi(route) {
+  const sana = route.date || toDateStr();
+  const { run, holatlar } = await marshrutHolati({ routeId: route.id, date: sana });
+  return {
+    id: route.id,
+    name: route.name,
+    date: sana,
+    navbat: route.navbat,
+    createdAt: route.createdAt,
+    driver: route.driver ? { id: route.driver.id, name: route.driver.name, phone: route.driver.phone, telegram: !!route.driver.telegramId } : null,
+    transport: route.transport || null,
+    stops: route.stops.map(s => ({
+      studentId: s.studentId, name: s.student?.name, phone: s.student?.phone,
+      address: s.student?.address, location: s.student?.location, photo: s.student?.photo,
+    })),
+    run: run ? { startedAt: run.startedAt, finishedAt: run.finishedAt } : null,
+    holatlar,
+  };
+}
+
+/** Filial rejasini o'qish; ruxsat va filial tekshiriladi. */
+async function rejaniTopish(req, res) {
+  const id = parseInt(req.params.id);
+  if (!Number.isInteger(id)) { res.status(400).json({ error: "Reja raqami noto'g'ri" }); return null; }
+  const route = await prisma.route.findUnique({ where: { id }, include: REJA_INCLUDE });
+  if (!route || !route.date) { res.status(404).json({ error: 'Reja topilmadi' }); return null; }
+  if (!(await canAccessSchool(req.user, route.schoolId))) { res.status(403).json({ error: "Ruxsat yo'q" }); return null; }
+  return route;
+}
+
 /**
- * Haydovchi "Qabul qildim" bosadi — reys boshlanadi.
- *
- * routeId + date + schoolId bo'yicha reys topilmasa yangi yaratiladi.
- * startedAt allaqachon yozilgan bo'lsa o'zgartirilmaydi.
+ * Kun ko'rinishi: shu kunning rejalari va filial haydovchilari (mashinasi,
+ * oxirgi joylashuvi bilan). Xarita shu javobni har 30 soniyada qayta so'raydi.
  */
-app.post('/api/route-runs/start', authenticate, async (req, res, next) => {
+app.get('/api/logistics/day', authenticate, async (req, res, next) => {
+  try {
+    const schoolId = parseInt(req.query.schoolId);
+    if (!schoolId) return res.status(400).json({ error: 'schoolId required' });
+    if (!(await canAccessSchool(req.user, schoolId))) return res.status(403).json({ error: "Ruxsat yo'q" });
+    const date = /^\d{4}-\d{2}-\d{2}$/.test(String(req.query.date || '')) ? String(req.query.date) : toDateStr();
+
+    const [routes, haydovchilar] = await Promise.all([
+      prisma.route.findMany({ where: { schoolId, date }, include: REJA_INCLUDE, orderBy: { id: 'asc' } }),
+      prisma.user.findMany({
+        where: { role: 'DRIVER', status: { not: 'Arxiv' }, ...filialXodimlariWhere([schoolId]) },
+        select: {
+          id: true, name: true, phone: true, telegramId: true,
+          driverTransport: { select: { id: true, name: true, model: true, number: true, capacity: true, status: true } },
+          driverLocation: { select: { lat: true, lng: true, live: true, liveUntil: true, updatedAt: true } },
+        },
+        orderBy: { name: 'asc' },
+      }),
+    ]);
+    res.json({
+      date,
+      plans: await Promise.all(routes.map(rejaJavobi)),
+      drivers: haydovchilar.map(h => ({
+        id: h.id, name: h.name, phone: h.phone, telegram: !!h.telegramId,
+        transport: h.driverTransport, location: h.driverLocation,
+      })),
+    });
+  } catch (error) { next(error); }
+});
+
+/**
+ * Rejalarni yozadi va haydovchilarga yuboradi.
+ * body: { schoolId, date, plans: [{ driverId, studentIds: number[] }] }
+ */
+app.post('/api/logistics/plans', authenticate, requireRole(...STAFF_MANAGERS), async (req, res, next) => {
   try {
     const schoolId = parseInt(req.body.schoolId);
     if (!schoolId) return res.status(400).json({ error: 'schoolId required' });
     if (!(await canAccessSchool(req.user, schoolId))) return res.status(403).json({ error: "Ruxsat yo'q" });
+    const date = String(req.body.date || '');
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return res.status(400).json({ error: "Sana noto'g'ri" });
 
-    const routeId = parseInt(req.body.routeId);
-    const date = String(req.body.date || toDateStr());
-    const driverId = req.user?.id || null;
-    const transportId = req.body.transportId ? parseInt(req.body.transportId) : null;
+    const rejalar = (Array.isArray(req.body.plans) ? req.body.plans : [])
+      .map(p => ({
+        driverId: parseInt(p?.driverId),
+        studentIds: [...new Set((Array.isArray(p?.studentIds) ? p.studentIds : []).map(x => parseInt(x)).filter(Number.isInteger))],
+      }))
+      .filter(p => Number.isInteger(p.driverId) && p.studentIds.length > 0);
+    if (!rejalar.length) return res.status(400).json({ error: "Rejada o'quvchi yo'q" });
 
-    if (!Number.isInteger(routeId)) return res.status(400).json({ error: 'routeId required' });
+    const natija = await rejalarniYozish({ schoolId, date, rejalar });
+    if (natija.xato) return res.status(400).json({ error: natija.xato });
 
-    let run = await prisma.routeRun.findFirst({
-      where: { routeId, date, schoolId },
-      include: { driver: { select: DRIVER_SELECT }, transport: { select: { id: true, name: true } } },
-    });
-
-    if (run) {
-      // Allaqachon boshlangan bo'lsa qayta bosmasin
-      if (run.startedAt) return res.json(run);
-      run = await prisma.routeRun.update({
-        where: { id: run.id },
-        data: { startedAt: new Date(), driverId, ...(transportId ? { transportId } : {}) },
-        include: { driver: { select: DRIVER_SELECT }, transport: { select: { id: true, name: true } } },
-      });
-    } else {
-      run = await prisma.routeRun.create({
-        data: { routeId, date, schoolId, driverId, transportId: transportId || null, startedAt: new Date() },
-        include: { driver: { select: DRIVER_SELECT }, transport: { select: { id: true, name: true } } },
-      });
+    // Haydovchilarga avtomatik yuboriladi. Yuborilmaganini sahifa ko'rsatadi.
+    const yuborish = [];
+    for (const routeId of natija.routeIds) {
+      yuborish.push({ routeId, ...(await rejaniHaydovchigaYuborish({ schoolId, routeId, sarlavha: '🆕 <b>Yangi reja</b>' })) });
     }
-    res.json(run);
+    const routes = await prisma.route.findMany({ where: { id: { in: natija.routeIds } }, include: REJA_INCLUDE, orderBy: { id: 'asc' } });
+    res.json({ plans: await Promise.all(routes.map(rejaJavobi)), yuborish });
   } catch (error) { next(error); }
 });
 
-/**
- * Haydovchi "Yetkazdim" bosadi — reys tugaydi.
- *
- * Reys topilmasa yoki allaqachon tugagan bo'lsa xato qaytarilmaydi.
- */
-app.post('/api/route-runs/finish', authenticate, async (req, res, next) => {
+/** Rejani haydovchiga qayta yuborish (xabar o'chib ketgan yoki bot keyin ulangan). */
+app.post('/api/logistics/plans/:id/send', authenticate, requireRole(...STAFF_MANAGERS), async (req, res, next) => {
   try {
-    const schoolId = parseInt(req.body.schoolId);
-    if (!schoolId) return res.status(400).json({ error: 'schoolId required' });
-    if (!(await canAccessSchool(req.user, schoolId))) return res.status(403).json({ error: "Ruxsat yo'q" });
+    const route = await rejaniTopish(req, res);
+    if (!route) return;
+    const r = await rejaniHaydovchigaYuborish({ schoolId: route.schoolId, routeId: route.id });
+    if (!r.ok) return res.status(400).json({ error: r.sabab });
+    res.json({ ok: true });
+  } catch (error) { next(error); }
+});
 
-    const routeId = parseInt(req.body.routeId);
-    const date = String(req.body.date || toDateStr());
-    if (!Number.isInteger(routeId)) return res.status(400).json({ error: 'routeId required' });
+/** Haydovchi o'rniga "Qabul qildim" (telefoni yo'q yoki bot ishlamasa). */
+app.post('/api/logistics/plans/:id/accept', authenticate, requireRole(...STAFF_MANAGERS), async (req, res, next) => {
+  try {
+    const route = await rejaniTopish(req, res);
+    if (!route) return;
+    await rejaniQabulQilish({ route, date: route.date, schoolId: route.schoolId, markedById: req.user.id });
+    res.json(await rejaJavobi(route));
+  } catch (error) { next(error); }
+});
 
-    let run = await prisma.routeRun.findFirst({ where: { routeId, date, schoolId } });
-    if (!run) return res.status(404).json({ error: "Reys topilmadi — avval 'Qabul qildim' bosing" });
-    if (run.finishedAt) return res.json(run);
-
-    run = await prisma.routeRun.update({
-      where: { id: run.id },
-      data: { finishedAt: new Date() },
-      include: { driver: { select: DRIVER_SELECT }, transport: { select: { id: true, name: true } } },
-    });
-    res.json(run);
+/** Haydovchi o'rniga "Yetkazdim". */
+app.post('/api/logistics/plans/:id/deliver', authenticate, requireRole(...STAFF_MANAGERS), async (req, res, next) => {
+  try {
+    const route = await rejaniTopish(req, res);
+    if (!route) return;
+    await rejaniYetkazish({ route, date: route.date, schoolId: route.schoolId, markedById: req.user.id });
+    res.json(await rejaJavobi(route));
   } catch (error) { next(error); }
 });
 
 /**
- * Haydovchi lokatsiyasini yuboradi (in-memory, sahifa yopilsa yo'qoladi).
- * Admin GET bilan ko'ra oladi.
+ * Rejani bekor qilish. Haydovchi "Qabul qildim" bosgan bo'lsa o'chirilmaydi —
+ * kim qachon olib ketgani tarixda qolishi kerak.
  */
-const driverLocations = new Map();
-
-app.post('/api/driver-location', authenticate, async (req, res) => {
-  const { lat, lng } = req.body;
-  if (!lat || !lng) return res.status(400).json({ error: 'lat va lng kerak' });
-  driverLocations.set(req.user.id, { lat: parseFloat(lat), lng: parseFloat(lng), updatedAt: new Date().toISOString(), name: req.user.name });
-  res.json({ ok: true });
-});
-
-app.get('/api/driver-location', authenticate, async (req, res) => {
-  const { driverId } = req.query;
-  if (driverId) {
-    const loc = driverLocations.get(parseInt(driverId));
-    return res.json(loc || null);
-  }
-  // Barcha haydovchilar
-  const all = [];
-  for (const [id, loc] of driverLocations.entries()) {
-    all.push({ driverId: id, ...loc });
-  }
-  res.json(all);
+app.delete('/api/logistics/plans/:id', authenticate, requireRole(...STAFF_MANAGERS), async (req, res, next) => {
+  try {
+    const route = await rejaniTopish(req, res);
+    if (!route) return;
+    const run = await prisma.routeRun.findFirst({ where: { routeId: route.id, startedAt: { not: null } }, select: { id: true } });
+    if (run) return res.status(400).json({ error: "Haydovchi rejani qabul qilgan — endi o'chirib bo'lmaydi" });
+    await prisma.route.delete({ where: { id: route.id } });
+    await rejaBekorXabari({ schoolId: route.schoolId, telegramId: route.driver?.telegramId, nomi: route.name });
+    res.json({ success: true });
+  } catch (error) { next(error); }
 });
 
 /**
@@ -5347,7 +5416,16 @@ app.post('/api/delivery-logs', authenticate, async (req, res, next) => {
 });
 
 // --- Utility Routes ---
-// Rasm fonini tozalash. CRM ichida (xodim) ham, ochiq ariza formasida (ota-ona
+/** Havola shu loyihaning Supabase Storage'iga tegishlimi. */
+function ozimizningStorage(url) {
+  try {
+    const u = new URL(url);
+    const base = new URL(process.env.SUPABASE_URL || '');
+    return u.protocol === 'https:' && u.host === base.host && u.pathname.startsWith('/storage/v1/object/public/');
+  } catch { return false; }
+}
+
+// Rasm fonini tozalash.CRM ichida (xodim) ham, ochiq ariza formasida (ota-ona
 // yoki resepshndagi planshet) ham bir xil ishlaydi.
 async function removeBackground(req, res) {
   try {
@@ -5363,14 +5441,30 @@ async function removeBackground(req, res) {
     try {
       console.log('[Remove BG] Attempting free keyless HuggingFace BRIA RMBG-1.4 Space...');
       
-      // Parse base64 string into a buffer
-      const base64Data = image.replace(/^data:image\/[\w+]+;base64,/, '');
-      const buffer = Buffer.from(base64Data, 'base64');
-      
+      // Rasm baytlari. Profil sahifasi ilgari Storage havolasini yuborardi va u
+      // base64 deb o'qilib, xizmatga buzuq fayl ketardi — bepul yo'l ishlamay,
+      // har safar pullik fal.ai ga tushardi. Havola faqat o'zimizning
+      // Storage'dan qabul qilinadi (begona manzilni server ochmasin).
+      let buffer;
+      let mime = 'image/jpeg';
+      const dataMatch = /^data:(image\/[\w+.-]+);base64,(.*)$/s.exec(image);
+      if (dataMatch) {
+        mime = dataMatch[1];
+        buffer = Buffer.from(dataMatch[2], 'base64');
+      } else if (ozimizningStorage(image)) {
+        const r = await fetch(image);
+        if (!r.ok) throw new Error(`Rasmni o'qib bo'lmadi (${r.status})`);
+        mime = r.headers.get('content-type') || mime;
+        buffer = Buffer.from(await r.arrayBuffer());
+      } else {
+        throw new Error("Rasm formati noto'g'ri");
+      }
+      const kengaytma = mime.includes('png') ? 'png' : mime.includes('webp') ? 'webp' : 'jpg';
+
       // 1. Upload to HuggingFace Space /upload
-      const blob = new Blob([buffer], { type: 'image/png' });
+      const blob = new Blob([buffer], { type: mime });
       const form = new FormData();
-      form.append('files', blob, 'input.png');
+      form.append('files', blob, `input.${kengaytma}`);
 
       const uploadResponse = await fetch('https://briaai-bria-rmbg-1-4.hf.space/upload', {
         method: 'POST',
@@ -5398,7 +5492,7 @@ async function removeBackground(req, res) {
           data: [
             {
               path: tempFilePath,
-              orig_name: "input.png"
+              orig_name: `input.${kengaytma}`
             }
           ],
           fn_index: 0,

@@ -3,7 +3,7 @@ import { useParams } from 'react-router-dom';
 import { Building2, Phone, CheckCircle2, ChevronRight, User, BookOpen, Clock, MessageSquare, Calendar, MapPin, GraduationCap, Image as ImageIcon, Plus, Trash2, Target, Compass, Bus, Award, Sparkles } from 'lucide-react';
 import PhotoCapture from './PhotoCapture';
 import MapPicker from './MapPicker';
-import { compressImage } from '../lib/image';
+import { compressImage, removeBackgroundHQ, PROFILE_PHOTO } from '../lib/image';
 import { STUDY_GOALS, UZB_REGIONS, ORG_TYPES, PRIVILEGES, gradeOptions, gradeLabel, keepGrade } from '../lib/studentFields';
 
 interface Course {
@@ -138,19 +138,10 @@ export default function PublicApply() {
         setBgError(null);
         setIsRemovingBg(true);
         try {
-            const res = await fetch('/api/public/remove-bg', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ image: form.photo }),
-            });
-            const data = await res.json().catch(() => ({}));
-            if (res.ok && data.success && data.image) {
-                setForm(prev => ({ ...prev, photo: data.image }));
-            } else {
-                setBgError(data.error || "Fonni tozalab bo'lmadi. Birozdan keyin qayta urinib ko'ring.");
-            }
-        } catch {
-            setBgError('Aloqa muammosi yuz berdi.');
+            const image = await removeBackgroundHQ(form.photo, '/api/public/remove-bg');
+            setForm(prev => ({ ...prev, photo: image }));
+        } catch (err: any) {
+            setBgError(err?.message || 'Aloqa muammosi yuz berdi.');
         } finally {
             setIsRemovingBg(false);
         }
@@ -594,7 +585,9 @@ export default function PublicApply() {
                                                     if (file) {
                                                         const reader = new FileReader();
                                                         reader.onloadend = async () => {
-                                                            const compressed = await compressImage(reader.result as string);
+                                                            // CRM dagi profil surati bilan bir xil sifat
+                                                            // (ilgari 640px, 0.75 — yuz xira chiqardi).
+                                                            const compressed = await compressImage(reader.result as string, PROFILE_PHOTO.maxWidth, PROFILE_PHOTO.maxHeight, PROFILE_PHOTO.quality);
                                                             setForm({ ...form, photo: compressed });
                                                         };
                                                         reader.readAsDataURL(file);
@@ -850,10 +843,10 @@ export default function PublicApply() {
                                 {selectedGroup && (
                                     <p className="text-[11px] font-bold text-matn-xira mt-2">
                                         {[selectedGroup.teacherName && 'Ustoz: ' + selectedGroup.teacherName,
-                                          selectedGroup.capacity !== null
-                                            ? (selectedGroup.studentCount >= selectedGroup.capacity
-                                                ? "Guruh to'lgan"
-                                                : (selectedGroup.capacity - selectedGroup.studentCount) + ' ta joy bor')
+                                          // Xona to'lsa ham qabul qilinadi (qo'shimcha joy qo'yiladi),
+                                          // shuning uchun "to'lgan" deb ariza beruvchini qaytarmaymiz.
+                                          selectedGroup.capacity !== null && selectedGroup.studentCount < selectedGroup.capacity
+                                            ? (selectedGroup.capacity - selectedGroup.studentCount) + ' ta joy bor'
                                             : '',
                                         ].filter(Boolean).join(' · ')}
                                     </p>
@@ -948,7 +941,7 @@ export default function PublicApply() {
             {isPhotoModalOpen && (
                 <PhotoCapture
                     onCapture={async (photo) => {
-                        const compressed = await compressImage(photo);
+                        const compressed = await compressImage(photo, PROFILE_PHOTO.maxWidth, PROFILE_PHOTO.maxHeight, PROFILE_PHOTO.quality);
                         setForm({ ...form, photo: compressed });
                     }}
                     onClose={() => setIsPhotoModalOpen(false)}

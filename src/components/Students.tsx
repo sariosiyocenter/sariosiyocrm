@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { Search, Plus, FileSpreadsheet, MoreVertical, X, Image as ImageIcon, MapPin, GraduationCap, QrCode, Trash2, SlidersHorizontal, ScanFace
+import { Search, Plus, FileSpreadsheet, MoreVertical, X, Image as ImageIcon, MapPin, GraduationCap, QrCode, Trash2, SlidersHorizontal, ScanFace, ArrowUpDown
 } from 'lucide-react';
 import { useCRM } from '../context/CRMContext';
 import { useConfirm } from './ConfirmDialog';
@@ -10,9 +10,10 @@ import Avatar from './ui/Avatar';
 import PhotoCapture from './PhotoCapture';
 import MapPicker from './MapPicker';
 import FaceSearch from './FaceSearch';
-import { uploadProfilePhoto } from '../lib/image';
+import { uploadProfilePhoto, removeBackgroundHQ } from '../lib/image';
 import * as XLSX from 'xlsx';
 import { STUDY_GOALS, UZB_REGIONS, ORG_TYPES, PRIVILEGES, ALL_GRADES, gradeOptions, gradeLabel, keepGrade } from '../lib/studentFields';
+import { STUDENT_SORTS, StudentSort, absenceCounts, sortStudents } from '../lib/studentSort';
 
 const inp = "w-full px-4 py-3 bg-ichki border border-chiziq rounded-2xl text-xs font-bold text-matn focus:border-brand focus:ring-4 focus:ring-[#1b6b6b]/10 outline-none transition-all";
 const lbl = "block text-[11px] text-matn-xira mb-1.5";
@@ -166,7 +167,8 @@ export default function Students() {
             .catch(() => showNotification("Nusxalab bo'lmadi", 'error'));
     };
 
-    const [quickFilter, setQuickFilter] = useState<'all' | 'qarzdor' | 'kelmayotgan' | 'faol' | 'arxiv'>('all');
+    const [quickFilter, setQuickFilter] = useState<'all' | 'qarzdor' | 'kelmayotgan' | 'faol' | 'arxiv' | 'kurssiz'>('all');
+    const [sortBy, setSortBy] = useState<StudentSort>('default');
     /** Kengaytirilgan filtrlar yopiq turadi: sakkizta ochiladigan ro'yxat doim
      *  ochiq bo'lganda ekranning uchdan birini egallar, lekin ularning deyarli
      *  hammasida "Barchasi" tanlangan bo'lardi. Tugmada nechta filtr yoqilgani
@@ -176,7 +178,7 @@ export default function Students() {
     const DEFAULT_FILTERS = {
         status: '', groupId: '', balanceStatus: 'all', dateRange: 'all', orgType: '',
         muassasaSearch: '', region: '', district: '', location: '', missingInfo: '',
-        studyGoal: '', directionId: '', grade: '',
+        studyGoal: '', directionId: '', grade: '', gender: '', privilege: '',
     };
 
     /** Tez filtr chiplari uchun sanoq. Ular joriy filtrga bog'liq emas —
@@ -192,6 +194,9 @@ export default function Students() {
         qarzdor: students.filter(s => (s.balance || 0) < 0).length,
         kelmayotgan: students.filter(s => s.status === 'Faol' && (lastSeen(s.id) ?? '') < twoWeeksAgo).length,
         arxiv: students.filter(s => s.status === 'Arxiv').length,
+        // Arxivdagilar hisobga olinmaydi: ular kursdan chiqarilgan, "kurssiz"
+        // ro'yxatida ular faqat shovqin bo'lardi.
+        kurssiz: students.filter(s => s.status !== 'Arxiv' && !(s.groups || []).length).length,
     };
 
     // Yuqori paneldagi "N qarzdor" tugmasi bu yerga ?filter=debt bilan olib keladi.
@@ -209,7 +214,9 @@ export default function Students() {
         missingInfo: '',
         studyGoal: '',
         directionId: '',
-        grade: ''
+        grade: '',
+        gender: '',
+        privilege: ''
     });
 
     // Ro'yxat allaqachon ochiq bo'lsa komponent qayta yaratilmaydi, shuning uchun
@@ -331,12 +338,12 @@ export default function Students() {
 
     const handleExport = () => {
         try {
-            if (filteredStudents.length === 0) {
+            if (sortedStudents.length === 0) {
                 showNotification("Eksport qilish uchun o'quvchilar mavjud emas!", 'info');
                 return;
             }
 
-            const exportData = filteredStudents.map(student => {
+            const exportData = sortedStudents.map(student => {
                 const groupNames = groups
                     .filter(g => (student.groups || []).includes(g.id))
                     .map(g => g.name)
@@ -479,24 +486,11 @@ export default function Students() {
         if (!newStudent.photo) return;
         try {
             setIsRemovingBg(true);
-            const token = localStorage.getItem('token');
-            const response = await fetch('/api/utils/remove-bg', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${token}`
-                },
-                body: JSON.stringify({ image: newStudent.photo })
-            });
-            const data = await response.json();
-            if (data.success) {
-                setNewStudent({ ...newStudent, photo: data.image });
-            } else {
-                showNotification("Xatolik: " + data.error, 'error');
-            }
-        } catch (err) {
+            const image = await removeBackgroundHQ(newStudent.photo);
+            setNewStudent(prev => ({ ...prev, photo: image }));
+        } catch (err: any) {
             console.error("BG Removal failed", err);
-            showNotification("Xatolik yuz berdi", 'error');
+            showNotification("Xatolik: " + (err?.message || "fonni tozalab bo'lmadi"), 'error');
         } finally {
             setIsRemovingBg(false);
         }
@@ -550,7 +544,18 @@ export default function Students() {
                (s.studentSchool || '').toLowerCase().includes(lowerSearch);
 
         const matchesStatus = !filters.status || s.status === filters.status;
-        const matchesGroup = !filters.groupId || (s.groups || []).includes(Number(filters.groupId));
+        const matchesGroup = !filters.groupId || (filters.groupId === '__none__'
+            ? !(s.groups || []).length
+            : (s.groups || []).includes(Number(filters.groupId)));
+        const matchesGender = !filters.gender || s.gender === filters.gender;
+        // Imtiyozlar bitta satrda vergul bilan: "Harbiy oila,Sertifikat".
+        // Imtiyozsizda "None" yoki bo'sh.
+        const imtiyozlar = (s.privilegeType && s.privilegeType !== 'None')
+            ? s.privilegeType.split(',').map(x => x.trim()).filter(Boolean) : [];
+        const matchesPrivilege = !filters.privilege
+            || (filters.privilege === '__any__' ? imtiyozlar.length > 0
+                : filters.privilege === '__none__' ? imtiyozlar.length === 0
+                : imtiyozlar.includes(filters.privilege));
         const matchesOrgType = !filters.orgType || s.orgType === filters.orgType;
         const matchesGrade = !filters.grade || s.grade === filters.grade;
         const matchesMuassasa = !filters.muassasaSearch || (s.studentSchool || '').toLowerCase().includes(filters.muassasaSearch.toLowerCase());
@@ -567,6 +572,7 @@ export default function Students() {
         else if (quickFilter === 'faol') matchesQuick = s.status === 'Faol';
         else if (quickFilter === 'arxiv') matchesQuick = s.status === 'Arxiv';
         else if (quickFilter === 'kelmayotgan') matchesQuick = s.status === 'Faol' && (lastSeen(s.id) ?? '') < twoWeeksAgo;
+        else if (quickFilter === 'kurssiz') matchesQuick = s.status !== 'Arxiv' && !(s.groups || []).length;
         if (!matchesQuick) return false;
 
         if (filters.balanceStatus === 'debt') matchesBalance = (s.balance || 0) < 0;
@@ -600,19 +606,26 @@ export default function Students() {
             matchesMissingInfo = fatherMissing || motherMissing;
         }
 
-        return matchesSearch && matchesStatus && matchesGroup && matchesBalance && matchesDate && matchesOrgType && matchesGrade && matchesMuassasa && matchesRegion && matchesDistrict && matchesLocation && matchesMissingInfo && matchesGoal && matchesDirection;
+        return matchesSearch && matchesStatus && matchesGroup && matchesGender && matchesPrivilege && matchesBalance && matchesDate && matchesOrgType && matchesGrade && matchesMuassasa && matchesRegion && matchesDistrict && matchesLocation && matchesMissingInfo && matchesGoal && matchesDirection;
     }), [students, search, filters, quickFilter, attendances]);
+
+    // Saralash filtrdan keyin: Excel eksporti ham ekrandagi tartibda chiqadi.
+    const absences = useMemo(() => absenceCounts(attendances), [attendances]);
+    const sortedStudents = useMemo(
+        () => sortStudents(filteredStudents, sortBy, { absences, attRate }),
+        [filteredStudents, sortBy, absences, attRate]
+    );
 
     // The table used to render every match at once — 266 rows, each with a photo.
     const PER_PAGE = 50;
-    const pageCount = Math.max(1, Math.ceil(filteredStudents.length / PER_PAGE));
+    const pageCount = Math.max(1, Math.ceil(sortedStudents.length / PER_PAGE));
     const currentPage = Math.min(page, pageCount);
-    const visibleStudents = filteredStudents.slice((currentPage - 1) * PER_PAGE, currentPage * PER_PAGE);
+    const visibleStudents = sortedStudents.slice((currentPage - 1) * PER_PAGE, currentPage * PER_PAGE);
 
     // Back to page one whenever the result set changes — filters, but also the list
     // itself shrinking (switching branch now keeps this screen mounted, so a stale page
     // number would otherwise survive into a shorter list).
-    React.useEffect(() => { setPage(1); }, [search, filters, filteredStudents.length]);
+    React.useEffect(() => { setPage(1); }, [search, filters, sortBy, filteredStudents.length]);
 
     return (
         <div className="space-y-6">
@@ -676,6 +689,7 @@ export default function Students() {
                     ['all', t('all'), quickCounts.all, false],
                     ['qarzdor', 'Qarzdor', quickCounts.qarzdor, true],
                     ['kelmayotgan', 'Kelmayotgan', quickCounts.kelmayotgan, false],
+                    ['kurssiz', 'Kurssizlar', quickCounts.kurssiz, false],
                     // "Faol" chipi jami bilan teng bo'lsa ko'rsatilmaydi — ikkita
                     // bir xil raqamli chip yonma-yon turishi chalkashtiradi.
                     ['faol', t('status_active'), quickCounts.faol === quickCounts.all ? 0 : quickCounts.faol, false],
@@ -758,7 +772,27 @@ export default function Students() {
                             <select value={filters.groupId} onChange={e => setFilters({...filters, groupId: e.target.value})}
                                 className="w-full px-3 py-2 bg-ichki border border-chiziq rounded-xl text-[11px] font-bold text-gray-700 dark:text-white outline-none focus:border-brand transition-all cursor-pointer">
                                 <option value="">{t('all')}</option>
+                                <option value="__none__">Kurssizlar ({quickCounts.kurssiz})</option>
                                 {groups.map(g => <option key={g.id} value={g.id}>{g.name}</option>)}
+                            </select>
+                        </div>
+                        <div>
+                            <label className={lbl}>Jinsi</label>
+                            <select value={filters.gender} onChange={e => setFilters({...filters, gender: e.target.value})}
+                                className="w-full px-3 py-2 bg-ichki border border-chiziq rounded-xl text-[11px] font-bold text-gray-700 dark:text-white outline-none focus:border-brand transition-all cursor-pointer">
+                                <option value="">Barchasi</option>
+                                <option value="Erkak">O'g'il bolalar</option>
+                                <option value="Ayol">Qiz bolalar</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label className={lbl}>Imtiyoz</label>
+                            <select value={filters.privilege} onChange={e => setFilters({...filters, privilege: e.target.value})}
+                                className="w-full px-3 py-2 bg-ichki border border-chiziq rounded-xl text-[11px] font-bold text-gray-700 dark:text-white outline-none focus:border-brand transition-all cursor-pointer">
+                                <option value="">Barchasi</option>
+                                <option value="__any__">Imtiyozi borlar</option>
+                                {PRIVILEGES.map(p => <option key={p} value={p}>{p}</option>)}
+                                <option value="__none__">Imtiyozsizlar</option>
                             </select>
                         </div>
                         <div>
@@ -849,6 +883,27 @@ export default function Students() {
 
             {/* Table layout */}
             <div className="bg-sirt rounded-2xl border border-chiziq shadow-sm overflow-hidden">
+
+                {/* Natija soni va saralash — ro'yxatning tepasida. Filtr qo'yilganda
+                    nechta chiqqanini sahifalagichdan (pastda, 50 tadan oshsagina)
+                    qidirib yurish kerak emas. */}
+                <div className="flex flex-wrap items-center justify-between gap-3 px-4 py-3 border-b border-chiziq-mayin">
+                    <p className="text-[13px] text-matn-2">
+                        {(activeFilterCount > 0 || search || quickFilter !== 'all') ? (
+                            <>Topildi: <span className="num font-bold text-brand">{sortedStudents.length}</span> ta o'quvchi
+                                <span className="text-matn-xira"> · jami <span className="num">{students.length}</span></span></>
+                        ) : (
+                            <>Jami: <span className="num font-bold text-matn">{students.length}</span> ta o'quvchi</>
+                        )}
+                    </p>
+                    <label className="flex items-center gap-2 text-[12px] text-matn-sokin">
+                        <ArrowUpDown size={13} />
+                        <select value={sortBy} onChange={e => setSortBy(e.target.value as StudentSort)}
+                            className="px-2.5 py-1.5 bg-ichki border border-chiziq rounded-lg text-[12px] font-medium text-matn outline-none focus:border-brand cursor-pointer">
+                            {STUDENT_SORTS.map(s => <option key={s.key} value={s.key}>{s.label}</option>)}
+                        </select>
+                    </label>
+                </div>
 
                 {/* Phone layout. The table below needs 900px, which is two and a half
                     screens of sideways scrolling on a 360px phone, so small screens get
@@ -976,6 +1031,13 @@ export default function Students() {
                                         ) : (
                                             <span className="num text-[13px] text-matn-xira">&#8212;</span>
                                         )}
+                                        {/* Davomat bo'yicha saralanganda nima uchun tepada
+                                            turgani ko'rinsin: foiz emas, kelmagan darslar soni. */}
+                                        {sortBy === 'davomat' && (absences.get(student.id) || 0) > 0 && (
+                                            <span className="block text-[10px] text-xato whitespace-nowrap">
+                                                <span className="num">{absences.get(student.id)}</span> marta kelmagan
+                                            </span>
+                                        )}
                                     </td>
                                     <td className="px-2 py-2.5 text-center relative" onClick={(e) => e.stopPropagation()}>
                                         <button onClick={(e) => {
@@ -1023,10 +1085,10 @@ export default function Students() {
                     </table>
                 </div>
 
-                {filteredStudents.length > PER_PAGE && (
+                {sortedStudents.length > PER_PAGE && (
                     <div className="flex items-center justify-between gap-4 px-6 py-4 border-t border-chiziq-mayin/50">
                         <p className="text-[12px] font-bold text-matn-xira tabular-nums">
-                            {(currentPage - 1) * PER_PAGE + 1}–{Math.min(currentPage * PER_PAGE, filteredStudents.length)} / {filteredStudents.length} ta
+                            {(currentPage - 1) * PER_PAGE + 1}–{Math.min(currentPage * PER_PAGE, sortedStudents.length)} / {sortedStudents.length} ta
                         </p>
                         <div className="flex items-center gap-2">
                             <button

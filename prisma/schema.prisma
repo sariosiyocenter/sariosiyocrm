@@ -641,6 +641,7 @@ model User {
   driverRoutes     Route[]          @relation("DriverRoutes")
   driverRuns       RouteRun[]       @relation("DriverRuns")
   driverAvailability DriverAvailability[] @relation("DriverAvailability")
+  driverLocation   DriverLocation?  @relation("DriverLocation")
   markedDeliveries DeliveryLog[]    @relation("DeliveryMarker")
   sellerLeads      SaaSLead[]       @relation("SellerLeads")
   staffAttendances StaffAttendance[]
@@ -785,6 +786,26 @@ model DriverAvailability {
 
   @@unique([driverId, date, endTime])
   @@index([schoolId, date])
+}
+
+/// Haydovchining oxirgi joylashuvi — Logistika xaritasida ko'rinadi.
+///
+/// Haydovchi CRM ga kirmaydi (faqat Telegram bot), shuning uchun joylashuv
+/// botdan keladi: bir martalik (📍 tugma) yoki jonli ulashish — Telegram
+/// jonli joylashuvni o'zi yangilab turadi (edited_message). Faqat oxirgi
+/// nuqta saqlanadi: tarix kerak emas, jadval o'smaydi.
+model DriverLocation {
+  driverId  Int       @id
+  driver    User      @relation("DriverLocation", fields: [driverId], references: [id], onDelete: Cascade)
+  lat       Float
+  lng       Float
+  // Jonli ulashish (live_period bor) bo'lsa — qachongacha.
+  live      Boolean   @default(false)
+  liveUntil DateTime?
+  schoolId  Int
+  updatedAt DateTime  @updatedAt
+
+  @@index([schoolId])
 }
 
 /// Bir kunning bir reysi: shu marshrut, shu sana.

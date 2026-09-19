@@ -13,6 +13,7 @@ import {
 import AttendanceMatrix from './AttendanceMatrix';
 import GroupAttendanceCalendar from './GroupAttendanceCalendar';
 import FaceAttendance from './FaceAttendance';
+import { STUDENT_SORTS, StudentSort, absenceCounts, sortStudents } from '../lib/studentSort';
 
 export default function CourseDetails() {
     const { id } = useParams<{ id: string }>();
@@ -55,6 +56,7 @@ export default function CourseDetails() {
     });
     const [isProcessing, setIsProcessing] = useState(false);
     const [isFaceAttendanceOpen, setIsFaceAttendanceOpen] = useState(false);
+    const [sortBy, setSortBy] = useState<StudentSort>('default');
 
     const group = groups.find(g => g.id === Number(id));
     if (!group) return <div className="p-12 text-center text-matn-sokin font-medium">Kurs topilmadi</div>;
@@ -98,6 +100,11 @@ export default function CourseDetails() {
         acc.forEach((v, k) => { if (v.jami) out.set(k, Math.round((v.keldi / v.jami) * 100)); });
         return out;
     })();
+    // Saralash O'quvchilar sahifasidagi bilan bir xil; davomat — faqat shu
+    // kursdagi kelmaganlar soni.
+    const groupAbsences = absenceCounts(groupAttendances, group.id);
+    const sortedGroupStudents = sortStudents(groupStudents, sortBy, { absences: groupAbsences, attRate: studentAtt });
+
     const shortSum = (n: number) =>
         n >= 1000000 ? (n / 1000000).toFixed(1).replace('.0', '') + ' mln' : n.toLocaleString();
 
@@ -450,18 +457,18 @@ export default function CourseDetails() {
                     </button>
                     <button
                         onClick={async () => {
-                            if (!await confirm(`"${group.name}" guruhini o'chirishni tasdiqlaysizmi? Bu amalni ortga qaytarib bo'lmaydi.`)) return;
+                            if (!await confirm(`"${group.name}" kursini o'chirishni tasdiqlaysizmi? Bu amalni ortga qaytarib bo'lmaydi.`)) return;
                             try {
                                 await deleteGroup(group.id);
                                 navigate('/courses');
                             } catch {
-                                showNotification("Guruhni o'chirishda xatolik yuz berdi", "error");
+                                showNotification("Kursni o'chirishda xatolik yuz berdi", "error");
                             }
                         }}
                         className="flex items-center gap-1.5 px-3 py-1.5 text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/20 rounded-xl transition-all text-[11px] font-extrabold cursor-pointer"
                     >
                         <Trash2 size={13} />
-                        Guruhni o'chirish
+                        Kursni o'chirish
                     </button>
                 </div>
             </div>
@@ -542,8 +549,13 @@ export default function CourseDetails() {
                                     label="O'quvchilar"
                                     value={groupStudents.length}
                                     bar={roomCapacity ? Math.min(100, Math.round((groupStudents.length / roomCapacity) * 100)) : null}
+                                    // Xona sig'imi cheklov emas: 80 o'rinli xonaga 81-, 82-
+                                    // o'quvchini ham qo'shish mumkin (egasi so'ragan). Ortig'i
+                                    // yashirilmasin — "100% band" deb turib qolmasin.
                                     barCaption={roomCapacity
-                                        ? <><span className="raqam">{roomCapacity}</span> o'rindan <span className="raqam">{Math.min(100, Math.round((groupStudents.length / roomCapacity) * 100))}%</span> band</>
+                                        ? (groupStudents.length > roomCapacity
+                                            ? <><span className="raqam">{roomCapacity}</span> o'rinli xona · <span className="raqam">{groupStudents.length - roomCapacity}</span> ta qo'shimcha joy</>
+                                            : <><span className="raqam">{roomCapacity}</span> o'rindan <span className="raqam">{Math.round((groupStudents.length / roomCapacity) * 100)}%</span> band</>)
                                         : undefined}
                                     subValue={roomCapacity ? undefined : "Xona sig'imi kiritilmagan"}
                                 />
@@ -577,12 +589,26 @@ export default function CourseDetails() {
                             <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
                                 <div className="lg:col-span-2 space-y-4">
                                     <div className="flex items-center justify-between pb-2 border-b border-gray-55 dark:border-gray-800">
-                                        <span className="text-[11px] font-bold text-matn-xira">O'quvchilar</span>
+                                        <span className="text-[11px] font-bold text-matn-xira">
+                                            O'quvchilar · <span className="num text-matn-2">{groupStudents.length}</span> ta
+                                            {roomCapacity && groupStudents.length > roomCapacity && (
+                                                <span className="text-ogoh"> ({groupStudents.length - roomCapacity} tasi xona sig'imidan ortiq)</span>
+                                            )}
+                                        </span>
+                                        <div className="flex items-center gap-2">
+                                        {groupStudents.length > 1 && (
+                                            <select value={sortBy} onChange={e => setSortBy(e.target.value as StudentSort)}
+                                                title="Saralash"
+                                                className="px-2.5 py-2 bg-ichki border border-chiziq rounded-xl text-[11px] font-bold text-matn outline-none focus:border-brand cursor-pointer">
+                                                {STUDENT_SORTS.map(s => <option key={s.key} value={s.key}>{s.label}</option>)}
+                                            </select>
+                                        )}
                                         <button onClick={() => setIsAddStudentModalOpen(true)}
                                             className="px-4 py-2.5 bg-brand hover:bg-brand-dark text-white rounded-xl text-[11px] font-extrabold shadow-sm shadow-[#1b6b6b]/20 active:scale-95 transition-all flex items-center gap-1.5 group cursor-pointer">
                                             <Plus size={14} />
                                             Qo'shish
                                         </button>
+                                        </div>
                                     </div>
                                     {/* Avval bu ro'yxat ikki ustunli kartochka gridi edi:
                                         kartaning eni tor bo'lgani uchun ismlar
@@ -604,7 +630,7 @@ export default function CourseDetails() {
                                                     </tr>
                                                 </thead>
                                                 <tbody className="divide-y divide-chiziq-mayin ">
-                                                    {groupStudents.map((s, idx) => {
+                                                    {sortedGroupStudents.map((s, idx) => {
                                                         return (
                                                             <tr key={s.id} className="group hover:bg-gray-55/70  transition-colors">
                                                                 <td className="num py-2.5 pr-3 text-[11px] text-matn-xira align-middle">
@@ -635,6 +661,11 @@ export default function CourseDetails() {
                                                                         }`}>{studentAtt.get(s.id)}%</span>
                                                                     ) : (
                                                                         <span className="num text-[13px] text-matn-xira">&#8212;</span>
+                                                                    )}
+                                                                    {sortBy === 'davomat' && (groupAbsences.get(s.id) || 0) > 0 && (
+                                                                        <span className="block text-[10px] text-xato whitespace-nowrap">
+                                                                            <span className="num">{groupAbsences.get(s.id)}</span> marta kelmagan
+                                                                        </span>
                                                                     )}
                                                                 </td>
                                                                 <td className="py-2.5 pl-3 align-middle">
