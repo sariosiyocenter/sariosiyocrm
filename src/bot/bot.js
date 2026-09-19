@@ -3,8 +3,9 @@ import prisma from '../../lib/prisma.js';
 import { isLessonDay, toDateStr, toTimeStr } from '../../lib/lessons.js';
 import {
     bugungiReyslar, marshrutHolati, holatniYozish, holatniOchirish, reysVaqti, holatlar as yonalishHolatlari, markazNuqtasi,
-    rejaniQabulQilish, rejaniYetkazish, joylashuvniYozish, REJA_INCLUDE,
+    rejaniQabulQilish, rejaniYetkazish, joylashuvniYozish, REJA_INCLUDE, rejaPuli,
 } from '../../services/logistics.js';
+import { somMatni } from '../../lib/transportNarx.js';
 import { javobniYozish } from '../../services/kunlikReja.js';
 import { parseLatLng, distanceKm } from '../../lib/tartib.js';
 import { studentLedger } from '../../services/ledger.js';
@@ -85,6 +86,14 @@ const reysKorinishi = (route, holat, sana) => {
     if (yetkazildi) matn += ` · ✅ ${yetkazildi}`;
     if (kelmadi) matn += ` · ❌ ${kelmadi}`;
     matn += '\n';
+    // Yo'l haqi reja tuzilganda hisoblangan: haydovchi oldindan qancha olishini biladi.
+    const pul = rejaPuli(route.stops, b);
+    if (pul.jami > 0 || pul.aniqlanmagan < route.stops.length) {
+        matn += `💰 Hammasini olib borsangiz: <b>${somMatni(pul.jami)} so'm</b>`;
+        if (pul.aniqlanmagan) matn += ` (${pul.aniqlanmagan} tasining narxi aniqlanmagan)`;
+        matn += '\n';
+        if (run?.startedAt && pul.olingan !== pul.jami) matn += `💵 Olib ketilganlar uchun: <b>${somMatni(pul.olingan)} so'm</b>\n`;
+    }
     // Vaqt O'zbekiston bo'yicha: server UTC da ishlaydi.
     if (run?.startedAt) matn += `🚐 Qabul qilindi: ${toTimeStr(run.startedAt)}\n`;
     if (run?.finishedAt) matn += `🏁 Yetkazildi: ${toTimeStr(run.finishedAt)}\n`;
@@ -96,7 +105,9 @@ const reysKorinishi = (route, holat, sana) => {
     route.stops.forEach((st, idx) => {
         const s2 = st.student;
         let qator = `${holatBelgisi(b[st.studentId])} <b>${idx + 1}. ${escHtml(s2.name)}</b>`;
+        if (st.narx !== null && st.narx !== undefined) qator += ` · 💰 ${somMatni(st.narx)}`;
         if (s2.phone) qator += ` · 📞 ${escHtml(s2.phone)}`;
+        if (st.masofaKm !== null && st.masofaKm !== undefined) qator += ` · ${st.masofaKm} km`;
         qator += '\n';
         if (!qisqa && matn.length < 3300) {
             if (s2.address) qator += `   🏠 ${escHtml(s2.address)}\n`;

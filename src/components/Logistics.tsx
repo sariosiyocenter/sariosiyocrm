@@ -9,6 +9,7 @@ import {
 } from 'lucide-react';
 import { toDateStr, toTimeStr } from '../../lib/lessons.js';
 import { reyalarniTuzish } from '../../lib/rejalash.js';
+import { narxHisobla, uyMasofasi, tarifMatni, somMatni, rejaSummasi } from '../../lib/transportNarx.js';
 import { parseLatLng, ZAXIRA_MARKAZ } from '../lib/mapMarkers';
 import { displayName } from '../lib/displayName';
 import LogisticsMap, { qachon, jonlimi } from './LogisticsMap';
@@ -30,7 +31,7 @@ import LogisticsMap, { qachon, jonlimi } from './LogisticsMap';
 
 type Tab = 'reja' | 'tarix';
 
-interface DayStop { studentId: number; name: string; phone?: string; address?: string; location?: string; photo?: string }
+interface DayStop { studentId: number; name: string; phone?: string; address?: string; location?: string; photo?: string; narx?: number | null; masofaKm?: number | null }
 interface DayPlan {
     id: number; name: string; date: string; navbat: number;
     driver: { id: number; name: string; phone?: string; telegram: boolean } | null;
@@ -38,10 +39,12 @@ interface DayPlan {
     stops: DayStop[];
     run: { startedAt?: string | null; finishedAt?: string | null } | null;
     holatlar: Record<number, string>;
+    /** Yo'l haqi: hammasi uchun, narxi aniqlanmaganlar soni, olib ketilganlar uchun. */
+    pul?: { jami: number; aniqlanmagan: number; olingan: number };
 }
 interface DayDriver {
     id: number; name: string; phone?: string; telegram: boolean;
-    transport: { id: number; name: string; model?: string; number?: string; capacity: number; status: string } | null;
+    transport: { id: number; name: string; model?: string; number?: string; capacity: number; status: string; tarif?: any } | null;
     location: { lat: number; lng: number; live: boolean; liveUntil?: string | null; updatedAt: string } | null;
 }
 interface Taqsimot {
@@ -166,6 +169,16 @@ export default function LogisticsHub() {
     const tanlanganH = ishlaydigan.filter(h => !olinmagan.has(h.id));
     const jamiOrin = tanlanganH.reduce((s, h) => s + (h.transport?.capacity || 0), 0);
 
+    // Yo'l haqi: markazdan uygacha masofa va haydovchining tarifi. Server reja
+    // yozilganda aynan shu funksiya bilan hisoblaydi (lib/transportNarx.js).
+    const markazNuqta = parseLatLng(settings?.centerLocation) || ZAXIRA_MARKAZ;
+    const bolaNarxi = (driverId: number, studentId: number) => {
+        const s = students.find(x => x.id === studentId);
+        const km = uyMasofasi(markazNuqta, s?.location);
+        const tarif = haydovchilar.find(h => h.id === driverId)?.transport?.tarif || null;
+        return { km, ...narxHisobla(tarif, km) };
+    };
+
     // ===== Taqsimot (oldindan ko'rish) =====
     const [taqsimot, setTaqsimot] = useState<Taqsimot | null>(null);
     const [band, setBand] = useState('');
@@ -253,8 +266,11 @@ export default function LogisticsHub() {
             const yuborilmadi = (d.yuborish || []).filter((y: any) => !y.ok);
             const nomi = (routeId: number) => (d.plans || []).find((p: DayPlan) => p.id === routeId)?.driver?.name || '';
             showNotification(
-                `${plans.length} ta reja tuzildi. Telegramga yuborildi: ${yuborildi}` +
-                (yuborilmadi.length ? `. Yuborilmadi: ${yuborilmadi.map((y: any) => `${nomi(y.routeId)} (${y.sabab})`).join(', ')}` : ''),
+                `${plans.length} ta reja tuzildi. Haydovchilarga yuborildi: ${yuborildi}` +
+                (yuborilmadi.length ? `. Yuborilmadi: ${yuborilmadi.map((y: any) => `${nomi(y.routeId)} (${y.sabab})`).join(', ')}` : '') +
+                (d.otaOnaXabarlari
+                    ? `. Ota-onalarga narx yuborildi: ${d.otaOnagaYuborildi}`
+                    : ". Ota-onalarga narx xabari o'chiq (Sozlamalar → Transport xabarlari)"),
                 yuborilmadi.length ? 'info' : 'success');
             setTaqsimot(null);
             setChiqarilgan(new Set());
@@ -326,12 +342,12 @@ export default function LogisticsHub() {
         const kitob = XLSX.utils.book_new();
         XLSX.utils.book_append_sheet(kitob, XLSX.utils.json_to_sheet(
             (stats.oquvchilar || []).map((x: any) => ({
-                "O'quvchi": x.name, 'Olib ketildi': x.olindi, 'Uyiga yetkazildi': x.yetkazildi, 'Kelmadi': x.kelmadi,
+                "O'quvchi": x.name, 'Olib ketildi': x.olindi, 'Uyiga yetkazildi': x.yetkazildi, 'Kelmadi': x.kelmadi, "Yo'l haqi (so'm)": x.summa ?? 0,
             }))
         ), "O'quvchilar");
         XLSX.utils.book_append_sheet(kitob, XLSX.utils.json_to_sheet(
             (stats.haydovchilar || []).map((x: any) => ({
-                'Haydovchi': x.name, 'Reyslar': x.reys, 'Tugatilgan': x.tugagan, "O'rtacha (daqiqa)": x.ortachaDaqiqa ?? '',
+                'Haydovchi': x.name, 'Reyslar': x.reys, 'Tugatilgan': x.tugagan, "O'rtacha (daqiqa)": x.ortachaDaqiqa ?? '', "Ishlagan (so'm)": x.summa ?? 0,
             }))
         ), 'Haydovchilar');
         XLSX.writeFile(kitob, `logistika-${statsFrom || 'boshidan'}_${statsTo || toDateStr()}.xlsx`);
@@ -442,6 +458,10 @@ export default function LogisticsHub() {
                                                             <p className="text-[13px] font-black text-matn truncate">{p.name}</p>
                                                             <p className="text-[11px] font-bold text-matn-xira truncate">
                                                                 {mashinaMatni(p.transport) || 'mashina kiritilmagan'} · {p.stops.length} ta o'quvchi
+                                                                {p.pul && (p.pul.jami > 0 || p.pul.aniqlanmagan < p.stops.length) && (
+                                                                    <> · <span className="text-matn-2">{somMatni(p.pul.jami)} so'm</span>
+                                                                        {p.pul.aniqlanmagan > 0 && <span className="text-amber-600"> (+{p.pul.aniqlanmagan} ta narxsiz)</span>}</>
+                                                                )}
                                                             </p>
                                                         </div>
                                                         <ChevronDown size={14} className={`text-matn-xira shrink-0 transition-transform ${ochiq === p.id ? 'rotate-180' : ''}`} />
@@ -502,6 +522,12 @@ export default function LogisticsHub() {
                                                         <p className="text-[10px] font-bold text-matn-xira">
                                                             Odatda bu tugmalarni haydovchi Telegram botda bosadi. Bu yerdagilari — haydovchi o'rniga belgilash uchun.
                                                         </p>
+                                                        {p.pul && boshlangan && (
+                                                            <p className="text-[11px] font-bold text-matn-2">
+                                                                Haydovchi oladi (olib ketilganlar uchun): <span className="text-emerald-600">{somMatni(p.pul.olingan)} so'm</span>
+                                                                <span className="text-matn-xira"> / rejada {somMatni(p.pul.jami)} so'm</span>
+                                                            </p>
+                                                        )}
                                                         <div className="rounded-xl border border-chiziq divide-y divide-chiziq-mayin">
                                                             {p.stops.map((st, i) => {
                                                                 const h = p.holatlar[st.studentId];
@@ -514,10 +540,14 @@ export default function LogisticsHub() {
                                                                                 <p className="text-[10px] font-bold text-matn-xira truncate">
                                                                                     {st.phone && <><Phone size={9} className="inline -mt-0.5" /> {st.phone}</>}
                                                                                     {st.address && <> · {st.address}</>}
+                                                                                    {st.masofaKm !== null && st.masofaKm !== undefined && <> · {st.masofaKm} km</>}
                                                                                     {!st.location && <span className="text-amber-600"> · xaritada joyi yo'q</span>}
                                                                                 </p>
                                                                             </div>
                                                                         </div>
+                                                                        <span className={`text-[11px] font-black tabular-nums shrink-0 ${st.narx === null || st.narx === undefined ? 'text-amber-600' : 'text-matn-2'}`}>
+                                                                            {st.narx === null || st.narx === undefined ? 'narxsiz' : `${somMatni(st.narx)} so'm`}
+                                                                        </span>
                                                                         {h && (
                                                                             <span className={`px-2 py-0.5 rounded-md text-[10px] font-black border shrink-0 ${HOLAT_BELGI[h]?.cls || ''}`}>
                                                                                 {HOLAT_BELGI[h]?.belgi || h}
@@ -742,6 +772,9 @@ export default function LogisticsHub() {
                                                             {ishlaydi ? mashinaMatni(h.transport) : <span className="text-amber-600">mashina sig'imi kiritilmagan (Xodimlar)</span>}
                                                             {!h.telegram && <span className="text-amber-600"> · botga ulanmagan</span>}
                                                         </span>
+                                                        <span className={`block text-[10px] font-bold truncate ${h.transport?.tarif ? 'text-matn-sokin' : 'text-amber-600'}`}>
+                                                            {h.transport?.tarif ? `💰 ${tarifMatni(h.transport.tarif)}` : "yo'l haqi kiritilmagan (Xodimlar)"}
+                                                        </span>
                                                     </span>
                                                 </button>
                                             );
@@ -783,6 +816,7 @@ export default function LogisticsHub() {
                                 <h3 className="text-base font-black text-matn">Taqsimot — {sana}</h3>
                                 <p className="text-[11px] font-bold text-matn-xira mt-0.5">
                                     {taqsimot.rejalar.reduce((s, r) => s + r.studentIds.length, 0)} ta o'quvchi · {taqsimot.rejalar.length} ta reja
+                                · yo'l haqi jami {somMatni(rejaSummasi(taqsimot.rejalar.flatMap(r => r.studentIds.map(id => bolaNarxi(r.driverId, id).narx))).jami)} so'm
                                     {taqsimot.sigmagan.length > 0 && <span className="text-rose-600"> · {taqsimot.sigmagan.length} tasi sig'madi</span>}
                                 </p>
                             </div>
@@ -792,6 +826,7 @@ export default function LogisticsHub() {
                             {[...taqsimot.rejalar.map(r => ({ ...r, sigmagan: false })), ...(taqsimot.sigmagan.length ? [{ key: 'sigmagan', driverId: 0, navbat: 0, studentIds: taqsimot.sigmagan, sigmagan: true }] : [])].map(r => {
                                 const h = haydovchilar.find(x => x.id === r.driverId);
                                 const sigim = h?.transport?.capacity || 0;
+                                const pul = r.sigmagan ? null : rejaSummasi(r.studentIds.map(id => bolaNarxi(r.driverId, id).narx));
                                 return (
                                     <div key={r.key} className={`rounded-2xl border ${r.sigmagan ? 'border-rose-200 dark:border-rose-900/50' : 'border-chiziq'} overflow-hidden`}>
                                         <div className="px-4 py-3 bg-ichki border-b border-chiziq-mayin flex items-center justify-between gap-2">
@@ -802,6 +837,12 @@ export default function LogisticsHub() {
                                                         {r.sigmagan ? "Hech bir mashinaga sig'madi" : `${h?.name}${r.navbat > 1 ? ` — ${r.navbat}-reys` : ''}`}
                                                     </p>
                                                     {!r.sigmagan && <p className="text-[10px] font-bold text-matn-xira truncate">{mashinaMatni(h?.transport)}</p>}
+                                                    {pul && (
+                                                        <p className="text-[11px] font-black text-emerald-600 truncate">
+                                                            Haydovchi oladi: {somMatni(pul.jami)} so'm
+                                                            {pul.aniqlanmagan > 0 && <span className="text-amber-600 font-bold"> · {pul.aniqlanmagan} ta narxsiz</span>}
+                                                        </p>
+                                                    )}
                                                 </div>
                                             </div>
                                             {!r.sigmagan && (
@@ -813,13 +854,21 @@ export default function LogisticsHub() {
                                         <div className="divide-y divide-chiziq-mayin">
                                             {r.studentIds.map((id, i) => {
                                                 const s = students.find(x => x.id === id);
+                                                const n = r.sigmagan ? null : bolaNarxi(r.driverId, id);
                                                 return (
                                                     <div key={id} className="flex items-center justify-between gap-2 px-4 py-2">
                                                         <div className="min-w-0 flex items-center gap-2">
                                                             <span className="text-[10px] font-black text-matn-xira w-4 text-right tabular-nums">{i + 1}</span>
                                                             <div className="min-w-0">
                                                                 <p className="text-[12px] font-bold text-matn truncate">{displayName(s?.name || '')}</p>
-                                                                <p className="text-[10px] font-bold text-matn-xira truncate">{s?.address || (s?.location ? '' : "joyi belgilanmagan")}</p>
+                                                                <p className="text-[10px] font-bold text-matn-xira truncate">
+                                                                    {n && (n.narx !== null
+                                                                        ? <span className="text-matn-2">{somMatni(n.narx)} so'm</span>
+                                                                        : <span className="text-amber-600">narxsiz — {n.sabab}</span>)}
+                                                                    {n?.km !== null && n?.km !== undefined && <> · {n.km} km</>}
+                                                                    {s?.address && <> · {s.address}</>}
+                                                                    {!s?.location && !n && " · joyi belgilanmagan"}
+                                                                </p>
                                                             </div>
                                                         </div>
                                                         <select value={r.key} onChange={e => kochirish(id, e.target.value)} title="Boshqa haydovchiga o'tkazish"
@@ -891,14 +940,15 @@ export default function LogisticsHub() {
                         </div>
                     ) : (
                         <>
-                            <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
+                            <div className="grid grid-cols-2 lg:grid-cols-6 gap-3">
                                 {[
                                     { yorliq: 'Reyslar', qiymat: stats.jami?.reys ?? 0, izoh: stats.jami?.birinchiKun ? `${stats.jami.birinchiKun} dan beri` : '' },
                                     { yorliq: 'Olib ketildi', qiymat: stats.jami?.olindi ?? 0 },
                                     { yorliq: 'Yetkazildi', qiymat: stats.jami?.yetkazildi ?? 0 },
                                     { yorliq: 'Kelmadi', qiymat: stats.jami?.kelmadi ?? 0, qizil: true },
                                     { yorliq: "O'quvchilar", qiymat: stats.jami?.oquvchi ?? 0 },
-                                ].map(k => (
+                                    { yorliq: "Yo'l haqi, so'm", qiymat: somMatni(stats.jami?.summa ?? 0), izoh: 'olib ketilganlar uchun' },
+                                ].map((k: any) => (
                                     <div key={k.yorliq} className={`${karta} p-4`}>
                                         <p className="text-[10px] font-bold text-matn-xira uppercase tracking-wider">{k.yorliq}</p>
                                         <p className={`text-2xl font-black tabular-nums mt-1 ${k.qizil && k.qiymat > 0 ? 'text-rose-600 dark:text-rose-400' : 'text-matn'}`}>{k.qiymat}</p>
@@ -936,6 +986,7 @@ export default function LogisticsHub() {
                                                     <span className="text-xs font-bold text-matn truncate">{h.name}</span>
                                                     <span className="text-[11px] font-bold text-matn-xira tabular-nums shrink-0">
                                                         {h.reys} reys{h.ortachaDaqiqa !== null ? ` · ~${h.ortachaDaqiqa} daq` : ''}
+                                                        {h.summa > 0 && <span className="text-emerald-600"> · {somMatni(h.summa)} so'm</span>}
                                                     </span>
                                                 </div>
                                             ))}

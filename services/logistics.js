@@ -9,6 +9,7 @@ import prisma from '../lib/prisma.js';
 import { toTimeStr } from '../lib/lessons.js';
 import { bekatlarniTartiblash, parseLatLng } from '../lib/tartib.js';
 import { yetkazishXabari } from './transportNotify.js';
+import { narxHisobla, uyMasofasi, rejaSummasi } from '../lib/transportNarx.js';
 
 /**
  * Markaz nuqtasi Sozlamalarda belgilanmagan bo'lsa shu ishlatiladi — bot
@@ -250,7 +251,7 @@ export async function rejaniYetkazish({ route, date, schoolId, markedById = null
 /** Reja bilan birga o'qiladigan shakl (bot va Logistika sahifasi uchun). */
 export const REJA_INCLUDE = {
   ...MARSHRUT_INCLUDE,
-  transport: { select: { id: true, name: true, model: true, number: true, capacity: true } },
+  transport: { select: { id: true, name: true, model: true, number: true, capacity: true, tarif: true } },
   driver: { select: { id: true, name: true, phone: true, telegramId: true } },
 };
 
@@ -269,7 +270,7 @@ export async function rejalarniYozish({ schoolId, date, rejalar }) {
       id: { in: driverIds }, role: 'DRIVER', status: { not: 'Arxiv' },
       OR: [{ schoolId }, { branches: { some: { id: schoolId } } }],
     },
-    select: { id: true, name: true, driverTransport: { select: { id: true } } },
+    select: { id: true, name: true, driverTransport: { select: { id: true, tarif: true } } },
   });
   const hMap = new Map(haydovchilar.map(h => [h.id, h]));
   const yoq = driverIds.filter(id => !hMap.has(id));
@@ -277,8 +278,12 @@ export async function rejalarniYozish({ schoolId, date, rejalar }) {
 
   const hammasi = rejalar.flatMap(r => r.studentIds);
   if (new Set(hammasi).size !== hammasi.length) return { xato: "Bir o'quvchi ikki rejaga tushib qolgan" };
-  const borOquvchi = await prisma.student.findMany({ where: { id: { in: hammasi }, schoolId }, select: { id: true } });
+  const borOquvchi = await prisma.student.findMany({ where: { id: { in: hammasi }, schoolId }, select: { id: true, location: true } });
   if (borOquvchi.length !== hammasi.length) return { xato: "O'quvchilardan biri shu filialda topilmadi" };
+  // Yo'l haqi reja tuzilgan paytda hisoblanib bekatga yoziladi: haydovchi ham,
+  // ota-ona ham reys boshlanishidan oldin narxni biladi.
+  const markaz = await markazNuqtasi(schoolId);
+  const joy = new Map(borOquvchi.map(s => [s.id, s.location]));
 
   const routeIds = [];
   for (const r of rejalar) {
@@ -294,13 +299,29 @@ export async function rejalarniYozish({ schoolId, date, rejalar }) {
       },
     });
     await prisma.routeStop.createMany({
-      data: r.studentIds.map((studentId, tartib) => ({ routeId: route.id, studentId, tartib })),
+      data: r.studentIds.map((studentId, tartib) => {
+        const masofaKm = uyMasofasi(markaz, joy.get(studentId));
+        const { narx } = narxHisobla(h.driverTransport?.tarif || null, masofaKm);
+        return { routeId: route.id, studentId, tartib, masofaKm, narx };
+      }),
     });
     // Tartib masofa bo'yicha: haydovchi ro'yxatni yaqinidan boshlab ko'radi.
     await marshrutniTartiblash(route.id);
     routeIds.push(route.id);
   }
   return { routeIds };
+}
+
+/**
+ * Rejaning puli: hammasi uchun (reja tuzilganda aytilgan) va haqiqatan
+ * olib ketilganlar uchun ("Kelmadi" dan boshqasi) — haydovchi shuni oladi.
+ */
+export function rejaPuli(stops, holatlar = {}) {
+  const hammasi = rejaSummasi(stops.map(s => s.narx));
+  const olingan = rejaSummasi(stops
+    .filter(s => holatlar[s.studentId] && holatlar[s.studentId] !== 'Kelmadi')
+    .map(s => s.narx));
+  return { jami: hammasi.jami, aniqlanmagan: hammasi.aniqlanmagan, olingan: olingan.jami };
 }
 
 /**

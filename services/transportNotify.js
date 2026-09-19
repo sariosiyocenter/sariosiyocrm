@@ -111,13 +111,6 @@ async function smsgaYuborish({ student, matn, schoolId }) {
  */
 export async function yetkazishXabari({ student, status, route, schoolId, vaqt = null }) {
   try {
-    const settings = await prisma.setting.findUnique({
-      where: { schoolId },
-      select: { transportNotify: true, transportChannel: true },
-    });
-    if (!settings?.transportNotify) return { skipped: 'ochiq emas' };
-
-    const kanal = settings.transportChannel || 'TELEGRAM';
     const matn = xabarMatni({
       status,
       studentName: student.name,
@@ -125,21 +118,49 @@ export async function yetkazishXabari({ student, status, route, schoolId, vaqt =
       driverName: route?.driver?.name || null,
       vaqt: vaqt || soat(),
     });
-
-    let jami = 0;
-    if (kanal === 'TELEGRAM' || kanal === 'BOTH') {
-      const r = await telegramgaYuborish({ student, matn, schoolId });
-      jami += r.yuborildi;
-    }
-    // BOTH da SMS faqat Telegram ishlamasa: xabar ikki marta bormasin va
-    // bekorga pul ketmasin.
-    if (kanal === 'SMS' || (kanal === 'BOTH' && jami === 0)) {
-      const r = await smsgaYuborish({ student, matn, schoolId });
-      jami += r.yuborildi;
-    }
-    return { yuborildi: jami, matn };
+    return await kanalgaYuborish({ student, matn, schoolId });
   } catch (err) {
     console.error('[Transport xabari]', err.message);
     return { error: err.message };
   }
+}
+
+/**
+ * Reja tuzilganda ota-onaga: bugun kim olib boradi va yo'l haqi qancha.
+ * Egasi: "до начала маршрута ученик знал, сколько он платит".
+ */
+export async function rejaNarxXabari({ student, route, narx, schoolId }) {
+  try {
+    const mashina = [route?.transport?.model || route?.transport?.name, route?.transport?.number].filter(Boolean).join(', ');
+    let matn = `🚌 ${student.name} bugun darsdan keyin uyiga mashinada olib boriladi.`;
+    if (route?.driver?.name) matn += `\nHaydovchi: ${route.driver.name}${mashina ? ` (${mashina})` : ''}`;
+    if (narx !== null && narx !== undefined) matn += `\nYo'l haqi: ${Number(narx).toLocaleString('ru-RU').replace(/ /g, ' ')} so'm`;
+    return await kanalgaYuborish({ student, matn, schoolId });
+  } catch (err) {
+    console.error('[Transport narx xabari]', err.message);
+    return { error: err.message };
+  }
+}
+
+/** Sozlamadagi kanal bo'yicha yuboradi (Transport xabarlari o'chiq bo'lsa — hech narsa). */
+async function kanalgaYuborish({ student, matn, schoolId }) {
+  const settings = await prisma.setting.findUnique({
+    where: { schoolId },
+    select: { transportNotify: true, transportChannel: true },
+  });
+  if (!settings?.transportNotify) return { skipped: 'ochiq emas' };
+
+  const kanal = settings.transportChannel || 'TELEGRAM';
+  let jami = 0;
+  if (kanal === 'TELEGRAM' || kanal === 'BOTH') {
+    const r = await telegramgaYuborish({ student, matn, schoolId });
+    jami += r.yuborildi;
+  }
+  // BOTH da SMS faqat Telegram ishlamasa: xabar ikki marta bormasin va
+  // bekorga pul ketmasin.
+  if (kanal === 'SMS' || (kanal === 'BOTH' && jami === 0)) {
+    const r = await smsgaYuborish({ student, matn, schoolId });
+    jami += r.yuborildi;
+  }
+  return { yuborildi: jami, matn };
 }

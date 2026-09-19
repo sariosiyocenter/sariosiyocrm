@@ -96,6 +96,10 @@ model Transport {
   driverName  String?
   driverPhone String?
   status      String   @default("Faol") // Faol, Ta'mirda, Arxiv
+
+  // Haydovchining yo'l haqi tarifi (lib/transportNarx.js):
+  // { tur: 'bir', narx } yoki { tur: 'masofa', oraliqlar: [{km, narx}], uzoq }.
+  tarif       Json?
   
   driverId    Int?     @unique
   driver      User?    @relation("DriverTransport", fields: [driverId], references: [id])
@@ -759,6 +763,10 @@ model RouteStop {
   studentId Int
   student   Student  @relation(fields: [studentId], references: [id], onDelete: Cascade)
   tartib    Int      @default(0)
+  // Reja tuzilgan paytdagi yo'l haqi va markazdan masofa (km). Keyin tarif
+  // o'zgarsa ham shu reja uchun aytilgan narx o'zgarmaydi. null — aniqlanmagan.
+  narx      Int?
+  masofaKm  Float?
   createdAt DateTime @default(now())
 
   @@unique([routeId, studentId])

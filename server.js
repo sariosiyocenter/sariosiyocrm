@@ -16,10 +16,12 @@ import jwt from 'jsonwebtoken';
 import bot, { startBot, notifyAdmins, getTelegramBot, rejaniHaydovchigaYuborish, rejaBekorXabari } from './src/bot/bot.js';
 import { transferStudent, refundStudent, enrollStudent, unenrollStudent, syncGroupMembers, activateStudent, syncStudentGroups } from './services/enrollment.js';
 import { studentLedger, receivedForGroups, monthCoverage } from './services/ledger.js';
-import { holatniYozish, marshrutniTartiblash, marshrutHolati, rejalarniYozish, rejaniQabulQilish, rejaniYetkazish, REJA_INCLUDE } from './services/logistics.js';
+import { holatniYozish, marshrutniTartiblash, marshrutHolati, rejalarniYozish, rejaniQabulQilish, rejaniYetkazish, REJA_INCLUDE, rejaPuli } from './services/logistics.js';
+import { tarifniTozalash } from './lib/transportNarx.js';
+import { Prisma } from '@prisma/client';
 import { kunlikTolqinlar, haydovchilardanSorash, kunlikRejaniTuzish, avtoJarayon } from './services/kunlikReja.js';
 import { toDateStr } from './lib/lessons.js';
-import { smsYuboruvchiniUlash } from './services/transportNotify.js';
+import { smsYuboruvchiniUlash, rejaNarxXabari } from './services/transportNotify.js';
 import bcrypt from 'bcryptjs';
 import helmet from 'helmet';
 import rateLimit from 'express-rate-limit';
@@ -538,7 +540,7 @@ app.get('/api/users', authenticate, async (req, res, next) => {
         branches: { select: { id: true } },
         // Haydovchining mashinasi xodim kartasida tahrirlanadi (Avtopark yo'q):
         // tahrirlash oynasi eski qiymatlarni ko'rsatishi uchun.
-        driverTransport: { select: { model: true, number: true, capacity: true } }
+        driverTransport: { select: { model: true, number: true, capacity: true, tarif: true } }
       }
     });
     res.json(users.map(u => {
@@ -547,7 +549,7 @@ app.get('/api/users', authenticate, async (req, res, next) => {
         ...qolgan, teacherId: teacherProfile?.id ?? null, branchIds: branches.map(b => b.id),
         ...(driverTransport ? {
           vehicleModel: driverTransport.model || '', vehicleNumber: driverTransport.number || '',
-          vehicleCapacity: driverTransport.capacity,
+          vehicleCapacity: driverTransport.capacity, vehicleTariff: driverTransport.tarif || null,
         } : {}),
       };
     }));
@@ -559,6 +561,9 @@ app.post('/api/users', authenticate, async (req, res, next) => {
     if (req.user.role !== 'ADMIN' && req.user.role !== 'MANAGER' && req.user.role !== 'SUPERADMIN') return res.status(403).json({ error: 'Ruhsat yo' });
 
     let { email, password, name, phone, photo, position, salary, role, schoolId, kpiPercent, vehicleModel, vehicleNumber, vehicleCapacity } = req.body;
+    // Haydovchining yo'l haqi tarifi (lib/transportNarx.js) — xato bo'lsa xodim ham yaratilmaydi.
+    const tarifT = req.body.vehicleTariff !== undefined ? tarifniTozalash(req.body.vehicleTariff) : null;
+    if (tarifT?.xato) return res.status(400).json({ error: tarifT.xato });
     photo = await rasmQiymatiniTozala(photo, 'user');
 
     if (req.user.role === 'MANAGER' && (role === 'ADMIN' || role === 'MANAGER')) {
@@ -663,7 +668,8 @@ app.post('/api/users', authenticate, async (req, res, next) => {
             capacity: vehicleCapacity ? parseInt(vehicleCapacity) : 4,
             status: 'Faol',
             driverId: user.id,
-            schoolId: targetSchoolId
+            schoolId: targetSchoolId,
+            ...(tarifT?.tarif ? { tarif: tarifT.tarif } : {}),
           }
         });
       } catch (e) {
@@ -726,6 +732,8 @@ app.put('/api/users/:id', authenticate, async (req, res, next) => {
     const { target } = tekshir;
 
     let { email, name, phone, photo, position, salary, role, password, workDays, kpiPercent, status, vehicleModel, vehicleNumber, vehicleCapacity } = req.body;
+    const tarifT = req.body.vehicleTariff !== undefined ? tarifniTozalash(req.body.vehicleTariff) : null;
+    if (tarifT?.xato) return res.status(400).json({ error: tarifT.xato });
     photo = await rasmQiymatiniTozala(photo, 'user');
 
     if (role !== undefined && role !== target.role) {
@@ -845,6 +853,7 @@ app.put('/api/users/:id', authenticate, async (req, res, next) => {
               ...(vehicleModel !== undefined && { model: vehicleModel }),
               ...(vehicleNumber !== undefined && { number: vehicleNumber }),
               ...(vehicleCapacity !== undefined && { capacity: parseInt(vehicleCapacity) || tr.capacity }),
+              ...(tarifT && { tarif: tarifT.tarif ?? Prisma.DbNull }),
             }
           });
         } else if (user.role === 'DRIVER') {
@@ -856,7 +865,8 @@ app.put('/api/users/:id', authenticate, async (req, res, next) => {
               capacity: vehicleCapacity ? parseInt(vehicleCapacity) : 4,
               status: 'Faol',
               driverId: user.id,
-              schoolId: user.schoolId
+              schoolId: user.schoolId,
+              ...(tarifT?.tarif ? { tarif: tarifT.tarif } : {}),
             }
           });
         }
@@ -5114,9 +5124,12 @@ async function rejaJavobi(route) {
     stops: route.stops.map(s => ({
       studentId: s.studentId, name: s.student?.name, phone: s.student?.phone,
       address: s.student?.address, location: s.student?.location, photo: s.student?.photo,
+      narx: s.narx, masofaKm: s.masofaKm,
     })),
     run: run ? { startedAt: run.startedAt, finishedAt: run.finishedAt } : null,
     holatlar,
+    // Haydovchi qancha oladi: hammasi uchun va haqiqatan olib ketilganlar uchun.
+    pul: rejaPuli(route.stops, holatlar),
   };
 }
 
@@ -5147,7 +5160,7 @@ app.get('/api/logistics/day', authenticate, async (req, res, next) => {
         where: { role: 'DRIVER', status: { not: 'Arxiv' }, ...filialXodimlariWhere([schoolId]) },
         select: {
           id: true, name: true, phone: true, telegramId: true,
-          driverTransport: { select: { id: true, name: true, model: true, number: true, capacity: true, status: true } },
+          driverTransport: { select: { id: true, name: true, model: true, number: true, capacity: true, status: true, tarif: true } },
           driverLocation: { select: { lat: true, lng: true, live: true, liveUntil: true, updatedAt: true } },
         },
         orderBy: { name: 'asc' },
@@ -5193,7 +5206,26 @@ app.post('/api/logistics/plans', authenticate, requireRole(...STAFF_MANAGERS), a
       yuborish.push({ routeId, ...(await rejaniHaydovchigaYuborish({ schoolId, routeId, sarlavha: '🆕 <b>Yangi reja</b>' })) });
     }
     const routes = await prisma.route.findMany({ where: { id: { in: natija.routeIds } }, include: REJA_INCLUDE, orderBy: { id: 'asc' } });
-    res.json({ plans: await Promise.all(routes.map(rejaJavobi)), yuborish });
+
+    // Ota-onaga: bugun kim olib boradi va yo'l haqi qancha (Sozlamalarda
+    // "Transport xabarlari" yoqilgan bo'lsa). Kutiladi — serverless javobdan
+    // keyingi ishni to'xtatadi.
+    let otaOnagaYuborildi = 0;
+    const sozlama = await prisma.setting.findUnique({ where: { schoolId }, select: { transportNotify: true } });
+    if (sozlama?.transportNotify) {
+      const bekatlar = routes.flatMap(r => r.stops.map(s => ({ route: r, studentId: s.studentId, narx: s.narx })));
+      const oquvchilar = await prisma.student.findMany({
+        where: { id: { in: bekatlar.map(b => b.studentId) } },
+        select: { id: true, name: true, phone: true, telegramId: true, fatherTelegramId: true, motherTelegramId: true, fatherPhone: true, motherPhone: true },
+      });
+      const oMap = new Map(oquvchilar.map(o => [o.id, o]));
+      for (let i = 0; i < bekatlar.length; i += 5) {
+        const natijalar = await Promise.allSettled(bekatlar.slice(i, i + 5).map(b =>
+          rejaNarxXabari({ student: oMap.get(b.studentId), route: b.route, narx: b.narx, schoolId })));
+        otaOnagaYuborildi += natijalar.filter(n => n.status === 'fulfilled' && n.value?.yuborildi > 0).length;
+      }
+    }
+    res.json({ plans: await Promise.all(routes.map(rejaJavobi)), yuborish, otaOnagaYuborildi, otaOnaXabarlari: !!sozlama?.transportNotify });
   } catch (error) { next(error); }
 });
 
@@ -5270,7 +5302,7 @@ app.get('/api/logistics/stats', authenticate, async (req, res, next) => {
       prisma.deliveryLog.findMany({
         where,
         select: {
-          id: true, date: true, status: true, studentId: true, markedAt: true,
+          id: true, date: true, status: true, studentId: true, markedAt: true, runId: true,
           student: { select: { id: true, name: true } },
           run: { select: { routeId: true, route: { select: { name: true, direction: true } } } },
         },
@@ -5287,26 +5319,45 @@ app.get('/api/logistics/stats', authenticate, async (req, res, next) => {
       }),
     ]);
 
+    // Yo'l haqi: reja tuzilganda bekatga yozilgan narx. Pul faqat haqiqatan
+    // olib ketilgan bola uchun ("Kelmadi" emas) — haydovchi shuni oladi.
+    const narxlar = await prisma.routeStop.findMany({
+      where: { routeId: { in: [...new Set(runs.map(r => r.routeId))] } },
+      select: { routeId: true, studentId: true, narx: true },
+    });
+    const narxMap = new Map(narxlar.map(n => [`${n.routeId}:${n.studentId}`, n.narx || 0]));
+    const reysMap = new Map(runs.map(r => [r.id, r]));
+    const logNarxi = (l) => {
+      if (l.status === 'Kelmadi' || !l.runId) return 0;
+      const run = reysMap.get(l.runId);
+      return run ? (narxMap.get(`${run.routeId}:${l.studentId}`) || 0) : 0;
+    };
+
     // O'quvchi bo'yicha: necha marta qatnagan, necha marta chiqmagan.
     const oquvchilar = {};
     for (const l of logs) {
       const k = l.studentId;
-      if (!oquvchilar[k]) oquvchilar[k] = { studentId: k, name: l.student?.name || '', olindi: 0, yetkazildi: 0, kelmadi: 0 };
+      if (!oquvchilar[k]) oquvchilar[k] = { studentId: k, name: l.student?.name || '', olindi: 0, yetkazildi: 0, kelmadi: 0, summa: 0 };
       if (l.status === 'Olib ketildi') oquvchilar[k].olindi++;
       else if (l.status === 'Uyiga yetkazildi') oquvchilar[k].yetkazildi++;
       else if (l.status === 'Kelmadi') oquvchilar[k].kelmadi++;
+      oquvchilar[k].summa += logNarxi(l);
     }
 
-    // Haydovchi bo'yicha: reyslar soni va o'rtacha davomiylik (daqiqa).
+    // Haydovchi bo'yicha: reyslar soni, o'rtacha davomiylik (daqiqa) va ishlagan puli.
     const haydovchilar = {};
     for (const r of runs) {
       const k = r.driver?.id || 0;
-      if (!haydovchilar[k]) haydovchilar[k] = { driverId: k, name: r.driver?.name || 'Belgilanmagan', reys: 0, tugagan: 0, jamiDaqiqa: 0 };
+      if (!haydovchilar[k]) haydovchilar[k] = { driverId: k, name: r.driver?.name || 'Belgilanmagan', reys: 0, tugagan: 0, jamiDaqiqa: 0, summa: 0 };
       haydovchilar[k].reys++;
       if (r.startedAt && r.finishedAt) {
         haydovchilar[k].tugagan++;
         haydovchilar[k].jamiDaqiqa += Math.round((new Date(r.finishedAt) - new Date(r.startedAt)) / 60000);
       }
+    }
+    for (const l of logs) {
+      const run = l.runId ? reysMap.get(l.runId) : null;
+      if (run) haydovchilar[run.driver?.id || 0].summa += logNarxi(l);
     }
     for (const h of Object.values(haydovchilar)) {
       h.ortachaDaqiqa = h.tugagan > 0 ? Math.round(h.jamiDaqiqa / h.tugagan) : null;
@@ -5333,6 +5384,7 @@ app.get('/api/logistics/stats', authenticate, async (req, res, next) => {
         yetkazildi: logs.filter(l => l.status === 'Uyiga yetkazildi').length,
         kelmadi: logs.filter(l => l.status === 'Kelmadi').length,
         oquvchi: Object.keys(oquvchilar).length,
+        summa: logs.reduce((s, l) => s + logNarxi(l), 0),
         birinchiKun: [...runs, ...logs].map(x => x.date).sort()[0] || null,
       },
       oquvchilar: Object.values(oquvchilar).sort((a, b) => b.kelmadi - a.kelmadi || b.olindi - a.olindi),
