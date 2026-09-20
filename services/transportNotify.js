@@ -134,7 +134,9 @@ export async function rejaNarxXabari({ student, route, narx, schoolId }) {
     const mashina = [route?.transport?.model || route?.transport?.name, route?.transport?.number].filter(Boolean).join(', ');
     let matn = `🚌 ${student.name} bugun darsdan keyin uyiga mashinada olib boriladi.`;
     if (route?.driver?.name) matn += `\nHaydovchi: ${route.driver.name}${mashina ? ` (${mashina})` : ''}`;
-    if (narx !== null && narx !== undefined) matn += `\nYo'l haqi: ${Number(narx).toLocaleString('ru-RU').replace(/ /g, ' ')} so'm`;
+    // Pul kassaga tushmaydi: o'quvchi mashinada haydovchiga naqd beradi
+    // (egasi, 2026-09-20). Ota-ona buni bilib tursin.
+    if (narx !== null && narx !== undefined) matn += `\nYo'l haqi: ${Number(narx).toLocaleString('ru-RU').replace(/ /g, ' ')} so'm — haydovchiga naqd beriladi`;
     return await kanalgaYuborish({ student, matn, schoolId });
   } catch (err) {
     console.error('[Transport narx xabari]', err.message);

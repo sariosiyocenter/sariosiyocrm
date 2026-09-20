@@ -526,6 +526,7 @@ export default function LogisticsHub() {
                                                             <p className="text-[11px] font-bold text-matn-2">
                                                                 Haydovchi oladi (olib ketilganlar uchun): <span className="text-emerald-600">{somMatni(p.pul.olingan)} so'm</span>
                                                                 <span className="text-matn-xira"> / rejada {somMatni(p.pul.jami)} so'm</span>
+                                                                <span className="block text-[10px] font-bold text-matn-xira">Naqd: o'quvchi mashinada haydovchiga to'laydi — kassaga tushmaydi va qarziga yozilmaydi.</span>
                                                             </p>
                                                         )}
                                                         <div className="rounded-xl border border-chiziq divide-y divide-chiziq-mayin">
@@ -799,6 +800,7 @@ export default function LogisticsHub() {
                                 </button>
                                 <p className="text-[10px] font-bold text-matn-xira leading-relaxed">
                                     Tizim bolalarni mashina sig'imi va uylar joylashuviga qarab o'zi bo'ladi. Tasdiqlashdan oldin istalgan bolani boshqa haydovchiga o'tkazish mumkin; tasdiqlangach reja har bir haydovchining Telegramiga o'zi boradi.
+                                    Yo'l haqini o'quvchi mashinada haydovchiga naqd to'laydi — kassaga tushmaydi va qarziga yozilmaydi.
                                 </p>
                             </div>
                         </div>
@@ -816,7 +818,7 @@ export default function LogisticsHub() {
                                 <h3 className="text-base font-black text-matn">Taqsimot — {sana}</h3>
                                 <p className="text-[11px] font-bold text-matn-xira mt-0.5">
                                     {taqsimot.rejalar.reduce((s, r) => s + r.studentIds.length, 0)} ta o'quvchi · {taqsimot.rejalar.length} ta reja
-                                · yo'l haqi jami {somMatni(rejaSummasi(taqsimot.rejalar.flatMap(r => r.studentIds.map(id => bolaNarxi(r.driverId, id).narx))).jami)} so'm
+                                · yo'l haqi jami {somMatni(rejaSummasi(taqsimot.rejalar.flatMap(r => r.studentIds.map(id => bolaNarxi(r.driverId, id).narx))).jami)} so'm (naqd)
                                     {taqsimot.sigmagan.length > 0 && <span className="text-rose-600"> · {taqsimot.sigmagan.length} tasi sig'madi</span>}
                                 </p>
                             </div>

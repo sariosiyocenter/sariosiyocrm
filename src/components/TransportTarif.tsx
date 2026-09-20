@@ -35,6 +35,7 @@ export default function TransportTarif({ value, onChange }: { value: Tarif | nul
     return (
         <div className="space-y-2.5">
             <p className="text-[11px] font-extrabold text-amber-700 dark:text-amber-400">💰 Yo'l haqi (bir o'quvchi uchun)</p>
+            <p className="text-[10px] font-bold text-matn-xira">O'quvchi bu pulni mashinada haydovchiga naqd beradi — kassaga tushmaydi.</p>
             <div className="flex flex-wrap gap-1.5">
                 {([[null, 'Kiritilmagan'], ['bir', 'Hammaga bir xil'], ['masofa', 'Masofaga qarab']] as const).map(([k, nom]) => (
                     <button key={String(k)} type="button"

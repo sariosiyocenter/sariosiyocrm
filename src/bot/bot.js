@@ -89,7 +89,7 @@ const reysKorinishi = (route, holat, sana) => {
     // Yo'l haqi reja tuzilganda hisoblangan: haydovchi oldindan qancha olishini biladi.
     const pul = rejaPuli(route.stops, b);
     if (pul.jami > 0 || pul.aniqlanmagan < route.stops.length) {
-        matn += `💰 Hammasini olib borsangiz: <b>${somMatni(pul.jami)} so'm</b>`;
+        matn += `💰 Hammasini olib borsangiz: <b>${somMatni(pul.jami)} so'm</b> (naqd, o'quvchidan)`;
         if (pul.aniqlanmagan) matn += ` (${pul.aniqlanmagan} tasining narxi aniqlanmagan)`;
         matn += '\n';
         if (run?.startedAt && pul.olingan !== pul.jami) matn += `💵 Olib ketilganlar uchun: <b>${somMatni(pul.olingan)} so'm</b>\n`;
