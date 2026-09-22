@@ -425,6 +425,8 @@ export interface CRMState {
         /** TELEGRAM | SMS | BOTH. */
         transportChannel?: string;
         telegram?: string;
+        /** Oylik hisob har oyning nechanchi kunida yoziladi (1-28, sukut 1). */
+        billingDay?: number;
         instagram?: string;
         workingHours?: string;
         eskizEmail?: string;

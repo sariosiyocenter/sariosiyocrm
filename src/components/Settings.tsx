@@ -3,7 +3,7 @@ import {
     Building2, Plus, ChevronDown, ChevronRight, ShieldCheck, Trash2, Save, X,
     Layout, MapPin, Bus, BookOpen, DoorOpen, Globe, Phone, Clock, Camera,
     Instagram, Send, Shield, ToggleLeft, ToggleRight, Pencil,
-    Zap, Lock, Link2, ExternalLink, MessageSquare, Compass, CreditCard
+    Zap, Lock, Link2, ExternalLink, MessageSquare, Compass, CreditCard, CalendarClock
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useCRM, THEMES } from '../context/CRMContext';
@@ -465,6 +465,41 @@ export default function Settings() {
                         className="flex items-center gap-2 px-4 py-2.5 bg-brand hover:bg-brand-dark text-white rounded-xl text-[11px] font-extrabold shadow-sm shadow-[#1b6b6b]/20 transition-all cursor-pointer shrink-0">
                         <Zap size={13} /> Qoidalarni boshqarish
                     </button>
+                </div>
+
+                {/* Oylik hisob kuni — egasi (2026-09-22) o'zi belgilay olishini so'radi. */}
+                <div className="bg-sirt border border-chiziq rounded-2xl p-5 shadow-sm space-y-4">
+                    <div className="flex items-start justify-between gap-4">
+                        <div className="min-w-0">
+                            <p className="text-xs font-black text-matn tracking-wide flex items-center gap-2">
+                                <CalendarClock size={14} className="text-brand shrink-0" /> Oylik hisob kuni
+                            </p>
+                            <p className="text-[11px] font-bold text-matn-xira mt-1 leading-relaxed">
+                                Har oyning shu kunida hamma faol o'quvchiga kurs oyligi yoziladi.
+                                Kursga birinchi marta oy o'rtasida qo'shilgan o'quvchiga esa faqat
+                                qolgan darslar hisoblanadi — u «kursga kelgan sana»sidan boshlanadi.
+                            </p>
+                        </div>
+                        <div className="shrink-0 flex items-center gap-2">
+                            <input
+                                type="number" min={1} max={28}
+                                className="w-20 px-3 py-2.5 bg-ichki border border-chiziq rounded-xl text-xs font-bold text-matn text-center outline-none focus:border-brand"
+                                value={profileForm?.billingDay ?? 1}
+                                onChange={e => setProfileForm(p => ({ ...p, billingDay: Math.min(28, Math.max(1, Number(e.target.value) || 1)) }))}
+                            />
+                            <span className="text-[11px] font-bold text-matn-xira">- kun</span>
+                        </div>
+                    </div>
+                    <p className="text-[10px] font-bold text-matn-xira">
+                        1 dan 28 gacha (29–31 hamma oyda ham bo'lavermaydi). Hozir:
+                        <span className="num text-matn-2"> har oyning {profileForm?.billingDay ?? 1}-kuni</span>.
+                    </p>
+                    <div className="flex justify-end pt-3 border-t border-dashed border-chiziq/50">
+                        <button type="button" disabled={isSaving} onClick={() => { setIsSaving(true); updateSettings(profileForm).finally(() => setIsSaving(false)); }}
+                            className="px-5 py-2.5 bg-brand hover:bg-brand-dark disabled:opacity-50 text-white rounded-xl text-[11px] font-extrabold flex items-center gap-2 shadow-sm shadow-[#1b6b6b]/20 transition-all cursor-pointer">
+                            <Save size={13} />{isSaving ? t('saving') : t('save')}
+                        </button>
+                    </div>
                 </div>
 
                 {/* Transport xabari jadval bo'yicha emas, hodisa bo'yicha ketadi:

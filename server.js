@@ -11,7 +11,7 @@ import { webhookSecretOk, registerSchoolWebhook, selfHealWebhook } from './lib/t
 import { MODES as PAYME_MODES, SCHEMES as PAYME_SCHEMES, generateEndpointToken as generatePaymeEndpointToken } from './services/payme.js';
 import { authenticate, requireRole, STAFF_MANAGERS, canAccessSchool, allowedSchoolIds, ALL_BRANCHES, isOrgWide, forgetUser, sameOrganization, organizationSchoolIds } from './middleware/auth.js';
 import { encryptSecret, decryptSecret, secretsEncryptionEnabled } from './lib/secrets.js';
-import { claimBillingRun, releaseBillingRun, processMonthlyBilling } from './services/billing.js';
+import { claimBillingRun, releaseBillingRun, processMonthlyBilling, billingDayOf, billingDayReached, normalizeBillingDay } from './services/billing.js';
 import jwt from 'jsonwebtoken';
 import bot, { startBot, notifyAdmins, getTelegramBot, rejaniHaydovchigaYuborish, rejaBekorXabari } from './src/bot/bot.js';
 import { transferStudent, refundStudent, enrollStudent, unenrollStudent, syncGroupMembers, activateStudent, syncStudentGroups, setCourseStart, effectiveCourseStart, todayTashkent } from './services/enrollment.js';
@@ -4248,6 +4248,8 @@ app.put('/api/settings', authenticate, async (req, res, next) => {
     if (data.paymeMode !== undefined && !PAYME_MODES.includes(data.paymeMode)) {
       return res.status(400).json({ error: "Payme rejimi noto'g'ri" });
     }
+    // Oylik hisob kuni: 1–28 (29–31 hamma oyda yo'q).
+    if (data.billingDay !== undefined) data.billingDay = normalizeBillingDay(data.billingDay);
     if (data.paymeVatPercent !== undefined) {
       const vat = parseInt(data.paymeVatPercent);
       data.paymeVatPercent = Number.isInteger(vat) && vat >= 0 && vat <= 100 ? vat : 0;
@@ -7337,13 +7339,18 @@ app.get('/api/billing/status', authenticate, async (req, res, next) => {
       select: { id: true },
     }));
 
-    const now = new Date();
-    const currentMonthStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+    const today = todayTashkent();
+    const currentMonthStr = today.slice(0, 7);
 
     // Billing runs lazily: the first view of a month charges it. Two staff opening the
     // finance screen at once used to run it twice and charge every student twice over,
     // so the run is claimed first and only the winner bills.
-    if (!billingDone && month <= currentMonthStr) {
+    //
+    // Joriy oy uchun hisob kuni kelishi kerak: markaz "oylik har oyning
+    // 5-kunida" desa, 3-sanada Moliya ochilgani oyni erta yozib qo'ymasin.
+    // O'tgan oylar esa ochilishi bilan yopiladi.
+    const kuniKeldi = month < currentMonthStr || await billingDayReached(sid, today);
+    if (!billingDone && month <= currentMonthStr && kuniKeldi) {
       if (await claimBillingRun(sid, month)) {
         await processMonthlyBilling(sid, month);
       }
@@ -7396,7 +7403,7 @@ app.get('/api/billing/status', authenticate, async (req, res, next) => {
       };
     });
 
-    res.json({ billingDone, students, groups: groupBreakdown, month });
+    res.json({ billingDone, billingDay: await billingDayOf(sid), students, groups: groupBreakdown, month });
   } catch (err) { next(err); }
 });
 
@@ -7521,9 +7528,17 @@ app.get('/api/billing/auto-process', async (req, res, next) => {
     // Oy O'zbekiston vaqti bo'yicha: Vercel UTC da ishlaydi, 1-kuni 00:00 UTC
     // allaqachon 05:00 mahalliy — baribir yangi oy, lekin boshqa vaqtda
     // chaqirilsa ham to'g'ri oy olinsin.
-    const month = toDateStr().slice(0, 7);
+    const today = toDateStr();
+    const month = today.slice(0, 7);
     const results = [];
     for (const school of schools) {
+      // Cron endi har kuni chaqiriladi: filial o'z hisob kunini tanlaydi
+      // (sukut — oyning 1-kuni). Kun kelmagan bo'lsa hech narsa qilinmaydi,
+      // qulf ham olinmaydi — keyingi kuni yana ko'riladi.
+      if (!(await billingDayReached(school.id, today))) {
+        results.push({ schoolId: school.id, schoolName: school.name, skipped: 'kun-kelmadi', month });
+        continue;
+      }
       // /api/billing/status bilan bir xil qulf: (filial, oy) bir marta. Ilgari
       // qulfsiz edi — har chaqiruv o'sha oyda hali hisoblanmagan juftliklarni
       // qayta ko'rib chiqardi (masalan oy o'rtasida qo'shilganlarni ham).

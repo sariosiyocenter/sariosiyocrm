@@ -6,7 +6,7 @@
   "crons": [
     {
       "path": "/api/billing/auto-process",
-      "schedule": "0 0 1 * *"
+      "schedule": "0 1 * * *"
     },
     {
       "path": "/api/messaging/auto-process",

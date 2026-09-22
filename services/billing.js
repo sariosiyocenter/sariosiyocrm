@@ -21,13 +21,48 @@ export async function releaseBillingRun(schoolId, month) {
   await prisma.billingRun.deleteMany({ where: { schoolId, month } });
 }
 
+/** Oylik hisob kuni: 1–28 (29–31 hamma oyda yo'q). Sukut — oyning 1-kuni. */
+export const DEFAULT_BILLING_DAY = 1;
+
+export function normalizeBillingDay(value) {
+  const day = parseInt(value);
+  if (!Number.isInteger(day)) return DEFAULT_BILLING_DAY;
+  return Math.min(28, Math.max(1, day));
+}
+
+/**
+ * Markazning oylik hisob kuni. Egasi (2026-09-22) "har doim oyni boshida"
+ * dedi, shuning uchun sukut bo'yicha 1-kun; Sozlamalardan o'zgartiriladi.
+ */
+export async function billingDayOf(schoolId) {
+  try {
+    const s = await prisma.setting.findUnique({
+      where: { schoolId: Number(schoolId) },
+      select: { billingDay: true },
+    });
+    return normalizeBillingDay(s?.billingDay);
+  } catch {
+    return DEFAULT_BILLING_DAY;
+  }
+}
+
+/** Bugun (Toshkent vaqti) shu filialning oylik hisob kuni keldimi. */
+export async function billingDayReached(schoolId, todayStr) {
+  const day = await billingDayOf(schoolId);
+  return parseInt(String(todayStr).slice(8, 10)) >= day;
+}
+
 export async function processMonthlyBilling(schoolId, month) {
   const [year, monthNum] = month.split('-').map(Number);
   if (!Number.isInteger(year) || !Number.isInteger(monthNum) || monthNum < 1 || monthNum > 12) {
     throw new Error(`Noto'g'ri oy formati: ${month} (kutilgan "YYYY-MM")`);
   }
   const lastDay = new Date(year, monthNum, 0).getDate();
-  const dateStr = `${year}-${String(monthNum).padStart(2, '0')}-${lastDay}`;
+  // Hisob yozuvining sanasi — markazning oylik hisob kuni ("Oylik hisoblandi
+  // 01.10.2026"). Ilgari bu doim oyning oxirgi kuni edi: hisob 1-sanada
+  // yozilsa ham tarixda 31-sana ko'rinardi.
+  const day = Math.min(await billingDayOf(schoolId), lastDay);
+  const dateStr = `${year}-${String(monthNum).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
   const monthNames = ['Yanvar','Fevral','Mart','Aprel','May','Iyun','Iyul','Avgust','Sentabr','Oktabr','Noyabr','Dekabr'];
   const monthLabel = `${monthNames[monthNum - 1]} ${year}`;
 

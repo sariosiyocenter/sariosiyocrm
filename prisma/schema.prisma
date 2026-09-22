@@ -589,6 +589,13 @@ model Setting {
   // Telegram webhook siri (setWebhook secret_token). Har update sarlavhasi
   // shu bilan solishtiriladi; brauzerga qaytarilmaydi.
   telegramWebhookSecret String?
+
+  // Oylik hisob har oyning nechanchi kunida yoziladi (egasi, 2026-09-22:
+  // "har doim oyni boshida"). 1–28 oralig'ida: 29–31 hamma oyda yo'q.
+  // Kursga birinchi marta oy o'rtasida qo'shilgan o'quvchiga bu tegishli
+  // emas — unga o'sha kundan qolgan darslar hisoblanadi
+  // (services/enrollment.js).
+  billingDay       Int      @default(1)
   instagram        String?
   workingHours     String?
   eskizEmail       String?

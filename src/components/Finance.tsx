@@ -80,7 +80,7 @@ export default function Finance() {
     const [billingMonth, setBillingMonth] = useState(() => {
         const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
     });
-    const [billingData, setBillingData] = useState<{ billingDone: boolean; students: any[]; groups: any[] } | null>(null);
+    const [billingData, setBillingData] = useState<{ billingDone: boolean; billingDay?: number; students: any[]; groups: any[] } | null>(null);
     const [billingLoading, setBillingLoading] = useState(false);
     const [billingProcessing, setBillingProcessing] = useState(false);
     const [billingFilter, setBillingFilter] = useState<'all' | 'paid' | 'partial' | 'unpaid'>('all');
@@ -1163,7 +1163,8 @@ export default function Finance() {
                             <div className={`flex items-center gap-2 px-4 py-3 rounded-2xl border text-[11px] font-bold ${billingData.billingDone ? 'bg-emerald-50 dark:bg-emerald-950/20 border-emerald-100 dark:border-emerald-900/40 text-emerald-700 dark:text-emerald-400' : 'bg-gray-50 dark:bg-gray-950/20 border-gray-100 dark:border-gray-900/40 text-matn-sokin'}`}>
                                 {billingData.billingDone
                                     ? <><CheckCircle2 size={14} /> {billingMonthLabel(billingMonth)} — oylik hisob-kitob avtomatik o'tkazilgan</>
-                                    : <><AlertCircle size={14} /> {billingMonthLabel(billingMonth)} — kelgusi oy uchun hisob-kitob hali boshlanmagan</>
+                                    : <><AlertCircle size={14} /> {billingMonthLabel(billingMonth)} — hisob-kitob hali boshlanmagan
+                                        {billingData.billingDay ? ` (har oyning ${billingData.billingDay}-kunida yoziladi)` : ''}</>
                                 }
                             </div>
                         )}
