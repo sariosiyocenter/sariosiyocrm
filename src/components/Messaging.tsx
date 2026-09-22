@@ -797,20 +797,33 @@ export default function Messaging() {
     // {qarz} — tanlangan kurs bo'yicha qarz. Fizika uchun xabar yuborilayotgan
     // bo'lsa matematikaning qarzi qo'shilib ketmaydi.
     const debt = qarzMiqdori(st) || (balance < 0 ? Math.abs(balance) : 0);
-    const groupNames = (st.groups || [])
+    // O'quvchining kurslari — nomi, fani va ustozi ({kurs}, {fan}, {ustoz}).
+    const oqKurslari = (st.groups || [])
       .map(g => {
-        const groupIdVal = typeof g === 'object' && g !== null ? g.id : Number(g);
-        return (groups || []).find(gr => gr.id === groupIdVal)?.name;
+        const groupIdVal = typeof g === 'object' && g !== null ? (g as any).id : Number(g);
+        return (groups || []).find(gr => gr.id === groupIdVal);
       })
-      .filter(Boolean)
-      .join(', ') || 'Noma\'lum Guruh';
+      .filter(Boolean) as any[];
+    const groupNames = oqKurslari.map(g => g.name).filter(Boolean).join(', ') || "Kurs tanlanmagan";
+    const fanNomlari = [...new Set(oqKurslari.map(g =>
+      g.courseName || (courses || []).find((c: any) => c.id === g.courseId)?.name
+    ).filter(Boolean))].join(', ');
+    const ustozNomlari = [...new Set(oqKurslari.map(g =>
+      g.teacherName || (teachers || []).find((tc: any) => tc.id === g.teacherId)?.name
+    ).filter(Boolean))].join(', ');
     const schoolName = schools.find(s => s.id === (selectedSchoolId || st.schoolId))?.name || 'Quantum Edu';
 
     return messageText
       .replace(/\{ism\}/gi, st.name)
       .replace(/\{qarz\}/gi, debt.toLocaleString() + " so'm")
       .replace(/\{balans\}/gi, balance.toLocaleString() + " so'm")
+      .replace(/\{kurs\}/gi, groupNames)
       .replace(/\{guruh\}/gi, groupNames)
+      .replace(/\{fan\}/gi, fanNomlari)
+      .replace(/\{ustoz\}/gi, ustozNomlari)
+      // Oxirgi imtihon natijasi yuborish paytida qo'shiladi (serverda) —
+      // ko'rinishda shunchaki namuna ko'rsatiladi.
+      .replace(/\{testnatijasi\}/gi, 'oxirgi imtihon natijasi')
       .replace(/\{markaz\}/gi, schoolName);
   };
 
@@ -1486,7 +1499,12 @@ export default function Messaging() {
                 <button type="button" onClick={() => insertVariable('{ism}')} className="px-2.5 py-1.5 bg-slate-100 dark:bg-slate-800 text-[11px] font-bold text-slate-700 dark:text-slate-300 rounded-lg hover:bg-brand/10 dark:hover:bg-brand border border-slate-200 dark:border-slate-700 transition-all cursor-pointer">ism</button>
                 <button type="button" onClick={() => insertVariable('{qarz}')} className="px-2.5 py-1.5 bg-slate-100 dark:bg-slate-800 text-[11px] font-bold text-slate-700 dark:text-slate-300 rounded-lg hover:bg-brand/10 dark:hover:bg-brand border border-slate-200 dark:border-slate-700 transition-all cursor-pointer">qarz</button>
                 <button type="button" onClick={() => insertVariable('{balans}')} className="px-2.5 py-1.5 bg-slate-100 dark:bg-slate-800 text-[11px] font-bold text-slate-700 dark:text-slate-300 rounded-lg hover:bg-brand/10 dark:hover:bg-brand border border-slate-200 dark:border-slate-700 transition-all cursor-pointer">balans</button>
-                <button type="button" onClick={() => insertVariable('{guruh}')} className="px-2.5 py-1.5 bg-slate-100 dark:bg-slate-800 text-[11px] font-bold text-slate-700 dark:text-slate-300 rounded-lg hover:bg-brand/10 dark:hover:bg-brand border border-slate-200 dark:border-slate-700 transition-all cursor-pointer">guruh</button>
+                {/* "guruh" o'rniga "kurs" (egasi, 2026-09-23). Eski shablonlardagi
+                    {guruh} baribir ishlaydi, lekin bu yerda taklif qilinmaydi. */}
+                <button type="button" onClick={() => insertVariable('{kurs}')} className="px-2.5 py-1.5 bg-slate-100 dark:bg-slate-800 text-[11px] font-bold text-slate-700 dark:text-slate-300 rounded-lg hover:bg-brand/10 dark:hover:bg-brand border border-slate-200 dark:border-slate-700 transition-all cursor-pointer">kurs</button>
+                <button type="button" onClick={() => insertVariable('{fan}')} className="px-2.5 py-1.5 bg-slate-100 dark:bg-slate-800 text-[11px] font-bold text-slate-700 dark:text-slate-300 rounded-lg hover:bg-brand/10 dark:hover:bg-brand border border-slate-200 dark:border-slate-700 transition-all cursor-pointer">fan</button>
+                <button type="button" onClick={() => insertVariable('{ustoz}')} className="px-2.5 py-1.5 bg-slate-100 dark:bg-slate-800 text-[11px] font-bold text-slate-700 dark:text-slate-300 rounded-lg hover:bg-brand/10 dark:hover:bg-brand border border-slate-200 dark:border-slate-700 transition-all cursor-pointer">ustoz</button>
+                <button type="button" onClick={() => insertVariable('{testnatijasi}')} className="px-2.5 py-1.5 bg-slate-100 dark:bg-slate-800 text-[11px] font-bold text-slate-700 dark:text-slate-300 rounded-lg hover:bg-brand/10 dark:hover:bg-brand border border-slate-200 dark:border-slate-700 transition-all cursor-pointer">testnatijasi</button>
                 <button type="button" onClick={() => insertVariable('{markaz}')} className="px-2.5 py-1.5 bg-slate-100 dark:bg-slate-800 text-[11px] font-bold text-slate-700 dark:text-slate-300 rounded-lg hover:bg-brand/10 dark:hover:bg-brand border border-slate-200 dark:border-slate-700 transition-all cursor-pointer">markaz</button>
               </div>
             </div>
@@ -1581,7 +1599,7 @@ export default function Messaging() {
                       </span>
                     );
                   })()}
-                  <span className="block">O'zgaruvchilar: {"{ism}"}, {"{qarz}"}, {"{balans}"}, {"{guruh}"}, {"{markaz}"}</span>
+                  <span className="block">O'zgaruvchilar: {"{ism}"}, {"{qarz}"}, {"{balans}"}, {"{kurs}"}, {"{fan}"}, {"{ustoz}"}, {"{testnatijasi}"}, {"{markaz}"}</span>
                 </div>
               </div>
             ))}
@@ -2078,7 +2096,7 @@ export default function Messaging() {
                 className="w-full px-3 py-2 bg-slate-55 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-semibold text-slate-800 dark:text-slate-200 outline-none focus:border-brand transition-all resize-none"
               />
               <div className="text-[11px] font-bold text-slate-400 dark:text-slate-500 mt-1">
-                O'zgaruvchilar: {"{ism}"}, {"{qarz}"}, {"{balans}"}, {"{guruh}"}, {"{markaz}"}
+                O'zgaruvchilar: {"{ism}"}, {"{qarz}"}, {"{balans}"}, {"{kurs}"}, {"{fan}"}, {"{ustoz}"}, {"{testnatijasi}"}, {"{markaz}"}
               </div>
             </div>
 
@@ -2150,6 +2168,29 @@ export default function Messaging() {
                     return <option key={hourStr} value={hourStr}>{hourStr}</option>;
                   })}
                 </select>
+              </div>
+            </div>
+
+            {/* Qoida holati: yaratayotganda ham tanlanadi (egasi, 2026-09-23).
+                Passiv qoida saqlanadi, lekin xabar yubormaydi. */}
+            <div>
+              <label className={lbl}>Qoida holati *</label>
+              <div className="grid grid-cols-2 gap-2">
+                {[{ v: true, label: '✓ Faol', izoh: 'xabar yuboradi' }, { v: false, label: '⏸ Passiv', izoh: 'yubormaydi' }].map(h => (
+                  <button
+                    key={String(h.v)}
+                    type="button"
+                    onClick={() => setAutoRuleForm({ ...autoRuleForm, enabled: h.v })}
+                    className={`px-2.5 py-2 rounded-xl text-xs font-bold border transition-all cursor-pointer ${
+                      autoRuleForm.enabled === h.v
+                        ? (h.v ? 'bg-emerald-500/10 border-emerald-500 text-emerald-600 dark:text-emerald-400' : 'bg-slate-200/60 dark:bg-slate-700/60 border-slate-400 dark:border-slate-500 text-slate-600 dark:text-slate-300')
+                        : 'bg-slate-50 dark:bg-slate-800/80 border-slate-200 dark:border-slate-700/80 text-slate-500 dark:text-slate-400 hover:border-slate-300 dark:hover:border-slate-600'
+                    }`}
+                  >
+                    {h.label}
+                    <span className="block text-[10px] font-semibold opacity-70">{h.izoh}</span>
+                  </button>
+                ))}
               </div>
             </div>
 
@@ -2255,7 +2296,7 @@ export default function Messaging() {
                 className="w-full px-3 py-2 bg-slate-55 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-semibold text-slate-800 dark:text-slate-200 outline-none focus:border-brand transition-all resize-none"
               />
               <div className="text-[11px] font-bold text-slate-400 dark:text-slate-500 mt-1">
-                O'zgaruvchilar: {"{ism}"}, {"{qarz}"}, {"{balans}"}, {"{guruh}"}, {"{markaz}"}, {"{imtihon_nomi}"}, {"{imtihon_ball}"}, {"{imtihon_foiz}"}, {"{to_lov_summa}"}, {"{bahosi}"}
+                O'zgaruvchilar: {"{ism}"}, {"{qarz}"}, {"{balans}"}, {"{kurs}"}, {"{fan}"}, {"{ustoz}"}, {"{testnatijasi}"}, {"{markaz}"}, {"{imtihon_nomi}"}, {"{imtihon_ball}"}, {"{imtihon_foiz}"}, {"{to_lov_summa}"}, {"{bahosi}"}
               </div>
             </div>
 

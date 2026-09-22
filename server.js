@@ -12,6 +12,7 @@ import { MODES as PAYME_MODES, SCHEMES as PAYME_SCHEMES, generateEndpointToken a
 import { authenticate, requireRole, STAFF_MANAGERS, canAccessSchool, allowedSchoolIds, ALL_BRANCHES, isOrgWide, forgetUser, sameOrganization, organizationSchoolIds } from './middleware/auth.js';
 import { encryptSecret, decryptSecret, secretsEncryptionEnabled } from './lib/secrets.js';
 import { claimBillingRun, releaseBillingRun, processMonthlyBilling, billingDayOf, billingDayReached, normalizeBillingDay } from './services/billing.js';
+import { fillTemplate, testNatijasiKerak } from './lib/xabarMatni.js';
 import jwt from 'jsonwebtoken';
 import bot, { startBot, notifyAdmins, getTelegramBot, rejaniHaydovchigaYuborish, rejaBekorXabari } from './src/bot/bot.js';
 import { transferStudent, refundStudent, enrollStudent, unenrollStudent, syncGroupMembers, activateStudent, syncStudentGroups, setCourseStart, effectiveCourseStart, todayTashkent } from './services/enrollment.js';
@@ -6180,32 +6181,26 @@ app.get('/api/sms/test-connection', authenticate, async (req, res, next) => {
 
 // ==================== MESSAGING MODULE ====================
 
-// Shablon o'zgaruvchilarini to'ldirish: {ism} {qarz} {balans} {guruh} {markaz}
-function fillTemplate(body, student, groupsForStudent, school) {
-  const balance = Number(student.balance || 0);
-  const debt = balance < 0 ? Math.abs(balance) : 0;
-  const groupNames = (groupsForStudent || []).map(g => g.name).join(', ');
-
-  // Custom trigger properties
-  const examName = student.customExamName || '';
-  const examScore = student.customExamScore !== undefined ? String(student.customExamScore) : '';
-  const examPercentage = student.customExamPercentage !== undefined ? `${student.customExamPercentage}%` : '';
-  const paymentAmount = student.customPaymentAmount !== undefined ? student.customPaymentAmount.toLocaleString() : '';
-  const dailyScore = student.customDailyScore !== undefined ? String(student.customDailyScore) : '';
-
-  return String(body || '')
-    .replace(/\{ism\}/gi, student.name || '')
-    .replace(/@name/gi, student.name || '')
-    .replace(/\{qarz\}/gi, debt.toLocaleString())
-    .replace(/\{balans\}/gi, balance.toLocaleString())
-    .replace(/\{guruh\}/gi, groupNames)
-    .replace(/\{markaz\}/gi, school?.name || '')
-    .replace(/\{imtihon_nomi\}/gi, examName)
-    .replace(/\{imtihon_ball\}/gi, examScore)
-    .replace(/\{imtihon_foiz\}/gi, examPercentage)
-    .replace(/\{to_lov_summa\}/gi, paymentAmount)
-    .replace(/\{bahosi\}/gi, dailyScore);
+/**
+ * Har o'quvchining oxirgi imtihon natijasi — {testnatijasi} uchun.
+ * Faqat matnda shu o'zgaruvchi bo'lsa chaqiriladi: 400 ta o'quvchiga xabar
+ * yuborilganda keraksiz so'rov bo'lmasin.
+ */
+async function getLastExamMap(schoolId, studentIds) {
+  const map = {};
+  if (!studentIds || studentIds.length === 0) return map;
+  const rows = await prisma.examResult.findMany({
+    where: { schoolId, studentId: { in: studentIds } },
+    select: { studentId: true, score: true, percentage: true, scannedAt: true, exam: { select: { name: true, date: true } } },
+    orderBy: { scannedAt: 'desc' },
+  });
+  for (const r of rows) {
+    if (map[r.studentId]) continue;   // birinchisi — eng yangisi
+    map[r.studentId] = { name: r.exam?.name || '', score: r.score, percentage: r.percentage };
+  }
+  return map;
 }
+
 
 // Bitta o'quvchiga tanlangan kanal(lar) orqali yuborish
 // Reject a promise if it doesn't settle within `ms` — keeps batches fast
@@ -6300,13 +6295,18 @@ async function sendToOne({ student, message, channel, recipientTo, type, schoolI
 async function getStudentGroupsMap(schoolId) {
   const groups = await prisma.group.findMany({
     where: { schoolId },
-    include: { students: { select: { id: true } } }
+    // Fan nomi va ustoz ham kerak: xabar matnida {fan} va {ustoz} bor.
+    include: {
+      students: { select: { id: true } },
+      course: { select: { name: true } },
+      teacher: { select: { name: true } },
+    }
   });
-  const map = {}; // studentId -> [{id,name}]
+  const map = {}; // studentId -> [{id, name, courseName, teacherName}]
   for (const g of groups) {
     for (const s of g.students) {
       if (!map[s.id]) map[s.id] = [];
-      map[s.id].push({ id: g.id, name: g.name });
+      map[s.id].push({ id: g.id, name: g.name, courseName: g.course?.name || '', teacherName: g.teacher?.name || '' });
     }
   }
   return map;
@@ -6365,6 +6365,12 @@ app.post('/api/messaging/send-batch', authenticate, requireRole(...STAFF_MANAGER
       for (const recipient of recipients) {
         tasks.push({ student: recipient, recipientTo: targetTo, groups: groupsMap[recipient.id] || [] });
       }
+    }
+
+    // {testnatijasi} ishlatilgan bo'lsa — har kimning oxirgi imtihon natijasi.
+    if (testNatijasiKerak(message) && audience === 'STUDENTS') {
+      const examMap = await getLastExamMap(schoolId, tasks.map(t => t.student.id).filter(Boolean));
+      for (const task of tasks) task.student.lastExam = examMap[task.student.id];
     }
 
     // Send SYNCHRONOUSLY with high concurrency — on Vercel serverless,
@@ -6806,6 +6812,11 @@ async function runAutoProcessJobs() {
         }
       });
       
+      if (testNatijasiKerak(rule.body)) {
+        const examMap = await getLastExamMap(schoolId, targets.map(s => s.id).filter(Boolean));
+        for (const s of targets) s.lastExam = examMap[s.id];
+      }
+
       const concurrencyLimit = 10;
       for (let i = 0; i < targets.length; i += concurrencyLimit) {
         const chunk = targets.slice(i, i + concurrencyLimit);
