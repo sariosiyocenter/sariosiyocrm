@@ -38,6 +38,8 @@ export interface Student {
     certType?: string;
     certScore?: string;
     customPrices?: any;
+    /** Qaysi kursga qaysi kundan kelib boshlagani: { "<kurs id>": "2026-09-15" }. */
+    courseStart?: Record<string, string> | null;
     certificates?: any;
     orgType?: string;
     region?: string;
@@ -162,6 +164,11 @@ export interface Payment {
      */
     groupId?: number | null;
     schoolId: number;
+    /** Yozuv bazaga qachon tushgani — tahrirlash oynasi (10 daqiqa) shunga qaraydi. */
+    createdAt?: string;
+    /** Tahrirlangan bo'lsa: qachon va kim. */
+    editedAt?: string | null;
+    editedById?: number | null;
 }
 
 export interface Expense {

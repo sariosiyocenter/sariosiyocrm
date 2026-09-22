@@ -3,7 +3,7 @@ import {
     TrendingUp, TrendingDown, DollarSign, Wallet,
     Plus, X, Trash2, Search, ChevronRight, BarChart2,
     AlertCircle, CreditCard, ArrowUpRight, Calendar,
-    RefreshCw, CheckCircle2, MessageSquare, ChevronLeft, Users, Banknote
+    RefreshCw, CheckCircle2, MessageSquare, ChevronLeft, Users, Banknote, Pencil
 } from 'lucide-react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useCRM } from '../context/CRMContext';
@@ -18,6 +18,7 @@ import { activeCourses } from '../lib/activeCourses';
 import { isCashIncome } from '../lib/money';
 import KassaPanel from './KassaPanel';
 import PaymeLinkModal from './PaymeLinkModal';
+import PaymentEditModal, { canEditPayment } from './PaymentEditModal';
 
 const inp = "w-full px-4 py-3 bg-slate-50 dark:bg-[#1a2232] border border-chiziq rounded-xl text-sm font-semibold text-slate-900 dark:text-white focus:border-brand focus:ring-2 focus:ring-brand/20 outline-none transition-all";
 const lbl = "block text-[11px] font-extrabold   text-matn-xira mb-2";
@@ -36,7 +37,7 @@ const downloadCSV = (filename: string, rows: Record<string, any>[]) => {
 };
 
 export default function Finance() {
-    const { students, payments, expenses, addPayment, addExpense, deleteExpense, groups, courses, token, selectedSchoolId, teachers, settings, showNotification } = useCRM();
+    const { students, payments, expenses, addPayment, addExpense, deleteExpense, groups, courses, token, selectedSchoolId, teachers, settings, showNotification, retryLoad, user } = useCRM();
     const confirm = useConfirm();
 
     // HR users (staff list for salary expense) — faqat tanlangan filial xodimlari.
@@ -169,6 +170,8 @@ export default function Finance() {
     };
 
     const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
+    // To'lovni tahrirlash oynasi (resepshn 10 daqiqa, admin doim).
+    const [editingPayment, setEditingPayment] = useState<Payment | null>(null);
     const [isSavingPayment, setIsSavingPayment] = useState(false);
     const [isExpenseModalOpen, setIsExpenseModalOpen] = useState(false);
     const [expenseCustomCat, setExpenseCustomCat] = useState('');
@@ -1355,6 +1358,17 @@ export default function Finance() {
                                         </div>
                                         <div className="flex items-center gap-2 shrink-0">
                                             <span className="text-xs font-black text-emerald-600 tabular-nums">+{p.amount.toLocaleString()} UZS</span>
+                                            {/* Tahrirlash: resepshn — kiritgandan keyin 10 daqiqa,
+                                                administrator — har doim (egasi, 2026-09-22). */}
+                                            {canEditPayment(p, user?.role) && (
+                                                <button
+                                                    onClick={e => { e.stopPropagation(); setEditingPayment(p); }}
+                                                    title="To'lovni tahrirlash"
+                                                    className="w-7 h-7 rounded-lg text-gray-300 hover:text-brand hover:bg-brand/10 flex items-center justify-center transition-colors cursor-pointer"
+                                                >
+                                                    <Pencil size={13} />
+                                                </button>
+                                            )}
                                             <ChevronRight size={13} className="text-gray-300 group-hover:text-gray-400 transition-colors" />
                                         </div>
                                     </div>
@@ -1395,6 +1409,14 @@ ${e.description || e.category} — ${Number(e.amount).toLocaleString()} so'm`)) 
                     </div>
                 )}
             </div>
+
+            {editingPayment && (
+                <PaymentEditModal
+                    payment={editingPayment}
+                    onClose={() => setEditingPayment(null)}
+                    onSaved={() => retryLoad()}
+                />
+            )}
 
             {/* Payment Modal */}
             {isPaymentModalOpen && (

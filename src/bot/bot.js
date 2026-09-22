@@ -198,7 +198,19 @@ const getSchoolSettings = async (schoolId) => {
     const cached = settingsCache.get(schoolId);
     if (cached && Date.now() - cached.at < SETTINGS_TTL_MS) return cached.value;
     try {
-        const value = await prisma.setting.findUnique({ where: { schoolId: Number(schoolId) } });
+        let value = await prisma.setting.findUnique({ where: { schoolId: Number(schoolId) } });
+        // Yangi filialning o'z sozlamalari bo'lmasligi mumkin (Langar filialida
+        // Setting qatori umuman yo'q edi): markaz nomi, logotip va manzil
+        // tashkilotning sozlangan filialidan olinadi, aks holda bot nomsiz
+        // "CRM botiga xush kelibsiz" deb salomlashardi.
+        if (!value) {
+            const ids = await orgSchoolIds(schoolId);
+            for (const id of ids) {
+                if (id === Number(schoolId)) continue;
+                const other = await prisma.setting.findUnique({ where: { schoolId: id } });
+                if (other) { value = other; break; }
+            }
+        }
         settingsCache.set(schoolId, { value, at: Date.now() });
         return value;
     } catch (e) {
@@ -230,37 +242,82 @@ const replyWithLogo = async (ctx, schoolId, caption, extra = {}) => {
     }
 };
 
-// Helper to find user by telegramId and schoolId
+// ---------------------------------------------------------------------------
+// Bitta bot — butun o'quv markazi (2026-09-22).
+//
+// Muammo: bot filiallarda ishlamasdi. Markazda bitta Telegram boti bor va
+// uning webhook'i bitta filialga (Sariosiyo, id 1) bog'langan; Telegram esa
+// bitta botga bitta webhook manzilidan ortig'iga ruxsat bermaydi. Shuning
+// uchun Langar filialidagi o'quvchi, ota-ona, ustoz va haydovchi botdan
+// umuman foydalana olmasdi: har bir so'rov `schoolId: 1` bilan qidirilardi
+// va ular topilmasdi ("Bu raqam tizimda topilmadi").
+//
+// Endi bot tashkilotning barcha filiallarida qidiradi va kim yozganiga
+// qarab o'sha odamning filialida ishlaydi — yozuvlar (davomat, to'lov
+// buyurtmasi) ham o'sha filialga tushadi.
+// ---------------------------------------------------------------------------
+
+const orgCache = new Map();   // schoolId -> { ids, at }
+const ORG_TTL_MS = 10 * 60 * 1000;
+
+/** Shu filial va uning tashkilotdagi barcha "aka-uka" filiallari. O'zi birinchi. */
+export const orgSchoolIds = async (schoolId) => {
+    const own = Number(schoolId);
+    if (!own) return [];
+    const hit = orgCache.get(own);
+    if (hit && Date.now() - hit.at < ORG_TTL_MS) return hit.ids;
+    let ids = [own];
+    try {
+        const row = await prisma.school.findUnique({ where: { id: own }, select: { organizationId: true } });
+        if (row?.organizationId) {
+            const rows = await prisma.school.findMany({
+                where: { organizationId: row.organizationId },
+                select: { id: true },
+            });
+            ids = [own, ...rows.map(r => r.id).filter(id => id !== own)];
+        }
+    } catch (e) {
+        console.error('[bot] filiallar ro' + String.fromCharCode(39) + 'yxati:', e.message);
+    }
+    orgCache.set(own, { ids, at: Date.now() });
+    return ids;
+};
+
+/**
+ * Filiallar bo'ylab birinchi mos yozuv. Tartib muhim: bot o'z filialidan
+ * boshlaydi, shuning uchun bir xil telefon ikki filialda bo'lsa o'z filiali
+ * ustun turadi.
+ */
+export const findAcross = async (model, where, ids) => {
+    for (const id of ids) {
+        const row = await prisma[model].findFirst({ where: { ...where, schoolId: id } });
+        if (row) return row;
+    }
+    return null;
+};
+
+// Helper to find user by telegramId — tashkilotning hamma filialida
 const findUser = async (tid, schoolId) => {
     const tidStr = String(tid);
-    const scWhere = schoolId ? { schoolId } : {};
+    const ids = await orgSchoolIds(schoolId);
+    if (!ids.length) return null;
 
     // 1. Try to find student where student.telegramId === tidStr
-    const student = await prisma.student.findFirst({ 
-        where: { telegramId: tidStr, ...scWhere } 
-    });
+    const student = await findAcross('student', { telegramId: tidStr }, ids);
     if (student) return { type: 'student', data: student };
 
     // 2. Try to find student where student.fatherTelegramId === tidStr
-    const fatherStudent = await prisma.student.findFirst({ 
-        where: { fatherTelegramId: tidStr, ...scWhere } 
-    });
+    const fatherStudent = await findAcross('student', { fatherTelegramId: tidStr }, ids);
     if (fatherStudent) return { type: 'parent_father', data: fatherStudent };
 
     // 3. Try to find student where student.motherTelegramId === tidStr
-    const motherStudent = await prisma.student.findFirst({ 
-        where: { motherTelegramId: tidStr, ...scWhere } 
-    });
+    const motherStudent = await findAcross('student', { motherTelegramId: tidStr }, ids);
     if (motherStudent) return { type: 'parent_mother', data: motherStudent };
 
-    const teacher = await prisma.teacher.findFirst({ 
-        where: { telegramId: tidStr, ...scWhere } 
-    });
+    const teacher = await findAcross('teacher', { telegramId: tidStr }, ids);
     if (teacher) return { type: 'teacher', data: teacher };
 
-    const user = await prisma.user.findFirst({ 
-        where: { telegramId: tidStr, ...scWhere } 
-    });
+    const user = await findAcross('user', { telegramId: tidStr }, ids);
     if (user) {
         if (user.role === 'DRIVER') return { type: 'driver', data: user };
         return { type: 'admin', data: user };
@@ -270,12 +327,33 @@ const findUser = async (tid, schoolId) => {
 };
 
 // Setup handlers for a specific bot instance and schoolId
-export const setupBotHandlers = (botInstance, schoolId) => {
+export const setupBotHandlers = (botInstance, botSchoolId) => {
+    /**
+     * Shu yangilanish qaysi filialda bajarilishi kerak: yozgan odam qaysi
+     * filialda bo'lsa — o'sha. Topilmasa (hali ro'yxatdan o'tmagan mehmon)
+     * botning o'z filiali. Bitta yangilanish uchun bir marta hisoblanadi.
+     */
+    const filial = async (ctx) => {
+        if (!ctx.state) ctx.state = {};
+        if (ctx.state.filialId === undefined) {
+            let id = botSchoolId;
+            try {
+                const u = ctx.from ? await findUser(ctx.from.id, botSchoolId) : null;
+                if (u?.data?.schoolId) id = u.data.schoolId;
+            } catch (e) {
+                console.error('[bot] filialni aniqlab bo' + String.fromCharCode(39) + 'lmadi:', e.message);
+            }
+            ctx.state.filialId = id;
+        }
+        return ctx.state.filialId;
+    };
+
     botInstance.catch((err, ctx) => {
-        console.error(`Telegram Bot xatosi (${ctx.updateType}) [School: ${schoolId}]:`, err);
+        console.error(`Telegram Bot xatosi (${ctx.updateType}) [School: ${botSchoolId}]:`, err);
     });
 
     botInstance.start(async (ctx) => {
+        const schoolId = await filial(ctx);
         const user = await findUser(ctx.from.id, schoolId);
         if (user) {
             let menu;
@@ -312,6 +390,7 @@ export const setupBotHandlers = (botInstance, schoolId) => {
     });
 
     const logoutHandler = async (ctx) => {
+        const schoolId = await filial(ctx);
         const tidStr = String(ctx.from.id);
         const scWhere = schoolId ? { schoolId } : {};
 
@@ -331,6 +410,7 @@ export const setupBotHandlers = (botInstance, schoolId) => {
     botInstance.hears('🚪 Chiqish', logoutHandler);
 
     botInstance.on('contact', async (ctx) => {
+        const schoolId = await filial(ctx);
         const phone = ctx.message.contact.phone_number.replace('+', '').trim();
         const tid = String(ctx.from.id);
         const phoneSuffix = phone.slice(-9);
@@ -347,19 +427,19 @@ export const setupBotHandlers = (botInstance, schoolId) => {
             prisma.user.updateMany({ where: { telegramId: tid }, data: { telegramId: null } })
         ]);
 
+        // Ro'yxatdan o'tishda odam hali hech qaysi yozuvga bog'lanmagan —
+        // shuning uchun raqam tashkilotning hamma filialida qidiriladi.
+        const ids = await orgSchoolIds(schoolId);
+
         // 1. Try to find student where phone matches phoneSuffix
-        let student = await prisma.student.findFirst({
-            where: { phone: { contains: phoneSuffix }, schoolId }
-        });
+        let student = await findAcross('student', { phone: { contains: phoneSuffix } }, ids);
         if (student) {
             await prisma.student.update({ where: { id: student.id }, data: { telegramId: tid } });
             return ctx.reply(`Siz o'quvchi sifatida ro'yxatdan o'tdingiz: ${student.name}`, getStudentMenu());
         }
 
         // 2. Try to find student where fatherPhone matches phoneSuffix
-        let fatherStudent = await prisma.student.findFirst({
-            where: { fatherPhone: { contains: phoneSuffix }, schoolId }
-        });
+        let fatherStudent = await findAcross('student', { fatherPhone: { contains: phoneSuffix } }, ids);
         if (fatherStudent) {
             await prisma.student.update({ where: { id: fatherStudent.id }, data: { fatherTelegramId: tid } });
             const pName = fatherStudent.fatherName ? ` (${fatherStudent.fatherName})` : '';
@@ -367,9 +447,7 @@ export const setupBotHandlers = (botInstance, schoolId) => {
         }
 
         // 3. Try to find student where motherPhone matches phoneSuffix
-        let motherStudent = await prisma.student.findFirst({
-            where: { motherPhone: { contains: phoneSuffix }, schoolId }
-        });
+        let motherStudent = await findAcross('student', { motherPhone: { contains: phoneSuffix } }, ids);
         if (motherStudent) {
             await prisma.student.update({ where: { id: motherStudent.id }, data: { motherTelegramId: tid } });
             const pName = motherStudent.motherName ? ` (${motherStudent.motherName})` : '';
@@ -377,18 +455,14 @@ export const setupBotHandlers = (botInstance, schoolId) => {
         }
 
         // Try to find as teacher
-        let teacher = await prisma.teacher.findFirst({ 
-            where: { phone: { contains: phoneSuffix }, schoolId } 
-        });
+        let teacher = await findAcross('teacher', { phone: { contains: phoneSuffix } }, ids);
         if (teacher) {
             await prisma.teacher.update({ where: { id: teacher.id }, data: { telegramId: tid } });
             return ctx.reply(`Siz o'qituvchi sifatida ro'yxatdan o'tdingiz: ${teacher.name}`, getTeacherMenu());
         }
 
         // Try to find in users (Admin/Manager/Receptionist)
-        let user = await prisma.user.findFirst({ 
-            where: { phone: { contains: phoneSuffix }, schoolId } 
-        });
+        let user = await findAcross('user', { phone: { contains: phoneSuffix } }, ids);
         if (user) {
             await prisma.user.update({ where: { id: user.id }, data: { telegramId: tid } });
             const menu = user.role === 'DRIVER' ? getDriverMenu() : getAdminMenu();
@@ -400,6 +474,7 @@ export const setupBotHandlers = (botInstance, schoolId) => {
 
     // Student Handlers
     botInstance.hears('📅 Dars Jadvali', async (ctx) => {
+        const schoolId = await filial(ctx);
         const user = await findUser(ctx.from.id, schoolId);
         if (!user || (user.type !== 'student' && !user.type.startsWith('parent_'))) return;
 
@@ -422,6 +497,7 @@ export const setupBotHandlers = (botInstance, schoolId) => {
     });
 
     botInstance.hears('💳 To\'lovlar', async (ctx) => {
+        const schoolId = await filial(ctx);
         const user = await findUser(ctx.from.id, schoolId);
         if (!user || (user.type !== 'student' && !user.type.startsWith('parent_'))) return;
 
@@ -470,12 +546,14 @@ export const setupBotHandlers = (botInstance, schoolId) => {
     // --- Payme: kurs → summa → havola ---------------------------------------
 
     const paymeStudent = async (ctx) => {
+        const schoolId = await filial(ctx);
         const user = await findUser(ctx.from.id, schoolId);
         if (!user || (user.type !== 'student' && !user.type.startsWith('parent_'))) return null;
         return user.data;
     };
 
     const paymeSendLink = async (ctx, student, groupId, amount) => {
+        const schoolId = await filial(ctx);
         const r = await paymeCreateOrder({
             schoolId, studentId: student.id, groupId, amount,
             source: 'bot', chatId: ctx.chat.id,
@@ -489,6 +567,7 @@ export const setupBotHandlers = (botInstance, schoolId) => {
     };
 
     botInstance.action('payme_start', async (ctx) => {
+        const schoolId = await filial(ctx);
         await ctx.answerCbQuery().catch(() => {});
         const student = await paymeStudent(ctx);
         if (!student) return;
@@ -541,6 +620,7 @@ export const setupBotHandlers = (botInstance, schoolId) => {
     });
 
     botInstance.action(/^payme_o_(\d+)$/, async (ctx) => {
+        const schoolId = await filial(ctx);
         await ctx.answerCbQuery().catch(() => {});
         const student = await paymeStudent(ctx);
         if (!student) return;
@@ -554,6 +634,7 @@ export const setupBotHandlers = (botInstance, schoolId) => {
     });
 
     botInstance.hears('✅ Davomat', async (ctx) => {
+        const schoolId = await filial(ctx);
         const user = await findUser(ctx.from.id, schoolId);
         if (!user || (user.type !== 'student' && !user.type.startsWith('parent_'))) return;
 
@@ -576,6 +657,7 @@ export const setupBotHandlers = (botInstance, schoolId) => {
     });
 
     botInstance.hears('📊 Baholar', async (ctx) => {
+        const schoolId = await filial(ctx);
         const user = await findUser(ctx.from.id, schoolId);
         if (!user || (user.type !== 'student' && !user.type.startsWith('parent_'))) return;
 
@@ -600,6 +682,7 @@ export const setupBotHandlers = (botInstance, schoolId) => {
     });
 
     botInstance.hears('👤 Profil', async (ctx) => {
+        const schoolId = await filial(ctx);
         const user = await findUser(ctx.from.id, schoolId);
         if (!user) return;
 
@@ -629,6 +712,7 @@ export const setupBotHandlers = (botInstance, schoolId) => {
 
     // Teacher Handlers
     botInstance.hears('🎒 Davomat qilish', async (ctx) => {
+        const schoolId = await filial(ctx);
         const user = await findUser(ctx.from.id, schoolId);
         if (!user || user.type !== 'teacher') return;
 
@@ -643,6 +727,7 @@ export const setupBotHandlers = (botInstance, schoolId) => {
     });
 
     botInstance.hears('📅 Mening Jadvalim', async (ctx) => {
+        const schoolId = await filial(ctx);
         const user = await findUser(ctx.from.id, schoolId);
         if (!user || user.type !== 'teacher') return;
 
@@ -664,6 +749,7 @@ export const setupBotHandlers = (botInstance, schoolId) => {
     });
 
     botInstance.hears('💰 Oylik va Bonuslar', async (ctx) => {
+        const schoolId = await filial(ctx);
         const user = await findUser(ctx.from.id, schoolId);
         if (!user || user.type !== 'teacher') return;
 
@@ -743,6 +829,7 @@ export const setupBotHandlers = (botInstance, schoolId) => {
     });
 
     botInstance.action(/mark_att_(\d+)/, async (ctx) => {
+        const schoolId = await filial(ctx);
         const groupId = parseInt(ctx.match[1]);
         const tid = ctx.from.id;
 
@@ -787,6 +874,7 @@ export const setupBotHandlers = (botInstance, schoolId) => {
     };
 
     botInstance.action(/toggle_att_(\d+)/, async (ctx) => {
+        const schoolId = await filial(ctx);
         const studentId = parseInt(ctx.match[1]);
         const tid = ctx.from.id;
         const state = attStates[tid];
@@ -805,6 +893,7 @@ export const setupBotHandlers = (botInstance, schoolId) => {
     });
 
     botInstance.action('save_attendance', async (ctx) => {
+        const schoolId = await filial(ctx);
         const tid = ctx.from.id;
         const state = attStates[tid];
 
@@ -868,6 +957,7 @@ export const setupBotHandlers = (botInstance, schoolId) => {
     // Jonli joylashuvni Telegram o'zi yangilab turadi — har yangilanish
     // edited_message bo'lib keladi va jim yoziladi.
     botInstance.on('location', async (ctx, next) => {
+        const schoolId = await filial(ctx);
         const user = await findUser(ctx.from.id, schoolId);
         if (!user || user.type !== 'driver') return next();
         const loc = ctx.message.location;
@@ -883,6 +973,7 @@ export const setupBotHandlers = (botInstance, schoolId) => {
     });
 
     botInstance.on('edited_message', async (ctx, next) => {
+        const schoolId = await filial(ctx);
         const msg = ctx.editedMessage;
         if (!msg?.location) return next();
         const user = await findUser(ctx.from.id, schoolId);
@@ -905,6 +996,7 @@ export const setupBotHandlers = (botInstance, schoolId) => {
 
     /** Haydovchi va uning shu rejaga haqqi bormi. */
     const haydovchiMarshruti = async (ctx, routeId) => {
+        const schoolId = await filial(ctx);
         const user = await findUser(ctx.from.id, schoolId);
         if (!user || user.type !== 'driver') return null;
         const route = await prisma.route.findFirst({
@@ -939,6 +1031,7 @@ export const setupBotHandlers = (botInstance, schoolId) => {
     };
 
     const bugungiRejalar = async (ctx) => {
+        const schoolId = await filial(ctx);
         const user = await findUser(ctx.from.id, schoolId);
         if (!user || user.type !== 'driver') return;
 
@@ -964,6 +1057,7 @@ export const setupBotHandlers = (botInstance, schoolId) => {
     // Bola tugmasi — istisnolar uchun. Qabul qilinmaguncha: ⬜ ↔ ❌ (chiqmadi).
     // Qabul qilingach: 🚐 olindi → ✅ yetkazildi → ❌ kelmadi → 🚐.
     botInstance.action(/^reys_h_(\d+)_(\d+)$/, async (ctx) => {
+        const schoolId = await filial(ctx);
         const routeId = parseInt(ctx.match[1]);
         const studentId = parseInt(ctx.match[2]);
         const topilgan = await haydovchiMarshruti(ctx, routeId);
@@ -999,6 +1093,7 @@ export const setupBotHandlers = (botInstance, schoolId) => {
 
     // "Qabul qildim" — bolalar mashinada: belgilanmaganlarning hammasi olindi.
     botInstance.action(/^reys_bosh_(\d+)$/, async (ctx) => {
+        const schoolId = await filial(ctx);
         const topilgan = await haydovchiMarshruti(ctx, parseInt(ctx.match[1]));
         if (!topilgan) return ctx.answerCbQuery('Bu reja sizga biriktirilmagan');
         const sana = rejaSanasi(topilgan.route);
@@ -1010,6 +1105,7 @@ export const setupBotHandlers = (botInstance, schoolId) => {
 
     // "Yetkazdim" — hammasi uyida: chiqmaganlardan boshqa hamma yetkazildi.
     botInstance.action(/^reys_tugat_(\d+)$/, async (ctx) => {
+        const schoolId = await filial(ctx);
         const topilgan = await haydovchiMarshruti(ctx, parseInt(ctx.match[1]));
         if (!topilgan) return ctx.answerCbQuery('Bu reja sizga biriktirilmagan');
         const sana = rejaSanasi(topilgan.route);
@@ -1033,6 +1129,7 @@ export const setupBotHandlers = (botInstance, schoolId) => {
     // bermaganlarni admin ro'yxatda ko'radi va qo'ng'iroq qiladi.
 
     const tasdiqJavobi = async (ctx, status) => {
+        const schoolId = await filial(ctx);
         const user = await findUser(ctx.from.id, schoolId);
         if (!user || user.type !== 'driver') return ctx.answerCbQuery('Bu tugma haydovchilar uchun');
         const sana = ctx.match[1];
@@ -1158,6 +1255,7 @@ export const setupBotHandlers = (botInstance, schoolId) => {
 
     /** Qadam xabarini chizadi (yangi yoki joyida). */
     const qadamniChizish = async (ctx, route, sana, keyin = 0, yangiXabar = false) => {
+        const schoolId = await filial(ctx);
         let holat = await marshrutHolati({ routeId: route.id, date: sana });
         const bekat = keyingiBekat(route, holat, keyin);
 
@@ -1184,6 +1282,7 @@ export const setupBotHandlers = (botInstance, schoolId) => {
 
     // Qadam rejimiga kirish / keyingisiga o'tish (o'tkazib yuborish)
     botInstance.action(/^reys_qadam_(\d+)_(\d+)$/, async (ctx) => {
+        const schoolId = await filial(ctx);
         const topilgan = await haydovchiMarshruti(ctx, parseInt(ctx.match[1]));
         if (!topilgan) return ctx.answerCbQuery('Bu marshrut sizga biriktirilmagan');
         const keyin = parseInt(ctx.match[2]) || 0;
@@ -1201,6 +1300,7 @@ export const setupBotHandlers = (botInstance, schoolId) => {
 
     // Bekatni belgilash: ok — olindi/yetkazildi, yoq — chiqmadi
     botInstance.action(/^reys_q_(\d+)_(\d+)_(ok|yoq)$/, async (ctx) => {
+        const schoolId = await filial(ctx);
         const topilgan = await haydovchiMarshruti(ctx, parseInt(ctx.match[1]));
         if (!topilgan) return ctx.answerCbQuery('Bu marshrut sizga biriktirilmagan');
         const { user, route } = topilgan;
@@ -1218,6 +1318,7 @@ export const setupBotHandlers = (botInstance, schoolId) => {
     });
 
     botInstance.hears('🚍 Mening Transportim', async (ctx) => {
+        const schoolId = await filial(ctx);
         const user = await findUser(ctx.from.id, schoolId);
         if (!user || user.type !== 'driver') return;
 
@@ -1239,6 +1340,7 @@ export const setupBotHandlers = (botInstance, schoolId) => {
 
     // Admin Handlers
     botInstance.hears('📢 Yangi Lidlar', async (ctx) => {
+        const schoolId = await filial(ctx);
         const user = await findUser(ctx.from.id, schoolId);
         if (!user || user.type !== 'admin') return;
 
@@ -1260,6 +1362,7 @@ export const setupBotHandlers = (botInstance, schoolId) => {
     });
 
     botInstance.hears('📊 Kunlik Hisobot', async (ctx) => {
+        const schoolId = await filial(ctx);
         const user = await findUser(ctx.from.id, schoolId);
         if (!user || user.type !== 'admin') return;
 
@@ -1283,6 +1386,7 @@ export const setupBotHandlers = (botInstance, schoolId) => {
     });
 
     botInstance.hears('📧 Ommaviy xabar', async (ctx) => {
+        const schoolId = await filial(ctx);
         const user = await findUser(ctx.from.id, schoolId);
         if (!user || user.type !== 'admin') {
             return ctx.reply("Bu buyruq faqat xodimlar uchun.");
@@ -1297,6 +1401,7 @@ export const setupBotHandlers = (botInstance, schoolId) => {
 
     // Guest Handlers
     botInstance.hears('ℹ️ Markaz haqida', async (ctx) => {
+        const schoolId = await filial(ctx);
         const settings = await getSchoolSettings(schoolId);
         const courses = schoolId
             ? await prisma.course.findMany({ where: { schoolId }, select: { name: true }, take: 20 })
@@ -1320,6 +1425,7 @@ export const setupBotHandlers = (botInstance, schoolId) => {
     // bo'lsa eski qattiq yozilgan nuqta — CRM xaritasi ham aynan shunday
     // ishlaydi (StudentLocationMap dagi ZAXIRA_MARKAZ).
     botInstance.hears('📍 Geolokatsiya', async (ctx) => {
+        const schoolId = await filial(ctx);
         const settings = await getSchoolSettings(schoolId);
         let lat = 38.4833, lng = 67.9333;
         const belgilangan = settings && settings.centerLocation;
@@ -1340,6 +1446,7 @@ export const setupBotHandlers = (botInstance, schoolId) => {
 
     // Message handler for trial registration and general text
     botInstance.on('text', async (ctx, next) => {
+        const schoolId = await filial(ctx);
         const tid = ctx.from.id;
         const text = ctx.message.text;
 
@@ -1431,11 +1538,25 @@ export const getTelegramBot = async (schoolId) => {
     if (!schoolId) {
         return bot;
     }
+    // Token keshlanmaydi: Sozlamalarda o'zgartirilsa darhol yangisi ishlasin.
     const settings = await prisma.setting.findUnique({ where: { schoolId: Number(schoolId) } });
-    const token = (settings && settings.telegram && settings.telegram.includes(':')) 
-        ? settings.telegram.trim() 
-        : process.env.TELEGRAM_BOT_TOKEN;
-        
+    let token = (settings && settings.telegram && settings.telegram.includes(':'))
+        ? settings.telegram.trim()
+        : null;
+
+    // Filialning o'z boti bo'lmasa — markazning boti. Markazda bitta bot bor
+    // va u hamma filialga xizmat qiladi (Langar filialida Setting qatori ham
+    // yo'q edi), shuning uchun o'sha filialga yuborilgan xabar tashkilotning
+    // sozlangan filiali boti orqali ketadi.
+    if (!token) {
+        for (const id of await orgSchoolIds(schoolId)) {
+            if (id === Number(schoolId)) continue;
+            const other = await prisma.setting.findUnique({ where: { schoolId: id }, select: { telegram: true } });
+            if (other?.telegram && other.telegram.includes(':')) { token = other.telegram.trim(); break; }
+        }
+    }
+    if (!token) token = process.env.TELEGRAM_BOT_TOKEN;
+
     if (!token || token === 'fake_token_for_init') return null;
     
     let instance = botCache.get(token);

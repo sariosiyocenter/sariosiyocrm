@@ -155,12 +155,12 @@ export default function PublicApply() {
 
     const searchParams = new URLSearchParams(window.location.search);
     const token = searchParams.get('token');
-    // QR havolasidagi token 30 daqiqada eskiradi. Ilgari eskirgan token
-    // sahifani butunlay to'sib qo'yardi va ota-ona faqat "havola eskirgan"
-    // degan yozuvni ko'rardi. Tokensiz havola baribir ochiq, ya'ni to'siqning
-    // himoya sifatida foydasi yo'q edi — endi eskirgan token shunchaki
-    // e'tiborga olinmaydi va oddiy forma ochiladi.
+    // Havola 15 daqiqa amal qiladi (egasi, 2026-09-22): shu muddat o'tgach
+    // forma umuman ochilmaydi — "undan keyin kira olmasin". Shuning uchun
+    // token majburiy: tokensiz yoki eskirgan havolada faqat tushuntirish
+    // ko'rinadi, resepshndan yangi havola so'raladi.
     const [tokenAmal, setTokenAmal] = useState<string | null>(token);
+    const [tokenEskirgan, setTokenEskirgan] = useState(false);
 
     useEffect(() => {
         if (!schoolId) return;
@@ -176,13 +176,20 @@ export default function PublicApply() {
             try {
                 setLoading(true);
 
-                // Token is optional — permanent links work without token
-                if (token) {
-                    const tokenRes = await fetch(`/api/public/tokens/${token}`);
-                    const tokenData = await tokenRes.json().catch(() => ({ valid: false }));
-                    if (!tokenData.valid || tokenData.schoolId !== parseInt(schoolId)) {
-                        setTokenAmal(null);
-                    }
+                // Token majburiy: 15 daqiqalik havola.
+                if (!token) {
+                    setTokenAmal(null);
+                    setTokenEskirgan(true);
+                    setLoading(false);
+                    return;
+                }
+                const tokenRes = await fetch(`/api/public/tokens/${token}`);
+                const tokenData = await tokenRes.json().catch(() => ({ valid: false }));
+                if (!tokenData.valid || tokenData.schoolId !== parseInt(schoolId)) {
+                    setTokenAmal(null);
+                    setTokenEskirgan(true);
+                    setLoading(false);
+                    return;
                 }
 
                 // Fetch School Info
@@ -228,7 +235,7 @@ export default function PublicApply() {
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     ...form,
-                    source: tokenAmal ? 'QR havola' : 'Onlayn havola',
+                    source: 'QR havola',
                     token: tokenAmal
                 })
             });
@@ -252,6 +259,24 @@ export default function PublicApply() {
                 <div className="flex flex-col items-center gap-3">
                     <div className="w-10 h-10 border-[3px] border-[var(--brand-color,#1b6b6b)] border-t-transparent rounded-full animate-spin" />
                     <p className="text-[11px] font-bold text-matn-xira uppercase tracking-wider">Ma'lumotlar yuklanmoqda...</p>
+                </div>
+            </div>
+        );
+    }
+
+    // Havola eskirgan yoki tokensiz ochilgan — forma ko'rsatilmaydi.
+    if (tokenEskirgan) {
+        return (
+            <div className="min-h-screen bg-gradient-to-tr from-gray-50 to-gray-100 dark:from-gray-900 dark:to-gray-950 flex items-center justify-center p-4">
+                <div className="max-w-md w-full bg-sirt rounded-[2rem] border border-chiziq p-8 text-center shadow-lg">
+                    <div className="w-14 h-14 bg-amber-50 dark:bg-amber-950/20 text-amber-500 rounded-2xl flex items-center justify-center mx-auto mb-4 border border-amber-100 dark:border-amber-900/40">
+                        <Clock size={24} />
+                    </div>
+                    <h2 className="text-sm font-black text-matn">Havola muddati tugagan</h2>
+                    <p className="text-[12px] font-bold text-matn-xira mt-3 leading-relaxed">
+                        Ariza havolasi 15 daqiqa amal qiladi. Iltimos, o'quv markazi resepshnidan
+                        yangi havola yoki QR kod so'rang.
+                    </p>
                 </div>
             </div>
         );
@@ -371,7 +396,7 @@ export default function PublicApply() {
                             </div>
                             
                             <div>
-                                <label className={lbl}>Ism-sharifingiz *</label>
+                                <label className={lbl}>Familiya va ismingiz *</label>
                                 <div className="relative">
                                     <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-matn-xira">
                                         <User size={15} />
@@ -379,7 +404,7 @@ export default function PublicApply() {
                                     <input
                                         required
                                         type="text"
-                                        placeholder="Jasur Alimov"
+                                        placeholder="Alimov Jasur"
                                         className={inp}
                                         value={form.name}
                                         onChange={e => setForm({ ...form, name: e.target.value })}

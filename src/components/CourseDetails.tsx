@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useCRM } from '../context/CRMContext';
 import StatTile from './ui/StatTile';
+import Avatar from './ui/Avatar';
 import { displayName } from '../lib/displayName';
 import { teacherProblem } from '../lib/teacherState';
 import { useConfirm } from './ConfirmDialog';
@@ -38,6 +39,8 @@ export default function CourseDetails() {
     const [activeTab, setActiveTab] = useState('umumiy');
     const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
     const [isAddStudentModalOpen, setIsAddStudentModalOpen] = useState(false);
+    // Kursga qo'shilayotgan o'quvchi qaysi kundan kelib boshlaydi.
+    const [addStartDate, setAddStartDate] = useState(new Date().toISOString().split('T')[0]);
     const [studentSearch, setStudentSearch] = useState('');
     const [selectedTopicId, setSelectedTopicId] = useState<number | ''>('');
     const [isTopicModalOpen, setIsTopicModalOpen] = useState(false);
@@ -200,7 +203,7 @@ export default function CourseDetails() {
 
 
     const handleAddStudent = async (studentId: number) => {
-        await addStudentToGroup(group.id, studentId);
+        await addStudentToGroup(group.id, studentId, addStartDate);
         setIsAddStudentModalOpen(false);
         setStudentSearch('');
     };
@@ -638,9 +641,10 @@ export default function CourseDetails() {
                                                                 </td>
                                                                 <td className="py-2.5 pr-3 align-middle">
                                                                     <div className="flex items-center gap-3 cursor-pointer min-w-0" onClick={() => navigate(`/students/${s.id}`)}>
-                                                                        <div className="w-8 h-8 bg-ichki border border-chiziq rounded-lg flex items-center justify-center text-brand font-semibold text-[11px] shrink-0">
-                                                                            {s.name.charAt(0)}
-                                                                        </div>
+                                                                        {/* Surat: o'quvchilar ro'yxatidagidek. Ilgari bu yerda
+                                                                            faqat ismning bosh harfi turardi — kurs ichida
+                                                                            o'quvchilarning rasmi umuman ko'rinmasdi. */}
+                                                                        <Avatar name={s.name} photo={s.photo} size={32} square className="border border-chiziq" />
                                                                         <div className="min-w-0">
                                                                             <p className="text-[13px] font-medium text-matn truncate group-hover:text-brand transition-colors">{displayName(s.name)}</p>
                                                                             <p className="num text-[11px] text-matn-xira truncate">{s.phone}</p>
@@ -1036,7 +1040,8 @@ export default function CourseDetails() {
                                                 <div key={s.id} className={`flex items-center justify-between px-3 py-2 rounded-xl border transition-all ${status ? 'bg-sirt border-chiziq' : 'bg-ichki/40 border-dashed border-chiziq/50'}`}>
                                                     <div className="flex items-center gap-2 min-w-0">
                                                         <div className={`w-1.5 h-5 rounded-full shrink-0 ${status === 'Keldi' ? 'bg-emerald-400' : status === 'Kelmapdi' ? 'bg-rose-400' : status === 'Sababli' ? 'bg-sky-400' : status === 'Kechikdi' ? 'bg-orange-400' : 'bg-gray-200 dark:bg-gray-700'}`} />
-                                                        <span className="text-[11px] font-bold text-matn tracking-tight truncate max-w-[100px]">{s.name}</span>
+                                                        <Avatar name={s.name} photo={s.photo} size={24} square />
+                                                        <span className="text-[11px] font-bold text-matn tracking-tight truncate max-w-[140px]">{displayName(s.name)}</span>
                                                     </div>
                                                     <div className="flex items-center gap-0.5 shrink-0">
                                                         <button onClick={() => saveAttendance(s.id, 'Keldi')}
@@ -1201,9 +1206,7 @@ export default function CourseDetails() {
                                                 <tr key={s.id} className="hover:bg-gray-50/30 transition-colors group cursor-pointer" onClick={() => navigate(`/students/${s.id}`)}>
                                                     <td className="p-4">
                                                         <div className="flex items-center gap-3">
-                                                            <div className="w-8 h-8 rounded-xl bg-teal-50 dark:bg-teal-950/20 border border-teal-100 dark:border-teal-900/40 flex items-center justify-center text-brand font-bold text-xs shrink-0">
-                                                                {s.name.charAt(0)}
-                                                            </div>
+                                                            <Avatar name={s.name} photo={s.photo} size={32} square className="border border-teal-100 dark:border-teal-900/40" />
                                                             <div>
                                                                 <p className="text-xs font-black text-matn tracking-tight group-hover:text-brand transition-colors">{displayName(s.name)}</p>
                                                                 <p className="text-[11px] font-bold text-matn-xira mt-0.5">{s.phone}</p>
@@ -1295,6 +1298,15 @@ export default function CourseDetails() {
                             <button onClick={() => setIsAddStudentModalOpen(false)} className="w-9 h-9 flex items-center justify-center text-matn-xira hover:bg-gray-55 dark:hover:bg-gray-700 rounded-xl cursor-pointer"><XCircle size={18} /></button>
                         </div>
                         <div className="space-y-4">
+                            {/* Kursga kelgan sana: o'quvchi ro'yxatga bugun olinsa ham,
+                                darsga oy o'rtasidan kelishi mumkin — oylik hisob aynan
+                                shu kundan oy oxirigacha yoziladi. */}
+                            <div>
+                                <label className="block text-[11px] font-bold text-matn-xira mb-1.5">Kursga kelgan sana</label>
+                                <input type="date" value={addStartDate} onChange={e => setAddStartDate(e.target.value)}
+                                    className="w-full px-4 py-2.5 bg-ichki border border-chiziq rounded-xl text-xs font-bold text-matn outline-none focus:border-brand" />
+                                <p className="text-[10px] text-matn-xira mt-1">Hisob shu kundan oy oxirigacha yoziladi</p>
+                            </div>
                             <div className="relative">
                                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-matn-xira" />
                                 <input type="text" placeholder="Ism bo'yicha qidirish..." value={studentSearch} onChange={e => setStudentSearch(e.target.value)}
@@ -1305,10 +1317,8 @@ export default function CourseDetails() {
                                     <button key={s.id} onClick={() => handleAddStudent(s.id)}
                                         className="w-full flex items-center justify-between p-3 rounded-xl hover:bg-teal-50/10 border border-transparent hover:border-gray-100 dark:hover:border-gray-700/50 transition-all group cursor-pointer text-left">
                                         <div className="flex items-center gap-3">
-                                            <div className="w-9 h-9 bg-teal-50 dark:bg-teal-950/20 rounded-lg flex items-center justify-center text-brand font-bold text-xs">
-                                                {s.name.charAt(0)}
-                                            </div>
-                                            <span className="text-xs font-bold text-matn group-hover:text-brand transition-colors tracking-tight">{s.name}</span>
+                                            <Avatar name={s.name} photo={s.photo} size={36} square />
+                                            <span className="text-xs font-bold text-matn group-hover:text-brand transition-colors tracking-tight">{displayName(s.name)}</span>
                                         </div>
                                         <div className="w-8 h-8 rounded-lg flex items-center justify-center text-gray-300 hover:text-brand">
                                             <Plus size={16} />

@@ -24,6 +24,24 @@ function monthlyPriceFor(student, group) {
   return custom !== undefined ? Number(custom) : Number(group.course?.price || 0);
 }
 
+/** `Student.courseStart` — har doim oddiy obyekt sifatida. */
+function startMapOf(student) {
+  const cs = student?.courseStart;
+  return (cs && typeof cs === 'object' && !Array.isArray(cs)) ? { ...cs } : {};
+}
+
+/**
+ * O'quvchi shu kursga qaysi kundan kelib boshlagani (yozilgan bo'lsa).
+ *
+ * Egasi (2026-09-22): "o'quvchi bugun qo'shilgan yoki oyni boshida qo'shilgan
+ * lekin kursga kelib boshlagan sanasi oyni o'rtasi bo'lishi mumkin". Shuning
+ * uchun hisob ro'yxatga olingan kundan emas, aynan shu kundan boshlanadi.
+ */
+export function courseStartOf(student, groupId) {
+  const v = startMapOf(student)[String(groupId)];
+  return (typeof v === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(v)) ? v : null;
+}
+
 /**
  * Shu oyda shu guruh uchun o'quvchidan allaqachon yechilgan summa.
  * Hisob yozuvlari manfiy, tuzatishlar musbat — yig'indisi sof yechilgan summa.
@@ -78,10 +96,15 @@ async function chargedSoFar(studentId, groupId, month, monthlyPrice, claimed) {
  * qo'shilib o'sha kuni ko'chirilgan o'quvchidan 2 va 4-sentabr darslarining
  * puli yechilib qolardi.
  */
-async function billedFrom(studentId, groupId, month, monthlyPrice, bounds, hasLegacy) {
+async function billedFrom(student, groupId, month, monthlyPrice, bounds, hasLegacy) {
+  // Kelgan sana aniq yozilgan bo'lsa — u yozuvlardan ustun turadi. Sana shu
+  // oydan keyin bo'lsa qaytgan qiymat oy oxiridan ham katta bo'ladi va
+  // `periodDue` o'z-o'zidan nol dars chiqaradi (o'quvchi bu oyda yo'q edi).
+  const explicit = courseStartOf(student, groupId);
+  if (explicit) return explicit > bounds.first ? explicit : bounds.first;
   if (hasLegacy) return bounds.first;   // guruhsiz eski yozuv — to'liq oylik
   const rows = await prisma.payment.findMany({
-    where: { studentId, groupId, type: 'Oylik', date: { startsWith: month }, amount: { lt: 0 } },
+    where: { studentId: student.id, groupId, type: 'Oylik', date: { startsWith: month }, amount: { lt: 0 } },
     select: { date: true, amount: true },
     orderBy: { date: 'asc' },
   });
@@ -120,13 +143,24 @@ async function loadGroup(groupId, schoolId) {
 }
 
 /**
- * Ko'chirishni hisoblash. `apply` false bo'lsa hech narsa yozilmaydi —
- * foydalanuvchiga ko'rsatish uchun.
+ * Kursdan kursga ko'chirish.
+ *
+ * Egasi (2026-09-22): "guruhni almashtirganda to'lovsiz almashsin, hech
+ * qanday to'lovlar o'zgarishi boshqa narsa bo'lmasin, faqat almashgani
+ * tarixda saqlansin". Shuning uchun bu yerda pul umuman qimirlamaydi:
+ * eski kursga yozilgan oylik hisob o'z joyida qoladi, yangi kursga shu oy
+ * uchun hech narsa yozilmaydi, balans ham o'zgarmaydi. Keyingi oydan yangi
+ * kurs odatdagidek hisoblanadi (services/billing.js).
+ *
+ * Ilgari bu yerda oy dars kunlari bo'yicha ikki kursga bo'lib qayta
+ * hisoblanardi — endi yo'q. Ko'chirish faqat a'zolikni o'zgartiradi va
+ * amallar jurnaliga (lib/audit.js) yoziladi.
+ *
+ * `apply` false bo'lsa hech narsa yozilmaydi — foydalanuvchiga ko'rsatish uchun.
  */
 export async function transferStudent({ studentId, fromGroupId, toGroupId, date, schoolId, apply }) {
-  const month = String(date).slice(0, 7);
-  const bounds = monthBounds(month);
-  if (!bounds) return { error: "Sana noto'g'ri" };
+  const day = String(date || todayTashkent()).slice(0, 10);
+  const month = day.slice(0, 7);
 
   const student = await prisma.student.findFirst({
     where: { id: Number(studentId), schoolId },
@@ -136,120 +170,42 @@ export async function transferStudent({ studentId, fromGroupId, toGroupId, date,
 
   const from = await loadGroup(fromGroupId, schoolId);
   const to = await loadGroup(toGroupId, schoolId);
-  if (fromGroupId && !from) return { error: 'Eski guruh topilmadi' };
-  if (!to) return { error: 'Yangi guruh topilmadi' };
-  if (from && from.id === to.id) return { error: 'Guruhlar bir xil' };
-
-  // Sinov o'quvchisi guruhdan guruhga o'tsa — hisob yo'q, faqat a'zolik.
-  if (student.status === 'Sinov') {
-    const result = {
-      month, date, trial: true,
-      student: { id: student.id, name: student.name, balanceBefore: student.balance },
-      lines: [], balanceDelta: 0, balanceAfter: student.balance, applied: false,
-    };
-    if (!apply) return result;
-    await prisma.student.update({
-      where: { id: student.id },
-      data: { groups: { ...(from ? { disconnect: { id: from.id } } : {}), connect: { id: to.id } } },
-    });
-    result.applied = true;
-    return result;
-  }
-
-  // Jadvalsiz guruhda dars sonini bilib bo'lmaydi — taxmin qilish pul
-  // masalasida yaramaydi, shuning uchun aniq aytamiz.
-  const noSchedule = [from, to].filter(g => g && !hasSchedule(g.days));
-  if (noSchedule.length) {
-    return {
-      error: 'Jadval to\'ldirilmagan guruh bor: ' + noSchedule.map(g => g.name).join(', ') +
-        '. Hisob dars kunlari bo\'yicha yuritiladi, shuning uchun avval guruh kunlarini (Toq / Juft / Har kuni) belgilang.',
-      needsSchedule: noSchedule.map(g => ({ id: g.id, name: g.name })),
-    };
-  }
-
-  const lines = [];
-  let balanceDelta = 0;
-  const writes = [];
-  const claimed = new Set();
-  const claimIds = [];
-
-  // Eski guruh: guruhga qo'shilgan kundan ko'chirish kunigacha bo'lgan darslar
-  // uchun haq. Oy boshidan emas — o'quvchi oy o'rtasida kelgan bo'lishi mumkin.
-  if (from) {
-    const fromPrice = monthlyPriceFor(student, from);
-    const ch = await chargedSoFar(student.id, from.id, month, fromPrice, claimed);
-    const charged = ch.total;
-    claimIds.push(...ch.legacyIds.map(id => ({ id, groupId: from.id, courseId: from.courseId })));
-    const since = await billedFrom(student.id, from.id, month, fromPrice, bounds, ch.legacyIds.length > 0);
-    const used = periodDue(student, from, month, since, dayBefore(date));
-    const adjust = charged - used.due;   // musbat bo'lsa — ortiqcha yechilgan, qaytariladi
-    lines.push({
-      groupId: from.id, groupName: from.name, teacher: from.teacher?.name || null,
-      role: 'from', ...used, alreadyCharged: charged, adjust,
-    });
-    if (adjust !== 0) {
-      balanceDelta += adjust;
-      writes.push({
-        studentId: student.id, groupId: from.id, courseId: from.courseId,
-        amount: adjust, type: 'Oylik', date,
-        description: `${CHARGE_PREFIX} ${from.name} — ko'chirish bo'yicha qayta hisob (${used.lessons} dars)`,
-        schoolId,
-      });
-    }
-  }
-
-  // Yangi guruh: ko'chirish kunidan oy oxirigacha.
-  const rest = periodDue(student, to, month, date, bounds.last);
-  const chTo = await chargedSoFar(student.id, to.id, month, rest.monthlyPrice, claimed);
-  const chargedTo = chTo.total;
-  claimIds.push(...chTo.legacyIds.map(id => ({ id, groupId: to.id, courseId: to.courseId })));
-  const chargeTo = rest.due - chargedTo;
-  lines.push({
-    groupId: to.id, groupName: to.name, teacher: to.teacher?.name || null,
-    role: 'to', ...rest, alreadyCharged: chargedTo, adjust: -chargeTo,
-  });
-  if (chargeTo !== 0) {
-    balanceDelta -= chargeTo;
-    writes.push({
-      studentId: student.id, groupId: to.id, courseId: to.courseId,
-      amount: -chargeTo, type: 'Oylik', date,
-      description: `${CHARGE_PREFIX} ${to.name} — ko'chirish bo'yicha hisob (${rest.lessons} dars)`,
-      schoolId,
-    });
-  }
+  if (fromGroupId && !from) return { error: 'Eski kurs topilmadi' };
+  if (!to) return { error: 'Yangi kurs topilmadi' };
+  if (from && from.id === to.id) return { error: 'Kurslar bir xil' };
+  if (student.groups.some(g => g.id === to.id)) return { error: "O'quvchi bu kursda allaqachon bor" };
 
   const result = {
-    month, date,
+    month, date: day,
+    moneyFree: true,
     student: { id: student.id, name: student.name, balanceBefore: student.balance },
-    lines,
-    balanceDelta,
-    balanceAfter: student.balance + balanceDelta,
+    from: from ? { id: from.id, name: from.name, teacher: from.teacher?.name || null, price: monthlyPriceFor(student, from) } : null,
+    to: { id: to.id, name: to.name, teacher: to.teacher?.name || null, price: monthlyPriceFor(student, to) },
+    lines: [],
+    balanceDelta: 0,
+    balanceAfter: student.balance,
     applied: false,
   };
 
   if (!apply) return result;
 
-  await prisma.$transaction(async (tx) => {
-    // Guruhsiz eski yozuvlarni o'z guruhiga biriktiramiz — shunda hisob
-    // keyingi safar ham to'g'ri chiqadi.
-    for (const c of claimIds) {
-      await tx.payment.updateMany({
-        where: { id: c.id, groupId: null },
-        data: { groupId: c.groupId, courseId: c.courseId },
-      });
-    }
-    if (writes.length) await tx.payment.createMany({ data: writes });
-    await tx.student.update({
-      where: { id: student.id },
-      data: {
-        balance: { increment: balanceDelta },
-        groups: {
-          ...(from ? { disconnect: { id: from.id } } : {}),
-          connect: { id: to.id },
-        },
+  // Yangi kursda "kelgan sana" — ko'chirilgan kun. Shu oy uchun pul
+  // yozilmaydi, lekin o'quvchi keyinroq chiqib ketsa yoki kelgan sanasi
+  // o'zgartirilsa hisob shu kundan yuritiladi.
+  const starts = startMapOf(student);
+  starts[String(to.id)] = day;
+  if (from) delete starts[String(from.id)];
+
+  await prisma.student.update({
+    where: { id: student.id },
+    data: {
+      courseStart: starts,
+      groups: {
+        ...(from ? { disconnect: { id: from.id } } : {}),
+        connect: { id: to.id },
       },
-    });
-  }, { timeout: 20000, maxWait: 10000 });
+    },
+  });
 
   result.applied = true;
   return result;
@@ -301,7 +257,7 @@ export async function refundStudent({ studentId, date, schoolId, mode, apply, gr
     const ch = await chargedSoFar(student.id, group.id, month, price, claimed);
     const charged = ch.total;
     claimIds.push(...ch.legacyIds.map(id => ({ id, groupId: group.id, courseId: group.courseId })));
-    const since = await billedFrom(student.id, group.id, month, price, bounds, ch.legacyIds.length > 0);
+    const since = await billedFrom(student, group.id, month, price, bounds, ch.legacyIds.length > 0);
     const used = periodDue(student, group, month, since, dayBefore(date));
     const adjust = trial ? 0 : charged - used.due;
     lines.push({
@@ -460,18 +416,138 @@ export async function enrollStudent({ studentId, groupId, date, schoolId, apply 
 
   // Interaktiv tranzaksiya uzoq (Singapur) bazada 5 soniyada yopilib
   // qolardi (P2028). Ro'yxat shaklida bitta paketda yuboriladi.
+  // Kursga kelgan sana yozib qo'yiladi: oylik hisob keyin ham shu kundan
+  // yuritiladi (chiqish, ko'chirish, sanani o'zgartirish).
+  const starts = startMapOf(student);
+  if (!already) starts[String(group.id)] = day;
+
   const ops = [];
   if (!already || write) {
     ops.push(prisma.student.update({
       where: { id: student.id },
       data: {
-        ...(already ? {} : { groups: { connect: { id: group.id } } }),
+        ...(already ? {} : { groups: { connect: { id: group.id } }, courseStart: starts }),
         ...(write ? { balance: { decrement: -write.amount } } : {}),
       },
     }));
   }
   if (write) ops.push(prisma.payment.create({ data: write }));
   if (ops.length) await prisma.$transaction(ops);
+  result.applied = true;
+  return result;
+}
+
+/**
+ * O'quvchi shu kursga shu oyda qaysi kundan hisoblanayotgani.
+ *
+ * Yozib qo'yilgan sana bo'lsa — o'sha; bo'lmasa (eski yozuvlar) hisob
+ * qatorlaridan tiklanadi. Narx o'zgarganda oyni qaytadan sanash uchun kerak:
+ * kelgan sana o'zgarmasligi shart.
+ */
+export async function effectiveCourseStart({ studentId, groupId, month }) {
+  const bounds = monthBounds(month);
+  if (!bounds) return null;
+  const student = await prisma.student.findUnique({ where: { id: Number(studentId) } });
+  if (!student) return null;
+  const group = await loadGroup(groupId, student.schoolId);
+  if (!group) return null;
+  const price = monthlyPriceFor(student, group);
+  const ch = await chargedSoFar(student.id, group.id, month, price, new Set());
+  return billedFrom(student, group.id, month, price, bounds, ch.legacyIds.length > 0);
+}
+
+/**
+ * O'quvchining shu kursga "kelib boshlagan" sanasini o'zgartirish va o'sha
+ * oyning hisobini shu sanaga moslash.
+ *
+ * Egasi (2026-09-22): o'quvchi oy boshida ro'yxatga olinib, darsga oy
+ * o'rtasidan kelishi mumkin — "o'sha narsa to'lovga ham ta'sir qilishi kerak".
+ *
+ * Nima qilinadi: sana tushadigan oy uchun (va sana boshqa oyga ko'chirilgan
+ * bo'lsa — eski oy uchun ham) shu kursning hisobi qaytadan sanaladi va farqi
+ * bitta tuzatish qatori bilan yoziladi. Kassaga tushgan pulga (Naqd, Karta,
+ * Payme) tegilmaydi — faqat "hisoblangan" qism o'zgaradi.
+ *
+ * `apply` false bo'lsa hech narsa yozilmaydi (ko'rsatish uchun).
+ */
+export async function setCourseStart({ studentId, groupId, date, schoolId, apply = false }) {
+  const day = String(date || '').slice(0, 10);
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(day)) return { error: "Sana noto'g'ri" };
+
+  const student = await prisma.student.findFirst({
+    where: { id: Number(studentId), ...(schoolId ? { schoolId } : {}) },
+    include: { groups: { select: { id: true } } },
+  });
+  if (!student) return { error: "O'quvchi topilmadi" };
+  const group = await loadGroup(groupId, student.schoolId);
+  if (!group) return { error: 'Kurs topilmadi' };
+  if (!student.groups.some(g => g.id === group.id)) return { error: "O'quvchi bu kursda emas" };
+
+  const oldStart = courseStartOf(student, group.id);
+  const starts = startMapOf(student);
+  starts[String(group.id)] = day;
+
+  const result = {
+    studentId: student.id, groupId: group.id, groupName: group.name,
+    oldStart, date: day,
+    trial: student.status === 'Sinov',
+    lines: [], balanceDelta: 0,
+    balanceBefore: student.balance, balanceAfter: student.balance,
+    warning: null, applied: false,
+  };
+
+  // Sinov o'quvchisidan pul yechilmaydi — faqat sana yoziladi.
+  // Jadvalsiz kursda dars sonini bilib bo'lmaydi (pulda taxmin yaramaydi).
+  const skipMoney = result.trial || !hasSchedule(group.days);
+  if (!result.trial && !hasSchedule(group.days)) {
+    result.warning = `${group.name} kursining jadvali belgilanmagan — hisob qayta sanalmadi. Avval kunlarini (Toq / Juft / Har kuni) belgilang.`;
+  }
+
+  const writes = [];
+  if (!skipMoney) {
+    // Sana boshqa oyga ko'chirilgan bo'lsa ikkala oy ham qaytadan sanaladi:
+    // eski oyda o'quvchi umuman bo'lmagan bo'lsa, o'sha oyniki qaytariladi.
+    const months = [...new Set([day.slice(0, 7), (oldStart || day).slice(0, 7)])].sort();
+    const price = monthlyPriceFor(student, group);
+    for (const month of months) {
+      const bounds = monthBounds(month);
+      if (!bounds) continue;
+      const ch = await chargedSoFar(student.id, group.id, month, price, new Set());
+      const from = day > bounds.first ? day : bounds.first;
+      const due = (day > bounds.last) ? null : periodDue(student, group, month, from, bounds.last);
+      const dueSum = due ? due.due : 0;
+      const adjust = Math.round(ch.total - dueSum);   // musbat — ortiqcha yechilgan, qaytariladi
+      result.lines.push({
+        month,
+        alreadyCharged: ch.total,
+        due: dueSum,
+        lessons: due ? due.lessons : 0,
+        perLesson: due ? due.perLesson : 0,
+        monthlyPrice: price,
+        adjust,
+      });
+      if (adjust !== 0) {
+        result.balanceDelta += adjust;
+        writes.push({
+          studentId: student.id, groupId: group.id, courseId: group.courseId,
+          amount: adjust, type: 'Oylik',
+          date: month === day.slice(0, 7) ? day : monthBounds(month).last,
+          description: `${CHARGE_PREFIX} ${group.name} — kelgan sana ${day.slice(8, 10)}.${day.slice(5, 7)} ga o'zgartirildi (${due ? due.lessons : 0} dars)`,
+          schoolId: student.schoolId,
+        });
+      }
+    }
+  }
+  result.balanceAfter = student.balance + result.balanceDelta;
+
+  if (!apply) return result;
+
+  const ops = [prisma.student.update({
+    where: { id: student.id },
+    data: { courseStart: starts, ...(result.balanceDelta ? { balance: { increment: result.balanceDelta } } : {}) },
+  })];
+  if (writes.length) ops.push(prisma.payment.createMany({ data: writes }));
+  await prisma.$transaction(ops);
   result.applied = true;
   return result;
 }
@@ -504,7 +580,7 @@ export async function unenrollStudent({ studentId, groupId, date, schoolId, appl
     } else {
       const price = monthlyPriceFor(student, group);
       const ch = await chargedSoFar(student.id, group.id, month, price, new Set());
-      const since = await billedFrom(student.id, group.id, month, price, bounds, ch.legacyIds.length > 0);
+      const since = await billedFrom(student, group.id, month, price, bounds, ch.legacyIds.length > 0);
       const used = periodDue(student, group, month, since, dayBefore(day));
       const adjust = ch.total - used.due;   // ortiqcha yechilgan qism qaytadi
       result.lessons = used.lessons; result.alreadyCharged = ch.total; result.refund = Math.max(0, adjust);
@@ -594,19 +670,34 @@ export async function activateStudent({ studentId, date, schoolId }) {
     }
   }
   const total = writes.reduce((s, w) => s - w.amount, 0);
+  // Sinov darslari bepul edi — hisob shu kundan boshlandi, demak "kursga
+  // kelgan sana" ham shu kun. Busiz keyinchalik chiqish yoki ko'chirishda
+  // o'quvchidan sinov kunlari uchun ham haq olinib qolardi.
+  const starts = startMapOf(student);
+  for (const group of student.groups) starts[String(group.id)] = day;
   if (writes.length) {
     await prisma.$transaction([
       prisma.payment.createMany({ data: writes }),
-      prisma.student.update({ where: { id: student.id }, data: { balance: { decrement: total } } }),
+      prisma.student.update({
+        where: { id: student.id },
+        data: { balance: { decrement: total }, courseStart: starts },
+      }),
     ]);
+  } else if (student.groups.length) {
+    await prisma.student.update({ where: { id: student.id }, data: { courseStart: starts } });
   }
   return { date: day, charges, total, warning: [...new Set(warnings)].join(' ') || null };
 }
 
 /**
- * O'quvchining guruhlar ro'yxatini yangi holatga keltirish (o'quvchi
+ * O'quvchining kurslar ro'yxatini yangi holatga keltirish (o'quvchi
  * tahrirlash oynasi): qo'shilganlarga hisob, chiqarilganlarga qaytarish.
  * Ilgari bu yerda shunchaki "set" bo'lardi — hisobsiz.
+ *
+ * Almashtirish (bittasi olib tashlanib, o'rniga boshqasi qo'shilsa) —
+ * ko'chirish deb qaraladi va pulga umuman tegmaydi (egasi, 2026-09-22).
+ * Faqat qo'shilgan kurs bo'lsa, odatdagidek oyning qolgan darslari uchun
+ * hisob yoziladi.
  */
 export async function syncStudentGroups({ studentId, groupIds, date, schoolId }) {
   const student = await prisma.student.findFirst({
@@ -618,6 +709,23 @@ export async function syncStudentGroups({ studentId, groupIds, date, schoolId })
   const current = new Set(student.groups.map(g => g.id));
   const warnings = [];
   const results = [];
+
+  // Avval juftlab almashtiramiz: chiqarilgan har bir kurs o'rniga qo'shilgan
+  // bitta kurs — bu ko'chirish, pulsiz.
+  const added = [...wanted].filter(id => !current.has(id));
+  const removed = [...current].filter(id => !wanted.has(id));
+  const swaps = Math.min(added.length, removed.length);
+  for (let i = 0; i < swaps; i++) {
+    const r = await transferStudent({
+      studentId: student.id, fromGroupId: removed[i], toGroupId: added[i],
+      date, schoolId: student.schoolId, apply: true,
+    });
+    if (r.error) { warnings.push(r.error); continue; }
+    results.push({ ...r, swapped: true });
+    current.delete(removed[i]);
+    current.add(added[i]);
+  }
+
   for (const gid of wanted) {
     if (current.has(gid)) continue;
     const r = await enrollStudent({ studentId: student.id, groupId: gid, date, schoolId: student.schoolId });

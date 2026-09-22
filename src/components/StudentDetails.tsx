@@ -20,11 +20,13 @@ import { activeCourses } from '../lib/activeCourses';
 import PhotoViewer from './PhotoViewer';
 import DiscountModal from './DiscountModal';
 import StudentMoveModal from './StudentMoveModal';
+import PaymentEditModal, { canEditPayment } from './PaymentEditModal';
 import PaymeLinkModal from './PaymeLinkModal';
 import { STUDY_GOALS, UZB_REGIONS, ORG_TYPES, gradeOptions, gradeLabel, keepGrade } from '../lib/studentFields';
 import StudentLedger from './StudentLedger';
 import { loadFaceModels, descriptorFromPhoto, saveFaceProfiles, faceFailText, faceFailedBefore, rememberFaceTry, forgetFaceTry } from '../lib/faceDescriptor';
 import type { FaceFail } from '../lib/faceDescriptor';
+import type { Payment } from '../types';
 
 /**
  * Face ID holati. Alohida "rasmga tushish" ham, tugma ham yo'q: belgi profil
@@ -37,7 +39,7 @@ export default function StudentDetails() {
     const { id } = useParams<{ id: string }>();
     const navigate = useNavigate();
     const { t } = useLang();
-    const { students, groups, teachers, courses, payments, attendances, scores, transports, routes, directions, settings, addPayment,addAttendance, addScore, updateStudent, addStudentToGroup, deleteStudent, setStudentStatus, topics, updateAttendance, showNotification, loadAttendanceFor, user: currentUser } = useCRM();
+    const { students, groups, teachers, courses, payments, attendances, scores, transports, routes, directions, settings, addPayment,addAttendance, addScore, updateStudent, addStudentToGroup, deleteStudent, setStudentStatus, topics, updateAttendance, showNotification, loadAttendanceFor, retryLoad, user: currentUser } = useCRM();
 
     const confirm = useConfirm();
     const [activeTab, setActiveTab] = useState('umumiy');
@@ -70,10 +72,108 @@ export default function StudentDetails() {
     const [editingGroupPrice, setEditingGroupPrice] = useState<{ groupId: number, name: string, coursePrice: number } | null>(null);
     const [customPriceVal, setCustomPriceVal] = useState('');
     const [customNoteVal, setCustomNoteVal] = useState('');
+    // Yangi narx shu oyning hisobiga ham tatbiq qilinsinmi. Oy o'rtasida
+    // chegirma berilsa, allaqachon yozilgan oylik hisob eski narxda qolib
+    // ketardi — chegirma faqat keyingi oydan ishlardi.
+    const [priceRecalc, setPriceRecalc] = useState(true);
+    const [savingPrice, setSavingPrice] = useState(false);
+    // "Kursga kelgan sana": o'quvchi ro'yxatga oy boshida olinib, darsga oy
+    // o'rtasidan kelishi mumkin — hisob o'sha kundan yuritiladi.
+    const [editingStart, setEditingStart] = useState<{ groupId: number, name: string, current: string } | null>(null);
+    const [startVal, setStartVal] = useState('');
+    const [startPreview, setStartPreview] = useState<any>(null);
+    const [savingStart, setSavingStart] = useState(false);
+    // To'lovni tahrirlash (resepshn — 10 daqiqa, admin — doim).
+    const [editingPayment, setEditingPayment] = useState<Payment | null>(null);
     // Profil izohi (Student.comment) — bazada bor edi, lekin interfeysda ko'rinmasdi.
     const [isEditingNote, setIsEditingNote] = useState(false);
     const [noteDraft, setNoteDraft] = useState('');
     const [isSavingNote, setIsSavingNote] = useState(false);
+
+    /** Shu kursga kelgan sana (yozilmagan bo'lsa — ro'yxatga olingan kun). */
+    const kursSanasi = (groupId: number) => {
+        const cs = student?.courseStart;
+        const v = cs && typeof cs === 'object' ? (cs as Record<string, string>)[String(groupId)] : null;
+        return v || null;
+    };
+
+    /** Kelgan sanani o'zgartirish: avval hisob ko'rsatiladi, keyin yoziladi. */
+    const startniKorish = async (groupId: number, date: string) => {
+        if (!student || !date) { setStartPreview(null); return; }
+        try {
+            const token = localStorage.getItem('token');
+            const res = await fetch(`/api/students/${student.id}/course-start`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + token },
+                body: JSON.stringify({ schoolId: student.schoolId, groupId, date, preview: true }),
+            });
+            const data = await res.json();
+            setStartPreview(res.ok ? data : { error: data.error });
+        } catch {
+            setStartPreview({ error: 'Aloqa xatosi' });
+        }
+    };
+
+    const startniSaqlash = async () => {
+        if (!student || !editingStart || !startVal || savingStart) return;
+        setSavingStart(true);
+        try {
+            const token = localStorage.getItem('token');
+            const res = await fetch(`/api/students/${student.id}/course-start`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + token },
+                body: JSON.stringify({ schoolId: student.schoolId, groupId: editingStart.groupId, date: startVal }),
+            });
+            const data = await res.json();
+            if (!res.ok) { showNotification(data.error || 'Saqlanmadi', 'error'); return; }
+            const farq = Number(data.balanceDelta || 0);
+            showNotification(
+                farq === 0
+                    ? `Kelgan sana ${startVal} qilib belgilandi`
+                    : `Kelgan sana ${startVal} · hisob ${farq > 0 ? 'kamaydi' : 'oshdi'}: ${Math.abs(farq).toLocaleString('ru-RU')} so'm`,
+                'success'
+            );
+            if (data.warning) showNotification(data.warning, 'error');
+            setEditingStart(null);
+            setStartPreview(null);
+            retryLoad();
+        } catch {
+            showNotification('Aloqa xatosi', 'error');
+        } finally {
+            setSavingStart(false);
+        }
+    };
+
+    /**
+     * Bitta o'quvchi uchun kurs narxi. Narx bilan birga shu oyning hisobi
+     * ham moslanishi mumkin (500 000 lik kurs shu bolaga 450 000).
+     */
+    const narxniSaqlash = async (groupId: number, price: number | null, note: string) => {
+        if (!student) return;
+        try {
+            const token = localStorage.getItem('token');
+            const res = await fetch(`/api/students/${student.id}/custom-price`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + token },
+                body: JSON.stringify({ schoolId: student.schoolId, groupId, price, note, recalc: priceRecalc }),
+            });
+            const data = await res.json();
+            if (!res.ok) { showNotification(data.error || 'Saqlanmadi', 'error'); return; }
+            const farq = Number(data.recalculated?.balanceDelta || 0);
+            showNotification(
+                price === null
+                    ? 'Standart narxga qaytarildi' + (farq ? ` · hisob ${Math.abs(farq).toLocaleString('ru-RU')} so'm o'zgardi` : '')
+                    : `Shu o'quvchi uchun narx ${price.toLocaleString('ru-RU')} so'm`
+                      + (farq ? ` · shu oy hisobi ${farq > 0 ? 'kamaydi' : 'oshdi'}: ${Math.abs(farq).toLocaleString('ru-RU')} so'm` : ''),
+                'success'
+            );
+            setEditingGroupPrice(null);
+            retryLoad();
+        } catch {
+            showNotification('Aloqa xatosi', 'error');
+        }
+    };
+
 
     const handleConfirmDelete = async () => {
         const id = student!.id;
@@ -667,9 +767,9 @@ export default function StudentDetails() {
                         Chegirma
                     </button>
                     <button onClick={() => setMoveMode('transfer')}
-                        title="Boshqa guruhga ko'chirish — pul dars kunlari bo'yicha qayta hisoblanadi"
+                        title="Boshqa kursga ko'chirish — to'lovlarga tegilmaydi"
                         className="h-9 px-4 border border-chiziq-kuchli text-brand hover:bg-brand hover:text-white rounded-lg text-[13px] font-semibold transition-colors cursor-pointer">
-                        Guruhni almashtirish
+                        Kursni almashtirish
                     </button>
                     <button onClick={() => setMoveMode('refund')}
                         title="O'qishni to'xtatish va o'tilmagan darslar uchun pulni qaytarish"
@@ -1442,6 +1542,22 @@ export default function StudentDetails() {
                                                                     <div>
                                                                         <h5 className="text-xs font-black text-matn group-hover:text-brand tracking-tight">{group.name}</h5>
                                                                         <p className="text-[11px] font-bold text-matn-xira mt-0.5">{group.courseName ? `${group.courseName} • ` : ''}{group.teacherName}</p>
+                                                                        {/* Kursga kelgan sana — oylik hisob shu kundan yuritiladi. */}
+                                                                        <button
+                                                                            onClick={e => {
+                                                                                e.stopPropagation();
+                                                                                const cur = kursSanasi(group.id) || student.joinedDate || toDateStr();
+                                                                                setEditingStart({ groupId: group.id, name: group.name, current: cur });
+                                                                                setStartVal(cur);
+                                                                                setStartPreview(null);
+                                                                                startniKorish(group.id, cur);
+                                                                            }}
+                                                                            className="mt-1 inline-flex items-center gap-1 text-[10px] font-bold text-matn-xira hover:text-brand transition-colors cursor-pointer"
+                                                                            title="Kursga kelgan sanani o'zgartirish"
+                                                                        >
+                                                                            <Calendar size={10} />
+                                                                            <span className="num">{kursSanasi(group.id) || "kelgan sana belgilanmagan"}</span>
+                                                                        </button>
                                                                     </div>
                                                                 </div>
                                                                 <div className="flex items-center gap-3">
@@ -1470,6 +1586,7 @@ export default function StudentDetails() {
                                                                             setCustomPriceVal(studentCustomPrice !== undefined ? String(studentCustomPrice) : '');
                                                                             const existingNote = student.customPrices && typeof student.customPrices === 'object' ? (student.customPrices as Record<string, any>)['note_' + group.id] || '' : '';
                                                                             setCustomNoteVal(existingNote);
+                                                                            setPriceRecalc(true);
                                                                         }}
                                                                         className="p-2 bg-sirt hover:bg-brand/10 dark:hover:bg-brand/10 border border-chiziq hover:border-brand rounded-xl text-matn-xira hover:text-brand transition-all cursor-pointer"
                                                                         title="Maxsus narx belgilash"
@@ -1762,6 +1879,19 @@ export default function StudentDetails() {
                                                         }`}>
                                                             {method}
                                                         </span>
+                                                        {/* Tahrirlash: resepshn 10 daqiqa ichida, administrator doim. */}
+                                                        {canEditPayment(p, currentUser?.role) ? (
+                                                            <button
+                                                                onClick={() => setEditingPayment(p)}
+                                                                title="To'lovni tahrirlash"
+                                                                className="w-7 h-7 shrink-0 flex items-center justify-center rounded-lg text-matn-xira hover:text-brand hover:bg-brand/10 transition-colors cursor-pointer"
+                                                            >
+                                                                <Edit size={13} />
+                                                            </button>
+                                                        ) : <span className="w-7 shrink-0" />}
+                                                        {p.editedAt && (
+                                                            <span className="hidden lg:inline text-[10px] font-bold text-ogoh shrink-0" title={`Tahrirlangan: ${new Date(p.editedAt).toLocaleString('ru-RU')}`}>tahrirlangan</span>
+                                                        )}
                                                     </div>
                                                 );
                                             })}
@@ -2325,6 +2455,90 @@ export default function StudentDetails() {
                 </div>
             )}
 
+            {/* Kursga kelgan sana — hisob shu kundan boshlanadi. */}
+            {editingStart && (
+                <div className="fixed inset-0 z-[250] flex items-start sm:items-center justify-center overflow-y-auto p-4">
+                    <div className="absolute inset-0 bg-gray-900/60 backdrop-blur-sm" onClick={() => { setEditingStart(null); setStartPreview(null); }} />
+                    <div className="relative bg-sirt w-full max-w-sm rounded-[2rem] p-8 shadow-2xl overflow-hidden border border-chiziq">
+                        <div className="flex items-center justify-between mb-6 pb-4 border-b border-chiziq-mayin/50">
+                            <div>
+                                <h3 className="text-sm font-black text-matn tracking-tight">Kursga kelgan sana</h3>
+                                <p className="text-[11px] font-bold text-brand mt-0.5">{editingStart.name}</p>
+                            </div>
+                            <button aria-label="Yopish" onClick={() => { setEditingStart(null); setStartPreview(null); }} className="w-8 h-8 flex items-center justify-center text-matn-xira hover:bg-gray-50 dark:hover:bg-gray-750 rounded-xl cursor-pointer"><X size={18} /></button>
+                        </div>
+                        <div className="space-y-4">
+                            <div>
+                                <label className="block text-[11px] font-bold text-matn-xira mb-2">Qaysi kundan kelib boshlagan</label>
+                                <input
+                                    type="date"
+                                    className="w-full px-4 py-3 bg-ichki border border-chiziq rounded-2xl text-xs font-bold text-matn focus:border-brand outline-none transition-all"
+                                    value={startVal}
+                                    onChange={e => { setStartVal(e.target.value); startniKorish(editingStart.groupId, e.target.value); }}
+                                />
+                                <span className="block text-[10px] text-matn-xira font-medium mt-1">
+                                    Oylik hisob shu kundan oy oxirigacha bo'lgan darslar uchun yoziladi
+                                </span>
+                            </div>
+
+                            {/* Qanday o'zgarishini oldindan ko'rsatamiz — pulga tegadigan amal. */}
+                            {startPreview?.error && (
+                                <p className="text-[11px] font-bold text-xato bg-rose-50 dark:bg-rose-950/20 border border-rose-100 dark:border-rose-900/40 rounded-xl px-3 py-2">{startPreview.error}</p>
+                            )}
+                            {startPreview && !startPreview.error && (
+                                <div className="bg-ichki/50 border border-chiziq rounded-2xl p-3 space-y-2">
+                                    {startPreview.trial ? (
+                                        <p className="text-[11px] font-bold text-matn-xira">Sinov o'quvchisi — hisob yozilmaydi.</p>
+                                    ) : (startPreview.lines || []).length === 0 ? (
+                                        <p className="text-[11px] font-bold text-matn-xira">Hisob o'zgarmaydi.</p>
+                                    ) : (
+                                        (startPreview.lines || []).map((l: any) => (
+                                            <div key={l.month} className="flex items-center justify-between gap-3">
+                                                <span className="num text-[11px] font-bold text-matn-xira">{l.month} · {l.lessons} dars</span>
+                                                <span className={`num text-[11px] font-black ${l.adjust > 0 ? 'text-yaxshi' : l.adjust < 0 ? 'text-xato' : 'text-matn-xira'}`}>
+                                                    {l.adjust > 0 ? '+' : ''}{Math.round(l.adjust).toLocaleString('ru-RU')}
+                                                </span>
+                                            </div>
+                                        ))
+                                    )}
+                                    {!startPreview.trial && (
+                                        <div className="flex items-center justify-between gap-3 pt-2 border-t border-chiziq-mayin">
+                                            <span className="text-[11px] font-bold text-matn">Balans</span>
+                                            <span className="num text-[11px] font-black text-matn">
+                                                {Math.round(startPreview.balanceBefore).toLocaleString('ru-RU')} → {Math.round(startPreview.balanceAfter).toLocaleString('ru-RU')}
+                                            </span>
+                                        </div>
+                                    )}
+                                    {startPreview.warning && (
+                                        <p className="text-[10px] font-bold text-ogoh">{startPreview.warning}</p>
+                                    )}
+                                </div>
+                            )}
+
+                            <div className="flex gap-2 pt-2">
+                                <button type="button" onClick={() => { setEditingStart(null); setStartPreview(null); }}
+                                    className="flex-1 py-3 bg-ichki hover:bg-gray-100 dark:hover:bg-gray-800 text-matn-xira rounded-xl text-[11px] font-bold transition-all cursor-pointer">
+                                    Bekor
+                                </button>
+                                <button type="button" onClick={startniSaqlash} disabled={savingStart || !startVal || !!startPreview?.error}
+                                    className="flex-1 py-3 bg-brand hover:bg-brand-dark disabled:opacity-50 text-white rounded-xl text-[11px] font-bold transition-all cursor-pointer">
+                                    {savingStart ? 'Saqlanmoqda…' : 'Saqlash'}
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* To'lovni tahrirlash: resepshn 10 daqiqa ichida, admin doim. */}
+            {editingPayment && (
+                <PaymentEditModal
+                    payment={editingPayment}
+                    onClose={() => setEditingPayment(null)}
+                    onSaved={() => retryLoad()}
+                />
+            )}
+
             {editingGroupPrice && (
                 <div className="fixed inset-0 z-[250] flex items-start sm:items-center justify-center overflow-y-auto p-4">
                     <div className="absolute inset-0 bg-gray-900/60 backdrop-blur-sm" onClick={() => setEditingGroupPrice(null)} />
@@ -2358,40 +2572,48 @@ export default function StudentDetails() {
                                     onChange={e => setCustomNoteVal(e.target.value)}
                                 />
                             </div>
+                            {/* Oy o'rtasida chegirma berilsa, shu oyning hisobi
+                                eski narxda qolib ketardi — endi tanlov bor. */}
+                            <label className="flex items-start gap-2.5 p-3 bg-ichki/50 border border-chiziq rounded-2xl cursor-pointer">
+                                <input type="checkbox" checked={priceRecalc} onChange={e => setPriceRecalc(e.target.checked)} className="mt-0.5 accent-[#1b6b6b] cursor-pointer" />
+                                <span className="text-[11px] font-bold text-matn leading-relaxed">
+                                    Shu oyning hisobi ham yangi narxga moslansin
+                                    <span className="block text-[10px] font-medium text-matn-xira mt-0.5">
+                                        Belgilanmasa yangi narx keyingi oydan ishlaydi
+                                    </span>
+                                </span>
+                            </label>
                             <div className="flex gap-2 pt-2">
                                 <button
                                     type="button"
+                                    disabled={savingPrice}
                                     onClick={async () => {
-                                        const cp = { ...(student.customPrices || {}) };
-                                        delete cp[editingGroupPrice.groupId];
-                                        delete cp['note_' + editingGroupPrice.groupId];
-                                        await updateStudent(student.id, { customPrices: cp });
-                                        setEditingGroupPrice(null);
+                                        setSavingPrice(true);
+                                        try {
+                                            await narxniSaqlash(editingGroupPrice.groupId, null, '');
+                                        } finally { setSavingPrice(false); }
                                     }}
-                                    className="flex-1 py-3 bg-rose-50 hover:bg-rose-100 text-rose-600 dark:bg-rose-950/20 dark:text-rose-400 rounded-xl text-[11px] font-bold transition-all cursor-pointer"
+                                    className="flex-1 py-3 bg-rose-50 hover:bg-rose-100 disabled:opacity-50 text-rose-600 dark:bg-rose-950/20 dark:text-rose-400 rounded-xl text-[11px] font-bold transition-all cursor-pointer"
                                 >
                                     O'chirish
                                 </button>
                                 <button
                                     type="button"
+                                    disabled={savingPrice}
                                     onClick={async () => {
                                         const val = Number(customPriceVal);
-                                        if (isNaN(val) || val < 0) {
+                                        if (!customPriceVal.trim() || isNaN(val) || val < 0) {
                                             showNotification("Noto'g'ri qiymat kiritildi", 'error');
                                             return;
                                         }
-                                        const cp: Record<string, any> = { ...(student.customPrices || {}), [editingGroupPrice.groupId]: val };
-                                        if (customNoteVal.trim()) {
-                                            cp['note_' + editingGroupPrice.groupId] = customNoteVal.trim();
-                                        } else {
-                                            delete cp['note_' + editingGroupPrice.groupId];
-                                        }
-                                        await updateStudent(student.id, { customPrices: cp });
-                                        setEditingGroupPrice(null);
+                                        setSavingPrice(true);
+                                        try {
+                                            await narxniSaqlash(editingGroupPrice.groupId, val, customNoteVal.trim());
+                                        } finally { setSavingPrice(false); }
                                     }}
-                                    className="flex-1 py-3 bg-brand hover:bg-brand-dark text-white rounded-xl text-[11px] font-bold transition-all cursor-pointer"
+                                    className="flex-1 py-3 bg-brand hover:bg-brand-dark disabled:opacity-50 text-white rounded-xl text-[11px] font-bold transition-all cursor-pointer"
                                 >
-                                    Saqlash
+                                    {savingPrice ? 'Saqlanmoqda…' : 'Saqlash'}
                                 </button>
                             </div>
                         </div>

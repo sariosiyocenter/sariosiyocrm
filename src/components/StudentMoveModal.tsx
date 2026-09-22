@@ -3,14 +3,15 @@ import { X, ArrowRight, AlertTriangle, Users } from 'lucide-react';
 import { useCRM } from '../context/CRMContext';
 
 /**
- * O'quvchini boshqa guruhga ko'chirish yoki o'qishni to'xtatganda pulni
+ * O'quvchini boshqa kursga ko'chirish yoki o'qishni to'xtatganda pulni
  * qaytarish oynasi.
  *
- * Ikkalasi ham bitta qoidaga tayanadi: bitta dars narxi = oylik narx / o'sha
- * oydagi jadval bo'yicha dars kunlari soni. Shuning uchun oyning o'rtasida
- * ko'chgan o'quvchi eski guruhda o'tgan darslar uchun to'laydi, yangi guruhda
- * esa qolgan darslar uchun. Ikkala guruhning narxi har xil bo'lishi mumkin.
+ * Ko'chirishda pul qimirlamaydi (egasi, 2026-09-22): eski kursga yozilgan
+ * hisob o'z joyida qoladi, yangi kursga shu oy uchun hech narsa yozilmaydi,
+ * balans o'zgarmaydi. Almashgani amallar jurnalida saqlanadi.
  *
+ * Chiqishda esa qayta hisob bor: bitta dars narxi = oylik narx / o'sha oydagi
+ * jadval bo'yicha dars kunlari soni, o'tilmagan darslar puli qaytariladi.
  * Hisob avval ko'rsatiladi (server `preview: true` bilan chaqiriladi), tasdiq
  * bosilgandan keyingina yoziladi.
  */
@@ -32,6 +33,10 @@ interface Line {
 interface Preview {
     month: string;
     date: string;
+    /** Ko'chirishda pul umuman o'zgarmaydi — hisob jadvali ham chiqmaydi. */
+    moneyFree?: boolean;
+    from?: { id: number; name: string; teacher: string | null; price: number } | null;
+    to?: { id: number; name: string; teacher: string | null; price: number };
     lines: Line[];
     balanceDelta: number;
     balanceAfter: number;
@@ -111,7 +116,7 @@ export default function StudentMoveModal({ studentId, mode, onClose }: {
             const data = await res.json();
             if (!res.ok) { showNotification(data.error || 'Xatolik', 'error'); return; }
             showNotification(
-                mode === 'transfer' ? "O'quvchi ko'chirildi va hisob qayta hisoblandi" : 'Qayta hisob bajarildi',
+                mode === 'transfer' ? "O'quvchi boshqa kursga ko'chirildi (to'lovsiz)" : 'Qayta hisob bajarildi',
                 'success'
             );
             retryLoad();
@@ -137,7 +142,7 @@ export default function StudentMoveModal({ studentId, mode, onClose }: {
                 <div className="flex items-center justify-between pb-4 border-b border-chiziq-mayin/50">
                     <div>
                         <h3 className="text-lg font-black text-matn tracking-tight">
-                            {mode === 'transfer' ? "Boshqa guruhga ko'chirish" : "O'qishni to'xtatish va qayta hisob"}
+                            {mode === 'transfer' ? "Boshqa kursga ko'chirish" : "O'qishni to'xtatish va qayta hisob"}
                         </h3>
                         <p className="text-[11px] font-bold text-brand mt-0.5">{student.name}</p>
                     </div>
@@ -151,24 +156,28 @@ export default function StudentMoveModal({ studentId, mode, onClose }: {
                     <div>
                         <label className={labelCls}>{mode === 'transfer' ? "Ko'chirish sanasi" : 'Chiqish sanasi'}</label>
                         <input type="date" value={date} onChange={e => setDate(e.target.value)} className={inputCls} />
-                        <p className="text-[10px] text-matn-xira mt-1">Shu kundan boshlab yangi hisob yuritiladi.</p>
+                        <p className="text-[10px] text-matn-xira mt-1">
+                            {mode === 'transfer'
+                                ? "O'quvchi shu kundan yangi kursda hisoblanadi. To'lovlarga tegilmaydi."
+                                : 'Shu kundan boshlab yangi hisob yuritiladi.'}
+                        </p>
                     </div>
 
                     {mode === 'transfer' ? (
                         <>
                             <div>
-                                <label className={labelCls}>Qaysi guruhdan</label>
+                                <label className={labelCls}>Qaysi kursdan</label>
                                 <select value={fromGroupId} onChange={e => setFromGroupId(e.target.value ? Number(e.target.value) : '')} className={inputCls}>
-                                    <option value="">— (yangi guruh qo'shiladi)</option>
+                                    <option value="">— (yangi kurs qo'shiladi)</option>
                                     {studentGroups.map(g => (
                                         <option key={g.id} value={g.id}>{g.name} {courseName(g) && `(${courseName(g)})`}</option>
                                     ))}
                                 </select>
                             </div>
                             <div className="sm:col-span-2">
-                                <label className={labelCls}>Qaysi guruhga *</label>
+                                <label className={labelCls}>Qaysi kursga *</label>
                                 <select value={toGroupId} onChange={e => setToGroupId(e.target.value ? Number(e.target.value) : '')} className={inputCls}>
-                                    <option value="">Guruhni tanlang</option>
+                                    <option value="">Kursni tanlang</option>
                                     {otherGroups.map(g => (
                                         <option key={g.id} value={g.id}>
                                             {g.name} {courseName(g) && `(${courseName(g)})`} — {g.days === 'TOQ' ? 'toq kunlar' : g.days === 'JUFT' ? 'juft kunlar' : g.days === 'HAR_KUNI' ? 'har kuni' : 'jadval yo\'q'}
@@ -199,7 +208,32 @@ export default function StudentMoveModal({ studentId, mode, onClose }: {
                     <p className="text-[11px] font-bold text-matn-xira text-center py-6">Hisoblanmoqda…</p>
                 )}
 
-                {preview && !error && (
+                {/* Ko'chirish — pulsiz: nima bo'lishini bir qarashda aytamiz. */}
+                {preview && !error && preview.moneyFree && (
+                    <div className="space-y-3">
+                        <div className="flex items-center gap-3 p-4 bg-ichki border border-chiziq rounded-2xl">
+                            <div className="min-w-0 flex-1">
+                                <p className="text-[11px] font-bold text-matn-xira">Qaysi kursdan</p>
+                                <p className="text-[13px] font-black text-matn truncate">{preview.from?.name || '—'}</p>
+                            </div>
+                            <ArrowRight size={16} className="text-brand shrink-0" />
+                            <div className="min-w-0 flex-1 text-right">
+                                <p className="text-[11px] font-bold text-matn-xira">Qaysi kursga</p>
+                                <p className="text-[13px] font-black text-matn truncate">{preview.to?.name}</p>
+                            </div>
+                        </div>
+                        <div className="p-4 bg-emerald-50/60 dark:bg-emerald-950/10 border border-emerald-100 dark:border-emerald-900/30 rounded-2xl space-y-1.5">
+                            <p className="text-[12px] font-black text-emerald-700 dark:text-emerald-400">To'lovsiz almashtiriladi</p>
+                            <p className="text-[11px] font-bold text-matn-sokin leading-relaxed">
+                                Balans o'zgarmaydi ({money(preview.student.balanceBefore)} so'm), yangi hisob yozilmaydi,
+                                qaytariladigan pul ham yo'q. Yangi kurs keyingi oydan odatdagidek hisoblanadi.
+                                Almashtirilgani amallar jurnalida saqlanadi.
+                            </p>
+                        </div>
+                    </div>
+                )}
+
+                {preview && !error && !preview.moneyFree && (
                     <div className="space-y-4">
                         <div className="bg-ichki border border-chiziq rounded-2xl overflow-hidden">
                             <table className="w-full text-left">

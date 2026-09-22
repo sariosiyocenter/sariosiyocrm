@@ -38,6 +38,12 @@ model Student {
   certType      String?
   certScore     String?
   customPrices  Json?     @default("{}")
+  // O'quvchi qaysi kursga qaysi kundan kelib boshlagani:
+  //   { "<kurs id>": "2026-09-15" }
+  // O'quvchi oy boshida ro'yxatga olinib, darsga oy o'rtasidan kelishi mumkin.
+  // Oylik hisob aynan shu kundan boshlanadi (services/enrollment.js). Bo'sh
+  // bo'lsa — eski yozuvlardagidek hisob qatorlaridan tiklanadi.
+  courseStart   Json?     @default("{}")
   certificates  Json?     @default("[]")
 
   gender          String?   @default("Erkak")
@@ -299,6 +305,14 @@ model Payment {
   // pul qaysi guruhniki ekanini aniqlab bo'lmasdi.
   groupId     Int?
   group       Group?   @relation(fields: [groupId], references: [id])
+
+  // Yozuv bazaga qachon tushgani — to'lov sanasi (`date`) emas, uni xodim
+  // qo'lda o'zgartira oladi. Resepshn to'lovni faqat kiritilganidan keyin
+  // 10 daqiqa ichida tahrirlaydi, administrator esa doim: shu maydonga qarab.
+  createdAt   DateTime @default(now())
+  // Tahrirlangan bo'lsa — kim va qachon. To'lovlar tarixida ko'rinadi.
+  editedAt    DateTime?
+  editedById  Int?
 
   schoolId    Int
   school      School   @relation(fields: [schoolId], references: [id])

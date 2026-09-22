@@ -38,12 +38,13 @@ interface CRMContextType extends CRMState {
     setSelectedSchoolId: (id: number) => void;
     // schoolId ixtiyoriy: ko'p filialli markazda o'quvchi qaysi filialga
     // yozilishini forma o'zi tanlaydi, aks holda joriy filial olinadi.
-    addStudent: (student: Omit<Student, 'id' | 'schoolId'> & { schoolId?: number }) => Promise<void>;
+    // startDate — kursga kelib boshlagan sana: oylik hisob shu kundan yoziladi.
+    addStudent: (student: Omit<Student, 'id' | 'schoolId'> & { schoolId?: number; startDate?: string }) => Promise<void>;
     updateStudent: (id: number, student: Partial<Student>) => Promise<void>;
     deleteStudent: (id: number, force?: boolean) => Promise<{ ok: boolean; needsChoice?: boolean; error?: string }>;
     setStudentStatus: (id: number, status: string) => Promise<void>;
     importStudents: (students: any[]) => Promise<void>;
-    addStudentToGroup: (groupId: number, studentId: number) => Promise<void>;
+    addStudentToGroup: (groupId: number, studentId: number, startDate?: string) => Promise<void>;
     removeStudentFromGroup: (groupId: number, studentId: number) => Promise<void>;
     addTeacher: (teacher: Omit<Teacher, 'id' | 'schoolId'>) => Promise<void>;
     updateTeacher: (id: number, teacher: Partial<Teacher>) => Promise<void>;
@@ -676,7 +677,7 @@ export const CRMProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         return method !== 'DELETE' ? await res.json() : null;
     };
 
-    const addStudent = async (student: Omit<Student, 'id' | 'schoolId'> & { schoolId?: number }) => {
+    const addStudent = async (student: Omit<Student, 'id' | 'schoolId'> & { schoolId?: number; startDate?: string }) => {
         try {
             const { warning, ...newStudent } = await apiCall('students', 'POST', student);
             setState(prev => ({ ...prev, students: [...prev.students, newStudent] }));
@@ -762,7 +763,7 @@ export const CRMProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         }
     };
 
-    const addStudentToGroup = async (groupId: number, studentId: number) => {
+    const addStudentToGroup = async (groupId: number, studentId: number, startDate?: string) => {
         try {
             const group = state.groups.find(g => g.id === groupId);
             const student = state.students.find(s => s.id === studentId);
@@ -774,7 +775,9 @@ export const CRMProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             }
 
             // Use the atomic connect endpoint — avoids 'set' overwrite risk
-            const groupRes = await apiCall(`groups/${groupId}/students`, 'POST', { studentId });
+            // startDate — o'quvchi kursga qaysi kundan kelib boshlagani: hisob
+            // o'sha kundan yoziladi (bo'sh bo'lsa bugundan).
+            const groupRes = await apiCall(`groups/${groupId}/students`, 'POST', { studentId, startDate });
 
             setState(prev => ({
                 ...prev,

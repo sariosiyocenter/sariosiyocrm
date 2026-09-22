@@ -14,7 +14,7 @@ import { encryptSecret, decryptSecret, secretsEncryptionEnabled } from './lib/se
 import { claimBillingRun, releaseBillingRun, processMonthlyBilling } from './services/billing.js';
 import jwt from 'jsonwebtoken';
 import bot, { startBot, notifyAdmins, getTelegramBot, rejaniHaydovchigaYuborish, rejaBekorXabari } from './src/bot/bot.js';
-import { transferStudent, refundStudent, enrollStudent, unenrollStudent, syncGroupMembers, activateStudent, syncStudentGroups } from './services/enrollment.js';
+import { transferStudent, refundStudent, enrollStudent, unenrollStudent, syncGroupMembers, activateStudent, syncStudentGroups, setCourseStart, effectiveCourseStart, todayTashkent } from './services/enrollment.js';
 import { studentLedger, receivedForGroups, monthCoverage } from './services/ledger.js';
 import { holatniYozish, marshrutniTartiblash, marshrutHolati, rejalarniYozish, rejaniQabulQilish, rejaniYetkazish, REJA_INCLUDE, rejaPuli } from './services/logistics.js';
 import { tarifniTozalash } from './lib/transportNarx.js';
@@ -1552,7 +1552,7 @@ app.get('/api/students', authenticate, async (req, res, next) => {
 });
 app.post('/api/students', authenticate, async (req, res, next) => {
   try {
-    const { groups, schoolId, selectedGroupIds, selectedPrivileges, routeIds, ...rest } = req.body;
+    const { groups, schoolId, selectedGroupIds, selectedPrivileges, routeIds, startDate, ...rest } = req.body;
     const parsedSchoolId = parseInt(schoolId);
     if (!parsedSchoolId || isNaN(parsedSchoolId) || parsedSchoolId <= 0) {
       return res.status(400).json({ error: 'Valid schoolId required' });
@@ -1566,6 +1566,15 @@ app.post('/api/students', authenticate, async (req, res, next) => {
     for (const key of ALLOWED) {
       if (rest[key] !== undefined) data[key] = rest[key];
     }
+    // Ism majburiy, telefon esa yo'q: egasi (2026-09-22) telefon raqamsiz
+    // o'quvchi qo'shishni so'radi (kichkina bolaning o'z raqami bo'lmaydi —
+    // ota-onasiniki alohida maydonda). Ustunning o'zi bo'sh bo'lolmaydi,
+    // shuning uchun bo'sh satr yoziladi.
+    if (typeof data.name !== 'string' || !data.name.trim()) {
+      return res.status(400).json({ error: "O'quvchining ismi kerak" });
+    }
+    data.name = data.name.trim();
+    data.phone = typeof data.phone === 'string' ? data.phone.trim() : '';
     // A base64 photo never reaches the row: it becomes a Storage URL first.
     await rasmMaydoniniTozala(data, 'photo', 'student');
     if (data.balance !== undefined) data.balance = parseFloat(data.balance) || 0;
@@ -1592,10 +1601,13 @@ app.post('/api/students', authenticate, async (req, res, next) => {
       await oquvchiMarshrutlari(student.id, routeIds, parsedSchoolId).catch(e => console.error('[Marshrut]', e.message));
     }
     const groupIds = (groups || selectedGroupIds || []).map(id => parseInt(id)).filter(id => !isNaN(id));
-    // Guruhga qo'shilishi bilan oyning qolgan darslari uchun hisob yoziladi.
+    // Kursga qo'shilishi bilan oyning qolgan darslari uchun hisob yoziladi.
+    // "Kursga kelgan sana" tanlangan bo'lsa — hisob o'sha kundan (o'quvchi
+    // bugun ro'yxatga olinib, darsga oy o'rtasidan kelishi mumkin).
+    const startDay = /^\d{4}-\d{2}-\d{2}$/.test(String(startDate || '')) ? String(startDate) : undefined;
     const warnings = [];
     for (const gid of groupIds) {
-      const r = await enrollStudent({ studentId: student.id, groupId: gid, schoolId: parsedSchoolId });
+      const r = await enrollStudent({ studentId: student.id, groupId: gid, date: startDay, schoolId: parsedSchoolId });
       if (r.warning) warnings.push(r.warning);
     }
     const updatedStudent = await prisma.student.findUnique({
@@ -1622,13 +1634,14 @@ app.post('/api/students/import', authenticate, async (req, res, next) => {
     let skippedCount = 0;
 
     for (const item of students) {
-      if (!item.name || !item.phone) {
+      // Telefon majburiy emas (egasi, 2026-09-22) — faqat ism kerak.
+      if (!item.name || !String(item.name).trim()) {
         skippedCount++;
         continue;
       }
 
       const name = String(item.name).trim();
-      const phone = String(item.phone).trim();
+      const phone = item.phone ? String(item.phone).trim() : '';
 
       // Check if already exists in this school
       const existing = await prisma.student.findFirst({
@@ -2114,10 +2127,12 @@ app.post('/api/groups', authenticate, async (req, res, next) => {
 app.post('/api/groups/:id/students', authenticate, async (req, res, next) => {
   try {
     const groupId = parseInt(req.params.id);
-    const { studentId } = req.body;
+    const { studentId, startDate } = req.body;
     if (!studentId) return res.status(400).json({ error: 'studentId required' });
 
-    const enrol = await enrollStudent({ studentId: parseInt(studentId), groupId });
+    // Kursga kelgan sana tanlangan bo'lsa hisob o'sha kundan boshlanadi.
+    const startDay = /^\d{4}-\d{2}-\d{2}$/.test(String(startDate || '')) ? String(startDate) : undefined;
+    const enrol = await enrollStudent({ studentId: parseInt(studentId), groupId, date: startDay });
     if (enrol.error) return res.status(400).json({ error: enrol.error });
 
     const updatedGroup = await prisma.group.findUnique({
@@ -2404,11 +2419,20 @@ app.get('/api/public/schools/:schoolId/transports', async (req, res, next) => {
   } catch (error) { next(error); }
 });
 
-// Eskirgan: ariza havolasi endi doimiy, tokensiz. Bu yo'l faqat ilgari
-// tarqatilgan QR kodlar uchun qoldi — token bo'lmasa ham forma ochiladi va
-// ariza qabul qilinadi. Himoya serverda: so'rov cheklovi (soatiga 20 ta) va
-// bir xil ism-telefon uchun takroriylik tekshiruvi.
-const APPLY_TOKEN_TTL_MS = 30 * 60 * 1000;
+// Ariza havolasi 15 daqiqa yashaydi (egasi, 2026-09-22: "link 15 minutlik
+// qilib qo'yish kerak, undan keyin kira olmasin"). Resepshn havolani yoki QR
+// kodni o'sha yerda ko'rsatadi; 15 daqiqadan keyin forma umuman ochilmaydi va
+// ariza ham qabul qilinmaydi — yangi havola olinadi.
+//
+// Shu sababli havola endi doim tokenli: tokensiz /apply/:filial ochilmaydi.
+const APPLY_TOKEN_TTL_MS = 15 * 60 * 1000;
+
+/** Token hali amal qiladimi (yo'q bo'lsa ham, eskirgan bo'lsa ham — yo'q). */
+function applyTokenOk(token, schoolId) {
+  if (!token) return false;
+  if (schoolId !== undefined && token.schoolId !== schoolId) return false;
+  return Date.now() - token.createdAt.getTime() <= APPLY_TOKEN_TTL_MS;
+}
 
 // POST create single-use registration token (Authenticated)
 app.post('/api/public/schools/:schoolId/tokens', authenticate, async (req, res, next) => {
@@ -2425,6 +2449,12 @@ app.post('/api/public/schools/:schoolId/tokens', authenticate, async (req, res, 
     const school = await prisma.school.findUnique({ where: { id: schoolId }, select: { id: true } });
     if (!school) return res.status(404).json({ error: 'Filial topilmadi' });
 
+    // Eskirganlari yig'ilib qolmasin: har yangi havolada bir kundan oshganlari
+    // o'chiriladi (ular baribir ishlamaydi).
+    prisma.applyToken.deleteMany({
+      where: { createdAt: { lt: new Date(Date.now() - 24 * 60 * 60 * 1000) } },
+    }).catch(() => {});
+
     const token = await prisma.applyToken.create({
       data: { schoolId }
     });
@@ -2440,11 +2470,15 @@ app.get('/api/public/tokens/:tokenId', async (req, res, next) => {
       where: { id: tokenId }
     });
 
-    if (!token || token.used || Date.now() - token.createdAt.getTime() > APPLY_TOKEN_TTL_MS) {
+    if (!applyTokenOk(token)) {
       return res.json({ valid: false });
     }
 
-    res.json({ valid: true, schoolId: token.schoolId });
+    res.json({
+      valid: true,
+      schoolId: token.schoolId,
+      expiresAt: new Date(token.createdAt.getTime() + APPLY_TOKEN_TTL_MS),
+    });
   } catch (error) { next(error); }
 });
 
@@ -2467,13 +2501,14 @@ app.post('/api/public/schools/:schoolId/leads', publicFormLimiter, async (req, r
 
     if (!name || !phone) return res.status(400).json({ error: 'Ism va telefon raqami majburiy' });
 
-    // Token is optional — if provided, validate it (legacy single-use support)
-    if (token) {
-      const applyToken = await prisma.applyToken.findUnique({ where: { id: token } });
-      const isExpired = applyToken && Date.now() - applyToken.createdAt.getTime() > APPLY_TOKEN_TTL_MS;
-      if (!applyToken || applyToken.used || isExpired || applyToken.schoolId !== schoolId) {
-        return res.status(400).json({ error: 'Ushbu ro\'yxatdan o\'tish havolasi eskirgan, noto\'g\'ri yoki allaqachon ishlatilgan.' });
-      }
+    // Havola 15 daqiqalik: tokensiz yoki eskirgan token bilan ariza qabul
+    // qilinmaydi. Ilgari token ixtiyoriy edi va tokensiz manzil doim ochiq
+    // turardi — muddatning ma'nosi qolmasdi.
+    const applyToken = token
+      ? await prisma.applyToken.findUnique({ where: { id: String(token) } })
+      : null;
+    if (!applyTokenOk(applyToken, schoolId)) {
+      return res.status(400).json({ error: 'Ro\'yxatdan o\'tish havolasi eskirgan (15 daqiqa). Resepshndan yangi havola yoki QR kod so\'rang.' });
     }
 
     const cleanName = name.trim();
@@ -2668,6 +2703,69 @@ app.post('/api/payments', authenticate, requireRole('ADMIN', 'MANAGER', 'RECEPTI
       data: { balance: { increment: payment.amount } }
     });
     res.json(payment);
+  } catch (error) { next(error); }
+});
+
+// To'lovni tahrirlash oynasi: resepshn (va menejer) faqat yozgandan keyin
+// 10 daqiqa ichida — xato summa yoki noto'g'ri to'lov usulini darhol
+// tuzatish uchun. Administrator har doim tahrirlay oladi (egasi, 2026-09-22).
+const PAYMENT_EDIT_WINDOW_MS = 10 * 60 * 1000;
+
+/** Shu xodim shu to'lovni hozir tahrirlay oladimi. */
+function paymentEditable(user, payment) {
+  if (payment.type === 'Oylik') return { ok: false, error: "Bu — tizim yozgan oylik hisob, uni tahrirlab bo'lmaydi" };
+  if (payment.type === 'Peyme') return { ok: false, error: "Payme orqali kelgan to'lovni tahrirlab bo'lmaydi" };
+  if (user.role === 'ADMIN' || user.role === 'SUPERADMIN') return { ok: true };
+  const left = PAYMENT_EDIT_WINDOW_MS - (Date.now() - new Date(payment.createdAt).getTime());
+  if (left > 0) return { ok: true, msLeft: left };
+  return { ok: false, error: "To'lovni faqat kiritilgandan keyin 10 daqiqa ichida tahrirlash mumkin. Administratorga murojaat qiling." };
+}
+
+app.put('/api/payments/:id', authenticate, requireRole('ADMIN', 'MANAGER', 'RECEPTIONIST'), async (req, res, next) => {
+  try {
+    const id = parseInt(req.params.id);
+    if (!Number.isInteger(id)) return res.status(400).json({ error: "Noto'g'ri ID" });
+    const payment = await prisma.payment.findUnique({ where: { id } });
+    if (!payment) return res.status(404).json({ error: "To'lov topilmadi" });
+
+    const gate = paymentEditable(req.user, payment);
+    if (!gate.ok) return res.status(403).json({ error: gate.error });
+
+    const data = {};
+    if (req.body.amount !== undefined) {
+      const amount = parseFloat(req.body.amount);
+      if (!Number.isFinite(amount) || amount === 0) return res.status(400).json({ error: "Summa noto'g'ri" });
+      // Tuzatish to'lovning yo'nalishini o'zgartirmasin: kirim kirim bo'lib
+      // qolsin, qaytarish — qaytarish.
+      if ((amount > 0) !== (payment.amount > 0)) return res.status(400).json({ error: "Summa belgisini o'zgartirib bo'lmaydi" });
+      data.amount = amount;
+    }
+    if (req.body.type !== undefined) {
+      let type = req.body.type === 'Plastik' ? 'Karta' : req.body.type;
+      // Faqat kassa usullari almashtiriladi: hisob yozuvlariga aylantirib
+      // bo'lmaydi (ular pulni boshqacha hisoblaydi).
+      if (!['Naqd', 'Karta', "O'tkazma", 'Klik'].includes(type)) {
+        return res.status(400).json({ error: "To'lov usuli noto'g'ri" });
+      }
+      data.type = type;
+    }
+    if (req.body.date !== undefined) {
+      const d = String(req.body.date).slice(0, 10);
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(d)) return res.status(400).json({ error: "Sana noto'g'ri" });
+      data.date = d;
+    }
+    if (req.body.description !== undefined) data.description = String(req.body.description).slice(0, 500);
+    if (!Object.keys(data).length) return res.status(400).json({ error: "O'zgartirish yo'q" });
+
+    data.editedAt = new Date();
+    data.editedById = req.user.id > 0 ? req.user.id : null;
+
+    const delta = data.amount !== undefined ? data.amount - payment.amount : 0;
+    const [updated] = await prisma.$transaction([
+      prisma.payment.update({ where: { id }, data }),
+      ...(delta ? [prisma.student.update({ where: { id: payment.studentId }, data: { balance: { increment: delta } } })] : []),
+    ]);
+    res.json(updated);
   } catch (error) { next(error); }
 });
 
@@ -4531,8 +4629,77 @@ app.post('/api/teacher-attendances/notify', authenticate, async (req, res, next)
   } catch (error) { next(error); }
 });
 
-// O'quvchini boshqa guruhga ko'chirish — pul oyning qolgan qismi bo'yicha
-// qayta hisoblanadi. preview: true bo'lsa faqat hisob qaytadi, hech narsa yozilmaydi.
+// O'quvchining kursga kelgan sanasini o'zgartirish. Oylik hisob shu kundan
+// yuritiladi, shuning uchun o'sha oy (kerak bo'lsa eski oy ham) qayta
+// sanaladi. preview: true — faqat hisob ko'rsatiladi, yozilmaydi.
+app.post('/api/students/:id/course-start', authenticate, requireRole('ADMIN', 'MANAGER', 'RECEPTIONIST'), async (req, res, next) => {
+  try {
+    const { schoolId, groupId, date, preview } = req.body;
+    if (!groupId || !date) return res.status(400).json({ error: 'groupId va date kerak' });
+    const result = await setCourseStart({
+      studentId: req.params.id,
+      groupId, date,
+      schoolId: schoolId ? parseInt(schoolId) : undefined,
+      apply: preview !== true,
+    });
+    if (result.error) return res.status(400).json(result);
+    res.json(result);
+  } catch (error) { next(error); }
+});
+
+// Bitta o'quvchi uchun kurs narxi ("500 minglik kursni shu o'quvchiga 450
+// ming"). Narx Student.customPrices ichida kurs raqami bo'yicha saqlanadi.
+// recalc: true bo'lsa shu oyning hisobi ham yangi narxga moslanadi.
+app.post('/api/students/:id/custom-price', authenticate, requireRole('ADMIN', 'MANAGER'), async (req, res, next) => {
+  try {
+    const studentId = parseInt(req.params.id);
+    const { groupId, price, note, recalc } = req.body;
+    const gid = parseInt(groupId);
+    if (!Number.isInteger(studentId) || !Number.isInteger(gid)) {
+      return res.status(400).json({ error: 'groupId kerak' });
+    }
+    const student = await prisma.student.findUnique({ where: { id: studentId } });
+    if (!student) return res.status(404).json({ error: "O'quvchi topilmadi" });
+    if (!(await canAccessSchool(req.user, student.schoolId))) return res.status(403).json({ error: "Ruxsat yo'q" });
+    const group = await prisma.group.findFirst({ where: { id: gid, schoolId: student.schoolId } });
+    if (!group) return res.status(404).json({ error: 'Kurs topilmadi' });
+
+    const cp = (student.customPrices && typeof student.customPrices === 'object' && !Array.isArray(student.customPrices))
+      ? { ...student.customPrices } : {};
+    if (price === null || price === undefined || price === '') {
+      delete cp[String(gid)];
+      delete cp['note_' + gid];
+    } else {
+      const val = Number(price);
+      if (!Number.isFinite(val) || val < 0) return res.status(400).json({ error: "Narx noto'g'ri" });
+      cp[String(gid)] = val;
+      if (note && String(note).trim()) cp['note_' + gid] = String(note).trim();
+      else delete cp['note_' + gid];
+    }
+    await prisma.student.update({ where: { id: studentId }, data: { customPrices: cp } });
+
+    // Oy o'rtasida narx o'zgarsa, shu oy uchun allaqachon yozilgan hisob eski
+    // narxda qolib ketardi — chegirma keyingi oydan ishlardi. Shuning uchun
+    // "shu oyga ham" tanlansa hisob kelgan sanadan qaytadan sanaladi.
+    let recalculated = null;
+    if (recalc) {
+      const month = todayTashkent().slice(0, 7);
+      const start = await effectiveCourseStart({ studentId, groupId: gid, month });
+      recalculated = await setCourseStart({ studentId, groupId: gid, date: start, schoolId: student.schoolId, apply: true });
+      if (recalculated.error) recalculated = null;
+    }
+
+    const updated = await prisma.student.findUnique({
+      where: { id: studentId },
+      include: { groups: { select: { id: true } } },
+    });
+    res.json({ ...updated, groups: updated.groups.map(g => g.id), recalculated: recalculated || undefined });
+  } catch (error) { next(error); }
+});
+
+// O'quvchini boshqa kursga ko'chirish. Pul o'zgarmaydi (egasi, 2026-09-22):
+// faqat a'zolik ko'chadi va amal jurnalga tushadi. preview: true bo'lsa
+// nima bo'lishi ko'rsatiladi, hech narsa yozilmaydi.
 app.post('/api/students/:id/transfer', authenticate, requireRole(...STAFF_MANAGERS), async (req, res, next) => {
   try {
     const { schoolId, fromGroupId, toGroupId, date, preview } = req.body;

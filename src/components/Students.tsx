@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { Search, Plus, FileSpreadsheet, MoreVertical, X, Image as ImageIcon, MapPin, GraduationCap, QrCode, Trash2, SlidersHorizontal, ScanFace, ArrowUpDown
 } from 'lucide-react';
 import { useCRM } from '../context/CRMContext';
@@ -32,6 +32,8 @@ export default function Students() {
     const [newStudent, setNewStudent] = useState({
         name: '', phone: '', address: '', birthDate: '', location: '', photo: '',
         gender: 'Erkak' as 'Erkak' | 'Ayol',
+        // Kursga kelib boshlagan sana: hisob shu kundan yoziladi.
+        startDate: new Date().toISOString().split('T')[0],
         // Formada darhol belgilanadi: faol o'quvchi (hisob bugundan) yoki sinov darsiga.
         status: 'Faol' as 'Faol' | 'Sinov',
         fatherName: '', fatherPhone: '', motherName: '', motherPhone: '',
@@ -126,17 +128,56 @@ export default function Students() {
             : (schools?.[0]?.id ?? null)));
     }, [isLinkModalOpen, selectedSchoolId, schools]);
 
-    // Bitta havola — QR ham, nusxalanadigan manzil ham shu.
-    //
-    // Ilgari 30 daqiqada yangilanadigan "bir martalik" token ham bor edi,
-    // lekin u himoya bermasdi: tokensiz /apply/:filial manzili baribir ochiq
-    // ishlardi. Foydasi yo'q, ziyoni bor edi — yuborilgan havola yarim
-    // soatdan keyin "eskirgan" bo'lib qolardi. Ariza beruvchidan himoya
-    // serverda: soatiga 20 ta so'rov cheklovi va bir xil ism-telefon
-    // uchun takroriylik tekshiruvi.
-    const applyUrl = linkSchoolId
-        ? `${window.location.origin}/apply/${linkSchoolId}`
+    // Havola 15 daqiqa yashaydi (egasi, 2026-09-22). Resepshn uni o'sha
+    // yerda ko'rsatadi yoki yuboradi; 15 daqiqadan keyin forma ochilmaydi
+    // ham, ariza ham qabul qilinmaydi. Shuning uchun har ochilganda yangi
+    // token so'raladi va manzil o'sha token bilan tuziladi.
+    const [applyToken, setApplyToken] = useState('');
+    const [applyExpiresAt, setApplyExpiresAt] = useState<number | null>(null);
+    const [qolganSoniya, setQolganSoniya] = useState(0);
+    const [linkLoading, setLinkLoading] = useState(false);
+
+    const applyUrl = (linkSchoolId && applyToken)
+        ? `${window.location.origin}/apply/${linkSchoolId}?token=${applyToken}`
         : '';
+
+    const yangiHavola = useCallback(async () => {
+        if (!linkSchoolId) return;
+        setLinkLoading(true);
+        setApplyToken('');
+        setQrCodeDataUrl('');
+        try {
+            const token = localStorage.getItem('token');
+            const res = await fetch(`/api/public/schools/${linkSchoolId}/tokens`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + token },
+                body: JSON.stringify({ schoolId: linkSchoolId }),
+            });
+            const data = await res.json();
+            if (!res.ok) throw new Error(data.error || 'Havola yaratilmadi');
+            setApplyToken(data.token);
+            setApplyExpiresAt(new Date(data.expiresAt).getTime());
+        } catch (err: any) {
+            showNotification(err.message || 'Havola yaratilmadi', 'error');
+        } finally {
+            setLinkLoading(false);
+        }
+    }, [linkSchoolId, showNotification]);
+
+    // Oyna ochilganda va filial almashtirilganda — yangi havola.
+    useEffect(() => {
+        if (!isLinkModalOpen || !linkSchoolId) return;
+        yangiHavola();
+    }, [isLinkModalOpen, linkSchoolId]);   // eslint-disable-line react-hooks/exhaustive-deps
+
+    // Qolgan vaqt sanog'i: xodim havolani qachongacha ishlashini ko'rib tursin.
+    useEffect(() => {
+        if (!isLinkModalOpen || !applyExpiresAt) { setQolganSoniya(0); return; }
+        const hisobla = () => setQolganSoniya(Math.max(0, Math.round((applyExpiresAt - Date.now()) / 1000)));
+        hisobla();
+        const id = setInterval(hisobla, 1000);
+        return () => clearInterval(id);
+    }, [isLinkModalOpen, applyExpiresAt]);
 
     useEffect(() => {
         if (!isLinkModalOpen || !applyUrl) {
@@ -284,7 +325,10 @@ export default function Students() {
                 // shunda joriy filial ishlatiladi.
                 ...(branchId > 0 ? { schoolId: branchId } : {}),
                 status: newStudent.status,
+                // Ro'yxatga olingan kun — bugun; kursga kelgan sana alohida
+                // (`startDate`) va oylik hisob o'sha kundan boshlanadi.
                 joinedDate: new Date().toISOString().split('T')[0],
+                startDate: newStudent.startDate,
                 balance: 0,
                 groups: newStudent.selectedGroupIds,
                 routeIds: newStudent.routeIds,
@@ -309,6 +353,7 @@ export default function Students() {
             setNewStudent({
                 name: '', phone: '', address: '', birthDate: '', location: '', photo: '',
                 gender: 'Erkak',
+                startDate: new Date().toISOString().split('T')[0],
                 status: 'Faol',
                 fatherName: '', fatherPhone: '', motherName: '', motherPhone: '',
                 transportId: '',
@@ -419,7 +464,7 @@ export default function Students() {
                     }
 
                     const mappedStudents = rawData.map((row: any) => {
-                        const name = row["F.I.SH."] || row["F.I.SH"] || row["name"] || row["Name"] || row["Ism Familiya"] || row["Ism"];
+                        const name = row["F.I.SH."] || row["F.I.SH"] || row["name"] || row["Name"] || row["Familiya va ism"] || row["Ism Familiya"] || row["Ism"];
                         const phone = row["Telefon"] || row["phone"] || row["Phone"] || row["Telefon raqami"] || row["Tel"];
                         const birthDate = row["Tug'ilgan sana"] || row["birthDate"] || row["Birth Date"] || row["Tug'ilgan yili"];
                         const orgType = row["Ta'lim muassasasi turi"] || row["orgType"] || row["Muassasa turi"] || '';
@@ -456,7 +501,8 @@ export default function Students() {
                             motherName: motherName ? String(motherName) : '',
                             motherPhone: motherPhone ? String(motherPhone) : ''
                         };
-                    }).filter(s => s.name && s.phone);
+                    // Telefon majburiy emas: raqamsiz o'quvchi ham qo'shiladi.
+                    }).filter(s => s.name);
 
                     if (mappedStudents.length === 0) {
                         showNotification("Import qilish uchun yaroqli ma'lumot topilmadi! (F.I.SH. va Telefon ustunlari bo'lishi shart)", 'error');
@@ -1166,18 +1212,22 @@ export default function Students() {
                                     </div>
                                     <p className="text-[10px] font-bold text-matn-xira mt-1.5">
                                         {newStudent.status === 'Faol'
-                                            ? "Tanlangan kurslar uchun bugundan oy oxirigacha hisob yoziladi"
+                                            ? "Tanlangan kurslar uchun kelgan sanadan oy oxirigacha hisob yoziladi"
                                             : "Sinov darslari bepul — «Faol» qilinganda hisob boshlanadi"}
                                     </p>
                                 </div>
                                 <div>
-                                    <label className={lbl}>{t('full_name')}</label>
-                                    <input required type="text" placeholder="Jasur Alimov" className={inp} value={newStudent.name} onChange={e => setNewStudent({ ...newStudent, name: e.target.value })} />
+                                    {/* Familiya oldin: hujjatlarda, jurnalda va ro'yxatlarda
+                                        o'quvchilar shunday yoziladi (egasi, 2026-09-22). */}
+                                    <label className={lbl}>Familiya va ism</label>
+                                    <input required type="text" placeholder="Alimov Jasur" className={inp} value={newStudent.name} onChange={e => setNewStudent({ ...newStudent, name: e.target.value })} />
                                 </div>
                                 <div className="grid grid-cols-2 gap-4">
                                     <div>
-                                        <label className={lbl}>{t('student_phone')} *</label>
-                                        <input required type="tel" placeholder="+998" className={inp} value={newStudent.phone} onChange={e => setNewStudent({ ...newStudent, phone: e.target.value })} />
+                                        {/* Telefon majburiy emas: kichkina bolaning o'z raqami
+                                            bo'lmaydi, ota-onasiniki pastdagi maydonlarda. */}
+                                        <label className={lbl}>{t('student_phone')}</label>
+                                        <input type="tel" placeholder="+998 (ixtiyoriy)" className={inp} value={newStudent.phone} onChange={e => setNewStudent({ ...newStudent, phone: e.target.value })} />
                                     </div>
                                     <div>
                                         <label className={lbl}>{t('birth_date')}</label>
@@ -1518,6 +1568,19 @@ export default function Students() {
 
                                 <div className="border-t border-dashed border-chiziq/50 pt-4 mt-4 space-y-3">
                                     <span className="block text-[11px] font-bold text-brand text-left">Kursga qo'shish</span>
+                                    {/* Kursga kelgan sana — hisob shu kundan boshlanadi.
+                                        O'quvchi bugun ro'yxatga olinib, darsga oy o'rtasidan
+                                        kelishi mumkin (egasi, 2026-09-22). */}
+                                    <div>
+                                        <label className={lbl}>Kursga kelgan sana</label>
+                                        <input type="date" className={inp} value={newStudent.startDate}
+                                            onChange={e => setNewStudent({ ...newStudent, startDate: e.target.value })} />
+                                        <p className="text-[10px] font-bold text-matn-xira mt-1">
+                                            {newStudent.status === 'Faol'
+                                                ? 'Tanlangan kurslar uchun shu kundan oy oxirigacha hisob yoziladi'
+                                                : 'Sinov o\'quvchisi uchun hisob yozilmaydi'}
+                                        </p>
+                                    </div>
                                     {branchGroups.length === 0 ? (
                                         <p className="text-[11px] text-matn-xira italic">Kurslar mavjud emas</p>
                                     ) : (
@@ -1699,12 +1762,37 @@ export default function Students() {
                                 ))}
                             </select>
                         </div>
-                        <p className="text-[11px] font-bold text-matn-xira leading-relaxed mb-6 normal-case">
+                        <p className="text-[11px] font-bold text-matn-xira leading-relaxed mb-4 normal-case">
                             QR kodni resepshnda ko'rsating yoki havolani Telegram/SMS orqali yuboring —
-                            ikkalasi ham bir xil, eskirmaydi.
+                            ikkalasi ham bir xil. <span className="text-ogoh">Havola 15 daqiqa amal qiladi</span>,
+                            keyin forma ochilmaydi.
                         </p>
 
-                        <div className="bg-white p-4 rounded-2xl border border-gray-100 dark:border-gray-200 w-fit mx-auto mb-6 shadow-sm">
+                        {/* Qolgan vaqt: xodim havola qachon o'lishini ko'rib tursin. */}
+                        <div className="mb-4 flex items-center justify-center gap-2">
+                            <span className={`num text-[12px] font-black px-3 py-1.5 rounded-xl border ${
+                                linkLoading
+                                    ? 'text-matn-xira bg-ichki border-chiziq'
+                                    : qolganSoniya > 0
+                                        ? 'text-brand bg-brand/10 border-brand/20'
+                                        : 'text-xato bg-rose-50 border-rose-100 dark:bg-rose-950/20 dark:border-rose-900/40'
+                            }`}>
+                                {linkLoading
+                                    ? 'Yuklanmoqda…'
+                                    : qolganSoniya > 0
+                                        ? `${Math.floor(qolganSoniya / 60)}:${String(qolganSoniya % 60).padStart(2, '0')}`
+                                        : 'Muddati tugadi'}
+                            </span>
+                            <button
+                                onClick={yangiHavola}
+                                disabled={linkLoading || !linkSchoolId}
+                                className="text-[11px] font-bold text-brand hover:underline disabled:opacity-40 cursor-pointer"
+                            >
+                                Yangi havola
+                            </button>
+                        </div>
+
+                        <div className={`bg-white p-4 rounded-2xl border border-gray-100 dark:border-gray-200 w-fit mx-auto mb-6 shadow-sm ${qolganSoniya > 0 ? '' : 'opacity-30'}`}>
                             {qrCodeDataUrl ? (
                                 <img src={qrCodeDataUrl} alt="QR Code" className="w-[180px] h-[180px] block" />
                             ) : (
