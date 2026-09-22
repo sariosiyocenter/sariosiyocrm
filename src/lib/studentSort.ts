@@ -10,9 +10,13 @@
 
 export type StudentSort = 'default' | 'alifbo' | 'qarz' | 'davomat';
 
+/**
+ * Standart tartib — alifbo bo'yicha (egasi, 2026-09-22: "kurslarda tartib
+ * standart alifbo bo'yicha"). Ilgari standart tartib bazadan kelgan tartib
+ * edi, ya'ni ro'yxat qo'shilgan vaqti bo'yicha aralash chiqardi.
+ */
 export const STUDENT_SORTS: { key: StudentSort; label: string }[] = [
-    { key: 'default', label: 'Standart tartib' },
-    { key: 'alifbo', label: "Alifbo bo'yicha (A–Z)" },
+    { key: 'default', label: "Alifbo bo'yicha (A–Z)" },
     { key: 'qarz', label: "Qarzdorlar (eng ko'p qarz)" },
     { key: 'davomat', label: "Davomat (eng ko'p kelmagan)" },
 ];
@@ -44,10 +48,13 @@ export function sortStudents<T extends Sortable>(
     sort: StudentSort,
     opts: { absences?: Map<number, number>; attRate?: Map<number, number> } = {},
 ): T[] {
-    if (sort === 'default') return list;
-    const ism = (a: T, b: T) => (a.name || '').localeCompare(b.name || '', 'uz');
+    // Ismning boshida/oxirida tasodifiy bo'sh joy bo'lishi mumkin (bazada
+    // 12 ta shunday yozuv bor edi) — bo'sh joy bilan boshlangan ism alifboda
+    // hammasidan oldinga chiqib ketardi.
+    const ism = (a: T, b: T) => (a.name || '').trim().localeCompare((b.name || '').trim(), 'uz');
     const arr = [...list];
-    if (sort === 'alifbo') return arr.sort(ism);
+    // 'alifbo' — eski nom, saqlangan tanlovlar uchun qoldirildi.
+    if (sort === 'default' || sort === 'alifbo') return arr.sort(ism);
     if (sort === 'qarz') {
         // Eng katta qarz (eng manfiy balans) tepada, qarzsizlar oxirida.
         return arr.sort((a, b) => (a.balance || 0) - (b.balance || 0) || ism(a, b));

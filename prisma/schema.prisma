@@ -56,6 +56,11 @@ model Student {
   // o'quvchini mashinalarga taqsimlaydi.
   needsTransport Boolean @default(false)
 
+  // Imtihonlarga keladimi (egasi, 2026-09-22). Kelmaydigan o'quvchiga
+  // imtihon varaqasi chiqarilmaydi. O'quvchi kartochkasidagi tugmacha bilan
+  // almashtiriladi; sukut bo'yicha keladi.
+  attendsExam    Boolean @default(true)
+
   // Transport Relation
   transportId Int?
   transport   Transport? @relation(fields: [transportId], references: [id])

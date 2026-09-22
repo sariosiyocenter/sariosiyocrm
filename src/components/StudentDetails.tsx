@@ -1,7 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
     ArrowLeft, Phone, Calendar, MapPin, BookOpen, CreditCard, ReceiptText,
-    Clock, CheckCircle, XCircle, Plus, Award, ClipboardCheck, Users, Layers, ChevronRight, Save, Edit, Bus, Sparkles, Image as ImageIcon, Camera, X, Send, Trash2, Star, ScanFace, Maximize2, Target, Compass, GraduationCap
+    Clock, CheckCircle, XCircle, Plus, Award, ClipboardCheck, Users, Layers, ChevronRight, Save, Edit, Bus, Sparkles, Image as ImageIcon, Camera, X, Send, Trash2, Star, ScanFace, Maximize2, Target, Compass, GraduationCap, ToggleLeft, ToggleRight
 } from 'lucide-react';
 import { useCRM } from '../context/CRMContext';
 import StatTile from './ui/StatTile';
@@ -18,7 +18,6 @@ import { toDateStr } from '../../lib/lessons.js';
 import { printReceipt } from '../lib/receipt';
 import { activeCourses } from '../lib/activeCourses';
 import PhotoViewer from './PhotoViewer';
-import DiscountModal from './DiscountModal';
 import StudentMoveModal from './StudentMoveModal';
 import PaymentEditModal, { canEditPayment } from './PaymentEditModal';
 import PaymeLinkModal from './PaymeLinkModal';
@@ -59,11 +58,12 @@ export default function StudentDetails() {
      *  ko'rsatilardi — rasm umuman ochilmagan holat ham shunday chiqib,
      *  xodim aybsiz rasmni almashtirib yurardi. */
     const [faceFail, setFaceFail] = useState<FaceFail>('topilmadi');
-    const [showDiscountModal, setShowDiscountModal] = useState(false);
     // Payme havolasi / QR — ota-ona o'zi to'laydi, pul avtomatik tushadi.
     const [showPaymeModal, setShowPaymeModal] = useState(false);
     // Guruhlar orasida ko'chirish / o'qishni to'xtatib pulni qayta hisoblash.
-    const [moveMode, setMoveMode] = useState<'transfer' | 'refund' | null>(null);
+    // Faqat kursni almashtirish uchun: "Chiqish / qaytarish" tugmasi
+    // egasining so'roviga ko'ra olib tashlandi (2026-09-22).
+    const [moveMode, setMoveMode] = useState<'transfer' | null>(null);
     const [isPhotoViewerOpen, setIsPhotoViewerOpen] = useState(false);
     const [showSmsModal, setShowSmsModal] = useState(false);
     const [smsData, setSmsData] = useState({ phone: '', type: '' });
@@ -85,10 +85,28 @@ export default function StudentDetails() {
     const [savingStart, setSavingStart] = useState(false);
     // To'lovni tahrirlash (resepshn — 10 daqiqa, admin — doim).
     const [editingPayment, setEditingPayment] = useState<Payment | null>(null);
+    // Kartochkadagi ha/yo'q belgilari saqlanayotgan payt (transport | imtihon).
+    const [belgiSaqlanmoqda, setBelgiSaqlanmoqda] = useState<'transport' | 'imtihon' | null>(null);
     // Profil izohi (Student.comment) — bazada bor edi, lekin interfeysda ko'rinmasdi.
     const [isEditingNote, setIsEditingNote] = useState(false);
     const [noteDraft, setNoteDraft] = useState('');
     const [isSavingNote, setIsSavingNote] = useState(false);
+
+    /**
+     * Kartochkadagi ha/yo'q belgisini almashtirish: transportda qatnaydimi,
+     * imtihonga keladimi. Formani ochmasdan, bir bosishda.
+     */
+    const belgiOzgartir = async (belgi: 'transport' | 'imtihon', qiymat: boolean) => {
+        if (!student || belgiSaqlanmoqda) return;
+        setBelgiSaqlanmoqda(belgi);
+        try {
+            await updateStudent(student.id, belgi === 'transport'
+                ? { needsTransport: qiymat }
+                : { attendsExam: qiymat } as any);
+        } finally {
+            setBelgiSaqlanmoqda(null);
+        }
+    };
 
     /** Shu kursga kelgan sana (yozilmagan bo'lsa — ro'yxatga olingan kun). */
     const kursSanasi = (groupId: number) => {
@@ -759,22 +777,13 @@ export default function StudentDetails() {
                             Payme havola
                         </button>
                     )}
-                    {/* Dars qoldirgani uchun qayta hisob: pul kirmaydi, lekin
-                        o'quvchining hisobiga yoziladi. */}
-                    <button onClick={() => setShowDiscountModal(true)}
-                        title="Kelmagan darslar uchun chegirma"
-                        className="h-9 px-4 border border-chiziq-kuchli text-brand hover:bg-brand hover:text-white rounded-lg text-[13px] font-semibold transition-colors cursor-pointer">
-                        Chegirma
-                    </button>
+                    {/* "Chegirma" va "Chiqish / qaytarish" tugmalari egasining
+                        so'roviga ko'ra olib tashlandi (2026-09-22). O'qishni
+                        to'xtatgan o'quvchi holatidan arxivga olinadi. */}
                     <button onClick={() => setMoveMode('transfer')}
                         title="Boshqa kursga ko'chirish — to'lovlarga tegilmaydi"
                         className="h-9 px-4 border border-chiziq-kuchli text-brand hover:bg-brand hover:text-white rounded-lg text-[13px] font-semibold transition-colors cursor-pointer">
                         Kursni almashtirish
-                    </button>
-                    <button onClick={() => setMoveMode('refund')}
-                        title="O'qishni to'xtatish va o'tilmagan darslar uchun pulni qaytarish"
-                        className="h-9 px-4 border border-chiziq-kuchli text-matn-sokin hover:bg-rose-500 hover:text-white hover:border-rose-500 rounded-lg text-[13px] font-semibold transition-colors cursor-pointer">
-                        Chiqish / qaytarish
                     </button>
                     <a href={student.phone ? `tel:${student.phone.replace(/\s/g, '')}` : undefined}
                         aria-disabled={!student.phone}
@@ -1301,33 +1310,50 @@ export default function StudentDetails() {
                                             )}
                                         </div>
                                     </div>
+                                    {/* Transport va imtihon belgilari — shu yerning o'zida
+                                        almashtiriladi (egasi, 2026-09-22), formani ochish
+                                        shart emas. Doimiy marshrutlar yo'q: reja har kuni
+                                        Logistikada tuziladi, shuning uchun pastda bugungi
+                                        reja ham ko'rsatiladi. */}
+                                    <SwitchRow
+                                        icon={<Bus className="w-3.5 h-3.5" />}
+                                        label={t('transport')}
+                                        on={!!student.needsTransport}
+                                        onLabel="Kerak"
+                                        offLabel="Kerak emas"
+                                        busy={belgiSaqlanmoqda === 'transport'}
+                                        onToggle={v => belgiOzgartir('transport', v)}
+                                    />
                                     {(() => {
-                                        // Doimiy marshrutlar yo'q (egasi: "marshrut kerakmas") —
-                                        // reja har kuni Logistikada tuziladi. Shu yerda: transport
-                                        // kerakmi va bugun qaysi haydovchining rejasida.
                                         const bugun = toDateStr();
                                         const oqMarshrutlari = (routes || []).filter(r => r.date === bugun && (r.studentIds || []).includes(student.id));
                                         if (oqMarshrutlari.length === 0) {
-                                            return <InfoRow icon={<Bus className="w-3.5 h-3.5" />} label={t('transport')}
-                                                value={student.needsTransport ? "Kerak · bugun rejada yo'q" : t('transport_none')} />;
+                                            return student.needsTransport
+                                                ? <p className="text-[10px] font-bold text-matn-xira text-right -mt-1 mb-1.5">bugun rejada yo'q</p>
+                                                : null;
                                         }
                                         return (
-                                            <div className="flex items-start gap-2.5 py-2 border-b border-chiziq-mayin/60 last:border-0">
-                                                <span className="text-matn-xira mt-0.5 shrink-0"><Bus className="w-3.5 h-3.5" /></span>
-                                                <span className="text-[11px] font-bold text-matn-xira shrink-0">{t('transport')}</span>
-                                                <span className="flex-1 text-right space-y-1">
-                                                    {oqMarshrutlari.map(r => (
-                                                        <span key={r.id} className="block text-[11px] font-bold text-matn-2">
-                                                            Bugun: {r.name}
-                                                            <span className="text-matn-xira font-bold">
-                                                                {r.transport?.number ? ` · ${r.transport.number}` : ''}
-                                                            </span>
+                                            <div className="text-right -mt-1 mb-1.5 space-y-0.5">
+                                                {oqMarshrutlari.map(r => (
+                                                    <span key={r.id} className="block text-[10px] font-bold text-matn-2">
+                                                        Bugun: {r.name}
+                                                        <span className="text-matn-xira font-bold">
+                                                            {r.transport?.number ? ` · ${r.transport.number}` : ''}
                                                         </span>
-                                                    ))}
-                                                </span>
+                                                    </span>
+                                                ))}
                                             </div>
                                         );
                                     })()}
+                                    <SwitchRow
+                                        icon={<GraduationCap className="w-3.5 h-3.5" />}
+                                        label="Imtihon"
+                                        on={student.attendsExam !== false}
+                                        onLabel="Keladi"
+                                        offLabel="Kelmaydi"
+                                        busy={belgiSaqlanmoqda === 'imtihon'}
+                                        onToggle={v => belgiOzgartir('imtihon', v)}
+                                    />
                                     <InfoRow icon={<Calendar className="w-3.5 h-3.5" />} label={t('birth_date')} value={student.birthDate} />
                                     <InfoRow icon={<Users className="w-3.5 h-3.5" />} label="Jins" value={student.gender === 'Ayol' ? '♀ Ayol' : '♂ Erkak'} />
                                     <div className="space-y-2">
@@ -2292,9 +2318,6 @@ export default function StudentDetails() {
             {showPaymentModal && (
                 <PaymentAddModal studentId={student.id} onClose={() => setShowPaymentModal(false)} onAdd={addPayment} />
             )}
-            {showDiscountModal && (
-                <DiscountModal studentId={student.id} onClose={() => setShowDiscountModal(false)} onAdd={addPayment} />
-            )}
             {showPaymeModal && (
                 <PaymeLinkModal studentId={student.id} onClose={() => setShowPaymeModal(false)} />
             )}
@@ -3123,6 +3146,49 @@ function SmsSendModal({ phone, studentName, onClose, onConfirm }: { phone: strin
 /** Chap kartochkadagi ma'lumot qatori: chapda nomi, o'ngda qiymati.
     Avvalgi ikonka-kvadratli ko'rinish qator boshiga bir xil balandlik qo'shib,
     kartochkani ekranga sig'maydigan qilib yuborardi. */
+/**
+ * Ha/yo'q belgisi — kartochkaning o'zida almashtiriladi (transport kerakmi,
+ * imtihonga keladimi). Saqlanayotganda tugma o'chiriladi: ketma-ket bosilsa
+ * ikki so'rov bir-birini bosib ketardi.
+ */
+function SwitchRow({ icon, label, on, onLabel, offLabel, busy, onToggle }: {
+    icon?: React.ReactNode;
+    label: string;
+    on: boolean;
+    onLabel: string;
+    offLabel: string;
+    busy?: boolean;
+    onToggle: (value: boolean) => void;
+}) {
+    // Server javobi bir necha soniya kelishi mumkin. Shu vaqtda tugma yangi
+    // holatini ko'rsatib turadi (va bosilmaydi) — aks holda xodim "bosilmadi"
+    // deb ikkinchi marta bosardi va belgi o'z holiga qaytib qolardi.
+    const [kutilmoqda, setKutilmoqda] = useState<boolean | null>(null);
+    useEffect(() => { if (!busy) setKutilmoqda(null); }, [busy]);
+    const korinish = kutilmoqda ?? on;
+
+    return (
+        <div className="flex items-center justify-between gap-3 py-1.5">
+            <span className="flex items-center gap-1.5 text-[11px] font-bold text-matn-xira shrink-0">
+                {icon && <span className="text-matn-xira shrink-0">{icon}</span>}
+                {label}
+            </span>
+            <button
+                type="button"
+                disabled={busy}
+                onClick={() => { setKutilmoqda(!korinish); onToggle(!korinish); }}
+                title={`${label}: ${korinish ? onLabel : offLabel} — o'zgartirish uchun bosing`}
+                className={`flex items-center gap-1.5 text-[12px] font-semibold transition-colors cursor-pointer disabled:cursor-wait ${
+                    busy ? 'opacity-60' : ''
+                } ${korinish ? 'text-brand hover:text-brand-dark' : 'text-matn-xira hover:text-matn-2'}`}
+            >
+                <span>{korinish ? onLabel : offLabel}</span>
+                {korinish ? <ToggleRight size={22} /> : <ToggleLeft size={22} />}
+            </button>
+        </div>
+    );
+}
+
 function InfoRow({ icon, label, value }: { icon?: React.ReactNode; label: string; value: string }) {
     return (
         <div className="flex items-center justify-between gap-3 py-1.5">

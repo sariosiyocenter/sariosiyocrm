@@ -1557,7 +1557,7 @@ app.post('/api/students', authenticate, async (req, res, next) => {
     if (!parsedSchoolId || isNaN(parsedSchoolId) || parsedSchoolId <= 0) {
       return res.status(400).json({ error: 'Valid schoolId required' });
     }
-    const ALLOWED = ['name','phone','birthDate','address','location','status','joinedDate','needsTransport',
+    const ALLOWED = ['name','phone','birthDate','address','location','status','joinedDate','needsTransport','attendsExam',
       'balance','photo','comment','rating','gender','fatherName','fatherPhone','motherName','motherPhone',
       'studentSchool','privilegeType','certCategory','certSubject','certType','certScore',
       'customPrices','orgType','region','district','transportId','statusChangedAt','leaveReason',
@@ -1707,7 +1707,7 @@ app.put('/api/students/:id', authenticate, async (req, res, next) => {
 
     // Whitelist only known Student schema fields
     const ALLOWED_STUDENT_FIELDS = [
-      'name','phone','birthDate','address','location','status','joinedDate','needsTransport',
+      'name','phone','birthDate','address','location','status','joinedDate','needsTransport','attendsExam',
       'balance','photo','rating','comment','gender','fatherName','fatherPhone','motherName','motherPhone',
       'studentSchool','privilegeType','certCategory','certSubject','certType','certScore',
       'customPrices','orgType','region','district','transportId','statusChangedAt',
@@ -1718,6 +1718,13 @@ app.put('/api/students/:id', authenticate, async (req, res, next) => {
     for (const key of ALLOWED_STUDENT_FIELDS) {
       if (rest[key] !== undefined) data[key] = rest[key];
     }
+    // Ism chetidagi bo'sh joy saqlanmasin: alifbo tartibini buzadi.
+    if (typeof data.name === 'string') {
+      const trimmed = data.name.trim();
+      if (!trimmed) return res.status(400).json({ error: "O'quvchining ismi kerak" });
+      data.name = trimmed;
+    }
+    if (typeof data.phone === 'string') data.phone = data.phone.trim();
     // A base64 photo never reaches the row: it becomes a Storage URL first.
     await rasmMaydoniniTozala(data, 'photo', 'student');
 

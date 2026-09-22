@@ -88,6 +88,9 @@ export default function ExamDetail() {
         }
 
         const studentsInSelectedGroups = students.filter(s => {
+            // Imtihonga kelmaydigan o'quvchiga varaqa chiqarilmaydi
+            // (kartochkadagi "Imtihon: Kelmaydi" belgisi, 2026-09-22).
+            if (s.attendsExam === false) return false;
             const inGroupsByStudent = s.groups && s.groups.some(gid => selectedGroups.includes(gid));
             const inGroupsByIds = selectedGroups.some(gid => {
                 const group = groups.find(g => g.id === gid);

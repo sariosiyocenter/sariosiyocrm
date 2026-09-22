@@ -31,6 +31,8 @@ export interface Student {
     routeIds?: number[];
     /** Transportda qatnaydimi — avtomatik rejalashtirish shunga qaraydi. */
     needsTransport?: boolean;
+    /** Imtihonlarga keladimi. Kelmaydiganga imtihon varaqasi chiqarilmaydi. */
+    attendsExam?: boolean;
     studentSchool?: string;
     privilegeType?: string;
     certCategory?: string;
