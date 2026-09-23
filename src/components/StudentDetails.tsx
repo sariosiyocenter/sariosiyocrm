@@ -636,12 +636,12 @@ export default function StudentDetails() {
                 {t('back')}
             </button>
 
-            {/* Sahifa sarlavhasi. Ilgari bu ma'lumot chap ustundagi baland
-                kartochkada turardi va o'ngdagi ko'rsatkichlar bilan bir xil
-                savolga javob berardi. Endi bitta qator. */}
-            <div className="flex items-start justify-between gap-4 flex-wrap">
+            <div className="grid grid-cols-1 lg:grid-cols-4 gap-4 items-start">
+                {/* Ism kartochkasi — pul bloki bilan bir qatorda (ilgari alohida qatorda
+                    turib, o'ng tomoni bo'm-bo'sh qolardi). */}
+                <div className="order-1 lg:order-none lg:col-span-1 lg:self-stretch bg-sirt rounded-2xl border border-chiziq p-5 flex flex-col gap-4 min-w-0">
                 <div className="flex items-center gap-3.5 min-w-0">
-                    <Avatar name={student.name} photo={student.photo} size={120} fontSize={38} className="group/avatar">
+                    <Avatar name={student.name} photo={student.photo} size={84} fontSize={28} className="group/avatar">
                         {/* Rasm amallari avatarning ustida — alohida tugmalar
                             uyumi yasalmasin. */}
                         <div className="absolute inset-0 bg-gray-950/70 opacity-0 group-hover/avatar:opacity-100 transition-opacity flex items-center justify-center gap-1.5">
@@ -668,13 +668,13 @@ export default function StudentDetails() {
                         </div>
                     </Avatar>
                     <div className="min-w-0">
-                        <div className="flex items-center gap-2">
-                            <h1 className="text-[22px] font-semibold text-matn tracking-tight leading-tight truncate">{displayName(student.name)}</h1>
+                        <div className="flex items-start gap-2">
+                            <h1 className="text-[19px] font-semibold text-matn tracking-tight leading-tight break-words">{displayName(student.name)}</h1>
                             <button onClick={handleStartEdit} title={t('edit')} className="text-matn-xira hover:text-brand cursor-pointer shrink-0">
                                 <Edit size={13} />
                             </button>
                         </div>
-                        <div className="flex items-center gap-2 mt-1">
+                        <div className="flex flex-wrap items-center gap-x-2 gap-y-1 mt-1.5">
                             <span className="num text-[12px] text-matn-xira">&#8470;{student.id}</span>
                             <span className="w-1 h-1 rounded-full bg-matn-xira" />
                             <span className={`px-2 py-0.5 rounded-md text-[11px] ${
@@ -695,8 +695,7 @@ export default function StudentDetails() {
                             </span>
                             {[student.studentSchool, student.orgType, student.grade].filter(Boolean).length > 0 && (
                                 <>
-                                    <span className="w-1 h-1 rounded-full bg-matn-xira" />
-                                    <span className="text-[12px] text-matn-sokin truncate">
+                                    <span className="basis-full text-[12px] text-matn-sokin truncate">
                                         {[student.studentSchool, student.orgType, student.grade].filter(Boolean).join(' \u00b7 ')}
                                     </span>
                                 </>
@@ -707,25 +706,121 @@ export default function StudentDetails() {
 
                 {/* Aloqa: qo'ng'iroq va SMS. To'lov tugmalari — pul blokida,
                     kursni almashtirish — kurs kartochkasida. */}
-                <div className="flex items-center gap-2 shrink-0">
+                <div className="flex items-center gap-2 mt-auto">
                     <a href={student.phone ? `tel:${student.phone.replace(/\s/g, '')}` : undefined}
                         aria-disabled={!student.phone}
                         title={student.phone || t('phone_not_found')}
-                        className={`w-9 h-9 flex items-center justify-center rounded-lg border transition-colors ${student.phone
+                        className={`h-9 px-3 flex items-center justify-center gap-1.5 rounded-lg border text-[12px] font-semibold transition-colors ${student.phone
                             ? 'border-chiziq-kuchli text-brand hover:bg-brand hover:text-white cursor-pointer'
                             : 'border-chiziq text-matn-xira pointer-events-none'}`}>
-                        <Phone size={15} />
+                        <Phone size={14} />
+                        Qo'ng'iroq
                     </a>
                     <button onClick={() => handleSendSms(student.phone, 'manual')} title="SMS yuborish"
-                        className="w-9 h-9 flex items-center justify-center rounded-lg border border-chiziq-kuchli text-brand hover:bg-brand hover:text-white transition-colors cursor-pointer">
-                        <Send size={15} />
+                        className="h-9 px-3 flex items-center justify-center gap-1.5 rounded-lg border border-chiziq-kuchli text-brand hover:bg-brand hover:text-white text-[12px] font-semibold transition-colors cursor-pointer">
+                        <Send size={14} />
+                        SMS
                     </button>
                 </div>
-            </div>
+                </div>
 
-            <div className="grid grid-cols-1 lg:grid-cols-4 gap-4 items-start">
+                <div className="order-2 lg:order-none lg:col-span-3 lg:self-stretch min-w-0">
+                        {/* Pul bloki — profilni ochgan odamning birinchi savoli: qancha qarzi
+                            bor, qachongacha to'lagan? Javob va "To'lov qabul qilish" tugmasi
+                            bir joyda; izoh ("25-gacha to'layman dedi") ham shu yerda ko'rinadi.
+                            Kurslar soni va davomat — kurs kartochkalarining o'zida. */}
+                        {(() => {
+                            const bal = student.balance || 0;
+                            const sinov = student.status === 'Sinov';
+                            const kurslarHolati = (ledger?.courses || []).filter(c => c.isMember !== false && studentGroups.some(g => g.id === c.groupId));
+                            const engKurs = kurslarHolati.find(c => kirishMuddati(c).ton === 'xato')
+                                || kurslarHolati.filter(c => c.paidUntil && !c.accessUnknown).sort((a, b) => a.paidUntil!.localeCompare(b.paidUntil!))[0]
+                                || kurslarHolati[0];
+                            const eng = engKurs ? kirishMuddati(engKurs) : null;
+                            const TON = { yaxshi: 'text-yaxshi', ogoh: 'text-ogoh', xato: 'text-xato', xira: 'text-matn-xira' } as const;
+                            const ton = sinov ? 'text-ogoh' : bal < 0 ? 'text-xato' : bal > 0 ? 'text-yaxshi' : 'text-matn';
+                            const fon = sinov ? 'bg-ogoh-fon border-ogoh/30' : bal < 0 ? 'bg-xato-fon border-xato-chiziq' : bal > 0 ? 'bg-yaxshi-fon border-yaxshi/25' : 'bg-sirt border-chiziq';
+                            const paymeOn = (settings.paymeMode === 'live' || settings.paymeMode === 'test') && ['ADMIN', 'MANAGER', 'RECEPTIONIST', 'SUPERADMIN'].includes(currentUser?.role || '');
+                            return (
+                                <div className={`h-full rounded-2xl border p-5 ${fon}`}>
+                                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                                        <div className="min-w-0">
+                                            <p className={`text-[13px] font-semibold ${ton}`}>
+                                                {sinov ? 'Sinov darsida' : bal < 0 ? 'Qarz' : bal > 0 ? 'Avans' : 'Hisob toza'}
+                                            </p>
+                                            <p className={`raqam text-[34px] sm:text-[40px] font-semibold leading-none mt-1.5 ${ton}`}>
+                                                {Math.abs(bal).toLocaleString('ru-RU')} <span className="text-[14px] text-matn-xira font-normal">so'm</span>
+                                            </p>
+                                            <p className="text-[12px] text-matn-sokin mt-2.5">
+                                                {sinov ? 'Hisob yozilmaydi — Faol qilinganda shu kundan yoziladi' : (
+                                                    <>
+                                                        {bal < 0 && debtDays !== null && <><span className="raqam">{debtDays}</span> kundan beri · </>}
+                                                        Darsga kirish:{' '}
+                                                        <span className={`font-semibold ${eng ? TON[eng.ton] : 'text-matn-xira'}`}>{!ledger ? '…' : eng ? eng.matn : '—'}</span>
+                                                        {eng?.izoh && <span className="text-matn-xira"> ({eng.izoh})</span>}
+                                                        {kurslarHolati.length > 1 && engKurs && <span className="text-matn-xira"> — {engKurs.groupName}</span>}
+                                                    </>
+                                                )}
+                                            </p>
+                                        </div>
+                                        <div className="flex flex-wrap gap-2 shrink-0">
+                                            <button onClick={() => setShowPaymentModal(true)}
+                                                className="h-11 px-6 bg-brand hover:bg-brand-dark text-white rounded-xl text-[14px] font-semibold transition-colors cursor-pointer">
+                                                To'lov qabul qilish
+                                            </button>
+                                            {paymeOn && (
+                                                <button onClick={() => setShowPaymeModal(true)}
+                                                    title="Payme orqali to'lash uchun havola yoki QR"
+                                                    className="h-11 px-4 bg-sirt border border-chiziq-kuchli text-brand hover:bg-brand hover:text-white rounded-xl text-[13px] font-semibold transition-colors cursor-pointer">
+                                                    Payme havola
+                                                </button>
+                                            )}
+                                        </div>
+                                    </div>
+
+                                    {/* Izoh — ota-ona bilan kelishuv, kuzatuvlar. */}
+                                    <div className="mt-4 pt-3 border-t border-chiziq-mayin">
+                                        {isEditingNote ? (
+                                            <div className="space-y-2">
+                                                <textarea rows={3} autoFocus value={noteDraft} onChange={e => setNoteDraft(e.target.value)}
+                                                    placeholder="Ota-ona bilan suhbat, kelishuvlar (masalan: 25-sentabrgacha to'laydi)..."
+                                                    className="w-full px-4 py-3 bg-sirt border border-chiziq rounded-xl text-[12px] text-matn leading-relaxed focus:border-brand outline-none transition-colors resize-none" />
+                                                <div className="flex gap-2">
+                                                    <button onClick={handleSaveNote} disabled={isSavingNote}
+                                                        className="px-4 py-2 bg-brand hover:bg-brand-dark disabled:opacity-50 text-white rounded-lg text-[12px] font-semibold cursor-pointer">
+                                                        {t('save')}
+                                                    </button>
+                                                    <button onClick={() => setIsEditingNote(false)}
+                                                        className="px-4 py-2 text-matn-xira hover:text-matn rounded-lg text-[12px] font-semibold cursor-pointer">
+                                                        {t('cancel')}
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        ) : student.comment ? (
+                                            <div className="flex items-start justify-between gap-3">
+                                                <p className="text-[13px] text-matn-2 leading-relaxed whitespace-pre-wrap min-w-0">
+                                                    <span className="text-matn-xira">Izoh: </span>{student.comment}
+                                                </p>
+                                                <button onClick={() => { setNoteDraft(student.comment || ''); setIsEditingNote(true); }}
+                                                    title="Izohni tahrirlash"
+                                                    className="shrink-0 w-7 h-7 flex items-center justify-center rounded-lg text-matn-xira hover:text-brand hover:bg-brand/10 cursor-pointer">
+                                                    <Edit size={13} />
+                                                </button>
+                                            </div>
+                                        ) : (
+                                            <button onClick={() => { setNoteDraft(''); setIsEditingNote(true); }}
+                                                className="text-[12px] font-semibold text-matn-xira hover:text-brand cursor-pointer">
+                                                + Izoh qo'shish
+                                            </button>
+                                        )}
+                                    </div>
+                                </div>
+                            );
+                        })()}
+                </div>
+
                 {/* Left Profile Card */}
-                <div className="lg:col-span-1 space-y-4 order-2 lg:order-1">
+                <div className="lg:col-span-1 space-y-4 order-4 lg:order-none">
                     <div className="bg-sirt rounded-2xl border border-chiziq shadow-sm overflow-hidden">
                         {/* Muqova. Avval butun kartochka enini egallagan to'q brend
                             slabi edi — qorong'u rejimda juda qichqirib turardi.
@@ -1366,100 +1461,7 @@ export default function StudentDetails() {
                 </div>
 
                 {/* Right Tab Content */}
-                <div className="lg:col-span-3 space-y-6 order-1 lg:order-2 min-w-0">
-                    {/* Pul bloki — profilni ochgan odamning birinchi savoli: qancha qarzi
-                        bor, qachongacha to'lagan? Javob va "To'lov qabul qilish" tugmasi
-                        bir joyda; izoh ("25-gacha to'layman dedi") ham shu yerda ko'rinadi.
-                        Kurslar soni va davomat — kurs kartochkalarining o'zida. */}
-                    {(() => {
-                        const bal = student.balance || 0;
-                        const sinov = student.status === 'Sinov';
-                        const kurslarHolati = (ledger?.courses || []).filter(c => c.isMember !== false && studentGroups.some(g => g.id === c.groupId));
-                        const engKurs = kurslarHolati.find(c => kirishMuddati(c).ton === 'xato')
-                            || kurslarHolati.filter(c => c.paidUntil && !c.accessUnknown).sort((a, b) => a.paidUntil!.localeCompare(b.paidUntil!))[0]
-                            || kurslarHolati[0];
-                        const eng = engKurs ? kirishMuddati(engKurs) : null;
-                        const TON = { yaxshi: 'text-yaxshi', ogoh: 'text-ogoh', xato: 'text-xato', xira: 'text-matn-xira' } as const;
-                        const ton = sinov ? 'text-ogoh' : bal < 0 ? 'text-xato' : bal > 0 ? 'text-yaxshi' : 'text-matn';
-                        const fon = sinov ? 'bg-ogoh-fon border-ogoh/30' : bal < 0 ? 'bg-xato-fon border-xato-chiziq' : bal > 0 ? 'bg-yaxshi-fon border-yaxshi/25' : 'bg-sirt border-chiziq';
-                        const paymeOn = (settings.paymeMode === 'live' || settings.paymeMode === 'test') && ['ADMIN', 'MANAGER', 'RECEPTIONIST', 'SUPERADMIN'].includes(currentUser?.role || '');
-                        return (
-                            <div className={`rounded-2xl border p-5 ${fon}`}>
-                                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                                    <div className="min-w-0">
-                                        <p className={`text-[13px] font-semibold ${ton}`}>
-                                            {sinov ? 'Sinov darsida' : bal < 0 ? 'Qarz' : bal > 0 ? 'Avans' : 'Hisob toza'}
-                                        </p>
-                                        <p className={`raqam text-[34px] sm:text-[40px] font-semibold leading-none mt-1.5 ${ton}`}>
-                                            {Math.abs(bal).toLocaleString('ru-RU')} <span className="text-[14px] text-matn-xira font-normal">so'm</span>
-                                        </p>
-                                        <p className="text-[12px] text-matn-sokin mt-2.5">
-                                            {sinov ? 'Hisob yozilmaydi — Faol qilinganda shu kundan yoziladi' : (
-                                                <>
-                                                    {bal < 0 && debtDays !== null && <><span className="raqam">{debtDays}</span> kundan beri · </>}
-                                                    Darsga kirish:{' '}
-                                                    <span className={`font-semibold ${eng ? TON[eng.ton] : 'text-matn-xira'}`}>{!ledger ? '…' : eng ? eng.matn : '—'}</span>
-                                                    {eng?.izoh && <span className="text-matn-xira"> ({eng.izoh})</span>}
-                                                    {kurslarHolati.length > 1 && engKurs && <span className="text-matn-xira"> — {engKurs.groupName}</span>}
-                                                </>
-                                            )}
-                                        </p>
-                                    </div>
-                                    <div className="flex flex-wrap gap-2 shrink-0">
-                                        <button onClick={() => setShowPaymentModal(true)}
-                                            className="h-11 px-6 bg-brand hover:bg-brand-dark text-white rounded-xl text-[14px] font-semibold transition-colors cursor-pointer">
-                                            To'lov qabul qilish
-                                        </button>
-                                        {paymeOn && (
-                                            <button onClick={() => setShowPaymeModal(true)}
-                                                title="Payme orqali to'lash uchun havola yoki QR"
-                                                className="h-11 px-4 bg-sirt border border-chiziq-kuchli text-brand hover:bg-brand hover:text-white rounded-xl text-[13px] font-semibold transition-colors cursor-pointer">
-                                                Payme havola
-                                            </button>
-                                        )}
-                                    </div>
-                                </div>
-
-                                {/* Izoh — ota-ona bilan kelishuv, kuzatuvlar. */}
-                                <div className="mt-4 pt-3 border-t border-chiziq-mayin">
-                                    {isEditingNote ? (
-                                        <div className="space-y-2">
-                                            <textarea rows={3} autoFocus value={noteDraft} onChange={e => setNoteDraft(e.target.value)}
-                                                placeholder="Ota-ona bilan suhbat, kelishuvlar (masalan: 25-sentabrgacha to'laydi)..."
-                                                className="w-full px-4 py-3 bg-sirt border border-chiziq rounded-xl text-[12px] text-matn leading-relaxed focus:border-brand outline-none transition-colors resize-none" />
-                                            <div className="flex gap-2">
-                                                <button onClick={handleSaveNote} disabled={isSavingNote}
-                                                    className="px-4 py-2 bg-brand hover:bg-brand-dark disabled:opacity-50 text-white rounded-lg text-[12px] font-semibold cursor-pointer">
-                                                    {t('save')}
-                                                </button>
-                                                <button onClick={() => setIsEditingNote(false)}
-                                                    className="px-4 py-2 text-matn-xira hover:text-matn rounded-lg text-[12px] font-semibold cursor-pointer">
-                                                    {t('cancel')}
-                                                </button>
-                                            </div>
-                                        </div>
-                                    ) : student.comment ? (
-                                        <div className="flex items-start justify-between gap-3">
-                                            <p className="text-[13px] text-matn-2 leading-relaxed whitespace-pre-wrap min-w-0">
-                                                <span className="text-matn-xira">Izoh: </span>{student.comment}
-                                            </p>
-                                            <button onClick={() => { setNoteDraft(student.comment || ''); setIsEditingNote(true); }}
-                                                title="Izohni tahrirlash"
-                                                className="shrink-0 w-7 h-7 flex items-center justify-center rounded-lg text-matn-xira hover:text-brand hover:bg-brand/10 cursor-pointer">
-                                                <Edit size={13} />
-                                            </button>
-                                        </div>
-                                    ) : (
-                                        <button onClick={() => { setNoteDraft(''); setIsEditingNote(true); }}
-                                            className="text-[12px] font-semibold text-matn-xira hover:text-brand cursor-pointer">
-                                            + Izoh qo'shish
-                                        </button>
-                                    )}
-                                </div>
-                            </div>
-                        );
-                    })()}
-
+                <div className="lg:col-span-3 space-y-6 order-3 lg:order-none min-w-0">
                     <div className="bg-sirt rounded-2xl border border-chiziq shadow-sm overflow-hidden">
                         <div className="flex px-2 py-2 bg-ichki border-b border-chiziq gap-1 overflow-x-auto scrollbar-hide items-center justify-start rounded-t-3xl">
                             <TabButton label="Kurslar" icon={<Layers size={14} />} active={activeTab === 'umumiy'} onClick={() => setActiveTab('umumiy')} />
