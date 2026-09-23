@@ -2683,19 +2683,63 @@ function PaymentAddModal({ studentId, onClose, onAdd }: { studentId: number; onC
         return bilanNarx(own.length > 0 ? own : groups);
     })();
 
-    /** Jami summani kurslarga teng bo'lish (qoldiq birinchisiga). */
-    const tengBolish = () => {
-        const jami = Math.round(Number(amount) || 0);
+    /**
+     * Kurs kesimidagi qarz — "Qarzga qarab" taqsimlash uchun.
+     * Faqat bir nechta kursda o'qiydiganda so'raladi (aks holda keraksiz so'rov).
+     */
+    const [payLedger, setPayLedger] = useState<any>(null);
+    useEffect(() => {
+        if (studentCourses.length < 2) return;
+        let off = false;
+        (async () => {
+            try {
+                const r = await fetch(`/api/students/${studentId}/ledger`, {
+                    headers: { Authorization: `Bearer ${localStorage.getItem('token')}` },
+                });
+                const j = await r.json();
+                if (!off && r.ok) setPayLedger(j);
+            } catch { /* qarzsiz ham ishlayveradi — teng bo'linadi */ }
+        })();
+        return () => { off = true; };
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [studentId, studentCourses.length]);
+
+    const kursQarzi = (groupId: number): number =>
+        Number(payLedger?.courses?.find((c: any) => c.groupId === groupId)?.debt || 0);
+
+    /** O'quvchi nechta kursda o'qiyapti — savol faqat bir nechtada chiqadi. */
+    const kopKurs = studentCourses.length > 1;
+    /** Sozlamadagi qoida: eski | teng | qarz (Sozlamalar → Avtomatlashtirish). */
+    const taqsimQoida = (settings?.multiCoursePay as 'eski' | 'teng' | 'qarz') || 'eski';
+
+    /** Jami summani kurslarga bo'lish: teng yoki qarz ulushiga qarab. */
+    const tengBolish = (usul: 'teng' | 'qarz' = 'teng', summa?: number) => {
+        const jami = Math.round(summa ?? (Number(amount) || 0));
         if (jami <= 0 || studentCourses.length === 0) return;
+        const qarzlar = studentCourses.map(c => Math.max(0, kursQarzi(c.id)));
+        const jamiQarz = qarzlar.reduce((s, v) => s + v, 0);
+        const ulushlar = usul === 'qarz' && jamiQarz > 0
+            ? qarzlar.map(q => q / jamiQarz)
+            : studentCourses.map(() => 1 / studentCourses.length);
         const yangi: Record<number, number> = {};
         let berilgan = 0;
         studentCourses.forEach((c, i) => {
-            const qism = i === studentCourses.length - 1 ? jami - berilgan : Math.round(jami / studentCourses.length);
+            const qism = i === studentCourses.length - 1 ? jami - berilgan : Math.round(jami * ulushlar[i]);
             yangi[c.id] = qism;
             berilgan += qism;
         });
         setPayLines(yangi);
     };
+
+    // Sozlamada "teng" yoki "qarzga qarab" turgan bo'lsa — bir nechta kursdagi
+    // o'quvchida summa o'zi bo'linadi, resepshn hech narsa bosmaydi.
+    useEffect(() => {
+        if (!kopKurs) { setPayMode('umumiy'); return; }
+        if (taqsimQoida === 'eski') return;
+        setPayMode('kurs');
+        tengBolish(taqsimQoida === 'qarz' ? 'qarz' : 'teng');
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [kopKurs, taqsimQoida, amount]);
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -2969,11 +3013,14 @@ function PaymentAddModal({ studentId, onClose, onAdd }: { studentId: number; onC
                                 </div>
                             </div>
 
+                            {/* Savol faqat bir nechta kursda o'qiydiganda. Bitta kursda
+                                pul o'sha kursga tushadi — tanlov ham, izoh ham kerak emas. */}
+                            {kopKurs && (
                             <div>
                                 <label className={labelCls}>TAQSIMLASH</label>
                                 <div className="grid grid-cols-2 gap-2">
                                     {([
-                                        { v: 'umumiy', label: "Umumiy to'lov", izoh: "kurs so'ralmaydi" },
+                                        { v: 'umumiy', label: "Umumiy to'lov", izoh: 'eng eski qarzdan' },
                                         { v: 'kurs', label: "Kurslarga bo'lib", izoh: 'qaysi kursga qancha' },
                                     ] as const).map(m => (
                                         <button key={m.v} type="button" onClick={() => setPayMode(m.v)}
@@ -2991,13 +3038,20 @@ function PaymentAddModal({ studentId, onClose, onAdd }: { studentId: number; onC
                                 {payMode === 'umumiy' ? (
                                     <p className="text-[10px] font-bold text-matn-xira mt-2 leading-relaxed">
                                         Pul hisobga tushadi va ochiq hisoblarni yopadi — avval shu oyniki, keyin eski qarzlar.
+                                        Sozlamadagi qoida: <span className="text-brand">eng eski qarzdan</span>.
                                     </p>
                                 ) : (
                                     <div className="mt-3 space-y-2">
-                                        <button type="button" onClick={tengBolish}
-                                            className="px-2.5 py-1.5 text-[10px] font-bold border border-chiziq text-matn-sokin rounded-lg hover:border-brand hover:text-brand transition-colors cursor-pointer">
-                                            Teng bo'lish ({studentCourses.length} kurs)
-                                        </button>
+                                        <div className="flex flex-wrap gap-2">
+                                            <button type="button" onClick={() => tengBolish('teng')}
+                                                className="px-2.5 py-1.5 text-[10px] font-bold border border-chiziq text-matn-sokin rounded-lg hover:border-brand hover:text-brand transition-colors cursor-pointer">
+                                                Teng bo'lish ({studentCourses.length} kurs)
+                                            </button>
+                                            <button type="button" onClick={() => tengBolish('qarz')}
+                                                className="px-2.5 py-1.5 text-[10px] font-bold border border-chiziq text-matn-sokin rounded-lg hover:border-brand hover:text-brand transition-colors cursor-pointer">
+                                                Qarzga qarab
+                                            </button>
+                                        </div>
                                         {studentCourses.map(c => (
                                             <div key={c.id} className="flex items-center justify-between gap-3 p-3 bg-ichki rounded-2xl border border-chiziq/80">
                                                 <div className="min-w-0">
@@ -3021,6 +3075,7 @@ function PaymentAddModal({ studentId, onClose, onAdd }: { studentId: number; onC
                                     </div>
                                 )}
                             </div>
+                            )}
 
                             <div>
                                 <label className={labelCls}>TO'LOV USULI</label>

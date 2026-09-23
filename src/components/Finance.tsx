@@ -371,26 +371,47 @@ export default function Finance() {
     /** O'quvchining barcha kurslari bo'yicha jami qarzi. */
     const payJamiQarz = payRows.reduce((sum, r) => sum + Math.max(0, Number(r.debt) || 0), 0);
 
+    /** Taqsimlanadigan kurslar (eski qoldiq qatori bunga kirmaydi). */
+    const payKursRows = payRows.filter(r => r.groupId);
+    /** Savol faqat bir nechta kursda o'qiydiganda ma'noga ega. */
+    const kopKurs = payKursRows.length > 1;
+    /** Sozlamadagi qoida: eski | teng | qarz. */
+    const taqsimQoida = (settings?.multiCoursePay as 'eski' | 'teng' | 'qarz') || 'eski';
+
     /**
      * Jami summani kurslarga taqsimlaydi: 'teng' — barobar, 'qarz' — qarz
      * ulushiga qarab. Yaxlitlashdan qolgan tiyinlar birinchi kursga qo'shiladi,
      * shunda yig'indi kiritilgan summaga tiyinigacha to'g'ri keladi.
      */
-    const taqsimla = (usul: 'teng' | 'qarz') => {
-        const jami = Math.round(Number(payAmount) || 0);
-        if (jami <= 0 || payRows.length === 0) return;
-        const ulushlar = usul === 'qarz' && payJamiQarz > 0
-            ? payRows.map(r => Math.max(0, Number(r.debt) || 0) / payJamiQarz)
-            : payRows.map(() => 1 / payRows.length);
+    const taqsimla = (usul: 'teng' | 'qarz', summa?: number) => {
+        const jami = Math.round(summa ?? (Number(payAmount) || 0));
+        const rows = payKursRows.length ? payKursRows : payRows;
+        if (jami <= 0 || rows.length === 0) return;
+        const jamiQarz = rows.reduce((s, r) => s + Math.max(0, Number(r.debt) || 0), 0);
+        const ulushlar = usul === 'qarz' && jamiQarz > 0
+            ? rows.map(r => Math.max(0, Number(r.debt) || 0) / jamiQarz)
+            : rows.map(() => 1 / rows.length);
         const yangi: Record<string, number> = {};
         let berilgan = 0;
-        payRows.forEach((r, i) => {
-            const qism = i === payRows.length - 1 ? jami - berilgan : Math.round(jami * ulushlar[i]);
+        rows.forEach((r, i) => {
+            const qism = i === rows.length - 1 ? jami - berilgan : Math.round(jami * ulushlar[i]);
             yangi[r.key] = qism;
             berilgan += qism;
         });
         setPayLines(yangi);
     };
+
+    // Sozlamada "teng" yoki "qarzga qarab" tanlangan bo'lsa, bir nechta kursdagi
+    // o'quvchida pul o'zi shunday bo'linadi — resepshn hech narsa bosmaydi.
+    useEffect(() => {
+        if (!selectedStudent) return;
+        // Bitta kursda — bo'lish degan narsa yo'q: doim umumiy.
+        if (!kopKurs) { setPayMode('umumiy'); return; }
+        if (taqsimQoida === 'eski') return;
+        setPayMode('kurs');
+        taqsimla(taqsimQoida === 'qarz' ? 'qarz' : 'teng');
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [selectedStudent?.id, kopKurs, taqsimQoida, payAmount, payLedger]);
 
     const closePaymentModal = () => {
         setIsPaymentModalOpen(false);
@@ -1685,23 +1706,38 @@ ${e.description || e.category} — ${Number(e.amount).toLocaleString()} so'm`)) 
                                         bo'lsagina ikkinchi rejimga o'tiladi (egasi, 2026-09-23). */}
                                     {selectedStudent && (
                                         <div>
-                                            <div className="grid grid-cols-2 gap-2 mb-3">
-                                                {([
-                                                    { v: 'umumiy', label: 'Umumiy to\'lov', izoh: 'kurs so\'ralmaydi' },
-                                                    { v: 'kurs', label: 'Kurslarga bo\'lib', izoh: 'qaysi kursga qancha' },
-                                                ] as const).map(m => (
-                                                    <button key={m.v} type="button"
-                                                        onClick={() => setPayMode(m.v)}
-                                                        className={`px-3 py-2.5 rounded-xl text-xs font-extrabold border transition-all cursor-pointer ${
-                                                            payMode === m.v
-                                                                ? 'bg-brand/10 border-brand text-brand'
-                                                                : 'bg-ichki border-chiziq text-matn-xira hover:border-brand/40'
-                                                        }`}>
-                                                        {m.label}
-                                                        <span className="block text-[10px] font-bold opacity-70 mt-0.5">{m.izoh}</span>
-                                                    </button>
-                                                ))}
-                                            </div>
+                                            {/* Tanlov faqat bir nechta kursda o'qiydiganda chiqadi.
+                                                Bitta kursda savol yo'q — pul o'sha kursga tushadi.
+                                                Standart qoida Sozlamalarda belgilangan. */}
+                                            {kopKurs && (
+                                                <>
+                                                    <div className="grid grid-cols-2 gap-2 mb-2">
+                                                        {([
+                                                            { v: 'umumiy', label: 'Umumiy to\'lov', izoh: 'eng eski qarzdan' },
+                                                            { v: 'kurs', label: 'Kurslarga bo\'lib', izoh: 'qaysi kursga qancha' },
+                                                        ] as const).map(m => (
+                                                            <button key={m.v} type="button"
+                                                                onClick={() => setPayMode(m.v)}
+                                                                className={`px-3 py-2.5 rounded-xl text-xs font-extrabold border transition-all cursor-pointer ${
+                                                                    payMode === m.v
+                                                                        ? 'bg-brand/10 border-brand text-brand'
+                                                                        : 'bg-ichki border-chiziq text-matn-xira hover:border-brand/40'
+                                                                }`}>
+                                                                {m.label}
+                                                                <span className="block text-[10px] font-bold opacity-70 mt-0.5">{m.izoh}</span>
+                                                            </button>
+                                                        ))}
+                                                    </div>
+                                                    <p className="text-[10px] font-bold text-matn-xira mb-3">
+                                                        Bu o'quvchi <span className="num">{payKursRows.length}</span> ta kursda o'qiydi.
+                                                        Sozlamadagi qoida: <span className="text-brand">
+                                                            {taqsimQoida === 'teng' ? 'kurslarga teng bo\'linadi'
+                                                                : taqsimQoida === 'qarz' ? 'qarzga qarab bo\'linadi'
+                                                                : 'eng eski qarzdan yopiladi'}
+                                                        </span>.
+                                                    </p>
+                                                </>
+                                            )}
                                             {payLedgerLoading && (
                                                 <p className="text-[11px] text-matn-xira font-bold py-3">Hisob yuklanmoqda…</p>
                                             )}

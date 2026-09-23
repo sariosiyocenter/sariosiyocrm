@@ -4258,6 +4258,10 @@ app.put('/api/settings', authenticate, async (req, res, next) => {
     }
     // Oylik hisob kuni: 1–28 (29–31 hamma oyda yo'q).
     if (data.billingDay !== undefined) data.billingDay = normalizeBillingDay(data.billingDay);
+    // Bir nechta kursdagi o'quvchining to'lovi qanday taqsimlanadi.
+    if (data.multiCoursePay !== undefined && !['eski', 'teng', 'qarz'].includes(data.multiCoursePay)) {
+      return res.status(400).json({ error: "To'lovni taqsimlash qoidasi noto'g'ri" });
+    }
     if (data.paymeVatPercent !== undefined) {
       const vat = parseInt(data.paymeVatPercent);
       data.paymeVatPercent = Number.isInteger(vat) && vat >= 0 && vat <= 100 ? vat : 0;

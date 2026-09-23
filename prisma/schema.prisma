@@ -601,6 +601,14 @@ model Setting {
   // emas — unga o'sha kundan qolgan darslar hisoblanadi
   // (services/enrollment.js).
   billingDay       Int      @default(1)
+
+  // Bir nechta kursda o'qiydigan o'quvchidan pul olinganda nima bo'ladi
+  // (egasi, 2026-09-23 — resepshn har safar o'ylab o'tirmasin):
+  //   'eski' — hech narsa so'ralmaydi, pul eng eski ochiq hisobdan yopiladi
+  //   'teng' — summa kurslarga teng bo'linadi
+  //   'qarz' — summa qarz ulushiga qarab bo'linadi
+  // Bitta kursda o'qiydiganlarda bu savol umuman chiqmaydi.
+  multiCoursePay   String   @default("eski")
   instagram        String?
   workingHours     String?
   eskizEmail       String?

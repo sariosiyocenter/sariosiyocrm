@@ -429,6 +429,12 @@ export interface CRMState {
         telegram?: string;
         /** Oylik hisob har oyning nechanchi kunida yoziladi (1-28, sukut 1). */
         billingDay?: number;
+        /**
+         * Bir nechta kursdagi o'quvchidan pul olinganda:
+         * 'eski' — eng eski qarzdan yopiladi, 'teng' — kurslarga teng bo'linadi,
+         * 'qarz' — qarz ulushiga qarab bo'linadi.
+         */
+        multiCoursePay?: 'eski' | 'teng' | 'qarz';
         instagram?: string;
         workingHours?: string;
         eskizEmail?: string;
