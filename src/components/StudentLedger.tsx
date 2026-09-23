@@ -5,12 +5,16 @@ import { RefreshCw, Wallet, AlertCircle, CheckCircle2, CalendarCheck2, BookOpen 
  * O'quvchining hisobi — balans raqamining ochib berilgani.
  *
  * Balans bitta son: musbat bo'lsa avans, manfiy bo'lsa qarz. Lekin rahbarga
- * "bu pul qaysi oy, qaysi guruh uchun?" degan savol kerak. Server
- * (`/api/students/:id/ledger`) har (oy × guruh) uchun qancha hisoblangani va
- * shundan qanchasi yopilganini beradi; hamyonda qolgan avans alohida.
+ * "bu pul qaysi oy, qaysi kurs uchun?" degan savol kerak. Server
+ * (`/api/students/:id/ledger`) har (oy × kurs) uchun qancha hisoblangani va
+ * shundan qanchasi yopilganini beradi.
+ *
+ * O'quvchi profili ma'lumotni o'zi yuklab `data` orqali beradi (yuqoridagi
+ * ko'rsatkichlar va kurs kartochkalari ham shu ma'lumotdan) — `compact`
+ * rejimda faqat oylar jadvali chiqadi, qolgani profilning o'zida.
  */
 
-interface Bucket {
+export interface Bucket {
     key: string;
     groupId: number | null;
     month: string;          // "2026-09" yoki "eski"
@@ -23,8 +27,8 @@ interface Bucket {
     status: 'paid' | 'partial' | 'unpaid';
 }
 
-/** Bitta kurs bo'yicha holat. Pul kursga biriktirilgani uchun har biri mustaqil. */
-interface CourseStanding {
+/** Bitta kurs bo'yicha holat. */
+export interface CourseStanding {
     groupId: number;
     groupName: string;
     courseName: string;
@@ -35,16 +39,16 @@ interface CourseStanding {
     balance: number;
     /** Shu sanagacha (shu kun ham) darsga kiradi. */
     paidUntil: string | null;
-    /** Guruh jadvali to'ldirilmagan — sanani hisoblab bo'lmaydi. */
+    /** Kurs jadvali to'ldirilmagan — sanani hisoblab bo'lmaydi. */
     accessUnknown: boolean;
     /** Bu kursda hali umuman oylik hisob yozilmagan. */
     noCharge?: boolean;
-    /** O'quvchi hozir shu guruhda turibdimi. */
+    /** O'quvchi hozir shu kursda turibdimi. */
     isMember?: boolean;
     openDebt: boolean;
 }
 
-interface Ledger {
+export interface Ledger {
     balance: number;
     wallet: number;
     debt: number;
@@ -56,18 +60,35 @@ interface Ledger {
 const money = (n: number) => Math.round(n).toLocaleString('ru-RU');
 
 /** "2026-10-30" → "30.10.2026". */
-const sana = (d: string) => {
+export const sana = (d: string) => {
     const [y, m, dd] = d.split('-');
     return dd && m && y ? `${dd}.${m}.${y}` : d;
 };
 
 /** Muddat tugashiga necha kun qoldi (o'tib ketgan bo'lsa manfiy). */
-const kunQoldi = (d: string) => {
+export const kunQoldi = (d: string) => {
     const bugun = new Date(); bugun.setHours(0, 0, 0, 0);
     const [y, m, dd] = d.split('-').map(Number);
     const oxir = new Date(y, (m || 1) - 1, dd || 1);
     return Math.round((oxir.getTime() - bugun.getTime()) / 86400000);
 };
+
+/**
+ * Kurs bo'yicha darsga kirish muddati — "1 000 000 to'ladi, qachongacha
+ * dostupi bor" degan savolning javobi. Matn va rang (yaxshi/ogoh/xato/xira).
+ */
+export function kirishMuddati(c: CourseStanding): { matn: string; izoh?: string; ton: 'yaxshi' | 'ogoh' | 'xato' | 'xira' } {
+    if (c.isMember === false) return { matn: 'Kursdan chiqqan', ton: 'xira' };
+    if (c.accessUnknown) return { matn: 'Jadval belgilanmagan', ton: 'xira' };
+    if (!c.paidUntil && c.noCharge) return { matn: 'Hali hisob yozilmagan', ton: 'xira' };
+    if (!c.paidUntil) return { matn: "To'lanmagan", ton: 'xato' };
+    const qoldi = kunQoldi(c.paidUntil);
+    return {
+        matn: `${sana(c.paidUntil)} gacha`,
+        izoh: qoldi < 0 ? `${-qoldi} kun oldin tugagan` : qoldi === 0 ? 'bugun oxirgi kun' : `${qoldi} kun qoldi`,
+        ton: qoldi < 0 ? 'xato' : qoldi <= 5 ? 'ogoh' : 'yaxshi',
+    };
+}
 
 const MONTHS = ['Yanvar', 'Fevral', 'Mart', 'Aprel', 'May', 'Iyun', 'Iyul', 'Avgust', 'Sentabr', 'Oktabr', 'Noyabr', 'Dekabr'];
 const monthLabel = (m: string) => {
@@ -77,12 +98,24 @@ const monthLabel = (m: string) => {
     return `${MONTHS[mm - 1]} ${y}`;
 };
 
-export default function StudentLedger({ studentId, refreshKey, trial }: { studentId: number; refreshKey?: any; trial?: boolean }) {
-    const [data, setData] = useState<Ledger | null>(null);
+const TON: Record<string, string> = { yaxshi: 'text-yaxshi', ogoh: 'text-ogoh', xato: 'text-xato', xira: 'text-matn-xira' };
+
+export default function StudentLedger({ studentId, refreshKey, trial, data: tashqi, compact }: {
+    studentId: number;
+    refreshKey?: any;
+    trial?: boolean;
+    /** Profil o'zi yuklagan hisob — berilsa qayta so'ralmaydi. */
+    data?: Ledger | null;
+    /** Faqat oylar jadvali (avans/qarz va kurslar profilning o'zida). */
+    compact?: boolean;
+}) {
+    const [ichki, setIchki] = useState<Ledger | null>(null);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
+    const tashqiBor = tashqi !== undefined;
 
     const load = useCallback(async () => {
+        if (tashqiBor) return;
         setLoading(true);
         setError(null);
         try {
@@ -90,15 +123,17 @@ export default function StudentLedger({ studentId, refreshKey, trial }: { studen
             const r = await fetch(`/api/students/${studentId}/ledger`, { headers: { Authorization: `Bearer ${token}` } });
             const j = await r.json();
             if (!r.ok) throw new Error(j.error || 'Yuklab bo\'lmadi');
-            setData(j);
+            setIchki(j);
         } catch (e: any) {
             setError(e.message || 'Xatolik');
         } finally {
             setLoading(false);
         }
-    }, [studentId]);
+    }, [studentId, tashqiBor]);
 
     useEffect(() => { load(); }, [load, refreshKey]);
+
+    const data = tashqiBor ? tashqi : ichki;
 
     if (error) {
         return (
@@ -126,39 +161,33 @@ export default function StudentLedger({ studentId, refreshKey, trial }: { studen
                     Sinov davri — hisob yozilmaydi. Holati "Faol" qilinganda o'sha kundan oy oxirigacha bo'lgan darslar uchun hisob yoziladi.
                 </p>
             )}
-            <div className="grid grid-cols-2 gap-3">
-                <div className="px-4 py-3 rounded-xl border bg-yaxshi-fon border-yaxshi/25">
-                    <span className="text-[11px] text-matn-sokin flex items-center gap-1"><Wallet size={12} /> Hisobdagi avans</span>
-                    <p className="raqam text-[18px] font-semibold text-yaxshi leading-tight mt-1">{money(data.wallet)} <span className="text-[11px] text-matn-xira">so'm</span></p>
-                    <p className="text-[10px] text-matn-xira mt-0.5">keyingi hisoblar shundan yopiladi</p>
+            {!compact && (
+                <div className="grid grid-cols-2 gap-3">
+                    <div className="px-4 py-3 rounded-xl border bg-yaxshi-fon border-yaxshi/25">
+                        <span className="text-[11px] text-matn-sokin flex items-center gap-1"><Wallet size={12} /> Hisobdagi avans</span>
+                        <p className="raqam text-[18px] font-semibold text-yaxshi leading-tight mt-1">{money(data.wallet)} <span className="text-[11px] text-matn-xira">so'm</span></p>
+                        <p className="text-[10px] text-matn-xira mt-0.5">keyingi hisoblar shundan yopiladi</p>
+                    </div>
+                    <div className={`px-4 py-3 rounded-xl border ${data.debt > 0 ? 'bg-xato-fon border-xato-chiziq' : 'bg-ichki border-chiziq'}`}>
+                        <span className="text-[11px] text-matn-sokin flex items-center gap-1"><AlertCircle size={12} /> Yopilmagan hisob</span>
+                        <p className={`raqam text-[18px] font-semibold leading-tight mt-1 ${data.debt > 0 ? 'text-xato' : 'text-matn'}`}>{money(data.debt)} <span className="text-[11px] text-matn-xira">so'm</span></p>
+                        <p className="text-[10px] text-matn-xira mt-0.5">to'lashi kerak bo'lgan qarz</p>
+                    </div>
                 </div>
-                <div className={`px-4 py-3 rounded-xl border ${data.debt > 0 ? 'bg-xato-fon border-xato-chiziq' : 'bg-ichki border-chiziq'}`}>
-                    <span className="text-[11px] text-matn-sokin flex items-center gap-1"><AlertCircle size={12} /> Yopilmagan hisob</span>
-                    <p className={`raqam text-[18px] font-semibold leading-tight mt-1 ${data.debt > 0 ? 'text-xato' : 'text-matn'}`}>{money(data.debt)} <span className="text-[11px] text-matn-xira">so'm</span></p>
-                    <p className="text-[10px] text-matn-xira mt-0.5">to'lashi kerak bo'lgan qarz</p>
-                </div>
-            </div>
+            )}
 
-            {/* Kurslar bo'yicha. Pul qaysi kursga to'langan bo'lsa o'sha kursda
-                qoladi, shuning uchun har bir kursning qarzi, avansi va darsga
-                kirish muddati alohida ko'rsatiladi. */}
-            {(data.courses || []).length > 0 && (
+            {!compact && (data.courses || []).length > 0 && (
                 <div className="space-y-2">
                     <p className="text-[11px] text-matn-sokin flex items-center gap-1.5 pt-1">
                         <BookOpen size={12} /> Kurslar bo'yicha
                     </p>
                     {(data.courses || []).map(c => {
-                        const qoldi = c.paidUntil ? kunQoldi(c.paidUntil) : null;
+                        const k = kirishMuddati(c);
                         return (
                             <div key={c.groupId} className="px-4 py-3 rounded-xl border border-chiziq bg-ichki/40">
                                 <div className="flex items-start justify-between gap-3">
                                     <div className="min-w-0">
-                                        <p className="text-[12px] font-bold text-matn truncate">
-                                            {c.groupName}
-                                            {c.isMember === false && (
-                                                <span className="ml-1.5 text-[10px] font-bold text-matn-xira">· guruhdan chiqqan</span>
-                                            )}
-                                        </p>
+                                        <p className="text-[12px] font-bold text-matn truncate">{c.groupName}</p>
                                         <p className="text-[10px] text-matn-xira mt-0.5 truncate">
                                             {[c.courseName, c.teacher, c.monthlyPrice > 0 ? money(c.monthlyPrice) + " so'm/oy" : ''].filter(Boolean).join(' · ')}
                                         </p>
@@ -167,47 +196,14 @@ export default function StudentLedger({ studentId, refreshKey, trial }: { studen
                                         <p className={`raqam text-[14px] font-semibold leading-tight ${c.debt > 0 ? 'text-xato' : c.advance > 0 ? 'text-yaxshi' : 'text-matn-xira'}`}>
                                             {c.debt > 0 ? '−' + money(c.debt) : c.advance > 0 ? '+' + money(c.advance) : '0'}
                                         </p>
-                                        <p className="text-[10px] text-matn-xira">
-                                            {c.debt > 0 ? 'qarz' : c.advance > 0 ? 'avans' : "qarz yo'q"}
-                                        </p>
+                                        <p className="text-[10px] text-matn-xira">{c.debt > 0 ? 'qarz' : c.advance > 0 ? 'avans' : "qarz yo'q"}</p>
                                     </div>
                                 </div>
-                                {/* Darsga kirish muddati — "1 000 000 to'ladi, qachongacha
-                                    dostupi bor" degan savolning javobi. */}
                                 <div className="mt-2 pt-2 border-t border-dashed border-chiziq/60 flex items-center gap-1.5">
-                                    <CalendarCheck2 size={12} className={
-                                        c.isMember === false || c.accessUnknown || (!c.paidUntil && c.noCharge) ? 'text-matn-xira'
-                                            : !c.paidUntil ? 'text-xato'
-                                                : qoldi !== null && qoldi < 0 ? 'text-xato'
-                                                    : qoldi !== null && qoldi <= 5 ? 'text-ogoh' : 'text-yaxshi'} />
-                                    {c.isMember === false ? (
-                                        <span className="text-[11px] font-bold text-matn-xira">
-                                            Guruhdan chiqqan — faqat pul hisobi qoldi
-                                        </span>
-                                    ) : c.accessUnknown ? (
-                                        <span className="text-[11px] font-bold text-matn-xira">
-                                            Guruh jadvali belgilanmagan — muddatni hisoblab bo'lmaydi
-                                        </span>
-                                    ) : !c.paidUntil && c.noCharge ? (
-                                        /* Bu kursda hali oylik hisob yozilmagan — "to'lamagan" deyish
-                                           noto'g'ri bo'lardi. */
-                                        <span className="text-[11px] font-bold text-matn-xira">
-                                            Hali hisob yozilmagan
-                                        </span>
-                                    ) : !c.paidUntil ? (
-                                        <span className="text-[11px] font-bold text-xato">To'lanmagan — darsga kirish muddati yo'q</span>
-                                    ) : (
-                                        <span className={`text-[11px] font-bold ${qoldi !== null && qoldi < 0 ? 'text-xato' : qoldi !== null && qoldi <= 5 ? 'text-ogoh' : 'text-matn-2'}`}>
-                                            {sana(c.paidUntil)} gacha
-                                            {qoldi !== null && (
-                                                <span className="font-normal text-matn-xira">
-                                                    {qoldi < 0 ? ` · ${-qoldi} kun oldin tugagan`
-                                                        : qoldi === 0 ? ' · bugun oxirgi kun'
-                                                            : ` · ${qoldi} kun qoldi`}
-                                                </span>
-                                            )}
-                                        </span>
-                                    )}
+                                    <CalendarCheck2 size={12} className={TON[k.ton]} />
+                                    <span className={`text-[11px] font-bold ${TON[k.ton]}`}>
+                                        {k.matn}{k.izoh && <span className="font-normal text-matn-xira"> · {k.izoh}</span>}
+                                    </span>
                                 </div>
                             </div>
                         );
@@ -222,7 +218,7 @@ export default function StudentLedger({ studentId, refreshKey, trial }: { studen
                     <table className="w-full text-left">
                         <thead>
                             <tr className="bg-ichki/60 border-b border-chiziq">
-                                {['Oy', 'Guruh', 'Hisoblangan', 'Yopilgan', 'Qoldiq', ''].map((h, i) => (
+                                {['Oy', 'Kurs', 'Hisoblangan', 'Yopilgan', 'Qoldiq', ''].map((h, i) => (
                                     <th key={i} className="py-2 px-3 text-[10px] font-bold text-matn-xira whitespace-nowrap">{h}</th>
                                 ))}
                             </tr>
@@ -253,9 +249,8 @@ export default function StudentLedger({ studentId, refreshKey, trial }: { studen
             )}
 
             <p className="text-[10px] text-matn-xira">
-                To'lov qaysi kursga qilingan bo'lsa, o'sha kursda qoladi — boshqa kursning qarzini yopmaydi.
-                Ortgan pul o'sha kursning keyingi oylariga o'tadi. Hisob har oyning 1-sanasida (yoki guruhga
-                qo'shilgan kuni) yoziladi. Balans = avans − yopilmagan hisob.
+                Pul balansga tushadi va kurslarning hisobini yopadi — avval qarz, qolgani avans bo'lib turadi.
+                Hisob har oyning boshida (yoki kursga kelgan kuni) yoziladi.
                 {loading && ' (yangilanmoqda…)'}
             </p>
         </div>

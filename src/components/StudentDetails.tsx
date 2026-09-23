@@ -4,7 +4,6 @@ import {
     Clock, CheckCircle, XCircle, Plus, Award, ClipboardCheck, Users, Layers, ChevronRight, Save, Edit, Bus, Sparkles, Image as ImageIcon, Camera, X, Send, Trash2, Star, ScanFace, Maximize2, Target, Compass, GraduationCap, ToggleLeft, ToggleRight
 } from 'lucide-react';
 import { useCRM } from '../context/CRMContext';
-import StatTile from './ui/StatTile';
 import { displayName } from '../lib/displayName';
 import Avatar from './ui/Avatar';
 import { useConfirm } from './ConfirmDialog';
@@ -24,7 +23,7 @@ import KursHisobModal from './KursHisobModal';
 import BirinchiOyInput from './BirinchiOyInput';
 import PaymeLinkModal from './PaymeLinkModal';
 import { STUDY_GOALS, UZB_REGIONS, ORG_TYPES, gradeOptions, gradeLabel, keepGrade } from '../lib/studentFields';
-import StudentLedger from './StudentLedger';
+import StudentLedger, { kirishMuddati, type Ledger } from './StudentLedger';
 import { loadFaceModels, descriptorFromPhoto, saveFaceProfiles, faceFailText, faceFailedBefore, rememberFaceTry, forgetFaceTry } from '../lib/faceDescriptor';
 import type { FaceFail } from '../lib/faceDescriptor';
 import type { Payment } from '../types';
@@ -264,6 +263,24 @@ export default function StudentDetails() {
         return () => { off = true; };
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [student?.id, student?.schoolId, student?.photo]);
+
+    // O'quvchi hisobi (/ledger) — yuqoridagi ko'rsatkichlar, kurs kartochkalari
+    // va oylar jadvali shu bitta so'rovdan. To'lov yoki hisob o'zgarsa qayta.
+    const [ledger, setLedger] = useState<Ledger | null>(null);
+    const hisobKaliti = payments.filter(p => p.studentId === Number(id)).map(p => p.id + ':' + p.amount).join(',') + '|' + (student?.balance ?? '') + '|' + (student?.groups || []).join(',');
+    useEffect(() => {
+        if (!student?.id) return;
+        let off = false;
+        (async () => {
+            try {
+                const r = await fetch(`/api/students/${student.id}/ledger`, { headers: { Authorization: `Bearer ${localStorage.getItem('token')}` } });
+                const j = await r.json();
+                if (!off && r.ok) setLedger(j);
+            } catch { /* ko'rsatkichlar "…" bo'lib turadi */ }
+        })();
+        return () => { off = true; };
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [student?.id, hisobKaliti]);
 
     if (!student) {
         return (
@@ -511,7 +528,6 @@ export default function StudentDetails() {
     const attendanceRate = studentAttendances.length ? ((studentAttendances.filter(a => a.status === 'Keldi').length / studentAttendances.length) * 100).toFixed(0) : '0';
     const missedLessonsCount = studentAttendances.filter(a => a.status === 'Kelmapdi' || a.status === 'Sababli').length;
     const missedTopicsCount = studentAttendances.filter(a => (a.status === 'Kelmapdi' || a.status === 'Sababli') && !a.caughtUp).length;
-    const caughtUpTopicsCount = studentAttendances.filter(a => (a.status === 'Kelmapdi' || a.status === 'Sababli') && a.caughtUp).length;
 
     // Davomat sanoqlari va seriyalar. studentAttendances yangi sanadan eskisiga
     // qarab saralangan, shuning uchun joriy seriya boshidan sanaladi.
@@ -569,7 +585,7 @@ export default function StudentDetails() {
             title: p.amount < 0
                 ? `Oylik hisoblandi — ${Math.abs(p.amount).toLocaleString()} so'm`
                 : `To'lov qabul qilindi — ${p.amount.toLocaleString()} so'm`,
-            sub: p.description || (p.amount < 0 ? 'Avtomatik hisoblash' : p.type),
+            sub: (p.description || '').replace(/^\[[^\]]+\]\s*/, '') || (p.amount < 0 ? 'Avtomatik hisoblash' : p.type),
             tone: p.amount < 0 ? 'rose' : 'emerald',
             icon: p.amount < 0 ? <ReceiptText size={12} /> : <CreditCard size={12} />,
         }));
@@ -642,6 +658,12 @@ export default function StudentDetails() {
                                 className="w-9 h-9 rounded-lg bg-white/15 hover:bg-white/30 text-white flex items-center justify-center cursor-pointer transition-colors">
                                 <Camera size={16} />
                             </button>
+                            {student.photo && (
+                                <button onClick={handleRemoveBg} disabled={isRemovingBg} title={t('clear_bg_btn')}
+                                    className="w-9 h-9 rounded-lg bg-white/15 hover:bg-white/30 disabled:opacity-50 text-white flex items-center justify-center cursor-pointer transition-colors">
+                                    <Sparkles size={16} className={isRemovingBg ? 'animate-spin' : ''} />
+                                </button>
+                            )}
                         </div>
                     </Avatar>
                     <div className="min-w-0">
@@ -683,7 +705,7 @@ export default function StudentDetails() {
                 </div>
 
                 {/* Eng ko'p ishlatiladigan uchta amal */}
-                <div className="flex items-center gap-2 shrink-0">
+                <div className="flex flex-wrap items-center gap-2 min-w-0">
                     <button onClick={() => setShowPaymentModal(true)}
                         className="h-9 px-4 bg-brand hover:bg-brand-dark text-white rounded-lg text-[13px] font-semibold transition-colors cursor-pointer">
                         {t('add_payment')}
@@ -720,7 +742,7 @@ export default function StudentDetails() {
 
             <div className="grid grid-cols-1 lg:grid-cols-4 gap-4 items-start">
                 {/* Left Profile Card */}
-                <div className="lg:col-span-1 space-y-4">
+                <div className="lg:col-span-1 space-y-4 order-2 lg:order-1">
                     <div className="bg-sirt rounded-2xl border border-chiziq shadow-sm overflow-hidden">
                         {/* Muqova. Avval butun kartochka enini egallagan to'q brend
                             slabi edi — qorong'u rejimda juda qichqirib turardi.
@@ -779,34 +801,8 @@ export default function StudentDetails() {
                             ) : null}
                         </div>
 
-                        <div className="px-6 pb-5 space-y-3 border-t border-chiziq pt-4">
-                            <div className={`px-4 py-3.5 rounded-xl border ${student.balance >= 0
-                                ? 'bg-yaxshi-fon border-yaxshi/25 text-yaxshi'
-                                : 'bg-xato-fon border-xato-chiziq text-xato'}`}>
-                                <span className="text-[12px] text-matn-sokin block">{t('filter_balance')}</span>
-                                <div className="flex items-baseline mt-1">
-                                    <span className="raqam text-[24px] font-semibold leading-none">{student.balance.toLocaleString('ru-RU')}</span>
-                                    <span className="text-[12px] text-matn-xira ml-1.5">so'm</span>
-                                </div>
-                                {debtDays !== null && (
-                                    <span className="text-[11px] text-xato-mayin block mt-1.5">
-                                        <span className="raqam">{debtDays}</span> kundan beri muddati o'tgan
-                                    </span>
-                                )}
-                            </div>
-
-                            {student.photo && (
-                                <button
-                                    onClick={handleRemoveBg}
-                                    disabled={isRemovingBg}
-                                    className="w-full flex items-center justify-center gap-1.5 py-2 text-matn-xira hover:text-brand text-[11px] font-semibold transition-colors disabled:opacity-50 cursor-pointer"
-                                >
-                                    <Sparkles size={12} className={isRemovingBg ? 'animate-spin' : ''} />
-                                    {isRemovingBg ? t('clearing') : t('clear_bg_btn')}
-                                </button>
-                            )}
-
-
+                        {/* Rasm oynalari (balans endi yuqoridagi ko'rsatkichlar qatorida). */}
+                        <div className="contents">
                             {/* Photo Capture Modal */}
                             {isPhotoModalOpen && (
                                 <PhotoCapture
@@ -1177,9 +1173,7 @@ export default function StudentDetails() {
                                 <>
                                     {/* Avval bu yerda "Lid ma'lumotlari" deb turardi —
                                         o'quvchi profilida noto'g'ri sarlavha. */}
-                                    <h3 className="text-[10px] font-semibold text-matn-xira mb-1 px-0.5">
-                                        Aloqa ma'lumotlari
-                                    </h3>
+                                    <h3 className="text-[11px] font-semibold text-matn-sokin pb-1">Aloqa</h3>
                                     <InfoRow icon={<Phone className="w-3.5 h-3.5" />} label={t('student_phone')} value={student.phone} />
                                     {student.telegramId ? (
                                         <div className="flex items-center justify-end gap-2 -mt-1 mb-1.5">
@@ -1197,6 +1191,57 @@ export default function StudentDetails() {
                                             </span>
                                         </div>
                                     )}
+                                    <div className="space-y-2">
+                                        <InfoRow icon={<Users className="w-3.5 h-3.5" />} label={t('father')} value={student.fatherName || "-"} />
+                                        {student.fatherPhone && (
+                                            <div className="flex items-center justify-between gap-2 -mt-1 mb-1.5">
+                                                <div className="flex items-center gap-1.5">
+                                                    <span className="text-[11px] font-bold text-gray-550 tabular-nums">{student.fatherPhone}</span>
+                                                    <button onClick={() => handleSendSms(student.fatherPhone!, 'manual')} className="p-1 text-brand hover:bg-teal-50 rounded transition-all cursor-pointer">
+                                                        <Sparkles size={11} />
+                                                    </button>
+                                                </div>
+                                                {student.fatherTelegramId ? (
+                                                    <div className="flex items-center gap-2 mr-2">
+                                                        <span className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/20 px-1.5 py-0.5 rounded border border-emerald-100 dark:border-emerald-900/40">
+                                                            TG: {student.fatherTelegramId}
+                                                        </span>
+                                                        <button onClick={() => handleDisconnectTelegram('father')} className="text-rose-500 hover:text-rose-600 text-[10px] font-bold cursor-pointer">
+                                                            Uzish
+                                                        </button>
+                                                    </div>
+                                                ) : (
+                                                    <span className="text-[10px] font-bold text-matn-xira italic mr-2">TG ulanmagan</span>
+                                                )}
+                                            </div>
+                                        )}
+                                    </div>
+                                    <div className="space-y-2">
+                                        <InfoRow icon={<Users className="w-3.5 h-3.5" />} label={t('mother')} value={student.motherName || "-"} />
+                                        {student.motherPhone && (
+                                            <div className="flex items-center justify-between gap-2 -mt-1 mb-1.5">
+                                                <div className="flex items-center gap-1.5">
+                                                    <span className="text-[11px] font-bold text-gray-550 tabular-nums">{student.motherPhone}</span>
+                                                    <button onClick={() => handleSendSms(student.motherPhone!, 'manual')} className="p-1 text-brand hover:bg-teal-50 rounded transition-all cursor-pointer">
+                                                        <Sparkles size={11} />
+                                                    </button>
+                                                </div>
+                                                {student.motherTelegramId ? (
+                                                    <div className="flex items-center gap-2 mr-2">
+                                                        <span className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/20 px-1.5 py-0.5 rounded border border-emerald-100 dark:border-emerald-900/40">
+                                                            TG: {student.motherTelegramId}
+                                                        </span>
+                                                        <button onClick={() => handleDisconnectTelegram('mother')} className="text-rose-500 hover:text-rose-600 text-[10px] font-bold cursor-pointer">
+                                                            Uzish
+                                                        </button>
+                                                    </div>
+                                                ) : (
+                                                    <span className="text-[10px] font-bold text-matn-xira italic mr-2">TG ulanmagan</span>
+                                                )}
+                                            </div>
+                                        )}
+                                    </div>
+                                    <h3 className="text-[11px] font-semibold text-matn-sokin pb-1 pt-3 mt-2 border-t border-chiziq-mayin">Belgilar</h3>
                     {/* Face ID. Alohida rasm ham, tugma ham yo'q: belgi profil
                                         rasmidan o'zi olinadi. Bu qator faqat natijani aytadi. */}
                                     <div className="flex items-center justify-between gap-2 py-1"
@@ -1272,58 +1317,7 @@ export default function StudentDetails() {
                                         busy={belgiSaqlanmoqda === 'imtihon'}
                                         onToggle={v => belgiOzgartir('imtihon', v)}
                                     />
-                                    <InfoRow icon={<Calendar className="w-3.5 h-3.5" />} label={t('birth_date')} value={student.birthDate} />
-                                    <InfoRow icon={<Users className="w-3.5 h-3.5" />} label="Jins" value={student.gender === 'Ayol' ? '♀ Ayol' : '♂ Erkak'} />
-                                    <div className="space-y-2">
-                                        <InfoRow icon={<Users className="w-3.5 h-3.5" />} label={t('father')} value={student.fatherName || "-"} />
-                                        {student.fatherPhone && (
-                                            <div className="flex items-center justify-between gap-2 -mt-1 mb-1.5">
-                                                <div className="flex items-center gap-1.5">
-                                                    <span className="text-[11px] font-bold text-gray-550 tabular-nums">{student.fatherPhone}</span>
-                                                    <button onClick={() => handleSendSms(student.fatherPhone!, 'manual')} className="p-1 text-brand hover:bg-teal-50 rounded transition-all cursor-pointer">
-                                                        <Sparkles size={11} />
-                                                    </button>
-                                                </div>
-                                                {student.fatherTelegramId ? (
-                                                    <div className="flex items-center gap-2 mr-2">
-                                                        <span className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/20 px-1.5 py-0.5 rounded border border-emerald-100 dark:border-emerald-900/40">
-                                                            TG: {student.fatherTelegramId}
-                                                        </span>
-                                                        <button onClick={() => handleDisconnectTelegram('father')} className="text-rose-500 hover:text-rose-600 text-[10px] font-bold cursor-pointer">
-                                                            Uzish
-                                                        </button>
-                                                    </div>
-                                                ) : (
-                                                    <span className="text-[10px] font-bold text-matn-xira italic mr-2">TG ulanmagan</span>
-                                                )}
-                                            </div>
-                                        )}
-                                    </div>
-                                    <div className="space-y-2">
-                                        <InfoRow icon={<Users className="w-3.5 h-3.5" />} label={t('mother')} value={student.motherName || "-"} />
-                                        {student.motherPhone && (
-                                            <div className="flex items-center justify-between gap-2 -mt-1 mb-1.5">
-                                                <div className="flex items-center gap-1.5">
-                                                    <span className="text-[11px] font-bold text-gray-550 tabular-nums">{student.motherPhone}</span>
-                                                    <button onClick={() => handleSendSms(student.motherPhone!, 'manual')} className="p-1 text-brand hover:bg-teal-50 rounded transition-all cursor-pointer">
-                                                        <Sparkles size={11} />
-                                                    </button>
-                                                </div>
-                                                {student.motherTelegramId ? (
-                                                    <div className="flex items-center gap-2 mr-2">
-                                                        <span className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/20 px-1.5 py-0.5 rounded border border-emerald-100 dark:border-emerald-900/40">
-                                                            TG: {student.motherTelegramId}
-                                                        </span>
-                                                        <button onClick={() => handleDisconnectTelegram('mother')} className="text-rose-500 hover:text-rose-600 text-[10px] font-bold cursor-pointer">
-                                                            Uzish
-                                                        </button>
-                                                    </div>
-                                                ) : (
-                                                    <span className="text-[10px] font-bold text-matn-xira italic mr-2">TG ulanmagan</span>
-                                                )}
-                                            </div>
-                                        )}
-                                    </div>
+                                    <h3 className="text-[11px] font-semibold text-matn-sokin pb-1 pt-3 mt-2 border-t border-chiziq-mayin">O'qish</h3>
                                     {student.studyGoal && (
                                         <InfoRow icon={<Target className="w-3.5 h-3.5" />} label="Maqsad" value={student.studyGoal} />
                                     )}
@@ -1338,6 +1332,11 @@ export default function StudentDetails() {
                                         <InfoRow icon={<GraduationCap className="w-3.5 h-3.5" />} label={gradeLabel(student.orgType)} value={student.grade} />
                                     )}
                                     <InfoRow icon={<BookOpen className="w-3.5 h-3.5" />} label="Muassasa nomi" value={student.studentSchool || "-"} />
+                                    <InfoRow icon={<Clock className="w-3.5 h-3.5" />} label={t('registered_at')} value={student.joinedDate} />
+
+                                    <h3 className="text-[11px] font-semibold text-matn-sokin pb-1 pt-3 mt-2 border-t border-chiziq-mayin">Shaxsiy</h3>
+                                    <InfoRow icon={<Calendar className="w-3.5 h-3.5" />} label={t('birth_date')} value={student.birthDate} />
+                                    <InfoRow icon={<Users className="w-3.5 h-3.5" />} label="Jins" value={student.gender === 'Ayol' ? '♀ Ayol' : '♂ Erkak'} />
                                     {(student.region || student.district) && (
                                         <InfoRow icon={<MapPin className="w-3.5 h-3.5" />} label="Viloyat / Tuman" value={[student.region, student.district].filter(Boolean).join(', ')} />
                                     )}
@@ -1351,8 +1350,6 @@ export default function StudentDetails() {
                                             {t('view_on_map')}
                                         </button>
                                     )}
-                                    <InfoRow icon={<Clock className="w-3.5 h-3.5" />} label={t('registered_at')} value={student.joinedDate} />
-
                                     {student.privilegeType && student.privilegeType !== 'None' && (
                                         <div className="flex items-start gap-2.5 p-3 bg-teal-50 dark:bg-teal-950/20 border border-teal-100 dark:border-teal-900/30 rounded-2xl">
                                             <div className="w-7 h-7 rounded-lg bg-brand/10 dark:bg-brand/20 text-brand flex items-center justify-center shrink-0 animate-pulse">
@@ -1412,7 +1409,7 @@ export default function StudentDetails() {
 
                                     <button
                                         onClick={() => setShowDeleteModal(true)}
-                                        className="w-full mt-4 flex items-center justify-center gap-1.5 px-4 py-3 bg-rose-50 text-rose-600 border border-rose-100 dark:bg-rose-950/20 dark:text-rose-400 dark:border-rose-900/40 text-[11px] font-bold tracking-[0.1em] rounded-xl hover:bg-rose-600 hover:text-white transition-all cursor-pointer"
+                                        className="w-full mt-4 pt-3 border-t border-chiziq-mayin flex items-center justify-center gap-1.5 py-2 text-matn-xira hover:text-xato text-[11px] font-semibold transition-colors cursor-pointer"
                                     >
                                         <XCircle size={13} />
                                         {t('delete_student')}
@@ -1424,39 +1421,70 @@ export default function StudentDetails() {
                 </div>
 
                 {/* Right Tab Content */}
-                <div className="lg:col-span-3 space-y-6">
-                    {/* Summary Stats */}
-                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-                        <StatTile
-                            label={t('attendance')}
-                            value={attendanceRate}
-                            unit="%"
-                            subValue={t('class_attendance')}
-                        />
-                        <StatTile
-                            label={t('missed_lessons')}
-                            value={missedLessonsCount}
-                            tone={missedLessonsCount > 0 ? 'warn' : undefined}
-                            subValue={t('missed_lessons_subtitle')}
-                        />
-                        <StatTile
-                            label={t('missed_topics')}
-                            value={missedTopicsCount}
-                            tone={missedTopicsCount > 0 ? 'bad' : undefined}
-                            subValue={t('missed_topics_subtitle')}
-                        />
-                        <StatTile
-                            label={t('caught_up_topics')}
-                            value={caughtUpTopicsCount}
-                            tone={caughtUpTopicsCount > 0 ? 'good' : undefined}
-                            subValue={t('caught_up_topics_subtitle')}
-                        />
-                    </div>
+                <div className="lg:col-span-3 space-y-6 order-1 lg:order-2 min-w-0">
+                    {/* Asosiy ko'rsatkichlar — bir qatorda, har biri bir savolga javob:
+                        qancha pul? nechta kurs? qachongacha darsga kiradi? qatnashyaptimi?
+                        Ilgari balans chap ustunda, qarz/avans o'ng tomonda yana ikki marta
+                        takrorlanardi, bu qatorda esa ko'pincha "0" turgan mavzu sanoqlari edi. */}
+                    {(() => {
+                        const bal = student.balance || 0;
+                        const oylikJami = studentGroups.reduce((s, g) => {
+                            const cp = student.customPrices && typeof student.customPrices === 'object' ? (student.customPrices as Record<string, number>)[g.id] : undefined;
+                            return s + (cp !== undefined ? Number(cp) : (g.coursePrice || 0));
+                        }, 0);
+                        // Darsga kirish: a'zo bo'lgan kurslardan eng yaqin tugaydigani.
+                        const kurslarHolati = (ledger?.courses || []).filter(c => c.isMember !== false && studentGroups.some(g => g.id === c.groupId));
+                        const engKurs = kurslarHolati.find(c => kirishMuddati(c).ton === 'xato')
+                            || kurslarHolati.filter(c => c.paidUntil && !c.accessUnknown).sort((a, b) => a.paidUntil!.localeCompare(b.paidUntil!))[0]
+                            || kurslarHolati[0];
+                        const eng = engKurs ? kirishMuddati(engKurs) : null;
+                        const tile = 'rounded-2xl border p-4 min-w-0';
+                        return (
+                            <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+                                <div className={`${tile} ${bal < 0 ? 'bg-xato-fon border-xato-chiziq' : bal > 0 ? 'bg-yaxshi-fon border-yaxshi/25' : 'bg-sirt border-chiziq'}`}>
+                                    <p className="text-[12px] text-matn-sokin">Balans</p>
+                                    <p className={`raqam text-[20px] sm:text-[24px] font-semibold leading-tight mt-1 truncate ${bal < 0 ? 'text-xato' : bal > 0 ? 'text-yaxshi' : 'text-matn'}`}>
+                                        {bal > 0 ? '+' : ''}{bal.toLocaleString('ru-RU')} <span className="text-[12px] text-matn-xira font-normal">so'm</span>
+                                    </p>
+                                    <p className={`text-[11px] mt-1 truncate ${bal < 0 ? 'text-xato-mayin' : 'text-matn-xira'}`}>
+                                        {bal < 0 ? (debtDays !== null ? `qarz · ${debtDays} kundan beri` : 'qarz') : bal > 0 ? 'avans — keyingi oylar shundan' : 'hisob toza'}
+                                    </p>
+                                </div>
+                                <div className={`${tile} bg-sirt border-chiziq`}>
+                                    <p className="text-[12px] text-matn-sokin">Kurslar</p>
+                                    <p className="raqam text-[24px] font-semibold text-matn leading-tight mt-1">{studentGroups.length} <span className="text-[12px] text-matn-xira font-normal">ta</span></p>
+                                    <p className="text-[11px] text-matn-xira mt-1 truncate">
+                                        {oylikJami > 0 ? <>oyiga <span className="raqam text-matn-2">{oylikJami.toLocaleString('ru-RU')}</span> so'm</> : 'kursga yozilmagan'}
+                                    </p>
+                                </div>
+                                <div className={`${tile} bg-sirt border-chiziq`}>
+                                    <p className="text-[12px] text-matn-sokin">Darsga kirish</p>
+                                    <p className={`raqam text-[20px] font-semibold leading-tight mt-1.5 truncate ${eng ? ({ yaxshi: 'text-yaxshi', ogoh: 'text-ogoh', xato: 'text-xato', xira: 'text-matn-xira' } as const)[eng.ton] : 'text-matn-xira'}`}>
+                                        {student.status === 'Sinov' ? 'Sinov' : !ledger ? '…' : eng ? eng.matn : '—'}
+                                    </p>
+                                    <p className="text-[11px] text-matn-xira mt-1 truncate">
+                                        {student.status === 'Sinov' ? 'hisob yozilmaydi'
+                                            : [kurslarHolati.length > 1 ? engKurs?.groupName : '', eng?.izoh].filter(Boolean).join(' · ')}
+                                    </p>
+                                </div>
+                                <div className={`${tile} bg-sirt border-chiziq`}>
+                                    <p className="text-[12px] text-matn-sokin">Davomat</p>
+                                    <p className="raqam text-[24px] font-semibold text-matn leading-tight mt-1">
+                                        {studentAttendances.length ? attendanceRate : '—'}{studentAttendances.length ? <span className="text-[12px] text-matn-xira font-normal">%</span> : null}
+                                    </p>
+                                    <p className={`text-[11px] mt-1 truncate ${missedTopicsCount > 0 ? 'text-ogoh' : 'text-matn-xira'}`}>
+                                        {!studentAttendances.length ? "hali yo'qlama yo'q"
+                                            : missedLessonsCount === 0 ? "bitta ham qoldirmagan"
+                                                : `${missedLessonsCount} dars qoldirgan${missedTopicsCount > 0 ? ` · ${missedTopicsCount} mavzu ochiq` : ''}`}
+                                    </p>
+                                </div>
+                            </div>
+                        );
+                    })()}
 
                     <div className="bg-sirt rounded-2xl border border-chiziq shadow-sm overflow-hidden">
                         <div className="flex px-2 py-2 bg-ichki border-b border-chiziq gap-1 overflow-x-auto scrollbar-hide items-center justify-start rounded-t-3xl">
                             <TabButton label={t('general')} icon={<Layers size={14} />} active={activeTab === 'umumiy'} onClick={() => setActiveTab('umumiy')} />
-                            <TabButton label={t('stat_groups')} icon={<Users size={14} />} active={activeTab === 'courses'} onClick={() => setActiveTab('courses')} />
                             <TabButton label="Balans" icon={<CreditCard size={14} />} active={activeTab === 'tolovlar'} onClick={() => setActiveTab('tolovlar')} />
                             <TabButton label={t('attendance')} icon={<ClipboardCheck size={14} />} active={activeTab === 'yoqlama'} onClick={() => setActiveTab('yoqlama')} />
                             <TabButton label="Ballar" icon={<Star size={14} />} active={activeTab === 'ballar'} onClick={() => setActiveTab('ballar')} />
@@ -1467,7 +1495,13 @@ export default function StudentDetails() {
                                 <div className="space-y-8 animate-in fade-in duration-300">
                                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
                                         <div className="space-y-4">
-                                            <span className="text-[11px] font-bold text-matn-xira block pb-2 border-b border-gray-55 dark:border-gray-800/50">{t('active_groups')}</span>
+                                            <div className="flex items-center justify-between gap-3 pb-2 border-b border-chiziq-mayin">
+                                                <span className="text-[12px] font-semibold text-matn">Kurslar</span>
+                                                <button onClick={() => setShowGroupModal(true)}
+                                                    className="text-[11px] font-bold text-brand hover:underline cursor-pointer">
+                                                    + Kursga qo'shish
+                                                </button>
+                                            </div>
                                             {/* Balans taqsimoti — pul faqat balansga tushadi, har oy kurslarga
                                                 balansdan yechiladi. Standart teng; shu o'quvchi uchun foizda (50/50, 70/30). */}
                                             {studentGroups.length > 1 && (() => {
@@ -1510,33 +1544,56 @@ export default function StudentDetails() {
                                                             : undefined;
                                                         const kelgan = kursSanasi(group.id) || '';
                                                         const oylik = studentCustomPrice !== undefined ? studentCustomPrice : (group.coursePrice || 0);
+                                                        const holat = ledger?.courses?.find(c => c.groupId === group.id);
+                                                        const muddat = holat ? kirishMuddati(holat) : null;
                                                         return (
                                                             <div key={group.id}
-                                                                className="group bg-ichki/30 p-4 rounded-2xl border border-transparent hover:border-gray-100 dark:hover:border-gray-700/50 transition-all flex items-center justify-between gap-3">
-                                                                <div className="flex items-center gap-3 min-w-0 cursor-pointer" onClick={() => navigate(`/courses/${group.id}`)}>
-                                                                    <div className="w-10 h-10 bg-sirt border border-gray-100 dark:border-gray-705 rounded-xl flex items-center justify-center text-brand shrink-0">
-                                                                        <BookOpen size={18} />
+                                                                className="group bg-ichki/30 p-4 rounded-2xl border border-chiziq hover:border-brand/40 transition-colors">
+                                                                <div className="flex items-start justify-between gap-3">
+                                                                    <div className="flex items-center gap-3 min-w-0 cursor-pointer" onClick={() => navigate(`/courses/${group.id}`)}>
+                                                                        <div className="w-10 h-10 bg-sirt border border-chiziq rounded-xl flex items-center justify-center text-brand shrink-0">
+                                                                            <BookOpen size={18} />
+                                                                        </div>
+                                                                        <div className="min-w-0">
+                                                                            <h5 className="text-[13px] font-bold text-matn group-hover:text-brand tracking-tight truncate">{group.name}</h5>
+                                                                            <p className="text-[11px] text-matn-xira mt-0.5 truncate">{group.courseName ? `${group.courseName} · ` : ''}{group.teacherName}</p>
+                                                                        </div>
                                                                     </div>
-                                                                    <div className="min-w-0">
-                                                                        <h5 className="text-xs font-black text-matn group-hover:text-brand tracking-tight truncate">{group.name}</h5>
-                                                                        <p className="text-[11px] font-bold text-matn-xira mt-0.5 truncate">{group.courseName ? `${group.courseName} • ` : ''}{group.teacherName}</p>
-                                                                        <p className="num text-[11px] font-bold text-matn-sokin mt-1.5">
-                                                                            <span className="text-matn-xira">Kelgan:</span> {kelgan ? `${kelgan.slice(8, 10)}.${kelgan.slice(5, 7)}.${kelgan.slice(0, 4)}` : '—'}
-                                                                            <span className="text-matn-xira"> · Oylik:</span>{' '}
+                                                                    {/* Shu kurs bo'yicha qarz yoki avans */}
+                                                                    {holat && student.status !== 'Sinov' && (
+                                                                        <div className="text-right shrink-0">
+                                                                            <p className={`raqam text-[14px] font-semibold leading-tight ${holat.debt > 0 ? 'text-xato' : holat.advance > 0 ? 'text-yaxshi' : 'text-matn-xira'}`}>
+                                                                                {holat.debt > 0 ? '−' + holat.debt.toLocaleString('ru-RU') : holat.advance > 0 ? '+' + holat.advance.toLocaleString('ru-RU') : '0'}
+                                                                            </p>
+                                                                            <p className="text-[10px] text-matn-xira">{holat.debt > 0 ? 'qarz' : holat.advance > 0 ? 'avans' : "qarz yo'q"}</p>
+                                                                        </div>
+                                                                    )}
+                                                                </div>
+                                                                <div className="mt-3 pt-3 border-t border-dashed border-chiziq/70 flex flex-wrap items-center justify-between gap-2">
+                                                                    <div className="num text-[11px] text-matn-sokin space-y-0.5 min-w-0">
+                                                                        <p>
+                                                                            <span className="text-matn-xira">Kelgan</span> {kelgan ? `${kelgan.slice(8, 10)}.${kelgan.slice(5, 7)}.${kelgan.slice(0, 4)}` : '—'}
+                                                                            <span className="text-matn-xira"> · Oylik</span>{' '}
                                                                             <span className={studentCustomPrice !== undefined ? 'text-brand' : ''}>{oylik.toLocaleString('ru-RU')}</span>
                                                                             {studentCustomPrice !== undefined && <span className="text-[10px] text-brand/70"> (shu o'quvchiga)</span>}
                                                                         </p>
+                                                                        {muddat && student.status !== 'Sinov' && (
+                                                                            <p className={({ yaxshi: 'text-yaxshi', ogoh: 'text-ogoh', xato: 'text-xato', xira: 'text-matn-xira' } as const)[muddat.ton]}>
+                                                                                <span className="text-matn-xira">Darsga kirish</span> {muddat.matn}
+                                                                                {muddat.izoh && <span className="text-matn-xira"> · {muddat.izoh}</span>}
+                                                                            </p>
+                                                                        )}
                                                                     </div>
+                                                                    {/* Kurs hisobi — kelgan sana, oylik narx, birinchi oy summasi: bitta oynada. */}
+                                                                    <button
+                                                                        onClick={() => setEditingStart({ groupId: group.id, name: group.name, current: kelgan || toDateStr() })}
+                                                                        className="shrink-0 inline-flex items-center gap-1.5 px-3 py-2 bg-sirt border border-chiziq hover:border-brand rounded-xl text-[11px] font-bold text-brand hover:bg-brand/10 transition-colors cursor-pointer"
+                                                                        title="Kelgan sana, oylik narx va birinchi oy summasi"
+                                                                    >
+                                                                        <Edit size={12} />
+                                                                        Kurs hisobi
+                                                                    </button>
                                                                 </div>
-                                                                {/* Kurs hisobi — kelgan sana, oylik narx, birinchi oy summasi: bitta oynada. */}
-                                                                <button
-                                                                    onClick={() => setEditingStart({ groupId: group.id, name: group.name, current: kelgan || toDateStr() })}
-                                                                    className="shrink-0 inline-flex items-center gap-1.5 px-3 py-2 bg-sirt border border-chiziq hover:border-brand rounded-xl text-[11px] font-bold text-brand hover:bg-brand/10 transition-colors cursor-pointer"
-                                                                    title="Kelgan sana, oylik narx va birinchi oy summasi"
-                                                                >
-                                                                    <Edit size={12} />
-                                                                    Kurs hisobi
-                                                                </button>
                                                             </div>
                                                         );
                                                     })
@@ -1545,40 +1602,46 @@ export default function StudentDetails() {
                                         </div>
 
                                         <div className="space-y-4">
-                                            <span className="text-[11px] font-bold text-matn-xira block pb-2 border-b border-gray-55 dark:border-gray-800/50">Hisob — oylar bo'yicha</span>
-                                            <StudentLedger studentId={student.id} trial={student.status === 'Sinov'} refreshKey={studentPayments.length + ':' + student.balance} />
-                                            <span className="text-[11px] font-bold text-matn-xira block pb-2 border-b border-gray-55 dark:border-gray-800/50">{t('latest_payments')}</span>
-                                            <div className="space-y-3">
-                                                {studentPayments.slice(0, 4).map(p => {
-                                                    const isDed = p.amount < 0;
-                                                    return (
-                                                    <div key={p.id} className={`flex items-center justify-between p-4 rounded-2xl ${isDed ? 'bg-rose-50/60 dark:bg-rose-950/10 border border-rose-100 dark:border-rose-900/30' : 'bg-ichki/30'}`}>
-                                                        <div className="flex items-center gap-3">
-                                                            <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${isDed ? 'bg-rose-50 text-rose-500 border border-rose-100 dark:bg-rose-950/20 dark:text-rose-400 dark:border-rose-900/40' : 'bg-emerald-50 text-emerald-600 border border-emerald-100 dark:bg-emerald-950/20 dark:text-emerald-400 dark:border-emerald-900/40'}`}>
-                                                                {isDed ? <ReceiptText size={18} /> : <CreditCard size={18} />}
+                                            <div className="flex items-center justify-between gap-3 pb-2 border-b border-chiziq-mayin">
+                                                <span className="text-[12px] font-semibold text-matn">Oylar bo'yicha hisob</span>
+                                                <button onClick={() => setActiveTab('tolovlar')} className="text-[11px] font-bold text-brand hover:underline cursor-pointer">
+                                                    Balans tarixi →
+                                                </button>
+                                            </div>
+                                            <StudentLedger studentId={student.id} trial={student.status === 'Sinov'} data={ledger} compact />
+                                            <div className="pb-2 pt-2 border-b border-chiziq-mayin">
+                                                <span className="text-[12px] font-semibold text-matn">Oxirgi harakatlar</span>
+                                            </div>
+                                            {recentActivity.length === 0 ? (
+                                                <p className="text-center py-8 text-[11px] text-matn-xira font-bold">Harakatlar yo'q</p>
+                                            ) : (
+                                                <div className="space-y-3">
+                                                    {recentActivity.map(item => (
+                                                        <div key={item.key} className="flex items-start gap-3">
+                                                            <div className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0 border ${
+                                                                item.tone === 'emerald' ? 'bg-emerald-50 text-emerald-600 border-emerald-100 dark:bg-emerald-950/20 dark:text-emerald-400 dark:border-emerald-900/40' :
+                                                                item.tone === 'rose' ? 'bg-rose-50 text-rose-500 border-rose-100 dark:bg-rose-950/20 dark:text-rose-400 dark:border-rose-900/40' :
+                                                                item.tone === 'amber' ? 'bg-amber-50 text-amber-600 border-amber-100 dark:bg-amber-950/20 dark:text-amber-400 dark:border-amber-900/40' :
+                                                                item.tone === 'teal' ? 'bg-teal-50 text-brand border-teal-100 dark:bg-teal-950/20 dark:text-teal-400 dark:border-teal-900/40' :
+                                                                'bg-gray-55 text-matn-xira border-gray-100 dark:bg-gray-900/50 dark:border-gray-800/50'
+                                                            }`}>
+                                                                {item.icon}
                                                             </div>
-                                                            <div>
-                                                                <p className={`text-xs font-black ${isDed ? 'text-rose-600 dark:text-rose-400' : 'text-matn'}`}>
-                                                                    {isDed ? '' : '+'}{p.amount.toLocaleString()} <span className="text-[11px] opacity-60">UZS</span>
+                                                            <div className="min-w-0">
+                                                                <p className="text-[12px] font-bold text-matn leading-snug">{item.title}</p>
+                                                                <p className="text-[10px] font-bold text-matn-xira mt-0.5 tabular-nums truncate">
+                                                                    {item.date.split('-').reverse().join('.')}{item.sub ? ' · ' + item.sub : ''}
                                                                 </p>
-                                                                <p className="text-[11px] font-bold text-matn-xira mt-0.5">{p.date}</p>
                                                             </div>
                                                         </div>
-                                                        <span className={`text-[11px] font-bold px-2.5 py-1 rounded-md border ${isDed ? 'text-rose-500 bg-rose-50 border-rose-100 dark:bg-rose-950/20 dark:border-rose-900/40' : 'text-matn-sokin bg-sirt border-chiziq'}`}>
-                                                            {isDed ? 'Oylik' : p.type === 'Naqd' ? t('type_cash') : p.type === 'Karta' ? t('type_card') : p.type === 'Peyme' ? t('type_payme') : p.type === 'Klik' ? t('type_click') : p.type}
-                                                        </span>
-                                                    </div>
-                                                    );
-                                                })}
-                                                {studentPayments.length === 0 && (
-                                                    <p className="text-center py-8 text-[11px] text-matn-xira font-bold">{t('no_payment_history')}</p>
-                                                )}
-                                            </div>
+                                                    ))}
+                                                </div>
+                                            )}
                                         </div>
                                     </div>
 
-                                    {/* Izohlar va oxirgi harakatlar */}
-                                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 pt-6 border-t border-dashed border-chiziq/50">
+                                    {/* Izohlar */}
+                                    <div className="pt-6 border-t border-dashed border-chiziq/50">
                                         <div className="space-y-4">
                                             <div className="flex items-center justify-between pb-2 border-b border-gray-55 dark:border-gray-800/50">
                                                 <span className="text-[11px] font-bold text-matn-xira">Izohlar</span>
@@ -1623,144 +1686,12 @@ export default function StudentDetails() {
                                                     <p className="text-[12px] font-semibold text-matn-2 leading-relaxed whitespace-pre-wrap">{student.comment}</p>
                                                 </div>
                                             ) : (
-                                                <p className="text-center py-8 text-[11px] text-matn-xira font-bold">Izoh yozilmagan</p>
+                                                <p className="py-3 text-[11px] text-matn-xira">Izoh yozilmagan</p>
                                             )}
                                         </div>
 
-                                        <div className="space-y-4">
-                                            <span className="text-[11px] font-bold text-matn-xira block pb-2 border-b border-gray-55 dark:border-gray-800/50">Oxirgi harakatlar</span>
-                                            {recentActivity.length === 0 ? (
-                                                <p className="text-center py-8 text-[11px] text-matn-xira font-bold">Harakatlar yo'q</p>
-                                            ) : (
-                                                <div className="space-y-3">
-                                                    {recentActivity.map(item => (
-                                                        <div key={item.key} className="flex items-start gap-3">
-                                                            <div className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0 border ${
-                                                                item.tone === 'emerald' ? 'bg-emerald-50 text-emerald-600 border-emerald-100 dark:bg-emerald-950/20 dark:text-emerald-400 dark:border-emerald-900/40' :
-                                                                item.tone === 'rose' ? 'bg-rose-50 text-rose-500 border-rose-100 dark:bg-rose-950/20 dark:text-rose-400 dark:border-rose-900/40' :
-                                                                item.tone === 'amber' ? 'bg-amber-50 text-amber-600 border-amber-100 dark:bg-amber-950/20 dark:text-amber-400 dark:border-amber-900/40' :
-                                                                item.tone === 'teal' ? 'bg-teal-50 text-brand border-teal-100 dark:bg-teal-950/20 dark:text-teal-400 dark:border-teal-900/40' :
-                                                                'bg-gray-55 text-matn-xira border-gray-100 dark:bg-gray-900/50 dark:border-gray-800/50'
-                                                            }`}>
-                                                                {item.icon}
-                                                            </div>
-                                                            <div className="min-w-0">
-                                                                <p className="text-[12px] font-bold text-matn leading-snug">{item.title}</p>
-                                                                <p className="text-[10px] font-bold text-matn-xira mt-0.5 tabular-nums truncate">
-                                                                    {item.date}{item.sub ? ' · ' + item.sub : ''}
-                                                                </p>
-                                                            </div>
-                                                        </div>
-                                                    ))}
-                                                </div>
-                                            )}
-                                        </div>
                                     </div>
 
-                                    {/* Qoldirilgan va yopilgan mavzular section */}
-                                    <div className="space-y-4 pt-6 border-t border-dashed border-chiziq/50">
-                                        <div className="flex items-center justify-between">
-                                            <span className="text-[11px] font-bold text-matn-xira">{t('missed_and_closed_topics')}</span>
-                                        </div>
-
-                                        {studentAttendances.filter(a => a.status === 'Kelmapdi' || a.status === 'Sababli').length === 0 ? (
-                                            <p className="text-center py-8 text-[11px] text-matn-xira font-bold">{t('no_missed_topics')}</p>
-                                        ) : (
-                                            <div className="bg-sirt border border-chiziq rounded-2xl overflow-hidden shadow-sm">
-                                                <table className="w-full text-left border-collapse">
-                                                    <thead>
-                                                        <tr className="bg-ichki border-b border-chiziq">
-                                                            <th className="p-3 text-[11px] font-bold text-matn-xira">{t('date_group')}</th>
-                                                            <th className="p-3 text-[11px] font-bold text-matn-xira">{t('topic_label')}</th>
-                                                            <th className="p-3 text-center text-[11px] font-bold text-matn-xira">{t('status')}</th>
-                                                        </tr>
-                                                    </thead>
-                                                    <tbody className="divide-y divide-gray-100 dark:divide-gray-800">
-                                                        {studentAttendances.filter(a => a.status === 'Kelmapdi' || a.status === 'Sababli').map(a => {
-                                                            const groupObj = groups.find(g => g.id === a.groupId);
-
-                                                            // Resolve Topic using our 3-tier lookup
-                                                            let topicObj = a.topicId ? (topics || []).find(t => t.id === a.topicId) : null;
-                                                            if (!topicObj && groupObj) {
-                                                                const siblingAttendance = (attendances || []).find(att =>
-                                                                    att.groupId === a.groupId &&
-                                                                    att.date === a.date &&
-                                                                    att.topicId
-                                                                );
-                                                                if (siblingAttendance) {
-                                                                    topicObj = (topics || []).find(t => t.id === siblingAttendance.topicId) || null;
-                                                                }
-                                                            }
-                                                            if (!topicObj && groupObj) {
-                                                                const courseObj = (courses || []).find(c => c.id === groupObj.courseId);
-                                                                 const syllabusId = courseObj?.syllabusId || groupObj.syllabusId;
-                                                                 const courseTopics = syllabusId
-                                                                     ? (topics || []).filter(t => t.syllabusId === syllabusId).sort((a, b) => a.order - b.order)
-                                                                     : [];
-                                                                const groupDates = Array.from(new Set(
-                                                                    (attendances || [])
-                                                                        .filter(att => att.groupId === a.groupId)
-                                                                        .map(att => att.date)
-                                                                )).sort();
-                                                                const dateIdx = groupDates.indexOf(a.date);
-                                                                if (dateIdx !== -1 && dateIdx < courseTopics.length) {
-                                                                    topicObj = courseTopics[dateIdx];
-                                                                }
-                                                            }
-
-                                                            return (
-                                                                <tr key={a.id} className="hover:bg-gray-55/30 transition-colors">
-                                                                    <td className="p-3">
-                                                                        <p className="text-[12px] font-bold text-matn tracking-tight">{a.date}</p>
-                                                                        <p className="text-[10px] font-bold text-matn-xira mt-0.5">{groupObj?.name || '-'}</p>
-                                                                        {a.status === 'Sababli' && (
-                                                                            <span className="inline-block mt-0.5 text-[7px] font-black px-1.5 py-0.5 rounded bg-amber-50 text-amber-600 border border-amber-100 dark:bg-amber-950/20 dark:text-amber-400 dark:border-amber-900/40">Sababli</span>
-                                                                        )}
-                                                                    </td>
-                                                                    <td className="p-3">
-                                                                        {topicObj ? (
-                                                                            <div className="space-y-1">
-                                                                                <p className="text-[11px] font-bold text-brand">
-                                                                                    {topicObj.order}. {topicObj.title}
-                                                                                </p>
-                                                                                {topicObj.description && (
-                                                                                    <p className="text-[10px] font-medium text-matn-xira truncate max-w-[300px]" title={topicObj.description}>
-                                                                                        {topicObj.description}
-                                                                                    </p>
-                                                                                )}
-                                                                            </div>
-                                                                        ) : (
-                                                                            <p className="text-[10px] font-bold text-gray-305 dark:text-gray-600 italic">-</p>
-                                                                        )}
-                                                                    </td>
-                                                                    <td className="p-3">
-                                                                        <div className="flex justify-center">
-                                                                            <button
-                                                                                onClick={async () => {
-                                                                                    try {
-                                                                                        await updateAttendance(a.id, { caughtUp: !a.caughtUp });
-                                                                                    } catch (err) {
-                                                                                        console.error("Failed to update caughtUp status", err);
-                                                                                    }
-                                                                                }}
-                                                                                className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-black transition-all border cursor-pointer ${
-                                                                                    a.caughtUp
-                                                                                        ? 'bg-emerald-50 text-emerald-600 border-emerald-100 hover:bg-emerald-100/70 dark:bg-emerald-950/20 dark:text-emerald-400 dark:border-emerald-900/40'
-                                                                                        : 'bg-rose-50 text-rose-600 border-rose-100 hover:bg-rose-100/70 dark:bg-rose-950/20 dark:text-rose-455 dark:border-rose-900/40'
-                                                                                }`}
-                                                                            >
-                                                                                {a.caughtUp ? t('topic_caught_up') : t('topic_not_caught_up')}
-                                                                            </button>
-                                                                        </div>
-                                                                    </td>
-                                                                </tr>
-                                                            );
-                                                        })}
-                                                    </tbody>
-                                                </table>
-                                            </div>
-                                        )}
-                                    </div>
                                 </div>
                             )}
 
@@ -1854,55 +1785,8 @@ export default function StudentDetails() {
                                 );
                             })()}
 
-                            {activeTab === 'courses' && (
-                                <div className="space-y-6 animate-in fade-in duration-300">
-                                    <div className="flex items-center justify-between gap-4">
-                                        <div>
-                                            <h4 className="text-[15px] font-semibold text-matn">Guruhlar tarixi</h4>
-                                            <p className="text-[12px] text-matn-xira mt-0.5">
-                                                <span className="num">{studentGroups.length}</span> ta guruh
-                                            </p>
-                                        </div>
-                                        <button onClick={() => setShowGroupModal(true)}
-                                            className="px-4 py-2 bg-brand hover:bg-brand-dark text-white rounded-xl text-[13px] font-semibold transition-colors cursor-pointer shrink-0">
-                                            + {t('add_to_group')}
-                                        </button>
-                                    </div>
-
-                                    {/* Referensdagidek bitta ustunli ro'yxat: guruh nomi,
-                                        ostida ustoz va jadval, o'ngda holat. Ikki ustunli
-                                        kartochkalarda nom qisqarib, bir o'quvchining ikki
-                                        guruhi ekranning ikki chekkasida turardi. */}
-                                    {studentGroups.length === 0 ? (
-                                        <p className="text-center py-12 text-[12px] text-matn-xira">{t('no_groups_found')}</p>
-                                    ) : (
-                                        <div className="bg-sirt border border-chiziq rounded-2xl overflow-hidden divide-y divide-chiziq-mayin dark:divide-gray-700/40">
-                                            {studentGroups.map(group => (
-                                                <div key={group.id} onClick={() => navigate(`/courses/${group.id}`)}
-                                                    className="group flex items-center gap-3 px-4 py-3.5 hover:bg-ichki transition-colors cursor-pointer">
-                                                    <div className="w-9 h-9 rounded-xl bg-brand/10 dark:bg-brand/20 flex items-center justify-center text-brand shrink-0">
-                                                        <BookOpen size={16} />
-                                                    </div>
-                                                    <div className="min-w-0 flex-1">
-                                                        <p className="text-[13px] font-medium text-matn truncate group-hover:text-brand transition-colors">{group.name}</p>
-                                                        <p className="text-[11px] text-matn-xira truncate">
-                                                            {group.teacherName}
-                                                            {group.schedule && <> · <span className="num">{group.schedule}</span></>}
-                                                            {group.courseName && <> · {group.courseName}</>}
-                                                        </p>
-                                                    </div>
-                                                    <span className="text-[11px] font-medium px-2 py-0.5 rounded-md border bg-emerald-50 text-emerald-600 border-emerald-100 dark:bg-emerald-950/20 dark:text-emerald-400 dark:border-emerald-900/40 shrink-0">
-                                                        {t('status_active')}
-                                                    </span>
-                                                </div>
-                                            ))}
-                                        </div>
-                                    )}
-                                </div>
-                            )}
-
                             {activeTab === 'yoqlama' && (
-                                <div className="animate-in fade-in duration-300">
+                                <div className="animate-in fade-in duration-300 space-y-6">
                                     <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 items-start">
                                         {/* Left Column: Attendance Calendar */}
                                         <div className="lg:col-span-5 space-y-4">
@@ -2166,6 +2050,110 @@ export default function StudentDetails() {
                                                 </table>
                                             </div>
                                         </div>
+                                    </div>
+                                    {/* Qoldirilgan va yopilgan mavzular section */}
+                                    <div className="space-y-4 pt-6 border-t border-dashed border-chiziq/50">
+                                        <div className="flex items-center justify-between">
+                                            <span className="text-[11px] font-bold text-matn-xira">{t('missed_and_closed_topics')}</span>
+                                        </div>
+
+                                        {studentAttendances.filter(a => a.status === 'Kelmapdi' || a.status === 'Sababli').length === 0 ? (
+                                            <p className="text-center py-8 text-[11px] text-matn-xira font-bold">{t('no_missed_topics')}</p>
+                                        ) : (
+                                            <div className="bg-sirt border border-chiziq rounded-2xl overflow-hidden shadow-sm">
+                                                <table className="w-full text-left border-collapse">
+                                                    <thead>
+                                                        <tr className="bg-ichki border-b border-chiziq">
+                                                            <th className="p-3 text-[11px] font-bold text-matn-xira">{t('date_group')}</th>
+                                                            <th className="p-3 text-[11px] font-bold text-matn-xira">{t('topic_label')}</th>
+                                                            <th className="p-3 text-center text-[11px] font-bold text-matn-xira">{t('status')}</th>
+                                                        </tr>
+                                                    </thead>
+                                                    <tbody className="divide-y divide-gray-100 dark:divide-gray-800">
+                                                        {studentAttendances.filter(a => a.status === 'Kelmapdi' || a.status === 'Sababli').map(a => {
+                                                            const groupObj = groups.find(g => g.id === a.groupId);
+
+                                                            // Resolve Topic using our 3-tier lookup
+                                                            let topicObj = a.topicId ? (topics || []).find(t => t.id === a.topicId) : null;
+                                                            if (!topicObj && groupObj) {
+                                                                const siblingAttendance = (attendances || []).find(att =>
+                                                                    att.groupId === a.groupId &&
+                                                                    att.date === a.date &&
+                                                                    att.topicId
+                                                                );
+                                                                if (siblingAttendance) {
+                                                                    topicObj = (topics || []).find(t => t.id === siblingAttendance.topicId) || null;
+                                                                }
+                                                            }
+                                                            if (!topicObj && groupObj) {
+                                                                const courseObj = (courses || []).find(c => c.id === groupObj.courseId);
+                                                                 const syllabusId = courseObj?.syllabusId || groupObj.syllabusId;
+                                                                 const courseTopics = syllabusId
+                                                                     ? (topics || []).filter(t => t.syllabusId === syllabusId).sort((a, b) => a.order - b.order)
+                                                                     : [];
+                                                                const groupDates = Array.from(new Set(
+                                                                    (attendances || [])
+                                                                        .filter(att => att.groupId === a.groupId)
+                                                                        .map(att => att.date)
+                                                                )).sort();
+                                                                const dateIdx = groupDates.indexOf(a.date);
+                                                                if (dateIdx !== -1 && dateIdx < courseTopics.length) {
+                                                                    topicObj = courseTopics[dateIdx];
+                                                                }
+                                                            }
+
+                                                            return (
+                                                                <tr key={a.id} className="hover:bg-gray-55/30 transition-colors">
+                                                                    <td className="p-3">
+                                                                        <p className="text-[12px] font-bold text-matn tracking-tight">{a.date}</p>
+                                                                        <p className="text-[10px] font-bold text-matn-xira mt-0.5">{groupObj?.name || '-'}</p>
+                                                                        {a.status === 'Sababli' && (
+                                                                            <span className="inline-block mt-0.5 text-[7px] font-black px-1.5 py-0.5 rounded bg-amber-50 text-amber-600 border border-amber-100 dark:bg-amber-950/20 dark:text-amber-400 dark:border-amber-900/40">Sababli</span>
+                                                                        )}
+                                                                    </td>
+                                                                    <td className="p-3">
+                                                                        {topicObj ? (
+                                                                            <div className="space-y-1">
+                                                                                <p className="text-[11px] font-bold text-brand">
+                                                                                    {topicObj.order}. {topicObj.title}
+                                                                                </p>
+                                                                                {topicObj.description && (
+                                                                                    <p className="text-[10px] font-medium text-matn-xira truncate max-w-[300px]" title={topicObj.description}>
+                                                                                        {topicObj.description}
+                                                                                    </p>
+                                                                                )}
+                                                                            </div>
+                                                                        ) : (
+                                                                            <p className="text-[10px] font-bold text-gray-305 dark:text-gray-600 italic">-</p>
+                                                                        )}
+                                                                    </td>
+                                                                    <td className="p-3">
+                                                                        <div className="flex justify-center">
+                                                                            <button
+                                                                                onClick={async () => {
+                                                                                    try {
+                                                                                        await updateAttendance(a.id, { caughtUp: !a.caughtUp });
+                                                                                    } catch (err) {
+                                                                                        console.error("Failed to update caughtUp status", err);
+                                                                                    }
+                                                                                }}
+                                                                                className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-black transition-all border cursor-pointer ${
+                                                                                    a.caughtUp
+                                                                                        ? 'bg-emerald-50 text-emerald-600 border-emerald-100 hover:bg-emerald-100/70 dark:bg-emerald-950/20 dark:text-emerald-400 dark:border-emerald-900/40'
+                                                                                        : 'bg-rose-50 text-rose-600 border-rose-100 hover:bg-rose-100/70 dark:bg-rose-950/20 dark:text-rose-455 dark:border-rose-900/40'
+                                                                                }`}
+                                                                            >
+                                                                                {a.caughtUp ? t('topic_caught_up') : t('topic_not_caught_up')}
+                                                                            </button>
+                                                                        </div>
+                                                                    </td>
+                                                                </tr>
+                                                            );
+                                                        })}
+                                                    </tbody>
+                                                </table>
+                                            </div>
+                                        )}
                                     </div>
                                 </div>
                             )}
