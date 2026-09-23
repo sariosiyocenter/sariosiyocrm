@@ -706,7 +706,98 @@ export default function StudentDetails() {
 
                 {/* Aloqa: qo'ng'iroq va SMS. To'lov tugmalari — pul blokida,
                     kursni almashtirish — kurs kartochkasida. */}
-                <div className="flex items-center gap-2 mt-auto">
+                    {/* Pul — ism kartochkasining o'zida (alohida qator va katta blok
+                        egasiga yoqmadi): kim va qancha qarzi bor — bitta joyda. */}
+                    {(() => {
+                        const bal = student.balance || 0;
+                        const sinov = student.status === 'Sinov';
+                        const kurslarHolati = (ledger?.courses || []).filter(c => c.isMember !== false && studentGroups.some(g => g.id === c.groupId));
+                        const engKurs = kurslarHolati.find(c => kirishMuddati(c).ton === 'xato')
+                            || kurslarHolati.filter(c => c.paidUntil && !c.accessUnknown).sort((a, b) => a.paidUntil!.localeCompare(b.paidUntil!))[0]
+                            || kurslarHolati[0];
+                        const eng = engKurs ? kirishMuddati(engKurs) : null;
+                        const TON = { yaxshi: 'text-yaxshi', ogoh: 'text-ogoh', xato: 'text-xato', xira: 'text-matn-xira' } as const;
+                        const ton = sinov ? 'text-ogoh' : bal < 0 ? 'text-xato' : bal > 0 ? 'text-yaxshi' : 'text-matn';
+                        const oylikJami = studentGroups.reduce((s, g) => {
+                            const cp = student.customPrices && typeof student.customPrices === 'object' ? (student.customPrices as Record<string, number>)[g.id] : undefined;
+                            return s + (cp !== undefined ? Number(cp) : (g.coursePrice || 0));
+                        }, 0);
+                        const paymeOn = (settings.paymeMode === 'live' || settings.paymeMode === 'test') && ['ADMIN', 'MANAGER', 'RECEPTIONIST', 'SUPERADMIN'].includes(currentUser?.role || '');
+                        return (
+                            <div className="pt-4 border-t border-chiziq-mayin space-y-3">
+                                <div className="flex items-end justify-between gap-3">
+                                    <div className="min-w-0">
+                                        <p className="text-[12px] text-matn-sokin">
+                                            {sinov ? 'Sinov darsida' : bal < 0 ? 'Qarz' : bal > 0 ? 'Avans' : 'Balans'}
+                                            {!sinov && bal < 0 && debtDays !== null && <span className="text-matn-xira"> · {debtDays} kundan beri</span>}
+                                        </p>
+                                        <p className={`raqam text-[22px] font-semibold leading-tight mt-0.5 ${ton}`}>
+                                            {Math.abs(bal).toLocaleString('ru-RU')} <span className="text-[12px] text-matn-xira font-normal">so'm</span>
+                                        </p>
+                                    </div>
+                                    <p className="text-right text-[11px] text-matn-xira leading-snug shrink-0">
+                                        oyiga<br /><span className="raqam text-[13px] text-matn-2">{oylikJami.toLocaleString('ru-RU')}</span>
+                                    </p>
+                                </div>
+                                <p className="text-[12px] text-matn-sokin">
+                                    Darsga kirish:{' '}
+                                    <span className={`font-semibold ${sinov ? 'text-ogoh' : eng ? TON[eng.ton] : 'text-matn-xira'}`}>
+                                        {sinov ? 'hisob yozilmaydi' : !ledger ? '…' : eng ? eng.matn : '—'}
+                                    </span>
+                                    {!sinov && (eng?.izoh || (kurslarHolati.length > 1 && engKurs)) && (
+                                        <span className="text-matn-xira"> · {[kurslarHolati.length > 1 ? engKurs?.groupName : '', eng?.izoh].filter(Boolean).join(' · ')}</span>
+                                    )}
+                                </p>
+                                <div className="flex gap-2">
+                                    <button onClick={() => setShowPaymentModal(true)}
+                                        className="flex-1 h-10 px-4 bg-brand hover:bg-brand-dark text-white rounded-xl text-[13px] font-semibold transition-colors cursor-pointer">
+                                        To'lov qabul qilish
+                                    </button>
+                                    {paymeOn && (
+                                        <button onClick={() => setShowPaymeModal(true)}
+                                            title="Payme orqali to'lash uchun havola yoki QR"
+                                            className="h-10 px-4 border border-chiziq-kuchli text-brand hover:bg-brand hover:text-white rounded-xl text-[13px] font-semibold transition-colors cursor-pointer">
+                                            Payme
+                                        </button>
+                                    )}
+                                </div>
+
+                                {/* Izoh — yozilgan bo'lsa yoki yozilayotganda. */}
+                                {(isEditingNote || student.comment) && (
+                                    isEditingNote ? (
+                                        <div className="space-y-2">
+                                            <textarea rows={3} autoFocus value={noteDraft} onChange={e => setNoteDraft(e.target.value)}
+                                                placeholder="Ota-ona bilan suhbat, kelishuvlar (masalan: 25-sentabrgacha to'laydi)..."
+                                                className="w-full px-3 py-2 bg-ichki border border-chiziq rounded-xl text-[12px] text-matn leading-relaxed focus:border-brand outline-none transition-colors resize-none" />
+                                            <div className="flex gap-2">
+                                                <button onClick={handleSaveNote} disabled={isSavingNote}
+                                                    className="px-4 py-1.5 bg-brand hover:bg-brand-dark disabled:opacity-50 text-white rounded-lg text-[12px] font-semibold cursor-pointer">
+                                                    {t('save')}
+                                                </button>
+                                                <button onClick={() => setIsEditingNote(false)}
+                                                    className="px-4 py-1.5 text-matn-xira hover:text-matn rounded-lg text-[12px] font-semibold cursor-pointer">
+                                                    {t('cancel')}
+                                                </button>
+                                            </div>
+                                        </div>
+                                    ) : (
+                                        <div className="flex items-start justify-between gap-2 px-3 py-2 bg-ichki/60 rounded-xl">
+                                            <p className="text-[12px] text-matn-2 leading-relaxed whitespace-pre-wrap min-w-0">
+                                                <span className="text-matn-xira">Izoh: </span>{student.comment}
+                                            </p>
+                                            <button onClick={() => { setNoteDraft(student.comment || ''); setIsEditingNote(true); }}
+                                                title="Izohni tahrirlash"
+                                                className="shrink-0 w-6 h-6 flex items-center justify-center rounded-lg text-matn-xira hover:text-brand hover:bg-brand/10 cursor-pointer">
+                                                <Edit size={12} />
+                                            </button>
+                                        </div>
+                                    )
+                                )}
+                            </div>
+                        );
+                    })()}
+
+                    <div className="flex flex-wrap items-center gap-2 pt-3 border-t border-chiziq-mayin">
                     <a href={student.phone ? `tel:${student.phone.replace(/\s/g, '')}` : undefined}
                         aria-disabled={!student.phone}
                         title={student.phone || t('phone_not_found')}
@@ -1373,108 +1464,6 @@ export default function StudentDetails() {
 
                 {/* Right Tab Content */}
                 <div className="lg:col-start-2 lg:col-span-3 lg:row-start-1 lg:row-span-2 space-y-4 order-2 lg:order-none min-w-0">
-                    {/* Pul qatori — ixcham: balans, darsga kirish, oyiga to'lov va to'lov
-                        tugmasi. Katta rangli blok bo'lib turardi (egasi: "g'alati") va
-                        tablarni pastga surardi. Izoh bo'lsa — shu qatorning ostida. */}
-                    {(() => {
-                        const bal = student.balance || 0;
-                        const sinov = student.status === 'Sinov';
-                        const kurslarHolati = (ledger?.courses || []).filter(c => c.isMember !== false && studentGroups.some(g => g.id === c.groupId));
-                        const engKurs = kurslarHolati.find(c => kirishMuddati(c).ton === 'xato')
-                            || kurslarHolati.filter(c => c.paidUntil && !c.accessUnknown).sort((a, b) => a.paidUntil!.localeCompare(b.paidUntil!))[0]
-                            || kurslarHolati[0];
-                        const eng = engKurs ? kirishMuddati(engKurs) : null;
-                        const TON = { yaxshi: 'text-yaxshi', ogoh: 'text-ogoh', xato: 'text-xato', xira: 'text-matn-xira' } as const;
-                        const ton = sinov ? 'text-ogoh' : bal < 0 ? 'text-xato' : bal > 0 ? 'text-yaxshi' : 'text-matn';
-                        const oylikJami = studentGroups.reduce((s, g) => {
-                            const cp = student.customPrices && typeof student.customPrices === 'object' ? (student.customPrices as Record<string, number>)[g.id] : undefined;
-                            return s + (cp !== undefined ? Number(cp) : (g.coursePrice || 0));
-                        }, 0);
-                        const paymeOn = (settings.paymeMode === 'live' || settings.paymeMode === 'test') && ['ADMIN', 'MANAGER', 'RECEPTIONIST', 'SUPERADMIN'].includes(currentUser?.role || '');
-                        const ajrat = <div className="hidden sm:block w-px self-stretch bg-chiziq" />;
-                        return (
-                            <div className="bg-sirt rounded-2xl border border-chiziq px-5 py-4">
-                                <div className="flex flex-wrap items-center gap-x-6 gap-y-3">
-                                    <div className="min-w-0">
-                                        <p className="text-[12px] text-matn-sokin">
-                                            {sinov ? 'Sinov darsida' : bal < 0 ? 'Qarz' : bal > 0 ? 'Avans' : 'Balans'}
-                                            {!sinov && bal < 0 && debtDays !== null && <span className="text-matn-xira"> · {debtDays} kundan beri</span>}
-                                        </p>
-                                        <p className={`raqam text-[22px] font-semibold leading-tight mt-0.5 ${ton}`}>
-                                            {Math.abs(bal).toLocaleString('ru-RU')} <span className="text-[12px] text-matn-xira font-normal">so'm</span>
-                                        </p>
-                                    </div>
-                                    {ajrat}
-                                    <div className="min-w-0">
-                                        <p className="text-[12px] text-matn-sokin">Darsga kirish</p>
-                                        <p className={`text-[15px] font-semibold leading-tight mt-1 ${sinov ? 'text-ogoh' : eng ? TON[eng.ton] : 'text-matn-xira'}`}>
-                                            {sinov ? 'Hisob yozilmaydi' : !ledger ? '…' : eng ? eng.matn : '—'}
-                                            {!sinov && (eng?.izoh || (kurslarHolati.length > 1 && engKurs)) && (
-                                                <span className="text-[11px] font-normal text-matn-xira">
-                                                    {' '}{[kurslarHolati.length > 1 ? engKurs?.groupName : '', eng?.izoh].filter(Boolean).join(' · ')}
-                                                </span>
-                                            )}
-                                        </p>
-                                    </div>
-                                    {ajrat}
-                                    <div className="min-w-0">
-                                        <p className="text-[12px] text-matn-sokin">Oyiga</p>
-                                        <p className="raqam text-[15px] font-semibold text-matn leading-tight mt-1">
-                                            {oylikJami.toLocaleString('ru-RU')} <span className="text-[11px] text-matn-xira font-normal">so'm · {studentGroups.length} kurs</span>
-                                        </p>
-                                    </div>
-                                    <div className="flex flex-wrap gap-2 sm:ml-auto">
-                                        <button onClick={() => setShowPaymentModal(true)}
-                                            className="h-10 px-5 bg-brand hover:bg-brand-dark text-white rounded-xl text-[13px] font-semibold transition-colors cursor-pointer">
-                                            To'lov qabul qilish
-                                        </button>
-                                        {paymeOn && (
-                                            <button onClick={() => setShowPaymeModal(true)}
-                                                title="Payme orqali to'lash uchun havola yoki QR"
-                                                className="h-10 px-4 border border-chiziq-kuchli text-brand hover:bg-brand hover:text-white rounded-xl text-[13px] font-semibold transition-colors cursor-pointer">
-                                                Payme
-                                            </button>
-                                        )}
-                                    </div>
-                                </div>
-
-                                {/* Izoh — faqat yozilgan bo'lsa yoki yozilayotganda. Qo'shish — ism kartochkasida. */}
-                                {(isEditingNote || student.comment) && (
-                                    <div className="mt-3 pt-3 border-t border-chiziq-mayin">
-                                        {isEditingNote ? (
-                                            <div className="space-y-2">
-                                                <textarea rows={2} autoFocus value={noteDraft} onChange={e => setNoteDraft(e.target.value)}
-                                                    placeholder="Ota-ona bilan suhbat, kelishuvlar (masalan: 25-sentabrgacha to'laydi)..."
-                                                    className="w-full px-3 py-2 bg-ichki border border-chiziq rounded-xl text-[12px] text-matn leading-relaxed focus:border-brand outline-none transition-colors resize-none" />
-                                                <div className="flex gap-2">
-                                                    <button onClick={handleSaveNote} disabled={isSavingNote}
-                                                        className="px-4 py-1.5 bg-brand hover:bg-brand-dark disabled:opacity-50 text-white rounded-lg text-[12px] font-semibold cursor-pointer">
-                                                        {t('save')}
-                                                    </button>
-                                                    <button onClick={() => setIsEditingNote(false)}
-                                                        className="px-4 py-1.5 text-matn-xira hover:text-matn rounded-lg text-[12px] font-semibold cursor-pointer">
-                                                        {t('cancel')}
-                                                    </button>
-                                                </div>
-                                            </div>
-                                        ) : (
-                                            <div className="flex items-start justify-between gap-3">
-                                                <p className="text-[12px] text-matn-2 leading-relaxed whitespace-pre-wrap min-w-0">
-                                                    <span className="text-matn-xira">Izoh: </span>{student.comment}
-                                                </p>
-                                                <button onClick={() => { setNoteDraft(student.comment || ''); setIsEditingNote(true); }}
-                                                    title="Izohni tahrirlash"
-                                                    className="shrink-0 w-6 h-6 flex items-center justify-center rounded-lg text-matn-xira hover:text-brand hover:bg-brand/10 cursor-pointer">
-                                                    <Edit size={12} />
-                                                </button>
-                                            </div>
-                                        )}
-                                    </div>
-                                )}
-                            </div>
-                        );
-                    })()}
-
                     <div className="bg-sirt rounded-2xl border border-chiziq shadow-sm overflow-hidden">
                         <div className="flex px-2 py-2 bg-ichki border-b border-chiziq gap-1 overflow-x-auto scrollbar-hide items-center justify-start rounded-t-3xl">
                             <TabButton label="Kurslar" icon={<Layers size={14} />} active={activeTab === 'umumiy'} onClick={() => setActiveTab('umumiy')} />
