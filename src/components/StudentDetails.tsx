@@ -1157,86 +1157,48 @@ export default function StudentDetails() {
                                     {/* Avval bu yerda "Lid ma'lumotlari" deb turardi —
                                         o'quvchi profilida noto'g'ri sarlavha. */}
                                     <h3 className="text-[11px] font-semibold text-matn-sokin pb-1">Aloqa</h3>
-                                    <InfoRow icon={<Phone className="w-3.5 h-3.5" />} label={t('student_phone')} value={student.phone} />
-                                    {student.telegramId ? (
-                                        <div className="flex items-center justify-end gap-2 -mt-1 mb-1.5">
-                                            <span className="text-[11px] font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/20 px-2 py-0.5 rounded border border-emerald-100 dark:border-emerald-900/40">
-                                                TG ulangan: {student.telegramId}
-                                            </span>
-                                            <button onClick={() => handleDisconnectTelegram('student')} className="text-rose-500 hover:text-rose-600 text-[10px] font-bold cursor-pointer">
-                                                [Uzish]
-                                            </button>
-                                        </div>
-                                    ) : (
-                                        <div className="flex justify-end -mt-1 mb-1.5">
-                                            <span className="text-[11px] font-bold text-matn-xira">
-                                                TG ulangan emas
-                                            </span>
-                                        </div>
-                                    )}
-                                    <div className="space-y-2">
-                                        <InfoRow icon={<Users className="w-3.5 h-3.5" />} label={t('father')} value={student.fatherName || "-"} />
-                                        {student.fatherPhone && (
-                                            <div className="flex items-center justify-between gap-2 -mt-1 mb-1.5">
-                                                <div className="flex items-center gap-1.5">
-                                                    <span className="text-[11px] font-bold text-gray-550 tabular-nums">{student.fatherPhone}</span>
-                                                    <button onClick={() => handleSendSms(student.fatherPhone!, 'manual')} className="p-1 text-brand hover:bg-teal-50 rounded transition-all cursor-pointer">
-                                                        <Sparkles size={11} />
-                                                    </button>
-                                                </div>
-                                                {student.fatherTelegramId ? (
-                                                    <div className="flex items-center gap-2 mr-2">
-                                                        <span className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/20 px-1.5 py-0.5 rounded border border-emerald-100 dark:border-emerald-900/40">
-                                                            TG: {student.fatherTelegramId}
-                                                        </span>
-                                                        <button onClick={() => handleDisconnectTelegram('father')} className="text-rose-500 hover:text-rose-600 text-[10px] font-bold cursor-pointer">
-                                                            Uzish
-                                                        </button>
-                                                    </div>
-                                                ) : (
-                                                    <span className="text-[10px] font-bold text-matn-xira italic mr-2">TG ulanmagan</span>
-                                                )}
-                                            </div>
-                                        )}
-                                    </div>
-                                    <div className="space-y-2">
-                                        <InfoRow icon={<Users className="w-3.5 h-3.5" />} label={t('mother')} value={student.motherName || "-"} />
-                                        {student.motherPhone && (
-                                            <div className="flex items-center justify-between gap-2 -mt-1 mb-1.5">
-                                                <div className="flex items-center gap-1.5">
-                                                    <span className="text-[11px] font-bold text-gray-550 tabular-nums">{student.motherPhone}</span>
-                                                    <button onClick={() => handleSendSms(student.motherPhone!, 'manual')} className="p-1 text-brand hover:bg-teal-50 rounded transition-all cursor-pointer">
-                                                        <Sparkles size={11} />
-                                                    </button>
-                                                </div>
-                                                {student.motherTelegramId ? (
-                                                    <div className="flex items-center gap-2 mr-2">
-                                                        <span className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/20 px-1.5 py-0.5 rounded border border-emerald-100 dark:border-emerald-900/40">
-                                                            TG: {student.motherTelegramId}
-                                                        </span>
-                                                        <button onClick={() => handleDisconnectTelegram('mother')} className="text-rose-500 hover:text-rose-600 text-[10px] font-bold cursor-pointer">
-                                                            Uzish
-                                                        </button>
-                                                    </div>
-                                                ) : (
-                                                    <span className="text-[10px] font-bold text-matn-xira italic mr-2">TG ulanmagan</span>
-                                                )}
-                                            </div>
-                                        )}
-                                    </div>
+                                    {/* O'quvchi, ota, ona — bir xil qator: chapda kim, o'ngda telefon
+                                        va ostida Telegram holati. Ilgari har biri boshqacha
+                                        joylashgan edi (egasi, 2026-09-23: "tartibsiz"). */}
+                                    <KontaktQator
+                                        icon={<Phone className="w-3.5 h-3.5" />}
+                                        label="O'quvchi"
+                                        phone={student.phone}
+                                        tgId={student.telegramId}
+                                        onSms={student.phone ? () => handleSendSms(student.phone, 'manual') : undefined}
+                                        onUzish={() => handleDisconnectTelegram('student')}
+                                    />
+                                    <KontaktQator
+                                        icon={<Users className="w-3.5 h-3.5" />}
+                                        label={t('father')}
+                                        name={student.fatherName}
+                                        phone={student.fatherPhone}
+                                        tgId={student.fatherTelegramId}
+                                        onSms={student.fatherPhone ? () => handleSendSms(student.fatherPhone!, 'manual') : undefined}
+                                        onUzish={() => handleDisconnectTelegram('father')}
+                                    />
+                                    <KontaktQator
+                                        icon={<Users className="w-3.5 h-3.5" />}
+                                        label={t('mother')}
+                                        name={student.motherName}
+                                        phone={student.motherPhone}
+                                        tgId={student.motherTelegramId}
+                                        onSms={student.motherPhone ? () => handleSendSms(student.motherPhone!, 'manual') : undefined}
+                                        onUzish={() => handleDisconnectTelegram('mother')}
+                                    />
                                     <h3 className="text-[11px] font-semibold text-matn-sokin pb-1 pt-3 mt-2 border-t border-chiziq-mayin">Belgilar</h3>
                     {/* Face ID. Alohida rasm ham, tugma ham yo'q: belgi profil
                                         rasmidan o'zi olinadi. Bu qator faqat natijani aytadi. */}
-                                    <div className="flex items-center justify-between gap-2 py-1"
+                                    <div className="flex items-center justify-between gap-3 py-1.5"
                                         title={faceState === 'yuzYoq'
                                             ? "Face ID belgisi profil rasmidan olinmadi — " + faceFailText(faceFail)
                                             : "Yuz belgisi profil rasmidan avtomatik olinadi"}>
-                                        <div className="flex items-center gap-2 text-matn-xira">
+                                        <span className="flex items-center gap-1.5 text-[11px] font-bold text-matn-xira shrink-0">
                                             <ScanFace className="w-3.5 h-3.5" />
-                                            <span className="text-[12px]">Face ID</span>
-                                        </div>
+                                            Face ID
+                                        </span>
                                         <div className="flex items-center gap-2">
-                                            <span className={"text-[11px] font-bold " + (
+                                            <span className={"text-[12px] font-semibold " + (
                                                 faceState === 'tayyor' ? 'text-emerald-600 dark:text-emerald-400'
                                                     : faceState === 'yuzYoq' ? 'text-amber-500'
                                                         : 'text-matn-xira')}>
@@ -3046,14 +3008,66 @@ function SwitchRow({ icon, label, on, onLabel, offLabel, busy, onToggle }: {
     );
 }
 
+/** +998870765800 → +998 87 076 58 00 (boshqa ko'rinishdagi raqam o'zgarmaydi). */
+function telKorsat(tel: string) {
+    const d = tel.replace(/[^0-9]/g, '');
+    if (d.length === 12 && d.startsWith('998')) {
+        return '+998 ' + d.slice(3, 5) + ' ' + d.slice(5, 8) + ' ' + d.slice(8, 10) + ' ' + d.slice(10);
+    }
+    return tel;
+}
+
+/** Aloqa bo'limidagi bitta odam: kim · ismi | telefon · Telegram holati. */
+function KontaktQator({ icon, label, name, phone, tgId, onSms, onUzish }: {
+    icon: React.ReactNode;
+    label: string;
+    name?: string | null;
+    phone?: string | null;
+    tgId?: string | null;
+    onSms?: () => void;
+    onUzish: () => void;
+}) {
+    return (
+        <div className="flex items-start justify-between gap-3 py-1.5">
+            <div className="flex items-start gap-1.5 min-w-0">
+                <span className="text-matn-xira shrink-0 mt-px">{icon}</span>
+                <div className="min-w-0">
+                    <p className="text-[11px] font-bold text-matn-xira">{label}</p>
+                    {name !== undefined && (
+                        <p className="text-[12px] font-medium text-matn truncate" title={name || ''}>{name || '—'}</p>
+                    )}
+                </div>
+            </div>
+            <div className="flex flex-col items-end gap-0.5 shrink-0">
+                <span className="flex items-center gap-1">
+                    <span className="text-[12px] font-medium text-matn tabular-nums">{phone ? telKorsat(phone) : '—'}</span>
+                    {onSms && (
+                        <button onClick={onSms} title="SMS yuborish" className="p-0.5 text-brand hover:bg-brand/10 rounded transition-colors cursor-pointer">
+                            <Sparkles size={11} />
+                        </button>
+                    )}
+                </span>
+                {tgId ? (
+                    <span className="flex items-center gap-1.5 text-[10px] font-bold">
+                        <span className="text-emerald-600 dark:text-emerald-400" title={'Telegram ID: ' + tgId}>● TG ulangan</span>
+                        <button onClick={onUzish} title="Telegramni uzish" className="text-matn-xira hover:text-rose-500 transition-colors cursor-pointer">uzish</button>
+                    </span>
+                ) : (
+                    <span className="text-[10px] font-bold text-matn-xira">○ TG ulanmagan</span>
+                )}
+            </div>
+        </div>
+    );
+}
+
 function InfoRow({ icon, label, value }: { icon?: React.ReactNode; label: string; value: string }) {
     return (
-        <div className="flex items-center justify-between gap-3 py-1.5">
+        <div className="flex items-start justify-between gap-3 py-1.5">
             <span className="flex items-center gap-1.5 text-[11px] font-bold text-matn-xira shrink-0">
                 {icon && <span className="text-matn-xira shrink-0">{icon}</span>}
                 {label}
             </span>
-            <span className="num text-[12px] font-medium text-matn text-right truncate min-w-0" title={value}>
+            <span className="text-[12px] font-medium text-matn text-right tabular-nums line-clamp-2 break-words min-w-0" title={value}>
                 {value || "—"}
             </span>
         </div>
