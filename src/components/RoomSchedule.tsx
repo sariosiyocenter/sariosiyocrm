@@ -426,8 +426,8 @@ export default function RoomSchedule() {
 
             {/* Room Detail Modal */}
             {selectedRoom && (
-                <div className="fixed inset-0 z-[200] flex items-start sm:items-center justify-center overflow-y-auto p-4">
-                    <div className="absolute inset-0 bg-gray-950/60 backdrop-blur-sm" onClick={() => { setSelectedRoom(null); setEditingGroup(null); }} />
+                <div className="fixed inset-0 z-[200] flex items-start sm:items-center-safe justify-center overflow-y-auto p-4">
+                    <div className="fixed inset-0 bg-gray-950/60 backdrop-blur-sm" onClick={() => { setSelectedRoom(null); setEditingGroup(null); }} />
                     <div className="relative bg-sirt rounded-[2rem] border border-chiziq shadow-2xl w-full max-w-2xl max-h-[90vh] flex flex-col animate-in zoom-in-95 duration-200 text-gray-950 dark:text-white">
                         
                         {/* Modal Header */}

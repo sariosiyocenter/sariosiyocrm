@@ -159,8 +159,8 @@ export default function DiscountModal({ studentId, onClose, onAdd }: {
     const labelCls = "block text-[11px] font-extrabold text-matn-xira mb-2";
 
     return (
-        <div className="fixed inset-0 z-[200] flex items-start sm:items-center justify-center overflow-y-auto p-4">
-            <div className="absolute inset-0 bg-gray-900/60 backdrop-blur-sm" onClick={onClose} />
+        <div className="fixed inset-0 z-[200] flex items-start sm:items-center-safe justify-center overflow-y-auto p-4">
+            <div className="fixed inset-0 bg-gray-900/60 backdrop-blur-sm" onClick={onClose} />
             <form onSubmit={handleSubmit}
                 className="relative bg-sirt rounded-[2rem] border border-chiziq shadow-2xl w-full max-w-lg p-8 space-y-4 my-auto">
                 <div className="flex items-center justify-between pb-4 border-b border-chiziq-mayin/50">

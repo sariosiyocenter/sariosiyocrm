@@ -131,8 +131,8 @@ export default function PaymeLinkModal({ studentId, onClose }: { studentId: numb
     const inp = "w-full px-4 py-3 bg-ichki border border-chiziq rounded-2xl text-sm font-bold text-matn focus:border-brand outline-none";
 
     return (
-        <div className="fixed inset-0 z-[300] flex items-start sm:items-center justify-center overflow-y-auto p-4">
-            <div className="absolute inset-0 bg-gray-900/60 backdrop-blur-sm" onClick={onClose} />
+        <div className="fixed inset-0 z-[300] flex items-start sm:items-center-safe justify-center overflow-y-auto p-4">
+            <div className="fixed inset-0 bg-gray-900/60 backdrop-blur-sm" onClick={onClose} />
             <div className="relative bg-sirt rounded-[2rem] border border-chiziq shadow-2xl w-full max-w-lg p-8 space-y-5 my-auto">
                 <div className="flex items-center justify-between pb-4 border-b border-chiziq-mayin/50">
                     <div>

@@ -1287,8 +1287,8 @@ export default function CourseDetails() {
 
             {/* Add Student Modal */}
             {isAddStudentModalOpen && (
-                <div className="fixed inset-0 z-[200] flex items-start sm:items-center justify-center overflow-y-auto p-4">
-                    <div className="absolute inset-0 bg-gray-900/60 backdrop-blur-sm" onClick={() => setIsAddStudentModalOpen(false)} />
+                <div className="fixed inset-0 z-[200] flex items-start sm:items-center-safe justify-center overflow-y-auto p-4">
+                    <div className="fixed inset-0 bg-gray-900/60 backdrop-blur-sm" onClick={() => setIsAddStudentModalOpen(false)} />
                     <div className="relative bg-sirt rounded-[2rem] border border-chiziq shadow-2xl w-full max-w-sm p-8">
                         <div className="flex items-center justify-between mb-6 pb-4 border-b border-chiziq-mayin/50">
                             <div>
@@ -1336,8 +1336,8 @@ export default function CourseDetails() {
 
             {/* Payment Modal */}
             {isPaymentModalOpen && (
-                <div className="fixed inset-0 z-[200] flex items-start sm:items-center justify-center overflow-y-auto p-4">
-                    <div className="absolute inset-0 bg-gray-900/60 backdrop-blur-sm" onClick={() => setIsPaymentModalOpen(false)} />
+                <div className="fixed inset-0 z-[200] flex items-start sm:items-center-safe justify-center overflow-y-auto p-4">
+                    <div className="fixed inset-0 bg-gray-900/60 backdrop-blur-sm" onClick={() => setIsPaymentModalOpen(false)} />
                     <div className="relative bg-sirt rounded-[2rem] border border-chiziq shadow-2xl w-full max-w-sm p-8">
                         <div className="flex items-center justify-between mb-6 pb-4 border-b border-chiziq-mayin/50">
                             <div>
@@ -1406,8 +1406,8 @@ export default function CourseDetails() {
 
             {/* Add/Edit Topic Modal */}
             {isTopicModalOpen && (
-                <div className="fixed inset-0 z-[200] flex items-start sm:items-center justify-center overflow-y-auto p-4">
-                    <div className="absolute inset-0 bg-gray-900/60 backdrop-blur-sm" onClick={() => { setIsTopicModalOpen(false); setEditingTopic(null); }} />
+                <div className="fixed inset-0 z-[200] flex items-start sm:items-center-safe justify-center overflow-y-auto p-4">
+                    <div className="fixed inset-0 bg-gray-900/60 backdrop-blur-sm" onClick={() => { setIsTopicModalOpen(false); setEditingTopic(null); }} />
                     <div className="relative bg-sirt rounded-[2rem] border border-chiziq shadow-2xl w-full max-w-sm p-8">
                         <div className="flex items-center justify-between mb-6 pb-4 border-b border-chiziq-mayin/50">
                             <div>

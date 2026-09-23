@@ -1482,8 +1482,8 @@ ${e.description || e.category} — ${Number(e.amount).toLocaleString()} so'm`)) 
 
             {/* Payment Modal */}
             {isPaymentModalOpen && (
-                <div className="fixed inset-0 z-[200] flex items-start sm:items-center justify-center overflow-y-auto p-4">
-                    <div className="absolute inset-0 bg-gray-900/60 backdrop-blur-sm" onClick={closePaymentModal} />
+                <div className="fixed inset-0 z-[200] flex items-start sm:items-center-safe justify-center overflow-y-auto p-4">
+                    <div className="fixed inset-0 bg-gray-900/60 backdrop-blur-sm" onClick={closePaymentModal} />
                     <div className="relative bg-sirt rounded-[2rem] border border-chiziq shadow-2xl w-full max-w-md p-8 overflow-hidden">
 
                         {createdPaymentForReceipt ? (
@@ -1904,8 +1904,8 @@ ${e.description || e.category} — ${Number(e.amount).toLocaleString()} so'm`)) 
 
             {/* Expense Modal */}
             {isExpenseModalOpen && (
-                <div className="fixed inset-0 z-[200] flex items-start sm:items-center justify-center overflow-y-auto p-4">
-                    <div className="absolute inset-0 bg-gray-900/60 backdrop-blur-sm" onClick={() => setIsExpenseModalOpen(false)} />
+                <div className="fixed inset-0 z-[200] flex items-start sm:items-center-safe justify-center overflow-y-auto p-4">
+                    <div className="fixed inset-0 bg-gray-900/60 backdrop-blur-sm" onClick={() => setIsExpenseModalOpen(false)} />
                     <div className="relative bg-sirt rounded-[2rem] border border-chiziq shadow-2xl w-full max-w-md p-8">
                         <div className="flex items-center justify-between mb-6 pb-4 border-b border-chiziq-mayin/50">
                             <div>
@@ -2025,8 +2025,8 @@ ${e.description || e.category} — ${Number(e.amount).toLocaleString()} so'm`)) 
 
             {/* Debt Notify Modal */}
             {showDebtNotifyModal && (
-                <div className="fixed inset-0 z-[200] flex items-start sm:items-center justify-center overflow-y-auto p-4">
-                    <div className="absolute inset-0 bg-gray-900/60 backdrop-blur-sm" onClick={() => setShowDebtNotifyModal(false)} />
+                <div className="fixed inset-0 z-[200] flex items-start sm:items-center-safe justify-center overflow-y-auto p-4">
+                    <div className="fixed inset-0 bg-gray-900/60 backdrop-blur-sm" onClick={() => setShowDebtNotifyModal(false)} />
                     <div className="relative bg-sirt rounded-[2rem] border border-chiziq shadow-2xl w-full max-w-lg p-8">
                         <div className="flex items-center justify-between mb-6 pb-4 border-b border-chiziq-mayin/50">
                             <div>

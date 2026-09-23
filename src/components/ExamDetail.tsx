@@ -120,8 +120,8 @@ export default function ExamDetail() {
         <div className="space-y-6 pb-20 animate-in fade-in duration-500 max-w-7xl mx-auto">
             {/* Bulk PDF Progress Overlay */}
             {bulkProgress && (
-                <div className="fixed inset-0 z-[250] flex items-start sm:items-center justify-center overflow-y-auto p-4">
-                    <div className="absolute inset-0 bg-gray-900/60 backdrop-blur-sm" />
+                <div className="fixed inset-0 z-[250] flex items-start sm:items-center-safe justify-center overflow-y-auto p-4">
+                    <div className="fixed inset-0 bg-gray-900/60 backdrop-blur-sm" />
                     <div className="relative bg-sirt rounded-[2rem] shadow-2xl p-8 w-full max-w-xs text-center space-y-6 border border-chiziq">
                         <div className="w-12 h-12 bg-teal-50 dark:bg-teal-950/20 border border-teal-100 dark:border-teal-900/40 rounded-xl flex items-center justify-center mx-auto text-brand">
                             <Printer className="w-6 h-6 animate-pulse" />

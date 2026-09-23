@@ -48,7 +48,7 @@ export function ConfirmProvider({ children }: { children: React.ReactNode }) {
       {children}
       {open && (
         <div
-          className="fixed inset-0 z-[400] flex items-start sm:items-center justify-center overflow-y-auto p-4"
+          className="fixed inset-0 z-[400] flex items-start sm:items-center-safe justify-center overflow-y-auto p-4"
           role="dialog"
           aria-modal="true"
         >

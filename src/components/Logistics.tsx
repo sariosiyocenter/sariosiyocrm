@@ -810,8 +810,8 @@ export default function LogisticsHub() {
 
             {/* ===== Taqsimotni ko'rish va tasdiqlash ===== */}
             {taqsimot && (
-                <div className="fixed inset-0 z-[200] flex items-start sm:items-center justify-center overflow-y-auto p-4">
-                    <div className="absolute inset-0 bg-gray-900/60 backdrop-blur-sm" onClick={() => !band && setTaqsimot(null)} />
+                <div className="fixed inset-0 z-[200] flex items-start sm:items-center-safe justify-center overflow-y-auto p-4">
+                    <div className="fixed inset-0 bg-gray-900/60 backdrop-blur-sm" onClick={() => !band && setTaqsimot(null)} />
                     <div className="relative bg-sirt rounded-[1.5rem] border border-chiziq shadow-2xl w-full max-w-4xl max-h-[90vh] flex flex-col">
                         <div className="px-6 py-4 border-b border-chiziq-mayin flex items-center justify-between gap-3">
                             <div>

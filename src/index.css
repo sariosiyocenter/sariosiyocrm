@@ -288,3 +288,16 @@ body {
 .dark .shadow-lg {
   box-shadow: none !important;
 }
+
+/* Raqam maydonidagi brauzerning ▲▼ tugmalari o'ngga tekislangan summaning
+   ustiga chiqib qolardi ("200000▲▼"). Summa klaviaturadan yoziladi yoki tez
+   tugmalar bilan tanlanadi — strelkalar kerak emas. */
+input[type="number"]::-webkit-outer-spin-button,
+input[type="number"]::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+input[type="number"] {
+  -moz-appearance: textfield;
+  appearance: textfield;
+}

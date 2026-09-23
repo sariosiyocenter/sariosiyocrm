@@ -572,7 +572,7 @@ export default function SyllabusManager() {
 
       {/* Dastur qo'shish / tahrirlash */}
       {isSyllabusModalOpen && (
-        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-start sm:items-center justify-center overflow-y-auto p-4 z-50 animate-in fade-in duration-200">
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-start sm:items-center-safe justify-center overflow-y-auto p-4 z-50 animate-in fade-in duration-200">
           <div className="bg-sirt rounded-2xl w-full max-w-lg overflow-hidden border border-chiziq shadow-2xl animate-in zoom-in-95 duration-200">
             <div className="p-4 border-b border-chiziq flex items-center justify-between">
               <h2 className="text-sm font-black text-matn">
@@ -632,7 +632,7 @@ export default function SyllabusManager() {
 
       {/* Mavzu qo'shish / tahrirlash */}
       {isTopicModalOpen && (
-        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-start sm:items-center justify-center overflow-y-auto p-4 z-50 animate-in fade-in duration-200">
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-start sm:items-center-safe justify-center overflow-y-auto p-4 z-50 animate-in fade-in duration-200">
           <div className="bg-sirt rounded-2xl w-full max-w-lg overflow-hidden border border-chiziq shadow-2xl animate-in zoom-in-95 duration-200">
             <div className="p-4 border-b border-chiziq flex items-center justify-between">
               <h2 className="text-sm font-black text-matn">

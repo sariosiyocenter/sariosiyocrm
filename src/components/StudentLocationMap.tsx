@@ -69,7 +69,7 @@ export default function StudentLocationMap({ studentName, studentPhoto, location
     const yolHavolasi = uy ? `https://www.google.com/maps/dir/${markaz[0]},${markaz[1]}/${uy[0]},${uy[1]}` : '';
 
     return (
-        <div className="fixed inset-0 z-[300] flex items-start sm:items-center justify-center overflow-y-auto p-4 bg-gray-900/60 backdrop-blur-md animate-in fade-in duration-300" onClick={onClose}>
+        <div className="fixed inset-0 z-[300] flex items-start sm:items-center-safe justify-center overflow-y-auto p-4 bg-gray-900/60 backdrop-blur-md animate-in fade-in duration-300" onClick={onClose}>
             <div className="bg-sirt w-full max-w-4xl rounded-[2.5rem] shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200 border border-chiziq min-h-[420px] h-[80vh] flex flex-col" onClick={e => e.stopPropagation()}>
                 <div className="px-6 sm:px-10 py-5 flex items-center justify-between border-b border-chiziq-mayin bg-ichki">
                     <div className="min-w-0">

@@ -77,8 +77,8 @@ export default function PaymentEditModal({ payment, onClose, onSaved }: {
     };
 
     return (
-        <div className="fixed inset-0 z-[250] flex items-start sm:items-center justify-center overflow-y-auto p-4">
-            <div className="absolute inset-0 bg-gray-900/60 backdrop-blur-sm" onClick={onClose} />
+        <div className="fixed inset-0 z-[250] flex items-start sm:items-center-safe justify-center overflow-y-auto p-4">
+            <div className="fixed inset-0 bg-gray-900/60 backdrop-blur-sm" onClick={onClose} />
             <div className="relative bg-sirt w-full max-w-sm rounded-[2rem] p-8 shadow-2xl border border-chiziq">
                 <div className="flex items-center justify-between mb-6 pb-4 border-b border-chiziq-mayin/50">
                     <div>

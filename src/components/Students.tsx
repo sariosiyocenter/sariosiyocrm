@@ -1717,8 +1717,8 @@ export default function Students() {
             )}
 
             {studentToDelete && (
-                <div className="fixed inset-0 z-[250] flex items-start sm:items-center justify-center overflow-y-auto p-4">
-                    <div className="absolute inset-0 bg-gray-900/60 backdrop-blur-sm" onClick={() => setStudentToDelete(null)} />
+                <div className="fixed inset-0 z-[250] flex items-start sm:items-center-safe justify-center overflow-y-auto p-4">
+                    <div className="fixed inset-0 bg-gray-900/60 backdrop-blur-sm" onClick={() => setStudentToDelete(null)} />
                     <div className="relative bg-sirt rounded-2xl p-4 shadow-2xl max-w-sm w-full text-center border border-chiziq">
                         <h4 className="text-sm font-black text-matn tracking-tight mb-2">{t('delete_confirm_title')}</h4>
                         <p className="text-[11px] font-bold text-matn-xira leading-relaxed mb-6">
@@ -1736,8 +1736,8 @@ export default function Students() {
                 </div>
             )}
             {isLinkModalOpen && (
-                <div className="fixed inset-0 z-[200] flex items-start sm:items-center justify-center overflow-y-auto p-4">
-                    <div className="absolute inset-0 bg-gray-900/60 backdrop-blur-sm" onClick={() => setIsLinkModalOpen(false)} />
+                <div className="fixed inset-0 z-[200] flex items-start sm:items-center-safe justify-center overflow-y-auto p-4">
+                    <div className="fixed inset-0 bg-gray-900/60 backdrop-blur-sm" onClick={() => setIsLinkModalOpen(false)} />
                     <div className="relative bg-sirt rounded-[2rem] border border-chiziq shadow-2xl w-full max-w-sm p-8 text-center">
                         <div className="flex items-center justify-between mb-6 pb-4 border-b border-chiziq/50">
                             <h3 className="text-sm font-black text-matn tracking-tight">{t('reception_link')}</h3>
