@@ -823,7 +823,10 @@ export default function StudentDetails() {
 
                 {/* Left Profile Card */}
                 <div className="lg:col-start-1 lg:row-start-2 space-y-4 order-3 lg:order-none">
-                    <div className="bg-sirt rounded-2xl border border-chiziq shadow-sm overflow-hidden">
+                    <div className={isEditing
+                        ? "fixed inset-0 z-[200] overflow-y-auto bg-gray-900/60 backdrop-blur-sm p-4 flex items-start justify-center"
+                        : "bg-sirt rounded-2xl border border-chiziq shadow-sm overflow-hidden"}>
+                    <div className={isEditing ? "relative bg-sirt w-full max-w-3xl my-6 rounded-[2rem] border border-chiziq shadow-2xl" : ""}>
                         {/* Muqova. Avval butun kartochka enini egallagan to'q brend
                             slabi edi — qorong'u rejimda juda qichqirib turardi.
                             Endi past va yumshoq gradient. */}
@@ -834,9 +837,14 @@ export default function StudentDetails() {
                             kartochkaning eng baland ovozli qismiga aylanib qolgandi —
                             asosiy narsa esa ism va balans. Endi u past va shaffof
                             qatlam: brend rangi sezilib turadi, lekin qichqirmaydi. */}
-                        <div className={isEditing ? "px-5 py-4" : "hidden"}>
+                        <div className={isEditing ? "px-6 pt-6 pb-2" : "hidden"}>
                             {isEditing ? (
-                                <div className="space-y-3">
+                                <>
+                                <div className="flex items-center justify-between mb-5 pb-4 border-b border-chiziq-mayin">
+                                    <h3 className="text-[15px] font-semibold text-matn">Ma'lumotlarni tahrirlash</h3>
+                                    <button onClick={() => setIsEditing(false)} aria-label="Yopish" className="w-8 h-8 flex items-center justify-center text-matn-xira hover:bg-ichki rounded-xl cursor-pointer"><X size={18} /></button>
+                                </div>
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-3">
                                     <div>
                                         <label className={labelCls}>{t('student_name')}</label>
                                         <input
@@ -861,7 +869,7 @@ export default function StudentDetails() {
                                             <option value="Sertifikatli">{t('status_certified')}</option>
                                         </select>
                                     </div>
-                                    <div>
+                                    <div className="sm:col-span-2">
                                         <label className={labelCls}>Transport</label>
                                         <button type="button"
                                             onClick={() => setEditForm({ ...editForm, needsTransport: !editForm.needsTransport })}
@@ -878,6 +886,7 @@ export default function StudentDetails() {
                                         </p>
                                     </div>
                                 </div>
+                                </>
                             ) : null}
                         </div>
 
@@ -901,10 +910,10 @@ export default function StudentDetails() {
 
                         </div>
 
-                        <div className="px-6 pb-5 space-y-1 border-t border-chiziq pt-3">
+                        <div className={isEditing ? "px-6 pb-6 pt-1" : "px-6 pb-5 space-y-1 border-t border-chiziq pt-3"}>
                             {isEditing ? (
-                                <div className="space-y-4">
-                                    <div className="grid grid-cols-2 gap-2">
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-4">
+                                    <div className="sm:col-span-2 grid grid-cols-2 gap-2">
                                         <div>
                                             <label className={labelCls}>{t('student_phone')}</label>
                                             <input type="tel" value={editForm.phone} onChange={e => setEditForm({...editForm, phone: e.target.value})} className={inputCls} />
@@ -930,11 +939,11 @@ export default function StudentDetails() {
                                             ))}
                                         </div>
                                     </div>
-                                    <div>
+                                    <div className="sm:col-span-2">
                                         <label className={labelCls}>{t('address')}</label>
                                         <input type="text" value={editForm.address} onChange={e => setEditForm({...editForm, address: e.target.value})} className={inputCls} />
                                     </div>
-                                    <div className="grid grid-cols-2 gap-2">
+                                    <div className="sm:col-span-2 grid grid-cols-2 gap-2">
                                         <div>
                                             <label className={labelCls}>Maqsad</label>
                                             <select
@@ -987,11 +996,11 @@ export default function StudentDetails() {
                                             </select>
                                         </div>
                                     )}
-                                    <div>
+                                    <div className="sm:col-span-2">
                                         <label className={labelCls}>Muassasa nomi</label>
                                         <input type="text" value={editForm.studentSchool} onChange={e => setEditForm({...editForm, studentSchool: e.target.value})} className={inputCls} placeholder="45-maktab" />
                                     </div>
-                                    <div className="grid grid-cols-2 gap-2">
+                                    <div className="sm:col-span-2 grid grid-cols-2 gap-2">
                                         <div>
                                             <label className={labelCls}>Viloyat</label>
                                             <select
@@ -1020,7 +1029,7 @@ export default function StudentDetails() {
                                             </select>
                                         </div>
                                     </div>
-                                    <div className="grid grid-cols-3 gap-2">
+                                    <div className="sm:col-span-2 grid grid-cols-3 gap-2">
                                         <div>
                                             <label className={labelCls}>{t('father_name')}</label>
                                             <input type="text" value={editForm.fatherName} onChange={e => setEditForm({...editForm, fatherName: e.target.value})} className={inputCls} />
@@ -1034,7 +1043,7 @@ export default function StudentDetails() {
                                             <input type="text" value={editForm.fatherTelegramId} onChange={e => setEditForm({...editForm, fatherTelegramId: e.target.value})} className={inputCls} placeholder="ID" />
                                         </div>
                                     </div>
-                                    <div className="grid grid-cols-3 gap-2">
+                                    <div className="sm:col-span-2 grid grid-cols-3 gap-2">
                                         <div>
                                             <label className={labelCls}>{t('mother_name')}</label>
                                             <input type="text" value={editForm.motherName} onChange={e => setEditForm({...editForm, motherName: e.target.value})} className={inputCls} />
@@ -1048,7 +1057,7 @@ export default function StudentDetails() {
                                             <input type="text" value={editForm.motherTelegramId} onChange={e => setEditForm({...editForm, motherTelegramId: e.target.value})} className={inputCls} placeholder="ID" />
                                         </div>
                                     </div>
-                                    <div>
+                                    <div className="sm:col-span-2">
                                         <label className={labelCls}>Imtiyoz turi</label>
                                         <select
                                             value={editForm.privilegeType}
@@ -1140,7 +1149,7 @@ export default function StudentDetails() {
                                     )}
 
                                     {/* SECTION: MULTIPLE CERTIFICATES */}
-                                    <div className="space-y-3 pt-2">
+                                    <div className="sm:col-span-2 space-y-3 pt-2">
                                         <label className={labelCls}>Qo'shimcha Sertifikatlar</label>
                                         {editForm.certificates.map((cert, index) => (
                                             <div key={index} className="p-4 bg-ichki rounded-2xl border border-gray-100 dark:border-gray-850/50 space-y-3 relative animate-in fade-in slide-in-from-top-2 duration-250">
@@ -1236,7 +1245,7 @@ export default function StudentDetails() {
                                             {editForm.location ? t('edit') : t('select_from_map')}
                                         </button>
                                     </div>
-                                    <div className="pt-2 flex gap-2">
+                                    <div className="sm:col-span-2 pt-2 flex gap-2">
                                         <button
                                             onClick={handleSaveEdit}
                                             disabled={isSaving}
@@ -1244,7 +1253,7 @@ export default function StudentDetails() {
                                         >
                                             {t('save')}
                                         </button>
-                                        <button onClick={() => setIsEditing(false)} className="flex-1 py-3 bg-white border border-gray-100 text-gray-405 rounded-xl text-[11px] font-extrabold transition-all cursor-pointer">
+                                        <button onClick={() => setIsEditing(false)} className="flex-1 py-3 bg-ichki border border-chiziq text-matn-sokin hover:text-matn rounded-xl text-[11px] font-extrabold transition-all cursor-pointer">
                                             {t('cancel')}
                                         </button>
                                     </div>
@@ -1283,182 +1292,14 @@ export default function StudentDetails() {
                                         onSms={student.motherPhone ? () => handleSendSms(student.motherPhone!, 'manual') : undefined}
                                         onUzish={() => handleDisconnectTelegram('mother')}
                                     />
-                                    <h3 className="text-[11px] font-semibold text-matn-sokin pb-1 pt-3 mt-2 border-t border-chiziq-mayin">Belgilar</h3>
-                    {/* Face ID. Alohida rasm ham, tugma ham yo'q: belgi profil
-                                        rasmidan o'zi olinadi. Bu qator faqat natijani aytadi. */}
-                                    <div className="flex items-center justify-between gap-3 py-1.5"
-                                        title={faceState === 'yuzYoq'
-                                            ? "Face ID belgisi profil rasmidan olinmadi — " + faceFailText(faceFail)
-                                            : "Yuz belgisi profil rasmidan avtomatik olinadi"}>
-                                        <span className="flex items-center gap-1.5 text-[11px] font-bold text-matn-xira shrink-0">
-                                            <ScanFace className="w-3.5 h-3.5" />
-                                            Face ID
-                                        </span>
-                                        <div className="flex items-center gap-2">
-                                            <span className={"text-[12px] font-semibold " + (
-                                                faceState === 'tayyor' ? 'text-emerald-600 dark:text-emerald-400'
-                                                    : faceState === 'yuzYoq' ? 'text-amber-500'
-                                                        : 'text-matn-xira')}>
-                                                {faceState === 'tayyor' ? 'Tayyor'
-                                                    : faceState === 'yuzYoq'
-                                                        ? (faceFail === 'rasm' ? "Rasm ochilmadi"
-                                                            : faceFail === 'kop' ? "Rasmda bir nechta yuz bor"
-                                                                : "Rasmda yuz aniqlanmadi")
-                                                        : faceState === 'rasmYoq' ? "Rasm yo'q"
-                                                            : 'Tekshirilmoqda…'}
-                                            </span>
-                                            {faceState === 'yuzYoq' && (
-                                                <button onClick={retryFace} title="Belgini qaytadan hisoblash"
-                                                    className="text-[11px] font-bold text-brand hover:underline cursor-pointer">
-                                                    Qayta urinish
-                                                </button>
-                                            )}
-                                        </div>
-                                    </div>
-                                    {/* Transport va imtihon belgilari — shu yerning o'zida
-                                        almashtiriladi (egasi, 2026-09-22), formani ochish
-                                        shart emas. Doimiy marshrutlar yo'q: reja har kuni
-                                        Logistikada tuziladi, shuning uchun pastda bugungi
-                                        reja ham ko'rsatiladi. */}
-                                    <SwitchRow
-                                        icon={<Bus className="w-3.5 h-3.5" />}
-                                        label={t('transport')}
-                                        on={!!student.needsTransport}
-                                        onLabel="Kerak"
-                                        offLabel="Kerak emas"
-                                        busy={belgiSaqlanmoqda === 'transport'}
-                                        onToggle={v => belgiOzgartir('transport', v)}
-                                    />
-                                    {(() => {
-                                        const bugun = toDateStr();
-                                        const oqMarshrutlari = (routes || []).filter(r => r.date === bugun && (r.studentIds || []).includes(student.id));
-                                        if (oqMarshrutlari.length === 0) {
-                                            return student.needsTransport
-                                                ? <p className="text-[10px] font-bold text-matn-xira text-right -mt-1 mb-1.5">bugun rejada yo'q</p>
-                                                : null;
-                                        }
-                                        return (
-                                            <div className="text-right -mt-1 mb-1.5 space-y-0.5">
-                                                {oqMarshrutlari.map(r => (
-                                                    <span key={r.id} className="block text-[10px] font-bold text-matn-2">
-                                                        Bugun: {r.name}
-                                                        <span className="text-matn-xira font-bold">
-                                                            {r.transport?.number ? ` · ${r.transport.number}` : ''}
-                                                        </span>
-                                                    </span>
-                                                ))}
-                                            </div>
-                                        );
-                                    })()}
-                                    <SwitchRow
-                                        icon={<GraduationCap className="w-3.5 h-3.5" />}
-                                        label="Imtihon"
-                                        on={student.attendsExam !== false}
-                                        onLabel="Keladi"
-                                        offLabel="Kelmaydi"
-                                        busy={belgiSaqlanmoqda === 'imtihon'}
-                                        onToggle={v => belgiOzgartir('imtihon', v)}
-                                    />
-                                    <h3 className="text-[11px] font-semibold text-matn-sokin pb-1 pt-3 mt-2 border-t border-chiziq-mayin">O'qish</h3>
-                                    {student.studyGoal && (
-                                        <InfoRow icon={<Target className="w-3.5 h-3.5" />} label="Maqsad" value={student.studyGoal} />
-                                    )}
-                                    {studentDirection && (
-                                        <InfoRow icon={<Compass className="w-3.5 h-3.5" />} label="Yo'nalish"
-                                            value={studentDirection.name + (studentDirection.subjects ? ` (${studentDirection.subjects})` : '')} />
-                                    )}
-                                    {student.orgType && (
-                                        <InfoRow icon={<BookOpen className="w-3.5 h-3.5" />} label="Muassasa turi" value={student.orgType} />
-                                    )}
-                                    {student.grade && (
-                                        <InfoRow icon={<GraduationCap className="w-3.5 h-3.5" />} label={gradeLabel(student.orgType)} value={student.grade} />
-                                    )}
-                                    <InfoRow icon={<BookOpen className="w-3.5 h-3.5" />} label="Muassasa nomi" value={student.studentSchool || "-"} />
-                                    <InfoRow icon={<Clock className="w-3.5 h-3.5" />} label={t('registered_at')} value={student.joinedDate} />
-
-                                    <h3 className="text-[11px] font-semibold text-matn-sokin pb-1 pt-3 mt-2 border-t border-chiziq-mayin">Shaxsiy</h3>
-                                    <InfoRow icon={<Calendar className="w-3.5 h-3.5" />} label={t('birth_date')} value={student.birthDate} />
-                                    <InfoRow icon={<Users className="w-3.5 h-3.5" />} label="Jins" value={student.gender === 'Ayol' ? '♀ Ayol' : '♂ Erkak'} />
-                                    {(student.region || student.district) && (
-                                        <InfoRow icon={<MapPin className="w-3.5 h-3.5" />} label="Viloyat / Tuman" value={[student.region, student.district].filter(Boolean).join(', ')} />
-                                    )}
-                                    <InfoRow icon={<MapPin className="w-3.5 h-3.5" />} label={t('address')} value={student.address} />
-                                    {student.location && (
-                                        <button
-                                            onClick={handleOpenMap}
-                                            className="w-full mt-2 flex items-center justify-center gap-1.5 px-4 py-3 bg-teal-50 dark:bg-teal-950/20 text-brand border border-teal-100 dark:border-teal-900/40 text-[11px] font-bold tracking-[0.1em] rounded-xl hover:bg-brand hover:text-white transition-all cursor-pointer"
-                                        >
-                                            <MapPin size={13} />
-                                            {t('view_on_map')}
-                                        </button>
-                                    )}
-                                    {student.privilegeType && student.privilegeType !== 'None' && (
-                                        <div className="flex items-start gap-2.5 p-3 bg-teal-50 dark:bg-teal-950/20 border border-teal-100 dark:border-teal-900/30 rounded-2xl">
-                                            <div className="w-7 h-7 rounded-lg bg-brand/10 dark:bg-brand/20 text-brand flex items-center justify-center shrink-0 animate-pulse">
-                                                <Sparkles size={14} />
-                                            </div>
-                                            <div>
-                                                <p className="text-[11px] font-bold text-matn tracking-tight">
-                                                    Imtiyoz: {student.privilegeType === 'Sertifikat' ? `${student.certCategory} sertifikat` : student.privilegeType}
-                                                </p>
-                                                {student.privilegeType === 'Sertifikat' && (
-                                                    <p className="text-[10px] font-bold text-matn-sokin mt-0.5">
-                                                        {student.certCategory === 'Milliy' ? `Fan: ${student.certSubject || '-'}` : `Turi: ${student.certType || '-'}`}
-                                                        {student.certScore ? ` · Ball: ${student.certScore}` : ''}
-                                                    </p>
-                                                )}
-                                            </div>
-                                        </div>
-                                    )}
-
-                                    {(() => {
-                                        let parsedCerts = [];
-                                        try {
-                                            if (Array.isArray(student.certificates)) {
-                                                parsedCerts = student.certificates;
-                                            } else if (student.certificates && typeof student.certificates === 'string') {
-                                                parsedCerts = JSON.parse(student.certificates);
-                                            }
-                                        } catch (e) {
-                                            console.error("Error parsing certificates:", e);
-                                        }
-                                        if (parsedCerts.length === 0) return null;
-                                        return (
-                                            <div className="space-y-2.5 mt-2">
-                                                <div className="flex items-center gap-2 mb-1 px-1">
-                                                    <Award size={12} className="text-brand" />
-                                                    <h4 className="text-[11px] font-bold text-brand">Sertifikatlar</h4>
-                                                </div>
-                                                {parsedCerts.map((cert: any, idx: number) => (
-                                                    <div key={idx} className="flex items-start gap-2.5 p-3 bg-ichki border border-chiziq rounded-2xl">
-                                                        <div className="w-7 h-7 rounded-lg bg-brand/10 dark:bg-brand/20 text-brand flex items-center justify-center shrink-0">
-                                                            <Award size={14} />
-                                                        </div>
-                                                        <div>
-                                                            <p className="text-[11px] font-bold text-matn tracking-tight">
-                                                                {cert.category} sertifikat
-                                                            </p>
-                                                            <p className="text-[10px] font-bold text-matn-xira mt-0.5">
-                                                                {cert.category === 'Milliy' ? `Fan: ${cert.subject || '-'}` : `Turi: ${cert.type || '-'}`}
-                                                                {cert.score ? ` · Ball: ${cert.score}` : ''}
-                                                            </p>
-                                                        </div>
-                                                    </div>
-                                                ))}
-                                            </div>
-                                        );
-                                    })()}
-
-                                    <button
-                                        onClick={() => setShowDeleteModal(true)}
-                                        className="w-full mt-4 pt-3 border-t border-chiziq-mayin flex items-center justify-center gap-1.5 py-2 text-matn-xira hover:text-xato text-[11px] font-semibold transition-colors cursor-pointer"
-                                    >
-                                        <XCircle size={13} />
-                                        {t('delete_student')}
+                                    <button onClick={() => setActiveTab('malumot')}
+                                        className="w-full mt-3 pt-3 border-t border-chiziq-mayin text-[12px] font-semibold text-brand hover:underline cursor-pointer text-left">
+                                        Boshqa ma'lumotlar →
                                     </button>
                                 </>
                             )}
                         </div>
+                    </div>
                     </div>
                 </div>
 
@@ -1470,6 +1311,7 @@ export default function StudentDetails() {
                             <TabButton label="Balans" icon={<CreditCard size={14} />} active={activeTab === 'tolovlar'} onClick={() => setActiveTab('tolovlar')} />
                             <TabButton label={t('attendance')} icon={<ClipboardCheck size={14} />} active={activeTab === 'yoqlama'} onClick={() => setActiveTab('yoqlama')} />
                             <TabButton label="Ballar" icon={<Star size={14} />} active={activeTab === 'ballar'} onClick={() => setActiveTab('ballar')} />
+                            <TabButton label="Ma'lumotlar" icon={<Users size={14} />} active={activeTab === 'malumot'} onClick={() => setActiveTab('malumot')} />
                         </div>
 
                         <div className="p-4">
@@ -2093,6 +1935,196 @@ export default function StudentDetails() {
                                                 </table>
                                             </div>
                                         )}
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* Ma'lumotlar — belgilar, o'qish, shaxsiy (ilgari chap ustunda
+                                ustma-ust turib, sahifani juda uzaytirardi). */}
+                            {activeTab === 'malumot' && (
+                                <div className="animate-in fade-in duration-300 space-y-6">
+                                    <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-x-8 gap-y-6">
+                                        <div className="min-w-0">
+                                    <h3 className="text-[12px] font-semibold text-matn pb-2 mb-1 border-b border-chiziq-mayin">Belgilar</h3>
+                    {/* Face ID. Alohida rasm ham, tugma ham yo'q: belgi profil
+                                        rasmidan o'zi olinadi. Bu qator faqat natijani aytadi. */}
+                                    <div className="flex items-center justify-between gap-3 py-1.5"
+                                        title={faceState === 'yuzYoq'
+                                            ? "Face ID belgisi profil rasmidan olinmadi — " + faceFailText(faceFail)
+                                            : "Yuz belgisi profil rasmidan avtomatik olinadi"}>
+                                        <span className="flex items-center gap-1.5 text-[11px] font-bold text-matn-xira shrink-0">
+                                            <ScanFace className="w-3.5 h-3.5" />
+                                            Face ID
+                                        </span>
+                                        <div className="flex items-center gap-2">
+                                            <span className={"text-[12px] font-semibold " + (
+                                                faceState === 'tayyor' ? 'text-emerald-600 dark:text-emerald-400'
+                                                    : faceState === 'yuzYoq' ? 'text-amber-500'
+                                                        : 'text-matn-xira')}>
+                                                {faceState === 'tayyor' ? 'Tayyor'
+                                                    : faceState === 'yuzYoq'
+                                                        ? (faceFail === 'rasm' ? "Rasm ochilmadi"
+                                                            : faceFail === 'kop' ? "Rasmda bir nechta yuz bor"
+                                                                : "Rasmda yuz aniqlanmadi")
+                                                        : faceState === 'rasmYoq' ? "Rasm yo'q"
+                                                            : 'Tekshirilmoqda…'}
+                                            </span>
+                                            {faceState === 'yuzYoq' && (
+                                                <button onClick={retryFace} title="Belgini qaytadan hisoblash"
+                                                    className="text-[11px] font-bold text-brand hover:underline cursor-pointer">
+                                                    Qayta urinish
+                                                </button>
+                                            )}
+                                        </div>
+                                    </div>
+                                    {/* Transport va imtihon belgilari — shu yerning o'zida
+                                        almashtiriladi (egasi, 2026-09-22), formani ochish
+                                        shart emas. Doimiy marshrutlar yo'q: reja har kuni
+                                        Logistikada tuziladi, shuning uchun pastda bugungi
+                                        reja ham ko'rsatiladi. */}
+                                    <SwitchRow
+                                        icon={<Bus className="w-3.5 h-3.5" />}
+                                        label={t('transport')}
+                                        on={!!student.needsTransport}
+                                        onLabel="Kerak"
+                                        offLabel="Kerak emas"
+                                        busy={belgiSaqlanmoqda === 'transport'}
+                                        onToggle={v => belgiOzgartir('transport', v)}
+                                    />
+                                    {(() => {
+                                        const bugun = toDateStr();
+                                        const oqMarshrutlari = (routes || []).filter(r => r.date === bugun && (r.studentIds || []).includes(student.id));
+                                        if (oqMarshrutlari.length === 0) {
+                                            return student.needsTransport
+                                                ? <p className="text-[10px] font-bold text-matn-xira text-right -mt-1 mb-1.5">bugun rejada yo'q</p>
+                                                : null;
+                                        }
+                                        return (
+                                            <div className="text-right -mt-1 mb-1.5 space-y-0.5">
+                                                {oqMarshrutlari.map(r => (
+                                                    <span key={r.id} className="block text-[10px] font-bold text-matn-2">
+                                                        Bugun: {r.name}
+                                                        <span className="text-matn-xira font-bold">
+                                                            {r.transport?.number ? ` · ${r.transport.number}` : ''}
+                                                        </span>
+                                                    </span>
+                                                ))}
+                                            </div>
+                                        );
+                                    })()}
+                                    <SwitchRow
+                                        icon={<GraduationCap className="w-3.5 h-3.5" />}
+                                        label="Imtihon"
+                                        on={student.attendsExam !== false}
+                                        onLabel="Keladi"
+                                        offLabel="Kelmaydi"
+                                        busy={belgiSaqlanmoqda === 'imtihon'}
+                                        onToggle={v => belgiOzgartir('imtihon', v)}
+                                    />
+                                        </div>
+                                        <div className="min-w-0">
+                                    <h3 className="text-[12px] font-semibold text-matn pb-2 mb-1 border-b border-chiziq-mayin">O'qish</h3>
+                                    {student.studyGoal && (
+                                        <InfoRow icon={<Target className="w-3.5 h-3.5" />} label="Maqsad" value={student.studyGoal} />
+                                    )}
+                                    {studentDirection && (
+                                        <InfoRow icon={<Compass className="w-3.5 h-3.5" />} label="Yo'nalish"
+                                            value={studentDirection.name + (studentDirection.subjects ? ` (${studentDirection.subjects})` : '')} />
+                                    )}
+                                    {student.orgType && (
+                                        <InfoRow icon={<BookOpen className="w-3.5 h-3.5" />} label="Muassasa turi" value={student.orgType} />
+                                    )}
+                                    {student.grade && (
+                                        <InfoRow icon={<GraduationCap className="w-3.5 h-3.5" />} label={gradeLabel(student.orgType)} value={student.grade} />
+                                    )}
+                                    <InfoRow icon={<BookOpen className="w-3.5 h-3.5" />} label="Muassasa nomi" value={student.studentSchool || "-"} />
+                                    <InfoRow icon={<Clock className="w-3.5 h-3.5" />} label={t('registered_at')} value={student.joinedDate} />
+
+                                        </div>
+                                        <div className="min-w-0">
+                                    <h3 className="text-[12px] font-semibold text-matn pb-2 mb-1 border-b border-chiziq-mayin">Shaxsiy</h3>
+                                    <InfoRow icon={<Calendar className="w-3.5 h-3.5" />} label={t('birth_date')} value={student.birthDate} />
+                                    <InfoRow icon={<Users className="w-3.5 h-3.5" />} label="Jins" value={student.gender === 'Ayol' ? '♀ Ayol' : '♂ Erkak'} />
+                                    {(student.region || student.district) && (
+                                        <InfoRow icon={<MapPin className="w-3.5 h-3.5" />} label="Viloyat / Tuman" value={[student.region, student.district].filter(Boolean).join(', ')} />
+                                    )}
+                                    <InfoRow icon={<MapPin className="w-3.5 h-3.5" />} label={t('address')} value={student.address} />
+                                    {student.location && (
+                                        <button
+                                            onClick={handleOpenMap}
+                                            className="w-full mt-2 flex items-center justify-center gap-1.5 px-4 py-3 bg-teal-50 dark:bg-teal-950/20 text-brand border border-teal-100 dark:border-teal-900/40 text-[11px] font-bold tracking-[0.1em] rounded-xl hover:bg-brand hover:text-white transition-all cursor-pointer"
+                                        >
+                                            <MapPin size={13} />
+                                            {t('view_on_map')}
+                                        </button>
+                                    )}
+                                        </div>
+                                    </div>
+                                    <div className="space-y-3 max-w-xl">
+                                    {student.privilegeType && student.privilegeType !== 'None' && (
+                                        <div className="flex items-start gap-2.5 p-3 bg-teal-50 dark:bg-teal-950/20 border border-teal-100 dark:border-teal-900/30 rounded-2xl">
+                                            <div className="w-7 h-7 rounded-lg bg-brand/10 dark:bg-brand/20 text-brand flex items-center justify-center shrink-0 animate-pulse">
+                                                <Sparkles size={14} />
+                                            </div>
+                                            <div>
+                                                <p className="text-[11px] font-bold text-matn tracking-tight">
+                                                    Imtiyoz: {student.privilegeType === 'Sertifikat' ? `${student.certCategory} sertifikat` : student.privilegeType}
+                                                </p>
+                                                {student.privilegeType === 'Sertifikat' && (
+                                                    <p className="text-[10px] font-bold text-matn-sokin mt-0.5">
+                                                        {student.certCategory === 'Milliy' ? `Fan: ${student.certSubject || '-'}` : `Turi: ${student.certType || '-'}`}
+                                                        {student.certScore ? ` · Ball: ${student.certScore}` : ''}
+                                                    </p>
+                                                )}
+                                            </div>
+                                        </div>
+                                    )}
+
+                                    {(() => {
+                                        let parsedCerts = [];
+                                        try {
+                                            if (Array.isArray(student.certificates)) {
+                                                parsedCerts = student.certificates;
+                                            } else if (student.certificates && typeof student.certificates === 'string') {
+                                                parsedCerts = JSON.parse(student.certificates);
+                                            }
+                                        } catch (e) {
+                                            console.error("Error parsing certificates:", e);
+                                        }
+                                        if (parsedCerts.length === 0) return null;
+                                        return (
+                                            <div className="space-y-2.5 mt-2">
+                                                <div className="flex items-center gap-2 mb-1 px-1">
+                                                    <Award size={12} className="text-brand" />
+                                                    <h4 className="text-[11px] font-bold text-brand">Sertifikatlar</h4>
+                                                </div>
+                                                {parsedCerts.map((cert: any, idx: number) => (
+                                                    <div key={idx} className="flex items-start gap-2.5 p-3 bg-ichki border border-chiziq rounded-2xl">
+                                                        <div className="w-7 h-7 rounded-lg bg-brand/10 dark:bg-brand/20 text-brand flex items-center justify-center shrink-0">
+                                                            <Award size={14} />
+                                                        </div>
+                                                        <div>
+                                                            <p className="text-[11px] font-bold text-matn tracking-tight">
+                                                                {cert.category} sertifikat
+                                                            </p>
+                                                            <p className="text-[10px] font-bold text-matn-xira mt-0.5">
+                                                                {cert.category === 'Milliy' ? `Fan: ${cert.subject || '-'}` : `Turi: ${cert.type || '-'}`}
+                                                                {cert.score ? ` · Ball: ${cert.score}` : ''}
+                                                            </p>
+                                                        </div>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        );
+                                    })()}
+
+                                    <button
+                                        onClick={() => setShowDeleteModal(true)}
+                                        className="w-full mt-4 pt-3 border-t border-chiziq-mayin flex items-center justify-center gap-1.5 py-2 text-matn-xira hover:text-xato text-[11px] font-semibold transition-colors cursor-pointer"
+                                    >
+                                        <XCircle size={13} />
+                                        {t('delete_student')}
+                                    </button>
                                     </div>
                                 </div>
                             )}
