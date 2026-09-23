@@ -213,6 +213,7 @@ export default function PaymeSettings() {
                         <select className={inp} value={form.paymeScheme} onChange={e => setForm(f => ({ ...f, paymeScheme: e.target.value as any }))}>
                             <option value="order">Buyurtma kodi: order_id</option>
                             <option value="student">O'quvchi ID + kurs: student_id, course_id (jamg'armali)</option>
+                            <option value="student_only">Faqat o'quvchi ID: student_id</option>
                         </select>
                         <p className="text-[10px] font-bold text-matn-xira mt-2 ml-1">
                             Payme kassani qaysi maydonlar bilan sozlagan bo'lsa, shuni tanlang. Bot va CRM yaratgan havolalar shu maydonlar bilan ketadi.
@@ -273,7 +274,9 @@ export default function PaymeSettings() {
                 <p>3. <a href="https://test.paycom.uz" target="_blank" rel="noopener noreferrer" className="text-brand underline inline-flex items-center gap-1">Sandbox <ExternalLink size={10} /></a> da webhook manzili va test kaliti bilan avtomatik testlarni o'tkazing (buyurtma ID sini o'quvchi kartochkasidan "Payme havola" orqali oling).</p>
                 <p>4. Testlar o'tgach rejimni "Jonli" qiling — botda "Payme orqali to'lash" tugmasi paydo bo'ladi.</p>
                 <p className="text-xs font-black text-matn pt-2">Payme ilovasi katalogi</p>
-                {form.paymeScheme === 'student' ? (
+                {form.paymeScheme === 'student_only' ? (
+                    <p>Payme ilovasida ota-ona faqat o'quvchi ID sini (kartochkadagi raqam, masalan <span className="font-mono text-matn">299</span>) yozadi va summani o'zi kiritadi. Kurs so'ralmaydi: pul o'quvchining balansiga tushadi va balans taqsimoti qoidasi bo'yicha kurslarga bo'linadi. Bot va CRM havolasi ham shu bitta maydon bilan ketadi. Bu sxemani faqat Payme kassadan <span className="font-mono text-matn">course_id</span> maydonini o'chirgandan keyin tanlang.</p>
+                ) : form.paymeScheme === 'student' ? (
                     <p>Payme ilovasida ota-ona o'quvchi ID sini (kartochkadagi raqam, masalan <span className="font-mono text-matn">299</span>) va kurs raqamini (<span className="font-mono text-matn">course_id</span>, masalan <span className="font-mono text-matn">7</span>) yozadi, summani o'zi kiritadi. Ikkala raqamni botdagi balans xabarida ko'radi. Bot va CRM havolasi ham shu ikki maydon bilan ketadi, to'lov kelganda server uni havola buyurtmasiga o'zi bog'laydi. Ikkalasi ham oddiy raqam maydoni, ro'yxat emas: yangi kurs qo'shilsa Payme'da hech narsa o'zgartirilmaydi. Kurs raqamlari:</p>
                 ) : (
                     <p>Kassa Payme ilovasida chiqsa, ota-ona o'sha <span className="font-mono text-matn">order_id</span> maydoniga o'quvchi raqamini (kartochkadagi №, masalan <span className="font-mono text-matn">299</span>) yoki aniq kurs uchun <span className="font-mono text-matn">299-7</span> ni yozadi va summani o'zi kiritadi. Havola va QR shu maydonga 16 belgili buyurtma kodini qo'yadi — server ikkalasini o'zi ajratadi. Kurs ko'rsatilmasa: bitta kursda o'qisa o'sha kursga, bir nechtada "umumiy". Ota-ona o'z kodlarini botdagi balans xabarida ko'radi. Kurs raqamlari:</p>

@@ -43,8 +43,12 @@ export const MIN_AMOUNT = 1_000;               // so'm
 export const MAX_AMOUNT = 50_000_000;          // so'm — xato kiritishdan himoya
 export const MODES = ['off', 'test', 'live'];
 // Kassa hisob maydonlari: 'order' — order_id (buyurtma kodi, bir martalik);
-// 'student' — jamg'armali hisob, student_id + course_id (Payme tavsiyasi).
-export const SCHEMES = ['order', 'student'];
+// 'student' — jamg'armali hisob, student_id + course_id (Payme tavsiyasi);
+// 'student_only' — faqat student_id. 2026-09-23 dan pul faqat balansga tushadi
+// (kursga biriktirilmaydi), shuning uchun kurs maydoni ortiqcha: kassadan
+// o'chirilsa shu sxema tanlanadi. Kelgan so'rovda course_id bo'lsa ham qabul
+// qilinadi — bu faqat havola qanday yasalishini belgilaydi.
+export const SCHEMES = ['order', 'student', 'student_only'];
 // developer.help.paycom.uz → "Песочница": chek yuborish manzili sandbox uchun
 // https://test.paycom.uz, jonli uchun https://checkout.paycom.uz.
 export const CHECKOUT_HOST = { live: 'https://checkout.paycom.uz', test: 'https://test.paycom.uz' };
@@ -258,9 +262,12 @@ export async function createOrder({ schoolId, studentId, groupId, amount, source
 export function orderUrl(settings, order, returnBase = '') {
   // 'student' sxemasida kassa order_id ni bilmaydi: havola o'quvchi va kurs
   // raqamini yuboradi, tranzaksiya kelganda buyurtmaga server o'zi bog'laydi.
-  const account = settings.paymeScheme === 'student' && order.groupId
-    ? { [STUDENT_FIELD]: order.studentId, [COURSE_FIELD]: order.groupId }
-    : { [ACCOUNT_FIELD]: order.id };
+  // 'student_only' — kassada kurs maydoni yo'q, faqat o'quvchi raqami ketadi.
+  const account = settings.paymeScheme === 'student_only'
+    ? { [STUDENT_FIELD]: order.studentId }
+    : settings.paymeScheme === 'student' && order.groupId
+      ? { [STUDENT_FIELD]: order.studentId, [COURSE_FIELD]: order.groupId }
+      : { [ACCOUNT_FIELD]: order.id };
   return checkoutUrl({
     merchantId: settings.paymeMerchantId,
     mode: settings.paymeMode,

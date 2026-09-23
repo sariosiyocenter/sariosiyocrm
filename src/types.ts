@@ -455,7 +455,7 @@ export interface CRMState {
         settingsEncryption?: boolean;
         paymeMode?: 'off' | 'test' | 'live';
         /** Kassa hisob maydonlari: order_id yoki student_id + course_id. */
-        paymeScheme?: 'order' | 'student';
+        paymeScheme?: 'order' | 'student' | 'student_only';
         paymeEndpointToken?: string | null;
         paymeAllowRefund?: boolean;
         paymeIpCheck?: boolean;
