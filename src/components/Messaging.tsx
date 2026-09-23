@@ -99,6 +99,15 @@ function eskizHolatBelgisi(holat?: string | null) {
 const OQUVCHI_STATUSLARI = ['Faol', 'Sinov', 'Passiv', 'Muzlatilgan', 'Ketgan'];
 const USTOZ_STATUSLARI = ['Faol', 'Nofaol'];
 
+// Avtomatik qoida kimga yuborishini o'quvchi holati bo'yicha filtrlaydi
+// (config.statuses). Lid va bitiruvchi qoidalari o'quvchi holatiga bog'liq emas.
+const HOLATSIZ_QOIDALAR = ['LEAD_WELCOME', 'COURSE_GRADUATION'];
+// Eski qoidalarda config.statuses yo'q — server ularga oldingidek yuboradi.
+// Tahrirlash oynasi o'sha amaldagi holatlarni ko'rsatishi uchun.
+const FAOL_SINOV_QOIDALAR = ['BIRTHDAY', 'DEBT_REMINDER', 'GROUP_WELCOME', 'TRANSPORT_NOTIFY'];
+const qoidaStandartHolatlari = (type: string) =>
+  FAOL_SINOV_QOIDALAR.includes(type) ? ['Faol', 'Sinov'] : [...OQUVCHI_STATUSLARI];
+
 interface Student {
   id: number;
   name: string;
@@ -174,6 +183,8 @@ interface AutoRule {
   config?: {
     dayOfMonth?: number;
     minDebt?: number;
+    /** Qaysi holatdagi o'quvchilarga yuboriladi. Yo'q — server standarti. */
+    statuses?: string[];
   } | null;
 }
 
@@ -345,7 +356,8 @@ export default function Messaging() {
     recipientTo: 'FATHER,MOTHER',
     time: '09:00',
     minDebt: 0,
-    dayOfMonth: 1
+    dayOfMonth: 1,
+    statuses: ['Faol'] as string[]
   });
 
   // Tab 4: History state
@@ -901,7 +913,8 @@ export default function Messaging() {
         recipientTo: r.recipientTo,
         time: r.time || '09:00',
         minDebt: cfg.minDebt || 0,
-        dayOfMonth: cfg.dayOfMonth || 1
+        dayOfMonth: cfg.dayOfMonth || 1,
+        statuses: cfg.statuses?.length ? cfg.statuses : qoidaStandartHolatlari(r.type)
       });
     } else {
       setEditingAutoRule(null);
@@ -914,7 +927,8 @@ export default function Messaging() {
         recipientTo: 'FATHER,MOTHER',
         time: '09:00',
         minDebt: 0,
-        dayOfMonth: 1
+        dayOfMonth: 1,
+        statuses: ['Faol']
       });
     }
     setAutoRuleModalOpen(true);
@@ -934,10 +948,13 @@ export default function Messaging() {
         channel: autoRuleForm.channel,
         recipientTo: autoRuleForm.recipientTo,
         time: autoRuleForm.time,
-        config: autoRuleForm.type === 'DEBT_REMINDER' ? {
-          dayOfMonth: autoRuleForm.dayOfMonth,
-          minDebt: autoRuleForm.minDebt
-        } : null
+        config: {
+          ...(autoRuleForm.type === 'DEBT_REMINDER' && {
+            dayOfMonth: autoRuleForm.dayOfMonth,
+            minDebt: autoRuleForm.minDebt
+          }),
+          ...(!HOLATSIZ_QOIDALAR.includes(autoRuleForm.type) && { statuses: autoRuleForm.statuses })
+        }
       };
       const res = await fetch(url, {
         method,
@@ -2175,28 +2192,39 @@ export default function Messaging() {
               </div>
             </div>
 
-            {/* Qoida holati: yaratayotganda ham tanlanadi (egasi, 2026-09-23).
-                Passiv qoida saqlanadi, lekin xabar yubormaydi. */}
-            <div>
-              <label className={lbl}>Qoida holati *</label>
-              <div className="grid grid-cols-2 gap-2">
-                {[{ v: true, label: '✓ Faol', izoh: 'xabar yuboradi' }, { v: false, label: '⏸ Passiv', izoh: 'yubormaydi' }].map(h => (
-                  <button
-                    key={String(h.v)}
-                    type="button"
-                    onClick={() => setAutoRuleForm({ ...autoRuleForm, enabled: h.v })}
-                    className={`px-2.5 py-2 rounded-xl text-xs font-bold border transition-all cursor-pointer ${
-                      autoRuleForm.enabled === h.v
-                        ? (h.v ? 'bg-emerald-500/10 border-emerald-500 text-emerald-600 dark:text-emerald-400' : 'bg-slate-200/60 dark:bg-slate-700/60 border-slate-400 dark:border-slate-500 text-slate-600 dark:text-slate-300')
-                        : 'bg-slate-50 dark:bg-slate-800/80 border-slate-200 dark:border-slate-700/80 text-slate-500 dark:text-slate-400 hover:border-slate-300 dark:hover:border-slate-600'
-                    }`}
-                  >
-                    {h.label}
-                    <span className="block text-[10px] font-semibold opacity-70">{h.izoh}</span>
-                  </button>
-                ))}
+            {/* O'quvchi holati: qoida faqat shu holatdagi o'quvchilarga yuboradi
+                (egasi, 2026-09-23: "Faol / Passiv" — o'quvchilar filtri).
+                Qoidani yoqib-o'chirish ro'yxatdagi tugma orqali. */}
+            {!HOLATSIZ_QOIDALAR.includes(autoRuleForm.type) && (
+              <div>
+                <label className={lbl}>Qaysi o'quvchilarga * <span className="font-semibold text-slate-500">(holati, bir nechta)</span></label>
+                <div className="flex flex-wrap gap-1.5">
+                  {OQUVCHI_STATUSLARI.map(h => {
+                    const tanlangan = autoRuleForm.statuses.includes(h);
+                    return (
+                      <button
+                        key={h}
+                        type="button"
+                        aria-pressed={tanlangan}
+                        onClick={() => {
+                          const yangi = tanlangan ? autoRuleForm.statuses.filter(x => x !== h) : [...autoRuleForm.statuses, h];
+                          // Kamida bittasi tanlangan turishi kerak.
+                          if (!yangi.length) return;
+                          setAutoRuleForm({ ...autoRuleForm, statuses: yangi });
+                        }}
+                        className={`px-2.5 py-2 rounded-xl text-xs font-bold border transition-all cursor-pointer ${
+                          tanlangan
+                            ? 'bg-brand/10 border-brand text-brand'
+                            : 'bg-slate-50 dark:bg-slate-800/80 border-slate-200 dark:border-slate-700/80 text-slate-500 dark:text-slate-400 hover:border-slate-300 dark:hover:border-slate-600'
+                        }`}
+                      >
+                        {h}
+                      </button>
+                    );
+                  })}
+                </div>
               </div>
-            </div>
+            )}
 
             <div className="grid grid-cols-2 gap-3">
               <div>

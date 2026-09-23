@@ -6643,10 +6643,15 @@ async function runAutoProcessJobs() {
     const schoolId = rule.schoolId;
     const school = await prisma.school.findUnique({ where: { id: schoolId } });
     const groupsMap = await getStudentGroupsMap(schoolId);
+    // Qoidada tanlangan o'quvchi holatlari (egasi, 2026-09-23). Eski
+    // qoidalarda yo'q — ular oldingidek ishlaydi.
+    const ruleCfg = (rule.config && typeof rule.config === 'object') ? rule.config : {};
+    const ruleStatuses = Array.isArray(ruleCfg.statuses) && ruleCfg.statuses.length ? ruleCfg.statuses : null;
+    const statusIn = { in: ruleStatuses || ['Faol', 'Sinov'] };
 
     let targets = [];
     if (rule.type === 'BIRTHDAY') {
-      const students = await prisma.student.findMany({ where: { schoolId, status: { in: ['Faol', 'Sinov'] } } });
+      const students = await prisma.student.findMany({ where: { schoolId, status: statusIn } });
       targets = students.filter(s => (s.birthDate || '').slice(5, 10) === mmdd);
     } else if (rule.type === 'DEBT_REMINDER') {
       const cfg = (rule.config && typeof rule.config === 'object') ? rule.config : {};
@@ -6656,7 +6661,7 @@ async function runAutoProcessJobs() {
         continue;
       }
       const minDebt = Number(cfg.minDebt || 0);
-      const students = await prisma.student.findMany({ where: { schoolId, status: { in: ['Faol', 'Sinov'] } } });
+      const students = await prisma.student.findMany({ where: { schoolId, status: statusIn } });
       targets = students.filter(s => Number(s.balance || 0) < -minDebt);
     } else if (rule.type === 'ABSENCE_REMINDER') {
       const attendances = await prisma.attendance.findMany({
@@ -6679,7 +6684,7 @@ async function runAutoProcessJobs() {
       targets = leads.map(l => ({ id: l.id, name: l.name, phone: l.phone, balance: 0, schoolId }));
     } else if (rule.type === 'GROUP_WELCOME') {
       targets = await prisma.student.findMany({
-        where: { schoolId, joinedDate: todayStr, status: { in: ['Faol', 'Sinov'] } }
+        where: { schoolId, joinedDate: todayStr, status: statusIn }
       });
     } else if (rule.type === 'EXAM_RESULT') {
       const startOfDay = new Date(nowUz);
@@ -6732,7 +6737,7 @@ async function runAutoProcessJobs() {
       targets = Object.values(uniqueStudentsMap);
     } else if (rule.type === 'TRANSPORT_NOTIFY') {
       targets = await prisma.student.findMany({
-        where: { schoolId, transportId: { not: null }, status: { in: ['Faol', 'Sinov'] } }
+        where: { schoolId, transportId: { not: null }, status: statusIn }
       });
     } else if (rule.type === 'COURSE_GRADUATION') {
       targets = await prisma.student.findMany({
@@ -6758,6 +6763,10 @@ async function runAutoProcessJobs() {
         if (a.student && !uniqueMap[a.student.id]) uniqueMap[a.student.id] = a.student;
       }
       targets = Object.values(uniqueMap);
+    }
+
+    if (ruleStatuses && rule.type !== 'LEAD_WELCOME' && rule.type !== 'COURSE_GRADUATION') {
+      targets = targets.filter(s => ruleStatuses.includes(s.status));
     }
 
     let sent = 0, failed = 0;
