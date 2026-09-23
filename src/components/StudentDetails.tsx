@@ -1292,10 +1292,6 @@ export default function StudentDetails() {
                                         onSms={student.motherPhone ? () => handleSendSms(student.motherPhone!, 'manual') : undefined}
                                         onUzish={() => handleDisconnectTelegram('mother')}
                                     />
-                                    <button onClick={() => setActiveTab('malumot')}
-                                        className="w-full mt-3 pt-3 border-t border-chiziq-mayin text-[12px] font-semibold text-brand hover:underline cursor-pointer text-left">
-                                        Boshqa ma'lumotlar →
-                                    </button>
                                 </>
                             )}
                         </div>
@@ -1307,15 +1303,15 @@ export default function StudentDetails() {
                 <div className="lg:col-start-2 lg:col-span-3 lg:row-start-1 lg:row-span-2 space-y-4 order-2 lg:order-none min-w-0">
                     <div className="bg-sirt rounded-2xl border border-chiziq shadow-sm overflow-hidden">
                         <div className="flex px-2 py-2 bg-ichki border-b border-chiziq gap-1 overflow-x-auto scrollbar-hide items-center justify-start rounded-t-3xl">
-                            <TabButton label="Kurslar" icon={<Layers size={14} />} active={activeTab === 'umumiy'} onClick={() => setActiveTab('umumiy')} />
+                            <TabButton label={t('general')} icon={<Users size={14} />} active={activeTab === 'umumiy'} onClick={() => setActiveTab('umumiy')} />
+                            <TabButton label="Kurslar" icon={<Layers size={14} />} active={activeTab === 'kurslar'} onClick={() => setActiveTab('kurslar')} />
                             <TabButton label="Balans" icon={<CreditCard size={14} />} active={activeTab === 'tolovlar'} onClick={() => setActiveTab('tolovlar')} />
                             <TabButton label={t('attendance')} icon={<ClipboardCheck size={14} />} active={activeTab === 'yoqlama'} onClick={() => setActiveTab('yoqlama')} />
                             <TabButton label="Ballar" icon={<Star size={14} />} active={activeTab === 'ballar'} onClick={() => setActiveTab('ballar')} />
-                            <TabButton label="Ma'lumotlar" icon={<Users size={14} />} active={activeTab === 'malumot'} onClick={() => setActiveTab('malumot')} />
                         </div>
 
                         <div className="p-4">
-                            {activeTab === 'umumiy' && (
+                            {activeTab === 'kurslar' && (
                                 <div className="space-y-8 animate-in fade-in duration-300">
                                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
                                         <div className="space-y-4">
@@ -1939,9 +1935,9 @@ export default function StudentDetails() {
                                 </div>
                             )}
 
-                            {/* Ma'lumotlar — belgilar, o'qish, shaxsiy (ilgari chap ustunda
+                            {/* Umumiy — belgilar, o'qish, shaxsiy (ilgari chap ustunda
                                 ustma-ust turib, sahifani juda uzaytirardi). */}
-                            {activeTab === 'malumot' && (
+                            {activeTab === 'umumiy' && (
                                 <div className="animate-in fade-in duration-300 space-y-6">
                                     <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-x-8 gap-y-6">
                                         <div className="min-w-0">
