@@ -47,10 +47,12 @@ interface Preview {
 
 const money = (n: number) => Math.round(n).toLocaleString('ru-RU');
 
-export default function StudentMoveModal({ studentId, mode, onClose }: {
+export default function StudentMoveModal({ studentId, mode, onClose, fromGroup }: {
     studentId: number;
     mode: 'transfer' | 'refund';
     onClose: () => void;
+    /** Kurs kartochkasidagi "Almashtirish"dan ochilsa — o'sha kurs oldindan tanlangan. */
+    fromGroup?: number;
 }) {
     const { students, groups, courses, selectedSchoolId, showNotification, retryLoad } = useCRM();
     const student = students.find(s => s.id === studentId);
@@ -60,7 +62,7 @@ export default function StudentMoveModal({ studentId, mode, onClose }: {
 
     const today = new Date().toISOString().split('T')[0];
     const [date, setDate] = useState(today);
-    const [fromGroupId, setFromGroupId] = useState<number | ''>(studentGroups[0]?.id ?? '');
+    const [fromGroupId, setFromGroupId] = useState<number | ''>(fromGroup ?? studentGroups[0]?.id ?? '');
     const [toGroupId, setToGroupId] = useState<number | ''>('');
     const [refundMode, setRefundMode] = useState<'balance' | 'cash'>('balance');
 
