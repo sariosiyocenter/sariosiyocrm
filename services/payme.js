@@ -589,8 +589,10 @@ export async function handleRpc({ settings, method, params, now = Date.now() }) 
               type: 'Peyme',
               date: toDateStr(new Date(now)),
               description: tx.orderId ? `Payme orqali to'lov (${id})` : `Payme ilovasi orqali to'lov (${id})`,
-              groupId: tx.groupId,
-              courseId: tx.courseId,
+              // Pul faqat balansga (egasi, 2026-09-23) — kurslarga balansdan
+              // o'quvchining taqsimot qoidasi bo'yicha yechiladi.
+              groupId: null,
+              courseId: null,
               schoolId,
             },
           });
@@ -653,8 +655,8 @@ export async function handleRpc({ settings, method, params, now = Date.now() }) 
                 type: 'Qaytarish',
                 date: toDateStr(new Date(now)),
                 description: `Payme to'lovi bekor qilindi (${id})`,
-                groupId: tx.groupId,
-                courseId: tx.courseId,
+                groupId: null,
+                courseId: null,
                 schoolId,
               },
             });

@@ -14,7 +14,9 @@ import {
 import AttendanceMatrix from './AttendanceMatrix';
 import GroupAttendanceCalendar from './GroupAttendanceCalendar';
 import FaceAttendance from './FaceAttendance';
-import KelganSanaModal from './KelganSanaModal';
+import KursHisobModal from './KursHisobModal';
+import { kelganSana } from '../lib/taqsimot';
+import BirinchiOyInput from './BirinchiOyInput';
 import { STUDENT_SORTS, StudentSort, absenceCounts, sortStudents } from '../lib/studentSort';
 
 export default function CourseDetails() {
@@ -205,9 +207,19 @@ export default function CourseDetails() {
 
 
 
+    // Qo'shish ikki qadam: o'quvchi tanlanadi, keyin birinchi oy summasi
+    // ko'rsatiladi (tizim hisoblagani, xodim o'zgartirishi mumkin).
+    const [addTanlangan, setAddTanlangan] = useState<number | null>(null);
+    const [addSumma, setAddSumma] = useState<number | undefined>(undefined);
+    const [addSaqlanmoqda, setAddSaqlanmoqda] = useState(false);
     const handleAddStudent = async (studentId: number) => {
-        await addStudentToGroup(group.id, studentId, addStartDate);
+        setAddSaqlanmoqda(true);
+        try {
+            await addStudentToGroup(group.id, studentId, addStartDate, addSumma);
+        } finally { setAddSaqlanmoqda(false); }
         setIsAddStudentModalOpen(false);
+        setAddTanlangan(null);
+        setAddSumma(undefined);
         setStudentSearch('');
     };
 
@@ -655,15 +667,14 @@ export default function CourseDetails() {
                                                                         </div>
                                                                     </div>
                                                                 </td>
-                                                                {/* Kursga kelgan sana — bosib o'zgartiriladi, oylik hisob shu kundan. */}
+                                                                {/* Kursga kelgan sana — bosilsa "Kurs hisobi" (sana, narx, birinchi oy summasi). */}
                                                                 <td className="py-2.5 px-3 align-middle">
                                                                     {(() => {
-                                                                        const cs = (s as any).courseStart;
-                                                                        const d: string = (cs && typeof cs === 'object' ? cs[String(group.id)] : null) || s.joinedDate || '';
+                                                                        const d: string = kelganSana(s, group.id, payments) || '';
                                                                         return (
                                                                             <button
                                                                                 onClick={e => { e.stopPropagation(); setSanaOquvchi({ id: s.id, schoolId: s.schoolId, current: d || new Date().toISOString().split('T')[0] }); }}
-                                                                                title="Kursga kelgan sanani o'zgartirish — oylik hisob shu kundan"
+                                                                                title="Kurs hisobi: kelgan sana, oylik narx, birinchi oy summasi"
                                                                                 className="num inline-flex items-center gap-1 px-2 py-1 rounded-lg text-[12px] text-matn-2 hover:text-brand hover:bg-brand/10 transition-colors cursor-pointer"
                                                                             >
                                                                                 <Calendar size={11} className="text-matn-xira" />
@@ -1307,7 +1318,7 @@ export default function CourseDetails() {
 
 
             {sanaOquvchi && (
-                <KelganSanaModal
+                <KursHisobModal
                     studentId={sanaOquvchi.id}
                     schoolId={sanaOquvchi.schoolId}
                     groupId={group.id}
@@ -1335,10 +1346,34 @@ export default function CourseDetails() {
                                 shu kundan oy oxirigacha yoziladi. */}
                             <div>
                                 <label className="block text-[11px] font-bold text-matn-xira mb-1.5">Kursga kelgan sana</label>
-                                <input type="date" value={addStartDate} onChange={e => setAddStartDate(e.target.value)}
+                                <input type="date" value={addStartDate} onChange={e => { setAddStartDate(e.target.value); setAddSumma(undefined); }}
                                     className="w-full px-4 py-2.5 bg-ichki border border-chiziq rounded-xl text-xs font-bold text-matn outline-none focus:border-brand" />
                                 <p className="text-[10px] text-matn-xira mt-1">Hisob shu kundan oy oxirigacha yoziladi</p>
                             </div>
+                            {addTanlangan && (() => {
+                                const st = students.find(x => x.id === addTanlangan);
+                                if (!st) return null;
+                                return (
+                                    <div className="p-3 bg-brand/5 border border-brand/40 rounded-2xl space-y-3">
+                                        <div className="flex items-center gap-2.5">
+                                            <Avatar name={st.name} photo={st.photo} size={32} square />
+                                            <span className="text-xs font-black text-matn truncate">{displayName(st.name)}</span>
+                                        </div>
+                                        <BirinchiOyInput groupId={group.id} schoolId={group.schoolId} startDate={addStartDate} studentId={st.id}
+                                            value={addSumma} onChange={setAddSumma} trial={st.status === 'Sinov'} />
+                                        <div className="flex gap-2">
+                                            <button type="button" onClick={() => { setAddTanlangan(null); setAddSumma(undefined); }}
+                                                className="flex-1 py-2.5 bg-ichki text-matn-xira rounded-xl text-[11px] font-bold cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800">
+                                                Bekor
+                                            </button>
+                                            <button type="button" disabled={addSaqlanmoqda} onClick={() => handleAddStudent(st.id)}
+                                                className="flex-1 py-2.5 bg-brand hover:bg-brand-dark disabled:opacity-50 text-white rounded-xl text-[11px] font-bold cursor-pointer">
+                                                {addSaqlanmoqda ? "Qo'shilmoqda…" : "Qo'shish"}
+                                            </button>
+                                        </div>
+                                    </div>
+                                );
+                            })()}
                             <div className="relative">
                                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-matn-xira" />
                                 <input type="text" placeholder="Ism bo'yicha qidirish..." value={studentSearch} onChange={e => setStudentSearch(e.target.value)}
@@ -1346,8 +1381,8 @@ export default function CourseDetails() {
                             </div>
                             <div className="max-h-[300px] overflow-y-auto space-y-2 pr-1 custom-scrollbar">
                                 {availableStudents.map(s => (
-                                    <button key={s.id} onClick={() => handleAddStudent(s.id)}
-                                        className="w-full flex items-center justify-between p-3 rounded-xl hover:bg-teal-50/10 border border-transparent hover:border-gray-100 dark:hover:border-gray-700/50 transition-all group cursor-pointer text-left">
+                                    <button key={s.id} onClick={() => { setAddTanlangan(s.id); setAddSumma(undefined); }}
+                                        className={`w-full flex items-center justify-between p-3 rounded-xl hover:bg-teal-50/10 border ${addTanlangan === s.id ? 'border-brand' : 'border-transparent'} hover:border-gray-100 dark:hover:border-gray-700/50 transition-all group cursor-pointer text-left`}>
                                         <div className="flex items-center gap-3">
                                             <Avatar name={s.name} photo={s.photo} size={36} square />
                                             <span className="text-xs font-bold text-matn group-hover:text-brand transition-colors tracking-tight">{displayName(s.name)}</span>

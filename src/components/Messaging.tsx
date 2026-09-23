@@ -274,13 +274,13 @@ export default function Messaging() {
       const rows = withOpening(byStudent.get(st.id) || [], st.balance);
       // Sozlamadagi qoida (eski | teng | qarz) — serverdagi hisob bilan bir xil.
       // O'quvchining o'z qoidasi (kartochkada), bo'lmasa markazniki.
-      const res = allocate(rows, shareOpts(st.payShare, settings?.multiCoursePay));
+      const res = allocate(rows, shareOpts(st.payShare));
       const m = new Map<number | null, number>();
       for (const x of res.debtByGroup) m.set(x.groupId, x.amount);
       out.set(st.id, m);
     }
     return out;
-  }, [students, payments, settings?.multiCoursePay]);
+  }, [students, payments]);
 
   /** Tanlangan kurslar bo'yicha qarz (kurs tanlanmagan bo'lsa — umumiy qarz). */
   const qarzMiqdori = (st: Student): number => {

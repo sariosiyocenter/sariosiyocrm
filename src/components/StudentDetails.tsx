@@ -20,14 +20,15 @@ import { activeCourses } from '../lib/activeCourses';
 import PhotoViewer from './PhotoViewer';
 import StudentMoveModal from './StudentMoveModal';
 import PaymentEditModal, { canEditPayment } from './PaymentEditModal';
-import KelganSanaModal from './KelganSanaModal';
+import KursHisobModal from './KursHisobModal';
+import BirinchiOyInput from './BirinchiOyInput';
 import PaymeLinkModal from './PaymeLinkModal';
 import { STUDY_GOALS, UZB_REGIONS, ORG_TYPES, gradeOptions, gradeLabel, keepGrade } from '../lib/studentFields';
 import StudentLedger from './StudentLedger';
 import { loadFaceModels, descriptorFromPhoto, saveFaceProfiles, faceFailText, faceFailedBefore, rememberFaceTry, forgetFaceTry } from '../lib/faceDescriptor';
 import type { FaceFail } from '../lib/faceDescriptor';
 import type { Payment } from '../types';
-import { amaldagiQoida, qoidaMatni, type TaqsimQoida } from '../lib/taqsimot';
+import { amaldagiQoida, qoidaMatni, kelganSana } from '../lib/taqsimot';
 
 /**
  * Face ID holati. Alohida "rasmga tushish" ham, tugma ham yo'q: belgi profil
@@ -71,14 +72,6 @@ export default function StudentDetails() {
     const [smsData, setSmsData] = useState({ phone: '', type: '' });
     const [showDeleteModal, setShowDeleteModal] = useState(false);
     const [attendanceGroupFilter, setAttendanceGroupFilter] = useState<number | null>(null);
-    const [editingGroupPrice, setEditingGroupPrice] = useState<{ groupId: number, name: string, coursePrice: number } | null>(null);
-    const [customPriceVal, setCustomPriceVal] = useState('');
-    const [customNoteVal, setCustomNoteVal] = useState('');
-    // Yangi narx shu oyning hisobiga ham tatbiq qilinsinmi. Oy o'rtasida
-    // chegirma berilsa, allaqachon yozilgan oylik hisob eski narxda qolib
-    // ketardi — chegirma faqat keyingi oydan ishlardi.
-    const [priceRecalc, setPriceRecalc] = useState(true);
-    const [savingPrice, setSavingPrice] = useState(false);
     // "Kursga kelgan sana": o'quvchi ro'yxatga oy boshida olinib, darsga oy
     // o'rtasidan kelishi mumkin — hisob o'sha kundan yuritiladi.
     const [editingStart, setEditingStart] = useState<{ groupId: number, name: string, current: string } | null>(null);
@@ -86,10 +79,10 @@ export default function StudentDetails() {
     const [editingPayment, setEditingPayment] = useState<Payment | null>(null);
     // Kartochkadagi ha/yo'q belgilari saqlanayotgan payt (transport | imtihon).
     const [belgiSaqlanmoqda, setBelgiSaqlanmoqda] = useState<'transport' | 'imtihon' | null>(null);
-    // "To'lov taqsimoti" oynasi: bir nechta kursdagi o'quvchining puli
-    // kurslarga qanday bo'linadi — shu o'quvchi uchun qo'lda (egasi, 2026-09-23).
+    // "Balans taqsimoti" oynasi: bir nechta kursdagi o'quvchining balansi har
+    // oy kurslarga qanday yechiladi — teng (standart) yoki foizda (egasi, 2026-09-23).
     const [taqsimOyna, setTaqsimOyna] = useState(false);
-    const [taqsimQoidaVal, setTaqsimQoidaVal] = useState<'markaz' | TaqsimQoida>('markaz');
+    const [taqsimQoidaVal, setTaqsimQoidaVal] = useState<'teng' | 'foiz'>('teng');
     const [taqsimFoiz, setTaqsimFoiz] = useState<Record<string, string>>({});
     const [taqsimSaqlanmoqda, setTaqsimSaqlanmoqda] = useState(false);
     // Profil izohi (Student.comment) — bazada bor edi, lekin interfeysda ko'rinmasdi.
@@ -113,42 +106,9 @@ export default function StudentDetails() {
         }
     };
 
-    /** Shu kursga kelgan sana (yozilmagan bo'lsa — ro'yxatga olingan kun). */
-    const kursSanasi = (groupId: number) => {
-        const cs = student?.courseStart;
-        const v = cs && typeof cs === 'object' ? (cs as Record<string, string>)[String(groupId)] : null;
-        return v || null;
-    };
+    /** Shu kursga kelgan sana — hisob yuritiladigan kun (lib/taqsimot.ts → kelganSana). */
+    const kursSanasi = (groupId: number) => student ? kelganSana(student, groupId, payments) : null;
 
-    /**
-     * Bitta o'quvchi uchun kurs narxi. Narx bilan birga shu oyning hisobi
-     * ham moslanishi mumkin (500 000 lik kurs shu bolaga 450 000).
-     */
-    const narxniSaqlash = async (groupId: number, price: number | null, note: string) => {
-        if (!student) return;
-        try {
-            const token = localStorage.getItem('token');
-            const res = await fetch(`/api/students/${student.id}/custom-price`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + token },
-                body: JSON.stringify({ schoolId: student.schoolId, groupId, price, note, recalc: priceRecalc }),
-            });
-            const data = await res.json();
-            if (!res.ok) { showNotification(data.error || 'Saqlanmadi', 'error'); return; }
-            const farq = Number(data.recalculated?.balanceDelta || 0);
-            showNotification(
-                price === null
-                    ? 'Standart narxga qaytarildi' + (farq ? ` · hisob ${Math.abs(farq).toLocaleString('ru-RU')} so'm o'zgardi` : '')
-                    : `Shu o'quvchi uchun narx ${price.toLocaleString('ru-RU')} so'm`
-                      + (farq ? ` · shu oy hisobi ${farq > 0 ? 'kamaydi' : 'oshdi'}: ${Math.abs(farq).toLocaleString('ru-RU')} so'm` : ''),
-                'success'
-            );
-            setEditingGroupPrice(null);
-            retryLoad();
-        } catch {
-            showNotification('Aloqa xatosi', 'error');
-        }
-    };
 
 
     const handleConfirmDelete = async () => {
@@ -1497,7 +1457,7 @@ export default function StudentDetails() {
                         <div className="flex px-2 py-2 bg-ichki border-b border-chiziq gap-1 overflow-x-auto scrollbar-hide items-center justify-start rounded-t-3xl">
                             <TabButton label={t('general')} icon={<Layers size={14} />} active={activeTab === 'umumiy'} onClick={() => setActiveTab('umumiy')} />
                             <TabButton label={t('stat_groups')} icon={<Users size={14} />} active={activeTab === 'courses'} onClick={() => setActiveTab('courses')} />
-                            <TabButton label={t('payments_tab')} icon={<CreditCard size={14} />} active={activeTab === 'tolovlar'} onClick={() => setActiveTab('tolovlar')} />
+                            <TabButton label="Balans" icon={<CreditCard size={14} />} active={activeTab === 'tolovlar'} onClick={() => setActiveTab('tolovlar')} />
                             <TabButton label={t('attendance')} icon={<ClipboardCheck size={14} />} active={activeTab === 'yoqlama'} onClick={() => setActiveTab('yoqlama')} />
                             <TabButton label="Ballar" icon={<Star size={14} />} active={activeTab === 'ballar'} onClick={() => setActiveTab('ballar')} />
                         </div>
@@ -1508,29 +1468,28 @@ export default function StudentDetails() {
                                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
                                         <div className="space-y-4">
                                             <span className="text-[11px] font-bold text-matn-xira block pb-2 border-b border-gray-55 dark:border-gray-800/50">{t('active_groups')}</span>
-                                            {/* To'lov taqsimoti — faqat bir nechta kursda o'qisa ma'noli.
-                                                Shu o'quvchi uchun qo'lda: teng, foizda (70/30), qarzga qarab... */}
+                                            {/* Balans taqsimoti — pul faqat balansga tushadi, har oy kurslarga
+                                                balansdan yechiladi. Standart teng; shu o'quvchi uchun foizda (50/50, 70/30). */}
                                             {studentGroups.length > 1 && (() => {
-                                                const q = amaldagiQoida(student.payShare, settings?.multiCoursePay);
+                                                const q = amaldagiQoida(student.payShare);
                                                 const kursNomi = (id: number) => groups.find(g => g.id === id)?.name || ('#' + id);
                                                 return (
                                                     <div className="flex items-center justify-between gap-3 p-3 bg-ichki/40 border border-chiziq rounded-2xl">
                                                         <div className="min-w-0">
-                                                            <p className="text-[11px] font-bold text-matn-xira">To'lov taqsimoti</p>
-                                                            <p className="text-[12px] font-black text-matn mt-0.5 truncate">
-                                                                {qoidaMatni(q, kursNomi)}
-                                                                {!q.oziniki && <span className="text-[10px] font-bold text-matn-xira"> · markaz qoidasi</span>}
-                                                            </p>
+                                                            <p className="text-[11px] font-bold text-matn-xira">Balans taqsimoti</p>
+                                                            <p className="text-[12px] font-black text-matn mt-0.5 truncate">{qoidaMatni(q, kursNomi)}</p>
                                                         </div>
                                                         <button
                                                             onClick={() => {
                                                                 const ps = student.payShare;
-                                                                setTaqsimQoidaVal(ps?.rule ? ps.rule : 'markaz');
+                                                                setTaqsimQoidaVal(ps?.rule === 'foiz' ? 'foiz' : 'teng');
                                                                 const f: Record<string, string> = {};
-                                                                for (const g of studentGroups) {
+                                                                let qolgan = 100;
+                                                                studentGroups.forEach((g, i) => {
                                                                     const w = ps?.rule === 'foiz' ? ps.weights?.[String(g.id)] : undefined;
-                                                                    f[String(g.id)] = w !== undefined ? String(w) : String(Math.round(100 / studentGroups.length));
-                                                                }
+                                                                    const v = w !== undefined ? Number(w) : (i === studentGroups.length - 1 ? qolgan : Math.round(100 / studentGroups.length));
+                                                                    f[String(g.id)] = String(v); qolgan -= v;
+                                                                });
                                                                 setTaqsimFoiz(f);
                                                                 setTaqsimOyna(true);
                                                             }}
@@ -1549,72 +1508,35 @@ export default function StudentDetails() {
                                                         const studentCustomPrice = student.customPrices && typeof student.customPrices === 'object'
                                                             ? (student.customPrices as Record<string, number>)[group.id]
                                                             : undefined;
+                                                        const kelgan = kursSanasi(group.id) || '';
+                                                        const oylik = studentCustomPrice !== undefined ? studentCustomPrice : (group.coursePrice || 0);
                                                         return (
                                                             <div key={group.id}
-                                                                className="group bg-ichki/30 p-4 rounded-2xl border border-transparent hover:border-gray-100 dark:hover:border-gray-700/50 transition-all flex items-center justify-between">
-                                                                <div className="flex items-center gap-3 cursor-pointer" onClick={() => navigate(`/courses/${group.id}`)}>
+                                                                className="group bg-ichki/30 p-4 rounded-2xl border border-transparent hover:border-gray-100 dark:hover:border-gray-700/50 transition-all flex items-center justify-between gap-3">
+                                                                <div className="flex items-center gap-3 min-w-0 cursor-pointer" onClick={() => navigate(`/courses/${group.id}`)}>
                                                                     <div className="w-10 h-10 bg-sirt border border-gray-100 dark:border-gray-705 rounded-xl flex items-center justify-center text-brand shrink-0">
                                                                         <BookOpen size={18} />
                                                                     </div>
-                                                                    <div>
-                                                                        <h5 className="text-xs font-black text-matn group-hover:text-brand tracking-tight">{group.name}</h5>
-                                                                        <p className="text-[11px] font-bold text-matn-xira mt-0.5">{group.courseName ? `${group.courseName} • ` : ''}{group.teacherName}</p>
-                                                                        {/* Kursga kelgan sana — oylik hisob shu kundan yuritiladi. */}
-                                                                        <button
-                                                                            onClick={e => {
-                                                                                e.stopPropagation();
-                                                                                const cur = kursSanasi(group.id) || student.joinedDate || toDateStr();
-                                                                                setEditingStart({ groupId: group.id, name: group.name, current: cur });
-                                                                            }}
-                                                                            className="mt-2 inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg border border-brand/40 bg-brand/5 text-[11px] font-bold text-brand hover:bg-brand hover:text-white transition-colors cursor-pointer"
-                                                                            title="Kursga kelgan sanani o'zgartirish — oylik hisob shu kundan"
-                                                                        >
-                                                                            <Calendar size={12} />
-                                                                            <span>Kelgan sana:</span>
-                                                                            <span className="num">
-                                                                                {(() => {
-                                                                                    const d = kursSanasi(group.id) || student.joinedDate;
-                                                                                    return d ? `${d.slice(8, 10)}.${d.slice(5, 7)}.${d.slice(0, 4)}` : 'belgilash';
-                                                                                })()}
-                                                                            </span>
-                                                                            <Edit size={11} />
-                                                                        </button>
+                                                                    <div className="min-w-0">
+                                                                        <h5 className="text-xs font-black text-matn group-hover:text-brand tracking-tight truncate">{group.name}</h5>
+                                                                        <p className="text-[11px] font-bold text-matn-xira mt-0.5 truncate">{group.courseName ? `${group.courseName} • ` : ''}{group.teacherName}</p>
+                                                                        <p className="num text-[11px] font-bold text-matn-sokin mt-1.5">
+                                                                            <span className="text-matn-xira">Kelgan:</span> {kelgan ? `${kelgan.slice(8, 10)}.${kelgan.slice(5, 7)}.${kelgan.slice(0, 4)}` : '—'}
+                                                                            <span className="text-matn-xira"> · Oylik:</span>{' '}
+                                                                            <span className={studentCustomPrice !== undefined ? 'text-brand' : ''}>{oylik.toLocaleString('ru-RU')}</span>
+                                                                            {studentCustomPrice !== undefined && <span className="text-[10px] text-brand/70"> (shu o'quvchiga)</span>}
+                                                                        </p>
                                                                     </div>
                                                                 </div>
-                                                                <div className="flex items-center gap-3">
-                                                                    <div className="text-right">
-                                                                        {studentCustomPrice !== undefined ? (
-                                                                            <>
-                                                                                <span className="block text-xs font-black text-brand tabular-nums">{studentCustomPrice.toLocaleString()} UZS</span>
-                                                                                <span className="block text-[10px] font-extrabold text-brand/60">Imtiyozli narx</span>
-                                                                                {(() => {
-                                                                                    const note = student.customPrices && typeof student.customPrices === 'object'
-                                                                                        ? (student.customPrices as Record<string, any>)['note_' + group.id]
-                                                                                        : null;
-                                                                                    return note ? <span className="block text-[10px] text-matn-xira italic mt-0.5 max-w-[120px] truncate">{note}</span> : null;
-                                                                                })()}
-                                                                            </>
-                                                                        ) : (
-                                                                            <>
-                                                                                <span className="block text-xs font-black text-matn-sokin tabular-nums">{(group.coursePrice || 0).toLocaleString()} UZS</span>
-                                                                                <span className="block text-[10px] font-extrabold text-matn-xira">Standart narx</span>
-                                                                            </>
-                                                                        )}
-                                                                    </div>
-                                                                    <button
-                                                                        onClick={() => {
-                                                                            setEditingGroupPrice({ groupId: group.id, name: group.name, coursePrice: group.coursePrice || 0 });
-                                                                            setCustomPriceVal(studentCustomPrice !== undefined ? String(studentCustomPrice) : '');
-                                                                            const existingNote = student.customPrices && typeof student.customPrices === 'object' ? (student.customPrices as Record<string, any>)['note_' + group.id] || '' : '';
-                                                                            setCustomNoteVal(existingNote);
-                                                                            setPriceRecalc(true);
-                                                                        }}
-                                                                        className="p-2 bg-sirt hover:bg-brand/10 dark:hover:bg-brand/10 border border-chiziq hover:border-brand rounded-xl text-matn-xira hover:text-brand transition-all cursor-pointer"
-                                                                        title="Maxsus narx belgilash"
-                                                                    >
-                                                                        <Edit size={12} />
-                                                                    </button>
-                                                                </div>
+                                                                {/* Kurs hisobi — kelgan sana, oylik narx, birinchi oy summasi: bitta oynada. */}
+                                                                <button
+                                                                    onClick={() => setEditingStart({ groupId: group.id, name: group.name, current: kelgan || toDateStr() })}
+                                                                    className="shrink-0 inline-flex items-center gap-1.5 px-3 py-2 bg-sirt border border-chiziq hover:border-brand rounded-xl text-[11px] font-bold text-brand hover:bg-brand/10 transition-colors cursor-pointer"
+                                                                    title="Kelgan sana, oylik narx va birinchi oy summasi"
+                                                                >
+                                                                    <Edit size={12} />
+                                                                    Kurs hisobi
+                                                                </button>
                                                             </div>
                                                         );
                                                     })
@@ -1842,13 +1764,34 @@ export default function StudentDetails() {
                                 </div>
                             )}
 
-                            {activeTab === 'tolovlar' && (
-                                <div className="space-y-6 animate-in fade-in duration-300">
+                            {activeTab === 'tolovlar' && (() => {
+                                // Balans tarixi — hamma narsa bitta joyda (egasi, 2026-09-23):
+                                // kelgan pul (+) va kurslarning oylik hisobi (−), har qatordan
+                                // keyingi balans bilan. To'lov — tahrirlanadi (resepshn 10 daqiqa,
+                                // admin doim); kurs hisobi — "Kurs hisobi" oynasida.
+                                const tartib = [...studentPayments].sort((a, b) => a.date.localeCompare(b.date) || a.id - b.id);
+                                const jamiYozuv = tartib.reduce((s, p) => s + p.amount, 0);
+                                let qoldiq = Math.round((student.balance || 0) - jamiYozuv);   // yozuvlardan oldingi boshlang'ich qoldiq
+                                const qatorlar = tartib.map(p => { qoldiq += p.amount; return { p, keyin: qoldiq }; }).reverse();
+                                const jamiHisob = tartib.reduce((s, p) => s + (p.amount < 0 ? -p.amount : 0), 0);
+                                const kursNomi = (gid?: number | null) => gid ? (groups.find(g => g.id === gid)?.name || '') : '';
+                                const matn = (p: Payment) => (p.description || '').replace(/^\[[^\]]+\]\s*/, '');
+                                const usul = (p: Payment) => p.type === 'Naqd' ? t('type_cash')
+                                    : p.type === 'Karta' ? t('type_card')
+                                    : p.type === 'Peyme' ? 'Payme'
+                                    : p.type === 'Klik' ? t('type_click')
+                                    : p.type;
+                                const bal = student.balance || 0;
+                                return (
+                                <div className="space-y-4 animate-in fade-in duration-300">
                                     <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-5 bg-ichki/40 border border-chiziq rounded-2xl">
                                         <div>
-                                            <h4 className="text-xs font-black text-matn tracking-tight">{t('transactions_history')}</h4>
-                                            <p className="text-[11px] font-bold text-matn-xira mt-1 tabular-nums">
-                                                Jami to'langan {totalPaid.toLocaleString()} so'm · {studentPayments.length} operatsiya
+                                            <p className="text-[11px] font-bold text-matn-xira">Balans</p>
+                                            <p className={`num text-2xl font-black mt-0.5 ${bal > 0 ? 'text-yaxshi' : bal < 0 ? 'text-xato' : 'text-matn'}`}>
+                                                {bal > 0 ? '+' : ''}{Math.round(bal).toLocaleString('ru-RU')} <span className="text-xs font-bold text-matn-xira">so'm</span>
+                                            </p>
+                                            <p className="num text-[11px] font-bold text-matn-xira mt-1">
+                                                Kelgan pul {totalPaid.toLocaleString('ru-RU')} · kurslar hisobi {jamiHisob.toLocaleString('ru-RU')}
                                             </p>
                                         </div>
                                         <button onClick={() => setShowPaymentModal(true)}
@@ -1856,70 +1799,60 @@ export default function StudentDetails() {
                                             {t('add_payment')}
                                         </button>
                                     </div>
-                                    {studentPayments.length === 0 ? (
+                                    {qatorlar.length === 0 ? (
                                         <p className="text-center py-12 text-[11px] text-matn-xira font-bold">{t('no_payments_found')}</p>
                                     ) : (
                                         <div className="bg-sirt border border-chiziq rounded-2xl overflow-hidden shadow-sm divide-y divide-chiziq-mayin dark:divide-gray-700/50">
-                                            {studentPayments.map(p => {
-                                                const isDeduction = p.amount < 0;
-                                                const isChegirma = p.type === 'Chegirma';
-                                                const method = isDeduction ? 'Hisob'
-                                                    : isChegirma ? 'Chegirma'
-                                                    : p.type === 'Naqd' ? t('type_cash')
-                                                    : p.type === 'Karta' ? t('type_card')
-                                                    : p.type === 'Peyme' ? t('type_payme')
-                                                    : p.type === 'Klik' ? t('type_click')
-                                                    : p.type;
+                                            {qatorlar.map(({ p, keyin }) => {
+                                                const hisob = p.amount < 0 || p.type === 'Oylik';
+                                                const kurs = kursNomi(p.groupId);
+                                                const kursBor = !!p.groupId && studentGroups.some(g => g.id === p.groupId);
+                                                const tahrir = hisob
+                                                    ? (kursBor ? () => setEditingStart({ groupId: p.groupId!, name: kurs, current: kursSanasi(p.groupId!) || toDateStr() }) : null)
+                                                    : (canEditPayment(p, currentUser?.role) ? () => setEditingPayment(p) : null);
                                                 return (
-                                                    <div key={p.id} className="flex items-center gap-3 sm:gap-4 px-4 sm:px-5 py-3.5 hover:bg-gray-55/50 dark:hover:bg-gray-900/30 transition-colors">
-                                                        <div className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 border ${isDeduction
+                                                    <div key={p.id} className="flex items-center gap-3 sm:gap-4 px-4 sm:px-5 py-3 hover:bg-ichki/50 transition-colors">
+                                                        <div className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 border ${hisob
                                                             ? 'bg-rose-50 text-rose-500 border-rose-100 dark:bg-rose-950/20 dark:text-rose-400 dark:border-rose-900/40'
-                                                            : isChegirma
-                                                                ? 'bg-sky-50 text-sky-600 border-sky-100 dark:bg-sky-950/20 dark:text-sky-400 dark:border-sky-900/40'
-                                                                : 'bg-emerald-50 text-emerald-600 border-emerald-100 dark:bg-emerald-950/20 dark:text-emerald-400 dark:border-emerald-900/40'
+                                                            : 'bg-emerald-50 text-emerald-600 border-emerald-100 dark:bg-emerald-950/20 dark:text-emerald-400 dark:border-emerald-900/40'
                                                         }`}>
-                                                            {isDeduction ? <ReceiptText size={15} /> : <CreditCard size={15} />}
+                                                            {hisob ? <ReceiptText size={15} /> : <CreditCard size={15} />}
                                                         </div>
                                                         <div className="min-w-0 flex-1">
                                                             <p className="text-[13px] font-bold text-matn truncate">
-                                                                {p.description || (isDeduction ? 'Oylik hisoblandi' : "To'lov qabul qilindi")}
+                                                                {hisob
+                                                                    ? (matn(p) || `${kurs} — oylik hisob`)
+                                                                    : `To'lov · ${usul(p)}`}
                                                             </p>
-                                                            <p className="text-[11px] font-semibold text-matn-xira truncate mt-0.5">
-                                                                {isDeduction ? 'Avtomatik hisoblash'
-                                                                    : isChegirma ? 'Qayta hisob — pul kirmagan'
-                                                                    : method + ' orqali'}
+                                                            <p className="num text-[11px] font-semibold text-matn-xira truncate mt-0.5">
+                                                                {p.date.split('-').reverse().join('.')}
+                                                                {hisob ? ' · balansdan yechildi' : (p.description ? ` · ${p.description}` : ' · balansga tushdi')}
+                                                                {p.editedAt && <span className="text-ogoh"> · tahrirlangan</span>}
                                                             </p>
                                                         </div>
-                                                        <span className={`num text-[13px] font-bold shrink-0 ${isDeduction ? 'text-rose-500 dark:text-rose-400' : isChegirma ? 'text-sky-600 dark:text-sky-400' : 'text-emerald-600 dark:text-emerald-400'}`}>
-                                                            {isDeduction ? '' : '+'}{p.amount.toLocaleString()}
-                                                        </span>
-                                                        <span className="num hidden md:block text-[11px] text-matn-xira w-24 text-right shrink-0">{p.date}</span>
-                                                        <span className={`hidden sm:inline-block text-[10px] font-black px-2 py-0.5 rounded-md border shrink-0 ${isDeduction
-                                                            ? 'text-rose-500 bg-rose-50 border-rose-100 dark:bg-rose-950/20 dark:border-rose-900/40'
-                                                            : 'text-gray-650 dark:text-gray-400 bg-ichki border-chiziq'
-                                                        }`}>
-                                                            {method}
-                                                        </span>
-                                                        {/* Tahrirlash: resepshn 10 daqiqa ichida, administrator doim. */}
-                                                        {canEditPayment(p, currentUser?.role) ? (
-                                                            <button
-                                                                onClick={() => setEditingPayment(p)}
-                                                                title="To'lovni tahrirlash"
-                                                                className="w-7 h-7 shrink-0 flex items-center justify-center rounded-lg text-matn-xira hover:text-brand hover:bg-brand/10 transition-colors cursor-pointer"
-                                                            >
+                                                        <div className="text-right shrink-0">
+                                                            <p className={`num text-[13px] font-bold ${p.amount < 0 ? 'text-rose-500 dark:text-rose-400' : 'text-emerald-600 dark:text-emerald-400'}`}>
+                                                                {p.amount > 0 ? '+' : p.amount < 0 ? '−' : ''}{Math.abs(p.amount).toLocaleString('ru-RU')}
+                                                            </p>
+                                                            <p className={`num text-[10px] font-bold mt-0.5 ${keyin < 0 ? 'text-xato' : 'text-matn-xira'}`} title="Shu yozuvdan keyingi balans">
+                                                                balans {keyin.toLocaleString('ru-RU')}
+                                                            </p>
+                                                        </div>
+                                                        {tahrir ? (
+                                                            <button onClick={tahrir}
+                                                                title={hisob ? 'Kurs hisobi' : "To'lovni tahrirlash"}
+                                                                className="w-7 h-7 shrink-0 flex items-center justify-center rounded-lg text-matn-xira hover:text-brand hover:bg-brand/10 transition-colors cursor-pointer">
                                                                 <Edit size={13} />
                                                             </button>
                                                         ) : <span className="w-7 shrink-0" />}
-                                                        {p.editedAt && (
-                                                            <span className="hidden lg:inline text-[10px] font-bold text-ogoh shrink-0" title={`Tahrirlangan: ${new Date(p.editedAt).toLocaleString('ru-RU')}`}>tahrirlangan</span>
-                                                        )}
                                                     </div>
                                                 );
                                             })}
                                         </div>
                                     )}
                                 </div>
-                            )}
+                                );
+                            })()}
 
                             {activeTab === 'courses' && (
                                 <div className="space-y-6 animate-in fade-in duration-300">
@@ -2402,10 +2335,10 @@ export default function StudentDetails() {
                 </div>
             )}
             {showGroupModal && (
-                <GroupAddModal studentId={student.id} currentGroups={student.groups || []} availableGroups={groups}
+                <GroupAddModal studentId={student.id} schoolId={student.schoolId} trial={student.status === 'Sinov'} currentGroups={student.groups || []} availableGroups={groups}
                     onClose={() => setShowGroupModal(false)}
-                    onAdd={async (groupId: number) => {
-                        await addStudentToGroup(groupId, student.id);
+                    onAdd={async (groupId: number, sana: string, summa?: number) => {
+                        await addStudentToGroup(groupId, student.id, sana, summa);
                     }}
                 />
             )}
@@ -2473,28 +2406,22 @@ export default function StudentDetails() {
                 </div>
             )}
 
-            {/* Kursga kelgan sana — hisob shu kundan boshlanadi. */}
-            {/* To'lov taqsimoti — shu o'quvchi uchun qo'lda. */}
+            {/* Balans taqsimoti — shu o'quvchi uchun: teng (standart) yoki foizda. */}
             {taqsimOyna && (() => {
                 const kurslar = studentGroups;
                 const jami = kurslar.reduce((s, g) => s + (Number(taqsimFoiz[String(g.id)]) || 0), 0);
-                const markazNomi = qoidaMatni(amaldagiQoida(null, settings?.multiCoursePay), () => '');
-                const variantlar: { v: 'markaz' | TaqsimQoida; label: string; izoh: string }[] = [
-                    { v: 'markaz', label: 'Markaz qoidasi', izoh: `Sozlamalardagidek (hozir: ${markazNomi})` },
-                    { v: 'eski', label: 'Eng eski qarzdan', izoh: "Navbat bilan: birinchi kurs to'liq, qolgani keyingisiga" },
-                    { v: 'teng', label: 'Kurslarga teng', izoh: "Yetmasa ikkala kursda teng qarz qoladi" },
-                    { v: 'foiz', label: "Foizda — o'zim belgilayman", izoh: 'Masalan 70% / 30%' },
-                    { v: 'qarz', label: 'Qarzga qarab', izoh: "Qaysi kursning hisobi katta bo'lsa, o'shanga ko'proq" },
+                const variantlar: { v: 'teng' | 'foiz'; label: string; izoh: string }[] = [
+                    { v: 'teng', label: 'Teng — avtomatik', izoh: "Balansdagi pul kurslarga teng bo'linadi. Yetmasa har kursda teng qarz qoladi" },
+                    { v: 'foiz', label: "Foizda — o'zim belgilayman", izoh: 'Masalan 50% / 50% yoki 70% / 30%' },
                 ];
                 const saqlash = async () => {
                     if (taqsimQoidaVal === 'foiz' && Math.abs(jami - 100) > 0.01) {
                         showNotification("Foizlar yig'indisi 100 bo'lishi kerak", 'error');
                         return;
                     }
-                    const payShare = taqsimQoidaVal === 'markaz' ? null
-                        : taqsimQoidaVal === 'foiz'
-                            ? { rule: 'foiz' as const, weights: Object.fromEntries(kurslar.map(g => [String(g.id), Number(taqsimFoiz[String(g.id)]) || 0])) }
-                            : { rule: taqsimQoidaVal };
+                    const payShare = taqsimQoidaVal === 'foiz'
+                        ? { rule: 'foiz' as const, weights: Object.fromEntries(kurslar.map(g => [String(g.id), Number(taqsimFoiz[String(g.id)]) || 0])) }
+                        : null;
                     setTaqsimSaqlanmoqda(true);
                     try {
                         await updateStudent(student.id, { payShare } as any);
@@ -2509,14 +2436,14 @@ export default function StudentDetails() {
                         <div className="relative bg-sirt w-full max-w-md rounded-[2rem] p-8 shadow-2xl border border-chiziq">
                             <div className="flex items-center justify-between mb-5 pb-4 border-b border-chiziq-mayin/50">
                                 <div>
-                                    <h3 className="text-sm font-black text-matn tracking-tight">To'lov taqsimoti</h3>
+                                    <h3 className="text-sm font-black text-matn tracking-tight">Balans taqsimoti</h3>
                                     <p className="text-[11px] font-bold text-brand mt-0.5">{displayName(student.name)} · {kurslar.length} ta kurs</p>
                                 </div>
                                 <button aria-label="Yopish" onClick={() => setTaqsimOyna(false)} className="w-8 h-8 flex items-center justify-center text-matn-xira hover:bg-ichki rounded-xl cursor-pointer"><X size={18} /></button>
                             </div>
                             <p className="text-[11px] font-bold text-matn-xira leading-relaxed mb-4">
-                                Bu o'quvchining puli kurslarga qanday bo'linadi — kassaga pul kelganda ham,
-                                har oy boshida oylik balansdan yechilganda ham.
+                                Pul doim balansga tushadi. Har oy kurslarning hisobi balansdan shu
+                                taqsimot bo'yicha yechiladi — avval qarz yopiladi, qolgani balansda turadi.
                             </p>
                             <div className="space-y-2">
                                 {variantlar.map(o => (
@@ -2582,7 +2509,7 @@ export default function StudentDetails() {
             })()}
 
             {editingStart && student && (
-                <KelganSanaModal
+                <KursHisobModal
                     studentId={student.id}
                     schoolId={student.schoolId}
                     groupId={editingStart.groupId}
@@ -2601,87 +2528,6 @@ export default function StudentDetails() {
                 />
             )}
 
-            {editingGroupPrice && (
-                <div className="fixed inset-0 z-[250] flex items-start sm:items-center-safe justify-center overflow-y-auto p-4">
-                    <div className="fixed inset-0 bg-gray-900/60 backdrop-blur-sm" onClick={() => setEditingGroupPrice(null)} />
-                    <div className="relative bg-sirt w-full max-w-sm rounded-[2rem] p-8 shadow-2xl overflow-hidden border border-chiziq">
-                        <div className="flex items-center justify-between mb-6 pb-4 border-b border-chiziq-mayin/50">
-                            <div>
-                                <h3 className="text-sm font-black text-matn tracking-tight">Maxsus narx</h3>
-                                <p className="text-[11px] font-bold text-brand mt-0.5">{editingGroupPrice.name}</p>
-                            </div>
-                            <button aria-label="Yopish" onClick={() => setEditingGroupPrice(null)} className="w-8 h-8 flex items-center justify-center text-matn-xira hover:bg-gray-50 dark:hover:bg-gray-750 rounded-xl cursor-pointer"><X size={18} /></button>
-                        </div>
-                        <div className="space-y-4">
-                            <div>
-                                <label className="block text-[11px] font-bold text-matn-xira mb-2">Oylik to'lov miqdori (UZS)</label>
-                                <input
-                                    type="number"
-                                    placeholder={String(editingGroupPrice.coursePrice)}
-                                    className="w-full px-4 py-3 bg-ichki border border-chiziq rounded-2xl text-xs font-bold text-matn focus:border-brand focus:ring-4 focus:ring-[#1b6b6b]/10 outline-none transition-all"
-                                    value={customPriceVal}
-                                    onChange={e => setCustomPriceVal(e.target.value)}
-                                />
-                                <span className="block text-[10px] text-matn-xira font-medium mt-1">Standart narx: {editingGroupPrice.coursePrice.toLocaleString()} UZS</span>
-                            </div>
-                            <div>
-                                <label className="block text-[11px] font-bold text-matn-xira mb-2">Izoh (chegirma sababi)</label>
-                                <input
-                                    type="text"
-                                    placeholder="Masalan: Aka-ukasi bor, Stipendiyachi..."
-                                    className="w-full px-4 py-3 bg-ichki border border-chiziq rounded-2xl text-xs font-medium text-matn focus:border-brand focus:ring-4 focus:ring-[#1b6b6b]/10 outline-none transition-all"
-                                    value={customNoteVal}
-                                    onChange={e => setCustomNoteVal(e.target.value)}
-                                />
-                            </div>
-                            {/* Oy o'rtasida chegirma berilsa, shu oyning hisobi
-                                eski narxda qolib ketardi — endi tanlov bor. */}
-                            <label className="flex items-start gap-2.5 p-3 bg-ichki/50 border border-chiziq rounded-2xl cursor-pointer">
-                                <input type="checkbox" checked={priceRecalc} onChange={e => setPriceRecalc(e.target.checked)} className="mt-0.5 accent-[#1b6b6b] cursor-pointer" />
-                                <span className="text-[11px] font-bold text-matn leading-relaxed">
-                                    Shu oyning hisobi ham yangi narxga moslansin
-                                    <span className="block text-[10px] font-medium text-matn-xira mt-0.5">
-                                        Belgilanmasa yangi narx keyingi oydan ishlaydi
-                                    </span>
-                                </span>
-                            </label>
-                            <div className="flex gap-2 pt-2">
-                                <button
-                                    type="button"
-                                    disabled={savingPrice}
-                                    onClick={async () => {
-                                        setSavingPrice(true);
-                                        try {
-                                            await narxniSaqlash(editingGroupPrice.groupId, null, '');
-                                        } finally { setSavingPrice(false); }
-                                    }}
-                                    className="flex-1 py-3 bg-rose-50 hover:bg-rose-100 disabled:opacity-50 text-rose-600 dark:bg-rose-950/20 dark:text-rose-400 rounded-xl text-[11px] font-bold transition-all cursor-pointer"
-                                >
-                                    O'chirish
-                                </button>
-                                <button
-                                    type="button"
-                                    disabled={savingPrice}
-                                    onClick={async () => {
-                                        const val = Number(customPriceVal);
-                                        if (!customPriceVal.trim() || isNaN(val) || val < 0) {
-                                            showNotification("Noto'g'ri qiymat kiritildi", 'error');
-                                            return;
-                                        }
-                                        setSavingPrice(true);
-                                        try {
-                                            await narxniSaqlash(editingGroupPrice.groupId, val, customNoteVal.trim());
-                                        } finally { setSavingPrice(false); }
-                                    }}
-                                    className="flex-1 py-3 bg-brand hover:bg-brand-dark disabled:opacity-50 text-white rounded-xl text-[11px] font-bold transition-all cursor-pointer"
-                                >
-                                    {savingPrice ? 'Saqlanmoqda…' : 'Saqlash'}
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            )}
         </div>
     );
 }
@@ -2694,128 +2540,25 @@ function PaymentAddModal({ studentId, onClose, onAdd }: { studentId: number; onC
     // Payme orqali: havola/QR — pul Payme'dan webhook bilan o'zi tushadi, qo'lda yozilmaydi.
     const [showPayme, setShowPayme] = useState(false);
     const paymeOn = (settings.paymeMode === 'live' || settings.paymeMode === 'test') && ['ADMIN', 'MANAGER', 'RECEPTIONIST', 'SUPERADMIN'].includes(crmUser?.role || '');
-    /**
-     * Standart — "umumiy": kurs so'ralmaydi, pul hisobga tushadi va ochiq
-     * hisoblarni o'zi yopadi. Kerak bo'lganda kurslarga bo'lib yoziladi
-     * (egasi, 2026-09-23): o'sha kursga alohida yozuv ketadi.
-     */
-    const [payMode, setPayMode] = useState<'umumiy' | 'kurs'>('umumiy');
-    const [payLines, setPayLines] = useState<Record<number, number>>({});
     const [createdPaymentForReceipt, setCreatedPaymentForReceipt] = useState<any>(null);
 
     const student = students.find(s => s.id === studentId);
 
-    /**
-     * Markazda "kurs" deb aynan guruh tushuniladi, shuning uchun ro'yxatda
-     * guruhlar turadi: avval o'quvchining o'zi a'zo bo'lganlari, ular yo'q
-     * bo'lsa markazdagi hammasi. To'lov guruhga bog'lansa ustoz ulushi ham
-     * to'g'ri hisoblanadi.
-     */
-    const studentCourses = (() => {
-        const bilanNarx = (gs: typeof groups) => gs.map(g => ({
-            id: g.id,
-            name: g.name,
-            courseId: g.courseId,
-            price: courses.find(c => c.id === g.courseId)?.price ?? 0,
-        }));
-        const own = groups.filter(g => (g.studentIds || []).includes(studentId));
-        return bilanNarx(own.length > 0 ? own : groups);
-    })();
-
-    /**
-     * Kurs kesimidagi qarz — "Qarzga qarab" taqsimlash uchun.
-     * Faqat bir nechta kursda o'qiydiganda so'raladi (aks holda keraksiz so'rov).
-     */
-    const [payLedger, setPayLedger] = useState<any>(null);
-    useEffect(() => {
-        if (studentCourses.length < 2) return;
-        let off = false;
-        (async () => {
-            try {
-                const r = await fetch(`/api/students/${studentId}/ledger`, {
-                    headers: { Authorization: `Bearer ${localStorage.getItem('token')}` },
-                });
-                const j = await r.json();
-                if (!off && r.ok) setPayLedger(j);
-            } catch { /* qarzsiz ham ishlayveradi — teng bo'linadi */ }
-        })();
-        return () => { off = true; };
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [studentId, studentCourses.length]);
-
-    const kursQarzi = (groupId: number): number =>
-        Number(payLedger?.courses?.find((c: any) => c.groupId === groupId)?.debt || 0);
-
-    /** O'quvchi nechta kursda o'qiyapti — savol faqat bir nechtada chiqadi. */
+    /** O'quvchining kurslari — pul qaysi kurslarga yechilishini ko'rsatish uchun. */
+    const studentCourses = groups.filter(g => (g.studentIds || []).includes(studentId));
     const kopKurs = studentCourses.length > 1;
-    /** Shu o'quvchi uchun amaldagi qoida: kartochkada o'zi belgilangan bo'lsa — o'sha. */
-    const amalQoida = amaldagiQoida(student?.payShare, settings?.multiCoursePay);
-    const qoidaYozuvi = qoidaMatni(amalQoida, id => groups.find(g => g.id === id)?.name || ('#' + id));
-    const taqsimQoida = amalQoida.rule;
-
-    /** Jami summani kurslarga bo'lish: teng yoki qarz ulushiga qarab. */
-    const tengBolish = (usul: 'teng' | 'qarz' = 'teng', summa?: number) => {
-        const jami = Math.round(summa ?? (Number(amount) || 0));
-        if (jami <= 0 || studentCourses.length === 0) return;
-        const qarzlar = studentCourses.map(c => Math.max(0, kursQarzi(c.id)));
-        const jamiQarz = qarzlar.reduce((s, v) => s + v, 0);
-        const ulushlar = usul === 'qarz' && jamiQarz > 0
-            ? qarzlar.map(q => q / jamiQarz)
-            : studentCourses.map(() => 1 / studentCourses.length);
-        const yangi: Record<number, number> = {};
-        let berilgan = 0;
-        studentCourses.forEach((c, i) => {
-            const qism = i === studentCourses.length - 1 ? jami - berilgan : Math.round(jami * ulushlar[i]);
-            yangi[c.id] = qism;
-            berilgan += qism;
-        });
-        setPayLines(yangi);
-    };
-
-    // Standart doim "umumiy": qoidani (eski / teng / qarz) hisob motori o'zi
-    // qo'llaydi — to'lovda ham, har oy boshida balansdan yechganda ham.
-    // Oldindan kurslarga bo'lib yozilsa pul kursga yopishib qolardi.
-    useEffect(() => { if (!kopKurs) setPayMode('umumiy'); }, [kopKurs]);
+    const qoidaYozuvi = qoidaMatni(amaldagiQoida(student?.payShare), id => groups.find(g => g.id === id)?.name || ('#' + id));
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         const sana = new Date().toISOString().split('T')[0];
-        const qatorlar = payMode === 'kurs'
-            ? studentCourses
-                .map(c => ({ c, amount: Math.round(Number(payLines[c.id]) || 0) }))
-                .filter(x => x.amount > 0)
-            : [];
-
-        if (payMode === 'kurs' && !qatorlar.length) {
-            showNotification("Qaysi kursga qancha to'layotganini ko'rsating", 'error');
-            return;
-        }
-
-        let created: any;
-        if (payMode === 'kurs') {
-            const saved = [];
-            for (const { c, amount: sum } of qatorlar) {
-                saved.push(await onAdd({
-                    studentId, amount: sum, type,
-                    groupId: c.id, courseId: c.courseId,
-                    date: sana, description: '',
-                }));
-            }
-            created = qatorlar.length === 1 ? saved[0] : {
-                ...saved[0],
-                amount: qatorlar.reduce((s, l) => s + l.amount, 0),
-                description: qatorlar.map(l => `${l.c.name}: ${l.amount.toLocaleString()}`).join(', '),
-                courseId: null,
-            };
-        } else {
-            // Umumiy: kursga bog'lanmaydi. O'quvchi bitta kursda bo'lsa server
-            // o'zi biriktiradi, bir nechtada bo'lsa eng eski hisobdan yopiladi.
-            created = await onAdd({
-                studentId, amount: Number(amount), type,
-                groupId: null, courseId: null,
-                date: sana, description: '',
-            });
-        }
+        // Pul faqat balansga (egasi, 2026-09-23): kursga bog'lanmaydi, kurslarning
+        // hisobi balansdan o'quvchining taqsimoti bo'yicha yopiladi.
+        const created = await onAdd({
+            studentId, amount: Number(amount), type,
+            groupId: null, courseId: null,
+            date: sana, description: '',
+        });
         setCreatedPaymentForReceipt(created);
 
         setTimeout(async () => {
@@ -3049,70 +2792,11 @@ function PaymentAddModal({ studentId, onClose, onAdd }: { studentId: number; onC
                                 </div>
                             </div>
 
-                            {/* Savol faqat bir nechta kursda o'qiydiganda. Bitta kursda
-                                pul o'sha kursga tushadi — tanlov ham, izoh ham kerak emas. */}
-                            {kopKurs && (
-                            <div>
-                                <label className={labelCls}>TAQSIMLASH</label>
-                                <div className="grid grid-cols-2 gap-2">
-                                    {([
-                                        { v: 'umumiy', label: "Umumiy to'lov", izoh: qoidaYozuvi },
-                                        { v: 'kurs', label: "Kurslarga bo'lib", izoh: 'qaysi kursga qancha' },
-                                    ] as const).map(m => (
-                                        <button key={m.v} type="button" onClick={() => setPayMode(m.v)}
-                                            className={`px-3 py-2.5 rounded-xl text-xs font-bold border transition-all cursor-pointer ${
-                                                payMode === m.v
-                                                    ? 'bg-brand/10 border-brand text-brand'
-                                                    : 'bg-ichki border-chiziq text-matn-xira hover:border-brand/40'
-                                            }`}>
-                                            {m.label}
-                                            <span className="block text-[10px] font-bold opacity-70 mt-0.5">{m.izoh}</span>
-                                        </button>
-                                    ))}
-                                </div>
-
-                                {payMode === 'umumiy' ? (
-                                    <p className="text-[10px] font-bold text-matn-xira mt-2 leading-relaxed">
-                                        Pul hisobga tushadi va bu o'quvchining qoidasi bo'yicha <span className="text-brand">
-                                            {qoidaYozuvi}
-                                        </span> — keyingi oylarda balansdan yechganda ham. «Kurslarga bo'lib» — faqat ota-ona aniq kursni aytsa.
-                                    </p>
-                                ) : (
-                                    <div className="mt-3 space-y-2">
-                                        <div className="flex flex-wrap gap-2">
-                                            <button type="button" onClick={() => tengBolish('teng')}
-                                                className="px-2.5 py-1.5 text-[10px] font-bold border border-chiziq text-matn-sokin rounded-lg hover:border-brand hover:text-brand transition-colors cursor-pointer">
-                                                Teng bo'lish ({studentCourses.length} kurs)
-                                            </button>
-                                            <button type="button" onClick={() => tengBolish('qarz')}
-                                                className="px-2.5 py-1.5 text-[10px] font-bold border border-chiziq text-matn-sokin rounded-lg hover:border-brand hover:text-brand transition-colors cursor-pointer">
-                                                Qarzga qarab
-                                            </button>
-                                        </div>
-                                        {studentCourses.map(c => (
-                                            <div key={c.id} className="flex items-center justify-between gap-3 p-3 bg-ichki rounded-2xl border border-chiziq/80">
-                                                <div className="min-w-0">
-                                                    <p className="text-[12px] font-bold text-matn truncate">{c.name}</p>
-                                                    {c.price > 0 && (
-                                                        <p className="num text-[10px] font-bold text-matn-xira mt-0.5">{c.price.toLocaleString()} so'm/oy</p>
-                                                    )}
-                                                </div>
-                                                <input type="number" min={0} placeholder="0"
-                                                    className="w-32 shrink-0 px-3 py-2 bg-sirt border border-chiziq rounded-xl text-xs font-bold text-matn text-right tabular-nums outline-none focus:border-brand"
-                                                    value={payLines[c.id] || ''}
-                                                    onChange={e => setPayLines(prev => ({ ...prev, [c.id]: Number(e.target.value) || 0 }))} />
-                                            </div>
-                                        ))}
-                                        <div className="flex items-center justify-between pt-2 border-t border-dashed border-chiziq/50">
-                                            <span className="text-[11px] font-bold text-matn-xira">Jami qabul qilinadi</span>
-                                            <span className="num text-sm font-black text-brand">
-                                                {Object.values(payLines).reduce((s, v) => s + (Number(v) || 0), 0).toLocaleString()} so'm
-                                            </span>
-                                        </div>
-                                    </div>
-                                )}
-                            </div>
-                            )}
+                            {/* Pul doim balansga tushadi: avval qarz yopiladi, qolgani balansda. */}
+                            <p className="text-[11px] font-bold text-matn-xira leading-relaxed bg-ichki/50 border border-chiziq rounded-2xl px-4 py-3">
+                                Pul <span className="text-matn">balansga</span> tushadi — avval qarz yopiladi, qolgani balansda turadi.
+                                {kopKurs && <> Kurslarga: <span className="text-brand">{qoidaYozuvi}</span>.</>}
+                            </p>
 
                             <div>
                                 <label className={labelCls}>TO'LOV USULI</label>
@@ -3147,25 +2831,58 @@ function PaymentAddModal({ studentId, onClose, onAdd }: { studentId: number; onC
     );
 }
 
-function GroupAddModal({ studentId, currentGroups, availableGroups, onClose, onAdd }: any) {
+function GroupAddModal({ studentId, schoolId, trial, currentGroups, availableGroups, onClose, onAdd }: any) {
     const options = availableGroups.filter((g: any) => !currentGroups.includes(g.id));
+    // 1-qadam: kurs tanlanadi; 2-qadam: kelgan sana va birinchi oy summasi
+    // (tizim hisoblaydi, xodim o'zgartirishi mumkin).
+    const [tanlangan, setTanlangan] = useState<any>(null);
+    const [sana, setSana] = useState(toDateStr());
+    const [summa, setSumma] = useState<number | undefined>(undefined);
+    const [saqlanmoqda, setSaqlanmoqda] = useState(false);
     return (
         <div className="fixed inset-0 z-[100] flex items-start sm:items-center-safe justify-center overflow-y-auto p-4">
             <div className="fixed inset-0 bg-gray-900/60 backdrop-blur-sm" onClick={onClose} />
             <div className="relative bg-sirt w-full max-w-sm rounded-[2rem] shadow-2xl overflow-hidden border border-chiziq" onClick={e => e.stopPropagation()}>
                 <div className="p-4 flex items-center justify-between border-b border-chiziq bg-ichki">
-                    <div>
+                    <div className="min-w-0">
                         <h3 className="text-lg font-bold text-matn tracking-tight">Kursga Qo'shish</h3>
-                        <p className="text-[11px] font-bold text-matn-xira mt-0.5">Yangi kurs tanlash</p>
+                        <p className="text-[11px] font-bold text-matn-xira mt-0.5 truncate">{tanlangan ? tanlangan.name : 'Yangi kurs tanlash'}</p>
                     </div>
                     <button onClick={onClose} className="w-9 h-9 flex items-center justify-center text-matn-xira hover:bg-white dark:hover:bg-gray-700 rounded-xl cursor-pointer"><XCircle size={18} /></button>
                 </div>
+                {tanlangan ? (
+                    <div className="p-4 space-y-4">
+                        <div>
+                            <label className="block text-[11px] font-bold text-matn-xira mb-2">Kursga kelgan sana</label>
+                            <input type="date" value={sana} onChange={e => { setSana(e.target.value); setSumma(undefined); }}
+                                className="w-full px-4 py-3 bg-ichki border border-chiziq rounded-2xl text-xs font-bold text-matn focus:border-brand outline-none transition-all" />
+                        </div>
+                        <div className="p-3 bg-ichki/50 border border-chiziq rounded-2xl">
+                            <BirinchiOyInput groupId={tanlangan.id} schoolId={schoolId} startDate={sana} studentId={studentId}
+                                value={summa} onChange={setSumma} trial={trial} />
+                        </div>
+                        <div className="flex gap-2">
+                            <button type="button" onClick={() => setTanlangan(null)}
+                                className="flex-1 py-3 bg-ichki hover:bg-gray-100 dark:hover:bg-gray-800 text-matn-xira rounded-xl text-[11px] font-bold transition-all cursor-pointer">
+                                Orqaga
+                            </button>
+                            <button type="button" disabled={saqlanmoqda || !sana}
+                                onClick={async () => {
+                                    setSaqlanmoqda(true);
+                                    try { await onAdd(tanlangan.id, sana, summa); onClose(); } finally { setSaqlanmoqda(false); }
+                                }}
+                                className="flex-1 py-3 bg-brand hover:bg-brand-dark disabled:opacity-50 text-white rounded-xl text-[11px] font-bold transition-all cursor-pointer">
+                                {saqlanmoqda ? 'Qo\'shilmoqda…' : 'Qo\'shish'}
+                            </button>
+                        </div>
+                    </div>
+                ) : (
                 <div className="p-4 max-h-[350px] overflow-y-auto space-y-2 custom-scrollbar">
                     {options.length === 0 ? (
                         <p className="text-center py-8 text-[11px] text-matn-xira font-bold">Barcha kurslarga a'zo</p>
                     ) : (
                         options.map((g: any) => (
-                            <button key={g.id} onClick={() => { onAdd(g.id); onClose(); }}
+                            <button key={g.id} onClick={() => { setTanlangan(g); setSumma(undefined); }}
                                 className="w-full flex items-center justify-between p-3.5 bg-white dark:bg-gray-905 border border-gray-100 dark:border-gray-750 hover:border-teal-300 rounded-2xl transition-all group cursor-pointer text-left">
                                 <div>
                                     <p className="text-xs font-black text-matn group-hover:text-brand transition-colors tracking-tight">{g.name}</p>
@@ -3178,6 +2895,7 @@ function GroupAddModal({ studentId, currentGroups, availableGroups, onClose, onA
                         ))
                     )}
                 </div>
+                )}
             </div>
         </div>
     );

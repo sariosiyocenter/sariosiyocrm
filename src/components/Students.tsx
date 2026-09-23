@@ -14,6 +14,7 @@ import { uploadProfilePhoto, removeBackgroundHQ } from '../lib/image';
 import * as XLSX from 'xlsx';
 import { STUDY_GOALS, UZB_REGIONS, ORG_TYPES, PRIVILEGES, ALL_GRADES, gradeOptions, gradeLabel, keepGrade } from '../lib/studentFields';
 import { STUDENT_SORTS, StudentSort, absenceCounts, sortStudents } from '../lib/studentSort';
+import BirinchiOyInput from './BirinchiOyInput';
 
 const inp = "w-full px-4 py-3 bg-ichki border border-chiziq rounded-2xl text-xs font-bold text-matn focus:border-brand focus:ring-4 focus:ring-[#1b6b6b]/10 outline-none transition-all";
 const lbl = "block text-[11px] text-matn-xira mb-1.5";
@@ -66,6 +67,9 @@ export default function Students() {
 
     // Guruhlar filialga bog'liq: boshqa filialning guruhiga yozib bo'lmaydi.
     const branchGroups = groups.filter(g => !g.schoolId || g.schoolId === branchId);
+    // Har tanlangan kurs uchun birinchi oy summasi qo'lda (egasi, 2026-09-23):
+    // yozilmasa tizim kelgan sanadan hisoblaganini yozadi.
+    const [birinchiOy, setBirinchiOy] = useState<Record<string, number | undefined>>({});
 
     const addCertificate = () => {
         setNewStudent(prev => ({
@@ -331,6 +335,9 @@ export default function Students() {
                 startDate: newStudent.startDate,
                 balance: 0,
                 groups: newStudent.selectedGroupIds,
+                charges: Object.fromEntries(newStudent.selectedGroupIds
+                    .filter(id => birinchiOy[String(id)] !== undefined)
+                    .map(id => [String(id), birinchiOy[String(id)]])),
                 routeIds: newStudent.routeIds,
                 // Eski maydon endi ishlatilmaydi (logistika marshrutdan oladi).
                 transportId: null,
@@ -350,6 +357,7 @@ export default function Students() {
                 certificates: newStudent.certificates
             });
             setIsModalOpen(false);
+            setBirinchiOy({});
             setNewStudent({
                 name: '', phone: '', address: '', birthDate: '', location: '', photo: '',
                 gender: 'Erkak',
@@ -1574,7 +1582,7 @@ export default function Students() {
                                     <div>
                                         <label className={lbl}>Kursga kelgan sana</label>
                                         <input type="date" className={inp} value={newStudent.startDate}
-                                            onChange={e => setNewStudent({ ...newStudent, startDate: e.target.value })} />
+                                            onChange={e => { setNewStudent({ ...newStudent, startDate: e.target.value }); setBirinchiOy({}); }} />
                                         <p className="text-[10px] font-bold text-matn-xira mt-1">
                                             {newStudent.status === 'Faol'
                                                 ? 'Tanlangan kurslar uchun shu kundan oy oxirigacha hisob yoziladi'
@@ -1605,6 +1613,21 @@ export default function Students() {
                                                     >
                                                         {selected ? '✓ ' : '+ '}{g.name}
                                                     </button>
+                                                );
+                                            })}
+                                        </div>
+                                    )}
+                                    {/* Tanlangan kurslar: birinchi oy summasi — tizim hisoblaydi, o'zgartirsa bo'ladi. */}
+                                    {newStudent.status === 'Faol' && branchId > 0 && newStudent.selectedGroupIds.length > 0 && (
+                                        <div className="p-3 bg-ichki/50 border border-chiziq rounded-2xl space-y-3">
+                                            {newStudent.selectedGroupIds.map(gid => {
+                                                const g = branchGroups.find(x => x.id === gid);
+                                                if (!g) return null;
+                                                return (
+                                                    <BirinchiOyInput key={gid} groupId={gid} schoolId={branchId} startDate={newStudent.startDate}
+                                                        label={g.name}
+                                                        value={birinchiOy[String(gid)]}
+                                                        onChange={v => setBirinchiOy(prev => ({ ...prev, [String(gid)]: v }))} />
                                                 );
                                             })}
                                         </div>

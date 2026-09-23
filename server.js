@@ -16,7 +16,7 @@ import { fillTemplate, testNatijasiKerak } from './lib/xabarMatni.js';
 import { normalizePayShare } from './lib/allocation.js';
 import jwt from 'jsonwebtoken';
 import bot, { startBot, notifyAdmins, getTelegramBot, rejaniHaydovchigaYuborish, rejaBekorXabari } from './src/bot/bot.js';
-import { transferStudent, refundStudent, enrollStudent, unenrollStudent, syncGroupMembers, activateStudent, syncStudentGroups, setCourseStart, effectiveCourseStart, todayTashkent } from './services/enrollment.js';
+import { transferStudent, refundStudent, enrollStudent, unenrollStudent, syncGroupMembers, activateStudent, syncStudentGroups, setKursHisob, firstMonthQuote, todayTashkent } from './services/enrollment.js';
 import { studentLedger, receivedForGroups, monthCoverage } from './services/ledger.js';
 import { holatniYozish, marshrutniTartiblash, marshrutHolati, rejalarniYozish, rejaniQabulQilish, rejaniYetkazish, REJA_INCLUDE, rejaPuli } from './services/logistics.js';
 import { tarifniTozalash } from './lib/transportNarx.js';
@@ -1554,7 +1554,7 @@ app.get('/api/students', authenticate, async (req, res, next) => {
 });
 app.post('/api/students', authenticate, async (req, res, next) => {
   try {
-    const { groups, schoolId, selectedGroupIds, selectedPrivileges, routeIds, startDate, ...rest } = req.body;
+    const { groups, schoolId, selectedGroupIds, selectedPrivileges, routeIds, startDate, charges, ...rest } = req.body;
     const parsedSchoolId = parseInt(schoolId);
     if (!parsedSchoolId || isNaN(parsedSchoolId) || parsedSchoolId <= 0) {
       return res.status(400).json({ error: 'Valid schoolId required' });
@@ -1607,9 +1607,12 @@ app.post('/api/students', authenticate, async (req, res, next) => {
     // "Kursga kelgan sana" tanlangan bo'lsa — hisob o'sha kundan (o'quvchi
     // bugun ro'yxatga olinib, darsga oy o'rtasidan kelishi mumkin).
     const startDay = /^\d{4}-\d{2}-\d{2}$/.test(String(startDate || '')) ? String(startDate) : undefined;
+    // Har kurs uchun birinchi oy summasi qo'lda berilgan bo'lishi mumkin:
+    // { "<kurs id>": 300000 } — tizim hisoblaganini xodim o'zgartirgan.
+    const qolda = (charges && typeof charges === 'object') ? charges : {};
     const warnings = [];
     for (const gid of groupIds) {
-      const r = await enrollStudent({ studentId: student.id, groupId: gid, date: startDay, schoolId: parsedSchoolId });
+      const r = await enrollStudent({ studentId: student.id, groupId: gid, date: startDay, schoolId: parsedSchoolId, charge: qolda[String(gid)] });
       if (r.warning) warnings.push(r.warning);
     }
     const updatedStudent = await prisma.student.findUnique({
@@ -2143,12 +2146,13 @@ app.post('/api/groups', authenticate, async (req, res, next) => {
 app.post('/api/groups/:id/students', authenticate, async (req, res, next) => {
   try {
     const groupId = parseInt(req.params.id);
-    const { studentId, startDate } = req.body;
+    const { studentId, startDate, charge } = req.body;
     if (!studentId) return res.status(400).json({ error: 'studentId required' });
 
-    // Kursga kelgan sana tanlangan bo'lsa hisob o'sha kundan boshlanadi.
+    // Kursga kelgan sana tanlangan bo'lsa hisob o'sha kundan boshlanadi;
+    // birinchi oy summasi qo'lda berilgan bo'lsa — o'sha yoziladi.
     const startDay = /^\d{4}-\d{2}-\d{2}$/.test(String(startDate || '')) ? String(startDate) : undefined;
-    const enrol = await enrollStudent({ studentId: parseInt(studentId), groupId, date: startDay });
+    const enrol = await enrollStudent({ studentId: parseInt(studentId), groupId, date: startDay, charge });
     if (enrol.error) return res.status(400).json({ error: enrol.error });
 
     const updatedGroup = await prisma.group.findUnique({
@@ -2684,35 +2688,13 @@ app.post('/api/payments', authenticate, requireRole('ADMIN', 'MANAGER', 'RECEPTI
     }
     if (data.studentId) data.studentId = parseInt(data.studentId);
 
-    // To'lovni guruhga bog'lab qo'yamiz — ustozning ulushi aynan guruhga
-    // tushgan pul bo'yicha hisoblanadi. Aniq bo'lmasa (o'quvchi bir nechta
-    // guruhda va kurs tanlanmagan) bo'sh qoldiramiz: KPI hisobida bunday
-    // to'lov hisoblangan summaga proporsional taqsimlanadi.
-    if (data.groupId === undefined && data.studentId) {
-      try {
-        const st = await prisma.student.findUnique({
-          where: { id: data.studentId },
-          select: { groups: { select: { id: true, courseId: true } } },
-        });
-        const sGroups = st?.groups || [];
-        const candidates = data.courseId
-          ? sGroups.filter(g => g.courseId === data.courseId)
-          : sGroups;
-        if (candidates.length === 1) data.groupId = candidates[0].id;
-      } catch (e) {
-        console.error('Guruhni aniqlashda xato:', e.message);
-      }
-    }
-    if (data.groupId !== undefined) {
-      const gid = parseInt(data.groupId);
-      data.groupId = Number.isInteger(gid) && gid > 0 ? gid : null;
-    }
-    // Kurs ixtiyoriy: tanlanmasa null, noto'g'ri qiymat ham null bo'ladi
-    // (0 yoki bo'sh satr foreign key xatosini keltirib chiqarardi).
-    if (data.courseId !== undefined) {
-      const parsedCourseId = parseInt(data.courseId);
-      data.courseId = Number.isInteger(parsedCourseId) && parsedCourseId > 0 ? parsedCourseId : null;
-    }
+    // Pul faqat BALANSGA tushadi (egasi, 2026-09-23: "не надо на курсы,
+    // только общий"). Kurslarga balansdan o'quvchining taqsimot qoidasi
+    // bo'yicha yechiladi (lib/allocation.js): standart — teng, kartochkada
+    // qo'lda foiz berilishi mumkin. Ustoz ulushi baribir to'g'ri: pul qaysi
+    // kursning hisobini yopgan bo'lsa, o'sha kursga sanaladi.
+    data.groupId = null;
+    data.courseId = null;
     const payment = await prisma.payment.create({ data: { ...data, schoolId: parseInt(schoolId) } });
     await prisma.student.update({
       where: { id: payment.studentId },
@@ -4651,16 +4633,21 @@ app.post('/api/teacher-attendances/notify', authenticate, async (req, res, next)
   } catch (error) { next(error); }
 });
 
-// O'quvchining kursga kelgan sanasini o'zgartirish. Oylik hisob shu kundan
-// yuritiladi, shuning uchun o'sha oy (kerak bo'lsa eski oy ham) qayta
-// sanaladi. preview: true — faqat hisob ko'rsatiladi, yozilmaydi.
-app.post('/api/students/:id/course-start', authenticate, requireRole('ADMIN', 'MANAGER', 'RECEPTIONIST'), async (req, res, next) => {
+// Kurs hisobi — bitta joyda (egasi, 2026-09-23): kursga kelgan sana, shu
+// o'quvchi uchun oylik narx va birinchi oy summasi (tizim hisoblaydi, xodim
+// o'zi yozishi mumkin). preview: true — faqat nima o'zgarishi ko'rsatiladi.
+// Narx o'zgartirish — rahbarlar (ADMIN, MANAGER); sana va summa — resepshn ham.
+app.post('/api/students/:id/kurs-hisob', authenticate, requireRole('ADMIN', 'MANAGER', 'RECEPTIONIST'), async (req, res, next) => {
   try {
-    const { schoolId, groupId, date, preview } = req.body;
-    if (!groupId || !date) return res.status(400).json({ error: 'groupId va date kerak' });
-    const result = await setCourseStart({
+    const { schoolId, groupId, startDate, price, firstMonthDue, preview } = req.body;
+    if (!groupId || !startDate) return res.status(400).json({ error: 'groupId va startDate kerak' });
+    if (price !== undefined && !['ADMIN', 'MANAGER', 'SUPERADMIN'].includes(req.user.role)) {
+      return res.status(403).json({ error: "Oylik narxni faqat rahbar o'zgartira oladi" });
+    }
+    const result = await setKursHisob({
       studentId: req.params.id,
-      groupId, date,
+      groupId: parseInt(groupId),
+      startDate, price, firstMonthDue,
       schoolId: schoolId ? parseInt(schoolId) : undefined,
       apply: preview !== true,
     });
@@ -4669,53 +4656,16 @@ app.post('/api/students/:id/course-start', authenticate, requireRole('ADMIN', 'M
   } catch (error) { next(error); }
 });
 
-// Bitta o'quvchi uchun kurs narxi ("500 minglik kursni shu o'quvchiga 450
-// ming"). Narx Student.customPrices ichida kurs raqami bo'yicha saqlanadi.
-// recalc: true bo'lsa shu oyning hisobi ham yangi narxga moslanadi.
-app.post('/api/students/:id/custom-price', authenticate, requireRole('ADMIN', 'MANAGER'), async (req, res, next) => {
+// Kursga qo'shishdan oldin birinchi oy summasi qancha chiqishi (hech narsa
+// yozilmaydi). Qo'shish oynalari shu raqamni ko'rsatadi, xodim o'zgartirsa
+// o'zgargani `charge` bo'lib qo'shish so'roviga ketadi.
+app.post('/api/groups/:id/charge-quote', authenticate, async (req, res, next) => {
   try {
-    const studentId = parseInt(req.params.id);
-    const { groupId, price, note, recalc } = req.body;
-    const gid = parseInt(groupId);
-    if (!Number.isInteger(studentId) || !Number.isInteger(gid)) {
-      return res.status(400).json({ error: 'groupId kerak' });
-    }
-    const student = await prisma.student.findUnique({ where: { id: studentId } });
-    if (!student) return res.status(404).json({ error: "O'quvchi topilmadi" });
-    if (!(await canAccessSchool(req.user, student.schoolId))) return res.status(403).json({ error: "Ruxsat yo'q" });
-    const group = await prisma.group.findFirst({ where: { id: gid, schoolId: student.schoolId } });
-    if (!group) return res.status(404).json({ error: 'Kurs topilmadi' });
-
-    const cp = (student.customPrices && typeof student.customPrices === 'object' && !Array.isArray(student.customPrices))
-      ? { ...student.customPrices } : {};
-    if (price === null || price === undefined || price === '') {
-      delete cp[String(gid)];
-      delete cp['note_' + gid];
-    } else {
-      const val = Number(price);
-      if (!Number.isFinite(val) || val < 0) return res.status(400).json({ error: "Narx noto'g'ri" });
-      cp[String(gid)] = val;
-      if (note && String(note).trim()) cp['note_' + gid] = String(note).trim();
-      else delete cp['note_' + gid];
-    }
-    await prisma.student.update({ where: { id: studentId }, data: { customPrices: cp } });
-
-    // Oy o'rtasida narx o'zgarsa, shu oy uchun allaqachon yozilgan hisob eski
-    // narxda qolib ketardi — chegirma keyingi oydan ishlardi. Shuning uchun
-    // "shu oyga ham" tanlansa hisob kelgan sanadan qaytadan sanaladi.
-    let recalculated = null;
-    if (recalc) {
-      const month = todayTashkent().slice(0, 7);
-      const start = await effectiveCourseStart({ studentId, groupId: gid, month });
-      recalculated = await setCourseStart({ studentId, groupId: gid, date: start, schoolId: student.schoolId, apply: true });
-      if (recalculated.error) recalculated = null;
-    }
-
-    const updated = await prisma.student.findUnique({
-      where: { id: studentId },
-      include: { groups: { select: { id: true } } },
-    });
-    res.json({ ...updated, groups: updated.groups.map(g => g.id), recalculated: recalculated || undefined });
+    const { schoolId, startDate, studentId } = req.body;
+    if (!schoolId) return res.status(400).json({ error: 'schoolId kerak' });
+    const q = await firstMonthQuote({ groupId: parseInt(req.params.id), date: startDate, schoolId: parseInt(schoolId), studentId });
+    if (q.error) return res.status(400).json(q);
+    res.json(q);
   } catch (error) { next(error); }
 });
 

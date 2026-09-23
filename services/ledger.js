@@ -38,19 +38,15 @@ export async function loadRowsByStudent(studentIds) {
 
 /**
  * Har o'quvchi uchun taqsimot qoidasi (allocate() ning ikkinchi argumenti):
- * kartochkasida o'zi belgilangan bo'lsa — o'sha (Student.payShare: teng,
- * qarzga qarab yoki qo'lda foiz), bo'lmasa filial qoidasi
- * (Setting.multiCoursePay). Sozlamasi yo'q filial — 'eski'.
+ * kartochkadagi "Balans taqsimoti"da qo'lda foiz berilgan bo'lsa — o'sha
+ * (Student.payShare), aks holda teng (lib/allocation.js → shareOpts).
  *
  * @returns Map<studentId, { rule, weights? }>
  */
 export async function rulesForStudents(studentIds) {
   if (!studentIds.length) return new Map();
-  const sts = await prisma.student.findMany({ where: { id: { in: studentIds } }, select: { id: true, schoolId: true, payShare: true } });
-  const schoolIds = [...new Set(sts.map(s => s.schoolId))];
-  const sets = await prisma.setting.findMany({ where: { schoolId: { in: schoolIds } }, select: { schoolId: true, multiCoursePay: true } });
-  const bySchool = new Map(sets.map(s => [s.schoolId, s.multiCoursePay]));
-  return new Map(sts.map(s => [s.id, shareOpts(s.payShare, bySchool.get(s.schoolId))]));
+  const sts = await prisma.student.findMany({ where: { id: { in: studentIds } }, select: { id: true, payShare: true } });
+  return new Map(sts.map(s => [s.id, shareOpts(s.payShare)]));
 }
 
 /**

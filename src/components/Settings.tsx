@@ -502,52 +502,6 @@ export default function Settings() {
                     </div>
                 </div>
 
-                {/* Bir nechta kursdagi o'quvchining to'lovi — qoida bir marta
-                    shu yerda belgilanadi, resepshn har safar o'ylamasin
-                    (egasi, 2026-09-23). Bitta kursdagi o'quvchida savol yo'q. */}
-                <div className="bg-sirt border border-chiziq rounded-2xl p-5 shadow-sm space-y-4">
-                    <div className="min-w-0">
-                        <p className="text-xs font-black text-matn tracking-wide flex items-center gap-2">
-                            <CreditCard size={14} className="text-brand shrink-0" /> Bir nechta kursdagi o'quvchining to'lovi
-                        </p>
-                        <p className="text-[11px] font-bold text-matn-xira mt-1 leading-relaxed">
-                            O'quvchi ikki yoki undan ko'p kursda o'qisa, uning puli kurslar orasida qanday bo'linadi —
-                            kassaga pul kelganda ham, har oy boshida oylik balansdan yechilganda ham.
-                            Bitta kursda o'qiydiganlarga bu tegishli emas — pul o'sha kursga tushadi.
-                        </p>
-                    </div>
-                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-                        {([
-                            { v: 'eski', label: 'Eng eski qarzdan', izoh: "Navbat bilan: birinchi kurs to'liq yopiladi, qolgani keyingisiga" },
-                            { v: 'teng', label: "Kurslarga teng", izoh: "Balans yetmasa ikkala kursda teng qarz qoladi: 600 000 → 300 000 + 300 000" },
-                            { v: 'qarz', label: 'Qarzga qarab', izoh: "Qaysi kursning hisobi katta bo'lsa, o'shanga ko'proq (masalan oy o'rtasida kelgan kurs)" },
-                        ] as const).map(o => {
-                            const tanlangan = (profileForm?.multiCoursePay || 'eski') === o.v;
-                            return (
-                                <button key={o.v} type="button"
-                                    onClick={() => setProfileForm(p => ({ ...p, multiCoursePay: o.v }))}
-                                    className={`text-left px-3 py-3 rounded-2xl border transition-all cursor-pointer ${
-                                        tanlangan
-                                            ? 'bg-brand/10 border-brand text-brand'
-                                            : 'bg-ichki border-chiziq text-matn-xira hover:border-brand/40'
-                                    }`}>
-                                    <span className="block text-xs font-black">{tanlangan ? '✓ ' : ''}{o.label}</span>
-                                    <span className="block text-[10px] font-bold opacity-70 mt-1 leading-relaxed">{o.izoh}</span>
-                                </button>
-                            );
-                        })}
-                    </div>
-                    <p className="text-[10px] font-bold text-matn-xira leading-relaxed">
-                        Resepshn kerak bo'lsa bitta to'lov uchun buni o'zgartira oladi (to'lov oynasidagi «Kurslarga bo'lib»).
-                    </p>
-                    <div className="flex justify-end pt-3 border-t border-dashed border-chiziq/50">
-                        <button type="button" disabled={isSaving} onClick={() => { setIsSaving(true); updateSettings(profileForm).finally(() => setIsSaving(false)); }}
-                            className="px-5 py-2.5 bg-brand hover:bg-brand-dark disabled:opacity-50 text-white rounded-xl text-[11px] font-extrabold flex items-center gap-2 shadow-sm shadow-[#1b6b6b]/20 transition-all cursor-pointer">
-                            <Save size={13} />{isSaving ? t('saving') : t('save')}
-                        </button>
-                    </div>
-                </div>
-
                 {/* Transport xabari jadval bo'yicha emas, hodisa bo'yicha ketadi:
                     haydovchi tugmani bosgan ondayoq. Shuning uchun u avtomatik
                     qoidalar ro'yxatida emas, alohida turadi. */}

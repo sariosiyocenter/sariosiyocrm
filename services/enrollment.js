@@ -342,25 +342,30 @@ export function todayTashkent() {
  * ayiriladi — chiqib qayta kirgan yoki oylik hisob o'tib bo'lgan
  * o'quvchidan ikki marta olinmaydi.
  */
-async function remainingMonthCharge(student, group, day, reason) {
+async function remainingMonthCharge(student, group, day, reason, override) {
   const month = day.slice(0, 7);
   const bounds = monthBounds(month);
   const out = { write: null, warning: null, info: { charge: 0, lessons: 0 } };
   if (!bounds) return out;
-  if (!hasSchedule(group.days)) {
-    out.warning = `${group.name} guruhining jadvali belgilanmagan — bu oy uchun hisob yozilmadi. Guruh kunlarini (Toq / Juft / Har kuni) belgilang.`;
+  // Summa qo'lda berilgan bo'lsa (egasi: "250 000 chiqdi, lekin men 300 000
+  // yozaman") — jadvalga qaramay o'sha yoziladi.
+  const qolda = Number.isFinite(Number(override)) && override !== null && override !== '' ? Math.max(0, Math.round(Number(override))) : null;
+  if (!hasSchedule(group.days) && qolda === null) {
+    out.warning = `${group.name} kursining jadvali belgilanmagan — bu oy uchun hisob yozilmadi. Kurs kunlarini (Toq / Juft / Har kuni) belgilang yoki summani qo'lda yozing.`;
     return out;
   }
-  const rest = periodDue(student, group, month, day, bounds.last);
-  if (!rest || rest.due <= 0) return out;
-  const ch = await chargedSoFar(student.id, group.id, month, rest.monthlyPrice, new Set());
-  const charge = Math.max(0, rest.due - ch.total);
-  out.info = { charge, lessons: rest.lessons, lessonsInMonth: rest.lessonsInMonth, perLesson: rest.perLesson, alreadyCharged: ch.total };
+  const rest = hasSchedule(group.days) ? periodDue(student, group, month, day, bounds.last) : null;
+  const due = qolda !== null ? qolda : (rest ? rest.due : 0);
+  if (due <= 0) return out;
+  const ch = await chargedSoFar(student.id, group.id, month, rest ? rest.monthlyPrice : monthlyPriceFor(student, group), new Set());
+  const charge = Math.max(0, due - ch.total);
+  out.info = { charge, lessons: rest ? rest.lessons : 0, lessonsInMonth: rest ? rest.lessonsInMonth : 0, perLesson: rest ? rest.perLesson : 0, alreadyCharged: ch.total };
   if (charge > 0) {
     out.write = {
       studentId: student.id, groupId: group.id, courseId: group.courseId,
       amount: -charge, type: 'Oylik', date: day,
-      description: `${CHARGE_PREFIX} ${group.name} — ${reason} ${day.slice(8, 10)}.${day.slice(5, 7)} dan (${rest.lessons} dars)`,
+      description: `${CHARGE_PREFIX} ${group.name} — ${reason} ${day.slice(8, 10)}.${day.slice(5, 7)} dan`
+        + (qolda !== null ? ' (summa qo\'lda)' : ` (${rest.lessons} dars)`),
       schoolId: student.schoolId,
     };
   }
@@ -380,7 +385,7 @@ async function remainingMonthCharge(student, group, day, reason) {
  * Jadvali belgilanmagan guruh uchun dars sonini bilib bo'lmaydi — o'quvchi
  * qo'shiladi, lekin hisob yozilmaydi va `warning` qaytadi.
  */
-export async function enrollStudent({ studentId, groupId, date, schoolId, apply = true }) {
+export async function enrollStudent({ studentId, groupId, date, schoolId, apply = true, charge: chargeOverride }) {
   const day = date || todayTashkent();
   const month = day.slice(0, 7);
   const bounds = monthBounds(month);
@@ -405,7 +410,7 @@ export async function enrollStudent({ studentId, groupId, date, schoolId, apply 
       // (activateStudent).
       result.trial = true;
     } else {
-      const c = await remainingMonthCharge(student, group, day, "qo'shilish");
+      const c = await remainingMonthCharge(student, group, day, "qo'shilish", chargeOverride);
       Object.assign(result, c.info);
       result.warning = c.warning;
       write = c.write;
@@ -438,40 +443,51 @@ export async function enrollStudent({ studentId, groupId, date, schoolId, apply 
 }
 
 /**
- * O'quvchi shu kursga shu oyda qaysi kundan hisoblanayotgani.
- *
- * Yozib qo'yilgan sana bo'lsa — o'sha; bo'lmasa (eski yozuvlar) hisob
- * qatorlaridan tiklanadi. Narx o'zgarganda oyni qaytadan sanash uchun kerak:
- * kelgan sana o'zgarmasligi shart.
+ * Kursga qo'shishdan OLDIN birinchi oy summasi qancha chiqishi — qo'shish
+ * oynalarida ko'rsatiladi va xodim uni o'zgartirishi mumkin. Hech narsa
+ * yozilmaydi. O'quvchi hali yaratilmagan bo'lishi mumkin (studentId yo'q) —
+ * unda kursning standart narxi olinadi.
  */
-export async function effectiveCourseStart({ studentId, groupId, month }) {
-  const bounds = monthBounds(month);
-  if (!bounds) return null;
-  const student = await prisma.student.findUnique({ where: { id: Number(studentId) } });
-  if (!student) return null;
-  const group = await loadGroup(groupId, student.schoolId);
-  if (!group) return null;
-  const price = monthlyPriceFor(student, group);
-  const ch = await chargedSoFar(student.id, group.id, month, price, new Set());
-  return billedFrom(student, group.id, month, price, bounds, ch.legacyIds.length > 0);
+export async function firstMonthQuote({ groupId, date, schoolId, studentId }) {
+  const day = /^\d{4}-\d{2}-\d{2}$/.test(String(date || '')) ? String(date) : todayTashkent();
+  const group = await loadGroup(groupId, schoolId);
+  if (!group) return { error: 'Kurs topilmadi' };
+  const student = studentId
+    ? await prisma.student.findFirst({ where: { id: Number(studentId), schoolId }, select: { id: true, customPrices: true } })
+    : null;
+  const s = student || { id: 0, customPrices: {} };
+  const b = monthBounds(day.slice(0, 7));
+  const pd = hasSchedule(group.days) && b ? periodDue(s, group, day.slice(0, 7), day, b.last) : null;
+  return {
+    groupId: group.id, date: day,
+    price: monthlyPriceFor(s, group),
+    suggested: pd ? Math.round(pd.due) : null,
+    lessons: pd ? pd.lessons : null,
+  };
 }
 
 /**
- * O'quvchining shu kursga "kelib boshlagan" sanasini o'zgartirish va o'sha
- * oyning hisobini shu sanaga moslash.
+ * Kurs hisobi — hammasi bitta joyda (egasi, 2026-09-23): kursga kelgan
+ * sana, shu o'quvchi uchun oylik narx va birinchi oy summasi.
  *
- * Egasi (2026-09-22): o'quvchi oy boshida ro'yxatga olinib, darsga oy
- * o'rtasidan kelishi mumkin — "o'sha narsa to'lovga ham ta'sir qilishi kerak".
+ * Tizim birinchi oy summasini kelgan sanadan hisoblab beradi ("15-sentabrdan
+ * 7 dars — 269 231"), lekin xodim o'zi yozishi mumkin ("oy o'rtasida kelsa
+ * 300 000 to'lasin"). Hozir yozilgan hisob bilan farqi bitta tuzatish
+ * yozuvi bo'lib balansga tushadi — naqd pul qaytarilmaydi, faqat hisob
+ * to'g'rilanadi.
  *
- * Nima qilinadi: sana tushadigan oy uchun (va sana boshqa oyga ko'chirilgan
- * bo'lsa — eski oy uchun ham) shu kursning hisobi qaytadan sanaladi va farqi
- * bitta tuzatish qatori bilan yoziladi. Kassaga tushgan pulga (Naqd, Karta,
- * Payme) tegilmaydi — faqat "hisoblangan" qism o'zgaradi.
+ * Qaysi oylar qayta sanaladi:
+ *   - kelgan sana oyi — birinchi oy summasi (qo'lda yoki hisoblangan);
+ *   - eski kelgan sana oyi (sana boshqa oyga ko'chgan bo'lsa);
+ *   - narx o'zgargan bo'lsa — joriy oy ham yangi narxda.
  *
- * `apply` false bo'lsa hech narsa yozilmaydi (ko'rsatish uchun).
+ * price:          undefined — o'zgarmaydi, null — kursning standart narxi,
+ *                 son — shu o'quvchi uchun narx (customPrices).
+ * firstMonthDue:  null — hisoblangani, son — qo'lda yozilgani.
+ * apply false bo'lsa hech narsa yozilmaydi (oynada oldindan ko'rsatish uchun).
  */
-export async function setCourseStart({ studentId, groupId, date, schoolId, apply = false }) {
-  const day = String(date || '').slice(0, 10);
+export async function setKursHisob({ studentId, groupId, startDate, price, firstMonthDue, schoolId, apply = false }) {
+  const day = String(startDate || '').slice(0, 10);
   if (!/^\d{4}-\d{2}-\d{2}$/.test(day)) return { error: "Sana noto'g'ri" };
 
   const student = await prisma.student.findFirst({
@@ -483,56 +499,90 @@ export async function setCourseStart({ studentId, groupId, date, schoolId, apply
   if (!group) return { error: 'Kurs topilmadi' };
   if (!student.groups.some(g => g.id === group.id)) return { error: "O'quvchi bu kursda emas" };
 
+  // Narx
+  const cp = (student.customPrices && typeof student.customPrices === 'object' && !Array.isArray(student.customPrices))
+    ? { ...student.customPrices } : {};
+  if (price === null) {
+    delete cp[String(group.id)];
+    delete cp['note_' + group.id];
+  } else if (price !== undefined && price !== '') {
+    const n = Number(price);
+    if (!Number.isFinite(n) || n < 0) return { error: "Narx noto'g'ri" };
+    cp[String(group.id)] = Math.round(n);
+  }
+  const yangi = { ...student, customPrices: cp };
+  const narx = monthlyPriceFor(yangi, group);
+  const eskiNarx = monthlyPriceFor(student, group);
+
+  // Birinchi oy summasi (qo'lda)
+  let qolda = null;
+  if (firstMonthDue !== null && firstMonthDue !== undefined && firstMonthDue !== '') {
+    qolda = Math.round(Number(firstMonthDue));
+    if (!Number.isFinite(qolda) || qolda < 0) return { error: "Summa noto'g'ri" };
+  }
+
+  const jadval = hasSchedule(group.days);
   const oldStart = courseStartOf(student, group.id);
-  const starts = startMapOf(student);
-  starts[String(group.id)] = day;
+  const startMonth = day.slice(0, 7);
+  const bugunOy = todayTashkent().slice(0, 7);
+  const oylar = new Set([startMonth]);
+  if (oldStart) oylar.add(oldStart.slice(0, 7));
+  if (narx !== eskiNarx && bugunOy > startMonth) oylar.add(bugunOy);
 
   const result = {
     studentId: student.id, groupId: group.id, groupName: group.name,
-    oldStart, date: day,
+    startDate: day, oldStart, price: narx, oldPrice: eskiNarx, standardPrice: Number(group.course?.price || 0),
     trial: student.status === 'Sinov',
+    suggested: null, suggestedLessons: null,
     lines: [], balanceDelta: 0,
     balanceBefore: student.balance, balanceAfter: student.balance,
     warning: null, applied: false,
   };
 
-  // Sinov o'quvchisidan pul yechilmaydi — faqat sana yoziladi.
-  // Jadvalsiz kursda dars sonini bilib bo'lmaydi (pulda taxmin yaramaydi).
-  const skipMoney = result.trial || !hasSchedule(group.days);
-  if (!result.trial && !hasSchedule(group.days)) {
-    result.warning = `${group.name} kursining jadvali belgilanmagan — hisob qayta sanalmadi. Avval kunlarini (Toq / Juft / Har kuni) belgilang.`;
+  // Tizim taklif qiladigan birinchi oy summasi — oynada ko'rsatiladi.
+  if (jadval) {
+    const b = monthBounds(startMonth);
+    const pd = b ? periodDue(yangi, group, startMonth, day, b.last) : null;
+    if (pd) { result.suggested = pd.due; result.suggestedLessons = pd.lessons; }
+  } else if (qolda === null) {
+    result.warning = `${group.name} kursining jadvali belgilanmagan — birinchi oy summasini qo'lda yozing.`;
   }
 
+  const sanaMatn = `${day.slice(8, 10)}.${day.slice(5, 7)}`;
   const writes = [];
-  if (!skipMoney) {
-    // Sana boshqa oyga ko'chirilgan bo'lsa ikkala oy ham qaytadan sanaladi:
-    // eski oyda o'quvchi umuman bo'lmagan bo'lsa, o'sha oyniki qaytariladi.
-    const months = [...new Set([day.slice(0, 7), (oldStart || day).slice(0, 7)])].sort();
-    const price = monthlyPriceFor(student, group);
-    for (const month of months) {
-      const bounds = monthBounds(month);
-      if (!bounds) continue;
-      const ch = await chargedSoFar(student.id, group.id, month, price, new Set());
-      const from = day > bounds.first ? day : bounds.first;
-      const due = (day > bounds.last) ? null : periodDue(student, group, month, from, bounds.last);
-      const dueSum = due ? due.due : 0;
-      const adjust = Math.round(ch.total - dueSum);   // musbat — ortiqcha yechilgan, qaytariladi
-      result.lines.push({
-        month,
-        alreadyCharged: ch.total,
-        due: dueSum,
-        lessons: due ? due.lessons : 0,
-        perLesson: due ? due.perLesson : 0,
-        monthlyPrice: price,
-        adjust,
-      });
+  if (!result.trial) {
+    // Oylarning hozirgi hisobi bir vaqtda so'raladi (uzoq bazada har so'rov sezilarli).
+    const oyRoyxat = [...oylar].sort().filter(m => monthBounds(m));
+    const yozilgan = await Promise.all(oyRoyxat.map(m => chargedSoFar(student.id, group.id, m, eskiNarx, new Set())));
+    for (const [oi, month] of oyRoyxat.entries()) {
+      const b = monthBounds(month);
+      const ch = yozilgan[oi];
+      let due;
+      let lessons = null;
+      if (month === startMonth) {
+        if (qolda !== null) due = qolda;
+        else if (jadval) { const pd = periodDue(yangi, group, month, day, b.last); due = pd ? pd.due : 0; lessons = pd ? pd.lessons : null; }
+        else due = ch.total;                      // jadvalsiz va summa yozilmagan — tegilmaydi
+      } else if (day > b.last) {
+        due = 0;                                  // bu oyda hali kelmagan edi
+      } else if (jadval) {
+        const pd = periodDue(yangi, group, month, day > b.first ? day : b.first, b.last);
+        due = pd ? pd.due : 0;
+        lessons = pd ? pd.lessons : null;
+      } else {
+        due = day <= b.first ? narx : ch.total;
+      }
+      due = Math.round(due);
+      const adjust = Math.round(ch.total - due);
+      result.lines.push({ month, first: month === startMonth, alreadyCharged: Math.round(ch.total), due, adjust, lessons });
       if (adjust !== 0) {
         result.balanceDelta += adjust;
         writes.push({
           studentId: student.id, groupId: group.id, courseId: group.courseId,
           amount: adjust, type: 'Oylik',
-          date: month === day.slice(0, 7) ? day : monthBounds(month).last,
-          description: `${CHARGE_PREFIX} ${group.name} — kelgan sana ${day.slice(8, 10)}.${day.slice(5, 7)} ga o'zgartirildi (${due ? due.lessons : 0} dars)`,
+          date: month === startMonth ? day : (month === bugunOy ? todayTashkent() : b.last),
+          description: `${CHARGE_PREFIX} ${group.name} — kurs hisobi: ${month === startMonth ? sanaMatn + ' dan, ' : ''}${due.toLocaleString('ru-RU')} so'm`
+            + (month === startMonth && qolda !== null ? ' (qo\'lda)' : ''),
           schoolId: student.schoolId,
         });
       }
@@ -542,9 +592,15 @@ export async function setCourseStart({ studentId, groupId, date, schoolId, apply
 
   if (!apply) return result;
 
+  const starts = startMapOf(student);
+  starts[String(group.id)] = day;
   const ops = [prisma.student.update({
     where: { id: student.id },
-    data: { courseStart: starts, ...(result.balanceDelta ? { balance: { increment: result.balanceDelta } } : {}) },
+    data: {
+      courseStart: starts,
+      customPrices: cp,
+      ...(result.balanceDelta ? { balance: { increment: result.balanceDelta } } : {}),
+    },
   })];
   if (writes.length) ops.push(prisma.payment.createMany({ data: writes }));
   await prisma.$transaction(ops);
@@ -573,27 +629,11 @@ export async function unenrollStudent({ studentId, groupId, date, schoolId, appl
   const member = student.groups.some(g => g.id === group.id);
   const result = { studentId: student.id, groupId: group.id, groupName: group.name, date: day, refund: 0, lessons: 0, warning: null, applied: false };
 
-  let write = null;
-  if (member) {
-    if (!hasSchedule(group.days)) {
-      result.warning = `${group.name} guruhining jadvali belgilanmagan — o'tilmagan darslar puli qayta hisoblanmadi.`;
-    } else {
-      const price = monthlyPriceFor(student, group);
-      const ch = await chargedSoFar(student.id, group.id, month, price, new Set());
-      const since = await billedFrom(student, group.id, month, price, bounds, ch.legacyIds.length > 0);
-      const used = periodDue(student, group, month, since, dayBefore(day));
-      const adjust = ch.total - used.due;   // ortiqcha yechilgan qism qaytadi
-      result.lessons = used.lessons; result.alreadyCharged = ch.total; result.refund = Math.max(0, adjust);
-      if (adjust > 0) {
-        write = {
-          studentId: student.id, groupId: group.id, courseId: group.courseId,
-          amount: adjust, type: 'Oylik', date: day,
-          description: `${CHARGE_PREFIX} ${group.name} — guruhdan chiqarildi, ${used.lessons} dars uchun qayta hisob`,
-          schoolId: student.schoolId,
-        };
-      }
-    }
-  }
+  // Pul qaytarilmaydi (egasi, 2026-09-23: "мы ученикам не будем возврат
+  // делать"). Kursdan chiqarilganda faqat a'zolik uziladi — shu oy uchun
+  // yozilgan hisob o'z joyida qoladi. Ilgari o'tilmagan darslar puli
+  // avtomatik balansga qaytarilardi.
+  const write = null;
 
   if (!apply) return result;
 

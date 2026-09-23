@@ -204,13 +204,13 @@ export default function DailySheet() {
         for (const st of students || []) {
             // Bir nechta kursdagi o'quvchida qarz Sozlamadagi qoida bo'yicha
             // bo'linadi — serverdagi hisob bilan bir xil chiqishi shart.
-            const res = allocate(withOpening(rows.get(st.id) || [], st.balance), shareOpts((st as any).payShare, settings?.multiCoursePay));
+            const res = allocate(withOpening(rows.get(st.id) || [], st.balance), shareOpts((st as any).payShare));
             const m = new Map<number | null, number>();
             for (const x of res.debtByGroup) m.set(x.groupId ?? null, x.amount);
             out.set(st.id, m);
         }
         return out;
-    }, [students, payments, settings?.multiCoursePay]);
+    }, [students, payments]);
 
     // Imtihon natijalari: nomida "sinov" bo'lgan imtihon — SINOV ustuni, qolganlari
     // OXIRGI TEST (eng so'nggisi) va Reyting (o'rtachasi).
