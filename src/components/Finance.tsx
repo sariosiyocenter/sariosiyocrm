@@ -243,6 +243,18 @@ export default function Finance() {
      * qoldiqni yopish uchun).
      */
     const [payLines, setPayLines] = useState<Record<string, number>>({});
+    /**
+     * To'lov qanday qabul qilinadi (egasi, 2026-09-23):
+     *   'umumiy' — bitta summa, kurs so'ralmaydi. Pul o'quvchining hisobiga
+     *              tushadi va ochiq hisoblarni yopadi (shu oyniki avval,
+     *              keyin eskilari). O'quvchilarning 93% i bitta kursda
+     *              o'qiydi — ularga kurs tanlash ortiqcha ish edi.
+     *   'kurs'   — kurslarga bo'lib: "teng" yoki qarzga qarab. Pul aynan
+     *              o'sha kursda qoladi (ota-ona "bu pul fizikaga" desa).
+     */
+    const [payMode, setPayMode] = useState<'umumiy' | 'kurs'>('umumiy');
+    /** Umumiy rejimdagi summa; bo'lib yuborishda esa taqsimlanadigan jami. */
+    const [payAmount, setPayAmount] = useState<string>('');
     /** Tanlangan o'quvchining kurs kesimidagi holati (/api/students/:id/ledger). */
     const [payLedger, setPayLedger] = useState<any>(null);
     const [payLedgerLoading, setPayLedgerLoading] = useState(false);
@@ -352,12 +364,40 @@ export default function Finance() {
         return rows;
     }, [selectedStudent, payLedger, groups, courses]);
 
-    const payTotal = Object.values(payLines).reduce((sum, v) => sum + (Number(v) || 0), 0);
+    const payTotal = payMode === 'umumiy'
+        ? Math.round(Number(payAmount) || 0)
+        : Object.values(payLines).reduce((sum, v) => sum + (Number(v) || 0), 0);
+
+    /** O'quvchining barcha kurslari bo'yicha jami qarzi. */
+    const payJamiQarz = payRows.reduce((sum, r) => sum + Math.max(0, Number(r.debt) || 0), 0);
+
+    /**
+     * Jami summani kurslarga taqsimlaydi: 'teng' — barobar, 'qarz' — qarz
+     * ulushiga qarab. Yaxlitlashdan qolgan tiyinlar birinchi kursga qo'shiladi,
+     * shunda yig'indi kiritilgan summaga tiyinigacha to'g'ri keladi.
+     */
+    const taqsimla = (usul: 'teng' | 'qarz') => {
+        const jami = Math.round(Number(payAmount) || 0);
+        if (jami <= 0 || payRows.length === 0) return;
+        const ulushlar = usul === 'qarz' && payJamiQarz > 0
+            ? payRows.map(r => Math.max(0, Number(r.debt) || 0) / payJamiQarz)
+            : payRows.map(() => 1 / payRows.length);
+        const yangi: Record<string, number> = {};
+        let berilgan = 0;
+        payRows.forEach((r, i) => {
+            const qism = i === payRows.length - 1 ? jami - berilgan : Math.round(jami * ulushlar[i]);
+            yangi[r.key] = qism;
+            berilgan += qism;
+        });
+        setPayLines(yangi);
+    };
 
     const closePaymentModal = () => {
         setIsPaymentModalOpen(false);
         setCreatedPaymentForReceipt(null);
         setSelectedStudent(null);
+        setPayMode('umumiy');
+        setPayAmount('');
         setStudentSearch('');
         setPayLines({});
         setPayLedger(null);
@@ -1518,11 +1558,18 @@ ${e.description || e.category} — ${Number(e.amount).toLocaleString()} so'm`)) 
                                     // ketardi va tanlangan kurs (groupId) umuman
                                     // yuborilmasdi — shuning uchun pul hamma kursga
                                     // tarqalib ketardi.
-                                    const lines = payRows
-                                        .map(r => ({ row: r, amount: Math.round(Number(payLines[r.key]) || 0) }))
-                                        .filter(x => x.amount > 0);
+                                    // Umumiy rejim: bitta yozuv, kursga bog'lanmaydi —
+                                    // pul ochiq hisoblarni o'zi yopadi. Bo'lib yuborishda
+                                    // esa har kursga alohida yozuv (pul o'sha kursda qoladi).
+                                    const lines = payMode === 'umumiy'
+                                        ? (Math.round(Number(payAmount) || 0) > 0
+                                            ? [{ row: { key: 'umumiy', groupId: null, courseId: null, title: 'Umumiy' } as any, amount: Math.round(Number(payAmount)) }]
+                                            : [])
+                                        : payRows
+                                            .map(r => ({ row: r, amount: Math.round(Number(payLines[r.key]) || 0) }))
+                                            .filter(x => x.amount > 0);
                                     if (!lines.length) {
-                                        showNotification('Qaysi kursga qancha to\'layotganini ko\'rsating', 'error');
+                                        showNotification(payMode === 'umumiy' ? 'Summani kiriting' : 'Qaysi kursga qancha to\'layotganini ko\'rsating', 'error');
                                         return;
                                     }
                                     setIsSavingPayment(true);
@@ -1634,12 +1681,76 @@ ${e.description || e.category} — ${Number(e.amount).toLocaleString()} so'm`)) 
                                         matematikaga berilgani fizikaning qarzini yopmaydi.
                                         Shuning uchun summa bitta emas, kurs bo'yicha
                                         alohida so'raladi. */}
+                                    {/* Standart holat — bitta summa. Kursga bo'lish kerak
+                                        bo'lsagina ikkinchi rejimga o'tiladi (egasi, 2026-09-23). */}
                                     {selectedStudent && (
                                         <div>
-                                            <label className={lbl}>Qaysi kursga qancha *</label>
+                                            <div className="grid grid-cols-2 gap-2 mb-3">
+                                                {([
+                                                    { v: 'umumiy', label: 'Umumiy to\'lov', izoh: 'kurs so\'ralmaydi' },
+                                                    { v: 'kurs', label: 'Kurslarga bo\'lib', izoh: 'qaysi kursga qancha' },
+                                                ] as const).map(m => (
+                                                    <button key={m.v} type="button"
+                                                        onClick={() => setPayMode(m.v)}
+                                                        className={`px-3 py-2.5 rounded-xl text-xs font-extrabold border transition-all cursor-pointer ${
+                                                            payMode === m.v
+                                                                ? 'bg-brand/10 border-brand text-brand'
+                                                                : 'bg-ichki border-chiziq text-matn-xira hover:border-brand/40'
+                                                        }`}>
+                                                        {m.label}
+                                                        <span className="block text-[10px] font-bold opacity-70 mt-0.5">{m.izoh}</span>
+                                                    </button>
+                                                ))}
+                                            </div>
                                             {payLedgerLoading && (
                                                 <p className="text-[11px] text-matn-xira font-bold py-3">Hisob yuklanmoqda…</p>
                                             )}
+
+                                            {payMode === 'umumiy' ? (
+                                                <div>
+                                                    <label className={lbl}>Summa *</label>
+                                                    <input type="number" min={0} placeholder="500 000" className={inp}
+                                                        value={payAmount}
+                                                        onChange={e => setPayAmount(e.target.value)} />
+                                                    <div className="flex flex-wrap gap-1.5 mt-2">
+                                                        {payJamiQarz > 0 && (
+                                                            <button type="button"
+                                                                onClick={() => setPayAmount(String(payJamiQarz))}
+                                                                className="px-2.5 py-1 text-[10px] font-bold border border-rose-200 dark:border-rose-900/50 text-rose-500 rounded-lg hover:bg-rose-50 dark:hover:bg-rose-950/20 transition-colors cursor-pointer">
+                                                                Jami qarzni yopish · {payJamiQarz.toLocaleString()}
+                                                            </button>
+                                                        )}
+                                                        {[300000, 500000, 700000, 1000000].map(amt => (
+                                                            <button key={amt} type="button"
+                                                                onClick={() => setPayAmount(String(amt))}
+                                                                className="px-2.5 py-1 text-[10px] font-bold border border-chiziq text-matn-sokin rounded-lg hover:border-brand hover:text-brand transition-colors cursor-pointer">
+                                                                {amt.toLocaleString()}
+                                                            </button>
+                                                        ))}
+                                                    </div>
+                                                    <p className="text-[10px] font-bold text-matn-xira mt-2 leading-relaxed">
+                                                        Pul o'quvchining hisobiga tushadi va ochiq hisoblarni yopadi — avval shu oyniki,
+                                                        keyin eski qarzlar. Kursga biriktirish shart emas.
+                                                    </p>
+                                                </div>
+                                            ) : (
+                                            <div>
+                                            <label className={lbl}>Qaysi kursga qancha *</label>
+                                            {/* Jami summani bir bosishda taqsimlash: teng yoki qarzga qarab. */}
+                                            <div className="flex flex-wrap items-center gap-2 mb-2">
+                                                <input type="number" min={0} placeholder="Jami summa" value={payAmount}
+                                                    onChange={e => setPayAmount(e.target.value)}
+                                                    className="w-36 px-3 py-2 bg-ichki border border-chiziq rounded-xl text-xs font-bold text-matn tabular-nums outline-none focus:border-brand" />
+                                                <button type="button" onClick={() => taqsimla('teng')}
+                                                    className="px-2.5 py-2 text-[10px] font-bold border border-chiziq text-matn-sokin rounded-lg hover:border-brand hover:text-brand transition-colors cursor-pointer">
+                                                    Teng bo'lish
+                                                </button>
+                                                <button type="button" onClick={() => taqsimla('qarz')}
+                                                    disabled={payJamiQarz <= 0}
+                                                    className="px-2.5 py-2 text-[10px] font-bold border border-chiziq text-matn-sokin rounded-lg hover:border-brand hover:text-brand disabled:opacity-40 transition-colors cursor-pointer">
+                                                    Qarzga qarab
+                                                </button>
+                                            </div>
 
                                             <div className="space-y-2">
                                                 {payRows.map(row => {
@@ -1704,6 +1815,8 @@ ${e.description || e.category} — ${Number(e.amount).toLocaleString()} so'm`)) 
                                                     {payTotal.toLocaleString()} so'm
                                                 </span>
                                             </div>
+                                            </div>
+                                            )}
                                         </div>
                                     )}
 

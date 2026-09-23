@@ -2649,13 +2649,19 @@ export default function StudentDetails() {
 
 
 function PaymentAddModal({ studentId, onClose, onAdd }: { studentId: number; onClose: () => void; onAdd: (data: any) => void }) {
-    const { students, groups, courses, payments, settings, user: crmUser } = useCRM();
+    const { students, groups, courses, payments, settings, showNotification, user: crmUser } = useCRM();
     const [amount, setAmount] = useState('');
     const [type, setType] = useState('Naqd');
     // Payme orqali: havola/QR — pul Payme'dan webhook bilan o'zi tushadi, qo'lda yozilmaydi.
     const [showPayme, setShowPayme] = useState(false);
     const paymeOn = (settings.paymeMode === 'live' || settings.paymeMode === 'test') && ['ADMIN', 'MANAGER', 'RECEPTIONIST', 'SUPERADMIN'].includes(crmUser?.role || '');
-    const [courseId, setCourseId] = useState<number | ''>('');
+    /**
+     * Standart — "umumiy": kurs so'ralmaydi, pul hisobga tushadi va ochiq
+     * hisoblarni o'zi yopadi. Kerak bo'lganda kurslarga bo'lib yoziladi
+     * (egasi, 2026-09-23): o'sha kursga alohida yozuv ketadi.
+     */
+    const [payMode, setPayMode] = useState<'umumiy' | 'kurs'>('umumiy');
+    const [payLines, setPayLines] = useState<Record<number, number>>({});
     const [createdPaymentForReceipt, setCreatedPaymentForReceipt] = useState<any>(null);
 
     const student = students.find(s => s.id === studentId);
@@ -2677,16 +2683,59 @@ function PaymentAddModal({ studentId, onClose, onAdd }: { studentId: number; onC
         return bilanNarx(own.length > 0 ? own : groups);
     })();
 
+    /** Jami summani kurslarga teng bo'lish (qoldiq birinchisiga). */
+    const tengBolish = () => {
+        const jami = Math.round(Number(amount) || 0);
+        if (jami <= 0 || studentCourses.length === 0) return;
+        const yangi: Record<number, number> = {};
+        let berilgan = 0;
+        studentCourses.forEach((c, i) => {
+            const qism = i === studentCourses.length - 1 ? jami - berilgan : Math.round(jami / studentCourses.length);
+            yangi[c.id] = qism;
+            berilgan += qism;
+        });
+        setPayLines(yangi);
+    };
+
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-        const tanlangan = studentCourses.find(g => g.id === Number(courseId));
-        const paymentData = {
-            studentId, amount: Number(amount), type,
-            groupId: tanlangan ? tanlangan.id : null,
-            courseId: tanlangan ? tanlangan.courseId : null,
-            date: new Date().toISOString().split('T')[0], description: ''
-        };
-        const created = await onAdd(paymentData);
+        const sana = new Date().toISOString().split('T')[0];
+        const qatorlar = payMode === 'kurs'
+            ? studentCourses
+                .map(c => ({ c, amount: Math.round(Number(payLines[c.id]) || 0) }))
+                .filter(x => x.amount > 0)
+            : [];
+
+        if (payMode === 'kurs' && !qatorlar.length) {
+            showNotification("Qaysi kursga qancha to'layotganini ko'rsating", 'error');
+            return;
+        }
+
+        let created: any;
+        if (payMode === 'kurs') {
+            const saved = [];
+            for (const { c, amount: sum } of qatorlar) {
+                saved.push(await onAdd({
+                    studentId, amount: sum, type,
+                    groupId: c.id, courseId: c.courseId,
+                    date: sana, description: '',
+                }));
+            }
+            created = qatorlar.length === 1 ? saved[0] : {
+                ...saved[0],
+                amount: qatorlar.reduce((s, l) => s + l.amount, 0),
+                description: qatorlar.map(l => `${l.c.name}: ${l.amount.toLocaleString()}`).join(', '),
+                courseId: null,
+            };
+        } else {
+            // Umumiy: kursga bog'lanmaydi. O'quvchi bitta kursda bo'lsa server
+            // o'zi biriktiradi, bir nechtada bo'lsa eng eski hisobdan yopiladi.
+            created = await onAdd({
+                studentId, amount: Number(amount), type,
+                groupId: null, courseId: null,
+                date: sana, description: '',
+            });
+        }
         setCreatedPaymentForReceipt(created);
 
         setTimeout(async () => {
@@ -2921,19 +2970,56 @@ function PaymentAddModal({ studentId, onClose, onAdd }: { studentId: number; onC
                             </div>
 
                             <div>
-                                <label className={labelCls}>QAYSI KURS UCHUN</label>
-                                <select
-                                    value={courseId}
-                                    onChange={e => setCourseId(e.target.value ? Number(e.target.value) : '')}
-                                    className={inputCls}
-                                >
-                                    <option value="">Umumiy — o'quvchining hisobiga tushadi</option>
-                                    {studentCourses.map(c => (
-                                        <option key={c.id} value={c.id}>
-                                            {c.name + (c.price ? ' — ' + c.price.toLocaleString() + ' UZS/oy' : '')}
-                                        </option>
+                                <label className={labelCls}>TAQSIMLASH</label>
+                                <div className="grid grid-cols-2 gap-2">
+                                    {([
+                                        { v: 'umumiy', label: "Umumiy to'lov", izoh: "kurs so'ralmaydi" },
+                                        { v: 'kurs', label: "Kurslarga bo'lib", izoh: 'qaysi kursga qancha' },
+                                    ] as const).map(m => (
+                                        <button key={m.v} type="button" onClick={() => setPayMode(m.v)}
+                                            className={`px-3 py-2.5 rounded-xl text-xs font-bold border transition-all cursor-pointer ${
+                                                payMode === m.v
+                                                    ? 'bg-brand/10 border-brand text-brand'
+                                                    : 'bg-ichki border-chiziq text-matn-xira hover:border-brand/40'
+                                            }`}>
+                                            {m.label}
+                                            <span className="block text-[10px] font-bold opacity-70 mt-0.5">{m.izoh}</span>
+                                        </button>
                                     ))}
-                                </select>
+                                </div>
+
+                                {payMode === 'umumiy' ? (
+                                    <p className="text-[10px] font-bold text-matn-xira mt-2 leading-relaxed">
+                                        Pul hisobga tushadi va ochiq hisoblarni yopadi — avval shu oyniki, keyin eski qarzlar.
+                                    </p>
+                                ) : (
+                                    <div className="mt-3 space-y-2">
+                                        <button type="button" onClick={tengBolish}
+                                            className="px-2.5 py-1.5 text-[10px] font-bold border border-chiziq text-matn-sokin rounded-lg hover:border-brand hover:text-brand transition-colors cursor-pointer">
+                                            Teng bo'lish ({studentCourses.length} kurs)
+                                        </button>
+                                        {studentCourses.map(c => (
+                                            <div key={c.id} className="flex items-center justify-between gap-3 p-3 bg-ichki rounded-2xl border border-chiziq/80">
+                                                <div className="min-w-0">
+                                                    <p className="text-[12px] font-bold text-matn truncate">{c.name}</p>
+                                                    {c.price > 0 && (
+                                                        <p className="num text-[10px] font-bold text-matn-xira mt-0.5">{c.price.toLocaleString()} so'm/oy</p>
+                                                    )}
+                                                </div>
+                                                <input type="number" min={0} placeholder="0"
+                                                    className="w-32 shrink-0 px-3 py-2 bg-sirt border border-chiziq rounded-xl text-xs font-bold text-matn text-right tabular-nums outline-none focus:border-brand"
+                                                    value={payLines[c.id] || ''}
+                                                    onChange={e => setPayLines(prev => ({ ...prev, [c.id]: Number(e.target.value) || 0 }))} />
+                                            </div>
+                                        ))}
+                                        <div className="flex items-center justify-between pt-2 border-t border-dashed border-chiziq/50">
+                                            <span className="text-[11px] font-bold text-matn-xira">Jami qabul qilinadi</span>
+                                            <span className="num text-sm font-black text-brand">
+                                                {Object.values(payLines).reduce((s, v) => s + (Number(v) || 0), 0).toLocaleString()} so'm
+                                            </span>
+                                        </div>
+                                    </div>
+                                )}
                             </div>
 
                             <div>
