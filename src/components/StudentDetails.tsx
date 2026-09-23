@@ -3035,11 +3035,11 @@ function KontaktQator({ icon, label, name, phone, tgId, onSms, onUzish }: {
         <div className="flex items-start justify-between gap-3 py-1.5">
             <div className="flex items-start gap-1.5 min-w-0">
                 <span className="text-matn-xira shrink-0 mt-px">{icon}</span>
+                {/* Ism telefon bilan bir qatorda, "Ota/Ona" esa ostida — TG holati
+                    bilan bir qatorda (kontaktlar ro'yxatidagi kabi). */}
                 <div className="min-w-0">
-                    <p className="text-[11px] font-bold text-matn-xira">{label}</p>
-                    {name !== undefined && (
-                        <p className="text-[12px] font-medium text-matn truncate" title={name || ''}>{name || '—'}</p>
-                    )}
+                    <p className="text-[12px] font-medium text-matn truncate" title={name || label}>{name || label}</p>
+                    {name && <p className="text-[10px] font-bold text-matn-xira">{label}</p>}
                 </div>
             </div>
             <div className="flex flex-col items-end gap-0.5 shrink-0">
