@@ -33,6 +33,11 @@ export interface Student {
     needsTransport?: boolean;
     /** Imtihonlarga keladimi. Kelmaydiganga imtihon varaqasi chiqarilmaydi. */
     attendsExam?: boolean;
+    /**
+     * Bir nechta kursda o'qisa — puli kurslarga qanday bo'linadi (kartochkada
+     * qo'lda). null — markaz qoidasi. { rule: 'foiz', weights: { "62": 70 } }.
+     */
+    payShare?: { rule: 'eski' | 'teng' | 'qarz' | 'foiz'; weights?: Record<string, number> } | null;
     studentSchool?: string;
     privilegeType?: string;
     certCategory?: string;

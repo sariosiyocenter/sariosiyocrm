@@ -1,5 +1,5 @@
 import prisma from '../lib/prisma.js';
-import { allocate, groupRows, groupStanding, withOpening, LEGACY_KEY } from '../lib/allocation.js';
+import { allocate, groupRows, groupStanding, withOpening, shareOpts, LEGACY_KEY } from '../lib/allocation.js';
 import { paidUntil } from '../lib/access.js';
 
 export { withOpening };
@@ -37,19 +37,20 @@ export async function loadRowsByStudent(studentIds) {
 }
 
 /**
- * Har o'quvchining filialidagi qoida: bir nechta kursda o'qisa, umumiy pul
- * kurslar orasida qanday bo'linadi (Setting.multiCoursePay: eski | teng |
- * qarz). Sozlamasi yo'q filial — 'eski'.
+ * Har o'quvchi uchun taqsimot qoidasi (allocate() ning ikkinchi argumenti):
+ * kartochkasida o'zi belgilangan bo'lsa — o'sha (Student.payShare: teng,
+ * qarzga qarab yoki qo'lda foiz), bo'lmasa filial qoidasi
+ * (Setting.multiCoursePay). Sozlamasi yo'q filial — 'eski'.
  *
- * @returns Map<studentId, rule>
+ * @returns Map<studentId, { rule, weights? }>
  */
 export async function rulesForStudents(studentIds) {
   if (!studentIds.length) return new Map();
-  const sts = await prisma.student.findMany({ where: { id: { in: studentIds } }, select: { id: true, schoolId: true } });
+  const sts = await prisma.student.findMany({ where: { id: { in: studentIds } }, select: { id: true, schoolId: true, payShare: true } });
   const schoolIds = [...new Set(sts.map(s => s.schoolId))];
   const sets = await prisma.setting.findMany({ where: { schoolId: { in: schoolIds } }, select: { schoolId: true, multiCoursePay: true } });
   const bySchool = new Map(sets.map(s => [s.schoolId, s.multiCoursePay]));
-  return new Map(sts.map(s => [s.id, bySchool.get(s.schoolId) || 'eski']));
+  return new Map(sts.map(s => [s.id, shareOpts(s.payShare, bySchool.get(s.schoolId))]));
 }
 
 /**
@@ -63,7 +64,7 @@ export async function studentLedger(studentId) {
     rulesForStudents([studentId]),
   ]);
   const rows = withOpening(stored, student?.balance || 0);
-  const result = allocate(rows, { rule: rules.get(studentId) });
+  const result = allocate(rows, rules.get(studentId));
 
   // Chelaklardagi guruhlar + o'quvchi hozir a'zo bo'lgan guruhlar. Ikkinchisi
   // kerak: yangi qo'shilgan kursda hali hisob yo'q bo'lishi mumkin, lekin
@@ -154,7 +155,7 @@ export async function receivedForGroups(studentIds, month) {
   const [byStudent, rules] = await Promise.all([loadRowsByStudent(studentIds), rulesForStudents(studentIds)]);
   const out = new Map();
   for (const [sid, rows] of byStudent) {
-    for (const a of allocate(rows, { rule: rules.get(sid) }).allocations) {
+    for (const a of allocate(rows, rules.get(sid)).allocations) {
       if (!a.groupId || a.month !== month) continue;
       out.set(a.groupId, (out.get(a.groupId) || 0) + a.amount);
     }
@@ -175,7 +176,7 @@ export async function monthCoverage(studentIds, month) {
   const out = new Map();
   for (const sid of studentIds) {
     const rows = byStudent.get(sid) || [];
-    const r = allocate(rows, { rule: rules.get(sid) });
+    const r = allocate(rows, rules.get(sid));
     const groups = new Map();
     let due = 0, covered = 0;
     for (const b of r.buckets) {

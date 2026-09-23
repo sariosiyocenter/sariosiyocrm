@@ -4,7 +4,7 @@ import { Printer, CalendarDays, Info } from 'lucide-react';
 import { useCRM } from '../context/CRMContext';
 import type { Attendance, Group, Student } from '../types';
 import { lessonDatesBetween, isLessonDay } from '../../lib/lessons.js';
-import { allocate, groupRows, withOpening } from '../../lib/allocation.js';
+import { allocate, groupRows, withOpening, shareOpts } from '../../lib/allocation.js';
 
 /**
  * Kunlik ro'yxat — o'qituvchilar har kuni chop etadigan varaq.
@@ -204,7 +204,7 @@ export default function DailySheet() {
         for (const st of students || []) {
             // Bir nechta kursdagi o'quvchida qarz Sozlamadagi qoida bo'yicha
             // bo'linadi — serverdagi hisob bilan bir xil chiqishi shart.
-            const res = allocate(withOpening(rows.get(st.id) || [], st.balance), { rule: settings?.multiCoursePay });
+            const res = allocate(withOpening(rows.get(st.id) || [], st.balance), shareOpts((st as any).payShare, settings?.multiCoursePay));
             const m = new Map<number | null, number>();
             for (const x of res.debtByGroup) m.set(x.groupId ?? null, x.amount);
             out.set(st.id, m);

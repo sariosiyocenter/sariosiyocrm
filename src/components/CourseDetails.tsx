@@ -14,6 +14,7 @@ import {
 import AttendanceMatrix from './AttendanceMatrix';
 import GroupAttendanceCalendar from './GroupAttendanceCalendar';
 import FaceAttendance from './FaceAttendance';
+import KelganSanaModal from './KelganSanaModal';
 import { STUDENT_SORTS, StudentSort, absenceCounts, sortStudents } from '../lib/studentSort';
 
 export default function CourseDetails() {
@@ -41,6 +42,8 @@ export default function CourseDetails() {
     const [isAddStudentModalOpen, setIsAddStudentModalOpen] = useState(false);
     // Kursga qo'shilayotgan o'quvchi qaysi kundan kelib boshlaydi.
     const [addStartDate, setAddStartDate] = useState(new Date().toISOString().split('T')[0]);
+    // Ro'yxatdagi o'quvchining kelgan sanasini o'zgartirish (hisob shu kundan).
+    const [sanaOquvchi, setSanaOquvchi] = useState<{ id: number; schoolId: number; current: string } | null>(null);
     const [studentSearch, setStudentSearch] = useState('');
     const [selectedTopicId, setSelectedTopicId] = useState<number | ''>('');
     const [isTopicModalOpen, setIsTopicModalOpen] = useState(false);
@@ -627,6 +630,7 @@ export default function CourseDetails() {
                                                     <tr className="border-b border-chiziq">
                                                         <th className="py-2 pr-3 text-[12px] font-normal text-matn-sokin w-8">&#8470;</th>
                                                         <th className="py-2 pr-3 text-[12px] font-normal text-matn-sokin">O'quvchi</th>
+                                                        <th className="py-2 px-3 text-[12px] font-normal text-matn-sokin">Kelgan sana</th>
                                                         <th className="py-2 px-3 text-[12px] font-normal text-matn-sokin text-right">Balans</th>
                                                         <th className="py-2 px-3 text-[12px] font-normal text-matn-sokin text-right w-20">Davomat</th>
                                                         <th className="py-2 pl-3 w-20" />
@@ -650,6 +654,23 @@ export default function CourseDetails() {
                                                                             <p className="num text-[11px] text-matn-xira truncate">{s.phone}</p>
                                                                         </div>
                                                                     </div>
+                                                                </td>
+                                                                {/* Kursga kelgan sana — bosib o'zgartiriladi, oylik hisob shu kundan. */}
+                                                                <td className="py-2.5 px-3 align-middle">
+                                                                    {(() => {
+                                                                        const cs = (s as any).courseStart;
+                                                                        const d: string = (cs && typeof cs === 'object' ? cs[String(group.id)] : null) || s.joinedDate || '';
+                                                                        return (
+                                                                            <button
+                                                                                onClick={e => { e.stopPropagation(); setSanaOquvchi({ id: s.id, schoolId: s.schoolId, current: d || new Date().toISOString().split('T')[0] }); }}
+                                                                                title="Kursga kelgan sanani o'zgartirish — oylik hisob shu kundan"
+                                                                                className="num inline-flex items-center gap-1 px-2 py-1 rounded-lg text-[12px] text-matn-2 hover:text-brand hover:bg-brand/10 transition-colors cursor-pointer"
+                                                                            >
+                                                                                <Calendar size={11} className="text-matn-xira" />
+                                                                                {d ? `${d.slice(8, 10)}.${d.slice(5, 7)}.${d.slice(0, 4)}` : 'belgilash'}
+                                                                            </button>
+                                                                        );
+                                                                    })()}
                                                                 </td>
                                                                 <td className={`num py-2.5 px-3 text-right text-[13px] align-middle ${s.balance > 0 ? 'text-yaxshi' : s.balance < 0 ? 'text-xato' : 'text-matn-xira'}`}>
                                                                     {s.balance.toLocaleString('ru-RU')}
@@ -1284,6 +1305,17 @@ export default function CourseDetails() {
 
             {/* Add Score Modal */}
 
+
+            {sanaOquvchi && (
+                <KelganSanaModal
+                    studentId={sanaOquvchi.id}
+                    schoolId={sanaOquvchi.schoolId}
+                    groupId={group.id}
+                    groupName={group.name}
+                    current={sanaOquvchi.current}
+                    onClose={() => setSanaOquvchi(null)}
+                />
+            )}
 
             {/* Add Student Modal */}
             {isAddStudentModalOpen && (

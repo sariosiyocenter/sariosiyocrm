@@ -13,6 +13,7 @@ import { authenticate, requireRole, STAFF_MANAGERS, canAccessSchool, allowedScho
 import { encryptSecret, decryptSecret, secretsEncryptionEnabled } from './lib/secrets.js';
 import { claimBillingRun, releaseBillingRun, processMonthlyBilling, billingDayOf, billingDayReached, normalizeBillingDay } from './services/billing.js';
 import { fillTemplate, testNatijasiKerak } from './lib/xabarMatni.js';
+import { normalizePayShare } from './lib/allocation.js';
 import jwt from 'jsonwebtoken';
 import bot, { startBot, notifyAdmins, getTelegramBot, rejaniHaydovchigaYuborish, rejaBekorXabari } from './src/bot/bot.js';
 import { transferStudent, refundStudent, enrollStudent, unenrollStudent, syncGroupMembers, activateStudent, syncStudentGroups, setCourseStart, effectiveCourseStart, todayTashkent } from './services/enrollment.js';
@@ -1713,11 +1714,18 @@ app.put('/api/students/:id', authenticate, async (req, res, next) => {
       'studentSchool','privilegeType','certCategory','certSubject','certType','certScore',
       'customPrices','orgType','region','district','transportId','statusChangedAt',
       'leaveReason','certificates','telegramId','fatherTelegramId','motherTelegramId',
-      'studyGoal','directionId','grade'
+      'studyGoal','directionId','grade','payShare'
     ];
     const data = {};
     for (const key of ALLOWED_STUDENT_FIELDS) {
       if (rest[key] !== undefined) data[key] = rest[key];
+    }
+    // Bir nechta kursdagi o'quvchining puli kurslarga qanday bo'linadi —
+    // kartochkada qo'lda belgilanadi (null — markaz qoidasi).
+    if (data.payShare !== undefined) {
+      const v = normalizePayShare(data.payShare);
+      if (v === false) return res.status(400).json({ error: "Taqsimot noto'g'ri: foizlar yig'indisi 100 bo'lishi kerak" });
+      data.payShare = v === null ? Prisma.DbNull : v;
     }
     // Ism chetidagi bo'sh joy saqlanmasin: alifbo tartibini buzadi.
     if (typeof data.name === 'string') {

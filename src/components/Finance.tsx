@@ -19,6 +19,7 @@ import { isCashIncome } from '../lib/money';
 import KassaPanel from './KassaPanel';
 import PaymeLinkModal from './PaymeLinkModal';
 import PaymentEditModal, { canEditPayment } from './PaymentEditModal';
+import { amaldagiQoida, qoidaMatni } from '../lib/taqsimot';
 
 const inp = "w-full px-4 py-3 bg-slate-50 dark:bg-[#1a2232] border border-chiziq rounded-xl text-sm font-semibold text-slate-900 dark:text-white focus:border-brand focus:ring-2 focus:ring-brand/20 outline-none transition-all";
 const lbl = "block text-[11px] font-extrabold   text-matn-xira mb-2";
@@ -376,7 +377,10 @@ export default function Finance() {
     /** Savol faqat bir nechta kursda o'qiydiganda ma'noga ega. */
     const kopKurs = payKursRows.length > 1;
     /** Sozlamadagi qoida: eski | teng | qarz. */
-    const taqsimQoida = (settings?.multiCoursePay as 'eski' | 'teng' | 'qarz') || 'eski';
+    /** Shu o'quvchi uchun amaldagi qoida: kartochkada o'zi belgilangan bo'lsa — o'sha. */
+    const amalQoida = amaldagiQoida((selectedStudent as any)?.payShare, settings?.multiCoursePay);
+    const qoidaYozuvi = qoidaMatni(amalQoida, id => groups.find(g => g.id === id)?.name || ('#' + id));
+    const taqsimQoida = amalQoida.rule;
 
     /**
      * Jami summani kurslarga taqsimlaydi: 'teng' — barobar, 'qarz' — qarz
@@ -1712,7 +1716,7 @@ ${e.description || e.category} — ${Number(e.amount).toLocaleString()} so'm`)) 
                                                 <>
                                                     <div className="grid grid-cols-2 gap-2 mb-2">
                                                         {([
-                                                            { v: 'umumiy', label: 'Umumiy to\'lov', izoh: taqsimQoida === 'teng' ? 'kurslarga teng' : taqsimQoida === 'qarz' ? 'qarzga qarab' : 'eng eski qarzdan' },
+                                                            { v: 'umumiy', label: 'Umumiy to\'lov', izoh: qoidaYozuvi },
                                                             { v: 'kurs', label: 'Kurslarga bo\'lib', izoh: 'qaysi kursga qancha' },
                                                         ] as const).map(m => (
                                                             <button key={m.v} type="button"
@@ -1729,10 +1733,8 @@ ${e.description || e.category} — ${Number(e.amount).toLocaleString()} so'm`)) 
                                                     </div>
                                                     <p className="text-[10px] font-bold text-matn-xira mb-3 leading-relaxed">
                                                         Bu o'quvchi <span className="num">{payKursRows.length}</span> ta kursda o'qiydi.
-                                                        Umumiy to'lov Sozlamadagi qoida bo'yicha <span className="text-brand">
-                                                            {taqsimQoida === 'teng' ? 'kurslarga teng bo\'linadi'
-                                                                : taqsimQoida === 'qarz' ? 'qarzga qarab bo\'linadi'
-                                                                : 'eng eski qarzdan yopiladi'}
+                                                        Umumiy to'lov bu o'quvchining qoidasi bo'yicha <span className="text-brand">
+                                                            {qoidaYozuvi}
                                                         </span> — keyingi oylarda balansdan yechganda ham.
                                                         «Kurslarga bo'lib» — faqat ota-ona aniq kursni aytsa.
                                                     </p>

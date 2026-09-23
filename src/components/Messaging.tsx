@@ -4,7 +4,7 @@ import {
   XCircle, Clock, Filter, Plus, Trash2, Edit, AlertCircle, HelpCircle, User, Info, Check, MessageSquare
 } from 'lucide-react';
 import { useCRM } from '../context/CRMContext';
-import { allocate, groupRows, withOpening, groupStanding } from '../../lib/allocation.js';
+import { allocate, groupRows, withOpening, groupStanding, shareOpts } from '../../lib/allocation.js';
 import { useConfirm } from './ConfirmDialog';
 import { useLang } from '../context/LanguageContext';
 import { displayName as ismniKorsat } from '../lib/displayName';
@@ -102,6 +102,8 @@ const USTOZ_STATUSLARI = ['Faol', 'Nofaol'];
 interface Student {
   id: number;
   name: string;
+  /** Kartochkadagi to'lov taqsimoti (bo'lmasa — markaz qoidasi). */
+  payShare?: { rule: string; weights?: Record<string, number> } | null;
   phone: string;
   birthDate: string;
   status: string;
@@ -271,7 +273,8 @@ export default function Messaging() {
     for (const st of (students || []) as Student[]) {
       const rows = withOpening(byStudent.get(st.id) || [], st.balance);
       // Sozlamadagi qoida (eski | teng | qarz) — serverdagi hisob bilan bir xil.
-      const res = allocate(rows, { rule: settings?.multiCoursePay });
+      // O'quvchining o'z qoidasi (kartochkada), bo'lmasa markazniki.
+      const res = allocate(rows, shareOpts(st.payShare, settings?.multiCoursePay));
       const m = new Map<number | null, number>();
       for (const x of res.debtByGroup) m.set(x.groupId, x.amount);
       out.set(st.id, m);

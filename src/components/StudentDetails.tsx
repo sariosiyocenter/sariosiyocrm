@@ -20,12 +20,14 @@ import { activeCourses } from '../lib/activeCourses';
 import PhotoViewer from './PhotoViewer';
 import StudentMoveModal from './StudentMoveModal';
 import PaymentEditModal, { canEditPayment } from './PaymentEditModal';
+import KelganSanaModal from './KelganSanaModal';
 import PaymeLinkModal from './PaymeLinkModal';
 import { STUDY_GOALS, UZB_REGIONS, ORG_TYPES, gradeOptions, gradeLabel, keepGrade } from '../lib/studentFields';
 import StudentLedger from './StudentLedger';
 import { loadFaceModels, descriptorFromPhoto, saveFaceProfiles, faceFailText, faceFailedBefore, rememberFaceTry, forgetFaceTry } from '../lib/faceDescriptor';
 import type { FaceFail } from '../lib/faceDescriptor';
 import type { Payment } from '../types';
+import { amaldagiQoida, qoidaMatni, type TaqsimQoida } from '../lib/taqsimot';
 
 /**
  * Face ID holati. Alohida "rasmga tushish" ham, tugma ham yo'q: belgi profil
@@ -80,13 +82,16 @@ export default function StudentDetails() {
     // "Kursga kelgan sana": o'quvchi ro'yxatga oy boshida olinib, darsga oy
     // o'rtasidan kelishi mumkin — hisob o'sha kundan yuritiladi.
     const [editingStart, setEditingStart] = useState<{ groupId: number, name: string, current: string } | null>(null);
-    const [startVal, setStartVal] = useState('');
-    const [startPreview, setStartPreview] = useState<any>(null);
-    const [savingStart, setSavingStart] = useState(false);
     // To'lovni tahrirlash (resepshn — 10 daqiqa, admin — doim).
     const [editingPayment, setEditingPayment] = useState<Payment | null>(null);
     // Kartochkadagi ha/yo'q belgilari saqlanayotgan payt (transport | imtihon).
     const [belgiSaqlanmoqda, setBelgiSaqlanmoqda] = useState<'transport' | 'imtihon' | null>(null);
+    // "To'lov taqsimoti" oynasi: bir nechta kursdagi o'quvchining puli
+    // kurslarga qanday bo'linadi — shu o'quvchi uchun qo'lda (egasi, 2026-09-23).
+    const [taqsimOyna, setTaqsimOyna] = useState(false);
+    const [taqsimQoidaVal, setTaqsimQoidaVal] = useState<'markaz' | TaqsimQoida>('markaz');
+    const [taqsimFoiz, setTaqsimFoiz] = useState<Record<string, string>>({});
+    const [taqsimSaqlanmoqda, setTaqsimSaqlanmoqda] = useState(false);
     // Profil izohi (Student.comment) — bazada bor edi, lekin interfeysda ko'rinmasdi.
     const [isEditingNote, setIsEditingNote] = useState(false);
     const [noteDraft, setNoteDraft] = useState('');
@@ -113,53 +118,6 @@ export default function StudentDetails() {
         const cs = student?.courseStart;
         const v = cs && typeof cs === 'object' ? (cs as Record<string, string>)[String(groupId)] : null;
         return v || null;
-    };
-
-    /** Kelgan sanani o'zgartirish: avval hisob ko'rsatiladi, keyin yoziladi. */
-    const startniKorish = async (groupId: number, date: string) => {
-        if (!student || !date) { setStartPreview(null); return; }
-        try {
-            const token = localStorage.getItem('token');
-            const res = await fetch(`/api/students/${student.id}/course-start`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + token },
-                body: JSON.stringify({ schoolId: student.schoolId, groupId, date, preview: true }),
-            });
-            const data = await res.json();
-            setStartPreview(res.ok ? data : { error: data.error });
-        } catch {
-            setStartPreview({ error: 'Aloqa xatosi' });
-        }
-    };
-
-    const startniSaqlash = async () => {
-        if (!student || !editingStart || !startVal || savingStart) return;
-        setSavingStart(true);
-        try {
-            const token = localStorage.getItem('token');
-            const res = await fetch(`/api/students/${student.id}/course-start`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + token },
-                body: JSON.stringify({ schoolId: student.schoolId, groupId: editingStart.groupId, date: startVal }),
-            });
-            const data = await res.json();
-            if (!res.ok) { showNotification(data.error || 'Saqlanmadi', 'error'); return; }
-            const farq = Number(data.balanceDelta || 0);
-            showNotification(
-                farq === 0
-                    ? `Kelgan sana ${startVal} qilib belgilandi`
-                    : `Kelgan sana ${startVal} · hisob ${farq > 0 ? 'kamaydi' : 'oshdi'}: ${Math.abs(farq).toLocaleString('ru-RU')} so'm`,
-                'success'
-            );
-            if (data.warning) showNotification(data.warning, 'error');
-            setEditingStart(null);
-            setStartPreview(null);
-            retryLoad();
-        } catch {
-            showNotification('Aloqa xatosi', 'error');
-        } finally {
-            setSavingStart(false);
-        }
     };
 
     /**
@@ -1550,6 +1508,39 @@ export default function StudentDetails() {
                                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
                                         <div className="space-y-4">
                                             <span className="text-[11px] font-bold text-matn-xira block pb-2 border-b border-gray-55 dark:border-gray-800/50">{t('active_groups')}</span>
+                                            {/* To'lov taqsimoti — faqat bir nechta kursda o'qisa ma'noli.
+                                                Shu o'quvchi uchun qo'lda: teng, foizda (70/30), qarzga qarab... */}
+                                            {studentGroups.length > 1 && (() => {
+                                                const q = amaldagiQoida(student.payShare, settings?.multiCoursePay);
+                                                const kursNomi = (id: number) => groups.find(g => g.id === id)?.name || ('#' + id);
+                                                return (
+                                                    <div className="flex items-center justify-between gap-3 p-3 bg-ichki/40 border border-chiziq rounded-2xl">
+                                                        <div className="min-w-0">
+                                                            <p className="text-[11px] font-bold text-matn-xira">To'lov taqsimoti</p>
+                                                            <p className="text-[12px] font-black text-matn mt-0.5 truncate">
+                                                                {qoidaMatni(q, kursNomi)}
+                                                                {!q.oziniki && <span className="text-[10px] font-bold text-matn-xira"> · markaz qoidasi</span>}
+                                                            </p>
+                                                        </div>
+                                                        <button
+                                                            onClick={() => {
+                                                                const ps = student.payShare;
+                                                                setTaqsimQoidaVal(ps?.rule ? ps.rule : 'markaz');
+                                                                const f: Record<string, string> = {};
+                                                                for (const g of studentGroups) {
+                                                                    const w = ps?.rule === 'foiz' ? ps.weights?.[String(g.id)] : undefined;
+                                                                    f[String(g.id)] = w !== undefined ? String(w) : String(Math.round(100 / studentGroups.length));
+                                                                }
+                                                                setTaqsimFoiz(f);
+                                                                setTaqsimOyna(true);
+                                                            }}
+                                                            className="shrink-0 px-3 py-2 text-[11px] font-bold border border-chiziq rounded-xl text-brand hover:border-brand hover:bg-brand/10 transition-colors cursor-pointer"
+                                                        >
+                                                            O'zgartirish
+                                                        </button>
+                                                    </div>
+                                                );
+                                            })()}
                                             <div className="space-y-3">
                                                 {studentGroups.length === 0 ? (
                                                     <p className="text-center py-8 text-[11px] text-matn-xira font-bold">{t('no_groups_found')}</p>
@@ -1574,15 +1565,19 @@ export default function StudentDetails() {
                                                                                 e.stopPropagation();
                                                                                 const cur = kursSanasi(group.id) || student.joinedDate || toDateStr();
                                                                                 setEditingStart({ groupId: group.id, name: group.name, current: cur });
-                                                                                setStartVal(cur);
-                                                                                setStartPreview(null);
-                                                                                startniKorish(group.id, cur);
                                                                             }}
-                                                                            className="mt-1 inline-flex items-center gap-1 text-[10px] font-bold text-matn-xira hover:text-brand transition-colors cursor-pointer"
-                                                                            title="Kursga kelgan sanani o'zgartirish"
+                                                                            className="mt-2 inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg border border-brand/40 bg-brand/5 text-[11px] font-bold text-brand hover:bg-brand hover:text-white transition-colors cursor-pointer"
+                                                                            title="Kursga kelgan sanani o'zgartirish — oylik hisob shu kundan"
                                                                         >
-                                                                            <Calendar size={10} />
-                                                                            <span className="num">{kursSanasi(group.id) || "kelgan sana belgilanmagan"}</span>
+                                                                            <Calendar size={12} />
+                                                                            <span>Kelgan sana:</span>
+                                                                            <span className="num">
+                                                                                {(() => {
+                                                                                    const d = kursSanasi(group.id) || student.joinedDate;
+                                                                                    return d ? `${d.slice(8, 10)}.${d.slice(5, 7)}.${d.slice(0, 4)}` : 'belgilash';
+                                                                                })()}
+                                                                            </span>
+                                                                            <Edit size={11} />
                                                                         </button>
                                                                     </div>
                                                                 </div>
@@ -2479,78 +2474,122 @@ export default function StudentDetails() {
             )}
 
             {/* Kursga kelgan sana — hisob shu kundan boshlanadi. */}
-            {editingStart && (
-                <div className="fixed inset-0 z-[250] flex items-start sm:items-center-safe justify-center overflow-y-auto p-4">
-                    <div className="fixed inset-0 bg-gray-900/60 backdrop-blur-sm" onClick={() => { setEditingStart(null); setStartPreview(null); }} />
-                    <div className="relative bg-sirt w-full max-w-sm rounded-[2rem] p-8 shadow-2xl overflow-hidden border border-chiziq">
-                        <div className="flex items-center justify-between mb-6 pb-4 border-b border-chiziq-mayin/50">
-                            <div>
-                                <h3 className="text-sm font-black text-matn tracking-tight">Kursga kelgan sana</h3>
-                                <p className="text-[11px] font-bold text-brand mt-0.5">{editingStart.name}</p>
+            {/* To'lov taqsimoti — shu o'quvchi uchun qo'lda. */}
+            {taqsimOyna && (() => {
+                const kurslar = studentGroups;
+                const jami = kurslar.reduce((s, g) => s + (Number(taqsimFoiz[String(g.id)]) || 0), 0);
+                const markazNomi = qoidaMatni(amaldagiQoida(null, settings?.multiCoursePay), () => '');
+                const variantlar: { v: 'markaz' | TaqsimQoida; label: string; izoh: string }[] = [
+                    { v: 'markaz', label: 'Markaz qoidasi', izoh: `Sozlamalardagidek (hozir: ${markazNomi})` },
+                    { v: 'eski', label: 'Eng eski qarzdan', izoh: "Navbat bilan: birinchi kurs to'liq, qolgani keyingisiga" },
+                    { v: 'teng', label: 'Kurslarga teng', izoh: "Yetmasa ikkala kursda teng qarz qoladi" },
+                    { v: 'foiz', label: "Foizda — o'zim belgilayman", izoh: 'Masalan 70% / 30%' },
+                    { v: 'qarz', label: 'Qarzga qarab', izoh: "Qaysi kursning hisobi katta bo'lsa, o'shanga ko'proq" },
+                ];
+                const saqlash = async () => {
+                    if (taqsimQoidaVal === 'foiz' && Math.abs(jami - 100) > 0.01) {
+                        showNotification("Foizlar yig'indisi 100 bo'lishi kerak", 'error');
+                        return;
+                    }
+                    const payShare = taqsimQoidaVal === 'markaz' ? null
+                        : taqsimQoidaVal === 'foiz'
+                            ? { rule: 'foiz' as const, weights: Object.fromEntries(kurslar.map(g => [String(g.id), Number(taqsimFoiz[String(g.id)]) || 0])) }
+                            : { rule: taqsimQoidaVal };
+                    setTaqsimSaqlanmoqda(true);
+                    try {
+                        await updateStudent(student.id, { payShare } as any);
+                        setTaqsimOyna(false);
+                    } finally {
+                        setTaqsimSaqlanmoqda(false);
+                    }
+                };
+                return (
+                    <div className="fixed inset-0 z-[250] flex items-start sm:items-center-safe justify-center overflow-y-auto p-4">
+                        <div className="fixed inset-0 bg-gray-900/60 backdrop-blur-sm" onClick={() => setTaqsimOyna(false)} />
+                        <div className="relative bg-sirt w-full max-w-md rounded-[2rem] p-8 shadow-2xl border border-chiziq">
+                            <div className="flex items-center justify-between mb-5 pb-4 border-b border-chiziq-mayin/50">
+                                <div>
+                                    <h3 className="text-sm font-black text-matn tracking-tight">To'lov taqsimoti</h3>
+                                    <p className="text-[11px] font-bold text-brand mt-0.5">{displayName(student.name)} · {kurslar.length} ta kurs</p>
+                                </div>
+                                <button aria-label="Yopish" onClick={() => setTaqsimOyna(false)} className="w-8 h-8 flex items-center justify-center text-matn-xira hover:bg-ichki rounded-xl cursor-pointer"><X size={18} /></button>
                             </div>
-                            <button aria-label="Yopish" onClick={() => { setEditingStart(null); setStartPreview(null); }} className="w-8 h-8 flex items-center justify-center text-matn-xira hover:bg-gray-50 dark:hover:bg-gray-750 rounded-xl cursor-pointer"><X size={18} /></button>
-                        </div>
-                        <div className="space-y-4">
-                            <div>
-                                <label className="block text-[11px] font-bold text-matn-xira mb-2">Qaysi kundan kelib boshlagan</label>
-                                <input
-                                    type="date"
-                                    className="w-full px-4 py-3 bg-ichki border border-chiziq rounded-2xl text-xs font-bold text-matn focus:border-brand outline-none transition-all"
-                                    value={startVal}
-                                    onChange={e => { setStartVal(e.target.value); startniKorish(editingStart.groupId, e.target.value); }}
-                                />
-                                <span className="block text-[10px] text-matn-xira font-medium mt-1">
-                                    Oylik hisob shu kundan oy oxirigacha bo'lgan darslar uchun yoziladi
-                                </span>
+                            <p className="text-[11px] font-bold text-matn-xira leading-relaxed mb-4">
+                                Bu o'quvchining puli kurslarga qanday bo'linadi — kassaga pul kelganda ham,
+                                har oy boshida oylik balansdan yechilganda ham.
+                            </p>
+                            <div className="space-y-2">
+                                {variantlar.map(o => (
+                                    <button key={o.v} type="button" onClick={() => setTaqsimQoidaVal(o.v)}
+                                        className={`w-full text-left px-4 py-3 rounded-2xl border transition-all cursor-pointer ${
+                                            taqsimQoidaVal === o.v ? 'bg-brand/10 border-brand text-brand' : 'bg-ichki border-chiziq text-matn-xira hover:border-brand/40'
+                                        }`}>
+                                        <span className="block text-xs font-black">{taqsimQoidaVal === o.v ? '✓ ' : ''}{o.label}</span>
+                                        <span className="block text-[10px] font-bold opacity-70 mt-0.5">{o.izoh}</span>
+                                    </button>
+                                ))}
                             </div>
 
-                            {/* Qanday o'zgarishini oldindan ko'rsatamiz — pulga tegadigan amal. */}
-                            {startPreview?.error && (
-                                <p className="text-[11px] font-bold text-xato bg-rose-50 dark:bg-rose-950/20 border border-rose-100 dark:border-rose-900/40 rounded-xl px-3 py-2">{startPreview.error}</p>
-                            )}
-                            {startPreview && !startPreview.error && (
-                                <div className="bg-ichki/50 border border-chiziq rounded-2xl p-3 space-y-2">
-                                    {startPreview.trial ? (
-                                        <p className="text-[11px] font-bold text-matn-xira">Sinov o'quvchisi — hisob yozilmaydi.</p>
-                                    ) : (startPreview.lines || []).length === 0 ? (
-                                        <p className="text-[11px] font-bold text-matn-xira">Hisob o'zgarmaydi.</p>
-                                    ) : (
-                                        (startPreview.lines || []).map((l: any) => (
-                                            <div key={l.month} className="flex items-center justify-between gap-3">
-                                                <span className="num text-[11px] font-bold text-matn-xira">{l.month} · {l.lessons} dars</span>
-                                                <span className={`num text-[11px] font-black ${l.adjust > 0 ? 'text-yaxshi' : l.adjust < 0 ? 'text-xato' : 'text-matn-xira'}`}>
-                                                    {l.adjust > 0 ? '+' : ''}{Math.round(l.adjust).toLocaleString('ru-RU')}
-                                                </span>
+                            {taqsimQoidaVal === 'foiz' && (
+                                <div className="mt-4 space-y-2">
+                                    {kurslar.map(g => (
+                                        <div key={g.id} className="flex items-center justify-between gap-3 p-3 bg-ichki rounded-2xl border border-chiziq/80">
+                                            <span className="text-[12px] font-bold text-matn truncate">{g.name}</span>
+                                            <div className="flex items-center gap-1.5 shrink-0">
+                                                <input type="number" min={0} max={100}
+                                                    value={taqsimFoiz[String(g.id)] ?? ''}
+                                                    onChange={e => setTaqsimFoiz(prev => ({ ...prev, [String(g.id)]: e.target.value }))}
+                                                    className="w-20 px-3 py-2 bg-sirt border border-chiziq rounded-xl text-xs font-bold text-matn text-right tabular-nums outline-none focus:border-brand" />
+                                                <span className="text-[11px] font-bold text-matn-xira">%</span>
                                             </div>
-                                        ))
-                                    )}
-                                    {!startPreview.trial && (
-                                        <div className="flex items-center justify-between gap-3 pt-2 border-t border-chiziq-mayin">
-                                            <span className="text-[11px] font-bold text-matn">Balans</span>
-                                            <span className="num text-[11px] font-black text-matn">
-                                                {Math.round(startPreview.balanceBefore).toLocaleString('ru-RU')} → {Math.round(startPreview.balanceAfter).toLocaleString('ru-RU')}
-                                            </span>
                                         </div>
-                                    )}
-                                    {startPreview.warning && (
-                                        <p className="text-[10px] font-bold text-ogoh">{startPreview.warning}</p>
-                                    )}
+                                    ))}
+                                    <div className="flex items-center justify-between pt-1">
+                                        <button type="button"
+                                            onClick={() => {
+                                                const f: Record<string, string> = {};
+                                                let qolgan = 100;
+                                                kurslar.forEach((g, i) => {
+                                                    const v = i === kurslar.length - 1 ? qolgan : Math.round(100 / kurslar.length);
+                                                    f[String(g.id)] = String(v); qolgan -= v;
+                                                });
+                                                setTaqsimFoiz(f);
+                                            }}
+                                            className="px-2.5 py-1.5 text-[10px] font-bold border border-chiziq text-matn-sokin rounded-lg hover:border-brand hover:text-brand transition-colors cursor-pointer">
+                                            Teng qilish
+                                        </button>
+                                        <span className={`num text-[12px] font-black ${Math.abs(jami - 100) <= 0.01 ? 'text-yaxshi' : 'text-xato'}`}>
+                                            Jami: {jami}%
+                                        </span>
+                                    </div>
                                 </div>
                             )}
 
-                            <div className="flex gap-2 pt-2">
-                                <button type="button" onClick={() => { setEditingStart(null); setStartPreview(null); }}
+                            <div className="flex gap-2 pt-5">
+                                <button type="button" onClick={() => setTaqsimOyna(false)}
                                     className="flex-1 py-3 bg-ichki hover:bg-gray-100 dark:hover:bg-gray-800 text-matn-xira rounded-xl text-[11px] font-bold transition-all cursor-pointer">
                                     Bekor
                                 </button>
-                                <button type="button" onClick={startniSaqlash} disabled={savingStart || !startVal || !!startPreview?.error}
+                                <button type="button" onClick={saqlash}
+                                    disabled={taqsimSaqlanmoqda || (taqsimQoidaVal === 'foiz' && Math.abs(jami - 100) > 0.01)}
                                     className="flex-1 py-3 bg-brand hover:bg-brand-dark disabled:opacity-50 text-white rounded-xl text-[11px] font-bold transition-all cursor-pointer">
-                                    {savingStart ? 'Saqlanmoqda…' : 'Saqlash'}
+                                    {taqsimSaqlanmoqda ? 'Saqlanmoqda…' : 'Saqlash'}
                                 </button>
                             </div>
                         </div>
                     </div>
-                </div>
+                );
+            })()}
+
+            {editingStart && student && (
+                <KelganSanaModal
+                    studentId={student.id}
+                    schoolId={student.schoolId}
+                    groupId={editingStart.groupId}
+                    groupName={editingStart.name}
+                    current={editingStart.current}
+                    onClose={() => setEditingStart(null)}
+                />
             )}
 
             {/* To'lovni tahrirlash: resepshn 10 daqiqa ichida, admin doim. */}
@@ -2709,8 +2748,10 @@ function PaymentAddModal({ studentId, onClose, onAdd }: { studentId: number; onC
 
     /** O'quvchi nechta kursda o'qiyapti — savol faqat bir nechtada chiqadi. */
     const kopKurs = studentCourses.length > 1;
-    /** Sozlamadagi qoida: eski | teng | qarz (Sozlamalar → Avtomatlashtirish). */
-    const taqsimQoida = (settings?.multiCoursePay as 'eski' | 'teng' | 'qarz') || 'eski';
+    /** Shu o'quvchi uchun amaldagi qoida: kartochkada o'zi belgilangan bo'lsa — o'sha. */
+    const amalQoida = amaldagiQoida(student?.payShare, settings?.multiCoursePay);
+    const qoidaYozuvi = qoidaMatni(amalQoida, id => groups.find(g => g.id === id)?.name || ('#' + id));
+    const taqsimQoida = amalQoida.rule;
 
     /** Jami summani kurslarga bo'lish: teng yoki qarz ulushiga qarab. */
     const tengBolish = (usul: 'teng' | 'qarz' = 'teng', summa?: number) => {
@@ -3015,7 +3056,7 @@ function PaymentAddModal({ studentId, onClose, onAdd }: { studentId: number; onC
                                 <label className={labelCls}>TAQSIMLASH</label>
                                 <div className="grid grid-cols-2 gap-2">
                                     {([
-                                        { v: 'umumiy', label: "Umumiy to'lov", izoh: taqsimQoida === 'teng' ? 'kurslarga teng' : taqsimQoida === 'qarz' ? 'qarzga qarab' : 'eng eski qarzdan' },
+                                        { v: 'umumiy', label: "Umumiy to'lov", izoh: qoidaYozuvi },
                                         { v: 'kurs', label: "Kurslarga bo'lib", izoh: 'qaysi kursga qancha' },
                                     ] as const).map(m => (
                                         <button key={m.v} type="button" onClick={() => setPayMode(m.v)}
@@ -3032,10 +3073,8 @@ function PaymentAddModal({ studentId, onClose, onAdd }: { studentId: number; onC
 
                                 {payMode === 'umumiy' ? (
                                     <p className="text-[10px] font-bold text-matn-xira mt-2 leading-relaxed">
-                                        Pul hisobga tushadi va Sozlamadagi qoida bo'yicha <span className="text-brand">
-                                            {taqsimQoida === 'teng' ? 'kurslarga teng bo\'linadi'
-                                                : taqsimQoida === 'qarz' ? 'qarzga qarab bo\'linadi'
-                                                : 'eng eski qarzdan yopiladi'}
+                                        Pul hisobga tushadi va bu o'quvchining qoidasi bo'yicha <span className="text-brand">
+                                            {qoidaYozuvi}
                                         </span> — keyingi oylarda balansdan yechganda ham. «Kurslarga bo'lib» — faqat ota-ona aniq kursni aytsa.
                                     </p>
                                 ) : (

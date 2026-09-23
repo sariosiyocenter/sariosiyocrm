@@ -44,6 +44,14 @@ model Student {
   // Oylik hisob aynan shu kundan boshlanadi (services/enrollment.js). Bo'sh
   // bo'lsa — eski yozuvlardagidek hisob qatorlaridan tiklanadi.
   courseStart   Json?     @default("{}")
+  // Bir nechta kursda o'qisa — shu o'quvchining puli kurslarga qanday
+  // bo'linadi (egasi, 2026-09-23: "o'zim nastroyka qilay ... o'quvchi uchun"):
+  //   null                                  — markaz qoidasi (Setting.multiCoursePay)
+  //   { rule: 'eski' | 'teng' | 'qarz' }
+  //   { rule: 'foiz', weights: { "<kurs id>": 70, "<kurs id>": 30 } }
+  // Kassaga pul kelganda ham, har oy boshida balansdan yechganda ham
+  // shu qo'llanadi (lib/allocation.js).
+  payShare      Json?
   certificates  Json?     @default("[]")
 
   gender          String?   @default("Erkak")
