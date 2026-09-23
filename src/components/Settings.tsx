@@ -511,15 +511,16 @@ export default function Settings() {
                             <CreditCard size={14} className="text-brand shrink-0" /> Bir nechta kursdagi o'quvchining to'lovi
                         </p>
                         <p className="text-[11px] font-bold text-matn-xira mt-1 leading-relaxed">
-                            O'quvchi ikki yoki undan ko'p kursda o'qisa, kassaga kelgan pul qanday taqsimlanadi.
-                            Bitta kursda o'qiydiganlarda bu savol umuman chiqmaydi — pul o'sha kursga tushadi.
+                            O'quvchi ikki yoki undan ko'p kursda o'qisa, uning puli kurslar orasida qanday bo'linadi —
+                            kassaga pul kelganda ham, har oy boshida oylik balansdan yechilganda ham.
+                            Bitta kursda o'qiydiganlarga bu tegishli emas — pul o'sha kursga tushadi.
                         </p>
                     </div>
                     <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
                         {([
-                            { v: 'eski', label: 'Eng eski qarzdan', izoh: "Pul bo'linmaydi: avval eng eski ochiq hisob yopiladi" },
-                            { v: 'teng', label: "Kurslarga teng", izoh: "500 000 ikki kursga 250 000 dan bo'linadi" },
-                            { v: 'qarz', label: 'Qarzga qarab', izoh: "Qaysi kursda qarz ko'p bo'lsa, o'shanga ko'proq" },
+                            { v: 'eski', label: 'Eng eski qarzdan', izoh: "Navbat bilan: birinchi kurs to'liq yopiladi, qolgani keyingisiga" },
+                            { v: 'teng', label: "Kurslarga teng", izoh: "Balans yetmasa ikkala kursda teng qarz qoladi: 600 000 → 300 000 + 300 000" },
+                            { v: 'qarz', label: 'Qarzga qarab', izoh: "Qaysi kursning hisobi katta bo'lsa, o'shanga ko'proq (masalan oy o'rtasida kelgan kurs)" },
                         ] as const).map(o => {
                             const tanlangan = (profileForm?.multiCoursePay || 'eski') === o.v;
                             return (

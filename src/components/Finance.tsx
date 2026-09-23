@@ -401,17 +401,16 @@ export default function Finance() {
         setPayLines(yangi);
     };
 
-    // Sozlamada "teng" yoki "qarzga qarab" tanlangan bo'lsa, bir nechta kursdagi
-    // o'quvchida pul o'zi shunday bo'linadi — resepshn hech narsa bosmaydi.
+    // Standart doim "umumiy". Sozlamadagi qoidani (eski / teng / qarz) hisob
+    // motori o'zi qo'llaydi — to'lov kelganda ham, har oy boshida balansdan
+    // yechganda ham (lib/allocation.js). Kassada oldindan kurslarga bo'lib
+    // yozilsa pul o'sha kursga yopishib qolardi va keyingi oylarda qoida
+    // ishlamasdi. Kursga bog'lab yozish — faqat istisno ("bu pul Fizikaga").
     useEffect(() => {
         if (!selectedStudent) return;
-        // Bitta kursda — bo'lish degan narsa yo'q: doim umumiy.
-        if (!kopKurs) { setPayMode('umumiy'); return; }
-        if (taqsimQoida === 'eski') return;
-        setPayMode('kurs');
-        taqsimla(taqsimQoida === 'qarz' ? 'qarz' : 'teng');
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [selectedStudent?.id, kopKurs, taqsimQoida, payAmount, payLedger]);
+        setPayMode('umumiy');
+        setPayLines({});
+    }, [selectedStudent?.id]);
 
     const closePaymentModal = () => {
         setIsPaymentModalOpen(false);
@@ -1713,7 +1712,7 @@ ${e.description || e.category} — ${Number(e.amount).toLocaleString()} so'm`)) 
                                                 <>
                                                     <div className="grid grid-cols-2 gap-2 mb-2">
                                                         {([
-                                                            { v: 'umumiy', label: 'Umumiy to\'lov', izoh: 'eng eski qarzdan' },
+                                                            { v: 'umumiy', label: 'Umumiy to\'lov', izoh: taqsimQoida === 'teng' ? 'kurslarga teng' : taqsimQoida === 'qarz' ? 'qarzga qarab' : 'eng eski qarzdan' },
                                                             { v: 'kurs', label: 'Kurslarga bo\'lib', izoh: 'qaysi kursga qancha' },
                                                         ] as const).map(m => (
                                                             <button key={m.v} type="button"
@@ -1728,13 +1727,14 @@ ${e.description || e.category} — ${Number(e.amount).toLocaleString()} so'm`)) 
                                                             </button>
                                                         ))}
                                                     </div>
-                                                    <p className="text-[10px] font-bold text-matn-xira mb-3">
+                                                    <p className="text-[10px] font-bold text-matn-xira mb-3 leading-relaxed">
                                                         Bu o'quvchi <span className="num">{payKursRows.length}</span> ta kursda o'qiydi.
-                                                        Sozlamadagi qoida: <span className="text-brand">
+                                                        Umumiy to'lov Sozlamadagi qoida bo'yicha <span className="text-brand">
                                                             {taqsimQoida === 'teng' ? 'kurslarga teng bo\'linadi'
                                                                 : taqsimQoida === 'qarz' ? 'qarzga qarab bo\'linadi'
                                                                 : 'eng eski qarzdan yopiladi'}
-                                                        </span>.
+                                                        </span> — keyingi oylarda balansdan yechganda ham.
+                                                        «Kurslarga bo'lib» — faqat ota-ona aniq kursni aytsa.
                                                     </p>
                                                 </>
                                             )}

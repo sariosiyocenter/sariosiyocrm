@@ -202,13 +202,15 @@ export default function DailySheet() {
         const out = new Map<number, Map<number | null, number>>();
         const rows = groupRows((payments || []) as any[]);
         for (const st of students || []) {
-            const res = allocate(withOpening(rows.get(st.id) || [], st.balance));
+            // Bir nechta kursdagi o'quvchida qarz Sozlamadagi qoida bo'yicha
+            // bo'linadi — serverdagi hisob bilan bir xil chiqishi shart.
+            const res = allocate(withOpening(rows.get(st.id) || [], st.balance), { rule: settings?.multiCoursePay });
             const m = new Map<number | null, number>();
             for (const x of res.debtByGroup) m.set(x.groupId ?? null, x.amount);
             out.set(st.id, m);
         }
         return out;
-    }, [students, payments]);
+    }, [students, payments, settings?.multiCoursePay]);
 
     // Imtihon natijalari: nomida "sinov" bo'lgan imtihon — SINOV ustuni, qolganlari
     // OXIRGI TEST (eng so'nggisi) va Reyting (o'rtachasi).

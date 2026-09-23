@@ -2731,15 +2731,10 @@ function PaymentAddModal({ studentId, onClose, onAdd }: { studentId: number; onC
         setPayLines(yangi);
     };
 
-    // Sozlamada "teng" yoki "qarzga qarab" turgan bo'lsa — bir nechta kursdagi
-    // o'quvchida summa o'zi bo'linadi, resepshn hech narsa bosmaydi.
-    useEffect(() => {
-        if (!kopKurs) { setPayMode('umumiy'); return; }
-        if (taqsimQoida === 'eski') return;
-        setPayMode('kurs');
-        tengBolish(taqsimQoida === 'qarz' ? 'qarz' : 'teng');
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [kopKurs, taqsimQoida, amount]);
+    // Standart doim "umumiy": qoidani (eski / teng / qarz) hisob motori o'zi
+    // qo'llaydi — to'lovda ham, har oy boshida balansdan yechganda ham.
+    // Oldindan kurslarga bo'lib yozilsa pul kursga yopishib qolardi.
+    useEffect(() => { if (!kopKurs) setPayMode('umumiy'); }, [kopKurs]);
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -3020,7 +3015,7 @@ function PaymentAddModal({ studentId, onClose, onAdd }: { studentId: number; onC
                                 <label className={labelCls}>TAQSIMLASH</label>
                                 <div className="grid grid-cols-2 gap-2">
                                     {([
-                                        { v: 'umumiy', label: "Umumiy to'lov", izoh: 'eng eski qarzdan' },
+                                        { v: 'umumiy', label: "Umumiy to'lov", izoh: taqsimQoida === 'teng' ? 'kurslarga teng' : taqsimQoida === 'qarz' ? 'qarzga qarab' : 'eng eski qarzdan' },
                                         { v: 'kurs', label: "Kurslarga bo'lib", izoh: 'qaysi kursga qancha' },
                                     ] as const).map(m => (
                                         <button key={m.v} type="button" onClick={() => setPayMode(m.v)}
@@ -3037,8 +3032,11 @@ function PaymentAddModal({ studentId, onClose, onAdd }: { studentId: number; onC
 
                                 {payMode === 'umumiy' ? (
                                     <p className="text-[10px] font-bold text-matn-xira mt-2 leading-relaxed">
-                                        Pul hisobga tushadi va ochiq hisoblarni yopadi — avval shu oyniki, keyin eski qarzlar.
-                                        Sozlamadagi qoida: <span className="text-brand">eng eski qarzdan</span>.
+                                        Pul hisobga tushadi va Sozlamadagi qoida bo'yicha <span className="text-brand">
+                                            {taqsimQoida === 'teng' ? 'kurslarga teng bo\'linadi'
+                                                : taqsimQoida === 'qarz' ? 'qarzga qarab bo\'linadi'
+                                                : 'eng eski qarzdan yopiladi'}
+                                        </span> — keyingi oylarda balansdan yechganda ham. «Kurslarga bo'lib» — faqat ota-ona aniq kursni aytsa.
                                     </p>
                                 ) : (
                                     <div className="mt-3 space-y-2">

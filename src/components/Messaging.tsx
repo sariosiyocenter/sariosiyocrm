@@ -231,7 +231,7 @@ const getTriggerTypeMeta = (type: string) => {
 
 export default function Messaging() {
   const { t } = useLang();
-  const { students, groups, courses, payments, selectedSchoolId, schools, teachers, users, showNotification } = useCRM();
+  const { students, groups, courses, payments, selectedSchoolId, schools, teachers, users, settings, showNotification } = useCRM();
     const confirm = useConfirm();
 
   const [activeTab, setActiveTab] = useState<'new' | 'templates' | 'auto' | 'history'>('new');
@@ -270,13 +270,14 @@ export default function Messaging() {
     const byStudent = groupRows((payments || []) as any[]);
     for (const st of (students || []) as Student[]) {
       const rows = withOpening(byStudent.get(st.id) || [], st.balance);
-      const res = allocate(rows);
+      // Sozlamadagi qoida (eski | teng | qarz) — serverdagi hisob bilan bir xil.
+      const res = allocate(rows, { rule: settings?.multiCoursePay });
       const m = new Map<number | null, number>();
       for (const x of res.debtByGroup) m.set(x.groupId, x.amount);
       out.set(st.id, m);
     }
     return out;
-  }, [students, payments]);
+  }, [students, payments, settings?.multiCoursePay]);
 
   /** Tanlangan kurslar bo'yicha qarz (kurs tanlanmagan bo'lsa — umumiy qarz). */
   const qarzMiqdori = (st: Student): number => {
