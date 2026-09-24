@@ -837,7 +837,7 @@ export default function Messaging() {
     const ustozNomlari = [...new Set(oqKurslari.map(g =>
       g.teacherName || (teachers || []).find((tc: any) => tc.id === g.teacherId)?.name
     ).filter(Boolean))].join(', ');
-    const schoolName = schools.find(s => s.id === (selectedSchoolId || st.schoolId))?.name || 'Quantum Edu';
+    const schoolName = schools.find(s => s.id === (selectedSchoolId || st.schoolId))?.name || settings?.orgName || '';
 
     return messageText
       .replace(/\{ism\}/gi, st.name)

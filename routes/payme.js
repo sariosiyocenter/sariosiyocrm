@@ -6,6 +6,7 @@ import { Markup } from 'telegraf';
 import prisma from '../lib/prisma.js';
 import { authenticate, canAccessSchool, requireRole, STAFF_MANAGERS } from '../middleware/auth.js';
 import { isAdmin } from '../lib/config.js';
+import { markazBrendi } from '../lib/markazBrendi.js';
 import * as payme from '../services/payme.js';
 
 // Havola yaratish — to'lov qabul qiladigan xodimlar. Ustoz/haydovchi emas.
@@ -380,7 +381,7 @@ export function registerPaymeRoutes(app) {
       await prisma.setting.upsert({
         where: { schoolId },
         update: { paymeEndpointToken: token },
-        create: { schoolId, orgName: 'QUANTUM EDU', paymeEndpointToken: token },
+        create: { schoolId, ...(await markazBrendi(schoolId)), paymeEndpointToken: token },
       });
       res.json({ paymeEndpointToken: token });
     } catch (e) { next(e); }

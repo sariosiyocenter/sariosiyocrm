@@ -7,6 +7,7 @@ import { JWT_SECRET, TOKEN_TTL, attendanceWindowStart, redactBody, isAdmin, stri
 import { registerPaymeRoutes } from './routes/payme.js';
 import { registerAuditRoutes } from './routes/audit.js';
 import { auditMiddleware } from './lib/audit.js';
+import { markazBrendi } from './lib/markazBrendi.js';
 import { webhookSecretOk, registerSchoolWebhook, selfHealWebhook } from './lib/telegramWebhook.js';
 import { MODES as PAYME_MODES, SCHEMES as PAYME_SCHEMES, generateEndpointToken as generatePaymeEndpointToken } from './services/payme.js';
 import { authenticate, requireRole, canAccessSchool, allowedSchoolIds, ALL_BRANCHES, isOrgWide, forgetUser, sameOrganization, organizationSchoolIds, foydalanuvchiRuxsati, ozKurslari, unutRuxsatlar, tashkilotSozlamasi } from './middleware/auth.js';
@@ -4092,6 +4093,10 @@ app.get('/api/init', authenticate, async (req, res, next) => {
     if (!maoshKorinadi) {
       teachersRoyxati = teachersRoyxati.map(({ salary, sharePercentage, lessonFee, salaryType, ...t }) => t);
     }
+    // Sozlamasi hali yo'q filial ham sarlavhada markaz nomini ko'rsatsin (lib/markazBrendi.js).
+    const sozlama = settings || (targetSchoolIds.length
+      ? { schoolId: targetSchoolIds[0], ...(await markazBrendi(targetSchoolIds[0])) }
+      : null);
 
     res.json({
       students: mappedStudents,
@@ -4100,7 +4105,7 @@ app.get('/api/init', authenticate, async (req, res, next) => {
       leads, payments, courses, rooms,
       // Admins configure SMS/Telegram from the settings screen and need the real values;
       // every other role gets the masked copy.
-      settings: isAdmin(req.user) ? hidePaymeSecrets(settings) : stripSettingSecrets(settings),
+      settings: isAdmin(req.user) ? hidePaymeSecrets(sozlama) : stripSettingSecrets(sozlama),
       attendances, scores, teacherAttendances, staffAttendances, expenses,
       transports, routes: mappedRoutes, questions, exams, examResults, schools,
       topics, syllabuses, directions,
@@ -4318,7 +4323,7 @@ app.get('/api/settings', authenticate, async (req, res, next) => {
     let settings = await prisma.setting.findUnique({ where: { schoolId: parseInt(schoolId) } });
     if (!settings) {
       settings = await prisma.setting.create({
-        data: { schoolId: parseInt(schoolId), orgName: "QUANTUM EDU" }
+        data: { schoolId: parseInt(schoolId), ...(await markazBrendi(parseInt(schoolId))) }
       });
     }
     res.json(isAdmin(req.user) ? hidePaymeSecrets(settings) : stripSettingSecrets(settings));

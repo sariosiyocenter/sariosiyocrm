@@ -93,7 +93,7 @@ export default function Layout({ children, onLogout }: LayoutProps) {
     <div className="min-h-screen bg-fon transition-colors duration-200 flex">
       {/* ===== CHAP PANEL ===== */}
       <aside className="hidden lg:flex w-[76px] shrink-0 flex-col sticky top-0 h-screen border-r border-chiziq bg-sirt-2">
-        <Link to="/" title={settings?.orgName || 'Quantum Edu'} className="h-[54px] flex items-center justify-center border-b border-chiziq shrink-0">
+        <Link to="/" title={settings?.orgName || ''} className="h-[54px] flex items-center justify-center border-b border-chiziq shrink-0">
           <div className={`w-9 h-9 rounded-[10px] overflow-hidden flex items-center justify-center ${settings?.logo ? 'bg-white' : 'bg-brand'}`}>
             {settings?.logo
               ? <img src={settings.logo} className="w-full h-full object-contain p-1" alt="logo" />
@@ -165,7 +165,7 @@ export default function Layout({ children, onLogout }: LayoutProps) {
 
             <div className="hidden lg:flex flex-col leading-tight min-w-0">
               <span className="text-[14px] font-semibold text-slate-900 dark:text-white tracking-tight truncate">
-                {settings?.orgName || 'Quantum Edu'}
+                {settings?.orgName || ''}
               </span>
               <span className="text-[11px] font-medium text-slate-400 dark:text-slate-500">O'quv markazi CRM</span>
             </div>

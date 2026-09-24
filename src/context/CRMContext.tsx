@@ -161,7 +161,7 @@ export const CRMProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         settings: {
             id: 0,
             schoolId: 0,
-            orgName: "QUANTUM EDU",
+            orgName: "",
             adminPhone: "",
             address: "",
             telegram: "",
@@ -662,7 +662,7 @@ export const CRMProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             settings: {
                 id: 0,
                 schoolId: 0,
-                orgName: "QUANTUM EDU",
+                orgName: "",
                 adminPhone: "",
                 address: "",
                 telegram: "",
