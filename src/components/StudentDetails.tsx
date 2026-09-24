@@ -16,7 +16,7 @@ import { uploadProfilePhoto, removeBackgroundHQ } from '../lib/image';
 import { toDateStr } from '../../lib/lessons.js';
 import { printReceipt } from '../lib/receipt';
 import { activeCourses } from '../lib/activeCourses';
-import PhotoViewer from './PhotoViewer';
+import PhotoViewer, { photoActionCls } from './PhotoViewer';
 import StudentMoveModal from './StudentMoveModal';
 import PaymentEditModal, { canEditPayment } from './PaymentEditModal';
 import KursHisobModal from './KursHisobModal';
@@ -641,32 +641,25 @@ export default function StudentDetails() {
                     turib, o'ng tomoni bo'm-bo'sh qolardi). */}
                 <div className="order-1 lg:order-none lg:col-start-1 lg:row-start-1 bg-sirt rounded-2xl border border-chiziq p-5 flex flex-col gap-4 min-w-0">
                 <div className="flex items-center gap-3.5 min-w-0">
-                    <Avatar name={student.name} photo={student.photo} size={84} fontSize={28} className="group/avatar">
-                        {/* Rasm amallari avatarning ustida — alohida tugmalar
-                            uyumi yasalmasin. */}
-                        <div className="absolute inset-0 bg-gray-950/70 opacity-0 group-hover/avatar:opacity-100 transition-opacity flex items-center justify-center gap-1.5">
-                            {student.photo && (
-                                <button onClick={() => setIsPhotoViewerOpen(true)} title="Kattalashtirib ko'rish"
-                                    className="w-9 h-9 rounded-lg bg-white/15 hover:bg-white/30 text-white flex items-center justify-center cursor-pointer transition-colors">
-                                    <Maximize2 size={16} />
-                                </button>
-                            )}
-                            <label className="w-9 h-9 rounded-lg bg-white/15 hover:bg-white/30 text-white flex items-center justify-center cursor-pointer transition-colors" title={t('upload')}>
-                                <input type="file" className="hidden" accept="image/*" onChange={handlePhotoUpload} />
-                                <ImageIcon size={16} />
-                            </label>
-                            <button onClick={() => setIsPhotoModalOpen(true)} title={t('take_photo')}
-                                className="w-9 h-9 rounded-lg bg-white/15 hover:bg-white/30 text-white flex items-center justify-center cursor-pointer transition-colors">
-                                <Camera size={16} />
-                            </button>
-                            {student.photo && (
-                                <button onClick={handleRemoveBg} disabled={isRemovingBg} title={t('clear_bg_btn')}
-                                    className="w-9 h-9 rounded-lg bg-white/15 hover:bg-white/30 disabled:opacity-50 text-white flex items-center justify-center cursor-pointer transition-colors">
-                                    <Sparkles size={16} className={isRemovingBg ? 'animate-spin' : ''} />
-                                </button>
-                            )}
-                        </div>
-                    </Avatar>
+                    {/* Avatarni bosish suratni katta oynada ochadi — u yerda yuklash,
+                        kamera va fonni tozalash tugmalari doim ko'rinadi. Ilgari bu
+                        tugmalar avatar ustida faqat sichqoncha kelganda chiqardi:
+                        telefonda hover yo'q, 84px ga to'rtta tugma sig'masdi ham —
+                        telefondan fonni tozalab bo'lmasdi. */}
+                    <div role="button" tabIndex={0} title="Suratni ochish"
+                        onClick={() => setIsPhotoViewerOpen(true)}
+                        onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setIsPhotoViewerOpen(true); } }}
+                        className="relative shrink-0 rounded-full cursor-pointer outline-none focus-visible:ring-2 focus-visible:ring-brand">
+                        <Avatar name={student.name} photo={student.photo} size={84} fontSize={28} className="group/avatar">
+                            <div className="absolute inset-0 bg-gray-950/60 opacity-0 group-hover/avatar:opacity-100 transition-opacity flex items-center justify-center text-white pointer-events-none">
+                                <Maximize2 size={18} />
+                            </div>
+                        </Avatar>
+                        {/* Telefonda ham ko'rinadigan belgi: rasm bilan ishlash shu yerda. */}
+                        <span className="absolute -bottom-0.5 -right-0.5 w-7 h-7 rounded-full bg-brand text-white border-2 border-sirt flex items-center justify-center shadow-sm pointer-events-none">
+                            <Camera size={13} />
+                        </span>
+                    </div>
                     <div className="min-w-0">
                         <div className="flex items-start gap-2">
                             <h1 className="text-[19px] font-semibold text-matn tracking-tight leading-tight break-words">{displayName(student.name)}</h1>
@@ -895,16 +888,37 @@ export default function StudentDetails() {
                             {/* Photo Capture Modal */}
                             {isPhotoModalOpen && (
                                 <PhotoCapture
-                                    onCapture={handlePhotoCapture}
+                                    onCapture={base64 => {
+                                        handlePhotoCapture(base64);
+                                        // Yangi rasm katta oynada — darrov fonini tozalash mumkin.
+                                        setIsPhotoViewerOpen(true);
+                                    }}
                                     onClose={() => setIsPhotoModalOpen(false)}
                                 />
                             )}
 
-                            {isPhotoViewerOpen && student.photo && (
+                            {isPhotoViewerOpen && (
                                 <PhotoViewer
                                     src={student.photo}
                                     name={displayName(student.name)}
                                     onClose={() => setIsPhotoViewerOpen(false)}
+                                    actions={<>
+                                        <label className={photoActionCls}>
+                                            <input type="file" className="hidden" accept="image/*" onChange={handlePhotoUpload} />
+                                            <ImageIcon size={20} />
+                                            {t('upload')}
+                                        </label>
+                                        <button type="button" className={photoActionCls}
+                                            onClick={() => { setIsPhotoViewerOpen(false); setIsPhotoModalOpen(true); }}>
+                                            <Camera size={20} />
+                                            {t('take_photo')}
+                                        </button>
+                                        <button type="button" className={photoActionCls}
+                                            onClick={handleRemoveBg} disabled={!student.photo || isRemovingBg}>
+                                            <Sparkles size={20} className={isRemovingBg ? 'animate-spin' : ''} />
+                                            {isRemovingBg ? t('clearing_bg') : t('clear_bg_btn')}
+                                        </button>
+                                    </>}
                                 />
                             )}
 

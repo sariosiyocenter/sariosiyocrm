@@ -3,13 +3,13 @@ import {
     ArrowLeft, Phone, Mail, Layers, Wallet,
     Plus, X, Save, Target, Star, AlertCircle, Pencil, Camera, Sparkles,
     CheckCircle2, XCircle, ChevronLeft, ChevronRight, CalendarDays,
-    Banknote, Clock, Trash2, Maximize2, Send, MapPin
+    Banknote, Clock, Trash2, Maximize2, Send, MapPin, Image as ImageIcon
 } from 'lucide-react';
 import { useCRM } from '../context/CRMContext';
 import { useConfirm } from './ConfirmDialog';
 import { useParams, useNavigate } from 'react-router-dom';
 import { uploadProfilePhoto, removeBackgroundHQ } from '../lib/image';
-import PhotoViewer from './PhotoViewer';
+import PhotoViewer, { photoActionCls } from './PhotoViewer';
 import Avatar from './ui/Avatar';
 import { displayName } from '../lib/displayName';
 import PhotoCapture from './PhotoCapture';
@@ -756,22 +756,24 @@ export default function StaffDetails() {
 
             <div className="flex items-start justify-between gap-4 flex-wrap">
                 <div className="flex items-center gap-3.5 min-w-0">
-                    <Avatar name={staffUser.name} photo={staffUser.photo} size={120} fontSize={38} className="group/avatar">
-                        <div className="absolute inset-0 bg-gray-950/70 opacity-0 group-hover/avatar:opacity-100 transition-opacity flex items-center justify-center gap-1.5">
-                            {staffUser.photo && (
-                                <button onClick={() => setIsPhotoViewerOpen(true)} title="Kattalashtirib ko'rish"
-                                    className="w-9 h-9 rounded-lg bg-white/15 hover:bg-white/30 text-white flex items-center justify-center cursor-pointer transition-colors">
-                                    <Maximize2 size={16} />
-                                </button>
-                            )}
-                            {isAdminOrManager && (
-                                <button onClick={() => setIsPhotoModalOpen(true)} title={t('camera')}
-                                    className="w-9 h-9 rounded-lg bg-white/15 hover:bg-white/30 text-white flex items-center justify-center cursor-pointer transition-colors">
-                                    <Camera size={16} />
-                                </button>
-                            )}
-                        </div>
-                    </Avatar>
+                    {/* Avatarni bosish suratni katta oynada ochadi (kamera va fonni
+                        tozalash o'sha yerda). Avatar ustidagi hover tugmalari
+                        telefonda chiqmasdi. */}
+                    <div role="button" tabIndex={0} title="Suratni ochish"
+                        onClick={() => setIsPhotoViewerOpen(true)}
+                        onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setIsPhotoViewerOpen(true); } }}
+                        className="relative shrink-0 rounded-full cursor-pointer outline-none focus-visible:ring-2 focus-visible:ring-brand">
+                        <Avatar name={staffUser.name} photo={staffUser.photo} size={120} fontSize={38} className="group/avatar">
+                            <div className="absolute inset-0 bg-gray-950/60 opacity-0 group-hover/avatar:opacity-100 transition-opacity flex items-center justify-center text-white pointer-events-none">
+                                <Maximize2 size={20} />
+                            </div>
+                        </Avatar>
+                        {isAdminOrManager && (
+                            <span className="absolute bottom-1 right-1 w-8 h-8 rounded-full bg-brand text-white border-2 border-sirt flex items-center justify-center shadow-sm pointer-events-none">
+                                <Camera size={14} />
+                            </span>
+                        )}
+                    </div>
                     <div className="min-w-0">
                         <div className="flex items-center gap-2">
                             <h1 className="text-[22px] font-semibold text-matn tracking-tight leading-tight truncate">{displayName(staffUser.name)}</h1>
@@ -1791,11 +1793,34 @@ export default function StaffDetails() {
                 />
             )}
 
-            {isPhotoViewerOpen && staffUser.photo && (
+            {isPhotoViewerOpen && (
                 <PhotoViewer
                     src={staffUser.photo}
                     name={staffUser.name}
                     onClose={() => setIsPhotoViewerOpen(false)}
+                    actions={isAdminOrManager ? <>
+                        <label className={photoActionCls}>
+                            <input type="file" className="hidden" accept="image/*" onChange={e => {
+                                const file = e.target.files?.[0];
+                                if (!file) return;
+                                const reader = new FileReader();
+                                reader.onloadend = () => handlePhotoCapture(reader.result as string);
+                                reader.readAsDataURL(file);
+                            }} />
+                            <ImageIcon size={20} />
+                            {t('upload')}
+                        </label>
+                        <button type="button" className={photoActionCls}
+                            onClick={() => { setIsPhotoViewerOpen(false); setIsPhotoModalOpen(true); }}>
+                            <Camera size={20} />
+                            {t('take_photo')}
+                        </button>
+                        <button type="button" className={photoActionCls}
+                            onClick={handleRemoveBg} disabled={!staffUser.photo || isRemovingBg}>
+                            <Sparkles size={20} className={isRemovingBg ? 'animate-spin' : ''} />
+                            {isRemovingBg ? t('clearing_bg') : t('clear_bg_btn')}
+                        </button>
+                    </> : undefined}
                 />
             )}
 
