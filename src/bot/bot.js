@@ -6,6 +6,7 @@ import {
     rejaniQabulQilish, rejaniYetkazish, joylashuvniYozish, REJA_INCLUDE, rejaPuli,
 } from '../../services/logistics.js';
 import { somMatni } from '../../lib/transportNarx.js';
+import { markazNomi } from '../../lib/markazBrendi.js';
 import { rolRuxsati, yetadimi, toliqRuxsatli } from '../../lib/ruxsatlar.js';
 import { tashkilotSozlamasi } from '../../middleware/auth.js';
 import { javobniYozish } from '../../services/kunlikReja.js';
@@ -223,6 +224,8 @@ const getSchoolSettings = async (schoolId) => {
                 if (other) { value = other; break; }
             }
         }
+        // Markaz nomi filialdan qat'iy nazar bitta (lib/markazBrendi.js).
+        if (value) value = { ...value, orgName: await markazNomi(schoolId) };
         settingsCache.set(schoolId, { value, at: Date.now() });
         return value;
     } catch (e) {

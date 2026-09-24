@@ -837,7 +837,8 @@ export default function Messaging() {
     const ustozNomlari = [...new Set(oqKurslari.map(g =>
       g.teacherName || (teachers || []).find((tc: any) => tc.id === g.teacherId)?.name
     ).filter(Boolean))].join(', ');
-    const schoolName = schools.find(s => s.id === (selectedSchoolId || st.schoolId))?.name || settings?.orgName || '';
+    // {markaz} — filial emas, markaz nomi: filialdan qat'iy nazar bitta.
+    const schoolName = settings?.orgName || schools.find(s => s.id === (selectedSchoolId || st.schoolId))?.name || '';
 
     return messageText
       .replace(/\{ism\}/gi, st.name)

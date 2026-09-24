@@ -6,7 +6,7 @@ import { Markup } from 'telegraf';
 import prisma from '../lib/prisma.js';
 import { authenticate, canAccessSchool, requireRole, STAFF_MANAGERS } from '../middleware/auth.js';
 import { isAdmin } from '../lib/config.js';
-import { markazBrendi } from '../lib/markazBrendi.js';
+import { markazBrendi, markazNomi } from '../lib/markazBrendi.js';
 import * as payme from '../services/payme.js';
 
 // Havola yaratish — to'lov qabul qiladigan xodimlar. Ustoz/haydovchi emas.
@@ -65,7 +65,7 @@ async function notify(fresh, schoolId) {
         fresh.tx.groupId
           ? prisma.group.findUnique({ where: { id: fresh.tx.groupId }, select: { name: true, course: { select: { name: true } } } })
           : null,
-        prisma.setting.findUnique({ where: { schoolId }, select: { orgName: true } }),
+        markazNomi(schoolId).then(orgName => ({ orgName })),
       ]);
       if (!student) return;
       const course = group ? `${group.course?.name || ''} (${group.name})` : 'Umumiy';
@@ -201,7 +201,7 @@ export function registerPaymeRoutes(app) {
         select: { id: true, amount: true, status: true, test: true, expiresAt: true, schoolId: true, updatedAt: true },
       });
       if (!order) return res.status(404).json({ error: 'Topilmadi' });
-      const setting = await prisma.setting.findUnique({ where: { schoolId: order.schoolId }, select: { orgName: true } });
+      const setting = { orgName: await markazNomi(order.schoolId) };
       res.json({
         id: order.id,
         amount: order.amount,
@@ -289,7 +289,7 @@ export function registerPaymeRoutes(app) {
 
       const [group, setting] = await Promise.all([
         order.groupId ? prisma.group.findUnique({ where: { id: order.groupId }, select: { name: true, course: { select: { name: true } } } }) : null,
-        prisma.setting.findUnique({ where: { schoolId: order.schoolId }, select: { orgName: true } }),
+        markazNomi(order.schoolId).then(orgName => ({ orgName })),
       ]);
       const url = payme.orderUrl(settings, order, appOrigin(req));
       const course = group ? `${group.course?.name || ''} (${group.name})` : 'Umumiy';

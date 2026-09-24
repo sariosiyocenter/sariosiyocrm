@@ -7,7 +7,7 @@ import { JWT_SECRET, TOKEN_TTL, attendanceWindowStart, redactBody, isAdmin, stri
 import { registerPaymeRoutes } from './routes/payme.js';
 import { registerAuditRoutes } from './routes/audit.js';
 import { auditMiddleware } from './lib/audit.js';
-import { markazBrendi } from './lib/markazBrendi.js';
+import { markazBrendi, markazNomi, markazNominiTarqat } from './lib/markazBrendi.js';
 import { webhookSecretOk, registerSchoolWebhook, selfHealWebhook } from './lib/telegramWebhook.js';
 import { MODES as PAYME_MODES, SCHEMES as PAYME_SCHEMES, generateEndpointToken as generatePaymeEndpointToken } from './services/payme.js';
 import { authenticate, requireRole, canAccessSchool, allowedSchoolIds, ALL_BRANCHES, isOrgWide, forgetUser, sameOrganization, organizationSchoolIds, foydalanuvchiRuxsati, ozKurslari, unutRuxsatlar, tashkilotSozlamasi } from './middleware/auth.js';
@@ -2415,11 +2415,12 @@ app.get('/api/public/schools/:schoolId/info', async (req, res, next) => {
     if (!school) return res.status(404).json({ error: 'Filial topilmadi' });
 
     const setting = school.settings[0] || {};
+    const brend = await markazBrendi(schoolId);
     res.json({
       id: school.id,
       name: school.name,
-      orgName: setting.orgName || school.name,
-      logo: setting.logo || null
+      orgName: brend.orgName,
+      logo: setting.logo || brend.logo
     });
   } catch (error) { next(error); }
 });
@@ -4093,10 +4094,12 @@ app.get('/api/init', authenticate, async (req, res, next) => {
     if (!maoshKorinadi) {
       teachersRoyxati = teachersRoyxati.map(({ salary, sharePercentage, lessonFee, salaryType, ...t }) => t);
     }
-    // Sozlamasi hali yo'q filial ham sarlavhada markaz nomini ko'rsatsin (lib/markazBrendi.js).
-    const sozlama = settings || (targetSchoolIds.length
-      ? { schoolId: targetSchoolIds[0], ...(await markazBrendi(targetSchoolIds[0])) }
-      : null);
+    // Markaz nomi filialdan qat'iy nazar bitta; sozlamasi hali yo'q filial
+    // logotipni ham markazdan oladi (lib/markazBrendi.js).
+    const brend = targetSchoolIds.length ? await markazBrendi(targetSchoolIds[0]) : null;
+    const sozlama = brend
+      ? { ...(settings || { schoolId: targetSchoolIds[0], logo: brend.logo }), orgName: brend.orgName }
+      : settings;
 
     res.json({
       students: mappedStudents,
@@ -4392,11 +4395,22 @@ app.put('/api/settings', authenticate, async (req, res, next) => {
     // Webhook manzilining maxfiy qismi bir marta yaratiladi; mijoz uni o'zgartira olmaydi.
     if (!oldSettings?.paymeEndpointToken) data.paymeEndpointToken = generatePaymeEndpointToken();
 
+    // Markaz nomi butun markazga bitta (lib/markazBrendi.js): bo'sh nom
+    // saqlanmaydi, filialning yangi qatori markaz nomi bilan yaratiladi
+    // (aks holda sxemadagi standart "SARIOSIYO" tushardi), o'zgargan nom esa
+    // barcha filiallarga yoziladi.
+    if (data.orgName !== undefined) {
+      data.orgName = String(data.orgName || '').trim();
+      if (!data.orgName) delete data.orgName;
+    }
+    const eskiNom = await markazNomi(parseInt(schoolId));
+
     const settings = await prisma.setting.upsert({
       where: { schoolId: parseInt(schoolId) },
       update: data,
-      create: { ...data, schoolId: parseInt(schoolId) }
+      create: { orgName: eskiNom, ...data, schoolId: parseInt(schoolId) }
     });
+    if (data.orgName && data.orgName !== eskiNom) await markazNominiTarqat(parseInt(schoolId), data.orgName);
 
     // If telegram token changed and is valid, set webhook automatically — with a
     // fresh secret, so updates from anyone but Telegram are refused.
@@ -6410,6 +6424,8 @@ app.post('/api/messaging/send-batch', authenticate, async (req, res, next) => {
 
     // Load all data before responding so background only does sending
     const school = await prisma.school.findUnique({ where: { id: schoolId } });
+    // {markaz} — filial emas, markaz nomi (lib/markazBrendi.js).
+    if (school) school.orgName = await markazNomi(schoolId);
     let recipients = [];
     let groupsMap = {};
     let studentsMap = {};
@@ -6762,6 +6778,8 @@ async function runAutoProcessJobs() {
 
     const schoolId = rule.schoolId;
     const school = await prisma.school.findUnique({ where: { id: schoolId } });
+    // {markaz} — filial emas, markaz nomi (lib/markazBrendi.js).
+    if (school) school.orgName = await markazNomi(schoolId);
     const groupsMap = await getStudentGroupsMap(schoolId);
     // Qoidada tanlangan o'quvchi holatlari (egasi, 2026-09-23). Eski
     // qoidalarda yo'q — ular oldingidek ishlaydi.
@@ -7563,6 +7581,8 @@ app.post('/api/billing/notify-debtors', authenticate, async (req, res, next) => 
     }).filter(d => d.status !== 'paid' && d.debt > 0);
 
     const school = await prisma.school.findUnique({ where: { id: sid } });
+    // {markaz} — filial emas, markaz nomi (lib/markazBrendi.js).
+    const markaz = await markazNomi(sid);
     const schoolBot = await getTelegramBot(sid);
 
     let count = 0;
@@ -7581,7 +7601,7 @@ app.post('/api/billing/notify-debtors', authenticate, async (req, res, next) => 
         .replace(/\{oylik\}/gi, formattedMonth)
         .replace(/\{balans\}/gi, student.balance.toLocaleString())
         .replace(/\{qarz\}/gi, d.debt.toLocaleString())
-        .replace(/\{markaz\}/gi, school?.name || '');
+        .replace(/\{markaz\}/gi, markaz);
 
       let sent = false;
 
