@@ -21,3 +21,17 @@ export function isCashIncome(p: Pick<Payment, 'amount' | 'type'>): boolean {
 export function isDiscount(p: Pick<Payment, 'type'>): boolean {
     return p.type === 'Chegirma';
 }
+
+/**
+ * Ro'yxat tartibi: eng yangisi tepada. Avval to'lov sanasi, bir kunda —
+ * bazaga kiritilgan vaqti, so'ng id.
+ *
+ * Ilgari Moliyadagi ro'yxat bazadan kelgan tartibni shunchaki teskari
+ * qilardi. Baza tartibni kafolatlamaydi: tahrirlangan yozuv oxiriga
+ * surilardi va 22-sentabrdagi to'lov 24-sentabrdagidan tepada turardi.
+ */
+export function newestFirst<T extends { id: number; date: string; createdAt?: string }>(a: T, b: T): number {
+    return (b.date || '').localeCompare(a.date || '')
+        || (b.createdAt || '').localeCompare(a.createdAt || '')
+        || b.id - a.id;
+}

@@ -15,7 +15,7 @@ import { Payment, Expense } from '../types';
 import { StatCard, BarChart, DonutChart, LineChart } from './reports/shared';
 import { printReceipt } from '../lib/receipt';
 import { activeCourses } from '../lib/activeCourses';
-import { isCashIncome } from '../lib/money';
+import { isCashIncome, newestFirst } from '../lib/money';
 import KassaPanel from './KassaPanel';
 import PaymeLinkModal from './PaymeLinkModal';
 import PaymentEditModal, { canEditPayment } from './PaymentEditModal';
@@ -527,7 +527,7 @@ export default function Finance() {
                     p.type.toLowerCase().includes(q)
                 );
             })
-            .slice().reverse();
+            .sort(newestFirst);
     }, [payments, startDate, endDate, listSearch, students]);
 
     const filteredExpenses = useMemo(() => {
@@ -540,7 +540,7 @@ export default function Finance() {
                 const q = listSearch.toLowerCase();
                 return e.category.toLowerCase().includes(q) || (e.description || '').toLowerCase().includes(q);
             })
-            .slice().reverse();
+            .sort(newestFirst);
     }, [expenses, startDate, endDate, listSearch]);
 
     const filteredRevenue = filteredPayments.reduce((sum, p) => sum + p.amount, 0);
@@ -987,7 +987,7 @@ export default function Finance() {
                             const rPayments = payments
                                 .filter(isCashIncome)
                                 .filter(p => !prefix || p.date.startsWith(prefix))
-                                .slice().reverse();
+                                .sort(newestFirst);
                             const rPayTotal = rPayments.reduce((s, p) => s + p.amount, 0);
 
                             const allStudents = [...students].sort((a, b) => a.balance - b.balance);
