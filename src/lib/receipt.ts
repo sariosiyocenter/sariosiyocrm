@@ -68,35 +68,42 @@ function receiptHtml(o: ReceiptOptions): string {
      A4 = 210x297mm, yarmi = 210x148.5mm. */
   @page { size: A4 portrait; margin: 0; }
 
+  /* Chek printerda xira chiqardi: matn kulrang (#888, #aaa), chiziqlar och
+     (#ccc), yozuv ingichka Courier New 12px, summa yashil. Oq-qora lazer
+     printer rangni nuqtalar bilan beradi — kulrang va yashil yozuv och kulrang
+     bo'lib chiqadi. Endi hamma narsa sof qora, yozuv qalin va kattaroq. */
   * { margin: 0; padding: 0; box-sizing: border-box; }
-  body { font-family: 'Courier New', monospace; font-size: 12px; color: #111; background: #fff; }
+  body {
+    font-family: Arial, 'Helvetica Neue', Helvetica, sans-serif;
+    font-size: 15px; font-weight: 600; color: #000; background: #fff;
+    -webkit-font-smoothing: antialiased; text-rendering: geometricPrecision;
+  }
   .sheet {
     width: 210mm;
     min-height: 148.5mm;
-    padding: 10mm 12mm 6mm;
+    padding: 10mm 14mm 8mm;
     margin: 0 auto;
     position: relative;
   }
-  .logo { display: block; margin: 0 auto 6px; max-width: 64px; max-height: 64px; object-fit: contain; }
-  h2 { font-size: 15px; font-weight: 900; text-align: center; letter-spacing: 2px; color: #1b6b6b; margin-bottom: 4px; }
-  .sub { text-align: center; font-size: 9px; letter-spacing: 2px; color: #888; margin-bottom: 10px; }
-  .box { border: 1px dashed #ccc; border-radius: 8px; padding: 12px 16px; }
-  .row { display: flex; justify-content: space-between; margin-bottom: 5px; gap: 12px; }
+  .logo { display: block; margin: 0 auto 6px; max-width: 70px; max-height: 70px; object-fit: contain; }
+  h2 { font-size: 20px; font-weight: 900; text-align: center; letter-spacing: 1px; color: #000; margin-bottom: 3px; }
+  .sub { text-align: center; font-size: 12px; font-weight: 800; letter-spacing: 2px; text-transform: uppercase; color: #000; margin-bottom: 10px; }
+  .box { border: 2px solid #000; border-radius: 8px; padding: 12px 18px; }
+  .row { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 6px; gap: 12px; }
   .row .val { font-weight: 900; text-align: right; }
-  .divider { border-top: 1px dashed #ccc; margin: 9px 0; }
-  .label { font-size: 9px; color: #888; display: block; margin-bottom: 2px; }
-  .big { font-size: 14px; font-weight: 900; }
-  .green { color: #059669; }
-  .red { color: #e11d48; }
-  .footer { margin-top: 10px; text-align: center; font-size: 9px; letter-spacing: 1px; color: #aaa; }
+  .divider { border-top: 1.5px dashed #000; margin: 9px 0; }
+  .label { font-size: 12px; font-weight: 700; color: #000; display: block; margin-bottom: 2px; }
+  .big { font-size: 18px; font-weight: 900; }
+  .total { font-size: 20px; font-weight: 900; }
+  .footer { margin-top: 10px; text-align: center; font-size: 12px; font-weight: 700; color: #000; }
   /* Kesish chizig'i — A4 ning aynan o'rtasi. */
   .cut {
     position: absolute;
     left: 0; right: 0; bottom: 0;
-    border-top: 1px dashed #bbb;
+    border-top: 1.5px dashed #000;
     text-align: center;
   }
-  .cut span { font-size: 8px; color: #bbb; letter-spacing: 1px; background: #fff; padding: 0 6px; position: relative; top: -6px; }
+  .cut span { font-size: 10px; font-weight: 700; color: #000; letter-spacing: 1px; background: #fff; padding: 0 6px; position: relative; top: -7px; }
   @media screen {
     body { background: #f1f5f9; padding: 16px 0; }
     .sheet { background: #fff; box-shadow: 0 2px 12px rgba(0,0,0,.12); }
@@ -117,16 +124,16 @@ ${o.logo ? `<img class="logo" src="${esc(o.logo)}" alt="">` : ''}
   <div style="margin-bottom:10px"><span class="label">O'quvchi:</span><div class="big">${esc(student?.name || '')}</div></div>
   ${student?.phone ? `<div style="margin-bottom:10px"><span class="label">Telefon:</span><div>${esc(student.phone)}</div></div>` : ''}
   ${o.courseName ? `<div style="margin-bottom:10px"><span class="label">Kurs uchun:</span><div class="big">${esc(o.courseName)}</div></div>` : ''}
-  ${groupLines.length ? `<div style="margin-bottom:10px"><span class="label">Guruhlar:</span>${groupLines.map(l => `<div>- ${esc(l)}</div>`).join('')}</div>` : ''}
+  ${groupLines.length ? `<div style="margin-bottom:10px"><span class="label">Kurslar:</span>${groupLines.map(l => `<div>- ${esc(l)}</div>`).join('')}</div>` : ''}
   <div class="divider"></div>
   <div class="row"><span>To'lov turi:</span><span class="val">${esc(payment.type)}</span></div>
-  <div class="row" style="font-size:15px">
-    <span style="color:#1b6b6b;font-weight:700">To'landi:</span>
-    <span class="val green">+${money(payment.amount)} UZS</span>
+  <div class="row total">
+    <span>To'landi:</span>
+    <span class="val">+${money(payment.amount)} UZS</span>
   </div>
   <div class="row">
     <span>Joriy balans:</span>
-    <span class="val ${balance >= 0 ? 'green' : 'red'}">${money(balance)} UZS</span>
+    <span class="val">${money(balance)} UZS</span>
   </div>
   <div class="divider"></div>
   <div class="footer">To'lovingiz uchun rahmat!${footerLines ? `<br>${footerLines}` : ''}</div>
