@@ -2,6 +2,7 @@ import React, { useMemo } from 'react';
 import { useCRM } from '../../context/CRMContext';
 import { CreditCard, Download, TrendingUp, Users, Calendar, Hash } from 'lucide-react';
 import { StatCard, BarChart, DonutChart, LineChart, ReportCard, SectionHeader, DataTable } from './shared';
+import { newestFirst } from '../../lib/money';
 
 interface Props { startDate: string; endDate: string; }
 
@@ -59,7 +60,8 @@ export default function PaymentsReport({ startDate, endDate }: Props) {
             .sort((a, b) => b.sum - a.sum).slice(0, 5);
     }, [filtered, students]);
 
-    const tableRows = filtered.map(p => ({
+    // Eng yangisi tepada — Moliyadagi ro'yxat bilan bir xil tartib.
+    const tableRows = [...filtered].sort(newestFirst).map(p => ({
         student: students.find(s => s.id === p.studentId)?.name || 'Noma\'lum',
         amount: p.amount,
         type: p.type,
