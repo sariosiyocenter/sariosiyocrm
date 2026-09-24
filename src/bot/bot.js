@@ -25,7 +25,6 @@ const bot = new Telegraf(process.env.TELEGRAM_BOT_TOKEN || 'fake_token_for_init'
 
 // In-memory state tracking
 const adminStates = {};
-const attStates = {}; // { tid: { groupId, records: { studentId: status } } }
 const botCache = new Map(); // token -> botInstance
 
 // User roles and menus
@@ -692,20 +691,136 @@ export const setupBotHandlers = (botInstance, botSchoolId) => {
         ctx.reply(msg);
     });
 
-    // Teacher Handlers
+    // ===== Ustozning davomati =====
+    //
+    // Ilgari ro'yxat bazadan qanday kelsa shunday — tartibsiz, bitta ustunda
+    // 100 tagacha tugma bo'lib chiqardi ("kasha"), Telegram esa 100 dan ortiq
+    // tugmani umuman qabul qilmaydi. Belgilar server xotirasida (attStates)
+    // turardi: Vercelda keyingi bosish boshqa konteynerga tushsa "Sessiya
+    // eskirgan" chiqardi. Endi:
+    //  - o'quvchilar alifbo tartibida, raqamlangan, 20 tadan sahifada;
+    //  - har bosish darhol bazaga yoziladi, xotirada hech narsa saqlanmaydi;
+    //  - «Saqlash» belgilanmaganlarni "Keldi" deb yozadi va xabar yuboradi.
+    const ATT_SAHIFA = 20;
+    const KELMADI = ['Kelmapdi', 'Kelmadi'];
+    const ATT_BELGI = { Keldi: '✅', Kelmapdi: '❌', Kelmadi: '❌', Sababli: '⚠️', Kechikdi: '⏰', ErtaKetdi: '🏃', "Dars bo'lmadi": '🚫' };
+    const ATT_NOMI = { Keldi: 'Keldi', Kelmapdi: 'Kelmadi', Kelmadi: 'Kelmadi', Sababli: 'Sababli', Kechikdi: 'Kechikdi', ErtaKetdi: 'Erta ketdi', "Dars bo'lmadi": "Dars bo'lmadi" };
+
+    // "BOBORAJABOV QILICHBEK" → "Boborajabov Qilichbek", ortiqcha bo'shliqlar olinadi.
+    const ismKorinishi = (name) => {
+        const n = String(name || '').replace(/\s+/g, ' ').trim();
+        if (n !== n.toUpperCase()) return n;
+        return n.toLowerCase().replace(/(^|[\s-])(\S)/g, (_m, sep, ch) => sep + ch.toUpperCase());
+    };
+    const sanaKorinishi = (d) => d.split('-').reverse().join('.');
+
+    /** Ustozga biriktirilgan kurs va uning o'quvchilari (alifbo tartibida). Begona kurs — null. */
+    const ustozKursi = async (ctx, groupId) => {
+        const schoolId = await filial(ctx);
+        const user = await findUser(ctx.from.id, schoolId);
+        if (!user || user.type !== 'teacher') return null;
+        const group = await prisma.group.findFirst({
+            where: { id: groupId, teacherId: user.data.id },
+            include: {
+                students: {
+                    where: { status: { not: 'Arxiv' } },
+                    select: { id: true, name: true, telegramId: true, fatherTelegramId: true, motherTelegramId: true },
+                },
+            },
+        });
+        if (!group) return null;
+        group.students = group.students
+            .map(s => ({ ...s, ism: ismKorinishi(s.name) }))
+            .sort((a, b) => a.ism.localeCompare(b.ism, 'uz'));
+        return group;
+    };
+
+    const bugungiBelgilar = async (groupId, sana) => {
+        const rows = await prisma.attendance.findMany({
+            where: { groupId, date: sana },
+            select: { studentId: true, status: true },
+        });
+        return new Map(rows.map(r => [r.studentId, r.status]));
+    };
+
+    /** Kelmaganlar ro'yxati: "3. Ism, 17. Ism". Juda uzun bo'lsa qisqaradi. */
+    const kelmaganlarMatni = (students, holat) => {
+        const qator = [];
+        students.forEach((s, i) => { if (KELMADI.includes(holat.get(s.id))) qator.push(`${i + 1}. ${escHtml(s.ism)}`); });
+        let matn = qator.join(', ');
+        if (matn.length > 2500) matn = matn.slice(0, 2500) + '…';
+        return matn;
+    };
+
+    const sanoqMatni = (students, holat) => {
+        const sanoq = {};
+        students.forEach(s => {
+            const h = holat.get(s.id) || 'Keldi';
+            const k = KELMADI.includes(h) ? 'Kelmapdi' : h;
+            sanoq[k] = (sanoq[k] || 0) + 1;
+        });
+        return Object.entries(sanoq)
+            .sort(([a], [b]) => (a === 'Keldi' ? -1 : b === 'Keldi' ? 1 : a === 'Kelmapdi' ? -1 : b === 'Kelmapdi' ? 1 : 0))
+            .map(([k, n]) => `${ATT_BELGI[k] || '▫️'} ${ATT_NOMI[k] || k}: ${n}`)
+            .join('  ·  ');
+    };
+
+    const davomatniChiz = async (ctx, group, sahifa) => {
+        const sana = toDateStr();
+        const holat = await bugungiBelgilar(group.id, sana);
+        const students = group.students;
+        const jamiSahifa = Math.max(1, Math.ceil(students.length / ATT_SAHIFA));
+        const p = Math.min(Math.max(0, sahifa || 0), jamiSahifa - 1);
+
+        let matn = `📋 <b>${escHtml(group.name)}</b> — davomat\n`;
+        matn += `📅 ${sanaKorinishi(sana)}  ·  ${students.length} ta o'quvchi\n`;
+        matn += sanoqMatni(students, holat) + '\n';
+        const kelmaganlar = kelmaganlarMatni(students, holat);
+        if (kelmaganlar) matn += `\n❌ <b>Kelmaganlar:</b> ${kelmaganlar}\n`;
+        matn += `\nKelmagan o'quvchini bosing (❌ bo'ladi), qayta bossangiz ✅ ga qaytadi. Oxirida «💾 Saqlash».`;
+        if (jamiSahifa > 1) matn += `\nRo'yxat ${jamiSahifa} sahifada — pastdagi ◀️ ▶️ bilan o'ting.`;
+
+        const tugmalar = students.slice(p * ATT_SAHIFA, (p + 1) * ATT_SAHIFA).map((s, i) => {
+            const n = p * ATT_SAHIFA + i + 1;
+            const ism = s.ism.length > 28 ? s.ism.slice(0, 27) + '…' : s.ism;
+            const belgi = ATT_BELGI[holat.get(s.id)] || '✅';
+            return [Markup.button.callback(`${belgi} ${n}. ${ism}`, `ta_t_${group.id}_${s.id}_${p}`)];
+        });
+        if (jamiSahifa > 1) {
+            const nav = [];
+            if (p > 0) nav.push(Markup.button.callback('◀️ Oldingi', `ta_p_${group.id}_${p - 1}`));
+            nav.push(Markup.button.callback(`${p + 1} / ${jamiSahifa}`, `ta_p_${group.id}_${p}`));
+            if (p < jamiSahifa - 1) nav.push(Markup.button.callback('Keyingi ▶️', `ta_p_${group.id}_${p + 1}`));
+            tugmalar.push(nav);
+        }
+        tugmalar.push([Markup.button.callback('💾 Saqlash', `ta_s_${group.id}`)]);
+
+        const extra = { parse_mode: 'HTML', ...Markup.inlineKeyboard(tugmalar) };
+        if (ctx.callbackQuery) {
+            // Hech narsa o'zgarmagan bo'lsa Telegram "message is not modified" qaytaradi.
+            await ctx.editMessageText(matn, extra).catch(e => {
+                if (!String(e.message).includes('not modified')) throw e;
+            });
+        } else {
+            await ctx.reply(matn, extra);
+        }
+    };
+
     botInstance.hears('🎒 Davomat qilish', async (ctx) => {
         const schoolId = await filial(ctx);
         const user = await findUser(ctx.from.id, schoolId);
         if (!user || user.type !== 'teacher') return;
 
         const groups = await prisma.group.findMany({
-            where: { teacherId: user.data.id, schoolId }
+            where: { teacherId: user.data.id },
+            select: { id: true, name: true, _count: { select: { students: { where: { status: { not: 'Arxiv' } } } } } },
+            orderBy: { name: 'asc' },
         });
 
-        if (groups.length === 0) return ctx.reply("Sizga biriktirilgan guruhlar topilmadi.");
+        if (groups.length === 0) return ctx.reply("Sizga biriktirilgan kurslar topilmadi.");
 
-        let buttons = groups.map(g => [Markup.button.callback(`👥 ${g.name}`, `mark_att_${g.id}`)]);
-        ctx.reply("Guruhni tanlang:", Markup.inlineKeyboard(buttons));
+        const buttons = groups.map(g => [Markup.button.callback(`📚 ${g.name}  ·  ${g._count.students} ta`, `mark_att_${g.id}`)]);
+        ctx.reply("Qaysi kurs uchun davomat qilasiz?", Markup.inlineKeyboard(buttons));
     });
 
     botInstance.hears('📅 Mening Jadvalim', async (ctx) => {
@@ -810,127 +925,116 @@ export const setupBotHandlers = (botInstance, botSchoolId) => {
         ctx.reply(lines.join(NL));
     });
 
-    botInstance.action(/mark_att_(\d+)/, async (ctx) => {
-        const schoolId = await filial(ctx);
-        const groupId = parseInt(ctx.match[1]);
-        const tid = ctx.from.id;
-
-        const group = await prisma.group.findFirst({
-            where: { id: groupId, schoolId },
-            include: { students: true }
-        });
-
-        if (!group) return ctx.answerCbQuery("Guruh topilmadi");
-        if (group.students.length === 0) return ctx.reply("Bu guruhda o'quvchilar yo'q.");
-
-        // Initialize state
-        attStates[tid] = {
-            groupId: groupId,
-            records: {}
-        };
-        group.students.forEach(s => {
-            attStates[tid].records[s.id] = 'Keldi'; // Default
-        });
-
-        await renderAttendanceList(ctx, group.name, group.students, attStates[tid].records);
-        ctx.answerCbQuery();
-    });
-
-    const renderAttendanceList = async (ctx, groupName, students, records) => {
-        const buttons = students.map(s => {
-            const status = records[s.id];
-            const icon = status === 'Keldi' ? '✅' : '❌';
-            return [Markup.button.callback(`${icon} ${s.name}`, `toggle_att_${s.id}`)];
-        });
-
-        buttons.push([Markup.button.callback('💾 Saqlash', 'save_attendance')]);
-
-        const msg = `👥 ${groupName} guruhi uchun davomat (${new Date().toLocaleDateString()}):\n` +
-                    `Ism yonidagi tugmani bosib holatni o'zgartiring.`;
-
-        if (ctx.callbackQuery) {
-            await ctx.editMessageText(msg, Markup.inlineKeyboard(buttons));
-        } else {
-            await ctx.reply(msg, Markup.inlineKeyboard(buttons));
+    // Kurs tanlandi — ro'yxatning birinchi sahifasi.
+    botInstance.action(/^mark_att_(\d+)$/, async (ctx) => {
+        const group = await ustozKursi(ctx, parseInt(ctx.match[1]));
+        if (!group) return ctx.answerCbQuery("Bu kurs sizga biriktirilmagan.");
+        if (group.students.length === 0) {
+            await ctx.answerCbQuery();
+            return ctx.reply("Bu kursda o'quvchilar yo'q.");
         }
-    };
-
-    botInstance.action(/toggle_att_(\d+)/, async (ctx) => {
-        const schoolId = await filial(ctx);
-        const studentId = parseInt(ctx.match[1]);
-        const tid = ctx.from.id;
-        const state = attStates[tid];
-
-        if (!state) return ctx.answerCbQuery("Sessiya eskirgan, qaytadan boshlang.");
-
-        state.records[studentId] = state.records[studentId] === 'Keldi' ? 'Kelmapdi' : 'Keldi';
-
-        const group = await prisma.group.findFirst({
-            where: { id: state.groupId, schoolId },
-            include: { students: true }
-        });
-
-        await renderAttendanceList(ctx, group.name, group.students, state.records);
-        ctx.answerCbQuery();
+        await ctx.answerCbQuery();
+        await davomatniChiz(ctx, group, 0);
     });
 
-    botInstance.action('save_attendance', async (ctx) => {
-        const schoolId = await filial(ctx);
-        const tid = ctx.from.id;
-        const state = attStates[tid];
+    // Sahifa almashtirish (o'rtadagi "2 / 5" tugmasi — yangilash).
+    botInstance.action(/^ta_p_(\d+)_(\d+)$/, async (ctx) => {
+        const group = await ustozKursi(ctx, parseInt(ctx.match[1]));
+        if (!group) return ctx.answerCbQuery("Bu kurs sizga biriktirilmagan.");
+        await ctx.answerCbQuery();
+        await davomatniChiz(ctx, group, parseInt(ctx.match[2]));
+    });
 
-        if (!state) return ctx.answerCbQuery("Xatolik: Ma'lumot topilmadi.");
+    // O'quvchini bosish: ✅ → ❌ → ✅. Darhol bazaga yoziladi.
+    botInstance.action(/^ta_t_(\d+)_(\d+)_(\d+)$/, async (ctx) => {
+        const group = await ustozKursi(ctx, parseInt(ctx.match[1]));
+        if (!group) return ctx.answerCbQuery("Bu kurs sizga biriktirilmagan.");
+        const studentId = parseInt(ctx.match[2]);
+        if (!group.students.some(s => s.id === studentId)) return ctx.answerCbQuery("O'quvchi bu kursda emas.");
 
-        const today = new Date().toISOString().split('T')[0];
-        const group = await prisma.group.findFirst({ where: { id: state.groupId, schoolId } });
-        
+        const sana = toDateStr();
+        const rows = await prisma.attendance.findMany({
+            where: { studentId, groupId: group.id, date: sana },
+            select: { id: true, status: true },
+        });
+        const keyingi = KELMADI.includes(rows[0]?.status) ? 'Keldi' : 'Kelmapdi';
+        if (rows.length) {
+            await prisma.attendance.updateMany({ where: { id: { in: rows.map(r => r.id) } }, data: { status: keyingi } });
+        } else {
+            await prisma.attendance.create({
+                data: { studentId, groupId: group.id, date: sana, status: keyingi, schoolId: group.schoolId },
+            });
+        }
+        await ctx.answerCbQuery(keyingi === 'Keldi' ? '✅ Keldi' : '❌ Kelmadi');
+        await davomatniChiz(ctx, group, parseInt(ctx.match[3]));
+    });
+
+    // Saqlash: belgilanmaganlar "Keldi", so'ng har o'quvchi uchun bitta xabar —
+    // CRM dagi "Xabar yuborish" qoidasi bilan bir xil: ota-onaga, ular
+    // ulanmagan bo'lsa o'quvchining o'ziga.
+    botInstance.action(/^ta_s_(\d+)$/, async (ctx) => {
+        const group = await ustozKursi(ctx, parseInt(ctx.match[1]));
+        if (!group) return ctx.answerCbQuery("Bu kurs sizga biriktirilmagan.");
+        await ctx.answerCbQuery('Saqlanmoqda...');
+
+        const sana = toDateStr();
         try {
-            for (const [studentId, status] of Object.entries(state.records)) {
-                const sId = parseInt(studentId);
-                
-                // Upsert attendance
-                const existing = await prisma.attendance.findFirst({
-                    where: { studentId: sId, groupId: state.groupId, date: today, schoolId }
+            const holat = await bugungiBelgilar(group.id, sana);
+            const yangi = group.students.filter(s => !holat.has(s.id));
+            if (yangi.length) {
+                await prisma.attendance.createMany({
+                    data: yangi.map(s => ({ studentId: s.id, groupId: group.id, date: sana, status: 'Keldi', schoolId: group.schoolId })),
                 });
-
-                if (existing) {
-                    await prisma.attendance.update({ where: { id: existing.id }, data: { status } });
-                } else {
-                    await prisma.attendance.create({
-                        data: { studentId: sId, groupId: state.groupId, date: today, status, schoolId }
-                    });
-                }
-
-                // Optional: notify student/parent if telegramId exists
-                const student = await prisma.student.findFirst({ where: { id: sId, schoolId } });
-                if (student) {
-                    const icon = status === 'Keldi' ? '✅' : '❌';
-                    const msg = `${icon} Davomat xabarnomasi:\n\n` +
-                                `👤 O'quvchi: ${student.name}\n` +
-                                `📌 Holat: ${status}\n` +
-                                `📅 Sana: ${today}\n` +
-                                `📚 Guruh: ${group.name}`;
-
-                    if (student.telegramId) {
-                        botInstance.telegram.sendMessage(student.telegramId, msg).catch(e => console.error('Notify student error:', e));
-                    }
-                    if (student.fatherTelegramId) {
-                        botInstance.telegram.sendMessage(student.fatherTelegramId, msg).catch(e => console.error('Notify father error:', e));
-                    }
-                    if (student.motherTelegramId) {
-                        botInstance.telegram.sendMessage(student.motherTelegramId, msg).catch(e => console.error('Notify mother error:', e));
-                    }
-                }
+                yangi.forEach(s => holat.set(s.id, 'Keldi'));
             }
 
-            await ctx.editMessageText(`✅ ${group.name} guruhi uchun davomat saqlandi!`);
-            delete attStates[tid];
+            const xabarlar = [];
+            group.students.forEach(s => {
+                const status = holat.get(s.id) || 'Keldi';
+                const msg = [
+                    `${ATT_BELGI[status] || 'ℹ️'} Davomat xabarnomasi`,
+                    '',
+                    `👤 O'quvchi: ${s.ism}`,
+                    `📌 Holat: ${ATT_NOMI[status] || status}`,
+                    `📅 Sana: ${sanaKorinishi(sana)}`,
+                    `📚 Kurs: ${group.name}`,
+                ].join('\n');
+                const chatIds = [s.fatherTelegramId, s.motherTelegramId].filter(Boolean);
+                if (chatIds.length === 0 && s.telegramId) chatIds.push(s.telegramId);
+                chatIds.forEach(chatId => xabarlar.push({ chatId, msg, ism: s.name }));
+            });
+            // Telegram soniyasiga ~30 xabar qabul qiladi — 20 tadan to'daga bo'lib.
+            let yuborildi = 0;
+            for (let i = 0; i < xabarlar.length; i += 20) {
+                const natija = await Promise.allSettled(
+                    xabarlar.slice(i, i + 20).map(x => botInstance.telegram.sendMessage(x.chatId, x.msg))
+                );
+                natija.forEach((r, j) => {
+                    if (r.status === 'fulfilled') yuborildi++;
+                    else console.error('Davomat xabari (' + xabarlar[i + j].ism + '):', r.reason?.message);
+                });
+            }
+
+            let matn = `✅ <b>${escHtml(group.name)}</b> — davomat saqlandi\n`;
+            matn += `📅 ${sanaKorinishi(sana)}  ·  ${group.students.length} ta o'quvchi\n`;
+            matn += sanoqMatni(group.students, holat) + '\n';
+            const kelmaganlar = kelmaganlarMatni(group.students, holat);
+            if (kelmaganlar) matn += `\n❌ <b>Kelmaganlar:</b> ${kelmaganlar}\n`;
+            matn += `\n📨 Ota-onalarga yuborildi: ${yuborildi} ta xabar`;
+            await ctx.editMessageText(matn, {
+                parse_mode: 'HTML',
+                ...Markup.inlineKeyboard([[Markup.button.callback('✏️ Tuzatish', `ta_p_${group.id}_0`)]]),
+            });
         } catch (err) {
             console.error('Save attendance error:', err);
-            ctx.reply("Davomatni saqlashda xatolik yuz berdi.");
+            ctx.reply("Davomatni saqlashda xatolik yuz berdi. Qaytadan urinib ko'ring.");
         }
-        ctx.answerCbQuery();
     });
+
+    // Yangilanishdan oldin yuborilgan eski ro'yxatlardagi tugmalar.
+    const eskiRoyxat = (ctx) => ctx.answerCbQuery("Ro'yxat yangilandi — «🎒 Davomat qilish» ni qayta bosing.", { show_alert: true });
+    botInstance.action(/^toggle_att_(\d+)$/, eskiRoyxat);
+    botInstance.action('save_attendance', eskiRoyxat);
 
     // ===== Haydovchining joylashuvi =====
     //
