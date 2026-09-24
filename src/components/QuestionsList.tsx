@@ -1,390 +1,336 @@
-import React, { useState, useMemo } from 'react';
-import { Search, Plus, Filter, FileUp, Trash2, X, AlertCircle, CheckCircle, XCircle } from 'lucide-react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { Search, Plus, FileUp, FileDown, Trash2, ChevronLeft, ChevronRight, AlertTriangle, BookOpen, Pencil, X, FileText } from 'lucide-react';
+import * as XLSX from 'xlsx';
+import { useNavigate } from 'react-router-dom';
 import { useCRM } from '../context/CRMContext';
 import { useConfirm } from './ConfirmDialog';
-import { useNavigate } from 'react-router-dom';
-import * as XLSX from 'xlsx';
+import { useImtihonApi } from './imtihon/useImtihonApi';
+import { Karta, Tugma, Yorliq, BoshHolat, INPUT, SELECT, Yuklanmoqda } from './imtihon/ui';
+import MatnlarOynasi from './imtihon/MatnlarOynasi';
+import { formulaliHtml, oddiyMatn, SAVOL_MATNI } from '../lib/matn';
+import { HARFLAR, SAVOL_TURI_NOMI, savolXatosi } from '../../lib/imtihon.js';
+import type { Question } from '../types';
 
-const COL_MAP: Record<string, string> = {
-    question: 'text', savol: 'text', text: 'text',
-    optiona: 'optionA', a: 'optionA',
-    optionb: 'optionB', b: 'optionB',
-    optionc: 'optionC', c: 'optionC',
-    optiond: 'optionD', d: 'optionD',
-    correctanswer: 'correctAnswer', togri: 'correctAnswer', answer: 'correctAnswer', javob: 'correctAnswer',
-    subject: 'subject', fan: 'subject',
-    topic: 'topic', mavzu: 'topic',
-    difficulty: 'difficulty', qiyinlik: 'difficulty', daraja: 'difficulty',
-};
+// Savollar banki — butun o'quv markaziga umumiy (ikkala filial bitta bankdan
+// oladi). Ro'yxat serverdan sahifalab keladi: bank minglab savolga o'sadi,
+// uni har sahifa ochilganda to'liq yuklab bo'lmaydi.
 
-interface ImportRow {
-    text: string; optionA: string; optionB: string; optionC: string; optionD: string;
-    correctAnswer: string; difficulty: number; subject: string; topic: string;
+interface Meta {
+  jami: number;
+  fanlar: { nomi: string; soni: number; faol: number }[];
+  mavzular: { fan: string; mavzu: string; soni: number; faol: Record<string, number> }[];
+  manbalar: string[];
 }
-interface ImportError { row: number; field: string; message: string; }
 
-function normalizeRow(raw: any): { data: ImportRow | null; errors: ImportError[]; rowNum: number } {
-    const mapped: any = {};
-    for (const key of Object.keys(raw)) {
-        const norm = key.toLowerCase().replace(/\s+/g, '');
-        const canonical = COL_MAP[norm];
-        if (canonical) mapped[canonical] = raw[key];
-    }
+const HOLAT_NOMI: Record<string, string> = { faol: 'Faol', qoralama: 'Qoralama', arxiv: 'Arxiv' };
+const TUR_QISQA: Record<string, string> = { yopiq: 'Yopiq', raqamli: 'Raqamli', yozma: 'Yozma' };
 
-    const errors: ImportError[] = [];
-    const rowNum = 0;
-    if (!mapped.text) errors.push({ row: rowNum, field: 'text', message: 'Savol matni bo\'sh' });
-    if (!mapped.optionA) errors.push({ row: rowNum, field: 'optionA', message: 'A varianti bo\'sh' });
-    if (!mapped.optionB) errors.push({ row: rowNum, field: 'optionB', message: 'B varianti bo\'sh' });
-    if (!mapped.optionC) errors.push({ row: rowNum, field: 'optionC', message: 'C varianti bo\'sh' });
-    if (!mapped.optionD) errors.push({ row: rowNum, field: 'optionD', message: 'D varianti bo\'sh' });
-    if (!mapped.correctAnswer) errors.push({ row: rowNum, field: 'correctAnswer', message: 'To\'g\'ri javob ko\'rsatilmagan' });
-    else if (!['A', 'B', 'C', 'D'].includes(String(mapped.correctAnswer).toUpperCase())) {
-        errors.push({ row: rowNum, field: 'correctAnswer', message: `To\'g\'ri javob A/B/C/D bo\'lishi kerak (${mapped.correctAnswer} berilgan)` });
-    }
-    if (!mapped.subject) errors.push({ row: rowNum, field: 'subject', message: 'Fan nomi bo\'sh' });
+// Excel ustunlari (shablon ham shu tartibda).
+const USTUNLAR = ['Fan', 'Mavzu', "Bo'lim", 'Tur', 'Savol', 'A', 'B', 'C', 'D', 'E', 'F', 'Javob', "Qo'shimcha javoblar", 'Ball', 'Qiyinlik', 'Manba', 'Sinf', 'Til', 'Yechim', 'Holat'];
 
-    if (errors.length > 0) return { data: null, errors, rowNum };
+function qatordanSavol(r: Record<string, any>, qator: number) {
+  const s = (k: string) => String(r[k] ?? '').trim();
+  const turMatni = s('Tur').toLowerCase();
+  const type = turMatni.startsWith('raq') ? 'raqamli' : turMatni.startsWith('yoz') ? 'yozma' : 'yopiq';
+  const options = HARFLAR.map(h => s(h)).filter(Boolean);
+  return {
+    qator,
+    subject: s('Fan'), topic: s('Mavzu'), section: s("Bo'lim") || null, type,
+    text: s('Savol'),
+    options: type === 'yopiq' ? options : null,
+    correctAnswer: type === 'yopiq' ? s('Javob').toUpperCase() : s('Javob'),
+    answers: s("Qo'shimcha javoblar") ? s("Qo'shimcha javoblar").split(/[;|]/).map(x => x.trim()).filter(Boolean) : null,
+    points: s('Ball') ? Number(s('Ball').replace(',', '.')) : null,
+    difficulty: parseInt(s('Qiyinlik')) || 1,
+    source: s('Manba') || null, grade: s('Sinf') || null,
+    language: (['uz', 'ru', 'en'].includes(s('Til').toLowerCase()) ? s('Til').toLowerCase() : 'uz'),
+    solution: s('Yechim') || null,
+    solutionStatus: s('Yechim') ? 'tasdiqlangan' : 'yoq',
+    status: s('Holat').toLowerCase().startsWith('qor') ? 'qoralama' : s('Holat').toLowerCase().startsWith('arx') ? 'arxiv' : 'faol',
+  };
+}
 
-    return {
-        data: {
-            text: String(mapped.text),
-            optionA: String(mapped.optionA),
-            optionB: String(mapped.optionB),
-            optionC: String(mapped.optionC),
-            optionD: String(mapped.optionD),
-            correctAnswer: String(mapped.correctAnswer).toUpperCase() as any,
-            difficulty: Number(mapped.difficulty) || 1,
-            subject: String(mapped.subject),
-            topic: String(mapped.topic || ''),
-        },
-        errors: [],
-        rowNum,
-    };
+function shablonniYukla() {
+  const namuna = [
+    { Fan: 'Matematika', Mavzu: 'Kvadrat tenglama', "Bo'lim": 'Algebra', Tur: 'yopiq', Savol: '$x^2-5x+6=0$ tenglamaning ildizlari yig\'indisini toping', A: '5', B: '6', C: '-5', D: '1', Javob: 'A', Qiyinlik: 2, Manba: 'DTM 2025', Til: 'uz', Yechim: "Viyet teoremasi: $x_1+x_2=5$" },
+    { Fan: 'Matematika', Mavzu: 'Kasrlar', Tur: 'raqamli', Savol: '$\\frac{3}{4}-\\frac{1}{4}$ ni hisoblang', Javob: '1/2', "Qo'shimcha javoblar": '0,5', Qiyinlik: 1, Til: 'uz' },
+    { Fan: 'Matematika', Mavzu: 'Masala', Tur: 'yozma', Savol: 'Masalani yeching va yechimini yozing: ...', Ball: 5, Til: 'uz' },
+  ];
+  const ws = XLSX.utils.json_to_sheet(namuna, { header: USTUNLAR });
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'Savollar');
+  XLSX.writeFile(wb, 'savollar-shablon.xlsx');
 }
 
 export default function QuestionsList() {
-    const { questions, deleteQuestion, showNotification, token, selectedSchoolId, ozgartira } = useCRM();
-    const savolTahrir = ozgartira('imtihonlar.savollar');
-    const savolOchirish = ozgartira('imtihonlar.ochirish');
-    const confirm = useConfirm();
-    const navigate = useNavigate();
+  const { showNotification, ozgartira, selectedSchoolId, user } = useCRM();
+  const savolTahrir = ozgartira('imtihonlar.savollar');
+  const savolOchirish = ozgartira('imtihonlar.ochirish');
+  const { soro } = useImtihonApi();
+  const confirm = useConfirm();
+  const navigate = useNavigate();
 
-    const [search, setSearch] = useState('');
-    const [showFilters, setShowFilters] = useState(false);
-    const [filters, setFilters] = useState({
-        subject: '',
-        topic: '',
-        difficulty: '' as string | number
-    });
+  const [meta, setMeta] = useState<Meta | null>(null);
+  const [filtr, setFiltr] = useState({ fan: '', mavzu: '', tur: '', holat: '', manba: '', qidiruv: '' });
+  const [qidiruvMatni, setQidiruvMatni] = useState('');
+  const [sahifa, setSahifa] = useState(1);
+  const [royxat, setRoyxat] = useState<{ items: Question[]; total: number } | null>(null);
+  const [yuklanmoqda, setYuklanmoqda] = useState(false);
+  const [ochiq, setOchiq] = useState<number | null>(null);
+  const [import_, setImport] = useState<{ yaroqli: any[]; xatolar: { qator: number; xato: string }[]; jami: number } | null>(null);
+  const [importMoqda, setImportMoqda] = useState(false);
+  const [matnlarOchiq, setMatnlarOchiq] = useState(false);
+  const SONI = 30;
 
-    const [isImporting, setIsImporting] = useState(false);
-    const [importPreview, setImportPreview] = useState<{
-        valid: ImportRow[];
-        errors: (ImportError & { row: number })[];
-        total: number;
-    } | null>(null);
+  const metaniYukla = useCallback(() => soro<Meta>('GET', 'questions/meta').then(setMeta).catch(() => setMeta(null)), [soro]);
+  useEffect(() => { metaniYukla(); }, [metaniYukla]);
 
-    const subjects = useMemo(() => Array.from(new Set(questions.map(q => q.subject).filter(Boolean))), [questions]);
-    const topics = useMemo(() => {
-        if (!filters.subject) return Array.from(new Set(questions.map(q => q.topic).filter(Boolean)));
-        return Array.from(new Set(questions.filter(q => q.subject === filters.subject).map(q => q.topic).filter(Boolean)));
-    }, [questions, filters.subject]);
+  // Qidiruv matni yozilayotganda har harfga so'rov ketmasin.
+  useEffect(() => {
+    const t = setTimeout(() => { setFiltr(f => ({ ...f, qidiruv: qidiruvMatni })); setSahifa(1); }, 350);
+    return () => clearTimeout(t);
+  }, [qidiruvMatni]);
 
-    const filteredQuestions = questions.filter(q => {
-        const matchesSearch = q.text.toLowerCase().includes(search.toLowerCase()) || 
-                             q.subject.toLowerCase().includes(search.toLowerCase()) ||
-                             q.topic.toLowerCase().includes(search.toLowerCase());
-        const matchesSubject = !filters.subject || q.subject === filters.subject;
-        const matchesTopic = !filters.topic || q.topic === filters.topic;
-        const matchesDifficulty = !filters.difficulty || q.difficulty === Number(filters.difficulty);
-        
-        return matchesSearch && matchesSubject && matchesTopic && matchesDifficulty;
-    });
+  const yukla = useCallback(async () => {
+    setYuklanmoqda(true);
+    try {
+      const p = new URLSearchParams({ sahifa: String(sahifa), soni: String(SONI) });
+      for (const [k, v] of Object.entries(filtr)) if (v) p.set(k, v);
+      setRoyxat(await soro('GET', `questions?${p}`));
+    } catch (e: any) {
+      showNotification(e.message, 'error');
+    } finally {
+      setYuklanmoqda(false);
+    }
+  }, [soro, sahifa, filtr, showNotification]);
+  useEffect(() => { yukla(); }, [yukla]);
 
-    const handleImportExcel = (e: React.ChangeEvent<HTMLInputElement>) => {
-        const file = e.target.files?.[0];
-        if (!file) return;
+  const mavzular = useMemo(() => (meta?.mavzular || []).filter(m => !filtr.fan || m.fan.toLowerCase() === filtr.fan.toLowerCase()), [meta, filtr.fan]);
+  const sahifalar = royxat ? Math.max(1, Math.ceil(royxat.total / SONI)) : 1;
+  const filtrQoy = (k: keyof typeof filtr, v: string) => { setFiltr(f => ({ ...f, [k]: v, ...(k === 'fan' ? { mavzu: '' } : {}) })); setSahifa(1); };
 
-        const reader = new FileReader();
-        reader.onload = (evt) => {
-            try {
-                const bstr = evt.target?.result;
-                const wb = XLSX.read(bstr, { type: 'binary' });
-                const wsname = wb.SheetNames[0];
-                const ws = wb.Sheets[wsname];
-                const rawData: any[] = XLSX.utils.sheet_to_json(ws);
+  const ochir = async (q: Question) => {
+    if (!(await confirm("Savol o'chirilsinmi?"))) return;
+    try {
+      await soro('DELETE', `questions/${q.id}`);
+      showNotification("Savol o'chirildi", 'info');
+      yukla();
+      metaniYukla();
+    } catch (e: any) {
+      showNotification(e.message, 'error');
+    }
+  };
 
-                const valid: ImportRow[] = [];
-                const errors: (ImportError & { row: number })[] = [];
-
-                rawData.forEach((row, idx) => {
-                    const result = normalizeRow(row);
-                    if (result.data) {
-                        valid.push(result.data);
-                    } else {
-                        result.errors.forEach(err => errors.push({ ...err, row: idx + 2 }));
-                    }
-                });
-
-                setImportPreview({ valid, errors, total: rawData.length });
-            } catch (err) {
-                console.error("Import failed", err);
-                showNotification("Excel faylni o'qishda xatolik. Fayl formatini tekshiring.", "error");
-            } finally {
-                e.target.value = '';
-            }
-        };
-        reader.readAsBinaryString(file);
+  const excelniOqi = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    e.target.value = '';
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = ev => {
+      try {
+        const wb = XLSX.read(ev.target?.result, { type: 'array' });
+        const rows: any[] = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], { defval: '' });
+        const yaroqli: any[] = [];
+        const xatolar: { qator: number; xato: string }[] = [];
+        rows.forEach((r, i) => {
+          const q = qatordanSavol(r, i + 2);
+          const xato = !q.subject ? 'Fan yo\'q' : !q.topic ? "Mavzu yo'q" : q.status === 'faol' ? savolXatosi(q) : null;
+          if (xato) xatolar.push({ qator: i + 2, xato }); else yaroqli.push(q);
+        });
+        setImport({ yaroqli, xatolar, jami: rows.length });
+      } catch {
+        showNotification("Faylni o'qib bo'lmadi. Shablondan foydalaning.", 'error');
+      }
     };
+    reader.readAsArrayBuffer(file);
+  };
 
-    const confirmImport = async () => {
-        if (!importPreview || importPreview.valid.length === 0) return;
-        setIsImporting(true);
-        try {
-            const res = await fetch('/api/questions/bulk', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-                body: JSON.stringify({ questions: importPreview.valid, schoolId: selectedSchoolId })
-            });
-            if (!res.ok) throw new Error(await res.text());
-            const result = await res.json();
-            showNotification(`${result.count} ta savol muvaffaqiyatli import qilindi!`, "success");
-            setImportPreview(null);
-            window.location.reload();
-        } catch (err: any) {
-            showNotification("Import xatoligi: " + err.message, "error");
-        } finally {
-            setIsImporting(false);
-        }
-    };
+  const importQil = async () => {
+    if (!import_?.yaroqli.length) return;
+    setImportMoqda(true);
+    try {
+      const schoolId = selectedSchoolId && selectedSchoolId > 0 ? selectedSchoolId : user?.schoolId;
+      const r = await soro<{ count: number; xatolar: { qator: number; xato: string }[] }>('POST', 'questions/bulk', { questions: import_.yaroqli, schoolId });
+      if (r.xatolar.length) setImport({ yaroqli: [], xatolar: r.xatolar, jami: import_.jami });
+      else setImport(null);
+      showNotification(`${r.count} ta savol qo'shildi`, 'success');
+      yukla();
+      metaniYukla();
+    } catch (e: any) {
+      showNotification(e.message, 'error');
+    } finally {
+      setImportMoqda(false);
+    }
+  };
 
-    const stripHtml = (html: string) => {
-        const tmp = document.createElement("DIV");
-        tmp.innerHTML = html;
-        return tmp.textContent || tmp.innerText || "";
-    };
+  return (
+    <div className="space-y-4">
+      {/* Yuqori qator: statistika va amallar */}
+      <Karta
+        sarlavha="Savollar banki"
+        izoh={meta ? `Jami ${meta.jami} ta savol · ${meta.fanlar.length} ta fan · butun markazga umumiy` : 'Butun markazga umumiy'}
+        amallar={savolTahrir && (
+          <>
+            <Tugma kichik ikonka={<FileText size={14} />} onClick={() => setMatnlarOchiq(true)}>Matnlar</Tugma>
+            <Tugma kichik ikonka={<FileDown size={14} />} onClick={shablonniYukla}>Excel shablon</Tugma>
+            <label className="inline-flex items-center gap-1.5 rounded-xl border border-chiziq bg-sirt hover:bg-ichki px-2.5 py-1.5 text-[12px] font-semibold text-matn cursor-pointer">
+              <FileUp size={14} /> Excel import
+              <input type="file" accept=".xlsx,.xls" className="hidden" onChange={excelniOqi} />
+            </label>
+            <Tugma kichik turi="asosiy" ikonka={<Plus size={14} />} onClick={() => navigate('/questions/new')}>Yangi savol</Tugma>
+          </>
+        )}
+      >
+        {meta && meta.fanlar.length > 0 && (
+          <div className="flex flex-wrap gap-1.5">
+            {meta.fanlar.map(f => (
+              <button key={f.nomi} onClick={() => filtrQoy('fan', filtr.fan === f.nomi ? '' : f.nomi)}
+                className={`px-2.5 py-1 rounded-lg border text-[12px] cursor-pointer ${filtr.fan === f.nomi ? 'bg-brand text-white border-brand' : 'bg-ichki border-chiziq text-matn-sokin hover:text-matn'}`}>
+                {f.nomi} <span className="opacity-70">{f.faol}</span>
+              </button>
+            ))}
+          </div>
+        )}
+      </Karta>
 
-    return (
-        <div className="space-y-6 animate-in fade-in duration-500 max-w-7xl mx-auto">
-            {/* Import Preview Modal */}
-            {importPreview && (
-                <div className="fixed inset-0 z-[250] flex items-start sm:items-center-safe justify-center overflow-y-auto p-4">
-                    <div className="fixed inset-0 bg-gray-905/65 backdrop-blur-sm" />
-                    <div className="relative bg-sirt rounded-2xl shadow-xl w-full max-w-md p-4 space-y-4 border border-chiziq">
-                        <div className="flex items-start justify-between border-b border-chiziq pb-3">
-                            <div>
-                                <h2 className="text-[11px] font-bold text-matn">Excel Import Tekshiruvi</h2>
-                                <p className="text-[11px] font-bold text-matn-xira mt-1">Jami {importPreview.total} ta qator</p>
-                            </div>
-                            <button aria-label="Yopish" onClick={() => setImportPreview(null)} className="p-1 text-matn-xira hover:text-gray-650 rounded-lg cursor-pointer">
-                                <X size={18} />
-                            </button>
-                        </div>
-
-                        <div className="flex gap-3">
-                            <div className="flex-1 bg-emerald-50 dark:bg-emerald-950/20 rounded-xl p-3 border border-emerald-100 dark:border-emerald-900/40 flex items-center gap-2">
-                                <CheckCircle className="w-5 h-5 text-emerald-500 shrink-0" />
-                                <div>
-                                    <p className="text-sm font-black text-emerald-600 dark:text-emerald-400">{importPreview.valid.length}</p>
-                                    <p className="text-[10px] text-emerald-500 font-bold">To'g'ri</p>
-                                </div>
-                            </div>
-                            <div className="flex-1 bg-rose-50 dark:bg-rose-955/20 rounded-xl p-3 border border-rose-100 dark:border-rose-900/40 flex items-center gap-2">
-                                <XCircle className="w-5 h-5 text-rose-500 shrink-0" />
-                                <div>
-                                    <p className="text-sm font-black text-rose-600 dark:text-rose-400">{importPreview.errors.length}</p>
-                                    <p className="text-[10px] text-rose-500 font-bold">Xatolik</p>
-                                </div>
-                            </div>
-                        </div>
-
-                        {importPreview.errors.length > 0 && (
-                            <div className="bg-rose-50 dark:bg-rose-950/10 rounded-2xl p-3 max-h-32 overflow-y-auto border border-rose-100 dark:border-rose-900/20 space-y-1">
-                                {importPreview.errors.map((err, i) => (
-                                    <p key={i} className="text-[11px] text-rose-600 dark:text-rose-400 font-bold">
-                                        <span>Qator {err.row}:</span> {err.message}
-                                    </p>
-                                ))}
-                            </div>
-                        )}
-
-                        <div className="flex gap-2 pt-3 border-t border-dashed border-chiziq">
-                            <button
-                                onClick={() => setImportPreview(null)}
-                                className="flex-1 py-2.5 rounded-xl border border-chiziq text-[11px] font-bold text-matn-sokin hover:bg-gray-55 cursor-pointer transition-all"
-                            >
-                                Bekor
-                            </button>
-                            <button
-                                onClick={confirmImport}
-                                disabled={isImporting || importPreview.valid.length === 0}
-                                className="flex-1 py-2.5 rounded-xl bg-brand hover:bg-brand-dark text-white text-[11px] font-bold disabled:opacity-50 disabled:cursor-not-allowed transition-all cursor-pointer"
-                            >
-                                {isImporting ? 'Yuklanmoqda...' : `Import (${importPreview.valid.length})`}
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            )}
-
-            {/* Header / Filter Toolbar */}
-            <div className="bg-sirt rounded-2xl border border-chiziq shadow-sm p-4">
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                    <div className="flex items-center gap-2 flex-1 max-w-md">
-                        <div className="relative flex-1">
-                            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-matn-xira" />
-                            <input
-                                type="text"
-                                placeholder="Savollarni qidirish..."
-                                value={search}
-                                onChange={(e) => setSearch(e.target.value)}
-                                className="w-full pl-10 pr-4 py-2.5 bg-gray-55 dark:bg-gray-905 border border-chiziq rounded-2xl text-xs font-bold text-matn placeholder:text-gray-400 focus:border-brand focus:ring-4 focus:ring-[#1b6b6b]/10 outline-none transition-all"
-                            />
-                        </div>
-                        <button 
-                            onClick={() => setShowFilters(!showFilters)}
-                            className={`w-10 h-10 flex items-center justify-center rounded-2xl border transition-colors cursor-pointer ${
-                                showFilters ? 'bg-teal-50 border-teal-200 text-brand dark:bg-teal-950/20' : 'bg-sirt border-chiziq text-matn-xira hover:text-gray-650'
-                            }`}
-                        >
-                            <Filter size={16} />
-                        </button>
-                    </div>
-
-                    <div className="flex items-center gap-2">
-                        {savolTahrir && (
-                        <label className="cursor-pointer px-4 py-2.5 bg-amber-50 dark:bg-amber-955/20 text-amber-600 dark:text-amber-405 border border-amber-100 dark:border-amber-900/40 rounded-xl text-[11px] font-bold hover:bg-amber-100 transition-colors flex items-center gap-1.5">
-                            <FileUp size={14} />
-                            {isImporting ? 'Kutilmoqda...' : 'Excel Import'}
-                            <input type="file" className="hidden" accept=".xlsx, .xls" onChange={handleImportExcel} disabled={isImporting} />
-                        </label>
-                        )}
-                        {savolTahrir && (
-                        <button 
-                            onClick={() => navigate('/questions/new')}
-                            className="px-4 py-2.5 bg-brand hover:bg-brand-dark text-white rounded-xl text-[11px] font-bold transition-colors flex items-center gap-1.5 cursor-pointer shadow-sm shadow-[#1b6b6b]/20"
-                        >
-                            <Plus size={14} />
-                            Savol Qo'shish
-                        </button>
-                        )}
-                    </div>
-                </div>
-
-                {showFilters && (
-                    <div className="mt-4 pt-4 grid grid-cols-1 md:grid-cols-3 gap-4 border-t border-dashed border-gray-105 dark:border-gray-800/50 animate-in slide-in-from-top duration-300">
-                        <div>
-                            <label className="text-[11px] font-bold text-matn-xira block mb-1.5">Fan</label>
-                            <select 
-                                value={filters.subject}
-                                onChange={e => setFilters({...filters, subject: e.target.value})}
-                                className="w-full px-3 py-2 bg-ichki border border-chiziq rounded-xl text-[11px] font-bold text-matn outline-none focus:border-teal-500 cursor-pointer"
-                            >
-                                <option value="">Barcha fanlar</option>
-                                {subjects.map(s => <option key={s} value={s}>{s}</option>)}
-                            </select>
-                        </div>
-                        <div>
-                            <label className="text-[11px] font-bold text-matn-xira block mb-1.5">Mavzu</label>
-                            <select 
-                                value={filters.topic}
-                                onChange={e => setFilters({...filters, topic: e.target.value})}
-                                className="w-full px-3 py-2 bg-ichki border border-chiziq rounded-xl text-[11px] font-bold text-matn outline-none focus:border-teal-500 cursor-pointer"
-                            >
-                                <option value="">Barcha mavzular</option>
-                                {topics.map(t => <option key={t} value={t}>{t}</option>)}
-                            </select>
-                        </div>
-                        <div>
-                            <label className="text-[11px] font-bold text-matn-xira block mb-1.5">Qiyinlik Darajasi</label>
-                            <select 
-                                value={filters.difficulty}
-                                onChange={e => setFilters({...filters, difficulty: e.target.value})}
-                                className="w-full px-3 py-2 bg-ichki border border-chiziq rounded-xl text-[11px] font-bold text-matn outline-none focus:border-teal-500 cursor-pointer"
-                            >
-                                <option value="">Barcha darajalar</option>
-                                <option value="1">Oson</option>
-                                <option value="2">O'rta</option>
-                                <option value="3">Qiyin</option>
-                            </select>
-                        </div>
-                    </div>
-                )}
-            </div>
-
-            {/* Questions Table */}
-            <div className="bg-sirt rounded-2xl border border-chiziq shadow-sm overflow-hidden">
-                <div className="overflow-x-auto">
-                    <table className="w-full text-left border-collapse min-w-[800px]">
-                        <thead>
-                            <tr className="bg-ichki border-b border-chiziq">
-                                <th className="p-4 text-[11px] font-bold text-matn-xira w-20 text-center">ID</th>
-                                <th className="p-4 text-[11px] font-bold text-matn-xira">Savol Matni</th>
-                                <th className="p-4 text-[11px] font-bold text-matn-xira">Fan & Mavzu</th>
-                                <th className="p-4 text-[11px] font-bold text-matn-xira text-center">Daraja</th>
-                                <th className="p-4 text-[11px] font-bold text-matn-xira text-center">To'g'ri</th>
-                                <th className="p-4 w-20 text-center"></th>
-                            </tr>
-                        </thead>
-                        <tbody className="divide-y divide-gray-100 dark:divide-gray-800">
-                            {filteredQuestions.map((q) => (
-                                <tr key={q.id} className="hover:bg-gray-50/50 dark:hover:bg-teal-950/20 transition-all cursor-pointer group" onClick={() => navigate(`/questions/${q.id}/edit`)}>
-                                    <td className="p-4 text-[11px] font-bold text-matn-xira text-center tabular-nums">#{q.id.toString().substring(0,4)}</td>
-                                    <td className="p-4">
-                                        <p className="text-xs font-bold text-matn line-clamp-1 max-w-[400px]">
-                                            {stripHtml(q.text)}
-                                        </p>
-                                    </td>
-                                    <td className="p-4">
-                                        <div className="flex flex-col gap-0.5">
-                                            <span className="text-[11px] font-bold text-brand">{q.subject}</span>
-                                            <span className="text-[11px] font-bold text-matn-xira">{q.topic || 'Mavzusiz'}</span>
-                                        </div>
-                                    </td>
-                                    <td className="p-4 text-center">
-                                        <span className={`px-2.5 py-0.5 rounded text-[11px] font-black border ${
-                                            q.difficulty === 1 ? 'bg-emerald-50 dark:bg-emerald-950/20 text-emerald-600 dark:text-emerald-400 border-emerald-100 dark:border-emerald-900/20' :
-                                            q.difficulty === 2 ? 'bg-amber-50 dark:bg-amber-955/20 text-amber-600 dark:text-amber-400 border-amber-100 dark:border-amber-900/20' :
-                                            'bg-rose-50 dark:bg-rose-955/20 text-rose-600 dark:text-rose-455 border-rose-100 dark:border-rose-900/20'
-                                        }`}>
-                                            {q.difficulty === 1 ? 'Oson' : q.difficulty === 2 ? 'O\'rta' : 'Qiyin'}
-                                        </span>
-                                    </td>
-                                    <td className="p-4 text-center">
-                                        <div className="inline-flex items-center justify-center w-7 h-7 rounded-lg bg-teal-50 dark:bg-teal-950/20 text-brand font-black text-xs border border-teal-100 dark:border-teal-900/40">
-                                            {q.correctAnswer}
-                                        </div>
-                                    </td>
-                                    <td className="p-4 text-center">
-                                        <div className="flex items-center justify-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                                            {savolOchirish && (
-                                            <button 
-                                                onClick={async (e) => {
-                                                    e.stopPropagation();
-                                                    if(await confirm('O\'chirishni xohlaysizmi?')) deleteQuestion(q.id);
-                                                }}
-                                                className="w-8 h-8 flex items-center justify-center rounded-lg text-matn-xira hover:text-rose-500 hover:bg-chiziq transition-colors cursor-pointer"
-                                            >
-                                                <Trash2 size={14} />
-                                            </button>
-                                            )}
-                                        </div>
-                                    </td>
-                                </tr>
-                            ))}
-                            {filteredQuestions.length === 0 && (
-                                <tr>
-                                    <td colSpan={6} className="p-16 text-center">
-                                        <AlertCircle className="w-8 h-8 text-gray-300 dark:text-gray-700 mx-auto mb-3" />
-                                        <p className="text-[11px] font-bold text-matn-xira">Hozircha savollar topilmadi</p>
-                                    </td>
-                                </tr>
-                            )}
-                        </tbody>
-                    </table>
-                </div>
-            </div>
+      {/* Filtrlar */}
+      <div className="grid grid-cols-2 md:grid-cols-6 gap-2">
+        <div className="relative col-span-2">
+          <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-matn-xira" />
+          <input className={`${INPUT} pl-9`} placeholder="Savol matnidan qidirish" value={qidiruvMatni} onChange={e => setQidiruvMatni(e.target.value)} />
         </div>
-    );
+        <select className={SELECT} value={filtr.mavzu} onChange={e => filtrQoy('mavzu', e.target.value)}>
+          <option value="">Hamma mavzu</option>
+          {mavzular.map(m => <option key={`${m.fan}|${m.mavzu}`} value={m.mavzu}>{filtr.fan ? m.mavzu : `${m.fan} · ${m.mavzu}`} ({m.soni})</option>)}
+        </select>
+        <select className={SELECT} value={filtr.tur} onChange={e => filtrQoy('tur', e.target.value)}>
+          <option value="">Hamma tur</option>
+          {Object.entries(TUR_QISQA).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
+        </select>
+        <select className={SELECT} value={filtr.holat} onChange={e => filtrQoy('holat', e.target.value)}>
+          <option value="">Hamma holat</option>
+          {Object.entries(HOLAT_NOMI).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
+        </select>
+        <select className={SELECT} value={filtr.manba} onChange={e => filtrQoy('manba', e.target.value)}>
+          <option value="">Hamma manba</option>
+          {(meta?.manbalar || []).map(m => <option key={m} value={m}>{m}</option>)}
+        </select>
+      </div>
+
+      {/* Ro'yxat */}
+      <Karta ichki="p-0">
+        {yuklanmoqda && !royxat ? <Yuklanmoqda /> : !royxat?.items.length ? (
+          <BoshHolat ikonka={<BookOpen size={22} />} sarlavha={meta?.jami ? 'Filtrga mos savol yo\'q' : "Bankda hali savol yo'q"}
+            izoh={meta?.jami ? 'Filtrni o\'zgartiring' : "Savolni qo'lda qo'shing yoki Excel shablonini to'ldirib import qiling. Formulalar $...$ ichida LaTeX bilan yoziladi."}>
+            {savolTahrir && <Tugma turi="asosiy" ikonka={<Plus size={14} />} onClick={() => navigate('/questions/new')}>Yangi savol</Tugma>}
+          </BoshHolat>
+        ) : (
+          <ul className="divide-y divide-chiziq">
+            {royxat.items.map(q => {
+              const ochilgan = ochiq === q.id;
+              return (
+                <li key={q.id} className="px-4 py-3">
+                  <div className="flex items-start gap-3">
+                    <button onClick={() => setOchiq(ochilgan ? null : q.id)} className="flex-1 min-w-0 text-left cursor-pointer">
+                      <div className="flex flex-wrap items-center gap-1.5 mb-1">
+                        <span className="text-[11px] text-matn-xira raqam">#{q.id}</span>
+                        <Yorliq>{q.subject}</Yorliq>
+                        <Yorliq>{q.topic}</Yorliq>
+                        <Yorliq rang={q.type === 'yopiq' ? 'kulrang' : 'brand'}>{TUR_QISQA[q.type] || q.type}</Yorliq>
+                        {q.status !== 'faol' && <Yorliq rang="ogoh">{HOLAT_NOMI[q.status || 'faol']}</Yorliq>}
+                        {q.xato && <Yorliq rang="xato"><AlertTriangle size={11} /> {q.xato}</Yorliq>}
+                        {!!q.usedCount && <Yorliq rang="kulrang">{q.usedCount} marta ishlatilgan</Yorliq>}
+                        {q.pCorrect != null && <Yorliq rang={q.pCorrect < 0.3 ? 'xato' : q.pCorrect > 0.8 ? 'yaxshi' : 'kulrang'}>{Math.round(q.pCorrect * 100)}% to'g'ri topgan</Yorliq>}
+                        {q.passage && <Yorliq rang="brand">Matn: {q.passage.title || `#${q.passage.id}`}</Yorliq>}
+                      </div>
+                      {!ochilgan && <p className="text-[13px] text-matn line-clamp-2">{oddiyMatn(q.text) || (q.imageUrl ? '[rasm]' : '—')}</p>}
+                    </button>
+                    {savolTahrir && (
+                      <div className="flex items-center gap-1 shrink-0">
+                        <button aria-label="Tahrirlash" onClick={() => navigate(`/questions/${q.id}/edit`)} className="p-2 rounded-lg text-matn-sokin hover:text-brand hover:bg-ichki cursor-pointer"><Pencil size={15} /></button>
+                        {savolOchirish && <button aria-label="O'chirish" onClick={() => ochir(q)} className="p-2 rounded-lg text-matn-sokin hover:text-xato hover:bg-xato-fon cursor-pointer"><Trash2 size={15} /></button>}
+                      </div>
+                    )}
+                  </div>
+                  {ochilgan && <SavolKorinishi q={q} />}
+                </li>
+              );
+            })}
+          </ul>
+        )}
+        {royxat && royxat.total > SONI && (
+          <div className="flex items-center justify-between px-4 py-3 border-t border-chiziq text-[12px] text-matn-sokin">
+            <span>{(sahifa - 1) * SONI + 1}–{Math.min(sahifa * SONI, royxat.total)} / {royxat.total}</span>
+            <div className="flex items-center gap-1">
+              <Tugma kichik turi="oddiy" disabled={sahifa <= 1} onClick={() => setSahifa(s => s - 1)} ikonka={<ChevronLeft size={14} />}>Oldingi</Tugma>
+              <span className="px-2">{sahifa} / {sahifalar}</span>
+              <Tugma kichik turi="oddiy" disabled={sahifa >= sahifalar} onClick={() => setSahifa(s => s + 1)}>Keyingi <ChevronRight size={14} /></Tugma>
+            </div>
+          </div>
+        )}
+      </Karta>
+
+      {/* Import oynasi */}
+      {import_ && (
+        <div className="fixed inset-0 z-[250] flex items-start sm:items-center justify-center overflow-y-auto p-4">
+          <div className="fixed inset-0 bg-black/50" onClick={() => !importMoqda && setImport(null)} />
+          <div className="relative bg-sirt rounded-2xl shadow-2xl w-full max-w-lg border border-chiziq">
+            <div className="flex items-center justify-between px-5 py-4 border-b border-chiziq">
+              <div>
+                <h3 className="text-[14px] font-bold text-matn">Excel import</h3>
+                <p className="text-[12px] text-matn-xira">Jami {import_.jami} ta qator</p>
+              </div>
+              <button aria-label="Yopish" onClick={() => setImport(null)} className="p-2 rounded-lg hover:bg-ichki cursor-pointer"><X size={16} /></button>
+            </div>
+            <div className="p-5 space-y-3">
+              <div className="grid grid-cols-2 gap-2">
+                <div className="rounded-xl bg-yaxshi-fon border border-yaxshi/25 p-3"><p className="text-[11px] text-yaxshi">Yuklanadi</p><p className="text-[22px] font-bold text-yaxshi raqam">{import_.yaroqli.length}</p></div>
+                <div className="rounded-xl bg-xato-fon border border-xato-chiziq p-3"><p className="text-[11px] text-xato">Xato qatorlar</p><p className="text-[22px] font-bold text-xato raqam">{import_.xatolar.length}</p></div>
+              </div>
+              {import_.xatolar.length > 0 && (
+                <ul className="max-h-48 overflow-y-auto rounded-xl border border-chiziq divide-y divide-chiziq text-[12px]">
+                  {import_.xatolar.map((x, i) => <li key={i} className="px-3 py-2"><b className="raqam">{x.qator}-qator:</b> {x.xato}</li>)}
+                </ul>
+              )}
+              <p className="text-[11.5px] text-matn-xira">Xato qatorlar yuklanmaydi — ularni Excel'da tuzatib, qayta import qiling.</p>
+            </div>
+            <div className="flex justify-end gap-2 px-5 py-4 border-t border-chiziq">
+              <Tugma onClick={() => setImport(null)}>Bekor qilish</Tugma>
+              <Tugma turi="asosiy" yuklanmoqda={importMoqda} disabled={!import_.yaroqli.length} onClick={importQil}>{import_.yaroqli.length} ta savolni yuklash</Tugma>
+            </div>
+          </div>
+        </div>
+      )}
+      {matnlarOchiq && <MatnlarOynasi onYop={() => { setMatnlarOchiq(false); yukla(); }} />}
+    </div>
+  );
+}
+
+/** Savolning to'liq ko'rinishi: formulalar, variantlar, to'g'ri javob, yechim. */
+export function SavolKorinishi({ q }: { q: Question }) {
+  const togri = HARFLAR.indexOf(String(q.correctAnswer || '').toUpperCase());
+  return (
+    <div className="mt-3 rounded-xl border border-chiziq bg-ichki p-4 space-y-3">
+      {q.imageUrl && <img src={q.imageUrl} alt="" className="max-h-56 rounded-lg border border-chiziq bg-white" />}
+      <div className={`${SAVOL_MATNI} text-[14px] text-matn`} dangerouslySetInnerHTML={{ __html: formulaliHtml(q.text) }} />
+      {q.type === 'yopiq' && (
+        <ol className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
+          {(q.options || []).map((o, i) => (
+            <li key={i} className={`flex gap-2 rounded-lg border px-3 py-2 text-[13px] ${i === togri ? 'border-yaxshi/40 bg-yaxshi-fon text-matn' : 'border-chiziq bg-sirt text-matn'}`}>
+              <b>{HARFLAR[i]})</b><span dangerouslySetInnerHTML={{ __html: formulaliHtml(o) }} />
+            </li>
+          ))}
+        </ol>
+      )}
+      {q.type === 'raqamli' && <p className="text-[13px]"><b>Javob:</b> {[q.correctAnswer, ...(q.answers || [])].filter(Boolean).join(' · ')}</p>}
+      {q.type === 'yozma' && <p className="text-[13px] text-matn-sokin">Yozma javob — ustoz baholaydi{q.points ? ` (${q.points} ball)` : ''}.</p>}
+      {q.solution && (
+        <div className="rounded-lg border border-chiziq bg-sirt p-3">
+          <p className="text-[11px] font-semibold text-matn-xira mb-1">Yechim {q.solutionStatus === 'tasdiqlangan' ? '· tasdiqlangan' : '· tasdiqlanmagan'}</p>
+          <div className={`${SAVOL_MATNI} text-[13px] text-matn`} dangerouslySetInnerHTML={{ __html: formulaliHtml(q.solution) }} />
+        </div>
+      )}
+      <p className="text-[11px] text-matn-xira">{SAVOL_TURI_NOMI[q.type]} · qiyinlik {q.difficulty}{q.source ? ` · ${q.source}` : ''}{q.grade ? ` · ${q.grade}` : ''}{q.language && q.language !== 'uz' ? ` · ${q.language.toUpperCase()}` : ''}</p>
+    </div>
+  );
 }

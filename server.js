@@ -6,6 +6,7 @@ import prisma from './lib/prisma.js';
 import { JWT_SECRET, TOKEN_TTL, attendanceWindowStart, redactBody, isAdmin, stripSettingSecrets, hidePaymeSecrets, cronRequestRejected } from './lib/config.js';
 import { registerPaymeRoutes } from './routes/payme.js';
 import { registerAuditRoutes } from './routes/audit.js';
+import { registerImtihonRoutes, imtihonJavobi } from './routes/imtihon.js';
 import { auditMiddleware } from './lib/audit.js';
 import { markazBrendi, markazNomi, markazNominiTarqat } from './lib/markazBrendi.js';
 import { webhookSecretOk, registerSchoolWebhook, selfHealWebhook } from './lib/telegramWebhook.js';
@@ -71,7 +72,9 @@ app.use(helmet({
     useDefaults: false,
     directives: {
       defaultSrc: ["'self'"],
-      scriptSrc: ["'self'", 'https://unpkg.com', 'https://cdn.jsdelivr.net'],
+      // 'wasm-unsafe-eval' — faqat WebAssembly (JS eval emas): imtihon skaneri
+      // PDF dagi JBIG2/JPEG2000 rasmlarni pdf.js wasm dekoderi bilan ochadi.
+      scriptSrc: ["'self'", "'wasm-unsafe-eval'", 'https://unpkg.com', 'https://cdn.jsdelivr.net'],
       styleSrc: ["'self'", "'unsafe-inline'", 'https://fonts.googleapis.com', 'https://unpkg.com'],
       fontSrc: ["'self'", 'https://fonts.gstatic.com', 'data:'],
       imgSrc: ["'self'", 'data:', 'blob:', SUPABASE_ORIGIN, 'https://unpkg.com', 'https://*.tile.openstreetmap.org'].filter(Boolean),
@@ -1926,6 +1929,7 @@ app.delete('/api/students/:id', authenticate, async (req, res, next) => {
     await prisma.student.update({ where: { id: sid }, data: { groups: { set: [] } } }).catch(() => {});
     // Bog'liq yozuvlarni ketma-ket o'chiramiz
     await prisma.examResult.deleteMany({ where: { studentId: sid } }).catch(() => {});
+    await prisma.examSeat.deleteMany({ where: { studentId: sid } }).catch(() => {});
     await prisma.score.deleteMany({ where: { studentId: sid } }).catch(() => {});
     await prisma.attendance.deleteMany({ where: { studentId: sid } }).catch(() => {});
     await prisma.deliveryLog.deleteMany({ where: { studentId: sid } }).catch(() => {});
@@ -3614,6 +3618,22 @@ app.put('/api/rooms/:id', authenticate, async (req, res, next) => {
       if (!(capacity > 0)) return res.status(400).json({ error: "Sig'im musbat son bo'lishi kerak" });
       data.capacity = capacity;
     }
+    // Imtihon uchun xona sxemasi (routes/imtihon.js o'rinlashtirishi shunga qaraydi):
+    // qatorlar, har qatordagi o'rinlar va ishlatilmaydigan o'rinlar ["2-3", ...].
+    if (req.body.rows !== undefined || req.body.cols !== undefined) {
+      const rows = req.body.rows === null ? null : parseInt(req.body.rows);
+      const cols = req.body.cols === null ? null : parseInt(req.body.cols);
+      if ((rows !== null && !(rows > 0 && rows <= 60)) || (cols !== null && !(cols > 0 && cols <= 40))) {
+        return res.status(400).json({ error: "Qator 1–60, o'rin 1–40 oralig'ida bo'lsin" });
+      }
+      data.rows = rows;
+      data.cols = cols;
+    }
+    if (req.body.blocked !== undefined) {
+      data.blocked = Array.isArray(req.body.blocked)
+        ? [...new Set(req.body.blocked.map(String).filter(x => /^\d{1,2}-\d{1,2}$/.test(x)))].slice(0, 2400)
+        : null;
+    }
     const room = await prisma.room.findUnique({ where: { id }, select: { id: true } });
     if (!room) return res.status(404).json({ error: 'Xona topilmadi' });
     res.json(await prisma.room.update({ where: { id }, data }));
@@ -3802,9 +3822,11 @@ app.delete('/api/organizations/:id', authenticate, async (req, res, next) => {
     if (schoolIds.length > 0) {
       await prisma.$transaction([
         prisma.examResult.deleteMany({ where: { schoolId: { in: schoolIds } } }),
+        prisma.examSeat.deleteMany({ where: { schoolId: { in: schoolIds } } }),
         prisma.examAssignment.deleteMany({ where: { schoolId: { in: schoolIds } } }),
         prisma.exam.deleteMany({ where: { schoolId: { in: schoolIds } } }),
         prisma.question.deleteMany({ where: { schoolId: { in: schoolIds } } }),
+        prisma.passage.deleteMany({ where: { schoolId: { in: schoolIds } } }),
         prisma.attendance.deleteMany({ where: { schoolId: { in: schoolIds } } }),
         prisma.score.deleteMany({ where: { schoolId: { in: schoolIds } } }),
         prisma.teacherAttendance.deleteMany({ where: { schoolId: { in: schoolIds } } }),
@@ -4224,10 +4246,23 @@ app.get('/api/init', authenticate, async (req, res, next) => {
           branches: { select: { id: true } }
         }
       }),
-      // Savollar to'g'ri javobi bilan keladi — faqat savollar bankini ko'radiganga.
-      agar(kor('imtihonlar.savollar'), prisma.question.findMany({ where: whereQuery })),
-      agar(kor('imtihonlar.imtihon', 'imtihonlar.natija'), prisma.exam.findMany({ where: whereQuery })),
-      agar(kor('imtihonlar.natija', 'oquvchilar.ballar'), prisma.examResult.findMany({ where: { ...whereQuery, ...ozOquvchi } })),
+      // Savollar banki init bilan kelmaydi: u butun markazniki va katta. Imtihonlar
+      // sahifasi uni /api/questions dan sahifalab oladi.
+      Promise.resolve([]),
+      // Ikki filial qatnashadigan imtihon ikkala filialda ham ko'rinadi.
+      agar(kor('imtihonlar.imtihon', 'imtihonlar.natija'), prisma.exam.findMany({
+        where: { OR: [whereQuery, { branchIds: { hasSome: targetSchoolIds } }] },
+      })),
+      // Natijalarning yengil ko'rinishi (skan, tekshirish tafsiloti yo'q). Natija
+      // bo'limi yo'q xodim faqat e'lon qilingan imtihonlarni ko'radi.
+      agar(kor('imtihonlar.natija', 'oquvchilar.ballar'), prisma.examResult.findMany({
+        where: { ...whereQuery, ...ozOquvchi, ...(kor('imtihonlar.natija') ? {} : { exam: { publishedAt: { not: null } } }) },
+        select: {
+          id: true, studentId: true, examId: true, variantCode: true, score: true, percentage: true,
+          blockScores: true, scannedAt: true, schoolId: true, rank: true, rankBranch: true, rankGroup: true,
+          reviewStatus: true,
+        },
+      })),
       prisma.school.findMany({ where: schoolsWhere }),
       // Filial mavzulari + markazning umumiy o'quv dasturlaridagi mavzular.
       prisma.topic.findMany({
@@ -4297,7 +4332,7 @@ app.get('/api/init', authenticate, async (req, res, next) => {
       // every other role gets the masked copy.
       settings: isAdmin(req.user) ? hidePaymeSecrets(sozlama) : stripSettingSecrets(sozlama),
       attendances, scores, teacherAttendances, staffAttendances, expenses,
-      transports, routes: mappedRoutes, questions, exams, examResults, schools,
+      transports, routes: mappedRoutes, questions, exams: exams.map(e => imtihonJavobi(e, req)), examResults, schools,
       topics, syllabuses, directions,
       users: users.map(u => {
         const { teacherProfile, branches, ...qolgan } = u;
@@ -4465,6 +4500,7 @@ app.delete('/api/schools/:id', authenticate, async (req, res, next) => {
       prisma.score.deleteMany({ where: { schoolId } }),
       prisma.examAssignment.deleteMany({ where: { schoolId } }),
       prisma.examResult.deleteMany({ where: { schoolId } }),
+      prisma.examSeat.deleteMany({ where: { schoolId } }),
       prisma.teacherAttendance.deleteMany({ where: { schoolId } }),
       prisma.staffAttendance.deleteMany({ where: { schoolId } }),
       prisma.salaryPayment.deleteMany({ where: { schoolId } }),
@@ -4472,6 +4508,7 @@ app.delete('/api/schools/:id', authenticate, async (req, res, next) => {
       // 3. Delete other school-level records
       prisma.smsLog.deleteMany({ where: { schoolId } }),
       prisma.question.deleteMany({ where: { schoolId } }),
+      prisma.passage.deleteMany({ where: { schoolId } }),
       prisma.messageTemplate.deleteMany({ where: { schoolId } }),
       prisma.messageCampaign.deleteMany({ where: { schoolId } }),
       prisma.autoMessageRule.deleteMany({ where: { schoolId } }),
@@ -6497,13 +6534,14 @@ app.get('/api/sms/test-connection', authenticate, async (req, res, next) => {
 /**
  * Har o'quvchining oxirgi imtihon natijasi — {testnatijasi} uchun.
  * Faqat matnda shu o'zgaruvchi bo'lsa chaqiriladi: 400 ta o'quvchiga xabar
- * yuborilganda keraksiz so'rov bo'lmasin.
+ * yuborilganda keraksiz so'rov bo'lmasin. Faqat e'lon qilingan imtihonlar:
+ * tekshirilmagan ball ota-onaga ketmasin.
  */
 async function getLastExamMap(schoolId, studentIds) {
   const map = {};
   if (!studentIds || studentIds.length === 0) return map;
   const rows = await prisma.examResult.findMany({
-    where: { schoolId, studentId: { in: studentIds } },
+    where: { schoolId, studentId: { in: studentIds }, exam: { publishedAt: { not: null } } },
     select: { studentId: true, score: true, percentage: true, scannedAt: true, exam: { select: { name: true, date: true } } },
     orderBy: { scannedAt: 'desc' },
   });
@@ -7133,8 +7171,10 @@ async function runAutoProcessJobs() {
     } else if (rule.type === 'EXAM_RESULT') {
       const startOfDay = new Date(nowUz);
       startOfDay.setUTCHours(0, 0, 0, 0);
+      // Bugun e'lon qilingan imtihonlar natijasi, e'londa hali xabar yuborilmaganlari
+      // (imtihon sozlamasida kanal "yubormaslik" bo'lsa — shu qoida yuboradi).
       const resultsToday = await prisma.examResult.findMany({
-        where: { schoolId, scannedAt: { gte: startOfDay } },
+        where: { schoolId, notifiedAt: null, studentId: { not: null }, exam: { publishedAt: { gte: startOfDay } } },
         include: { student: true, exam: true }
       });
       const uniqueStudentsMap = {};
@@ -7371,234 +7411,8 @@ app.post('/api/sms/resend-failed', authenticate, async (req, res, next) => {
 
 // ==================== EXAM MODULE ====================
 
-// --- Questions ---
-app.get('/api/questions', authenticate, async (req, res, next) => {
-  try {
-    const schoolId = parseInt(req.query.schoolId);
-    if (!schoolId) return res.status(400).json({ error: 'schoolId required' });
-    const where = { schoolId };
-    if (req.query.subject) where.subject = req.query.subject;
-    if (req.query.topic) where.topic = req.query.topic;
-    const questions = await prisma.question.findMany({ where, orderBy: { id: 'asc' } });
-    res.json(questions);
-  } catch (err) { next(err); }
-});
-
-app.post('/api/questions', authenticate, async (req, res, next) => {
-  try {
-    let { text, imageUrl, optionA, optionB, optionC, optionD, correctAnswer, difficulty, subject, topic, schoolId } = req.body;
-    if (!text || !optionA || !optionB || !optionC || !optionD || !correctAnswer || !subject || !topic || !schoolId) {
-      return res.status(400).json({ error: 'Barcha maydonlar to\'ldirilishi shart' });
-    }
-    imageUrl = await rasmQiymatiniTozala(imageUrl, 'question');
-    const question = await prisma.question.create({
-      data: { text, imageUrl: imageUrl || null, optionA, optionB, optionC, optionD, correctAnswer, difficulty: difficulty || 1, subject, topic, schoolId: parseInt(schoolId) }
-    });
-    res.status(201).json(question);
-  } catch (err) { next(err); }
-});
-
-app.post('/api/questions/bulk', authenticate, async (req, res, next) => {
-  try {
-    const { questions, schoolId } = req.body;
-    if (!Array.isArray(questions) || !schoolId) return res.status(400).json({ error: 'questions array va schoolId required' });
-    const data = questions.map(q => ({
-      text: q.text, imageUrl: q.imageUrl || null,
-      optionA: q.optionA, optionB: q.optionB, optionC: q.optionC, optionD: q.optionD,
-      correctAnswer: q.correctAnswer, difficulty: q.difficulty || 1,
-      subject: q.subject, topic: q.topic, schoolId: parseInt(schoolId)
-    }));
-    const result = await prisma.question.createMany({ data, skipDuplicates: false });
-    res.status(201).json({ count: result.count });
-  } catch (err) { next(err); }
-});
-
-app.put('/api/questions/:id', authenticate, async (req, res, next) => {
-  try {
-    const id = parseInt(req.params.id);
-    let { text, imageUrl, optionA, optionB, optionC, optionD, correctAnswer, difficulty, subject, topic } = req.body;
-    imageUrl = await rasmQiymatiniTozala(imageUrl, 'question');
-    const question = await prisma.question.update({
-      where: { id },
-      data: { text, imageUrl: imageUrl || null, optionA, optionB, optionC, optionD, correctAnswer, difficulty, subject, topic }
-    });
-    res.json(question);
-  } catch (err) { next(err); }
-});
-
-app.delete('/api/questions/:id', authenticate, async (req, res, next) => {
-  try {
-    await prisma.question.delete({ where: { id: parseInt(req.params.id) } });
-    res.json({ success: true });
-  } catch (err) { next(err); }
-});
-
-// --- Exams ---
-app.get('/api/exams', authenticate, async (req, res, next) => {
-  try {
-    const schoolId = parseInt(req.query.schoolId);
-    if (!schoolId) return res.status(400).json({ error: 'schoolId required' });
-    const exams = await prisma.exam.findMany({
-      where: { schoolId },
-      include: { _count: { select: { results: true, assignments: true } } },
-      orderBy: { createdAt: 'desc' }
-    });
-    res.json(exams);
-  } catch (err) { next(err); }
-});
-
-app.post('/api/exams', authenticate, async (req, res, next) => {
-  try {
-    const { name, date, duration, status, blocks, totalQuestions, maxScore, schoolId } = req.body;
-    if (!name || !date || !duration || !blocks || !schoolId) return res.status(400).json({ error: 'Majburiy maydonlar to\'ldirilmadi' });
-    const exam = await prisma.exam.create({
-      data: { name, date, duration: parseInt(duration), status: status || 'Yaqinlashmoqda', blocks, totalQuestions: parseInt(totalQuestions) || 0, maxScore: parseFloat(maxScore) || 0, schoolId: parseInt(schoolId) }
-    });
-    res.status(201).json(exam);
-  } catch (err) { next(err); }
-});
-
-app.put('/api/exams/:id', authenticate, async (req, res, next) => {
-  try {
-    const id = parseInt(req.params.id);
-    const { name, date, duration, status, blocks, totalQuestions, maxScore, variants } = req.body;
-    const data = {};
-    if (name !== undefined) data.name = name;
-    if (date !== undefined) data.date = date;
-    if (duration !== undefined) data.duration = parseInt(duration);
-    if (status !== undefined) data.status = status;
-    if (blocks !== undefined) data.blocks = blocks;
-    if (totalQuestions !== undefined) data.totalQuestions = parseInt(totalQuestions);
-    if (maxScore !== undefined) data.maxScore = parseFloat(maxScore);
-    if (variants !== undefined) data.variants = variants;
-    const exam = await prisma.exam.update({ where: { id }, data });
-    res.json(exam);
-  } catch (err) { next(err); }
-});
-
-app.delete('/api/exams/:id', authenticate, async (req, res, next) => {
-  try {
-    await prisma.exam.delete({ where: { id: parseInt(req.params.id) } });
-    res.json({ success: true });
-  } catch (err) { next(err); }
-});
-
-// --- Exam Assignments ---
-app.get('/api/exams/:id/assignments', authenticate, async (req, res, next) => {
-  try {
-    const examId = parseInt(req.params.id);
-    const assignments = await prisma.examAssignment.findMany({
-      where: { examId },
-      include: { group: { select: { id: true, name: true } } }
-    });
-    res.json(assignments);
-  } catch (err) { next(err); }
-});
-
-app.post('/api/exams/:id/assignments', authenticate, async (req, res, next) => {
-  try {
-    const examId = parseInt(req.params.id);
-    const { groupIds, schoolId } = req.body;
-    if (!Array.isArray(groupIds) || !schoolId) return res.status(400).json({ error: 'groupIds va schoolId required' });
-    // Upsert each assignment
-    const results = await Promise.all(
-      groupIds.map(groupId =>
-        prisma.examAssignment.upsert({
-          where: { examId_groupId: { examId, groupId: parseInt(groupId) } },
-          create: { examId, groupId: parseInt(groupId), schoolId: parseInt(schoolId) },
-          update: {}
-        })
-      )
-    );
-    res.status(201).json(results);
-  } catch (err) { next(err); }
-});
-
-app.delete('/api/exams/:id/assignments/:groupId', authenticate, async (req, res, next) => {
-  try {
-    const examId = parseInt(req.params.id);
-    const groupId = parseInt(req.params.groupId);
-    await prisma.examAssignment.deleteMany({ where: { examId, groupId } });
-    res.json({ success: true });
-  } catch (err) { next(err); }
-});
-
-// --- Exam Results ---
-app.get('/api/exam-results', authenticate, async (req, res, next) => {
-  try {
-    const where = {};
-    if (req.query.examId) where.examId = parseInt(req.query.examId);
-    if (req.query.studentId) where.studentId = parseInt(req.query.studentId);
-    // Filial ko'rsatilmasa — faqat o'z filial(lar)i. Ilgari `where = {}` bo'lib,
-    // boshqa markazlarning natijalari ham qaytardi.
-    const natijaFiliali = parseInt(req.query.schoolId);
-    where.schoolId = natijaFiliali > 0 ? natijaFiliali : { in: await allowedSchoolIds(req.user) };
-    if (req.ruxsat?.faqatOz && !req.query.studentId) where.studentId = { in: [...(await ozKurslari(req.user)).studentIds] };
-    const results = await prisma.examResult.findMany({
-      where,
-      include: { student: { select: { id: true, name: true, photo: true } }, exam: { select: { id: true, name: true, maxScore: true } } },
-      orderBy: { scannedAt: 'desc' }
-    });
-    res.json(results);
-  } catch (err) { next(err); }
-});
-
-app.post('/api/exam-results', authenticate, async (req, res, next) => {
-  try {
-    const { studentId, examId, variantCode, answers, schoolId } = req.body;
-    if (!studentId || !examId || !schoolId) return res.status(400).json({ error: 'studentId, examId, schoolId required' });
-
-    // Fetch exam to calculate score server-side
-    const exam = await prisma.exam.findUnique({ where: { id: parseInt(examId) } });
-    if (!exam) return res.status(404).json({ error: 'Imtihon topilmadi' });
-
-    let score = 0;
-    let blockScores = [];
-
-    if (answers && exam.variants && variantCode) {
-      const variant = exam.variants.find(v => v.variantCode === variantCode);
-      if (variant) {
-        // Calculate per-block scores
-        const blockMap = {};
-        exam.blocks.forEach(block => {
-          blockMap[block.subject.toLowerCase()] = { subject: block.subject, earned: 0, max: 0, pointsPerQ: block.pointsPerQuestion || 1 };
-        });
-
-        variant.questions.forEach((vq, idx) => {
-          const studentAnswer = answers[idx + 1] || answers[idx];
-          const subjectKey = (vq.subject || '').toLowerCase();
-          const block = blockMap[subjectKey] || Object.values(blockMap)[0];
-          if (block) {
-            block.max += block.pointsPerQ;
-            if (studentAnswer === vq.correctOption) {
-              block.earned += block.pointsPerQ;
-              score += block.pointsPerQ;
-            }
-          }
-        });
-
-        blockScores = Object.values(blockMap);
-      }
-    }
-
-    const percentage = exam.maxScore > 0 ? Math.round((score / exam.maxScore) * 100) : 0;
-
-    const result = await prisma.examResult.upsert({
-      where: { studentId_examId: { studentId: parseInt(studentId), examId: parseInt(examId) } },
-      create: { studentId: parseInt(studentId), examId: parseInt(examId), variantCode, answers: answers || {}, score, percentage, blockScores, schoolId: parseInt(schoolId) },
-      update: { variantCode, answers: answers || {}, score, percentage, blockScores, scannedAt: new Date() },
-      include: { student: { select: { id: true, name: true, photo: true } }, exam: { select: { id: true, name: true, maxScore: true } } }
-    });
-    res.status(201).json(result);
-  } catch (err) { next(err); }
-});
-
-app.delete('/api/exam-results/:id', authenticate, async (req, res, next) => {
-  try {
-    await prisma.examResult.delete({ where: { id: parseInt(req.params.id) } });
-    res.json({ success: true });
-  } catch (err) { next(err); }
-});
+// Savollar banki, imtihonlar, o'rinlar, skaner natijalari va e'lon —
+// routes/imtihon.js (registerImtihonRoutes, pastda ro'yxatdan o'tadi).
 
 // Only these image types may be stored. The extension used to come straight from the
 // caller's filename and became the stored object's content type, so any string at all
@@ -7991,6 +7805,16 @@ app.get('/api/billing/auto-process', async (req, res, next) => {
 // Payme: webhook, havola yaratish, ochiq holat sahifasi (routes/payme.js).
 registerPaymeRoutes(app);
 registerAuditRoutes(app);
+// Rasm Storage ga: data URL bo'lsa yuklanadi, tayyor havola o'zgarmay qaytadi.
+registerImtihonRoutes(app, {
+  sendToOne,
+  rasmniSaqla: async (qiymat, nom) =>
+    typeof qiymat === 'string' && qiymat.startsWith('data:') ? dataUrlniStoragega(qiymat, nom) : (qiymat || null),
+  rasmlarniOchir: async (nomlar) => {
+    const { error } = await supabaseAdmin.storage.from('uploads').remove(nomlar);
+    if (error) throw error;
+  },
+});
 
 // Serve static React files
 app.use('/uploads', express.static(join(__dirname, 'public', 'uploads')));

@@ -221,6 +221,8 @@ export default function DailySheet() {
         const out = new Map<number, { sinov: number | null; test: number | null; reyting: number | null }>();
         const byStudent = new Map<number, any[]>();
         for (const r of (examResults || []) as any[]) {
+            // Faqat e'lon qilingan imtihon: tekshirilmagan ball varaqqa tushmasin.
+            if (!examById.get(r.examId)?.publishedAt) continue;
             if (!byStudent.has(r.studentId)) byStudent.set(r.studentId, []);
             byStudent.get(r.studentId)!.push(r);
         }

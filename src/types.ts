@@ -304,6 +304,10 @@ export interface Room {
     name: string;
     capacity: number;
     schoolId: number;
+    /** Imtihon sxemasi: qatorlar va har qatordagi o'rinlar; `blocked` — ["2-3", ...]. */
+    rows?: number | null;
+    cols?: number | null;
+    blocked?: string[] | null;
 }
 
 export interface Organization {
@@ -470,24 +474,61 @@ export interface CRMState {
     topics: Topic[];
 }
 
+// --- Imtihon moduli (docs/IMTIHON_PLAN.md, mantiq — lib/imtihon.js) ---
+
+export type SavolTuri = 'yopiq' | 'raqamli' | 'yozma';
+
 export interface Question {
     id: number;
     text: string;
-    imageUrl?: string;
-    optionA: string;
-    optionB: string;
-    optionC: string;
-    optionD: string;
-    correctAnswer: 'A' | 'B' | 'C' | 'D';
+    imageUrl?: string | null;
+    type: SavolTuri;
+    /** Yopiq savol variantlari (2–6 ta). */
+    options: string[];
+    /** Yopiq: 'A'..'F'; raqamli: asosiy javob. */
+    correctAnswer: string;
+    /** Raqamli: qo'shimcha qabul qilinadigan javoblar. */
+    answers?: string[] | null;
+    points?: number | null;
+    lockOptions?: boolean;
     difficulty: number;
     subject: string;
     topic: string;
+    section?: string | null;
+    grade?: string | null;
+    source?: string | null;
+    language?: 'uz' | 'ru' | 'en';
+    solution?: string | null;
+    solutionStatus?: 'yoq' | 'qoralama' | 'tasdiqlangan';
+    status?: 'qoralama' | 'faol' | 'arxiv';
+    passageId?: number | null;
+    passage?: { id: number; title?: string | null } | null;
+    usedCount?: number;
+    pCorrect?: number | null;
+    discrimination?: number | null;
+    /** Imtihonga yaramasa — sababi (server hisoblaydi). */
+    xato?: string | null;
     schoolId: number;
 }
 
+export interface Passage {
+    id: number;
+    title?: string | null;
+    text: string;
+    imageUrl?: string | null;
+    subject: string;
+    schoolId: number;
+    _count?: { questions: number };
+}
+
 export interface TopicRule {
+    /** '' — fan ichidagi istalgan mavzu. */
     topic: string;
     count: number;
+    type?: SavolTuri;
+    difficulty?: number;
+    /** Shu qoidadagi savol bali (bo'lmasa blok bali). */
+    points?: number;
 }
 
 export interface ExamBlock {
@@ -497,21 +538,27 @@ export interface ExamBlock {
     pointsPerQuestion: number;
 }
 
-export interface Variant {
-    id: string;
-    variantCode: string;
-    questions: {
-        questionId: number;
-        order: number;
-        shuffledOptions: {
-            A: string;
-            B: string;
-            C: string;
-            D: string;
-        };
-        correctOption: 'A' | 'B' | 'C' | 'D';
-    }[];
+export interface ExamSettings {
+    sessions: { id: number; name: string; time: string }[];
+    sessionQuestions: 'bir' | 'alohida';
+    variantCount: number;
+    shuffleQuestions: boolean;
+    shuffleOptions: boolean;
+    language: '' | 'uz' | 'ru' | 'en';
+    seatMode: 'hammasi' | 'shaxmat';
+    sessionFill: 'teng' | 'ketma' | 'kurs';
+    roomIds: number[];
+    variantBubble: boolean;
+    cancelled: Record<string, 'hammaga' | 'chiqarish'>;
+    keyFix: Record<string, string[]>;
+    ranking: 'hammasi' | 'top' | 'yoq';
+    topN: number;
+    showQuestionsAfter: boolean;
+    notify: { channel: 'BOTH' | 'TELEGRAM' | 'SMS' | 'NONE'; to: 'PARENT' | 'STUDENT' | 'ALL'; template: string };
+    optionCount: number;
 }
+
+export type ExamStatus = 'Qoralama' | 'Tayyor' | 'Tekshirilmoqda' | "E'lon qilindi";
 
 export interface Exam {
     id: number;
@@ -519,22 +566,32 @@ export interface Exam {
     date: string;
     duration: number;
     schoolId: number;
-    status: 'Yaqinlashmoqda' | 'Tugallangan' | 'Qoralama';
+    status: ExamStatus;
     blocks: ExamBlock[];
     totalQuestions: number;
     maxScore: number;
-    variants?: Variant[];
+    scoring: 'blok' | 'foiz';
+    branchIds: number[];
+    settings: ExamSettings;
+    lockedAt?: string | null;
+    publishedAt?: string | null;
+    createdAt?: string;
+    _count?: { results: number; seats: number; assignments?: number };
 }
 
 export interface ExamResult {
     id: number;
-    studentId: number;
+    studentId: number | null;
     examId: number;
-    variantCode?: string;
-    answers?: Record<number, 'A' | 'B' | 'C' | 'D' | null>;
+    variantCode?: string | null;
+    answers?: Record<string, any> | null;
     score: number;
     percentage: number;
-    blockScores?: { subject: string; earned: number; max: number }[];
+    blockScores?: { subject: string; earned: number; max: number; togri?: number; xato?: number; bosh?: number }[] | null;
     scannedAt: string;
     schoolId: number;
+    rank?: number | null;
+    rankBranch?: number | null;
+    rankGroup?: number | null;
+    reviewStatus?: 'avto' | 'shubhali' | 'tekshirildi';
 }

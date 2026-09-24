@@ -57,6 +57,7 @@ const PublicApply     = lazyRetry(() => import('./components/PublicApply'));
 const DailySheet      = lazyRetry(() => import('./components/DailySheet'));
 const AuditLog        = lazyRetry(() => import('./components/AuditLog'));
 const PublicPay       = lazyRetry(() => import('./components/PublicPay'));
+const NatijaSahifasi  = lazyRetry(() => import('./components/NatijaSahifasi'));
 
 function PageLoader() {
   return (
@@ -79,15 +80,18 @@ export default function App() {
   const isApplyRoute = window.location.pathname.startsWith('/apply');
   // Payme to'lovidan keyin qaytish sahifasi — kirishsiz, faqat buyurtma holati.
   const isPayRoute = window.location.pathname.startsWith('/pay/');
+  // Imtihon natijasi — ota-onaga xabardagi imzolangan havola (kirishsiz).
+  const isNatijaRoute = window.location.pathname.startsWith('/natija/');
 
   // Ochiq sahifalar sessiya yuklanishini kutmaydi: ota-ona Payme'dan qaytganda
   // (brauzerida CRM tokeni bo'lsa ham) darhol natijani ko'rsin.
-  if (isApplyRoute || isPayRoute) {
+  if (isApplyRoute || isPayRoute || isNatijaRoute) {
     return (
       <Suspense fallback={<PageLoader />}>
         <Routes>
           <Route path="/apply/:schoolId" element={<PublicApply />} />
           <Route path="/pay/:orderId" element={<PublicPay />} />
+          <Route path="/natija/:token" element={<NatijaSahifasi />} />
           <Route path="*" element={<Navigate to="/login" replace />} />
         </Routes>
       </Suspense>
@@ -183,9 +187,10 @@ export default function App() {
             <Route path="/reports"              element={<Navigate to="/" replace />} />
             <Route path="/exams"                element={sahifa(m('imtihonlar'), <ExamsList />)} />
             <Route path="/exams/new"            element={sahifa(ozgartira('imtihonlar.imtihon'), <ExamBuilder />)} />
-            <Route path="/exams/:id"            element={sahifa(kora('imtihonlar.imtihon'), <ExamDetail />)} />
+            <Route path="/exams/:id/edit"       element={sahifa(ozgartira('imtihonlar.imtihon'), <ExamBuilder />)} />
+            <Route path="/exams/:id"            element={sahifa(kora('imtihonlar.imtihon') || kora('imtihonlar.natija'), <ExamDetail />)} />
             <Route path="/scanner"              element={<Navigate to="/exams" replace />} />
-            <Route path="/questions"            element={<Navigate to="/exams" replace />} />
+            <Route path="/questions"            element={<Navigate to="/exams?tab=savollar" replace />} />
             <Route path="/questions/new"        element={sahifa(ozgartira('imtihonlar.savollar'), <QuestionEditor />)} />
             <Route path="/questions/:id/edit"   element={sahifa(kora('imtihonlar.savollar'), <QuestionEditor />)} />
             <Route path="/exam-results"         element={sahifa(kora('imtihonlar.natija'), <ExamResults />)} />

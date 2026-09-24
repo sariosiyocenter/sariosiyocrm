@@ -1,384 +1,301 @@
-import React, { useState, useMemo } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, Save, Plus, Trash2, Calculator, Layers, BookOpen, Clock, Calendar, Tag, AlertTriangle, CheckCircle2 } from 'lucide-react';
+import React, { useEffect, useMemo, useState } from 'react';
+import { useNavigate, useParams } from 'react-router-dom';
+import { ArrowLeft, Save, Plus, Trash2, Lock, Wand2, AlertTriangle, CheckCircle2 } from 'lucide-react';
 import { useCRM } from '../context/CRMContext';
-import { ExamBlock, TopicRule } from '../types';
+import { useImtihonApi } from './imtihon/useImtihonApi';
+import { Karta, Tugma, Maydon, INPUT, SELECT, Tanlov, Almashtirgich, Yorliq, Yuklanmoqda } from './imtihon/ui';
+import { SOZLAMA_STANDART, STANDART_SHABLON, sozlamaniTozala, varaqTuzilmasi, natijaXabari, VARIANT_KODLARI } from '../../lib/imtihon.js';
+import type { Exam, ExamBlock, ExamSettings, TopicRule, SavolTuri } from '../types';
+
+// Imtihon tuzish. Egasining talabi (2026-09-24): "universal bo'lishi kerak" —
+// ball tizimi, smenalar, filiallar, til, reyting va xabar kanali imtihonning
+// o'z sozlamasi. Qulflangandan keyin tuzilma (bloklar, variantlar) o'zgarmaydi,
+// faqat e'lon va xabar sozlamalari.
+
+interface Meta { fanlar: { nomi: string; faol: number }[]; mavzular: { fan: string; mavzu: string; faol: Record<string, number> }[] }
+
+const yangiId = () => Math.random().toString(36).slice(2, 9);
+
+// DTM (BMBA) blok testi: 3 majburiy fan × 10 savol × 1.1 ball, 2 asosiy fan × 30 savol (3.1 va 2.1).
+const DTM_ANDOZA: ExamBlock[] = [
+  { id: yangiId(), subject: 'Ona tili', pointsPerQuestion: 1.1, topicRules: [{ topic: '', count: 10, type: 'yopiq' }] },
+  { id: yangiId(), subject: 'Matematika', pointsPerQuestion: 1.1, topicRules: [{ topic: '', count: 10, type: 'yopiq' }] },
+  { id: yangiId(), subject: "O'zbekiston tarixi", pointsPerQuestion: 1.1, topicRules: [{ topic: '', count: 10, type: 'yopiq' }] },
+  { id: yangiId(), subject: '1-asosiy fan', pointsPerQuestion: 3.1, topicRules: [{ topic: '', count: 30, type: 'yopiq' }] },
+  { id: yangiId(), subject: '2-asosiy fan', pointsPerQuestion: 2.1, topicRules: [{ topic: '', count: 30, type: 'yopiq' }] },
+];
+
+const TUR_NOMI: Record<SavolTuri, string> = { yopiq: 'Yopiq', raqamli: 'Raqamli', yozma: 'Yozma' };
 
 export default function ExamBuilder() {
-    const navigate = useNavigate();
-    const { addExam, questions, showNotification } = useCRM();
+  const { id } = useParams();
+  const tahrir = !!id;
+  const navigate = useNavigate();
+  const { schools, selectedSchoolId, user, addExam, updateExam, showNotification } = useCRM();
+  const { soro } = useImtihonApi();
 
-    const [isSaving, setIsSaving] = useState(false);
-    const [errors, setErrors] = useState<Record<string, boolean>>({});
-    
-    // Base info
-    const [name, setName] = useState('');
-    const [date, setDate] = useState('');
-    const [duration, setDuration] = useState<number | ''>(180);
-    const [status, setStatus] = useState<'Yaqinlashmoqda' | 'Tugallangan' | 'Qoralama'>('Yaqinlashmoqda');
+  const [meta, setMeta] = useState<Meta | null>(null);
+  const [yuklanmoqda, setYuklanmoqda] = useState(tahrir);
+  const [saqlanmoqda, setSaqlanmoqda] = useState(false);
+  const [qulf, setQulf] = useState(false);
+  const [nom, setNom] = useState('');
+  const [sana, setSana] = useState(() => new Date().toISOString().slice(0, 10));
+  const [davom, setDavom] = useState(120);
+  const [scoring, setScoring] = useState<'blok' | 'foiz'>('blok');
+  const [bloklar, setBloklar] = useState<ExamBlock[]>([{ id: yangiId(), subject: '', pointsPerQuestion: 1, topicRules: [{ topic: '', count: 10, type: 'yopiq' }] }]);
+  const [sozlama, setSozlama] = useState<ExamSettings>(() => sozlamaniTozala({}) as ExamSettings);
+  const joriyFilial = selectedSchoolId && selectedSchoolId > 0 ? selectedSchoolId : user?.schoolId || 0;
+  // Imtihon yaratilgan filial doim qatnashadi; qolganlari — tanlov.
+  const [egaFilial, setEgaFilial] = useState(joriyFilial);
+  const [filiallar, setFiliallar] = useState<number[]>(joriyFilial ? [joriyFilial] : []);
 
-    // Blocks
-    const [blocks, setBlocks] = useState<ExamBlock[]>([
-        { 
-            id: '1', 
-            subject: 'Matematika', 
-            topicRules: [{ topic: 'Trigonometriya', count: 10 }], 
-            pointsPerQuestion: 3.1 
-        }
-    ]);
+  useEffect(() => { soro<Meta>('GET', 'questions/meta').then(setMeta).catch(() => {}); }, [soro]);
 
-    // Metadata from Questions Bank
-    const availableMetadata = useMemo(() => {
-        const meta: Record<string, string[]> = {};
-        questions.forEach(q => {
-            if (!meta[q.subject]) meta[q.subject] = [];
-            if (!meta[q.subject].includes(q.topic)) meta[q.subject].push(q.topic);
-        });
-        return meta;
-    }, [questions]);
+  useEffect(() => {
+    if (!id) return;
+    soro<Exam>('GET', `exams/${id}`).then(e => {
+      setNom(e.name); setSana(e.date); setDavom(e.duration); setScoring(e.scoring || 'blok');
+      setBloklar((e.blocks || []).map(b => ({ ...b, id: b.id || yangiId() })));
+      setSozlama(sozlamaniTozala(e.settings) as ExamSettings);
+      setEgaFilial(e.schoolId);
+      setFiliallar([...new Set([e.schoolId, ...(e.branchIds || [])])]);
+      setQulf(!!e.lockedAt);
+    }).catch(err => showNotification(err.message, 'error')).finally(() => setYuklanmoqda(false));
+  }, [id, soro, showNotification]);
 
-    const getAvailableCount = (subject: string, topic: string) => {
-        return questions.filter(q => 
-            q.subject.toLowerCase() === subject.toLowerCase() && 
-            q.topic.toLowerCase() === topic.toLowerCase()
-        ).length;
-    };
+  const tuzilma = useMemo(() => varaqTuzilmasi(bloklar, scoring), [bloklar, scoring]);
+  const s = (patch: Partial<ExamSettings>) => setSozlama(x => ({ ...x, ...patch }));
 
-    // Computed totals
-    const totalQuestions = useMemo(() => {
-        return blocks.reduce((acc, b) => acc + b.topicRules.reduce((tAcc, r) => tAcc + (r.count || 0), 0), 0);
-    }, [blocks]);
+  /** Bankda shu qoidaga mos faol savollar soni. */
+  const bor = (fan: string, rule: TopicRule) => {
+    const tur = rule.type || 'yopiq';
+    const f = fan.trim().toLowerCase();
+    return (meta?.mavzular || [])
+      .filter(m => m.fan.toLowerCase() === f && (!rule.topic.trim() || m.mavzu.toLowerCase() === rule.topic.trim().toLowerCase()))
+      .reduce((a, m) => a + (m.faol[tur] || 0), 0);
+  };
+  const kopaytma = sozlama.sessionQuestions === 'alohida' ? sozlama.sessions.length : 1;
 
-    const maxScore = useMemo(() => {
-        return blocks.reduce((acc, b) => {
-            const blockQCount = b.topicRules.reduce((tAcc, r) => tAcc + (r.count || 0), 0);
-            return acc + (blockQCount * (b.pointsPerQuestion || 0));
-        }, 0);
-    }, [blocks]);
+  const blokQoy = (bi: number, patch: Partial<ExamBlock>) => setBloklar(b => b.map((x, i) => (i === bi ? { ...x, ...patch } : x)));
+  const qoidaQoy = (bi: number, ri: number, patch: Partial<TopicRule>) => setBloklar(b => b.map((x, i) => (i === bi ? { ...x, topicRules: x.topicRules.map((r, j) => (j === ri ? { ...r, ...patch } : r)) } : x)));
 
-    const handleAddBlock = () => {
-        setBlocks([
-            ...blocks,
-            { id: Date.now().toString(), subject: '', topicRules: [], pointsPerQuestion: 0 }
-        ]);
-    };
+  const saqla = async () => {
+    if (!nom.trim()) return showNotification('Imtihon nomini kiriting', 'error');
+    if (!qulf) {
+      if (bloklar.some(b => !b.subject.trim())) return showNotification('Har blokning fanini kiriting', 'error');
+      if (!tuzilma.jami) return showNotification("Kamida bitta savol qoidasi kerak", 'error');
+    }
+    setSaqlanmoqda(true);
+    try {
+      const body: any = { name: nom.trim(), date: sana, duration: davom, settings: sozlama };
+      if (!qulf) Object.assign(body, { blocks: bloklar, scoring, branchIds: filiallar.filter(x => x !== egaFilial) });
+      if (tahrir) {
+        await updateExam(Number(id), body);
+        navigate(`/exams/${id}`);
+      } else {
+        const e = await addExam({ ...body, schoolId: egaFilial } as any);
+        navigate(`/exams/${e.id}`);
+      }
+    } catch {
+      // xabar context'da ko'rsatildi
+    } finally {
+      setSaqlanmoqda(false);
+    }
+  };
 
-    const handleUpdateBlock = (id: string, updates: Partial<ExamBlock>) => {
-        setBlocks(blocks.map(b => b.id === id ? { ...b, ...updates } : b));
-    };
+  const xabarNamuna = natijaXabari(sozlama.notify.template, {
+    ism: 'ALIYEV VALI', imtihon: nom || 'Oylik sinov', sana, ball: 142.3, maks: tuzilma.maks, foiz: 75.3,
+    bloklar: bloklar.length > 1 ? bloklar.slice(0, 2).map(b => `• ${b.subject || 'Fan'}: 25.3 / 31`).join('\n') : '',
+    orin: sozlama.ranking === 'yoq' ? '' : sozlama.ranking === 'top' ? "🏆 O'rni: umumiy 7-o'rin" : "🏆 O'rni: kursda 3/25 · umumiy 15/400",
+    markaz: 'Sariosiyo',
+  });
 
-    const handleAddRule = (blockId: string) => {
-        setBlocks(blocks.map(b => {
-            if (b.id === blockId) {
-                return {
-                    ...b,
-                    topicRules: [...b.topicRules, { topic: '', count: 0 }]
-                };
-            }
-            return b;
-        }));
-    };
+  if (yuklanmoqda) return <Yuklanmoqda />;
 
-    const handleUpdateRule = (blockId: string, ruleIndex: number, field: keyof TopicRule, value: any) => {
-        setBlocks(blocks.map(b => {
-            if (b.id === blockId) {
-                const newRules = [...b.topicRules];
-                newRules[ruleIndex] = { ...newRules[ruleIndex], [field]: value };
-                return { ...b, topicRules: newRules };
-            }
-            return b;
-        }));
-    };
+  const qulfIzoh = qulf ? 'Savollar qulflangan — bu qism o\'zgarmaydi' : undefined;
 
-    const handleRemoveRule = (blockId: string, ruleIndex: number) => {
-        setBlocks(blocks.map(b => {
-            if (b.id === blockId) {
-                return {
-                    ...b,
-                    topicRules: b.topicRules.filter((_, i) => i !== ruleIndex)
-                };
-            }
-            return b;
-        }));
-    };
-
-    const handleRemoveBlock = (id: string) => {
-        setBlocks(blocks.filter(b => b.id !== id));
-    };
-
-    const handleSave = async () => {
-        // Validate
-        const newErrors: Record<string, boolean> = {};
-        if (!name) newErrors.name = true;
-        if (!date) newErrors.date = true;
-        if (!duration) newErrors.duration = true;
-        if (blocks.length === 0) newErrors.blocks = true;
-        
-        if (Object.keys(newErrors).length > 0) {
-            setErrors(newErrors);
-            showNotification("Iltimos, barcha majburiy maydonlarni to'ldiring", "error");
-            return;
-        }
-        setErrors({});
-
-        try {
-            setIsSaving(true);
-            await addExam({
-                name,
-                date,
-                duration: Number(duration),
-                status,
-                blocks,
-                totalQuestions,
-                maxScore: parseFloat(maxScore.toFixed(1))
-            });
-            navigate('/exams');
-        } catch (err) {
-            console.error("Failed to save exam", err);
-            showNotification("Imtihonni saqlashda xatolik yuz berdi", "error");
-        } finally {
-            setIsSaving(false);
-        }
-    };
-
-    const labelCls = "block text-[11px] font-extrabold   text-matn-xira mb-2";
-    const inputCls = "w-full px-4 py-3 bg-ichki border border-chiziq rounded-2xl text-xs font-bold text-matn focus:border-brand focus:ring-4 focus:ring-[#1b6b6b]/10 outline-none transition-all";
-
-    return (
-        <div className="space-y-6 pb-12 animate-in fade-in duration-500 max-w-7xl mx-auto">
-            {/* Header */}
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                <div className="flex items-center gap-4">
-                    <button 
-                        onClick={() => navigate('/exams')}
-                        className="w-10 h-10 bg-sirt border border-chiziq rounded-xl flex items-center justify-center text-matn-sokin hover:text-brand hover:bg-gray-50 transition-all shadow-sm group cursor-pointer"
-                    >
-                        <ArrowLeft size={18} className="group-hover:-translate-x-0.5 transition-transform" />
-                    </button>
-                    <div>
-                        <h1 className="text-sm font-black text-matn tracking-tight">Imtihon Konstruktori</h1>
-                        <p className="text-[11px] font-bold text-matn-xira mt-0.5">Mavzular bo'yicha savollarni saralash va qoidalar yaratish</p>
-                    </div>
-                </div>
-                
-                <button 
-                    onClick={handleSave}
-                    disabled={isSaving}
-                    className="px-6 py-2.5 bg-brand hover:bg-brand-dark text-white rounded-xl text-[11px] font-extrabold shadow-sm shadow-[#1b6b6b]/20 active:scale-95 transition-all flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
-                >
-                    <Save size={14} />
-                    {isSaving ? "Saqlanmoqda..." : "Imtihonni Saqlash"}
-                </button>
-            </div>
-
-            <div className="grid grid-cols-1 xl:grid-cols-3 gap-4">
-                
-                {/* Left Column: Basic Info */}
-                <div className="xl:col-span-1 space-y-6">
-                    <div className="bg-sirt rounded-2xl border border-chiziq shadow-sm p-4">
-                        <div className="flex items-center gap-3 mb-6 pb-4 border-b border-dashed border-chiziq">
-                            <div className="w-10 h-10 bg-teal-50 dark:bg-teal-950/20 border border-teal-100 dark:border-teal-900/40 rounded-xl flex items-center justify-center text-brand">
-                                <BookOpen size={18} />
-                            </div>
-                            <div>
-                                <h2 className="text-xs font-black text-matn tracking-tight">Asosiy Ma'lumotlar</h2>
-                                <p className="text-[11px] font-bold text-matn-sokin">Imtihon parametrlari</p>
-                            </div>
-                        </div>
-                        
-                        <div className="space-y-4">
-                            <div>
-                                <label className={labelCls}>Imtihon Nomi <span className="text-rose-500">*</span></label>
-                                <input required type="text" placeholder="Masalan: 1-Chorak imtihoni" 
-                                    className={`${inputCls} ${errors.name ? 'border-rose-500 ring-2 ring-rose-500/10' : ''}`}
-                                    value={name} onChange={e => { setName(e.target.value); setErrors(p => ({...p, name: false})); }} />
-                            </div>
-                            <div className="grid grid-cols-2 gap-3">
-                                <div>
-                                    <label className={labelCls}>Sana <span className="text-rose-500">*</span></label>
-                                    <input required type="date" 
-                                        className={`${inputCls} ${errors.date ? 'border-rose-500 ring-2 ring-rose-500/10' : ''}`}
-                                        value={date} onChange={e => { setDate(e.target.value); setErrors(p => ({...p, date: false})); }} />
-                                </div>
-                                <div>
-                                    <label className={labelCls}>Davomiyligi (Daq) <span className="text-rose-500">*</span></label>
-                                    <input required type="number" min="1" placeholder="180"
-                                        className={`${inputCls} ${errors.duration ? 'border-rose-500 ring-2 ring-rose-500/10' : ''}`}
-                                        value={duration} onChange={e => { setDuration(Number(e.target.value)); setErrors(p => ({...p, duration: false})); }} />
-                                </div>
-                            </div>
-                            <div>
-                                <label className={labelCls}>Holati</label>
-                                <select 
-                                    className={inputCls}
-                                    value={status}
-                                    onChange={e => setStatus(e.target.value as any)}
-                                >
-                                    <option value="Yaqinlashmoqda">Yaqinlashmoqda</option>
-                                    <option value="Tugallangan">Tugallangan</option>
-                                    <option value="Qoralama">Qoralama</option>
-                                </select>
-                            </div>
-                        </div>
-                    </div>
-
-                    {/* Live Calculator Widget */}
-                    <div className="bg-gradient-to-br from-slate-900 to-slate-800 rounded-2xl p-4 shadow-xl relative overflow-hidden border border-slate-700/50">
-                        <div className="absolute top-0 right-0 w-24 h-24 bg-teal-500/10 rounded-full blur-2xl -mr-8 -mt-8" />
-                        
-                        <div className="flex items-center gap-2 mb-6 relative z-10">
-                            <Calculator className="w-5 h-5 text-teal-400" />
-                            <h3 className="text-[11px] font-bold text-white">Imtihon Blueprinti</h3>
-                        </div>
-
-                        <div className="space-y-4 relative z-10">
-                            <div className="flex justify-between items-end border-b border-slate-700/50 pb-3">
-                                <span className="text-[11px] font-bold text-slate-400">Fanlar Soni</span>
-                                <span className="text-sm font-black text-white">{blocks.length} ta fan</span>
-                            </div>
-                            <div className="flex justify-between items-end border-b border-slate-700/50 pb-3">
-                                <span className="text-[11px] font-bold text-slate-400">Jami Savollar</span>
-                                <span className="text-xl font-black text-teal-400">{totalQuestions} <span className="text-[11px] font-bold text-slate-500">ta</span></span>
-                            </div>
-                            <div className="flex justify-between items-end">
-                                <span className="text-[11px] font-bold text-slate-400">Maksimal Ball</span>
-                                <span className="text-xl font-black text-amber-500">{maxScore.toFixed(1)} <span className="text-[11px] font-bold text-slate-500">ball</span></span>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                {/* Right Column: Rule Builder */}
-                <div className="xl:col-span-2 space-y-6">
-                    <div className="flex items-center justify-between">
-                        <h2 className="text-xs font-black text-matn tracking-tight flex items-center gap-2">
-                            <Layers className="text-brand" size={18} />
-                            Imtihon Qoidalari
-                        </h2>
-                        
-                        <button 
-                            onClick={handleAddBlock}
-                            className="px-4 py-2.5 bg-teal-50 dark:bg-teal-950/20 text-brand border border-teal-100 dark:border-teal-900/40 rounded-xl text-[11px] font-extrabold hover:bg-teal-100 transition-all flex items-center gap-1.5 cursor-pointer"
-                        >
-                            <Plus size={14} />
-                            Blok (Fan) Qo'shish
-                        </button>
-                    </div>
-
-                    <div className="space-y-4">
-                        {blocks.map((block, index) => (
-                            <div key={block.id} className="bg-sirt border border-chiziq rounded-2xl overflow-hidden shadow-sm transition-all">
-                                
-                                {/* Block Header */}
-                                <div className="bg-ichki p-4 border-b border-chiziq flex items-center justify-between">
-                                    <div className="flex flex-wrap items-center gap-3">
-                                        <div className="w-8 h-8 bg-sirt rounded-lg flex items-center justify-center text-matn-xira font-bold text-xs shadow-sm border border-chiziq">
-                                            {index + 1}
-                                        </div>
-                                        <div className="flex flex-wrap gap-3 items-center">
-                                            <div className="space-y-1">
-                                                <label className="text-[10px] font-bold text-gray-405 ml-1">Fan Tanlang</label>
-                                                <select 
-                                                    className="px-3 py-1.5 bg-sirt border border-chiziq rounded-xl text-[11px] font-bold focus:border-teal-500 outline-none text-matn cursor-pointer"
-                                                    value={block.subject}
-                                                    onChange={e => handleUpdateBlock(block.id, { subject: e.target.value })}
-                                                >
-                                                    <option value="">Fan...</option>
-                                                    {Object.keys(availableMetadata).map(s => (
-                                                        <option key={s} value={s}>{s}</option>
-                                                    ))}
-                                                </select>
-                                            </div>
-                                            <div className="space-y-1">
-                                                <label className="text-[10px] font-bold text-gray-405 ml-1">Ball / Savol</label>
-                                                <input type="number" step="0.1" 
-                                                    className="w-20 px-3 py-1.5 bg-sirt border border-chiziq rounded-xl text-[11px] font-bold focus:border-teal-500 outline-none text-amber-600"
-                                                    value={block.pointsPerQuestion || ''}
-                                                    onChange={e => handleUpdateBlock(block.id, { pointsPerQuestion: Number(e.target.value) })}
-                                                />
-                                            </div>
-                                        </div>
-                                    </div>
-                                    <button onClick={() => handleRemoveBlock(block.id)} className="p-2 text-gray-300 hover:text-rose-500 transition-colors cursor-pointer">
-                                        <Trash2 size={16} />
-                                    </button>
-                                </div>
-
-                                {/* Rules List */}
-                                <div className="p-5 space-y-4">
-                                    <div className="flex items-center justify-between mb-1">
-                                        <h4 className="text-[11px] font-bold text-matn-xira">Mavzu bo'yicha qoidalar</h4>
-                                        <button 
-                                            onClick={() => handleAddRule(block.id)}
-                                            className="text-[11px] font-bold text-brand flex items-center gap-1 hover:opacity-70 cursor-pointer"
-                                        >
-                                            <Plus size={12} /> Mavzu Qo'shish
-                                        </button>
-                                    </div>
-
-                                    <div className="space-y-3">
-                                        {block.topicRules.map((rule, rIdx) => {
-                                            const avail = getAvailableCount(block.subject, rule.topic);
-                                            const isError = rule.count > avail;
-
-                                            return (
-                                                <div key={rIdx} className="grid grid-cols-12 gap-3 items-end bg-ichki/30 p-3.5 rounded-2xl border border-transparent hover:border-gray-100 transition-all">
-                                                    <div className="col-span-5 space-y-1.5">
-                                                        <label className="text-[10px] font-bold text-matn-xira ml-1">Mavzu</label>
-                                                        <select 
-                                                            className="w-full px-3 py-2 bg-sirt border border-chiziq rounded-xl text-[11px] font-bold focus:border-teal-500 outline-none text-matn cursor-pointer"
-                                                            value={rule.topic}
-                                                            onChange={e => handleUpdateRule(block.id, rIdx, 'topic', e.target.value)}
-                                                        >
-                                                            <option value="">Mavzu...</option>
-                                                            {(availableMetadata[block.subject] || []).map(t => (
-                                                                <option key={t} value={t}>{t}</option>
-                                                            ))}
-                                                        </select>
-                                                    </div>
-                                                    <div className="col-span-3 space-y-1.5">
-                                                        <label className="text-[10px] font-bold text-matn-xira ml-1">Soni</label>
-                                                        <input type="number" 
-                                                            className={`w-full px-3 py-2 bg-sirt border ${isError ? 'border-rose-500 ring-2 ring-rose-500/10' : 'border-chiziq'} rounded-xl text-[11px] font-bold focus:border-teal-500 outline-none`}
-                                                            value={rule.count || ''}
-                                                            onChange={e => handleUpdateRule(block.id, rIdx, 'count', Number(e.target.value))}
-                                                        />
-                                                    </div>
-                                                    <div className="col-span-3 pb-2">
-                                                        <div className={`flex items-center gap-1 text-[11px] font-bold ${isError ? 'text-rose-500' : 'text-matn-sokin'}`}>
-                                                            {isError ? <AlertTriangle size={12} /> : <CheckCircle2 size={12} className="text-teal-500" />}
-                                                            {avail} ta bor
-                                                        </div>
-                                                    </div>
-                                                    <div className="col-span-1 flex justify-end pb-2">
-                                                        <button onClick={() => handleRemoveRule(block.id, rIdx)} className="text-gray-300 hover:text-rose-500 cursor-pointer">
-                                                            <Trash2 size={14} />
-                                                        </button>
-                                                    </div>
-                                                </div>
-                                            );
-                                        })}
-
-                                        {block.topicRules.length === 0 && (
-                                            <div className="py-8 text-center border border-dashed border-chiziq rounded-2xl">
-                                                <Tag className="w-6 h-6 text-gray-200 mx-auto mb-2" />
-                                                <p className="text-[11px] font-bold text-matn-xira">Mavzu qoidalari mavjud emas</p>
-                                            </div>
-                                        )}
-                                    </div>
-                                </div>
-                            </div>
-                        ))}
-                    </div>
-                    
-                    {blocks.length === 0 && (
-                        <div className="p-12 border border-dashed border-chiziq rounded-2xl flex flex-col items-center justify-center text-center">
-                            <Layers className="w-10 h-10 text-gray-300 mb-4" />
-                            <p className="text-xs font-bold text-matn-sokin">Hozircha fanlar yo'q. Birinchi blokni qo'shing.</p>
-                        </div>
-                    )}
-                </div>
-            </div>
+  return (
+    <div className="max-w-6xl mx-auto pb-24 space-y-4">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        <div className="flex items-center gap-3">
+          <button aria-label="Orqaga" onClick={() => navigate(tahrir ? `/exams/${id}` : '/exams')} className="w-10 h-10 bg-sirt border border-chiziq rounded-xl flex items-center justify-center text-matn-sokin hover:text-brand cursor-pointer"><ArrowLeft size={18} /></button>
+          <div>
+            <h1 className="text-[15px] font-bold text-matn">{tahrir ? 'Imtihon sozlamalari' : 'Yangi imtihon'}</h1>
+            <p className="text-[12px] text-matn-xira">{tuzilma.jami} ta savol · eng yuqori ball {tuzilma.maks}</p>
+          </div>
+          {qulf && <Yorliq rang="brand"><Lock size={11} /> Qulflangan</Yorliq>}
         </div>
-    );
+        <Tugma turi="asosiy" ikonka={<Save size={14} />} yuklanmoqda={saqlanmoqda} onClick={saqla}>{tahrir ? 'Saqlash' : 'Yaratish'}</Tugma>
+      </div>
+
+      <Karta sarlavha="Asosiy">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+          <Maydon nom="Nomi" className="lg:col-span-2"><input className={INPUT} value={nom} onChange={e => setNom(e.target.value)} placeholder="Oylik DTM sinov — oktabr" /></Maydon>
+          <Maydon nom="Sana"><input type="date" className={INPUT} value={sana} onChange={e => setSana(e.target.value)} /></Maydon>
+          <Maydon nom="Davomiyligi (daqiqa)"><input type="number" min={10} max={600} className={INPUT} value={davom} onChange={e => setDavom(Number(e.target.value))} /></Maydon>
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4">
+          <Maydon nom="Ball tizimi" izoh={scoring === 'blok' ? "Har fan savoliga o'z bali (DTM: 3.1 / 2.1 / 1.1)" : "Har savol 1 ball, natija foizda"}>
+            <Tanlov qiymat={scoring} onChange={v => !qulf && setScoring(v)} variantlar={[{ v: 'blok', nom: 'Blok bali (DTM)' }, { v: 'foiz', nom: 'Foiz' }]} />
+          </Maydon>
+          {schools.length > 1 && (
+            <Maydon nom="Qatnashadigan filiallar" izoh={qulfIzoh || 'Umumiy reyting shu filiallar bo\'yicha'}>
+              <div className="flex flex-wrap gap-1.5">
+                {schools.map(sc => {
+                  const bel = filiallar.includes(sc.id);
+                  return (
+                    <button key={sc.id} type="button" disabled={qulf || sc.id === egaFilial}
+                      onClick={() => setFiliallar(f => (bel ? f.filter(x => x !== sc.id) : [...f, sc.id]))}
+                      className={`px-3 py-1.5 rounded-xl border text-[12.5px] font-semibold cursor-pointer disabled:cursor-default ${bel ? 'bg-brand text-white border-brand' : 'bg-ichki border-chiziq text-matn-sokin'}`}>
+                      {sc.name}
+                    </button>
+                  );
+                })}
+              </div>
+            </Maydon>
+          )}
+          <Maydon nom="Savollar tili" izoh="Bankdan faqat shu tildagi savollar olinadi">
+            <select className={SELECT} disabled={qulf} value={sozlama.language} onChange={e => s({ language: e.target.value as any })}>
+              <option value="">Hamma til</option><option value="uz">O'zbekcha</option><option value="ru">Ruscha</option><option value="en">Inglizcha</option>
+            </select>
+          </Maydon>
+        </div>
+      </Karta>
+
+      <Karta sarlavha="Tuzilma" izoh={qulfIzoh || "Har fan — alohida blok. Mavzu bo'sh bo'lsa — fanning istalgan mavzusidan."}
+        amallar={!qulf && <Tugma kichik ikonka={<Wand2 size={14} />} onClick={() => { setBloklar(DTM_ANDOZA.map(b => ({ ...b, id: yangiId() }))); setScoring('blok'); }}>DTM andozasi</Tugma>}>
+        <div className="space-y-3">
+          {bloklar.map((b, bi) => {
+            const blokSavollar = b.topicRules.reduce((a, r) => a + (Number(r.count) || 0), 0);
+            return (
+              <div key={b.id} className="rounded-xl border border-chiziq bg-ichki/50 p-3 space-y-2">
+                <div className="flex flex-wrap items-end gap-2">
+                  <Maydon nom={`${bi + 1}-blok: fan`} className="flex-1 min-w-48">
+                    <input className={INPUT} disabled={qulf} list="imt-fanlar" value={b.subject} onChange={e => blokQoy(bi, { subject: e.target.value })} placeholder="Matematika" />
+                  </Maydon>
+                  {scoring === 'blok' && (
+                    <Maydon nom="Bir savol bali" className="w-32">
+                      <input className={INPUT} disabled={qulf} inputMode="decimal" value={b.pointsPerQuestion} onChange={e => blokQoy(bi, { pointsPerQuestion: Number(e.target.value.replace(',', '.')) || 0 })} />
+                    </Maydon>
+                  )}
+                  <div className="pb-2.5 text-[12px] text-matn-xira whitespace-nowrap">{blokSavollar} ta savol</div>
+                  {!qulf && bloklar.length > 1 && <button aria-label="Blokni o'chirish" onClick={() => setBloklar(x => x.filter((_, i) => i !== bi))} className="mb-1 p-2 rounded-lg text-matn-xira hover:text-xato cursor-pointer"><Trash2 size={15} /></button>}
+                </div>
+                <div className="space-y-1.5">
+                  {b.topicRules.map((r, ri) => {
+                    const mavjud = bor(b.subject, r);
+                    const kerak = (Number(r.count) || 0) * kopaytma;
+                    const yetadi = mavjud >= kerak;
+                    const mavzuRoyxati = (meta?.mavzular || []).filter(m => m.fan.toLowerCase() === b.subject.trim().toLowerCase());
+                    return (
+                      <div key={ri} className="grid grid-cols-12 gap-1.5 items-center">
+                        <input className={`${INPUT} col-span-12 sm:col-span-4`} disabled={qulf} list={`imt-mavzu-${bi}`} value={r.topic} onChange={e => qoidaQoy(bi, ri, { topic: e.target.value })} placeholder="Istalgan mavzu" />
+                        <datalist id={`imt-mavzu-${bi}`}>{mavzuRoyxati.map(m => <option key={m.mavzu} value={m.mavzu} />)}</datalist>
+                        <select className={`${SELECT} col-span-4 sm:col-span-2`} disabled={qulf} value={r.type || 'yopiq'} onChange={e => qoidaQoy(bi, ri, { type: e.target.value as SavolTuri })}>
+                          {(['yopiq', 'raqamli', 'yozma'] as SavolTuri[]).map(t => <option key={t} value={t}>{TUR_NOMI[t]}</option>)}
+                        </select>
+                        <input className={`${INPUT} col-span-3 sm:col-span-1`} disabled={qulf} type="number" min={1} value={r.count} onChange={e => qoidaQoy(bi, ri, { count: Number(e.target.value) })} aria-label="Soni" />
+                        <select className={`${SELECT} col-span-5 sm:col-span-2`} disabled={qulf} value={r.difficulty || ''} onChange={e => qoidaQoy(bi, ri, { difficulty: Number(e.target.value) || undefined })}>
+                          <option value="">Har qanday qiyinlik</option>{[1, 2, 3, 4, 5].map(d => <option key={d} value={d}>Qiyinlik {d}</option>)}
+                        </select>
+                        <input className={`${INPUT} col-span-4 sm:col-span-1`} disabled={qulf} inputMode="decimal" value={r.points ?? ''} onChange={e => qoidaQoy(bi, ri, { points: e.target.value === '' ? undefined : Number(e.target.value.replace(',', '.')) })} placeholder={r.type === 'yozma' ? 'Ball' : 'Ball'} title="Shu qoidadagi savol bali (bo'sh — blok bali)" />
+                        <div className="col-span-6 sm:col-span-1 text-[11.5px]" title={`Bankda ${mavjud} ta faol savol${kopaytma > 1 ? `, kerak ${kerak} (smenalarga alohida)` : ''}`}>
+                          {meta && b.subject.trim() ? (yetadi ? <span className="text-yaxshi inline-flex items-center gap-1"><CheckCircle2 size={12} />{mavjud}</span> : <span className="text-xato inline-flex items-center gap-1"><AlertTriangle size={12} />{mavjud}/{kerak}</span>) : null}
+                        </div>
+                        {!qulf && <button aria-label="Qoidani o'chirish" onClick={() => blokQoy(bi, { topicRules: b.topicRules.filter((_, j) => j !== ri) })} className="col-span-2 sm:col-span-1 justify-self-end p-2 rounded-lg text-matn-xira hover:text-xato cursor-pointer"><Trash2 size={14} /></button>}
+                      </div>
+                    );
+                  })}
+                  {!qulf && <Tugma kichik turi="oddiy" ikonka={<Plus size={13} />} onClick={() => blokQoy(bi, { topicRules: [...b.topicRules, { topic: '', count: 5, type: 'yopiq' }] })}>Qoida qo'shish</Tugma>}
+                </div>
+              </div>
+            );
+          })}
+          <datalist id="imt-fanlar">{(meta?.fanlar || []).map(f => <option key={f.nomi} value={f.nomi} />)}</datalist>
+          {!qulf && <Tugma ikonka={<Plus size={14} />} onClick={() => setBloklar(x => [...x, { id: yangiId(), subject: '', pointsPerQuestion: scoring === 'blok' ? 1 : 1, topicRules: [{ topic: '', count: 10, type: 'yopiq' }] }])}>Blok (fan) qo'shish</Tugma>}
+          <div className="flex flex-wrap gap-2 pt-1 text-[12px] text-matn-sokin">
+            <Yorliq>{tuzilma.yopiq} ta yopiq</Yorliq>{tuzilma.raqamli > 0 && <Yorliq>{tuzilma.raqamli} ta raqamli</Yorliq>}{tuzilma.yozma > 0 && <Yorliq>{tuzilma.yozma} ta yozma</Yorliq>}<Yorliq rang="brand">Eng yuqori ball: {tuzilma.maks}</Yorliq>
+          </div>
+        </div>
+      </Karta>
+
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        <Karta sarlavha="Smenalar va variantlar" izoh={qulfIzoh}>
+          <div className="space-y-3">
+            {sozlama.sessions.map((ss, i) => (
+              <div key={i} className="flex items-center gap-2">
+                <input className={INPUT} value={ss.name} onChange={e => s({ sessions: sozlama.sessions.map((x, j) => (j === i ? { ...x, name: e.target.value } : x)) })} />
+                <input type="time" className={`${INPUT} w-32`} value={ss.time} onChange={e => s({ sessions: sozlama.sessions.map((x, j) => (j === i ? { ...x, time: e.target.value } : x)) })} />
+                {!qulf && sozlama.sessions.length > 1 && <button aria-label="Smenani o'chirish" onClick={() => s({ sessions: sozlama.sessions.filter((_, j) => j !== i) })} className="p-2 rounded-lg text-matn-xira hover:text-xato cursor-pointer"><Trash2 size={14} /></button>}
+              </div>
+            ))}
+            {!qulf && sozlama.sessions.length < 10 && <Tugma kichik turi="oddiy" ikonka={<Plus size={13} />} onClick={() => s({ sessions: [...sozlama.sessions, { id: sozlama.sessions.length + 1, name: `${sozlama.sessions.length + 1}-smena`, time: '' }] })}>Smena qo'shish</Tugma>}
+            {sozlama.sessions.length > 1 && (
+              <Maydon nom="Smenalarga savollar" izoh={sozlama.sessionQuestions === 'alohida' ? "Keyingi smenaga oldingisidagi savollar tushmaydi — bank ko'proq kerak" : 'Hamma smena bir xil savollarni oladi (tartibi har variantda boshqa)'}>
+                <Tanlov qiymat={sozlama.sessionQuestions} onChange={v => !qulf && s({ sessionQuestions: v })} variantlar={[{ v: 'bir', nom: 'Bir xil' }, { v: 'alohida', nom: 'Har smenaga boshqa' }]} />
+              </Maydon>
+            )}
+            <Maydon nom="Variantlar soni" izoh="4 va undan ko'p bo'lsa, yondagi, oldingi, orqadagi va diagonaldagi qo'shnining varianti boshqa bo'ladi">
+              <select className={`${SELECT} max-w-48`} disabled={qulf} value={sozlama.variantCount} onChange={e => s({ variantCount: Number(e.target.value) })}>
+                {Array.from({ length: 26 }, (_, i) => i + 1).map(n => <option key={n} value={n}>{n} ta ({VARIANT_KODLARI.slice(0, n).join(n > 6 ? '' : ', ').slice(0, 14)}{n > 6 ? '…' : ''})</option>)}
+              </select>
+            </Maydon>
+            <Almashtirgich yoqilgan={sozlama.shuffleQuestions} onChange={v => !qulf && s({ shuffleQuestions: v })} nom="Fan ichida savollar tartibi aralashsin" izoh="Matnga bog'langan savollar birga qoladi" />
+            <Almashtirgich yoqilgan={sozlama.shuffleOptions} onChange={v => !qulf && s({ shuffleOptions: v })} nom="Javob variantlari aralashsin" izoh="Belgilangan savollardan tashqari (A va B to'g'ri kabi)" />
+            <Almashtirgich yoqilgan={sozlama.variantBubble} onChange={v => s({ variantBubble: v })} nom="O'quvchi varaqqa kitobcha variantini ham bo'yaydi" izoh="Kitobcha almashib qolsa, skaner ushlaydi" />
+          </div>
+        </Karta>
+
+        <div className="space-y-4">
+          <Karta sarlavha="O'rinlashtirish">
+            <div className="space-y-3">
+              <Maydon nom="O'rinlar" izoh={sozlama.seatMode === 'shaxmat' ? "Har o'rindan keyin bittasi bo'sh (oldida ham, yonida ham) — xonalar ikki barobar ko'p kerak" : "Xonadagi hamma o'rin ishlatiladi"}>
+                <Tanlov qiymat={sozlama.seatMode} onChange={v => s({ seatMode: v })} variantlar={[{ v: 'hammasi', nom: "Har o'rin" }, { v: 'shaxmat', nom: 'Shaxmat tartibi' }]} />
+              </Maydon>
+              {sozlama.sessions.length > 1 && (
+                <Maydon nom="Smenalarga bo'lish">
+                  <Tanlov qiymat={sozlama.sessionFill} onChange={v => s({ sessionFill: v })} variantlar={[{ v: 'teng', nom: 'Teng' }, { v: 'ketma', nom: 'Birinchisi to\'lgach' }, { v: 'kurs', nom: 'Kurs bittada' }]} />
+                </Maydon>
+              )}
+            </div>
+          </Karta>
+          <Karta sarlavha="Natija va xabar">
+            <div className="space-y-3">
+              <Maydon nom="Reyting">
+                <div className="flex flex-wrap items-center gap-2">
+                  <Tanlov qiymat={sozlama.ranking} onChange={v => s({ ranking: v })} variantlar={[{ v: 'hammasi', nom: "Hammaga o'rni" }, { v: 'top', nom: 'Faqat eng yaxshilar' }, { v: 'yoq', nom: "O'rin yo'q" }]} />
+                  {sozlama.ranking === 'top' && <input type="number" min={1} className={`${INPUT} w-24`} value={sozlama.topN} onChange={e => s({ topN: Number(e.target.value) || 10 })} aria-label="Nechta" />}
+                </div>
+              </Maydon>
+              <Almashtirgich yoqilgan={sozlama.showQuestionsAfter} onChange={v => s({ showQuestionsAfter: v })} nom="Natijadan keyin o'quvchi savollar va yechimlarni ko'radi" izoh="Ko'rsatilgan savollar keyingi imtihonlarga tushmasligi kerak" />
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <Maydon nom="Xabar kanali">
+                  <select className={SELECT} value={sozlama.notify.channel} onChange={e => s({ notify: { ...sozlama.notify, channel: e.target.value as any } })}>
+                    <option value="BOTH">Telegram, bo'lmasa SMS</option><option value="TELEGRAM">Faqat Telegram</option><option value="SMS">Faqat SMS</option><option value="NONE">Yubormaslik</option>
+                  </select>
+                </Maydon>
+                <Maydon nom="Kimga">
+                  <select className={SELECT} value={sozlama.notify.to} onChange={e => s({ notify: { ...sozlama.notify, to: e.target.value as any } })}>
+                    <option value="PARENT">Ota-onaga</option><option value="STUDENT">O'quvchiga</option><option value="ALL">Ikkalasiga</option>
+                  </select>
+                </Maydon>
+              </div>
+              {sozlama.notify.channel !== 'NONE' && (
+                <>
+                  <Maydon nom="Xabar matni" izoh="{ism} {imtihon} {sana} {ball} {maks} {foiz} {bloklar} {orin} {markaz}">
+                    <textarea rows={5} className={INPUT} value={sozlama.notify.template} onChange={e => s({ notify: { ...sozlama.notify, template: e.target.value } })} />
+                  </Maydon>
+                  <div className="flex items-center justify-between">
+                    <p className="text-[11.5px] text-matn-xira">Namuna:</p>
+                    {sozlama.notify.template !== STANDART_SHABLON && <Tugma kichik turi="oddiy" onClick={() => s({ notify: { ...sozlama.notify, template: SOZLAMA_STANDART.notify.template } })}>Standart matn</Tugma>}
+                  </div>
+                  <pre className="whitespace-pre-wrap rounded-xl bg-ichki border border-chiziq p-3 text-[12.5px] text-matn font-sans">{xabarNamuna}</pre>
+                </>
+              )}
+            </div>
+          </Karta>
+        </div>
+      </div>
+    </div>
+  );
 }

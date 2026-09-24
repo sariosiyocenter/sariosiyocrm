@@ -222,7 +222,9 @@ async function ozKursXatosi(req) {
 }
 
 // Tashkilot bo'ylab umumiy yozuvlar: ruxsat filial emas, tashkilot bo'yicha.
-const ORG_SHARED_RESOURCES = new Set(['syllabuses', 'topics']);
+// Savollar banki ham markazniki (docs/IMTIHON_PLAN.md): Langar Sariosiyo
+// kiritgan savoldan foydalanadi.
+const ORG_SHARED_RESOURCES = new Set(['syllabuses', 'topics', 'questions', 'passages']);
 
 // Routes addressed by record id (/api/students/42) carry no schoolId, so the tenancy
 // check has to come from the record itself. Anything not in this map is left alone.
@@ -230,7 +232,7 @@ const OWNED_RESOURCES = {
   students: 'student', teachers: 'teacher', groups: 'group', leads: 'lead',
   payments: 'payment', expenses: 'expense', transports: 'transport', courses: 'course',
   topics: 'topic', syllabuses: 'syllabus', rooms: 'room', exams: 'exam',
-  questions: 'question', scores: 'score', attendances: 'attendance', routes: 'route',
+  questions: 'question', passages: 'passage', scores: 'score', attendances: 'attendance', routes: 'route',
   'salary-payments': 'salaryPayment', 'delivery-logs': 'deliveryLog',
   'exam-results': 'examResult', 'staff-attendance': 'staffAttendance', users: 'user',
 };
@@ -250,6 +252,16 @@ export async function recordAccessError(req) {
 
   const model = OWNED_RESOURCES[parts[1]];
   if (!model) return null;
+
+  // Bir nechta filial qatnashadigan imtihon: istalgan qatnashuvchi filial xodimi ochadi.
+  if (parts[1] === 'exams') {
+    const exam = await prisma.exam.findUnique({ where: { id }, select: { schoolId: true, branchIds: true } });
+    if (!exam) return null;
+    for (const sid of [exam.schoolId, ...(exam.branchIds || [])]) {
+      if (await canAccessSchool(req.user, sid)) return null;
+    }
+    return 'Bu yozuvga ruxsatingiz yo\'q';
+  }
 
   const record = await prisma[model].findUnique({ where: { id }, select: { schoolId: true } });
   if (!record) return null;                    // let the handler answer 404 in its own words
