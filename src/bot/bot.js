@@ -529,7 +529,11 @@ export const setupBotHandlers = (botInstance, botSchoolId) => {
                 select: { id: true, name: true, course: { select: { name: true } } },
                 orderBy: { id: 'asc' },
             });
-            if (paymeSettings.paymeScheme === 'student') {
+            if (paymeSettings.paymeScheme === 'student_only') {
+                // Kassada kurs maydoni yo'q: faqat o'quvchi raqami kerak.
+                // Pul balansga tushadi, taqsimot qoidasi bo'yicha bo'linadi.
+                msg += `\n\u{1F194} Payme ilovasida o'quvchi ID: ${student.id}`;
+            } else if (paymeSettings.paymeScheme === 'student') {
                 msg += `\n\u{1F194} Payme ilovasida o'quvchi ID: ${student.id}`;
                 if (kurslar.length) msg += `\n\u{1F4DA} Kurs raqami: ${kurslar.map(g => `${paymeKursLabel(g)} — ${g.id}`).join(', ')}`;
             } else {
