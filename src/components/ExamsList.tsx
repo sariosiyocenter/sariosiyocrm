@@ -8,13 +8,19 @@ import QuestionsList from './QuestionsList';
 import Scanner from './Scanner';
 
 export default function ExamsList() {
-    const { exams, deleteExam } = useCRM();
+    const { exams, deleteExam, kora, ozgartira } = useCRM();
+    // Lavozim ruxsati (Sozlamalar → Ruxsatlar): imtihonlar, savollar banki va skaner alohida.
+    const imtihonKorinadi = kora('imtihonlar.imtihon');
+    const savollarKorinadi = kora('imtihonlar.savollar');
+    const skanerOchiq = ozgartira('imtihonlar.natija');
     const confirm = useConfirm();
     const { t } = useLang();
     const navigate = useNavigate();
 
     const [search, setSearch] = useState('');
-    const [activeTab, setActiveTab] = useState<'exams' | 'questions' | 'scanner'>('exams');
+    const [activeTab, setActiveTab] = useState<'exams' | 'questions' | 'scanner'>(
+        () => imtihonKorinadi ? 'exams' : savollarKorinadi ? 'questions' : 'scanner'
+    );
 
     const handleDelete = async (id: number, e: React.MouseEvent) => {
         e.stopPropagation();
@@ -32,6 +38,7 @@ export default function ExamsList() {
             <div className="space-y-6 animate-in fade-in duration-500">
                 {/* Tabs Header */}
                 <div className="flex border-b border-chiziq bg-sirt rounded-2xl overflow-hidden p-1 shadow-sm gap-1">
+                    {imtihonKorinadi && (
                     <button
                         onClick={() => setActiveTab('exams')}
                         className="flex items-center gap-2 px-6 py-3.5 rounded-xl text-[11px] font-extrabold transition-all text-matn-xira hover:text-gray-900 dark:hover:text-white cursor-pointer"
@@ -39,6 +46,8 @@ export default function ExamsList() {
                         <FileText size={14} />
                         {t('exam_tab_exams')}
                     </button>
+                    )}
+                    {savollarKorinadi && (
                     <button
                         onClick={() => setActiveTab('questions')}
                         className="flex items-center gap-2 px-6 py-3.5 rounded-xl text-[11px] font-extrabold transition-all bg-teal-50 dark:bg-teal-950/20 text-brand cursor-pointer"
@@ -46,6 +55,8 @@ export default function ExamsList() {
                         <BookOpen size={14} />
                         {t('exam_tab_questions')}
                     </button>
+                    )}
+                    {skanerOchiq && (
                     <button
                         onClick={() => setActiveTab('scanner')}
                         className="flex items-center gap-2 px-6 py-3.5 rounded-xl text-[11px] font-extrabold transition-all text-matn-xira hover:text-gray-900 dark:hover:text-white cursor-pointer"
@@ -53,6 +64,7 @@ export default function ExamsList() {
                         <ScanLine size={14} />
                         {t('exam_tab_scanner')}
                     </button>
+                    )}
                 </div>
                 <QuestionsList />
             </div>
@@ -67,6 +79,7 @@ export default function ExamsList() {
         <div className="space-y-6 animate-in fade-in duration-500">
             {/* Tabs Header */}
             <div className="flex border-b border-chiziq bg-sirt rounded-2xl overflow-hidden p-1 shadow-sm gap-1">
+                {imtihonKorinadi && (
                 <button
                     onClick={() => setActiveTab('exams')}
                     className="flex items-center gap-2 px-6 py-3.5 rounded-xl text-[11px] font-extrabold transition-all bg-teal-50 dark:bg-teal-950/20 text-brand cursor-pointer"
@@ -74,6 +87,8 @@ export default function ExamsList() {
                     <FileText size={14} />
                     {t('exam_tab_exams')}
                 </button>
+                )}
+                {savollarKorinadi && (
                 <button
                     onClick={() => setActiveTab('questions')}
                     className="flex items-center gap-2 px-6 py-3.5 rounded-xl text-[11px] font-extrabold transition-all text-matn-xira hover:text-gray-900 dark:hover:text-white cursor-pointer"
@@ -81,6 +96,8 @@ export default function ExamsList() {
                     <BookOpen size={14} />
                     {t('exam_tab_questions')}
                 </button>
+                )}
+                {skanerOchiq && (
                 <button
                     onClick={() => setActiveTab('scanner')}
                     className="flex items-center gap-2 px-6 py-3.5 rounded-xl text-[11px] font-extrabold transition-all text-matn-xira hover:text-gray-900 dark:hover:text-white cursor-pointer"
@@ -88,6 +105,7 @@ export default function ExamsList() {
                     <ScanLine size={14} />
                     {t('exam_tab_scanner')}
                 </button>
+                )}
             </div>
 
             {/* Header */}
@@ -113,6 +131,7 @@ export default function ExamsList() {
                                 className="w-full bg-gray-55 dark:bg-gray-905 border border-chiziq rounded-2xl pl-10 pr-4 py-2.5 text-xs font-bold text-matn focus:border-brand focus:ring-4 focus:ring-[#1b6b6b]/10 outline-none transition-all placeholder:text-gray-400"
                             />
                         </div>
+                        {ozgartira('imtihonlar.imtihon') && (
                         <button
                             onClick={() => navigate('/exams/new')}
                             className="w-full sm:w-auto flex items-center justify-center gap-2 px-6 py-2.5 bg-brand hover:bg-brand-dark text-white rounded-2xl text-[11px] font-extrabold shadow-sm shadow-[#1b6b6b]/20 active:scale-95 transition-all cursor-pointer"
@@ -120,6 +139,7 @@ export default function ExamsList() {
                             <Plus size={14} />
                             {t('add_exam')}
                         </button>
+                        )}
                     </div>
                 </div>
             </div>
@@ -183,12 +203,14 @@ export default function ExamsList() {
                                         </span>
                                     </td>
                                     <td className="p-4 text-center">
+                                        {ozgartira('imtihonlar.ochirish') && (
                                         <button aria-label="Yopish"
                                             onClick={(e) => handleDelete(exam.id, e)}
                                             className="w-8 h-8 flex items-center justify-center rounded-lg text-gray-300 hover:text-rose-600 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors cursor-pointer"
                                         >
                                             <X size={18} />
                                         </button>
+                                        )}
                                     </td>
                                 </tr>
                             ))}

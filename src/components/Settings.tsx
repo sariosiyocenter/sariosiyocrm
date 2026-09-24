@@ -11,21 +11,11 @@ import { useLang } from '../context/LanguageContext';
 import { compressAndUpload } from '../lib/image';
 import MapPicker from './MapPicker';
 import PaymeSettings from './PaymeSettings';
+import RuxsatlarJadvali from './RuxsatlarJadvali';
 
 type SectionId = 'profil' | 'xonalar' | 'filiallar' | 'ruxsatlar' | 'dizayn'
     | 'integratsiyalar' | 'payme' | 'avtomatlashtirish' | 'xavfsizlik' | 'yonalishlar';
 
-const DEFAULT_PERMISSIONS: Record<string, Record<string, boolean>> = {
-    ADMIN:        { dashboard: true,  students: true,  teachers: true,  groups: true,  finance: true,  exams: true,  leads: true,  hr: true,  reports: true,  settings: true  },
-    MANAGER:      { dashboard: true,  students: true,  teachers: true,  groups: true,  finance: true,  exams: true,  leads: true,  hr: true,  reports: false, settings: false },
-    TEACHER:      { dashboard: true,  students: true,  teachers: false, groups: true,  finance: false, exams: true,  leads: false, hr: false, reports: false, settings: false },
-    RECEPTIONIST: { dashboard: true,  students: true,  teachers: false, groups: true,  finance: false, exams: false, leads: true,  hr: false, reports: false, settings: false },
-    DRIVER:       { dashboard: false, students: false, teachers: false, groups: false, finance: false, exams: false, leads: false, hr: false, reports: false, settings: false },
-};
-
-const ROLE_LABELS: Record<string, string> = {
-    ADMIN: 'Admin', MANAGER: 'Menejer', TEACHER: "O'qituvchi", RECEPTIONIST: 'Receptionist', DRIVER: 'Haydovchi'
-};
 
 const inp = "w-full px-4 py-3 bg-ichki border border-chiziq rounded-2xl text-xs font-bold text-matn focus:border-brand focus:ring-4 focus:ring-[#1b6b6b]/10 outline-none transition-all";
 const lbl = "block text-[11px] font-extrabold   text-matn-xira mb-2";
@@ -35,23 +25,13 @@ export default function Settings() {
         addRoom, updateRoom, deleteRoom, addSchool, updateSchool, deleteSchool,
         directions, addDirection, updateDirection, deleteDirection,
         themeColor, setThemeColor } = useCRM();
-    const { user: currentUser, token, showNotification } = useCRM();
+    const { user: currentUser, token, showNotification, kora, ozgartira } = useCRM();
     const { t } = useLang();
 
-    const MODULES = [
-        { key: 'dashboard', label: t('nav_dashboard') },
-        { key: 'students',  label: t('nav_students') },
-        { key: 'teachers',  label: t('teachers_title') },
-        { key: 'groups',    label: t('nav_groups') },
-        { key: 'finance',   label: t('nav_finance') },
-        { key: 'exams',     label: t('nav_exams') },
-        { key: 'leads',     label: t('nav_leads') },
-        { key: 'hr',        label: t('nav_hr') },
-        { key: 'reports',   label: t('nav_reports') },
-        { key: 'settings',  label: t('nav_settings') },
-    ];
-
-    const [activeSection, setActiveSection] = useState<SectionId>('profil');
+    // ?bolim=ruxsatlar — jurnaldagi havola shu bo'limni ochadi.
+    const [activeSection, setActiveSection] = useState<SectionId>(
+        () => (new URLSearchParams(window.location.search).get('bolim') as SectionId) || 'profil'
+    );
     const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({ tashkilot: true, ofis: false, ceo: false });
 
     const [profileForm, setProfileForm] = useState({ ...settings });
@@ -68,13 +48,6 @@ export default function Settings() {
     const [editingRoom, setEditingRoom] = useState<any>(null);
     const [newItem, setNewItem] = useState<any>({});
 
-    const [permissions, setPermissions] = useState<Record<string, Record<string, boolean>>>(() => {
-        try {
-            const saved = localStorage.getItem('crm_permissions');
-            return saved ? JSON.parse(saved) : DEFAULT_PERMISSIONS;
-        } catch { return DEFAULT_PERMISSIONS; }
-    });
-    const [permSaved, setPermSaved] = useState(false);
     React.useEffect(() => { setProfileForm({ ...settings }); }, [settings]);
 
     const navigate = useNavigate();
@@ -198,11 +171,6 @@ export default function Settings() {
         try { await updateSettings(profileForm); } finally { setIsSaving(false); }
     };
 
-    const handleSavePermissions = () => {
-        localStorage.setItem('crm_permissions', JSON.stringify(permissions));
-        setPermSaved(true);
-        setTimeout(() => setPermSaved(false), 2000);
-    };
 
     const handleAddItem = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -238,6 +206,18 @@ export default function Settings() {
         }
     };
 
+    // Qaysi bo'lim kimga ko'rinadi — lavozim ruxsati (Sozlamalar → Ruxsatlar).
+    // Palitra (faqat shu brauzerda) va Xavfsizlik (o'z paroli) hammada bor.
+    const BOLIM_RUXSATI: Partial<Record<SectionId, string>> = {
+        profil: 'sozlamalar.profil', integratsiyalar: 'sozlamalar.integratsiya',
+        xonalar: 'sozlamalar.xonalar', yonalishlar: 'sozlamalar.xonalar', avtomatlashtirish: 'sozlamalar.avto',
+    };
+    const FAQAT_ADMIN: SectionId[] = ['payme', 'filiallar', 'ruxsatlar'];
+    const bolimKorinadi = (id: SectionId) =>
+        FAQAT_ADMIN.includes(id) ? isAdmin : (BOLIM_RUXSATI[id] ? kora(BOLIM_RUXSATI[id]!) : true);
+    // Ko'radi, lekin o'zgartira olmaydi — bo'lim ichidagi hamma tugma va maydon o'chiq.
+    const faqatKorish = !!BOLIM_RUXSATI[activeSection] && !ozgartira(BOLIM_RUXSATI[activeSection]!);
+
     const menuGroups = [
         {
             id: 'tashkilot', label: t('settings_section_org'), icon: <Building2 size={16} />,
@@ -245,7 +225,7 @@ export default function Settings() {
                 { id: 'profil' as SectionId, label: t('settings_profile'), icon: <Globe size={14} /> },
                 { id: 'dizayn' as SectionId, label: t('settings_design'), icon: <Layout size={14} /> },
                 { id: 'integratsiyalar' as SectionId, label: 'Integratsiyalar', icon: <Link2 size={14} /> },
-                ...(isAdmin ? [{ id: 'payme' as SectionId, label: 'Payme', icon: <CreditCard size={14} /> }] : []),
+                { id: 'payme' as SectionId, label: 'Payme', icon: <CreditCard size={14} /> },
             ]
         },
         {
@@ -255,21 +235,32 @@ export default function Settings() {
                 { id: 'yonalishlar' as SectionId, label: "Yo'nalishlar", icon: <Compass size={14} />, count: directions?.length },
             ]
         },
-        ...(isAdminOrManager ? [{
+        {
             id: 'ceo', label: t('settings_section_admin'), icon: <ShieldCheck size={16} />,
             items: [
                 { id: 'filiallar' as SectionId, label: t('settings_branches'), icon: <Building2 size={14} />, count: schools?.length },
                 { id: 'avtomatlashtirish' as SectionId, label: 'Avtomatlashtirish', icon: <Zap size={14} /> },
-                ...(isAdmin ? [{ id: 'ruxsatlar' as SectionId, label: t('settings_perms'), icon: <Shield size={14} /> }] : []),
+                { id: 'ruxsatlar' as SectionId, label: t('settings_perms'), icon: <Shield size={14} /> },
             ]
-        }] : []),
+        },
         {
             id: 'hisob', label: 'Hisobim', icon: <Lock size={16} />,
             items: [
                 { id: 'xavfsizlik' as SectionId, label: 'Xavfsizlik', icon: <Lock size={14} /> },
             ]
         },
-    ];
+    ].map(g => ({ ...g, items: g.items.filter(i => bolimKorinadi(i.id)) }))
+     .filter(g => g.items.length > 0);
+
+    // Ochiq bo'lim ko'rinmaydigan bo'lsa (masalan o'qituvchi uchun Profil) —
+    // birinchi ko'rinadiganiga o'tamiz; uning guruhi ham ochiladi.
+    const birinchiBolim = menuGroups[0]?.items[0]?.id;
+    React.useEffect(() => {
+        if (!bolimKorinadi(activeSection) && birinchiBolim) { setActiveSection(birinchiBolim); return; }
+        const guruh = menuGroups.find(g => g.items.some(i => i.id === activeSection));
+        if (guruh && !openGroups[guruh.id]) setOpenGroups(p => ({ ...p, [guruh.id]: true }));
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [activeSection, birinchiBolim]);
 
     const renderContent = () => {
         if (activeSection === 'profil') return (
@@ -710,64 +701,7 @@ export default function Settings() {
             />
         );
 
-        if (activeSection === 'ruxsatlar') return (
-            <div className="space-y-6">
-                <div>
-                    <h2 className="text-xs font-black text-matn">{t('permissions_title')}</h2>
-                    <p className="text-[11px] font-bold text-matn-xira mt-0.5">{t('permissions_subtitle')}</p>
-                </div>
-                <div className="bg-sirt rounded-2xl border border-chiziq overflow-hidden shadow-sm">
-                    <div className="overflow-x-auto custom-scrollbar">
-                        <table className="w-full min-w-[600px] border-collapse text-left">
-                            <thead>
-                                <tr className="border-b border-chiziq bg-gray-50/50 dark:bg-gray-900/20">
-                                    <th className="p-4 text-[11px] font-bold text-matn-xira min-w-[150px]">{t('module_label')}</th>
-                                    {Object.keys(permissions).map(role => (
-                                        <th key={role} className="p-4 text-center text-[11px] font-bold text-matn-xira">
-                                            {ROLE_LABELS[role] || role}
-                                        </th>
-                                    ))}
-                                </tr>
-                            </thead>
-                            <tbody className="divide-y divide-gray-100 dark:divide-gray-700/50">
-                                {MODULES.map(mod => (
-                                    <tr key={mod.key} className="hover:bg-gray-50/40 dark:hover:bg-gray-700/10 transition-colors">
-                                        <td className="p-4 text-xs font-black text-matn tracking-wide">{mod.label}</td>
-                                        {Object.keys(permissions).map(role => {
-                                            const on = permissions[role]?.[mod.key] ?? false;
-                                            const isLocked = role === 'ADMIN';
-                                            return (
-                                                <td key={role} className="p-4 text-center">
-                                                    <button
-                                                        disabled={isLocked}
-                                                        onClick={() => setPermissions(p => ({
-                                                            ...p,
-                                                            [role]: { ...p[role], [mod.key]: !on }
-                                                        }))}
-                                                        className={`inline-flex items-center justify-center transition-all ${isLocked ? 'opacity-40 cursor-not-allowed' : 'cursor-pointer'}`}
-                                                    >
-                                                        {on
-                                                            ? <ToggleRight size={26} className="text-brand" />
-                                                            : <ToggleLeft size={26} className="text-gray-300 dark:text-gray-700" />
-                                                        }
-                                                    </button>
-                                                </td>
-                                            );
-                                        })}
-                                    </tr>
-                                ))}
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-                <div className="flex justify-end pt-4 border-t border-dashed border-chiziq/50">
-                    <button onClick={handleSavePermissions}
-                        className={`px-6 py-3 rounded-2xl text-xs font-extrabold flex items-center gap-2 transition-all cursor-pointer ${permSaved ? 'bg-emerald-600 text-white' : 'bg-brand hover:bg-brand-dark text-white shadow-sm shadow-[#1b6b6b]/20'}`}>
-                        <Save size={14} />{permSaved ? t('saved_success') : t('save')}
-                    </button>
-                </div>
-            </div>
-        );
+        if (activeSection === 'ruxsatlar') return <RuxsatlarJadvali />;
 
         if (activeSection === 'dizayn') return (
             <div className="space-y-6 animate-in fade-in duration-300">
@@ -878,7 +812,14 @@ export default function Settings() {
 
                 {/* Content */}
                 <div className="lg:col-span-3 bg-sirt rounded-2xl border border-chiziq p-5 shadow-sm">
-                    {renderContent()}
+                    {faqatKorish && (
+                        <div className="mb-4 px-4 py-2.5 rounded-xl bg-ichki border border-chiziq text-[11px] font-bold text-matn-sokin flex items-center gap-2">
+                            <Lock size={13} />Bu bo'limni faqat ko'rasiz — o'zgartirish uchun administratorga murojaat qiling
+                        </div>
+                    )}
+                    <fieldset disabled={faqatKorish} className="contents">
+                        {renderContent()}
+                    </fieldset>
                 </div>
             </div>
 

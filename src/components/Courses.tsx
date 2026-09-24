@@ -11,8 +11,10 @@ const lbl = "block text-[11px] font-extrabold   text-matn-xira mb-2";
 export default function Courses() {
     const {
         groups, teachers, rooms, addGroup, showNotification, courses, syllabuses,
-        addCourse, students, attendances, topics
+        addCourse, students, attendances, topics, ozgartira
     } = useCRM();
+    // Yangi kurs — "Kurslar → Kurslar va ularning ma'lumoti" ni o'zgartira oladiganga.
+    const kursQoshish = ozgartira('kurslar.malumot');
     const { t } = useLang();
     const navigate = useNavigate();
 
@@ -258,12 +260,14 @@ export default function Courses() {
                         >
                             <SlidersHorizontal size={15} />
                         </button>
+                        {kursQoshish && (
                         <button
                             onClick={() => setIsModalOpen(true)}
                             className="flex items-center gap-2 px-4 py-2.5 bg-brand hover:bg-brand-dark text-white rounded-xl text-xs font-extrabold shadow-sm shadow-[#1b6b6b]/20 transition-all cursor-pointer"
                         >
                             <Plus size={14} /> {t('add')}
                         </button>
+                        )}
                     </div>
                 </div>
 
@@ -335,10 +339,12 @@ export default function Courses() {
                 <div className="py-24 text-center bg-sirt rounded-2xl border border-chiziq border-dashed">
                     <Layers size={40} className="mx-auto text-gray-200 dark:text-gray-600 mb-3" />
                     <p className="text-sm font-bold text-matn-xira">{t('no_groups_found')}</p>
+                    {kursQoshish && (
                     <button onClick={() => setIsModalOpen(true)}
                         className="mt-4 inline-flex items-center gap-2 px-5 py-2.5 bg-brand text-brand-ust text-xs font-extrabold rounded-xl cursor-pointer">
                         <Plus size={13} /> {t('new_group_title')}
                     </button>
+                    )}
                 </div>
             ) : (
                 viewMode === 'table' ? (

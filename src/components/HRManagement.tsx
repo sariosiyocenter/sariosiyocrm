@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import {
     Users2, Plus, X, Trash2, Pencil,
     Banknote,
-    GraduationCap, ExternalLink, Camera, Wrench, Eye, Sparkles, Archive, RotateCcw
+    GraduationCap, ExternalLink, Camera, Wrench, Eye, Sparkles, Archive, RotateCcw, Send
 } from 'lucide-react';
 import { useCRM } from '../context/CRMContext';
 import StatTile from './ui/StatTile';
@@ -53,7 +53,7 @@ const inp = "w-full px-4 py-3 bg-ichki border border-chiziq rounded-2xl text-xs 
 const lbl = "block text-[11px] font-extrabold   text-matn-xira mb-2";
 
 export default function HRManagement() {
-    const { teachers, groups, selectedSchoolId, schools, user: currentUser, token, showNotification } = useCRM();
+    const { teachers, groups, selectedSchoolId, schools, user: currentUser, token, showNotification, kora, ozgartira } = useCRM();
     const confirm = useConfirm();
     const { t } = useLang();
     const navigate = useNavigate();
@@ -70,7 +70,12 @@ export default function HRManagement() {
     const [editingUser, setEditingUser]   = useState<any>(null);
 
     const isAdmin           = currentUser?.role === 'ADMIN';
-    const isAdminOrManager  = isAdmin || currentUser?.role === 'MANAGER';
+    // Tugmalar lavozim ruxsatiga qarab (Sozlamalar → Ruxsatlar).
+    const xodimTahrir   = ozgartira('xodimlar.royxat');
+    const xodimOchirish = ozgartira('xodimlar.ochirish');
+    const maoshKorinadi = kora('xodimlar.maosh');
+    const maoshTahrir   = ozgartira('xodimlar.maosh');
+    const ishHaqiBerish = ozgartira('moliya.xarajat');
     // Bir nechta filial bo'lsa ADMIN xodimni qaysi filialga yozishni tanlaydi va
     // "To'liq o'quv markazi" rejimida har xodimning filiali ko'rinadi.
     const multiBranch = isAdmin && (schools || []).length > 1;
@@ -120,8 +125,8 @@ export default function HRManagement() {
     const handleAddUser = async (e: React.FormEvent) => {
         e.preventDefault();
         // Bir nechta filial bo'lsa ADMIN galochka bilan tanlaydi (birinchisi — asosiy).
-        const schoolIds: number[] = currentUser?.role === 'MANAGER'
-            ? [currentUser.schoolId].filter(Boolean) as number[]
+        const schoolIds: number[] = !isAdmin
+            ? [selectedSchoolId && selectedSchoolId > 0 ? selectedSchoolId : currentUser?.schoolId].filter(Boolean) as number[]
             : multiBranch
                 ? (newUser.schoolIds || [])
                 : [selectedSchoolId && selectedSchoolId > 0 ? selectedSchoolId : currentUser?.schoolId].filter(Boolean) as number[];
@@ -136,7 +141,9 @@ export default function HRManagement() {
                 body: JSON.stringify({
                     ...newUser,
                     role:     newUser.role || 'RECEPTIONIST',
-                    password: newUser.password || (newUser.role === 'TECH_STAFF' ? undefined : 'admin123'),
+                    // Haydovchi va texnik xodim CRM ga kirmaydi — ularga parol berilmaydi.
+                    password: (newUser.role === 'TECH_STAFF' || newUser.role === 'DRIVER') ? undefined : (newUser.password || 'admin123'),
+                    email: newUser.role === 'DRIVER' ? undefined : newUser.email,
                     schoolId: schoolIds[0],
                     schoolIds
                 })
@@ -158,7 +165,7 @@ export default function HRManagement() {
                         name:   editingUser.name,
                         phone:  editingUser.phone,
                         photo:  editingUser.photo,
-                        salary: editingUser.salary,
+                        ...(maoshTahrir ? { salary: editingUser.salary } : {}),
                     }),
                 });
                 if (res.ok) { setIsEditOpen(false); setEditingUser(null); window.location.reload(); }
@@ -171,9 +178,10 @@ export default function HRManagement() {
                     email:      editingUser.email,
                     photo:      editingUser.photo,
                     position:   editingUser.position,
-                    salary:     editingUser.salary,
-                    kpiPercent: editingUser.kpiPercent ?? 0,
+                    // Oylik maydonlari faqat "Xodimlar → Maosh" ruxsati bilan yuboriladi.
+                    ...(maoshTahrir ? { salary: editingUser.salary, kpiPercent: editingUser.kpiPercent ?? 0 } : {}),
                 };
+                if (editingUser.role === 'DRIVER') delete body.email;
                 if (editingUser.password) body.password = editingUser.password;
                 // Haydovchining mashinasi (Avtopark yo'q — shu yerda tahrirlanadi).
                 // Ilgari tahrirlashda bu maydonlar yuborilmasdi va o'zgarish yo'qolardi.
@@ -398,7 +406,7 @@ export default function HRManagement() {
                             </p>
                         </div>
                     </div>
-                    {isAdminOrManager && (
+                    {xodimTahrir && (
                         <button onClick={openAddModal}
                             className="flex items-center gap-2 px-4 py-2.5 bg-brand hover:bg-brand-dark text-white rounded-xl text-xs font-extrabold shadow-sm shadow-[#1b6b6b]/20 transition-all cursor-pointer">
                             <Plus size={14} /> {t('new_staff')}
@@ -431,6 +439,7 @@ export default function HRManagement() {
                             barCaption={<>to'liq stavka <span className="raqam">{TOLIQ_STAVKA}</span> dars/hafta deb olingan</>}
                             subValue={avgLoadPct === null ? 'Guruhlarga kun kiritilmagan' : undefined}
                         />
+                        {maoshKorinadi && (
                         <StatTile
                             label="Oylik fond"
                             value={salaryFund > 0 ? (salaryFund / 1000000).toFixed(1).replace('.', ',') : '—'}
@@ -440,6 +449,7 @@ export default function HRManagement() {
                                 : 'Barcha oylik kiritilgan'}
                             subTone={salaryMissing > 0 ? 'warn' : 'good'}
                         />
+                        )}
                     </div>
 
                     {/* Lavozim bo'yicha filtr. Ilgari bular ettita katta kartochka
@@ -501,7 +511,7 @@ export default function HRManagement() {
                                             <th className="px-3 py-3 text-[11px] font-medium text-matn-xira">Rol</th>
                                             <th className="px-3 py-3 text-[11px] font-medium text-matn-xira text-right">Guruh</th>
                                             <th className="px-3 py-3 text-[11px] font-medium text-matn-xira">Haftalik yuklama</th>
-                                            <th className="px-3 py-3 text-[11px] font-medium text-matn-xira text-right">Oylik</th>
+                                            {maoshKorinadi && <th className="px-3 py-3 text-[11px] font-medium text-matn-xira text-right">Oylik</th>}
                                             <th className="px-5 py-3 w-28" />
                                         </tr>
                                     </thead>
@@ -574,12 +584,14 @@ export default function HRManagement() {
                                                             <span className="text-[12px] text-matn-xira">—</span>
                                                         )}
                                                     </td>
+                                                    {maoshKorinadi && (
                                                     <td className="num px-3 py-3 text-[13px] text-right text-matn-2 align-middle">
                                                         {u.salary > 0 ? u.salary.toLocaleString() : '—'}
                                                     </td>
+                                                    )}
                                                     <td className="px-5 py-3 align-middle">
                                                         <div className="flex items-center justify-end gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
-                                                            {isAdminOrManager && (
+                                                            {ishHaqiBerish && (
                                                                 <button
                                                                     onClick={(e) => { e.stopPropagation(); navigate(`/finance?openExpense=1&staffId=${isLegacy ? u._tid : u.id}&staffName=${encodeURIComponent(u.name)}`); }}
                                                                     title="Ish haqqi berish"
@@ -588,7 +600,7 @@ export default function HRManagement() {
                                                                     <Banknote size={13} />
                                                                 </button>
                                                             )}
-                                                            {isAdminOrManager && (
+                                                            {xodimTahrir && (isAdmin || u.role !== 'ADMIN') && (
                                                                 <button onClick={() => { setEditingUser({ ...u, password: '', schoolIds: userBranchIds(u) }); setIsEditOpen(true); }}
                                                                     title="Tahrirlash"
                                                                     className="w-7 h-7 rounded-lg text-matn-xira hover:text-brand hover:bg-ichki flex items-center justify-center transition-colors cursor-pointer">
@@ -603,7 +615,7 @@ export default function HRManagement() {
                                                             {/* O'zini o'zi o'chira olmaydi. Aynan shu holat
                                                                 sodir bo'lgan: markaz rahbari o'z hisobini
                                                                 o'chirib, markaz boshsiz qolgan. */}
-                                                            {isAdmin && !ozHisobi && (
+                                                            {xodimOchirish && !ozHisobi && (isAdmin || u.role !== 'ADMIN') && (
                                                                 <button
                                                                     onClick={async () => {
                                                                         const yangi = (u as any).status === 'Arxiv' ? 'Faol' : 'Arxiv';
@@ -620,7 +632,7 @@ export default function HRManagement() {
                                                                     {(u as any).status === 'Arxiv' ? <RotateCcw size={13} /> : <Archive size={13} />}
                                                                 </button>
                                                             )}
-                                                            {isAdmin && !ozHisobi && (
+                                                            {xodimOchirish && !ozHisobi && (isAdmin || u.role !== 'ADMIN') && (
                                                                 <button
                                                                     onClick={() => isLegacy ? handleDeleteTeacher(u._tid) : handleDeleteUser(u.id)}
                                                                     title="O'chirish"
@@ -690,6 +702,7 @@ export default function HRManagement() {
                     currentUserRole={currentUser?.role}
                     showPassword
                     branches={multiBranch ? schools : undefined}
+                    maoshTahrir={maoshTahrir}
                 />
             )}
 
@@ -702,6 +715,7 @@ export default function HRManagement() {
                     onSubmit={handleEditUser}
                     currentUserRole={currentUser?.role}
                     showPassword={false}
+                    maoshTahrir={maoshTahrir}
                     // Eski (xodim yozuvisiz) ustoz qatori filialga ko'chirilmaydi.
                     branches={multiBranch && editingUser._source !== 'teacher' ? schools : undefined}
                 />
@@ -720,11 +734,13 @@ function InfoRow({ label, value }: { label: string; value: string }) {
 }
 
 function UserModal({
-    title, subtitle, user, onChange, onClose, onSubmit, currentUserRole, showPassword, branches
+    title, subtitle, user, onChange, onClose, onSubmit, currentUserRole, showPassword, branches, maoshTahrir = true
 }: {
     title: string; subtitle: string; user: any; onChange: (v: any) => void;
     onClose: () => void; onSubmit: (e: React.FormEvent) => void;
     currentUserRole?: string; showPassword: boolean;
+    /** Oylik va KPI maydonlari — "Xodimlar → Maosh" ruxsati bilan. */
+    maoshTahrir?: boolean;
     /** Bir nechta filial bo'lsa (faqat ADMIN) — xodim qaysi filialda ishlaydi. */
     branches?: { id: number; name: string }[];
 }) {
@@ -734,6 +750,8 @@ function UserModal({
     const [isCameraOpen, setIsCameraOpen] = useState(false);
     const [isRemovingBg, setIsRemovingBg] = useState(false);
     const isTechStaff = user.role === 'TECH_STAFF';
+    // Haydovchi CRM saytiga kirmaydi (faqat Telegram bot) — email va parol so'ralmaydi.
+    const isDriver = user.role === 'DRIVER';
 
     const handleRemoveBg = async () => {
         if (!user.photo) return;
@@ -840,13 +858,14 @@ function UserModal({
                                 <option value="SUPPORT_TEACHER">{t('role_support_teacher')}</option>
                                 <option value="TECH_STAFF">{t('role_tech_staff')}</option>
                                 <option value="DRIVER">{t('role_driver')}</option>
-                                {(currentUserRole === 'ADMIN' || currentUserRole === 'MANAGER') && <option value="MANAGER">{t('role_manager')}</option>}
-                                {currentUserRole === 'ADMIN' && <option value="ADMIN">{t('role_admin')}</option>}
+                                {/* Admin va menejerni faqat administrator tayinlaydi (server ham shunday). */}
+                                {(currentUserRole === 'ADMIN' || user.role === 'MANAGER') && <option value="MANAGER">{t('role_manager')}</option>}
+                                {(currentUserRole === 'ADMIN' || user.role === 'ADMIN') && <option value="ADMIN">{t('role_admin')}</option>}
                             </select>
                         </div>
                         <div>
-                            <label className={lbl}>{t('student_phone')}</label>
-                            <input type="text" placeholder="+998" className={inp} value={user.phone || ''} onChange={e => onChange({ ...user, phone: e.target.value })} />
+                            <label className={lbl}>{t('student_phone')}{isDriver ? ' *' : ''}</label>
+                            <input type="text" placeholder="+998" required={isDriver} className={inp} value={user.phone || ''} onChange={e => onChange({ ...user, phone: e.target.value })} />
                         </div>
                     </div>
 
@@ -855,10 +874,12 @@ function UserModal({
                             <label className={lbl}>{t('position_specialty')}</label>
                             <input type="text" placeholder={t('position_placeholder')} className={inp} value={user.position || ''} onChange={e => onChange({ ...user, position: e.target.value })} />
                         </div>
+                        {maoshTahrir && (
                         <div>
                             <label className={lbl}>{t('base_salary')}</label>
                             <input type="number" placeholder="0" className={inp} value={user.salary || ''} onChange={e => onChange({ ...user, salary: e.target.value })} />
                         </div>
+                        )}
                     </div>
 
                     {/* Haydovchi uchun mashina ma'lumotlari */}
@@ -887,13 +908,28 @@ function UserModal({
                         </div>
                     )}
 
+                    {maoshTahrir && (
                     <div>
                         <label className={lbl}>{t('kpi_percent')}</label>
                         <input type="number" min="0" max="100" placeholder="0" className={inp} value={user.kpiPercent ?? ''} onChange={e => onChange({ ...user, kpiPercent: Number(e.target.value) })} />
                     </div>
+                    )}
 
-                    {/* Email/password — hidden for TECH_STAFF */}
-                    {!isTechStaff && (
+                    {isDriver && (
+                        <div className="flex items-start gap-3 px-4 py-3 bg-sky-50 dark:bg-sky-950/20 border border-sky-100 dark:border-sky-900/40 rounded-2xl">
+                            <Send size={15} className="text-sky-650 dark:text-sky-455 shrink-0 mt-0.5" />
+                            <div>
+                                <p className="text-[11px] font-extrabold text-sky-800 dark:text-sky-300">Haydovchi CRM saytiga kirmaydi</p>
+                                <p className="text-[11px] font-medium text-sky-800/80 dark:text-sky-300/80 mt-0.5 leading-relaxed">
+                                    Email va parol kerak emas. Haydovchi Telegram botni ochib «Kontaktni ulashish» tugmasini bosadi —
+                                    bot uni shu telefon raqami orqali taniydi va bugungi rejani yuboradi.
+                                </p>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Email/password — texnik xodim va haydovchida yo'q */}
+                    {!isTechStaff && !isDriver && (
                         <div className="grid grid-cols-2 gap-4">
                             <div>
                                 <label className={lbl}>Email *</label>

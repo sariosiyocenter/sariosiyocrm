@@ -16,7 +16,7 @@ function uzDay(dateStr, end) {
 }
 
 export function registerAuditRoutes(app) {
-  app.get('/api/audit-logs', authenticate, requireRole('ADMIN'), async (req, res, next) => {
+  app.get('/api/audit-logs', authenticate, async (req, res, next) => {
     try {
       const where = {};
 

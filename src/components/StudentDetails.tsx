@@ -40,7 +40,21 @@ export default function StudentDetails() {
     const { id } = useParams<{ id: string }>();
     const navigate = useNavigate();
     const { t } = useLang();
-    const { students, groups, teachers, courses, payments, attendances, scores, transports, routes, directions, settings, addPayment,addAttendance, addScore, updateStudent, addStudentToGroup, deleteStudent, setStudentStatus, topics, updateAttendance, showNotification, loadAttendanceFor, retryLoad, user: currentUser } = useCRM();
+    const { students, groups, teachers, courses, payments, attendances, scores, transports, routes, directions, settings, addPayment,addAttendance, addScore, updateStudent, addStudentToGroup, deleteStudent, setStudentStatus, topics, updateAttendance, showNotification, loadAttendanceFor, retryLoad, user: currentUser, kora, ozgartira } = useCRM();
+    // Lavozim ruxsati (Sozlamalar → Ruxsatlar): har bir tugma o'z bo'limiga bog'langan.
+    const oquvchiTahrir = ozgartira('oquvchilar.royxat');
+    const balansKorinadi = kora('oquvchilar.balans');
+    const tolovQabul = ozgartira('oquvchilar.tolov');
+    const tolovTuzatish = ozgartira('oquvchilar.tolovTuzatish');
+    const kursHisobiTahrir = ozgartira('oquvchilar.kursHisobi');
+    const kochirish = ozgartira('oquvchilar.kochirish');
+    const ballarKorinadi = kora('oquvchilar.ballar');
+    const ballarTahrir = ozgartira('oquvchilar.ballar');
+    const oquvchiOchirish = ozgartira('oquvchilar.ochirish');
+    const tarkibTahrir = ozgartira('kurslar.tarkib');
+    const davomatKorinadi = kora('kurslar.davomat');
+    const davomatTahrir = ozgartira('kurslar.davomat');
+    const smsYuborish = ozgartira('xabarlar.yuborish');
 
     const confirm = useConfirm();
     const [activeTab, setActiveTab] = useState('umumiy');
@@ -95,7 +109,7 @@ export default function StudentDetails() {
      * imtihonga keladimi. Formani ochmasdan, bir bosishda.
      */
     const belgiOzgartir = async (belgi: 'transport' | 'imtihon', qiymat: boolean) => {
-        if (!student || belgiSaqlanmoqda) return;
+        if (!student || belgiSaqlanmoqda || !oquvchiTahrir) return;
         setBelgiSaqlanmoqda(belgi);
         try {
             await updateStudent(student.id, belgi === 'transport'
@@ -258,7 +272,7 @@ export default function StudentDetails() {
                 const j = await r.json();
                 if (off) return;
                 if (r.ok && (j.profiles || []).length > 0) { setFaceState('tayyor'); return; }
-                if (r.ok) await syncFaceFromPhoto(student.photo);
+                if (r.ok && oquvchiTahrir) await syncFaceFromPhoto(student.photo);
             } catch { /* holat noma'lum qoladi */ }
         })();
         return () => { off = true; };
@@ -270,7 +284,7 @@ export default function StudentDetails() {
     const [ledger, setLedger] = useState<Ledger | null>(null);
     const hisobKaliti = payments.filter(p => p.studentId === Number(id)).map(p => p.id + ':' + p.amount).join(',') + '|' + (student?.balance ?? '') + '|' + (student?.groups || []).join(',');
     useEffect(() => {
-        if (!student?.id) return;
+        if (!student?.id || !balansKorinadi) return;
         let off = false;
         (async () => {
             try {
@@ -679,7 +693,7 @@ export default function StudentDetails() {
                     <div className="min-w-0">
                         <div className="flex items-start gap-2">
                             <h1 className="text-[19px] font-semibold text-matn tracking-tight leading-tight break-words">{displayName(student.name)}</h1>
-                            <button onClick={handleStartEdit} title={t('edit')} className="text-matn-xira hover:text-brand cursor-pointer shrink-0">
+                            <button onClick={handleStartEdit} disabled={!oquvchiTahrir} title={t('edit')} className="text-matn-xira hover:text-brand cursor-pointer shrink-0 disabled:hidden">
                                 <Edit size={13} />
                             </button>
                         </div>
@@ -739,9 +753,10 @@ export default function StudentDetails() {
                             const cp = student.customPrices && typeof student.customPrices === 'object' ? (student.customPrices as Record<string, number>)[g.id] : undefined;
                             return s + (cp !== undefined ? Number(cp) : (g.coursePrice || 0));
                         }, 0);
-                        const paymeOn = (settings.paymeMode === 'live' || settings.paymeMode === 'test') && ['ADMIN', 'MANAGER', 'RECEPTIONIST', 'SUPERADMIN'].includes(currentUser?.role || '');
+                        const paymeOn = (settings.paymeMode === 'live' || settings.paymeMode === 'test') && tolovQabul;
                         return (
                             <div className="pt-4 border-t border-chiziq-mayin space-y-3">
+                                {balansKorinadi && (
                                 <div className="flex items-end justify-between gap-3">
                                     <div className="min-w-0">
                                         <p className="text-[12px] text-matn-sokin">
@@ -756,6 +771,8 @@ export default function StudentDetails() {
                                         oyiga<br /><span className="raqam text-[13px] text-matn-2">{oylikJami.toLocaleString('ru-RU')}</span>
                                     </p>
                                 </div>
+                                )}
+                                {balansKorinadi && (
                                 <p className="text-[12px] text-matn-sokin">
                                     Darsga kirish:{' '}
                                     <span className={`font-semibold ${sinov ? 'text-ogoh' : eng ? TON[eng.ton] : 'text-matn-xira'}`}>
@@ -765,6 +782,8 @@ export default function StudentDetails() {
                                         <span className="text-matn-xira"> · {[kurslarHolati.length > 1 ? engKurs?.groupName : '', eng?.izoh].filter(Boolean).join(' · ')}</span>
                                     )}
                                 </p>
+                                )}
+                                {tolovQabul && (
                                 <div className="flex gap-2">
                                     <button onClick={() => setShowPaymentModal(true)}
                                         className="flex-1 h-10 px-4 bg-brand hover:bg-brand-dark text-white rounded-xl text-[13px] font-semibold transition-colors cursor-pointer">
@@ -778,6 +797,7 @@ export default function StudentDetails() {
                                         </button>
                                     )}
                                 </div>
+                                )}
 
                                 {/* Izoh — yozilgan bo'lsa yoki yozilayotganda. */}
                                 {(isEditingNote || student.comment) && (
@@ -802,7 +822,7 @@ export default function StudentDetails() {
                                             <p className="text-[12px] text-matn-2 leading-relaxed whitespace-pre-wrap min-w-0">
                                                 <span className="text-matn-xira">Izoh: </span>{student.comment}
                                             </p>
-                                            <button onClick={() => { setNoteDraft(student.comment || ''); setIsEditingNote(true); }}
+                                            <button onClick={() => { setNoteDraft(student.comment || ''); setIsEditingNote(true); }} disabled={!oquvchiTahrir} hidden={!oquvchiTahrir}
                                                 title="Izohni tahrirlash"
                                                 className="shrink-0 w-6 h-6 flex items-center justify-center rounded-lg text-matn-xira hover:text-brand hover:bg-brand/10 cursor-pointer">
                                                 <Edit size={12} />
@@ -824,12 +844,14 @@ export default function StudentDetails() {
                         <Phone size={14} />
                         Qo'ng'iroq
                     </a>
+                    {smsYuborish && (
                     <button onClick={() => handleSendSms(student.phone, 'manual')} title="SMS yuborish"
                         className="h-9 px-3 flex items-center justify-center gap-1.5 rounded-lg border border-chiziq-kuchli text-brand hover:bg-brand hover:text-white text-[12px] font-semibold transition-colors cursor-pointer">
                         <Send size={14} />
                         SMS
                     </button>
-                    {!student.comment && !isEditingNote && (
+                    )}
+                    {oquvchiTahrir && !student.comment && !isEditingNote && (
                         <button onClick={() => { setNoteDraft(''); setIsEditingNote(true); }} title="Izoh qo'shish"
                             className="h-9 px-3 flex items-center justify-center rounded-lg border border-chiziq text-matn-sokin hover:text-brand hover:border-brand text-[12px] font-semibold transition-colors cursor-pointer">
                             + Izoh
@@ -926,7 +948,7 @@ export default function StudentDetails() {
                                     src={student.photo}
                                     name={displayName(student.name)}
                                     onClose={() => setIsPhotoViewerOpen(false)}
-                                    actions={<>
+                                    actions={!oquvchiTahrir ? undefined : <>
                                         <label className={photoActionCls}>
                                             <input type="file" className="hidden" accept="image/*" onChange={handlePhotoUpload} />
                                             <ImageIcon size={20} />
@@ -1309,8 +1331,8 @@ export default function StudentDetails() {
                                         label="O'quvchi"
                                         phone={student.phone}
                                         tgId={student.telegramId}
-                                        onSms={student.phone ? () => handleSendSms(student.phone, 'manual') : undefined}
-                                        onUzish={() => handleDisconnectTelegram('student')}
+                                        onSms={smsYuborish && student.phone ? () => handleSendSms(student.phone, 'manual') : undefined}
+                                        onUzish={!oquvchiTahrir ? undefined : () => handleDisconnectTelegram('student')}
                                     />
                                     <KontaktQator
                                         icon={<Users className="w-3.5 h-3.5" />}
@@ -1318,8 +1340,8 @@ export default function StudentDetails() {
                                         name={student.fatherName}
                                         phone={student.fatherPhone}
                                         tgId={student.fatherTelegramId}
-                                        onSms={student.fatherPhone ? () => handleSendSms(student.fatherPhone!, 'manual') : undefined}
-                                        onUzish={() => handleDisconnectTelegram('father')}
+                                        onSms={smsYuborish && student.fatherPhone ? () => handleSendSms(student.fatherPhone!, 'manual') : undefined}
+                                        onUzish={!oquvchiTahrir ? undefined : () => handleDisconnectTelegram('father')}
                                     />
                                     <KontaktQator
                                         icon={<Users className="w-3.5 h-3.5" />}
@@ -1327,8 +1349,8 @@ export default function StudentDetails() {
                                         name={student.motherName}
                                         phone={student.motherPhone}
                                         tgId={student.motherTelegramId}
-                                        onSms={student.motherPhone ? () => handleSendSms(student.motherPhone!, 'manual') : undefined}
-                                        onUzish={() => handleDisconnectTelegram('mother')}
+                                        onSms={smsYuborish && student.motherPhone ? () => handleSendSms(student.motherPhone!, 'manual') : undefined}
+                                        onUzish={!oquvchiTahrir ? undefined : () => handleDisconnectTelegram('mother')}
                                     />
                                 </>
                             )}
@@ -1343,9 +1365,9 @@ export default function StudentDetails() {
                         <div className="flex px-2 py-2 bg-ichki border-b border-chiziq gap-1 overflow-x-auto scrollbar-hide items-center justify-start rounded-t-3xl">
                             <TabButton label={t('general')} icon={<Users size={14} />} active={activeTab === 'umumiy'} onClick={() => setActiveTab('umumiy')} />
                             <TabButton label="Kurslar" icon={<Layers size={14} />} active={activeTab === 'kurslar'} onClick={() => setActiveTab('kurslar')} />
-                            <TabButton label="Balans" icon={<CreditCard size={14} />} active={activeTab === 'tolovlar'} onClick={() => setActiveTab('tolovlar')} />
-                            <TabButton label={t('attendance')} icon={<ClipboardCheck size={14} />} active={activeTab === 'yoqlama'} onClick={() => setActiveTab('yoqlama')} />
-                            <TabButton label="Ballar" icon={<Star size={14} />} active={activeTab === 'ballar'} onClick={() => setActiveTab('ballar')} />
+                            {balansKorinadi && <TabButton label="Balans" icon={<CreditCard size={14} />} active={activeTab === 'tolovlar'} onClick={() => setActiveTab('tolovlar')} />}
+                            {davomatKorinadi && <TabButton label={t('attendance')} icon={<ClipboardCheck size={14} />} active={activeTab === 'yoqlama'} onClick={() => setActiveTab('yoqlama')} />}
+                            {ballarKorinadi && <TabButton label="Ballar" icon={<Star size={14} />} active={activeTab === 'ballar'} onClick={() => setActiveTab('ballar')} />}
                         </div>
 
                         <div className="p-4">
@@ -1355,10 +1377,12 @@ export default function StudentDetails() {
                                         <div className="space-y-4">
                                             <div className="flex items-center justify-between gap-3 pb-2 border-b border-chiziq-mayin">
                                                 <span className="text-[12px] font-semibold text-matn"><span className="raqam">{studentGroups.length}</span> ta kurs</span>
+                                                {tarkibTahrir && (
                                                 <button onClick={() => setShowGroupModal(true)}
                                                     className="text-[11px] font-bold text-brand hover:underline cursor-pointer">
                                                     + Kursga qo'shish
                                                 </button>
+                                                )}
                                             </div>
                                             {/* Balans taqsimoti — pul faqat balansga tushadi, har oy kurslarga
                                                 balansdan yechiladi. Standart teng; shu o'quvchi uchun foizda (50/50, 70/30). */}
@@ -1372,6 +1396,7 @@ export default function StudentDetails() {
                                                             <p className="text-[12px] font-black text-matn mt-0.5 truncate">{qoidaMatni(q, kursNomi)}</p>
                                                         </div>
                                                         <button
+                                                            disabled={!kursHisobiTahrir}
                                                             onClick={() => {
                                                                 const ps = student.payShare;
                                                                 setTaqsimQoidaVal(ps?.rule === 'foiz' ? 'foiz' : 'teng');
@@ -1456,6 +1481,7 @@ export default function StudentDetails() {
                                                                     </div>
                                                                     <div className="flex gap-2 shrink-0">
                                                                         {/* Kurs hisobi — kelgan sana, oylik narx, birinchi oy summasi: bitta oynada. */}
+                                                                        {kursHisobiTahrir && (
                                                                         <button
                                                                             onClick={() => setEditingStart({ groupId: group.id, name: group.name, current: kelgan || toDateStr() })}
                                                                             className="inline-flex items-center gap-1.5 px-3 py-2 bg-sirt border border-chiziq hover:border-brand rounded-xl text-[11px] font-bold text-brand hover:bg-brand/10 transition-colors cursor-pointer"
@@ -1464,7 +1490,9 @@ export default function StudentDetails() {
                                                                             <Edit size={12} />
                                                                             Kurs hisobi
                                                                         </button>
+                                                                        )}
                                                                         {/* Boshqa kursga ko'chirish — pulga tegilmaydi. */}
+                                                                        {kochirish && (
                                                                         <button
                                                                             onClick={() => { setMoveFrom(group.id); setMoveMode('transfer'); }}
                                                                             className="inline-flex items-center px-3 py-2 bg-sirt border border-chiziq hover:border-brand rounded-xl text-[11px] font-bold text-matn-sokin hover:text-brand transition-colors cursor-pointer"
@@ -1472,6 +1500,7 @@ export default function StudentDetails() {
                                                                         >
                                                                             Almashtirish
                                                                         </button>
+                                                                        )}
                                                                     </div>
                                                                 </div>
                                                             </div>
@@ -1516,7 +1545,7 @@ export default function StudentDetails() {
                                 </div>
                             )}
 
-                            {activeTab === 'tolovlar' && (() => {
+                            {activeTab === 'tolovlar' && balansKorinadi && (() => {
                                 // Balans tarixi — hamma narsa bitta joyda (egasi, 2026-09-23):
                                 // kelgan pul (+) va kurslarning oylik hisobi (−), har qatordan
                                 // keyingi balans bilan. To'lov — tahrirlanadi (resepshn 10 daqiqa,
@@ -1554,8 +1583,8 @@ export default function StudentDetails() {
                                                 const kurs = kursNomi(p.groupId);
                                                 const kursBor = !!p.groupId && studentGroups.some(g => g.id === p.groupId);
                                                 const tahrir = hisob
-                                                    ? (kursBor ? () => setEditingStart({ groupId: p.groupId!, name: kurs, current: kursSanasi(p.groupId!) || toDateStr() }) : null)
-                                                    : (canEditPayment(p, currentUser?.role) ? () => setEditingPayment(p) : null);
+                                                    ? (kursBor && kursHisobiTahrir ? () => setEditingStart({ groupId: p.groupId!, name: kurs, current: kursSanasi(p.groupId!) || toDateStr() }) : null)
+                                                    : (canEditPayment(p, currentUser?.role, tolovTuzatish) ? () => setEditingPayment(p) : null);
                                                 return (
                                                     <div key={p.id} className="flex items-center gap-3 sm:gap-4 px-4 sm:px-5 py-3 hover:bg-ichki/50 transition-colors">
                                                         <div className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 border ${hisob
@@ -1600,7 +1629,7 @@ export default function StudentDetails() {
                                 );
                             })()}
 
-                            {activeTab === 'yoqlama' && (
+                            {activeTab === 'yoqlama' && davomatKorinadi && (
                                 <div className="animate-in fade-in duration-300 space-y-6">
                                     <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 items-start">
                                         {/* Left Column: Attendance Calendar */}
@@ -1779,6 +1808,7 @@ export default function StudentDetails() {
                                                                                 )}
                                                                                 {(a.status === 'Kelmapdi' || a.status === 'Sababli') && (
                                                                                     <button
+                                                                                        disabled={!davomatTahrir}
                                                                                         onClick={async () => {
                                                                                             try {
                                                                                                 await updateAttendance(a.id, { caughtUp: !a.caughtUp });
@@ -1803,6 +1833,7 @@ export default function StudentDetails() {
                                                                                 </p>
                                                                                 {a.status === 'Kelmapdi' && (
                                                                                     <button
+                                                                                        disabled={!davomatTahrir}
                                                                                         onClick={async () => {
                                                                                             try {
                                                                                                                             await updateAttendance(a.id, { caughtUp: !a.caughtUp });
@@ -1826,6 +1857,7 @@ export default function StudentDetails() {
                                                                         <div className="flex justify-center">
                                                                             <select
                                                                                 value={a.status}
+                                                                                disabled={!davomatTahrir}
                                                                                 onChange={async (e) => {
                                                                                     try {
                                                                                         await updateAttendance(a.id, { status: e.target.value as any });
@@ -1945,6 +1977,7 @@ export default function StudentDetails() {
                                                                     <td className="p-3">
                                                                         <div className="flex justify-center">
                                                                             <button
+                                                                                disabled={!davomatTahrir}
                                                                                 onClick={async () => {
                                                                                     try {
                                                                                         await updateAttendance(a.id, { caughtUp: !a.caughtUp });
@@ -2152,6 +2185,7 @@ export default function StudentDetails() {
                                         );
                                     })()}
 
+                                    {oquvchiOchirish && (
                                     <button
                                         onClick={() => setShowDeleteModal(true)}
                                         className="w-full mt-4 pt-3 border-t border-chiziq-mayin flex items-center justify-center gap-1.5 py-2 text-matn-xira hover:text-xato text-[11px] font-semibold transition-colors cursor-pointer"
@@ -2159,13 +2193,14 @@ export default function StudentDetails() {
                                         <XCircle size={13} />
                                         {t('delete_student')}
                                     </button>
+                                    )}
                                     </div>
                                 </div>
                             )}
 
                             {/* Bonus points. The Score table and the bonus report were already
                                 built, but nothing in the app could actually award a point. */}
-                            {activeTab === 'ballar' && (
+                            {activeTab === 'ballar' && ballarKorinadi && (
                                 <div className="space-y-6 animate-in fade-in duration-300">
                                     <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-5 bg-ichki/40 border border-chiziq rounded-2xl">
                                         <div>
@@ -2174,11 +2209,13 @@ export default function StudentDetails() {
                                                 Jami {studentScores.reduce((s, x) => s + (x.value || 0), 0)} ball · {studentScores.length} ta yozuv
                                             </p>
                                         </div>
+                                        {ballarTahrir && (
                                         <button onClick={() => setShowScoreModal(true)}
                                             disabled={studentGroups.length === 0}
                                             className="px-6 py-2.5 bg-brand hover:bg-brand-dark disabled:opacity-40 disabled:cursor-not-allowed text-white rounded-xl text-[11px] font-extrabold shadow-sm shadow-[#1b6b6b]/20 active:scale-95 transition-all cursor-pointer">
                                             Ball qo'shish
                                         </button>
+                                        )}
                                     </div>
 
                                     {studentGroups.length === 0 && (
@@ -2527,7 +2564,7 @@ export default function StudentDetails() {
 
 
 function PaymentAddModal({ studentId, onClose, onAdd }: { studentId: number; onClose: () => void; onAdd: (data: any) => void }) {
-    const { students, groups, courses, payments, settings, showNotification, user: crmUser } = useCRM();
+    const { students, groups, courses, payments, settings, showNotification, user: crmUser, ozgartira } = useCRM();
     const [amount, setAmount] = useState('');
     const [type, setType] = useState('Naqd');
     // Payme orqali: havola/QR — pul Payme'dan webhook bilan o'zi tushadi, qo'lda yozilmaydi.
@@ -2555,7 +2592,7 @@ function PaymentAddModal({ studentId, onClose, onAdd }: { studentId: number; onC
         setCreatedPaymentForReceipt(created);
 
         setTimeout(async () => {
-            if (await confirm("To'lov haqida ota-onaga SMS xabarnoma yuborilsinmi?")) {
+            if (ozgartira('xabarlar.yuborish') && await confirm("To'lov haqida ota-onaga SMS xabarnoma yuborilsinmi?")) {
                 try {
                     const token = localStorage.getItem('token');
                     await fetch('/api/sms/send', {

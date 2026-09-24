@@ -1,6 +1,14 @@
-import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
+import React, { createContext, useContext, useState, useEffect, useRef, useMemo } from 'react';
 import { Student, Teacher, Group, Lead, Payment, CRMState, Course, Room, School, UserRole, Attendance, Score, TeacherAttendance, Expense, Transport, DeliveryLog, Route, RouteRun, Question, Exam, ExamResult, Variant, Topic, Syllabus, Direction } from '../types';
 import { generateVariants } from '../lib/shuffler';
+import { rolRuxsati, yetadimi, modulKorinadimi, toliqRuxsatli } from '../../lib/ruxsatlar.js';
+
+/** Xodimning amaldagi ruxsati (server hisoblaydi: /auth/me, login, /api/init). */
+export interface Ruxsat {
+    daraja: Record<string, number>;
+    faqatOz: boolean;
+    toliq: boolean;
+}
 
 export const THEMES = [
     { id: 'zumrad', name: "Sokin Zumrad", primary: '#1b6b6b', hover: '#155252', light: '#f0f8f8', gradientStart: '#1b6b6b', gradientEnd: '#2e9c9c' , bright: '#3ddad0' },
@@ -23,6 +31,8 @@ interface AuthenticatedUser {
     schoolId: number | null;
     /** Qo'shimcha filiallar (ikki filialda ishlaydigan xodim). */
     branchIds?: number[];
+    /** Lavozim ruxsati — lib/ruxsatlar.js. */
+    ruxsat?: Ruxsat;
 }
 
 interface CRMContextType extends CRMState {
@@ -108,6 +118,16 @@ interface CRMContextType extends CRMState {
     showNotification: (message: string, type: 'success' | 'error' | 'info') => void;
     themeColor: string;
     setThemeColor: (themeId: string) => void;
+    /** Amaldagi ruxsat (admin — hammasi). */
+    ruxsat: Ruxsat | null;
+    /** Bo'limni ko'radimi (daraja >= 1). Kalitlar: lib/ruxsatlar.js, masalan 'moliya.kassa'. */
+    kora: (bolim: string) => boolean;
+    /** Bo'limda o'zgartira oladimi (daraja 2). */
+    ozgartira: (bolim: string) => boolean;
+    /** Modul menyuda chiqadimi. */
+    modulKorinadi: (modul: string) => boolean;
+    /** "Faqat o'z kurslari" yoqilganmi. */
+    faqatOzKurslari: boolean;
 }
 
 const CRMContext = createContext<CRMContextType | undefined>(undefined);
@@ -376,6 +396,8 @@ export const CRMProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
             // Javob kelguncha boshqa filial tanlangan bo'lsa, bu ma'lumot eskirgan.
             if (activeBranchRef.current !== schoolIdToUse) return;
+            // Admin ruxsatlarni o'zgartirgan bo'lsa, yangisi shu bilan keladi.
+            if (data.ruxsat) setUser(prev => prev ? { ...prev, ruxsat: data.ruxsat } : prev);
 
             setState(prev => ({
                 ...prev,
@@ -483,6 +505,7 @@ export const CRMProvider: React.FC<{ children: React.ReactNode }> = ({ children 
                     if (initRes.ok) {
                         const data = await initRes.json();
                         if (activeBranchRef.current !== predictedSchoolId) return;
+                        if (data.ruxsat) setUser(prev => prev ? { ...prev, ruxsat: data.ruxsat } : prev);
                         setState(prev => ({
                             ...prev,
                             schools:            data.schools        || [],
@@ -1433,10 +1456,22 @@ export const CRMProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         }
     };
 
+    // Admin va platforma egasi — hammasi. Server javobida ruxsat bo'lmasa
+    // (eski server) — lavozimning standart ruxsati.
+    const ruxsat = useMemo<Ruxsat | null>(() => {
+        if (!user) return null;
+        if (toliqRuxsatli(user.role)) return rolRuxsati(null, user.role) as Ruxsat;
+        return (user.ruxsat || rolRuxsati(null, user.role)) as Ruxsat;
+    }, [user]);
+    const kora = (bolim: string) => yetadimi(ruxsat, bolim, 1);
+    const ozgartira = (bolim: string) => yetadimi(ruxsat, bolim, 2);
+    const modulKorinadi = (modul: string) => modulKorinadimi(ruxsat, modul);
+
     return (
         <CRMContext.Provider value={{
             ...state,
             loading, error, user, token,
+            ruxsat, kora, ozgartira, modulKorinadi, faqatOzKurslari: !!ruxsat?.faqatOz,
             login, logout, checkAuth, setSelectedSchoolId,
             addStudent, updateStudent, deleteStudent, setStudentStatus, importStudents, addStudentToGroup, removeStudentFromGroup,
             addTeacher, updateTeacher, deleteTeacher,

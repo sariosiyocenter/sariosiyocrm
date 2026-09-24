@@ -29,8 +29,9 @@ export default function KursHisobModal({ studentId, schoolId, groupId, groupName
     onClose: () => void;
     onSaved?: () => void;
 }) {
-    const { showNotification, retryLoad, user } = useCRM();
-    const rahbar = ['ADMIN', 'MANAGER', 'SUPERADMIN'].includes(user?.role || '');
+    const { showNotification, retryLoad, user, ozgartira } = useCRM();
+    // O'quvchiga alohida narx — "O'quvchilar → Alohida narx va chegirma" ruxsati.
+    const rahbar = ozgartira('oquvchilar.narx');
     const [sana, setSana] = useState(current);
     // Narx: '' — o'zgarmaydi (birinchi ko'rinishda amaldagisi qo'yiladi).
     const [narx, setNarx] = useState('');

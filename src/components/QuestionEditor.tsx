@@ -19,7 +19,10 @@ const EMPTY_QUESTION = {
 export default function QuestionEditor() {
     const { id } = useParams();
     const navigate = useNavigate();
-    const { questions, addQuestion, updateQuestion, deleteQuestion, showNotification } = useCRM();
+    const { questions, addQuestion, updateQuestion, deleteQuestion, showNotification, ozgartira } = useCRM();
+    // Ko'radigan xodim savolni ochadi, lekin saqlay/o'chira olmaydi.
+    const savolTahrir = ozgartira('imtihonlar.savollar');
+    const savolOchirish = ozgartira('imtihonlar.ochirish');
     const confirm = useConfirm();
     const isEditMode = !!id;
 
@@ -78,6 +81,7 @@ export default function QuestionEditor() {
     };
 
     const handleSave = async (andContinue = false) => {
+        if (!savolTahrir) return;
         if (!q.text || !q.optionA || !q.optionB || !q.optionC || !q.optionD) {
             showNotification("Savol matni va barcha 4 ta variantni to'ldiring", "error");
             return;
@@ -152,13 +156,13 @@ export default function QuestionEditor() {
 
                 <div className="flex flex-wrap items-center gap-2">
                     {isEditMode && (
-                        <button onClick={handleDelete} className="p-3 text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/20 rounded-xl transition-all cursor-pointer">
+                        <button onClick={handleDelete} disabled={!savolOchirish} className="p-3 text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/20 rounded-xl transition-all cursor-pointer">
                             <Trash2 size={18} />
                         </button>
                     )}
                     {!isEditMode && (
                         <button
-                            onClick={() => handleSave(true)}
+                            disabled={!savolTahrir} onClick={() => handleSave(true)}
                             disabled={isSaving}
                             className="px-5 py-2.5 bg-chiziq text-matn-2 rounded-xl text-[11px] font-extrabold hover:bg-gray-250 transition-all flex items-center gap-1.5 cursor-pointer"
                         >
@@ -167,7 +171,7 @@ export default function QuestionEditor() {
                         </button>
                     )}
                     <button
-                        onClick={() => handleSave(false)}
+                        disabled={!savolTahrir} onClick={() => handleSave(false)}
                         disabled={isSaving}
                         className="px-6 py-2.5 bg-brand hover:bg-brand-dark text-white rounded-xl text-[11px] font-extrabold hover:bg-teal-550 shadow-sm shadow-[#1b6b6b]/20 flex items-center gap-1.5 cursor-pointer"
                     >
@@ -340,7 +344,7 @@ export default function QuestionEditor() {
                     <div className="flex items-center gap-3 pt-2">
                         {!isEditMode && (
                             <button
-                                onClick={() => handleSave(true)}
+                                disabled={!savolTahrir} onClick={() => handleSave(true)}
                                 disabled={isSaving}
                                 className="flex-1 py-3 bg-chiziq text-matn-2 rounded-xl text-[11px] font-extrabold hover:bg-gray-200 transition-all flex items-center justify-center gap-1.5 cursor-pointer"
                             >
@@ -349,7 +353,7 @@ export default function QuestionEditor() {
                             </button>
                         )}
                         <button
-                            onClick={() => handleSave(false)}
+                            disabled={!savolTahrir} onClick={() => handleSave(false)}
                             disabled={isSaving}
                             className="flex-1 py-3 bg-brand text-brand-ust rounded-xl text-[11px] font-extrabold hover:bg-teal-500 transition-all shadow-sm shadow-[#1b6b6b]/20 flex items-center justify-center gap-1.5 cursor-pointer"
                         >

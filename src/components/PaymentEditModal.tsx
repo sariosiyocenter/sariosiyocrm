@@ -21,10 +21,11 @@ const OYNA_MS = 10 * 60 * 1000;
 /** Kassa usullari — faqat shular orasida almashtiriladi. */
 export const TOLOV_USULLARI = ['Naqd', 'Karta', "O'tkazma", 'Klik'];
 
-export function canEditPayment(p: Payment, role?: string): boolean {
+// ruxsatBor — "O'quvchilar → To'lovni tuzatish" ruxsati (Sozlamalar → Ruxsatlar).
+export function canEditPayment(p: Payment, role?: string, ruxsatBor = role === 'MANAGER' || role === 'RECEPTIONIST'): boolean {
     if (!TOLOV_USULLARI.includes(p.type)) return false;
     if (role === 'ADMIN' || role === 'SUPERADMIN') return true;
-    if (role !== 'MANAGER' && role !== 'RECEPTIONIST') return false;
+    if (!ruxsatBor) return false;
     if (!p.createdAt) return false;
     return Date.now() - new Date(p.createdAt).getTime() < OYNA_MS;
 }

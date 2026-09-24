@@ -34,29 +34,31 @@ export default function Layout({ children, onLogout }: LayoutProps) {
     });
     if (ok) onLogout();
   };
-  const { user, schools, selectedSchoolId, setSelectedSchoolId, students, leads, groups, teachers, courses, darkMode, toggleDarkMode, notification, settings, error, retryLoad } = useCRM();
+  const { user, schools, selectedSchoolId, setSelectedSchoolId, students, leads, groups, teachers, courses, darkMode, toggleDarkMode, notification, settings, error, retryLoad, modulKorinadi, kora } = useCRM();
   const { lang, setLang, t } = useLang();
   const location = useLocation();
   const navigate = useNavigate();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
 
+  // Menyuda faqat xodim ko'ra oladigan modullar (Sozlamalar → Ruxsatlar).
+  // Ilgari o'qituvchi ham Moliya, Xodimlar kabi bandlarni ko'rardi va bosganda
+  // bosh sahifaga qaytib qolardi.
   const baseItems = [
-    { label: t('nav_dashboard'), icon: LayoutDashboard, path: '/' },
-    { label: t('nav_leads'),     icon: Target,          path: '/leads' },
-    { label: t('nav_groups'),    icon: Users,           path: '/courses' },
-    { label: t('nav_students'),  icon: User,            path: '/students' },
-    { label: t('nav_daily'),     icon: Printer,         path: '/daily' },
-    { label: t('nav_syllabus'),  icon: BookOpen,        path: '/syllabus' },
-    { label: t('nav_finance'),   icon: Wallet,          path: '/finance' },
-    { label: t('nav_logistics'), icon: Bus,             path: '/logistics' },
-    { label: t('nav_exams'),     icon: FileText,        path: '/exams' },
-    { label: t('nav_messaging'), icon: MessageSquare,   path: '/messaging' },
-    { label: t('nav_hr'),        icon: Users2,          path: '/hr' },
-    // Jurnal — rahbarning nazorat vositasi, faqat ADMIN'ga.
-    ...(user?.role === 'ADMIN' ? [{ label: t('nav_journal'), icon: History, path: '/journal' }] : []),
-    { label: t('nav_settings'),  icon: Settings,        path: '/settings' },
-  ];
+    { label: t('nav_dashboard'), icon: LayoutDashboard, path: '/',          modul: 'bosh' },
+    { label: t('nav_leads'),     icon: Target,          path: '/leads',     modul: 'lidlar' },
+    { label: t('nav_groups'),    icon: Users,           path: '/courses',   modul: 'kurslar' },
+    { label: t('nav_students'),  icon: User,            path: '/students',  modul: 'oquvchilar' },
+    { label: t('nav_daily'),     icon: Printer,         path: '/daily',     modul: 'kunlik' },
+    { label: t('nav_syllabus'),  icon: BookOpen,        path: '/syllabus',  modul: 'dastur' },
+    { label: t('nav_finance'),   icon: Wallet,          path: '/finance',   modul: 'moliya' },
+    { label: t('nav_logistics'), icon: Bus,             path: '/logistics', modul: 'logistika' },
+    { label: t('nav_exams'),     icon: FileText,        path: '/exams',     modul: 'imtihonlar' },
+    { label: t('nav_messaging'), icon: MessageSquare,   path: '/messaging', modul: 'xabarlar' },
+    { label: t('nav_hr'),        icon: Users2,          path: '/hr',        modul: 'xodimlar' },
+    { label: t('nav_journal'),   icon: History,         path: '/journal',   modul: 'jurnal' },
+    { label: t('nav_settings'),  icon: Settings,        path: '/settings',  modul: 'sozlamalar' },
+  ].filter(item => modulKorinadi(item.modul));
 
   const navItems = user?.role === 'SUPERADMIN'
     ? [{ label: 'Super Admin', icon: Shield, path: '/superadmin' }]
@@ -72,13 +74,15 @@ export default function Layout({ children, onLogout }: LayoutProps) {
       students: (students || []).filter(st => s(st.name).includes(lowerQ) || s(st.phone).includes(lowerQ)).slice(0, 3),
       leads: (leads || []).filter(l => s(l.name).includes(lowerQ) || s(l.phone).includes(lowerQ)).slice(0, 3),
       groups: (groups || []).filter(g => s(g.name).includes(lowerQ) || s(courses.find(c => c.id === g.courseId)?.name).includes(lowerQ)).slice(0, 3),
-      teachers: (teachers || []).filter(t => s(t.name).includes(lowerQ) || s(t.phone).includes(lowerQ)).slice(0, 3),
+      // Ustoz natijasi xodim kartasini ochadi — faqat Xodimlarni ko'radiganga.
+      teachers: kora('xodimlar.royxat') ? (teachers || []).filter(t => s(t.name).includes(lowerQ) || s(t.phone).includes(lowerQ)).slice(0, 3) : [],
     };
   };
 
   const results = getSearchResults();
 
-  const debtorCount = (students || []).filter(s => (s.balance || 0) < 0).length;
+  // Qarzdorlar soni — faqat balansni ko'radiganga.
+  const debtorCount = kora('oquvchilar.balans') ? (students || []).filter(s => (s.balance || 0) < 0).length : 0;
 
   const handleResultClick = (path: string) => {
     navigate(path);

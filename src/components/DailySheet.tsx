@@ -124,8 +124,10 @@ interface Qator {
 export default function DailySheet() {
     const {
         user, token, groups, students, teachers, courses, rooms, payments, exams, examResults,
-        settings, schools, selectedSchoolId, showNotification,
+        settings, schools, selectedSchoolId, showNotification, kora, faqatOzKurslari,
     } = useCRM();
+    // QARZ ustuni — faqat o'quvchi balansini ko'radiganga (Sozlamalar → Ruxsatlar).
+    const balansKorinadi = kora('oquvchilar.balans');
     const [params] = useSearchParams();
 
     const [sana, setSana] = useState(() => /^\d{4}-\d{2}-\d{2}$/.test(params.get('sana') || '') ? params.get('sana')! : toshkentBugun());
@@ -147,8 +149,8 @@ export default function DailySheet() {
         try { localStorage.setItem(USTUN_KEY, JSON.stringify(ustunlar)); } catch { /* private mode */ }
     }, [ustunlar]);
 
-    // O'qituvchi o'z kurslarini ko'radi; boshqalar — filialning barcha kurslari.
-    const ustozRoli = ['TEACHER', 'SUPPORT_TEACHER'].includes(String(user?.role));
+    // "Faqat o'z kurslari" yoqilgan xodim o'z kurslarini ko'radi; boshqalar — filialning barcha kurslari.
+    const ustozRoli = faqatOzKurslari;
     const meningUstozIdlarim = useMemo(
         () => (teachers || []).filter(t => t.userId === user?.id).map(t => t.id),
         [teachers, user?.id]
@@ -349,7 +351,7 @@ export default function DailySheet() {
                     <div>
                         <span className="block text-[11px] text-matn-xira mb-1.5">Ustunlar</span>
                         <div className="flex flex-wrap gap-1.5">
-                            {USTUNLAR.map(u => (
+                            {USTUNLAR.filter(u => u.key !== 'qarz' || balansKorinadi).map(u => (
                                 <button key={u.key} onClick={() => setUstunlar(p => ({ ...p, [u.key]: !p[u.key] }))}
                                     className={`h-9 px-3 rounded-lg text-[12px] border transition-colors cursor-pointer ${ustunlar[u.key] ? 'bg-brand/12 text-brand border-brand/30' : 'border-chiziq text-matn-xira hover:text-matn'}`}>
                                     {u.label}
@@ -423,7 +425,7 @@ export default function DailySheet() {
                                         {xona(g) ? <> &nbsp;·&nbsp; Xona: {xona(g)}</> : null}
                                         &nbsp;·&nbsp; O'quvchilar: <b>{qatorlar.length}</b>
                                     </div>
-                                    {ustunlar.qarz && (
+                                    {(balansKorinadi && ustunlar.qarz) && (
                                         <div className="ks-debt"><span>Umumiy qarzdorlik:</span> {sum(jamiQarz)} so'm</div>
                                     )}
                                 </div>
@@ -439,7 +441,7 @@ export default function DailySheet() {
                                         {ustunlar.sinov && <col style={{ width: '4.2%' }} />}
                                         {ustunlar.test && <col style={{ width: '4.2%' }} />}
                                         {ustunlar.reyting && <col style={{ width: '4.4%' }} />}
-                                        {ustunlar.qarz && <col style={{ width: '7.8%' }} />}
+                                        {(balansKorinadi && ustunlar.qarz) && <col style={{ width: '7.8%' }} />}
                                     </colgroup>
                                     <thead>
                                         <tr>
@@ -453,7 +455,7 @@ export default function DailySheet() {
                                             {ustunlar.sinov && <th>SINOV</th>}
                                             {ustunlar.test && <th>OXIRGI TEST</th>}
                                             {ustunlar.reyting && <th>Reyting</th>}
-                                            {ustunlar.qarz && <th>QARZ</th>}
+                                            {(balansKorinadi && ustunlar.qarz) && <th>QARZ</th>}
                                         </tr>
                                     </thead>
                                     <tbody>
@@ -474,7 +476,7 @@ export default function DailySheet() {
                                                 {ustunlar.sinov && <td className="ks-c">{r.sinov}</td>}
                                                 {ustunlar.test && <td className="ks-c">{r.test}</td>}
                                                 {ustunlar.reyting && <td className="ks-c">{r.reyting}</td>}
-                                                {ustunlar.qarz && (
+                                                {(balansKorinadi && ustunlar.qarz) && (
                                                     <td className={`ks-r ks-debtcell ${r.qarz > 0 ? '' : 'ks-zero'}`}>{sum(r.qarz)}</td>
                                                 )}
                                             </tr>

@@ -1,6 +1,8 @@
 import jwt from 'jsonwebtoken';
 import prisma from '../lib/prisma.js';
 import { JWT_SECRET } from '../lib/config.js';
+import { rolRuxsati, yetadimi, bolimNomi, toliqRuxsatli } from '../lib/ruxsatlar.js';
+import { soroqTalablari } from '../lib/ruxsatApi.js';
 
 // SUPERADMIN oversees every organization; SELLER works the SaaS funnel, not school data.
 const CROSS_SCHOOL_ROLES = ['SUPERADMIN', 'SELLER'];
@@ -109,7 +111,10 @@ async function freshUser(payload) {
   if (row === undefined) {
     row = await prisma.user.findUnique({
       where: { id: payload.id },
-      select: { role: true, schoolId: true, status: true, name: true, branches: { select: { id: true } } }
+      select: {
+        role: true, schoolId: true, status: true, name: true, branches: { select: { id: true } },
+        school: { select: { organizationId: true } },
+      }
     });
     userCache.set(payload.id, { at: Date.now(), row: row || null });
   }
@@ -117,7 +122,103 @@ async function freshUser(payload) {
   return {
     ...payload, role: row.role, schoolId: row.schoolId, name: row.name,
     branchIds: (row.branches || []).map(b => b.id),
+    organizationId: row.school?.organizationId ?? null,
   };
+}
+
+// --- Lavozim ruxsatlari (lib/ruxsatlar.js) ---------------------------------
+// Tashkilotning sozlamasi Organization.permissions da. Har so'rovda bazaga
+// bormaslik uchun qisqa kesh; admin saqlaganda darhol tozalanadi.
+const ruxsatKeshi = new Map();
+
+/** Admin ruxsatlarni saqlagach chaqiriladi — keyingi so'rov yangisini o'qiydi. */
+export function unutRuxsatlar(organizationId) {
+  if (organizationId == null) ruxsatKeshi.clear();
+  else ruxsatKeshi.delete(Number(organizationId));
+  ozKursKeshi.clear();
+}
+
+export async function tashkilotSozlamasi(organizationId) {
+  if (!organizationId) return null;
+  const hit = ruxsatKeshi.get(organizationId);
+  if (hit && Date.now() - hit.at < USER_TTL_MS) return hit.sozlama;
+  let sozlama = null;
+  try {
+    const org = await prisma.organization.findUnique({ where: { id: organizationId }, select: { permissions: true } });
+    sozlama = org?.permissions ?? null;
+  } catch (e) {
+    // Ustun hali bazada yo'q (deploy'dagi `prisma db push`dan oldin) —
+    // standart ruxsatlar bilan ishlaymiz, so'rovni yiqitmaymiz.
+    console.error('Ruxsat sozlamasini o\'qib bo\'lmadi:', e.message);
+  }
+  ruxsatKeshi.set(organizationId, { at: Date.now(), sozlama });
+  return sozlama;
+}
+
+/** Xodimning amaldagi ruxsati: { daraja, faqatOz, toliq }. */
+export async function foydalanuvchiRuxsati(user) {
+  if (toliqRuxsatli(user?.role)) return rolRuxsati(null, user.role);
+  return rolRuxsati(await tashkilotSozlamasi(user?.organizationId), user?.role);
+}
+
+/** So'rovga ruxsat yetmasa — sababi, yetsa null. */
+export async function ruxsatXatosi(req) {
+  const ruxsat = req.ruxsat;
+  if (ruxsat?.toliq) return null;
+  const talablar = await soroqTalablari(req);
+  for (const t of talablar) {
+    if (t.admin) {
+      if (!toliqRuxsatli(req.user?.role)) return "Bu amal faqat administratorga ruxsat etilgan";
+      continue;
+    }
+    const kalitlar = Array.isArray(t.k) ? t.k : [t.k];
+    if (!kalitlar.some(k => yetadimi(ruxsat, k, t.d))) {
+      const amal = t.d >= 2 ? "o'zgartirishga" : "ko'rishga";
+      return `«${bolimNomi(kalitlar[0])}» bo'limini ${amal} ruxsatingiz yo'q. Administratorga murojaat qiling.`;
+    }
+  }
+  return null;
+}
+
+// "Faqat o'z kurslari": ustoz o'zi dars beradigan kurslar va shu kurslardagi
+// o'quvchilar bilan cheklanadi. Ro'yxat — Teacher.userId orqali.
+const ozKursKeshi = new Map();
+
+export async function ozKurslari(user) {
+  const hit = ozKursKeshi.get(user.id);
+  if (hit && Date.now() - hit.at < USER_TTL_MS) return hit.val;
+  const guruhlar = await prisma.group.findMany({
+    where: { teacher: { userId: user.id } },
+    select: { id: true, students: { select: { id: true } } },
+  });
+  const val = {
+    groupIds: new Set(guruhlar.map(g => g.id)),
+    studentIds: new Set(guruhlar.flatMap(g => g.students.map(s => s.id))),
+  };
+  ozKursKeshi.set(user.id, { at: Date.now(), val });
+  return val;
+}
+
+const BEGONA_KURS = 'Bu kurs sizga biriktirilmagan';
+const BEGONA_OQUVCHI = "Bu o'quvchi sizning kurslaringizda emas";
+
+async function ozKursXatosi(req) {
+  if (!req.ruxsat?.faqatOz) return null;
+  const parts = req.path.split('/').filter(Boolean);
+  const resurs = parts[1];
+  const id = parseInt(parts[2]);
+  const oz = await ozKurslari(req.user);
+  if (resurs === 'groups' && Number.isInteger(id) && !oz.groupIds.has(id)) return BEGONA_KURS;
+  if (resurs === 'students' && Number.isInteger(id) && !oz.studentIds.has(id)) return BEGONA_OQUVCHI;
+  if (resurs === 'attendances' && Number.isInteger(id)) {
+    const a = await prisma.attendance.findUnique({ where: { id }, select: { groupId: true } });
+    if (a && !oz.groupIds.has(a.groupId)) return BEGONA_KURS;
+  }
+  const gid = parseInt(req.body?.groupId ?? req.query?.groupId);
+  if (Number.isInteger(gid) && !oz.groupIds.has(gid)) return BEGONA_KURS;
+  const sid = parseInt(req.body?.studentId ?? req.query?.studentId);
+  if (Number.isInteger(sid) && !oz.studentIds.has(sid)) return BEGONA_OQUVCHI;
+  return null;
 }
 
 // Tashkilot bo'ylab umumiy yozuvlar: ruxsat filial emas, tashkilot bo'yicha.
@@ -190,6 +291,10 @@ export const authenticate = (req, res, next) => {
       if (user.role === 'DRIVER') {
         return res.status(403).json({ error: "Haydovchilar Telegram bot orqali ishlaydi" });
       }
+      // Texnik xodimga login berilmaydi (HR'da faqat maosh va davomat uchun).
+      if (user.role === 'TECH_STAFF') {
+        return res.status(403).json({ error: "Texnik xodimlar CRM ga kirmaydi" });
+      }
 
       req.user = user;
       const wanted = requestedSchoolId(req);
@@ -198,6 +303,14 @@ export const authenticate = (req, res, next) => {
       }
       const recordError = await recordAccessError(req);
       if (recordError) return res.status(403).json({ error: recordError });
+
+      // Lavozim ruxsati: bo'lim yopiq bo'lsa so'rov handlerga yetmaydi.
+      // `ruxsat: true` — mijoz buni sessiya tugagani deb o'ylamasin.
+      req.ruxsat = await foydalanuvchiRuxsati(user);
+      const ruxsatError = await ruxsatXatosi(req);
+      if (ruxsatError) return res.status(403).json({ error: ruxsatError, ruxsat: true });
+      const ozError = await ozKursXatosi(req);
+      if (ozError) return res.status(403).json({ error: ozError, ruxsat: true });
 
       // 0 is the "all branches" marker, not a branch a handler could scope a write to.
       req.schoolScope = (wanted === null || wanted === ALL_BRANCHES)

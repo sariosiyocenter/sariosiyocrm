@@ -215,7 +215,7 @@ export function registerPaymeRoutes(app) {
   // -------------------------------------------------------------------------
   // CRM: buyurtma (havola) yaratish va boshqarish
   // -------------------------------------------------------------------------
-  app.post('/api/payme/orders', authenticate, requireRole(...LINK_ROLES), async (req, res, next) => {
+  app.post('/api/payme/orders', authenticate, async (req, res, next) => {
     try {
       const studentId = parseInt(req.body.studentId);
       if (!Number.isInteger(studentId)) return res.status(400).json({ error: "O'quvchi ko'rsatilmagan" });
@@ -239,7 +239,7 @@ export function registerPaymeRoutes(app) {
     } catch (e) { next(e); }
   });
 
-  app.get('/api/payme/orders', authenticate, requireRole(...LINK_ROLES), async (req, res, next) => {
+  app.get('/api/payme/orders', authenticate, async (req, res, next) => {
     try {
       const studentId = parseInt(req.query.studentId);
       if (!Number.isInteger(studentId)) return res.status(400).json({ error: 'studentId required' });
@@ -260,7 +260,7 @@ export function registerPaymeRoutes(app) {
   });
 
   // Havolani o'quvchi/ota-onaning Telegramiga yuborish.
-  app.post('/api/payme/orders/:id/send', authenticate, requireRole(...LINK_ROLES), async (req, res, next) => {
+  app.post('/api/payme/orders/:id/send', authenticate, async (req, res, next) => {
     try {
       const id = String(req.params.id || '').toUpperCase();
       if (!payme.isOrderId(id)) return res.status(404).json({ error: 'Buyurtma topilmadi' });
@@ -306,7 +306,7 @@ export function registerPaymeRoutes(app) {
   });
 
   // Hali to'lanmagan havolani o'chirish (Payme uni endi qabul qilmaydi).
-  app.post('/api/payme/orders/:id/cancel', authenticate, requireRole(...LINK_ROLES), async (req, res, next) => {
+  app.post('/api/payme/orders/:id/cancel', authenticate, async (req, res, next) => {
     try {
       const id = String(req.params.id || '').toUpperCase();
       if (!payme.isOrderId(id)) return res.status(404).json({ error: 'Buyurtma topilmadi' });
@@ -323,7 +323,7 @@ export function registerPaymeRoutes(app) {
   // -------------------------------------------------------------------------
   // Admin: tranzaksiyalar va jurnal (Sozlamalar → Payme)
   // -------------------------------------------------------------------------
-  app.get('/api/payme/transactions', authenticate, requireRole(...STAFF_MANAGERS), async (req, res, next) => {
+  app.get('/api/payme/transactions', authenticate, async (req, res, next) => {
     try {
       const schoolId = parseInt(req.query.schoolId);
       if (!Number.isInteger(schoolId)) return res.status(400).json({ error: 'schoolId required' });

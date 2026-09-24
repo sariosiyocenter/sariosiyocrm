@@ -374,6 +374,11 @@ model Organization {
   status     String    @default("Sinov") // Sinov, Faol, Muzlatilgan
   expiresAt  DateTime?
   maxSchools Int       @default(3)
+
+  // Lavozim ruxsatlari (lib/ruxsatlar.js): { rollar: { MANAGER: { "moliya.kassa": 2, ... } },
+  // faqatOzKurslari: { TEACHER: true } }. Butun markazga bitta — filiallar uchun
+  // alohida emas. null — hali saqlanmagan, standart qiymatlar ishlaydi.
+  permissions Json?
 }
 
 model School {

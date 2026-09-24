@@ -21,7 +21,11 @@ const lbl = "block text-[11px] text-matn-xira mb-1.5";
 
 
 export default function Students() {
-    const { students, groups, teachers, transports, routes, attendances, directions, addStudent,deleteStudent, setStudentStatus, importStudents, selectedSchoolId, schools, user, showNotification } = useCRM();
+    const { students, groups, teachers, transports, routes, attendances, directions, addStudent,deleteStudent, setStudentStatus, importStudents, selectedSchoolId, schools, user, showNotification, kora, ozgartira } = useCRM();
+    // Lavozim ruxsati (Sozlamalar → Ruxsatlar): qo'shish/import/havola, o'chirish, balans.
+    const oquvchiTahrir = ozgartira('oquvchilar.royxat');
+    const oquvchiOchirish = ozgartira('oquvchilar.ochirish');
+    const balansKorinadi = kora('oquvchilar.balans');
 
     const confirm = useConfirm();
     const { t } = useLang();
@@ -418,7 +422,7 @@ export default function Students() {
                     "Manzil (ko'cha, uy)": student.address || '',
                     "Holati": student.status || 'Faol',
                     "A'zo bo'lgan sana": student.joinedDate || '',
-                    "Balans (UZS)": student.balance || 0,
+                    ...(balansKorinadi ? { "Balans (UZS)": student.balance || 0 } : {}),
                     "Kurslar": groupNames || 'Kurslarsiz',
                     "Otasining ismi": student.fatherName || '',
                     "Otasining telefoni": student.fatherPhone || '',
@@ -733,6 +737,7 @@ export default function Students() {
                         >
                             <FileSpreadsheet size={14} /> {t('export')}
                         </button>
+                        {oquvchiTahrir && (
                         <button
                             onClick={() => document.getElementById('import-excel-input')?.click()}
                             disabled={isImporting}
@@ -740,8 +745,9 @@ export default function Students() {
                         >
                             <FileSpreadsheet size={14} /> {t('import')}
                         </button>
+                        )}
                         <input type="file" id="import-excel-input" accept=".xlsx, .xls, .csv" className="hidden" onChange={handleImportChange} />
-                        {selectedSchoolId !== 0 && (
+                        {selectedSchoolId !== 0 && oquvchiTahrir && (
                             <button
                                 onClick={() => setIsLinkModalOpen(true)}
                                 className="flex items-center gap-2 px-3 py-2.5 bg-sirt border border-chiziq text-matn-2 hover:border-brand hover:text-brand rounded-xl text-xs font-bold transition-all cursor-pointer"
@@ -749,12 +755,14 @@ export default function Students() {
                                 <QrCode size={14} /> {t('create_link')}
                             </button>
                         )}
+                        {oquvchiTahrir && (
                         <button
                             onClick={() => setIsModalOpen(true)}
                             className="flex items-center gap-2 px-4 py-2.5 ml-1 bg-brand hover:bg-brand-dark text-white rounded-xl text-xs font-extrabold shadow-sm shadow-brand/20 transition-all cursor-pointer"
                         >
                             <Plus size={14} /> {t('add')}
                         </button>
+                        )}
                     </div>
                 </div>
 
@@ -883,6 +891,7 @@ export default function Students() {
                                 <option value="__none__">Imtiyozsizlar</option>
                             </select>
                         </div>
+                        {balansKorinadi && (
                         <div>
                             <label className={lbl}>{t('filter_balance')}</label>
                             <select value={filters.balanceStatus} onChange={e => setFilters({...filters, balanceStatus: e.target.value})}
@@ -892,6 +901,7 @@ export default function Students() {
                                 <option value="positive">{t('paid_students')}</option>
                             </select>
                         </div>
+                        )}
                         <div>
                             <label className={lbl}>Maqsad</label>
                             <select value={filters.studyGoal} onChange={e => setFilters({...filters, studyGoal: e.target.value})}
@@ -1011,6 +1021,7 @@ export default function Students() {
                                     <p className="text-xs font-bold text-matn truncate">{student.name}</p>
                                     <p className="text-[12px] text-matn-xira tabular-nums mt-0.5">{student.phone || "telefon yo'q"}</p>
                                 </div>
+                                {balansKorinadi && (
                                 <div className="text-right shrink-0">
                                     <p className={`text-xs font-black tabular-nums ${balance < 0 ? 'text-rose-500' : 'text-emerald-600'}`}>
                                         {balance.toLocaleString()}
@@ -1019,6 +1030,7 @@ export default function Students() {
                                         {balance < 0 ? 'qarz' : 'balans'}
                                     </p>
                                 </div>
+                                )}
                             </button>
                         );
                     })}
@@ -1044,7 +1056,9 @@ export default function Students() {
                                 <th className="px-4 py-2.5 text-[12px] font-normal text-matn-sokin">{t('student')}</th>
                                 <th className="px-4 py-2.5 text-[12px] font-normal text-matn-sokin w-[172px]">{t('student_phone')}</th>
                                 <th className="px-4 py-2.5 text-[12px] font-normal text-matn-sokin w-[180px]">{t('student_groups')}</th>
+                                {balansKorinadi && (
                                 <th className="px-4 py-2.5 text-[12px] font-normal text-matn-sokin text-right w-[124px]">{t('student_balance')}</th>
+                                )}
                                 <th className="px-4 py-2.5 text-[12px] font-normal text-matn-sokin text-right w-[82px]">Davomat</th>
                                 <th className="px-2 py-2.5 w-10"></th>
                             </tr>
@@ -1103,11 +1117,13 @@ export default function Students() {
                                             {(student.groups || []).length === 0 && <span className="text-[11px] text-matn-xira">{t('no_group')}</span>}
                                         </div>
                                     </td>
+                                    {balansKorinadi && (
                                     <td className="px-4 py-2.5 text-right">
                                         <span className={`num text-[13px] ${student.balance > 0 ? 'text-yaxshi' : student.balance < 0 ? 'text-xato' : 'text-matn-xira'}`}>
                                             {student.balance.toLocaleString('ru-RU')}
                                         </span>
                                     </td>
+                                    )}
                                     <td className="px-4 py-2.5 text-right">
                                         {/* Yaxshi davomat rangsiz: e'tibor faqat muammoga
                                             kerak. Ilgari ro'yxatning yarmi yashil edi. */}
@@ -1899,10 +1915,12 @@ export default function Students() {
                             className="w-full text-left px-4 py-2 text-[11px] font-bold text-matn-2 hover:bg-gray-55 dark:hover:bg-gray-700 cursor-pointer">
                             {t('details')}
                         </button>
+                        {oquvchiOchirish && (
                         <button onClick={() => { setActiveMenu(null); handleDeleteStudent(activeMenu.id, students.find(s => s.id === activeMenu.id)?.name || ''); }}
                             className="w-full text-left px-4 py-2 text-[11px] font-bold text-rose-600 dark:text-rose-450 hover:bg-rose-50 dark:hover:bg-rose-950/30 cursor-pointer">
                             {t('delete')}
                         </button>
+                        )}
                     </div>
                 </>
             )}

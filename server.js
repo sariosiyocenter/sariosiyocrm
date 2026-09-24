@@ -9,7 +9,8 @@ import { registerAuditRoutes } from './routes/audit.js';
 import { auditMiddleware } from './lib/audit.js';
 import { webhookSecretOk, registerSchoolWebhook, selfHealWebhook } from './lib/telegramWebhook.js';
 import { MODES as PAYME_MODES, SCHEMES as PAYME_SCHEMES, generateEndpointToken as generatePaymeEndpointToken } from './services/payme.js';
-import { authenticate, requireRole, STAFF_MANAGERS, canAccessSchool, allowedSchoolIds, ALL_BRANCHES, isOrgWide, forgetUser, sameOrganization, organizationSchoolIds } from './middleware/auth.js';
+import { authenticate, requireRole, canAccessSchool, allowedSchoolIds, ALL_BRANCHES, isOrgWide, forgetUser, sameOrganization, organizationSchoolIds, foydalanuvchiRuxsati, ozKurslari, unutRuxsatlar, tashkilotSozlamasi } from './middleware/auth.js';
+import { yetadimi, sozlamaniTozala, rolRuxsati, SOZLANADIGAN_ROLLAR, bolimNomi, ROL_NOMLARI } from './lib/ruxsatlar.js';
 import { encryptSecret, decryptSecret, secretsEncryptionEnabled } from './lib/secrets.js';
 import { claimBillingRun, releaseBillingRun, processMonthlyBilling, billingDayOf, billingDayReached, normalizeBillingDay } from './services/billing.js';
 import { fillTemplate, testNatijasiKerak } from './lib/xabarMatni.js';
@@ -128,7 +129,9 @@ let lastLazyCronRun = 0;
 app.use((req, res, next) => {
   // Payme webhook'i istisno: u tez va bir xil javob berishi kerak, orqa fon
   // ishi unga kechikish qo'shmasin.
-  if (req.path.startsWith('/api/') && !req.path.startsWith('/api/payme/') && Date.now() - lastLazyCronRun > 10 * 60 * 1000) {
+  // AUTO_JOBS=off — mahalliy sinov serveri production bazasidagi qoidalarni
+  // ishga tushirib, ota-onalarga haqiqiy xabar yubormasin.
+  if (process.env.AUTO_JOBS !== 'off' && req.path.startsWith('/api/') && !req.path.startsWith('/api/payme/') && Date.now() - lastLazyCronRun > 10 * 60 * 1000) {
     lastLazyCronRun = Date.now();
     (async () => {
       try {
@@ -264,7 +267,9 @@ app.post('/api/auth/login', loginLimiter, async (req, res, next) => {
       include: {
         school: {
           include: {
-            organization: true
+            // permissions ustuni bu yerda o'qilmaydi: u tashkilotSozlamasi orqali
+            // (keshlangan va ustun hali yo'q bo'lsa ham yiqilmaydi) olinadi.
+            organization: { select: { id: true, status: true, expiresAt: true } }
           }
         }
       }
@@ -280,6 +285,10 @@ app.post('/api/auth/login', loginLimiter, async (req, res, next) => {
       return res.status(403).json({
         error: "Haydovchilar CRM ga kirmaydi. Telegram botni oching va kontaktingizni ulashing — bugungi reyslar o'sha yerda.",
       });
+    }
+    // Texnik xodim (farrosh, qorovul) HR'da faqat maosh va davomat uchun turadi.
+    if (user.role === 'TECH_STAFF') {
+      return res.status(403).json({ error: "Texnik xodimlar CRM ga kirmaydi." });
     }
 
     if (user.school && user.school.organization) {
@@ -297,7 +306,13 @@ app.post('/api/auth/login', loginLimiter, async (req, res, next) => {
       JWT_SECRET,
       { expiresIn: TOKEN_TTL }
     );
-    res.json({ token, user: { id: user.id, email: user.email, name: user.name, role: user.role, schoolId: user.schoolId } });
+    res.json({
+      token,
+      user: {
+        id: user.id, email: user.email, name: user.name, role: user.role, schoolId: user.schoolId,
+        ruxsat: rolRuxsati(await tashkilotSozlamasi(user.school?.organization?.id), user.role),
+      }
+    });
   } catch (error) { next(error); }
 });
 
@@ -305,7 +320,7 @@ app.get('/api/auth/me', authenticate, async (req, res, next) => {
   try {
     // SUPERADMIN DB da saqlanmaydi
     if (req.user.role === 'SUPERADMIN') {
-      return res.json({ id: 0, email: req.user.email, name: 'Super Admin', role: 'SUPERADMIN', schoolId: null });
+      return res.json({ id: 0, email: req.user.email, name: 'Super Admin', role: 'SUPERADMIN', schoolId: null, ruxsat: req.ruxsat });
     }
     const user = await prisma.user.findUnique({
       where: { id: req.user.id },
@@ -314,9 +329,11 @@ app.get('/api/auth/me', authenticate, async (req, res, next) => {
     if (!user) return res.status(404).json({ error: 'Foydalanuvchi topilmadi' });
     // branchIds — qo'shimcha filiallar: mijoz oxirgi tanlangan filialni shunga
     // qarab tiklaydi (ikki filialda ishlaydigan xodim).
+    // ruxsat — menyu, sahifalar va tugmalar shunga qarab chiqadi (lib/ruxsatlar.js).
     res.json({
       id: user.id, email: user.email, name: user.name, role: user.role, schoolId: user.schoolId,
-      branchIds: user.branches.map(b => b.id)
+      branchIds: user.branches.map(b => b.id),
+      ruxsat: req.ruxsat
     });
   } catch (error) { next(error); }
 });
@@ -500,15 +517,65 @@ function filialXodimlariWhere(ids) {
   return { OR: [{ schoolId: { in: ids } }, { branches: { some: { id: { in: ids } } } }] };
 }
 
+// --- Lavozim ruxsatlari (Sozlamalar → Ruxsatlar, faqat ADMIN) ---
+// Butun markazga bitta sozlama: Organization.permissions. Katalog va
+// standartlar — lib/ruxsatlar.js, qaysi API qaysi bo'limga tegishli —
+// lib/ruxsatApi.js. Ikkala yo'l ham faqat ADMIN (jadvalda `admin`).
+const DARAJA_NOMI = ["Yo'q", "Ko'radi", "O'zgartiradi"];
+
+async function ruxsatJavobi(req, sozlama) {
+  const filiallar = await organizationSchoolIds(req.user);
+  const sonlar = await prisma.user.groupBy({
+    by: ['role'], _count: { _all: true },
+    where: { status: { not: 'Arxiv' }, schoolId: { in: filiallar } },
+  });
+  return {
+    sozlama: sozlamaniTozala(sozlama),
+    saqlangan: !!sozlama,
+    // Jadval ustunlari ostida: har lavozimda nechta faol xodim bor.
+    xodimlar: Object.fromEntries(sonlar.map(s => [s.role, s._count._all])),
+  };
+}
+
+app.get('/api/permissions', authenticate, async (req, res, next) => {
+  try {
+    if (!req.user.organizationId) return res.status(400).json({ error: 'Tashkilot topilmadi' });
+    res.json(await ruxsatJavobi(req, await tashkilotSozlamasi(req.user.organizationId)));
+  } catch (error) { next(error); }
+});
+
+app.put('/api/permissions', authenticate, async (req, res, next) => {
+  try {
+    const orgId = req.user.organizationId;
+    if (!orgId) return res.status(400).json({ error: 'Tashkilot topilmadi' });
+    const eski = sozlamaniTozala(await tashkilotSozlamasi(orgId));
+    const yangi = sozlamaniTozala(req.body?.sozlama);
+    await prisma.organization.update({ where: { id: orgId }, data: { permissions: yangi } });
+    unutRuxsatlar(orgId);
+
+    // Jurnal uchun: nima o'zgargani odam o'qiydigan ko'rinishda.
+    const ozgarishlar = [];
+    for (const rol of SOZLANADIGAN_ROLLAR) {
+      for (const [k, v] of Object.entries(yangi.rollar[rol])) {
+        if (eski.rollar[rol][k] !== v) {
+          ozgarishlar.push(`${ROL_NOMLARI[rol]}: ${bolimNomi(k)} — ${DARAJA_NOMI[eski.rollar[rol][k]]} → ${DARAJA_NOMI[v]}`);
+        }
+      }
+    }
+    for (const [rol, v] of Object.entries(yangi.faqatOzKurslari)) {
+      if (eski.faqatOzKurslari[rol] !== v) {
+        ozgarishlar.push(`${ROL_NOMLARI[rol]}: faqat o'z kurslari — ${v ? 'yoqildi' : "o'chirildi"}`);
+      }
+    }
+    res.json({ ...(await ruxsatJavobi(req, yangi)), ozgarishlar });
+  } catch (error) { next(error); }
+});
+
 // --- User Management (Admin only) ---
 app.get('/api/users', authenticate, async (req, res, next) => {
   try {
-    // SUPERADMIN xodim qo'sha va o'chira olardi, lekin ro'yxatni ko'ra
-    // olmasdi. Markaz administratori yo'qolgan holatda uni tiklash uchun
-    // aynan shu ro'yxat kerak.
-    if (req.user.role !== 'ADMIN' && req.user.role !== 'MANAGER' && req.user.role !== 'SUPERADMIN') {
-      return res.status(403).json({ error: 'Ruhsat yo' });
-    }
+    // Kim ko'radi — lavozim ruxsati (Xodimlar → Ro'yxat yoki Moliya → Xarajatlar:
+    // "Ish haqi" xarajatida xodim tanlanadi), authenticate'da tekshirilgan.
 
     // Har filialning xodimlari alohida. Ilgari ADMIN uchun `where` bo'sh qolardi va
     // ro'yxatga bazadagi BARCHA xodimlar — boshqa filiallarniki ham — tushardi; filial
@@ -518,8 +585,9 @@ app.get('/api/users', authenticate, async (req, res, next) => {
     let where;
     if (req.user.role === 'SUPERADMIN') {
       where = wanted > 0 ? filialXodimlariWhere([wanted]) : {};
-    } else if (req.user.role === 'MANAGER') {
-      // Menejer o'z filiali(lar)idan tanlanganini ko'radi.
+    } else if (!isOrgWide(req.user)) {
+      // Menejer (va ruxsat berilgan boshqa xodim) o'z filiali(lar)idan
+      // tanlanganini ko'radi; administratorlar ro'yxatda chiqmaydi.
       const ruxsatli = await allowedSchoolIds(req.user);
       const ids = wanted > 0 && ruxsatli.includes(wanted) ? [wanted] : [req.user.schoolId ?? -1];
       where = { ...filialXodimlariWhere(ids), role: { not: 'ADMIN' } };
@@ -545,8 +613,11 @@ app.get('/api/users', authenticate, async (req, res, next) => {
         driverTransport: { select: { model: true, number: true, capacity: true, tarif: true } }
       }
     });
+    // Maosh va KPI faqat "Xodimlar → Maosh" ni ko'radiganga.
+    const maoshKorinadi = yetadimi(req.ruxsat, 'xodimlar.maosh', 1);
     res.json(users.map(u => {
       const { teacherProfile, branches, driverTransport, ...qolgan } = u;
+      if (!maoshKorinadi) { delete qolgan.salary; delete qolgan.kpiPercent; }
       return {
         ...qolgan, teacherId: teacherProfile?.id ?? null, branchIds: branches.map(b => b.id),
         ...(driverTransport ? {
@@ -560,22 +631,30 @@ app.get('/api/users', authenticate, async (req, res, next) => {
 
 app.post('/api/users', authenticate, async (req, res, next) => {
   try {
-    if (req.user.role !== 'ADMIN' && req.user.role !== 'MANAGER' && req.user.role !== 'SUPERADMIN') return res.status(403).json({ error: 'Ruhsat yo' });
-
+    // Kim qo'sha oladi — "Xodimlar → Ro'yxat" ruxsati (authenticate).
     let { email, password, name, phone, photo, position, salary, role, schoolId, kpiPercent, vehicleModel, vehicleNumber, vehicleCapacity } = req.body;
     // Haydovchining yo'l haqi tarifi (lib/transportNarx.js) — xato bo'lsa xodim ham yaratilmaydi.
     const tarifT = req.body.vehicleTariff !== undefined ? tarifniTozalash(req.body.vehicleTariff) : null;
     if (tarifT?.xato) return res.status(400).json({ error: tarifT.xato });
     photo = await rasmQiymatiniTozala(photo, 'user');
 
-    if (req.user.role === 'MANAGER' && (role === 'ADMIN' || role === 'MANAGER')) {
-      return res.status(403).json({ error: 'Menejer faqat o\'qituvchi va resepshn qo\'sha oladi' });
+    if (!isAdmin(req.user) && (role === 'ADMIN' || role === 'MANAGER')) {
+      return res.status(403).json({ error: 'Admin va menejerni faqat administrator qo\'sha oladi' });
     }
+    // Maosh — "Xodimlar → Maosh" ruxsatisiz yozilmaydi.
+    if (!yetadimi(req.ruxsat, 'xodimlar.maosh', 2)) { salary = undefined; kpiPercent = undefined; }
 
-    // TECH_STAFF doesn't need a real login — auto-generate credentials
-    if (role === 'TECH_STAFF') {
-      email = email || `tech_${Date.now()}_${Math.random().toString(36).slice(2)}@internal.local`;
-      password = password || Math.random().toString(36).slice(2) + Math.random().toString(36).slice(2);
+    // Texnik xodim ham, haydovchi ham CRM ga kirmaydi — ularga login kerak emas.
+    // Haydovchi Telegram botga telefon raqami orqali ulanadi (bot.js `contact`),
+    // shuning uchun unga telefon majburiy. Tasodifiy parol hech kimga aytilmaydi.
+    if (role === 'DRIVER' && !String(phone || '').replace(/\D/g, '')) {
+      return res.status(400).json({ error: "Haydovchining telefon raqamini kiriting — bot uni shu raqam orqali taniydi" });
+    }
+    if (role === 'TECH_STAFF' || role === 'DRIVER') {
+      const tur = role === 'DRIVER' ? 'driver' : 'tech';
+      email = email || `${tur}_${Date.now()}_${Math.random().toString(36).slice(2)}@internal.local`;
+      const tasodifiy = Math.random().toString(36).slice(2) + Math.random().toString(36).slice(2);
+      password = role === 'DRIVER' ? tasodifiy : (password || tasodifiy);
     }
 
     if (!email) return res.status(400).json({ error: 'Email majburiy' });
@@ -587,8 +666,9 @@ app.post('/api/users', authenticate, async (req, res, next) => {
     // Bir nechta filial belgilansa birinchisi asosiy, qolganlari qo'shimcha.
     let targetSchoolId;
     let qoshimchaFiliallar = [];
-    if (req.user.role === 'MANAGER') {
-      targetSchoolId = req.user.schoolId;
+    if (!isAdmin(req.user)) {
+      // Filial xodimi faqat o'zi ishlab turgan filialga qo'shadi.
+      targetSchoolId = req.schoolScope ?? req.user.schoolId;
     } else if (req.user.role === 'SUPERADMIN') {
       targetSchoolId = schoolId ? parseInt(schoolId) : null;
       if (isNaN(targetSchoolId) && targetSchoolId !== null) return res.status(400).json({ error: 'Invalid schoolId' });
@@ -702,9 +782,9 @@ async function xodimAmaliTekshir(req, targetId) {
     if (!ruxsat) return { status: 403, error: 'Bu xodim boshqa filialga tegishli' };
   }
 
-  // Menejer ADMIN ustida hech qanday amal qila olmaydi.
-  if (req.user.role === 'MANAGER' && target.role === 'ADMIN') {
-    return { status: 403, error: 'Menejer administratorni o\'zgartira olmaydi' };
+  // Administrator bo'lmagan xodim ADMIN ustida hech qanday amal qila olmaydi.
+  if (!isAdmin(req.user) && target.role === 'ADMIN') {
+    return { status: 403, error: 'Administratorni faqat administrator o\'zgartira oladi' };
   }
 
   return { target, isSuper };
@@ -722,9 +802,7 @@ async function oxirgiAdminmi(target) {
 
 app.put('/api/users/:id', authenticate, async (req, res, next) => {
   try {
-    if (req.user.role !== 'ADMIN' && req.user.role !== 'MANAGER' && req.user.role !== 'SUPERADMIN') {
-      return res.status(403).json({ error: 'Faqat ADMIN/MANAGER tahrirlay oladi' });
-    }
+    // Qaysi maydonni kim o'zgartiradi — lavozim ruxsati (lib/ruxsatApi.js xodimTahriri).
     const { id } = req.params;
     const targetId = parseInt(id);
     if (!Number.isInteger(targetId)) return res.status(400).json({ error: 'Xodim raqami noto\'g\'ri' });
@@ -734,6 +812,8 @@ app.put('/api/users/:id', authenticate, async (req, res, next) => {
     const { target } = tekshir;
 
     let { email, name, phone, photo, position, salary, role, password, workDays, kpiPercent, status, vehicleModel, vehicleNumber, vehicleCapacity } = req.body;
+    // Haydovchiga CRM paroli berilmaydi — u faqat Telegram botda ishlaydi.
+    if ((role ?? target.role) === 'DRIVER') password = undefined;
     const tarifT = req.body.vehicleTariff !== undefined ? tarifniTozalash(req.body.vehicleTariff) : null;
     if (tarifT?.xato) return res.status(400).json({ error: tarifT.xato });
     photo = await rasmQiymatiniTozala(photo, 'user');
@@ -741,8 +821,8 @@ app.put('/api/users/:id', authenticate, async (req, res, next) => {
     if (role !== undefined && role !== target.role) {
       // Menejer o'zini yoki boshqani ADMIN/MANAGER qilib ko'tara olmaydi.
       // Xodim qo'shishda bu taqiqlangan edi, tahrirlashda unutilgan.
-      if (req.user.role === 'MANAGER' && (role === 'ADMIN' || role === 'MANAGER')) {
-        return res.status(403).json({ error: 'Menejer bu lavozimni bera olmaydi' });
+      if (!isAdmin(req.user) && (role === 'ADMIN' || role === 'MANAGER')) {
+        return res.status(403).json({ error: 'Bu lavozimni faqat administrator bera oladi' });
       }
       // O'z lavozimini o'zi o'zgartira olmaydi.
       if (target.id === req.user.id) {
@@ -776,7 +856,7 @@ app.put('/api/users/:id', authenticate, async (req, res, next) => {
         || qoshimcha.some(id => !joriyQoshimcha.includes(id));
 
       if (asosiyOzgardi || qoshimchaOzgardi) {
-        if (req.user.role === 'MANAGER') {
+        if (!isAdmin(req.user)) {
           return res.status(403).json({ error: "Xodimning filiallarini faqat administrator o'zgartira oladi" });
         }
         if (req.user.role !== 'SUPERADMIN') {
@@ -932,9 +1012,7 @@ app.put('/api/users/:id', authenticate, async (req, res, next) => {
 
 app.delete('/api/users/:id', authenticate, async (req, res, next) => {
   try {
-    if (req.user.role !== 'ADMIN' && req.user.role !== 'SUPERADMIN') {
-      return res.status(403).json({ error: 'Faqat ADMIN o\'chira oladi' });
-    }
+    // Kim o'chira oladi — "Xodimlar → Arxivlash yoki o'chirish" ruxsati (authenticate).
     const { id } = req.params;
     const targetId = parseInt(id);
     if (!Number.isInteger(targetId)) return res.status(400).json({ error: 'Xodim raqami noto\'g\'ri' });
@@ -1046,7 +1124,6 @@ async function xodimFilialiXatosi(req, userId) {
 
 app.get('/api/staff-attendance', authenticate, async (req, res, next) => {
   try {
-    if (req.user.role !== 'ADMIN' && req.user.role !== 'MANAGER') return res.status(403).json({ error: 'Ruhsat yo' });
     const { userId, month } = req.query;
     if (!userId) return res.status(400).json({ error: 'userId required' });
     const filialXatosi = await xodimFilialiXatosi(req, userId);
@@ -1060,7 +1137,6 @@ app.get('/api/staff-attendance', authenticate, async (req, res, next) => {
 
 app.post('/api/staff-attendance', authenticate, async (req, res, next) => {
   try {
-    if (req.user.role !== 'ADMIN' && req.user.role !== 'MANAGER') return res.status(403).json({ error: 'Ruhsat yo' });
     const { userId, date, status } = req.body;
     const filialXatosi = await xodimFilialiXatosi(req, userId);
     if (filialXatosi) return res.status(403).json({ error: filialXatosi });
@@ -1079,7 +1155,6 @@ app.post('/api/staff-attendance', authenticate, async (req, res, next) => {
 
 app.delete('/api/staff-attendance', authenticate, async (req, res, next) => {
   try {
-    if (req.user.role !== 'ADMIN' && req.user.role !== 'MANAGER') return res.status(403).json({ error: 'Ruhsat yo' });
     const { userId, date } = req.query;
     const filialXatosi = await xodimFilialiXatosi(req, userId);
     if (filialXatosi) return res.status(403).json({ error: filialXatosi });
@@ -1094,9 +1169,6 @@ app.delete('/api/staff-attendance', authenticate, async (req, res, next) => {
 // bo'lib ko'rinardi.
 app.get('/api/salary-payments', authenticate, async (req, res, next) => {
   try {
-    if (!['ADMIN', 'MANAGER', 'SUPERADMIN'].includes(req.user.role)) {
-      return res.status(403).json({ error: "Bu ma'lumotni ko'rishga ruxsatingiz yo'q" });
-    }
     const { userId } = req.query;
     if (!userId) return res.status(400).json({ error: 'userId required' });
     const filialXatosi = await xodimFilialiXatosi(req, userId);
@@ -1149,9 +1221,6 @@ async function oylikXabariniYubor(userId, schoolId, matn) {
 // urinishda takrorlanardi.
 app.post('/api/salary-payments', authenticate, async (req, res, next) => {
   try {
-    if (!['ADMIN', 'MANAGER', 'SUPERADMIN'].includes(req.user.role)) {
-      return res.status(403).json({ error: "Oylik berishga ruxsatingiz yo'q" });
-    }
     const { userId, month, amount, baseSalary, bonuses, fines, note } = req.body;
     const parsedUserId = parseInt(userId);
     const parsedAmount = parseInt(amount);
@@ -1228,9 +1297,6 @@ app.post('/api/salary-payments', authenticate, async (req, res, next) => {
 // kiritilsa yozuvni o'chirib, qaytadan yaratishdan boshqa chora qolmasdi.
 app.put('/api/salary-payments/:id', authenticate, async (req, res, next) => {
   try {
-    if (!['ADMIN', 'MANAGER', 'SUPERADMIN'].includes(req.user.role)) {
-      return res.status(403).json({ error: "Oylikni o'zgartirishga ruxsatingiz yo'q" });
-    }
     const pid = parseInt(req.params.id);
     if (!Number.isInteger(pid)) return res.status(400).json({ error: "Noto'g'ri ID" });
 
@@ -1282,9 +1348,6 @@ app.put('/api/salary-payments/:id', authenticate, async (req, res, next) => {
 
 app.delete('/api/salary-payments/:id', authenticate, async (req, res, next) => {
   try {
-    if (!['ADMIN', 'MANAGER', 'SUPERADMIN'].includes(req.user.role)) {
-      return res.status(403).json({ error: "O'chirishga ruxsatingiz yo'q" });
-    }
     const { id } = req.params;
     const payment = await prisma.salaryPayment.findUnique({ where: { id: parseInt(id) } });
     if (!payment) return res.status(404).json({ error: 'Not found' });
@@ -1302,7 +1365,6 @@ app.delete('/api/salary-payments/:id', authenticate, async (req, res, next) => {
 
 app.get('/api/kpi-calculation', authenticate, async (req, res, next) => {
   try {
-    if (req.user.role !== 'ADMIN' && req.user.role !== 'MANAGER') return res.status(403).json({ error: 'Ruhsat yo' });
     const { userId, month } = req.query;
     if (!userId || !month) return res.status(400).json({ error: 'userId and month required' });
     const filialXatosi = await xodimFilialiXatosi(req, userId);
@@ -1537,19 +1599,22 @@ app.get('/api/students', authenticate, async (req, res, next) => {
   try {
     const { schoolId } = req.query;
     if (!schoolId) return res.status(400).json({ error: 'schoolId required' });
+    // "Faqat o'z kurslari" — ustoz faqat o'z kurslaridagi o'quvchilarni oladi.
+    const oz = req.ruxsat?.faqatOz ? await ozKurslari(req.user) : null;
     const students = await prisma.student.findMany({
-      where: { schoolId: parseInt(schoolId) },
+      where: { schoolId: parseInt(schoolId), ...(oz ? { id: { in: [...oz.studentIds] } } : {}) },
       include: {
         groups: { select: { id: true } },
         // Qaysi marshrutlarda ekani — profil va formalar uchun.
         routeStops: { select: { routeId: true } },
       }
     });
-    res.json(students.map(s => ({
-      ...s,
-      groups: s.groups.map(g => g.id),
-      routeIds: s.routeStops.map(x => x.routeId),
-    })));
+    const balansKorinadi = yetadimi(req.ruxsat, 'oquvchilar.balans', 1);
+    res.json(students.map(s => {
+      const o = { ...s, groups: s.groups.map(g => g.id), routeIds: s.routeStops.map(x => x.routeId) };
+      if (!balansKorinadi) { delete o.balance; delete o.customPrices; delete o.payShare; }
+      return o;
+    }));
   } catch (error) { next(error); }
 });
 app.post('/api/students', authenticate, async (req, res, next) => {
@@ -1828,7 +1893,7 @@ app.put('/api/students/:id', authenticate, async (req, res, next) => {
     next(error);
   }
 });
-app.delete('/api/students/:id', authenticate, requireRole(...STAFF_MANAGERS), async (req, res, next) => {
+app.delete('/api/students/:id', authenticate, async (req, res, next) => {
   try {
     const sid = parseInt(req.params.id);
     if (isNaN(sid)) return res.status(400).json({ error: 'Noto\u2019g\u2019ri ID' });
@@ -1907,7 +1972,7 @@ function pickTeacherFields(body) {
   return data;
 }
 
-app.post('/api/teachers', authenticate, requireRole(...STAFF_MANAGERS), async (req, res, next) => {
+app.post('/api/teachers', authenticate, async (req, res, next) => {
   try {
     const { schoolId } = req.body;
     if (!schoolId) return res.status(400).json({ error: 'schoolId required' });
@@ -1936,7 +2001,7 @@ app.post('/api/teachers', authenticate, requireRole(...STAFF_MANAGERS), async (r
     res.json(teacher);
   } catch (error) { next(error); }
 });
-app.put('/api/teachers/:id', authenticate, requireRole(...STAFF_MANAGERS), async (req, res, next) => {
+app.put('/api/teachers/:id', authenticate, async (req, res, next) => {
   try {
     const { id } = req.params;
     const ustozData = pickTeacherFields(req.body);
@@ -1978,7 +2043,7 @@ app.put('/api/teachers/:id', authenticate, requireRole(...STAFF_MANAGERS), async
 // handler'ga tushib "Serverda xatolik yuz berdi" (500) bo'lib ko'rinardi va
 // rahbar nima qilish kerakligini bilmasdi. Endi sabab oldindan aytiladi —
 // xuddi /api/users/:id dagidek: arxiv yoki (davomat bo'lsa) butunlay o'chirish.
-app.delete('/api/teachers/:id', authenticate, requireRole(...STAFF_MANAGERS), async (req, res, next) => {
+app.delete('/api/teachers/:id', authenticate, async (req, res, next) => {
   try {
     const teacherId = parseInt(req.params.id);
     if (!Number.isInteger(teacherId)) return res.status(400).json({ error: "Ustoz raqami noto'g'ri" });
@@ -2044,18 +2109,20 @@ app.get('/api/groups', authenticate, async (req, res, next) => {
   try {
     const { schoolId } = req.query;
     if (!schoolId) return res.status(400).json({ error: 'schoolId required' });
+    const oz = req.ruxsat?.faqatOz ? await ozKurslari(req.user) : null;
     const groups = await prisma.group.findMany({
-      where: { schoolId: parseInt(schoolId) },
+      where: { schoolId: parseInt(schoolId), ...(oz ? { id: { in: [...oz.groupIds] } } : {}) },
       include: { 
         students: { select: { id: true } },
         course: { select: { name: true } }
       }
     });
-    res.json(groups.map(g => ({ 
-      ...g, 
-      studentIds: g.students.map(s => s.id),
-      courseName: g.course?.name
-    })));
+    const ulushKorinadi = yetadimi(req.ruxsat, 'kurslar.narx', 1);
+    res.json(groups.map(g => {
+      const o = { ...g, studentIds: g.students.map(s => s.id), courseName: g.course?.name };
+      if (!ulushKorinadi) { delete o.payType; delete o.payValue; }
+      return o;
+    }));
   } catch (error) { next(error); }
 });
 app.post('/api/groups', authenticate, async (req, res, next) => {
@@ -2177,7 +2244,7 @@ app.post('/api/groups/:id/students', authenticate, async (req, res, next) => {
 });
 
 // Atomic endpoint: disconnect a single student from a group
-app.delete('/api/groups/:id/students/:studentId', authenticate, requireRole(...STAFF_MANAGERS), async (req, res, next) => {
+app.delete('/api/groups/:id/students/:studentId', authenticate, async (req, res, next) => {
   try {
     const groupId = parseInt(req.params.id);
     const studentId = parseInt(req.params.studentId);
@@ -2279,7 +2346,7 @@ app.put('/api/groups/:id', authenticate, async (req, res, next) => {
   }
 });
 
-app.delete('/api/groups/:id', authenticate, requireRole(...STAFF_MANAGERS), async (req, res, next) => {
+app.delete('/api/groups/:id', authenticate, async (req, res, next) => {
   try {
     const groupId = parseInt(req.params.id);
     if (isNaN(groupId)) return res.status(400).json({ error: "Noto'g'ri ID" });
@@ -2646,7 +2713,7 @@ app.put('/api/leads/:id', authenticate, async (req, res, next) => {
   } catch (error) { next(error); }
 });
 
-app.delete('/api/leads/:id', authenticate, requireRole(...STAFF_MANAGERS), async (req, res, next) => {
+app.delete('/api/leads/:id', authenticate, async (req, res, next) => {
   try {
     const { id } = req.params;
     await prisma.lead.delete({ where: { id: parseInt(id) } });
@@ -2659,7 +2726,10 @@ app.get('/api/payments', authenticate, async (req, res, next) => {
   try {
     const { schoolId } = req.query;
     if (!schoolId) return res.status(400).json({ error: 'schoolId required' });
-    const payments = await prisma.payment.findMany({ where: { schoolId: parseInt(schoolId) } });
+    const oz = req.ruxsat?.faqatOz ? await ozKurslari(req.user) : null;
+    const payments = await prisma.payment.findMany({
+      where: { schoolId: parseInt(schoolId), ...(oz ? { studentId: { in: [...oz.studentIds] } } : {}) }
+    });
     res.json(payments);
   } catch (error) { next(error); }
 });
@@ -2671,7 +2741,7 @@ const PAYMENT_TYPES = ['Naqd', 'Karta', "O'tkazma", 'Peyme', 'Klik', 'Chegirma',
 // To'lovni qabul qiladiganlar: admin, menejer, receptionist. Ustoz, yordamchi
 // ustoz, texnik xodim va sotuvchi yoza olmaydi — kassa/xarajat bilan bir xil
 // qoida (ilgari har qanday kirgan foydalanuvchi yoza olardi).
-app.post('/api/payments', authenticate, requireRole('ADMIN', 'MANAGER', 'RECEPTIONIST'), async (req, res, next) => {
+app.post('/api/payments', authenticate, async (req, res, next) => {
   try {
     const { schoolId, ...data } = req.body;
     if (!schoolId) return res.status(400).json({ error: 'schoolId required' });
@@ -2719,7 +2789,7 @@ function paymentEditable(user, payment) {
   return { ok: false, error: "To'lovni faqat kiritilgandan keyin 10 daqiqa ichida tahrirlash mumkin. Administratorga murojaat qiling." };
 }
 
-app.put('/api/payments/:id', authenticate, requireRole('ADMIN', 'MANAGER', 'RECEPTIONIST'), async (req, res, next) => {
+app.put('/api/payments/:id', authenticate, async (req, res, next) => {
   try {
     const id = parseInt(req.params.id);
     if (!Number.isInteger(id)) return res.status(400).json({ error: "Noto'g'ri ID" });
@@ -2821,7 +2891,7 @@ app.get('/api/face-profiles', authenticate, async (req, res, next) => {
   } catch (error) { next(error); }
 });
 
-app.post('/api/face-profiles', authenticate, requireRole(...STAFF_MANAGERS), async (req, res, next) => {
+app.post('/api/face-profiles', authenticate, async (req, res, next) => {
   try {
     const schoolId = parseInt(req.body.schoolId);
     if (!Number.isInteger(schoolId) || schoolId <= 0) return res.status(400).json({ error: 'schoolId kerak' });
@@ -2859,7 +2929,7 @@ app.post('/api/face-profiles', authenticate, requireRole(...STAFF_MANAGERS), asy
   } catch (error) { next(error); }
 });
 
-app.delete('/api/face-profiles/:studentId', authenticate, requireRole(...STAFF_MANAGERS), async (req, res, next) => {
+app.delete('/api/face-profiles/:studentId', authenticate, async (req, res, next) => {
   try {
     const studentId = parseInt(req.params.studentId);
     const student = await prisma.student.findUnique({ where: { id: studentId }, select: { schoolId: true } });
@@ -2881,7 +2951,7 @@ app.get('/api/expenses', authenticate, async (req, res, next) => {
   } catch (error) { next(error); }
 });
 
-app.post('/api/expenses', authenticate, requireRole(...STAFF_MANAGERS), async (req, res, next) => {
+app.post('/api/expenses', authenticate, async (req, res, next) => {
   try {
     const { schoolId, amount, category, date, description, method } = req.body;
     const parsedSchoolId = parseInt(schoolId);
@@ -2903,7 +2973,7 @@ app.post('/api/expenses', authenticate, requireRole(...STAFF_MANAGERS), async (r
   } catch (error) { next(error); }
 });
 
-app.delete('/api/expenses/:id', authenticate, requireRole(...STAFF_MANAGERS), async (req, res, next) => {
+app.delete('/api/expenses/:id', authenticate, async (req, res, next) => {
   try {
     const { id } = req.params;
     await prisma.expense.delete({ where: { id: parseInt(id) } });
@@ -3013,7 +3083,7 @@ app.get('/api/kassa', authenticate, async (req, res, next) => {
   } catch (error) { next(error); }
 });
 
-app.post('/api/kassa/handover', authenticate, requireRole(...STAFF_MANAGERS), async (req, res, next) => {
+app.post('/api/kassa/handover', authenticate, async (req, res, next) => {
   try {
     const { schoolId, amount, date, toWhom, note } = req.body;
     const sid = parseInt(schoolId);
@@ -3031,7 +3101,7 @@ app.post('/api/kassa/handover', authenticate, requireRole(...STAFF_MANAGERS), as
   } catch (error) { next(error); }
 });
 
-app.delete('/api/kassa/handover/:id', authenticate, requireRole(...STAFF_MANAGERS), async (req, res, next) => {
+app.delete('/api/kassa/handover/:id', authenticate, async (req, res, next) => {
   try {
     const row = await prisma.cashHandover.findUnique({ where: { id: parseInt(req.params.id) } });
     if (!row) return res.status(404).json({ error: 'Topilmadi' });
@@ -3041,7 +3111,7 @@ app.delete('/api/kassa/handover/:id', authenticate, requireRole(...STAFF_MANAGER
   } catch (error) { next(error); }
 });
 
-app.post('/api/kassa/close', authenticate, requireRole(...STAFF_MANAGERS), async (req, res, next) => {
+app.post('/api/kassa/close', authenticate, async (req, res, next) => {
   try {
     const { schoolId, date, counted, note } = req.body;
     const sid = parseInt(schoolId);
@@ -3080,7 +3150,7 @@ app.get('/api/directions', authenticate, async (req, res, next) => {
   } catch (error) { next(error); }
 });
 
-app.post('/api/directions', authenticate, requireRole(...STAFF_MANAGERS), async (req, res, next) => {
+app.post('/api/directions', authenticate, async (req, res, next) => {
   try {
     const schoolId = parseInt(req.body.schoolId);
     if (!Number.isInteger(schoolId) || schoolId <= 0) return res.status(400).json({ error: 'schoolId required' });
@@ -3092,7 +3162,7 @@ app.post('/api/directions', authenticate, requireRole(...STAFF_MANAGERS), async 
   } catch (error) { next(error); }
 });
 
-app.put('/api/directions/:id', authenticate, requireRole(...STAFF_MANAGERS), async (req, res, next) => {
+app.put('/api/directions/:id', authenticate, async (req, res, next) => {
   try {
     const id = parseInt(req.params.id);
     const found = await prisma.direction.findUnique({ where: { id }, select: { schoolId: true } });
@@ -3111,7 +3181,7 @@ app.put('/api/directions/:id', authenticate, requireRole(...STAFF_MANAGERS), asy
 
 // O'chirilgan yo'nalish o'quvchilarni olib ketmaydi: ularning directionId si
 // NULL bo'ladi (schema: onDelete SetNull), ya'ni "yo'nalish tanlanmagan".
-app.delete('/api/directions/:id', authenticate, requireRole(...STAFF_MANAGERS), async (req, res, next) => {
+app.delete('/api/directions/:id', authenticate, async (req, res, next) => {
   try {
     const id = parseInt(req.params.id);
     const found = await prisma.direction.findUnique({ where: { id }, select: { schoolId: true } });
@@ -3132,7 +3202,7 @@ app.get('/api/courses', authenticate, async (req, res, next) => {
     res.json(await prisma.course.findMany({ where: { schoolId: parseInt(schoolId) } }));
   } catch (error) { next(error); }
 });
-app.post('/api/courses', authenticate, requireRole(...STAFF_MANAGERS), async (req, res, next) => {
+app.post('/api/courses', authenticate, async (req, res, next) => {
   try {
     const { schoolId, ...data } = req.body;
     if (!schoolId) return res.status(400).json({ error: 'schoolId required' });
@@ -3143,7 +3213,7 @@ app.post('/api/courses', authenticate, requireRole(...STAFF_MANAGERS), async (re
     res.json(await prisma.course.create({ data: { ...data, schoolId: parseInt(schoolId) } }));
   } catch (error) { next(error); }
 });
-app.put('/api/courses/:id', authenticate, requireRole(...STAFF_MANAGERS), async (req, res, next) => {
+app.put('/api/courses/:id', authenticate, async (req, res, next) => {
   try {
     const data = {};
     if (req.body.name !== undefined) data.name = req.body.name;
@@ -3154,7 +3224,7 @@ app.put('/api/courses/:id', authenticate, requireRole(...STAFF_MANAGERS), async 
     res.json(await prisma.course.update({ where: { id: parseInt(req.params.id) }, data }));
   } catch (error) { next(error); }
 });
-app.delete('/api/courses/:id', authenticate, requireRole(...STAFF_MANAGERS), async (req, res, next) => {
+app.delete('/api/courses/:id', authenticate, async (req, res, next) => {
   try {
     const cId = parseInt(req.params.id);
     if (isNaN(cId)) return res.status(400).json({ error: "Noto'g'ri ID" });
@@ -3249,7 +3319,7 @@ app.put('/api/topics/:id', authenticate, async (req, res, next) => {
   } catch (error) { next(error); }
 });
 
-app.delete('/api/topics/:id', authenticate, requireRole(...STAFF_MANAGERS), async (req, res, next) => {
+app.delete('/api/topics/:id', authenticate, async (req, res, next) => {
   try {
     const { id } = req.params;
     await prisma.topic.delete({ where: { id: parseInt(id) } });
@@ -3312,7 +3382,7 @@ app.put('/api/syllabuses/:id', authenticate, async (req, res, next) => {
   } catch (error) { next(error); }
 });
 
-app.delete('/api/syllabuses/:id', authenticate, requireRole(...STAFF_MANAGERS), async (req, res, next) => {
+app.delete('/api/syllabuses/:id', authenticate, async (req, res, next) => {
   try {
     const { id } = req.params;
     await prisma.syllabus.delete({ where: { id: parseInt(id) } });
@@ -3329,7 +3399,7 @@ app.get('/api/rooms', authenticate, async (req, res, next) => {
   } catch (error) { next(error); }
 });
 
-app.post('/api/rooms', authenticate, requireRole(...STAFF_MANAGERS), async (req, res, next) => {
+app.post('/api/rooms', authenticate, async (req, res, next) => {
   try {
     const { schoolId, ...data } = req.body;
     if (!schoolId) return res.status(400).json({ error: 'schoolId required' });
@@ -3340,7 +3410,7 @@ app.post('/api/rooms', authenticate, requireRole(...STAFF_MANAGERS), async (req,
 
 // Xonani tahrirlash: nomi va sig'imi. Ilgari faqat qo'shish va o'chirish bor
 // edi — xato yozilgan xonani o'chirsa, unga biriktirilgan kurslar xonasiz qolardi.
-app.put('/api/rooms/:id', authenticate, requireRole(...STAFF_MANAGERS), async (req, res, next) => {
+app.put('/api/rooms/:id', authenticate, async (req, res, next) => {
   try {
     const id = parseInt(req.params.id);
     if (!Number.isInteger(id)) return res.status(400).json({ error: "Xona raqami noto'g'ri" });
@@ -3361,7 +3431,7 @@ app.put('/api/rooms/:id', authenticate, requireRole(...STAFF_MANAGERS), async (r
   } catch (error) { next(error); }
 });
 
-app.delete('/api/rooms/:id', authenticate, requireRole(...STAFF_MANAGERS), async (req, res, next) => {
+app.delete('/api/rooms/:id', authenticate, async (req, res, next) => {
   try {
     await prisma.room.delete({ where: { id: parseInt(req.params.id) } });
     res.json({ success: true });
@@ -3887,6 +3957,19 @@ app.get('/api/init', authenticate, async (req, res, next) => {
       OR: [whereQuery, { user: { is: { branches: { some: { id: { in: targetSchoolIds } } } } } }]
     };
 
+    // Lavozim ruxsati: ko'rmaydigan bo'limning ma'lumoti umuman yuborilmaydi
+    // (ilgari o'qituvchi brauzeriga ham barcha to'lovlar, xarajatlar va
+    // xodimlar oyligi kelardi). "Faqat o'z kurslari" — faqat o'z kurslari va
+    // shu kurslardagi o'quvchilar.
+    const kor = (...k) => k.some(x => yetadimi(req.ruxsat, x, 1));
+    const bosh = [];
+    const oz = req.ruxsat?.faqatOz ? await ozKurslari(req.user) : null;
+    const ozGuruhlar = oz ? [...oz.groupIds] : null;
+    const ozOquvchilar = oz ? [...oz.studentIds] : null;
+    const ozGuruh = oz ? { groupId: { in: ozGuruhlar } } : {};
+    const ozOquvchi = oz ? { studentId: { in: ozOquvchilar } } : {};
+    const agar = (shart, soroq) => (shart ? soroq : Promise.resolve(bosh));
+
     // All queries run in parallel — only 1 DB round-trip overhead
     const [
       students, teachers, groups, leads, payments, courses, rooms,
@@ -3895,21 +3978,22 @@ app.get('/api/init', authenticate, async (req, res, next) => {
       topics, syllabuses, directions
     ] = await Promise.all([
       prisma.student.findMany({
-        where: whereQuery,
+        where: oz ? { ...whereQuery, id: { in: ozOquvchilar } } : whereQuery,
         // Marshrut bekatlari ham kerak: o'quvchi qaysi marshrutda ekani
         // formalarda va profilda shu yerdan ko'rinadi.
         include: { groups: { select: { id: true } }, routeStops: { select: { routeId: true } } }
       }),
       prisma.teacher.findMany({ where: ustozWhere }),
       prisma.group.findMany({
-        where: whereQuery,
+        where: oz ? { ...whereQuery, id: { in: ozGuruhlar } } : whereQuery,
         include: {
           students: { select: { id: true } },
           course: { select: { name: true } }
         }
       }),
-      prisma.lead.findMany({ where: whereQuery }),
-      prisma.payment.findMany({ where: whereQuery }),
+      agar(kor('lidlar.royxat', 'bosh.hisobot'), prisma.lead.findMany({ where: whereQuery })),
+      agar(kor('oquvchilar.balans', 'moliya.tolovlar', 'moliya.hisobot', 'bosh.pul'),
+        prisma.payment.findMany({ where: { ...whereQuery, ...ozOquvchi } })),
       prisma.course.findMany({ where: whereQuery }),
       prisma.room.findMany({ where: whereQuery }),
       prisma.setting.findFirst({ where: { schoolId: { in: targetSchoolIds } } }),
@@ -3917,17 +4001,19 @@ app.get('/api/init', authenticate, async (req, res, next) => {
       // without bound — 255 students marked daily is ~38k rows a year — and /api/init is a
       // single response that Vercel caps at 4.5 MB. Older records are fetched per student
       // or per group from /api/attendances when a detail screen actually needs them.
-      prisma.attendance.findMany({ where: { ...whereQuery, date: { gte: attendanceWindowStart() } } }),
-      prisma.score.findMany({ where: whereQuery }),
-      prisma.teacherAttendance.findMany({ where: whereQuery }),
+      prisma.attendance.findMany({ where: { ...whereQuery, ...ozGuruh, date: { gte: attendanceWindowStart() } } }),
+      prisma.score.findMany({ where: { ...whereQuery, ...ozOquvchi } }),
+      agar(kor('xodimlar.davomat'), prisma.teacherAttendance.findMany({ where: whereQuery })),
       // Xodim davomati (profildagi "Ish grafigi" kalendari yozadigan jadval).
       // Hisobot ilgari TeacherAttendance dan o'qir edi, unga esa hech narsa
       // yozilmay qolgan — shuning uchun hamma xodim 0% ko'rinardi.
-      prisma.staffAttendance.findMany({ where: whereQuery }),
-      prisma.expense.findMany({ where: whereQuery }),
+      agar(kor('xodimlar.davomat'), prisma.staffAttendance.findMany({ where: whereQuery })),
+      agar(kor('moliya.xarajat', 'moliya.hisobot', 'bosh.pul'), prisma.expense.findMany({ where: whereQuery })),
       prisma.transport.findMany({
         where: whereQuery,
-        include: { driver: true }
+        // include: { driver: true } haydovchining parol xeshini va emailini ham
+        // brauzerga yuborardi. /api/transports allaqachon shu tanlovni ishlatadi.
+        include: { driver: { select: DRIVER_SELECT } }
       }),
       prisma.route.findMany({
         // Kunlik rejalar har kuni yangi yozuv: hammasini yuklash init javobini
@@ -3949,9 +4035,10 @@ app.get('/api/init', authenticate, async (req, res, next) => {
           branches: { select: { id: true } }
         }
       }),
-      prisma.question.findMany({ where: whereQuery }),
-      prisma.exam.findMany({ where: whereQuery }),
-      prisma.examResult.findMany({ where: whereQuery }),
+      // Savollar to'g'ri javobi bilan keladi — faqat savollar bankini ko'radiganga.
+      agar(kor('imtihonlar.savollar'), prisma.question.findMany({ where: whereQuery })),
+      agar(kor('imtihonlar.imtihon', 'imtihonlar.natija'), prisma.exam.findMany({ where: whereQuery })),
+      agar(kor('imtihonlar.natija', 'oquvchilar.ballar'), prisma.examResult.findMany({ where: { ...whereQuery, ...ozOquvchi } })),
       prisma.school.findMany({ where: schoolsWhere }),
       // Filial mavzulari + markazning umumiy o'quv dasturlaridagi mavzular.
       prisma.topic.findMany({
@@ -3974,19 +4061,37 @@ app.get('/api/init', authenticate, async (req, res, next) => {
       }
     }
 
+    // Pul maydonlari faqat tegishli bo'limni ko'radiganga: o'quvchi balansi va
+    // alohida narxi, ustoz ulushi, xodim oyligi.
+    const balansKorinadi = kor('oquvchilar.balans');
+    const ulushKorinadi = kor('kurslar.narx');
+    const maoshKorinadi = kor('xodimlar.maosh');
+    const xodimKorinadi = kor('xodimlar.royxat') || yetadimi(req.ruxsat, 'xabarlar.yuborish', 2);
+
     // Map relations to flat IDs / names just like individual endpoints do
-    const mappedStudents = students.map(s => ({
-      ...s,
-      groups: s.groups.map(g => g.id),
-      routeIds: (s.routeStops || []).map(x => x.routeId)
-    }));
+    const mappedStudents = students.map(s => {
+      const o = {
+        ...s,
+        groups: s.groups.map(g => g.id),
+        routeIds: (s.routeStops || []).map(x => x.routeId)
+      };
+      if (!balansKorinadi) { delete o.balance; delete o.customPrices; delete o.payShare; }
+      return o;
+    });
     sorashniQozgatish();
     const mappedRoutes = routes.map(marshrutJavobi);
-    const mappedGroups = groups.map(g => ({
-      ...g,
-      studentIds: g.students.map(s => s.id),
-      courseName: g.course?.name
-    }));
+    const mappedGroups = groups.map(g => {
+      const o = {
+        ...g,
+        studentIds: g.students.map(s => s.id),
+        courseName: g.course?.name
+      };
+      if (!ulushKorinadi) { delete o.payType; delete o.payValue; }
+      return o;
+    });
+    if (!maoshKorinadi) {
+      teachersRoyxati = teachersRoyxati.map(({ salary, sharePercentage, lessonFee, salaryType, ...t }) => t);
+    }
 
     res.json({
       students: mappedStudents,
@@ -4001,8 +4106,12 @@ app.get('/api/init', authenticate, async (req, res, next) => {
       topics, syllabuses, directions,
       users: users.map(u => {
         const { teacherProfile, branches, ...qolgan } = u;
+        if (!maoshKorinadi) { delete qolgan.salary; delete qolgan.kpiPercent; }
+        if (!xodimKorinadi) { delete qolgan.email; delete qolgan.phone; delete qolgan.telegramId; delete qolgan.workDays; }
         return { ...qolgan, teacherId: teacherProfile?.id ?? null, branchIds: branches.map(b => b.id) };
-      })
+      }),
+      // Menyu, sahifalar va tugmalar shunga qarab chiqadi (lib/ruxsatlar.js).
+      ruxsat: req.ruxsat
     });
   } catch (error) { next(error); }
 });
@@ -4218,7 +4327,9 @@ app.get('/api/settings', authenticate, async (req, res, next) => {
 
 app.put('/api/settings', authenticate, async (req, res, next) => {
   try {
-    if (!isAdmin(req.user)) return res.status(403).json({ error: 'Faqat administrator sozlamalarni o\'zgartira oladi' });
+    // Qaysi maydonni kim o'zgartiradi — lavozim ruxsati (lib/ruxsatApi.js
+    // sozlamaTahriri): profil, integratsiyalar, avtomatlashtirish alohida;
+    // Payme va qolgan hamma narsa faqat administratorda.
     // Server boshqaradigan maydonlar mijozdan qabul qilinmaydi.
     const { schoolId, eskizPasswordSet, telegramSet, paymeKeySet, paymeTestKeySet, paymeEndpointToken, telegramWebhookSecret, settingsEncryption, ...data } = req.body;
     if (!schoolId) return res.status(400).json({ error: 'schoolId required' });
@@ -4291,7 +4402,7 @@ app.put('/api/settings', authenticate, async (req, res, next) => {
       else console.error(`Telegram webhook ro'yxatdan o'tmadi, filial ${schoolId}:`, r.reason);
     }
 
-    res.json(hidePaymeSecrets(settings));
+    res.json(isAdmin(req.user) ? hidePaymeSecrets(settings) : stripSettingSecrets(settings));
   } catch (error) { next(error); }
 });
 
@@ -4304,6 +4415,8 @@ app.get('/api/attendances', authenticate, async (req, res, next) => {
     let where = { schoolId: parseInt(schoolId) };
     if (studentId) where.studentId = parseInt(studentId);
     if (groupId) where.groupId = parseInt(groupId);
+    // "Faqat o'z kurslari": Kunlik sahifa guruhsiz so'raydi — boshqa kurslar kirmasin.
+    if (req.ruxsat?.faqatOz && !groupId) where.groupId = { in: [...(await ozKurslari(req.user)).groupIds] };
     // A group's full history runs to thousands of rows. Screens that render only a few
     // weeks pass a date range rather than pulling everything.
     if (from || to) {
@@ -4503,7 +4616,7 @@ app.post('/api/attendances/notify', authenticate, async (req, res, next) => {
   } catch (error) { next(error); }
 });
 
-app.delete('/api/attendances/batch', authenticate, requireRole(...STAFF_MANAGERS), async (req, res, next) => {
+app.delete('/api/attendances/batch', authenticate, async (req, res, next) => {
   try {
     const { schoolId, groupId, date } = req.query;
     if (!schoolId || !groupId || !date) return res.status(400).json({ error: 'Missing parameters' });
@@ -4636,13 +4749,14 @@ app.post('/api/teacher-attendances/notify', authenticate, async (req, res, next)
 // Kurs hisobi — bitta joyda (egasi, 2026-09-23): kursga kelgan sana, shu
 // o'quvchi uchun oylik narx va birinchi oy summasi (tizim hisoblaydi, xodim
 // o'zi yozishi mumkin). preview: true — faqat nima o'zgarishi ko'rsatiladi.
-// Narx o'zgartirish — rahbarlar (ADMIN, MANAGER); sana va summa — resepshn ham.
-app.post('/api/students/:id/kurs-hisob', authenticate, requireRole('ADMIN', 'MANAGER', 'RECEPTIONIST'), async (req, res, next) => {
+// Kim nima qiladi — lavozim ruxsati: "Kurs hisobi" (sana va summa) va
+// "Alohida narx va chegirma" (narx) — lib/ruxsatApi.js.
+app.post('/api/students/:id/kurs-hisob', authenticate, async (req, res, next) => {
   try {
     const { schoolId, groupId, startDate, price, firstMonthDue, preview } = req.body;
     if (!groupId || !startDate) return res.status(400).json({ error: 'groupId va startDate kerak' });
-    if (price !== undefined && !['ADMIN', 'MANAGER', 'SUPERADMIN'].includes(req.user.role)) {
-      return res.status(403).json({ error: "Oylik narxni faqat rahbar o'zgartira oladi" });
+    if (price !== undefined && !yetadimi(req.ruxsat, 'oquvchilar.narx', 2)) {
+      return res.status(403).json({ error: "O'quvchiga alohida narx qo'yishga ruxsatingiz yo'q", ruxsat: true });
     }
     const result = await setKursHisob({
       studentId: req.params.id,
@@ -4672,7 +4786,7 @@ app.post('/api/groups/:id/charge-quote', authenticate, async (req, res, next) =>
 // O'quvchini boshqa kursga ko'chirish. Pul o'zgarmaydi (egasi, 2026-09-22):
 // faqat a'zolik ko'chadi va amal jurnalga tushadi. preview: true bo'lsa
 // nima bo'lishi ko'rsatiladi, hech narsa yozilmaydi.
-app.post('/api/students/:id/transfer', authenticate, requireRole(...STAFF_MANAGERS), async (req, res, next) => {
+app.post('/api/students/:id/transfer', authenticate, async (req, res, next) => {
   try {
     const { schoolId, fromGroupId, toGroupId, date, preview } = req.body;
     if (!schoolId || !toGroupId || !date) {
@@ -4690,7 +4804,7 @@ app.post('/api/students/:id/transfer', authenticate, requireRole(...STAFF_MANAGE
 });
 
 // O'qishni to'xtatgan o'quvchiga o'tilmagan darslar uchun pulni qaytarish.
-app.post('/api/students/:id/refund', authenticate, requireRole(...STAFF_MANAGERS), async (req, res, next) => {
+app.post('/api/students/:id/refund', authenticate, async (req, res, next) => {
   try {
     const { schoolId, date, mode, preview, groupIds } = req.body;
     if (!schoolId || !date) return res.status(400).json({ error: "schoolId va date kerak" });
@@ -4718,6 +4832,7 @@ app.get('/api/scores', authenticate, async (req, res, next) => {
     let where = { schoolId: parseInt(schoolId) };
     if (studentId) where.studentId = parseInt(studentId);
     if (groupId) where.groupId = parseInt(groupId);
+    if (req.ruxsat?.faqatOz && !groupId && !studentId) where.groupId = { in: [...(await ozKurslari(req.user)).groupIds] };
 
     const scores = await prisma.score.findMany({ where });
     res.json(scores);
@@ -4890,7 +5005,7 @@ app.put('/api/transports/:id', authenticate, async (req, res, next) => {
     res.json(transport);
   } catch (error) { next(error); }
 });
-app.delete('/api/transports/:id', authenticate, requireRole(...STAFF_MANAGERS), async (req, res, next) => {
+app.delete('/api/transports/:id', authenticate, async (req, res, next) => {
   try {
     const id = parseInt(req.params.id);
     const mavjud = await prisma.transport.findUnique({ where: { id } });
@@ -5091,7 +5206,7 @@ app.put('/api/routes/:id', authenticate, async (req, res, next) => {
   } catch (error) { next(error); }
 });
 
-app.delete('/api/routes/:id', authenticate, requireRole(...STAFF_MANAGERS), async (req, res, next) => {
+app.delete('/api/routes/:id', authenticate, async (req, res, next) => {
   try {
     const id = parseInt(req.params.id);
     const mavjud = await prisma.route.findUnique({ where: { id } });
@@ -5149,7 +5264,7 @@ app.get('/api/logistics/waves', authenticate, async (req, res, next) => {
 });
 
 /** Haydovchilardan shu to'lqin uchun so'rash (bot orqali). */
-app.post('/api/logistics/ask-drivers', authenticate, requireRole(...STAFF_MANAGERS), async (req, res, next) => {
+app.post('/api/logistics/ask-drivers', authenticate, async (req, res, next) => {
   try {
     const schoolId = parseInt(req.body.schoolId);
     if (!schoolId) return res.status(400).json({ error: 'schoolId required' });
@@ -5169,7 +5284,7 @@ app.post('/api/logistics/ask-drivers', authenticate, requireRole(...STAFF_MANAGE
 });
 
 /** Kunlik reja: tasdiqlagan haydovchilar bo'yicha taqsimot. */
-app.post('/api/logistics/daily-plan', authenticate, requireRole(...STAFF_MANAGERS), async (req, res, next) => {
+app.post('/api/logistics/daily-plan', authenticate, async (req, res, next) => {
   try {
     const schoolId = parseInt(req.body.schoolId);
     if (!schoolId) return res.status(400).json({ error: 'schoolId required' });
@@ -5320,7 +5435,7 @@ app.get('/api/logistics/day', authenticate, async (req, res, next) => {
  * Rejalarni yozadi va haydovchilarga yuboradi.
  * body: { schoolId, date, plans: [{ driverId, studentIds: number[] }] }
  */
-app.post('/api/logistics/plans', authenticate, requireRole(...STAFF_MANAGERS), async (req, res, next) => {
+app.post('/api/logistics/plans', authenticate, async (req, res, next) => {
   try {
     const schoolId = parseInt(req.body.schoolId);
     if (!schoolId) return res.status(400).json({ error: 'schoolId required' });
@@ -5369,7 +5484,7 @@ app.post('/api/logistics/plans', authenticate, requireRole(...STAFF_MANAGERS), a
 });
 
 /** Rejani haydovchiga qayta yuborish (xabar o'chib ketgan yoki bot keyin ulangan). */
-app.post('/api/logistics/plans/:id/send', authenticate, requireRole(...STAFF_MANAGERS), async (req, res, next) => {
+app.post('/api/logistics/plans/:id/send', authenticate, async (req, res, next) => {
   try {
     const route = await rejaniTopish(req, res);
     if (!route) return;
@@ -5380,7 +5495,7 @@ app.post('/api/logistics/plans/:id/send', authenticate, requireRole(...STAFF_MAN
 });
 
 /** Haydovchi o'rniga "Qabul qildim" (telefoni yo'q yoki bot ishlamasa). */
-app.post('/api/logistics/plans/:id/accept', authenticate, requireRole(...STAFF_MANAGERS), async (req, res, next) => {
+app.post('/api/logistics/plans/:id/accept', authenticate, async (req, res, next) => {
   try {
     const route = await rejaniTopish(req, res);
     if (!route) return;
@@ -5390,7 +5505,7 @@ app.post('/api/logistics/plans/:id/accept', authenticate, requireRole(...STAFF_M
 });
 
 /** Haydovchi o'rniga "Yetkazdim". */
-app.post('/api/logistics/plans/:id/deliver', authenticate, requireRole(...STAFF_MANAGERS), async (req, res, next) => {
+app.post('/api/logistics/plans/:id/deliver', authenticate, async (req, res, next) => {
   try {
     const route = await rejaniTopish(req, res);
     if (!route) return;
@@ -5403,7 +5518,7 @@ app.post('/api/logistics/plans/:id/deliver', authenticate, requireRole(...STAFF_
  * Rejani bekor qilish. Haydovchi "Qabul qildim" bosgan bo'lsa o'chirilmaydi —
  * kim qachon olib ketgani tarixda qolishi kerak.
  */
-app.delete('/api/logistics/plans/:id', authenticate, requireRole(...STAFF_MANAGERS), async (req, res, next) => {
+app.delete('/api/logistics/plans/:id', authenticate, async (req, res, next) => {
   try {
     const route = await rejaniTopish(req, res);
     if (!route) return;
@@ -6010,7 +6125,7 @@ async function sendSms(phone, message, type, studentId, schoolId, campaignId = n
 }
 
 // API: Bitta SMS yuborish (qo'lda)
-app.post('/api/sms/send', authenticate, requireRole(...STAFF_MANAGERS), async (req, res, next) => {
+app.post('/api/sms/send', authenticate, async (req, res, next) => {
   try {
     let { phone, message, type, studentId } = req.body;
     if (!message) return res.status(400).json({ error: 'Xabar matni kerak' });
@@ -6045,7 +6160,7 @@ app.post('/api/sms/send', authenticate, requireRole(...STAFF_MANAGERS), async (r
 });
 
 // API: Davomatga kelmagan o'quvchilarga SMS yuborish
-app.post('/api/sms/attendance', authenticate, requireRole(...STAFF_MANAGERS), async (req, res, next) => {
+app.post('/api/sms/attendance', authenticate, async (req, res, next) => {
   try {
     const { date, groupId } = req.body;
     if (!date || !groupId) return res.status(400).json({ error: 'date va groupId kerak' });
@@ -6275,7 +6390,7 @@ async function getStudentGroupsMap(schoolId) {
 }
 
 // Ommaviy yuborish
-app.post('/api/messaging/send-batch', authenticate, requireRole(...STAFF_MANAGERS), async (req, res, next) => {
+app.post('/api/messaging/send-batch', authenticate, async (req, res, next) => {
   try {
     const { studentIds, sendList, audience, message, channel, recipientTo, filters } = req.body;
     const schoolId = req.user.schoolId;
@@ -6532,7 +6647,7 @@ app.put('/api/messaging/templates/:id', authenticate, async (req, res, next) => 
   } catch (err) { next(err); }
 });
 
-app.delete('/api/messaging/templates/:id', authenticate, requireRole(...STAFF_MANAGERS), async (req, res, next) => {
+app.delete('/api/messaging/templates/:id', authenticate, async (req, res, next) => {
   try {
     await prisma.messageTemplate.delete({ where: { id: parseInt(req.params.id) } });
     res.json({ success: true });
@@ -6560,7 +6675,7 @@ app.get('/api/messaging/auto-rules', authenticate, async (req, res, next) => {
   } catch (err) { next(err); }
 });
 
-app.post('/api/messaging/auto-rules', authenticate, requireRole(...STAFF_MANAGERS), async (req, res, next) => {
+app.post('/api/messaging/auto-rules', authenticate, async (req, res, next) => {
   try {
     const { name, type, enabled, body, channel, recipientTo, config, time } = req.body;
     if (!name || !type || !body) return res.status(400).json({ error: 'name, type, va body kerak' });
@@ -6581,7 +6696,7 @@ app.post('/api/messaging/auto-rules', authenticate, requireRole(...STAFF_MANAGER
   } catch (err) { next(err); }
 });
 
-app.put('/api/messaging/auto-rules/:id', authenticate, requireRole(...STAFF_MANAGERS), async (req, res, next) => {
+app.put('/api/messaging/auto-rules/:id', authenticate, async (req, res, next) => {
   try {
     const { name, type, enabled, body, channel, recipientTo, config, time } = req.body;
     const ruleId = parseInt(req.params.id);
@@ -6603,7 +6718,7 @@ app.put('/api/messaging/auto-rules/:id', authenticate, requireRole(...STAFF_MANA
   } catch (err) { next(err); }
 });
 
-app.delete('/api/messaging/auto-rules/:id', authenticate, requireRole(...STAFF_MANAGERS), async (req, res, next) => {
+app.delete('/api/messaging/auto-rules/:id', authenticate, async (req, res, next) => {
   try {
     await prisma.autoMessageRule.delete({
       where: { id: parseInt(req.params.id) }
@@ -6827,7 +6942,7 @@ app.get('/api/messaging/auto-process', async (req, res, next) => {
 });
 
 // Local hourly automatic scheduler (only if running locally)
-if (!process.env.VERCEL) {
+if (!process.env.VERCEL && process.env.AUTO_JOBS !== 'off') {
   console.log('[Scheduler] Local hourly scheduler initialized.');
   setInterval(async () => {
     try {
@@ -6847,7 +6962,7 @@ if (!process.env.VERCEL) {
 }
 
 // API: Failed SMS/Telegram loglarni qaytadan jo'natish
-app.post('/api/sms/resend-failed', authenticate, requireRole(...STAFF_MANAGERS), async (req, res, next) => {
+app.post('/api/sms/resend-failed', authenticate, async (req, res, next) => {
   try {
     const { logIds, startDate, endDate } = req.body;
     const schoolId = req.user.schoolId;
@@ -6988,7 +7103,7 @@ app.put('/api/questions/:id', authenticate, async (req, res, next) => {
   } catch (err) { next(err); }
 });
 
-app.delete('/api/questions/:id', authenticate, requireRole(...STAFF_MANAGERS), async (req, res, next) => {
+app.delete('/api/questions/:id', authenticate, async (req, res, next) => {
   try {
     await prisma.question.delete({ where: { id: parseInt(req.params.id) } });
     res.json({ success: true });
@@ -7038,7 +7153,7 @@ app.put('/api/exams/:id', authenticate, async (req, res, next) => {
   } catch (err) { next(err); }
 });
 
-app.delete('/api/exams/:id', authenticate, requireRole(...STAFF_MANAGERS), async (req, res, next) => {
+app.delete('/api/exams/:id', authenticate, async (req, res, next) => {
   try {
     await prisma.exam.delete({ where: { id: parseInt(req.params.id) } });
     res.json({ success: true });
@@ -7091,7 +7206,11 @@ app.get('/api/exam-results', authenticate, async (req, res, next) => {
     const where = {};
     if (req.query.examId) where.examId = parseInt(req.query.examId);
     if (req.query.studentId) where.studentId = parseInt(req.query.studentId);
-    if (req.query.schoolId) where.schoolId = parseInt(req.query.schoolId);
+    // Filial ko'rsatilmasa — faqat o'z filial(lar)i. Ilgari `where = {}` bo'lib,
+    // boshqa markazlarning natijalari ham qaytardi.
+    const natijaFiliali = parseInt(req.query.schoolId);
+    where.schoolId = natijaFiliali > 0 ? natijaFiliali : { in: await allowedSchoolIds(req.user) };
+    if (req.ruxsat?.faqatOz && !req.query.studentId) where.studentId = { in: [...(await ozKurslari(req.user)).studentIds] };
     const results = await prisma.examResult.findMany({
       where,
       include: { student: { select: { id: true, name: true, photo: true } }, exam: { select: { id: true, name: true, maxScore: true } } },
@@ -7151,7 +7270,7 @@ app.post('/api/exam-results', authenticate, async (req, res, next) => {
   } catch (err) { next(err); }
 });
 
-app.delete('/api/exam-results/:id', authenticate, requireRole(...STAFF_MANAGERS), async (req, res, next) => {
+app.delete('/api/exam-results/:id', authenticate, async (req, res, next) => {
   try {
     await prisma.examResult.delete({ where: { id: parseInt(req.params.id) } });
     res.json({ success: true });
@@ -7396,7 +7515,7 @@ app.get('/api/billing/status', authenticate, async (req, res, next) => {
   } catch (err) { next(err); }
 });
 
-app.post('/api/billing/notify-debtors', authenticate, requireRole(...STAFF_MANAGERS), async (req, res, next) => {
+app.post('/api/billing/notify-debtors', authenticate, async (req, res, next) => {
   try {
     const { schoolId, month, messageTemplate, channel, statusFilter } = req.body;
     if (!schoolId || !month || !messageTemplate || !channel) {

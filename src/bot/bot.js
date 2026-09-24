@@ -6,6 +6,8 @@ import {
     rejaniQabulQilish, rejaniYetkazish, joylashuvniYozish, REJA_INCLUDE, rejaPuli,
 } from '../../services/logistics.js';
 import { somMatni } from '../../lib/transportNarx.js';
+import { rolRuxsati, yetadimi, toliqRuxsatli } from '../../lib/ruxsatlar.js';
+import { tashkilotSozlamasi } from '../../middleware/auth.js';
 import { javobniYozish } from '../../services/kunlikReja.js';
 import { parseLatLng, distanceKm } from '../../lib/tartib.js';
 import { studentLedger } from '../../services/ledger.js';
@@ -41,11 +43,22 @@ const getTeacherMenu = () => Markup.keyboard([
     ['🚪 Chiqish']
 ]).resize();
 
-const getAdminMenu = () => Markup.keyboard([
-    ['📢 Yangi Lidlar', '📊 Kunlik Hisobot'],
-    ['📧 Ommaviy xabar', '⚙️ Sozlamalar'],
-    ['🚪 Chiqish']
-]).resize();
+// Botdagi xodim menyusi ham lavozim ruxsatiga bo'ysunadi (Sozlamalar → Ruxsatlar).
+// Ilgari haydovchidan boshqa har qanday xodim — resepshn, texnik xodim ham —
+// bugungi tushumni ko'rardi va barcha ota-onalarga ommaviy xabar yubora olardi.
+const getAdminMenu = (ruxsat) => {
+    const q1 = [yetadimi(ruxsat, 'lidlar.royxat', 1) && '📢 Yangi Lidlar', yetadimi(ruxsat, 'bosh.korsatkich', 1) && '📊 Kunlik Hisobot'].filter(Boolean);
+    const q2 = [yetadimi(ruxsat, 'xabarlar.yuborish', 2) && '📧 Ommaviy xabar', '⚙️ Sozlamalar'].filter(Boolean);
+    return Markup.keyboard([q1, q2, ['🚪 Chiqish']].filter(q => q.length)).resize();
+};
+
+/** Xodimning (User) amaldagi ruxsati — CRM dagi bilan bir xil. */
+async function xodimRuxsati(u) {
+    if (!u) return null;
+    if (toliqRuxsatli(u.role)) return rolRuxsati(null, u.role);
+    const s = u.schoolId ? await prisma.school.findUnique({ where: { id: u.schoolId }, select: { organizationId: true } }) : null;
+    return rolRuxsati(await tashkilotSozlamasi(s?.organizationId), u.role);
+}
 
 // "📍 Joylashuvni yuborish" — bir martalik joylashuv. Doimiy ko'rinishi uchun
 // haydovchi jonli joylashuv ulashadi (📎 → Joylashuv), bot uni ham qabul qiladi.
@@ -317,7 +330,8 @@ const findUser = async (tid, schoolId) => {
     if (teacher) return { type: 'teacher', data: teacher };
 
     const user = await findAcross('user', { telegramId: tidStr }, ids);
-    if (user) {
+    // Arxivdagi xodim botda ham xodim emas.
+    if (user && user.status !== 'Arxiv') {
         if (user.role === 'DRIVER') return { type: 'driver', data: user };
         return { type: 'admin', data: user };
     }
@@ -369,7 +383,7 @@ export const setupBotHandlers = (botInstance, botSchoolId) => {
             } else if (user.type === 'teacher') {
                 menu = getTeacherMenu();
             } else if (user.type === 'admin') {
-                menu = getAdminMenu();
+                menu = getAdminMenu(await xodimRuxsati(user.data));
             } else if (user.type === 'driver') {
                 menu = getDriverMenu();
             }
@@ -464,7 +478,7 @@ export const setupBotHandlers = (botInstance, botSchoolId) => {
         let user = await findAcross('user', { phone: { contains: phoneSuffix } }, ids);
         if (user) {
             await prisma.user.update({ where: { id: user.id }, data: { telegramId: tid } });
-            const menu = user.role === 'DRIVER' ? getDriverMenu() : getAdminMenu();
+            const menu = user.role === 'DRIVER' ? getDriverMenu() : getAdminMenu(await xodimRuxsati(user));
             return ctx.reply(`Siz xodim sifatida ro'yxatdan o'tdingiz: ${user.name}`, menu);
         }
 
@@ -1430,6 +1444,7 @@ export const setupBotHandlers = (botInstance, botSchoolId) => {
         const schoolId = await filial(ctx);
         const user = await findUser(ctx.from.id, schoolId);
         if (!user || user.type !== 'admin') return;
+        if (!yetadimi(await xodimRuxsati(user.data), 'lidlar.royxat', 1)) return ctx.reply("Lidlarni ko'rishga ruxsatingiz yo'q.");
 
         const leads = await prisma.lead.findMany({
             where: { schoolId },
@@ -1452,6 +1467,8 @@ export const setupBotHandlers = (botInstance, botSchoolId) => {
         const schoolId = await filial(ctx);
         const user = await findUser(ctx.from.id, schoolId);
         if (!user || user.type !== 'admin') return;
+        const ruxsat = await xodimRuxsati(user.data);
+        if (!yetadimi(ruxsat, 'bosh.korsatkich', 1)) return ctx.reply("Hisobotni ko'rishga ruxsatingiz yo'q.");
 
         const today = new Date().toISOString().split('T')[0];
 
@@ -1467,7 +1484,8 @@ export const setupBotHandlers = (botInstance, botSchoolId) => {
         let msg = `📊 Kunlik Hisobot (${today})\n\n`;
         msg += `👥 Jami o'quvchilar: ${studentsCount}\n`;
         msg += `🆕 Bugungi lidlar: ${leadsToday}\n`;
-        msg += `💰 Bugungi tushum: ${(paymentsToday._sum.amount || 0).toLocaleString()} UZS\n`;
+        // Tushum — faqat pul ko'rsatkichlarini ko'radiganga.
+        if (yetadimi(ruxsat, 'bosh.pul', 1)) msg += `💰 Bugungi tushum: ${(paymentsToday._sum.amount || 0).toLocaleString()} UZS\n`;
 
         ctx.reply(msg);
     });
@@ -1477,6 +1495,9 @@ export const setupBotHandlers = (botInstance, botSchoolId) => {
         const user = await findUser(ctx.from.id, schoolId);
         if (!user || user.type !== 'admin') {
             return ctx.reply("Bu buyruq faqat xodimlar uchun.");
+        }
+        if (!yetadimi(await xodimRuxsati(user.data), 'xabarlar.yuborish', 2)) {
+            return ctx.reply("Ommaviy xabar yuborishga ruxsatingiz yo'q.");
         }
 
         adminStates[ctx.from.id] = 'AWAITING_BROADCAST';
@@ -1549,13 +1570,16 @@ export const setupBotHandlers = (botInstance, botSchoolId) => {
         }
 
         if (adminStates[tid] === 'AWAITING_BROADCAST') {
+            const xodim = await findUser(tid, schoolId);
+            const xodimR = xodim?.type === 'admin' ? await xodimRuxsati(xodim.data) : null;
             if (text === '❌ Bekor qilish') {
                 delete adminStates[tid];
-                const user = await findUser(tid, schoolId);
-                return ctx.reply('Bekor qilindi.', getAdminMenu());
+                return ctx.reply('Bekor qilindi.', getAdminMenu(xodimR));
             }
 
             delete adminStates[tid];
+            // Ruxsat shu orada olib qo'yilgan bo'lishi mumkin — yuborishdan oldin yana tekshiramiz.
+            if (!yetadimi(xodimR, 'xabarlar.yuborish', 2)) return ctx.reply("Ommaviy xabar yuborishga ruxsatingiz yo'q.", getAdminMenu(xodimR));
             const statusMsg = await ctx.reply("Xabar yuborilmoqda...");
 
             try {
@@ -1582,10 +1606,10 @@ export const setupBotHandlers = (botInstance, botSchoolId) => {
                 }
 
                 await ctx.telegram.deleteMessage(ctx.chat.id, statusMsg.message_id).catch(() => {});
-                return ctx.reply(`Xabar ${successCount} ta foydalanuvchiga muvaffaqiyatli yuborildi! ✅`, getAdminMenu());
+                return ctx.reply(`Xabar ${successCount} ta foydalanuvchiga muvaffaqiyatli yuborildi! ✅`, getAdminMenu(xodimR));
             } catch (err) {
                 console.error("Broadcast global error:", err);
-                return ctx.reply("Xabar yuborishda xatolik yuz berdi.", getAdminMenu());
+                return ctx.reply("Xabar yuborishda xatolik yuz berdi.", getAdminMenu(xodimR));
             }
         }
 

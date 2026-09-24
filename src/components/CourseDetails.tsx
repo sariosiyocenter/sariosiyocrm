@@ -22,7 +22,19 @@ import { STUDENT_SORTS, StudentSort, absenceCounts, sortStudents } from '../lib/
 export default function CourseDetails() {
     const { id } = useParams<{ id: string }>();
     const navigate = useNavigate();
-    const { groups, students, teachers, courses, rooms, attendances, payments, addBatchAttendance, addAttendance, updateDayTopic, addStudentToGroup, removeStudentFromGroup, updateGroup, updateCourse, deleteGroup, showNotification, topics, addTopic, updateTopic, addPayment, syllabuses, loadAttendanceFor } = useCRM();
+    const { groups, students, teachers, courses, rooms, attendances, payments, addBatchAttendance, addAttendance, updateDayTopic, addStudentToGroup, removeStudentFromGroup, updateGroup, updateCourse, deleteGroup, showNotification, topics, addTopic, updateTopic, addPayment, syllabuses, loadAttendanceFor, kora, ozgartira } = useCRM();
+    // Lavozim ruxsati (Sozlamalar → Ruxsatlar): har bir tugma o'z bo'limiga bog'langan.
+    const kursTahrir = ozgartira('kurslar.malumot');
+    const ulushKorinadi = kora('kurslar.narx');
+    const narxTahrir = ozgartira('kurslar.narx');
+    const tarkibTahrir = ozgartira('kurslar.tarkib');
+    const davomatKorinadi = kora('kurslar.davomat');
+    const davomatTahrir = ozgartira('kurslar.davomat');
+    const kursOchirish = ozgartira('kurslar.ochirish');
+    const balansKorinadi = kora('oquvchilar.balans');
+    const tolovQabul = ozgartira('oquvchilar.tolov');
+    const kursHisobiTahrir = ozgartira('oquvchilar.kursHisobi');
+    const smsYuborish = ozgartira('xabarlar.yuborish');
     const confirm = useConfirm();
     const [isEditingInfo, setIsEditingInfo] = useState(false);
     // courseName ham shu formada: kurs nomi noto'g'ri yozilgan bo'lsa
@@ -377,12 +389,14 @@ export default function CourseDetails() {
                 schedule: `${editForm.startTime} - ${editForm.endTime}`,
                 room: roomId,
                 syllabusId: editForm.syllabusId === '' ? null : Number(editForm.syllabusId),
-                payType: (editForm.payType || null) as 'Belgilangan' | 'Foiz' | null,
-                payValue: editForm.payType ? Number(editForm.payValue) || 0 : 0
+                ...(narxTahrir ? {
+                    payType: (editForm.payType || null) as 'Belgilangan' | 'Foiz' | null,
+                    payValue: editForm.payType ? Number(editForm.payValue) || 0 : 0
+                } : {})
             });
             if (course) {
                 const courseChanges: Record<string, any> = {};
-                if (editForm.coursePrice !== course.price) courseChanges.price = Number(editForm.coursePrice);
+                if (narxTahrir && editForm.coursePrice !== course.price) courseChanges.price = Number(editForm.coursePrice);
                 const newName = String(editForm.courseName || '').trim();
                 if (newName && newName !== course.name) courseChanges.name = newName;
                 if (Object.keys(courseChanges).length > 0) {
@@ -473,6 +487,7 @@ export default function CourseDetails() {
                         <Printer size={13} />
                         Kunlik ro'yxat
                     </button>
+                    {kursOchirish && (
                     <button
                         onClick={async () => {
                             if (!await confirm(`"${group.name}" kursini o'chirishni tasdiqlaysizmi? Bu amalni ortga qaytarib bo'lmaydi.`)) return;
@@ -488,6 +503,7 @@ export default function CourseDetails() {
                         <Trash2 size={13} />
                         Kursni o'chirish
                     </button>
+                    )}
                 </div>
             </div>
 
@@ -524,6 +540,7 @@ export default function CourseDetails() {
                                 tugmasi edi va uni topish qiyin edi. */}
                             <button
                                 onClick={handleStartEdit}
+                                disabled={!kursTahrir}
                                 title="O'qituvchini o'zgartirish"
                                 className="inline-flex items-center gap-1 hover:text-brand transition-colors cursor-pointer"
                             >
@@ -532,7 +549,7 @@ export default function CourseDetails() {
                                     if (problem) return <span className="text-ogoh">{problem}</span>;
                                     return <span className="text-matn-2">{displayName(teacher!.name)}</span>;
                                 })()}
-                                <Pencil size={11} className="text-matn-xira" />
+                                {kursTahrir && <Pencil size={11} className="text-matn-xira" />}
                             </button>
                             {group.room && (
                                 <><span className="text-matn-xira">·</span>
@@ -555,8 +572,8 @@ export default function CourseDetails() {
 
                 <div className="flex px-4 bg-ichki border-b border-chiziq gap-2 pt-2">
                     <TabButton label="Umumiy" icon={<Users size={14} />} active={activeTab === 'umumiy'} onClick={() => setActiveTab('umumiy')} />
-                    <TabButton label="Yo'qlama" icon={<ClipboardCheck size={14} />} active={activeTab === 'yoqlama'} onClick={() => setActiveTab('yoqlama')} />
-                    <TabButton label="To'lovlar" icon={<CreditCard size={14} />} active={activeTab === 'tolovlar'} onClick={() => setActiveTab('tolovlar')} />
+                    {davomatKorinadi && <TabButton label="Yo'qlama" icon={<ClipboardCheck size={14} />} active={activeTab === 'yoqlama'} onClick={() => setActiveTab('yoqlama')} />}
+                    {balansKorinadi && <TabButton label="To'lovlar" icon={<CreditCard size={14} />} active={activeTab === 'tolovlar'} onClick={() => setActiveTab('tolovlar')} />}
                 </div>
 
                 <div className="p-5">
@@ -592,6 +609,7 @@ export default function CourseDetails() {
                                     value={lessonsThisMonth}
                                     subValue="Shu oyda o'tildi"
                                 />
+                                {balansKorinadi && (
                                 <StatTile
                                     label="Qarzdorlik"
                                     value={groupDebt > 0 ? shortSum(groupDebt) : '0'}
@@ -602,6 +620,7 @@ export default function CourseDetails() {
                                         : "Qarzdor yo'q"}
                                     subTone={debtorCount ? 'bad' : 'good'}
                                 />
+                                )}
                             </div>
 
                             <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
@@ -621,11 +640,13 @@ export default function CourseDetails() {
                                                 {STUDENT_SORTS.map(s => <option key={s.key} value={s.key}>{s.label}</option>)}
                                             </select>
                                         )}
+                                        {tarkibTahrir && (
                                         <button onClick={() => setIsAddStudentModalOpen(true)}
                                             className="px-4 py-2.5 bg-brand hover:bg-brand-dark text-white rounded-xl text-[11px] font-extrabold shadow-sm shadow-[#1b6b6b]/20 active:scale-95 transition-all flex items-center gap-1.5 group cursor-pointer">
                                             <Plus size={14} />
                                             Qo'shish
                                         </button>
+                                        )}
                                         </div>
                                     </div>
                                     {/* Avval bu ro'yxat ikki ustunli kartochka gridi edi:
@@ -643,7 +664,9 @@ export default function CourseDetails() {
                                                         <th className="py-2 pr-3 text-[12px] font-normal text-matn-sokin w-8">&#8470;</th>
                                                         <th className="py-2 pr-3 text-[12px] font-normal text-matn-sokin">O'quvchi</th>
                                                         <th className="py-2 px-3 text-[12px] font-normal text-matn-sokin">Kelgan sana</th>
+                                                        {balansKorinadi && (
                                                         <th className="py-2 px-3 text-[12px] font-normal text-matn-sokin text-right">Balans</th>
+                                                        )}
                                                         <th className="py-2 px-3 text-[12px] font-normal text-matn-sokin text-right w-20">Davomat</th>
                                                         <th className="py-2 pl-3 w-20" />
                                                     </tr>
@@ -673,6 +696,7 @@ export default function CourseDetails() {
                                                                         const d: string = kelganSana(s, group.id, payments) || '';
                                                                         return (
                                                                             <button
+                                                                                disabled={!kursHisobiTahrir}
                                                                                 onClick={e => { e.stopPropagation(); setSanaOquvchi({ id: s.id, schoolId: s.schoolId, current: d || new Date().toISOString().split('T')[0] }); }}
                                                                                 title="Kurs hisobi: kelgan sana, oylik narx, birinchi oy summasi"
                                                                                 className="num inline-flex items-center gap-1 px-2 py-1 rounded-lg text-[12px] text-matn-2 hover:text-brand hover:bg-brand/10 transition-colors cursor-pointer"
@@ -683,9 +707,11 @@ export default function CourseDetails() {
                                                                         );
                                                                     })()}
                                                                 </td>
+                                                                {balansKorinadi && (
                                                                 <td className={`num py-2.5 px-3 text-right text-[13px] align-middle ${s.balance > 0 ? 'text-yaxshi' : s.balance < 0 ? 'text-xato' : 'text-matn-xira'}`}>
                                                                     {s.balance.toLocaleString('ru-RU')}
                                                                 </td>
+                                                                )}
                                                                 {/* Ilgari bu yerda "Qarzdor" belgisi turardi — yonidagi
                                                                     qizil balans allaqachon shuni aytadi. Davomat esa
                                                                     hech qayerda ko'rinmasdi. */}
@@ -706,6 +732,7 @@ export default function CourseDetails() {
                                                                 </td>
                                                                 <td className="py-2.5 pl-3 align-middle">
                                                                     <div className="flex items-center justify-end gap-0.5 opacity-70 group-hover:opacity-100 transition-opacity">
+                                                                        {tolovQabul && (
                                                                         <button
                                                                             onClick={e => { e.stopPropagation(); openPaymentModal(s.id); }}
                                                                             title="To'lov qo'shish"
@@ -713,6 +740,8 @@ export default function CourseDetails() {
                                                                         >
                                                                             <CreditCard size={13} />
                                                                         </button>
+                                                                        )}
+                                                                        {tarkibTahrir && (
                                                                         <button
                                                                             onClick={e => { e.stopPropagation(); removeStudentFromGroup(group.id, s.id); }}
                                                                             title="Kursdan chiqarish"
@@ -720,6 +749,7 @@ export default function CourseDetails() {
                                                                         >
                                                                             <XCircle size={14} />
                                                                         </button>
+                                                                        )}
                                                                     </div>
                                                                 </td>
                                                             </tr>
@@ -733,7 +763,7 @@ export default function CourseDetails() {
                                 <div className="space-y-3">
                                     <div className="flex items-center justify-between pb-2 border-b border-gray-55 dark:border-gray-800">
                                         <span className="text-[11px] font-bold text-matn-xira">Ma'lumotlar</span>
-                                        {!isEditingInfo ? (
+                                        {!kursTahrir ? null : !isEditingInfo ? (
                                             <button
                                                 onClick={handleStartEdit}
                                                 className="text-[11px] font-bold text-brand hover:underline cursor-pointer"
@@ -832,6 +862,7 @@ export default function CourseDetails() {
                                                 <div>
                                                     <label className={labelCls}>Kurs narxi (UZS/oy)</label>
                                                     <input
+                                                        disabled={!narxTahrir}
                                                         type="number"
                                                         placeholder="Masalan: 600000"
                                                         value={editForm.coursePrice || ''}
@@ -839,6 +870,7 @@ export default function CourseDetails() {
                                                         className={inputCls}
                                                     />
                                                 </div>
+                                                {narxTahrir && (
                                                 <div>
                                                     <label className={labelCls}>Ustoz haqi</label>
                                                     <select
@@ -863,6 +895,7 @@ export default function CourseDetails() {
                                                         Foiz guruhga tushgan puldan olinadi. Belgilangan summa oyiga bir marta qo'shiladi.
                                                     </p>
                                                 </div>
+                                                )}
                                                 <div>
                                                     <label className={labelCls}>O'quv programmasi (Syllabus)</label>
                                                     <select
@@ -884,6 +917,7 @@ export default function CourseDetails() {
                                                 <InfoItem icon={<Presentation size={13} />} label="Xona" value={rooms.find(r => r.id === group.room)?.name || `#${group.room || '-'}`} />
                                                 <InfoItem icon={<DollarSign size={13} />} label="Kurs narxi" value={course?.price ? `${course.price.toLocaleString()} UZS` : "Belgilanmagan"} />
                                                 <InfoItem icon={<BookOpen size={13} />} label="O'quv programmasi" value={activeSyllabus ? activeSyllabus.name : "Kurs mavzulari (Dastursiz)"} />
+                                                {ulushKorinadi && (
                                                 <InfoItem icon={<DollarSign size={13} />} label="Ustoz haqi" value={
                                                     group.payType === 'Belgilangan'
                                                         ? (group.payValue || 0).toLocaleString() + " UZS/oy"
@@ -891,6 +925,7 @@ export default function CourseDetails() {
                                                             ? (group.payValue || 0) + "% (tushgan puldan)"
                                                             : "Umumiy KPI foizi"
                                                 } />
+                                                )}
                                             </>
                                         )}
                                     </div>
@@ -963,7 +998,7 @@ export default function CourseDetails() {
                         </div>
                     )}
 
-                    {activeTab === 'yoqlama' && (
+                    {activeTab === 'yoqlama' && davomatKorinadi && (
                         <div className="space-y-6 animate-in duration-300">
                             <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 p-4 bg-ichki border border-chiziq rounded-2xl relative overflow-hidden">
                                 <div>
@@ -1008,6 +1043,7 @@ export default function CourseDetails() {
                                         <BookOpen size={14} className="text-brand ml-2 shrink-0" />
                                         <select
                                             value={selectedTopicId}
+                                            disabled={!davomatTahrir}
                                             onChange={e => {
                                                 const newId = e.target.value ? Number(e.target.value) : '';
                                                 setSelectedTopicId(newId);
@@ -1023,6 +1059,7 @@ export default function CourseDetails() {
                                     </div>
 
                                     <div className="flex items-center gap-2 w-full sm:w-auto shrink-0">
+                                        {davomatTahrir && (
                                         <button
                                             onClick={handleNotifyParents}
                                             disabled={isNotifyingParents}
@@ -1032,6 +1069,8 @@ export default function CourseDetails() {
                                             <Send size={13} />
                                             {isNotifyingParents ? 'Yuborilmoqda…' : "Ota-onaga yuborish"}
                                         </button>
+                                        )}
+                                        {smsYuborish && (
                                         <button
                                             onClick={handleSendAttendanceSms}
                                             className="px-4 py-2 bg-amber-50 dark:bg-amber-950/20 text-amber-600 dark:text-amber-400 border border-amber-100 dark:border-amber-900/40 rounded-xl text-[11px] font-extrabold hover:bg-amber-600 hover:text-white transition-all flex items-center gap-1.5 group cursor-pointer"
@@ -1040,6 +1079,7 @@ export default function CourseDetails() {
                                             <Sparkles size={13} className="group-hover:animate-pulse" />
                                             SMS
                                         </button>
+                                        )}
                                     </div>
                                 </div>
                             </div>
@@ -1051,18 +1091,22 @@ export default function CourseDetails() {
                                         <span className="text-[11px] font-bold text-matn-xira">Dars yo'qlamasi ({selectedDate})</span>
                                         <div className="flex items-center gap-2">
                                             <span className="text-[11px] font-bold text-matn-sokin">{groupStudents.length} ta o'quvchi</span>
+                                            {davomatTahrir && (
                                             <button
                                                 onClick={() => addBatchAttendance(group.id, selectedDate, groupStudents.map(s => ({ studentId: s.id, status: 'Keldi' })), selectedTopicId ? Number(selectedTopicId) : undefined)}
                                                 className="px-2.5 py-1 rounded-lg text-[10px] font-bold bg-emerald-50 text-emerald-600 border border-emerald-100 hover:bg-emerald-500 hover:text-white hover:border-emerald-500 dark:bg-emerald-950/20 dark:text-emerald-400 dark:border-emerald-900/40 transition-all cursor-pointer"
                                             >
                                                 Hammasi keldi
                                             </button>
+                                            )}
+                                            {davomatTahrir && (
                                             <button
                                                 onClick={() => setIsFaceAttendanceOpen(true)}
                                                 className="px-2.5 py-1 rounded-lg text-[10px] font-bold bg-violet-50 text-violet-600 border border-violet-100 hover:bg-violet-500 hover:text-white hover:border-violet-500 dark:bg-violet-950/20 dark:text-violet-400 dark:border-violet-900/40 transition-all cursor-pointer"
                                             >
                                                 Face ID
                                             </button>
+                                            )}
                                         </div>
                                     </div>
                                     <div className="space-y-1 max-h-[360px] overflow-y-auto pr-1 custom-scrollbar">
@@ -1076,19 +1120,19 @@ export default function CourseDetails() {
                                                         <span className="text-[11px] font-bold text-matn tracking-tight truncate max-w-[140px]">{displayName(s.name)}</span>
                                                     </div>
                                                     <div className="flex items-center gap-0.5 shrink-0">
-                                                        <button onClick={() => saveAttendance(s.id, 'Keldi')}
+                                                        <button disabled={!davomatTahrir} onClick={() => saveAttendance(s.id, 'Keldi')}
                                                             className={`px-2 py-1 rounded-lg text-[10px] font-bold transition-all cursor-pointer ${status === 'Keldi' ? 'bg-emerald-500 text-white' : 'bg-ichki text-matn-xira hover:text-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-950/20'}`}>
                                                             Keldi
                                                         </button>
-                                                        <button onClick={() => saveAttendance(s.id, 'Kelmapdi')}
+                                                        <button disabled={!davomatTahrir} onClick={() => saveAttendance(s.id, 'Kelmapdi')}
                                                             className={`px-2 py-1 rounded-lg text-[10px] font-bold transition-all cursor-pointer ${status === 'Kelmapdi' ? 'bg-rose-500 text-white' : 'bg-ichki text-matn-xira hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/20'}`}>
                                                             Yo'q
                                                         </button>
-                                                        <button onClick={() => saveAttendance(s.id, 'Sababli')}
+                                                        <button disabled={!davomatTahrir} onClick={() => saveAttendance(s.id, 'Sababli')}
                                                             className={`px-2 py-1 rounded-lg text-[10px] font-bold transition-all cursor-pointer ${status === 'Sababli' ? 'bg-sky-500 text-white' : 'bg-ichki text-matn-xira hover:text-sky-600 hover:bg-sky-50 dark:hover:bg-sky-950/20'}`}>
                                                             Sababli
                                                         </button>
-                                                        <button onClick={() => saveAttendance(s.id, 'Kechikdi')}
+                                                        <button disabled={!davomatTahrir} onClick={() => saveAttendance(s.id, 'Kechikdi')}
                                                             className={`px-2 py-1 rounded-lg text-[10px] font-bold transition-all cursor-pointer ${status === 'Kechikdi' ? 'bg-orange-400 text-white' : 'bg-ichki text-matn-xira hover:text-orange-500 hover:bg-orange-50 dark:hover:bg-orange-950/20'}`}>
                                                             Kech
                                                         </button>
@@ -1124,7 +1168,7 @@ export default function CourseDetails() {
 
 
 
-                    {activeTab === 'tolovlar' && (() => {
+                    {activeTab === 'tolovlar' && balansKorinadi && (() => {
                         const price = course?.price || 0;
 
                         const getStudentPrice = (s: typeof groupStudents[0]) => {
@@ -1284,6 +1328,7 @@ export default function CourseDetails() {
                                                         </span>
                                                     </td>
                                                     <td className="p-4 text-center" onClick={e => e.stopPropagation()}>
+                                                        {tolovQabul && (
                                                         <button
                                                             onClick={() => openPaymentModal(s.id)}
                                                             title="To'lov qo'shish"
@@ -1291,6 +1336,7 @@ export default function CourseDetails() {
                                                         >
                                                             <CreditCard size={15} />
                                                         </button>
+                                                        )}
                                                     </td>
                                                 </tr>
                                                 );

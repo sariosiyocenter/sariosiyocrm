@@ -62,8 +62,11 @@ const MATERIAL_STYLES: Record<string, string> = {
 export default function SyllabusManager() {
   const {
     syllabuses, addSyllabus, updateSyllabus, deleteSyllabus,
-    topics, addTopic, updateTopic, deleteTopic, groups, courses
+    topics, addTopic, updateTopic, deleteTopic, groups, courses, ozgartira
   } = useCRM();
+  // Lavozim ruxsati (Sozlamalar → Ruxsatlar): tuzish/tahrirlash va o'chirish alohida.
+  const dasturTahrir = ozgartira('dastur.royxat');
+  const dasturOchirish = ozgartira('dastur.ochirish');
   const confirm = useConfirm();
 
   const [selectedSyllabusId, setSelectedSyllabusId] = useState<number | null>(null);
@@ -307,6 +310,7 @@ export default function SyllabusManager() {
             {syllabuses.length} ta fan dasturi · {(topics || []).filter(t => t.syllabusId != null).length} mavzu · materiallar bazasi
           </p>
         </div>
+        {dasturTahrir && (
         <button
           onClick={() => handleOpenSyllabusModal()}
           className="flex items-center gap-2 px-5 py-3 bg-brand hover:bg-brand-dark text-white rounded-2xl text-[11px] font-bold shadow-sm shadow-[#1b6b6b]/20 active:scale-95 transition-all self-start sm:self-auto cursor-pointer"
@@ -314,6 +318,7 @@ export default function SyllabusManager() {
           <Plus size={14} />
           Dastur yaratish
         </button>
+        )}
       </div>
 
       {syllabuses.length === 0 ? (
@@ -321,6 +326,7 @@ export default function SyllabusManager() {
           <BookOpen size={48} className="text-matn-xira mx-auto mb-4" />
           <h3 className="text-sm font-black text-matn">O'quv programmalari yo'q</h3>
           <p className="text-xs text-matn-xira font-bold mt-2">Hali hech qanday o'quv programmasi yaratilmagan. Darslar ketma-ketligi va o'quv qo'llanmalarini shakllantirish uchun yangi o'quv dasturini qo'shing.</p>
+          {dasturTahrir && (
           <button
             onClick={() => handleOpenSyllabusModal()}
             className="mt-6 inline-flex items-center gap-2 px-5 py-3 bg-brand hover:bg-brand-dark text-white rounded-2xl text-[11px] font-bold shadow-sm shadow-[#1b6b6b]/20 active:scale-95 transition-all cursor-pointer"
@@ -328,6 +334,7 @@ export default function SyllabusManager() {
             <Plus size={14} />
             Dastur yaratish
           </button>
+          )}
         </div>
       ) : (
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-4 items-start">
@@ -381,6 +388,7 @@ export default function SyllabusManager() {
                     </p>
                   </div>
                   <div className="flex flex-wrap gap-2 shrink-0">
+                    {dasturTahrir && (
                     <button
                       onClick={handleDuplicateSyllabus}
                       disabled={isDuplicating}
@@ -389,6 +397,8 @@ export default function SyllabusManager() {
                       <Copy size={13} />
                       {isDuplicating ? 'Nusxalanmoqda…' : 'Nusxa olish'}
                     </button>
+                    )}
+                    {dasturTahrir && (
                     <button
                       onClick={() => handleOpenSyllabusModal(activeSyllabus)}
                       className="flex items-center gap-2 px-4 py-2.5 bg-ichki text-matn-2 rounded-xl text-[11px] font-bold border border-chiziq hover:bg-chiziq transition-all cursor-pointer"
@@ -396,6 +406,8 @@ export default function SyllabusManager() {
                       <Edit size={13} />
                       Tahrirlash
                     </button>
+                    )}
+                    {dasturOchirish && (
                     <button
                       onClick={() => handleDeleteSyllabus(activeSyllabus.id)}
                       className="flex items-center gap-2 px-3 py-2.5 bg-rose-50 dark:bg-rose-950/20 text-rose-500 dark:text-rose-400 rounded-xl border border-rose-100 dark:border-rose-900/40 hover:bg-rose-500 hover:text-white transition-all cursor-pointer"
@@ -403,6 +415,8 @@ export default function SyllabusManager() {
                     >
                       <Trash2 size={13} />
                     </button>
+                    )}
+                    {dasturTahrir && (
                     <button
                       onClick={() => handleOpenTopicModal()}
                       className="flex items-center gap-2 px-5 py-2.5 bg-brand hover:bg-brand-dark text-white rounded-xl text-[11px] font-bold shadow-sm shadow-[#1b6b6b]/20 transition-all cursor-pointer"
@@ -410,6 +424,7 @@ export default function SyllabusManager() {
                       <Plus size={13} />
                       Mavzu
                     </button>
+                    )}
                   </div>
                 </div>
 
@@ -425,6 +440,7 @@ export default function SyllabusManager() {
                     <BookOpen size={36} className="text-gray-300 dark:text-gray-650 mx-auto mb-3" />
                     <p className="text-xs text-matn-sokin font-bold">Dasturda hali mavzular yo'q</p>
                     <p className="text-[11px] text-matn-xira font-semibold mt-1">Dars kunlarida o'tiladigan mavzularni ketma-ketlik bo'yicha qo'shing.</p>
+                    {dasturTahrir && (
                     <button
                       onClick={() => handleOpenTopicModal()}
                       className="mt-4 inline-flex items-center gap-1.5 px-4 py-2 bg-brand/10 hover:bg-brand text-brand hover:text-white rounded-xl text-[11px] font-extrabold transition-all cursor-pointer"
@@ -432,6 +448,7 @@ export default function SyllabusManager() {
                       <Plus size={13} />
                       Mavzu qo'shish
                     </button>
+                    )}
                   </div>
                 ) : (
                   <div className="divide-y divide-chiziq-mayin dark:divide-gray-700/50">
@@ -466,12 +483,12 @@ export default function SyllabusManager() {
                             return (
                               <div
                                 key={topic.id}
-                                draggable={!isReordering}
+                                draggable={dasturTahrir && !isReordering}
                                 onDragStart={() => setDraggedTopicId(topic.id)}
                                 onDragEnd={() => { setDraggedTopicId(null); setDropTargetId(null); }}
                                 onDragOver={e => { e.preventDefault(); setDropTargetId(topic.id); }}
                                 onDragLeave={() => setDropTargetId(prev => prev === topic.id ? null : prev)}
-                                onDrop={e => { e.preventDefault(); handleDropOnTopic(topic.id); }}
+                                onDrop={e => { e.preventDefault(); if (dasturTahrir) handleDropOnTopic(topic.id); }}
                                 className={`group flex items-center gap-3 px-6 py-3 transition-all ${isDragging ? 'opacity-40' : ''} ${isDropTarget ? 'border-t-2 border-brand bg-brand/5' : 'border-t-2 border-transparent'} hover:bg-gray-55/60 dark:hover:bg-gray-750`}
                               >
                                 <GripVertical size={14} className="text-matn-xira shrink-0 cursor-grab active:cursor-grabbing" />
@@ -497,6 +514,7 @@ export default function SyllabusManager() {
                                   {topic.hours ? `${topic.hours} soat` : '—'}
                                 </span>
                                 <div className="flex items-center gap-1 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
+                                  {dasturTahrir && (
                                   <button
                                     onClick={() => handleOpenTopicModal(topic)}
                                     className="p-1.5 hover:bg-white dark:hover:bg-gray-800 text-matn-xira hover:text-gray-750 dark:hover:text-white rounded-lg border border-transparent hover:border-gray-100 dark:hover:border-gray-700 transition-all cursor-pointer"
@@ -504,6 +522,8 @@ export default function SyllabusManager() {
                                   >
                                     <Edit size={13} />
                                   </button>
+                                  )}
+                                  {dasturOchirish && (
                                   <button
                                     onClick={() => handleDeleteTopic(topic.id)}
                                     className="p-1.5 hover:bg-rose-50 dark:hover:bg-rose-950/20 text-matn-xira hover:text-rose-600 rounded-lg border border-transparent hover:border-gray-100 dark:hover:border-gray-700 transition-all cursor-pointer"
@@ -511,18 +531,21 @@ export default function SyllabusManager() {
                                   >
                                     <Trash2 size={13} />
                                   </button>
+                                  )}
                                 </div>
                               </div>
                             );
                           })}
 
                           <div className="px-6 pb-3 pt-1">
+                            {dasturTahrir && (
                             <button
                               onClick={() => handleOpenTopicModal(undefined, mod.name)}
                               className="text-[10px] font-extrabold text-matn-xira hover:text-brand flex items-center gap-1.5 cursor-pointer transition-colors"
                             >
                               <Plus size={11} /> Shu modulga dars
                             </button>
+                            )}
                           </div>
                         </div>
                       );

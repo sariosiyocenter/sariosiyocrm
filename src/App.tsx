@@ -6,6 +6,7 @@
 import React, { Suspense, lazy } from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { useCRM } from './context/CRMContext';
+import { MODULLAR } from '../lib/ruxsatlar.js';
 
 // Eager (har doim kerak)
 import Login from './components/Login';
@@ -69,7 +70,7 @@ function PageLoader() {
 }
 
 export default function App() {
-  const { user, logout, loading, token, error, checkAuth } = useCRM();
+  const { user, logout, loading, token, error, checkAuth, modulKorinadi, kora, ozgartira } = useCRM();
 
   React.useEffect(() => {
     sessionStorage.removeItem('chunk-reload-flag');
@@ -140,8 +141,16 @@ export default function App() {
   const role = user?.role;
   const isSuperAdmin = role === 'SUPERADMIN';
   const isSaaSUser = role === 'SUPERADMIN' || role === 'SELLER';
-  const isAdminOrManager = role === 'ADMIN' || role === 'MANAGER';
-  const isAdmin = role === 'ADMIN';
+
+  // Sahifa lavozim ruxsatiga qarab ochiladi (Sozlamalar → Ruxsatlar). Yopiq
+  // sahifa manzilini qo'lda yozgan xodim birinchi ochiq sahifasiga qaytadi.
+  // Bosh sahifa yopiq bo'lsa ham "/" bo'sh qolmaydi.
+  const birinchiSahifa = MODULLAR.find(m => modulKorinadi(m.id))?.yol || '/settings';
+  const yopiq = <Navigate to={birinchiSahifa} replace />;
+  // "/" ning o'zi yopiq bo'lsa — bosh sahifadan boshqa birinchi ochiq sahifa.
+  const boshYopiq = <Navigate to={MODULLAR.find(m => m.id !== 'bosh' && modulKorinadi(m.id))?.yol || '/settings'} replace />;
+  const sahifa = (ochiq: boolean, el: React.ReactNode) => (ochiq ? el : yopiq);
+  const m = modulKorinadi;
 
   return (
     <Layout onLogout={logout}>
@@ -155,31 +164,31 @@ export default function App() {
           </Routes>
         ) : (
           <Routes>
-            <Route path="/"                     element={<Dashboard />} />
-            <Route path="/leads"                element={<Leads />} />
-            <Route path="/teachers/:id"         element={isAdminOrManager ? <TeacherDetails /> : <Navigate to="/" replace />} />
-            <Route path="/courses"               element={<Courses />} />
-            <Route path="/courses/:id"           element={<CourseDetails />} />
-            <Route path="/syllabus"             element={<SyllabusManager />} />
-            <Route path="/students"             element={<Students />} />
-            <Route path="/students/:id"         element={<StudentDetails />} />
-            <Route path="/daily"                element={<DailySheet />} />
-            <Route path="/journal"              element={isAdmin ? <AuditLog /> : <Navigate to="/" replace />} />
-            <Route path="/hr"                   element={isAdminOrManager ? <HRManagement /> : <Navigate to="/" replace />} />
-            <Route path="/hr/:id"              element={isAdminOrManager ? <StaffDetails />  : <Navigate to="/" replace />} />
-            <Route path="/settings"             element={isAdminOrManager ? <Settings />   : <Navigate to="/" replace />} />
-            <Route path="/finance"              element={isAdminOrManager ? <Finance />    : <Navigate to="/" replace />} />
-            <Route path="/logistics"            element={isAdminOrManager ? <Logistics />  : <Navigate to="/" replace />} />
-            <Route path="/messaging"            element={isAdminOrManager ? <Messaging />  : <Navigate to="/" replace />} />
+            <Route path="/"                     element={m('bosh') ? <Dashboard /> : boshYopiq} />
+            <Route path="/leads"                element={sahifa(m('lidlar'), <Leads />)} />
+            <Route path="/teachers/:id"         element={sahifa(kora('xodimlar.royxat'), <TeacherDetails />)} />
+            <Route path="/courses"               element={sahifa(m('kurslar'), <Courses />)} />
+            <Route path="/courses/:id"           element={sahifa(m('kurslar'), <CourseDetails />)} />
+            <Route path="/syllabus"             element={sahifa(m('dastur'), <SyllabusManager />)} />
+            <Route path="/students"             element={sahifa(kora('oquvchilar.royxat'), <Students />)} />
+            <Route path="/students/:id"         element={sahifa(kora('oquvchilar.royxat'), <StudentDetails />)} />
+            <Route path="/daily"                element={sahifa(m('kunlik'), <DailySheet />)} />
+            <Route path="/journal"              element={sahifa(m('jurnal'), <AuditLog />)} />
+            <Route path="/hr"                   element={sahifa(kora('xodimlar.royxat'), <HRManagement />)} />
+            <Route path="/hr/:id"              element={sahifa(kora('xodimlar.royxat'), <StaffDetails />)} />
+            <Route path="/settings"             element={<Settings />} />
+            <Route path="/finance"              element={sahifa(m('moliya'), <Finance />)} />
+            <Route path="/logistics"            element={sahifa(m('logistika'), <Logistics />)} />
+            <Route path="/messaging"            element={sahifa(m('xabarlar'), <Messaging />)} />
             <Route path="/reports"              element={<Navigate to="/" replace />} />
-            <Route path="/exams"                element={isAdminOrManager ? <ExamsList />   : <Navigate to="/" replace />} />
-            <Route path="/exams/new"            element={isAdminOrManager ? <ExamBuilder /> : <Navigate to="/" replace />} />
-            <Route path="/exams/:id"            element={isAdminOrManager ? <ExamDetail />  : <Navigate to="/" replace />} />
+            <Route path="/exams"                element={sahifa(m('imtihonlar'), <ExamsList />)} />
+            <Route path="/exams/new"            element={sahifa(ozgartira('imtihonlar.imtihon'), <ExamBuilder />)} />
+            <Route path="/exams/:id"            element={sahifa(kora('imtihonlar.imtihon'), <ExamDetail />)} />
             <Route path="/scanner"              element={<Navigate to="/exams" replace />} />
             <Route path="/questions"            element={<Navigate to="/exams" replace />} />
-            <Route path="/questions/new"        element={isAdminOrManager ? <QuestionEditor /> : <Navigate to="/" replace />} />
-            <Route path="/questions/:id/edit"   element={isAdminOrManager ? <QuestionEditor /> : <Navigate to="/" replace />} />
-            <Route path="/exam-results"         element={isAdminOrManager ? <ExamResults />    : <Navigate to="/" replace />} />
+            <Route path="/questions/new"        element={sahifa(ozgartira('imtihonlar.savollar'), <QuestionEditor />)} />
+            <Route path="/questions/:id/edit"   element={sahifa(kora('imtihonlar.savollar'), <QuestionEditor />)} />
+            <Route path="/exam-results"         element={sahifa(kora('imtihonlar.natija'), <ExamResults />)} />
             <Route path="*"                     element={<Navigate to="/" replace />} />
           </Routes>
         )}

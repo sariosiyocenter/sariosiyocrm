@@ -27,7 +27,11 @@ import GraduatesReport from './reports/GraduatesReport';
 import CenterStatsReport from './reports/CenterStatsReport';
 
 export default function Dashboard() {
-    const { students, groups, teachers, leads, payments, courses, rooms, attendances, user } = useCRM();
+    const { students, groups, teachers, leads, payments, courses, rooms, attendances, user, kora, ozgartira } = useCRM();
+    // Lavozim ruxsati (Sozlamalar → Ruxsatlar): pul ko'rsatkichlari va hisobotlar alohida.
+    const pulKorinadi = kora('bosh.pul');
+    const hisobotKorinadi = kora('bosh.hisobot');
+    const umumiyKorinadi = kora('bosh.korsatkich');
     const { t } = useLang();
     const navigate = useNavigate();
 
@@ -239,14 +243,14 @@ export default function Dashboard() {
     });
 
     const todoItems = [
-        staleDebtors.length > 0 && {
+        pulKorinadi && staleDebtors.length > 0 && {
             key: 'debt',
             tone: 'bg-xato',
             title: `${staleDebtors.length} ta o'quvchi 30+ kun to'lov qilmagan`,
             sub: `Jami ${(staleDebtSum / 1000000).toFixed(1)} mln so'm`,
             path: '/students?filter=debt',
         },
-        staleLeads.length > 0 && {
+        kora('lidlar.royxat') && staleLeads.length > 0 && {
             key: 'leads',
             tone: 'bg-ogoh',
             title: `${staleLeads.length} ta lid javobsiz qolgan`,
@@ -333,22 +337,25 @@ export default function Dashboard() {
     const groupsWithoutTeacher = groups.filter(g => !teachers.find(tt => tt.id === g.teacherId)).length;
 
     const PRIMARY_REPORTS = [
-        { id: 'stats', label: t('rep_stats'), icon: <FileText size={12} /> },
-        { id: 'leads', label: t('rep_leads'), icon: <Target size={12} /> },
-        { id: 'students_general', label: t('rep_students_general'), icon: <Users size={12} /> },
-        { id: 'left_students', label: t('rep_left_students'), icon: <UserMinus size={12} /> },
-    ];
+        { id: 'stats', label: t('rep_stats'), icon: <FileText size={12} />, ok: hisobotKorinadi && pulKorinadi },
+        { id: 'leads', label: t('rep_leads'), icon: <Target size={12} />, ok: hisobotKorinadi },
+        { id: 'students_general', label: t('rep_students_general'), icon: <Users size={12} />, ok: hisobotKorinadi },
+        { id: 'left_students', label: t('rep_left_students'), icon: <UserMinus size={12} />, ok: hisobotKorinadi },
+    ].filter(r => r.ok);
 
     const SECONDARY_REPORTS = [
-        { id: 'graduates', label: t('rep_graduates'), icon: <GraduationCap size={12} /> },
-        { id: 'staff_attendance', label: t('rep_staff_attendance'), icon: <Activity size={12} /> },
-        { id: 'bonuses', label: t('rep_bonuses'), icon: <Star size={12} /> },
-        { id: 'payments', label: t('rep_payments'), icon: <CreditCard size={12} /> },
-        { id: 'students_payment', label: t('rep_students_payment'), icon: <Users size={12} /> },
-    ];
+        { id: 'graduates', label: t('rep_graduates'), icon: <GraduationCap size={12} />, ok: hisobotKorinadi },
+        { id: 'staff_attendance', label: t('rep_staff_attendance'), icon: <Activity size={12} />, ok: hisobotKorinadi && kora('xodimlar.davomat') },
+        { id: 'bonuses', label: t('rep_bonuses'), icon: <Star size={12} />, ok: hisobotKorinadi && kora('oquvchilar.ballar') },
+        { id: 'payments', label: t('rep_payments'), icon: <CreditCard size={12} />, ok: pulKorinadi },
+        { id: 'students_payment', label: t('rep_students_payment'), icon: <Users size={12} />, ok: pulKorinadi },
+    ].filter(r => r.ok);
+    const HISOBOTLAR = [...PRIMARY_REPORTS, ...SECONDARY_REPORTS];
+    // Ochiq tab ruxsat etilmagan bo'lsa — birinchi ruxsat etilganiga.
+    const joriyHisobot = HISOBOTLAR.some(r => r.id === activeReportTab) ? activeReportTab : HISOBOTLAR[0]?.id;
 
     const renderReportContent = () => {
-        switch (activeReportTab) {
+        switch (joriyHisobot) {
             case 'left_students': return <LeftStudentsReport startDate={startDate} endDate={endDate} />;
             case 'staff_attendance': return <StaffAttendanceReport startDate={startDate} endDate={endDate} />;
             case 'bonuses': return <StudentBonusReport startDate={startDate} endDate={endDate} />;
@@ -461,6 +468,7 @@ export default function Dashboard() {
                     )}
                 </div>
 
+                {pulKorinadi && (
                 <div onClick={() => navigate('/finance')}
                     className="bg-sirt rounded-xl border border-chiziq p-4 cursor-pointer hover:border-chiziq-kuchli transition-colors">
                     <span className="text-[12px] text-matn-sokin">{t('income')}</span>
@@ -481,7 +489,9 @@ export default function Dashboard() {
                         <span className="text-[11px] text-matn-xira block mt-2">Kutilayotgan summa hisoblanmadi</span>
                     )}
                 </div>
+                )}
 
+                {pulKorinadi && (
                 <div onClick={() => navigate('/students?filter=debt')}
                     className="bg-xato-fon rounded-xl border border-xato-chiziq p-4 cursor-pointer hover:border-xato transition-colors">
                     <span className="text-[12px] text-matn-sokin">{t('debt')}</span>
@@ -501,6 +511,7 @@ export default function Dashboard() {
                         <span className="raqam">{debtors.length}</span> o'quvchi · <span className="raqam">{staleDebtors.length}</span> tasi 30 kundan oshgan
                     </span>
                 </div>
+                )}
 
                 {/* Guruhlar. Sonning o'zi yomon xabar emas, shuning uchun raqam
                     oddiy rangda — ogohlantirish faqat izohda. */}
@@ -530,6 +541,7 @@ export default function Dashboard() {
                     {/* Tushum grafigi. Ilgari kartochka ichida yana bir
                         kartochka bor edi — ikki qavat ramka va ikki qavat
                         ichki bo'shliq. Endi bitta qavat. */}
+                    {pulKorinadi && (
                     <div className="bg-sirt rounded-xl border border-chiziq p-5">
                         <div className="flex items-start justify-between mb-4">
                             <div>
@@ -560,9 +572,11 @@ export default function Dashboard() {
                             ))}
                         </div>
                     </div>
+                    )}
 
                     {/* Bugungi darslar. Jadvali kiritilmagan guruh bu yerga
                         tushmaydi — dars bor deb taxmin qilinmaydi. */}
+                    {umumiyKorinadi && (
                     <div className="bg-sirt rounded-xl border border-chiziq overflow-hidden">
                         <div className="flex items-baseline justify-between px-4 pt-3.5 pb-3">
                             <h3 className="text-[15px] font-semibold text-matn">Bugungi darslar</h3>
@@ -610,6 +624,7 @@ export default function Dashboard() {
                             </button>
                         ))}
                     </div>
+                    )}
                 </div>
 
                 {/* ---- O'NG USTUN ---- */}
@@ -639,6 +654,7 @@ export default function Dashboard() {
 
                     {/* So'nggi to'lovlar. Manfiy yozuvlar oylik hisob, ular
                         to'lov emas — shuning uchun bu yerga tushmaydi. */}
+                    {pulKorinadi && (
                     <div className="bg-sirt rounded-xl border border-chiziq overflow-hidden">
                         <div className="flex items-baseline justify-between px-4 pt-3.5 pb-3">
                             <h3 className="text-[15px] font-semibold text-matn">So'nggi to'lovlar</h3>
@@ -659,9 +675,10 @@ export default function Dashboard() {
                             </button>
                         ))}
                     </div>
+                    )}
 
                     {/* Eng ko'p tushum keltirgan kurslar — bo'sh bo'lsa ko'rsatilmaydi */}
-                    {topCourseStats.length > 0 && (
+                    {pulKorinadi && topCourseStats.length > 0 && (
                     <div className="bg-sirt rounded-xl border border-chiziq p-4">
                         <h3 className="text-[15px] font-semibold text-matn mb-3.5">Eng ko'p tushum keltirgan kurslar</h3>
                         <div className="space-y-3.5">
@@ -687,6 +704,7 @@ export default function Dashboard() {
             </div>
 
             {/* Reports Section integrated into Dashboard */}
+            {HISOBOTLAR.length > 0 && (
             <div className="bg-sirt rounded-2xl border border-chiziq p-5 shadow-sm">
                 <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-4 border-b border-chiziq-mayin pb-4 mb-5">
                     <div>
@@ -709,7 +727,7 @@ export default function Dashboard() {
                                     setIsDropdownOpen(false);
                                 }}
                                 className={`flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-lg text-[12px] font-medium transition-colors cursor-pointer whitespace-nowrap ${
-                                    activeReportTab === r.id
+                                    joriyHisobot === r.id
                                         ? 'bg-brand text-brand-ust font-semibold'
                                         : 'text-matn-xira hover:text-gray-700 dark:hover:text-gray-300'
                                 }`}
@@ -726,16 +744,16 @@ export default function Dashboard() {
                             <button
                                 onClick={() => setIsDropdownOpen(!isDropdownOpen)}
                                 className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[12px] font-medium transition-colors cursor-pointer whitespace-nowrap ${
-                                    SECONDARY_REPORTS.some(r => r.id === activeReportTab)
+                                    SECONDARY_REPORTS.some(r => r.id === joriyHisobot)
                                         ? 'bg-brand text-brand-ust font-semibold'
                                         : 'text-matn-xira hover:text-gray-700 dark:hover:text-gray-300'
                                 }`}
                             >
                                 <span className="shrink-0">
-                                    {SECONDARY_REPORTS.find(r => r.id === activeReportTab)?.icon || <MoreHorizontal size={12} />}
+                                    {SECONDARY_REPORTS.find(r => r.id === joriyHisobot)?.icon || <MoreHorizontal size={12} />}
                                 </span>
                                 <span>
-                                    {SECONDARY_REPORTS.find(r => r.id === activeReportTab)?.label || t('more')}
+                                    {SECONDARY_REPORTS.find(r => r.id === joriyHisobot)?.label || t('more')}
                                 </span>
                                 <ChevronDown size={10} className={`transition-transform duration-200 ${isDropdownOpen ? 'rotate-180' : ''}`} />
                             </button>
@@ -756,7 +774,7 @@ export default function Dashboard() {
                                                     setIsDropdownOpen(false);
                                                 }}
                                                 className={`flex items-center gap-2 w-full px-3 py-2 rounded-lg text-[12px] font-medium text-left transition-colors ${
-                                                    activeReportTab === r.id
+                                                    joriyHisobot === r.id
                                                         ? 'bg-brand/10 text-brand'
                                                         : 'text-matn-sokin hover:bg-gray-55 dark:hover:bg-gray-900 hover:text-gray-900 dark:hover:text-white'
                                                 }`}
@@ -776,11 +794,14 @@ export default function Dashboard() {
                     {renderReportContent()}
                 </div>
             </div>
+            )}
 
             {/* Room Schedule */}
+            {umumiyKorinadi && (
             <div className="bg-sirt rounded-2xl border border-chiziq p-5 shadow-sm">
                 <RoomSchedule />
             </div>
+            )}
         </div>
     );
 }

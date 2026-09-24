@@ -39,7 +39,9 @@ const money = (n: number) => Math.round(n).toLocaleString('ru-RU');
 const dmy = (d: string) => { const [y, m, day] = d.split('-'); return `${day}.${m}.${y}`; };
 
 export default function KassaPanel() {
-    const { selectedSchoolId, showNotification, retryLoad } = useCRM();
+    const { selectedSchoolId, showNotification, retryLoad, ozgartira } = useCRM();
+    // Inkassatsiya va kunni yopish — "Moliya → Kassa" ni o'zgartira oladiganga.
+    const kassaTahrir = ozgartira('moliya.kassa');
     const confirm = useConfirm();
     const [data, setData] = useState<Kassa | null>(null);
     const [loading, setLoading] = useState(false);
@@ -146,14 +148,18 @@ export default function KassaPanel() {
                     <button onClick={load} className="w-9 h-9 flex items-center justify-center rounded-xl border border-chiziq text-matn-xira hover:bg-ichki cursor-pointer" title="Yangilash">
                         <RefreshCw size={14} className={loading ? 'animate-spin' : ''} />
                     </button>
+                    {kassaTahrir && (
                     <button onClick={() => setModal('handover')} disabled={branchNeeded}
                         className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl border border-chiziq bg-sirt text-xs font-extrabold text-matn hover:bg-ichki disabled:opacity-50 cursor-pointer">
                         <ArrowDownToLine size={14} /> Inkassatsiya
                     </button>
+                    )}
+                    {kassaTahrir && (
                     <button onClick={() => { setCCounted(String(data.cashOnHand)); setModal('close'); }} disabled={branchNeeded}
                         className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-brand hover:bg-brand-dark text-white text-xs font-extrabold disabled:opacity-50 cursor-pointer">
                         <Lock size={14} /> {data.todayClosed ? 'Kunni qayta yopish' : 'Kunni yopish'}
                     </button>
+                    )}
                 </div>
             </div>
 
@@ -244,9 +250,11 @@ export default function KassaPanel() {
                                 </div>
                                 <div className="flex items-center gap-3">
                                     <span className="raqam font-bold text-matn-2">{money(h.amount)}</span>
+                                    {kassaTahrir && (
                                     <button onClick={() => removeHandover(h.id, h.amount)} className="p-1.5 rounded-lg text-matn-xira hover:text-xato hover:bg-xato-fon cursor-pointer" title="O'chirish">
                                         <Trash2 size={13} />
                                     </button>
+                                    )}
                                 </div>
                             </div>
                         ))}

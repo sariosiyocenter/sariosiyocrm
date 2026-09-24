@@ -86,7 +86,12 @@ const UZB_REGIONS: Record<string, string[]> = {
 };
 
 export default function Leads() {
-  const { leads, courses, groups, updateLead, addLead, deleteLead, addStudent } = useCRM();
+  const { leads, courses, groups, updateLead, addLead, deleteLead, addStudent, ozgartira } = useCRM();
+  // Lavozim ruxsati (Sozlamalar → Ruxsatlar). Ko'radigan xodim lidlarni ochadi,
+  // lekin qo'shmaydi, bosqichini o'zgartirmaydi va o'chirmaydi.
+  const lidTahrir = ozgartira('lidlar.royxat');
+  const lidOchirish = ozgartira('lidlar.ochirish');
+  const oquvchigaAylantirish = lidTahrir && ozgartira('oquvchilar.royxat');
   // Guruhi bo'lmagan kurslar tanlash ro'yxatlarida ko'rinmaydi.
   const selectableCourses = activeCourses(courses, groups);
     const confirm = useConfirm();
@@ -231,6 +236,7 @@ export default function Leads() {
   };
 
   const handleStatusChange = async (leadId: number, newStatus: Lead['status']) => {
+    if (!lidTahrir) return;
     try {
       await updateLead(leadId, newStatus);
       if (selectedLead && selectedLead.id === leadId) {
@@ -343,12 +349,14 @@ export default function Leads() {
             >
               <SlidersHorizontal size={15} />
             </button>
+            {lidTahrir && (
             <button
               onClick={() => setIsModalOpen(true)}
               className="flex items-center gap-2 px-4 py-2.5 bg-brand hover:bg-brand-dark text-white rounded-xl text-[13px] font-semibold shadow-sm shadow-[#1b6b6b]/20 transition-colors cursor-pointer shrink-0"
             >
               <Plus size={14} /> {t('add')}
             </button>
+            )}
           </div>
       </div>
 
@@ -472,7 +480,7 @@ export default function Leads() {
                 {stageLeads.map((lead) => (
                   <div
                     key={lead.id}
-                    draggable
+                    draggable={lidTahrir}
                     onDragStart={(e) => {
                       e.dataTransfer.setData("leadId", lead.id.toString());
                     }}
@@ -535,7 +543,7 @@ export default function Leads() {
                           >
                             <Phone size={13} />
                           </a>
-                          {STAGES.findIndex(st => st.name === lead.status) < STAGES.length - 1 && (
+                          {lidTahrir && STAGES.findIndex(st => st.name === lead.status) < STAGES.length - 1 && (
                             <button
                               onClick={e => { e.stopPropagation(); advanceStage(lead); }}
                               title="Keyingi bosqichga o'tkazish"
@@ -550,12 +558,14 @@ export default function Leads() {
                   </div>
                 ))}
 
+                {lidTahrir && (
                 <button
                   onClick={() => setIsModalOpen(true)}
                   className="w-full flex items-center justify-center gap-1.5 py-2 rounded-xl text-matn-xira hover:text-brand hover:bg-white dark:hover:bg-gray-800 transition-colors text-[12px] font-medium cursor-pointer"
                 >
                   <Plus size={13} /> {t('add')}
                 </button>
+                )}
               </div>
             </div>
           );
@@ -851,6 +861,7 @@ export default function Leads() {
                       <button
                         key={s.id}
                         type="button"
+                        disabled={!lidTahrir}
                         onClick={() => handleStatusChange(selectedLead.id, s.name)}
                         className={`px-3 py-2 rounded-xl text-[11px] font-black border transition-all cursor-pointer ${
                           selectedLead.status === s.name
@@ -865,6 +876,7 @@ export default function Leads() {
                 </div>
 
                 {/* Conversion Prompt */}
+                {oquvchigaAylantirish && (
                 <div className="p-4 rounded-2xl bg-brand/5 border border-brand/20 flex items-center justify-between">
                   <div>
                     <h4 className="text-xs font-black text-matn tracking-tight">{t('convert_to_student')}</h4>
@@ -899,9 +911,11 @@ export default function Leads() {
                     <UserPlus size={14} /> {t('convert')}
                   </button>
                 </div>
+                )}
 
                 {/* Actions footer */}
                 <div className="flex items-center justify-between pt-4 border-t border-gray-55 dark:border-gray-800/50">
+                  {lidOchirish && (
                   <button
                     type="button"
                     onClick={() => handleDeleteLead(selectedLead.id)}
@@ -909,6 +923,7 @@ export default function Leads() {
                   >
                     <Trash2 size={14} /> {t('delete_lead')}
                   </button>
+                  )}
                   <button
                     type="button"
                     onClick={() => setSelectedLead(null)}

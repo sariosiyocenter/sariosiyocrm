@@ -64,7 +64,9 @@ function normalizeRow(raw: any): { data: ImportRow | null; errors: ImportError[]
 }
 
 export default function QuestionsList() {
-    const { questions, deleteQuestion, showNotification, token, selectedSchoolId } = useCRM();
+    const { questions, deleteQuestion, showNotification, token, selectedSchoolId, ozgartira } = useCRM();
+    const savolTahrir = ozgartira('imtihonlar.savollar');
+    const savolOchirish = ozgartira('imtihonlar.ochirish');
     const confirm = useConfirm();
     const navigate = useNavigate();
 
@@ -251,11 +253,14 @@ export default function QuestionsList() {
                     </div>
 
                     <div className="flex items-center gap-2">
+                        {savolTahrir && (
                         <label className="cursor-pointer px-4 py-2.5 bg-amber-50 dark:bg-amber-955/20 text-amber-600 dark:text-amber-405 border border-amber-100 dark:border-amber-900/40 rounded-xl text-[11px] font-bold hover:bg-amber-100 transition-colors flex items-center gap-1.5">
                             <FileUp size={14} />
                             {isImporting ? 'Kutilmoqda...' : 'Excel Import'}
                             <input type="file" className="hidden" accept=".xlsx, .xls" onChange={handleImportExcel} disabled={isImporting} />
                         </label>
+                        )}
+                        {savolTahrir && (
                         <button 
                             onClick={() => navigate('/questions/new')}
                             className="px-4 py-2.5 bg-brand hover:bg-brand-dark text-white rounded-xl text-[11px] font-bold transition-colors flex items-center gap-1.5 cursor-pointer shadow-sm shadow-[#1b6b6b]/20"
@@ -263,6 +268,7 @@ export default function QuestionsList() {
                             <Plus size={14} />
                             Savol Qo'shish
                         </button>
+                        )}
                     </div>
                 </div>
 
@@ -352,6 +358,7 @@ export default function QuestionsList() {
                                     </td>
                                     <td className="p-4 text-center">
                                         <div className="flex items-center justify-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                            {savolOchirish && (
                                             <button 
                                                 onClick={async (e) => {
                                                     e.stopPropagation();
@@ -361,6 +368,7 @@ export default function QuestionsList() {
                                             >
                                                 <Trash2 size={14} />
                                             </button>
+                                            )}
                                         </div>
                                     </td>
                                 </tr>

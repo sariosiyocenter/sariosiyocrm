@@ -59,7 +59,7 @@ const lbl = "block text-[11px] font-extrabold   text-matn-xira mb-2";
 export default function StaffDetails() {
     const { id } = useParams<{ id: string }>();
     const navigate = useNavigate();
-    const { teachers, groups, attendances, token, user: currentUser, showNotification, retryLoad, updateTeacher, schools } = useCRM();
+    const { teachers, groups, attendances, token, user: currentUser, showNotification, retryLoad, updateTeacher, schools, kora, ozgartira } = useCRM();
     const confirm = useConfirm();
     const { t } = useLang();
 
@@ -195,7 +195,12 @@ export default function StaffDetails() {
     const [isRemovingBg, setIsRemovingBg] = useState(false);
     const fileRef = React.useRef<HTMLInputElement>(null);
 
-    const isAdminOrManager = currentUser?.role === 'ADMIN' || currentUser?.role === 'MANAGER';
+    // Tugma va tablar lavozim ruxsatiga qarab (Sozlamalar → Ruxsatlar).
+    const isAdminOrManager = ozgartira('xodimlar.royxat');   // profil, rasm, holat
+    const maoshKorinadi = kora('xodimlar.maosh');
+    const maoshTahrir = ozgartira('xodimlar.maosh');
+    const davomatKorinadi = kora('xodimlar.davomat');
+    const davomatTahrir = ozgartira('xodimlar.davomat');
     // Filiallarni (ikki filialda ishlash) faqat ADMIN belgilaydi — HR ro'yxatidagi
     // oynada ham, shu profil oynasida ham.
     const multiBranch = currentUser?.role === 'ADMIN' && (schools || []).length > 1;
@@ -230,7 +235,7 @@ export default function StaffDetails() {
 
     // Fetch salary payment history
     useEffect(() => {
-        if (!staffUser || !token) return;
+        if (!staffUser || !token || !maoshKorinadi) return;
         fetch(`/api/salary-payments?userId=${staffUser.id}`, {
             headers: { Authorization: `Bearer ${token}` }
         })
@@ -250,7 +255,7 @@ export default function StaffDetails() {
 
     // Fetch attendance whenever user/month changes
     useEffect(() => {
-        if (!staffUser || !token) return;
+        if (!staffUser || !token || !davomatKorinadi) return;
         const month = `${selYear}-${String(selMonth + 1).padStart(2, '0')}`;
         setAttLoading(true);
         fetch(`/api/staff-attendance?userId=${staffUser.id}&month=${month}`, {
@@ -266,7 +271,7 @@ export default function StaffDetails() {
     // hisob-kitobi kartasi ham shu ma'lumotga tayanadi.
     const [kpiReload, setKpiReload] = useState(0);
     useEffect(() => {
-        if (!staffUser || !token) return;
+        if (!staffUser || !token || !maoshKorinadi) return;
         const month = `${payYear}-${String(payMonth + 1).padStart(2, '0')}`;
         setKpiLoading(true);
         fetch(`/api/kpi-calculation?userId=${staffUser.id}&month=${month}`, {
@@ -487,7 +492,8 @@ export default function StaffDetails() {
         e.preventDefault();
         const body: any = {
             name: editData.name, phone: editData.phone,
-            photo: editData.photo, position: editData.position, salary: editData.salary,
+            photo: editData.photo, position: editData.position,
+            ...(maoshTahrir ? { salary: editData.salary } : {}),
         };
         if (editData.password) body.password = editData.password;
         // Email — tizimga kirish logini. Avtomatik (…@internal.local) manzil
@@ -739,8 +745,8 @@ export default function StaffDetails() {
 
     const tabs = [
         { id: 'umumiy', label: t('general'),     icon: <Layers size={14} /> },
-        { id: 'maosh',  label: t('salary_info'),   icon: <Wallet size={14} /> },
-        { id: 'jadval', label: t('work_schedule'), icon: <CalendarDays size={14} /> },
+        ...(maoshKorinadi ? [{ id: 'maosh',  label: t('salary_info'),   icon: <Wallet size={14} /> }] : []),
+        ...(davomatKorinadi ? [{ id: 'jadval', label: t('work_schedule'), icon: <CalendarDays size={14} /> }] : []),
     ];
 
     return (
@@ -1010,6 +1016,7 @@ export default function StaffDetails() {
 
                                         <div className="space-y-5">
                                             {/* Oylik hisob-kitobi — Maosh tabidagi hisobning qisqa ko'rinishi. */}
+                                            {maoshKorinadi && (
                                             <div className="bg-sirt border border-chiziq rounded-2xl p-5">
                                                 <div className="flex items-baseline justify-between mb-3">
                                                     <h3 className="text-[14px] font-semibold text-matn">Oylik hisob-kitobi</h3>
@@ -1082,8 +1089,10 @@ export default function StaffDetails() {
                                                     Batafsil →
                                                 </button>
                                             </div>
+                                            )}
 
                                             {/* Intizom — shu oy davomati */}
+                                            {davomatKorinadi && (
                                             <div className="bg-sirt border border-chiziq rounded-2xl p-5">
                                                 <h3 className="text-[14px] font-semibold text-matn mb-3">Intizom · {getMonthName(selMonth)}</h3>
                                                 <div className="space-y-2 text-[13px]">
@@ -1096,13 +1105,14 @@ export default function StaffDetails() {
                                                     Ish grafigi →
                                                 </button>
                                             </div>
+                                            )}
                                         </div>
                                     </div>
                                 </div>
                             )}
 
                             {/* ── ISH HAQI ── */}
-                            {activeTab === 'maosh' && (
+                            {activeTab === 'maosh' && maoshKorinadi && (
                                 <div className="space-y-6 animate-in fade-in duration-300">
 
                                     {/* Inline base salary editor */}
@@ -1125,7 +1135,7 @@ export default function StaffDetails() {
                                                 <div className="flex items-center gap-2 mt-1">
                                                     <span className="text-2xl font-black text-matn tabular-nums">{baseSalary.toLocaleString()}</span>
                                                     <span className="text-[11px] font-bold text-matn-xira">UZS</span>
-                                                    {isAdminOrManager && (
+                                                    {maoshTahrir && (
                                                         <button
                                                             onClick={() => { setSalaryDraft(String(baseSalary)); setEditingSalary(true); }}
                                                             className="ml-1 text-matn-xira hover:text-brand transition-colors cursor-pointer">
@@ -1153,7 +1163,7 @@ export default function StaffDetails() {
                                                 <div className="flex items-center justify-end gap-2 mt-1">
                                                     <span className="text-2xl font-black text-brand tabular-nums">{kpiPercent}</span>
                                                     <span className="text-[11px] font-bold text-matn-xira">%</span>
-                                                    {isAdminOrManager && (
+                                                    {maoshTahrir && (
                                                         <button
                                                             onClick={() => { setKpiDraft(String(kpiPercent)); setEditingKpi(true); }}
                                                             className="ml-1 text-matn-xira hover:text-brand transition-colors cursor-pointer">
@@ -1197,7 +1207,7 @@ export default function StaffDetails() {
                                                     </p>
                                                 </div>
                                             </div>
-                                            {isAdminOrManager && (
+                                            {maoshTahrir && (
                                                 <div className="flex items-center gap-1 shrink-0">
                                                     <button onClick={() => openPaymentEdit(currentPayment)}
                                                         title="Bonus, jarima va summani tuzatish"
@@ -1267,7 +1277,7 @@ export default function StaffDetails() {
                                                         {currentPayment.note}
                                                     </p>
                                                 )}
-                                                {isAdminOrManager && (
+                                                {maoshTahrir && (
                                                     <button onClick={() => openPaymentEdit(currentPayment)}
                                                         className="mt-4 w-full py-2 rounded-xl text-[12px] text-brand border border-chiziq hover:bg-brand/5 transition-colors cursor-pointer">
                                                         Bonus / jarima qo'shish yoki tuzatish →
@@ -1342,6 +1352,7 @@ export default function StaffDetails() {
                                                                                     </div>
                                                                                 ) : (
                                                                                     <button
+                                                                                        disabled={!ozgartira('kurslar.narx')}
                                                                                         onClick={() => {
                                                                                             setPayEditId(g.id);
                                                                                             setPayEditType(g.payType || '');
@@ -1459,7 +1470,7 @@ export default function StaffDetails() {
                                                         </div>
                                                     </div>
 
-                                                    {!payConfirm ? (
+                                                    {!maoshTahrir ? null : !payConfirm ? (
                                                         <button
                                                             onClick={() => setPayConfirm(true)}
                                                             className="mt-6 w-full py-3 bg-brand hover:bg-brand-dark text-white rounded-2xl text-xs font-extrabold flex items-center justify-center gap-2 shadow-sm shadow-[#1b6b6b]/20 transition-all cursor-pointer">
@@ -1519,7 +1530,7 @@ export default function StaffDetails() {
                                                                     <td className="p-3 text-[11px] font-bold text-brand">{p.amount.toLocaleString()}</td>
                                                                     <td className="p-3 text-[11px] font-bold text-matn-xira">{new Date(p.paidAt).toLocaleDateString('uz-UZ')}</td>
                                                                     <td className="p-3">
-                                                                        {isAdminOrManager && (
+                                                                        {maoshTahrir && (
                                                                             <button onClick={() => deleteSalaryPayment(p.id)}
                                                                                 className="text-gray-300 hover:text-rose-500 transition-colors cursor-pointer">
                                                                                 <Trash2 size={13} />
@@ -1538,7 +1549,7 @@ export default function StaffDetails() {
                             )}
 
                             {/* ── ISH JADVALI ── */}
-                            {activeTab === 'jadval' && (
+                            {activeTab === 'jadval' && davomatKorinadi && (
                                 <div className="space-y-8 animate-in fade-in duration-300">
 
                                     {/* Work schedule */}
@@ -1547,7 +1558,7 @@ export default function StaffDetails() {
                                             <span className="text-[11px] font-extrabold text-matn-xira flex items-center gap-1.5">
                                                 <CalendarDays size={11} /> {t('weekly_work_days')}
                                             </span>
-                                            {workDaysChanged && (
+                                            {workDaysChanged && davomatTahrir && (
                                                 <button onClick={saveWorkDays} disabled={savingWD}
                                                     className="px-4 py-2 bg-brand hover:bg-brand-dark text-white text-[11px] font-bold rounded-xl cursor-pointer transition-all disabled:opacity-60 shadow-sm shadow-[#1b6b6b]/20">
                                                     {savingWD ? t('saving') : t('save')}
@@ -1589,7 +1600,7 @@ export default function StaffDetails() {
                                         <div className="flex items-center justify-between">
                                             <div className="flex items-center gap-2">
                                                 <span className="text-[11px] font-extrabold text-matn-xira">{t('attendance')}</span>
-                                                {linkedTeacher && (
+                                                {linkedTeacher && davomatTahrir && (
                                                     <button onClick={notifyTeacher} disabled={isNotifying}
                                                         title="Bugungi davomatni ustozning Telegramiga yuborish"
                                                         className="px-3 py-1.5 bg-sky-50 dark:bg-sky-950/20 text-sky-600 dark:text-sky-400 border border-sky-100 dark:border-sky-900/40 rounded-xl text-[11px] font-extrabold hover:bg-sky-600 hover:text-white transition-all cursor-pointer disabled:opacity-50 inline-flex items-center gap-1.5">
@@ -1670,7 +1681,7 @@ export default function StaffDetails() {
 
                                                         return (
                                                             <div key={idx}
-                                                                onClick={() => isWork && isAdminOrManager && setAttPicker(ds)}
+                                                                onClick={() => isWork && davomatTahrir && setAttPicker(ds)}
                                                                 className={cls}>
                                                                 <span>{dayNum}</span>
                                                                 {status === 'Keldi'   && <span className="text-[7px] leading-none">✓</span>}
@@ -1771,11 +1782,14 @@ export default function StaffDetails() {
                             )}
                             <div className="grid grid-cols-2 gap-4">
                                 <div><label className={lbl}>Telefon</label><input type="text" className={inp} value={editData.phone||''} onChange={e => setEditData((p:any)=>({...p,phone:e.target.value}))} /></div>
-                                <div><label className={lbl}>Asosiy Maosh</label><input type="number" className={inp} value={editData.salary||''} onChange={e => setEditData((p:any)=>({...p,salary:e.target.value}))} /></div>
+                                {maoshTahrir && <div><label className={lbl}>Asosiy Maosh</label><input type="number" className={inp} value={editData.salary||''} onChange={e => setEditData((p:any)=>({...p,salary:e.target.value}))} /></div>}
                             </div>
                             <div><label className={lbl}>Vazifa / Mutaxassislik</label><input type="text" className={inp} value={editData.position||''} onChange={e => setEditData((p:any)=>({...p,position:e.target.value}))} /></div>
+                            {/* Haydovchi (faqat Telegram bot) va texnik xodim CRM ga kirmaydi — login maydonlari yo'q. */}
+                            {staffUser.role !== 'DRIVER' && staffUser.role !== 'TECH_STAFF' && <>
                             <div><label className={lbl}>Email (tizimga kirish logini)</label><input type="email" placeholder="xodim@example.uz" className={inp} value={editData.email||''} onChange={e => setEditData((p:any)=>({...p,email:e.target.value}))} /></div>
                             <div><label className={lbl}>Yangi Parol (ixtiyoriy)</label><input type="password" placeholder="O'zgartirish uchun to'ldiring" className={inp} value={editData.password||''} onChange={e => setEditData((p:any)=>({...p,password:e.target.value}))} /></div>
+                            </>}
                             <div className="flex gap-3 pt-4 border-t border-dashed border-chiziq">
                                 <button type="button" onClick={() => setIsEditOpen(false)} className="flex-1 py-3 bg-chiziq text-gray-700 dark:text-white text-xs font-extrabold rounded-2xl cursor-pointer hover:bg-gray-200">Bekor</button>
                                 <button type="submit" className="flex-1 py-3 bg-brand hover:bg-brand-dark text-white text-xs font-extrabold rounded-2xl shadow-sm shadow-[#1b6b6b]/20 cursor-pointer">Saqlash</button>

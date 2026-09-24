@@ -72,10 +72,14 @@ const mashinaMatni = (t?: { model?: string; name?: string; number?: string; capa
     t ? [t.model || t.name, t.number, t.capacity ? `${t.capacity} o'rin` : ''].filter(Boolean).join(' · ') : '';
 
 export default function LogisticsHub() {
-    const { students, groups, attendances, settings, showNotification, token, selectedSchoolId } = useCRM();
+    const { students, groups, attendances, settings, showNotification, token, selectedSchoolId, kora, ozgartira } = useCRM();
+    // Lavozim ruxsati (Sozlamalar → Ruxsatlar): reja tuzish/belgilash va tarix alohida.
+    const rejaKorinadi = kora('logistika.reja');
+    const rejaTahrir = ozgartira('logistika.reja');
+    const tarixKorinadi = kora('logistika.tarix');
     const confirm = useConfirm();
 
-    const [tab, setTab] = useState<Tab>('reja');
+    const [tab, setTab] = useState<Tab>(() => (rejaKorinadi ? 'reja' : 'tarix'));
     const [sana, setSana] = useState(toDateStr());
 
     // ===== Kun ma'lumoti (rejalar + haydovchilar) =====
@@ -99,7 +103,7 @@ export default function LogisticsHub() {
         }
     }, [selectedSchoolId, sana, token]);
 
-    useEffect(() => { if (tab === 'reja') kunniYuklash(); }, [tab, kunniYuklash]);
+    useEffect(() => { if (tab === 'reja' && rejaKorinadi) kunniYuklash(); }, [tab, kunniYuklash]);
 
     // Haydovchi joylashuvi va bot tugmalari (Qabul qildim / Yetkazdim) shu
     // yerda ko'rinsin: bugungi kun ochiq turganda har 30 soniyada yangilanadi.
@@ -286,6 +290,7 @@ export default function LogisticsHub() {
     const [ochiq, setOchiq] = useState<number | null>(null);
 
     const rejaAmali = async (p: DayPlan, amal: 'accept' | 'deliver' | 'send' | 'delete') => {
+        if (!rejaTahrir) return;
         const savol = {
             accept: `${p.driver?.name}: bolalar mashinaga olindimi? («Qabul qildim» — haydovchi o'rniga)`,
             deliver: `${p.driver?.name}: hammasi uyiga yetkazildimi? («Yetkazdim» — haydovchi o'rniga)`,
@@ -334,7 +339,7 @@ export default function LogisticsHub() {
             setStatsYuklanmoqda(false);
         }
     };
-    useEffect(() => { if (tab === 'tarix' && !stats && !statsYuklanmoqda) statsniYuklash(); }, [tab]);
+    useEffect(() => { if (tab === 'tarix' && tarixKorinadi && !stats && !statsYuklanmoqda) statsniYuklash(); }, [tab]);
 
     const excelgaChiqarish = async () => {
         if (!stats) return;
@@ -391,7 +396,7 @@ export default function LogisticsHub() {
                     </div>
                 </div>
                 <div className="flex bg-ichki p-1 rounded-xl border border-chiziq w-fit">
-                    {([['reja', 'Reja', <Bus size={13} key="i" />], ['tarix', 'Tarix', <BarChart3 size={13} key="i" />]] as const).map(([id, label, icon]) => (
+                    {([['reja', 'Reja', <Bus size={13} key="i" />], ['tarix', 'Tarix', <BarChart3 size={13} key="i" />]] as const).filter(([id]) => id === 'reja' ? rejaKorinadi : tarixKorinadi).map(([id, label, icon]) => (
                         <button key={id} onClick={() => setTab(id as Tab)}
                             className={`flex items-center gap-1.5 px-5 py-2 rounded-lg text-[11px] font-extrabold transition-all cursor-pointer ${tab === id ? 'bg-brand text-brand-ust shadow' : 'text-matn-xira hover:text-matn'}`}>
                             {icon} {label}
@@ -400,7 +405,7 @@ export default function LogisticsHub() {
                 </div>
             </div>
 
-            {tab === 'reja' && (
+            {tab === 'reja' && rejaKorinadi && (
                 <div className="space-y-5">
                     {/* Sana */}
                     <div className={`${karta} p-3 flex flex-wrap items-center justify-between gap-3`}>
@@ -493,6 +498,7 @@ export default function LogisticsHub() {
                                                 </div>
                                                 {ochiq === p.id && (
                                                     <div className="px-5 pb-4 space-y-3">
+                                                        {rejaTahrir && (
                                                         <div className="flex flex-wrap gap-2">
                                                             {!boshlangan && (
                                                                 <button onClick={() => rejaAmali(p, 'accept')} disabled={!!band}
@@ -519,6 +525,7 @@ export default function LogisticsHub() {
                                                                 </button>
                                                             )}
                                                         </div>
+                                                        )}
                                                         <p className="text-[10px] font-bold text-matn-xira">
                                                             Odatda bu tugmalarni haydovchi Telegram botda bosadi. Bu yerdagilari — haydovchi o'rniga belgilash uchun.
                                                         </p>
@@ -794,10 +801,12 @@ export default function LogisticsHub() {
                                     )}
                                 </div>
 
+                                {rejaTahrir && (
                                 <button onClick={taqsimlash} disabled={!zina.rejaga.length || !tanlanganH.length}
                                     className="w-full py-3.5 bg-brand hover:bg-brand-dark disabled:opacity-40 disabled:cursor-not-allowed text-white rounded-2xl text-xs font-extrabold flex items-center justify-center gap-2 shadow-sm transition-all cursor-pointer">
                                     <Users size={15} /> Haydovchilarga taqsimlash ({zina.rejaga.length} ta)
                                 </button>
+                                )}
                                 <p className="text-[10px] font-bold text-matn-xira leading-relaxed">
                                     Tizim bolalarni mashina sig'imi va uylar joylashuviga qarab o'zi bo'ladi. Tasdiqlashdan oldin istalgan bolani boshqa haydovchiga o'tkazish mumkin; tasdiqlangach reja har bir haydovchining Telegramiga o'zi boradi.
                                     Yo'l haqini o'quvchi mashinada haydovchiga naqd to'laydi — kassaga tushmaydi va qarziga yozilmaydi.
@@ -896,7 +905,7 @@ export default function LogisticsHub() {
                         <div className="px-6 py-4 border-t border-chiziq-mayin flex flex-wrap items-center justify-end gap-3">
                             <button onClick={() => setTaqsimot(null)} disabled={!!band}
                                 className="px-5 py-3 rounded-2xl bg-ichki border border-chiziq text-[12px] font-extrabold text-matn-2 cursor-pointer">Bekor qilish</button>
-                            <button onClick={tasdiqlash} disabled={!!band || !taqsimot.rejalar.length}
+                            <button onClick={tasdiqlash} disabled={!!band || !taqsimot.rejalar.length || !rejaTahrir}
                                 className="px-5 py-3 rounded-2xl bg-brand hover:bg-brand-dark disabled:opacity-50 text-white text-[12px] font-extrabold flex items-center gap-2 shadow-sm cursor-pointer">
                                 {band === 'tasdiq' ? <Loader2 size={15} className="animate-spin" /> : <Send size={15} />}
                                 Tasdiqlash va haydovchilarga yuborish
@@ -907,7 +916,7 @@ export default function LogisticsHub() {
             )}
 
             {/* ===== TARIX ===== */}
-            {tab === 'tarix' && (
+            {tab === 'tarix' && tarixKorinadi && (
                 <div className="space-y-4">
                     <div className={`${karta} p-4 flex flex-wrap items-end gap-3`}>
                         <div>

@@ -38,7 +38,8 @@ const getGroupColor = (days: string) => {
 const inp = "w-full px-3 py-2 bg-ichki border border-chiziq rounded-xl text-xs font-bold text-matn focus:border-brand focus:ring-2 focus:ring-[#1b6b6b]/10 outline-none transition-all";
 
 export default function RoomSchedule() {
-    const { groups, rooms, teachers, courses, updateGroup } = useCRM();
+    const { groups, rooms, teachers, courses, updateGroup, ozgartira } = useCRM();
+    const kursTahrir = ozgartira('kurslar.malumot');
 
     const [viewMode, setViewMode] = useState<'day' | 'week'>('day');
     // Bugungi kun turi bilan ochiladi. Ilgari doim 'TOQ' edi — juft kuni
@@ -497,6 +498,7 @@ export default function RoomSchedule() {
                                                     <Clock size={10} />
                                                     <span className="text-[11px] font-bold tabular-nums">{g.schedule}</span>
                                                 </div>
+                                                {kursTahrir && (
                                                 <button
                                                     onClick={() => isEditing ? setEditingGroup(null) : openEditGroup(g)}
                                                     className={`w-7 h-7 rounded-lg flex items-center justify-center transition-all cursor-pointer ${
@@ -508,6 +510,7 @@ export default function RoomSchedule() {
                                                 >
                                                     <Edit2 size={12} />
                                                 </button>
+                                                )}
                                             </div>
                                         </div>
 

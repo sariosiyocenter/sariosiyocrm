@@ -38,7 +38,9 @@ const downloadCSV = (filename: string, rows: Record<string, any>[]) => {
 };
 
 export default function Finance() {
-    const { students, payments, expenses, addPayment, addExpense, deleteExpense, groups, courses, token, selectedSchoolId, teachers, settings, showNotification, retryLoad, user } = useCRM();
+    const { students, payments, expenses, addPayment, addExpense, deleteExpense, groups, courses, token, selectedSchoolId, teachers, settings, showNotification, retryLoad, user, kora, ozgartira } = useCRM();
+    // Tablar va tugmalar lavozim ruxsatiga qarab (Sozlamalar → Ruxsatlar).
+    const TAB_RUXSATI = { reports: 'moliya.hisobot', billing: 'moliya.oylik', payments: 'moliya.tolovlar', expenses: 'moliya.xarajat', kassa: 'moliya.kassa' } as const;
     const confirm = useConfirm();
 
     // HR users (staff list for salary expense) — faqat tanlangan filial xodimlari.
@@ -56,7 +58,9 @@ export default function Finance() {
     // Bir qarashda o'qish uchun aniq so'm kerak emas, kattalik kerak.
     const mln = (n: number) => (n / 1000000).toFixed(1).replace('.', ',');
     const [searchParams] = useSearchParams();
-    const [activeTab, setActiveTab] = useState<'reports' | 'billing' | 'payments' | 'expenses' | 'kassa'>('reports');
+    const [activeTab, setActiveTab] = useState<'reports' | 'billing' | 'payments' | 'expenses' | 'kassa'>(
+        () => (Object.keys(TAB_RUXSATI) as (keyof typeof TAB_RUXSATI)[]).find(k => kora(TAB_RUXSATI[k])) || 'reports'
+    );
 
     // Auto-open expense modal when navigated from HR with ?openExpense=1
     useEffect(() => {
@@ -560,18 +564,22 @@ export default function Finance() {
                         </div>
                     </div>
                     <div className="flex items-center gap-3">
+                        {ozgartira('oquvchilar.tolov') && (
                         <button
                             onClick={() => setIsPaymentModalOpen(true)}
                             className="flex items-center gap-2 px-4 py-2.5 bg-brand hover:bg-brand-dark text-white rounded-xl text-xs font-extrabold shadow-sm shadow-[#1b6b6b]/20 transition-all cursor-pointer"
                         >
                             <Plus size={14} /> {t('add_payment')}
                         </button>
+                        )}
+                        {ozgartira('moliya.xarajat') && (
                         <button
                             onClick={() => setIsExpenseModalOpen(true)}
                             className="flex items-center gap-2 px-4 py-2.5 bg-rose-600 hover:bg-rose-700 text-white rounded-xl text-xs font-extrabold shadow-lg shadow-rose-600/20 transition-all cursor-pointer"
                         >
                             <Plus size={14} /> {t('add_expense')}
                         </button>
+                        )}
                     </div>
                 </div>
             </div>
@@ -581,6 +589,7 @@ export default function Finance() {
                 {/* Tab Bar */}
                 <div className="px-6 pt-5 pb-4 border-b border-chiziq-mayin/50 flex flex-col xl:flex-row xl:items-center justify-between gap-4">
                     <div className="flex items-center gap-1 bg-gray-100/80 dark:bg-gray-950/40 p-1 rounded-xl border border-gray-200/40 dark:border-gray-800/40 w-full xl:w-auto max-w-full overflow-x-auto no-scrollbar flex-nowrap">
+                        {kora('moliya.hisobot') && (
                         <button onClick={() => setActiveTab('reports')} className={`flex items-center gap-1.5 px-3.5 py-2 rounded-lg text-[11px] font-black transition-all duration-200 cursor-pointer whitespace-nowrap transform active:scale-95 ${
                             activeTab === 'reports'
                                 ? 'bg-sirt text-brand dark:text-emerald-400 shadow-sm border border-gray-200/50 dark:border-gray-800/50 scale-[1.01]'
@@ -589,6 +598,8 @@ export default function Finance() {
                             <BarChart2 size={12} className="shrink-0" />
                             <span>Hisobotlar</span>
                         </button>
+                        )}
+                        {kora('moliya.oylik') && (
                         <button onClick={() => setActiveTab('billing')} className={`flex items-center gap-1.5 px-3.5 py-2 rounded-lg text-[11px] font-black transition-all duration-200 cursor-pointer whitespace-nowrap transform active:scale-95 ${
                             activeTab === 'billing'
                                 ? 'bg-sirt text-violet-600 dark:text-violet-400 shadow-sm border border-gray-200/50 dark:border-gray-800/50 scale-[1.01]'
@@ -597,6 +608,8 @@ export default function Finance() {
                             <Calendar size={12} className="shrink-0" />
                             <span>Oylik nazorat</span>
                         </button>
+                        )}
+                        {kora('moliya.tolovlar') && (
                         <button onClick={() => { setActiveTab('payments'); setListSearch(''); }} className={`flex items-center gap-1.5 px-3.5 py-2 rounded-lg text-[11px] font-black transition-all duration-200 cursor-pointer whitespace-nowrap transform active:scale-95 ${
                             activeTab === 'payments'
                                 ? 'bg-sirt text-brand dark:text-emerald-400 shadow-sm border border-gray-200/50 dark:border-gray-800/50 scale-[1.01]'
@@ -605,6 +618,8 @@ export default function Finance() {
                             <CreditCard size={12} className="shrink-0" />
                             <span>{t('payments_tab')}</span>
                         </button>
+                        )}
+                        {kora('moliya.xarajat') && (
                         <button onClick={() => { setActiveTab('expenses'); setListSearch(''); }} className={`flex items-center gap-1.5 px-3.5 py-2 rounded-lg text-[11px] font-black transition-all duration-200 cursor-pointer whitespace-nowrap transform active:scale-95 ${
                             activeTab === 'expenses'
                                 ? 'bg-sirt text-brand dark:text-emerald-400 shadow-sm border border-gray-200/50 dark:border-gray-800/50 scale-[1.01]'
@@ -613,6 +628,8 @@ export default function Finance() {
                             <TrendingDown size={12} className="shrink-0" />
                             <span>{t('expenses_tab')}</span>
                         </button>
+                        )}
+                        {kora('moliya.kassa') && (
                         <button onClick={() => setActiveTab('kassa')} className={`flex items-center gap-1.5 px-3.5 py-2 rounded-lg text-[11px] font-black transition-all duration-200 cursor-pointer whitespace-nowrap transform active:scale-95 ${
                             activeTab === 'kassa'
                                 ? 'bg-sirt text-brand dark:text-emerald-400 shadow-sm border border-gray-200/50 dark:border-gray-800/50 scale-[1.01]'
@@ -621,6 +638,7 @@ export default function Finance() {
                             <Banknote size={12} className="shrink-0" />
                             <span>Kassa</span>
                         </button>
+                        )}
                     </div>
 
                     {activeTab !== 'billing' && activeTab !== 'kassa' && (
@@ -695,7 +713,7 @@ export default function Finance() {
                 </div>
 
                 {/* ─── HISOBOTLAR TAB ──────────────────────────────────────── */}
-                {activeTab === 'reports' && (
+                {activeTab === 'reports' && kora('moliya.hisobot') && (
                     <div className="p-4 space-y-8">
                         {/* To'rtta ko'rsatkich, bitta qatorda. Summalar millionda:
                             "500 001 UZS" o'rniga "0,5 mln" — raqamni bir qarashda
@@ -1140,7 +1158,7 @@ export default function Finance() {
                 )}
 
                 {/* ─── OYLIK NAZORAT TAB ──────────────────────────────────── */}
-                {activeTab === 'billing' && (
+                {activeTab === 'billing' && kora('moliya.oylik') && (
                     <div className="p-4 space-y-6">
                         {/* Month selector header */}
                         <div className="flex items-center justify-between gap-4">
@@ -1297,7 +1315,7 @@ export default function Finance() {
                         )}
 
                         {/* SMS button */}
-                        {billingData && billingData.students.filter((st: any) => st.status !== 'paid').length > 0 && (
+                        {ozgartira('moliya.oylik') && billingData && billingData.students.filter((st: any) => st.status !== 'paid').length > 0 && (
                             <div className="flex justify-end">
                                 <button
                                     className="flex items-center gap-2 px-5 py-3 bg-brand hover:bg-brand-dark text-white rounded-xl text-[11px] font-bold transition-all cursor-pointer shadow-sm shadow-[#1b6b6b]/20"
@@ -1319,7 +1337,7 @@ export default function Finance() {
                     </div>
                 )}
 
-                {activeTab === 'kassa' && <KassaPanel />}
+                {activeTab === 'kassa' && kora('moliya.kassa') && <KassaPanel />}
 
                 {/* Summary row — only for payments/expenses */}
                 {(activeTab === 'payments' || activeTab === 'expenses') && (
@@ -1364,7 +1382,7 @@ export default function Finance() {
                                             <span className="text-xs font-black text-emerald-600 tabular-nums">+{p.amount.toLocaleString()} UZS</span>
                                             {/* Tahrirlash: resepshn — kiritgandan keyin 10 daqiqa,
                                                 administrator — har doim (egasi, 2026-09-22). */}
-                                            {canEditPayment(p, user?.role) && (
+                                            {canEditPayment(p, user?.role, ozgartira('oquvchilar.tolovTuzatish')) && (
                                                 <button
                                                     onClick={e => { e.stopPropagation(); setEditingPayment(p); }}
                                                     title="To'lovni tahrirlash"
@@ -1401,11 +1419,13 @@ export default function Finance() {
                                     </div>
                                     <div className="flex items-center gap-3 shrink-0">
                                         <span className="text-xs font-black text-rose-600 tabular-nums">-{e.amount.toLocaleString()} UZS</span>
+                                        {ozgartira('moliya.xarajat') && (
                                         <button onClick={async () => { if (await confirm(`Harajat o'chirilsinmi?
 
 ${e.description || e.category} — ${Number(e.amount).toLocaleString()} so'm`)) deleteExpense(e.id); }} className="w-7 h-7 rounded-lg text-gray-300 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/20 flex items-center justify-center transition-colors cursor-pointer">
                                             <Trash2 size={13} />
                                         </button>
+                                        )}
                                     </div>
                                 </div>
                             ))

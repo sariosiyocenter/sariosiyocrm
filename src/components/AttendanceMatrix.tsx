@@ -20,7 +20,8 @@ const STATUSES = [
 ] as const;
 
 export default function AttendanceMatrix({ group, students, attendances, selectedDate }: AttendanceMatrixProps) {
-    const { addAttendance, showNotification } = useCRM();
+    const { addAttendance, showNotification, ozgartira } = useCRM();
+    const davomatTahrir = ozgartira('kurslar.davomat');
     const [activePopover, setActivePopover] = useState<{
         studentId: number;
         date: string;
@@ -164,6 +165,7 @@ export default function AttendanceMatrix({ group, students, attendances, selecte
                                                             showNotification("Kelajakdagi darsga yo'qlama qilib bo'lmaydi", "info");
                                                             return;
                                                         }
+                                                        if (!davomatTahrir) return;
                                                         if (activePopover?.studentId === student.id && activePopover?.date === date) {
                                                             setActivePopover(null);
                                                         } else {

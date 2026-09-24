@@ -12,7 +12,8 @@ interface GroupAttendanceCalendarProps {
 }
 
 export default function GroupAttendanceCalendar({ group, attendances, selectedDate, onSelectDate, students }: GroupAttendanceCalendarProps) {
-    const { user, addBatchAttendance, deleteBatchAttendance, showNotification } = useCRM();
+    const { user, addBatchAttendance, deleteBatchAttendance, showNotification, ozgartira } = useCRM();
+    const davomatTahrir = ozgartira('kurslar.davomat');
     const [viewDate, setViewDate] = useState(new Date());
     const [activePopover, setActivePopover] = useState<string | null>(null);
 
@@ -134,7 +135,7 @@ export default function GroupAttendanceCalendar({ group, attendances, selectedDa
                                             showNotification("Kelajakdagi darsga yo'qlama qibly bo'lmaydi", "info");
                                             return;
                                         }
-                                        setActivePopover(activePopover === dateStr ? null : dateStr);
+                                        if (davomatTahrir) setActivePopover(activePopover === dateStr ? null : dateStr);
                                     }
                                 }}
                                 className={`w-8 h-8 sm:w-9 sm:h-9 mx-auto rounded-xl flex flex-col items-center justify-center relative transition-all border group hover:scale-105 shadow-sm ${bg} ${border} z-10`}

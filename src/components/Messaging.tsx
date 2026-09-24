@@ -244,10 +244,20 @@ const getTriggerTypeMeta = (type: string) => {
 
 export default function Messaging() {
   const { t } = useLang();
-  const { students, groups, courses, payments, selectedSchoolId, schools, teachers, users, settings, showNotification } = useCRM();
+  const { students, groups, courses, payments, selectedSchoolId, schools, teachers, users, settings, showNotification, kora, ozgartira } = useCRM();
+  // Lavozim ruxsati (Sozlamalar → Ruxsatlar): har bir tab va tugma o'z bo'limi bilan.
+  const yuborishOchiq = ozgartira('xabarlar.yuborish');
+  const shablonKorinadi = kora('xabarlar.shablon');
+  const shablonTahrir = ozgartira('xabarlar.shablon');
+  const avtoKorinadi = kora('xabarlar.avto');
+  const avtoTahrir = ozgartira('xabarlar.avto');
+  const tarixKorinadi = kora('xabarlar.tarix');
+  const tarixTahrir = ozgartira('xabarlar.tarix');
     const confirm = useConfirm();
 
-  const [activeTab, setActiveTab] = useState<'new' | 'templates' | 'auto' | 'history'>('new');
+  const [activeTab, setActiveTab] = useState<'new' | 'templates' | 'auto' | 'history'>(
+    () => (yuborishOchiq ? 'new' : shablonKorinadi ? 'templates' : avtoKorinadi ? 'auto' : 'history')
+  );
   const [loading, setLoading] = useState(false);
   const [logsLoading, setLogsLoading] = useState(false);
   const [audience, setAudience] = useState<'STUDENTS' | 'TEACHERS' | 'STAFF'>('STUDENTS');
@@ -1130,35 +1140,43 @@ export default function Messaging() {
 
         {/* Navigation Tabs */}
         <div className="flex items-center gap-1.5 bg-slate-55 dark:bg-slate-800/60 p-1 rounded-2xl border border-slate-100 dark:border-slate-700/50">
+          {yuborishOchiq && (
           <button
             onClick={() => setActiveTab('new')}
             className={`px-4 py-2 rounded-xl text-[11px] font-bold transition-all cursor-pointer ${activeTab === 'new' ? 'bg-white dark:bg-slate-700 text-brand dark:text-brand shadow-sm' : 'text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200'}`}
           >
             Yangi xabar
           </button>
+          )}
+          {shablonKorinadi && (
           <button
             onClick={() => setActiveTab('templates')}
             className={`px-4 py-2 rounded-xl text-[11px] font-bold transition-all cursor-pointer ${activeTab === 'templates' ? 'bg-white dark:bg-slate-700 text-brand dark:text-brand shadow-sm' : 'text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200'}`}
           >
             Shablonlar
           </button>
+          )}
+          {avtoKorinadi && (
           <button
             onClick={() => setActiveTab('auto')}
             className={`px-4 py-2 rounded-xl text-[11px] font-bold transition-all cursor-pointer ${activeTab === 'auto' ? 'bg-white dark:bg-slate-700 text-brand dark:text-brand shadow-sm' : 'text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200'}`}
           >
             Avtomatik
           </button>
+          )}
+          {tarixKorinadi && (
           <button
             onClick={() => setActiveTab('history')}
             className={`px-4 py-2 rounded-xl text-[11px] font-bold transition-all cursor-pointer ${activeTab === 'history' ? 'bg-white dark:bg-slate-700 text-brand dark:text-brand shadow-sm' : 'text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200'}`}
           >
             Tarix
           </button>
+          )}
         </div>
       </div>
 
       {/* ===== TAB 1: NEW MESSAGE ===== */}
-      {activeTab === 'new' && (
+      {activeTab === 'new' && yuborishOchiq && (
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 items-start">
           {/* Left panel: Filters (4 Cols) */}
           <div className="lg:col-span-5 bg-white dark:bg-slate-900 rounded-2xl border border-slate-100 dark:border-slate-800 shadow-sm p-4 space-y-5">
@@ -1575,17 +1593,19 @@ export default function Messaging() {
       )}
 
       {/* ===== TAB 2: TEMPLATES ===== */}
-      {activeTab === 'templates' && (
+      {activeTab === 'templates' && shablonKorinadi && (
         <div className="space-y-6">
           <div className="flex justify-between items-center">
             <div>
               <h2 className="text-xs font-black text-slate-800 dark:text-slate-200">Shablonlar kutubxonasi</h2>
               <p className="text-[11px] font-bold text-slate-400 mt-0.5">Xabarlar yozishda vaqtni tejash uchun tayyor andozalar</p>
             </div>
+            {shablonTahrir && (
             <button onClick={() => openTemplateModal(null)} className={btnPrimary}>
               <Plus size={14} />
               Shablon yaratish
             </button>
+            )}
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -1597,12 +1617,16 @@ export default function Messaging() {
                       {t.category}
                     </span>
                     <div className="flex items-center gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity">
+                      {shablonTahrir && (
                       <button onClick={() => openTemplateModal(t)} className="p-1 text-slate-400 hover:text-brand transition-colors cursor-pointer">
                         <Edit size={13} />
                       </button>
+                      )}
+                      {shablonTahrir && (
                       <button onClick={() => handleDeleteTemplate(t.id)} className="p-1 text-slate-400 hover:text-rose-500 transition-colors cursor-pointer">
                         <Trash2 size={13} />
                       </button>
+                      )}
                     </div>
                   </div>
                   <h3 className="text-xs font-bold text-slate-850 dark:text-white">{t.name}</h3>
@@ -1635,17 +1659,19 @@ export default function Messaging() {
       )}
 
       {/* ===== TAB 3: AUTO RULES ===== */}
-      {activeTab === 'auto' && (
+      {activeTab === 'auto' && avtoKorinadi && (
         <div className="space-y-6">
           <div className="flex justify-between items-center">
             <div>
               <h2 className="text-xs font-black text-slate-800 dark:text-slate-200">Avtomatik yuborish qoidalari</h2>
               <p className="text-[11px] font-bold text-slate-400 mt-0.5">Tizim belgilangan kunlik qoidalar bo'yicha fonda SMS yoki Telegram tabriknoma va eslatmalarini jo'natadi</p>
             </div>
+            {avtoTahrir && (
             <button onClick={() => openAutoRuleModal(null)} className={btnPrimary}>
               <Plus size={14} />
               Yangi qoida yaratish
             </button>
+            )}
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -1667,12 +1693,16 @@ export default function Messaging() {
                         </span>
                       </div>
                       <div className="flex items-center gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity">
+                        {avtoTahrir && (
                         <button onClick={() => openAutoRuleModal(rule)} className="p-1 text-slate-400 hover:text-brand transition-colors cursor-pointer">
                           <Edit size={13} />
                         </button>
+                        )}
+                        {avtoTahrir && (
                         <button onClick={() => handleDeleteRule(rule.id!)} className="p-1 text-slate-400 hover:text-rose-500 transition-colors cursor-pointer">
                           <Trash2 size={13} />
                         </button>
+                        )}
                       </div>
                     </div>
 
@@ -1703,6 +1733,7 @@ export default function Messaging() {
                       Holati: {rule.enabled ? <span className="text-emerald-500">Faol</span> : <span className="text-slate-400">O'chirilgan</span>}
                     </span>
                     <button
+                      disabled={!avtoTahrir}
                       onClick={() => handleToggleRuleEnabled(rule)}
                       className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out outline-none ${rule.enabled ? 'bg-brand-dark' : 'bg-slate-200 dark:bg-slate-700'}`}
                     >
@@ -1723,7 +1754,7 @@ export default function Messaging() {
       )}
 
       {/* ===== TAB 4: HISTORY ===== */}
-      {activeTab === 'history' && (
+      {activeTab === 'history' && tarixKorinadi && (
         <div className="space-y-6">
           {/* Header statistics */}
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
@@ -1852,7 +1883,7 @@ export default function Messaging() {
                 {Object.values(selectedLogIds).filter(Boolean).length > 0 ? (
                   <button
                     onClick={() => handleResendLogs(false)}
-                    disabled={resendingLogs}
+                    disabled={resendingLogs || !tarixTahrir}
                     className="flex items-center gap-1.5 px-3.5 py-1.5 bg-rose-600 hover:bg-rose-700 text-white rounded-xl text-[11px] font-bold transition-all cursor-pointer shadow-sm active:scale-95"
                   >
                     <RefreshCw size={12} className={resendingLogs ? 'animate-spin' : ''} />
@@ -1876,7 +1907,7 @@ export default function Messaging() {
                     />
                     <button
                       onClick={() => handleResendLogs(true)}
-                      disabled={resendingLogs}
+                      disabled={resendingLogs || !tarixTahrir}
                       className="flex items-center gap-1.5 px-3.5 py-1.5 bg-brand-dark hover:bg-brand-dark text-white rounded-xl text-[11px] font-bold transition-all cursor-pointer shadow-sm active:scale-95"
                     >
                       <Send size={12} />

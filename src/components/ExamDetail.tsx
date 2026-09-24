@@ -8,7 +8,9 @@ import { generateQuestionPaper, generateOMRSheet, generateBulkOMRSheets } from '
 export default function ExamDetail() {
     const { id } = useParams();
     const navigate = useNavigate();
-    const { exams, groups, students, generateExamVariants, questions, token, selectedSchoolId, showNotification } = useCRM();
+    const { exams, groups, students, generateExamVariants, questions, token, selectedSchoolId, showNotification, ozgartira } = useCRM();
+    // Kurslarga biriktirish va variant yaratish — imtihonni o'zgartira oladiganga.
+    const imtihonTahrir = ozgartira('imtihonlar.imtihon');
     const confirm = useConfirm();
 
     const exam = exams.find(e => e.id === Number(id));
@@ -58,6 +60,7 @@ export default function ExamDetail() {
     }, [exam?.variants]);
 
     const toggleGroup = async (groupId: number) => {
+        if (!imtihonTahrir) return;
         const isSelected = selectedGroups.includes(groupId);
         setSelectedGroups(prev => isSelected ? prev.filter(id => id !== groupId) : [...prev, groupId]);
 
@@ -279,7 +282,7 @@ export default function ExamDetail() {
                                 </select>
                                 <button 
                                     onClick={handleGenerate}
-                                    disabled={isGenerating}
+                                    disabled={isGenerating || !imtihonTahrir}
                                     className="px-4 py-2.5 bg-brand hover:bg-brand-dark text-white rounded-xl text-[11px] font-extrabold hover:bg-teal-500 transition-all shadow-lg flex items-center gap-1.5 disabled:opacity-50 cursor-pointer"
                                 >
                                     {isGenerating ? 'Yaratilmoqda...' : 'Variantlarni Yaratish'}
