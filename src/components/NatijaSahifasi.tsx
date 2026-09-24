@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { Trophy, XCircle, CheckCircle2, MinusCircle, ChevronDown } from 'lucide-react';
 import { formulaliHtml, SAVOL_MATNI } from '../lib/matn';
+import { vergul, sanaMatni } from './imtihon/format';
 
 /**
  * Imtihon natijasi (/natija/:token) — ota-onaga xabardagi imzolangan havola,
@@ -16,14 +17,13 @@ interface Javob {
   imtihon: { name: string; date: string; maxScore: number; scoring: string };
   ism: string; kurs: string; ball: number; foiz: number;
   bloklar: { subject: string; earned: number; max: number }[];
+  rasch: { ball: number; daraja: string | null } | null;
   orin: { umumiy: number | null; jami?: number; kurs?: number | null; kursJami?: number } | null;
   savollar: Savol[] | null;
   matnlar: { id: number; title: string | null; text: string; imageUrl: string | null }[];
 }
 
 const HARFLAR = 'ABCDEF';
-/** O'nli kasr o'zbekchada vergul bilan: 0.75 → 0,75 (varaqda ham vergul bo'yaladi). */
-const vergul = (v: unknown) => String(v ?? '').replace(/(\d)\.(\d)/g, '$1,$2');
 const HOLAT: Record<string, { nom: string; cls: string; Ikonka: any }> = {
   togri: { nom: "To'g'ri", cls: 'text-yaxshi bg-yaxshi-fon border-yaxshi/25', Ikonka: CheckCircle2 },
   xato: { nom: 'Xato', cls: 'text-xato bg-xato-fon border-xato-chiziq', Ikonka: XCircle },
@@ -70,7 +70,7 @@ export default function NatijaSahifasi() {
         <div className="text-center">
           <p className="text-[12px] text-matn-xira">{d.markaz}</p>
           <h1 className="text-[17px] font-bold text-matn mt-0.5">{d.imtihon.name}</h1>
-          <p className="text-[12px] text-matn-xira">{d.imtihon.date}</p>
+          <p className="text-[12px] text-matn-xira">{sanaMatni(d.imtihon.date)}</p>
         </div>
 
         <section className="bg-sirt rounded-2xl border border-chiziq p-5">
@@ -78,12 +78,21 @@ export default function NatijaSahifasi() {
           {d.kurs && <p className="text-[12.5px] text-matn-sokin">{d.kurs}</p>}
           <div className="flex items-end justify-between gap-3 mt-4">
             <div>
-              <span className="text-[34px] font-bold text-matn raqam leading-none">{d.ball}</span>
-              <span className="text-[14px] text-matn-xira raqam"> / {d.imtihon.maxScore} ball</span>
+              <span className="text-[34px] font-bold text-matn raqam leading-none">{vergul(d.ball)}</span>
+              <span className="text-[14px] text-matn-xira raqam"> / {vergul(d.imtihon.maxScore)} ball</span>
             </div>
-            <span className="text-[22px] font-bold text-brand raqam">{d.foiz}%</span>
+            <span className="text-[22px] font-bold text-brand raqam">{vergul(d.foiz)}%</span>
           </div>
           <div className="h-2 rounded-full bg-ichki overflow-hidden mt-3"><div className="h-full bg-brand rounded-full" style={{ width: `${foiz}%` }} /></div>
+          {d.rasch && (
+            <div className="flex items-center justify-between gap-3 mt-4 rounded-xl bg-ichki border border-chiziq px-3 py-2.5">
+              <span className="text-[13px] text-matn-sokin">Rasch balli <span className="text-[11.5px] text-matn-xira">(o'rtacha 50)</span></span>
+              <span className="flex items-center gap-2">
+                <b className="text-[17px] text-matn raqam">{vergul(d.rasch.ball)}</b>
+                {d.rasch.daraja && <span className="px-2 py-0.5 rounded-md bg-brand text-brand-ust text-[12px] font-bold">{d.rasch.daraja}</span>}
+              </span>
+            </div>
+          )}
           {d.orin && (d.orin.umumiy || d.orin.kurs) && (
             <p className="flex items-center gap-2 mt-4 text-[13px] text-matn">
               <Trophy size={16} className="text-ogoh" />
@@ -98,7 +107,7 @@ export default function NatijaSahifasi() {
               const f = b.max ? (b.earned / b.max) * 100 : 0;
               return (
                 <div key={b.subject}>
-                  <div className="flex justify-between text-[13px]"><span className="text-matn">{b.subject}</span><span className="text-matn-sokin raqam">{b.earned} / {b.max}</span></div>
+                  <div className="flex justify-between text-[13px]"><span className="text-matn">{b.subject}</span><span className="text-matn-sokin raqam">{vergul(b.earned)} / {vergul(b.max)}</span></div>
                   <div className="h-1.5 rounded-full bg-ichki overflow-hidden mt-1"><div className={`h-full rounded-full ${f >= 70 ? 'bg-yaxshi' : f >= 40 ? 'bg-ogoh' : 'bg-xato'}`} style={{ width: `${f}%` }} /></div>
                 </div>
               );

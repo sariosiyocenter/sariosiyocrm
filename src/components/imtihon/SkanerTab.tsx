@@ -342,7 +342,7 @@ function QoldaKiritish({ exam, orinlar, onSaqlandi }: { exam: ImtihonTafsil; ori
                   <div className="flex gap-1">
                     {harflar.map(h => (
                       <button key={h} onClick={() => setJavob(j => ({ ...j, [sv.n]: j[sv.n] === h ? '' : h }))}
-                        className={`w-8 h-8 rounded-full border text-[12px] font-bold cursor-pointer ${javob[sv.n] === h ? 'bg-brand border-brand text-white' : 'border-chiziq text-matn-sokin hover:border-brand'}`}>{h}</button>
+                        className={`w-8 h-8 rounded-full border text-[12px] font-bold cursor-pointer ${javob[sv.n] === h ? 'bg-brand border-brand text-brand-ust' : 'border-chiziq text-matn-sokin hover:border-brand'}`}>{h}</button>
                     ))}
                   </div>
                 ) : (

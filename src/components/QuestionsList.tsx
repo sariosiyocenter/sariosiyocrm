@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { Search, Plus, FileUp, FileDown, Trash2, ChevronLeft, ChevronRight, AlertTriangle, BookOpen, Pencil, X, FileText } from 'lucide-react';
+import { Search, Plus, FileUp, FileDown, Trash2, ChevronLeft, ChevronRight, AlertTriangle, BookOpen, Pencil, X, FileText, Sparkles } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import { useNavigate } from 'react-router-dom';
 import { useCRM } from '../context/CRMContext';
@@ -7,6 +7,8 @@ import { useConfirm } from './ConfirmDialog';
 import { useImtihonApi } from './imtihon/useImtihonApi';
 import { Karta, Tugma, Yorliq, BoshHolat, INPUT, SELECT, Yuklanmoqda } from './imtihon/ui';
 import MatnlarOynasi from './imtihon/MatnlarOynasi';
+import AiImportOynasi from './imtihon/AiImportOynasi';
+import { useAiHolat, AI_SOZLANMAGAN } from './imtihon/useAiHolat';
 import { formulaliHtml, oddiyMatn, SAVOL_MATNI } from '../lib/matn';
 import { HARFLAR, SAVOL_TURI_NOMI, savolXatosi } from '../../lib/imtihon.js';
 import type { Question } from '../types';
@@ -80,6 +82,8 @@ export default function QuestionsList() {
   const [import_, setImport] = useState<{ yaroqli: any[]; xatolar: { qator: number; xato: string }[]; jami: number } | null>(null);
   const [importMoqda, setImportMoqda] = useState(false);
   const [matnlarOchiq, setMatnlarOchiq] = useState(false);
+  const [aiImport, setAiImport] = useState(false);
+  const ai = useAiHolat();
   const SONI = 30;
 
   const metaniYukla = useCallback(() => soro<Meta>('GET', 'questions/meta').then(setMeta).catch(() => setMeta(null)), [soro]);
@@ -172,6 +176,9 @@ export default function QuestionsList() {
         amallar={savolTahrir && (
           <>
             <Tugma kichik ikonka={<FileText size={14} />} onClick={() => setMatnlarOchiq(true)}>Matnlar</Tugma>
+            {ai && (
+              <Tugma kichik ikonka={<Sparkles size={14} />} disabled={!ai.yoqilgan} title={ai.yoqilgan ? 'PDF, rasm yoki matndan savollar' : AI_SOZLANMAGAN} onClick={() => setAiImport(true)}>AI import</Tugma>
+            )}
             <Tugma kichik ikonka={<FileDown size={14} />} onClick={shablonniYukla}>Excel shablon</Tugma>
             <label className="inline-flex items-center gap-1.5 rounded-xl border border-chiziq bg-sirt hover:bg-ichki px-2.5 py-1.5 text-[12px] font-semibold text-matn cursor-pointer">
               <FileUp size={14} /> Excel import
@@ -185,7 +192,7 @@ export default function QuestionsList() {
           <div className="flex flex-wrap gap-1.5">
             {meta.fanlar.map(f => (
               <button key={f.nomi} onClick={() => filtrQoy('fan', filtr.fan === f.nomi ? '' : f.nomi)}
-                className={`px-2.5 py-1 rounded-lg border text-[12px] cursor-pointer ${filtr.fan === f.nomi ? 'bg-brand text-white border-brand' : 'bg-ichki border-chiziq text-matn-sokin hover:text-matn'}`}>
+                className={`px-2.5 py-1 rounded-lg border text-[12px] cursor-pointer ${filtr.fan === f.nomi ? 'bg-brand text-brand-ust border-brand' : 'bg-ichki border-chiziq text-matn-sokin hover:text-matn'}`}>
                 {f.nomi} <span className="opacity-70">{f.faol}</span>
               </button>
             ))}
@@ -302,6 +309,7 @@ export default function QuestionsList() {
         </div>
       )}
       {matnlarOchiq && <MatnlarOynasi onYop={() => { setMatnlarOchiq(false); yukla(); }} />}
+      {aiImport && <AiImportOynasi fanlar={(meta?.fanlar || []).map(f => f.nomi)} onYop={() => setAiImport(false)} onSaqlandi={() => { yukla(); metaniYukla(); }} />}
     </div>
   );
 }

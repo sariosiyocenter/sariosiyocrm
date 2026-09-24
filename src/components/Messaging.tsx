@@ -226,6 +226,8 @@ const getTriggerTypeMeta = (type: string) => {
       return { icon: '🎉', label: "Guruhga qo'shilish", color: 'bg-brand/15 dark:bg-brand/30 text-brand' };
     case 'EXAM_RESULT':
       return { icon: '📝', label: 'Imtihon natijasi', color: 'bg-blue-100 dark:bg-blue-950/30 text-blue-500' };
+    case 'EXAM_MONTHLY':
+      return { icon: '📈', label: 'Oylik imtihon hisoboti', color: 'bg-indigo-100 dark:bg-indigo-950/30 text-indigo-500' };
     case 'PAYMENT_CONFIRM':
       return { icon: '💰', label: "To'lov qabul qilinganda", color: 'bg-teal-100 dark:bg-teal-950/30 text-teal-500' };
     case 'DAILY_SCORE':
@@ -967,6 +969,7 @@ export default function Messaging() {
             dayOfMonth: autoRuleForm.dayOfMonth,
             minDebt: autoRuleForm.minDebt
           }),
+          ...(autoRuleForm.type === 'EXAM_MONTHLY' && { dayOfMonth: autoRuleForm.dayOfMonth }),
           ...(!HOLATSIZ_QOIDALAR.includes(autoRuleForm.type) && { statuses: autoRuleForm.statuses })
         }
       };
@@ -1727,6 +1730,9 @@ export default function Messaging() {
                       <div>Kanal: <span className="font-bold text-slate-700 dark:text-slate-300">{rule.channel}</span></div>
                       <div>Vaqt: <span className="font-bold text-slate-700 dark:text-slate-300">{rule.type === 'PAYMENT_CONFIRM' ? 'darhol' : (rule.time || '09:00')}</span></div>
                       <div className="col-span-2">Kimga: <span className="font-bold text-slate-700 dark:text-slate-300">{qabulQiluvchilarMatni(rule.recipientTo)}</span></div>
+                      {rule.type === 'EXAM_MONTHLY' && (
+                        <div>Kun: <span className="font-bold text-slate-700 dark:text-slate-300">{rule.config?.dayOfMonth || 1}</span></div>
+                      )}
                       {isDebt && rule.config && (
                         <>
                           <div>Kun: <span className="font-bold text-slate-700 dark:text-slate-300">{rule.config.dayOfMonth || 1}</span></div>
@@ -2204,7 +2210,13 @@ export default function Messaging() {
                 <label className={lbl}>Trigger turi *</label>
                 <select
                   value={autoRuleForm.type}
-                  onChange={e => setAutoRuleForm({ ...autoRuleForm, type: e.target.value })}
+                  onChange={e => setAutoRuleForm({
+                    ...autoRuleForm, type: e.target.value,
+                    // Oylik hisobotga tayyor matn (bo'sh bo'lsa) — {imtihon_oylik} ro'yxatni o'zi yozadi.
+                    ...(e.target.value === 'EXAM_MONTHLY' && !autoRuleForm.body.trim()
+                      ? { body: "Hurmatli ota-ona! {ism}ning imtihon natijalari:\n{imtihon_oylik}\n\n{markaz}", name: autoRuleForm.name || 'Oylik imtihon hisoboti' }
+                      : {}),
+                  })}
                   className={inp}
                 >
                   <option value="BIRTHDAY">🎂 Tug'ilgan kun tabrigi</option>
@@ -2213,6 +2225,7 @@ export default function Messaging() {
                   <option value="LEAD_WELCOME">📞 Yangi lid tabrigi</option>
                   <option value="GROUP_WELCOME">🎉 Yangi guruhga qo'shilish tabrigi</option>
                   <option value="EXAM_RESULT">📝 Imtihon natijalari e'loni</option>
+                  <option value="EXAM_MONTHLY">📈 Oylik imtihon hisoboti</option>
                   <option value="PAYMENT_CONFIRM">💰 To'lov qilinganda</option>
                   <option value="DAILY_SCORE">⭐️ Kunlik baholash hisoboti</option>
                   <option value="TRANSPORT_NOTIFY">🚌 Transport xabarnomasi</option>
@@ -2335,6 +2348,26 @@ export default function Messaging() {
               </p>
             )}
 
+            {autoRuleForm.type === 'EXAM_MONTHLY' && (
+              <div className="grid grid-cols-2 gap-3 bg-slate-55 dark:bg-slate-850 p-3 rounded-xl border border-slate-200/50 dark:border-slate-700/50">
+                <div>
+                  <label className={lbl}>Oyning qaysi kuni (1-28)</label>
+                  <input
+                    type="number"
+                    min={1}
+                    max={28}
+                    value={autoRuleForm.dayOfMonth}
+                    onChange={e => setAutoRuleForm({ ...autoRuleForm, dayOfMonth: Number(e.target.value) })}
+                    className={inp}
+                  />
+                </div>
+                <p className="text-[11px] font-bold text-slate-500 dark:text-slate-400 leading-relaxed self-center">
+                  O'tgan oyda e'lon qilingan imtihonlar natijasi: {"{imtihon_oylik}"} — har imtihon balli, foizi va o'rni, o'rtacha foiz.
+                  Imtihon bo'lmagan o'quvchiga yuborilmaydi.
+                </p>
+              </div>
+            )}
+
             {autoRuleForm.type === 'DEBT_REMINDER' && (
               <div className="grid grid-cols-2 gap-3 bg-slate-55 dark:bg-slate-850 p-3 rounded-xl border border-slate-200/50 dark:border-slate-700/50">
                 <div>
@@ -2391,7 +2424,7 @@ export default function Messaging() {
                 className="w-full px-3 py-2 bg-slate-55 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-semibold text-slate-800 dark:text-slate-200 outline-none focus:border-brand transition-all resize-none"
               />
               <div className="text-[11px] font-bold text-slate-400 dark:text-slate-500 mt-1">
-                O'zgaruvchilar: {"{ism}"}, {"{qarz}"}, {"{balans}"}, {"{oxirgi_tolov}"}, {"{kurs}"}, {"{fan}"}, {"{ustoz}"}, {"{testnatijasi}"}, {"{markaz}"}, {"{imtihon_nomi}"}, {"{imtihon_ball}"}, {"{imtihon_foiz}"}, {"{to_lov_summa}"}, {"{bahosi}"}
+                O'zgaruvchilar: {"{ism}"}, {"{qarz}"}, {"{balans}"}, {"{oxirgi_tolov}"}, {"{kurs}"}, {"{fan}"}, {"{ustoz}"}, {"{testnatijasi}"}, {"{markaz}"}, {"{imtihon_nomi}"}, {"{imtihon_ball}"}, {"{imtihon_foiz}"}, {"{to_lov_summa}"}, {"{bahosi}"}, {"{imtihon_oylik}"}
               </div>
             </div>
 

@@ -1,12 +1,13 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { ArrowLeft, Save, Trash2, Plus, X, ImagePlus, CheckCircle2, FileText } from 'lucide-react';
+import { ArrowLeft, Save, Trash2, Plus, X, ImagePlus, CheckCircle2, FileText, Sparkles, Copy, Languages } from 'lucide-react';
 import { useCRM } from '../context/CRMContext';
 import { useConfirm } from './ConfirmDialog';
 import RichTextEditor from './RichTextEditor';
 import { useImtihonApi } from './imtihon/useImtihonApi';
 import { Karta, Tugma, Maydon, INPUT, SELECT, Tanlov, Almashtirgich, Yorliq, Yuklanmoqda } from './imtihon/ui';
 import MatnlarOynasi from './imtihon/MatnlarOynasi';
+import { useAiHolat, AI_SOZLANMAGAN } from './imtihon/useAiHolat';
 import { SavolKorinishi } from './QuestionsList';
 import { HARFLAR, RAQAM_USTUNLARI, savolXatosi } from '../../lib/imtihon.js';
 import type { Question, Passage, SavolTuri } from '../types';
@@ -47,6 +48,8 @@ export default function QuestionEditor() {
   const [qoshildi, setQoshildi] = useState(0);
   const [matnTanlash, setMatnTanlash] = useState(false);
   const [ishlatilgan, setIshlatilgan] = useState(0);
+  const ai = useAiHolat();
+  const [aiBand, setAiBand] = useState<string | null>(null);
 
   useEffect(() => { soro<Meta>('GET', 'questions/meta').then(setMeta).catch(() => {}); }, [soro]);
 
@@ -125,6 +128,33 @@ export default function QuestionEditor() {
     }
   };
 
+  // AI: yechim — qoralama sifatida muharrirga tushadi (ustoz tekshirib saqlaydi);
+  // klon va tarjima — bankka qoralama savol bo'lib yoziladi.
+  const aiIsh = async (nom: string, f: () => Promise<void>) => {
+    setAiBand(nom);
+    try { await f(); } catch (e: any) { showNotification(e.message, 'error'); } finally { setAiBand(null); }
+  };
+  const aiYechim = () => aiIsh('yechim', async () => {
+    if (q.solution && !(await confirm("Hozirgi yechim AI qoralamasi bilan almashtirilsinmi? (Saqlamaguningizcha bazada o'zgarmaydi)"))) return;
+    const r = await soro<{ yechim: string; aiJavobi: string; mos: boolean | null }>('POST', `questions/${id}/ai/yechim`, {});
+    setQ(s => ({ ...s, solution: r.yechim, solutionStatus: 'qoralama' }));
+    setMuharrirKaliti(k => k + 1);
+    if (r.mos === false) showNotification(`AI boshqa javob chiqardi (${r.aiJavobi}) — kalitni yoki yechimni tekshiring`, 'error');
+    else showNotification(r.mos ? `Yechim qoralamasi tayyor — AI javobi kalit bilan mos (${r.aiJavobi})` : 'Yechim qoralamasi tayyor — tekshirib saqlang', 'success');
+  });
+  const aiKlon = () => aiIsh('klon', async () => {
+    const r = await soro<{ yaratildi: { id: number; tekshirildi: boolean | null }[] }>('POST', `questions/${id}/ai/klon`, { soni: 3 });
+    const otdi = r.yaratildi.filter(k => k.tekshirildi).length;
+    showNotification(r.yaratildi.length
+      ? `${r.yaratildi.length} ta klon qoralama bo'lib bankka qo'shildi${q.type !== 'yozma' ? ` (${otdi} tasi AI tekshiruvidan o'tdi)` : ''} — manbasi «AI klon»`
+      : "AI yaroqli klon bermadi — qayta urinib ko'ring", r.yaratildi.length ? 'success' : 'error');
+  });
+  const aiTarjima = (til: string) => aiIsh('tarjima', async () => {
+    const r = await soro<{ id: number }>('POST', `questions/${id}/ai/tarjima`, { til });
+    showNotification("Tarjima qoralama bo'lib saqlandi — tekshirib, faol qiling", 'success');
+    navigate(`/questions/${r.id}/edit`);
+  });
+
   const ochir = async () => {
     if (!(await confirm("Savol o'chirilsinmi?"))) return;
     try {
@@ -170,6 +200,18 @@ export default function QuestionEditor() {
         </div>
         {savolTahrir && (
           <div className="flex flex-wrap gap-2">
+            {tahrirRejimi && ai && (
+              <>
+                <Tugma ikonka={<Copy size={14} />} disabled={!ai.yoqilgan} title={ai.yoqilgan ? "Shu ko'nikmaga 3 ta yangi savol (qoralama)" : AI_SOZLANMAGAN} yuklanmoqda={aiBand === 'klon'} onClick={aiKlon}>AI klon</Tugma>
+                <label className={`relative inline-flex items-center gap-1.5 rounded-xl border border-chiziq bg-sirt px-3 text-[13px] font-semibold text-matn ${ai.yoqilgan && !aiBand ? 'cursor-pointer hover:bg-ichki' : 'opacity-50'}`} title={ai.yoqilgan ? 'Boshqa tilga (qoralama nusxa)' : AI_SOZLANMAGAN}>
+                  <Languages size={14} /> {aiBand === 'tarjima' ? 'Tarjima…' : 'Tarjima'}
+                  <select aria-label="Tarjima tili" disabled={!ai.yoqilgan || !!aiBand} value="" onChange={e => e.target.value && aiTarjima(e.target.value)} className="absolute inset-0 opacity-0 cursor-pointer disabled:cursor-default">
+                    <option value="">Tilni tanlang</option>
+                    {(['uz', 'ru', 'en'] as const).filter(t => t !== umumiy.language).map(t => <option key={t} value={t}>{{ uz: "O'zbekchaga", ru: 'Ruschaga', en: 'Inglizchaga' }[t]}</option>)}
+                  </select>
+                </label>
+              </>
+            )}
             {tahrirRejimi && savolOchirish && <Tugma turi="xavfli" ikonka={<Trash2 size={14} />} onClick={ochir}>O'chirish</Tugma>}
             {!tahrirRejimi && <Tugma ikonka={<Plus size={14} />} yuklanmoqda={saqlanmoqda} onClick={() => saqla(true)}>Saqlash va keyingisi</Tugma>}
             <Tugma turi="asosiy" ikonka={<Save size={14} />} yuklanmoqda={saqlanmoqda} onClick={() => saqla(false)}>{tahrirRejimi ? 'Saqlash' : 'Saqlash va chiqish'}</Tugma>
@@ -274,7 +316,12 @@ export default function QuestionEditor() {
             </div>
           </Karta>
 
-          <Karta sarlavha="Yechim" izoh="O'quvchi natijadan keyin ko'radi — faqat tasdiqlangan bo'lsa">
+          <Karta sarlavha="Yechim" izoh="O'quvchi natijadan keyin ko'radi — faqat tasdiqlangan bo'lsa"
+            amallar={savolTahrir && ai && (
+              <Tugma kichik ikonka={<Sparkles size={13} />} disabled={!ai.yoqilgan || !tahrirRejimi}
+                title={!ai.yoqilgan ? AI_SOZLANMAGAN : !tahrirRejimi ? 'Avval savolni saqlang' : 'AI yechim yozadi — qoralama, siz tekshirasiz'}
+                yuklanmoqda={aiBand === 'yechim'} onClick={aiYechim}>AI yechim</Tugma>
+            )}>
             <div className="space-y-3">
               <RichTextEditor key={`yechim-${muharrirKaliti}`} content={q.solution} onChange={solution => setQ(s => ({ ...s, solution }))} />
               <Tanlov kichik qiymat={q.solutionStatus} onChange={v => setQ({ ...q, solutionStatus: v })} variantlar={[{ v: 'yoq', nom: "Yechim yo'q" }, { v: 'qoralama', nom: 'Qoralama' }, { v: 'tasdiqlangan', nom: 'Tasdiqlangan' }]} />

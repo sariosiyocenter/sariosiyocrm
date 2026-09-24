@@ -6,7 +6,7 @@ import prisma from './lib/prisma.js';
 import { JWT_SECRET, TOKEN_TTL, attendanceWindowStart, redactBody, isAdmin, stripSettingSecrets, hidePaymeSecrets, cronRequestRejected } from './lib/config.js';
 import { registerPaymeRoutes } from './routes/payme.js';
 import { registerAuditRoutes } from './routes/audit.js';
-import { registerImtihonRoutes, imtihonJavobi } from './routes/imtihon.js';
+import { registerImtihonRoutes, imtihonJavobi, ruxsatnomaNavbati, oylikImtihonHisoboti } from './routes/imtihon.js';
 import { auditMiddleware } from './lib/audit.js';
 import { markazBrendi, markazNomi, markazNominiTarqat } from './lib/markazBrendi.js';
 import { webhookSecretOk, registerSchoolWebhook, selfHealWebhook } from './lib/telegramWebhook.js';
@@ -19,7 +19,7 @@ import { fillTemplate, testNatijasiKerak, oxirgiTolovKerak, kirimmi } from './li
 import { tolovXabariniUlash, tolovXabari } from './services/tolovXabari.js';
 import { normalizePayShare } from './lib/allocation.js';
 import jwt from 'jsonwebtoken';
-import bot, { startBot, notifyAdmins, getTelegramBot, rejaniHaydovchigaYuborish, rejaBekorXabari } from './src/bot/bot.js';
+import bot, { startBot, notifyAdmins, getTelegramBot, rejaniHaydovchigaYuborish, rejaBekorXabari, getStudentMenu } from './src/bot/bot.js';
 import { transferStudent, refundStudent, enrollStudent, unenrollStudent, syncGroupMembers, activateStudent, syncStudentGroups, setKursHisob, firstMonthQuote, todayTashkent } from './services/enrollment.js';
 import { studentLedger, receivedForGroups, monthCoverage } from './services/ledger.js';
 import { holatniYozish, marshrutniTartiblash, marshrutHolati, rejalarniYozish, rejaniQabulQilish, rejaniYetkazish, REJA_INCLUDE, rejaPuli } from './services/logistics.js';
@@ -6579,7 +6579,9 @@ function parseRecipients(value) {
 /** Bazaga yozish uchun bir xil ko'rinishga keltirish. */
 const normalizeRecipients = (value) => parseRecipients(value).join(',');
 
-async function sendToOne({ student, message, channel, recipientTo, type, schoolId, campaignId }) {
+// telegramExtra — Telegram xabariga qo'shimcha (masalan, inline yoki Mini App
+// tugmasi); SMS ga ta'sir qilmaydi.
+async function sendToOne({ student, message, channel, recipientTo, type, schoolId, campaignId, telegramExtra }) {
   let anySuccess = false;
   let attempted = false;
   const kinds = parseRecipients(recipientTo);
@@ -6599,7 +6601,7 @@ async function sendToOne({ student, message, channel, recipientTo, type, schoolI
       attempted = true;
       try {
         if (schoolBot) {
-          await withTimeout(schoolBot.telegram.sendMessage(target.id, message), 4000, 'Telegram timeout');
+          await withTimeout(schoolBot.telegram.sendMessage(target.id, message, telegramExtra), 4000, 'Telegram timeout');
           anySuccess = true;
           await prisma.smsLog.create({
             data: {
@@ -7132,6 +7134,8 @@ async function runAutoProcessJobs() {
     const statusIn = { in: ruleStatuses || ['Faol', 'Sinov'] };
 
     let targets = [];
+    // EXAM_RESULT qoidasi yuborgan natijalar — keyin "xabar ketdi" deb belgilanadi.
+    let natijaIdlari = null;
     if (rule.type === 'BIRTHDAY') {
       const students = await prisma.student.findMany({ where: { schoolId, status: statusIn } });
       targets = students.filter(s => (s.birthDate || '').slice(5, 10) === mmdd);
@@ -7189,6 +7193,16 @@ async function runAutoProcessJobs() {
         }
       }
       targets = Object.values(uniqueStudentsMap);
+      natijaIdlari = resultsToday.map(er => er.id);
+    } else if (rule.type === 'EXAM_MONTHLY') {
+      // Oylik imtihon hisoboti: belgilangan kunda — o'tgan oy natijalari ({imtihon_oylik}).
+      const cfg = (rule.config && typeof rule.config === 'object') ? rule.config : {};
+      const ruleDay = Number(cfg.dayOfMonth || 1);
+      if (dayOfMonth !== ruleDay) {
+        results.push({ ruleId: rule.id, name: rule.name, skipped: 'not-due-day', dayOfMonth, ruleDay });
+        continue;
+      }
+      targets = await oylikImtihonHisoboti(schoolId, todayStr);
     } else if (rule.type === 'PAYMENT_CONFIRM') {
       // To'lov xabari endi kun oxirida to'planmaydi — to'lov kiritilishi bilan
       // darhol ketadi (tolovXabariniYuborish). Bu yerda ikkinchi marta yuborilmaydi.
@@ -7285,10 +7299,21 @@ async function runAutoProcessJobs() {
       }
 
       await prisma.messageCampaign.update({ where: { id: campaign.id }, data: { sentCount: sent, failedCount: failed } });
+      // Imtihon natijasi shu qoida bilan ketdi — imtihon sahifasidagi "Xabar yuborish" qayta yubormasin.
+      if (natijaIdlari?.length) {
+        await prisma.examResult.updateMany({ where: { id: { in: natijaIdlari } }, data: { notifiedAt: new Date(), notifyStatus: sent ? 'yuborildi' : 'xato' } });
+      }
     }
 
     await prisma.autoMessageRule.update({ where: { id: rule.id }, data: { lastRunDate: todayStr } });
     results.push({ ruleId: rule.id, name: rule.name, schoolId, targets: targets.length, sent, failed });
+  }
+
+  // Imtihon ruxsatnomalari: ertangi imtihonlar, soat 12:00 dan (routes/imtihon.js).
+  try {
+    results.push({ ruxsatnoma: await ruxsatnomaNavbati() });
+  } catch (err) {
+    console.error('[imtihon] ruxsatnoma navbati:', err.message);
   }
 
   return { date: todayStr, hour: currentHour, results };
@@ -7814,6 +7839,8 @@ registerImtihonRoutes(app, {
     const { error } = await supabaseAdmin.storage.from('uploads').remove(nomlar);
     if (error) throw error;
   },
+  // Ruxsatnoma bilan o'quvchi menyusi ham boradi (yangi "📝 Imtihonlar" tugmasi chiqsin).
+  oquvchiMenyusi: getStudentMenu,
 });
 
 // Serve static React files

@@ -1038,6 +1038,12 @@ model ExamSeat {
   variant    String?
   sheetCode  String   @unique
   status     String   @default("rejada") // rejada | keldi | kelmadi
+  // Ruxsatnoma (imtihondan bir kun oldin): qachon yuborilgan va natijasi (yuborildi | xato | aloqa yoq).
+  // O'rin o'zgarsa null bo'ladi — yangi o'rin bilan qayta yuboriladi.
+  admitSentAt DateTime?
+  admitStatus String?
+  // Tashqi qatnashchi lidga aylantirilgan bo'lsa — o'sha lid (yoki telefoni bo'yicha topilgani).
+  leadId      Int?
   createdAt  DateTime @default(now())
   results    ExamResult[]
 
@@ -1091,6 +1097,11 @@ model ExamResult {
   rankGroup    Int?
   notifiedAt   DateTime?
   notifyStatus String?
+  // Rasch (sozlamada yoqilgan imtihonda, e'londa hisoblanadi): qobiliyat (logit),
+  // shkaladagi ball va daraja (A+, A, B+ ...).
+  raschTheta   Float?
+  raschScore   Float?
+  grade        String?
 
   @@unique([studentId, examId])
   @@index([examId, schoolId])

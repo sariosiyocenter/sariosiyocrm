@@ -4,7 +4,8 @@ import { ArrowLeft, Save, Plus, Trash2, Lock, Wand2, AlertTriangle, CheckCircle2
 import { useCRM } from '../context/CRMContext';
 import { useImtihonApi } from './imtihon/useImtihonApi';
 import { Karta, Tugma, Maydon, INPUT, SELECT, Tanlov, Almashtirgich, Yorliq, Yuklanmoqda } from './imtihon/ui';
-import { SOZLAMA_STANDART, STANDART_SHABLON, sozlamaniTozala, varaqTuzilmasi, natijaXabari, VARIANT_KODLARI } from '../../lib/imtihon.js';
+import { SOZLAMA_STANDART, STANDART_SHABLON, RUXSATNOMA_SHABLON, sozlamaniTozala, varaqTuzilmasi, natijaXabari, ruxsatnomaMatni, VARIANT_KODLARI, vergul, sanaMatni } from '../../lib/imtihon.js';
+import { toDateStr } from '../../lib/lessons.js';
 import type { Exam, ExamBlock, ExamSettings, TopicRule, SavolTuri } from '../types';
 
 // Imtihon tuzish. Egasining talabi (2026-09-24): "universal bo'lishi kerak" —
@@ -39,7 +40,7 @@ export default function ExamBuilder() {
   const [saqlanmoqda, setSaqlanmoqda] = useState(false);
   const [qulf, setQulf] = useState(false);
   const [nom, setNom] = useState('');
-  const [sana, setSana] = useState(() => new Date().toISOString().slice(0, 10));
+  const [sana, setSana] = useState(() => toDateStr());
   const [davom, setDavom] = useState(120);
   const [scoring, setScoring] = useState<'blok' | 'foiz'>('blok');
   const [bloklar, setBloklar] = useState<ExamBlock[]>([{ id: yangiId(), subject: '', pointsPerQuestion: 1, topicRules: [{ topic: '', count: 10, type: 'yopiq' }] }]);
@@ -104,10 +105,16 @@ export default function ExamBuilder() {
   };
 
   const xabarNamuna = natijaXabari(sozlama.notify.template, {
-    ism: 'ALIYEV VALI', imtihon: nom || 'Oylik sinov', sana, ball: 142.3, maks: tuzilma.maks, foiz: 75.3,
-    bloklar: bloklar.length > 1 ? bloklar.slice(0, 2).map(b => `• ${b.subject || 'Fan'}: 25.3 / 31`).join('\n') : '',
+    ism: 'ALIYEV VALI', imtihon: nom || 'Oylik sinov', sana: sanaMatni(sana), ball: '142,3', maks: vergul(tuzilma.maks), foiz: '75,3',
+    bloklar: bloklar.length > 1 ? bloklar.slice(0, 2).map(b => `• ${b.subject || 'Fan'}: 25,3 / 31`).join('\n') : '',
     orin: sozlama.ranking === 'yoq' ? '' : sozlama.ranking === 'top' ? "🏆 O'rni: umumiy 7-o'rin" : "🏆 O'rni: kursda 3/25 · umumiy 15/400",
-    markaz: 'Sariosiyo',
+    markaz: 'Sariosiyo', havola: `${window.location.origin}/natija/…`,
+    rasch: sozlama.rasch.enabled ? '63,2' : '', daraja: sozlama.rasch.enabled ? 'B+' : '',
+  });
+  const ruxsatnomaNamuna = ruxsatnomaMatni(sozlama.admit.template, {
+    ism: 'ALIYEV VALI', imtihon: nom || 'Oylik sinov', sana: sanaMatni(sana),
+    vaqt: `${sozlama.sessions[0]?.time || '09:00'}${sozlama.sessions.length > 1 ? ` (${sozlama.sessions[0]?.name})` : ''}`,
+    filial: schools.find(x => x.id === egaFilial)?.name || '', xona: '7-xona', qator: 2, orin: 3, markaz: 'Sariosiyo',
   });
 
   if (yuklanmoqda) return <Yuklanmoqda />;
@@ -146,7 +153,7 @@ export default function ExamBuilder() {
                   return (
                     <button key={sc.id} type="button" disabled={qulf || sc.id === egaFilial}
                       onClick={() => setFiliallar(f => (bel ? f.filter(x => x !== sc.id) : [...f, sc.id]))}
-                      className={`px-3 py-1.5 rounded-xl border text-[12.5px] font-semibold cursor-pointer disabled:cursor-default ${bel ? 'bg-brand text-white border-brand' : 'bg-ichki border-chiziq text-matn-sokin'}`}>
+                      className={`px-3 py-1.5 rounded-xl border text-[12.5px] font-semibold cursor-pointer disabled:cursor-default ${bel ? 'bg-brand text-brand-ust border-brand' : 'bg-ichki border-chiziq text-matn-sokin'}`}>
                       {sc.name}
                     </button>
                   );
@@ -268,6 +275,23 @@ export default function ExamBuilder() {
                 </div>
               </Maydon>
               <Almashtirgich yoqilgan={sozlama.showQuestionsAfter} onChange={v => s({ showQuestionsAfter: v })} nom="Natijadan keyin o'quvchi savollar va yechimlarni ko'radi" izoh="Ko'rsatilgan savollar keyingi imtihonlarga tushmasligi kerak" />
+              <Almashtirgich yoqilgan={sozlama.rasch.enabled} onChange={v => s({ rasch: { ...sozlama.rasch, enabled: v } })}
+                nom="Rasch bali (Milliy sertifikat uslubi)" izoh="E'londa har qatnashchiga T-ball (o'rtacha 50) va daraja; reyting shu ball bo'yicha. Qiyin savolni topgan yuqoriroq turadi. Yozma savollar hisobga olinmaydi." />
+              {sozlama.rasch.enabled && (
+                <Maydon nom="Darajalar" izoh="Har daraja uchun eng kam T-ball">
+                  <div className="flex flex-wrap gap-1.5">
+                    {sozlama.rasch.grades.map((g, i) => (
+                      <span key={i} className="inline-flex items-center gap-1 rounded-lg border border-chiziq bg-ichki px-2 py-1">
+                        <input aria-label="Daraja nomi" className="w-8 bg-transparent text-[12.5px] font-semibold text-matn outline-none" value={g.label}
+                          onChange={e => s({ rasch: { ...sozlama.rasch, grades: sozlama.rasch.grades.map((x, j) => (j === i ? { ...x, label: e.target.value.slice(0, 6) } : x)) } })} />
+                        <span className="text-matn-xira text-[12px]">≥</span>
+                        <input aria-label={`${g.label} uchun eng kam ball`} inputMode="decimal" className="w-10 bg-transparent text-[12.5px] text-matn outline-none raqam" value={g.min}
+                          onChange={e => s({ rasch: { ...sozlama.rasch, grades: sozlama.rasch.grades.map((x, j) => (j === i ? { ...x, min: Number(e.target.value.replace(',', '.')) || 0 } : x)) } })} />
+                      </span>
+                    ))}
+                  </div>
+                </Maydon>
+              )}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <Maydon nom="Xabar kanali">
                   <select className={SELECT} value={sozlama.notify.channel} onChange={e => s({ notify: { ...sozlama.notify, channel: e.target.value as any } })}>
@@ -282,7 +306,7 @@ export default function ExamBuilder() {
               </div>
               {sozlama.notify.channel !== 'NONE' && (
                 <>
-                  <Maydon nom="Xabar matni" izoh="{ism} {imtihon} {sana} {ball} {maks} {foiz} {bloklar} {orin} {markaz}">
+                  <Maydon nom="Xabar matni" izoh="{ism} {imtihon} {sana} {ball} {maks} {foiz} {rasch} {daraja} {bloklar} {orin} {markaz} {havola}">
                     <textarea rows={5} className={INPUT} value={sozlama.notify.template} onChange={e => s({ notify: { ...sozlama.notify, template: e.target.value } })} />
                   </Maydon>
                   <div className="flex items-center justify-between">
@@ -290,6 +314,36 @@ export default function ExamBuilder() {
                     {sozlama.notify.template !== STANDART_SHABLON && <Tugma kichik turi="oddiy" onClick={() => s({ notify: { ...sozlama.notify, template: SOZLAMA_STANDART.notify.template } })}>Standart matn</Tugma>}
                   </div>
                   <pre className="whitespace-pre-wrap rounded-xl bg-ichki border border-chiziq p-3 text-[12.5px] text-matn font-sans">{xabarNamuna}</pre>
+                </>
+              )}
+            </div>
+          </Karta>
+          <Karta sarlavha="Ruxsatnoma" izoh="Qatnashchiga imtihon vaqti, xonasi va o'rni">
+            <div className="space-y-3">
+              <Almashtirgich yoqilgan={sozlama.admit.auto} onChange={v => s({ admit: { ...sozlama.admit, auto: v } })}
+                nom="Imtihondan bir kun oldin o'zi yuborilsin" izoh="Soat 12:00 dan keyin, o'rin berilgan qatnashchilarga. Qo'lda ham yuborsa bo'ladi (Qatnashchilar bo'limi)." />
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <Maydon nom="Kanal">
+                  <select className={SELECT} value={sozlama.admit.channel} onChange={e => s({ admit: { ...sozlama.admit, channel: e.target.value as any } })}>
+                    <option value="TELEGRAM">Faqat Telegram</option><option value="BOTH">Telegram, bo'lmasa SMS</option><option value="SMS">Faqat SMS</option><option value="NONE">Yubormaslik</option>
+                  </select>
+                </Maydon>
+                <Maydon nom="Kimga">
+                  <select className={SELECT} value={sozlama.admit.to} onChange={e => s({ admit: { ...sozlama.admit, to: e.target.value as any } })}>
+                    <option value="ALL">O'quvchi va ota-onaga</option><option value="STUDENT">O'quvchiga</option><option value="PARENT">Ota-onaga</option>
+                  </select>
+                </Maydon>
+              </div>
+              {sozlama.admit.channel !== 'NONE' && (
+                <>
+                  <Maydon nom="Matn" izoh="{ism} {imtihon} {sana} {vaqt} {filial} {xona} {qator} {orin} {markaz}">
+                    <textarea rows={6} className={INPUT} value={sozlama.admit.template} onChange={e => s({ admit: { ...sozlama.admit, template: e.target.value } })} />
+                  </Maydon>
+                  <div className="flex items-center justify-between">
+                    <p className="text-[11.5px] text-matn-xira">Namuna:</p>
+                    {sozlama.admit.template !== RUXSATNOMA_SHABLON && <Tugma kichik turi="oddiy" onClick={() => s({ admit: { ...sozlama.admit, template: RUXSATNOMA_SHABLON } })}>Standart matn</Tugma>}
+                  </div>
+                  <pre className="whitespace-pre-wrap rounded-xl bg-ichki border border-chiziq p-3 text-[12.5px] text-matn font-sans">{ruxsatnomaNamuna}</pre>
                 </>
               )}
             </div>

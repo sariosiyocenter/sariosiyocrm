@@ -555,6 +555,8 @@ export interface ExamSettings {
     topN: number;
     showQuestionsAfter: boolean;
     notify: { channel: 'BOTH' | 'TELEGRAM' | 'SMS' | 'NONE'; to: 'PARENT' | 'STUDENT' | 'ALL'; template: string };
+    admit: { channel: 'BOTH' | 'TELEGRAM' | 'SMS' | 'NONE'; to: 'PARENT' | 'STUDENT' | 'ALL'; auto: boolean; template: string };
+    rasch: { enabled: boolean; grades: { label: string; min: number }[] };
     optionCount: number;
 }
 

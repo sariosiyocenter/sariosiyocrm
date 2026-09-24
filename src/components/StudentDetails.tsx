@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import {
     ArrowLeft, Phone, Calendar, MapPin, BookOpen, CreditCard, ReceiptText,
-    Clock, CheckCircle, XCircle, Plus, Award, ClipboardCheck, Users, Layers, ChevronRight, Save, Edit, Bus, Sparkles, Image as ImageIcon, Camera, X, Send, Trash2, Star, ScanFace, Maximize2, Target, Compass, GraduationCap, ToggleLeft, ToggleRight
+    Clock, CheckCircle, XCircle, Plus, Award, ClipboardCheck, Users, Layers, ChevronRight, Save, Edit, Bus, Sparkles, Image as ImageIcon, Camera, X, Send, Trash2, Star, ScanFace, Maximize2, Target, Compass, GraduationCap, ToggleLeft, ToggleRight, FileText
 } from 'lucide-react';
 import { useCRM } from '../context/CRMContext';
 import { displayName } from '../lib/displayName';
@@ -30,6 +30,7 @@ import { loadFaceModels, descriptorFromPhoto, saveFaceProfiles, faceFailText, fa
 import type { FaceFail } from '../lib/faceDescriptor';
 import type { Payment } from '../types';
 import { amaldagiQoida, qoidaMatni, kelganSana } from '../lib/taqsimot';
+import OquvchiImtihonlari from './imtihon/OquvchiImtihonlari';
 
 /**
  * Face ID holati. Alohida "rasmga tushish" ham, tugma ham yo'q: belgi profil
@@ -52,6 +53,8 @@ export default function StudentDetails() {
     const kochirish = ozgartira('oquvchilar.kochirish');
     const ballarKorinadi = kora('oquvchilar.ballar');
     const ballarTahrir = ozgartira('oquvchilar.ballar');
+    // Imtihon natijalari: GET /api/exam-results bilan bir xil ruxsat.
+    const imtihonlarKorinadi = kora('imtihonlar.natija') || kora('oquvchilar.ballar');
     const oquvchiOchirish = ozgartira('oquvchilar.ochirish');
     const tarkibTahrir = ozgartira('kurslar.tarkib');
     const davomatKorinadi = kora('kurslar.davomat');
@@ -1370,6 +1373,7 @@ export default function StudentDetails() {
                             {balansKorinadi && <TabButton label="Balans" icon={<CreditCard size={14} />} active={activeTab === 'tolovlar'} onClick={() => setActiveTab('tolovlar')} />}
                             {davomatKorinadi && <TabButton label={t('attendance')} icon={<ClipboardCheck size={14} />} active={activeTab === 'yoqlama'} onClick={() => setActiveTab('yoqlama')} />}
                             {ballarKorinadi && <TabButton label="Ballar" icon={<Star size={14} />} active={activeTab === 'ballar'} onClick={() => setActiveTab('ballar')} />}
+                            {imtihonlarKorinadi && <TabButton label="Imtihonlar" icon={<FileText size={14} />} active={activeTab === 'imtihonlar'} onClick={() => setActiveTab('imtihonlar')} />}
                         </div>
 
                         <div className="p-4">
@@ -2202,6 +2206,8 @@ export default function StudentDetails() {
 
                             {/* Bonus points. The Score table and the bonus report were already
                                 built, but nothing in the app could actually award a point. */}
+                            {activeTab === 'imtihonlar' && imtihonlarKorinadi && <OquvchiImtihonlari studentId={student.id} />}
+
                             {activeTab === 'ballar' && ballarKorinadi && (
                                 <div className="space-y-6 animate-in fade-in duration-300">
                                     <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-5 bg-ichki/40 border border-chiziq rounded-2xl">

@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Download, Megaphone, Send, KeyRound, AlertTriangle, CheckCircle2, RefreshCw, Square } from 'lucide-react';
+import { Download, Megaphone, Send, KeyRound, AlertTriangle, CheckCircle2, RefreshCw, Square, Tv } from 'lucide-react';
 import * as XLSX from 'xlsx';
+import { useNavigate } from 'react-router-dom';
 import { useCRM } from '../../context/CRMContext';
 import { useConfirm } from '../ConfirmDialog';
 import { useImtihonApi, ApiXato } from './useImtihonApi';
@@ -8,6 +9,7 @@ import { Karta, Tugma, Tanlov, Yorliq, SELECT, Yuklanmoqda, BoshHolat } from './
 import StatTile from '../ui/StatTile';
 import KalitOynasi from './KalitOynasi';
 import { oddiyMatn, formulaliHtml, SAVOL_MATNI } from '../../lib/matn';
+import { vergul } from './format';
 import type { ImtihonTafsil } from '../ExamDetail';
 
 // 6-bo'lim: natijalar, savol va mavzu tahlili, e'lon. E'londan oldin savollar
@@ -18,6 +20,7 @@ interface Natija {
   id: number; name: string; groupId: number | null; groupName: string; schoolId: number; session: number | null; variantCode: string | null;
   score: number; percentage: number; blockScores: { subject: string; earned: number; max: number }[] | null;
   reviewStatus: string; shubhalar: number; rank: number | null; rankGroup: number | null; notifiedAt: string | null; notifyStatus: string | null; sheetCode: string | null;
+  raschScore: number | null; grade: string | null;
 }
 interface SavolTahlil { q: number; t: string; b: number; jami: number; togri: number; bosh: number; tanlov: Record<string, number> | null; foiz: number; farq: number; shubhali: boolean; subject: string; topic: string; text: string; togriJavob: string | null; bekor: string | null }
 interface Tahlil { savollar: SavolTahlil[]; mavzular: { fan: string; mavzu: string; jami: number; togri: number; foiz: number; kurslar: Record<string, { jami: number; togri: number }> }[]; natijaSoni: number }
@@ -31,6 +34,7 @@ export default function NatijalarTab({ exam, yangila }: { exam: ImtihonTafsil; y
   const elonQiladi = ozgartira('imtihonlar.elon');
   const { soro } = useImtihonApi();
   const confirm = useConfirm();
+  const navigate = useNavigate();
   const [bolim, setBolim] = useState<'reyting' | 'savollar' | 'mavzular' | 'elon'>('reyting');
   const [natijalar, setNatijalar] = useState<Natija[] | null>(null);
   const [tahlil, setTahlil] = useState<Tahlil | null>(null);
@@ -74,7 +78,9 @@ export default function NatijalarTab({ exam, yangila }: { exam: ImtihonTafsil; y
       if (kopFilial) o.Filial = filialNomi(r.schoolId);
       o.Variant = r.variantCode || '';
       for (const b of r.blockScores || []) o[b.subject] = b.earned;
-      o.Ball = r.score; o['Foiz (%)'] = r.percentage; o.Holat = r.reviewStatus === 'shubhali' ? 'tekshirilmagan' : 'tayyor';
+      o.Ball = r.score; o['Foiz (%)'] = r.percentage;
+      if (s.rasch.enabled) { o.Rasch = r.raschScore ?? ''; o.Daraja = r.grade ?? ''; }
+      o.Holat = r.reviewStatus === 'shubhali' ? 'tekshirilmagan' : 'tayyor';
       return o;
     });
     const wb = XLSX.utils.book_new();
@@ -143,8 +149,8 @@ export default function NatijalarTab({ exam, yangila }: { exam: ImtihonTafsil; y
     <div className="space-y-4">
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
         <StatTile label="Natija" value={xulosa.skanerlangan} unit={`/ ${xulosa.qatnashchi}`} subValue={xulosa.skanerlanmagan ? `${xulosa.skanerlanmagan} ta skanerlanmagan` : 'hammasi skanerlangan'} subTone={xulosa.skanerlanmagan ? 'warn' : undefined} />
-        <StatTile label="O'rtacha ball" value={stat?.ortacha ?? '—'} unit={`/ ${exam.maxScore}`} subValue={`${stat?.ortachaFoiz ?? 0}%`} />
-        <StatTile label="Eng yuqori" value={stat?.engYuqori ?? '—'} unit="ball" />
+        <StatTile label="O'rtacha ball" value={stat ? vergul(stat.ortacha) : '—'} unit={`/ ${vergul(exam.maxScore)}`} subValue={`${stat?.ortachaFoiz ?? 0}%`} />
+        <StatTile label="Eng yuqori" value={stat ? vergul(stat.engYuqori) : '—'} unit="ball" />
         <StatTile label="Tekshirilmagan" value={xulosa.shubhali} tone={xulosa.shubhali ? 'warn' : 'good'} subValue={shubhaliSavollar.length ? `${shubhaliSavollar.length} ta shubhali savol` : 'savollar joyida'} subTone={shubhaliSavollar.length ? 'bad' : undefined} />
       </div>
 
@@ -157,6 +163,9 @@ export default function NatijalarTab({ exam, yangila }: { exam: ImtihonTafsil; y
         ]} />
         <div className="flex gap-2">
           <Tugma kichik turi="oddiy" ikonka={<RefreshCw size={13} />} onClick={yukla}>Yangilash</Tugma>
+          {xulosa.published && s.ranking !== 'yoq' && (
+            <Tugma kichik ikonka={<Tv size={13} />} onClick={() => navigate(`/exams/${exam.id}/reyting`)} title="Televizor yoki proyektor uchun">Katta ekran</Tugma>
+          )}
           <Tugma kichik ikonka={<Download size={13} />} onClick={excel}>Excel</Tugma>
         </div>
       </div>
@@ -180,6 +189,8 @@ export default function NatijalarTab({ exam, yangila }: { exam: ImtihonTafsil; y
                   {exam.blocks.length > 1 && exam.blocks.map((b, i) => <th key={i} className="px-2 py-2 text-center font-semibold whitespace-nowrap">{b.subject}</th>)}
                   <th className="px-3 py-2 text-right font-semibold">Ball</th>
                   <th className="px-3 py-2 text-right font-semibold">%</th>
+                  {s.rasch.enabled && <th className="px-3 py-2 text-right font-semibold" title="T-ball: o'rtacha 50">Rasch</th>}
+                  {s.rasch.enabled && <th className="px-3 py-2 text-center font-semibold">Daraja</th>}
                   <th className="px-3 py-2" />
                 </tr>
               </thead>
@@ -190,9 +201,11 @@ export default function NatijalarTab({ exam, yangila }: { exam: ImtihonTafsil; y
                     <td className="px-3 py-2 text-matn">{r.name}{kopFilial && <span className="text-matn-xira"> · {filialNomi(r.schoolId)}</span>}</td>
                     <td className="px-3 py-2 text-matn-sokin">{r.groupName || '—'}</td>
                     <td className="px-3 py-2 text-center text-matn-sokin">{r.variantCode || '—'}</td>
-                    {exam.blocks.length > 1 && exam.blocks.map((_, bi) => { const b = r.blockScores?.[bi]; return <td key={bi} className="px-2 py-2 text-center text-matn-sokin raqam">{b ? `${b.earned}` : '—'}</td>; })}
-                    <td className="px-3 py-2 text-right font-bold text-matn raqam">{r.score}</td>
-                    <td className="px-3 py-2 text-right text-matn-sokin raqam">{r.percentage}</td>
+                    {exam.blocks.length > 1 && exam.blocks.map((_, bi) => { const b = r.blockScores?.[bi]; return <td key={bi} className="px-2 py-2 text-center text-matn-sokin raqam">{b ? vergul(b.earned) : '—'}</td>; })}
+                    <td className="px-3 py-2 text-right font-bold text-matn raqam">{vergul(r.score)}</td>
+                    <td className="px-3 py-2 text-right text-matn-sokin raqam">{vergul(r.percentage)}</td>
+                    {s.rasch.enabled && <td className="px-3 py-2 text-right font-semibold text-matn raqam">{r.raschScore != null ? vergul(r.raschScore) : '—'}</td>}
+                    {s.rasch.enabled && <td className="px-3 py-2 text-center">{r.grade ? <Yorliq rang="brand">{r.grade}</Yorliq> : <span className="text-matn-xira">—</span>}</td>}
                     <td className="px-3 py-2 text-right whitespace-nowrap">
                       {r.reviewStatus === 'shubhali' && <Yorliq rang="ogoh">tekshirilmagan</Yorliq>}
                       {r.notifyStatus === 'yuborildi' && <Yorliq rang="yaxshi">xabar ketdi</Yorliq>}

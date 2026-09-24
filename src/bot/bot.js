@@ -12,6 +12,8 @@ import { tashkilotSozlamasi } from '../../middleware/auth.js';
 import { javobniYozish } from '../../services/kunlikReja.js';
 import { parseLatLng, distanceKm } from '../../lib/tartib.js';
 import { studentLedger } from '../../services/ledger.js';
+import { natijaTokeni } from '../../routes/imtihon.js';
+import { sozlamaniTozala, sanaMatni, vergul } from '../../lib/imtihon.js';
 import {
     createOrder as paymeCreateOrder, loadSettings as paymeLoadSettings, isConfigured as paymeIsConfigured,
     MIN_AMOUNT as PAYME_MIN, MAX_AMOUNT as PAYME_MAX, payIdFor as paymePayIdFor,
@@ -31,9 +33,11 @@ const adminStates = {};
 const botCache = new Map(); // token -> botInstance
 
 // User roles and menus
-const getStudentMenu = () => Markup.keyboard([
+// Ruxsatnoma bilan ham yuboriladi (routes/imtihon.js) — eski menyuli foydalanuvchiga yangi tugmalar chiqsin.
+export const getStudentMenu = () => Markup.keyboard([
     ['📅 Dars Jadvali', '💳 To\'lovlar'],
     ['✅ Davomat', '📊 Baholar'],
+    ['📝 Imtihonlar'],
     ['✍️ Shikoyat va takliflar', '👤 Profil'],
     ['🚪 Chiqish']
 ]).resize();
@@ -675,6 +679,74 @@ export const setupBotHandlers = (botInstance, botSchoolId) => {
 
         ctx.reply(msg);
     });
+
+    // Imtihonlar: yaqin imtihon — sana, vaqt, xona va o'rin (ruxsatnoma bilan
+    // bir xil); e'lon qilingan natijalar — ball, o'rin va natija sahifasi Mini
+    // App bo'lib ochiladigan tugma. Faqat e'lon qilingan natija ko'rinadi.
+    const imtihonlarniKorsat = async (ctx) => {
+        const schoolId = await filial(ctx);
+        const user = await findUser(ctx.from.id, schoolId);
+        if (!user || (user.type !== 'student' && !user.type.startsWith('parent_'))) return;
+        const studentId = user.data.id;
+        const [orinlar, natijalar] = await Promise.all([
+            prisma.examSeat.findMany({
+                where: { studentId, exam: { date: { gte: toDateStr() }, publishedAt: null } },
+                include: { exam: { select: { name: true, date: true, settings: true } } },
+                orderBy: { exam: { date: 'asc' } },
+                take: 3,
+            }),
+            prisma.examResult.findMany({
+                where: { studentId, exam: { publishedAt: { not: null } } },
+                include: { exam: { select: { id: true, name: true, date: true, maxScore: true, settings: true } } },
+                orderBy: { scannedAt: 'desc' },
+                take: 5,
+            }),
+        ]);
+        if (!orinlar.length && !natijalar.length) return ctx.reply("📝 Hozircha imtihon yo'q.");
+
+        const roomIds = [...new Set(orinlar.map(o => o.roomId).filter(Boolean))];
+        const rooms = roomIds.length ? await prisma.room.findMany({ where: { id: { in: roomIds } }, select: { id: true, name: true, schoolId: true } }) : [];
+        const schools = rooms.length ? await prisma.school.findMany({ where: { id: { in: [...new Set(rooms.map(r => r.schoolId))] } }, select: { id: true, name: true } }) : [];
+        const soni = natijalar.length ? await prisma.examResult.groupBy({ by: ['examId'], where: { examId: { in: natijalar.map(r => r.examId) } }, _count: { _all: true } }) : [];
+        const jami = new Map(soni.map(x => [x.examId, x._count._all]));
+
+        let matn = '📝 <b>Imtihonlar</b>\n';
+        if (orinlar.length) {
+            matn += '\n<b>Yaqin imtihon</b>\n';
+            for (const o of orinlar) {
+                const s = sozlamaniTozala(o.exam.settings);
+                const smena = s.sessions.find(x => x.id === o.session);
+                const room = rooms.find(r => r.id === o.roomId);
+                matn += `🗓 <b>${escHtml(o.exam.name)}</b> — ${sanaMatni(o.exam.date)}\n`;
+                if (smena?.time) matn += `⏰ Soat ${smena.time}${s.sessions.length > 1 ? ` (${escHtml(smena.name)})` : ''}\n`;
+                matn += room
+                    ? `🚪 ${escHtml([schools.find(x => x.id === room.schoolId)?.name, room.name].filter(Boolean).join(', '))}, ${o.row + 1}-qator, ${o.col + 1}-o'rin\n`
+                    : "🚪 O'rin hali belgilanmagan\n";
+            }
+        }
+        if (natijalar.length) {
+            matn += '\n<b>Natijalar</b>\n';
+            for (const r of natijalar) {
+                const s = sozlamaniTozala(r.exam.settings);
+                let orin = '';
+                if (r.rank && (s.ranking === 'hammasi' || (s.ranking === 'top' && r.rank <= s.topN))) {
+                    orin = s.ranking === 'hammasi' ? ` · 🏆 ${r.rank}/${jami.get(r.examId) || '?'}` : ` · 🏆 ${r.rank}-o'rin`;
+                }
+                const rasch = r.raschScore != null ? `, Rasch ${vergul(r.raschScore)}${r.grade ? ` (${escHtml(r.grade)})` : ''}` : '';
+                matn += `▫️ <b>${escHtml(r.exam.name)}</b> (${sanaMatni(r.exam.date)}): ${vergul(r.score)} / ${vergul(r.exam.maxScore)} ball, ${vergul(r.percentage)}%${rasch}${orin}\n`;
+            }
+        }
+        // Natija sahifasi — kirishsiz, imzolangan havola. Telegram Mini App faqat https bilan ochiladi.
+        const asos = (process.env.PUBLIC_URL || process.env.APP_URL || '').replace(/\/+$/, '');
+        const tugmalar = asos ? natijalar.map(r => {
+            const url = `${asos}/natija/${natijaTokeni(r.id)}`;
+            const text = `📊 ${r.exam.name}`.slice(0, 60);
+            return [asos.startsWith('https://') ? { text, web_app: { url } } : { text, url }];
+        }) : [];
+        return ctx.reply(matn, { parse_mode: 'HTML', ...(tugmalar.length ? { reply_markup: { inline_keyboard: tugmalar } } : {}) });
+    };
+    botInstance.hears('📝 Imtihonlar', imtihonlarniKorsat);
+    botInstance.command('imtihon', imtihonlarniKorsat);
 
     botInstance.hears('✍️ Shikoyat va takliflar', async (ctx) => {
         ctx.reply("Sizning fikringiz biz uchun muhim! ✍️\n\nShikoyat yoki taklifingiz bo'lsa, shu yerga yozib qoldiring. Adminlarimiz uni albatta ko'rib chiqishadi.");

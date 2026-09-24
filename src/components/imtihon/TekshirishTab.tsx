@@ -1,10 +1,11 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { ClipboardCheck, ChevronRight, CheckCircle2, AlertTriangle, Image as ImageIcon } from 'lucide-react';
+import { ClipboardCheck, ChevronRight, CheckCircle2, AlertTriangle, Image as ImageIcon, Sparkles } from 'lucide-react';
 import { useCRM } from '../../context/CRMContext';
 import { useImtihonApi } from './useImtihonApi';
 import { Karta, Tugma, Tanlov, Yorliq, INPUT, Yuklanmoqda, BoshHolat } from './ui';
 import { varaqSahifalari, W, type Sahifa } from '../../lib/omr/layout';
-import { varaqTuzilmasi, HARFLAR } from '../../../lib/imtihon.js';
+import { varaqTuzilmasi, HARFLAR, vergul } from '../../../lib/imtihon.js';
+import { useAiHolat, AI_SOZLANMAGAN } from './useAiHolat';
 import type { ImtihonTafsil } from '../ExamDetail';
 
 // 5-bo'lim: skaner ishonmagan javoblar (ikki belgi, noaniq bo'yoq, variant
@@ -39,6 +40,25 @@ function Kesim({ url, quti, pxMm = 5 }: { url?: string; quti: Quti; pxMm?: numbe
   );
 }
 
+/** Varaq rasmidan kesib, JPEG data URL (AI ga yozma javobni ko'rsatish uchun). */
+async function kesimRasmi(url: string, quti: Quti): Promise<string> {
+  const img = new Image();
+  img.crossOrigin = 'anonymous';
+  img.src = url;
+  await img.decode();
+  const k = img.naturalWidth / W;
+  const c = document.createElement('canvas');
+  c.width = Math.round(quti.w * k);
+  c.height = Math.round(quti.h * k);
+  const g = c.getContext('2d')!;
+  g.fillStyle = '#fff';
+  g.fillRect(0, 0, c.width, c.height);
+  g.drawImage(img, quti.x * k, quti.y * k, quti.w * k, quti.h * k, 0, 0, c.width, c.height);
+  return c.toDataURL('image/jpeg', 0.92);
+}
+
+type AiTaklif = { ball: number; maks: number; izoh: string; oqildi: string; oqibBolmadi: boolean };
+
 export default function TekshirishTab({ exam, yangila }: { exam: ImtihonTafsil; yangila: () => Promise<any> }) {
   const { ozgartira, showNotification } = useCRM();
   const tahrir = ozgartira('imtihonlar.natija');
@@ -51,6 +71,9 @@ export default function TekshirishTab({ exam, yangila }: { exam: ImtihonTafsil; 
   const [variant, setVariant] = useState<string | null>(null);
   const [saqlanmoqda, setSaqlanmoqda] = useState(false);
   const [qidiruv, setQidiruv] = useState('');
+  const ai = useAiHolat();
+  const [aiTaklif, setAiTaklif] = useState<Record<number, AiTaklif>>({});
+  const [aiBand, setAiBand] = useState<number | null>(null);
 
   const sahifalar: Sahifa[] = useMemo(() => varaqSahifalari({
     tuzilma: varaqTuzilmasi(exam.blocks, exam.scoring) as any,
@@ -82,6 +105,7 @@ export default function TekshirishTab({ exam, yangila }: { exam: ImtihonTafsil; 
       setT(d);
       setQaror({});
       setVariant(null);
+      setAiTaklif({});
     }).catch(e => showNotification(e.message, 'error'));
   }, [tanlangan, soro, showNotification]);
 
@@ -119,6 +143,24 @@ export default function TekshirishTab({ exam, yangila }: { exam: ImtihonTafsil; 
       showNotification(e.message, 'error');
     } finally {
       setSaqlanmoqda(false);
+    }
+  };
+
+  // AI faqat taklif beradi: ballni operator «Qo'llash» bilan qo'yadi.
+  const aiBaho = async (n: number) => {
+    const j = joy.get(n);
+    const url = j && rasm(j.page);
+    if (!t || !j || !url) return;
+    setAiBand(n);
+    try {
+      let kesim: string;
+      try { kesim = await kesimRasmi(url, j.quti); } catch { throw new Error("Varaq rasmini olib bo'lmadi"); }
+      const r = await soro<AiTaklif>('POST', `exam-results/${t.id}/ai/baho`, { n, rasm: kesim });
+      setAiTaklif(x => ({ ...x, [n]: r }));
+    } catch (e: any) {
+      showNotification(e.message, 'error');
+    } finally {
+      setAiBand(null);
     }
   };
 
@@ -164,7 +206,7 @@ export default function TekshirishTab({ exam, yangila }: { exam: ImtihonTafsil; 
                   <p className="text-[12px] text-matn-sokin mt-1">O'quvchi qaysi kitobcha bilan ishlagan? (odatda varaqda bo'yalgani)</p>
                   <div className="flex flex-wrap gap-1.5 mt-2">
                     {exam.variantlar.filter(v => v.session === (t.session ?? 1)).map(v => (
-                      <button key={v.code} onClick={() => setVariant(v.code)} className={`w-9 h-9 rounded-lg border text-[13px] font-bold cursor-pointer ${(variant || t.variantCode) === v.code ? 'bg-brand border-brand text-white' : 'border-chiziq text-matn-sokin'}`}>{v.code}</button>
+                      <button key={v.code} onClick={() => setVariant(v.code)} className={`w-9 h-9 rounded-lg border text-[13px] font-bold cursor-pointer ${(variant || t.variantCode) === v.code ? 'bg-brand border-brand text-brand-ust' : 'border-chiziq text-matn-sokin'}`}>{v.code}</button>
                     ))}
                   </div>
                 </div>
@@ -189,9 +231,9 @@ export default function TekshirishTab({ exam, yangila }: { exam: ImtihonTafsil; 
                           <>
                             {harflar.map(h => (
                               <button key={h} disabled={!tahrir} onClick={() => setQaror(q => ({ ...q, [f.n]: h }))}
-                                className={`w-9 h-9 rounded-full border text-[13px] font-bold cursor-pointer ${tanlov === h ? 'bg-brand border-brand text-white' : 'border-chiziq text-matn-sokin hover:border-brand'}`}>{h}</button>
+                                className={`w-9 h-9 rounded-full border text-[13px] font-bold cursor-pointer ${tanlov === h ? 'bg-brand border-brand text-brand-ust' : 'border-chiziq text-matn-sokin hover:border-brand'}`}>{h}</button>
                             ))}
-                            <button disabled={!tahrir} onClick={() => setQaror(q => ({ ...q, [f.n]: '' }))} className={`px-3 h-9 rounded-full border text-[12px] font-semibold cursor-pointer ${tanlov === '' ? 'bg-brand border-brand text-white' : 'border-chiziq text-matn-sokin'}`}>Bo'sh</button>
+                            <button disabled={!tahrir} onClick={() => setQaror(q => ({ ...q, [f.n]: '' }))} className={`px-3 h-9 rounded-full border text-[12px] font-semibold cursor-pointer ${tanlov === '' ? 'bg-brand border-brand text-brand-ust' : 'border-chiziq text-matn-sokin'}`}>Bo'sh</button>
                             <button disabled={!tahrir} onClick={() => setQaror(q => ({ ...q, [f.n]: '*' }))} className={`px-3 h-9 rounded-full border text-[12px] font-semibold cursor-pointer ${tanlov === '*' ? 'bg-xato border-xato text-white' : 'border-chiziq text-matn-sokin'}`}>Bekor (ikki javob)</button>
                           </>
                         )}
@@ -220,7 +262,23 @@ export default function TekshirishTab({ exam, yangila }: { exam: ImtihonTafsil; 
                           }} />
                         <span className="text-[12px] text-matn-xira">/ {it.p}</span>
                         {[0, it.p / 2, it.p].map(b => <Tugma key={b} kichik turi="oddiy" disabled={!tahrir} onClick={() => setQaror(q => ({ ...q, [it.n]: { ball: b } }))}>{b}</Tugma>)}
+                        {tahrir && ai && j && rasm(j.page) && (
+                          <Tugma kichik ikonka={<Sparkles size={13} />} disabled={!ai.yoqilgan} title={ai.yoqilgan ? "AI javobni o'qib, ball taklif qiladi" : AI_SOZLANMAGAN}
+                            yuklanmoqda={aiBand === it.n} onClick={() => aiBaho(it.n)}>AI taklifi</Tugma>
+                        )}
                       </div>
+                      {aiTaklif[it.n] && (
+                        <div className="mt-2 rounded-xl border border-brand/30 bg-brand-fon/60 dark:bg-brand/10 p-3 space-y-1.5">
+                          <div className="flex flex-wrap items-center justify-between gap-2">
+                            <p className="text-[13px] text-matn">AI taklifi: <b className="raqam">{vergul(aiTaklif[it.n].ball)} / {vergul(aiTaklif[it.n].maks)}</b>{aiTaklif[it.n].oqibBolmadi && <span className="text-ogoh"> · yozuv yaxshi o'qilmadi</span>}</p>
+                            <Tugma kichik turi="asosiy" onClick={() => setQaror(q => ({ ...q, [it.n]: { ball: aiTaklif[it.n].ball } }))}>Qo'llash</Tugma>
+                          </div>
+                          <p className="text-[12.5px] text-matn-sokin whitespace-pre-wrap">{aiTaklif[it.n].izoh}</p>
+                          {aiTaklif[it.n].oqildi && (
+                            <details className="text-[12px] text-matn-xira"><summary className="cursor-pointer">AI o'qigan matn</summary><p className="mt-1 whitespace-pre-wrap">{aiTaklif[it.n].oqildi}</p></details>
+                          )}
+                        </div>
+                      )}
                     </div>
                   );
                 })}

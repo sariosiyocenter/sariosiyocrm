@@ -116,7 +116,7 @@ export default function ExamDetail() {
           const faol = b.id === bolim;
           return (
             <button key={b.id} onClick={() => bolimgaOt(b.id)}
-              className={`flex items-center gap-2 px-3.5 py-2.5 rounded-xl text-[12.5px] font-semibold whitespace-nowrap cursor-pointer transition-colors ${faol ? 'bg-brand text-white' : 'text-matn-sokin hover:text-matn hover:bg-ichki'}`}>
+              className={`flex items-center gap-2 px-3.5 py-2.5 rounded-xl text-[12.5px] font-semibold whitespace-nowrap cursor-pointer transition-colors ${faol ? 'bg-brand text-brand-ust' : 'text-matn-sokin hover:text-matn hover:bg-ichki'}`}>
               <span className={`w-5 h-5 rounded-full text-[11px] flex items-center justify-center ${faol ? 'bg-white/20' : 'bg-ichki'}`}>{i + 1}</span>
               <Ikonka size={14} /> {b.nom}
             </button>

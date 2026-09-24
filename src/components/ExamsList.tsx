@@ -27,12 +27,12 @@ export default function ExamsList() {
     <div className="space-y-4 max-w-7xl mx-auto">
       <div className="flex border border-chiziq bg-sirt rounded-2xl p-1 shadow-sm gap-1 w-fit">
         {imtihonKorinadi && (
-          <button onClick={() => tabga('imtihonlar')} className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-[12.5px] font-semibold cursor-pointer ${tab === 'imtihonlar' ? 'bg-brand text-white' : 'text-matn-sokin hover:text-matn'}`}>
+          <button onClick={() => tabga('imtihonlar')} className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-[12.5px] font-semibold cursor-pointer ${tab === 'imtihonlar' ? 'bg-brand text-brand-ust' : 'text-matn-sokin hover:text-matn'}`}>
             <FileText size={14} /> Imtihonlar
           </button>
         )}
         {savollarKorinadi && (
-          <button onClick={() => tabga('savollar')} className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-[12.5px] font-semibold cursor-pointer ${tab === 'savollar' ? 'bg-brand text-white' : 'text-matn-sokin hover:text-matn'}`}>
+          <button onClick={() => tabga('savollar')} className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-[12.5px] font-semibold cursor-pointer ${tab === 'savollar' ? 'bg-brand text-brand-ust' : 'text-matn-sokin hover:text-matn'}`}>
             <BookOpen size={14} /> Savollar banki
           </button>
         )}

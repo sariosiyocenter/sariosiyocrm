@@ -25,7 +25,8 @@ export function Karta({ sarlavha, izoh, amallar, children, className = '', ichki
 
 type TugmaTuri = 'asosiy' | 'ikkinchi' | 'xavfli' | 'oddiy';
 const TUGMA: Record<TugmaTuri, string> = {
-  asosiy: 'bg-brand hover:bg-brand-dark text-white border-brand shadow-sm',
+  // Matn rangi — brend ustidagi token (qorong'i mavzuda brend yorqin, matn qora).
+  asosiy: 'bg-brand hover:opacity-90 text-brand-ust border-brand shadow-sm',
   ikkinchi: 'bg-sirt hover:bg-ichki text-matn border-chiziq',
   xavfli: 'bg-sirt hover:bg-xato-fon text-xato border-xato-chiziq',
   oddiy: 'bg-transparent hover:bg-ichki text-matn-sokin border-transparent',

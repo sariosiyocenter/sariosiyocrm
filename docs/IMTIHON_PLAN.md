@@ -418,6 +418,10 @@ smenalar bilan) boshidan oxirigacha CRM ichida o'tadi.
   faqat imtihon o'tgandan keyin.
 - ✅ **1.5 O'rinlashtirish:** xona sxemasi (qator × ustun), avtomatik joylashtirish,
   variant = (2·qator + ustun) mod N. Eshik ro'yxati va nazoratchi vedomosti.
+  Qo'lda ko'chirish: xona xaritasida qatnashchini bosib, bo'sh o'ringa (ko'chadi) yoki
+  boshqa qatnashchiga (joy almashadi); boshqa xona/smenaga — ro'yxatdagi tugma. Variant
+  yangi o'rindan qayta hisoblanadi, natijasi borlar ko'chmaydi; bitta qatnashchi varag'ini
+  qayta chop etish mumkin.
 - ✅ **1.6 Chop etish:**
   - kitobcha variant bo'yicha (HTML + KaTeX);
   - yangi javob varaqasi (`omrLayout.ts`, vaqt belgilari bilan, soxta shtrix-kodsiz);
@@ -450,15 +454,20 @@ smenalar bilan) boshidan oxirigacha CRM ichida o'tadi.
   ulushi, "shubhali kalit" belgisi (kuchli o'quvchilar ko'proq xato qilgan savol).
   Tahlil e'lon qilishdan oldin ko'rinadi.
 - ✅ **2.2** Kurs × mavzu issiqlik xaritasi ustozga.
-- ⬜ **2.3** O'quvchi dinamikasi: profilda imtihonlar grafigi, ota-onaga oylik
-  hisobot.
+- ✅ **2.3** O'quvchi dinamikasi: profilda "Imtihonlar" bo'limi (foiz grafigi, oxirgi /
+  o'rtacha / eng yaxshi, jadval, ota-ona sahifasi havolasi). Oylik hisobot — Xabarlar →
+  Avtomatik qoidalar → "Oylik imtihon hisoboti" (`{imtihon_oylik}`, oyning tanlangan kuni).
 - ✅ **2.4** "Xatolar ustida ishlash" — ota-onaga xabardagi imzolangan havola `/natija/:token`
   (Telegram ichida ham ochiladi): ball, fanlar, o'rin; sozlamada yoqilsa savollar, javob,
   to'g'ri javob va faqat tasdiqlangan yechim. Ko'rsatilgan savollar `shownAt` bilan belgilanadi.
-  Telegram Web App tugmasi (Mini App) — keyingi qadam.
-- ⬜ **2.5** Imtihondan bir kun oldin botda ruxsatnoma.
+  Telegram xabarida "📊 Natijani ochish" — Mini App (web_app) tugmasi; botda "📝 Imtihonlar"
+  menyusi (yaqin imtihon o'rni va e'lon qilingan natijalar, har biri Mini App).
+- ✅ **2.5** Ruxsatnoma: imtihondan bir kun oldin soat 12:00 dan o'zi (sozlamada o'chiriladi),
+  qo'lda ham (Qatnashchilar). Kanal, kimga va matn — imtihon sozlamasi. O'rni o'zgargan
+  qatnashchiga yangisi qayta ketadi. Xabar bilan botning yangi menyusi ham boradi.
 - ✅ **2.6** Raqamli ochiq savollar (grid-in).
-- 🟡 **2.7** Reyting (top-N, kurs ichidagi o'rin) — natijalar jadvalida va xabarda; alohida katta ekran rejimi yo'q.
+- ✅ **2.7** Reyting — natijalar jadvalida, xabarda va katta ekranda (`/exams/:id/reyting`:
+  shohsupa, sahifama-sahifa aylanadigan ro'yxat, filial bo'yicha, to'liq ekran).
 
 **Tayyor degani:** ustoz imtihondan keyingi kuni o'z kursidagi eng zaif 3 ta
 mavzuni bitta ekranda ko'radi.
@@ -467,16 +476,25 @@ mavzuni bitta ekranda ko'radi.
 
 1–2-bosqichlar kamida 2 ta haqiqiy imtihonda ishlagandan keyin boshlanadi.
 
-- ⬜ **3.1 AI import:** Word/PDF → savollar (LaTeX) → ko'rib chiqish → bank.
-- ⬜ **3.2** AI yechim qoralamasi, ustoz tasdiqlaydi.
-- ⬜ **3.3 AI klon:** faqat qoralama. Raqamli savolda javob hisoblab tekshiriladi.
-  Asosan 2-smena va qayta topshirish uchun ishlatiladi.
-- ⬜ **3.4 Yozma javoblar:** kesilgan rasm → AI baho taklif qiladi → ustoz ball
-  qo'yadi.
-- ⬜ **3.5** Rasch ballari (Milliy sertifikat uslubidagi mock uchun, yetarli natija
-  to'plangandan keyin).
-- 🟡 **3.6** Tashqi abituriyentlar: qatnashadi va natija oladi; lidga avtomatik aylantirish yo'q.
-- ⬜ **3.7** Tarjima — faqat rus tilidagi kurslar bo'lsa.
+AI — Gemini (`@google/genai`), kalit **`GEMINI_API_KEY`** Vercel muhitida, model
+`GEMINI_MODEL` (bo'lmasa `gemini-2.5-flash`). Kalit yo'q bo'lsa AI tugmalari "sozlanmagan"
+deydi, qolgan modul ishlayveradi. Xodim boshiga soatiga 120 ta AI so'rovi.
+
+- ✅ **3.1 AI import:** PDF (sahifalari rasm bo'lib), rasm yoki joylangan matn → savollar
+  (LaTeX, umumiy matnlar bilan) → ko'rib chiqish oynasi (javobni tuzatish, tanlash) → bank
+  (qoralama; xohlasa kamchiligi yo'qlari faol). Word — PDF qilib.
+- ✅ **3.2** AI yechim qoralamasi — muharrirga tushadi, bazaga ustoz saqlaganda; AI o'z javobi
+  kalitdan farq qilsa ogohlantiradi.
+- ✅ **3.3 AI klon:** 3 ta qoralama (parentId); keyin AI ularni kalitsiz, alohida so'rovda
+  yechadi — mos kelmagani manbasida "tekshiruvdan o'tmadi".
+- ✅ **3.4 Yozma javoblar:** tekshirishda "AI taklifi" — varaqdagi katak kesiladi, AI o'qib
+  ball va izoh taklif qiladi; ballni operator "Qo'llash" bilan qo'yadi.
+- ✅ **3.5** Rasch (imtihon sozlamasi): JML baholash, T-ball (o'rtacha 50) va darajalar (A+ 70 …
+  C 46, sozlanadi); yoqilsa reyting shu ball bo'yicha. Natijalar, katta ekran, ota-ona
+  sahifasi, xabar (`{rasch}`, `{daraja}`), bot va profilda ko'rinadi.
+- ✅ **3.6** Tashqi abituriyentlar: qatnashadi, natija oladi; "lidlarga qo'shish" (manba
+  "Imtihon", izohda natija; telefoni bor lidga izoh qo'shiladi).
+- ✅ **3.7** Tarjima — qoralama nusxa boshqa tilda (variantlar tartibi va kalit o'sha).
 
 ---
 
@@ -576,11 +594,21 @@ Dastlabki savollar (tarix uchun):
 | Ota-ona natija sahifasi | `src/components/NatijaSahifasi.tsx`, `GET /api/public/natija/:token` (HMAC imzo, `natijaTokeni`) |
 | Skaner PDF dekoderlari | pdf.js wasm (JBIG2/JPEG2000) — `vite.config.ts` `pdfjsWasm()` → `/pdfjs-wasm/`; CSP da `'wasm-unsafe-eval'` |
 | Sahifalar | `ExamsList`, `ExamBuilder`, `ExamDetail` + `src/components/imtihon/*Tab.tsx`, `QuestionsList`, `QuestionEditor` |
+| Katta ekran reytingi | `src/components/imtihon/ReytingEkrani.tsx`, `GET /api/exams/:id/leaderboard` |
+| O'quvchi profilidagi grafik | `src/components/imtihon/OquvchiImtihonlari.tsx` (StudentDetails → "Imtihonlar") |
+| Ruxsatnoma | `ruxsatnomalarniYubor`, `ruxsatnomaNavbati` (routes/imtihon.js; server.js avtomatik ishlarida), `POST /api/exams/:id/admit-cards` |
+| Bot | `src/bot/bot.js` — "📝 Imtihonlar" / `/imtihon`; natija xabarida Mini App tugmasi (`natijaTugmasi`, `sendToOne` `telegramExtra`) |
+| Rasch | `lib/rasch.js` (JML, T-ball, daraja), e'londa `raschNatijalari` |
+| AI | `lib/imtihonAI.js` (Gemini), `routes/imtihonAI.js`, `src/components/imtihon/AiImportOynasi.tsx`, `useAiHolat.ts` |
+| Lidlar | `POST /api/exams/:id/guests/leads` |
+| Oylik hisobot | `oylikImtihonHisoboti` + Xabarlar qoidasi `EXAM_MONTHLY`, `{imtihon_oylik}` (lib/xabarMatni.js) |
 
 Sinovlar (scratch/, bazaga tegmaydi): `test_imtihon_mantiq.mjs` (mantiq), `test_omr_oqish.mjs`
-(sun'iy varaqlar: burilgan, teskari, yonboshlab, soyali, past sifat, DTM). Jonli bazada (ZZ
-yozuvlari, oxirida o'chiriladi): `test_imtihon_api.mjs`, `test_imtihon_ui.mjs` (skrinshot +
-ilova chiqargan varaq → o'qigich), qolib ketgani — `imt_tozalash.mjs` (`APPLY=1`).
+(sun'iy varaqlar: burilgan, teskari, yonboshlab, soyali, past sifat, DTM), `test_rasch.mjs`.
+Jonli bazada (ZZ yozuvlari, oxirida o'chiriladi): `test_imtihon_api.mjs`, `test_imtihon_ui.mjs`
+(skrinshot + ilova chiqargan varaq → o'qigich), `test_imtihon_yangi.mjs` (o'rin ko'chirish,
+katta ekran, profil), `test_imtihon_bot.mjs` (ruxsatnoma, Rasch, lidlar, bot),
+`test_imtihon_ai.mjs` (AI — soxta model bilan), qolib ketgani — `imt_tozalash.mjs` (`APPLY=1`).
 
 Haqiqiy printer va skanerda sinov hali qilinmagan: birinchi imtihondan oldin 30 ta qo'lda
 to'ldirilgan varaq bilan (1-bosqich "Tayyor degani") tekshirish kerak.

@@ -26,6 +26,8 @@ export default function ChopEtishTab({ exam }: { exam: ImtihonTafsil }) {
   const [xona, setXona] = useState<number | 0>(0);
   const [rasmli, setRasmli] = useState(true);
   const [universalSoni, setUniversalSoni] = useState(10);
+  // Bitta qatnashchi varag'i: o'rni o'zgargan yoki varag'i buzilganlar uchun.
+  const [yakka, setYakka] = useState<number>(0);
   const [band, setBand] = useState<string | null>(null);
   const markaz = settings?.orgName || '';
 
@@ -58,12 +60,13 @@ export default function ChopEtishTab({ exam }: { exam: ImtihonTafsil }) {
   });
 
   const varaqlar = () => ish('varaq', async () => {
-    if (!orinlar.length) throw new Error("Bu smenada o'rinlashtirilgan qatnashchi yo'q");
-    const body = orinlar.map(o => sahifalar.map(sh => `<div class="varaq">${varaqSvg(sh, umumiy, {
+    const tanlanganlar = yakka ? orinlar.filter(o => o.id === yakka) : orinlar;
+    if (!tanlanganlar.length) throw new Error("Bu smenada o'rinlashtirilgan qatnashchi yo'q");
+    const body = tanlanganlar.map(o => sahifalar.map(sh => `<div class="varaq">${varaqSvg(sh, umumiy, {
       ism: o.name, kurs: o.groupName, xona: o.roomName, qator: o.row != null ? o.row + 1 : null, orin: o.col != null ? o.col + 1 : null,
       variant: o.variant, sheetCode: o.sheetCode, rasm: rasmli ? o.photo : null, mehmon: o.mehmon,
     })}</div>`).join('')).join('');
-    await chopEt({ sarlavha: `${exam.name} — javob varaqalari`, css: VARAQ_CSS, body, kutish: 45000 });
+    await chopEt({ sarlavha: yakka ? `${exam.name} — ${tanlanganlar[0].name}` : `${exam.name} — javob varaqalari`, css: VARAQ_CSS, body, kutish: 45000 });
   });
 
   const universal = () => ish('universal', async () => {
@@ -93,13 +96,13 @@ export default function ChopEtishTab({ exam }: { exam: ImtihonTafsil }) {
         <div className="flex flex-wrap items-end gap-3">
           {s.sessions.length > 1 && (
             <Maydon nom="Smena" className="w-48">
-              <select className={SELECT} value={smena} onChange={e => { setSmena(Number(e.target.value)); setXona(0); }}>
+              <select className={SELECT} value={smena} onChange={e => { setSmena(Number(e.target.value)); setXona(0); setYakka(0); }}>
                 {s.sessions.map(x => <option key={x.id} value={x.id}>{smenaNomi(x.id)}</option>)}
               </select>
             </Maydon>
           )}
           <Maydon nom="Xona" className="w-56">
-            <select className={SELECT} value={xona} onChange={e => setXona(Number(e.target.value))}>
+            <select className={SELECT} value={xona} onChange={e => { setXona(Number(e.target.value)); setYakka(0); }}>
               <option value={0}>Hamma xona ({(data.seats || []).filter(o => o.session === smena && o.roomId).length} kishi)</option>
               {xonalar.map(([id, nom]) => <option key={id} value={id}>{nom} ({data.seats.filter(o => o.session === smena && o.roomId === id).length})</option>)}
             </select>
@@ -131,8 +134,16 @@ export default function ChopEtishTab({ exam }: { exam: ImtihonTafsil }) {
         <Karta sarlavha="Javob varaqalari" izoh="Har qatnashchiga shaxsiy: ism, rasm, o'rin, varaq kodi (QR)">
           <div className="space-y-3">
             <Almashtirgich yoqilgan={rasmli} onChange={setRasmli} nom="O'quvchi rasmi bilan" izoh="Kirishda shaxsni tekshirish uchun; rasmsiz chop etish tezroq" />
+            <Maydon nom="Kimga" izoh="O'rni o'zgargan yoki varag'i buzilgan bitta qatnashchi uchun qayta chop etish">
+              <select className={SELECT} value={yakka} onChange={e => setYakka(Number(e.target.value))}>
+                <option value={0}>Hammasi ({orinlar.length} kishi)</option>
+                {[...orinlar].sort((a, b) => a.name.localeCompare(b.name)).map(o => (
+                  <option key={o.id} value={o.id}>{o.name} — {o.roomName}, {(o.row ?? 0) + 1}-qator, {(o.col ?? 0) + 1}-o'rin ({o.variant})</option>
+                ))}
+              </select>
+            </Maydon>
             <Tugma turi="asosiy" ikonka={<FileText size={14} />} yuklanmoqda={band === 'varaq'} disabled={!orinlar.length} onClick={varaqlar}>
-              {orinlar.length} ta varaq{sahifalar.length > 1 ? ` × ${sahifalar.length} sahifa` : ''} — chop etish
+              {yakka ? '1 ta varaq' : `${orinlar.length} ta varaq`}{sahifalar.length > 1 ? ` × ${sahifalar.length} sahifa` : ''} — chop etish
             </Tugma>
             <p className="text-[11.5px] text-matn-xira">Tartib: xona → qator → o'rin. Dastani xonaga olib kirib, o'rinma-o'rin tarqating.</p>
           </div>

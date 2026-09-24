@@ -58,6 +58,7 @@ const DailySheet      = lazyRetry(() => import('./components/DailySheet'));
 const AuditLog        = lazyRetry(() => import('./components/AuditLog'));
 const PublicPay       = lazyRetry(() => import('./components/PublicPay'));
 const NatijaSahifasi  = lazyRetry(() => import('./components/NatijaSahifasi'));
+const ReytingEkrani   = lazyRetry(() => import('./components/imtihon/ReytingEkrani'));
 
 function PageLoader() {
   return (
@@ -189,6 +190,7 @@ export default function App() {
             <Route path="/exams/new"            element={sahifa(ozgartira('imtihonlar.imtihon'), <ExamBuilder />)} />
             <Route path="/exams/:id/edit"       element={sahifa(ozgartira('imtihonlar.imtihon'), <ExamBuilder />)} />
             <Route path="/exams/:id"            element={sahifa(kora('imtihonlar.imtihon') || kora('imtihonlar.natija'), <ExamDetail />)} />
+            <Route path="/exams/:id/reyting"    element={sahifa(kora('imtihonlar.imtihon') || kora('imtihonlar.natija'), <ReytingEkrani />)} />
             <Route path="/scanner"              element={<Navigate to="/exams" replace />} />
             <Route path="/questions"            element={<Navigate to="/exams?tab=savollar" replace />} />
             <Route path="/questions/new"        element={sahifa(ozgartira('imtihonlar.savollar'), <QuestionEditor />)} />
