@@ -19,6 +19,8 @@ import { isCashIncome, newestFirst } from '../lib/money';
 import KassaPanel from './KassaPanel';
 import PaymeLinkModal from './PaymeLinkModal';
 import PaymentEditModal, { canEditPayment } from './PaymentEditModal';
+import { KlikChekMaydonlari, klikniYuborish, TASDIQ_TURLARI, hozirgiVaqt, isAdminRole, chekVaqti } from './KlikChek';
+import TolovTasdiqPanel, { TASDIQ_HODISASI } from './TolovTasdiqPanel';
 import { amaldagiQoida, qoidaMatni } from '../lib/taqsimot';
 
 const inp = "w-full px-4 py-3 bg-slate-50 dark:bg-[#1a2232] border border-chiziq rounded-xl text-sm font-semibold text-slate-900 dark:text-white focus:border-brand focus:ring-2 focus:ring-brand/20 outline-none transition-all";
@@ -238,6 +240,9 @@ export default function Finance() {
     const [paymeFor, setPaymeFor] = useState<number | null>(null);
     const paymeOn = settings.paymeMode === 'live' || settings.paymeMode === 'test';
     const [createdPaymentForReceipt, setCreatedPaymentForReceipt] = useState<any>(null);
+    // Klik: chekdagi vaqt va chek rasmi — administrator tasdig'i uchun (KlikChek.tsx).
+    const [klikVaqt, setKlikVaqt] = useState('');
+    const [klikChek, setKlikChek] = useState<string | null>(null);
     /** Qabul qilinadigan summa (pul balansga tushadi). */
     const [payAmount, setPayAmount] = useState<string>('');
     /** Tanlangan o'quvchining kurs kesimidagi holati (/api/students/:id/ledger). */
@@ -268,6 +273,7 @@ export default function Finance() {
             logo: settings?.logo,
             address: settings?.address,
             adminPhone: settings?.adminPhone,
+            adminPhone2: settings?.adminPhone2,
             courseName: payment?.courseId
                 ? (courses.find(c => c.id === payment.courseId)?.name || null)
                 : null,
@@ -368,6 +374,8 @@ export default function Finance() {
         setPayAmount('');
         setStudentSearch('');
         setPayLedger(null);
+        setKlikVaqt('');
+        setKlikChek(null);
         setNewPayment({ studentId: 0, amount: 0, type: 'Naqd', description: '', courseId: null, groupId: null, date: new Date().toISOString().split('T')[0] });
     };
 
@@ -583,6 +591,9 @@ export default function Finance() {
                     </div>
                 </div>
             </div>
+
+            {/* Klik to'lovlari — administrator tasdig'ini kutayotganlar (egasi, 2026-09-24). */}
+            <TolovTasdiqPanel />
 
             {/* Main Card with Tabs */}
             <div className="bg-sirt rounded-2xl border border-chiziq shadow-sm">
@@ -1540,16 +1551,30 @@ ${e.description || e.category} — ${Number(e.amount).toLocaleString()} so'm`)) 
                                     // Pul faqat balansga: bitta yozuv, kursga bog'lanmaydi.
                                     const summa = Math.round(Number(payAmount) || 0);
                                     if (summa <= 0) { showNotification('Summani kiriting', 'error'); return; }
+                                    const klik = TASDIQ_TURLARI.includes(newPayment.type);
+                                    const admin = isAdminRole(user?.role);
+                                    if (klik && !admin && !klikVaqt) { showNotification("Chekdagi to'langan sana va vaqtni kiriting", 'error'); return; }
                                     setIsSavingPayment(true);
                                     try {
+                                        // Klik — administrator tasdig'iga (balansga hali tushmaydi).
+                                        if (klik && !admin) {
+                                            await klikniYuborish({
+                                                schoolId: selectedSchoolId, studentId: selectedStudent.id, amount: summa,
+                                                type: newPayment.type, paidAt: klikVaqt, receipt: klikChek, note: newPayment.description || '',
+                                            });
+                                            window.dispatchEvent(new Event(TASDIQ_HODISASI));
+                                            showNotification(`${newPayment.type} to'lovi administrator tasdig'iga yuborildi — tasdiqlangach balansga tushadi`, 'success');
+                                            closePaymentModal();
+                                            return;
+                                        }
                                         const saved = await addPayment({
                                             studentId: selectedStudent.id,
                                             amount: summa,
                                             type: newPayment.type,
-                                            description: newPayment.description || '',
+                                            description: [klik && klikVaqt ? `Chek: ${chekVaqti(klikVaqt)}` : '', newPayment.description || ''].filter(Boolean).join(' · '),
                                             groupId: null,
                                             courseId: null,
-                                            date: newPayment.date
+                                            date: klik && klikVaqt ? klikVaqt.slice(0, 10) : newPayment.date
                                         });
                                         setCreatedPaymentForReceipt(saved);
                                     } catch (err: any) {
@@ -1687,15 +1712,24 @@ ${e.description || e.category} — ${Number(e.amount).toLocaleString()} so'm`)) 
 
                                     <div>
                                         <label className={lbl}>To'lov usuli *</label>
-                                        <div className="grid grid-cols-3 gap-2">
-                                            {['Naqd', 'Karta', "O'tkazma"].map(tType => (
+                                        <div className="grid grid-cols-4 gap-2">
+                                            {['Naqd', 'Karta', "O'tkazma", 'Klik'].map(tType => (
                                                 <button key={tType} type="button"
-                                                    onClick={() => setNewPayment({ ...newPayment, type: tType as any })}
+                                                    onClick={() => {
+                                                        setNewPayment({ ...newPayment, type: tType as any });
+                                                        if (TASDIQ_TURLARI.includes(tType) && !klikVaqt) setKlikVaqt(hozirgiVaqt());
+                                                    }}
                                                     className={`py-2.5 rounded-xl text-xs font-extrabold transition-all border cursor-pointer ${newPayment.type === tType ? 'bg-brand border-brand text-white shadow-sm shadow-[#1b6b6b]/20' : 'bg-sirt border-chiziq text-matn-xira hover:bg-gray-50'}`}>
                                                     {tType}
                                                 </button>
                                             ))}
                                         </div>
+                                        {TASDIQ_TURLARI.includes(newPayment.type) && (
+                                            <div className="mt-3">
+                                                <KlikChekMaydonlari paidAt={klikVaqt} setPaidAt={setKlikVaqt} receipt={klikChek} setReceipt={setKlikChek}
+                                                    admin={isAdminRole(user?.role)} labelCls={lbl} inputCls={inp} />
+                                            </div>
+                                        )}
                                         {paymeOn && (
                                             <button type="button" disabled={!selectedStudent}
                                                 onClick={() => selectedStudent && setPaymeFor(selectedStudent.id)}
@@ -1720,7 +1754,7 @@ ${e.description || e.category} — ${Number(e.amount).toLocaleString()} so'm`)) 
                                         </button>
                                         <button type="submit" disabled={!selectedStudent || isSavingPayment || payTotal <= 0}
                                             className="flex-1 py-3 bg-brand hover:bg-brand-dark disabled:opacity-50 disabled:cursor-not-allowed text-white text-xs font-extrabold rounded-2xl shadow-sm shadow-[#1b6b6b]/20 transition-all cursor-pointer">
-                                            {isSavingPayment ? 'Saqlanmoqda…' : t('save')}
+                                            {isSavingPayment ? 'Saqlanmoqda…' : (TASDIQ_TURLARI.includes(newPayment.type) && !isAdminRole(user?.role) ? 'Tasdiqqa yuborish' : t('save'))}
                                         </button>
                                     </div>
                                 </form>

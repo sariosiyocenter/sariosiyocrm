@@ -22,6 +22,8 @@ import PaymentEditModal, { canEditPayment } from './PaymentEditModal';
 import KursHisobModal from './KursHisobModal';
 import BirinchiOyInput from './BirinchiOyInput';
 import PaymeLinkModal from './PaymeLinkModal';
+import { KlikChekMaydonlari, klikniYuborish, TASDIQ_TURLARI, hozirgiVaqt, isAdminRole, chekVaqti } from './KlikChek';
+import { TASDIQ_HODISASI } from './TolovTasdiqPanel';
 import { STUDY_GOALS, UZB_REGIONS, ORG_TYPES, gradeOptions, gradeLabel, keepGrade } from '../lib/studentFields';
 import StudentLedger, { kirishMuddati, type Ledger } from './StudentLedger';
 import { loadFaceModels, descriptorFromPhoto, saveFaceProfiles, faceFailText, faceFailedBefore, rememberFaceTry, forgetFaceTry } from '../lib/faceDescriptor';
@@ -2571,6 +2573,12 @@ function PaymentAddModal({ studentId, onClose, onAdd }: { studentId: number; onC
     const [showPayme, setShowPayme] = useState(false);
     const paymeOn = (settings.paymeMode === 'live' || settings.paymeMode === 'test') && ['ADMIN', 'MANAGER', 'RECEPTIONIST', 'SUPERADMIN'].includes(crmUser?.role || '');
     const [createdPaymentForReceipt, setCreatedPaymentForReceipt] = useState<any>(null);
+    // Klik: chekdagi vaqt va chek rasmi — administrator tasdig'i uchun (KlikChek.tsx).
+    const [klikVaqt, setKlikVaqt] = useState('');
+    const [klikChek, setKlikChek] = useState<string | null>(null);
+    const [saqlanmoqda, setSaqlanmoqda] = useState(false);
+    const klik = TASDIQ_TURLARI.includes(type);
+    const admin = isAdminRole(crmUser?.role);
 
     const student = students.find(s => s.id === studentId);
 
@@ -2581,38 +2589,36 @@ function PaymentAddModal({ studentId, onClose, onAdd }: { studentId: number; onC
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
+        if (saqlanmoqda) return;
+        const summa = Math.round(Number(amount) || 0);
+        if (summa <= 0) { showNotification('Summani kiriting', 'error'); return; }
+        if (klik && !admin && !klikVaqt) { showNotification("Chekdagi to'langan sana va vaqtni kiriting", 'error'); return; }
         const sana = new Date().toISOString().split('T')[0];
-        // Pul faqat balansga (egasi, 2026-09-23): kursga bog'lanmaydi, kurslarning
-        // hisobi balansdan o'quvchining taqsimoti bo'yicha yopiladi.
-        const created = await onAdd({
-            studentId, amount: Number(amount), type,
-            groupId: null, courseId: null,
-            date: sana, description: '',
-        });
-        setCreatedPaymentForReceipt(created);
-
-        setTimeout(async () => {
-            if (ozgartira('xabarlar.yuborish') && await confirm("To'lov haqida ota-onaga SMS xabarnoma yuborilsinmi?")) {
-                try {
-                    const token = localStorage.getItem('token');
-                    await fetch('/api/sms/send', {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                            'Authorization': `Bearer ${token}`
-                        },
-                        body: JSON.stringify({
-                            phone: 'AUTO_RESOLVE',
-                            studentId,
-                            message: `Sariosiyo o'quv markazi: to'lov qabul qilindi: ${Number(amount).toLocaleString()} UZS.`,
-                            type: 'PAYMENT'
-                        })
-                    });
-                } catch (err) {
-                    console.error("Payment SMS failed", err);
-                }
+        setSaqlanmoqda(true);
+        try {
+            // Klik — administrator tasdig'iga: balansga tasdiqlangach tushadi.
+            if (klik && !admin) {
+                await klikniYuborish({ schoolId: student?.schoolId, studentId, amount: summa, type, paidAt: klikVaqt, receipt: klikChek });
+                window.dispatchEvent(new Event(TASDIQ_HODISASI));
+                showNotification(`${type} to'lovi administrator tasdig'iga yuborildi — tasdiqlangach balansga tushadi`, 'success');
+                onClose();
+                return;
             }
-        }, 300);
+            // Pul faqat balansga (egasi, 2026-09-23): kursga bog'lanmaydi, kurslarning
+            // hisobi balansdan o'quvchining taqsimoti bo'yicha yopiladi.
+            // Ota-onaga xabarni server o'zi yuboradi ("To'lov qabul qilinganda" qoidasi).
+            const created = await onAdd({
+                studentId, amount: summa, type,
+                groupId: null, courseId: null,
+                date: klik && klikVaqt ? klikVaqt.slice(0, 10) : sana,
+                description: klik && klikVaqt ? `Chek: ${chekVaqti(klikVaqt)}` : '',
+            });
+            setCreatedPaymentForReceipt(created);
+        } catch (err: any) {
+            showNotification("To'lovni saqlab bo'lmadi: " + (err?.message || "noma'lum xatolik"), 'error');
+        } finally {
+            setSaqlanmoqda(false);
+        }
     };
 
     const labelCls = "block text-[11px] font-extrabold   text-matn-xira mb-2";
@@ -2713,6 +2719,7 @@ function PaymentAddModal({ studentId, onClose, onAdd }: { studentId: number; onC
                                     logo: settings?.logo,
                                     address: settings?.address,
                                     adminPhone: settings?.adminPhone,
+                                    adminPhone2: settings?.adminPhone2,
                                     courseName: createdPaymentForReceipt.courseId
                                         ? (courses.find(c => c.id === createdPaymentForReceipt.courseId)?.name || null)
                                         : null,
@@ -2830,14 +2837,20 @@ function PaymentAddModal({ studentId, onClose, onAdd }: { studentId: number; onC
 
                             <div>
                                 <label className={labelCls}>TO'LOV USULI</label>
-                                <div className="grid grid-cols-3 gap-2">
-                                    {['Naqd', 'Karta', "O'tkazma"].map(t => (
-                                        <button key={t} type="button" onClick={() => setType(t)}
+                                <div className="grid grid-cols-4 gap-2">
+                                    {['Naqd', 'Karta', "O'tkazma", 'Klik'].map(t => (
+                                        <button key={t} type="button" onClick={() => { setType(t); if (TASDIQ_TURLARI.includes(t) && !klikVaqt) setKlikVaqt(hozirgiVaqt()); }}
                                             className={`py-2.5 rounded-xl text-xs font-bold transition-all border cursor-pointer ${type === t ? 'bg-brand border-brand text-white shadow-sm shadow-[#1b6b6b]/20 scale-102' : 'bg-sirt border-chiziq text-matn-xira hover:bg-gray-50'}`}>
                                             {t}
                                         </button>
                                     ))}
                                 </div>
+                                {klik && (
+                                    <div className="mt-3">
+                                        <KlikChekMaydonlari paidAt={klikVaqt} setPaidAt={setKlikVaqt} receipt={klikChek} setReceipt={setKlikChek}
+                                            admin={admin} labelCls={labelCls} inputCls={inputCls} />
+                                    </div>
+                                )}
                                 {paymeOn && (
                                     <button type="button" onClick={() => setShowPayme(true)}
                                         className="mt-2 w-full py-2.5 rounded-xl text-xs font-bold border border-dashed border-brand/60 text-brand hover:bg-brand hover:text-white transition-all cursor-pointer">
@@ -2847,9 +2860,9 @@ function PaymentAddModal({ studentId, onClose, onAdd }: { studentId: number; onC
                             </div>
 
                             <div className="pt-4 border-t border-dashed border-chiziq">
-                                <button type="submit" className="w-full py-3 bg-brand hover:bg-brand-dark text-white rounded-xl font-bold text-[11px] transition-all flex items-center justify-center gap-1.5 shadow-sm shadow-[#1b6b6b]/20 cursor-pointer">
+                                <button type="submit" disabled={saqlanmoqda} className="w-full py-3 bg-brand hover:bg-brand-dark disabled:opacity-50 text-white rounded-xl font-bold text-[11px] transition-all flex items-center justify-center gap-1.5 shadow-sm shadow-[#1b6b6b]/20 cursor-pointer">
                                     <Save size={14} />
-                                    Saqlash va Chek chiqarish
+                                    {saqlanmoqda ? 'Saqlanmoqda…' : klik && !admin ? "Administrator tasdig'iga yuborish" : 'Saqlash va Chek chiqarish'}
                                 </button>
                             </div>
                         </form>

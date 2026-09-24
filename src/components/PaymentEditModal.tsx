@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
-import { X } from 'lucide-react';
+import { X, Trash2 } from 'lucide-react';
 import { useCRM } from '../context/CRMContext';
+import { useConfirm } from './ConfirmDialog';
 import type { Payment } from '../types';
 
 /**
@@ -14,6 +15,9 @@ import type { Payment } from '../types';
  * tushgan vaqt (`Payment.createdAt`) dan 10 daqiqa. Tizim yozgan oylik
  * hisob, chegirma, qaytarish va Payme orqali kelgan pul tahrirlanmaydi —
  * ular boshqa joydagi hisobga bog'langan.
+ *
+ * O'chirish (egasi, 2026-09-24) — xuddi shu qoida: admin doim, resepshn va
+ * menejer 10 daqiqa ichida. Balans shu summaga qaytadi (DELETE /api/payments/:id).
  */
 
 const OYNA_MS = 10 * 60 * 1000;
@@ -47,6 +51,7 @@ export default function PaymentEditModal({ payment, onClose, onSaved }: {
     const [type, setType] = useState(TOLOV_USULLARI.includes(payment.type) ? payment.type : 'Naqd');
     const [date, setDate] = useState(payment.date);
     const [saving, setSaving] = useState(false);
+    const confirm = useConfirm();
 
     const qolgan = editMinutesLeft(payment, user?.role);
 
@@ -68,6 +73,32 @@ export default function PaymentEditModal({ payment, onClose, onSaved }: {
             const data = await res.json().catch(() => ({}));
             if (!res.ok) { showNotification(data.error || "To'lov saqlanmadi", 'error'); return; }
             showNotification("To'lov tahrirlandi", 'success');
+            onSaved();
+            onClose();
+        } catch {
+            showNotification('Aloqa xatosi', 'error');
+        } finally {
+            setSaving(false);
+        }
+    };
+
+    const ochirish = async () => {
+        if (saving) return;
+        if (!await confirm(`To'lov o'chirilsinmi?
+
+#${payment.id} · ${payment.date} · ${payment.amount.toLocaleString('ru-RU')} so'm · ${payment.type}
+
+O'quvchi balansidan shu summa ayiriladi. Amal jurnalga yoziladi.`)) return;
+        setSaving(true);
+        try {
+            const token = localStorage.getItem('token');
+            const res = await fetch(`/api/payments/${payment.id}`, {
+                method: 'DELETE',
+                headers: { Authorization: 'Bearer ' + token },
+            });
+            const data = await res.json().catch(() => ({}));
+            if (!res.ok) { showNotification(data.error || "To'lov o'chirilmadi", 'error'); return; }
+            showNotification("To'lov o'chirildi", 'success');
             onSaved();
             onClose();
         } catch {
@@ -121,8 +152,8 @@ export default function PaymentEditModal({ payment, onClose, onSaved }: {
 
                     <p className="text-[10px] font-bold text-matn-xira leading-relaxed">
                         {qolgan === null
-                            ? "Administrator to'lovni har doim tahrirlay oladi. O'zgartirish amallar jurnaliga yoziladi."
-                            : `Tahrirlashga ${qolgan} daqiqa qoldi — to'lov kiritilgandan keyin 10 daqiqa.`}
+                            ? "Administrator to'lovni har doim tahrirlay va o'chira oladi. O'zgartirish amallar jurnaliga yoziladi."
+                            : `Tahrirlash yoki o'chirishga ${qolgan} daqiqa qoldi — to'lov kiritilgandan keyin 10 daqiqa.`}
                     </p>
 
                     <div className="flex gap-2 pt-2">
@@ -135,6 +166,10 @@ export default function PaymentEditModal({ payment, onClose, onSaved }: {
                             {saving ? 'Saqlanmoqda…' : 'Saqlash'}
                         </button>
                     </div>
+                    <button type="button" onClick={ochirish} disabled={saving}
+                        className="w-full py-2.5 rounded-xl border border-rose-200 dark:border-rose-900/50 text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/20 disabled:opacity-50 text-[11px] font-bold flex items-center justify-center gap-1.5 transition-all cursor-pointer">
+                        <Trash2 size={13} /> To'lovni o'chirish
+                    </button>
                 </div>
             </div>
         </div>

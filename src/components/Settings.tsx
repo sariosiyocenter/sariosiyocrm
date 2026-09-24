@@ -12,6 +12,7 @@ import { compressAndUpload } from '../lib/image';
 import MapPicker from './MapPicker';
 import PaymeSettings from './PaymeSettings';
 import RuxsatlarJadvali from './RuxsatlarJadvali';
+import { ROL_NOMLARI } from '../../lib/ruxsatlar.js';
 
 type SectionId = 'profil' | 'xonalar' | 'filiallar' | 'ruxsatlar' | 'dizayn'
     | 'integratsiyalar' | 'payme' | 'avtomatlashtirish' | 'xavfsizlik' | 'yonalishlar';
@@ -291,13 +292,19 @@ export default function Settings() {
                     </div>
                 </div>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <div>
+                    <div className="sm:col-span-2">
                         <label className={lbl}>{t('org_name_label')}</label>
                         <input type="text" className={inp} value={profileForm?.orgName || ''} onChange={e => setProfileForm(p => ({ ...p, orgName: e.target.value }))} />
                     </div>
                     <div>
                         <label className={lbl}>{t('phone')}</label>
                         <input type="text" placeholder="+998" className={inp} value={profileForm?.adminPhone || ''} onChange={e => setProfileForm(p => ({ ...p, adminPhone: e.target.value }))} />
+                    </div>
+                    {/* Qo'shimcha raqam (egasi, 2026-09-24): chekda va botdagi
+                        "Markaz haqida"da asosiy raqam bilan birga chiqadi. */}
+                    <div>
+                        <label className={lbl}>Qo'shimcha raqam</label>
+                        <input type="text" placeholder="+998" className={inp} value={profileForm?.adminPhone2 || ''} onChange={e => setProfileForm(p => ({ ...p, adminPhone2: e.target.value }))} />
                     </div>
                     <div className="sm:col-span-2">
                         <label className={lbl}>{t('address')}</label>
@@ -569,7 +576,7 @@ export default function Settings() {
                                 <div className="min-w-0 flex-1">
                                     <p className="text-xs font-black text-matn tracking-wide truncate">{rule.name}</p>
                                     <p className="text-[11px] font-bold text-matn-xira mt-0.5 tabular-nums">
-                                        {rule.type === 'DEBT_REMINDER' ? 'Qarzdorlik eslatmasi' : rule.type === 'BIRTHDAY' ? "Tug'ilgan kun tabrigi" : rule.type}
+                                        {rule.type === 'DEBT_REMINDER' ? 'Qarzdorlik eslatmasi' : rule.type === 'BIRTHDAY' ? "Tug'ilgan kun tabrigi" : rule.type === 'PAYMENT_CONFIRM' ? "To'lov qabul qilinganda (darhol)" : rule.type}
                                         {rule.time ? ` · ${rule.time}` : ''}
                                         {rule.channel ? ` · ${rule.channel}` : ''}
                                     </p>
@@ -601,7 +608,7 @@ export default function Settings() {
                     </div>
                     <div className="flex items-center justify-between gap-3">
                         <span className="text-[11px] font-bold text-matn-xira">Rol</span>
-                        <span className="text-xs font-bold text-matn">{ROLE_LABELS[currentUser?.role || ''] || currentUser?.role || '—'}</span>
+                        <span className="text-xs font-bold text-matn">{(ROL_NOMLARI as Record<string, string>)[currentUser?.role || ''] || currentUser?.role || '—'}</span>
                     </div>
                     <div className="flex items-center justify-between gap-3">
                         <span className="text-[11px] font-bold text-matn-xira">Filial</span>

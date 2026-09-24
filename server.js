@@ -14,7 +14,8 @@ import { authenticate, requireRole, canAccessSchool, allowedSchoolIds, ALL_BRANC
 import { yetadimi, sozlamaniTozala, rolRuxsati, SOZLANADIGAN_ROLLAR, bolimNomi, ROL_NOMLARI } from './lib/ruxsatlar.js';
 import { encryptSecret, decryptSecret, secretsEncryptionEnabled } from './lib/secrets.js';
 import { claimBillingRun, releaseBillingRun, processMonthlyBilling, billingDayOf, billingDayReached, normalizeBillingDay } from './services/billing.js';
-import { fillTemplate, testNatijasiKerak } from './lib/xabarMatni.js';
+import { fillTemplate, testNatijasiKerak, oxirgiTolovKerak, kirimmi } from './lib/xabarMatni.js';
+import { tolovXabariniUlash, tolovXabari } from './services/tolovXabari.js';
 import { normalizePayShare } from './lib/allocation.js';
 import jwt from 'jsonwebtoken';
 import bot, { startBot, notifyAdmins, getTelegramBot, rejaniHaydovchigaYuborish, rejaBekorXabari } from './src/bot/bot.js';
@@ -2739,6 +2740,10 @@ app.get('/api/payments', authenticate, async (req, res, next) => {
 // yozilgan qayta hisob (masalan kasal bo'lib dars qoldirgan). U balansni
 // oshiradi, lekin kassa tushumi sifatida hisoblanmaydi.
 const PAYMENT_TYPES = ['Naqd', 'Karta', "O'tkazma", 'Peyme', 'Klik', 'Chegirma', 'Oylik', 'Qaytarish'];
+// Shu usullardagi to'lov faqat administrator tasdig'idan keyin balansga
+// tushadi (TolovTasdiq). Egasi 2026-09-24 da Klik ni tanladi.
+const KLIK_TASDIQ_TURLARI = ['Klik'];
+const adminmi = (user) => user?.role === 'ADMIN' || user?.role === 'SUPERADMIN';
 
 // To'lovni qabul qiladiganlar: admin, menejer, receptionist. Ustoz, yordamchi
 // ustoz, texnik xodim va sotuvchi yoza olmaydi — kassa/xarajat bilan bir xil
@@ -2759,6 +2764,12 @@ app.post('/api/payments', authenticate, async (req, res, next) => {
       return res.status(400).json({ error: "To'lov turi noto'g'ri" });
     }
     if (data.studentId) data.studentId = parseInt(data.studentId);
+    // Klik to'lovi administrator tasdig'idan o'tadi (egasi, 2026-09-24):
+    // boshqa xodim uni /api/tolov-tasdiq orqali yuboradi, balansga esa admin
+    // bank ilovasida pulni ko'rib tasdiqlagach tushadi.
+    if (data.type && KLIK_TASDIQ_TURLARI.includes(data.type) && !adminmi(req.user)) {
+      return res.status(400).json({ error: `${data.type} to'lovi administrator tasdig'i bilan kiritiladi — chekdagi sana va vaqtni kiriting` });
+    }
 
     // Pul faqat BALANSGA tushadi (egasi, 2026-09-23: "не надо на курсы,
     // только общий"). Kurslarga balansdan o'quvchining taqsimot qoidasi
@@ -2772,7 +2783,9 @@ app.post('/api/payments', authenticate, async (req, res, next) => {
       where: { id: payment.studentId },
       data: { balance: { increment: payment.amount } }
     });
-    res.json(payment);
+    // Ota-onaga avtomatik xabar ("To'lov qabul qilinganda" qoidasi).
+    const xabar = await tolovXabari(payment);
+    res.json({ ...payment, xabar });
   } catch (error) { next(error); }
 });
 
@@ -2781,14 +2794,19 @@ app.post('/api/payments', authenticate, async (req, res, next) => {
 // tuzatish uchun. Administrator har doim tahrirlay oladi (egasi, 2026-09-22).
 const PAYMENT_EDIT_WINDOW_MS = 10 * 60 * 1000;
 
-/** Shu xodim shu to'lovni hozir tahrirlay oladimi. */
-function paymentEditable(user, payment) {
-  if (payment.type === 'Oylik') return { ok: false, error: "Bu — tizim yozgan oylik hisob, uni tahrirlab bo'lmaydi" };
-  if (payment.type === 'Peyme') return { ok: false, error: "Payme orqali kelgan to'lovni tahrirlab bo'lmaydi" };
+/**
+ * Shu xodim shu to'lovni hozir tahrirlay (yoki o'chira) oladimi. O'chirish
+ * ham xuddi shu qoida bilan (egasi, 2026-09-24): admin — doim, qolganlar —
+ * kiritilgandan keyin 10 daqiqa.
+ */
+function paymentEditable(user, payment, amal = 'tahrirlash') {
+  const amalda = amal === "o'chirish" ? "o'chirib" : 'tahrirlab';
+  if (payment.type === 'Oylik') return { ok: false, error: `Bu — tizim yozgan oylik hisob, uni ${amalda} bo'lmaydi (Kurs hisobi orqali o'zgartiriladi)` };
+  if (payment.type === 'Peyme') return { ok: false, error: `Payme orqali kelgan to'lovni ${amalda} bo'lmaydi` };
   if (user.role === 'ADMIN' || user.role === 'SUPERADMIN') return { ok: true };
   const left = PAYMENT_EDIT_WINDOW_MS - (Date.now() - new Date(payment.createdAt).getTime());
   if (left > 0) return { ok: true, msLeft: left };
-  return { ok: false, error: "To'lovni faqat kiritilgandan keyin 10 daqiqa ichida tahrirlash mumkin. Administratorga murojaat qiling." };
+  return { ok: false, error: `To'lovni faqat kiritilgandan keyin 10 daqiqa ichida ${amal} mumkin. Administratorga murojaat qiling.` };
 }
 
 app.put('/api/payments/:id', authenticate, async (req, res, next) => {
@@ -2836,6 +2854,175 @@ app.put('/api/payments/:id', authenticate, async (req, res, next) => {
       ...(delta ? [prisma.student.update({ where: { id: payment.studentId }, data: { balance: { increment: delta } } })] : []),
     ]);
     res.json(updated);
+  } catch (error) { next(error); }
+});
+
+// To'lovni o'chirish (egasi, 2026-09-24: "to'lovni udalit qilish imkoniyati
+// yo'q"). Balans shu summaga qaytadi; hisob (kurslar, ustoz ulushi, kassa)
+// qatorlardan qayta hisoblanadi, shuning uchun boshqa hech narsa tegilmaydi.
+// Kim o'chirgani amallar jurnalida qoladi.
+app.delete('/api/payments/:id', authenticate, async (req, res, next) => {
+  try {
+    const id = parseInt(req.params.id);
+    if (!Number.isInteger(id)) return res.status(400).json({ error: "Noto'g'ri ID" });
+    const payment = await prisma.payment.findUnique({ where: { id } });
+    if (!payment) return res.status(404).json({ error: "To'lov topilmadi" });
+
+    const gate = paymentEditable(req.user, payment, "o'chirish");
+    if (!gate.ok) return res.status(403).json({ error: gate.error });
+
+    await prisma.$transaction([
+      prisma.payment.delete({ where: { id } }),
+      prisma.student.update({ where: { id: payment.studentId }, data: { balance: { decrement: payment.amount } } }),
+      // Klik tasdig'idan kelgan to'lov bo'lsa — tasdiq qatori ham buni bilsin.
+      prisma.tolovTasdiq.updateMany({ where: { paymentId: id }, data: { status: "o'chirildi", paymentId: null } }),
+    ]);
+    res.json({ success: true, id, studentId: payment.studentId, amount: payment.amount });
+  } catch (error) { next(error); }
+});
+
+// ---------------------------------------------------------------------------
+// Klik to'lovi — administrator tasdig'i bilan (egasi, 2026-09-24):
+// "chekni ko'rsatganda to'langan sana vaqti kiritiladi, adminga shu
+// yuboriladi, admin ko'rib tasdiqlaydi". Resepshn pul kelganini ko'ra
+// olmaydi — shuning uchun tasdiqlanmaguncha Payment yozilmaydi.
+// ---------------------------------------------------------------------------
+const TASDIQ_HOLATLARI = ['kutilmoqda', 'tasdiqlandi', 'rad etildi', "o'chirildi"];
+
+/** Toshkent vaqti "YYYY-MM-DDTHH:mm" ko'rinishida (chekdagi vaqt). */
+function chekVaqtiniTozala(v) {
+  const s = String(v || '').trim().replace(' ', 'T').slice(0, 16);
+  return /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/.test(s) ? s : null;
+}
+const chekVaqtiMatni = (s) => s ? `${s.slice(8, 10)}.${s.slice(5, 7)}.${s.slice(0, 4)} ${s.slice(11, 16)}` : '';
+
+async function tasdiqJavobi(rows) {
+  const ids = [...new Set(rows.map(r => r.studentId))];
+  const talabalar = ids.length
+    ? await prisma.student.findMany({ where: { id: { in: ids } }, select: { id: true, name: true, phone: true, balance: true } })
+    : [];
+  const bo = new Map(talabalar.map(s => [s.id, s]));
+  return rows.map(r => ({ ...r, student: bo.get(r.studentId) || null }));
+}
+
+app.get('/api/tolov-tasdiq', authenticate, async (req, res, next) => {
+  try {
+    const schoolId = parseInt(req.query.schoolId);
+    if (!Number.isInteger(schoolId)) return res.status(400).json({ error: 'schoolId kerak' });
+    if (!(await canAccessSchool(req.user, schoolId))) return res.status(403).json({ error: "Ruxsat yo'q" });
+    const status = TASDIQ_HOLATLARI.includes(String(req.query.status)) ? String(req.query.status) : null;
+    const studentId = parseInt(req.query.studentId);
+    const rows = await prisma.tolovTasdiq.findMany({
+      where: {
+        schoolId,
+        ...(status ? { status } : {}),
+        ...(Number.isInteger(studentId) ? { studentId } : {}),
+      },
+      orderBy: { id: 'desc' },
+      take: status === 'kutilmoqda' ? 200 : 50,
+    });
+    res.json(await tasdiqJavobi(rows));
+  } catch (error) { next(error); }
+});
+
+app.post('/api/tolov-tasdiq', authenticate, async (req, res, next) => {
+  try {
+    const schoolId = parseInt(req.body.schoolId);
+    const studentId = parseInt(req.body.studentId);
+    if (!Number.isInteger(schoolId) || !Number.isInteger(studentId)) return res.status(400).json({ error: "O'quvchi tanlanmagan" });
+    if (!(await canAccessSchool(req.user, schoolId))) return res.status(403).json({ error: "Ruxsat yo'q" });
+    const student = await prisma.student.findUnique({ where: { id: studentId }, select: { id: true, name: true, schoolId: true } });
+    if (!student || student.schoolId !== schoolId) return res.status(404).json({ error: "O'quvchi topilmadi" });
+
+    const amount = Math.round(parseFloat(req.body.amount));
+    if (!Number.isFinite(amount) || amount <= 0) return res.status(400).json({ error: "Summa noto'g'ri" });
+    const type = KLIK_TASDIQ_TURLARI.includes(req.body.type) ? req.body.type : KLIK_TASDIQ_TURLARI[0];
+    const paidAt = chekVaqtiniTozala(req.body.paidAt);
+    if (!paidAt) return res.status(400).json({ error: "Chekdagi to'langan sana va vaqtni kiriting" });
+    if (paidAt.slice(0, 10) > todayTashkent()) return res.status(400).json({ error: "To'langan sana kelajakda bo'lishi mumkin emas" });
+
+    const data = {
+      schoolId, studentId, amount, type, paidAt,
+      receipt: typeof req.body.receipt === 'string' ? req.body.receipt : null,
+      note: req.body.note ? String(req.body.note).slice(0, 300) : null,
+      createdById: req.user.id > 0 ? req.user.id : null,
+      createdByName: req.user.name || null,
+    };
+    await rasmMaydoniniTozala(data, 'receipt', 'chek');
+    if (data.receipt && data.receipt.startsWith('data:')) data.receipt = null;
+
+    const row = await prisma.tolovTasdiq.create({ data });
+
+    // Administratorga Telegram (bot ulangan bo'lsa). CRM da Moliya sahifasida
+    // "Tasdiqlanishi kerak" ro'yxatida baribir turadi.
+    try {
+      await Promise.race([
+        notifyAdmins(`🧾 ${type} to'lovi tasdiqlanishi kerak\n👤 ${student.name}\n💰 ${amount.toLocaleString('ru-RU')} so'm\n🕒 Chekdagi vaqt: ${chekVaqtiMatni(paidAt)}\n✍️ Kiritdi: ${req.user.name || '—'}\n\nCRM → Moliya → «Tasdiqlash»`, schoolId),
+        new Promise(r => setTimeout(r, 4000)),
+      ]);
+    } catch (e) { console.error('[Klik tasdiq] admin xabari:', e.message); }
+
+    res.status(201).json((await tasdiqJavobi([row]))[0]);
+  } catch (error) { next(error); }
+});
+
+/** Tasdiqlash yoki rad etish — faqat administrator. */
+async function tasdiqQatori(req, res) {
+  if (!adminmi(req.user)) { res.status(403).json({ error: "Faqat administrator tasdiqlaydi" }); return null; }
+  const id = parseInt(req.params.id);
+  if (!Number.isInteger(id)) { res.status(400).json({ error: "Noto'g'ri ID" }); return null; }
+  const row = await prisma.tolovTasdiq.findUnique({ where: { id } });
+  if (!row) { res.status(404).json({ error: 'Topilmadi' }); return null; }
+  if (!(await canAccessSchool(req.user, row.schoolId))) { res.status(403).json({ error: "Ruxsat yo'q" }); return null; }
+  if (row.status !== 'kutilmoqda') { res.status(409).json({ error: `Bu to'lov allaqachon ko'rib chiqilgan (${row.status})` }); return null; }
+  return row;
+}
+
+app.post('/api/tolov-tasdiq/:id/tasdiqlash', authenticate, async (req, res, next) => {
+  try {
+    const row = await tasdiqQatori(req, res);
+    if (!row) return;
+    const student = await prisma.student.findUnique({ where: { id: row.studentId }, select: { id: true } });
+    if (!student) return res.status(404).json({ error: "O'quvchi o'chirilgan — to'lovni rad eting" });
+
+    const payment = await prisma.$transaction(async (tx) => {
+      // Ikki marta bosilsa ham bitta to'lov: holat faqat "kutilmoqda" dan o'zgaradi.
+      const band = await tx.tolovTasdiq.updateMany({
+        where: { id: row.id, status: 'kutilmoqda' },
+        data: { status: 'tasdiqlandi', reviewedById: req.user.id > 0 ? req.user.id : null, reviewedByName: req.user.name || null, reviewedAt: new Date() },
+      });
+      if (band.count === 0) return null;
+      const p = await tx.payment.create({
+        data: {
+          studentId: row.studentId, amount: row.amount, type: row.type,
+          date: row.paidAt.slice(0, 10),
+          description: [`Chek: ${chekVaqtiMatni(row.paidAt)}`, row.createdByName ? `kiritdi ${row.createdByName}` : '', row.note || ''].filter(Boolean).join(' · ').slice(0, 500),
+          groupId: null, courseId: null, schoolId: row.schoolId,
+        },
+      });
+      await tx.student.update({ where: { id: row.studentId }, data: { balance: { increment: row.amount } } });
+      await tx.tolovTasdiq.update({ where: { id: row.id }, data: { paymentId: p.id } });
+      return p;
+    });
+    if (!payment) return res.status(409).json({ error: "Bu to'lov allaqachon ko'rib chiqilgan" });
+
+    const xabar = await tolovXabari(payment);
+    res.json({ success: true, payment, xabar, studentId: row.studentId, amount: row.amount });
+  } catch (error) { next(error); }
+});
+
+app.post('/api/tolov-tasdiq/:id/rad', authenticate, async (req, res, next) => {
+  try {
+    const row = await tasdiqQatori(req, res);
+    if (!row) return;
+    const reason = String(req.body?.reason || '').trim().slice(0, 300);
+    if (!reason) return res.status(400).json({ error: 'Rad etish sababini yozing' });
+    const band = await prisma.tolovTasdiq.updateMany({
+      where: { id: row.id, status: 'kutilmoqda' },
+      data: { status: 'rad etildi', reason, reviewedById: req.user.id > 0 ? req.user.id : null, reviewedByName: req.user.name || null, reviewedAt: new Date() },
+    });
+    if (band.count === 0) return res.status(409).json({ error: "Bu to'lov allaqachon ko'rib chiqilgan" });
+    res.json({ success: true, id: row.id, studentId: row.studentId, amount: row.amount, reason });
   } catch (error) { next(error); }
 });
 
@@ -5451,6 +5638,36 @@ app.get('/api/logistics/day', authenticate, async (req, res, next) => {
 });
 
 /**
+ * Haydovchining yo'l haqi tarifi — Logistika sahifasida (egasi, 2026-09-24:
+ * "haydovchidan olib logistikaga qo'yish yo'l xarajatini"). Ilgari Xodimlar →
+ * haydovchi kartasida edi. body: { tarif } — lib/transportNarx.js shakli, null = o'chirish.
+ */
+app.put('/api/logistics/drivers/:id/tarif', authenticate, async (req, res, next) => {
+  try {
+    const driverId = parseInt(req.params.id);
+    if (!Number.isInteger(driverId)) return res.status(400).json({ error: "Noto'g'ri ID" });
+    const driver = await prisma.user.findUnique({
+      where: { id: driverId },
+      select: { id: true, name: true, role: true, schoolId: true, driverTransport: { select: { id: true } } },
+    });
+    if (!driver || driver.role !== 'DRIVER') return res.status(404).json({ error: 'Haydovchi topilmadi' });
+    if (!(await canAccessSchool(req.user, driver.schoolId))) return res.status(403).json({ error: "Ruxsat yo'q" });
+
+    const t = tarifniTozalash(req.body?.tarif ?? null);
+    if (t.xato) return res.status(400).json({ error: t.xato });
+
+    const transport = driver.driverTransport
+      ? await prisma.transport.update({ where: { id: driver.driverTransport.id }, data: { tarif: t.tarif ?? Prisma.DbNull } })
+      : await prisma.transport.create({
+        // Mashinasi hali kiritilmagan haydovchi: sig'im 0 — rejaga kirmaydi,
+        // Xodimlar bo'limida mashina ma'lumoti to'ldirilguncha.
+        data: { name: `${driver.name} mashinasi`, capacity: 0, status: 'Faol', driverId, schoolId: driver.schoolId, ...(t.tarif ? { tarif: t.tarif } : {}) },
+      });
+    res.json({ driverId, transportId: transport.id, tarif: transport.tarif ?? null });
+  } catch (error) { next(error); }
+});
+
+/**
  * Rejalarni yozadi va haydovchilarga yuboradi.
  * body: { schoolId, date, plans: [{ driverId, studentIds: number[] }] }
  */
@@ -6387,6 +6604,80 @@ async function sendToOne({ student, message, channel, recipientTo, type, schoolI
   return { attempted, success: anySuccess };
 }
 
+/**
+ * Har o'quvchining oxirgi qabul qilingan to'lovi — {oxirgi_tolov} uchun.
+ * Faqat matnda shu o'zgaruvchi bo'lsa chaqiriladi.
+ */
+async function getLastPaymentMap(schoolId, studentIds) {
+  const map = {};
+  if (!studentIds || studentIds.length === 0) return map;
+  const rows = await prisma.payment.findMany({
+    where: { schoolId, studentId: { in: studentIds }, amount: { gt: 0 }, type: { notIn: ['Chegirma', 'Oylik'] } },
+    select: { id: true, studentId: true, amount: true, date: true },
+    orderBy: [{ date: 'desc' }, { id: 'desc' }],
+  });
+  for (const r of rows) if (map[r.studentId] === undefined) map[r.studentId] = r.amount;
+  return map;
+}
+
+/**
+ * To'lov qabul qilinganda ota-onaga darhol xabar (egasi, 2026-09-24: "to'lov
+ * qilinganda ham sms borishi kerak avtomatik"). Matn, kanal va kimga —
+ * Xabarlar → Avtomatik qoidalar → "To'lov qabul qilinganda" (PAYMENT_CONFIRM).
+ * Qoida yo'q yoki o'chiq bo'lsa hech narsa yuborilmaydi.
+ * Naqd, karta, o'tkazma, tasdiqlangan Klik va Payme — hammasi shu yerdan.
+ */
+async function tolovXabariniYuborish(payment, opts = {}) {
+  if (!kirimmi(payment) || payment.type === 'Qaytarish') return { yuborildi: false, sabab: 'kirim emas' };
+  // Qoidalar xodimning filialiga yoziladi (admin — Sariosiyo). Filialning o'z
+  // qoidasi bo'lmasa — shu tashkilotdagi boshqa filialniki (Langar alohida
+  // qoida yaratmasa ham xabar ketsin). O'z qoidasi o'chiq bo'lsa — yubormaydi.
+  let rules = await prisma.autoMessageRule.findMany({
+    where: { schoolId: payment.schoolId, type: 'PAYMENT_CONFIRM' },
+    orderBy: { id: 'asc' },
+  });
+  if (!rules.length) {
+    const qardosh = await organizationSchoolIds({ schoolId: payment.schoolId });
+    rules = await prisma.autoMessageRule.findMany({
+      where: { schoolId: { in: qardosh }, type: 'PAYMENT_CONFIRM' },
+      orderBy: { id: 'asc' },
+    });
+  }
+  rules = rules.filter(r => r.enabled);
+  if (!rules.length) return { yuborildi: false, sabab: "«To'lov qabul qilinganda» qoidasi yoqilmagan" };
+
+  const [student, school, kurslar, orgName] = await Promise.all([
+    prisma.student.findUnique({ where: { id: payment.studentId } }),
+    prisma.school.findUnique({ where: { id: payment.schoolId } }),
+    prisma.group.findMany({
+      where: { students: { some: { id: payment.studentId } } },
+      select: { id: true, name: true, course: { select: { name: true } }, teacher: { select: { name: true } } },
+    }),
+    // {markaz} — filial emas, markaz nomi (lib/markazBrendi.js).
+    markazNomi(payment.schoolId),
+  ]);
+  if (!student) return { yuborildi: false, sabab: "o'quvchi topilmadi" };
+  if (school) school.orgName = orgName;
+  const oqKurslari = kurslar.map(g => ({ id: g.id, name: g.name, courseName: g.course?.name || '', teacherName: g.teacher?.name || '' }));
+
+  let yuborildi = false;
+  for (const rule of rules) {
+    const cfg = (rule.config && typeof rule.config === 'object') ? rule.config : {};
+    const statuses = Array.isArray(cfg.statuses) && cfg.statuses.length ? cfg.statuses : null;
+    if (statuses && !statuses.includes(student.status)) continue;
+    const target = { ...student, customPaymentAmount: payment.amount, lastPaymentAmount: payment.amount };
+    if (testNatijasiKerak(rule.body)) target.lastExam = (await getLastExamMap(payment.schoolId, [student.id]))[student.id];
+    const message = fillTemplate(rule.body, target, oqKurslari, school);
+    // Payme ota-onaga Telegram xabarini o'zi yuboradi — bu yerda faqat SMS.
+    const channel = opts.kanal === 'SMS' ? (rule.channel === 'TELEGRAM' ? null : 'SMS') : rule.channel;
+    if (!channel) continue;
+    const r = await sendToOne({ student: target, message, channel, recipientTo: rule.recipientTo, type: 'PAYMENT', schoolId: payment.schoolId, campaignId: null });
+    if (r.success) yuborildi = true;
+  }
+  return { yuborildi };
+}
+tolovXabariniUlash(tolovXabariniYuborish);
+
 // O'quvchining guruhlarini (StudentGroups relation) olish uchun yordamchi
 async function getStudentGroupsMap(schoolId) {
   const groups = await prisma.group.findMany({
@@ -6470,6 +6761,11 @@ app.post('/api/messaging/send-batch', authenticate, async (req, res, next) => {
       const examMap = await getLastExamMap(schoolId, tasks.map(t => t.student.id).filter(Boolean));
       for (const task of tasks) task.student.lastExam = examMap[task.student.id];
     }
+    // {oxirgi_tolov} — har kimning oxirgi qabul qilingan to'lovi.
+    if (oxirgiTolovKerak(message) && audience === 'STUDENTS') {
+      const payMap = await getLastPaymentMap(schoolId, tasks.map(t => t.student.id).filter(Boolean));
+      for (const task of tasks) task.student.lastPaymentAmount = payMap[task.student.id];
+    }
 
     // Send SYNCHRONOUSLY with high concurrency — on Vercel serverless,
     // anything after res.json() is frozen, so we must finish sending first.
@@ -6509,7 +6805,7 @@ app.post('/api/messaging/send-batch', authenticate, async (req, res, next) => {
 // kerak edi — buni unutish oson va SMS "sababsiz" yetib bormasdi.
 
 // Raqamga aylanadigan o'zgaruvchilar: Eskizda ular %d bilan belgilanadi.
-const ESKIZ_RAQAMLI = ['qarz', 'balans', 'to_lov_summa', 'imtihon_ball', 'imtihon_foiz', 'bahosi'];
+const ESKIZ_RAQAMLI = ['qarz', 'balans', 'to_lov_summa', 'oxirgi_tolov', 'imtihon_ball', 'imtihon_foiz', 'bahosi'];
 
 /**
  * CRM shablonini Eskiz andozasiga aylantiradi.
@@ -6713,7 +7009,10 @@ app.post('/api/messaging/auto-rules', authenticate, async (req, res, next) => {
         schoolId: req.user.schoolId
       }
     });
-    res.status(201).json(rule);
+    // SMS ketadigan qoidaning matni Eskizda moderatsiyadan o'tmagan bo'lsa,
+    // Eskiz uni yubormaydi — shablon kabi darhol moderatsiyaga yuboriladi.
+    const eskiz = rule.channel !== 'TELEGRAM' ? await eskizShablonYubor(rule.body, req.user.schoolId) : null;
+    res.status(201).json({ ...rule, eskiz });
   } catch (err) { next(err); }
 });
 
@@ -6731,11 +7030,18 @@ app.put('/api/messaging/auto-rules/:id', authenticate, async (req, res, next) =>
       ...(config !== undefined && { config }),
       ...(time !== undefined && { time })
     };
+    const oldingi = body !== undefined || channel !== undefined
+      ? await prisma.autoMessageRule.findUnique({ where: { id: ruleId }, select: { body: true, channel: true } })
+      : null;
     const rule = await prisma.autoMessageRule.update({
       where: { id: ruleId },
       data
     });
-    res.json(rule);
+    // Matn o'zgargan (yoki qoida endi SMS ham yuboradigan bo'lgan) — Eskiz moderatsiyasiga.
+    const smsGaOtdi = oldingi && oldingi.channel === 'TELEGRAM' && rule.channel !== 'TELEGRAM';
+    const eskiz = oldingi && rule.channel !== 'TELEGRAM' && (oldingi.body !== rule.body || smsGaOtdi)
+      ? await eskizShablonYubor(rule.body, req.user.schoolId) : null;
+    res.json({ ...rule, eskiz });
   } catch (err) { next(err); }
 });
 
@@ -6844,20 +7150,10 @@ async function runAutoProcessJobs() {
       }
       targets = Object.values(uniqueStudentsMap);
     } else if (rule.type === 'PAYMENT_CONFIRM') {
-      const paymentsToday = await prisma.payment.findMany({
-        where: { schoolId, date: todayStr },
-        include: { student: true }
-      });
-      const uniqueStudentsMap = {};
-      for (const p of paymentsToday) {
-        if (p.student && p.student.status !== 'Ochirilgan') {
-          uniqueStudentsMap[p.studentId] = {
-            ...p.student,
-            customPaymentAmount: p.amount
-          };
-        }
-      }
-      targets = Object.values(uniqueStudentsMap);
+      // To'lov xabari endi kun oxirida to'planmaydi — to'lov kiritilishi bilan
+      // darhol ketadi (tolovXabariniYuborish). Bu yerda ikkinchi marta yuborilmaydi.
+      results.push({ ruleId: rule.id, name: rule.name, skipped: 'darhol-yuboriladi' });
+      continue;
     } else if (rule.type === 'DAILY_SCORE') {
       const scoresToday = await prisma.score.findMany({
         where: { schoolId, date: todayStr },
@@ -6924,6 +7220,10 @@ async function runAutoProcessJobs() {
       if (testNatijasiKerak(rule.body)) {
         const examMap = await getLastExamMap(schoolId, targets.map(s => s.id).filter(Boolean));
         for (const s of targets) s.lastExam = examMap[s.id];
+      }
+      if (oxirgiTolovKerak(rule.body) && rule.type !== 'LEAD_WELCOME') {
+        const payMap = await getLastPaymentMap(schoolId, targets.map(s => s.id).filter(Boolean));
+        for (const s of targets) s.lastPaymentAmount = payMap[s.id];
       }
 
       const concurrencyLimit = 10;

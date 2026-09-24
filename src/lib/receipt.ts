@@ -38,6 +38,8 @@ export interface ReceiptOptions {
     /** Chek pastidagi qo'shimcha satrlar: manzil, telefon. */
     address?: string | null;
     adminPhone?: string | null;
+    /** Qo'shimcha raqam (Sozlamalar → Profil). */
+    adminPhone2?: string | null;
     /** To'lov qaysi kurs uchun ekani. */
     courseName?: string | null;
     /** O'quvchi a'zo bo'lgan guruhlar: "Matematika A (Matematika)". */
@@ -58,7 +60,7 @@ function receiptHtml(o: ReceiptOptions): string {
     const balance = student?.balance ?? 0;
     const groupLines = (o.groupLines || []).filter(Boolean);
 
-    const footerLines = [o.address, o.adminPhone].filter(Boolean).map(esc).join(' &middot; ');
+    const footerLines = [o.address, o.adminPhone, o.adminPhone2].filter(Boolean).map(esc).join(' &middot; ');
 
     return `<!DOCTYPE html>
 <html lang="uz"><head><meta charset="utf-8"><title>Chek #${esc(payment.id)}</title>

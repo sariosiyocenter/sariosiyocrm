@@ -5,7 +5,7 @@ import {
     Bus, Search, Phone, Calendar, ChevronLeft, ChevronRight, ChevronDown,
     BarChart3, Download, CalendarRange, CheckCircle2, X, MapPin, Navigation,
     Users, Check, Loader2, Car, AlertTriangle, Send, Trash2, RotateCcw, Filter,
-    UserCheck, Bot, ArrowRight,
+    UserCheck, Bot, ArrowRight, Wallet, Pencil,
 } from 'lucide-react';
 import { toDateStr, toTimeStr } from '../../lib/lessons.js';
 import { reyalarniTuzish } from '../../lib/rejalash.js';
@@ -13,6 +13,7 @@ import { narxHisobla, uyMasofasi, tarifMatni, somMatni, rejaSummasi } from '../.
 import { parseLatLng, ZAXIRA_MARKAZ } from '../lib/mapMarkers';
 import { displayName } from '../lib/displayName';
 import LogisticsMap, { qachon, jonlimi } from './LogisticsMap';
+import TransportTarif, { type Tarif } from './TransportTarif';
 
 /**
  * Logistika — kunlik transport rejasi.
@@ -26,10 +27,11 @@ import LogisticsMap, { qachon, jonlimi } from './LogisticsMap';
  * haydovchi botda "Qabul qildim" va "Yetkazdim" bosadi.
  *
  * Marshrut va Avtopark bo'limlari yo'q (egasi: "kerakmas") — mashina
- * ma'lumoti xodim kartasida (Xodimlar → Haydovchi) kiritiladi.
+ * ma'lumoti xodim kartasida (Xodimlar → Haydovchi) kiritiladi. Yo'l haqi
+ * tarifi esa shu sahifaning "Yo'l haqi" bo'limida (egasi, 2026-09-24).
  */
 
-type Tab = 'reja' | 'tarix';
+type Tab = 'reja' | 'narx' | 'tarix';
 
 interface DayStop { studentId: number; name: string; phone?: string; address?: string; location?: string; photo?: string; narx?: number | null; masofaKm?: number | null }
 interface DayPlan {
@@ -103,7 +105,7 @@ export default function LogisticsHub() {
         }
     }, [selectedSchoolId, sana, token]);
 
-    useEffect(() => { if (tab === 'reja' && rejaKorinadi) kunniYuklash(); }, [tab, kunniYuklash]);
+    useEffect(() => { if ((tab === 'reja' || tab === 'narx') && rejaKorinadi) kunniYuklash(); }, [tab, kunniYuklash]);
 
     // Haydovchi joylashuvi va bot tugmalari (Qabul qildim / Yetkazdim) shu
     // yerda ko'rinsin: bugungi kun ochiq turganda har 30 soniyada yangilanadi.
@@ -318,6 +320,30 @@ export default function LogisticsHub() {
         }
     };
 
+    // ===== Yo'l haqi (haydovchi tarifi) =====
+    // Ilgari Xodimlar → haydovchi kartasida edi; egasi (2026-09-24) Logistikaga ko'chirdi.
+    const [tarifTahrir, setTarifTahrir] = useState<{ driverId: number; qiymat: Tarif | null } | null>(null);
+    const tarifniSaqlash = async () => {
+        if (!tarifTahrir || !rejaTahrir) return;
+        setBand(`tarif-${tarifTahrir.driverId}`);
+        try {
+            const r = await fetch(`/api/logistics/drivers/${tarifTahrir.driverId}/tarif`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+                body: JSON.stringify({ tarif: tarifTahrir.qiymat }),
+            });
+            const d = await r.json().catch(() => ({}));
+            if (!r.ok) throw new Error(d.error || 'Saqlanmadi');
+            showNotification("Yo'l haqi saqlandi", 'success');
+            setTarifTahrir(null);
+            await kunniYuklash(true);
+        } catch (e: any) {
+            showNotification(e.message, 'error');
+        } finally {
+            setBand('');
+        }
+    };
+
     // ===== Tarix =====
     const [statsFrom, setStatsFrom] = useState('');
     const [statsTo, setStatsTo] = useState('');
@@ -396,7 +422,7 @@ export default function LogisticsHub() {
                     </div>
                 </div>
                 <div className="flex bg-ichki p-1 rounded-xl border border-chiziq w-fit">
-                    {([['reja', 'Reja', <Bus size={13} key="i" />], ['tarix', 'Tarix', <BarChart3 size={13} key="i" />]] as const).filter(([id]) => id === 'reja' ? rejaKorinadi : tarixKorinadi).map(([id, label, icon]) => (
+                    {([['reja', 'Reja', <Bus size={13} key="i" />], ['narx', "Yo'l haqi", <Wallet size={13} key="i" />], ['tarix', 'Tarix', <BarChart3 size={13} key="i" />]] as const).filter(([id]) => id === 'tarix' ? tarixKorinadi : rejaKorinadi).map(([id, label, icon]) => (
                         <button key={id} onClick={() => setTab(id as Tab)}
                             className={`flex items-center gap-1.5 px-5 py-2 rounded-lg text-[11px] font-extrabold transition-all cursor-pointer ${tab === id ? 'bg-brand text-brand-ust shadow' : 'text-matn-xira hover:text-matn'}`}>
                             {icon} {label}
@@ -429,7 +455,47 @@ export default function LogisticsHub() {
 
                     {/* ===== Rejalar va xarita ===== */}
                     <div className="grid grid-cols-1 xl:grid-cols-5 gap-5">
-                        <div className={`${karta} xl:col-span-3 overflow-hidden`}>
+                        {/* Xarita chapda, rejalar o'ngda (egasi, 2026-09-24: "bugungi rejalar emas, xarita chapda"). */}
+                        {/* Xarita va haydovchilar joylashuvi */}
+                        <div className={`${karta} xl:col-span-3 p-4 space-y-3`}>
+                            <div className="flex items-center justify-between">
+                                <span className="text-xs font-black text-matn flex items-center gap-2"><MapPin size={14} className="text-brand" /> Xarita</span>
+                                <span className="text-[10px] font-bold text-matn-xira">30 soniyada yangilanadi</span>
+                            </div>
+                            <LogisticsMap
+                                className="h-[340px] xl:h-[460px]"
+                                centerLocation={settings?.centerLocation}
+                                orgName={settings?.orgName}
+                                logo={settings?.logo}
+                                students={xaritaBolalari}
+                                drivers={haydovchilar.map(h => ({ id: h.id, name: h.name, color: rangi.get(h.id) || '#64748b', location: h.location }))}
+                            />
+                            <div className="space-y-1.5">
+                                {haydovchilar.length === 0 && (
+                                    <p className="text-[11px] font-bold text-matn-xira">Haydovchi yo'q. Xodimlar bo'limida "Haydovchi" lavozimi bilan qo'shing (mashina rusumi, raqami, sig'imi bilan).</p>
+                                )}
+                                {haydovchilar.map(h => (
+                                    <div key={h.id} className="flex items-center justify-between gap-2 text-[11px]">
+                                        <span className="flex items-center gap-2 min-w-0">
+                                            <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ background: rangi.get(h.id) }} />
+                                            <span className="font-bold text-matn truncate">{h.name}</span>
+                                        </span>
+                                        <span className="font-bold text-matn-xira shrink-0">
+                                            {h.location
+                                                ? <>{jonlimi(h.location) && <span className="text-emerald-600">● jonli · </span>}{qachon(h.location.updatedAt)}</>
+                                                : !h.telegram ? <span className="text-amber-600">botga ulanmagan</span> : "joylashuv yo'q"}
+                                        </span>
+                                    </div>
+                                ))}
+                                {haydovchilar.some(h => !h.location || !jonlimi(h.location)) && (
+                                    <p className="text-[10px] font-bold text-matn-xira leading-relaxed pt-1">
+                                        Haydovchi doim ko'rinib turishi uchun Telegram botda 📎 → «Joylashuv» → «Jonli joylashuvni ulashish» ni tanlaydi
+                                        (8 soat yoki «to'xtatmaguncha»). Bot buni «Qabul qildim» dan keyin o'zi eslatadi.
+                                    </p>
+                                )}
+                            </div>
+                        </div>
+                        <div className={`${karta} xl:col-span-2 overflow-hidden`}>
                             <div className="px-5 py-4 border-b border-chiziq-mayin flex items-center justify-between gap-3">
                                 <div className="flex items-center gap-2">
                                     <Bus size={15} className="text-brand" />
@@ -572,46 +638,6 @@ export default function LogisticsHub() {
                                     })}
                                 </div>
                             )}
-                        </div>
-
-                        {/* Xarita va haydovchilar joylashuvi */}
-                        <div className={`${karta} xl:col-span-2 p-4 space-y-3`}>
-                            <div className="flex items-center justify-between">
-                                <span className="text-xs font-black text-matn flex items-center gap-2"><MapPin size={14} className="text-brand" /> Xarita</span>
-                                <span className="text-[10px] font-bold text-matn-xira">30 soniyada yangilanadi</span>
-                            </div>
-                            <LogisticsMap
-                                className="h-[340px]"
-                                centerLocation={settings?.centerLocation}
-                                orgName={settings?.orgName}
-                                logo={settings?.logo}
-                                students={xaritaBolalari}
-                                drivers={haydovchilar.map(h => ({ id: h.id, name: h.name, color: rangi.get(h.id) || '#64748b', location: h.location }))}
-                            />
-                            <div className="space-y-1.5">
-                                {haydovchilar.length === 0 && (
-                                    <p className="text-[11px] font-bold text-matn-xira">Haydovchi yo'q. Xodimlar bo'limida "Haydovchi" lavozimi bilan qo'shing (mashina rusumi, raqami, sig'imi bilan).</p>
-                                )}
-                                {haydovchilar.map(h => (
-                                    <div key={h.id} className="flex items-center justify-between gap-2 text-[11px]">
-                                        <span className="flex items-center gap-2 min-w-0">
-                                            <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ background: rangi.get(h.id) }} />
-                                            <span className="font-bold text-matn truncate">{h.name}</span>
-                                        </span>
-                                        <span className="font-bold text-matn-xira shrink-0">
-                                            {h.location
-                                                ? <>{jonlimi(h.location) && <span className="text-emerald-600">● jonli · </span>}{qachon(h.location.updatedAt)}</>
-                                                : !h.telegram ? <span className="text-amber-600">botga ulanmagan</span> : "joylashuv yo'q"}
-                                        </span>
-                                    </div>
-                                ))}
-                                {haydovchilar.some(h => !h.location || !jonlimi(h.location)) && (
-                                    <p className="text-[10px] font-bold text-matn-xira leading-relaxed pt-1">
-                                        Haydovchi doim ko'rinib turishi uchun Telegram botda 📎 → «Joylashuv» → «Jonli joylashuvni ulashish» ni tanlaydi
-                                        (8 soat yoki «to'xtatmaguncha»). Bot buni «Qabul qildim» dan keyin o'zi eslatadi.
-                                    </p>
-                                )}
-                            </div>
                         </div>
                     </div>
 
@@ -781,7 +807,7 @@ export default function LogisticsHub() {
                                                             {!h.telegram && <span className="text-amber-600"> · botga ulanmagan</span>}
                                                         </span>
                                                         <span className={`block text-[10px] font-bold truncate ${h.transport?.tarif ? 'text-matn-sokin' : 'text-amber-600'}`}>
-                                                            {h.transport?.tarif ? `💰 ${tarifMatni(h.transport.tarif)}` : "yo'l haqi kiritilmagan (Xodimlar)"}
+                                                            {h.transport?.tarif ? `💰 ${tarifMatni(h.transport.tarif)}` : "yo'l haqi kiritilmagan («Yo'l haqi» bo'limi)"}
                                                         </span>
                                                     </span>
                                                 </button>
@@ -813,6 +839,77 @@ export default function LogisticsHub() {
                                 </p>
                             </div>
                         </div>
+                    </div>
+                </div>
+            )}
+
+            {/* ===== YO'L HAQI — haydovchilar tarifi ===== */}
+            {tab === 'narx' && rejaKorinadi && (
+                <div className="space-y-4">
+                    <div className={`${karta} px-5 py-4 flex flex-wrap items-center justify-between gap-3`}>
+                        <div>
+                            <p className="text-xs font-black text-matn flex items-center gap-2"><Wallet size={15} className="text-brand" /> Yo'l haqi — har bir haydovchining tarifi</p>
+                            <p className="text-[11px] font-bold text-matn-xira mt-1 leading-relaxed">
+                                Bir o'quvchini olib borish narxi. Reja tuzilganda har bola uchun shu tarifdan hisoblanadi va haydovchiga botda ko'rinadi.
+                                O'quvchi pulni mashinada haydovchiga naqd beradi — kassaga tushmaydi, qarziga yozilmaydi.
+                            </p>
+                        </div>
+                        {kunYuklanmoqda && <Loader2 size={14} className="animate-spin text-matn-xira" />}
+                    </div>
+
+                    {haydovchilar.length === 0 && !kunYuklanmoqda && (
+                        <div className={`${karta} p-10 text-center`}>
+                            <Car size={30} className="text-matn-xira mx-auto mb-2" />
+                            <p className="text-[12px] font-bold text-matn-sokin">Haydovchi yo'q</p>
+                            <p className="text-[11px] text-matn-xira mt-1">Xodimlar bo'limida "Haydovchi" lavozimi bilan qo'shing.</p>
+                        </div>
+                    )}
+
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                        {haydovchilar.map(h => {
+                            const tahrirda = tarifTahrir?.driverId === h.id;
+                            return (
+                                <div key={h.id} className={`${karta} p-4 space-y-3`}>
+                                    <div className="flex items-start justify-between gap-3">
+                                        <div className="flex items-center gap-2.5 min-w-0">
+                                            <span className="w-3 h-3 rounded-full shrink-0" style={{ background: rangi.get(h.id) }} />
+                                            <div className="min-w-0">
+                                                <p className="text-[13px] font-black text-matn truncate">{h.name}</p>
+                                                <p className="text-[11px] font-bold text-matn-xira truncate">
+                                                    {mashinaMatni(h.transport) || <span className="text-amber-600">mashina kiritilmagan (Xodimlar)</span>}
+                                                </p>
+                                            </div>
+                                        </div>
+                                        {!tahrirda && rejaTahrir && (
+                                            <button onClick={() => setTarifTahrir({ driverId: h.id, qiymat: h.transport?.tarif || null })} disabled={!!band}
+                                                className="px-3 py-2 bg-ichki border border-chiziq text-matn-2 hover:border-brand hover:text-brand disabled:opacity-50 rounded-xl text-[11px] font-extrabold flex items-center gap-1.5 cursor-pointer shrink-0">
+                                                <Pencil size={12} /> {h.transport?.tarif ? "O'zgartirish" : 'Kiritish'}
+                                            </button>
+                                        )}
+                                    </div>
+
+                                    {tahrirda ? (
+                                        <div className="space-y-3 pt-3 border-t border-chiziq-mayin">
+                                            <TransportTarif value={tarifTahrir!.qiymat} onChange={t => setTarifTahrir({ driverId: h.id, qiymat: t })} />
+                                            <div className="flex gap-2 justify-end">
+                                                <button onClick={() => setTarifTahrir(null)} disabled={!!band}
+                                                    className="px-4 py-2 rounded-xl bg-ichki border border-chiziq text-[11px] font-extrabold text-matn-2 cursor-pointer">Bekor qilish</button>
+                                                <button onClick={tarifniSaqlash} disabled={!!band}
+                                                    className="px-4 py-2 rounded-xl bg-brand hover:bg-brand-dark disabled:opacity-50 text-white text-[11px] font-extrabold flex items-center gap-1.5 cursor-pointer">
+                                                    {band === `tarif-${h.id}` ? <Loader2 size={13} className="animate-spin" /> : <Check size={13} />} Saqlash
+                                                </button>
+                                            </div>
+                                        </div>
+                                    ) : (
+                                        <p className={`text-[12px] font-bold px-3 py-2 rounded-xl border ${h.transport?.tarif
+                                            ? 'bg-ichki border-chiziq text-matn-2'
+                                            : 'bg-amber-50 border-amber-100 text-amber-700 dark:bg-amber-950/20 dark:border-amber-900/40 dark:text-amber-400'}`}>
+                                            {h.transport?.tarif ? `💰 ${tarifMatni(h.transport.tarif)}` : "Yo'l haqi kiritilmagan — rejada bolalar «narxsiz» chiqadi"}
+                                        </p>
+                                    )}
+                                </div>
+                            );
+                        })}
                     </div>
                 </div>
             )}

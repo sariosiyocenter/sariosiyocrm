@@ -9,6 +9,7 @@ import { activeCourses } from '../lib/activeCourses';
 import { isCashIncome } from '../lib/money';
 import { useLang } from '../context/LanguageContext';
 import { useNavigate } from 'react-router-dom';
+import TolovTasdiqPanel from './TolovTasdiqPanel';
 import RoomSchedule from './RoomSchedule';
 import { displayName } from '../lib/displayName';
 import { isLessonDay, toDateStr, toTimeStr } from '../../lib/lessons.js';
@@ -371,6 +372,9 @@ export default function Dashboard() {
 
     return (
         <div className="space-y-6 animate-in fade-in duration-500">
+            {/* Administratorga: Klik to'lovlari tasdiqlanishini kutmoqda (bo'sh bo'lsa chizilmaydi). */}
+            <TolovTasdiqPanel compact />
+
             {/* Sarlavha. Referensdagidek: salomlashuv, ostida bugungi holat,
                 o'ngda davr almashtirgichi. */}
             <div>

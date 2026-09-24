@@ -12,8 +12,6 @@ import { useConfirm } from './ConfirmDialog';
 import { useLang } from '../context/LanguageContext';
 import { useNavigate } from 'react-router-dom';
 import { uploadProfilePhoto, removeBackgroundHQ } from '../lib/image';
-import TransportTarif from './TransportTarif';
-import { tarifMatni } from '../../lib/transportNarx.js';
 import PhotoCapture from './PhotoCapture';
 import BranchCheckboxes from './ui/BranchCheckboxes';
 
@@ -189,7 +187,8 @@ export default function HRManagement() {
                     body.vehicleModel = editingUser.vehicleModel ?? '';
                     body.vehicleNumber = editingUser.vehicleNumber ?? '';
                     if (editingUser.vehicleCapacity) body.vehicleCapacity = editingUser.vehicleCapacity;
-                    body.vehicleTariff = editingUser.vehicleTariff ?? null;
+                    // Yo'l haqi tarifi endi Logistika → Yo'l haqi bo'limida (egasi,
+                    // 2026-09-24) — bu yerdan yuborilmaydi, eski qiymat ustiga yozilmasin.
                 }
                 // Filiallar (galochkalar). Server faqat o'zgargan bo'lsa qo'llaydi.
                 if (multiBranch) {
@@ -555,11 +554,6 @@ export default function HRManagement() {
                                                                     : "mashina kiritilmagan"}
                                                             </span>
                                                         )}
-                                                        {u.role === 'DRIVER' && (
-                                                            <span className={`block text-[11px] ${u.vehicleTariff ? 'text-matn-xira' : 'text-amber-600'}`}>
-                                                                {u.vehicleTariff ? `Yo'l haqi: ${tarifMatni(u.vehicleTariff)}` : "yo'l haqi kiritilmagan"}
-                                                            </span>
-                                                        )}
                                                     </td>
                                                     <td className="px-3 py-3 align-middle">
                                                         {/* Rang endi ma'no bermaydi: yetti xil rangli
@@ -902,9 +896,9 @@ function UserModal({
                                 <label className={lbl}>Sig'imi (kishi)</label>
                                 <input type="number" min="1" max="60" placeholder="8" className={inp} value={user.vehicleCapacity || ''} onChange={e => onChange({ ...user, vehicleCapacity: parseInt(e.target.value) || '' })} />
                             </div>
-                            <div className="pt-2 border-t border-amber-100 dark:border-amber-900/30">
-                                <TransportTarif value={user.vehicleTariff} onChange={t => onChange({ ...user, vehicleTariff: t })} />
-                            </div>
+                            <p className="pt-2 border-t border-amber-100 dark:border-amber-900/30 text-[10px] font-bold text-matn-xira">
+                                💰 Yo'l haqi tarifi — Logistika → «Yo'l haqi» bo'limida.
+                            </p>
                         </div>
                     )}
 

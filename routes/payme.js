@@ -8,6 +8,7 @@ import { authenticate, canAccessSchool, requireRole, STAFF_MANAGERS } from '../m
 import { isAdmin } from '../lib/config.js';
 import { markazBrendi, markazNomi } from '../lib/markazBrendi.js';
 import * as payme from '../services/payme.js';
+import { tolovXabari } from '../services/tolovXabari.js';
 
 // Havola yaratish — to'lov qabul qiladigan xodimlar. Ustoz/haydovchi emas.
 const LINK_ROLES = ['ADMIN', 'MANAGER', 'RECEPTIONIST'];
@@ -55,6 +56,13 @@ async function notify(fresh, schoolId) {
   // Lokal testlar production bazaga ulanadi va maktabning haqiqiy botini
   // ishlatadi — PAYME_NOTIFY=off bilan xabar yuborilmaydi.
   if (process.env.PAYME_NOTIFY === 'off') return;
+  // Ota-onaga SMS ("To'lov qabul qilinganda" qoidasi) — Telegram xabari bilan
+  // parallel, o'sha 4 soniya ichida: Payme javob kutib turibdi.
+  const sms = fresh.kind === 'performed' && !fresh.tx.test && fresh.paymentId
+    ? prisma.payment.findUnique({ where: { id: fresh.paymentId } })
+      .then(p => tolovXabari(p, { kanal: 'SMS' }))
+      .catch(e => console.error("[payme] to'lov SMS:", e.message))
+    : null;
   try {
     await withTimeout((async () => {
       const [student, group, settings] = await Promise.all([
@@ -93,6 +101,7 @@ async function notify(fresh, schoolId) {
         }
       }
       await notifyAdmins(adminText, schoolId);
+      if (sms) await sms;
     })(), 4000);
   } catch (e) {
     console.error('[payme] xabar yuborishda xato:', e.message);

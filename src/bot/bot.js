@@ -1526,7 +1526,8 @@ export const setupBotHandlers = (botInstance, botSchoolId) => {
             lines.push('');
         }
         if (settings && settings.address) lines.push('📍 ' + settings.address);
-        if (settings && settings.adminPhone) lines.push('📞 ' + settings.adminPhone);
+        const raqamlar = [settings && settings.adminPhone, settings && settings.adminPhone2].filter(Boolean);
+        if (raqamlar.length) lines.push('📞 ' + raqamlar.join(', '));
         if (settings && settings.workingHours) lines.push('🕒 ' + settings.workingHours);
 
         await replyWithLogo(ctx, schoolId, lines.join(NL).trim());

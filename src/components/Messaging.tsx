@@ -5,6 +5,7 @@ import {
 } from 'lucide-react';
 import { useCRM } from '../context/CRMContext';
 import { allocate, groupRows, withOpening, groupStanding, shareOpts } from '../../lib/allocation.js';
+import { oxirgiTolov } from '../../lib/xabarMatni.js';
 import { useConfirm } from './ConfirmDialog';
 import { useLang } from '../context/LanguageContext';
 import { displayName as ismniKorsat } from '../lib/displayName';
@@ -226,7 +227,7 @@ const getTriggerTypeMeta = (type: string) => {
     case 'EXAM_RESULT':
       return { icon: '📝', label: 'Imtihon natijasi', color: 'bg-blue-100 dark:bg-blue-950/30 text-blue-500' };
     case 'PAYMENT_CONFIRM':
-      return { icon: '💰', label: "To'lov tasdig'i", color: 'bg-teal-100 dark:bg-teal-950/30 text-teal-500' };
+      return { icon: '💰', label: "To'lov qabul qilinganda", color: 'bg-teal-100 dark:bg-teal-950/30 text-teal-500' };
     case 'DAILY_SCORE':
       return { icon: '⭐️', label: 'Kunlik baho', color: 'bg-yellow-100 dark:bg-yellow-950/30 text-yellow-500' };
     case 'TRANSPORT_NOTIFY':
@@ -851,6 +852,8 @@ export default function Messaging() {
       // Oxirgi imtihon natijasi yuborish paytida qo'shiladi (serverda) —
       // ko'rinishda shunchaki namuna ko'rsatiladi.
       .replace(/\{testnatijasi\}/gi, 'oxirgi imtihon natijasi')
+      // Oxirgi qabul qilingan to'lov — serverdagi bilan bir xil funksiya.
+      .replace(/\{oxirgi_tolov\}/gi, (oxirgiTolov((payments || []).filter(p => p.studentId === st.id))?.amount || 0).toLocaleString() + " so'm")
       .replace(/\{markaz\}/gi, schoolName);
   };
 
@@ -976,8 +979,16 @@ export default function Messaging() {
         body: JSON.stringify(payload)
       });
       if (res.ok) {
+        const saqlangan = await res.json().catch(() => ({}));
         setAutoRuleModalOpen(false);
         fetchRules();
+        // SMS matni Eskiz moderatsiyasiga ketdi (server) — natijasini aytamiz.
+        const holat = String(saqlangan?.eskiz?.status || '');
+        if (holat) {
+          showNotification(holat.startsWith('xato')
+            ? `Qoida saqlandi. Eskiz moderatsiyasi: ${holat}`
+            : "Qoida saqlandi. SMS matni Eskiz moderatsiyasiga yuborildi — tasdiqlangach SMS yetib boradi", holat.startsWith('xato') ? 'info' : 'success');
+        }
       } else {
         const err = await res.json();
         showNotification("Xatolik: " + err.error, 'error');
@@ -1539,6 +1550,8 @@ export default function Messaging() {
                 <button type="button" onClick={() => insertVariable('{ism}')} className="px-2.5 py-1.5 bg-slate-100 dark:bg-slate-800 text-[11px] font-bold text-slate-700 dark:text-slate-300 rounded-lg hover:bg-brand/10 dark:hover:bg-brand border border-slate-200 dark:border-slate-700 transition-all cursor-pointer">ism</button>
                 <button type="button" onClick={() => insertVariable('{qarz}')} className="px-2.5 py-1.5 bg-slate-100 dark:bg-slate-800 text-[11px] font-bold text-slate-700 dark:text-slate-300 rounded-lg hover:bg-brand/10 dark:hover:bg-brand border border-slate-200 dark:border-slate-700 transition-all cursor-pointer">qarz</button>
                 <button type="button" onClick={() => insertVariable('{balans}')} className="px-2.5 py-1.5 bg-slate-100 dark:bg-slate-800 text-[11px] font-bold text-slate-700 dark:text-slate-300 rounded-lg hover:bg-brand/10 dark:hover:bg-brand border border-slate-200 dark:border-slate-700 transition-all cursor-pointer">balans</button>
+                {/* Oxirgi qabul qilingan to'lov summasi (egasi, 2026-09-24). */}
+                <button type="button" onClick={() => insertVariable('{oxirgi_tolov}')} className="px-2.5 py-1.5 bg-slate-100 dark:bg-slate-800 text-[11px] font-bold text-slate-700 dark:text-slate-300 rounded-lg hover:bg-brand/10 dark:hover:bg-brand border border-slate-200 dark:border-slate-700 transition-all cursor-pointer">oxirgi_tolov</button>
                 {/* "guruh" o'rniga "kurs" (egasi, 2026-09-23). Eski shablonlardagi
                     {guruh} baribir ishlaydi, lekin bu yerda taklif qilinmaydi. */}
                 <button type="button" onClick={() => insertVariable('{kurs}')} className="px-2.5 py-1.5 bg-slate-100 dark:bg-slate-800 text-[11px] font-bold text-slate-700 dark:text-slate-300 rounded-lg hover:bg-brand/10 dark:hover:bg-brand border border-slate-200 dark:border-slate-700 transition-all cursor-pointer">kurs</button>
@@ -1645,7 +1658,7 @@ export default function Messaging() {
                       </span>
                     );
                   })()}
-                  <span className="block">O'zgaruvchilar: {"{ism}"}, {"{qarz}"}, {"{balans}"}, {"{kurs}"}, {"{fan}"}, {"{ustoz}"}, {"{testnatijasi}"}, {"{markaz}"}</span>
+                  <span className="block">O'zgaruvchilar: {"{ism}"}, {"{qarz}"}, {"{balans}"}, {"{oxirgi_tolov}"}, {"{kurs}"}, {"{fan}"}, {"{ustoz}"}, {"{testnatijasi}"}, {"{markaz}"}</span>
                 </div>
               </div>
             ))}
@@ -1712,7 +1725,7 @@ export default function Messaging() {
                     {/* Meta info block */}
                     <div className="grid grid-cols-2 gap-2 text-[11px] font-semibold text-slate-500 dark:text-slate-400 bg-slate-50 dark:bg-slate-950/20 p-2.5 rounded-xl border border-slate-100 dark:border-slate-800">
                       <div>Kanal: <span className="font-bold text-slate-700 dark:text-slate-300">{rule.channel}</span></div>
-                      <div>Vaqt: <span className="font-bold text-slate-700 dark:text-slate-300">{rule.time || '09:00'}</span></div>
+                      <div>Vaqt: <span className="font-bold text-slate-700 dark:text-slate-300">{rule.type === 'PAYMENT_CONFIRM' ? 'darhol' : (rule.time || '09:00')}</span></div>
                       <div className="col-span-2">Kimga: <span className="font-bold text-slate-700 dark:text-slate-300">{qabulQiluvchilarMatni(rule.recipientTo)}</span></div>
                       {isDebt && rule.config && (
                         <>
@@ -2200,7 +2213,7 @@ export default function Messaging() {
                   <option value="LEAD_WELCOME">📞 Yangi lid tabrigi</option>
                   <option value="GROUP_WELCOME">🎉 Yangi guruhga qo'shilish tabrigi</option>
                   <option value="EXAM_RESULT">📝 Imtihon natijalari e'loni</option>
-                  <option value="PAYMENT_CONFIRM">💰 To'lov tasdiqlanishi tabrigi</option>
+                  <option value="PAYMENT_CONFIRM">💰 To'lov qilinganda</option>
                   <option value="DAILY_SCORE">⭐️ Kunlik baholash hisoboti</option>
                   <option value="TRANSPORT_NOTIFY">🚌 Transport xabarnomasi</option>
                   <option value="COURSE_GRADUATION">🎓 Kursni bitirganlik tabrigi</option>
@@ -2209,6 +2222,16 @@ export default function Messaging() {
                 </select>
               </div>
 
+              {/* To'lov xabari vaqtga bog'liq emas: to'lov kiritilishi bilan ketadi
+                  (egasi, 2026-09-24: "to'lov qilinganda sms borishi kerak avtomatik"). */}
+              {autoRuleForm.type === 'PAYMENT_CONFIRM' ? (
+                <div>
+                  <label className={lbl}>Jo'natish vaqti</label>
+                  <div className="px-3 py-2.5 rounded-xl border border-brand/30 bg-brand/5 text-xs font-bold text-brand">
+                    Darhol — to'lov kiritilishi bilan
+                  </div>
+                </div>
+              ) : (
               <div>
                 <label className={lbl}>Jo'natish vaqti *</label>
                 <select
@@ -2222,6 +2245,7 @@ export default function Messaging() {
                   })}
                 </select>
               </div>
+              )}
             </div>
 
             {/* O'quvchi holati: qoida faqat shu holatdagi o'quvchilarga yuboradi
@@ -2304,6 +2328,13 @@ export default function Messaging() {
               </div>
             </div>
 
+            {autoRuleForm.type === 'PAYMENT_CONFIRM' && (
+              <p className="text-[11px] font-bold text-slate-500 dark:text-slate-400 leading-relaxed bg-slate-50 dark:bg-slate-800/60 p-3 rounded-xl border border-slate-200/60 dark:border-slate-700/60">
+                Naqd, karta, o'tkazma, Payme va administrator tasdiqlagan Klik to'lovi kiritilishi bilan yuboriladi.
+                {" {oxirgi_tolov} — shu to'lov summasi. "}SMS matni saqlanganda Eskiz moderatsiyasiga ketadi — Eskiz tasdiqlaguncha SMS yetib bormaydi.
+              </p>
+            )}
+
             {autoRuleForm.type === 'DEBT_REMINDER' && (
               <div className="grid grid-cols-2 gap-3 bg-slate-55 dark:bg-slate-850 p-3 rounded-xl border border-slate-200/50 dark:border-slate-700/50">
                 <div>
@@ -2360,7 +2391,7 @@ export default function Messaging() {
                 className="w-full px-3 py-2 bg-slate-55 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-semibold text-slate-800 dark:text-slate-200 outline-none focus:border-brand transition-all resize-none"
               />
               <div className="text-[11px] font-bold text-slate-400 dark:text-slate-500 mt-1">
-                O'zgaruvchilar: {"{ism}"}, {"{qarz}"}, {"{balans}"}, {"{kurs}"}, {"{fan}"}, {"{ustoz}"}, {"{testnatijasi}"}, {"{markaz}"}, {"{imtihon_nomi}"}, {"{imtihon_ball}"}, {"{imtihon_foiz}"}, {"{to_lov_summa}"}, {"{bahosi}"}
+                O'zgaruvchilar: {"{ism}"}, {"{qarz}"}, {"{balans}"}, {"{oxirgi_tolov}"}, {"{kurs}"}, {"{fan}"}, {"{ustoz}"}, {"{testnatijasi}"}, {"{markaz}"}, {"{imtihon_nomi}"}, {"{imtihon_ball}"}, {"{imtihon_foiz}"}, {"{to_lov_summa}"}, {"{bahosi}"}
               </div>
             </div>
 

@@ -424,6 +424,7 @@ export interface CRMState {
         orgName: string;
         logo?: string;
         adminPhone?: string;
+        adminPhone2?: string;
         address?: string;
         /** Markaz binosi: "kenglik,uzunlik". Sozlamalarda xaritadan belgilanadi. */
         centerLocation?: string;

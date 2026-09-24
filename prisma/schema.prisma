@@ -100,6 +100,7 @@ model Student {
   deliveryLogs DeliveryLog[]
   routeStops  RouteStop[]
   examResults ExamResult[]
+  examSeats   ExamSeat[]
   faceProfile FaceProfile?
   paymeOrders PaymeOrder[]
 
@@ -355,6 +356,12 @@ model Room {
   id       Int    @id @default(autoincrement())
   name     String
   capacity Int
+  // Imtihon uchun xona sxemasi: qatorlar soni va har qatordagi o'rinlar
+  // (partadagi har o'rin alohida). `blocked` — ishlatilmaydigan o'rinlar
+  // ["2-3", ...] (qator-o'rin). Bo'sh bo'lsa sig'imdan 6 o'rinli qatorlar olinadi.
+  rows     Int?
+  cols     Int?
+  blocked  Json?
 
   schoolId Int
   school   School  @relation(fields: [schoolId], references: [id])
@@ -591,6 +598,9 @@ model Setting {
   orgName          String   @default("SARIOSIYO")
   logo             String?
   adminPhone       String?
+  // Qo'shimcha raqam (egasi, 2026-09-24): chekda va botdagi "Markaz haqida"da
+  // asosiy raqam bilan birga chiqadi.
+  adminPhone2      String?
   address          String?
   // O'quv markazi binosining koordinatasi ("kenglik,uzunlik"). Admin uni
   // Sozlamalardan xaritada bir marta belgilaydi; o'quvchi joylashuvi shu
@@ -890,23 +900,71 @@ model RouteRun {
   @@index([schoolId, date])
 }
 
+// Savollar banki butun o'quv markaziga umumiy (filiallar bir bankdan oladi);
+// `schoolId` — savol kiritilgan filial. Tuzilma va qoidalar: docs/IMTIHON_PLAN.md.
 model Question {
   id            Int      @id @default(autoincrement())
   text          String
   imageUrl      String?
-  optionA       String
-  optionB       String
-  optionC       String
-  optionD       String
-  correctAnswer String   // 'A' | 'B' | 'C' | 'D'
+  // Eski 4 variantli shakl. Yangi savollar `options` ga yoziladi; bu ustunlar
+  // faqat eski yozuvni o'qish uchun qoldi (lib/imtihon.js savolVariantlari).
+  optionA       String?
+  optionB       String?
+  optionC       String?
+  optionD       String?
+  // Yopiq savol: to'g'ri variant harfi ('A'..'F'). Raqamli: asosiy javob
+  // (qolgan qabul qilinadiganlari `answers` da). Yozma savolda bo'sh.
+  correctAnswer String   @default("")
   difficulty    Int      @default(1)
   subject       String
   topic         String
+
+  type          String   @default("yopiq") // yopiq | raqamli | yozma
+  options       Json?    // yopiq: ["variant matni", ...], 2–6 ta
+  answers       Json?    // raqamli: ["0.5", "1/2"] — hammasi to'g'ri hisoblanadi
+  points        Float?   // yozma savolning eng yuqori bali
+  lockOptions   Boolean  @default(false) // javoblar aralashtirilmaydi ("A va B to'g'ri")
+  section       String?  // bo'lim
+  grade         String?  // sinf / bosqich
+  source        String?  // manba: DTM, Milliy sertifikat, ...
+  language      String   @default("uz")
+  solution      String?
+  solutionStatus String  @default("yoq")   // yoq | qoralama | tasdiqlangan
+  status        String   @default("faol")  // qoralama | faol | arxiv
+  parentId      Int?     // klon qaysi savoldan olingan
+  passageId     Int?
+  passage       Passage? @relation(fields: [passageId], references: [id], onDelete: SetNull)
+  topicId       Int?     // o'quv reja mavzusi (ixtiyoriy bog'lanish)
+  // Imtihonlardan yig'iladi: qancha ishlatilgani, o'quvchiga ko'rsatilgani va
+  // haqiqiy qiyinligi (to'g'ri topganlar ulushi, kuchli/kuchsiz farqi).
+  usedCount     Int      @default(0)
+  lastUsedAt    DateTime?
+  shownAt       DateTime?
+  pCorrect      Float?
+  discrimination Float?
+  createdById   Int?
+  createdAt     DateTime @default(now())
 
   schoolId      Int
   school        School   @relation(fields: [schoolId], references: [id])
 
   @@index([schoolId, subject, topic])
+  @@index([passageId])
+}
+
+// Bir nechta savol bog'lanadigan matn yoki rasm ("matnni o'qing va 1–4
+// savollarga javob bering"). Variant yasalganda bu savollar birga turadi.
+model Passage {
+  id        Int      @id @default(autoincrement())
+  title     String?
+  text      String
+  imageUrl  String?
+  subject   String
+  schoolId  Int
+  createdAt DateTime @default(now())
+  questions Question[]
+
+  @@index([schoolId])
 }
 
 model Exam {
@@ -914,19 +972,77 @@ model Exam {
   name           String
   date           String
   duration       Int
-  status         String   @default("Yaqinlashmoqda")
+  // Qoralama → Tayyor (savollar qulflangan) → Tekshirilmoqda → E'lon qilindi
+  status         String   @default("Qoralama")
   blocks         Json     // ExamBlock[] — always read as whole, no per-field queries needed
   totalQuestions Int      @default(0)
   maxScore       Float    @default(0)
-  variants       Json?    // Variant[] — generated and stored here
+  variants       Json?    // eski shakl; variantlar endi ExamVariant jadvalida
   createdAt      DateTime @default(now())
+
+  // Ball tizimi: 'blok' — har blok savoliga o'z bali (DTM kabi), 'foiz' — har savol 1.
+  scoring        String   @default("blok")
+  // Qatnashadigan filiallar. Bo'sh — faqat imtihon yaratilgan filial.
+  branchIds      Int[]    @default([])
+  // Smenalar, variantlar, aralashtirish, reyting, xabar, bekor qilingan
+  // savollar va kalit tuzatishlari — lib/imtihon.js `sozlamaniTozala`.
+  settings       Json?
+  lockedAt       DateTime?
+  publishedAt    DateTime?
+  publishedById  Int?
+  seed           Int?
 
   schoolId       Int
   school         School   @relation(fields: [schoolId], references: [id])
   results        ExamResult[]
   assignments    ExamAssignment[]
+  examVariants   ExamVariant[]
+  seats          ExamSeat[]
 
   @@index([schoolId])
+}
+
+// Smena va variant bo'yicha savollar tartibi va kaliti. Brauzerga kalitsiz
+// ketadi; kalitni faqat "imtihonlar.kalit" ruxsati borlar ko'radi.
+model ExamVariant {
+  id        Int      @id @default(autoincrement())
+  examId    Int
+  exam      Exam     @relation(fields: [examId], references: [id], onDelete: Cascade)
+  session   Int      @default(1)
+  code      String   // "A", "B", ...
+  // [{n, q, b, t, m, k, j, p, pa}] — varaqdagi raqam, savol, blok, turi,
+  // javoblar tartibi, to'g'ri javob, qabul qilinadigan raqamlar, bali, matn.
+  items     Json
+  createdAt DateTime @default(now())
+
+  @@unique([examId, session, code])
+}
+
+// Imtihon qatnashchisi va uning o'rni. Markaz o'quvchisi yoki tashqi
+// qatnashchi (studentId bo'sh, ism va telefon shu yerda). `sheetCode` —
+// javob varaqasidagi QR va qo'lda terish uchun qisqa kod.
+model ExamSeat {
+  id         Int      @id @default(autoincrement())
+  examId     Int
+  exam       Exam     @relation(fields: [examId], references: [id], onDelete: Cascade)
+  schoolId   Int
+  studentId  Int?
+  student    Student? @relation(fields: [studentId], references: [id], onDelete: SetNull)
+  guestName  String?
+  guestPhone String?
+  groupId    Int?     // qaysi kurs orqali qatnashadi (kurs ichidagi o'rin shu bo'yicha)
+  session    Int      @default(1)
+  roomId     Int?
+  row        Int?
+  col        Int?
+  variant    String?
+  sheetCode  String   @unique
+  status     String   @default("rejada") // rejada | keldi | kelmadi
+  createdAt  DateTime @default(now())
+  results    ExamResult[]
+
+  @@unique([examId, studentId])
+  @@index([examId, session, roomId])
 }
 
 model ExamAssignment {
@@ -943,12 +1059,13 @@ model ExamAssignment {
 
 model ExamResult {
   id          Int      @id @default(autoincrement())
-  studentId   Int
-  student     Student  @relation(fields: [studentId], references: [id])
+  // Tashqi qatnashchida bo'sh (u ExamSeat orqali topiladi).
+  studentId   Int?
+  student     Student? @relation(fields: [studentId], references: [id], onDelete: Restrict)
   examId      Int
   exam        Exam     @relation(fields: [examId], references: [id], onDelete: Cascade)
   variantCode String?
-  answers     Json?    // Record<number, 'A'|'B'|'C'|'D'|null>
+  answers     Json?    // yakuniy javoblar {n: 'A'..'F' | '' | '*' | '1/2'} — skaner + operator
   score       Float    @default(0)
   percentage  Float    @default(0)
   blockScores Json?    // {subject: string, earned: number, max: number}[]
@@ -957,8 +1074,27 @@ model ExamResult {
   schoolId    Int
   school      School   @relation(fields: [schoolId], references: [id])
 
+  seatId       Int?
+  seat         ExamSeat? @relation(fields: [seatId], references: [id], onDelete: SetNull)
+  session      Int?
+  raw          Json?     // skanerning o'zi o'qigani {n: {v, f}}
+  flags        Json?     // operator ko'rishi kerak bo'lganlar [{n, sabab}]
+  manual       Json?     // operator qarori {n: 'B' | '' | {ball: 2}} — qayta skan buni o'zgartirmaydi
+  pages        Json?     // varaq rasmlari {"1": {url, at}}
+  source       String?   // skaner | kamera | qolda
+  reviewStatus String    @default("avto") // avto | shubhali | tekshirildi
+  reviewedById Int?
+  reviewedAt   DateTime?
+  detail       Json?     // har savol [{n, q, javob, togri, ball}] — tahlil uchun
+  rank         Int?
+  rankBranch   Int?
+  rankGroup    Int?
+  notifiedAt   DateTime?
+  notifyStatus String?
+
   @@unique([studentId, examId])
   @@index([examId, schoolId])
+  @@index([seatId])
 }
 
 // One row per (school, month) that monthly billing has been started for.
@@ -1195,4 +1331,32 @@ model PaymeLog {
 
   @@index([schoolId, createdAt])
   @@index([paymeId])
+}
+
+// Klik orqali to'lov (egasi, 2026-09-24): to'lovchi chekni ko'rsatadi, xodim
+// chekdagi to'langan sana-vaqtni kiritadi, administrator bank ilovasida pul
+// kelganini ko'rib tasdiqlaydi. Tasdiqlanmaguncha Payment yozilmaydi — balans,
+// kassa, hisobot va ustoz ulushi bu qatorni umuman ko'rmaydi. Tasdiqlanganda
+// oddiy Payment yaratiladi va `paymentId` ga yoziladi.
+model TolovTasdiq {
+  id            Int       @id @default(autoincrement())
+  schoolId      Int
+  studentId     Int
+  amount        Float
+  type          String    @default("Klik")
+  paidAt        String    // chekdagi vaqt, Toshkent: "2026-09-24T14:32"
+  receipt       String?   // chek rasmi (Storage URL)
+  note          String?
+  status        String    @default("kutilmoqda") // kutilmoqda | tasdiqlandi | rad etildi
+  createdById   Int?
+  createdByName String?
+  createdAt     DateTime  @default(now())
+  reviewedById  Int?
+  reviewedByName String?
+  reviewedAt    DateTime?
+  reason        String?   // rad etish sababi
+  paymentId     Int?
+
+  @@index([schoolId, status])
+  @@index([studentId])
 }

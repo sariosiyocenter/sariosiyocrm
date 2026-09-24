@@ -3,7 +3,8 @@ import { Plus, X } from 'lucide-react';
 import { narxHisobla, tarifniTozalash, somMatni } from '../../lib/transportNarx.js';
 
 /**
- * Haydovchining yo'l haqi tarifi — xodim kartasida (Xodimlar → Haydovchi).
+ * Haydovchining yo'l haqi tarifi — Logistika → "Yo'l haqi" bo'limida
+ * (2026-09-24 gacha Xodimlar → haydovchi kartasida edi).
  *
  * Ikki xil: har bir o'quvchiga bir xil narx yoki markazdan uyigacha masofaga
  * qarab oraliqlar ("5 km gacha — 3 000", "10 km gacha — 10 000", "undan uzoq —
