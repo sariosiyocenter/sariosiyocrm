@@ -386,6 +386,18 @@ export function registerPaymeRoutes(app) {
     } catch (e) { next(e); }
   });
 
+  // O'quvchining Payme ID si (telefon raqami yoki №) — profilda ko'rsatish uchun.
+  app.get('/api/payme/pay-id/:studentId', authenticate, async (req, res, next) => {
+    try {
+      const studentId = parseInt(req.params.studentId);
+      if (!Number.isInteger(studentId)) return res.status(400).json({ error: 'studentId required' });
+      const student = await prisma.student.findUnique({ where: { id: studentId }, select: { schoolId: true } });
+      if (!student) return res.status(404).json({ error: "O'quvchi topilmadi" });
+      if (!(await canAccessSchool(req.user, student.schoolId))) return res.status(403).json({ error: "Ruxsat yo'q" });
+      res.json({ payId: await payme.payIdFor(studentId) });
+    } catch (e) { next(e); }
+  });
+
   app.post('/api/payme/:token([A-Za-z0-9_-]{24,128})', webhookLimiter, webhook);
   // Hujjat: POST bo'lmagan so'rov — -32300. Token tekshirilmaydi, shuning
   // uchun bu javob manzil mavjudligini ham oshkor qilmaydi.

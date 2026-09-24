@@ -11,7 +11,7 @@ import { parseLatLng, distanceKm } from '../../lib/tartib.js';
 import { studentLedger } from '../../services/ledger.js';
 import {
     createOrder as paymeCreateOrder, loadSettings as paymeLoadSettings, isConfigured as paymeIsConfigured,
-    MIN_AMOUNT as PAYME_MIN, MAX_AMOUNT as PAYME_MAX,
+    MIN_AMOUNT as PAYME_MIN, MAX_AMOUNT as PAYME_MAX, payIdFor as paymePayIdFor,
 } from '../../services/payme.js';
 
 const somFmt = (n) => Number(n || 0).toLocaleString('ru-RU');
@@ -522,7 +522,8 @@ export const setupBotHandlers = (botInstance, botSchoolId) => {
         if (paymeIsConfigured(paymeSettings) && paymeSettings.paymeMode === 'live') {
             // Payme ilovasidan to'lash uchun faqat o'quvchi ID si kerak: pul
             // balansga tushadi, kurs so'ralmaydi va ko'rsatilmaydi (2026-09-23).
-            msg += `\n\u{1F194} Payme ilovasida o'quvchi ID: ${student.id}`;
+            // Payme ID — telefon raqami (+998 siz); aka-uka bitta raqamda bo'lsa №.
+            msg += `\n\u{1F194} Payme ilovasida o'quvchi ID: ${(await paymePayIdFor(student.id)) || student.id}`;
             return ctx.reply(msg, Markup.inlineKeyboard([[Markup.button.callback("💳 Payme orqali to'lash", 'payme_start')]]));
         }
         ctx.reply(msg);

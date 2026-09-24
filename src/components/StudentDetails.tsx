@@ -283,6 +283,22 @@ export default function StudentDetails() {
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [student?.id, hisobKaliti]);
 
+    // Payme ID — ota-ona Payme ilovasiga yozadigan raqam: telefon (+998 siz),
+    // aka-uka bitta raqamda bo'lsa №. Server hisoblaydi — filialdagi
+    // takrorlarni faqat u biladi.
+    const paymeYoqilgan = settings.paymeMode === 'live' || settings.paymeMode === 'test';
+    const [payId, setPayId] = useState<string | null>(null);
+    useEffect(() => {
+        setPayId(null);
+        if (!student?.id || !paymeYoqilgan) return;
+        let off = false;
+        fetch(`/api/payme/pay-id/${student.id}`, { headers: { Authorization: `Bearer ${localStorage.getItem('token')}` } })
+            .then(r => (r.ok ? r.json() : null))
+            .then(j => { if (!off && j?.payId) setPayId(String(j.payId)); })
+            .catch(() => { /* ko'rinmay turadi */ });
+        return () => { off = true; };
+    }, [student?.id, student?.phone, paymeYoqilgan]);
+
     if (!student) {
         return (
             <div className="flex flex-col items-center justify-center py-24 bg-sirt rounded-2xl border border-chiziq shadow-sm transition-colors">
@@ -670,6 +686,14 @@ export default function StudentDetails() {
                         <div className="flex flex-wrap items-center gap-x-2 gap-y-1 mt-1.5">
                             <span className="num text-[12px] text-matn-xira">&#8470;{student.id}</span>
                             <span className="w-1 h-1 rounded-full bg-matn-xira" />
+                            {payId && (
+                                <>
+                                    <span className="num text-[12px] text-matn-xira" title="Ota-ona Payme ilovasida shu raqamni yozadi">
+                                        Payme ID: <span className="text-matn font-semibold">{payId}</span>
+                                    </span>
+                                    <span className="w-1 h-1 rounded-full bg-matn-xira" />
+                                </>
+                            )}
                             <span className={`px-2 py-0.5 rounded-md text-[11px] ${
                                 student.status === 'Faol' ? 'bg-yaxshi-fon text-yaxshi' :
                                 student.status === 'Sinov' ? 'bg-ogoh-fon text-ogoh' :
