@@ -3,7 +3,8 @@ import { X, Copy, Check, Send, Link2, Ban, ExternalLink } from 'lucide-react';
 import { useCRM } from '../context/CRMContext';
 
 /**
- * Payme havolasi. Xodim kurs va summani tanlaydi, server buyurtma yaratadi,
+ * Payme havolasi. Xodim summani kiritadi (kurs tanlanmaydi — 2026-09-23 dan
+ * pul faqat balansga tushadi), server buyurtma yaratadi,
  * havola + QR ko'rsatiladi; ota-onaning Telegramiga tugma bilan yuborish
  * mumkin. Summa buyurtmada qotib qoladi — havolani o'zgartirib boshqa summa
  * to'lab bo'lmaydi.
@@ -30,9 +31,8 @@ export default function PaymeLinkModal({ studentId, onClose }: { studentId: numb
     const { students, settings, showNotification } = useCRM();
     const student = students.find(s => s.id === studentId);
 
-    const [courses, setCourses] = useState<Course[]>([]);
+    const [totals, setTotals] = useState<{ debt: number; oylik: number } | null>(null);
     const [loadingCourses, setLoadingCourses] = useState(true);
-    const [groupId, setGroupId] = useState<number | ''>('');
     const [amount, setAmount] = useState('');
     const [orders, setOrders] = useState<Order[]>([]);
     const [creating, setCreating] = useState(false);
@@ -54,30 +54,24 @@ export default function PaymeLinkModal({ studentId, onClose }: { studentId: numb
             .then(r => r.ok ? r.json() : null)
             .then(l => {
                 const list: Course[] = (l?.courses || []).filter((c: Course) => c.isMember);
-                setCourses(list);
-                if (list.length === 1) pick(list[0]);
+                const debt = Math.max(0, Math.round(Number(l?.debt) || 0));
+                const oylik = list.reduce((a, c) => a + (c.monthlyPrice || 0), 0);
+                setTotals({ debt, oylik });
+                // Taklif: qarz bo'lsa qarz, bo'lmasa oylik jami.
+                setAmount(String(debt > 0 ? debt : oylik || ''));
             })
             .catch(e => console.error('[payme] ledger:', e))
             .finally(() => setLoadingCourses(false));
         loadOrders();
     }, [studentId]);
 
-    const pick = (c: Course) => {
-        setGroupId(c.groupId);
-        // Taklif: qarz bo'lsa qarz, bo'lmasa oylik narx.
-        setAmount(String(c.debt > 0 ? c.debt : c.monthlyPrice || ''));
-    };
-
-    const selected = courses.find(c => c.groupId === groupId);
-
     const create = async (e: React.FormEvent) => {
         e.preventDefault();
         const sum = Math.round(Number(String(amount).replace(/[^\d]/g, '')));
         if (!sum) { showNotification('Summani kiriting', 'error'); return; }
-        if (courses.length && !groupId) { showNotification('Kursni tanlang', 'error'); return; }
         setCreating(true);
         try {
-            const r = await fetch('/api/payme/orders', { method: 'POST', headers: auth(), body: JSON.stringify({ studentId, groupId: groupId || null, amount: sum }) });
+            const r = await fetch('/api/payme/orders', { method: 'POST', headers: auth(), body: JSON.stringify({ studentId, groupId: null, amount: sum }) });
             const j = await r.json();
             if (!r.ok) throw new Error(j.error || 'Xatolik');
             const QRCodeLib = await import('qrcode');
@@ -159,7 +153,7 @@ export default function PaymeLinkModal({ studentId, onClose }: { studentId: numb
                             <div className="flex-1 space-y-2 text-center sm:text-left">
                                 <p className="text-2xl font-black text-matn">{money(current.order.amount)} <span className="text-sm text-matn-xira">so'm</span></p>
                                 <p className="text-[11px] font-bold text-matn-xira">
-                                    {selected ? `${selected.courseName} · ${selected.groupName}` : 'Umumiy'}<br />
+                                    Balansga<br />
                                     Buyurtma: <span className="font-mono text-matn">{current.order.id}</span><br />
                                     {new Date(current.order.expiresAt).toLocaleDateString('ru-RU')} gacha amal qiladi
                                 </p>
@@ -194,38 +188,19 @@ export default function PaymeLinkModal({ studentId, onClose }: { studentId: numb
                             </p>
                         )}
                         {loadingCourses && (
-                            <p className="text-[11px] font-bold text-matn-xira">Kurslar yuklanmoqda...</p>
-                        )}
-                        {courses.length > 0 && (
-                            <div>
-                                <label className="block text-[11px] font-extrabold text-matn-xira mb-2">Kurs</label>
-                                <div className="space-y-2">
-                                    {courses.map(c => (
-                                        <button type="button" key={c.groupId} onClick={() => pick(c)}
-                                            className={`w-full flex items-center justify-between gap-3 px-4 py-3 rounded-2xl border text-left cursor-pointer transition-colors ${groupId === c.groupId ? 'border-brand bg-brand/5' : 'border-chiziq bg-ichki hover:bg-gray-50 dark:hover:bg-gray-700'}`}>
-                                            <span>
-                                                <span className="block text-sm font-bold text-matn">{c.courseName} <span className="text-matn-xira">· {c.groupName}</span></span>
-                                                <span className="block text-[11px] font-bold text-matn-xira mt-0.5">
-                                                    Oylik {money(c.monthlyPrice)}{c.debt > 0 ? ` · qarz ${money(c.debt)}` : c.advance > 0 ? ` · avans ${money(c.advance)}` : ''}
-                                                </span>
-                                            </span>
-                                            {groupId === c.groupId && <Check size={16} className="text-brand shrink-0" />}
-                                        </button>
-                                    ))}
-                                </div>
-                            </div>
+                            <p className="text-[11px] font-bold text-matn-xira">Balans yuklanmoqda...</p>
                         )}
                         <div>
                             <label className="block text-[11px] font-extrabold text-matn-xira mb-2">Summa (so'm)</label>
                             <input type="text" inputMode="numeric" className={inp} value={amount} placeholder="500000"
                                 onChange={e => setAmount(e.target.value.replace(/[^\d]/g, ''))} />
-                            {selected && (
+                            {totals && (
                                 <div className="flex flex-wrap gap-2 mt-2">
-                                    {selected.debt > 0 && (
-                                        <button type="button" onClick={() => setAmount(String(selected.debt))} className="px-3 py-1.5 rounded-lg bg-ichki border border-chiziq text-[11px] font-bold text-matn cursor-pointer">Qarz: {money(selected.debt)}</button>
+                                    {totals.debt > 0 && (
+                                        <button type="button" onClick={() => setAmount(String(totals.debt))} className="px-3 py-1.5 rounded-lg bg-ichki border border-chiziq text-[11px] font-bold text-matn cursor-pointer">Qarz: {money(totals.debt)}</button>
                                     )}
-                                    {selected.monthlyPrice > 0 && (
-                                        <button type="button" onClick={() => setAmount(String(selected.monthlyPrice))} className="px-3 py-1.5 rounded-lg bg-ichki border border-chiziq text-[11px] font-bold text-matn cursor-pointer">Oylik: {money(selected.monthlyPrice)}</button>
+                                    {totals.oylik > 0 && (
+                                        <button type="button" onClick={() => setAmount(String(totals.oylik))} className="px-3 py-1.5 rounded-lg bg-ichki border border-chiziq text-[11px] font-bold text-matn cursor-pointer">Oylik: {money(totals.oylik)}</button>
                                     )}
                                 </div>
                             )}

@@ -274,14 +274,10 @@ export default function PaymeSettings() {
                 <p>3. <a href="https://test.paycom.uz" target="_blank" rel="noopener noreferrer" className="text-brand underline inline-flex items-center gap-1">Sandbox <ExternalLink size={10} /></a> da webhook manzili va test kaliti bilan avtomatik testlarni o'tkazing (buyurtma ID sini o'quvchi kartochkasidan "Payme havola" orqali oling).</p>
                 <p>4. Testlar o'tgach rejimni "Jonli" qiling — botda "Payme orqali to'lash" tugmasi paydo bo'ladi.</p>
                 <p className="text-xs font-black text-matn pt-2">Payme ilovasi katalogi</p>
-                {form.paymeScheme === 'student_only' ? (
-                    <p>Payme ilovasida ota-ona faqat o'quvchi ID sini (kartochkadagi raqam, masalan <span className="font-mono text-matn">299</span>) yozadi va summani o'zi kiritadi. Kurs so'ralmaydi: pul o'quvchining balansiga tushadi va balans taqsimoti qoidasi bo'yicha kurslarga bo'linadi. Bot va CRM havolasi ham shu bitta maydon bilan ketadi. Bu sxemani faqat Payme kassadan <span className="font-mono text-matn">course_id</span> maydonini o'chirgandan keyin tanlang.</p>
-                ) : form.paymeScheme === 'student' ? (
-                    <p>Payme ilovasida ota-ona o'quvchi ID sini (kartochkadagi raqam, masalan <span className="font-mono text-matn">299</span>) va kurs raqamini (<span className="font-mono text-matn">course_id</span>, masalan <span className="font-mono text-matn">7</span>) yozadi, summani o'zi kiritadi. Ikkala raqamni botdagi balans xabarida ko'radi. Bot va CRM havolasi ham shu ikki maydon bilan ketadi, to'lov kelganda server uni havola buyurtmasiga o'zi bog'laydi. Ikkalasi ham oddiy raqam maydoni, ro'yxat emas: yangi kurs qo'shilsa Payme'da hech narsa o'zgartirilmaydi. Kurs raqamlari:</p>
-                ) : (
-                    <p>Kassa Payme ilovasida chiqsa, ota-ona o'sha <span className="font-mono text-matn">order_id</span> maydoniga o'quvchi raqamini (kartochkadagi №, masalan <span className="font-mono text-matn">299</span>) yoki aniq kurs uchun <span className="font-mono text-matn">299-7</span> ni yozadi va summani o'zi kiritadi. Havola va QR shu maydonga 16 belgili buyurtma kodini qo'yadi — server ikkalasini o'zi ajratadi. Kurs ko'rsatilmasa: bitta kursda o'qisa o'sha kursga, bir nechtada "umumiy". Ota-ona o'z kodlarini botdagi balans xabarida ko'radi. Kurs raqamlari:</p>
+                <p>Payme ilovasida ota-ona faqat o'quvchi ID sini yozadi (kartochkadagi №, masalan <span className="font-mono text-matn">1152</span>) va summani o'zi kiritadi. Kurs so'ralmaydi: pul o'quvchining balansiga tushadi. O'quvchi ID si botdagi balans xabarida ham chiqadi.</p>
+                {form.paymeScheme === 'student' && (
+                    <p>Kassada hali <span className="font-mono text-matn">course_id</span> maydoni bor — havolalar uni o'zi to'ldiradi, ota-onaga ko'rinmaydi. Payme bu maydonni o'chirgach "Faqat o'quvchi ID" ni tanlang.</p>
                 )}
-                <p className="font-mono text-[10px] text-matn break-words">{groups.filter(g => courses.some(c => c.id === g.courseId && c.schoolId === selectedSchoolId)).map(g => { const fan = courses.find(c => c.id === g.courseId)?.name || ''; const nom = fan && !g.name.toLowerCase().includes(fan.toLowerCase()) ? `${fan} (${g.name})` : g.name; return `${g.id} — ${nom}`; }).join(' · ') || '—'}</p>
             </div>
 
             <div className="flex justify-end pt-4 border-t border-dashed border-chiziq/50">
@@ -306,7 +302,6 @@ export default function PaymeSettings() {
                                 <tr className="text-left text-matn-xira">
                                     <th className="py-2 pr-3">Vaqt</th>
                                     <th className="py-2 pr-3">O'quvchi</th>
-                                    <th className="py-2 pr-3">Guruh</th>
                                     <th className="py-2 pr-3 text-right">Summa</th>
                                     <th className="py-2 pr-3">Holat</th>
                                     <th className="py-2">Payme ID</th>
@@ -319,7 +314,6 @@ export default function PaymeSettings() {
                                         <tr key={t.id} className="border-t border-chiziq/60 text-matn">
                                             <td className="py-2 pr-3 whitespace-nowrap">{new Date(t.performTime || t.createTime).toLocaleString('ru-RU')}</td>
                                             <td className="py-2 pr-3">{t.studentName}{t.test && <span className="ml-1 text-[9px] text-amber-500">TEST</span>}</td>
-                                            <td className="py-2 pr-3">{t.groupName}</td>
                                             <td className="py-2 pr-3 text-right whitespace-nowrap">{money(t.amount)}</td>
                                             <td className="py-2 pr-3"><span className={`px-2 py-0.5 rounded-md border text-[10px] font-black ${s.cls}`}>{s.text}</span></td>
                                             <td className="py-2 font-mono text-[10px] text-matn-xira whitespace-nowrap">

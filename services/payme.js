@@ -229,12 +229,16 @@ export async function createOrder({ schoolId, studentId, groupId, amount, source
   if (!student) return { error: "O'quvchi topilmadi" };
   if (student.status === 'Ochirilgan') return { error: "O'quvchi o'chirilgan" };
 
+  // 2026-09-23 dan pul faqat balansga tushadi: to'lovchi kurs tanlamaydi.
+  // Kassada hali course_id maydoni bor ('student' sxemasi) — havola to'g'ri
+  // bo'lishi uchun o'quvchining birinchi kursi jimgina qo'yiladi. Pulga ta'siri
+  // yo'q: Payment baribir kurssiz yoziladi (PerformTransaction).
   let group = null;
   if (groupId) {
     group = student.groups.find(g => g.id === Number(groupId));
-    if (!group) return { error: "Guruh o'quvchiniki emas" };
-  } else if (student.groups.length) {
-    return { error: 'Qaysi kurs uchun ekanini tanlang' };
+    if (!group) return { error: "Kurs o'quvchiniki emas" };
+  } else if (settings.paymeScheme === 'student') {
+    group = [...student.groups].sort((a, b) => a.id - b.id)[0] || null;
   }
   if (settings.paymeScheme === 'student' && !group) {
     return { error: "Payme uchun kurs kerak — o'quvchi hech bir kursda emas" };
@@ -354,11 +358,9 @@ export function kursLabel(group) {
 
 /** CheckPerformTransaction `additional`: kim uchun va qaysi kurs uchun. */
 async function payerInfo(acc) {
-  const [student, group] = await Promise.all([
-    acc.student ? acc.student : prisma.student.findUnique({ where: { id: acc.studentId }, select: { name: true } }),
-    acc.groupId ? prisma.group.findUnique({ where: { id: acc.groupId }, select: { name: true, course: { select: { name: true } } } }) : null,
-  ]);
-  return { oquvchi: shortName(student?.name), kurs: group ? kursLabel(group) : 'Umumiy' };
+  // Faqat o'quvchi: pul balansga tushadi, kurs ko'rsatilmaydi (2026-09-23).
+  const student = acc.student ? acc.student : await prisma.student.findUnique({ where: { id: acc.studentId }, select: { name: true } });
+  return { oquvchi: shortName(student?.name) };
 }
 
 /**

@@ -11,15 +11,15 @@ import { parseLatLng, distanceKm } from '../../lib/tartib.js';
 import { studentLedger } from '../../services/ledger.js';
 import {
     createOrder as paymeCreateOrder, loadSettings as paymeLoadSettings, isConfigured as paymeIsConfigured,
-    MIN_AMOUNT as PAYME_MIN, MAX_AMOUNT as PAYME_MAX, kursLabel as paymeKursLabel,
+    MIN_AMOUNT as PAYME_MIN, MAX_AMOUNT as PAYME_MAX,
 } from '../../services/payme.js';
 
 const somFmt = (n) => Number(n || 0).toLocaleString('ru-RU');
 
-// "Boshqa summa" so'rovi ForceReply bilan yuboriladi va guruh raqami xabar
-// oxirida turadi ("· G12"). Javob kelganda shu yerdan o'qiladi — serverda
-// holat saqlanmaydi (Vercelda har so'rov boshqa konteynerga tushishi mumkin).
-const PAYME_PROMPT_RE = /·\sG(\d+)\s*$/;
+// "Boshqa summa" so'rovi ForceReply bilan yuboriladi, xabar oxirida belgi
+// turadi ("· B"; eski xabarlarda "· G12"). Javob shu belgi orqali taniladi —
+// serverda holat saqlanmaydi (Vercelda har so'rov boshqa konteynerga tushadi).
+const PAYME_PROMPT_RE = /·\s(?:G\d+|B)\s*$/;
 
 const bot = new Telegraf(process.env.TELEGRAM_BOT_TOKEN || 'fake_token_for_init');
 
@@ -521,33 +521,18 @@ export const setupBotHandlers = (botInstance, botSchoolId) => {
         // Kesh emas, to'g'ridan-to'g'ri: admin rejimni o'zgartirsa darhol ko'rinsin.
         const paymeSettings = await paymeLoadSettings(schoolId);
         if (paymeIsConfigured(paymeSettings) && paymeSettings.paymeMode === 'live') {
-            // Payme ilovasi katalogidan to'lash: o'quvchi ID si va (bir nechta kursda
-            // o'qisa) kurs raqami. Raqamlar shu yerda CRM'dan olinadi: Payme'da
-            // ro'yxat yo'q, yangi kurs qo'shilsa u yerda hech narsa o'zgarmaydi.
-            const kurslar = await prisma.group.findMany({
-                where: { students: { some: { id: student.id } } },
-                select: { id: true, name: true, course: { select: { name: true } } },
-                orderBy: { id: 'asc' },
-            });
-            if (paymeSettings.paymeScheme === 'student_only') {
-                // Kassada kurs maydoni yo'q: faqat o'quvchi raqami kerak.
-                // Pul balansga tushadi, taqsimot qoidasi bo'yicha bo'linadi.
-                msg += `\n\u{1F194} Payme ilovasida o'quvchi ID: ${student.id}`;
-            } else if (paymeSettings.paymeScheme === 'student') {
-                msg += `\n\u{1F194} Payme ilovasida o'quvchi ID: ${student.id}`;
-                if (kurslar.length) msg += `\n\u{1F4DA} Kurs raqami: ${kurslar.map(g => `${paymeKursLabel(g)} — ${g.id}`).join(', ')}`;
-            } else {
-                msg += `\n\u{1F194} Payme ilovasida to'lov raqami: ${student.id}`;
-                if (kurslar.length > 1) {
-                    msg += `\n\u{1F4DA} Aniq kursga to'lash uchun: ${kurslar.map(g => `${paymeKursLabel(g)} — ${student.id}-${g.id}`).join(', ')}`;
-                }
-            }
+            // Payme ilovasidan to'lash uchun faqat o'quvchi ID si kerak: pul
+            // balansga tushadi, kurs so'ralmaydi va ko'rsatilmaydi (2026-09-23).
+            msg += `\n\u{1F194} Payme ilovasida o'quvchi ID: ${student.id}`;
             return ctx.reply(msg, Markup.inlineKeyboard([[Markup.button.callback("💳 Payme orqali to'lash", 'payme_start')]]));
         }
         ctx.reply(msg);
     });
 
-    // --- Payme: kurs → summa → havola ---------------------------------------
+    // --- Payme: summa → havola -----------------------------------------------
+    // 2026-09-23 dan pul faqat balansga tushadi: ota-ona kurs tanlamaydi.
+    // Eski xabarlardagi kursli tugmalar (payme_c_/payme_a_/payme_o_) ham
+    // ishlayveradi — kurs raqami e'tiborsiz qoldiriladi.
 
     const paymeStudent = async (ctx) => {
         const schoolId = await filial(ctx);
@@ -556,10 +541,10 @@ export const setupBotHandlers = (botInstance, botSchoolId) => {
         return user.data;
     };
 
-    const paymeSendLink = async (ctx, student, groupId, amount) => {
+    const paymeSendLink = async (ctx, student, amount) => {
         const schoolId = await filial(ctx);
         const r = await paymeCreateOrder({
-            schoolId, studentId: student.id, groupId, amount,
+            schoolId, studentId: student.id, groupId: null, amount,
             source: 'bot', chatId: ctx.chat.id,
             returnBase: (process.env.APP_URL || '').replace(/\/+$/, ''),
         });
@@ -570,6 +555,27 @@ export const setupBotHandlers = (botInstance, botSchoolId) => {
         );
     };
 
+    const paymeBalanceMenu = async (ctx, student) => {
+        const ledger = await studentLedger(student.id);
+        const kurslar = ledger.courses.filter(c => c.isMember);
+        if (!kurslar.length) return ctx.reply("Siz hozir hech qaysi kursda emassiz — to'lov uchun markazga murojaat qiling.");
+        const debt = Math.max(0, Math.round(ledger.debt || 0));
+        const oylik = kurslar.reduce((a, c) => a + (c.monthlyPrice || 0), 0);
+        const rows = [];
+        if (debt >= PAYME_MIN && debt <= PAYME_MAX) rows.push([Markup.button.callback(`Qarzni yopish — ${somFmt(debt)} so'm`, `payme_b_${debt}`)]);
+        if (oylik >= PAYME_MIN && oylik <= PAYME_MAX && oylik !== debt) rows.push([Markup.button.callback(`Oylik to'lov — ${somFmt(oylik)} so'm`, `payme_b_${oylik}`)]);
+        rows.push([Markup.button.callback('✏️ Boshqa summa', 'payme_ob')]);
+        let info = `💰 Qarz: ${somFmt(debt)} so'm\n`;
+        if (ledger.wallet > 0) info += `Balansda: ${somFmt(ledger.wallet)} so'm\n`;
+        info += `Oylik: ${somFmt(oylik)} so'm\n`;
+        return ctx.reply(info + "\nPul balansga tushadi. Summani tanlang:", Markup.inlineKeyboard(rows));
+    };
+
+    const paymeAskAmount = (ctx) => ctx.reply(
+        "✏️ Summani so'mda yozing (masalan: 500000)\n· B",
+        { reply_markup: { force_reply: true, input_field_placeholder: '500000', selective: true } }
+    );
+
     botInstance.action('payme_start', async (ctx) => {
         const schoolId = await filial(ctx);
         await ctx.answerCbQuery().catch(() => {});
@@ -577,64 +583,36 @@ export const setupBotHandlers = (botInstance, botSchoolId) => {
         if (!student) return;
         const paymeSettings = await paymeLoadSettings(schoolId);
         if (!paymeIsConfigured(paymeSettings) || paymeSettings.paymeMode !== 'live') return ctx.reply("Payme orqali to'lov hozircha ulanmagan.");
-
-        const ledger = await studentLedger(student.id);
-        const courses = ledger.courses.filter(c => c.isMember);
-        if (!courses.length) return ctx.reply("Siz hozir hech qaysi guruhda emassiz — to'lov uchun markazga murojaat qiling.");
-        if (courses.length === 1) return paymeCourseMenu(ctx, student, courses[0]);
-
-        const buttons = courses.map(c => [Markup.button.callback(
-            `${c.courseName} — ${c.groupName}${c.debt > 0 ? ` (qarz ${somFmt(c.debt)})` : ''}`.slice(0, 60),
-            `payme_c_${c.groupId}`
-        )]);
-        return ctx.reply("Qaysi kurs uchun to'laysiz?", Markup.inlineKeyboard(buttons));
+        return paymeBalanceMenu(ctx, student);
     });
-
-    const paymeCourseMenu = (ctx, student, c) => {
-        const rows = [];
-        if (c.debt >= PAYME_MIN && c.debt <= PAYME_MAX) rows.push([Markup.button.callback(`Qarzni yopish — ${somFmt(c.debt)} so'm`, `payme_a_${c.groupId}_${c.debt}`)]);
-        if (c.monthlyPrice >= PAYME_MIN && c.monthlyPrice <= PAYME_MAX) rows.push([Markup.button.callback(`Oylik to'lov — ${somFmt(c.monthlyPrice)} so'm`, `payme_a_${c.groupId}_${c.monthlyPrice}`)]);
-        rows.push([Markup.button.callback('✏️ Boshqa summa', `payme_o_${c.groupId}`)]);
-        let info = `📚 ${c.courseName} (${c.groupName})\n`;
-        info += `Oylik: ${somFmt(c.monthlyPrice)} so'm\n`;
-        info += `Qarz: ${somFmt(c.debt)} so'm\n`;
-        if (c.advance > 0) info += `Avans: ${somFmt(c.advance)} so'm\n`;
-        if (c.paidUntil) info += `To'langan: ${c.paidUntil} gacha\n`;
-        return ctx.reply(info + '\nSummani tanlang:', Markup.inlineKeyboard(rows));
-    };
 
     botInstance.action(/^payme_c_(\d+)$/, async (ctx) => {
         await ctx.answerCbQuery().catch(() => {});
         const student = await paymeStudent(ctx);
         if (!student) return;
-        const groupId = parseInt(ctx.match[1]);
-        const ledger = await studentLedger(student.id);
-        const c = ledger.courses.find(x => x.groupId === groupId && x.isMember);
-        if (!c) return ctx.reply('Guruh topilmadi.');
-        return paymeCourseMenu(ctx, student, c);
+        return paymeBalanceMenu(ctx, student);
+    });
+
+    // Summa tugma ichidan keladi; createOrder uni chegaralarga tekshiradi.
+    botInstance.action(/^payme_b_(\d+)$/, async (ctx) => {
+        await ctx.answerCbQuery().catch(() => {});
+        const student = await paymeStudent(ctx);
+        if (!student) return;
+        return paymeSendLink(ctx, student, parseInt(ctx.match[1]));
     });
 
     botInstance.action(/^payme_a_(\d+)_(\d+)$/, async (ctx) => {
         await ctx.answerCbQuery().catch(() => {});
         const student = await paymeStudent(ctx);
         if (!student) return;
-        // Summa tugma ichidan keladi; createOrder uni chegaralarga tekshiradi,
-        // guruh o'quvchiniki ekanini ham — begona qiymat o'tmaydi.
-        return paymeSendLink(ctx, student, parseInt(ctx.match[1]), parseInt(ctx.match[2]));
+        return paymeSendLink(ctx, student, parseInt(ctx.match[2]));
     });
 
-    botInstance.action(/^payme_o_(\d+)$/, async (ctx) => {
-        const schoolId = await filial(ctx);
+    botInstance.action(/^payme_o(?:b|_\d+)$/, async (ctx) => {
         await ctx.answerCbQuery().catch(() => {});
         const student = await paymeStudent(ctx);
         if (!student) return;
-        const groupId = parseInt(ctx.match[1]);
-        const group = await prisma.group.findFirst({ where: { id: groupId, schoolId }, select: { name: true, course: { select: { name: true } } } });
-        if (!group) return ctx.reply('Guruh topilmadi.');
-        return ctx.reply(
-            `✏️ Summani so'mda yozing (masalan: 500000)\n${group.course?.name || ''} · G${groupId}`,
-            { reply_markup: { force_reply: true, input_field_placeholder: '500000', selective: true } }
-        );
+        return paymeAskAmount(ctx);
     });
 
     botInstance.hears('✅ Davomat', async (ctx) => {
@@ -1462,7 +1440,7 @@ export const setupBotHandlers = (botInstance, botSchoolId) => {
             if (!student) return;
             const amount = parseInt(text.replace(/[^\d]/g, ''), 10);
             if (!Number.isInteger(amount)) return ctx.reply("Faqat raqam yozing, masalan: 500000");
-            return paymeSendLink(ctx, student, parseInt(paymeMatch[1]), amount);
+            return paymeSendLink(ctx, student, amount);
         }
 
         if (adminStates[tid] === 'AWAITING_BROADCAST') {
