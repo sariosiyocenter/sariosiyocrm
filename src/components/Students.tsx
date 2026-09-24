@@ -223,7 +223,7 @@ export default function Students() {
     const DEFAULT_FILTERS = {
         status: '', groupId: '', balanceStatus: 'all', dateRange: 'all', orgType: '',
         muassasaSearch: '', region: '', district: '', location: '', missingInfo: '',
-        studyGoal: '', directionId: '', grade: '', gender: '', privilege: '',
+        studyGoal: '', directionId: '', grade: '', gender: '', privilege: '', teacherId: '',
     };
 
     /** Tez filtr chiplari uchun sanoq. Ular joriy filtrga bog'liq emas —
@@ -261,7 +261,8 @@ export default function Students() {
         directionId: '',
         grade: '',
         gender: '',
-        privilege: ''
+        privilege: '',
+        teacherId: ''
     });
 
     // Ro'yxat allaqachon ochiq bo'lsa komponent qayta yaratilmaydi, shuning uchun
@@ -591,11 +592,36 @@ export default function Students() {
     // unda yo'q edi: tez filtr chipi bosilganda chip yonar, lekin useMemo eski
     // natijani qaytaraverardi va jadval o'zgarmasdi. "Kelmayotgan" chipi
     // davomatdan hisoblanadi, shuning uchun `attendances` ham kerak.
+    // Kurs → ustoz. Qidiruv qatoriga ustoz ismi yozilsa uning o'quvchilari
+    // chiqadi; "O'qituvchi" filtri ham shu xaritadan foydalanadi. Ilgari qidiruv
+    // faqat o'quvchining o'z ismi va telefonini ko'rardi, ustoz bo'yicha
+    // o'quvchini topishning umuman yo'li yo'q edi.
+    const groupTeacher = useMemo(() => {
+        const tName = new Map<number, string>();
+        (teachers || []).forEach(tc => tName.set(tc.id, (tc.name || '').toLowerCase()));
+        const out = new Map<number, { id: number; name: string }>();
+        (groups || []).forEach(g => {
+            if (g.teacherId) out.set(g.id, { id: g.teacherId, name: tName.get(g.teacherId) || '' });
+        });
+        return out;
+    }, [groups, teachers]);
+
+    // Filtrdagi ustozlar: kamida bitta kursi borlari, alifbo tartibida.
+    const teacherOptions = useMemo(() => {
+        const withGroups = new Set(Array.from(groupTeacher.values()).map(v => v.id));
+        return (teachers || [])
+            .filter(tc => withGroups.has(tc.id))
+            .sort((a, b) => displayName(a.name).localeCompare(displayName(b.name), 'uz'));
+    }, [teachers, groupTeacher]);
+
     const filteredStudents = React.useMemo(() => students.filter(s => {
-        const lowerSearch = search.toLowerCase();
+        const lowerSearch = search.trim().toLowerCase();
         const matchesSearch = (s.name || '').toLowerCase().includes(lowerSearch) ||
                (s.phone || '').toLowerCase().includes(lowerSearch) ||
-               (s.studentSchool || '').toLowerCase().includes(lowerSearch);
+               (s.studentSchool || '').toLowerCase().includes(lowerSearch) ||
+               (lowerSearch.length >= 2 && (s.groups || []).some(gid => (groupTeacher.get(gid)?.name || '').includes(lowerSearch)));
+        const matchesTeacher = !filters.teacherId
+            || (s.groups || []).some(gid => groupTeacher.get(gid)?.id === Number(filters.teacherId));
 
         const matchesStatus = !filters.status || s.status === filters.status;
         const matchesGroup = !filters.groupId || (filters.groupId === '__none__'
@@ -660,8 +686,8 @@ export default function Students() {
             matchesMissingInfo = fatherMissing || motherMissing;
         }
 
-        return matchesSearch && matchesStatus && matchesGroup && matchesGender && matchesPrivilege && matchesBalance && matchesDate && matchesOrgType && matchesGrade && matchesMuassasa && matchesRegion && matchesDistrict && matchesLocation && matchesMissingInfo && matchesGoal && matchesDirection;
-    }), [students, search, filters, quickFilter, attendances]);
+        return matchesSearch && matchesTeacher && matchesStatus && matchesGroup && matchesGender && matchesPrivilege && matchesBalance && matchesDate && matchesOrgType && matchesGrade && matchesMuassasa && matchesRegion && matchesDistrict && matchesLocation && matchesMissingInfo && matchesGoal && matchesDirection;
+    }), [students, search, filters, quickFilter, attendances, groupTeacher]);
 
     // Saralash filtrdan keyin: Excel eksporti ham ekrandagi tartibda chiqadi.
     const absences = useMemo(() => absenceCounts(attendances), [attendances]);
@@ -767,7 +793,7 @@ export default function Students() {
                         <Search size={14} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-matn-xira" />
                         <input
                             type="text"
-                            placeholder={t('search_placeholder_students')}
+                            placeholder={t('search_students_or_teacher')}
                             value={search}
                             onChange={e => setSearch(e.target.value)}
                             className="w-full pl-9 pr-4 py-2.5 bg-ichki border border-chiziq rounded-xl text-[13px] text-matn outline-none focus:border-brand transition-colors"
@@ -828,6 +854,14 @@ export default function Students() {
                                 <option value="">{t('all')}</option>
                                 <option value="__none__">Kurssizlar ({quickCounts.kurssiz})</option>
                                 {groups.map(g => <option key={g.id} value={g.id}>{g.name}</option>)}
+                            </select>
+                        </div>
+                        <div>
+                            <label className={lbl}>O'qituvchi</label>
+                            <select value={filters.teacherId} onChange={e => setFilters({...filters, teacherId: e.target.value})}
+                                className="w-full px-3 py-2 bg-ichki border border-chiziq rounded-xl text-[11px] font-bold text-gray-700 dark:text-white outline-none focus:border-brand transition-all cursor-pointer">
+                                <option value="">{t('all')}</option>
+                                {teacherOptions.map(tc => <option key={tc.id} value={tc.id}>{displayName(tc.name)}</option>)}
                             </select>
                         </div>
                         <div>
