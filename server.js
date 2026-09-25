@@ -6883,11 +6883,13 @@ async function eskizShablonYubor(body, schoolId) {
     clearTimeout(timeout);
     const data = await res.json().catch(() => ({}));
 
-    if (!res.ok || data.status === 'fail') {
-      const xato = data?.data?.errors
-        ? Object.values(data.data.errors).flat().join(', ')
-        : (data?.message || 'Eskiz rad etdi');
-      console.warn('[Eskiz shablon]', xato);
+    if (!res.ok || data.status === 'fail' || data.status === 'error') {
+      // Shu matn Eskizda allaqachon bo'lsa (ikkinchi marta yuborilgan) — rad
+      // etilgani emas: o'sha shablonning id si va holati olinadi.
+      const bor = await eskizdagiShablon(token, matn);
+      if (bor) return bor;
+      const xato = eskizXatosi(res, data);
+      console.warn('[Eskiz shablon]', res.status, JSON.stringify(data).slice(0, 500));
       return { status: 'xato: ' + xato, id: null };
     }
     const id = data?.data?.id ?? data?.id ?? null;
@@ -6895,6 +6897,41 @@ async function eskizShablonYubor(body, schoolId) {
   } catch (err) {
     console.error('[Eskiz shablon]', err.message);
     return { status: 'xato: ' + err.message, id: null };
+  }
+}
+
+/**
+ * Eskiz javobidagi xato matni. Eskiz xatoni turli shaklda qaytaradi:
+ * {message}, {data: {errors: {...}}} yoki JSend {status: 'fail', data: {template: [...]}}.
+ * Ilgari faqat birinchi ikkitasi o'qilardi va qolganida "Eskiz rad etdi"
+ * deb sabab yo'qolardi (egasi, 2026-09-25).
+ */
+function eskizXatosi(res, data) {
+  const qism = [];
+  const yigish = (v) => {
+    if (v === null || v === undefined || v === '') return;
+    if (typeof v === 'string' || typeof v === 'number') qism.push(String(v));
+    else if (Array.isArray(v)) v.forEach(yigish);
+    else if (typeof v === 'object') Object.values(v).forEach(yigish);
+  };
+  yigish(data?.data?.errors);
+  if (!qism.length) yigish(data?.errors);
+  if (!qism.length && data?.data && typeof data.data === 'object') yigish(data.data);
+  if (!qism.length) yigish(data?.message);
+  return (qism.join(', ') || `Eskiz rad etdi (HTTP ${res.status})`).slice(0, 300);
+}
+
+/** Eskiz kabinetida aynan shu matnli shablon bormi — {status, id} yoki null. */
+async function eskizdagiShablon(token, matn) {
+  try {
+    const r = await fetch('https://notify.eskiz.uz/api/user/templates', { headers: { Authorization: 'Bearer ' + token } });
+    const d = await r.json().catch(() => ({}));
+    const royxat = d?.result || d?.data || [];
+    const norm = (s) => String(s || '').replace(/\s+/g, ' ').trim();
+    const topildi = (Array.isArray(royxat) ? royxat : []).find(x => norm(x.template ?? x.text ?? x.message) === norm(matn));
+    return topildi ? { status: topildi.status || 'moderation', id: topildi.id ? String(topildi.id) : null } : null;
+  } catch (_) {
+    return null;
   }
 }
 
@@ -7008,6 +7045,22 @@ app.delete('/api/messaging/templates/:id', authenticate, async (req, res, next) 
   try {
     await prisma.messageTemplate.delete({ where: { id: parseInt(req.params.id) } });
     res.json({ success: true });
+  } catch (err) { next(err); }
+});
+
+// Eskizga qayta yuborish: moderatsiyaga yuborilmagan yoki xato bilan qaytgan
+// shablon uchun (matnni o'zgartirmasdan).
+app.post('/api/messaging/templates/:id/eskiz', authenticate, async (req, res, next) => {
+  try {
+    const id = parseInt(req.params.id);
+    const t = await prisma.messageTemplate.findUnique({ where: { id } });
+    if (!t || t.schoolId !== req.user.schoolId) return res.status(404).json({ error: 'Shablon topilmadi' });
+    const eskiz = await eskizShablonYubor(t.body, req.user.schoolId);
+    const template = await prisma.messageTemplate.update({
+      where: { id },
+      data: { eskizStatus: eskiz.status, eskizTemplateId: eskiz.id },
+    });
+    res.json(template);
   } catch (err) { next(err); }
 });
 

@@ -91,8 +91,9 @@ function KopTanlov({ variantlar, tanlangan, ozgartir, hammasiMatni, birlik, inpC
 function eskizHolatBelgisi(holat?: string | null) {
   if (!holat) return { matn: 'Eskizga yuborilmagan', rang: 'text-slate-400', nuqta: 'bg-slate-300' };
   if (holat === 'confirmed') return { matn: 'SMS: tasdiqlangan', rang: 'text-emerald-500', nuqta: 'bg-emerald-500' };
-  if (holat === 'moderation') return { matn: 'SMS: moderatsiyada', rang: 'text-amber-500', nuqta: 'bg-amber-500' };
-  if (holat === 'rejected') return { matn: 'SMS: rad etilgan', rang: 'text-rose-500', nuqta: 'bg-rose-500' };
+  // Eskiz "inproccess" (ko'rib chiqilmoqda) ham qaytaradi — bu xato emas.
+  if (['moderation', 'inproccess', 'inprocess', 'in_process', 'pending'].includes(holat)) return { matn: 'SMS: moderatsiyada', rang: 'text-amber-500', nuqta: 'bg-amber-500' };
+  if (holat === 'rejected' || holat === 'reject') return { matn: "SMS: Eskiz rad etdi — matnni o'zgartiring", rang: 'text-rose-500', nuqta: 'bg-rose-500' };
   if (holat === 'service') return { matn: 'SMS: xizmat matni', rang: 'text-sky-500', nuqta: 'bg-sky-500' };
   return { matn: holat, rang: 'text-rose-500', nuqta: 'bg-rose-500' };
 }
@@ -447,6 +448,25 @@ export default function Messaging() {
     fetchRules();
     fetchLogs();
   }, [selectedSchoolId]);
+
+  // Eskizga qayta yuborish (moderatsiyaga bormagan yoki xato bilan qaytgan shablon).
+  const [eskizYuborilmoqda, setEskizYuborilmoqda] = useState<number | null>(null);
+  const eskizgaQaytaYuborish = async (id: number) => {
+    setEskizYuborilmoqda(id);
+    try {
+      const res = await fetch(`/api/messaging/templates/${id}/eskiz`, {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+      });
+      const d = await res.json().catch(() => ({}));
+      if (!res.ok) { showNotification(d.error || "Yuborib bo'lmadi", 'error'); return; }
+      const holat = String(d.eskizStatus || '');
+      showNotification(holat.startsWith('xato') ? `Eskiz: ${holat.slice(6)}` : "Eskiz moderatsiyasiga yuborildi", holat.startsWith('xato') ? 'error' : 'success');
+      fetchTemplates();
+    } finally {
+      setEskizYuborilmoqda(null);
+    }
+  };
 
   const fetchTemplates = async () => {
     try {
@@ -1655,10 +1675,18 @@ export default function Messaging() {
                   {(() => {
                     const h = eskizHolatBelgisi(t.eskizStatus);
                     return (
-                      <span className={`flex items-center gap-1.5 ${h.rang}`}>
-                        <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${h.nuqta}`} />
-                        <span className="truncate" title={t.eskizStatus || undefined}>{h.matn}</span>
-                      </span>
+                      <>
+                        <span className={`flex items-start gap-1.5 ${h.rang}`}>
+                          <span className={`w-1.5 h-1.5 rounded-full shrink-0 mt-1 ${h.nuqta}`} />
+                          <span className="break-words" title={t.eskizStatus || undefined}>{h.matn}</span>
+                        </span>
+                        {shablonTahrir && (!t.eskizStatus || t.eskizStatus.startsWith('xato') || !t.eskizTemplateId) && (
+                          <button onClick={() => eskizgaQaytaYuborish(t.id)} disabled={eskizYuborilmoqda === t.id}
+                            className="w-full py-1.5 rounded-lg border border-brand/40 text-brand hover:bg-brand/10 disabled:opacity-50 text-[11px] font-bold cursor-pointer transition-colors">
+                            {eskizYuborilmoqda === t.id ? 'Yuborilmoqda…' : 'Eskizga qayta yuborish'}
+                          </button>
+                        )}
+                      </>
                     );
                   })()}
                   <span className="block">O'zgaruvchilar: {"{ism}"}, {"{qarz}"}, {"{balans}"}, {"{oxirgi_tolov}"}, {"{kurs}"}, {"{fan}"}, {"{ustoz}"}, {"{testnatijasi}"}, {"{markaz}"}</span>
