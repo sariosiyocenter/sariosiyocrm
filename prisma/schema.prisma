@@ -386,6 +386,11 @@ model Organization {
   // faqatOzKurslari: { TEACHER: true } }. Butun markazga bitta — filiallar uchun
   // alohida emas. null — hali saqlanmagan, standart qiymatlar ishlaydi.
   permissions Json?
+
+  // Yo'l haqi tarifi — butun markazga bitta, hamma haydovchi uchun (egasi,
+  // 2026-09-25: "har bir haydovchi uchun emas, hammaga bitta qoida").
+  // lib/transportNarx.js shakli. null — kiritilmagan, bolalar "narxsiz".
+  transportTarif Json?
 }
 
 model School {

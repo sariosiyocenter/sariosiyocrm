@@ -24,6 +24,19 @@ export async function markazNuqtasi(schoolId) {
 }
 
 /**
+ * Yo'l haqi tarifi — butun markazga bitta, hamma haydovchi uchun (egasi,
+ * 2026-09-25: "har bir haydovchi uchun emas, hammaga bitta qoida").
+ * Organization.transportTarif; tashkilotga bog'lanmagan filialda null.
+ */
+export async function markazTarifi(schoolId) {
+  const school = await prisma.school.findUnique({
+    where: { id: schoolId },
+    select: { organization: { select: { transportTarif: true } } },
+  });
+  return school?.organization?.transportTarif ?? null;
+}
+
+/**
  * Marshrut bekatlarini masofa bo'yicha qayta tartiblaydi va yozadi.
  *
  * Haydovchi qaysi uydan boshlab qaysi uyga borishini tizim o'zi hal qiladi:
@@ -270,7 +283,7 @@ export async function rejalarniYozish({ schoolId, date, rejalar }) {
       id: { in: driverIds }, role: 'DRIVER', status: { not: 'Arxiv' },
       OR: [{ schoolId }, { branches: { some: { id: schoolId } } }],
     },
-    select: { id: true, name: true, driverTransport: { select: { id: true, tarif: true } } },
+    select: { id: true, name: true, driverTransport: { select: { id: true } } },
   });
   const hMap = new Map(haydovchilar.map(h => [h.id, h]));
   const yoq = driverIds.filter(id => !hMap.has(id));
@@ -282,7 +295,7 @@ export async function rejalarniYozish({ schoolId, date, rejalar }) {
   if (borOquvchi.length !== hammasi.length) return { xato: "O'quvchilardan biri shu filialda topilmadi" };
   // Yo'l haqi reja tuzilgan paytda hisoblanib bekatga yoziladi: haydovchi ham,
   // ota-ona ham reys boshlanishidan oldin narxni biladi.
-  const markaz = await markazNuqtasi(schoolId);
+  const [markaz, tarif] = await Promise.all([markazNuqtasi(schoolId), markazTarifi(schoolId)]);
   const joy = new Map(borOquvchi.map(s => [s.id, s.location]));
 
   const routeIds = [];
@@ -301,7 +314,7 @@ export async function rejalarniYozish({ schoolId, date, rejalar }) {
     await prisma.routeStop.createMany({
       data: r.studentIds.map((studentId, tartib) => {
         const masofaKm = uyMasofasi(markaz, joy.get(studentId));
-        const { narx } = narxHisobla(h.driverTransport?.tarif || null, masofaKm);
+        const { narx } = narxHisobla(tarif, masofaKm);
         return { routeId: route.id, studentId, tartib, masofaKm, narx };
       }),
     });

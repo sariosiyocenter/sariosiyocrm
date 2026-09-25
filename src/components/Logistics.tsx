@@ -28,7 +28,8 @@ import TransportTarif, { type Tarif } from './TransportTarif';
  *
  * Marshrut va Avtopark bo'limlari yo'q (egasi: "kerakmas") — mashina
  * ma'lumoti xodim kartasida (Xodimlar → Haydovchi) kiritiladi. Yo'l haqi
- * tarifi esa shu sahifaning "Yo'l haqi" bo'limida (egasi, 2026-09-24).
+ * tarifi shu sahifaning "Yo'l haqi" bo'limida — hamma haydovchi uchun bitta
+ * (egasi, 2026-09-25: "har bir haydovchi uchun emas, hammaga bitta qoida").
  */
 
 type Tab = 'reja' | 'narx' | 'tarix';
@@ -85,7 +86,7 @@ export default function LogisticsHub() {
     const [sana, setSana] = useState(toDateStr());
 
     // ===== Kun ma'lumoti (rejalar + haydovchilar) =====
-    const [kun, setKun] = useState<{ plans: DayPlan[]; drivers: DayDriver[] } | null>(null);
+    const [kun, setKun] = useState<{ plans: DayPlan[]; drivers: DayDriver[]; tarif: Tarif | null } | null>(null);
     const [kunYuklanmoqda, setKunYuklanmoqda] = useState(false);
     const sorov = useRef(0);
 
@@ -97,7 +98,7 @@ export default function LogisticsHub() {
             const r = await fetch(`/api/logistics/day?schoolId=${selectedSchoolId}&date=${sana}`, { headers: { Authorization: `Bearer ${token}` } });
             if (!r.ok) throw new Error((await r.json().catch(() => ({}))).error || "Yuklab bo'lmadi");
             const d = await r.json();
-            if (so === sorov.current) setKun({ plans: d.plans || [], drivers: d.drivers || [] });
+            if (so === sorov.current) setKun({ plans: d.plans || [], drivers: d.drivers || [], tarif: d.tarif ?? null });
         } catch (e: any) {
             if (!jim) showNotification(e.message || "Logistika ma'lumoti yuklanmadi", 'error');
         } finally {
@@ -181,7 +182,9 @@ export default function LogisticsHub() {
     const bolaNarxi = (driverId: number, studentId: number) => {
         const s = students.find(x => x.id === studentId);
         const km = uyMasofasi(markazNuqta, s?.location);
-        const tarif = haydovchilar.find(h => h.id === driverId)?.transport?.tarif || null;
+        // Hamma haydovchi uchun bitta tarif (driverId faqat chaqiruv shakli uchun qoldi).
+        void driverId;
+        const tarif = kun?.tarif || null;
         return { km, ...narxHisobla(tarif, km) };
     };
 
@@ -322,15 +325,15 @@ export default function LogisticsHub() {
 
     // ===== Yo'l haqi (haydovchi tarifi) =====
     // Ilgari Xodimlar → haydovchi kartasida edi; egasi (2026-09-24) Logistikaga ko'chirdi.
-    const [tarifTahrir, setTarifTahrir] = useState<{ driverId: number; qiymat: Tarif | null } | null>(null);
+    const [tarifTahrir, setTarifTahrir] = useState<{ qiymat: Tarif | null } | null>(null);
     const tarifniSaqlash = async () => {
         if (!tarifTahrir || !rejaTahrir) return;
-        setBand(`tarif-${tarifTahrir.driverId}`);
+        setBand('tarif');
         try {
-            const r = await fetch(`/api/logistics/drivers/${tarifTahrir.driverId}/tarif`, {
+            const r = await fetch('/api/logistics/tarif', {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-                body: JSON.stringify({ tarif: tarifTahrir.qiymat }),
+                body: JSON.stringify({ schoolId: selectedSchoolId, tarif: tarifTahrir.qiymat }),
             });
             const d = await r.json().catch(() => ({}));
             if (!r.ok) throw new Error(d.error || 'Saqlanmadi');
@@ -787,7 +790,11 @@ export default function LogisticsHub() {
                             {/* Haydovchilar va taqsimlash */}
                             <div className="p-4 space-y-4">
                                 <div>
-                                    <p className="text-[11px] font-extrabold text-matn-xira mb-2">Bugun ishlaydigan haydovchilar</p>
+                                    <p className="text-[11px] font-extrabold text-matn-xira mb-1">Bugun ishlaydigan haydovchilar</p>
+                                    <button type="button" onClick={() => setTab('narx')}
+                                        className={`mb-2 text-left text-[10px] font-bold cursor-pointer hover:underline ${kun?.tarif ? 'text-matn-sokin' : 'text-amber-600'}`}>
+                                        {kun?.tarif ? `💰 Yo'l haqi (hammaga): ${tarifMatni(kun.tarif)}` : "💰 Yo'l haqi kiritilmagan — «Yo'l haqi» bo'limi"}
+                                    </button>
                                     <div className="space-y-1.5">
                                         {haydovchilar.length === 0 && <p className="text-[11px] font-bold text-matn-xira">Haydovchi yo'q</p>}
                                         {haydovchilar.map(h => {
@@ -805,9 +812,6 @@ export default function LogisticsHub() {
                                                         <span className="block text-[10px] font-bold text-matn-xira truncate">
                                                             {ishlaydi ? mashinaMatni(h.transport) : <span className="text-amber-600">mashina sig'imi kiritilmagan (Xodimlar)</span>}
                                                             {!h.telegram && <span className="text-amber-600"> · botga ulanmagan</span>}
-                                                        </span>
-                                                        <span className={`block text-[10px] font-bold truncate ${h.transport?.tarif ? 'text-matn-sokin' : 'text-amber-600'}`}>
-                                                            {h.transport?.tarif ? `💰 ${tarifMatni(h.transport.tarif)}` : "yo'l haqi kiritilmagan («Yo'l haqi» bo'limi)"}
                                                         </span>
                                                     </span>
                                                 </button>
@@ -843,74 +847,53 @@ export default function LogisticsHub() {
                 </div>
             )}
 
-            {/* ===== YO'L HAQI — haydovchilar tarifi ===== */}
+            {/* ===== YO'L HAQI — hamma haydovchi uchun bitta tarif ===== */}
             {tab === 'narx' && rejaKorinadi && (
-                <div className="space-y-4">
-                    <div className={`${karta} px-5 py-4 flex flex-wrap items-center justify-between gap-3`}>
+                <div className={`${karta} p-5 space-y-4 max-w-2xl`}>
+                    <div className="flex items-start justify-between gap-3">
                         <div>
-                            <p className="text-xs font-black text-matn flex items-center gap-2"><Wallet size={15} className="text-brand" /> Yo'l haqi — har bir haydovchining tarifi</p>
+                            <p className="text-sm font-black text-matn flex items-center gap-2"><Wallet size={16} className="text-brand" /> Yo'l haqi — hamma haydovchi uchun bitta</p>
                             <p className="text-[11px] font-bold text-matn-xira mt-1 leading-relaxed">
-                                Bir o'quvchini olib borish narxi. Reja tuzilganda har bola uchun shu tarifdan hisoblanadi va haydovchiga botda ko'rinadi.
-                                O'quvchi pulni mashinada haydovchiga naqd beradi — kassaga tushmaydi, qarziga yozilmaydi.
+                                Bir o'quvchini olib borish narxi — qaysi haydovchi olib borishidan qat'i nazar bir xil. Reja tuzilganda har bola uchun
+                                shu tarifdan hisoblanadi va haydovchiga botda ko'rinadi. O'quvchi pulni mashinada haydovchiga naqd beradi — kassaga tushmaydi, qarziga yozilmaydi.
                             </p>
                         </div>
-                        {kunYuklanmoqda && <Loader2 size={14} className="animate-spin text-matn-xira" />}
+                        {kunYuklanmoqda && <Loader2 size={14} className="animate-spin text-matn-xira shrink-0" />}
                     </div>
 
-                    {haydovchilar.length === 0 && !kunYuklanmoqda && (
-                        <div className={`${karta} p-10 text-center`}>
-                            <Car size={30} className="text-matn-xira mx-auto mb-2" />
-                            <p className="text-[12px] font-bold text-matn-sokin">Haydovchi yo'q</p>
-                            <p className="text-[11px] text-matn-xira mt-1">Xodimlar bo'limida "Haydovchi" lavozimi bilan qo'shing.</p>
+                    {tarifTahrir ? (
+                        <div className="space-y-3 pt-3 border-t border-chiziq-mayin">
+                            <TransportTarif value={tarifTahrir.qiymat} onChange={t => setTarifTahrir({ qiymat: t })} />
+                            <div className="flex gap-2 justify-end">
+                                <button onClick={() => setTarifTahrir(null)} disabled={!!band}
+                                    className="px-4 py-2 rounded-xl bg-ichki border border-chiziq text-[11px] font-extrabold text-matn-2 cursor-pointer">Bekor qilish</button>
+                                <button onClick={tarifniSaqlash} disabled={!!band}
+                                    className="px-4 py-2 rounded-xl bg-brand hover:bg-brand-dark disabled:opacity-50 text-white text-[11px] font-extrabold flex items-center gap-1.5 cursor-pointer">
+                                    {band === 'tarif' ? <Loader2 size={13} className="animate-spin" /> : <Check size={13} />} Saqlash
+                                </button>
+                            </div>
+                        </div>
+                    ) : (
+                        <div className="flex flex-wrap items-center gap-3">
+                            <p className={`flex-1 min-w-[220px] text-[13px] font-bold px-4 py-3 rounded-xl border ${kun?.tarif
+                                ? 'bg-ichki border-chiziq text-matn'
+                                : 'bg-amber-50 border-amber-100 text-amber-700 dark:bg-amber-950/20 dark:border-amber-900/40 dark:text-amber-400'}`}>
+                                {kun?.tarif ? `💰 ${tarifMatni(kun.tarif)}` : "Yo'l haqi kiritilmagan — rejada bolalar «narxsiz» chiqadi"}
+                            </p>
+                            {rejaTahrir && (
+                                <button onClick={() => setTarifTahrir({ qiymat: kun?.tarif || null })} disabled={!!band || !kun}
+                                    className="px-4 py-3 bg-brand hover:bg-brand-dark disabled:opacity-50 text-white rounded-xl text-[12px] font-extrabold flex items-center gap-1.5 cursor-pointer shrink-0">
+                                    <Pencil size={13} /> {kun?.tarif ? "O'zgartirish" : 'Kiritish'}
+                                </button>
+                            )}
                         </div>
                     )}
 
-                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                        {haydovchilar.map(h => {
-                            const tahrirda = tarifTahrir?.driverId === h.id;
-                            return (
-                                <div key={h.id} className={`${karta} p-4 space-y-3`}>
-                                    <div className="flex items-start justify-between gap-3">
-                                        <div className="flex items-center gap-2.5 min-w-0">
-                                            <span className="w-3 h-3 rounded-full shrink-0" style={{ background: rangi.get(h.id) }} />
-                                            <div className="min-w-0">
-                                                <p className="text-[13px] font-black text-matn truncate">{h.name}</p>
-                                                <p className="text-[11px] font-bold text-matn-xira truncate">
-                                                    {mashinaMatni(h.transport) || <span className="text-amber-600">mashina kiritilmagan (Xodimlar)</span>}
-                                                </p>
-                                            </div>
-                                        </div>
-                                        {!tahrirda && rejaTahrir && (
-                                            <button onClick={() => setTarifTahrir({ driverId: h.id, qiymat: h.transport?.tarif || null })} disabled={!!band}
-                                                className="px-3 py-2 bg-ichki border border-chiziq text-matn-2 hover:border-brand hover:text-brand disabled:opacity-50 rounded-xl text-[11px] font-extrabold flex items-center gap-1.5 cursor-pointer shrink-0">
-                                                <Pencil size={12} /> {h.transport?.tarif ? "O'zgartirish" : 'Kiritish'}
-                                            </button>
-                                        )}
-                                    </div>
-
-                                    {tahrirda ? (
-                                        <div className="space-y-3 pt-3 border-t border-chiziq-mayin">
-                                            <TransportTarif value={tarifTahrir!.qiymat} onChange={t => setTarifTahrir({ driverId: h.id, qiymat: t })} />
-                                            <div className="flex gap-2 justify-end">
-                                                <button onClick={() => setTarifTahrir(null)} disabled={!!band}
-                                                    className="px-4 py-2 rounded-xl bg-ichki border border-chiziq text-[11px] font-extrabold text-matn-2 cursor-pointer">Bekor qilish</button>
-                                                <button onClick={tarifniSaqlash} disabled={!!band}
-                                                    className="px-4 py-2 rounded-xl bg-brand hover:bg-brand-dark disabled:opacity-50 text-white text-[11px] font-extrabold flex items-center gap-1.5 cursor-pointer">
-                                                    {band === `tarif-${h.id}` ? <Loader2 size={13} className="animate-spin" /> : <Check size={13} />} Saqlash
-                                                </button>
-                                            </div>
-                                        </div>
-                                    ) : (
-                                        <p className={`text-[12px] font-bold px-3 py-2 rounded-xl border ${h.transport?.tarif
-                                            ? 'bg-ichki border-chiziq text-matn-2'
-                                            : 'bg-amber-50 border-amber-100 text-amber-700 dark:bg-amber-950/20 dark:border-amber-900/40 dark:text-amber-400'}`}>
-                                            {h.transport?.tarif ? `💰 ${tarifMatni(h.transport.tarif)}` : "Yo'l haqi kiritilmagan — rejada bolalar «narxsiz» chiqadi"}
-                                        </p>
-                                    )}
-                                </div>
-                            );
-                        })}
-                    </div>
+                    <p className="text-[11px] font-bold text-matn-xira pt-3 border-t border-chiziq-mayin">
+                        {!kun ? '' : haydovchilar.length
+                            ? `Haydovchilar: ${haydovchilar.map(h => h.name).join(', ')} — hammasiga shu tarif.`
+                            : "Haydovchi yo'q. Xodimlar bo'limida \"Haydovchi\" lavozimi bilan qo'shing."}
+                    </p>
                 </div>
             )}
 

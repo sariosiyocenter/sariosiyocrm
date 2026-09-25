@@ -22,7 +22,7 @@ import jwt from 'jsonwebtoken';
 import bot, { startBot, notifyAdmins, getTelegramBot, rejaniHaydovchigaYuborish, rejaBekorXabari, getStudentMenu } from './src/bot/bot.js';
 import { transferStudent, refundStudent, enrollStudent, unenrollStudent, syncGroupMembers, activateStudent, syncStudentGroups, setKursHisob, firstMonthQuote, todayTashkent } from './services/enrollment.js';
 import { studentLedger, receivedForGroups, monthCoverage } from './services/ledger.js';
-import { holatniYozish, marshrutniTartiblash, marshrutHolati, rejalarniYozish, rejaniQabulQilish, rejaniYetkazish, REJA_INCLUDE, rejaPuli } from './services/logistics.js';
+import { holatniYozish, marshrutniTartiblash, marshrutHolati, rejalarniYozish, rejaniQabulQilish, rejaniYetkazish, REJA_INCLUDE, rejaPuli, markazTarifi } from './services/logistics.js';
 import { tarifniTozalash } from './lib/transportNarx.js';
 import { Prisma } from '@prisma/client';
 import { kunlikTolqinlar, haydovchilardanSorash, kunlikRejaniTuzish, avtoJarayon } from './services/kunlikReja.js';
@@ -5651,20 +5651,23 @@ app.get('/api/logistics/day', authenticate, async (req, res, next) => {
     if (!(await canAccessSchool(req.user, schoolId))) return res.status(403).json({ error: "Ruxsat yo'q" });
     const date = /^\d{4}-\d{2}-\d{2}$/.test(String(req.query.date || '')) ? String(req.query.date) : toDateStr();
 
-    const [routes, haydovchilar] = await Promise.all([
+    const [routes, haydovchilar, tarif] = await Promise.all([
       prisma.route.findMany({ where: { schoolId, date }, include: REJA_INCLUDE, orderBy: { id: 'asc' } }),
       prisma.user.findMany({
         where: { role: 'DRIVER', status: { not: 'Arxiv' }, ...filialXodimlariWhere([schoolId]) },
         select: {
           id: true, name: true, phone: true, telegramId: true,
-          driverTransport: { select: { id: true, name: true, model: true, number: true, capacity: true, status: true, tarif: true } },
+          driverTransport: { select: { id: true, name: true, model: true, number: true, capacity: true, status: true } },
           driverLocation: { select: { lat: true, lng: true, live: true, liveUntil: true, updatedAt: true } },
         },
         orderBy: { name: 'asc' },
       }),
+      markazTarifi(schoolId),
     ]);
     res.json({
       date,
+      // Yo'l haqi — hamma haydovchi uchun bitta tarif (Organization.transportTarif).
+      tarif,
       plans: await Promise.all(routes.map(rejaJavobi)),
       drivers: haydovchilar.map(h => ({
         id: h.id, name: h.name, phone: h.phone, telegram: !!h.telegramId,
@@ -5675,32 +5678,27 @@ app.get('/api/logistics/day', authenticate, async (req, res, next) => {
 });
 
 /**
- * Haydovchining yo'l haqi tarifi — Logistika sahifasida (egasi, 2026-09-24:
- * "haydovchidan olib logistikaga qo'yish yo'l xarajatini"). Ilgari Xodimlar →
- * haydovchi kartasida edi. body: { tarif } — lib/transportNarx.js shakli, null = o'chirish.
+ * Yo'l haqi tarifi — butun markazga bitta, hamma haydovchi uchun (egasi,
+ * 2026-09-25: "har bir haydovchi uchun emas, hammaga bitta qoida").
+ * Organization.transportTarif ga yoziladi — barcha filiallarga bir xil.
+ * body: { schoolId, tarif } — lib/transportNarx.js shakli, null = o'chirish.
  */
-app.put('/api/logistics/drivers/:id/tarif', authenticate, async (req, res, next) => {
+app.put('/api/logistics/tarif', authenticate, async (req, res, next) => {
   try {
-    const driverId = parseInt(req.params.id);
-    if (!Number.isInteger(driverId)) return res.status(400).json({ error: "Noto'g'ri ID" });
-    const driver = await prisma.user.findUnique({
-      where: { id: driverId },
-      select: { id: true, name: true, role: true, schoolId: true, driverTransport: { select: { id: true } } },
-    });
-    if (!driver || driver.role !== 'DRIVER') return res.status(404).json({ error: 'Haydovchi topilmadi' });
-    if (!(await canAccessSchool(req.user, driver.schoolId))) return res.status(403).json({ error: "Ruxsat yo'q" });
+    const schoolId = parseInt(req.body?.schoolId);
+    if (!Number.isInteger(schoolId)) return res.status(400).json({ error: 'schoolId kerak' });
+    if (!(await canAccessSchool(req.user, schoolId))) return res.status(403).json({ error: "Ruxsat yo'q" });
+    const school = await prisma.school.findUnique({ where: { id: schoolId }, select: { organizationId: true } });
+    if (!school?.organizationId) return res.status(400).json({ error: "Filial tashkilotga bog'lanmagan" });
 
     const t = tarifniTozalash(req.body?.tarif ?? null);
     if (t.xato) return res.status(400).json({ error: t.xato });
-
-    const transport = driver.driverTransport
-      ? await prisma.transport.update({ where: { id: driver.driverTransport.id }, data: { tarif: t.tarif ?? Prisma.DbNull } })
-      : await prisma.transport.create({
-        // Mashinasi hali kiritilmagan haydovchi: sig'im 0 — rejaga kirmaydi,
-        // Xodimlar bo'limida mashina ma'lumoti to'ldirilguncha.
-        data: { name: `${driver.name} mashinasi`, capacity: 0, status: 'Faol', driverId, schoolId: driver.schoolId, ...(t.tarif ? { tarif: t.tarif } : {}) },
-      });
-    res.json({ driverId, transportId: transport.id, tarif: transport.tarif ?? null });
+    const org = await prisma.organization.update({
+      where: { id: school.organizationId },
+      data: { transportTarif: t.tarif ?? Prisma.DbNull },
+      select: { transportTarif: true },
+    });
+    res.json({ tarif: org.transportTarif ?? null });
   } catch (error) { next(error); }
 });
 
