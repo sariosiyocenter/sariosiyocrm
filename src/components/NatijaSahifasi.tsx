@@ -144,9 +144,13 @@ export default function NatijaSahifasi() {
                       <span className="text-[13px] font-bold text-matn">{s.n}-savol</span>
                       <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-md border text-[11.5px] font-semibold ${h.cls}`}><h.Ikonka size={12} />{h.nom}</span>
                     </div>
-                    <div className={`${SAVOL_MATNI} text-[14px] text-matn`} dangerouslySetInnerHTML={{ __html: formulaliHtml(s.matn) }} />
+                    {s.matn && <div className={`${SAVOL_MATNI} text-[14px] text-matn`} dangerouslySetInnerHTML={{ __html: formulaliHtml(s.matn) }} />}
                     {s.rasm && <img src={s.rasm} alt="" className="mt-2 max-h-72 rounded-lg" />}
-                    {s.t === 'yopiq' && (
+                    {/* "Faqat kalit" imtihoni: savol matni kitobchada — faqat javoblar. */}
+                    {s.t === 'yopiq' && !s.variantlar.length && (
+                      <p className="text-[13.5px] text-matn">Sizning javobingiz: <b>{s.javob || '—'}</b> · To'g'ri javob: <b className="text-yaxshi">{(s.togri || []).join(' yoki ')}</b></p>
+                    )}
+                    {s.t === 'yopiq' && s.variantlar.length > 0 && (
                       <ol className="mt-3 space-y-1.5">
                         {s.variantlar.map((v, i) => {
                           const harf = HARFLAR[i];

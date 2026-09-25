@@ -612,3 +612,44 @@ katta ekran, profil), `test_imtihon_bot.mjs` (ruxsatnoma, Rasch, lidlar, bot),
 
 Haqiqiy printer va skanerda sinov hali qilinmagan: birinchi imtihondan oldin 30 ta qo'lda
 to'ldirilgan varaq bilan (1-bosqich "Tayyor degani") tekshirish kerak.
+
+---
+
+## 12. Modul tuzilmasi va "faqat kalit" rejimi (2026-09-25)
+
+Egasi: "6 ta modul yuborgandim — 6 ta tab bo'lsin", "savollar banki, tarix qani?".
+
+**Imtihonlar sahifasi — 6 bo'lim (TZ modullari bo'yicha):**
+
+| # | Bo'lim | Nima qiladi |
+|---|---|---|
+| 1 | Savollar banki | qo'lda, Excel, AI import; matnlar |
+| 2 | Imtihonlar | ro'yxat, yangi imtihon (tuzilma, manba, sozlamalar) |
+| 3 | O'rinlashtirish | tanlangan imtihon: kurslar, xonalar, o'rinlar, ruxsatnoma |
+| 4 | Chop etish | kitobcha (bank rejimida), javob varaqlari, ro'yxatlar |
+| 5 | Skaner | skanerlash (PDF / rasm / kamera) va tekshirish (shubhalilar, yozma) |
+| 6 | Natijalar va tarix | tanlangan imtihon natijalari; tarix — hamma imtihon, o'rtacha grafik, o'quvchi bo'yicha qidiruv |
+
+3–6-bo'limlarda tepada imtihon tanlanadi (URL da `imtihon=`), ichida imtihon
+sahifasidagi bo'limning o'zi. Imtihon sahifasi (1 Tuzilma … 6 Natijalar) ham qoladi.
+
+**"Faqat kalit" rejimi** (`settings.source = 'kalit'`): markaz o'z kitobchasi bilan
+(sotib olingan to'plam yoki ustoz tuzgan test) imtihon o'tkazadi — savollar bankka
+kiritilmaydi. Imtihon tuzishda fanlar, savol soni, turi va bali; "kitobcha variantlari"
+(A, B …) va doirachalar soni (2–6). Tuzilma bo'limida har variantning kaliti: harf
+tugmalari yoki matn bilan ("ABCD…" yoki "1A 2B …"), raqamli javob ("0,5;1/2"), bir
+nechta to'g'ri javob ("AC"), "✱" — bekor (hammaga ball), "✕" — hisobdan chiqarish.
+Qulflash kalitdan variant yasaydi; kalitni keyin tuzatsa — hamma natija qayta
+hisoblanadi (`PUT /api/exams/:id/manual-key`, `imtihonlar.kalit` ruxsati). Varaqda har
+fanda avval yopiq, keyin raqamli, keyin yozma savollar — kitobcha raqamlari shunga mos
+bo'lishi kerak. Tahlil "A kitobcha · 5-savol" bo'yicha, ota-ona sahifasida savol matnisiz
+javoblar.
+
+**Bank tashxisi:** "bankda 0" bo'lsa sababi ko'rsatiladi — fan nomi mos emas, boshqa
+qiyinlikda N ta, qoralamada N ta, chala N ta, boshqa tilda N ta.
+
+Kod: `lib/imtihon.js` (`kalitTuzilmasi`, `kalitQiymati`, `kalitdanVariantlar`,
+`kalitMatnidan`, `bankYetarliligi` sababi), `routes/imtihon.js` (lock, manual-key,
+check, analysis, `GET /api/exams/history`), `src/components/ExamsList.tsx` (6 bo'lim),
+`imtihon/KalitMuharriri.tsx`, `imtihon/TarixBolimi.tsx`, `imtihon/FoizGrafigi.tsx`,
+`imtihon/useImtihonTafsil.ts`. Sinov: `scratch/kalit_sinov.mjs`, `scratch/test_imtihon_kalit.mjs`.

@@ -557,6 +557,10 @@ export interface ExamSettings {
     notify: { channel: 'BOTH' | 'TELEGRAM' | 'SMS' | 'NONE'; to: 'PARENT' | 'STUDENT' | 'ALL'; template: string };
     admit: { channel: 'BOTH' | 'TELEGRAM' | 'SMS' | 'NONE'; to: 'PARENT' | 'STUDENT' | 'ALL'; auto: boolean; template: string };
     rasch: { enabled: boolean; grades: { label: string; min: number }[] };
+    /** 'bank' — variantlar savollar bankidan; 'kalit' — markazning o'z kitobchasi, faqat kalit kiritiladi. */
+    source: 'bank' | 'kalit';
+    /** "Faqat kalit" rejimi: {'smena|variant': [1-savol kaliti, ...]} (kalit ruxsatisiz bo'sh keladi). */
+    keys: Record<string, string[]>;
     optionCount: number;
 }
 

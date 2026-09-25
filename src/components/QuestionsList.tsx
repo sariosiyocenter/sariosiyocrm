@@ -228,7 +228,7 @@ export default function QuestionsList() {
       <Karta ichki="p-0">
         {yuklanmoqda && !royxat ? <Yuklanmoqda /> : !royxat?.items.length ? (
           <BoshHolat ikonka={<BookOpen size={22} />} sarlavha={meta?.jami ? 'Filtrga mos savol yo\'q' : "Bankda hali savol yo'q"}
-            izoh={meta?.jami ? 'Filtrni o\'zgartiring' : "Savolni qo'lda qo'shing yoki Excel shablonini to'ldirib import qiling. Formulalar $...$ ichida LaTeX bilan yoziladi."}>
+            izoh={meta?.jami ? 'Filtrni o\'zgartiring' : "Savolni qo'lda qo'shing yoki Excel shablonini to'ldirib import qiling. Formulalar $...$ ichida LaTeX bilan yoziladi. O'z test kitobchangiz bo'lsa — savollar shart emas: imtihon tuzishda manbani «Faqat kalit» qiling."}>
             {savolTahrir && <Tugma turi="asosiy" ikonka={<Plus size={14} />} onClick={() => navigate('/questions/new')}>Yangi savol</Tugma>}
           </BoshHolat>
         ) : (

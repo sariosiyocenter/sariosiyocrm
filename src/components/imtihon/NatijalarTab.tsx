@@ -8,6 +8,7 @@ import { useImtihonApi, ApiXato } from './useImtihonApi';
 import { Karta, Tugma, Tanlov, Yorliq, SELECT, Yuklanmoqda, BoshHolat } from './ui';
 import StatTile from '../ui/StatTile';
 import KalitOynasi from './KalitOynasi';
+import KalitMuharriri from './KalitMuharriri';
 import { oddiyMatn, formulaliHtml, SAVOL_MATNI } from '../../lib/matn';
 import { vergul } from './format';
 import type { ImtihonTafsil } from '../ExamDetail';
@@ -22,7 +23,12 @@ interface Natija {
   reviewStatus: string; shubhalar: number; rank: number | null; rankGroup: number | null; notifiedAt: string | null; notifyStatus: string | null; sheetCode: string | null;
   raschScore: number | null; grade: string | null;
 }
-interface SavolTahlil { q: number; t: string; b: number; jami: number; togri: number; bosh: number; tanlov: Record<string, number> | null; foiz: number; farq: number; shubhali: boolean; subject: string; topic: string; text: string; togriJavob: string | null; bekor: string | null }
+interface SavolTahlil {
+  q: number | string; t: string; b: number; jami: number; togri: number; bosh: number; tanlov: Record<string, number> | null; foiz: number; farq: number; shubhali: boolean;
+  subject: string; topic: string; text: string; togriJavob: string | null; bekor: string | null;
+  // "Faqat kalit" savoli: kitobcha varianti va raqami (matni bankda yo'q).
+  yorliq?: string | null; kod?: string; n?: number;
+}
 interface Tahlil { savollar: SavolTahlil[]; mavzular: { fan: string; mavzu: string; jami: number; togri: number; foiz: number; kurslar: Record<string, { jami: number; togri: number }> }[]; natijaSoni: number }
 interface Xulosa { qatnashchi: number; skanerlangan: number; kelmagan: number; skanerlanmagan: number; shubhali: number; baholanmagan: number; nolBall: number; yuborilgan: number; yuborilmagan: number; published: boolean; publishedAt: string | null }
 
@@ -41,6 +47,7 @@ export default function NatijalarTab({ exam, yangila }: { exam: ImtihonTafsil; y
   const [xulosa, setXulosa] = useState<Xulosa | null>(null);
   const [kurs, setKurs] = useState<number | 0>(0);
   const [kalitSavol, setKalitSavol] = useState<number | null | undefined>(undefined);
+  const kalitRejimi = exam.settings.source === 'kalit';
   const [band, setBand] = useState<string | null>(null);
   const [yuborish, setYuborish] = useState<{ yuborildi: number; xato: number; qoldi: number } | null>(null);
   const toxtaRef = useRef(false);
@@ -230,11 +237,13 @@ export default function NatijalarTab({ exam, yangila }: { exam: ImtihonTafsil; y
                   <div className="flex flex-wrap items-start justify-between gap-3">
                     <div className="min-w-0 flex-1">
                       <div className="flex flex-wrap items-center gap-1.5 mb-1">
-                        <Yorliq>{sv.subject}</Yorliq><Yorliq>{sv.topic}</Yorliq>
+                        <Yorliq>{sv.subject}</Yorliq>{sv.topic && <Yorliq>{sv.topic}</Yorliq>}
+                        {sv.yorliq && <Yorliq rang="brand">{sv.yorliq}</Yorliq>}
+                        {sv.yorliq && kalitKorinadi && sv.togriJavob && <Yorliq>kalit: {sv.togriJavob}</Yorliq>}
                         {sv.shubhali && !sv.bekor && <Yorliq rang="xato"><AlertTriangle size={11} /> Kalitni tekshiring</Yorliq>}
                         {sv.bekor && <Yorliq rang="ogoh">Bekor qilingan</Yorliq>}
                       </div>
-                      <div className={`${SAVOL_MATNI} text-[13px] text-matn line-clamp-3`} dangerouslySetInnerHTML={{ __html: formulaliHtml(sv.text) }} />
+                      {sv.text && <div className={`${SAVOL_MATNI} text-[13px] text-matn line-clamp-3`} dangerouslySetInnerHTML={{ __html: formulaliHtml(sv.text) }} />}
                       {sv.tanlov && sv.t === 'yopiq' && jamiTanlov > 0 && (
                         <div className="flex flex-wrap gap-1.5 mt-1.5">
                           {Object.entries(sv.tanlov).sort().map(([h, n]) => (
@@ -246,7 +255,7 @@ export default function NatijalarTab({ exam, yangila }: { exam: ImtihonTafsil; y
                     </div>
                     <div className="flex items-center gap-2 shrink-0">
                       <span className={`px-2.5 py-1 rounded-lg text-[12.5px] font-bold raqam ${foizRangi(sv.foiz)}`}>{Math.round(sv.foiz * 100)}%</span>
-                      {kalitKorinadi && sv.t !== 'yozma' && <Tugma kichik turi="oddiy" onClick={() => setKalitSavol(sv.q)}>Kalit</Tugma>}
+                      {kalitKorinadi && sv.t !== 'yozma' && <Tugma kichik turi="oddiy" onClick={() => setKalitSavol(typeof sv.q === 'number' ? sv.q : null)}>Kalit</Tugma>}
                     </div>
                   </div>
                 </li>
@@ -322,7 +331,22 @@ export default function NatijalarTab({ exam, yangila }: { exam: ImtihonTafsil; y
           </Karta>
         </div>
       )}
-      {kalitSavol !== undefined && <KalitOynasi examId={exam.id} boshSavol={kalitSavol ?? undefined} onYop={ozgardi => { setKalitSavol(undefined); if (ozgardi) { yukla(); yangila(); } }} />}
+      {kalitSavol !== undefined && !kalitRejimi && <KalitOynasi examId={exam.id} boshSavol={kalitSavol ?? undefined} onYop={ozgardi => { setKalitSavol(undefined); if (ozgardi) { yukla(); yangila(); } }} />}
+      {kalitSavol !== undefined && kalitRejimi && (
+        <div className="fixed inset-0 z-[260] flex items-start justify-center overflow-y-auto p-4">
+          <div className="fixed inset-0 bg-black/50" onClick={() => { setKalitSavol(undefined); yukla(); yangila(); }} />
+          <div className="relative bg-sirt rounded-2xl shadow-2xl w-full max-w-5xl border border-chiziq my-4">
+            <div className="flex items-center justify-between gap-3 px-5 py-4 border-b border-chiziq">
+              <div>
+                <h3 className="text-[14px] font-bold text-matn">Kitobcha kaliti</h3>
+                <p className="text-[12px] text-matn-xira">Tuzatsangiz — hamma natija yangi kalit bilan qayta hisoblanadi. «⋯» — savolni bekor qilish (hammaga ball) yoki hisobdan chiqarish.</p>
+              </div>
+              <Tugma kichik turi="oddiy" onClick={() => { setKalitSavol(undefined); yukla(); yangila(); }}>Yopish</Tugma>
+            </div>
+            <div className="p-5"><KalitMuharriri exam={exam} onSaqlandi={() => { yukla(); yangila(); }} /></div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -76,6 +76,8 @@ export default function ExamBuilder() {
       .reduce((a, m) => a + (m.faol[tur] || 0), 0);
   };
   const kopaytma = sozlama.sessionQuestions === 'alohida' ? sozlama.sessions.length : 1;
+  // "Faqat kalit": markazning o'z kitobchasi — mavzu va qiyinlik kerak emas, bank ham.
+  const kalitRejimi = sozlama.source === 'kalit';
 
   const blokQoy = (bi: number, patch: Partial<ExamBlock>) => setBloklar(b => b.map((x, i) => (i === bi ? { ...x, ...patch } : x)));
   const qoidaQoy = (bi: number, ri: number, patch: Partial<TopicRule>) => setBloklar(b => b.map((x, i) => (i === bi ? { ...x, topicRules: x.topicRules.map((r, j) => (j === ri ? { ...r, ...patch } : r)) } : x)));
@@ -136,6 +138,12 @@ export default function ExamBuilder() {
       </div>
 
       <Karta sarlavha="Asosiy">
+        <Maydon nom="Savollar manbasi" className="mb-4" izoh={qulfIzoh || (kalitRejimi
+          ? "O'z test kitobchangiz (sotib olingan to'plam yoki ustoz tuzgan test): CRM ga faqat har variantning javob kaliti yoziladi, kitobchani o'zingiz chop etasiz."
+          : 'Savollar bankdan olinadi, variantlar va kitobchalarni CRM o\'zi tuzadi va chop etadi.')}>
+          <Tanlov qiymat={sozlama.source} onChange={v => !qulf && s({ source: v })}
+            variantlar={[{ v: 'bank', nom: 'Savollar bankidan' }, { v: 'kalit', nom: "O'z kitobchasi — faqat kalit" }]} />
+        </Maydon>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
           <Maydon nom="Nomi" className="lg:col-span-2"><input className={INPUT} value={nom} onChange={e => setNom(e.target.value)} placeholder="Oylik DTM sinov — oktabr" /></Maydon>
           <Maydon nom="Sana"><input type="date" className={INPUT} value={sana} onChange={e => setSana(e.target.value)} /></Maydon>
@@ -161,15 +169,19 @@ export default function ExamBuilder() {
               </div>
             </Maydon>
           )}
-          <Maydon nom="Savollar tili" izoh="Bankdan faqat shu tildagi savollar olinadi">
-            <select className={SELECT} disabled={qulf} value={sozlama.language} onChange={e => s({ language: e.target.value as any })}>
-              <option value="">Hamma til</option><option value="uz">O'zbekcha</option><option value="ru">Ruscha</option><option value="en">Inglizcha</option>
-            </select>
-          </Maydon>
+          {!kalitRejimi && (
+            <Maydon nom="Savollar tili" izoh="Bankdan faqat shu tildagi savollar olinadi">
+              <select className={SELECT} disabled={qulf} value={sozlama.language} onChange={e => s({ language: e.target.value as any })}>
+                <option value="">Hamma til</option><option value="uz">O'zbekcha</option><option value="ru">Ruscha</option><option value="en">Inglizcha</option>
+              </select>
+            </Maydon>
+          )}
         </div>
       </Karta>
 
-      <Karta sarlavha="Tuzilma" izoh={qulfIzoh || "Har fan — alohida blok. Mavzu bo'sh bo'lsa — fanning istalgan mavzusidan."}
+      <Karta sarlavha="Tuzilma" izoh={qulfIzoh || (kalitRejimi
+        ? "Har fan — alohida blok, kitobchadagi tartibda. Varaqda har fanda avval yopiq, keyin raqamli, keyin yozma savollar turadi — kitobcha raqamlari shunga mos bo'lsin."
+        : "Har fan — alohida blok. Mavzu bo'sh bo'lsa — fanning istalgan mavzusidan.")}
         amallar={!qulf && <Tugma kichik ikonka={<Wand2 size={14} />} onClick={() => { setBloklar(DTM_ANDOZA.map(b => ({ ...b, id: yangiId() }))); setScoring('blok'); }}>DTM andozasi</Tugma>}>
         <div className="space-y-3">
           {bloklar.map((b, bi) => {
@@ -196,19 +208,29 @@ export default function ExamBuilder() {
                     const mavzuRoyxati = (meta?.mavzular || []).filter(m => m.fan.toLowerCase() === b.subject.trim().toLowerCase());
                     return (
                       <div key={ri} className="grid grid-cols-12 gap-1.5 items-center">
-                        <input className={`${INPUT} col-span-12 sm:col-span-4`} disabled={qulf} list={`imt-mavzu-${bi}`} value={r.topic} onChange={e => qoidaQoy(bi, ri, { topic: e.target.value })} placeholder="Istalgan mavzu" />
-                        <datalist id={`imt-mavzu-${bi}`}>{mavzuRoyxati.map(m => <option key={m.mavzu} value={m.mavzu} />)}</datalist>
-                        <select className={`${SELECT} col-span-4 sm:col-span-2`} disabled={qulf} value={r.type || 'yopiq'} onChange={e => qoidaQoy(bi, ri, { type: e.target.value as SavolTuri })}>
+                        {!kalitRejimi && (
+                          <>
+                            <input className={`${INPUT} col-span-12 sm:col-span-4`} disabled={qulf} list={`imt-mavzu-${bi}`} value={r.topic} onChange={e => qoidaQoy(bi, ri, { topic: e.target.value })} placeholder="Istalgan mavzu" />
+                            <datalist id={`imt-mavzu-${bi}`}>{mavzuRoyxati.map(m => <option key={m.mavzu} value={m.mavzu} />)}</datalist>
+                          </>
+                        )}
+                        <select className={`${SELECT} ${kalitRejimi ? 'col-span-6 sm:col-span-4' : 'col-span-4 sm:col-span-2'}`} disabled={qulf} value={r.type || 'yopiq'} onChange={e => qoidaQoy(bi, ri, { type: e.target.value as SavolTuri })}>
                           {(['yopiq', 'raqamli', 'yozma'] as SavolTuri[]).map(t => <option key={t} value={t}>{TUR_NOMI[t]}</option>)}
                         </select>
-                        <input className={`${INPUT} col-span-3 sm:col-span-1`} disabled={qulf} type="number" min={1} value={r.count} onChange={e => qoidaQoy(bi, ri, { count: Number(e.target.value) })} aria-label="Soni" />
-                        <select className={`${SELECT} col-span-5 sm:col-span-2`} disabled={qulf} value={r.difficulty || ''} onChange={e => qoidaQoy(bi, ri, { difficulty: Number(e.target.value) || undefined })}>
-                          <option value="">Har qanday qiyinlik</option>{[1, 2, 3, 4, 5].map(d => <option key={d} value={d}>Qiyinlik {d}</option>)}
-                        </select>
-                        <input className={`${INPUT} col-span-4 sm:col-span-1`} disabled={qulf} inputMode="decimal" value={r.points ?? ''} onChange={e => qoidaQoy(bi, ri, { points: e.target.value === '' ? undefined : Number(e.target.value.replace(',', '.')) })} placeholder={r.type === 'yozma' ? 'Ball' : 'Ball'} title="Shu qoidadagi savol bali (bo'sh — blok bali)" />
-                        <div className="col-span-6 sm:col-span-1 text-[11.5px]" title={`Bankda ${mavjud} ta faol savol${kopaytma > 1 ? `, kerak ${kerak} (smenalarga alohida)` : ''}`}>
-                          {meta && b.subject.trim() ? (yetadi ? <span className="text-yaxshi inline-flex items-center gap-1"><CheckCircle2 size={12} />{mavjud}</span> : <span className="text-xato inline-flex items-center gap-1"><AlertTriangle size={12} />{mavjud}/{kerak}</span>) : null}
-                        </div>
+                        <input className={`${INPUT} ${kalitRejimi ? 'col-span-3 sm:col-span-2' : 'col-span-3 sm:col-span-1'}`} disabled={qulf} type="number" min={1} value={r.count} onChange={e => qoidaQoy(bi, ri, { count: Number(e.target.value) })} aria-label="Soni" title="Savollar soni" />
+                        {!kalitRejimi && (
+                          <select className={`${SELECT} col-span-5 sm:col-span-2`} disabled={qulf} value={r.difficulty || ''} onChange={e => qoidaQoy(bi, ri, { difficulty: Number(e.target.value) || undefined })}>
+                            <option value="">Har qanday qiyinlik</option>{[1, 2, 3, 4, 5].map(d => <option key={d} value={d}>Qiyinlik {d}</option>)}
+                          </select>
+                        )}
+                        <input className={`${INPUT} ${kalitRejimi ? 'col-span-3 sm:col-span-2' : 'col-span-4 sm:col-span-1'}`} disabled={qulf} inputMode="decimal" value={r.points ?? ''} onChange={e => qoidaQoy(bi, ri, { points: e.target.value === '' ? undefined : Number(e.target.value.replace(',', '.')) })} placeholder="Ball" title="Shu qatordagi har bir savol bali (bo'sh — blokning «bir savol bali»)" />
+                        {kalitRejimi ? (
+                          <div className="col-span-10 sm:col-span-3 text-[11.5px] text-matn-xira">{r.count || 0} ta savol{r.points != null ? ` · har biri ${r.points} ball` : ''}</div>
+                        ) : (
+                          <div className="col-span-6 sm:col-span-1 text-[11.5px]" title={`Bankda ${mavjud} ta faol savol${kopaytma > 1 ? `, kerak ${kerak} (smenalarga alohida)` : ''}`}>
+                            {meta && b.subject.trim() ? (yetadi ? <span className="text-yaxshi inline-flex items-center gap-1"><CheckCircle2 size={12} />{mavjud}</span> : <span className="text-xato inline-flex items-center gap-1"><AlertTriangle size={12} />{mavjud}/{kerak}</span>) : null}
+                          </div>
+                        )}
                         {!qulf && <button aria-label="Qoidani o'chirish" onClick={() => blokQoy(bi, { topicRules: b.topicRules.filter((_, j) => j !== ri) })} className="col-span-2 sm:col-span-1 justify-self-end p-2 rounded-lg text-matn-xira hover:text-xato cursor-pointer"><Trash2 size={14} /></button>}
                       </div>
                     );
@@ -242,13 +264,25 @@ export default function ExamBuilder() {
                 <Tanlov qiymat={sozlama.sessionQuestions} onChange={v => !qulf && s({ sessionQuestions: v })} variantlar={[{ v: 'bir', nom: 'Bir xil' }, { v: 'alohida', nom: 'Har smenaga boshqa' }]} />
               </Maydon>
             )}
-            <Maydon nom="Variantlar soni" izoh="4 va undan ko'p bo'lsa, yondagi, oldingi, orqadagi va diagonaldagi qo'shnining varianti boshqa bo'ladi">
+            <Maydon nom={kalitRejimi ? 'Kitobcha variantlari' : 'Variantlar soni'} izoh={kalitRejimi
+              ? "Nechta turdagi kitobchangiz bor (A, B, C…). Har biriga kalit alohida kiritiladi; 4 va undan ko'p bo'lsa qo'shnilarga har xil variant tushadi."
+              : "4 va undan ko'p bo'lsa, yondagi, oldingi, orqadagi va diagonaldagi qo'shnining varianti boshqa bo'ladi"}>
               <select className={`${SELECT} max-w-48`} disabled={qulf} value={sozlama.variantCount} onChange={e => s({ variantCount: Number(e.target.value) })}>
                 {Array.from({ length: 26 }, (_, i) => i + 1).map(n => <option key={n} value={n}>{n} ta ({VARIANT_KODLARI.slice(0, n).join(n > 6 ? '' : ', ').slice(0, 14)}{n > 6 ? '…' : ''})</option>)}
               </select>
             </Maydon>
-            <Almashtirgich yoqilgan={sozlama.shuffleQuestions} onChange={v => !qulf && s({ shuffleQuestions: v })} nom="Fan ichida savollar tartibi aralashsin" izoh="Matnga bog'langan savollar birga qoladi" />
-            <Almashtirgich yoqilgan={sozlama.shuffleOptions} onChange={v => !qulf && s({ shuffleOptions: v })} nom="Javob variantlari aralashsin" izoh="Belgilangan savollardan tashqari (A va B to'g'ri kabi)" />
+            {kalitRejimi ? (
+              <Maydon nom="Javob variantlari (doirachalar)" izoh="Kitobchadagi savollarda nechta javob varianti bor — varaqda shuncha doiracha chiqadi">
+                <select className={`${SELECT} max-w-48`} disabled={qulf} value={sozlama.optionCount} onChange={e => s({ optionCount: Number(e.target.value) })}>
+                  {[2, 3, 4, 5, 6].map(n => <option key={n} value={n}>{n} ta ({['A', 'B', 'C', 'D', 'E', 'F'].slice(0, n).join(', ')})</option>)}
+                </select>
+              </Maydon>
+            ) : (
+              <>
+                <Almashtirgich yoqilgan={sozlama.shuffleQuestions} onChange={v => !qulf && s({ shuffleQuestions: v })} nom="Fan ichida savollar tartibi aralashsin" izoh="Matnga bog'langan savollar birga qoladi" />
+                <Almashtirgich yoqilgan={sozlama.shuffleOptions} onChange={v => !qulf && s({ shuffleOptions: v })} nom="Javob variantlari aralashsin" izoh="Belgilangan savollardan tashqari (A va B to'g'ri kabi)" />
+              </>
+            )}
             <Almashtirgich yoqilgan={sozlama.variantBubble} onChange={v => s({ variantBubble: v })} nom="O'quvchi varaqqa kitobcha variantini ham bo'yaydi" izoh="Kitobcha almashib qolsa, skaner ushlaydi" />
           </div>
         </Karta>
@@ -274,7 +308,9 @@ export default function ExamBuilder() {
                   {sozlama.ranking === 'top' && <input type="number" min={1} className={`${INPUT} w-24`} value={sozlama.topN} onChange={e => s({ topN: Number(e.target.value) || 10 })} aria-label="Nechta" />}
                 </div>
               </Maydon>
-              <Almashtirgich yoqilgan={sozlama.showQuestionsAfter} onChange={v => s({ showQuestionsAfter: v })} nom="Natijadan keyin o'quvchi savollar va yechimlarni ko'radi" izoh="Ko'rsatilgan savollar keyingi imtihonlarga tushmasligi kerak" />
+              <Almashtirgich yoqilgan={sozlama.showQuestionsAfter} onChange={v => s({ showQuestionsAfter: v })}
+                nom={kalitRejimi ? "Natijadan keyin o'quvchi har savoldagi javobini ko'radi" : "Natijadan keyin o'quvchi savollar va yechimlarni ko'radi"}
+                izoh={kalitRejimi ? "Savol raqami, o'z javobi va to'g'ri javob (savol matni kitobchada)" : 'Ko\'rsatilgan savollar keyingi imtihonlarga tushmasligi kerak'} />
               <Almashtirgich yoqilgan={sozlama.rasch.enabled} onChange={v => s({ rasch: { ...sozlama.rasch, enabled: v } })}
                 nom="Rasch bali (Milliy sertifikat uslubi)" izoh="E'londa har qatnashchiga T-ball (o'rtacha 50) va daraja; reyting shu ball bo'yicha. Qiyin savolni topgan yuqoriroq turadi. Yozma savollar hisobga olinmaydi." />
               {sozlama.rasch.enabled && (

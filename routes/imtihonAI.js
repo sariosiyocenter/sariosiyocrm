@@ -124,7 +124,8 @@ export function registerImtihonAIRoutes(app) {
       const v = r.variantCode ? await prisma.examVariant.findFirst({ where: { examId: r.examId, session: r.session ?? 1, code: r.variantCode } }) : null;
       const it = (Array.isArray(v?.items) ? v.items : []).find(x => x.n === n);
       if (!it) return res.status(409).json({ error: "Variant aniqlanmagan — avval variantni tanlang" });
-      const q = await savolniOl(it.q);
+      // "Faqat kalit" savolining matni bankda yo'q — AI faqat javobni va ballni ko'radi.
+      const q = Number.isInteger(it.q) ? await savolniOl(it.q) : null;
       res.json(await yozmaBaho({ savol: q?.text || '', maks: it.p, mezon: q?.solution || '', rasm: req.body?.rasm }));
     } catch (err) { aiXatosi(err, res, next); }
   });

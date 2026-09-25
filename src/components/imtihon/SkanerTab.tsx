@@ -111,7 +111,14 @@ export default function SkanerTab({ exam, yangila }: { exam: ImtihonTafsil; yang
     muammo: navbat.filter(e => e.holat === 'xato' || e.holat === 'aniqlanmadi').length,
   };
 
-  if (!exam.lockedAt) return <Karta><BoshHolat ikonka={<Upload size={20} />} sarlavha="Avval savollarni qulflang" /></Karta>;
+  if (!exam.lockedAt) {
+    return (
+      <Karta>
+        <BoshHolat ikonka={<Upload size={20} />} sarlavha="Avval savollarni qulflang"
+          izoh="Imtihon sahifasi → 1 Tuzilma: savollar (yoki «faqat kalit» rejimida kitobcha kaliti) tayyor bo'lgach «Qulflash». Keyin javob varaqalari chop etiladi va to'ldirilgan varaqlar shu yerda skanerlanadi." />
+      </Karta>
+    );
+  }
   if (!skanerlaydi) return <Karta><BoshHolat ikonka={<Upload size={20} />} sarlavha="Skanerlashga ruxsatingiz yo'q" /></Karta>;
 
   return (

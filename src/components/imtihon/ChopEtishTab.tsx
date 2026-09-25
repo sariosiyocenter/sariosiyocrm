@@ -112,14 +112,17 @@ export default function ChopEtishTab({ exam }: { exam: ImtihonTafsil }) {
       </Karta>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        <Karta sarlavha="Kitobchalar" izoh="Har variantdan bittadan chop eting va ksero qiling">
+        <Karta sarlavha={s.source === 'kalit' ? "Kitobchalar — o'zingizniki" : 'Kitobchalar'}
+          izoh={s.source === 'kalit' ? "«Faqat kalit» rejimi: kitobchani CRM chop etmaydi. Har o'ringa qaysi variant berilishi — eshik ro'yxati va vedomostda." : 'Har variantdan bittadan chop eting va ksero qiling'}>
           <div className="space-y-3">
-            <div className="flex flex-wrap gap-2">
-              {variantlar.map(code => (
-                <Tugma key={code} kichik ikonka={<BookOpen size={13} />} yuklanmoqda={band === `kitobcha-${code}`} onClick={() => kitobcha([code])}>Variant {code}</Tugma>
-              ))}
-              {variantlar.length > 1 && <Tugma kichik turi="asosiy" yuklanmoqda={band === `kitobcha-${variantlar.join('')}`} onClick={() => kitobcha(variantlar)}>Hammasi</Tugma>}
-            </div>
+            {s.source !== 'kalit' && (
+              <div className="flex flex-wrap gap-2">
+                {variantlar.map(code => (
+                  <Tugma key={code} kichik ikonka={<BookOpen size={13} />} yuklanmoqda={band === `kitobcha-${code}`} onClick={() => kitobcha([code])}>Variant {code}</Tugma>
+                ))}
+                {variantlar.length > 1 && <Tugma kichik turi="asosiy" yuklanmoqda={band === `kitobcha-${variantlar.join('')}`} onClick={() => kitobcha(variantlar)}>Hammasi</Tugma>}
+              </div>
+            )}
             {nusxalar.length > 0 && (
               <div className="rounded-xl bg-ichki border border-chiziq p-3">
                 <p className="text-[12px] font-semibold text-matn-sokin mb-1.5">Kerakli nusxalar ({smenaNomi(smena)}, 5% zaxira bilan)</p>

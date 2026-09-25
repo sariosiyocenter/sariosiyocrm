@@ -191,7 +191,7 @@ export default function App() {
             <Route path="/exams/:id/edit"       element={sahifa(ozgartira('imtihonlar.imtihon'), <ExamBuilder />)} />
             <Route path="/exams/:id"            element={sahifa(kora('imtihonlar.imtihon') || kora('imtihonlar.natija'), <ExamDetail />)} />
             <Route path="/exams/:id/reyting"    element={sahifa(kora('imtihonlar.imtihon') || kora('imtihonlar.natija'), <ReytingEkrani />)} />
-            <Route path="/scanner"              element={<Navigate to="/exams" replace />} />
+            <Route path="/scanner"              element={<Navigate to="/exams?tab=skaner" replace />} />
             <Route path="/questions"            element={<Navigate to="/exams?tab=savollar" replace />} />
             <Route path="/questions/new"        element={sahifa(ozgartira('imtihonlar.savollar'), <QuestionEditor />)} />
             <Route path="/questions/:id/edit"   element={sahifa(kora('imtihonlar.savollar'), <QuestionEditor />)} />
