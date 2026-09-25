@@ -7,7 +7,7 @@ import { useImtihonApi, ApiXato } from './useImtihonApi';
 import { Karta, Tugma, Yorliq, Yuklanmoqda } from './ui';
 import KalitOynasi from './KalitOynasi';
 import KalitMuharriri from './KalitMuharriri';
-import type { ImtihonTafsil, BolimId } from '../ExamDetail';
+import type { ImtihonTafsil, TabId } from './turlar';
 
 // 1-bo'lim: tuzilma, bank yetarliligi, savollarni qulflash (variantlar
 // serverda yasaladi) va kalit.
@@ -19,7 +19,7 @@ interface Qoida {
 interface KalitHolat { kalit: string; session: number; code: string; jami: number; toldirilgan: number; tayyor: boolean }
 const TUR: Record<string, string> = { yopiq: 'yopiq', raqamli: 'raqamli', yozma: 'yozma' };
 
-export default function TuzilmaTab({ exam, yangila, bolimgaOt }: { exam: ImtihonTafsil; yangila: () => Promise<any>; bolimgaOt: (b: BolimId) => void }) {
+export default function TuzilmaTab({ exam, yangila, otish }: { exam: ImtihonTafsil; yangila: () => Promise<any>; otish: (tab: TabId) => void }) {
   const { ozgartira, kora, showNotification } = useCRM();
   const tahrir = ozgartira('imtihonlar.imtihon');
   const { soro } = useImtihonApi();
@@ -109,7 +109,7 @@ export default function TuzilmaTab({ exam, yangila, bolimgaOt }: { exam: Imtihon
                   <div className="space-y-2 rounded-xl bg-ogoh-fon border border-ogoh/25 px-3 py-2.5 text-[12.5px] text-matn">
                     <div className="flex flex-wrap items-center gap-2">
                       <AlertTriangle size={15} className="text-ogoh" /> Bank yetmaydi — savol qo'shing yoki qoidani kamaytiring.
-                      <Tugma kichik turi="oddiy" ikonka={<BookOpen size={13} />} onClick={() => navigate('/exams?tab=savollar')}>Savollar banki</Tugma>
+                      <Tugma kichik turi="oddiy" ikonka={<BookOpen size={13} />} onClick={() => navigate(`/exams?tab=savollar&imtihon=${exam.id}`)}>Savollar banki</Tugma>
                     </div>
                     {tahrir && <p className="text-[12px] text-matn-sokin">O'z test kitobchangiz bo'lsa — imtihon sozlamasida manbani «Faqat kalit» qiling: savollarsiz, faqat javob kaliti bilan tekshiriladi.</p>}
                   </div>
@@ -182,8 +182,7 @@ export default function TuzilmaTab({ exam, yangila, bolimgaOt }: { exam: Imtihon
             </div>
           ) : (
             <div className="space-y-3">
-              <p className="text-[12.5px] text-matn-sokin">Endi qatnashchilarni o'rinlashtiring va varaqlarni chop eting.</p>
-              <Tugma turi="asosiy" className="w-full" onClick={() => bolimgaOt('qatnashchilar')}>Qatnashchilar <ArrowRight size={14} /></Tugma>
+              <KeyingiQadam exam={exam} otish={otish} />
               {tahrir && exam._count.results === 0 && <Tugma className="w-full" turi="oddiy" ikonka={<Unlock size={14} />} yuklanmoqda={band} onClick={qulfniOch}>Qulfni ochish</Tugma>}
             </div>
           )}
@@ -210,6 +209,25 @@ export default function TuzilmaTab({ exam, yangila, bolimgaOt }: { exam: Imtihon
 }
 
 const HARF_ROYXAT = ['A', 'B', 'C', 'D', 'E', 'F'];
+
+/** Qulflangan imtihon qaysi bosqichda — shu bosqichga qarab keyingi ish va tugma. */
+function KeyingiQadam({ exam, otish }: { exam: ImtihonTafsil; otish: (tab: TabId) => void }) {
+  const h = exam.holat;
+  const [matn, tugmalar]: [string, [TabId, string][]] =
+    exam.publishedAt ? ["Natijalar e'lon qilingan. Tahlil, reyting va xabarlar holati — «Natijalar» tabida.", [['natija', 'Natijalar']]]
+      : !h.orinlar && !h.natijalar ? ["Endi qatnashchilarni o'rinlashtiring — har o'ringa variant beriladi. Keyin javob varaqalarini chop etasiz.", [['orin', "O'rinlashtirish"]]]
+        : !h.natijalar ? [`${h.orinlar} ta qatnashchi o'rinlashgan. Javob varaqalarini chop eting; imtihondan keyin to'ldirilgan varaqlar skanerlanadi.`, [['chop', 'Chop etish'], ['skaner', 'Skaner']]]
+          : h.skanerlanmagan || h.shubhali ? [`Skanerlangan: ${h.natijalar}. ${h.skanerlanmagan ? `Varag'i yo'q: ${h.skanerlanmagan}. ` : ''}${h.shubhali ? `Tekshirilmagan: ${h.shubhali}.` : ''}`, [['skaner', 'Skaner'], ['natija', 'Natijalar']]]
+            : [`Hamma varaq skanerlangan va tekshirilgan (${h.natijalar} ta). Savollar tahlilini ko'rib, natijani e'lon qiling.`, [['natija', "Natijalar va e'lon"]]];
+  return (
+    <>
+      <p className="text-[12.5px] text-matn-sokin">{matn}</p>
+      {tugmalar.map(([tab, nom], i) => (
+        <Tugma key={tab} turi={i === 0 ? 'asosiy' : 'ikkinchi'} className="w-full" onClick={() => otish(tab)}>{nom} <ArrowRight size={14} /></Tugma>
+      ))}
+    </>
+  );
+}
 
 /** Nega bankda yetmayapti — mos savollar boshqa holatda, qiyinlikda yoki tilda. */
 function Sabab({ q, fan }: { q: Qoida; fan: string }) {

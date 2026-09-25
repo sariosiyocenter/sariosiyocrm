@@ -102,7 +102,7 @@ export default function OquvchiImtihonlari({ studentId }: { studentId: number })
                   <td className="px-4 py-2.5 text-matn-sokin whitespace-nowrap num">{r.exam!.date}</td>
                   <td className="px-4 py-2.5">
                     {imtihonKorinadi
-                      ? <Link to={`/exams/${r.examId}?b=natijalar`} className="font-semibold text-matn hover:text-brand">{r.exam!.name}</Link>
+                      ? <Link to={`/exams?tab=natija&imtihon=${r.examId}`} className="font-semibold text-matn hover:text-brand">{r.exam!.name}</Link>
                       : <span className="font-semibold text-matn">{r.exam!.name}</span>}
                     {!r.exam!.publishedAt && <Yorliq rang="ogoh" className="ml-2">dastlabki</Yorliq>}
                     {(r.blockScores || []).filter(b => b.max > 0).length > 1 && (

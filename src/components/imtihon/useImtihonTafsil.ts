@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useCRM } from '../../context/CRMContext';
 import { useImtihonApi } from './useImtihonApi';
-import type { ImtihonTafsil } from '../ExamDetail';
+import type { ImtihonTafsil } from './turlar';
 
 /**
  * Bitta imtihonning to'liq ma'lumoti (variantlar, kurslar, sanoqlar) —

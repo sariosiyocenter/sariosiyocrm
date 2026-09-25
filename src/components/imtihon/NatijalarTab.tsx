@@ -11,7 +11,7 @@ import KalitOynasi from './KalitOynasi';
 import KalitMuharriri from './KalitMuharriri';
 import { oddiyMatn, formulaliHtml, SAVOL_MATNI } from '../../lib/matn';
 import { vergul } from './format';
-import type { ImtihonTafsil } from '../ExamDetail';
+import type { ImtihonTafsil } from './turlar';
 
 // 6-bo'lim: natijalar, savol va mavzu tahlili, e'lon. E'londan oldin savollar
 // tahliliga qarash kerak: kuchli o'quvchilar xato qilgan savol — ko'pincha
@@ -266,7 +266,13 @@ export default function NatijalarTab({ exam, yangila }: { exam: ImtihonTafsil; y
       )}
 
       {bolim === 'mavzular' && (
-        <Karta ichki="p-0" sarlavha="Mavzular bo'yicha" izoh="To'g'ri javoblar ulushi — ustoz qaysi mavzuni qayta o'tishini shundan ko'radi">
+        <Karta ichki="p-0" sarlavha="Mavzular bo'yicha" izoh="To'g'ri javoblar ulushi — ustoz qaysi mavzuni qayta o'tishini shundan ko'radi"
+          amallar={s.source === 'kalit' && kalitKorinadi && <Tugma kichik ikonka={<KeyRound size={13} />} onClick={() => setKalitSavol(null)}>Savol mavzulari</Tugma>}>
+          {s.source === 'kalit' && !(tahlil?.mavzular || []).some(m => m.mavzu) && (
+            <p className="mx-4 mt-3 rounded-xl bg-ichki px-3 py-2 text-[12px] text-matn-sokin">
+              Kitobcha savollariga mavzu yozilmagan — tahlil fan bo'yicha. Mavzu yozilsa (Kalit → «Mavzular»: «1-5 Kasrlar»), har kursda qaysi mavzu zaif ekani ko'rinadi.
+            </p>
+          )}
           <div className="overflow-x-auto mt-3">
             <table className="w-full text-[12.5px]">
               <thead className="bg-ichki text-matn-sokin">
@@ -279,7 +285,7 @@ export default function NatijalarTab({ exam, yangila }: { exam: ImtihonTafsil; y
               <tbody className="divide-y divide-chiziq">
                 {(tahlil?.mavzular || []).map(m => (
                   <tr key={`${m.fan}|${m.mavzu}`}>
-                    <td className="px-3 py-2"><span className="text-matn">{m.mavzu}</span> <span className="text-matn-xira">· {m.fan}</span></td>
+                    <td className="px-3 py-2">{m.mavzu ? <><span className="text-matn">{m.mavzu}</span> <span className="text-matn-xira">· {m.fan}</span></> : <span className="text-matn">{m.fan}</span>}</td>
                     <td className="px-3 py-2 text-center"><span className={`px-2 py-0.5 rounded-md font-bold raqam ${foizRangi(m.foiz / 100)}`}>{m.foiz}%</span></td>
                     {kurslar.map(([id]) => {
                       const k = m.kurslar[String(id)];

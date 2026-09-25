@@ -561,6 +561,8 @@ export interface ExamSettings {
     source: 'bank' | 'kalit';
     /** "Faqat kalit" rejimi: {'smena|variant': [1-savol kaliti, ...]} (kalit ruxsatisiz bo'sh keladi). */
     keys: Record<string, string[]>;
+    /** Shu rejimda savollarning mavzusi (ixtiyoriy, tahlil uchun) — keys bilan bir xil shakl. */
+    keyTopics: Record<string, string[]>;
     optionCount: number;
 }
 

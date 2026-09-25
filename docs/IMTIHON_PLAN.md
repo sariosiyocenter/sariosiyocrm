@@ -593,7 +593,7 @@ Dastlabki savollar (tarix uchun):
 | Chop etish | `src/lib/chopEtish.ts`, `src/components/imtihon/chop.ts` |
 | Ota-ona natija sahifasi | `src/components/NatijaSahifasi.tsx`, `GET /api/public/natija/:token` (HMAC imzo, `natijaTokeni`) |
 | Skaner PDF dekoderlari | pdf.js wasm (JBIG2/JPEG2000) — `vite.config.ts` `pdfjsWasm()` → `/pdfjs-wasm/`; CSP da `'wasm-unsafe-eval'` |
-| Sahifalar | `ExamsList`, `ExamBuilder`, `ExamDetail` + `src/components/imtihon/*Tab.tsx`, `QuestionsList`, `QuestionEditor` |
+| Sahifalar | `ExamsList` (bitta ish joyi, 13-bo'lim), `ExamBuilder`, `ExamDetail` (eski havolalar → ish joyi) + `src/components/imtihon/*Tab.tsx`, `QuestionsList`, `QuestionEditor` |
 | Katta ekran reytingi | `src/components/imtihon/ReytingEkrani.tsx`, `GET /api/exams/:id/leaderboard` |
 | O'quvchi profilidagi grafik | `src/components/imtihon/OquvchiImtihonlari.tsx` (StudentDetails → "Imtihonlar") |
 | Ruxsatnoma | `ruxsatnomalarniYubor`, `ruxsatnomaNavbati` (routes/imtihon.js; server.js avtomatik ishlarida), `POST /api/exams/:id/admit-cards` |
@@ -630,8 +630,8 @@ Egasi: "6 ta modul yuborgandim — 6 ta tab bo'lsin", "savollar banki, tarix qan
 | 5 | Skaner | skanerlash (PDF / rasm / kamera) va tekshirish (shubhalilar, yozma) |
 | 6 | Natijalar va tarix | tanlangan imtihon natijalari; tarix — hamma imtihon, o'rtacha grafik, o'quvchi bo'yicha qidiruv |
 
-3–6-bo'limlarda tepada imtihon tanlanadi (URL da `imtihon=`), ichida imtihon
-sahifasidagi bo'limning o'zi. Imtihon sahifasi (1 Tuzilma … 6 Natijalar) ham qoladi.
+3–6-bo'limlarda tepada imtihon tanlanadi (URL da `imtihon=`). Alohida imtihon sahifasi
+13-bo'limda olib tashlandi — hammasi shu bitta ish joyida.
 
 **"Faqat kalit" rejimi** (`settings.source = 'kalit'`): markaz o'z kitobchasi bilan
 (sotib olingan to'plam yoki ustoz tuzgan test) imtihon o'tkazadi — savollar bankka
@@ -653,3 +653,50 @@ Kod: `lib/imtihon.js` (`kalitTuzilmasi`, `kalitQiymati`, `kalitdanVariantlar`,
 check, analysis, `GET /api/exams/history`), `src/components/ExamsList.tsx` (6 bo'lim),
 `imtihon/KalitMuharriri.tsx`, `imtihon/TarixBolimi.tsx`, `imtihon/FoizGrafigi.tsx`,
 `imtihon/useImtihonTafsil.ts`. Sinov: `scratch/kalit_sinov.mjs`, `scratch/test_imtihon_kalit.mjs`.
+
+---
+
+## 13. Bitta ish joyi (2026-09-25, kechqurun)
+
+Egasi: "TZ xom edi — konsepsiyani tushungan bo'lsang, qolganini o'zing to'liq qil". Qaror
+(TZ dagi raqamdan emas, ishdan kelib chiqib):
+
+**Muammo.** 6 tabli modul sahifasi bilan birga imtihonning alohida sahifasi ham bor edi
+(1 Tuzilma … 6 Natijalar). Bitta ekran ikki joyda, ikki xil raqamlash bilan ko'rinardi:
+"3 O'rinlashtirish" bir joyda, "2 Qatnashchilar va o'rinlar" boshqa joyda. Imtihonga
+kirilganda tepadagi 6 bo'lim yo'qolardi.
+
+**Yechim — bitta ish joyi.** `/exams` da bitta tab qatori. Tablar — imtihon bosqichlari,
+har biri alohida ish (ko'pincha boshqa odam, boshqa vaqt):
+
+| Tab | Kim, qachon | Ichida |
+|---|---|---|
+| 1 Savollar banki | ustozlar, doim | hamma imtihon uchun umumiy |
+| 2 Imtihonlar | metodist, imtihondan oldin | ro'yxat (har imtihonda bosqichlar chizig'i) · tanlangan imtihonning tuzilmasi, bank/kalit, qulf, "Keyingi qadam" |
+| 3 O'rinlashtirish | qabulxona, ro'yxatdan o'tish kunlari | kurslar, xonalar, o'rinlar, keldi/kelmadi, ruxsatnoma |
+| 4 Chop etish | printer yonidagi xodim, arafasida | kitobcha, javob varaqlari, ro'yxatlar |
+| 5 Skaner | operator, imtihondan keyin | skanerlash (PDF / kamera / qo'lda) + **Skaner holati** · tekshirish |
+| 6 Natijalar va tarix | metodist, direktor | reyting, savollar/mavzular tahlili, e'lon, xabar · tarix |
+
+- 2–6-tablarda tepada **imtihon paneli**: nomi (bosilsa — boshqa imtihon), holati, sana,
+  savol/ball, "Barcha imtihonlar", Sozlamalar, Nusxa, O'chirish. Imtihon tablar orasida
+  URL da saqlanadi (`?tab=…&imtihon=…`); 3–6-tabga tanlanmay kirilsa, bosqichga mos
+  imtihon o'zi tanlanadi.
+- **Tablarda tanlangan imtihonning holati** (`GET /api/exams/:id` → `holat`): ✓ — bosqich
+  bajarilgan; O'rinlashtirish yonida o'rinlar soni; Skaner yonida "skanerlangan/kutilgan"
+  va shubhali bo'lsa sariq nuqta; Natijalar ✓ — e'lon qilingan.
+- **Skaner holati** (Skaner tabining o'ng ustuni): xona (va smena) bo'yicha kutilgan,
+  skanerlangan, kelmagan, qolgan. Qolganlar ro'yxatidan bir bosishda "Kelmadi" yoki
+  "Qo'lda" (qo'lda kiritish shu qatnashchi bilan ochiladi) — e'londan oldin hech kim
+  tushib qolmaydi.
+- **"Faqat kalit" rejimida savol mavzulari** (`settings.keyTopics`, kalit bilan bir xil
+  shakl; `PUT /api/exams/:id/manual-key` `{ topics }`): Kalit muharriri → "Mavzular",
+  matn bilan ("1-5 Kasrlar"), "Boshqa kitobchalarga ham". Variant elementida `mv`;
+  Natijalar → Mavzular va kurs × mavzu jadvali shu bo'yicha. Yozilmasa — fan bo'yicha.
+- Eski havolalar (`/exams/:id`, `?b=natijalar` — jurnal, profil, katta ekran)
+  `ExamDetail.tsx` orqali ish joyiga o'tadi.
+
+Kod: `src/components/ExamsList.tsx` (ish joyi, `ImtihonPaneli`, `ImtihonlarRoyxati`),
+`imtihon/turlar.ts` (`ImtihonTafsil`, `BosqichHolati`, `TabId`), `imtihon/QulfKerak.tsx`,
+`SkanerTab.tsx` (`SkanerHolati`), `TuzilmaTab.tsx` (`KeyingiQadam`), `KalitMuharriri.tsx`
+(mavzular), `routes/imtihon.js` (`bosqichHolati`). Sinov: `scratch/test_imtihon_ishjoy.mjs`.

@@ -1,13 +1,14 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Upload, Camera, Keyboard, CheckCircle2, AlertTriangle, XCircle, Loader2, Search, Square, RotateCcw } from 'lucide-react';
+import { Upload, Camera, Keyboard, CheckCircle2, AlertTriangle, XCircle, Loader2, Search, Square, RotateCcw, ChevronDown, ClipboardCheck, UserX } from 'lucide-react';
 import { useCRM } from '../../context/CRMContext';
 import { useImtihonApi } from './useImtihonApi';
-import { Karta, Tugma, Tanlov, Yorliq, INPUT, SELECT, Maydon, BoshHolat } from './ui';
+import { Karta, Tugma, Tanlov, Yorliq, INPUT, SELECT, Maydon, BoshHolat, Yuklanmoqda } from './ui';
 import { useOrinlar, type Orin } from './QatnashchilarTab';
 import { OmrIshchi, faylSahifalari, type IshchiNatija } from '../../lib/omr/skaner';
 import { varaqSahifalari, type VaraqParametrlari } from '../../lib/omr/layout';
 import { varaqTuzilmasi, HARFLAR, RAQAM_USTUNLARI } from '../../../lib/imtihon.js';
-import type { ImtihonTafsil } from '../ExamDetail';
+import type { ImtihonTafsil } from './turlar';
+import QulfKerak from './QulfKerak';
 
 // 4-bo'lim: javob varaqalarini o'qish. Asosiy yo'l — ADF skanerdan PDF yoki
 // rasmlar (brauzerning o'zi o'qiydi, serverga faqat javoblar va kichik rasm
@@ -24,12 +25,14 @@ interface Element {
   natija?: { name: string; score: number; shubhalar: number; sheetCode?: string };
 }
 
-export default function SkanerTab({ exam, yangila }: { exam: ImtihonTafsil; yangila: () => Promise<any> }) {
+export default function SkanerTab({ exam, yangila, onTekshirish }: { exam: ImtihonTafsil; yangila: () => Promise<any>; onTekshirish?: () => void }) {
   const { ozgartira, showNotification } = useCRM();
   const skanerlaydi = ozgartira('imtihonlar.natija');
   const { soro } = useImtihonApi();
   const { data: orinData, yukla: orinlarniYukla } = useOrinlar(exam.id);
   const [rejim, setRejim] = useState<'fayl' | 'kamera' | 'qolda'>('fayl');
+  // "Skaner holati"dan qo'lda kiritishga o'tilgan qatnashchi.
+  const [qoldaOrin, setQoldaOrin] = useState<Orin | null>(null);
   const [navbat, setNavbat] = useState<Element[]>([]);
   const [ishlamoqda, setIshlamoqda] = useState(false);
   const ishchiRef = useRef<OmrIshchi | null>(null);
@@ -112,19 +115,26 @@ export default function SkanerTab({ exam, yangila }: { exam: ImtihonTafsil; yang
   };
 
   if (!exam.lockedAt) {
-    return (
-      <Karta>
-        <BoshHolat ikonka={<Upload size={20} />} sarlavha="Avval savollarni qulflang"
-          izoh="Imtihon sahifasi → 1 Tuzilma: savollar (yoki «faqat kalit» rejimida kitobcha kaliti) tayyor bo'lgach «Qulflash». Keyin javob varaqalari chop etiladi va to'ldirilgan varaqlar shu yerda skanerlanadi." />
-      </Karta>
-    );
+    return <QulfKerak examId={exam.id} ikonka={<Upload size={20} />}
+      izoh="«Imtihonlar» tabida savollar (yoki «faqat kalit» rejimida kitobcha kaliti) tayyor bo'lgach — «Savollarni qulflash». Keyin javob varaqalari chop etiladi va to'ldirilgan varaqlar shu yerda skanerlanadi." />;
   }
   if (!skanerlaydi) return <Karta><BoshHolat ikonka={<Upload size={20} />} sarlavha="Skanerlashga ruxsatingiz yo'q" /></Karta>;
 
+  const kelmadi = async (o: Orin) => {
+    try {
+      await soro('PUT', `exams/${exam.id}/seats/${o.id}`, { status: 'kelmadi' });
+      await orinlarniYukla();
+      yangila();
+    } catch (e: any) {
+      showNotification(e.message, 'error');
+    }
+  };
+
   return (
-    <div className="space-y-4">
+    <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 items-start">
+    <div className="lg:col-span-2 space-y-4 min-w-0">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <Tanlov qiymat={rejim} onChange={setRejim} variantlar={[
+        <Tanlov qiymat={rejim} onChange={v => { setRejim(v); setQoldaOrin(null); }} variantlar={[
           { v: 'fayl', nom: <span className="inline-flex items-center gap-1.5"><Upload size={14} /> Skaner fayli</span> },
           { v: 'kamera', nom: <span className="inline-flex items-center gap-1.5"><Camera size={14} /> Kamera</span> },
           { v: 'qolda', nom: <span className="inline-flex items-center gap-1.5"><Keyboard size={14} /> Qo'lda kiritish</span> },
@@ -154,7 +164,7 @@ export default function SkanerTab({ exam, yangila }: { exam: ImtihonTafsil; yang
         setNavbat(n => [el, ...n]);
         await yubor(el, {}, 'kamera');
       }} />}
-      {rejim === 'qolda' && <QoldaKiritish exam={exam} orinlar={orinData?.seats || []} onSaqlandi={() => { orinlarniYukla(); yangila(); }} />}
+      {rejim === 'qolda' && <QoldaKiritish key={qoldaOrin?.id ?? 0} exam={exam} orinlar={orinData?.seats || []} boshlangich={qoldaOrin} onSaqlandi={() => { setQoldaOrin(null); orinlarniYukla(); yangila(); }} />}
 
       {navbat.length > 0 && (
         <Karta sarlavha="O'qilgan varaqlar" ichki="p-0">
@@ -163,6 +173,112 @@ export default function SkanerTab({ exam, yangila }: { exam: ImtihonTafsil; yang
           </ul>
         </Karta>
       )}
+    </div>
+      <SkanerHolati exam={exam} orinlar={orinData?.seats ?? null} onKelmadi={kelmadi} onTekshirish={onTekshirish}
+        onQolda={o => { setQoldaOrin(o); setRejim('qolda'); window.scrollTo({ top: 0, behavior: 'smooth' }); }} />
+    </div>
+  );
+}
+
+/**
+ * Skaner holati — xona bo'yicha: kutilgan varaqlar, skanerlangani, kelmaganlar
+ * va hali varag'i yo'qlar. Qolganini "kelmadi" deb belgilash yoki qo'lda
+ * kiritish shu yerdan — e'londan oldin hech kim tushib qolmasin.
+ */
+function SkanerHolati({ exam, orinlar, onKelmadi, onQolda, onTekshirish }: {
+  exam: ImtihonTafsil; orinlar: Orin[] | null; onKelmadi: (o: Orin) => void; onQolda: (o: Orin) => void; onTekshirish?: () => void;
+}) {
+  const [ochiq, setOchiq] = useState<string | null>(null);
+  const kopSmena = exam.settings.sessions.length > 1;
+  const guruhlar = useMemo(() => {
+    const m = new Map<string, { kalit: string; nom: string; kelmadi: number; skanerlangan: number; shubhali: number; qolgan: Orin[] }>();
+    for (const o of orinlar || []) {
+      const kalit = `${o.session}|${o.roomId ?? 0}`;
+      if (!m.has(kalit)) {
+        const smena = exam.settings.sessions.find(x => x.id === o.session)?.name || `${o.session}-smena`;
+        m.set(kalit, { kalit, nom: `${kopSmena ? `${smena} · ` : ''}${o.roomName || 'Xonasiz'}`, kelmadi: 0, skanerlangan: 0, shubhali: 0, qolgan: [] });
+      }
+      const g = m.get(kalit)!;
+      if (o.resultId) { g.skanerlangan++; if (o.reviewStatus === 'shubhali') g.shubhali++; }
+      else if (o.status === 'kelmadi') g.kelmadi++;
+      else g.qolgan.push(o);
+    }
+    return [...m.values()];
+  }, [orinlar, exam.settings.sessions, kopSmena]);
+
+  if (!orinlar) return <Karta sarlavha="Skaner holati"><Yuklanmoqda /></Karta>;
+  if (!orinlar.length) {
+    return <Karta sarlavha="Skaner holati"><p className="text-[12.5px] text-matn-xira">Qatnashchilar o'rinlashtirilmagan — skanerlangan varaq o'quvchi ID raqami bo'yicha saqlanadi.</p></Karta>;
+  }
+  const jami = guruhlar.reduce((a, g) => ({ skaner: a.skaner + g.skanerlangan, kelmadi: a.kelmadi + g.kelmadi, qolgan: a.qolgan + g.qolgan.length, shubhali: a.shubhali + g.shubhali }), { skaner: 0, kelmadi: 0, qolgan: 0, shubhali: 0 });
+  const kutilgan = jami.skaner + jami.qolgan;
+
+  return (
+    <Karta sarlavha="Skaner holati" izoh={jami.qolgan ? `${jami.qolgan} ta qatnashchining varag'i hali yo'q` : 'Hamma varaq skanerlangan'}>
+      <div className="space-y-3">
+        <div>
+          <div className="flex items-baseline justify-between gap-2">
+            <span className="text-[22px] font-bold text-matn raqam">{jami.skaner}<span className="text-[13px] font-semibold text-matn-xira"> / {kutilgan}</span></span>
+            <span className="text-[12px] text-matn-xira">skanerlangan</span>
+          </div>
+          <Chiziq qism={jami.skaner} jami={kutilgan} />
+          {(jami.kelmadi > 0 || jami.shubhali > 0) && (
+            <div className="flex flex-wrap gap-1.5 mt-2">
+              {jami.kelmadi > 0 && <Yorliq>{jami.kelmadi} kelmagan</Yorliq>}
+              {jami.shubhali > 0 && (
+                <button type="button" onClick={onTekshirish} disabled={!onTekshirish} className="cursor-pointer disabled:cursor-default">
+                  <Yorliq rang="ogoh"><ClipboardCheck size={11} />{jami.shubhali} ta shubhali — tekshirish</Yorliq>
+                </button>
+              )}
+            </div>
+          )}
+        </div>
+        <ul className="divide-y divide-chiziq border-t border-chiziq -mx-4">
+          {guruhlar.map(g => {
+            const kut = g.skanerlangan + g.qolgan.length;
+            const ochilgan = ochiq === g.kalit;
+            return (
+              <li key={g.kalit}>
+                <button type="button" onClick={() => setOchiq(ochilgan ? null : g.kalit)} disabled={!g.qolgan.length} aria-expanded={g.qolgan.length ? ochilgan : undefined}
+                  className="w-full px-4 py-2.5 text-left cursor-pointer disabled:cursor-default hover:bg-ichki/60 disabled:hover:bg-transparent">
+                  <div className="flex items-center justify-between gap-2 text-[12.5px]">
+                    <span className="font-semibold text-matn truncate">{g.nom}</span>
+                    <span className="flex items-center gap-1.5 shrink-0">
+                      {g.qolgan.length ? <span className="text-ogoh font-semibold">{g.qolgan.length} qoldi</span> : <CheckCircle2 size={14} className="text-yaxshi" />}
+                      <span className="raqam text-matn-xira">{g.skanerlangan}/{kut}</span>
+                      {g.qolgan.length > 0 && <ChevronDown size={14} className={`text-matn-xira transition-transform ${ochilgan ? 'rotate-180' : ''}`} />}
+                    </span>
+                  </div>
+                  <Chiziq qism={g.skanerlangan} jami={kut} />
+                </button>
+                {ochilgan && (
+                  <ul className="px-4 pb-3 space-y-1.5">
+                    {g.qolgan.map(o => (
+                      <li key={o.id} className="flex items-center gap-1 rounded-lg bg-ichki/70 pl-2.5 pr-1 py-1.5">
+                        <span className="flex-1 min-w-0">
+                          <span className="block text-[12.5px] font-semibold text-matn truncate">{o.name}</span>
+                          <span className="block text-[11px] text-matn-xira">{o.row ? `${o.row}-qator, ${o.col}-o'rin · ` : ''}{o.sheetCode}{o.status === 'keldi' ? ' · keldi' : ''}</span>
+                        </span>
+                        <Tugma kichik turi="oddiy" ikonka={<Keyboard size={13} />} onClick={() => onQolda(o)} aria-label={`${o.name}: qo'lda kiritish`}>Qo'lda</Tugma>
+                        <Tugma kichik turi="oddiy" ikonka={<UserX size={13} />} onClick={() => onKelmadi(o)} aria-label={`${o.name}: kelmadi`}>Kelmadi</Tugma>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </li>
+            );
+          })}
+        </ul>
+      </div>
+    </Karta>
+  );
+}
+
+function Chiziq({ qism, jami }: { qism: number; jami: number }) {
+  const foiz = jami ? Math.min(100, Math.round((qism / jami) * 100)) : 0;
+  return (
+    <div className="mt-1.5 h-1.5 rounded-full bg-ichki overflow-hidden" role="progressbar" aria-valuenow={foiz} aria-valuemin={0} aria-valuemax={100}>
+      <div className={`h-full rounded-full ${foiz === 100 ? 'bg-yaxshi' : 'bg-brand'}`} style={{ width: `${foiz}%` }} />
     </div>
   );
 }
@@ -284,13 +400,13 @@ function KameraSkaner({ params, ishchi, onVaraq }: { params: VaraqParametrlari; 
 }
 
 /** Buzilgan varaq: javoblarni qo'lda kiritish. */
-function QoldaKiritish({ exam, orinlar, onSaqlandi }: { exam: ImtihonTafsil; orinlar: Orin[]; onSaqlandi: () => void }) {
+function QoldaKiritish({ exam, orinlar, boshlangich, onSaqlandi }: { exam: ImtihonTafsil; orinlar: Orin[]; boshlangich?: Orin | null; onSaqlandi: () => void }) {
   const { showNotification } = useCRM();
   const { soro } = useImtihonApi();
   const [qidiruv, setQidiruv] = useState('');
-  const [orin, setOrin] = useState<Orin | null>(null);
+  const [orin, setOrin] = useState<Orin | null>(boshlangich ?? null);
   const [javob, setJavob] = useState<Record<number, string>>({});
-  const [variant, setVariant] = useState('');
+  const [variant, setVariant] = useState(boshlangich?.variant || '');
   const [saqlanmoqda, setSaqlanmoqda] = useState(false);
   const tuzilma = useMemo(() => varaqTuzilmasi(exam.blocks, exam.scoring), [exam]);
   const harflar = HARFLAR.slice(0, exam.settings.optionCount);

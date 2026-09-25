@@ -10,7 +10,8 @@ import { varaqSvg, VARAQ_CSS } from '../../lib/omr/render';
 import { kitobchaHtml, KITOBCHA_CSS, katexCss, eshikRoyxatiHtml, vedomostHtml, ROYXAT_CSS } from './chop';
 import type { KitobchaMalumoti } from './chop';
 import { varaqTuzilmasi } from '../../../lib/imtihon.js';
-import type { ImtihonTafsil } from '../ExamDetail';
+import type { ImtihonTafsil } from './turlar';
+import QulfKerak from './QulfKerak';
 
 // 3-bo'lim: kitobchalar (variant bo'yicha, ksero qilinadi), shaxsiy javob
 // varaqalari (xona → qator → o'rin tartibida — dasta xonaga shu tartibda
@@ -84,7 +85,7 @@ export default function ChopEtishTab({ exam }: { exam: ImtihonTafsil }) {
   });
 
   if (!exam.lockedAt) {
-    return <Karta><BoshHolat ikonka={<Printer size={20} />} sarlavha="Avval savollarni qulflang" izoh="Kitobcha va varaqlar variantlar tayyor bo'lgach chiqadi (1-bo'lim: Tuzilma)." /></Karta>;
+    return <QulfKerak examId={exam.id} ikonka={<Printer size={20} />} izoh="Kitobcha va javob varaqalari variantlar tayyor bo'lgach chiqadi: «Imtihonlar» tabida savollarni (yoki «faqat kalit» rejimida kitobcha kalitini) tayyorlab, qulflang." />;
   }
   if (!data) return <Yuklanmoqda />;
 

@@ -687,9 +687,29 @@ export function registerImtihonRoutes(app, { sendToOne, rasmniSaqla, rasmlarniOc
       res.json({
         ...imtihonJavobi(e, req),
         variantlar: e.examVariants.map(v => ({ session: v.session, code: v.code })).sort((a, b) => a.session - b.session || a.code.localeCompare(b.code)),
+        holat: await bosqichHolati(id),
       });
     } catch (err) { next(err); }
   });
+
+  // Imtihon bosqichlarining sanoqlari — modul tablaridagi belgilar uchun
+  // (qancha o'rin, kim kelmadi, nechtasi skanerlangan, shubhali, xabar ketgani).
+  async function bosqichHolati(examId) {
+    const [orinlar, natijalar, shubhali, skanerlanmagan, xabar] = await Promise.all([
+      prisma.examSeat.groupBy({ by: ['status'], where: { examId }, _count: { _all: true } }),
+      prisma.examResult.count({ where: { examId } }),
+      prisma.examResult.count({ where: { examId, reviewStatus: 'shubhali' } }),
+      prisma.examSeat.count({ where: { examId, status: { not: 'kelmadi' }, results: { none: {} } } }),
+      prisma.examResult.count({ where: { examId, notifiedAt: { not: null } } }),
+    ]);
+    const soni = (st) => orinlar.find(o => o.status === st)?._count._all || 0;
+    return {
+      orinlar: orinlar.reduce((a, o) => a + o._count._all, 0),
+      keldi: soni('keldi'),
+      kelmadi: soni('kelmadi'),
+      natijalar, shubhali, skanerlanmagan, xabar,
+    };
+  }
 
   async function imtihonMalumoti(req, eski) {
     const b = req.body;
@@ -726,6 +746,7 @@ export function registerImtihonRoutes(app, { sendToOne, rasmniSaqla, rasmlarniOc
       yangi.cancelled = joriy.cancelled;
       yangi.keyFix = joriy.keyFix;
       yangi.keys = joriy.keys;
+      yangi.keyTopics = joriy.keyTopics;
       // Doirachalar soni bank rejimida qulflashda savollardan olinadi; "faqat
       // kalit" rejimida kitobchaga qarab qo'lda tanlanadi (qulfgacha).
       if (qulf || yangi.source !== 'kalit') yangi.optionCount = joriy.optionCount;
@@ -1029,7 +1050,8 @@ export function registerImtihonRoutes(app, { sendToOne, rasmniSaqla, rasmlarniOc
       const joriy = sozlamaniTozala(e.settings);
       if (joriy.source !== 'kalit') return res.status(400).json({ error: "Bu imtihon savollar bankidan tuzilgan — kalit «Kalit» oynasida tuzatiladi" });
       const kelgan = req.body.keys && typeof req.body.keys === 'object' ? req.body.keys : {};
-      const yangi = sozlamaniTozala({ ...joriy, keys: { ...joriy.keys, ...kelgan } });
+      const mavzular = req.body.topics && typeof req.body.topics === 'object' ? req.body.topics : {};
+      const yangi = sozlamaniTozala({ ...joriy, keys: { ...joriy.keys, ...kelgan }, keyTopics: { ...joriy.keyTopics, ...mavzular } });
       if (e.lockedAt) {
         const r = kalitdanVariantlar({ blocks: e.blocks, scoring: e.scoring, settings: yangi });
         if (r.xatolar.length) return res.status(400).json({ error: `Kalit to'liq emas: ${r.xatolar.length} ta savol — qulflangan imtihonda kalit bo'sh qolmasligi kerak`, kalitXatolari: r.xatolar.slice(0, 60) });
@@ -1039,10 +1061,10 @@ export function registerImtihonRoutes(app, { sendToOne, rasmniSaqla, rasmlarniOc
           prisma.exam.update({ where: { id }, data: { settings: yangi } }),
         ]);
         const qaytaHisoblandi = await hammasiniQaytaHisobla({ ...e, settings: yangi });
-        return res.json({ keys: yangi.keys, kalitlar: kalitHolati({ ...e, settings: yangi }), qaytaHisoblandi });
+        return res.json({ keys: yangi.keys, keyTopics: yangi.keyTopics, kalitlar: kalitHolati({ ...e, settings: yangi }), qaytaHisoblandi });
       }
       await prisma.exam.update({ where: { id }, data: { settings: yangi } });
-      res.json({ keys: yangi.keys, kalitlar: kalitHolati({ ...e, settings: yangi }), qaytaHisoblandi: 0 });
+      res.json({ keys: yangi.keys, keyTopics: yangi.keyTopics, kalitlar: kalitHolati({ ...e, settings: yangi }), qaytaHisoblandi: 0 });
     } catch (err) { next(err); }
   });
 
@@ -1618,10 +1640,10 @@ export function registerImtihonRoutes(app, { sendToOne, rasmniSaqla, rasmlarniOc
           const it = imap.get(d.n);
           if (!it) continue;
           const q = smap.get(it.q);
-          // "Faqat kalit" savolida mavzu yo'q — fan (blok) bo'yicha.
+          // "Faqat kalit" savolida mavzu kalit bilan kiritilgan bo'lsa — o'sha, bo'lmasa fan bo'yicha.
           const fan = q ? q.subject : e.blocks?.[it.b]?.subject;
           if (!fan) continue;
-          const mavzu = q ? q.topic : '';
+          const mavzu = q ? q.topic : it.mv || '';
           const k = `${fan}|${mavzu}`;
           if (!mavzular.has(k)) mavzular.set(k, { fan, mavzu, jami: 0, togri: 0, kurslar: {} });
           const m = mavzular.get(k);
@@ -1640,7 +1662,7 @@ export function registerImtihonRoutes(app, { sendToOne, rasmniSaqla, rasmlarniOc
           const el = t.kod ? kalitEl.get(`${t.kod}:${t.n}`) : null;
           const elJavob = el ? (el.t === 'yopiq' ? (el.ka ? el.ka.join(', ') : HARFLAR[el.k]) : el.t === 'raqamli' ? (el.j || []).join(', ') : '') : '';
           return {
-            ...t, subject: q?.subject || e.blocks?.[t.b]?.subject || '', topic: q?.topic || '', text: q?.text || '', type: q?.type || t.t,
+            ...t, subject: q?.subject || e.blocks?.[t.b]?.subject || '', topic: q?.topic || el?.mv || '', text: q?.text || '', type: q?.type || t.t,
             yorliq: t.kod ? `${t.kod} kitobcha · ${t.n}-savol` : null,
             togriJavob: kalit ? (el ? elJavob : (s.keyFix[t.q]?.join(', ') || q?.correctAnswer || '')) : null,
             bekor: el ? el.bekor || null : s.cancelled[t.q] || null,

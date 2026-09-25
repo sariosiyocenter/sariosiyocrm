@@ -7,7 +7,7 @@ import { Karta, Tugma, Yorliq, Maydon, INPUT, SELECT, Tanlov, Yuklanmoqda, BoshH
 import XonaSxemasi from './XonaSxemasi';
 import { xonaOrinlari } from '../../../lib/imtihon.js';
 import { toDateStr } from '../../../lib/lessons.js';
-import type { ImtihonTafsil } from '../ExamDetail';
+import type { ImtihonTafsil } from './turlar';
 import type { Room } from '../../types';
 
 // 2-bo'lim: kim qatnashadi (kurslar + tashqi qatnashchilar), qaysi xonalarda,

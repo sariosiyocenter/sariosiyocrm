@@ -4252,6 +4252,8 @@ app.get('/api/init', authenticate, async (req, res, next) => {
       // Ikki filial qatnashadigan imtihon ikkala filialda ham ko'rinadi.
       agar(kor('imtihonlar.imtihon', 'imtihonlar.natija'), prisma.exam.findMany({
         where: { OR: [whereQuery, { branchIds: { hasSome: targetSchoolIds } }] },
+        // Imtihonlar ro'yxatidagi bosqichlar chizig'i uchun (o'rinlar, natijalar).
+        include: { _count: { select: { results: true, seats: true } } },
       })),
       // Natijalarning yengil ko'rinishi (skan, tekshirish tafsiloti yo'q). Natija
       // bo'limi yo'q xodim faqat e'lon qilingan imtihonlarni ko'radi.

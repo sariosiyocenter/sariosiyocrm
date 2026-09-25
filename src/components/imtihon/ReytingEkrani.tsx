@@ -105,7 +105,7 @@ export default function ReytingEkrani() {
   };
   const yop = () => {
     if (document.fullscreenElement) document.exitFullscreen().catch(() => {});
-    navigate(`/exams/${id}?b=natijalar`);
+    navigate(`/exams?tab=natija&imtihon=${id}`);
   };
 
   const filialNomi = (fid: number) => d?.filiallar.find(f => f.id === fid)?.name || '';

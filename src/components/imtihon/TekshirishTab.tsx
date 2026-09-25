@@ -6,7 +6,7 @@ import { Karta, Tugma, Tanlov, Yorliq, INPUT, Yuklanmoqda, BoshHolat } from './u
 import { varaqSahifalari, W, type Sahifa } from '../../lib/omr/layout';
 import { varaqTuzilmasi, HARFLAR, vergul } from '../../../lib/imtihon.js';
 import { useAiHolat, AI_SOZLANMAGAN } from './useAiHolat';
-import type { ImtihonTafsil } from '../ExamDetail';
+import type { ImtihonTafsil } from './turlar';
 
 // 5-bo'lim: skaner ishonmagan javoblar (ikki belgi, noaniq bo'yoq, variant
 // nomuvofiqligi) va yozma javoblarni baholash. Har qator varaq rasmidan
