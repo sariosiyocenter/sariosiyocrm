@@ -17,6 +17,7 @@ import { encryptSecret, decryptSecret, secretsEncryptionEnabled } from './lib/se
 import { claimBillingRun, releaseBillingRun, processMonthlyBilling, billingDayOf, billingDayReached, normalizeBillingDay } from './services/billing.js';
 import { fillTemplate, testNatijasiKerak, oxirgiTolovKerak, kirimmi } from './lib/xabarMatni.js';
 import { tolovXabariniUlash, tolovXabari } from './services/tolovXabari.js';
+import { davomatYuboruvchiniUlash, davomatSozlamasi, davomatSozlamasiniSaqla, davomatXabariniYuborish, kursKuniYuborilganlar, bugunDavomatXabariOlganlar } from './services/davomatXabari.js';
 import { normalizePayShare } from './lib/allocation.js';
 import { KLIK_TASDIQ_TURLARI, TASDIQ_HOLATLARI, chekVaqtiniTozala, takroriyCheklar, takrorQatorlari, tasdiqniBajar, radniBajar, adminlargaYubor } from './services/klikTasdiq.js';
 import { kodlarniTaminla } from './services/oquvchiKod.js';
@@ -4828,66 +4829,53 @@ app.post('/api/attendances/batch', authenticate, async (req, res, next) => {
   } catch (error) { next(error); }
 });
 
-// Bir kunlik yo'qlamani ota-onalarga bitta bosishda yuborish.
-// Davomat qo'yilganda xabar avtomatik ketmaydi — xodim yo'qlamani tekshirib
-// bo'lgach shu tugmani bosadi va har bir o'quvchi uchun bitta xabar ketadi.
+// Kun yo'qlamasi bo'yicha ota-onaga xabar — har holatga Xabarlar → Shablonlar
+// dagi tanlangan shablon (services/davomatXabari.js). Ilgari bu yerda qattiq
+// yozilgan "Davomat xabarnomasi / Holat: Kelmapdi / Guruh: …" ketardi (egasi,
+// 2026-09-26: "g'alati so'zlar borayapti").
+// body: { groupId, date, studentIds?: number[], kanal?: 'BOTH'|'SMS'|'TELEGRAM' }
 app.post('/api/attendances/notify', authenticate, async (req, res, next) => {
   try {
-    const { schoolId, groupId, date } = req.body;
-    if (!schoolId || !groupId || !date) {
-      return res.status(400).json({ error: "schoolId, groupId va date kerak" });
+    const groupId = parseInt(req.body?.groupId);
+    const date = String(req.body?.date || '');
+    if (!Number.isInteger(groupId) || !/^\d{4}-\d{2}-\d{2}$/.test(date)) {
+      return res.status(400).json({ error: "groupId va date kerak" });
     }
+    const group = await prisma.group.findUnique({ where: { id: groupId }, select: { schoolId: true } });
+    if (!group) return res.status(404).json({ error: 'Kurs topilmadi' });
+    if (!(await canAccessSchool(req.user, group.schoolId))) return res.status(403).json({ error: "Ruxsat yo'q" });
 
-    const records = await prisma.attendance.findMany({
-      where: { groupId: parseInt(groupId), date, schoolId: parseInt(schoolId) },
-      include: { student: true, group: { select: { name: true } } }
-    });
+    const studentIds = Array.isArray(req.body?.studentIds) ? req.body.studentIds.map(Number).filter(Number.isInteger) : undefined;
+    const natija = await davomatXabariniYuborish({ groupId, date, studentIds, kanal: req.body?.kanal });
+    if (natija.error) return res.status(400).json({ error: natija.error });
+    res.json({ success: true, ...natija });
+  } catch (error) { next(error); }
+});
 
-    if (records.length === 0) {
-      return res.json({ success: true, sent: 0, skipped: 0, total: 0, message: "Bu kunga yo'qlama qo'yilmagan" });
-    }
+// Davomat xabari sozlamasi — butun markazga bitta (Organization.davomatXabari).
+// groupId + date berilsa: shu kurs, shu kun uchun kimga allaqachon yetib borgan.
+app.get('/api/davomat-xabari', authenticate, async (req, res, next) => {
+  try {
+    const schoolId = parseInt(req.query.schoolId) || req.user.schoolId;
+    if (!(await canAccessSchool(req.user, schoolId))) return res.status(403).json({ error: "Ruxsat yo'q" });
+    const d = await davomatSozlamasi(schoolId);
+    if (!d) return res.status(404).json({ error: 'Filial topilmadi' });
+    const groupId = parseInt(req.query.groupId);
+    const date = String(req.query.date || '');
+    const yuborilgan = Number.isInteger(groupId) && /^\d{4}-\d{2}-\d{2}$/.test(date)
+      ? Object.fromEntries(await kursKuniYuborilganlar(groupId, date))
+      : {};
+    res.json({ sozlama: d.sozlama, saqlangan: d.saqlangan, shablonlar: d.shablonlar, yuborilgan });
+  } catch (error) { next(error); }
+});
 
-    const schoolBot = await getTelegramBot(parseInt(schoolId));
-    if (!schoolBot) {
-      return res.status(400).json({ error: "Telegram bot sozlanmagan" });
-    }
-
-    const ICONS = { Keldi: "✅", Kelmapdi: "❌", Sababli: "⚠️", Kechikdi: "⏰" };
-    let sent = 0;
-    let skipped = 0;
-
-    for (const record of records) {
-      const student = record.student;
-      if (!student) continue;
-
-      const icon = ICONS[record.status] || "ℹ️";
-      const message = [
-        icon + " Davomat xabarnomasi",
-        "",
-        "👤 O'quvchi: " + student.name,
-        "📌 Holat: " + record.status,
-        "📅 Sana: " + date,
-        "📚 Guruh: " + (record.group ? record.group.name : "")
-      ].join(String.fromCharCode(10));
-
-      // Ota-ona birinchi navbatda; ular ulanmagan bo'lsa o'quvchining o'ziga.
-      const chatIds = [student.fatherTelegramId, student.motherTelegramId].filter(Boolean);
-      if (chatIds.length === 0 && student.telegramId) chatIds.push(student.telegramId);
-
-      if (chatIds.length === 0) { skipped++; continue; }
-
-      for (const chatId of chatIds) {
-        try {
-          await schoolBot.telegram.sendMessage(chatId, message);
-          sent++;
-        } catch (e) {
-          console.error('[Attendance notify] ' + student.name + ':', e.message);
-          skipped++;
-        }
-      }
-    }
-
-    res.json({ success: true, sent, skipped, total: records.length });
+app.put('/api/davomat-xabari', authenticate, async (req, res, next) => {
+  try {
+    const schoolId = parseInt(req.body?.schoolId) || req.user.schoolId;
+    if (!(await canAccessSchool(req.user, schoolId))) return res.status(403).json({ error: "Ruxsat yo'q" });
+    const r = await davomatSozlamasiniSaqla(schoolId, req.body?.sozlama);
+    if (r.error) return res.status(400).json({ error: r.error });
+    res.json({ sozlama: r.sozlama });
   } catch (error) { next(error); }
 });
 
@@ -6462,39 +6450,9 @@ app.post('/api/sms/send', authenticate, async (req, res, next) => {
   } catch (err) { next(err); }
 });
 
-// API: Davomatga kelmagan o'quvchilarga SMS yuborish
-app.post('/api/sms/attendance', authenticate, async (req, res, next) => {
-  try {
-    const { date, groupId } = req.body;
-    if (!date || !groupId) return res.status(400).json({ error: 'date va groupId kerak' });
-
-    // Kelmagan o'quvchilarni toping (Student classroom attendance status is 'Kelmapdi')
-    const absences = await prisma.attendance.findMany({
-      where: {
-        groupId: Number(groupId),
-        date,
-        status: 'Kelmapdi',
-        schoolId: req.user.schoolId
-      },
-      include: { student: true, group: true }
-    });
-
-    if (absences.length === 0) return res.json({ success: true, count: 0, sent: 0, message: 'Kelmaganlar topilmadi' });
-
-    const results = [];
-    for (const absence of absences) {
-      const student = absence.student;
-      const phone = resolveRecipientPhone(student);
-      if (!phone) { results.push({ name: student.name, status: 'raqam yo\'q' }); continue; }
-
-      const msg = `Sariosiyo o'quv markazi: farzandingiz ${student.name} bugun ${date} kuni darsga kelmadi.`;
-      const r = await sendSms(phone, msg, 'ATTENDANCE', student.id, req.user.schoolId);
-      results.push({ name: student.name, phone, ...r });
-    }
-    const sentCount = results.filter(r => r.success).length;
-    res.json({ success: true, count: sentCount, sent: sentCount, total: results.length, results });
-  } catch (err) { next(err); }
-});
+// Davomat SMS'i endi /api/attendances/notify orqali (kanal: 'SMS') — shablon
+// matni bilan. Bu yerdagi qattiq yozilgan "Sariosiyo o'quv markazi: farzandingiz
+// … darsga kelmadi" Eskizda tasdiqlanmagan edi va har safar FAILED bo'lardi.
 
 // API: SMS loglari
 app.get('/api/sms/logs', authenticate, async (req, res, next) => {
@@ -6614,6 +6572,8 @@ const normalizeRecipients = (value) => parseRecipients(value).join(',');
 async function sendToOne({ student, message, channel, recipientTo, type, schoolId, campaignId, telegramExtra }) {
   let anySuccess = false;
   let attempted = false;
+  // Oxirgi xato sababi — chaqiruvchi xodimga "nega yetib bormadi"ni aytishi uchun.
+  let xato = null;
   const kinds = parseRecipients(recipientTo);
 
   // Telegram
@@ -6642,6 +6602,7 @@ async function sendToOne({ student, message, channel, recipientTo, type, schoolI
           });
         }
       } catch (tgErr) {
+        xato = 'Telegram: ' + (/blocked/i.test(tgErr.message) ? 'botni bloklagan' : tgErr.message);
         await prisma.smsLog.create({
           data: {
             toPhone: String(target.id), toName: target.name, message,
@@ -6668,11 +6629,17 @@ async function sendToOne({ student, message, channel, recipientTo, type, schoolI
       attempted = true;
       const r = await sendSms(phone, message, type || 'MANUAL', student.id, schoolId, campaignId);
       if (r.success) anySuccess = true;
+      else {
+        const m = String(r.data?.message || r.error || '');
+        xato = /модерац/i.test(m) ? "SMS: matn Eskizda tasdiqlanmagan" : 'SMS: ' + (m.slice(0, 120) || 'yuborilmadi');
+      }
     }
   }
 
-  return { attempted, success: anySuccess };
+  return { attempted, success: anySuccess, xato: anySuccess ? null : xato };
 }
+// Davomat xabari (services/davomatXabari.js) shu funksiya orqali yuboradi.
+davomatYuboruvchiniUlash(sendToOne);
 
 /**
  * Har o'quvchining oxirgi qabul qilingan to'lovi — {oxirgi_tolov} uchun.
@@ -7338,6 +7305,13 @@ async function runAutoProcessJobs() {
 
     if (ruleStatuses && rule.type !== 'LEAD_WELCOME' && rule.type !== 'COURSE_GRADUATION') {
       targets = targets.filter(s => ruleStatuses.includes(s.status));
+    }
+
+    // Davomat eslatmalari: bugun kurs sahifasidan yoki ustoz botidan davomat
+    // xabari olgan o'quvchining ota-onasiga kechqurun ikkinchisi ketmasin.
+    if (['ABSENCE_REMINDER', 'LATE_ARRIVAL', 'EARLY_LEAVE'].includes(rule.type) && targets.length) {
+      const olgan = await bugunDavomatXabariOlganlar(targets.map(s => s.id));
+      targets = targets.filter(s => !olgan.has(s.id));
     }
 
     let sent = 0, failed = 0;

@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useState, useCallback } from 'react';
 import * as faceapi from 'face-api.js';
 import { X, Camera, UserCheck, Users, CheckCircle2, SwitchCamera, AlertTriangle } from 'lucide-react';
 import { descriptorFromPhoto, saveFaceProfiles, faceFailedBefore, rememberFaceTry } from '../lib/faceDescriptor';
+import { ketmaKetTekshir, KAMERA_OLCHAMI, kanvasniMoslash } from '../lib/faceLoop';
 
 const MODEL_URL = 'https://cdn.jsdelivr.net/gh/justadudewhohacks/face-api.js@0.22.2/weights';
 
@@ -43,18 +44,23 @@ interface Props {
     /** Yuz belgilari shu guruh va filial uchun yuklanadi. */
     groupId: number;
     schoolId: number;
-    attendanceStatus: Record<number, string>;
     onMatch: (studentId: number) => void;
     onUnmatch: (studentId: number) => void;
     onClose: (markedIds: number[]) => void;
 }
 
-export default function FaceAttendance({ students, groupId, schoolId, attendanceStatus, onMatch, onUnmatch, onClose }: Props) {
+export default function FaceAttendance({ students, groupId, schoolId, onMatch, onUnmatch, onClose }: Props) {
     const videoRef = useRef<HTMLVideoElement>(null);
     const canvasRef = useRef<HTMLCanvasElement>(null);
     const streamRef = useRef<MediaStream | null>(null);
-    const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
     const markedRef = useRef<Set<number>>(new Set());
+    // Kamera sikli bitta marta ishga tushadi va eng yangi qiymatlarni shu
+    // yerdan o'qiydi. Ilgari har belgilashda kurs sahifasi qayta chizilib,
+    // yangi onMatch/students kelar va sikl qaytadan boshlanardi.
+    const studentsRef = useRef(students);
+    const onMatchRef = useRef(onMatch);
+    studentsRef.current = students;
+    onMatchRef.current = onMatch;
 
     const [phase, setPhase] = useState<'loading' | 'ready' | 'error'>('loading');
     const [loadMsg, setLoadMsg] = useState('Modellar yuklanmoqda...');
@@ -158,7 +164,7 @@ export default function FaceAttendance({ students, groupId, schoolId, attendance
                 // Avvalgi oqim yopilmasa, ba'zi qurilmalar ikkinchi kamerani bermaydi.
                 streamRef.current?.getTracks().forEach(t => t.stop());
                 const stream = await navigator.mediaDevices.getUserMedia({
-                    video: { facingMode: { ideal: facingMode }, width: { ideal: 1280 }, height: { ideal: 720 } }
+                    video: { facingMode: { ideal: facingMode }, ...KAMERA_OLCHAMI }
                 });
                 if (cancelled) { stream.getTracks().forEach(t => t.stop()); return; }
                 streamRef.current = stream;
@@ -172,7 +178,6 @@ export default function FaceAttendance({ students, groupId, schoolId, attendance
         return () => {
             cancelled = true;
             streamRef.current?.getTracks().forEach(t => t.stop());
-            if (intervalRef.current) clearInterval(intervalRef.current);
         };
     }, [phase, facingMode]);
 
@@ -192,9 +197,10 @@ export default function FaceAttendance({ students, groupId, schoolId, attendance
         const video = videoRef.current;
         const canvas = canvasRef.current;
         if (!video || !canvas || video.readyState < 2 || profiles.length === 0) return;
+        const students = studentsRef.current;
 
         const displaySize = { width: video.videoWidth || 640, height: video.videoHeight || 480 };
-        faceapi.matchDimensions(canvas, displaySize);
+        kanvasniMoslash(canvas, displaySize.width, displaySize.height);
 
         // inputSize 320 da detektor yuzni tez-tez o'tkazib yuborardi: sinovda
         // ekranni to'ldirib turgan yuz ham topilmadi, 416 da esa 0.9 ishonch
@@ -278,19 +284,19 @@ export default function FaceAttendance({ students, groupId, schoolId, attendance
                 if (!markedRef.current.has(studentId)) {
                     markedRef.current.add(studentId);
                     setMarkedSet(new Set(markedRef.current));
-                    onMatch(studentId);
+                    onMatchRef.current(studentId);
                     setLastMatched(student);
                     setTimeout(() => setLastMatched(null), 2500);
                 }
             }
         });
-    }, [profiles, students, attendanceStatus, onMatch, facingMode]);
+    }, [profiles, facingMode]);
 
-    // Detection loop
+    // Tekshiruv sikli — ketma-ket (src/lib/faceLoop.ts): keyingisi oldingisi
+    // tugagach boshlanadi, ustma-ust to'planmaydi.
     useEffect(() => {
         if (phase !== 'ready') return;
-        intervalRef.current = setInterval(detect, 250);
-        return () => { if (intervalRef.current) clearInterval(intervalRef.current); };
+        return ketmaKetTekshir(detect, 250);
     }, [phase, detect]);
 
     // "Shubhali" ogohlantirishi bir necha soniyadan keyin o'chadi.
@@ -311,26 +317,26 @@ export default function FaceAttendance({ students, groupId, schoolId, attendance
     return (
         <div className="fixed inset-0 z-[300] bg-black flex flex-col">
             {/* Header */}
-            <div className="flex items-center justify-between px-5 py-3 bg-gray-950/90 backdrop-blur border-b border-gray-800">
-                <div className="flex items-center gap-3">
-                    <div className="w-8 h-8 rounded-xl bg-emerald-500/20 flex items-center justify-center">
+            <div className="flex items-center justify-between gap-2 px-4 sm:px-5 py-3 bg-gray-950 border-b border-gray-800">
+                <div className="flex items-center gap-3 min-w-0">
+                    <div className="w-8 h-8 shrink-0 rounded-xl bg-emerald-500/20 flex items-center justify-center">
                         <Camera size={16} className="text-emerald-400" />
                     </div>
-                    <div>
-                        <p className="text-white text-sm font-black tracking-tight">Face ID Yo'qlama</p>
-                        <p className="text-matn-xira text-[11px] font-bold">
+                    <div className="min-w-0">
+                        <p className="text-white text-sm font-black tracking-tight truncate">Face ID Yo'qlama</p>
+                        <p className="text-matn-xira text-[11px] font-bold truncate">
                             {totalEnrolled}/{students.length} o'quvchi ro'yxatda
                         </p>
                     </div>
                 </div>
-                <div className="flex items-center gap-3">
+                <div className="flex items-center gap-2 sm:gap-3 shrink-0">
                     <button
                         onClick={toggleCamera}
                         title={facingMode === 'user' ? "Orqa kameraga o'tish" : "Old kameraga o'tish"}
                         className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-gray-800 hover:bg-gray-700 border border-gray-700 transition-colors cursor-pointer"
                     >
                         <SwitchCamera size={13} className="text-white" />
-                        <span className="text-white text-[11px] font-bold">{facingMode === 'user' ? 'Old' : 'Orqa'}</span>
+                        <span className="hidden sm:inline text-white text-[11px] font-bold">{facingMode === 'user' ? 'Old' : 'Orqa'}</span>
                     </button>
                     <div className="flex items-center gap-1.5 bg-emerald-500/20 px-3 py-1.5 rounded-xl border border-emerald-500/30">
                         <UserCheck size={13} className="text-emerald-400" />
@@ -387,9 +393,11 @@ export default function FaceAttendance({ students, groupId, schoolId, attendance
                     className="w-full h-full object-cover"
                     style={{ transform: mirror }}
                 />
+                {/* Kanvas ham videodek object-cover: telefonda (tik ekran) video yon
+                    tomondan kesiladi, kanvas esa cho'zilardi — ramka yuzga tushmasdi. */}
                 <canvas
                     ref={canvasRef}
-                    className="absolute inset-0 w-full h-full"
+                    className="absolute inset-0 w-full h-full object-cover"
                     style={{ transform: mirror }}
                 />
 

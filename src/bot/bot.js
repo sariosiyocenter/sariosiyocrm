@@ -13,6 +13,7 @@ import { javobniYozish } from '../../services/kunlikReja.js';
 import { parseLatLng, distanceKm } from '../../lib/tartib.js';
 import { studentLedger } from '../../services/ledger.js';
 import { natijaTokeni } from '../../routes/imtihon.js';
+import { davomatXabariniYuborish } from '../../services/davomatXabari.js';
 import { sozlamaniTozala, sanaMatni, vergul } from '../../lib/imtihon.js';
 import {
     createOrder as paymeCreateOrder, loadSettings as paymeLoadSettings, isConfigured as paymeIsConfigured,
@@ -25,7 +26,8 @@ const somFmt = (n) => Number(n || 0).toLocaleString('ru-RU');
 // "Boshqa summa" so'rovi ForceReply bilan yuboriladi, xabar oxirida belgi
 // turadi ("· B"; eski xabarlarda "· G12"). Javob shu belgi orqali taniladi —
 // serverda holat saqlanmaydi (Vercelda har so'rov boshqa konteynerga tushadi).
-const PAYME_PROMPT_RE = /·\s(?:G\d+|B)\s*$/;
+// Bir nechta farzandli ota-onada belgi farzand raqami bilan: "· B123".
+const PAYME_PROMPT_RE = /·\s(?:G\d+|B(\d*))\s*$/;
 
 const bot = new Telegraf(process.env.TELEGRAM_BOT_TOKEN || 'fake_token_for_init');
 
@@ -317,23 +319,103 @@ export const findAcross = async (model, where, ids) => {
     return null;
 };
 
+/** "BOBORAJABOV QILICHBEK" → "Boborajabov Qilichbek", ortiqcha bo'shliqlar olinadi. */
+const ismKor = (name) => {
+    const n = String(name || '').replace(/\s+/g, ' ').trim();
+    if (n !== n.toUpperCase()) return n;
+    return n.toLowerCase().replace(/(^|[\s-])(\S)/g, (_m, sep, ch) => sep + ch.toUpperCase());
+};
+
+/** Telefonning oxirgi 9 raqami (ro'yxatdan o'tishdagi kabi); qisqa bo'lsa — ''. */
+const oxirgi9 = (v) => {
+    const d = String(v || '').replace(/\D/g, '');
+    return d.length >= 9 ? d.slice(-9) : '';
+};
+
+/**
+ * Shu Telegram hisobiga tegishli HAMMA bolalar (egasi, 2026-09-26: "2 ta
+ * yoki ko'proq farzandi bo'lsa telegramda hammasi chiqsin — bittasining
+ * otasi ekansiz emas, farzandlaringiz deb").
+ *
+ * Ilgari ro'yxatdan o'tishda raqam bo'yicha BIRINCHI topilgan bola bog'lanardi
+ * va bot faqat uni ko'rsatardi. Endi: bog'langan bolalar, hamda o'sha raqam
+ * ota/ona (yoki o'quvchi) raqami bo'lib turgan boshqa bolalar — aka-uka keyin
+ * qo'shilgan bo'lsa ham. Otasi/onasi raqami mos kelgan va hali hech kimga
+ * bog'lanmagan bola shu hisobga bog'lanadi, shunda davomat va to'lov xabarlari
+ * ham unga yetib boradi.
+ *
+ * @returns {null | { type: 'student'|'parent_father'|'parent_mother', data, farzandlar }}
+ *          data — birinchi farzand (eski kod uchun), farzandlar — alifbo tartibida.
+ */
+const oilaniTop = async (tidStr, ids) => {
+    const boglangan = await prisma.student.findMany({
+        where: { schoolId: { in: ids }, OR: [{ telegramId: tidStr }, { fatherTelegramId: tidStr }, { motherTelegramId: tidStr }] },
+    });
+    if (!boglangan.length) return null;
+    const type = boglangan.some(s => s.fatherTelegramId === tidStr) ? 'parent_father'
+        : boglangan.some(s => s.motherTelegramId === tidStr) ? 'parent_mother' : 'student';
+
+    const raqamlar = new Set();
+    for (const s of boglangan) {
+        if (s.telegramId === tidStr) raqamlar.add(oxirgi9(s.phone));
+        if (s.fatherTelegramId === tidStr) raqamlar.add(oxirgi9(s.fatherPhone));
+        if (s.motherTelegramId === tidStr) raqamlar.add(oxirgi9(s.motherPhone));
+    }
+    raqamlar.delete('');
+
+    let farzandlar = [...boglangan];
+    if (raqamlar.size) {
+        const OR = [];
+        for (const r of raqamlar) OR.push({ phone: { contains: r } }, { fatherPhone: { contains: r } }, { motherPhone: { contains: r } });
+        const qarindoshlar = await prisma.student.findMany({
+            where: { schoolId: { in: ids }, id: { notIn: boglangan.map(s => s.id) }, OR },
+        });
+        for (const s of qarindoshlar) {
+            const ota = raqamlar.has(oxirgi9(s.fatherPhone));
+            const ona = raqamlar.has(oxirgi9(s.motherPhone));
+            if (!ota && !ona && !raqamlar.has(oxirgi9(s.phone))) continue; // raqam o'rtasida mos kelgan
+            const data = {};
+            if (ota && !s.fatherTelegramId) data.fatherTelegramId = tidStr;
+            else if (ona && !s.motherTelegramId) data.motherTelegramId = tidStr;
+            if (data.fatherTelegramId || data.motherTelegramId) {
+                await prisma.student.update({ where: { id: s.id }, data }).catch(() => {});
+                Object.assign(s, data);
+            }
+            farzandlar.push(s);
+        }
+    }
+    // Arxivdagi bola ro'yxatni to'ldirmasin — faqat hammasi arxivda bo'lsa ko'rinadi.
+    const faol = farzandlar.filter(s => s.status !== 'Arxiv');
+    if (faol.length) farzandlar = faol;
+    farzandlar.sort((a, b) => ismKor(a.name).localeCompare(ismKor(b.name), 'uz'));
+    return { type, data: farzandlar[0], farzandlar };
+};
+
+/** O'quvchi yoki ota-ona hisobimi (o'quvchi menyusi). */
+const oilami = (user) => !!user && (user.type === 'student' || user.type.startsWith('parent_'));
+
+/** "1. Ali\n2. Vali" */
+const farzandlarRoyxati = (farzandlar) => farzandlar.map((s, i) => `${i + 1}. ${ismKor(s.name)}`).join('\n');
+
+/** Salom va ro'yxatdan o'tish matni: bitta bola — ismi, bir nechta — hammasi. */
+const oilaMatni = (user, boshi) => {
+    const f = user.farzandlar || [user.data];
+    if (f.length > 1) return `${boshi}\n\n👨‍👩‍👧‍👦 Farzandlaringiz:\n${farzandlarRoyxati(f)}\n\nMenyudagi har bir bo'limda hammasi ko'rsatiladi.`;
+    const s = f[0];
+    if (user.type === 'parent_father') return `${boshi}\n\nFarzandingiz: ${ismKor(s.name)}${s.fatherName ? `\nOtasi: ${s.fatherName}` : ''}`;
+    if (user.type === 'parent_mother') return `${boshi}\n\nFarzandingiz: ${ismKor(s.name)}${s.motherName ? `\nOnasi: ${s.motherName}` : ''}`;
+    return `${boshi}\n\nO'quvchi: ${ismKor(s.name)}`;
+};
+
 // Helper to find user by telegramId — tashkilotning hamma filialida
 const findUser = async (tid, schoolId) => {
     const tidStr = String(tid);
     const ids = await orgSchoolIds(schoolId);
     if (!ids.length) return null;
 
-    // 1. Try to find student where student.telegramId === tidStr
-    const student = await findAcross('student', { telegramId: tidStr }, ids);
-    if (student) return { type: 'student', data: student };
-
-    // 2. Try to find student where student.fatherTelegramId === tidStr
-    const fatherStudent = await findAcross('student', { fatherTelegramId: tidStr }, ids);
-    if (fatherStudent) return { type: 'parent_father', data: fatherStudent };
-
-    // 3. Try to find student where student.motherTelegramId === tidStr
-    const motherStudent = await findAcross('student', { motherTelegramId: tidStr }, ids);
-    if (motherStudent) return { type: 'parent_mother', data: motherStudent };
+    // O'quvchi yoki ota-ona — bog'langan hamma bolalari bilan.
+    const oila = await oilaniTop(tidStr, ids);
+    if (oila) return oila;
 
     const teacher = await findAcross('teacher', { telegramId: tidStr }, ids);
     if (teacher) return { type: 'teacher', data: teacher };
@@ -386,14 +468,11 @@ export const setupBotHandlers = (botInstance, botSchoolId) => {
             let menu;
             let greeting = `Xush kelibsiz, ${user.data.name}!`;
 
-            if (user.type === 'student') {
+            if (oilami(user)) {
                 menu = getStudentMenu();
-            } else if (user.type === 'parent_father') {
-                menu = getStudentMenu();
-                greeting = `Xush kelibsiz! Siz o'quvchi ${user.data.name} ning otasi (${user.data.fatherName || ''}) sifatida ulandingiz.`;
-            } else if (user.type === 'parent_mother') {
-                menu = getStudentMenu();
-                greeting = `Xush kelibsiz! Siz o'quvchi ${user.data.name} ning onasi (${user.data.motherName || ''}) sifatida ulandingiz.`;
+                greeting = user.type === 'student' && user.farzandlar.length === 1
+                    ? `Xush kelibsiz, ${ismKor(user.data.name)}!`
+                    : oilaMatni(user, 'Xush kelibsiz!');
             } else if (user.type === 'teacher') {
                 menu = getTeacherMenu();
             } else if (user.type === 'admin') {
@@ -439,6 +518,13 @@ export const setupBotHandlers = (botInstance, botSchoolId) => {
 
     botInstance.on('contact', async (ctx) => {
         const schoolId = await filial(ctx);
+        // Faqat o'z raqami: begona kontaktni yuborib, boshqaning farzandiga
+        // (to'lovlari, davomati) ulanib olish mumkin edi.
+        if (ctx.message.contact.user_id && ctx.message.contact.user_id !== ctx.from.id) {
+            return ctx.reply("Iltimos, pastdagi «📱 Telefon raqamni yuborish» tugmasi bilan o'z raqamingizni yuboring.", Markup.keyboard([
+                [Markup.button.contactRequest('📱 Telefon raqamni yuborish')]
+            ]).resize());
+        }
         const phone = ctx.message.contact.phone_number.replace('+', '').trim();
         const tid = String(ctx.from.id);
         const phoneSuffix = phone.slice(-9);
@@ -460,27 +546,34 @@ export const setupBotHandlers = (botInstance, botSchoolId) => {
         // shuning uchun raqam tashkilotning hamma filialida qidiriladi.
         const ids = await orgSchoolIds(schoolId);
 
-        // 1. Try to find student where phone matches phoneSuffix
-        let student = await findAcross('student', { phone: { contains: phoneSuffix } }, ids);
-        if (student) {
-            await prisma.student.update({ where: { id: student.id }, data: { telegramId: tid } });
-            return ctx.reply(`Siz o'quvchi sifatida ro'yxatdan o'tdingiz: ${student.name}`, getStudentMenu());
-        }
-
-        // 2. Try to find student where fatherPhone matches phoneSuffix
-        let fatherStudent = await findAcross('student', { fatherPhone: { contains: phoneSuffix } }, ids);
-        if (fatherStudent) {
-            await prisma.student.update({ where: { id: fatherStudent.id }, data: { fatherTelegramId: tid } });
-            const pName = fatherStudent.fatherName ? ` (${fatherStudent.fatherName})` : '';
-            return ctx.reply(`Siz ota sifatida ro'yxatdan o'tdingiz: ${fatherStudent.name} ning otasi${pName}`, getStudentMenu());
-        }
-
-        // 3. Try to find student where motherPhone matches phoneSuffix
-        let motherStudent = await findAcross('student', { motherPhone: { contains: phoneSuffix } }, ids);
-        if (motherStudent) {
-            await prisma.student.update({ where: { id: motherStudent.id }, data: { motherTelegramId: tid } });
-            const pName = motherStudent.motherName ? ` (${motherStudent.motherName})` : '';
-            return ctx.reply(`Siz ona sifatida ro'yxatdan o'tdingiz: ${motherStudent.name} ning onasi${pName}`, getStudentMenu());
+        // O'quvchi, ota yoki ona — shu raqamdagi HAMMA bolalar. Ilgari faqat
+        // birinchi topilgani bog'lanardi: aka-ukaning ikkinchisi botda ham,
+        // xabarlarda ham yo'q edi. Ota (ona) raqami mos kelgan har bir bola
+        // shu hisobga bog'lanadi; o'quvchining o'z raqami (telegramId noyob) —
+        // faqat ota/ona sifatida topilmaganda, birinchisiga.
+        // Raqamlar turlicha yozilgan ("+998 90 123-45-67") — bazadagi "contains"
+        // ularni topmasdi, shuning uchun oxirgi 9 raqam JS da solishtiriladi.
+        const mos = (await prisma.student.findMany({
+            where: { schoolId: { in: ids } },
+            select: { id: true, schoolId: true, phone: true, fatherPhone: true, motherPhone: true },
+            orderBy: { id: 'asc' },
+        }))
+            .filter(s => [s.phone, s.fatherPhone, s.motherPhone].some(v => oxirgi9(v) === phoneSuffix))
+            .sort((a, b) => ids.indexOf(a.schoolId) - ids.indexOf(b.schoolId));
+        const otasi = mos.filter(s => oxirgi9(s.fatherPhone) === phoneSuffix);
+        const onasi = mos.filter(s => oxirgi9(s.motherPhone) === phoneSuffix && !otasi.includes(s));
+        const ozi = mos.filter(s => oxirgi9(s.phone) === phoneSuffix);
+        if (otasi.length || onasi.length || ozi.length) {
+            for (const s of otasi) await prisma.student.update({ where: { id: s.id }, data: { fatherTelegramId: tid } });
+            for (const s of onasi) await prisma.student.update({ where: { id: s.id }, data: { motherTelegramId: tid } });
+            if (!otasi.length && !onasi.length) await prisma.student.update({ where: { id: ozi[0].id }, data: { telegramId: tid } });
+            const oila = await oilaniTop(tid, ids);
+            if (oila) {
+                const boshi = oila.type === 'parent_father' ? "Siz ota sifatida ro'yxatdan o'tdingiz."
+                    : oila.type === 'parent_mother' ? "Siz ona sifatida ro'yxatdan o'tdingiz."
+                    : oila.farzandlar.length > 1 ? "Siz ota-ona sifatida ro'yxatdan o'tdingiz." : "Siz o'quvchi sifatida ro'yxatdan o'tdingiz.";
+                return ctx.reply(oilaMatni(oila, boshi), getStudentMenu());
+            }
         }
 
         // Try to find as teacher
@@ -505,77 +598,120 @@ export const setupBotHandlers = (botInstance, botSchoolId) => {
     });
 
     // Student Handlers
+    //
+    // O'quvchi menyusi ota-onaga ham xizmat qiladi. Bir nechta farzandi bo'lsa
+    // har bo'limda hammasi — har biri o'z ismi ostida (user.farzandlar).
+
+    /** Farzand sarlavhasi — bir nechta bo'lsa ismi, bitta bo'lsa hech narsa. */
+    const farzandSarlavhasi = (user, s) => (user.farzandlar.length > 1 ? `👤 <b>${escHtml(ismKor(s.name))}</b>\n` : '');
+
+    /** Telegram 4096 belgidan uzun xabarni qabul qilmaydi. */
+    const qisqart = (matn) => (matn.length > 4000 ? matn.slice(0, 3990) + '…' : matn);
+
     botInstance.hears('📅 Dars Jadvali', async (ctx) => {
         const schoolId = await filial(ctx);
         const user = await findUser(ctx.from.id, schoolId);
-        if (!user || (user.type !== 'student' && !user.type.startsWith('parent_'))) return;
+        if (!oilami(user)) return;
 
-        const student = await prisma.student.findUnique({
-            where: { id: user.data.id },
+        const bolalar = await prisma.student.findMany({
+            where: { id: { in: user.farzandlar.map(f => f.id) } },
             include: { groups: { include: { teacher: true, course: true, roomRel: true } } }
         });
+        const tartib = user.farzandlar.map(f => bolalar.find(b => b.id === f.id)).filter(Boolean);
+        if (tartib.every(s => s.groups.length === 0)) {
+            return ctx.reply(user.farzandlar.length > 1 ? "Farzandlaringiz hali hech qaysi kursga yozilmagan." : "Hali hech qaysi kursga yozilmagansiz.");
+        }
 
-        if (student.groups.length === 0) return ctx.reply("Siz hali hech qaysi guruhga a'zo emassiz.");
-
-        let msg = "📅 Sizning dars jadvalingiz:\n\n";
-        student.groups.forEach(g => {
-            msg += `🔹 ${g.name} (${g.course.name})\n`;
-            msg += `🕒 ${g.schedule} | ${g.days}\n`;
-            msg += `👨‍🏫 Ustoz: ${g.teacher.name}\n`;
-            msg += `🚪 Xona: ${g.roomRel?.name || 'Noma\'lum'}\n\n`;
-        });
-
-        ctx.reply(msg);
+        let msg = user.farzandlar.length > 1 ? "📅 <b>Farzandlaringizning dars jadvali</b>\n\n" : "📅 <b>Dars jadvali</b>\n\n";
+        for (const s of tartib) {
+            msg += farzandSarlavhasi(user, s);
+            if (s.groups.length === 0) { msg += "Hozircha kursga yozilmagan\n\n"; continue; }
+            s.groups.forEach(g => {
+                msg += `🔹 ${escHtml(g.name)}${g.course?.name && g.course.name !== g.name ? ` (${escHtml(g.course.name)})` : ''}\n`;
+                msg += `🕒 ${escHtml(g.schedule || '')} | ${escHtml(g.days || '')}\n`;
+                if (g.teacher?.name) msg += `👨‍🏫 Ustoz: ${escHtml(g.teacher.name)}\n`;
+                msg += `🚪 Xona: ${escHtml(g.roomRel?.name || "Noma'lum")}\n\n`;
+            });
+        }
+        ctx.reply(qisqart(msg), { parse_mode: 'HTML' });
     });
 
     botInstance.hears('💳 To\'lovlar', async (ctx) => {
         const schoolId = await filial(ctx);
         const user = await findUser(ctx.from.id, schoolId);
-        if (!user || (user.type !== 'student' && !user.type.startsWith('parent_'))) return;
+        if (!oilami(user)) return;
 
-        const student = await prisma.student.findUnique({
-            where: { id: user.data.id },
+        const bolalar = await prisma.student.findMany({
+            where: { id: { in: user.farzandlar.map(f => f.id) } },
             include: { payments: { take: 5, orderBy: { id: 'desc' } } }
         });
+        const tartib = user.farzandlar.map(f => bolalar.find(b => b.id === f.id)).filter(Boolean);
+        const kop = tartib.length > 1;
 
-        let msg = `💰 Joriy balansingiz: ${student.balance.toLocaleString()} UZS\n\n`;
-        msg += "💳 Oxirgi to'lovlar:\n";
+        let msg = '';
+        const tugmalar = [];
+        for (const student of tartib) {
+            msg += farzandSarlavhasi(user, student);
+            msg += `💰 ${kop ? 'Balans' : 'Joriy balansingiz'}: ${student.balance.toLocaleString()} UZS\n`;
+            msg += "💳 Oxirgi to'lovlar:\n";
+            if (student.payments.length === 0) {
+                msg += "Hech qanday to'lov topilmadi.\n";
+            } else {
+                student.payments.forEach(p => {
+                    msg += `▫️ ${p.date}: ${p.amount.toLocaleString()} (${escHtml(p.type)})\n`;
+                });
+            }
 
-        if (student.payments.length === 0) {
-            msg += "Hech qanday to'lov topilmadi.";
-        } else {
-            student.payments.forEach(p => {
-                msg += `▫️ ${p.date}: ${p.amount.toLocaleString()} (${p.type})\n`;
-            });
+            // Payme jonli rejimda ulangan bo'lsa — shu yerdan to'lash mumkin.
+            // Kesh emas, to'g'ridan-to'g'ri: admin rejimni o'zgartirsa darhol ko'rinsin.
+            // Payme filialniki — farzand qaysi filialda o'qisa, o'shaniki.
+            const paymeSettings = await paymeLoadSettings(student.schoolId || schoolId);
+            if (paymeIsConfigured(paymeSettings) && paymeSettings.paymeMode === 'live') {
+                // Payme ilovasidan to'lash uchun faqat o'quvchi ID si kerak: pul
+                // balansga tushadi, kurs so'ralmaydi va ko'rsatilmaydi (2026-09-23).
+                // Payme ID — 5 xonali o'quvchi ID si (services/oquvchiKod.js), telefon emas.
+                msg += `\u{1F194} Payme ilovasida o'quvchi ID: <b>${(await paymePayIdFor(student.id)) || '—'}</b>\n`;
+                tugmalar.push([Markup.button.callback(
+                    kop ? `💳 ${ismKor(student.name).slice(0, 28)} — Payme` : "💳 Payme orqali to'lash",
+                    kop ? `payme_k_${student.id}` : 'payme_start'
+                )]);
+            }
+            msg += '\n';
         }
-
-        // Payme jonli rejimda ulangan bo'lsa — shu yerdan to'lash mumkin.
-        // Kesh emas, to'g'ridan-to'g'ri: admin rejimni o'zgartirsa darhol ko'rinsin.
-        const paymeSettings = await paymeLoadSettings(schoolId);
-        if (paymeIsConfigured(paymeSettings) && paymeSettings.paymeMode === 'live') {
-            // Payme ilovasidan to'lash uchun faqat o'quvchi ID si kerak: pul
-            // balansga tushadi, kurs so'ralmaydi va ko'rsatilmaydi (2026-09-23).
-            // Payme ID — telefon raqami (+998 siz); aka-uka bitta raqamda bo'lsa №.
-            msg += `\n\u{1F194} Payme ilovasida o'quvchi ID: ${(await paymePayIdFor(student.id)) || student.id}`;
-            return ctx.reply(msg, Markup.inlineKeyboard([[Markup.button.callback("💳 Payme orqali to'lash", 'payme_start')]]));
-        }
-        ctx.reply(msg);
+        ctx.reply(qisqart(msg.trim()), { parse_mode: 'HTML', ...(tugmalar.length ? Markup.inlineKeyboard(tugmalar) : {}) });
     });
 
     // --- Payme: summa → havola -----------------------------------------------
     // 2026-09-23 dan pul faqat balansga tushadi: ota-ona kurs tanlamaydi.
     // Eski xabarlardagi kursli tugmalar (payme_c_/payme_a_/payme_o_) ham
     // ishlayveradi — kurs raqami e'tiborsiz qoldiriladi.
+    //
+    // Bir nechta farzand: tugmalarda farzand raqami bor (payme_k_<id>,
+    // payme_sb_<id>_<summa>, payme_sob_<id>); faqat o'z farzandi qabul qilinadi.
+    // Raqamsiz eski tugmalar birinchi farzandga (ilgarigidek).
 
-    const paymeStudent = async (ctx) => {
+    const paymeStudent = async (ctx, studentId) => {
         const schoolId = await filial(ctx);
         const user = await findUser(ctx.from.id, schoolId);
-        if (!user || (user.type !== 'student' && !user.type.startsWith('parent_'))) return null;
+        if (!oilami(user)) return null;
+        if (studentId) return user.farzandlar.find(f => f.id === studentId) || null;
         return user.data;
     };
 
-    const paymeSendLink = async (ctx, student, amount) => {
+    /** Farzand tanlash — bir nechta bo'lsa. */
+    const paymeFarzandTanlash = async (ctx) => {
         const schoolId = await filial(ctx);
+        const user = await findUser(ctx.from.id, schoolId);
+        if (!oilami(user)) return false;
+        if (user.farzandlar.length < 2) return false;
+        await ctx.reply("Qaysi farzandingiz uchun to'laysiz?", Markup.inlineKeyboard(
+            user.farzandlar.map(s => [Markup.button.callback(`💳 ${ismKor(s.name).slice(0, 40)}`, `payme_k_${s.id}`)])
+        ));
+        return true;
+    };
+
+    const paymeSendLink = async (ctx, student, amount) => {
+        const schoolId = student.schoolId || await filial(ctx);
         const r = await paymeCreateOrder({
             schoolId, studentId: student.id, groupId: null, amount,
             source: 'bot', chatId: ctx.chat.id,
@@ -588,35 +724,70 @@ export const setupBotHandlers = (botInstance, botSchoolId) => {
         );
     };
 
-    const paymeBalanceMenu = async (ctx, student) => {
+    /** kop — ota-onaning bir nechta farzandi bor: qaysi biri ekani yoziladi. */
+    const paymeBalanceMenu = async (ctx, student, kop = false) => {
         const ledger = await studentLedger(student.id);
         const kurslar = ledger.courses.filter(c => c.isMember);
-        if (!kurslar.length) return ctx.reply("Siz hozir hech qaysi kursda emassiz — to'lov uchun markazga murojaat qiling.");
+        if (!kurslar.length) {
+            return ctx.reply(kop
+                ? `${ismKor(student.name)} hozir hech qaysi kursda emas — to'lov uchun markazga murojaat qiling.`
+                : "Siz hozir hech qaysi kursda emassiz — to'lov uchun markazga murojaat qiling.");
+        }
         const debt = Math.max(0, Math.round(ledger.debt || 0));
         const oylik = kurslar.reduce((a, c) => a + (c.monthlyPrice || 0), 0);
         const rows = [];
-        if (debt >= PAYME_MIN && debt <= PAYME_MAX) rows.push([Markup.button.callback(`Qarzni yopish — ${somFmt(debt)} so'm`, `payme_b_${debt}`)]);
-        if (oylik >= PAYME_MIN && oylik <= PAYME_MAX && oylik !== debt) rows.push([Markup.button.callback(`Oylik to'lov — ${somFmt(oylik)} so'm`, `payme_b_${oylik}`)]);
-        rows.push([Markup.button.callback('✏️ Boshqa summa', 'payme_ob')]);
-        let info = `💰 Qarz: ${somFmt(debt)} so'm\n`;
+        if (debt >= PAYME_MIN && debt <= PAYME_MAX) rows.push([Markup.button.callback(`Qarzni yopish — ${somFmt(debt)} so'm`, `payme_sb_${student.id}_${debt}`)]);
+        if (oylik >= PAYME_MIN && oylik <= PAYME_MAX && oylik !== debt) rows.push([Markup.button.callback(`Oylik to'lov — ${somFmt(oylik)} so'm`, `payme_sb_${student.id}_${oylik}`)]);
+        rows.push([Markup.button.callback('✏️ Boshqa summa', `payme_sob_${student.id}`)]);
+        let info = kop ? `👤 ${ismKor(student.name)}\n` : '';
+        info += `💰 Qarz: ${somFmt(debt)} so'm\n`;
         if (ledger.wallet > 0) info += `Balansda: ${somFmt(ledger.wallet)} so'm\n`;
         info += `Oylik: ${somFmt(oylik)} so'm\n`;
         return ctx.reply(info + "\nPul balansga tushadi. Summani tanlang:", Markup.inlineKeyboard(rows));
     };
 
-    const paymeAskAmount = (ctx) => ctx.reply(
-        "✏️ Summani so'mda yozing (masalan: 500000)\n· B",
+    // Javob belgisi "· B" (bitta farzand) yoki "· B<id>" (qaysi farzand).
+    const paymeAskAmount = (ctx, studentId) => ctx.reply(
+        `✏️ Summani so'mda yozing (masalan: 500000)\n· B${studentId || ''}`,
         { reply_markup: { force_reply: true, input_field_placeholder: '500000', selective: true } }
     );
 
+    /** Farzandning filialida Payme jonli ulanganmi. */
+    const paymeJonli = async (student) => {
+        const s = await paymeLoadSettings(student.schoolId);
+        return paymeIsConfigured(s) && s.paymeMode === 'live';
+    };
+
     botInstance.action('payme_start', async (ctx) => {
-        const schoolId = await filial(ctx);
         await ctx.answerCbQuery().catch(() => {});
+        // Eski xabardagi tugma: bir nechta farzand bo'lsa — avval tanlash.
+        if (await paymeFarzandTanlash(ctx)) return;
         const student = await paymeStudent(ctx);
         if (!student) return;
-        const paymeSettings = await paymeLoadSettings(schoolId);
-        if (!paymeIsConfigured(paymeSettings) || paymeSettings.paymeMode !== 'live') return ctx.reply("Payme orqali to'lov hozircha ulanmagan.");
+        if (!(await paymeJonli(student))) return ctx.reply("Payme orqali to'lov hozircha ulanmagan.");
         return paymeBalanceMenu(ctx, student);
+    });
+
+    botInstance.action(/^payme_k_(\d+)$/, async (ctx) => {
+        await ctx.answerCbQuery().catch(() => {});
+        const student = await paymeStudent(ctx, parseInt(ctx.match[1]));
+        if (!student) return ctx.reply("Bu o'quvchi sizning farzandlaringiz ro'yxatida yo'q.");
+        if (!(await paymeJonli(student))) return ctx.reply("Payme orqali to'lov hozircha ulanmagan.");
+        return paymeBalanceMenu(ctx, student, true);
+    });
+
+    botInstance.action(/^payme_sb_(\d+)_(\d+)$/, async (ctx) => {
+        await ctx.answerCbQuery().catch(() => {});
+        const student = await paymeStudent(ctx, parseInt(ctx.match[1]));
+        if (!student) return;
+        return paymeSendLink(ctx, student, parseInt(ctx.match[2]));
+    });
+
+    botInstance.action(/^payme_sob_(\d+)$/, async (ctx) => {
+        await ctx.answerCbQuery().catch(() => {});
+        const student = await paymeStudent(ctx, parseInt(ctx.match[1]));
+        if (!student) return;
+        return paymeAskAmount(ctx, student.id);
     });
 
     botInstance.action(/^payme_c_(\d+)$/, async (ctx) => {
@@ -648,58 +819,81 @@ export const setupBotHandlers = (botInstance, botSchoolId) => {
         return paymeAskAmount(ctx);
     });
 
+    // Holat nomi odam tilida: bazadagi "Kelmapdi" / "ErtaKetdi" ota-onaga ko'rinmasin.
+    const DAVOMAT_BELGI = { Keldi: '✅', Kelmapdi: '❌', Kelmadi: '❌', Sababli: '⚠️', Kechikdi: '⏰', ErtaKetdi: '🏃', "Dars bo'lmadi": '🚫' };
+    const DAVOMAT_NOMI = { Keldi: 'keldi', Kelmapdi: 'kelmadi', Kelmadi: 'kelmadi', Sababli: 'sababli', Kechikdi: 'kechikdi', ErtaKetdi: 'erta ketdi', "Dars bo'lmadi": "dars bo'lmadi" };
+    const sanaQisqa = (d) => String(d || '').split('-').reverse().join('.');
+
     botInstance.hears('✅ Davomat', async (ctx) => {
         const schoolId = await filial(ctx);
         const user = await findUser(ctx.from.id, schoolId);
-        if (!user || (user.type !== 'student' && !user.type.startsWith('parent_'))) return;
+        if (!oilami(user)) return;
 
-        const attendances = await prisma.attendance.findMany({
-            where: { studentId: user.data.id, schoolId },
-            take: 10,
-            orderBy: { date: 'desc' },
-            include: { group: true }
-        });
-
-        if (attendances.length === 0) return ctx.reply("Davomat ma'lumotlari topilmadi.");
-
-        let msg = "📊 Oxirgi davomat holati:\n\n";
-        attendances.forEach(a => {
-            const icon = a.status === 'Keldi' ? '✅' : (a.status === 'Kelmapdi' ? '❌' : '⚠️');
-            msg += `${icon} ${a.date} | ${a.group.name}\n`;
-        });
-
-        ctx.reply(msg);
+        // Farzand boshqa filialda o'qishi mumkin — faqat o'quvchi bo'yicha.
+        const kop = user.farzandlar.length > 1;
+        let msg = kop ? "📊 <b>Farzandlaringizning oxirgi davomati</b>\n\n" : "📊 <b>Oxirgi davomat holati</b>\n\n";
+        let bor = false;
+        for (const s of user.farzandlar) {
+            const attendances = await prisma.attendance.findMany({
+                where: { studentId: s.id },
+                take: kop ? 7 : 10,
+                orderBy: [{ date: 'desc' }, { id: 'desc' }],
+                include: { group: { select: { name: true } } }
+            });
+            msg += farzandSarlavhasi(user, s);
+            if (!attendances.length) { msg += "Davomat ma'lumotlari yo'q\n\n"; continue; }
+            bor = true;
+            attendances.forEach(a => {
+                msg += `${DAVOMAT_BELGI[a.status] || '▫️'} ${sanaQisqa(a.date)} · ${escHtml(a.group?.name || '')} — ${DAVOMAT_NOMI[a.status] || escHtml(a.status)}\n`;
+            });
+            msg += '\n';
+        }
+        if (!bor) return ctx.reply("Davomat ma'lumotlari topilmadi.");
+        ctx.reply(qisqart(msg.trim()), { parse_mode: 'HTML' });
     });
 
     botInstance.hears('📊 Baholar', async (ctx) => {
         const schoolId = await filial(ctx);
         const user = await findUser(ctx.from.id, schoolId);
-        if (!user || (user.type !== 'student' && !user.type.startsWith('parent_'))) return;
+        if (!oilami(user)) return;
 
-        const scores = await prisma.score.findMany({
-            where: { studentId: user.data.id, schoolId },
-            take: 10,
-            orderBy: { id: 'desc' }
-        });
-
-        if (scores.length === 0) return ctx.reply("Hozircha baholar mavjud emas.");
-
-        let msg = "📊 Oxirgi baholaringiz:\n\n";
-        scores.forEach(s => {
-            msg += `▫️ ${s.date}: ${s.value} ball\n`;
-        });
-
-        ctx.reply(msg);
+        const kop = user.farzandlar.length > 1;
+        let msg = kop ? "📊 <b>Farzandlaringizning oxirgi baholari</b>\n\n" : "📊 <b>Oxirgi baholaringiz</b>\n\n";
+        let bor = false;
+        for (const s of user.farzandlar) {
+            const scores = await prisma.score.findMany({
+                where: { studentId: s.id },
+                take: 10,
+                orderBy: { id: 'desc' }
+            });
+            msg += farzandSarlavhasi(user, s);
+            if (!scores.length) { msg += "Hozircha baho yo'q\n\n"; continue; }
+            bor = true;
+            scores.forEach(sc => { msg += `▫️ ${sanaQisqa(sc.date)}: ${sc.value} ball\n`; });
+            msg += '\n';
+        }
+        if (!bor) return ctx.reply("Hozircha baholar mavjud emas.");
+        ctx.reply(qisqart(msg.trim()), { parse_mode: 'HTML' });
     });
 
     // Imtihonlar: yaqin imtihon — sana, vaqt, xona va o'rin (ruxsatnoma bilan
     // bir xil); e'lon qilingan natijalar — ball, o'rin va natija sahifasi Mini
     // App bo'lib ochiladigan tugma. Faqat e'lon qilingan natija ko'rinadi.
+    // Bir nechta farzand — har biriga alohida xabar (o'z tugmalari bilan).
     const imtihonlarniKorsat = async (ctx) => {
         const schoolId = await filial(ctx);
         const user = await findUser(ctx.from.id, schoolId);
-        if (!user || (user.type !== 'student' && !user.type.startsWith('parent_'))) return;
-        const studentId = user.data.id;
+        if (!oilami(user)) return;
+        let yuborildi = 0;
+        for (const f of user.farzandlar) {
+            if (await farzandImtihonlari(ctx, f, user.farzandlar.length > 1)) yuborildi++;
+        }
+        if (!yuborildi) return ctx.reply("📝 Hozircha imtihon yo'q.");
+    };
+
+    /** Bitta o'quvchining imtihonlari. Hech narsa bo'lmasa — false. */
+    const farzandImtihonlari = async (ctx, farzand, kop) => {
+        const studentId = farzand.id;
         const [orinlar, natijalar] = await Promise.all([
             prisma.examSeat.findMany({
                 where: { studentId, exam: { date: { gte: toDateStr() }, publishedAt: null } },
@@ -714,7 +908,7 @@ export const setupBotHandlers = (botInstance, botSchoolId) => {
                 take: 5,
             }),
         ]);
-        if (!orinlar.length && !natijalar.length) return ctx.reply("📝 Hozircha imtihon yo'q.");
+        if (!orinlar.length && !natijalar.length) return false;
 
         const roomIds = [...new Set(orinlar.map(o => o.roomId).filter(Boolean))];
         const rooms = roomIds.length ? await prisma.room.findMany({ where: { id: { in: roomIds } }, select: { id: true, name: true, schoolId: true } }) : [];
@@ -722,7 +916,7 @@ export const setupBotHandlers = (botInstance, botSchoolId) => {
         const soni = natijalar.length ? await prisma.examResult.groupBy({ by: ['examId'], where: { examId: { in: natijalar.map(r => r.examId) } }, _count: { _all: true } }) : [];
         const jami = new Map(soni.map(x => [x.examId, x._count._all]));
 
-        let matn = '📝 <b>Imtihonlar</b>\n';
+        let matn = kop ? `📝 <b>Imtihonlar — ${escHtml(ismKor(farzand.name))}</b>\n` : '📝 <b>Imtihonlar</b>\n';
         if (orinlar.length) {
             matn += '\n<b>Yaqin imtihon</b>\n';
             for (const o of orinlar) {
@@ -755,7 +949,8 @@ export const setupBotHandlers = (botInstance, botSchoolId) => {
             const text = `📊 ${r.exam.name}`.slice(0, 60);
             return [asos.startsWith('https://') ? { text, web_app: { url } } : { text, url }];
         }) : [];
-        return ctx.reply(matn, { parse_mode: 'HTML', ...(tugmalar.length ? { reply_markup: { inline_keyboard: tugmalar } } : {}) });
+        await ctx.reply(matn, { parse_mode: 'HTML', ...(tugmalar.length ? { reply_markup: { inline_keyboard: tugmalar } } : {}) });
+        return true;
     };
     botInstance.hears('📝 Imtihonlar', imtihonlarniKorsat);
     botInstance.command('imtihon', imtihonlarniKorsat);
@@ -777,6 +972,17 @@ export const setupBotHandlers = (botInstance, botSchoolId) => {
         else if (user.type === 'admin') roleLabel = 'Xodim';
 
         let msg = `👤 Mening Profilim:\n\n`;
+        if (oilami(user) && (user.type !== 'student' || user.farzandlar.length > 1)) {
+            // Ota-ona: o'z ismi va raqami, keyin hamma farzandlari.
+            const s = user.data;
+            const ota = user.type === 'parent_father';
+            const ism = ota ? s.fatherName : user.type === 'parent_mother' ? s.motherName : '';
+            if (ism) msg += `NAME: ${ism}\n`;
+            msg += `📞 TEL: ${(ota ? s.fatherPhone : user.type === 'parent_mother' ? s.motherPhone : s.phone) || s.phone}\n`;
+            msg += `🎭 ROL: ${ota ? 'Ota' : user.type === 'parent_mother' ? 'Ona' : 'Ota-ona'}\n\n`;
+            msg += `${user.farzandlar.length > 1 ? '👨‍👩‍👧‍👦 Farzandlaringiz' : '👤 Farzandingiz'}:\n${farzandlarRoyxati(user.farzandlar)}\n`;
+            return ctx.reply(msg);
+        }
         msg += `🆔 ID: ${user.data.id}\n`;
         msg += `NAME: ${user.data.name}\n`;
         if (user.type === 'parent_father') {
@@ -1071,9 +1277,10 @@ export const setupBotHandlers = (botInstance, botSchoolId) => {
         await davomatniChiz(ctx, group, parseInt(ctx.match[3]));
     });
 
-    // Saqlash: belgilanmaganlar "Keldi", so'ng har o'quvchi uchun bitta xabar —
-    // CRM dagi "Xabar yuborish" qoidasi bilan bir xil: ota-onaga, ular
-    // ulanmagan bo'lsa o'quvchining o'ziga.
+    // Saqlash: belgilanmaganlar "Keldi", so'ng ota-onaga davomat xabari — CRM
+    // kurs sahifasidagi "Xabar yuborish" bilan bir xil: har holatga Xabarlar →
+    // Shablonlar dagi tanlangan shablon (services/davomatXabari.js). Shablon
+    // tanlanmagan holatga (odatda "Keldi") xabar ketmaydi.
     botInstance.action(/^ta_s_(\d+)$/, async (ctx) => {
         const group = await ustozKursi(ctx, parseInt(ctx.match[1]));
         if (!group) return ctx.answerCbQuery("Bu kurs sizga biriktirilmagan.");
@@ -1090,31 +1297,11 @@ export const setupBotHandlers = (botInstance, botSchoolId) => {
                 yangi.forEach(s => holat.set(s.id, 'Keldi'));
             }
 
-            const xabarlar = [];
-            group.students.forEach(s => {
-                const status = holat.get(s.id) || 'Keldi';
-                const msg = [
-                    `${ATT_BELGI[status] || 'ℹ️'} Davomat xabarnomasi`,
-                    '',
-                    `👤 O'quvchi: ${s.ism}`,
-                    `📌 Holat: ${ATT_NOMI[status] || status}`,
-                    `📅 Sana: ${sanaKorinishi(sana)}`,
-                    `📚 Kurs: ${group.name}`,
-                ].join('\n');
-                const chatIds = [s.fatherTelegramId, s.motherTelegramId].filter(Boolean);
-                if (chatIds.length === 0 && s.telegramId) chatIds.push(s.telegramId);
-                chatIds.forEach(chatId => xabarlar.push({ chatId, msg, ism: s.name }));
-            });
-            // Telegram soniyasiga ~30 xabar qabul qiladi — 20 tadan to'daga bo'lib.
-            let yuborildi = 0;
-            for (let i = 0; i < xabarlar.length; i += 20) {
-                const natija = await Promise.allSettled(
-                    xabarlar.slice(i, i + 20).map(x => botInstance.telegram.sendMessage(x.chatId, x.msg))
-                );
-                natija.forEach((r, j) => {
-                    if (r.status === 'fulfilled') yuborildi++;
-                    else console.error('Davomat xabari (' + xabarlar[i + j].ism + '):', r.reason?.message);
-                });
+            let xabar = null;
+            try {
+                xabar = await davomatXabariniYuborish({ groupId: group.id, date: sana, studentIds: group.students.map(s => s.id) });
+            } catch (e) {
+                console.error('Davomat xabari (bot):', e.message);
             }
 
             let matn = `✅ <b>${escHtml(group.name)}</b> — davomat saqlandi\n`;
@@ -1122,7 +1309,12 @@ export const setupBotHandlers = (botInstance, botSchoolId) => {
             matn += sanoqMatni(group.students, holat) + '\n';
             const kelmaganlar = kelmaganlarMatni(group.students, holat);
             if (kelmaganlar) matn += `\n❌ <b>Kelmaganlar:</b> ${kelmaganlar}\n`;
-            matn += `\n📨 Ota-onalarga yuborildi: ${yuborildi} ta xabar`;
+            if (xabar && !xabar.error) {
+                const yetmadi = (xabar.xato || 0) + (xabar.aloqasiz || 0);
+                matn += `\n📨 Ota-onalarga xabar: ${xabar.yuborildi} ta yuborildi${yetmadi ? `, ${yetmadi} tasiga yetib bormadi` : ''}`;
+            } else {
+                matn += `\n📨 Ota-onalarga xabar yuborilmadi`;
+            }
             await ctx.editMessageText(matn, {
                 parse_mode: 'HTML',
                 ...Markup.inlineKeyboard([[Markup.button.callback('✏️ Tuzatish', `ta_p_${group.id}_0`)]]),
@@ -1650,7 +1842,7 @@ export const setupBotHandlers = (botInstance, botSchoolId) => {
         const replyTo = ctx.message.reply_to_message;
         const paymeMatch = replyTo?.from?.is_bot ? PAYME_PROMPT_RE.exec(replyTo.text || '') : null;
         if (paymeMatch) {
-            const student = await paymeStudent(ctx);
+            const student = await paymeStudent(ctx, paymeMatch[1] ? parseInt(paymeMatch[1]) : undefined);
             if (!student) return;
             const amount = parseInt(text.replace(/[^\d]/g, ''), 10);
             if (!Number.isInteger(amount)) return ctx.reply("Faqat raqam yozing, masalan: 500000");

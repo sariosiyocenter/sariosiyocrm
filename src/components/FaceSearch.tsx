@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useRef, useState } from 'react';
 import * as faceapi from 'face-api.js';
 import { X, Camera, SwitchCamera, ArrowRight, Image as ImageIcon, AlertTriangle, RotateCcw } from 'lucide-react';
 import { loadFaceModels, descriptorFromPhoto, FACE_INPUT_SIZE } from '../lib/faceDescriptor';
+import { ketmaKetTekshir, KAMERA_OLCHAMI, kanvasniMoslash } from '../lib/faceLoop';
 
 /**
  * Face ID bo'yicha o'quvchi qidirish.
@@ -47,7 +48,6 @@ export default function FaceSearch({ students, schoolId, onPick, onClose }: Prop
     const videoRef = useRef<HTMLVideoElement>(null);
     const canvasRef = useRef<HTMLCanvasElement>(null);
     const streamRef = useRef<MediaStream | null>(null);
-    const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
     const [phase, setPhase] = useState<'loading' | 'ready' | 'error'>('loading');
     const [msg, setMsg] = useState('Yuz belgilari yuklanmoqda…');
@@ -108,7 +108,7 @@ export default function FaceSearch({ students, schoolId, onPick, onClose }: Prop
             try {
                 streamRef.current?.getTracks().forEach(t => t.stop());
                 const stream = await navigator.mediaDevices.getUserMedia({
-                    video: { facingMode: { ideal: facingMode }, width: { ideal: 1280 }, height: { ideal: 720 } }
+                    video: { facingMode: { ideal: facingMode }, ...KAMERA_OLCHAMI }
                 });
                 if (cancelled) { stream.getTracks().forEach(t => t.stop()); return; }
                 streamRef.current = stream;
@@ -122,7 +122,6 @@ export default function FaceSearch({ students, schoolId, onPick, onClose }: Prop
         return () => {
             cancelled = true;
             streamRef.current?.getTracks().forEach(t => t.stop());
-            if (intervalRef.current) clearInterval(intervalRef.current);
         };
     }, [phase, facingMode, hit]);
 
@@ -161,7 +160,7 @@ export default function FaceSearch({ students, schoolId, onPick, onClose }: Prop
         if (!video || !canvas || video.readyState < 2 || profiles.length === 0) return;
 
         const displaySize = { width: video.videoWidth || 640, height: video.videoHeight || 480 };
-        faceapi.matchDimensions(canvas, displaySize);
+        kanvasniMoslash(canvas, displaySize.width, displaySize.height);
 
         const found = await faceapi
             .detectSingleFace(video, new faceapi.TinyFaceDetectorOptions({ inputSize: FACE_INPUT_SIZE, scoreThreshold: 0.5 }))
@@ -189,10 +188,12 @@ export default function FaceSearch({ students, schoolId, onPick, onClose }: Prop
         }
     }, [profiles, match]);
 
+    // Ketma-ket tekshiruv (src/lib/faceLoop.ts): telefonda bitta tekshiruv
+    // 300 ms dan uzoq davom etadi — setInterval ularni ustma-ust yig'ib,
+    // ekranni qotirib qo'yardi.
     useEffect(() => {
         if (phase !== 'ready' || hit) return;
-        intervalRef.current = setInterval(detect, 300);
-        return () => { if (intervalRef.current) clearInterval(intervalRef.current); };
+        return ketmaKetTekshir(detect, 300);
     }, [phase, detect, hit]);
 
     useEffect(() => {
@@ -226,19 +227,19 @@ export default function FaceSearch({ students, schoolId, onPick, onClose }: Prop
 
     return (
         <div className="fixed inset-0 z-[300] bg-black flex flex-col">
-            <div className="flex items-center justify-between px-5 py-3 bg-gray-950/90 backdrop-blur border-b border-gray-800">
-                <div className="flex items-center gap-3">
-                    <div className="w-8 h-8 rounded-xl bg-brand/20 flex items-center justify-center">
+            <div className="flex items-center justify-between gap-2 px-4 sm:px-5 py-3 bg-gray-950 border-b border-gray-800">
+                <div className="flex items-center gap-3 min-w-0">
+                    <div className="w-8 h-8 shrink-0 rounded-xl bg-brand/20 flex items-center justify-center">
                         <Camera size={16} className="text-brand" />
                     </div>
-                    <div>
-                        <p className="text-white text-sm font-black tracking-tight">Face ID bo'yicha qidirish</p>
-                        <p className="text-gray-400 text-[11px] font-bold tabular-nums">
+                    <div className="min-w-0">
+                        <p className="text-white text-sm font-black tracking-tight truncate">Face ID bo'yicha qidirish</p>
+                        <p className="text-gray-400 text-[11px] font-bold tabular-nums truncate">
                             {profiles.length} ta o'quvchi Face ID ro'yxatida
                         </p>
                     </div>
                 </div>
-                <div className="flex items-center gap-3">
+                <div className="flex items-center gap-2 sm:gap-3 shrink-0">
                     {!hit && (
                         <button
                             onClick={toggleCamera}
@@ -246,7 +247,7 @@ export default function FaceSearch({ students, schoolId, onPick, onClose }: Prop
                             className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-gray-800 hover:bg-gray-700 border border-gray-700 transition-colors cursor-pointer"
                         >
                             <SwitchCamera size={13} className="text-white" />
-                            <span className="text-white text-[11px] font-bold">{facingMode === 'user' ? 'Old' : 'Orqa'}</span>
+                            <span className="hidden sm:inline text-white text-[11px] font-bold">{facingMode === 'user' ? 'Old' : 'Orqa'}</span>
                         </button>
                     )}
                     <button aria-label="Yopish" onClick={onClose} className="w-9 h-9 flex items-center justify-center rounded-xl bg-gray-800 hover:bg-gray-700 transition-colors cursor-pointer">
@@ -283,7 +284,7 @@ export default function FaceSearch({ students, schoolId, onPick, onClose }: Prop
                     <>
                         <video ref={videoRef} autoPlay playsInline muted
                             className="w-full h-full object-cover" style={{ transform: mirror }} />
-                        <canvas ref={canvasRef} className="absolute inset-0 w-full h-full" style={{ transform: mirror }} />
+                        <canvas ref={canvasRef} className="absolute inset-0 w-full h-full object-cover" style={{ transform: mirror }} />
                     </>
                 )}
 

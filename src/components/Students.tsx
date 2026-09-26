@@ -618,8 +618,13 @@ export default function Students() {
             .sort((a, b) => displayName(a.name).localeCompare(displayName(b.name), 'uz'));
     }, [teachers, groupTeacher]);
 
+    // Telefonda (egasi, 2026-09-26: "android brauzerida qidiruv responsiveligi
+    // yaxshimas") har harf butun ro'yxatni qayta chizardi va yozish qotardi.
+    // Filtr endi kechiktirilgan qiymat bilan: input darhol javob beradi, ro'yxat
+    // bo'sh vaqtda yangilanadi (yangi harf kelsa — eskisi tashlab yuboriladi).
+    const qidiruv = React.useDeferredValue(search);
     const filteredStudents = React.useMemo(() => students.filter(s => {
-        const lowerSearch = search.trim().toLowerCase();
+        const lowerSearch = qidiruv.trim().toLowerCase();
         const matchesSearch = (s.name || '').toLowerCase().includes(lowerSearch) ||
                (s.phone || '').toLowerCase().includes(lowerSearch) ||
                (s.studentSchool || '').toLowerCase().includes(lowerSearch) ||
@@ -692,7 +697,7 @@ export default function Students() {
         }
 
         return matchesSearch && matchesTeacher && matchesStatus && matchesGroup && matchesGender && matchesPrivilege && matchesBalance && matchesDate && matchesOrgType && matchesGrade && matchesMuassasa && matchesRegion && matchesDistrict && matchesLocation && matchesMissingInfo && matchesGoal && matchesDirection;
-    }), [students, search, filters, quickFilter, attendances, groupTeacher]);
+    }), [students, qidiruv, filters, quickFilter, attendances, groupTeacher]);
 
     // Saralash filtrdan keyin: Excel eksporti ham ekrandagi tartibda chiqadi.
     const absences = useMemo(() => absenceCounts(attendances), [attendances]);
@@ -700,6 +705,17 @@ export default function Students() {
         () => sortStudents(filteredStudents, sortBy, { absences, attRate }),
         [filteredStudents, sortBy, absences, attRate]
     );
+
+    // Kartalar (telefon) va jadval (kompyuter) — faqat bittasi chiziladi.
+    // Ilgari ikkalasi ham DOM da turardi (biri CSS bilan yashirin), ya'ni
+    // telefonda har qidiruvda 100 qator va 50 ta rasm qayta chizilardi.
+    const [keng, setKeng] = useState(() => typeof window === 'undefined' || window.matchMedia('(min-width: 768px)').matches);
+    useEffect(() => {
+        const mq = window.matchMedia('(min-width: 768px)');
+        const ozgar = () => setKeng(mq.matches);
+        mq.addEventListener('change', ozgar);
+        return () => mq.removeEventListener('change', ozgar);
+    }, []);
 
     // The table used to render every match at once — 266 rows, each with a photo.
     const PER_PAGE = 50;
@@ -796,43 +812,58 @@ export default function Students() {
                     ) : null
                 ))}
             </div>
-                <div className="px-6 pb-5 pt-3 border-t border-chiziq-mayin/50 space-y-3">
+                {/* Telefonda (360 px) ilgari input + 3 tugma bir qatorda turib, input
+                    ~50 px ga siqilib qolardi. Endi: chetlar kichikroq, tugmalar faqat
+                    belgi bilan, qidiruvni tozalash — input ichidagi ✕. */}
+                <div className="px-4 sm:px-6 pb-5 pt-3 border-t border-chiziq-mayin/50 space-y-3">
                     <div className="flex items-center gap-2">
                     <div className="relative flex-1 min-w-0">
-                        <Search size={14} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-matn-xira" />
+                        <Search size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-matn-xira pointer-events-none" />
                         <input
                             type="text"
+                            inputMode="search"
+                            enterKeyHint="search"
+                            autoComplete="off"
                             placeholder={t('search_students_name_phone')}
                             value={search}
                             onChange={e => setSearch(e.target.value)}
-                            className="w-full pl-9 pr-4 py-2.5 bg-ichki border border-chiziq rounded-xl text-[13px] text-matn outline-none focus:border-brand transition-colors"
+                            className="w-full h-11 sm:h-auto pl-10 pr-10 py-2.5 bg-ichki border border-chiziq rounded-xl text-[15px] sm:text-[13px] text-matn outline-none focus:border-brand transition-colors"
                         />
+                        {search && (
+                            <button type="button" aria-label="Qidiruvni tozalash" onClick={() => setSearch('')}
+                                className="absolute right-1 top-1/2 -translate-y-1/2 w-9 h-9 flex items-center justify-center rounded-lg text-matn-xira hover:text-rose-500 cursor-pointer">
+                                <X size={16} />
+                            </button>
+                        )}
                     </div>
                         <button
                             onClick={() => setIsFaceSearchOpen(true)}
                             title="Face ID bo'yicha qidirish"
-                            className="flex items-center gap-2 px-3.5 py-2.5 rounded-xl border border-chiziq bg-sirt text-matn-sokin hover:text-brand hover:border-brand text-[13px] font-medium transition-colors cursor-pointer shrink-0"
+                            aria-label="Face ID bo'yicha qidirish"
+                            className="h-11 sm:h-auto flex items-center justify-center gap-2 w-11 sm:w-auto sm:px-3.5 sm:py-2.5 rounded-xl border border-chiziq bg-sirt text-matn-sokin hover:text-brand hover:border-brand text-[13px] font-medium transition-colors cursor-pointer shrink-0"
                         >
-                            <ScanFace size={14} />
+                            <ScanFace size={17} />
                             <span className="hidden sm:inline">Face ID</span>
                         </button>
                         <button
                             onClick={() => setShowFilters(v => !v)}
-                            className={`flex items-center gap-2 px-3.5 py-2.5 rounded-xl border text-[13px] font-medium transition-colors cursor-pointer shrink-0 ${showFilters || activeFilterCount > 0
+                            aria-label="Filtrlar"
+                            className={`h-11 sm:h-auto flex items-center justify-center gap-1.5 min-w-11 px-3 sm:px-3.5 sm:py-2.5 rounded-xl border text-[13px] font-medium transition-colors cursor-pointer shrink-0 ${showFilters || activeFilterCount > 0
                                 ? 'bg-brand border-brand text-white'
                                 : 'bg-sirt border-chiziq text-matn-sokin hover:text-brand hover:border-brand'}`}
                         >
-                            <SlidersHorizontal size={14} />
-                            Filtrlar
+                            <SlidersHorizontal size={15} />
+                            <span className="hidden sm:inline">Filtrlar</span>
                             {activeFilterCount > 0 && <span className="num opacity-80">{activeFilterCount}</span>}
                         </button>
-                        {(activeFilterCount > 0 || search) && (
+                        {activeFilterCount > 0 && (
                             <button
                                 onClick={() => { setSearch(''); setFilters(DEFAULT_FILTERS); }}
                                 title={t('filter_clear')}
-                                className="flex items-center gap-1.5 px-3 py-2.5 rounded-xl text-[13px] text-matn-xira hover:text-rose-500 transition-colors cursor-pointer shrink-0"
+                                aria-label={t('filter_clear')}
+                                className="h-11 sm:h-auto flex items-center gap-1.5 px-2 sm:px-3 sm:py-2.5 rounded-xl text-[13px] text-matn-xira hover:text-rose-500 transition-colors cursor-pointer shrink-0"
                             >
-                                <X size={14} /> {t('filter_clear')}
+                                <X size={15} /> <span className="hidden sm:inline">{t('filter_clear')}</span>
                             </button>
                         )}
                     </div>
@@ -1007,7 +1038,8 @@ export default function Students() {
                 {/* Phone layout. The table below needs 900px, which is two and a half
                     screens of sideways scrolling on a 360px phone, so small screens get
                     cards carrying the same fields instead. */}
-                <div className="md:hidden divide-y divide-chiziq-mayin">
+                {!keng && (
+                <div className="divide-y divide-chiziq-mayin">
                     {visibleStudents.map(student => {
                         const balance = student.balance || 0;
                         return (
@@ -1048,8 +1080,10 @@ export default function Students() {
                         </div>
                     )}
                 </div>
+                )}
 
-                <div className="hidden md:block overflow-x-auto custom-scrollbar">
+                {keng && (
+                <div className="overflow-x-auto custom-scrollbar">
                     <table className="w-full text-left border-collapse min-w-[900px]">
                         <thead>
                             <tr className="border-b border-chiziq">
@@ -1189,6 +1223,7 @@ export default function Students() {
                         </tbody>
                     </table>
                 </div>
+                )}
 
                 {sortedStudents.length > PER_PAGE && (
                     <div className="flex items-center justify-between gap-4 px-6 py-4 border-t border-chiziq-mayin/50">

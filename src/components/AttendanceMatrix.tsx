@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Attendance, Student, Group } from '../types';
 import { useCRM } from '../context/CRMContext';
+import { displayName } from '../lib/displayName';
 import { Check, X, HelpCircle, XCircle, Clock, LogOut, Ban } from 'lucide-react';
 
 interface AttendanceMatrixProps {
@@ -120,7 +121,7 @@ export default function AttendanceMatrix({ group, students, attendances, selecte
                                 <tr key={student.id} className={`${rowBg} hover:bg-emerald-50/20 dark:hover:bg-emerald-950/10 transition-colors`}>
                                     {/* Name */}
                                     <td className={`sticky left-0 z-20 ${rowBg} px-4 py-2.5 border-r border-b border-chiziq`}>
-                                        <p className="text-[11px] font-bold text-matn tracking-tight truncate max-w-[140px]">{student.name}</p>
+                                        <p className="text-[11px] font-bold text-matn tracking-tight truncate max-w-[140px]">{displayName(student.name)}</p>
                                     </td>
                                     {/* % */}
                                     <td className="px-2 py-2.5 border-r border-b border-chiziq text-center">

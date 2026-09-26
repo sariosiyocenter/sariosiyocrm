@@ -9,6 +9,7 @@ import { oxirgiTolov } from '../../lib/xabarMatni.js';
 import { useConfirm } from './ConfirmDialog';
 import { useLang } from '../context/LanguageContext';
 import { displayName as ismniKorsat } from '../lib/displayName';
+import { DavomatXabariSozlama } from './DavomatXabari';
 
 /**
  * Bir nechta qiymat tanlanadigan ro'yxat. Bo'sh tanlov "barchasi" degani.
@@ -277,7 +278,30 @@ export default function Messaging() {
     minDebt: 0,
     birthday: 'all', // all, today, week, month
     contact: 'all', // all, phone, telegram
+    // Kun davomati (egasi, 2026-09-26: "bugun kelmaganlarni tanlab xabar
+    // yuborish"): shu kuni shu holatdagilar. Kurs tanlangan bo'lsa — o'sha
+    // kursdagi yo'qlama bo'yicha.
+    davomat: 'all', // all | Kelmapdi | Sababli | Kechikdi | ErtaKetdi | Keldi
+    davomatSana: new Date(Date.now() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 10),
   });
+
+  /**
+   * Tanlangan kunning yo'qlamasi — serverdan yangisi: ustoz botda yoki boshqa
+   * xodim kun davomida qo'ygan belgilar sahifa ochilgandan keyin ham ko'rinsin.
+   */
+  const [kunDavomati, setKunDavomati] = useState<{ studentId: number; groupId: number; status: string }[] | null>(null);
+  useEffect(() => {
+    if (filters.davomat === 'all' || !filters.davomatSana) { setKunDavomati(null); return; }
+    let off = false;
+    const filiallar = selectedSchoolId ? [selectedSchoolId] : (schools || []).map((x: any) => x.id);
+    setKunDavomati(null);
+    Promise.all(filiallar.map((id: number) =>
+      fetch(`/api/attendances?schoolId=${id}&from=${filters.davomatSana}&to=${filters.davomatSana}`, {
+        headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+      }).then(r => (r.ok ? r.json() : [])).catch(() => [])
+    )).then(qismlar => { if (!off) setKunDavomati(qismlar.flat()); });
+    return () => { off = true; };
+  }, [filters.davomat, filters.davomatSana, selectedSchoolId, schools]);
 
   /**
    * Kurs kesimidagi qarz: Map<studentId, Map<groupId, qarz>>.
@@ -593,6 +617,15 @@ export default function Messaging() {
           return filters.groupIds.includes(String(groupIdVal));
         });
         if (!hasGroup) return false;
+      }
+
+      // Kun davomati: shu kuni tanlangan holatda bo'lganlar (kurs tanlangan
+      // bo'lsa — o'sha kurs yo'qlamasida). Ma'lumot kelguncha hech kim.
+      if (filters.davomat !== 'all') {
+        const holatlar = filters.davomat === 'Kelmapdi' ? ['Kelmapdi', 'Kelmadi'] : [filters.davomat];
+        const mos = (kunDavomati || []).some(a => a.studentId === st.id && holatlar.includes(a.status)
+          && (filters.groupIds.length === 0 || filters.groupIds.includes(String(a.groupId))));
+        if (!mos) return false;
       }
 
       // Gender
@@ -1288,6 +1321,38 @@ export default function Messaging() {
             {/* Form Fields */}
             {audience === 'STUDENTS' ? (
               <div className="grid grid-cols-2 gap-4">
+                <div className="col-span-2">
+                  <label className={lbl}>Davomat (kun bo'yicha)</label>
+                  <div className="grid grid-cols-[1fr_auto] gap-2">
+                    <select
+                      value={filters.davomat}
+                      onChange={e => setFilters({ ...filters, davomat: e.target.value })}
+                      className={inp}
+                    >
+                      <option value="all">Filtrsiz</option>
+                      <option value="Kelmapdi">Kelmaganlar</option>
+                      <option value="Sababli">Sababli kelmaganlar</option>
+                      <option value="Kechikdi">Kechikkanlar</option>
+                      <option value="ErtaKetdi">Erta ketganlar</option>
+                      <option value="Keldi">Kelganlar</option>
+                    </select>
+                    <input
+                      type="date"
+                      value={filters.davomatSana}
+                      disabled={filters.davomat === 'all'}
+                      onChange={e => setFilters({ ...filters, davomatSana: e.target.value })}
+                      className={inp + ' w-[150px] disabled:opacity-50'}
+                    />
+                  </div>
+                  {filters.davomat !== 'all' && (
+                    <p className="text-[10px] font-bold text-slate-400 mt-1">
+                      {kunDavomati === null ? "Yo'qlama yuklanmoqda…"
+                        : filters.groupIds.length ? "Tanlangan kurslar yo'qlamasi bo'yicha" : "Hamma kurslar yo'qlamasi bo'yicha"}
+                      {' · '}Bitta kurs bo'yicha — kurs sahifasi → Yo'qlama → «Ota-onaga xabar».
+                    </p>
+                  )}
+                </div>
+
                 <div>
                   <label className={lbl}>O'quvchi statusi</label>
                   <KopTanlov
@@ -1645,6 +1710,8 @@ export default function Messaging() {
             )}
           </div>
 
+          <DavomatXabariSozlama schoolId={selectedSchoolId || 0} />
+
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {templates.map(t => (
               <div key={t.id} className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-100 dark:border-slate-800 shadow-sm p-4 flex flex-col justify-between space-y-4 hover:shadow-md transition-all group">
@@ -1653,7 +1720,7 @@ export default function Messaging() {
                     <span className="text-[11px] font-bold px-2 py-1 rounded bg-brand/10 dark:bg-brand/40 text-brand dark:text-brand border border-brand/20 dark:border-brand/30">
                       {t.category}
                     </span>
-                    <div className="flex items-center gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <div className="flex items-center gap-1.5 [@media(hover:hover)]:opacity-0 group-hover:opacity-100 transition-opacity">
                       {shablonTahrir && (
                       <button onClick={() => openTemplateModal(t)} className="p-1 text-slate-400 hover:text-brand transition-colors cursor-pointer">
                         <Edit size={13} />

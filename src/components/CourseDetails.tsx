@@ -8,12 +8,13 @@ import { teacherProblem } from '../lib/teacherState';
 import { useConfirm } from './ConfirmDialog';
 import {
     Users, Calendar, Clock, BookOpen, Plus,
-    XCircle, ArrowLeft, Search, ClipboardCheck, ChevronRight, Presentation, Check, Sparkles,
+    XCircle, ArrowLeft, Search, ClipboardCheck, ChevronRight, Presentation, Check,
     CreditCard, DollarSign, Wallet, Trash2, Send, Pencil, Printer
 } from 'lucide-react';
 import AttendanceMatrix from './AttendanceMatrix';
 import GroupAttendanceCalendar from './GroupAttendanceCalendar';
 import FaceAttendance from './FaceAttendance';
+import { DavomatXabarModal } from './DavomatXabari';
 import KursHisobModal from './KursHisobModal';
 import { kelganSana } from '../lib/taqsimot';
 import BirinchiOyInput from './BirinchiOyInput';
@@ -34,7 +35,6 @@ export default function CourseDetails() {
     const balansKorinadi = kora('oquvchilar.balans');
     const tolovQabul = ozgartira('oquvchilar.tolov');
     const kursHisobiTahrir = ozgartira('oquvchilar.kursHisobi');
-    const smsYuborish = ozgartira('xabarlar.yuborish');
     const confirm = useConfirm();
     const [isEditingInfo, setIsEditingInfo] = useState(false);
     // courseName ham shu formada: kurs nomi noto'g'ri yozilgan bo'lsa
@@ -76,6 +76,7 @@ export default function CourseDetails() {
     });
     const [isProcessing, setIsProcessing] = useState(false);
     const [isFaceAttendanceOpen, setIsFaceAttendanceOpen] = useState(false);
+    const [davomatXabarOchiq, setDavomatXabarOchiq] = useState(false);
     const [sortBy, setSortBy] = useState<StudentSort>('default');
 
     const group = groups.find(g => g.id === Number(id));
@@ -151,70 +152,16 @@ export default function CourseDetails() {
         return (rec?.status as AttStatus) || null;
     };
 
-    /** Kun yo'qlamasini ota-onalarga Telegram orqali bir marta yuborish.
-     *  Ilgari har bir belgilash avtomatik xabar yuborardi va yo'qlama tuzatilsa
-     *  ota-ona bir necha marta xabar olardi. */
-    const [isNotifyingParents, setIsNotifyingParents] = useState(false);
-    const handleNotifyParents = async () => {
-        if (isNotifyingParents) return;
-        const marked = groupStudents.filter(s => getStudentAttStatus(s.id)).length;
-        if (marked === 0) {
+    /** Kun yo'qlamasi bo'yicha ota-onaga xabar — DavomatXabarModal: har holatga
+     *  Xabarlar → Shablonlar dagi shablon, kimga ketishini xodim o'zi belgilaydi.
+     *  Ilgari ikki tugma bor edi ("Ota-onaga yuborish" — qattiq yozilgan
+     *  "Holat: Kelmapdi" matni; "SMS" — Eskizda tasdiqlanmagan matn). */
+    const handleNotifyParents = () => {
+        if (!groupStudents.some(s => getStudentAttStatus(s.id))) {
             showNotification("Avval yo'qlamani belgilang", "info");
             return;
         }
-        if (!await confirm(selectedDate + " kungi yo'qlama ota-onalarga yuborilsinmi? (" + marked + " ta o'quvchi)")) return;
-
-        setIsNotifyingParents(true);
-        try {
-            const token = localStorage.getItem('token');
-            const response = await fetch('/api/attendances/notify', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': 'Bearer ' + token
-                },
-                body: JSON.stringify({ schoolId: group.schoolId, groupId: group.id, date: selectedDate })
-            });
-            const data = await response.json();
-            if (response.ok && data.success) {
-                showNotification(
-                    data.sent + " ta xabar yuborildi" + (data.skipped ? ", " + data.skipped + " tasi Telegramga ulanmagan" : ""),
-                    data.sent > 0 ? "success" : "info"
-                );
-            } else {
-                showNotification("Xatolik: " + (data.error || "xabar yuborilmadi"), "error");
-            }
-        } catch (err) {
-            console.error("Attendance notify failed", err);
-            showNotification("Xabar yuborishda xatolik yuz berdi", "error");
-        } finally {
-            setIsNotifyingParents(false);
-        }
-    };
-
-    const handleSendAttendanceSms = async () => {
-        if (!await confirm("Kelmagan o'quvchilar ota-onalariga SMS yuborilsinmi?")) return;
-
-        try {
-            const token = localStorage.getItem('token');
-            const response = await fetch('/api/sms/attendance', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${token}`
-                },
-                body: JSON.stringify({ groupId: group.id, date: selectedDate })
-            });
-            const data = await response.json();
-            if (data.success) {
-                showNotification(`SMS yuborish boshlandi: ${data.count} ta xabar`, "success");
-            } else {
-                showNotification("Xatolik: " + data.error, "error");
-            }
-        } catch (err) {
-            console.error("SMS sending failed", err);
-            showNotification("SMS yuborishda xatolik yuz berdi", "error");
-        }
+        setDavomatXabarOchiq(true);
     };
 
 
@@ -1058,29 +1005,18 @@ export default function CourseDetails() {
                                         </select>
                                     </div>
 
+                                    {davomatTahrir && (
                                     <div className="flex items-center gap-2 w-full sm:w-auto shrink-0">
-                                        {davomatTahrir && (
                                         <button
                                             onClick={handleNotifyParents}
-                                            disabled={isNotifyingParents}
-                                            className="px-4 py-2 bg-sky-50 dark:bg-sky-950/20 text-sky-600 dark:text-sky-400 border border-sky-100 dark:border-sky-900/40 rounded-xl text-[11px] font-extrabold hover:bg-sky-600 hover:text-white transition-all flex items-center gap-1.5 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
-                                            title="Kun yo'qlamasini ota-onalarga Telegramda yuborish"
+                                            className="w-full sm:w-auto justify-center px-4 py-2 bg-sky-50 dark:bg-sky-950/20 text-sky-600 dark:text-sky-400 border border-sky-100 dark:border-sky-900/40 rounded-xl text-[11px] font-extrabold hover:bg-sky-600 hover:text-white transition-all flex items-center gap-1.5 cursor-pointer"
+                                            title="Kelmagan, kechikkan va boshqalarning ota-onasiga shablon bo'yicha xabar"
                                         >
                                             <Send size={13} />
-                                            {isNotifyingParents ? 'Yuborilmoqda…' : "Ota-onaga yuborish"}
+                                            Ota-onaga xabar
                                         </button>
-                                        )}
-                                        {smsYuborish && (
-                                        <button
-                                            onClick={handleSendAttendanceSms}
-                                            className="px-4 py-2 bg-amber-50 dark:bg-amber-950/20 text-amber-600 dark:text-amber-400 border border-amber-100 dark:border-amber-900/40 rounded-xl text-[11px] font-extrabold hover:bg-amber-600 hover:text-white transition-all flex items-center gap-1.5 group cursor-pointer"
-                                            title="Kelmaganlarga SMS yuborish"
-                                        >
-                                            <Sparkles size={13} className="group-hover:animate-pulse" />
-                                            SMS
-                                        </button>
-                                        )}
                                     </div>
+                                    )}
                                 </div>
                             </div>
 
@@ -1109,31 +1045,35 @@ export default function CourseDetails() {
                                             )}
                                         </div>
                                     </div>
+                                    {/* Tartib "Umumiy"dagi bilan bir xil (standart — alifbo): ilgari bu
+                                        ro'yxat bazadagi tartibda — qo'shilgan vaqti bo'yicha aralash chiqardi. */}
                                     <div className="space-y-1 max-h-[360px] overflow-y-auto pr-1 custom-scrollbar">
-                                        {groupStudents.map(s => {
+                                        {sortedGroupStudents.map(s => {
                                             const status = getStudentAttStatus(s.id);
                                             return (
-                                                <div key={s.id} className={`flex items-center justify-between px-3 py-2 rounded-xl border transition-all ${status ? 'bg-sirt border-chiziq' : 'bg-ichki/40 border-dashed border-chiziq/50'}`}>
+                                                // Telefonda ism tepada, tugmalar pastda to'liq enida: ilgari bitta
+                                                // qatorda ism "A…" gacha siqilib, kimni belgilayotgan ko'rinmasdi.
+                                                <div key={s.id} className={`flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between px-3 py-2 rounded-xl border transition-all ${status ? 'bg-sirt border-chiziq' : 'bg-ichki/40 border-dashed border-chiziq/50'}`}>
                                                     <div className="flex items-center gap-2 min-w-0">
                                                         <div className={`w-1.5 h-5 rounded-full shrink-0 ${status === 'Keldi' ? 'bg-emerald-400' : status === 'Kelmapdi' ? 'bg-rose-400' : status === 'Sababli' ? 'bg-sky-400' : status === 'Kechikdi' ? 'bg-orange-400' : 'bg-gray-200 dark:bg-gray-700'}`} />
                                                         <Avatar name={s.name} photo={s.photo} size={24} square />
-                                                        <span className="text-[11px] font-bold text-matn tracking-tight truncate max-w-[140px]">{displayName(s.name)}</span>
+                                                        <span className="text-[12px] sm:text-[11px] font-bold text-matn tracking-tight truncate sm:max-w-[140px]">{displayName(s.name)}</span>
                                                     </div>
-                                                    <div className="flex items-center gap-0.5 shrink-0">
+                                                    <div className="grid grid-cols-4 gap-1 sm:flex sm:items-center sm:gap-0.5 shrink-0">
                                                         <button disabled={!davomatTahrir} onClick={() => saveAttendance(s.id, 'Keldi')}
-                                                            className={`px-2 py-1 rounded-lg text-[10px] font-bold transition-all cursor-pointer ${status === 'Keldi' ? 'bg-emerald-500 text-white' : 'bg-ichki text-matn-xira hover:text-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-950/20'}`}>
+                                                            className={`px-2 py-2 sm:py-1 rounded-lg text-[11px] sm:text-[10px] font-bold transition-all cursor-pointer ${status === 'Keldi' ? 'bg-emerald-500 text-white' : 'bg-ichki text-matn-xira hover:text-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-950/20'}`}>
                                                             Keldi
                                                         </button>
                                                         <button disabled={!davomatTahrir} onClick={() => saveAttendance(s.id, 'Kelmapdi')}
-                                                            className={`px-2 py-1 rounded-lg text-[10px] font-bold transition-all cursor-pointer ${status === 'Kelmapdi' ? 'bg-rose-500 text-white' : 'bg-ichki text-matn-xira hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/20'}`}>
+                                                            className={`px-2 py-2 sm:py-1 rounded-lg text-[11px] sm:text-[10px] font-bold transition-all cursor-pointer ${status === 'Kelmapdi' ? 'bg-rose-500 text-white' : 'bg-ichki text-matn-xira hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/20'}`}>
                                                             Yo'q
                                                         </button>
                                                         <button disabled={!davomatTahrir} onClick={() => saveAttendance(s.id, 'Sababli')}
-                                                            className={`px-2 py-1 rounded-lg text-[10px] font-bold transition-all cursor-pointer ${status === 'Sababli' ? 'bg-sky-500 text-white' : 'bg-ichki text-matn-xira hover:text-sky-600 hover:bg-sky-50 dark:hover:bg-sky-950/20'}`}>
+                                                            className={`px-2 py-2 sm:py-1 rounded-lg text-[11px] sm:text-[10px] font-bold transition-all cursor-pointer ${status === 'Sababli' ? 'bg-sky-500 text-white' : 'bg-ichki text-matn-xira hover:text-sky-600 hover:bg-sky-50 dark:hover:bg-sky-950/20'}`}>
                                                             Sababli
                                                         </button>
                                                         <button disabled={!davomatTahrir} onClick={() => saveAttendance(s.id, 'Kechikdi')}
-                                                            className={`px-2 py-1 rounded-lg text-[10px] font-bold transition-all cursor-pointer ${status === 'Kechikdi' ? 'bg-orange-400 text-white' : 'bg-ichki text-matn-xira hover:text-orange-500 hover:bg-orange-50 dark:hover:bg-orange-950/20'}`}>
+                                                            className={`px-2 py-2 sm:py-1 rounded-lg text-[11px] sm:text-[10px] font-bold transition-all cursor-pointer ${status === 'Kechikdi' ? 'bg-orange-400 text-white' : 'bg-ichki text-matn-xira hover:text-orange-500 hover:bg-orange-50 dark:hover:bg-orange-950/20'}`}>
                                                             Kech
                                                         </button>
                                                     </div>
@@ -1161,7 +1101,7 @@ export default function CourseDetails() {
                             {/* Full width Matrix below the upper grid */}
                             <div className="space-y-3">
                                 <span className="text-[11px] font-bold text-matn-xira block pb-1 border-b border-chiziq-mayin">Davomat Matritsasi</span>
-                                <AttendanceMatrix group={group} students={groupStudents} attendances={attendances} />
+                                <AttendanceMatrix group={group} students={sortedGroupStudents} attendances={attendances} />
                             </div>
                         </div>
                     )}
@@ -1269,7 +1209,7 @@ export default function CourseDetails() {
                                             </tr>
                                         </thead>
                                         <tbody className="divide-y divide-gray-100 dark:divide-gray-800">
-                                            {groupStudents.map(s => {
+                                            {sortedGroupStudents.map(s => {
                                                 const studentCustomPrice = s.customPrices && typeof s.customPrices === 'object'
                                                     ? (s.customPrices as Record<string, number>)[group.id]
                                                     : undefined;
@@ -1575,25 +1515,36 @@ export default function CourseDetails() {
 
             {isFaceAttendanceOpen && (
                 <FaceAttendance
-                    students={groupStudents}
+                    students={sortedGroupStudents}
                     groupId={group.id}
                     schoolId={group.schoolId}
-                    attendanceStatus={Object.fromEntries(
-                        groupStudents.map(s => {
-                            const rec = attendances.find(a => a.groupId === group.id && a.date === selectedDate && a.studentId === s.id);
-                            return [s.id, rec?.status || ''];
-                        })
-                    )}
                     onMatch={(studentId) => saveAttendance(studentId, 'Keldi')}
                     onUnmatch={(studentId) => saveAttendance(studentId, 'Kelmapdi')}
                     onClose={(markedIds) => {
                         setIsFaceAttendanceOpen(false);
-                        // Mark everyone NOT detected by Face ID as absent (override any previous record)
+                        // Face ID dan o'tmaganlar — "Kelmadi". Bitta so'rov bilan: ilgari
+                        // har o'quvchiga alohida so'rov ketardi (100 talik kursda 100 ta
+                        // bir vaqtda), baza ulanishlari tugab, ba'zilari yozilmay qolardi.
+                        // Oldindan "Sababli" qo'yilgani o'zgarmaydi — u ham kelmagan, lekin
+                        // ota-onaga "uzrli sabab" xabari ketishi kerak.
                         const markedSet = new Set(markedIds);
-                        groupStudents.forEach(s => {
-                            if (!markedSet.has(s.id)) saveAttendance(s.id, 'Kelmapdi');
-                        });
+                        const kelmadi = groupStudents
+                            .filter(s => !markedSet.has(s.id) && getStudentAttStatus(s.id) !== 'Sababli')
+                            .map(s => ({ studentId: s.id, status: 'Kelmapdi' }));
+                        if (kelmadi.length) {
+                            addBatchAttendance(group.id, selectedDate, kelmadi, selectedTopicId ? Number(selectedTopicId) : undefined);
+                        }
                     }}
+                />
+            )}
+
+            {davomatXabarOchiq && (
+                <DavomatXabarModal
+                    group={group}
+                    date={selectedDate}
+                    students={sortedGroupStudents}
+                    statusOf={getStudentAttStatus}
+                    onClose={() => setDavomatXabarOchiq(false)}
                 />
             )}
 

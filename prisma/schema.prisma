@@ -405,6 +405,12 @@ model Organization {
   // 2026-09-25: "har bir haydovchi uchun emas, hammaga bitta qoida").
   // lib/transportNarx.js shakli. null — kiritilmagan, bolalar "narxsiz".
   transportTarif Json?
+
+  // Davomat xabari (egasi, 2026-09-26): har yo'qlama holatiga qaysi shablon,
+  // qaysi kanal va kimga. lib/davomatXabari.js shakli:
+  // { kanal: 'BOTH'|'SMS'|'TELEGRAM', kimga: 'FATHER,MOTHER', shablon: { Kelmapdi: 9, … } }.
+  // null — hali saqlanmagan: shablon nomidan taxmin qilinadi.
+  davomatXabari Json?
 }
 
 model School {
