@@ -25,7 +25,7 @@ import jwt from 'jsonwebtoken';
 import bot, { startBot, notifyAdmins, getTelegramBot, rejaniHaydovchigaYuborish, rejaBekorXabari, getStudentMenu } from './src/bot/bot.js';
 import { transferStudent, refundStudent, enrollStudent, unenrollStudent, syncGroupMembers, activateStudent, syncStudentGroups, setKursHisob, firstMonthQuote, todayTashkent } from './services/enrollment.js';
 import { studentLedger, receivedForGroups, monthCoverage } from './services/ledger.js';
-import { holatniYozish, marshrutniTartiblash, marshrutHolati, rejalarniYozish, rejaniQabulQilish, rejaniYetkazish, REJA_INCLUDE, rejaPuli, markazTarifi } from './services/logistics.js';
+import { holatniYozish, marshrutniTartiblash, marshrutHolati, rejalarniYozish, rejaniQabulQilish, rejaniYetkazish, REJA_INCLUDE, rejaPuli, markazTarifi, kunniSaqlash, holatniOchirish } from './services/logistics.js';
 import { tarifniTozalash } from './lib/transportNarx.js';
 import { Prisma } from '@prisma/client';
 import { kunlikTolqinlar, haydovchilardanSorash, kunlikRejaniTuzish, avtoJarayon } from './services/kunlikReja.js';
@@ -5818,6 +5818,88 @@ app.delete('/api/logistics/plans/:id', authenticate, async (req, res, next) => {
     await prisma.route.delete({ where: { id: route.id } });
     await rejaBekorXabari({ schoolId: route.schoolId, telegramId: route.driver?.telegramId, nomi: route.name });
     res.json({ success: true });
+  } catch (error) { next(error); }
+});
+
+/**
+ * Kunning rejasini saqlash va haydovchilarga yuborish (Reja sahifasi,
+ * 2026-09-26). body: { schoolId, date, cars: [{ routeId|null, driverId, studentIds }] }
+ * — yo'lga chiqmagan hamma reyslar; farqni services/logistics.js →
+ * kunniSaqlash yozadi. Faqat o'zgargan haydovchiga xabar boradi: yangi reja,
+ * "reja o'zgartirildi" yoki "bekor qilindi". Ota-onaga (Transport xabarlari
+ * yoqilgan bo'lsa) — faqat mashinaga yangi qo'shilgan bolaning ota-onasiga.
+ */
+app.put('/api/logistics/day', authenticate, async (req, res, next) => {
+  try {
+    const schoolId = parseInt(req.body?.schoolId);
+    if (!schoolId) return res.status(400).json({ error: 'schoolId required' });
+    if (!(await canAccessSchool(req.user, schoolId))) return res.status(403).json({ error: "Ruxsat yo'q" });
+    const date = String(req.body?.date || '');
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return res.status(400).json({ error: "Sana noto'g'ri" });
+
+    const natija = await kunniSaqlash({ schoolId, date, cars: req.body?.cars });
+    if (natija.xato) return res.status(400).json({ error: natija.xato });
+
+    const yuborish = [];
+    for (const n of natija.natijalar) {
+      if (n.tur === 'bekor') {
+        await rejaBekorXabari({ schoolId, telegramId: n.telegramId, nomi: n.nomi });
+        yuborish.push({ routeId: n.routeId, driverId: n.driverId, tur: n.tur, ok: !!n.telegramId, ...(n.telegramId ? {} : { sabab: 'Haydovchi botga ulanmagan' }) });
+        continue;
+      }
+      const sarlavha = n.tur === 'yangi' ? '🆕 <b>Yangi reja</b>' : "✏️ <b>Reja o'zgartirildi</b>";
+      yuborish.push({ routeId: n.routeId, driverId: n.driverId, tur: n.tur, ...(await rejaniHaydovchigaYuborish({ schoolId, routeId: n.routeId, sarlavha })) });
+    }
+
+    let otaOnagaYuborildi = 0;
+    const sozlama = await prisma.setting.findUnique({ where: { schoolId }, select: { transportNotify: true } });
+    const qoshilgan = natija.natijalar.filter(n => n.tur !== 'bekor' && n.qoshilganlar.length);
+    if (sozlama?.transportNotify && qoshilgan.length) {
+      const routes = await prisma.route.findMany({ where: { id: { in: qoshilgan.map(n => n.routeId) } }, include: REJA_INCLUDE });
+      const rMap = new Map(routes.map(r => [r.id, r]));
+      const bekatlar = qoshilgan.flatMap(n => {
+        const r = rMap.get(n.routeId);
+        return r ? r.stops.filter(s => n.qoshilganlar.includes(s.studentId)).map(s => ({ route: r, studentId: s.studentId, narx: s.narx })) : [];
+      });
+      const oquvchilar = await prisma.student.findMany({
+        where: { id: { in: bekatlar.map(b => b.studentId) } },
+        select: { id: true, name: true, phone: true, telegramId: true, fatherTelegramId: true, motherTelegramId: true, fatherPhone: true, motherPhone: true },
+      });
+      const oMap = new Map(oquvchilar.map(o => [o.id, o]));
+      for (let i = 0; i < bekatlar.length; i += 5) {
+        const natijalar = await Promise.allSettled(bekatlar.slice(i, i + 5).map(b =>
+          rejaNarxXabari({ student: oMap.get(b.studentId), route: b.route, narx: b.narx, schoolId })));
+        otaOnagaYuborildi += natijalar.filter(x => x.status === 'fulfilled' && x.value?.yuborildi > 0).length;
+      }
+    }
+
+    const routes = await prisma.route.findMany({ where: { schoolId, date }, include: REJA_INCLUDE, orderBy: { id: 'asc' } });
+    res.json({
+      plans: await Promise.all(routes.map(rejaJavobi)),
+      yuborish, otaOnagaYuborildi, otaOnaXabarlari: !!sozlama?.transportNotify,
+    });
+  } catch (error) { next(error); }
+});
+
+/**
+ * Bitta bolaning holati (haydovchi o'rniga): "Olib ketildi", "Uyiga
+ * yetkazildi", "Kelmadi" yoki null — belgini olib tashlash.
+ */
+app.post('/api/logistics/plans/:id/holat', authenticate, async (req, res, next) => {
+  try {
+    const route = await rejaniTopish(req, res);
+    if (!route) return;
+    const studentId = parseInt(req.body?.studentId);
+    if (!route.stops.some(s => s.studentId === studentId)) return res.status(400).json({ error: "Bu o'quvchi shu rejada emas" });
+    const status = req.body?.status ?? null;
+    if (status === null) {
+      const { run } = await marshrutHolati({ routeId: route.id, date: route.date });
+      if (run) await holatniOchirish({ runId: run.id, studentId });
+    } else {
+      if (!DELIVERY_STATUSES.includes(status)) return res.status(400).json({ error: "Holat noto'g'ri" });
+      await holatniYozish({ route, studentId, status, date: route.date, schoolId: route.schoolId, markedById: req.user.id > 0 ? req.user.id : null });
+    }
+    res.json(await rejaJavobi(route));
   } catch (error) { next(error); }
 });
 

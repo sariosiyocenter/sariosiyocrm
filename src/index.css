@@ -301,3 +301,7 @@ input[type="number"] {
   -moz-appearance: textfield;
   appearance: textfield;
 }
+
+/* Logistika → Reja xaritasi: "bo'yash" va "uy joyini belgilash" rejimida nishon kursor. */
+.reja-xarita-tanlash .leaflet-container { cursor: crosshair; }
+.reja-xarita-tanlash .leaflet-marker-icon { cursor: pointer; }

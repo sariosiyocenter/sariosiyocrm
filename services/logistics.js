@@ -326,6 +326,147 @@ export async function rejalarniYozish({ schoolId, date, rejalar }) {
 }
 
 /**
+ * Kunning rejasini sahifadagi qoralama holatiga keltiradi (egasi, 2026-09-26:
+ * "xarita, xohlaguncha o'zgartirish mumkin bo'lsin"). Reja sahifasi hamma
+ * o'zgarishni brauzerda yig'adi va "Haydovchilarga yuborish" da shu
+ * funksiyaga kunning to'liq holatini beradi:
+ *   cars: [{ routeId: number|null, driverId, studentIds }] — yo'lga chiqmagan
+ *   hamma reyslar. Bazadagidan farqi yoziladi:
+ *     - so'rovda yo'q reja o'chiriladi (haydovchiga "bekor qilindi");
+ *     - haydovchisi almashgan reja: eskisi o'chiriladi, yangisi ochiladi;
+ *     - bolalari o'zgargani — bekatlar yangilanadi ("reja o'zgartirildi");
+ *     - routeId siz — yangi reja.
+ * Yo'lga chiqqan ("Qabul qildim") reja o'zgarmaydi — undagi bola boshqa
+ * mashinaga ham qo'yilmaydi. Yo'l haqi: saqlanib qolgan bola uchun eski
+ * narx (reja tuzilganda aytilgan), yangi qo'shilganga — joriy tarif bo'yicha.
+ *
+ * @returns {Promise<{ xato?: string, natijalar?: { tur: 'yangi'|'ozgardi'|'bekor', routeId: number,
+ *   driverId: number, qoshilganlar: number[], telegramId?: string|null, nomi?: string }[] }>}
+ */
+export async function kunniSaqlash({ schoolId, date, cars }) {
+  const bor = await prisma.route.findMany({
+    where: { schoolId, date },
+    include: {
+      stops: { select: { studentId: true } },
+      runs: { where: { date }, select: { id: true, startedAt: true } },
+      driver: { select: { id: true, name: true, telegramId: true } },
+    },
+    orderBy: { id: 'asc' },
+  });
+  const borMap = new Map(bor.map(r => [r.id, r]));
+  const yoldami = (r) => r.runs.some(x => x.startedAt);
+  const birXil = (a, b) => a.length === b.length && a.every(x => b.includes(x));
+
+  // So'rovni tozalash. Bir routeId ikki marta kelsa, ikkinchisi yangi reja.
+  const ishlatilgan = new Set();
+  const sorov = [];
+  for (const c of Array.isArray(cars) ? cars : []) {
+    const driverId = parseInt(c?.driverId);
+    const studentIds = [...new Set((Array.isArray(c?.studentIds) ? c.studentIds : []).map(x => parseInt(x)).filter(Number.isInteger))];
+    if (!Number.isInteger(driverId)) return { xato: "Haydovchi noto'g'ri" };
+    let routeId = parseInt(c?.routeId);
+    if (!Number.isInteger(routeId) || !borMap.has(routeId) || ishlatilgan.has(routeId)) routeId = null;
+    if (routeId) ishlatilgan.add(routeId);
+    sorov.push({ routeId, driverId, studentIds });
+  }
+
+  // Yo'ldagi reja o'zgarmagan bo'lsagina so'rovda kela oladi.
+  for (const c of sorov) {
+    const r = c.routeId && borMap.get(c.routeId);
+    if (r && yoldami(r) && (r.driverId !== c.driverId || !birXil(r.stops.map(s => s.studentId), c.studentIds))) {
+      return { xato: `«${r.name}» yo'lga chiqqan — uni endi o'zgartirib bo'lmaydi` };
+    }
+  }
+  const ishchi = sorov.filter(c => c.studentIds.length && !(c.routeId && yoldami(borMap.get(c.routeId))));
+
+  const hammasi = ishchi.flatMap(c => c.studentIds);
+  if (new Set(hammasi).size !== hammasi.length) return { xato: "Bir o'quvchi ikki mashinaga tushib qolgan" };
+  const yoldagilar = new Map();
+  for (const r of bor) if (yoldami(r)) for (const s of r.stops) yoldagilar.set(s.studentId, r.name);
+  const band = hammasi.find(id => yoldagilar.has(id));
+  if (band) return { xato: `O'quvchilardan biri «${yoldagilar.get(band)}» mashinasida yo'lda — uni boshqa mashinaga qo'yib bo'lmaydi` };
+
+  const driverIds = [...new Set(ishchi.map(c => c.driverId))];
+  const haydovchilar = driverIds.length ? await prisma.user.findMany({
+    where: {
+      id: { in: driverIds }, role: 'DRIVER', status: { not: 'Arxiv' },
+      OR: [{ schoolId }, { branches: { some: { id: schoolId } } }],
+    },
+    select: { id: true, name: true, telegramId: true, driverTransport: { select: { id: true } } },
+  }) : [];
+  const hMap = new Map(haydovchilar.map(h => [h.id, h]));
+  if (driverIds.some(id => !hMap.has(id))) return { xato: 'Haydovchi shu filialda topilmadi' };
+  const oquvchilar = hammasi.length
+    ? await prisma.student.findMany({ where: { id: { in: hammasi }, schoolId }, select: { id: true, location: true } })
+    : [];
+  if (oquvchilar.length !== hammasi.length) return { xato: "O'quvchilardan biri shu filialda topilmadi" };
+
+  const [markaz, tarif] = await Promise.all([markazNuqtasi(schoolId), markazTarifi(schoolId)]);
+  const joy = new Map(oquvchilar.map(s => [s.id, s.location]));
+  const bekat = (routeId, studentId, tartib) => {
+    const masofaKm = uyMasofasi(markaz, joy.get(studentId));
+    return { routeId, studentId, tartib, masofaKm, narx: narxHisobla(tarif, masofaKm).narx };
+  };
+
+  const natijalar = [];
+
+  // 1. Olib tashlanadigan rejalar: so'rovda yo'q yoki haydovchisi almashgan.
+  const saqlanadi = new Map(); // routeId → car
+  for (const c of ishchi) {
+    const r = c.routeId && borMap.get(c.routeId);
+    if (r && r.driverId === c.driverId) saqlanadi.set(r.id, c);
+  }
+  for (const r of bor) {
+    if (yoldami(r) || saqlanadi.has(r.id)) continue;
+    await prisma.route.delete({ where: { id: r.id } });
+    natijalar.push({ tur: 'bekor', routeId: r.id, driverId: r.driverId, qoshilganlar: [], telegramId: r.driver?.telegramId || null, nomi: r.name });
+  }
+
+  // 2. O'zgargan rejalar — bekatlar yangilanadi.
+  for (const [routeId, c] of saqlanadi) {
+    const eski = borMap.get(routeId).stops.map(s => s.studentId);
+    const olindi = eski.filter(id => !c.studentIds.includes(id));
+    const qoshildi = c.studentIds.filter(id => !eski.includes(id));
+    if (!olindi.length && !qoshildi.length) continue;
+    if (olindi.length) {
+      await prisma.routeStop.deleteMany({ where: { routeId, studentId: { in: olindi } } });
+      // Oldindan qo'yilgan belgi (masalan "Kelmadi") ham ketadi — bola endi bu rejada emas.
+      const runIds = borMap.get(routeId).runs.map(x => x.id);
+      if (runIds.length) await prisma.deliveryLog.deleteMany({ where: { runId: { in: runIds }, studentId: { in: olindi } } });
+    }
+    if (qoshildi.length) await prisma.routeStop.createMany({ data: qoshildi.map((id, i) => bekat(routeId, id, 1000 + i)) });
+    await marshrutniTartiblash(routeId);
+    natijalar.push({ tur: 'ozgardi', routeId, driverId: c.driverId, qoshilganlar: qoshildi });
+  }
+
+  // 3. Yangi rejalar. Navbat haydovchining qolgan rejalaridan keyin.
+  const navbatlar = new Map();
+  for (const r of bor) {
+    if (!yoldami(r) && !saqlanadi.has(r.id)) continue;
+    navbatlar.set(r.driverId, Math.max(navbatlar.get(r.driverId) || 0, r.navbat || 1));
+  }
+  for (const c of ishchi) {
+    if (c.routeId && saqlanadi.get(c.routeId) === c) continue;
+    const h = hMap.get(c.driverId);
+    const navbat = (navbatlar.get(h.id) || 0) + 1;
+    navbatlar.set(h.id, navbat);
+    const route = await prisma.route.create({
+      data: {
+        name: navbat > 1 ? `${h.name} — ${navbat}-reys` : h.name,
+        startTime: toTimeStr(), days: 'HAR_KUNI', direction: 'QAYTISH',
+        autoPlanned: true, autoOrder: true, navbat, date,
+        driverId: h.id, transportId: h.driverTransport?.id || null, schoolId,
+      },
+    });
+    await prisma.routeStop.createMany({ data: c.studentIds.map((id, i) => bekat(route.id, id, i)) });
+    await marshrutniTartiblash(route.id);
+    natijalar.push({ tur: 'yangi', routeId: route.id, driverId: h.id, qoshilganlar: [...c.studentIds] });
+  }
+
+  return { natijalar };
+}
+
+/**
  * Rejaning puli: hammasi uchun (reja tuzilganda aytilgan) va haqiqatan
  * olib ketilganlar uchun ("Kelmadi" dan boshqasi) — haydovchi shuni oladi.
  */
