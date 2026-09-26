@@ -22,7 +22,7 @@ import PaymentEditModal, { canEditPayment } from './PaymentEditModal';
 import KursHisobModal from './KursHisobModal';
 import BirinchiOyInput from './BirinchiOyInput';
 import PaymeLinkModal from './PaymeLinkModal';
-import { KlikChekMaydonlari, klikniYuborish, TASDIQ_TURLARI, hozirgiVaqt, isAdminRole, chekVaqti } from './KlikChek';
+import { KlikChekMaydonlari, klikniYuborish, yuborishNatijasi, TASDIQ_TURLARI, isAdminRole, chekVaqti } from './KlikChek';
 import { TASDIQ_HODISASI } from './TolovTasdiqPanel';
 import { STUDY_GOALS, UZB_REGIONS, ORG_TYPES, gradeOptions, gradeLabel, keepGrade } from '../lib/studentFields';
 import StudentLedger, { kirishMuddati, type Ledger } from './StudentLedger';
@@ -302,21 +302,20 @@ export default function StudentDetails() {
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [student?.id, hisobKaliti]);
 
-    // Payme ID — ota-ona Payme ilovasiga yozadigan raqam: telefon (+998 siz),
-    // aka-uka bitta raqamda bo'lsa №. Server hisoblaydi — filialdagi
-    // takrorlarni faqat u biladi.
-    const paymeYoqilgan = settings.paymeMode === 'live' || settings.paymeMode === 'test';
+    // O'quvchi ID si — 5 xonali, har bir o'quvchiga alohida (egasi, 2026-09-26).
+    // Ota-ona Payme'da shuni yozadi va botdan "🆔 ID raqam" bilan so'raydi.
+    // Ro'yxat bilan keladi; kelmagan bo'lsa (masalan hozirgina qo'shilgan) so'raladi.
     const [payId, setPayId] = useState<string | null>(null);
     useEffect(() => {
-        setPayId(null);
-        if (!student?.id || !paymeYoqilgan) return;
+        setPayId(student?.kod ? String(student.kod) : null);
+        if (!student?.id || student?.kod) return;
         let off = false;
         fetch(`/api/payme/pay-id/${student.id}`, { headers: { Authorization: `Bearer ${localStorage.getItem('token')}` } })
             .then(r => (r.ok ? r.json() : null))
             .then(j => { if (!off && j?.payId) setPayId(String(j.payId)); })
             .catch(() => { /* ko'rinmay turadi */ });
         return () => { off = true; };
-    }, [student?.id, student?.phone, paymeYoqilgan]);
+    }, [student?.id, student?.kod]);
 
     if (!student) {
         return (
@@ -703,16 +702,17 @@ export default function StudentDetails() {
                             </button>
                         </div>
                         <div className="flex flex-wrap items-center gap-x-2 gap-y-1 mt-1.5">
-                            <span className="num text-[12px] text-matn-xira">&#8470;{student.id}</span>
-                            <span className="w-1 h-1 rounded-full bg-matn-xira" />
-                            {payId && (
-                                <>
-                                    <span className="num text-[12px] text-matn-xira" title="Ota-ona Payme ilovasida shu raqamni yozadi">
-                                        Payme ID: <span className="text-matn font-semibold">{payId}</span>
-                                    </span>
-                                    <span className="w-1 h-1 rounded-full bg-matn-xira" />
-                                </>
+                            {payId ? (
+                                <button type="button"
+                                    onClick={() => { navigator.clipboard?.writeText(payId).then(() => showNotification(`ID ${payId} nusxalandi`, 'success')).catch(() => {}); }}
+                                    title={`O'quvchi ID si — ota-ona Payme'da shu raqamni yozadi, botdan «🆔 ID raqam» bilan oladi. Bosing — nusxa olinadi. (Ichki № ${student.id})`}
+                                    className="num text-[12px] text-matn-xira hover:text-brand cursor-pointer">
+                                    ID <span className="text-matn font-semibold tracking-wide">{payId}</span>
+                                </button>
+                            ) : (
+                                <span className="num text-[12px] text-matn-xira">&#8470;{student.id}</span>
                             )}
+                            <span className="w-1 h-1 rounded-full bg-matn-xira" />
                             <span className={`px-2 py-0.5 rounded-md text-[11px] ${
                                 student.status === 'Faol' ? 'bg-yaxshi-fon text-yaxshi' :
                                 student.status === 'Sinov' ? 'bg-ogoh-fon text-ogoh' :
@@ -2598,15 +2598,16 @@ function PaymentAddModal({ studentId, onClose, onAdd }: { studentId: number; onC
         if (saqlanmoqda) return;
         const summa = Math.round(Number(amount) || 0);
         if (summa <= 0) { showNotification('Summani kiriting', 'error'); return; }
-        if (klik && !admin && !klikVaqt) { showNotification("Chekdagi to'langan sana va vaqtni kiriting", 'error'); return; }
+        if (klik && !admin && !klikVaqt) { showNotification("Chekdagi kun va soatni kiriting (masalan 2206 → 22:06)", 'error'); return; }
         const sana = new Date().toISOString().split('T')[0];
         setSaqlanmoqda(true);
         try {
             // Klik — administrator tasdig'iga: balansga tasdiqlangach tushadi.
             if (klik && !admin) {
-                await klikniYuborish({ schoolId: student?.schoolId, studentId, amount: summa, type, paidAt: klikVaqt, receipt: klikChek });
+                const yuborildi = await klikniYuborish({ schoolId: student?.schoolId, studentId, amount: summa, type, paidAt: klikVaqt, receipt: klikChek });
                 window.dispatchEvent(new Event(TASDIQ_HODISASI));
-                showNotification(`${type} to'lovi administrator tasdig'iga yuborildi — tasdiqlangach balansga tushadi`, 'success');
+                const n = yuborishNatijasi(type, yuborildi);
+                showNotification(n.matn, n.tur);
                 onClose();
                 return;
             }
@@ -2618,7 +2619,10 @@ function PaymentAddModal({ studentId, onClose, onAdd }: { studentId: number; onC
                 groupId: null, courseId: null,
                 date: klik && klikVaqt ? klikVaqt.slice(0, 10) : sana,
                 description: klik && klikVaqt ? `Chek: ${chekVaqti(klikVaqt)}` : '',
+                // Administrator kiritgan Klik cheki ham takror tekshiruviga yoziladi.
+                ...(klik && klikVaqt ? { chekVaqti: klikVaqt } : {}),
             });
+            if ((created as any)?.takror?.length) showNotification(`Diqqat — takror chek: ${(created as any).takror[0]}`, 'error');
             setCreatedPaymentForReceipt(created);
         } catch (err: any) {
             showNotification("To'lovni saqlab bo'lmadi: " + (err?.message || "noma'lum xatolik"), 'error');
@@ -2845,7 +2849,7 @@ function PaymentAddModal({ studentId, onClose, onAdd }: { studentId: number; onC
                                 <label className={labelCls}>TO'LOV USULI</label>
                                 <div className="grid grid-cols-4 gap-2">
                                     {['Naqd', 'Karta', "O'tkazma", 'Klik'].map(t => (
-                                        <button key={t} type="button" onClick={() => { setType(t); if (TASDIQ_TURLARI.includes(t) && !klikVaqt) setKlikVaqt(hozirgiVaqt()); }}
+                                        <button key={t} type="button" onClick={() => setType(t)}
                                             className={`py-2.5 rounded-xl text-xs font-bold transition-all border cursor-pointer ${type === t ? 'bg-brand border-brand text-white shadow-sm shadow-[#1b6b6b]/20 scale-102' : 'bg-sirt border-chiziq text-matn-xira hover:bg-gray-50'}`}>
                                             {t}
                                         </button>
@@ -2854,7 +2858,8 @@ function PaymentAddModal({ studentId, onClose, onAdd }: { studentId: number; onC
                                 {klik && (
                                     <div className="mt-3">
                                         <KlikChekMaydonlari paidAt={klikVaqt} setPaidAt={setKlikVaqt} receipt={klikChek} setReceipt={setKlikChek}
-                                            admin={admin} labelCls={labelCls} inputCls={inputCls} />
+                                            admin={admin} labelCls={labelCls} inputCls={inputCls}
+                                            schoolId={student?.schoolId} studentId={studentId} amount={Math.round(Number(amount) || 0)} />
                                     </div>
                                 )}
                                 {paymeOn && (

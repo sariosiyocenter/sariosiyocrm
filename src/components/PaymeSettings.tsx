@@ -274,7 +274,7 @@ export default function PaymeSettings() {
                 <p>3. <a href="https://test.paycom.uz" target="_blank" rel="noopener noreferrer" className="text-brand underline inline-flex items-center gap-1">Sandbox <ExternalLink size={10} /></a> da webhook manzili va test kaliti bilan avtomatik testlarni o'tkazing (buyurtma ID sini o'quvchi kartochkasidan "Payme havola" orqali oling).</p>
                 <p>4. Testlar o'tgach rejimni "Jonli" qiling — botda "Payme orqali to'lash" tugmasi paydo bo'ladi.</p>
                 <p className="text-xs font-black text-matn pt-2">Payme ilovasi katalogi</p>
-                <p>Payme ilovasida ota-ona o'quvchi ID sini yozadi va summani o'zi kiritadi. ID — o'quvchining telefon raqami, +998 siz 9 raqam (masalan <span className="font-mono text-matn">901234567</span>); № ham qabul qilinadi. Filialda bitta raqam bir nechta o'quvchida bo'lsa (aka-uka), ular № bilan to'laydi. Har bir o'quvchining ID si profilda ("Payme ID") va botdagi balans xabarida ko'rinadi. Kurs so'ralmaydi: pul balansga tushadi.</p>
+                <p>Payme ilovasida ota-ona o'quvchi ID sini yozadi va summani o'zi kiritadi. ID — har bir o'quvchiga alohida berilgan 5 xonali son (masalan <span className="font-mono text-matn">48213</span>), telefon raqami emas. U o'quvchi profilida ko'rinadi, ota-ona esa botdagi «🆔 ID raqam» tugmasi bilan o'zi so'rab oladi. Kurs so'ralmaydi: pul balansga tushadi.</p>
                 {form.paymeScheme === 'student' && (
                     <p>Kassada hali <span className="font-mono text-matn">course_id</span> maydoni bor — havolalar uni o'zi to'ldiradi, ota-onaga ko'rinmaydi. Payme bu maydonni o'chirgach "Faqat o'quvchi ID" ni tanlang.</p>
                 )}

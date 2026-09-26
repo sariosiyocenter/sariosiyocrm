@@ -622,7 +622,9 @@ export default function Students() {
         const lowerSearch = search.trim().toLowerCase();
         const matchesSearch = (s.name || '').toLowerCase().includes(lowerSearch) ||
                (s.phone || '').toLowerCase().includes(lowerSearch) ||
-               (s.studentSchool || '').toLowerCase().includes(lowerSearch);
+               (s.studentSchool || '').toLowerCase().includes(lowerSearch) ||
+               // 5 xonali o'quvchi ID si (kamida 3 raqam yozilganda boshidan).
+               (!!s.kod && /^\d{3,5}$/.test(lowerSearch) && String(s.kod).startsWith(lowerSearch));
         const matchesTeacher = !filters.teacherId
             || (s.groups || []).some(gid => groupTeacher.get(gid)?.id === Number(filters.teacherId));
 

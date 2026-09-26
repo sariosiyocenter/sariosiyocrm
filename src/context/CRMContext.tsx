@@ -714,7 +714,8 @@ export const CRMProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     const updateStudent = async (id: number, student: Partial<Student>) => {
         try {
             const { activation, warning, ledgerChanged, ...updated } = await apiCall(`students/${id}`, 'PUT', student);
-            setState(prev => ({ ...prev, students: prev.students.map(s => s.id === id ? updated : s) }));
+            // O'quvchi ID si (kod) tahrir javobida kelmaydi — o'zgarmaydi, eskisi qoladi.
+            setState(prev => ({ ...prev, students: prev.students.map(s => s.id === id ? { ...updated, kod: updated.kod ?? s.kod } : s) }));
             // Sinov → Faol: shu kundan oy oxirigacha hisob yozildi — rahbar buni ko'rsin.
             if (activation && activation.total > 0) {
                 const parts = (activation.charges || []).map((c: any) => `${c.groupName}: ${c.lessons} dars`).join(', ');

@@ -173,6 +173,7 @@ export default function HRManagement() {
                     name:       editingUser.name,
                     role:       editingUser.role,
                     phone:      editingUser.phone,
+                    phone2:     editingUser.phone2 || '',
                     email:      editingUser.email,
                     photo:      editingUser.photo,
                     position:   editingUser.position,
@@ -861,6 +862,14 @@ function UserModal({
                             <label className={lbl}>{t('student_phone')}{isDriver ? ' *' : ''}</label>
                             <input type="text" placeholder="+998" required={isDriver} className={inp} value={user.phone || ''} onChange={e => onChange({ ...user, phone: e.target.value })} />
                         </div>
+                    </div>
+
+                    {/* Ikkinchi raqam (egasi, 2026-09-26): bot uni ham taniydi — shu raqamdagi
+                        Telegram ham xodim sifatida ulanadi va xabarlarni (Klik tasdig'i) oladi. */}
+                    <div>
+                        <label className={lbl}>Ikkinchi telefon</label>
+                        <input type="text" placeholder="+998 (ixtiyoriy)" className={inp} value={user.phone2 || ''} onChange={e => onChange({ ...user, phone2: e.target.value })} />
+                        <p className="mt-1 text-[10.5px] font-bold text-matn-xira">Telegram botga shu raqam bilan ham kirsa bo'ladi — xabarlar ikkala raqamga boradi.</p>
                     </div>
 
                     <div className="grid grid-cols-2 gap-4">

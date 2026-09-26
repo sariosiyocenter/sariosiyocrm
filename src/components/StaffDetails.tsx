@@ -491,7 +491,7 @@ export default function StaffDetails() {
     const handleSaveEdit = async (e: React.FormEvent) => {
         e.preventDefault();
         const body: any = {
-            name: editData.name, phone: editData.phone,
+            name: editData.name, phone: editData.phone, phone2: editData.phone2 || '',
             photo: editData.photo, position: editData.position,
             ...(maoshTahrir ? { salary: editData.salary } : {}),
         };
@@ -885,7 +885,13 @@ export default function StaffDetails() {
                             <h3 className="text-[10px] font-semibold text-matn-xira mb-1 px-0.5">
                                 Aloqa ma'lumotlari
                             </h3>
-                            <DetailRow icon={<Phone className="w-3.5 h-3.5" />} label={t('phone')} value={staffUser.phone || ''} />
+                            {/* Har raqam yonida — shu raqam bilan Telegram botga ulanganmi (Klik tasdig'i shu yerga keladi). */}
+                            <DetailRow icon={<Phone className="w-3.5 h-3.5" />} label={t('phone')}
+                                value={staffUser.phone ? `${staffUser.phone}${staffUser.telegramId ? ' · Telegram ✓' : ''}` : ''} />
+                            {staffUser.phone2 && (
+                                <DetailRow icon={<Phone className="w-3.5 h-3.5" />} label="Ikkinchi telefon"
+                                    value={`${staffUser.phone2}${staffUser.telegramId2 ? ' · Telegram ✓' : ''}`} />
+                            )}
                             {staffUser.role !== 'TECH_STAFF' && (
                                 <DetailRow icon={<Mail className="w-3.5 h-3.5" />} label="Email" value={haqiqiyEmail(staffUser.email)} />
                             )}
@@ -1782,8 +1788,10 @@ export default function StaffDetails() {
                             )}
                             <div className="grid grid-cols-2 gap-4">
                                 <div><label className={lbl}>Telefon</label><input type="text" className={inp} value={editData.phone||''} onChange={e => setEditData((p:any)=>({...p,phone:e.target.value}))} /></div>
-                                {maoshTahrir && <div><label className={lbl}>Asosiy Maosh</label><input type="number" className={inp} value={editData.salary||''} onChange={e => setEditData((p:any)=>({...p,salary:e.target.value}))} /></div>}
+                                <div><label className={lbl}>Ikkinchi telefon</label><input type="text" placeholder="+998 (ixtiyoriy)" className={inp} value={editData.phone2||''} onChange={e => setEditData((p:any)=>({...p,phone2:e.target.value}))} /></div>
                             </div>
+                            <p className="-mt-2 text-[10.5px] font-bold text-matn-xira">Telegram botga ikkala raqam bilan ham kirsa bo'ladi — xabarlar ikkalasiga boradi.</p>
+                            {maoshTahrir && <div className="grid grid-cols-2 gap-4"><div><label className={lbl}>Asosiy Maosh</label><input type="number" className={inp} value={editData.salary||''} onChange={e => setEditData((p:any)=>({...p,salary:e.target.value}))} /></div></div>}
                             <div><label className={lbl}>Vazifa / Mutaxassislik</label><input type="text" className={inp} value={editData.position||''} onChange={e => setEditData((p:any)=>({...p,position:e.target.value}))} /></div>
                             {/* Haydovchi (faqat Telegram bot) va texnik xodim CRM ga kirmaydi — login maydonlari yo'q. */}
                             {staffUser.role !== 'DRIVER' && staffUser.role !== 'TECH_STAFF' && <>

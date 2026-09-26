@@ -18,6 +18,8 @@ import { claimBillingRun, releaseBillingRun, processMonthlyBilling, billingDayOf
 import { fillTemplate, testNatijasiKerak, oxirgiTolovKerak, kirimmi } from './lib/xabarMatni.js';
 import { tolovXabariniUlash, tolovXabari } from './services/tolovXabari.js';
 import { normalizePayShare } from './lib/allocation.js';
+import { KLIK_TASDIQ_TURLARI, TASDIQ_HOLATLARI, chekVaqtiniTozala, takroriyCheklar, takrorQatorlari, tasdiqniBajar, radniBajar, adminlargaYubor } from './services/klikTasdiq.js';
+import { kodlarniTaminla } from './services/oquvchiKod.js';
 import jwt from 'jsonwebtoken';
 import bot, { startBot, notifyAdmins, getTelegramBot, rejaniHaydovchigaYuborish, rejaBekorXabari, getStudentMenu } from './src/bot/bot.js';
 import { transferStudent, refundStudent, enrollStudent, unenrollStudent, syncGroupMembers, activateStudent, syncStudentGroups, setKursHisob, firstMonthQuote, todayTashkent } from './services/enrollment.js';
@@ -610,7 +612,7 @@ app.get('/api/users', authenticate, async (req, res, next) => {
       select: {
         id: true, email: true, name: true, phone: true, photo: true, position: true,
         salary: true, workDays: true, kpiPercent: true, role: true, createdAt: true,
-        schoolId: true, status: true, telegramId: true,
+        schoolId: true, status: true, telegramId: true, phone2: true, telegramId2: true,
         teacherProfile: { select: { id: true } },
         branches: { select: { id: true } },
         // Haydovchining mashinasi xodim kartasida tahrirlanadi (Avtopark yo'q):
@@ -637,7 +639,7 @@ app.get('/api/users', authenticate, async (req, res, next) => {
 app.post('/api/users', authenticate, async (req, res, next) => {
   try {
     // Kim qo'sha oladi — "Xodimlar → Ro'yxat" ruxsati (authenticate).
-    let { email, password, name, phone, photo, position, salary, role, schoolId, kpiPercent, vehicleModel, vehicleNumber, vehicleCapacity } = req.body;
+    let { email, password, name, phone, phone2, photo, position, salary, role, schoolId, kpiPercent, vehicleModel, vehicleNumber, vehicleCapacity } = req.body;
     // Haydovchining yo'l haqi tarifi (lib/transportNarx.js) — xato bo'lsa xodim ham yaratilmaydi.
     const tarifT = req.body.vehicleTariff !== undefined ? tarifniTozalash(req.body.vehicleTariff) : null;
     if (tarifT?.xato) return res.status(400).json({ error: tarifT.xato });
@@ -698,6 +700,7 @@ app.post('/api/users', authenticate, async (req, res, next) => {
           password: hashedPassword,
           name,
           phone: phone || null,
+          phone2: String(phone2 || '').trim() || null,
           photo: photo || null,
           position: position || null,
           salary: salary ? parseInt(salary) : 0,
@@ -816,7 +819,7 @@ app.put('/api/users/:id', authenticate, async (req, res, next) => {
     if (tekshir.error) return res.status(tekshir.status).json({ error: tekshir.error });
     const { target } = tekshir;
 
-    let { email, name, phone, photo, position, salary, role, password, workDays, kpiPercent, status, vehicleModel, vehicleNumber, vehicleCapacity } = req.body;
+    let { email, name, phone, phone2, photo, position, salary, role, password, workDays, kpiPercent, status, vehicleModel, vehicleNumber, vehicleCapacity } = req.body;
     // Haydovchiga CRM paroli berilmaydi — u faqat Telegram botda ishlaydi.
     if ((role ?? target.role) === 'DRIVER') password = undefined;
     const tarifT = req.body.vehicleTariff !== undefined ? tarifniTozalash(req.body.vehicleTariff) : null;
@@ -895,6 +898,12 @@ app.put('/api/users/:id', authenticate, async (req, res, next) => {
     if (email !== undefined) data.email = email;
     if (name !== undefined) data.name = name;
     if (phone !== undefined) data.phone = phone;
+    // Ikkinchi raqam o'zgarsa yoki o'chirilsa — unga bog'langan Telegram ham uziladi
+    // (u endi boshqa odamning raqami bo'lishi mumkin).
+    if (phone2 !== undefined) {
+      data.phone2 = String(phone2 || '').trim() || null;
+      if ((data.phone2 || '').replace(/\D/g, '').slice(-9) !== (target.phone2 || '').replace(/\D/g, '').slice(-9)) data.telegramId2 = null;
+    }
     if (photo !== undefined) data.photo = photo;
     if (position !== undefined) data.position = position;
     if (salary !== undefined) data.salary = salary ? parseInt(salary) : 0;
@@ -923,7 +932,7 @@ app.put('/api/users/:id', authenticate, async (req, res, next) => {
       user = await prisma.user.update({
         where: { id: parseInt(id) },
         data,
-        select: { id: true, email: true, name: true, phone: true, photo: true, position: true, salary: true, workDays: true, kpiPercent: true, role: true, createdAt: true, schoolId: true, status: true, branches: { select: { id: true } } }
+        select: { id: true, email: true, name: true, phone: true, phone2: true, telegramId2: true, photo: true, position: true, salary: true, workDays: true, kpiPercent: true, role: true, createdAt: true, schoolId: true, status: true, branches: { select: { id: true } } }
       });
     } catch (updateErr) {
       if (updateErr.code === 'P2002') return res.status(400).json({ error: 'Bu email allaqachon ro\'yxatdan o\'tgan' });
@@ -1599,6 +1608,20 @@ async function ustozDavomatiniKochir(schoolIds) {
 
 // --- API Routes ---
 
+/**
+ * O'quvchilarning 5 xonali ID si (services/oquvchiKod.js). Kodi hali yo'q
+ * o'quvchiga shu yerda beriladi — yangi qo'shilganlar ham ro'yxat birinchi
+ * yuklanganda ID oladi. Xato bo'lsa ro'yxat baribir ochiladi (ID siz).
+ */
+async function oquvchiKodlari(ids) {
+  try {
+    return await kodlarniTaminla(ids);
+  } catch (e) {
+    console.error("[O'quvchi ID]", e.message);
+    return new Map();
+  }
+}
+
 // Students
 app.get('/api/students', authenticate, async (req, res, next) => {
   try {
@@ -1614,9 +1637,10 @@ app.get('/api/students', authenticate, async (req, res, next) => {
         routeStops: { select: { routeId: true } },
       }
     });
+    const kodlar = await oquvchiKodlari(students.map(s => s.id));
     const balansKorinadi = yetadimi(req.ruxsat, 'oquvchilar.balans', 1);
     res.json(students.map(s => {
-      const o = { ...s, groups: s.groups.map(g => g.id), routeIds: s.routeStops.map(x => x.routeId) };
+      const o = { ...s, groups: s.groups.map(g => g.id), routeIds: s.routeStops.map(x => x.routeId), kod: kodlar.get(s.id) ?? null };
       if (!balansKorinadi) { delete o.balance; delete o.customPrices; delete o.payShare; }
       return o;
     }));
@@ -1689,7 +1713,8 @@ app.post('/api/students', authenticate, async (req, res, next) => {
       where: { id: student.id },
       include: { groups: { select: { id: true } } }
     });
-    res.json({ ...updatedStudent, groups: updatedStudent.groups.map(g => g.id), warning: warnings.join(' ') || undefined });
+    const kod = (await oquvchiKodlari([updatedStudent.id])).get(updatedStudent.id) ?? null;
+    res.json({ ...updatedStudent, groups: updatedStudent.groups.map(g => g.id), kod, warning: warnings.join(' ') || undefined });
   } catch (error) {
     console.error('POST /api/students error:', error.message);
     next(error);
@@ -2745,8 +2770,7 @@ app.get('/api/payments', authenticate, async (req, res, next) => {
 // oshiradi, lekin kassa tushumi sifatida hisoblanmaydi.
 const PAYMENT_TYPES = ['Naqd', 'Karta', "O'tkazma", 'Peyme', 'Klik', 'Chegirma', 'Oylik', 'Qaytarish'];
 // Shu usullardagi to'lov faqat administrator tasdig'idan keyin balansga
-// tushadi (TolovTasdiq). Egasi 2026-09-24 da Klik ni tanladi.
-const KLIK_TASDIQ_TURLARI = ['Klik'];
+// tushadi (TolovTasdiq, services/klikTasdiq.js). Egasi 2026-09-24 da Klik ni tanladi.
 const adminmi = (user) => user?.role === 'ADMIN' || user?.role === 'SUPERADMIN';
 
 // To'lovni qabul qiladiganlar: admin, menejer, receptionist. Ustoz, yordamchi
@@ -2754,7 +2778,8 @@ const adminmi = (user) => user?.role === 'ADMIN' || user?.role === 'SUPERADMIN';
 // qoida (ilgari har qanday kirgan foydalanuvchi yoza olardi).
 app.post('/api/payments', authenticate, async (req, res, next) => {
   try {
-    const { schoolId, ...data } = req.body;
+    // chekVaqti — administrator o'zi kiritgan Klik chekidagi vaqt (pastda).
+    const { schoolId, chekVaqti, ...data } = req.body;
     if (!schoolId) return res.status(400).json({ error: 'schoolId required' });
     // Ilgari hech qanday tekshiruv yo'q edi: bo'sh yoki matnli summa Prisma
     // xatosiga aylanib, 500 bo'lib chiqardi.
@@ -2787,9 +2812,26 @@ app.post('/api/payments', authenticate, async (req, res, next) => {
       where: { id: payment.studentId },
       data: { balance: { increment: payment.amount } }
     });
+    // Administrator o'zi kiritgan Klik ham chek sifatida (tasdiqlangan) yoziladi:
+    // shu chek keyin yana olib kelinsa, takror sifatida ko'rinadi.
+    let takror = [];
+    const chek = KLIK_TASDIQ_TURLARI.includes(payment.type) && payment.amount > 0 ? chekVaqtiniTozala(chekVaqti) : null;
+    if (chek) {
+      try {
+        const kim = { id: req.user.id > 0 ? req.user.id : null, name: req.user.name || null };
+        const row = await prisma.tolovTasdiq.create({
+          data: {
+            schoolId: payment.schoolId, studentId: payment.studentId, amount: payment.amount, type: payment.type,
+            paidAt: chek, status: 'tasdiqlandi', paymentId: payment.id,
+            createdById: kim.id, createdByName: kim.name, reviewedById: kim.id, reviewedByName: kim.name, reviewedAt: new Date(),
+          },
+        });
+        takror = await takroriyCheklar(row);
+      } catch (e) { console.error('[Klik chek]', e.message); }
+    }
     // Ota-onaga avtomatik xabar ("To'lov qabul qilinganda" qoidasi).
     const xabar = await tolovXabari(payment);
-    res.json({ ...payment, xabar });
+    res.json({ ...payment, xabar, ...(takror.length ? { takror: takrorQatorlari(takror) } : {}) });
   } catch (error) { next(error); }
 });
 
@@ -2890,15 +2932,9 @@ app.delete('/api/payments/:id', authenticate, async (req, res, next) => {
 // "chekni ko'rsatganda to'langan sana vaqti kiritiladi, adminga shu
 // yuboriladi, admin ko'rib tasdiqlaydi". Resepshn pul kelganini ko'ra
 // olmaydi — shuning uchun tasdiqlanmaguncha Payment yozilmaydi.
+// 2026-09-26: administratorga Telegram'da tugmali xabar (u o'sha yerda
+// tasdiqlaydi) va takroriy chek ogohlantirishi — services/klikTasdiq.js.
 // ---------------------------------------------------------------------------
-const TASDIQ_HOLATLARI = ['kutilmoqda', 'tasdiqlandi', 'rad etildi', "o'chirildi"];
-
-/** Toshkent vaqti "YYYY-MM-DDTHH:mm" ko'rinishida (chekdagi vaqt). */
-function chekVaqtiniTozala(v) {
-  const s = String(v || '').trim().replace(' ', 'T').slice(0, 16);
-  return /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/.test(s) ? s : null;
-}
-const chekVaqtiMatni = (s) => s ? `${s.slice(8, 10)}.${s.slice(5, 7)}.${s.slice(0, 4)} ${s.slice(11, 16)}` : '';
 
 async function tasdiqJavobi(rows) {
   const ids = [...new Set(rows.map(r => r.studentId))];
@@ -2906,7 +2942,12 @@ async function tasdiqJavobi(rows) {
     ? await prisma.student.findMany({ where: { id: { in: ids } }, select: { id: true, name: true, phone: true, balance: true } })
     : [];
   const bo = new Map(talabalar.map(s => [s.id, s]));
-  return rows.map(r => ({ ...r, student: bo.get(r.studentId) || null }));
+  // Tasdiq kutayotganlarida — takroriy chek bormi (administrator ko'rsin).
+  const takrorlar = await Promise.all(rows.map(r => (r.status === 'kutilmoqda' ? takroriyCheklar(r) : [])));
+  return rows.map((r, i) => {
+    const { tgXabarlar, ...qolgan } = r;
+    return { ...qolgan, student: bo.get(r.studentId) || null, takror: takrorQatorlari(takrorlar[i]) };
+  });
 }
 
 app.get('/api/tolov-tasdiq', authenticate, async (req, res, next) => {
@@ -2926,6 +2967,19 @@ app.get('/api/tolov-tasdiq', authenticate, async (req, res, next) => {
       take: status === 'kutilmoqda' ? 200 : 50,
     });
     res.json(await tasdiqJavobi(rows));
+  } catch (error) { next(error); }
+});
+
+// Forma chekdagi vaqt kiritilishi bilan so'raydi: shu chek avval kiritilganmi.
+app.get('/api/tolov-tasdiq/takror', authenticate, async (req, res, next) => {
+  try {
+    const schoolId = parseInt(req.query.schoolId);
+    const studentId = parseInt(req.query.studentId);
+    const paidAt = chekVaqtiniTozala(req.query.paidAt);
+    if (!Number.isInteger(schoolId) || !Number.isInteger(studentId) || !paidAt) return res.json({ takror: [] });
+    if (!(await canAccessSchool(req.user, schoolId))) return res.status(403).json({ error: "Ruxsat yo'q" });
+    const amount = Math.round(parseFloat(req.query.amount)) || 0;
+    res.json({ takror: takrorQatorlari(await takroriyCheklar({ schoolId, studentId, paidAt, amount })) });
   } catch (error) { next(error); }
 });
 
@@ -2956,17 +3010,18 @@ app.post('/api/tolov-tasdiq', authenticate, async (req, res, next) => {
     if (data.receipt && data.receipt.startsWith('data:')) data.receipt = null;
 
     const row = await prisma.tolovTasdiq.create({ data });
+    const takror = await takroriyCheklar(row);
 
-    // Administratorga Telegram (bot ulangan bo'lsa). CRM da Moliya sahifasida
-    // "Tasdiqlanishi kerak" ro'yxatida baribir turadi.
-    try {
-      await Promise.race([
-        notifyAdmins(`🧾 ${type} to'lovi tasdiqlanishi kerak\n👤 ${student.name}\n💰 ${amount.toLocaleString('ru-RU')} so'm\n🕒 Chekdagi vaqt: ${chekVaqtiMatni(paidAt)}\n✍️ Kiritdi: ${req.user.name || '—'}\n\nCRM → Moliya → «Tasdiqlash»`, schoolId),
-        new Promise(r => setTimeout(r, 4000)),
-      ]);
-    } catch (e) { console.error('[Klik tasdiq] admin xabari:', e.message); }
+    // Administratorga Telegram — tugmalari bilan, u o'sha yerda tasdiqlaydi.
+    // Javobdan oldin kutiladi (Vercel javobdan keyingi ishni to'xtatadi).
+    // CRM da Moliya sahifasida "Tasdiqlanishi kerak" ro'yxatida baribir turadi.
+    const telegram = await Promise.race([
+      adminlargaYubor(row),
+      new Promise(r => setTimeout(() => r({ yuborildi: 0, sabab: 'Telegram javob bermadi' }), 9000)),
+    ]);
 
-    res.status(201).json((await tasdiqJavobi([row]))[0]);
+    const [javob] = await tasdiqJavobi([row]);
+    res.status(201).json({ ...javob, takror: takrorQatorlari(takror), telegram });
   } catch (error) { next(error); }
 });
 
@@ -2986,32 +3041,9 @@ app.post('/api/tolov-tasdiq/:id/tasdiqlash', authenticate, async (req, res, next
   try {
     const row = await tasdiqQatori(req, res);
     if (!row) return;
-    const student = await prisma.student.findUnique({ where: { id: row.studentId }, select: { id: true } });
-    if (!student) return res.status(404).json({ error: "O'quvchi o'chirilgan — to'lovni rad eting" });
-
-    const payment = await prisma.$transaction(async (tx) => {
-      // Ikki marta bosilsa ham bitta to'lov: holat faqat "kutilmoqda" dan o'zgaradi.
-      const band = await tx.tolovTasdiq.updateMany({
-        where: { id: row.id, status: 'kutilmoqda' },
-        data: { status: 'tasdiqlandi', reviewedById: req.user.id > 0 ? req.user.id : null, reviewedByName: req.user.name || null, reviewedAt: new Date() },
-      });
-      if (band.count === 0) return null;
-      const p = await tx.payment.create({
-        data: {
-          studentId: row.studentId, amount: row.amount, type: row.type,
-          date: row.paidAt.slice(0, 10),
-          description: [`Chek: ${chekVaqtiMatni(row.paidAt)}`, row.createdByName ? `kiritdi ${row.createdByName}` : '', row.note || ''].filter(Boolean).join(' · ').slice(0, 500),
-          groupId: null, courseId: null, schoolId: row.schoolId,
-        },
-      });
-      await tx.student.update({ where: { id: row.studentId }, data: { balance: { increment: row.amount } } });
-      await tx.tolovTasdiq.update({ where: { id: row.id }, data: { paymentId: p.id } });
-      return p;
-    });
-    if (!payment) return res.status(409).json({ error: "Bu to'lov allaqachon ko'rib chiqilgan" });
-
-    const xabar = await tolovXabari(payment);
-    res.json({ success: true, payment, xabar, studentId: row.studentId, amount: row.amount });
+    const r = await tasdiqniBajar(row, { id: req.user.id, name: req.user.name, role: req.user.role });
+    if (!r.ok) return res.status(r.status).json({ error: r.error });
+    res.json({ success: true, payment: r.payment, xabar: r.xabar, studentId: row.studentId, amount: row.amount });
   } catch (error) { next(error); }
 });
 
@@ -3019,14 +3051,9 @@ app.post('/api/tolov-tasdiq/:id/rad', authenticate, async (req, res, next) => {
   try {
     const row = await tasdiqQatori(req, res);
     if (!row) return;
-    const reason = String(req.body?.reason || '').trim().slice(0, 300);
-    if (!reason) return res.status(400).json({ error: 'Rad etish sababini yozing' });
-    const band = await prisma.tolovTasdiq.updateMany({
-      where: { id: row.id, status: 'kutilmoqda' },
-      data: { status: 'rad etildi', reason, reviewedById: req.user.id > 0 ? req.user.id : null, reviewedByName: req.user.name || null, reviewedAt: new Date() },
-    });
-    if (band.count === 0) return res.status(409).json({ error: "Bu to'lov allaqachon ko'rib chiqilgan" });
-    res.json({ success: true, id: row.id, studentId: row.studentId, amount: row.amount, reason });
+    const r = await radniBajar(row, req.body?.reason, { id: req.user.id, name: req.user.name, role: req.user.role });
+    if (!r.ok) return res.status(r.status).json({ error: r.error });
+    res.json({ success: true, id: row.id, studentId: row.studentId, amount: row.amount, reason: r.reason });
   } catch (error) { next(error); }
 });
 
@@ -4241,6 +4268,7 @@ app.get('/api/init', authenticate, async (req, res, next) => {
         select: {
           id: true, email: true, name: true, phone: true, photo: true, position: true,
           salary: true, role: true, createdAt: true, telegramId: true, schoolId: true,
+          phone2: true, telegramId2: true,
           workDays: true, kpiPercent: true, status: true,
           teacherProfile: { select: { id: true } },
           branches: { select: { id: true } }
@@ -4295,11 +4323,13 @@ app.get('/api/init', authenticate, async (req, res, next) => {
     const xodimKorinadi = kor('xodimlar.royxat') || yetadimi(req.ruxsat, 'xabarlar.yuborish', 2);
 
     // Map relations to flat IDs / names just like individual endpoints do
+    const kodlar = await oquvchiKodlari(students.map(s => s.id));
     const mappedStudents = students.map(s => {
       const o = {
         ...s,
         groups: s.groups.map(g => g.id),
-        routeIds: (s.routeStops || []).map(x => x.routeId)
+        routeIds: (s.routeStops || []).map(x => x.routeId),
+        kod: kodlar.get(s.id) ?? null,
       };
       if (!balansKorinadi) { delete o.balance; delete o.customPrices; delete o.payShare; }
       return o;

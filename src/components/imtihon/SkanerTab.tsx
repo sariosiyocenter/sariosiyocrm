@@ -26,7 +26,15 @@ interface Element {
 }
 
 export default function SkanerTab({ exam, yangila, onTekshirish }: { exam: ImtihonTafsil; yangila: () => Promise<any>; onTekshirish?: () => void }) {
-  const { ozgartira, showNotification } = useCRM();
+  const { ozgartira, showNotification, students } = useCRM();
+  // Varaqdagi "O'quvchi ID raqami": 5 xonali o'quvchi ID si (2026-09-26 dan
+  // o'quvchi va ota-ona biladigan raqam) yoki eski ichki №.
+  const idniTop = useCallback((raqam: string) => {
+    const n = parseInt(raqam);
+    if (!n) return 0;
+    if (n >= 10000) return students.find(s => s.kod === n)?.id ?? 0;
+    return n;
+  }, [students]);
   const skanerlaydi = ozgartira('imtihonlar.natija');
   const { soro } = useImtihonApi();
   const { data: orinData, yukla: orinlarniYukla } = useOrinlar(exam.id);
@@ -62,7 +70,7 @@ export default function SkanerTab({ exam, yangila, onTekshirish }: { exam: Imtih
     if (qoshimcha.sheetCode) body.sheetCode = qoshimcha.sheetCode;
     else if (o.qr?.turi === 'S') body.sheetCode = o.qr.sheetCode;
     if (!body.sheetCode) {
-      const sid = qoshimcha.studentId ?? (o.idRaqam ? parseInt(o.idRaqam) : 0);
+      const sid = qoshimcha.studentId ?? (o.idRaqam ? idniTop(o.idRaqam) : 0);
       if (!sid) { yangilaEl(el.id, { holat: 'aniqlanmadi', xato: o.qr ? "O'quvchi ID raqami o'qilmadi — o'quvchini tanlang" : "QR o'qilmadi — varaq kodini kiriting" }); return; }
       body.studentId = sid;
       body.session = qoshimcha.session ?? o.qr?.session ?? 1;
@@ -74,7 +82,7 @@ export default function SkanerTab({ exam, yangila, onTekshirish }: { exam: Imtih
     } catch (e: any) {
       yangilaEl(el.id, { holat: e.status === 404 ? 'aniqlanmadi' : 'xato', xato: e.message });
     }
-  }, [exam.id, sahifalar, soro]);
+  }, [exam.id, sahifalar, soro, idniTop]);
 
   const fayllar = async (files: FileList | null) => {
     if (!files?.length) return;

@@ -19,7 +19,7 @@ import { isCashIncome, newestFirst } from '../lib/money';
 import KassaPanel from './KassaPanel';
 import PaymeLinkModal from './PaymeLinkModal';
 import PaymentEditModal, { canEditPayment } from './PaymentEditModal';
-import { KlikChekMaydonlari, klikniYuborish, TASDIQ_TURLARI, hozirgiVaqt, isAdminRole, chekVaqti } from './KlikChek';
+import { KlikChekMaydonlari, klikniYuborish, yuborishNatijasi, TASDIQ_TURLARI, isAdminRole, chekVaqti } from './KlikChek';
 import TolovTasdiqPanel, { TASDIQ_HODISASI } from './TolovTasdiqPanel';
 import { amaldagiQoida, qoidaMatni } from '../lib/taqsimot';
 
@@ -1553,29 +1553,33 @@ ${e.description || e.category} — ${Number(e.amount).toLocaleString()} so'm`)) 
                                     if (summa <= 0) { showNotification('Summani kiriting', 'error'); return; }
                                     const klik = TASDIQ_TURLARI.includes(newPayment.type);
                                     const admin = isAdminRole(user?.role);
-                                    if (klik && !admin && !klikVaqt) { showNotification("Chekdagi to'langan sana va vaqtni kiriting", 'error'); return; }
+                                    if (klik && !admin && !klikVaqt) { showNotification("Chekdagi kun va soatni kiriting (masalan 2206 → 22:06)", 'error'); return; }
                                     setIsSavingPayment(true);
                                     try {
                                         // Klik — administrator tasdig'iga (balansga hali tushmaydi).
                                         if (klik && !admin) {
-                                            await klikniYuborish({
+                                            const yuborildi = await klikniYuborish({
                                                 schoolId: selectedSchoolId, studentId: selectedStudent.id, amount: summa,
                                                 type: newPayment.type, paidAt: klikVaqt, receipt: klikChek, note: newPayment.description || '',
                                             });
                                             window.dispatchEvent(new Event(TASDIQ_HODISASI));
-                                            showNotification(`${newPayment.type} to'lovi administrator tasdig'iga yuborildi — tasdiqlangach balansga tushadi`, 'success');
+                                            const n = yuborishNatijasi(newPayment.type, yuborildi);
+                                            showNotification(n.matn, n.tur);
                                             closePaymentModal();
                                             return;
                                         }
-                                        const saved = await addPayment({
+                                        const saved: any = await addPayment({
                                             studentId: selectedStudent.id,
                                             amount: summa,
                                             type: newPayment.type,
                                             description: [klik && klikVaqt ? `Chek: ${chekVaqti(klikVaqt)}` : '', newPayment.description || ''].filter(Boolean).join(' · '),
                                             groupId: null,
                                             courseId: null,
-                                            date: klik && klikVaqt ? klikVaqt.slice(0, 10) : newPayment.date
-                                        });
+                                            date: klik && klikVaqt ? klikVaqt.slice(0, 10) : newPayment.date,
+                                            // Administrator kiritgan Klik cheki ham takror tekshiruviga yoziladi.
+                                            ...(klik && klikVaqt ? { chekVaqti: klikVaqt } : {}),
+                                        } as any);
+                                        if (saved?.takror?.length) showNotification(`Diqqat — takror chek: ${saved.takror[0]}`, 'error');
                                         setCreatedPaymentForReceipt(saved);
                                     } catch (err: any) {
                                         showNotification("To'lovni saqlab bo'lmadi: " + (err?.message || "noma'lum xatolik"), 'error');
@@ -1592,7 +1596,8 @@ ${e.description || e.category} — ${Number(e.amount).toLocaleString()} so'm`)) 
                                                 <div className="absolute z-[210] left-0 right-0 mt-1 bg-sirt border border-chiziq rounded-2xl shadow-xl overflow-hidden max-h-48 overflow-y-auto divide-y divide-gray-50 dark:divide-gray-750">
                                                     {students.filter(s =>
                                                         s.name.toLowerCase().includes(studentSearch.toLowerCase()) ||
-                                                        (s.phone && s.phone.includes(studentSearch))
+                                                        (s.phone && s.phone.includes(studentSearch)) ||
+                                                        (!!s.kod && /^\d{3,5}$/.test(studentSearch.trim()) && String(s.kod).startsWith(studentSearch.trim()))
                                                     ).slice(0, 6).map(s => (
                                                         <button key={s.id} type="button"
                                                             onClick={() => { setSelectedStudent(s); setStudentSearch(''); }}
@@ -1603,7 +1608,8 @@ ${e.description || e.category} — ${Number(e.amount).toLocaleString()} so'm`)) 
                                                     ))}
                                                     {students.filter(s =>
                                                         s.name.toLowerCase().includes(studentSearch.toLowerCase()) ||
-                                                        (s.phone && s.phone.includes(studentSearch))
+                                                        (s.phone && s.phone.includes(studentSearch)) ||
+                                                        (!!s.kod && /^\d{3,5}$/.test(studentSearch.trim()) && String(s.kod).startsWith(studentSearch.trim()))
                                                     ).length === 0 && (
                                                         <div className="px-4 py-4 text-center text-[11px] text-matn-xira font-bold">O'quvchi topilmadi</div>
                                                     )}
@@ -1717,7 +1723,6 @@ ${e.description || e.category} — ${Number(e.amount).toLocaleString()} so'm`)) 
                                                 <button key={tType} type="button"
                                                     onClick={() => {
                                                         setNewPayment({ ...newPayment, type: tType as any });
-                                                        if (TASDIQ_TURLARI.includes(tType) && !klikVaqt) setKlikVaqt(hozirgiVaqt());
                                                     }}
                                                     className={`py-2.5 rounded-xl text-xs font-extrabold transition-all border cursor-pointer ${newPayment.type === tType ? 'bg-brand border-brand text-white shadow-sm shadow-[#1b6b6b]/20' : 'bg-sirt border-chiziq text-matn-xira hover:bg-gray-50'}`}>
                                                     {tType}
@@ -1727,7 +1732,8 @@ ${e.description || e.category} — ${Number(e.amount).toLocaleString()} so'm`)) 
                                         {TASDIQ_TURLARI.includes(newPayment.type) && (
                                             <div className="mt-3">
                                                 <KlikChekMaydonlari paidAt={klikVaqt} setPaidAt={setKlikVaqt} receipt={klikChek} setReceipt={setKlikChek}
-                                                    admin={isAdminRole(user?.role)} labelCls={lbl} inputCls={inp} />
+                                                    admin={isAdminRole(user?.role)} labelCls={lbl} inputCls={inp}
+                                                    schoolId={selectedStudent?.schoolId ?? selectedSchoolId} studentId={selectedStudent?.id} amount={Math.round(Number(payAmount) || 0)} />
                                             </div>
                                         )}
                                         {paymeOn && (

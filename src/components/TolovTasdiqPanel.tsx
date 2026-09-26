@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Receipt, Check, X, Loader2, ArrowRight, ExternalLink } from 'lucide-react';
+import { Receipt, Check, X, Loader2, ArrowRight, ExternalLink, AlertTriangle } from 'lucide-react';
 import { useCRM } from '../context/CRMContext';
 import { useConfirm } from './ConfirmDialog';
 import { chekVaqti, isAdminRole } from './KlikChek';
@@ -21,6 +21,8 @@ interface Qator {
     id: number; studentId: number; amount: number; type: string; paidAt: string;
     receipt?: string | null; note?: string | null; createdByName?: string | null; createdAt: string;
     student: { id: number; name: string; phone?: string | null; balance: number } | null;
+    /** Shu chek avval ham kiritilgan bo'lsa — server yozgan ogohlantirishlar. */
+    takror?: string[];
 }
 
 const qachon = (iso: string) => {
@@ -115,6 +117,7 @@ export default function TolovTasdiqPanel({ compact = false }: { compact?: boolea
                         </span>
                         <span className="block text-[11px] font-bold text-amber-700/80 dark:text-amber-400/80 num">
                             Jami {jami.toLocaleString('ru-RU')} so'm — tasdiqlanmaguncha balansga tushmaydi
+                            {rows.some(q => q.takror?.length) && <span className="text-rose-600 dark:text-rose-400"> · ⚠️ {rows.filter(q => q.takror?.length).length} tasida takror chek</span>}
                         </span>
                     </span>
                 </span>
@@ -178,6 +181,16 @@ export default function TolovTasdiqPanel({ compact = false }: { compact?: boolea
                                 )}
                             </div>
                         </div>
+                        {!!q.takror?.length && (
+                            <div className="ml-14 p-2.5 rounded-xl border border-rose-300 dark:border-rose-900/60 bg-rose-50 dark:bg-rose-950/30 space-y-1">
+                                <p className="flex items-center gap-1.5 text-[11.5px] font-black text-rose-700 dark:text-rose-300">
+                                    <AlertTriangle size={13} /> Takror chek — pul ikki marta tushmasin
+                                </p>
+                                {q.takror.map((t, i) => (
+                                    <p key={i} className="text-[11px] font-bold text-rose-700/90 dark:text-rose-300/90 leading-relaxed">• {t}</p>
+                                ))}
+                            </div>
+                        )}
                         {radId === q.id && (
                             <div className="flex flex-wrap items-center gap-2 pl-14">
                                 <input autoFocus value={sabab} onChange={e => setSabab(e.target.value)} placeholder="Sabab: pul kelmagan, summa boshqa..."

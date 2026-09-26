@@ -2,6 +2,8 @@ export type UserRole = 'ADMIN' | 'MANAGER' | 'TEACHER' | 'SUPPORT_TEACHER' | 'RE
 
 export interface Student {
     id: number;
+    /** 5 xonali o'quvchi ID si (Payme'da shu yoziladi; ichki № — `id`). */
+    kod?: number | null;
     name: string;
     phone: string;
     birthDate: string;
@@ -76,6 +78,8 @@ export interface User {
     email: string;
     name: string;
     phone?: string;
+    /** Ikkinchi telefon — bot uni ham taniydi (xabarlar ikkala Telegram'ga). */
+    phone2?: string | null;
     role: UserRole;
     schoolId: number | null;
     /** Qo'shimcha filiallar (ikki filialda ishlaydigan xodim). Asosiysi — schoolId. */

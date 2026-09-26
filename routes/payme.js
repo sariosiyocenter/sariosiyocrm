@@ -8,6 +8,7 @@ import { authenticate, canAccessSchool, requireRole, STAFF_MANAGERS } from '../m
 import { isAdmin } from '../lib/config.js';
 import { markazBrendi, markazNomi } from '../lib/markazBrendi.js';
 import * as payme from '../services/payme.js';
+import { kodBer } from '../services/oquvchiKod.js';
 import { tolovXabari } from '../services/tolovXabari.js';
 
 // Havola yaratish — to'lov qabul qiladigan xodimlar. Ustoz/haydovchi emas.
@@ -25,7 +26,7 @@ function withTimeout(promise, ms) {
   return Promise.race([promise, new Promise((_, rej) => setTimeout(() => rej(new Error('timeout')), ms))]);
 }
 
-function shapeOrder(o, settings, returnBase) {
+function shapeOrder(o, settings, returnBase, kod = null) {
   const status = payme.orderStatus(o);
   return {
     id: o.id,
@@ -39,7 +40,7 @@ function shapeOrder(o, settings, returnBase) {
     paymentId: o.paymentId,
     createdAt: o.createdAt,
     expiresAt: o.expiresAt,
-    url: status === 'new' && settings ? payme.orderUrl(settings, o, returnBase) : null,
+    url: status === 'new' && settings ? payme.orderUrl(settings, o, returnBase, kod) : null,
     transactions: (o.transactions || []).map(t => ({
       id: t.id, paymeId: t.paymeId, state: t.state, reason: t.reason,
       createTime: Number(t.createTime), performTime: Number(t.performTime), cancelTime: Number(t.cancelTime),
@@ -245,7 +246,7 @@ export function registerPaymeRoutes(app) {
       });
       if (r.error) return res.status(400).json({ error: r.error });
       const settings = await payme.loadSettings(student.schoolId);
-      res.json({ order: shapeOrder({ ...r.order, transactions: [] }, settings, appOrigin(req)), url: r.url });
+      res.json({ order: shapeOrder({ ...r.order, transactions: [] }, settings, appOrigin(req), await kodBer(r.order.studentId)), url: r.url });
     } catch (e) { next(e); }
   });
 
@@ -265,7 +266,8 @@ export function registerPaymeRoutes(app) {
         }),
         payme.loadSettings(student.schoolId),
       ]);
-      res.json(orders.map(o => shapeOrder(o, payme.isConfigured(settings) ? settings : null, appOrigin(req))));
+      const kod = await kodBer(studentId);
+      res.json(orders.map(o => shapeOrder(o, payme.isConfigured(settings) ? settings : null, appOrigin(req), kod)));
     } catch (e) { next(e); }
   });
 
@@ -300,7 +302,7 @@ export function registerPaymeRoutes(app) {
         order.groupId ? prisma.group.findUnique({ where: { id: order.groupId }, select: { name: true, course: { select: { name: true } } } }) : null,
         markazNomi(order.schoolId).then(orgName => ({ orgName })),
       ]);
-      const url = payme.orderUrl(settings, order, appOrigin(req));
+      const url = payme.orderUrl(settings, order, appOrigin(req), await kodBer(order.studentId));
       const course = group ? `${group.course?.name || ''} (${group.name})` : 'Umumiy';
       const until = new Date(order.expiresAt).toLocaleDateString('ru-RU');
       const text = `💳 ${setting?.orgName || 'CRM'}\n\n${order.student.name} — ${course}\n💰 ${fmt(order.amount)} so'm${order.test ? '\n⚠️ TEST rejim (haqiqiy pul emas)' : ''}\n\nPayme orqali to'lash uchun tugmani bosing. Havola ${until} gacha amal qiladi.`;
@@ -396,7 +398,7 @@ export function registerPaymeRoutes(app) {
     } catch (e) { next(e); }
   });
 
-  // O'quvchining Payme ID si (telefon raqami yoki №) — profilda ko'rsatish uchun.
+  // O'quvchining Payme ID si (5 xonali o'quvchi ID si) — profilda ko'rsatish uchun.
   app.get('/api/payme/pay-id/:studentId', authenticate, async (req, res, next) => {
     try {
       const studentId = parseInt(req.params.studentId);

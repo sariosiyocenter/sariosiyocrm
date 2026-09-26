@@ -18,6 +18,7 @@ import {
     createOrder as paymeCreateOrder, loadSettings as paymeLoadSettings, isConfigured as paymeIsConfigured,
     MIN_AMOUNT as PAYME_MIN, MAX_AMOUNT as PAYME_MAX, payIdFor as paymePayIdFor,
 } from '../../services/payme.js';
+import { registerKlikTasdiq } from './klikTasdiq.js';
 
 const somFmt = (n) => Number(n || 0).toLocaleString('ru-RU');
 
@@ -37,7 +38,8 @@ const botCache = new Map(); // token -> botInstance
 export const getStudentMenu = () => Markup.keyboard([
     ['📅 Dars Jadvali', '💳 To\'lovlar'],
     ['✅ Davomat', '📊 Baholar'],
-    ['📝 Imtihonlar'],
+    // 🆔 — 5 xonali o'quvchi ID si (Payme'da to'lash uchun), src/bot/klikTasdiq.js.
+    ['📝 Imtihonlar', '🆔 ID raqam'],
     ['✍️ Shikoyat va takliflar', '👤 Profil'],
     ['🚪 Chiqish']
 ]).resize();
@@ -336,7 +338,8 @@ const findUser = async (tid, schoolId) => {
     const teacher = await findAcross('teacher', { telegramId: tidStr }, ids);
     if (teacher) return { type: 'teacher', data: teacher };
 
-    const user = await findAcross('user', { telegramId: tidStr }, ids);
+    // Xodimning ikkinchi raqami ham o'z Telegram hisobi bilan (telegramId2).
+    const user = await findAcross('user', { OR: [{ telegramId: tidStr }, { telegramId2: tidStr }] }, ids);
     // Arxivdagi xodim botda ham xodim emas.
     if (user && user.status !== 'Arxiv') {
         if (user.role === 'DRIVER') return { type: 'driver', data: user };
@@ -371,6 +374,10 @@ export const setupBotHandlers = (botInstance, botSchoolId) => {
     botInstance.catch((err, ctx) => {
         console.error(`Telegram Bot xatosi (${ctx.updateType}) [School: ${botSchoolId}]:`, err);
     });
+
+    // Klik to'lovini administrator Telegram'da tasdiqlaydi / rad etadi va
+    // ota-ona "🆔 ID raqam" bilan farzandining ID sini so'raydi.
+    registerKlikTasdiq(botInstance, { findUser, filial });
 
     botInstance.start(async (ctx) => {
         const schoolId = await filial(ctx);
@@ -419,7 +426,8 @@ export const setupBotHandlers = (botInstance, botSchoolId) => {
             prisma.student.updateMany({ where: { fatherTelegramId: tidStr, ...scWhere }, data: { fatherTelegramId: null } }),
             prisma.student.updateMany({ where: { motherTelegramId: tidStr, ...scWhere }, data: { motherTelegramId: null } }),
             prisma.teacher.updateMany({ where: { telegramId: tidStr, ...scWhere }, data: { telegramId: null } }),
-            prisma.user.updateMany({ where: { telegramId: tidStr, ...scWhere }, data: { telegramId: null } })
+            prisma.user.updateMany({ where: { telegramId: tidStr, ...scWhere }, data: { telegramId: null } }),
+            prisma.user.updateMany({ where: { telegramId2: tidStr, ...scWhere }, data: { telegramId2: null } })
         ]);
         ctx.reply("Hisobingiz botdan uzildi. Endi qaytadan ro'yxatdan o'tishingiz mumkin ( /start bosib).", Markup.keyboard([
             [Markup.button.contactRequest('📱 Telefon raqamni yuborish')]
@@ -444,7 +452,8 @@ export const setupBotHandlers = (botInstance, botSchoolId) => {
             prisma.student.updateMany({ where: { fatherTelegramId: tid }, data: { fatherTelegramId: null } }),
             prisma.student.updateMany({ where: { motherTelegramId: tid }, data: { motherTelegramId: null } }),
             prisma.teacher.updateMany({ where: { telegramId: tid }, data: { telegramId: null } }),
-            prisma.user.updateMany({ where: { telegramId: tid }, data: { telegramId: null } })
+            prisma.user.updateMany({ where: { telegramId: tid }, data: { telegramId: null } }),
+            prisma.user.updateMany({ where: { telegramId2: tid }, data: { telegramId2: null } })
         ]);
 
         // Ro'yxatdan o'tishda odam hali hech qaysi yozuvga bog'lanmagan —
@@ -482,9 +491,12 @@ export const setupBotHandlers = (botInstance, botSchoolId) => {
         }
 
         // Try to find in users (Admin/Manager/Receptionist)
-        let user = await findAcross('user', { phone: { contains: phoneSuffix } }, ids);
+        // Ikkinchi raqam (phone2) bo'yicha ham: u telegramId2 ga bog'lanadi —
+        // bitta xodimga ikki Telegram (masalan administratorning ikki telefoni).
+        let user = await findAcross('user', { OR: [{ phone: { contains: phoneSuffix } }, { phone2: { contains: phoneSuffix } }] }, ids);
         if (user) {
-            await prisma.user.update({ where: { id: user.id }, data: { telegramId: tid } });
+            const ikkinchi = !String(user.phone || '').replace(/\D/g, '').includes(phoneSuffix);
+            await prisma.user.update({ where: { id: user.id }, data: ikkinchi ? { telegramId2: tid } : { telegramId: tid } });
             const menu = user.role === 'DRIVER' ? getDriverMenu() : getAdminMenu(await xodimRuxsati(user));
             return ctx.reply(`Siz xodim sifatida ro'yxatdan o'tdingiz: ${user.name}`, menu);
         }
@@ -1760,23 +1772,37 @@ export const getTelegramBot = async (schoolId) => {
     return instance;
 };
 
+/**
+ * Rahbarlarga xabar: tashkilotdagi har bir ADMIN (u barcha filiallarni
+ * boshqaradi — ilgari faqat shu filialdagisi olardi, Langar filialidagi
+ * hodisa hech kimga yetmasdi) va shu filial menejerlari. Xodimning ikkinchi
+ * raqamiga bog'langan Telegram (telegramId2) ham oladi.
+ */
 export const notifyAdmins = async (message, schoolId) => {
-    const admins = await prisma.user.findMany({
-        where: { 
+    const ids = schoolId ? await orgSchoolIds(schoolId) : [];
+    const rahbarlar = await prisma.user.findMany({
+        where: {
             role: { in: ['ADMIN', 'MANAGER'] },
-            telegramId: { not: null },
-            schoolId: schoolId || undefined
-        }
+            status: { not: 'Arxiv' },
+            OR: [{ telegramId: { not: null } }, { telegramId2: { not: null } }],
+            ...(ids.length ? { schoolId: { in: ids } } : {}),
+        },
+        select: { name: true, role: true, schoolId: true, telegramId: true, telegramId2: true },
     });
 
     const schoolBot = await getTelegramBot(schoolId);
     if (!schoolBot) return;
 
-    for (const admin of admins) {
+    const chatlar = new Set();
+    for (const r of rahbarlar) {
+        if (r.role === 'MANAGER' && schoolId && r.schoolId !== Number(schoolId)) continue;
+        for (const chat of [r.telegramId, r.telegramId2]) if (chat) chatlar.add(String(chat));
+    }
+    for (const chat of chatlar) {
         try {
-            await schoolBot.telegram.sendMessage(admin.telegramId, message);
+            await schoolBot.telegram.sendMessage(chat, message);
         } catch (e) {
-            console.error(`Admin ${admin.name} ga xabar yuborib bo'lmadi:`, e);
+            console.error(`Rahbarga (${chat}) xabar yuborib bo'lmadi:`, e.message);
         }
     }
 };

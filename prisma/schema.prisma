@@ -103,8 +103,22 @@ model Student {
   examSeats   ExamSeat[]
   faceProfile FaceProfile?
   paymeOrders PaymeOrder[]
+  oquvchiKod  StudentKod?
 
   @@index([schoolId])
+}
+
+// O'quvchi ID si (egasi, 2026-09-26): "telefon raqami emas, 5 xonali son
+// bo'lsin va har doim individual bo'lsin". Ota-ona Payme'da shu raqamni
+// yozadi va uni Telegram botdan so'rab oladi. Ichki № (Student.id) o'zgarmaydi.
+// Alohida jadval — baza o'zi takrorlanishga yo'l qo'ymaydi (kod — birlamchi
+// kalit). O'quvchi o'chirilsa kod bo'shamaydi: studentId null bo'lib qoladi,
+// shu raqam boshqa bolaga hech qachon berilmaydi.
+model StudentKod {
+  kod       Int      @id
+  studentId Int?     @unique
+  student   Student? @relation(fields: [studentId], references: [id], onDelete: SetNull)
+  createdAt DateTime @default(now())
 }
 
 model Transport {
@@ -685,6 +699,11 @@ model User {
   role      UserRole @default(RECEPTIONIST)
   createdAt DateTime @default(now())
   telegramId String?   @unique
+  // Ikkinchi telefon (egasi, 2026-09-26: "administratorga 2 ta nomer").
+  // Bot shu raqamni ham taniydi: ikkinchi Telegram hisobi `telegramId2` ga
+  // bog'lanadi va Klik tasdiqlari kabi xabarlar ikkalasiga boradi.
+  phone2      String?
+  telegramId2 String?
 
   // Faol | Arxiv. Davomat yoki oylik yozuvi bor xodimni o'chirib bo'lmaydi
   // (ikkala bog'lanish ham Restrict), shuning uchun uni arxivga olamiz:
@@ -1372,7 +1391,11 @@ model TolovTasdiq {
   reviewedAt    DateTime?
   reason        String?   // rad etish sababi
   paymentId     Int?
+  // Administratorlarga yuborilgan Telegram xabarlari: [{ chat, msg }].
+  // Tasdiqlangach/rad etilgach hammasidagi tugmalar olib tashlanadi.
+  tgXabarlar    Json?
 
   @@index([schoolId, status])
   @@index([studentId])
+  @@index([paidAt])
 }

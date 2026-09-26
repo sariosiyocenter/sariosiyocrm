@@ -30,6 +30,7 @@ import crypto from 'crypto';
 import prisma from '../lib/prisma.js';
 import { decryptSecret } from '../lib/secrets.js';
 import { toDateStr } from '../lib/lessons.js';
+import { kodBer, kodEgasi, kodniOqi } from './oquvchiKod.js';
 
 export const ACCOUNT_FIELD = 'order_id';
 // Payme ilovasi katalogi: to'lovchi o'quvchi raqamini (va ixtiyoriy kursni)
@@ -101,9 +102,7 @@ export const ERR = {
   orderPaid: () => new PaymeError(-31052, msg('Bu buyurtma allaqachon to\'langan', 'Этот заказ уже оплачен', 'This order is already paid'), ACCOUNT_FIELD),
   orderClosed: () => new PaymeError(-31053, msg('Buyurtma bekor qilingan', 'Заказ отменён', 'Order cancelled'), ACCOUNT_FIELD),
   orderMode: () => new PaymeError(-31054, msg('Buyurtma boshqa rejimda yaratilgan', 'Заказ создан в другом режиме', 'Order was created in a different mode'), ACCOUNT_FIELD),
-  studentNotFound: (field = STUDENT_FIELD) => new PaymeError(-31055, msg("O'quvchi topilmadi — raqamni tekshiring", 'Ученик не найден — проверьте номер', 'Student not found — check the number'), field),
-  // Bitta telefon raqami bir nechta o'quvchida (aka-uka): pul adashmasin.
-  phoneShared: (field = STUDENT_FIELD) => new PaymeError(-31058, msg("Bu telefon raqami bir nechta o'quvchiga tegishli — botdagi o'quvchi ID sini yozing", 'Этот номер телефона у нескольких учеников — введите ID ученика из бота', 'This phone number belongs to several students — enter the student ID from the bot'), field),
+  studentNotFound: (field = STUDENT_FIELD) => new PaymeError(-31055, msg("O'quvchi topilmadi — botdagi 5 xonali o'quvchi ID sini yozing", 'Ученик не найден — введите 5-значный ID ученика из бота', 'Student not found — enter the 5-digit student ID from the bot'), field),
   courseNotFound: (field = COURSE_FIELD) => new PaymeError(-31056, msg("Bu o'quvchi bunday kursda o'qimaydi", 'Ученик не учится на этом курсе', 'Student is not enrolled in this course'), field),
   // Buyurtmada boshqa faol tranzaksiya bor. Sandbox ("CreateTransaction с новой
   // транзакцией, состояние счёта «В ожидании оплаты»") -31050..-31099 kutadi —
@@ -262,17 +261,22 @@ export async function createOrder({ schoolId, studentId, groupId, amount, source
       expiresAt: new Date(Date.now() + ORDER_TTL_MS),
     },
   });
-  return { order, url: orderUrl(settings, order, returnBase) };
+  return { order, url: orderUrl(settings, order, returnBase, await kodBer(student.id)) };
 }
 
-export function orderUrl(settings, order, returnBase = '') {
+/**
+ * `kod` — o'quvchi ID si (5 xonali, services/oquvchiKod.js). Havola ota-ona
+ * Payme'ga yozadigan raqamning o'zini yuboradi.
+ */
+export function orderUrl(settings, order, returnBase = '', kod = null) {
   // 'student' sxemasida kassa order_id ni bilmaydi: havola o'quvchi va kurs
   // raqamini yuboradi, tranzaksiya kelganda buyurtmaga server o'zi bog'laydi.
   // 'student_only' — kassada kurs maydoni yo'q, faqat o'quvchi raqami ketadi.
+  const oquvchi = kod ?? order.studentId;
   const account = settings.paymeScheme === 'student_only'
-    ? { [STUDENT_FIELD]: order.studentId }
+    ? { [STUDENT_FIELD]: oquvchi }
     : settings.paymeScheme === 'student' && order.groupId
-      ? { [STUDENT_FIELD]: order.studentId, [COURSE_FIELD]: order.groupId }
+      ? { [STUDENT_FIELD]: oquvchi, [COURSE_FIELD]: order.groupId }
       : { [ACCOUNT_FIELD]: order.id };
   return checkoutUrl({
     merchantId: settings.paymeMerchantId,
@@ -377,61 +381,38 @@ export function parseStudentCode(raw) {
 }
 
 // ---------------------------------------------------------------------------
-// Payme ID — ota-ona Payme'ga yozadigan raqam (2026-09-24, egasi: "esdan
-// chiqmasligi uchun telefon raqami bo'lsin"). Bu telefonning +998 dan keyingi
-// 9 raqami. Ichki № (Student.id) o'zgarmaydi — unga to'lov, davomat va
-// boshqa hamma narsa bog'langan. Bir filialda shu raqam bir nechta
-// o'quvchida bo'lsa (aka-uka), telefon ID bo'lmaydi: ular № bilan to'laydi,
-// aks holda pul boshqa bolaning balansiga tushib ketardi.
+// Payme ID — ota-ona Payme'ga yozadigan raqam. 2026-09-26 dan bu 5 xonali
+// o'quvchi ID si (egasi: "telefon raqami emas, 5 xonali son bo'lsin va har
+// doim individual bo'lsin") — services/oquvchiKod.js. Telefon endi ID emas:
+// 24–26 sentabr orasida telefon bilan bitta ham to'lov kelmagan. Ichki №
+// (Student.id) o'zgarmaydi — unga to'lov, davomat va boshqa hamma narsa
+// bog'langan.
 // ---------------------------------------------------------------------------
 
-/** "+998 90 123-45-67" → "901234567". 9 raqam chiqmasa null. */
-export function phone9(raw) {
-  let d = String(raw ?? '').replace(/\D/g, '');
-  if (d.length === 12 && d.startsWith('998')) d = d.slice(3);
-  return d.length === 9 ? d : null;
-}
+// 26 sentabrgacha yaratilgan havolalar ichki № ni yuboradi va 7 kun amal
+// qiladi — ular shu sanagacha qabul qilinadi, keyin faqat 5 xonali ID.
+const ESKI_RAQAM_MUDDATI = Date.parse('2026-10-04T00:00:00+05:00');
 
-// Arxivdagi va o'chirilgan o'quvchilar telefonni "band" qilmaydi.
-const PAY_ID_SKIP = ['Ochirilgan', 'Arxiv'];
-
-/** Filialda telefoni shu 9 raqam bo'lgan o'quvchilar ID lari. */
-async function phoneOwners(db, schoolId, p9) {
-  const rows = await db.student.findMany({
-    where: { schoolId, status: { notIn: PAY_ID_SKIP } },
-    select: { id: true, phone: true },
-  });
-  return rows.filter(r => phone9(r.phone) === p9).map(r => r.id);
+/** O'quvchining Payme ID si (5 xonali kod). Bot va profil shuni ko'rsatadi. */
+export async function payIdFor(studentId) {
+  const kod = await kodBer(studentId);
+  return kod === null ? null : String(kod);
 }
 
 /**
- * O'quvchining Payme ID si: telefon raqami (9 raqam), agar filialda u faqat
- * shu o'quvchiniki bo'lsa; aks holda ichki №. Bot va profil shuni ko'rsatadi.
+ * Payme'dan kelgan `student_id` → Student.id. 5 xonali — o'quvchi ID si;
+ * 1–4 xonali — ichki № (faqat eski havolalar uchun, ESKI_RAQAM_MUDDATI gacha).
+ * Ichki № hozir 4 xonali, kodlar 10000 dan boshlanadi — ikkalasi aralashmaydi.
  */
-export async function payIdFor(studentId, db = prisma) {
-  const st = await db.student.findUnique({ where: { id: Number(studentId) }, select: { id: true, schoolId: true, phone: true, status: true } });
-  if (!st) return null;
-  const p9 = phone9(st.phone);
-  if (!p9 || PAY_ID_SKIP.includes(st.status)) return String(st.id);
-  const owners = await phoneOwners(db, st.schoolId, p9);
-  return owners.length === 1 && owners[0] === st.id ? p9 : String(st.id);
-}
-
-/**
- * Payme'dan kelgan `student_id` → Student.id. 9 va undan uzun raqam —
- * telefon ("901234567", "998901234567", "+998 90 ..."), qisqasi — ichki №.
- * Ichki № hech qachon 9 xonaga yetmaydi, shuning uchun ikkalasi aralashmaydi.
- */
-async function studentIdFromPayId(db, schoolId, raw, field) {
+async function studentIdFromPayId(db, schoolId, raw, field, now = Date.now()) {
   const digits = String(raw ?? '').trim().replace(/[\s+()-]/g, '');
-  if (!/^\d{1,12}$/.test(digits)) throw ERR.studentNotFound(field);
-  if (digits.length < 9) return Number(digits);
-  const p9 = phone9(digits);
-  if (!p9) throw ERR.studentNotFound(field);
-  const owners = await phoneOwners(db, schoolId, p9);
-  if (owners.length > 1) throw ERR.phoneShared(field);
-  if (!owners.length) throw ERR.studentNotFound(field);
-  return owners[0];
+  if (kodniOqi(digits) !== null) {
+    const id = await kodEgasi(digits, db);
+    if (!id) throw ERR.studentNotFound(field);
+    return id;
+  }
+  if (/^\d{1,4}$/.test(digits) && now < ESKI_RAQAM_MUDDATI) return Number(digits);
+  throw ERR.studentNotFound(field);
 }
 
 /**
@@ -482,6 +463,7 @@ async function resolveAccount(db, params, schoolId, settings, amountTiyin, now) 
   if (hasField(params, ACCOUNT_FIELD)) {
     const code = parseStudentCode(params.account[ACCOUNT_FIELD]);
     if (code) {
+      code.studentId = await studentIdFromPayId(db, schoolId, String(code.studentId), ACCOUNT_FIELD, now);
       const acc = await loadCatalogAccount(db, { field: ACCOUNT_FIELD, courseField: ACCOUNT_FIELD, ...code }, schoolId, settings, amountTiyin);
       acc.account = { [ACCOUNT_FIELD]: code.kursId !== null ? `${code.studentId}-${code.kursId}` : String(code.studentId) };
       return acc;
@@ -495,8 +477,8 @@ async function resolveAccount(db, params, schoolId, settings, amountTiyin, now) 
   }
   if (hasField(params, STUDENT_FIELD)) {
     const rawId = String(params.account[STUDENT_FIELD]).trim();
-    // Telefon raqami (Payme ID) yoki ichki №.
-    const studentId = await studentIdFromPayId(db, schoolId, rawId, STUDENT_FIELD);
+    // 5 xonali o'quvchi ID si (eski havolalarda — ichki №).
+    const studentId = await studentIdFromPayId(db, schoolId, rawId, STUDENT_FIELD, now);
     let kursId = null;
     if (hasField(params, COURSE_FIELD)) {
       const rawC = String(params.account[COURSE_FIELD]).trim();
