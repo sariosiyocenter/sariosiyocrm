@@ -340,10 +340,15 @@ export async function rejalarniYozish({ schoolId, date, rejalar }) {
  * mashinaga ham qo'yilmaydi. Yo'l haqi: saqlanib qolgan bola uchun eski
  * narx (reja tuzilganda aytilgan), yangi qo'shilganga — joriy tarif bo'yicha.
  *
+ * `tartibli` (2026-09-27): sahifa bekatlarni yo'l bo'yicha (OSRM) o'zi
+ * tartiblab yuboradi — studentIds aynan shu tartibda yoziladi va admin
+ * ko'rgan ketma-ketlik haydovchiga boradi. Bo'lmasa (eski sahifa) server
+ * to'g'ri chiziq bo'yicha tartiblaydi.
+ *
  * @returns {Promise<{ xato?: string, natijalar?: { tur: 'yangi'|'ozgardi'|'bekor', routeId: number,
  *   driverId: number, qoshilganlar: number[], telegramId?: string|null, nomi?: string }[] }>}
  */
-export async function kunniSaqlash({ schoolId, date, cars }) {
+export async function kunniSaqlash({ schoolId, date, cars, tartibli = false }) {
   const bor = await prisma.route.findMany({
     where: { schoolId, date },
     include: {
@@ -409,6 +414,12 @@ export async function kunniSaqlash({ schoolId, date, cars }) {
   };
 
   const natijalar = [];
+  /** Bekatlar tartibi: sahifa yuborgani (tartibli) yoki server hisoblagani. */
+  const tartibniYozish = async (routeId, ids) => {
+    if (!tartibli) { await marshrutniTartiblash(routeId); return; }
+    await prisma.$transaction(ids.map((studentId, tartib) =>
+      prisma.routeStop.update({ where: { routeId_studentId: { routeId, studentId } }, data: { tartib } })));
+  };
 
   // 1. Olib tashlanadigan rejalar: so'rovda yo'q yoki haydovchisi almashgan.
   const saqlanadi = new Map(); // routeId → car
@@ -435,7 +446,7 @@ export async function kunniSaqlash({ schoolId, date, cars }) {
       if (runIds.length) await prisma.deliveryLog.deleteMany({ where: { runId: { in: runIds }, studentId: { in: olindi } } });
     }
     if (qoshildi.length) await prisma.routeStop.createMany({ data: qoshildi.map((id, i) => bekat(routeId, id, 1000 + i)) });
-    await marshrutniTartiblash(routeId);
+    await tartibniYozish(routeId, c.studentIds);
     natijalar.push({ tur: 'ozgardi', routeId, driverId: c.driverId, qoshilganlar: qoshildi });
   }
 
@@ -459,7 +470,7 @@ export async function kunniSaqlash({ schoolId, date, cars }) {
       },
     });
     await prisma.routeStop.createMany({ data: c.studentIds.map((id, i) => bekat(route.id, id, i)) });
-    await marshrutniTartiblash(route.id);
+    if (!tartibli) await marshrutniTartiblash(route.id);
     natijalar.push({ tur: 'yangi', routeId: route.id, driverId: h.id, qoshilganlar: [...c.studentIds] });
   }
 

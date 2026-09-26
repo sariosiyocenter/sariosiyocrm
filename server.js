@@ -38,6 +38,7 @@ import { transferStudent, refundStudent, enrollStudent, unenrollStudent, syncGro
 import { studentLedger, receivedForGroups, monthCoverage } from './services/ledger.js';
 import { holatniYozish, marshrutniTartiblash, marshrutHolati, rejalarniYozish, rejaniQabulQilish, rejaniYetkazish, REJA_INCLUDE, rejaPuli, markazTarifi, kunniSaqlash, holatniOchirish } from './services/logistics.js';
 import { tarifniTozalash } from './lib/transportNarx.js';
+import { OSRM_MANZIL } from './lib/yolMasofa.js';
 import { Prisma } from '@prisma/client';
 import { kunlikTolqinlar, haydovchilardanSorash, kunlikRejaniTuzish, avtoJarayon } from './services/kunlikReja.js';
 import { toDateStr } from './lib/lessons.js';
@@ -96,7 +97,8 @@ app.use(helmet({
       // jsDelivr is where face-api.js downloads its model weights from: without it
       // Face ID failed at "Modellar yuklanmoqda..." on every attempt, because the
       // weights are fetch() calls and connect-src did not allow the CDN.
-      connectSrc: ["'self'", SUPABASE_ORIGIN, 'https://api.telegram.org', 'https://cdn.jsdelivr.net'].filter(Boolean),
+      // OSRM — Logistika → Reja yo'l masofalari va yo'l chizig'i (lib/yolMasofa.js).
+      connectSrc: ["'self'", SUPABASE_ORIGIN, 'https://api.telegram.org', 'https://cdn.jsdelivr.net', new URL(OSRM_MANZIL).origin].filter(Boolean),
       mediaSrc: ["'self'", 'blob:', 'data:'],
       objectSrc: ["'none'"],
       frameAncestors: ["'self'"],
@@ -6087,7 +6089,7 @@ app.delete('/api/logistics/plans/:id', authenticate, async (req, res, next) => {
 
 /**
  * Kunning rejasini saqlash va haydovchilarga yuborish (Reja sahifasi,
- * 2026-09-26). body: { schoolId, date, cars: [{ routeId|null, driverId, studentIds }] }
+ * 2026-09-26). body: { schoolId, date, cars: [{ routeId|null, driverId, studentIds }], tartibli? }
  * — yo'lga chiqmagan hamma reyslar; farqni services/logistics.js →
  * kunniSaqlash yozadi. Faqat o'zgargan haydovchiga xabar boradi: yangi reja,
  * "reja o'zgartirildi" yoki "bekor qilindi". Ota-onaga (Transport xabarlari
@@ -6101,7 +6103,8 @@ app.put('/api/logistics/day', authenticate, async (req, res, next) => {
     const date = String(req.body?.date || '');
     if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return res.status(400).json({ error: "Sana noto'g'ri" });
 
-    const natija = await kunniSaqlash({ schoolId, date, cars: req.body?.cars });
+    // tartibli — sahifa bekatlarni yo'l bo'yicha o'zi tartiblab yuboradi (2026-09-27).
+    const natija = await kunniSaqlash({ schoolId, date, cars: req.body?.cars, tartibli: req.body?.tartibli === true });
     if (natija.xato) return res.status(400).json({ error: natija.xato });
 
     const yuborish = [];

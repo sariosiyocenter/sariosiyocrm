@@ -4,10 +4,10 @@ import { jonlimi, qachon } from '../LogisticsMap';
 
 /**
  * Reja xaritasi (2026-09-26): kunning hamma bolasi — har biri o'z
- * mashinasining rangida, bekat raqami bilan; rejasizlari kulrang. Har
- * mashinaning yo'li chiziq bilan (yuborilmagani — uzuq chiziq). Bola bosilsa
- * sahifa uni tanlaydi yoki ("bo'yash" rejimida) darhol mashinaga qo'yadi;
- * "joy" rejimida xarita bosilgan nuqta — bolaning uyi.
+ * mashinasining rangida, bekat raqami bilan; rejasizlari kulrang. Tanlangan
+ * mashinaning yo'li ko'chalar bo'ylab (OSRM, 2026-09-27); yo'l hali kelmagan
+ * yoki olinmagan bo'lsa — uzuq to'g'ri chiziq. Bola bosilsa sahifa uni
+ * tanlaydi; "joy" rejimida xarita bosilgan nuqta — bolaning uyi.
  *
  * Xarita bir marta yaratiladi, keyin faqat qatlamlar qayta chiziladi —
  * aks holda har o'zgarishda ko'rinish (zoom, surish) boshiga qaytardi.
@@ -147,6 +147,22 @@ function asosiyNuqtalar(markaz: [number, number], nuqtalar: [number, number][]):
 export default function RejaXarita(p: Props) {
     const boxRef = useRef<HTMLDivElement>(null);
     const mapRef = useRef<any>(null);
+    // Oxirgi avtomatik moslash va foydalanuvchi xaritani o'zi surgan/kattalashtirganmi.
+    // Konteyner o'lchami keyin o'zgarsa (sahifa hali chizilayotganda, panel,
+    // telefon burilishi) ko'rinish qayta moslanadi — aks holda xarita juda
+    // uzoqdan ko'rinib, bolalar bir burchakda to'da bo'lib qolardi.
+    const oxirgiMoslash = useRef<{ bounds: any; maxZoom: number } | null>(null);
+    const qolda = useRef(false);
+    const dasturiy = useRef(false);
+    const moslab = (bounds: any, maxZoom: number, animate: boolean) => {
+        const map = mapRef.current;
+        if (!map) return;
+        oxirgiMoslash.current = { bounds, maxZoom };
+        qolda.current = false;
+        dasturiy.current = true;
+        map.fitBounds(bounds, { maxZoom, animate });
+        if (!animate) dasturiy.current = false;
+    };
     const qatlam = useRef<{ yol: any; bola: any; boshqa: any } | null>(null);
     const cb = useRef(p);
     cb.current = p;
@@ -164,13 +180,25 @@ export default function RejaXarita(p: Props) {
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
             attribution: '&copy; OpenStreetMap', maxZoom: 19,
         }).addTo(map);
+        // OSRM ochiq serverining shartlari: manba va "xaritani tuzatish" havolasi.
+        // "Leaflet" belgisi olib tashlandi — telefonda yozuv bir qatorga sig'sin.
+        map.attributionControl.setPrefix(false);
+        map.attributionControl.addAttribution(`yo'llar: <a href="https://project-osrm.org" target="_blank" rel="noopener">OSRM</a> · <a href="https://www.openstreetmap.org/fixthemap" target="_blank" rel="noopener">xaritani tuzatish</a>`);
         qatlam.current = { yol: L.layerGroup().addTo(map), boshqa: L.layerGroup().addTo(map), bola: L.layerGroup().addTo(map) };
         map.on('click', (e: any) => cb.current.onXarita([e.latlng.lat, e.latlng.lng]));
         map.on('zoomend', () => setOlcham(olchamOl(map.getZoom())));
+        map.on('dragstart', () => { qolda.current = true; });
+        map.on('zoomstart', () => { if (!dasturiy.current) qolda.current = true; });
+        map.on('moveend', () => { dasturiy.current = false; });
         mapRef.current = map;
         setTayyor(true);
-        // Konteyner o'lchami o'zgarsa (panel, telefon burilishi) — xarita cho'zilsin.
-        const ro = new ResizeObserver(() => map.invalidateSize());
+        // Konteyner o'lchami o'zgarsa — xarita cho'zilsin; foydalanuvchi o'zi
+        // surmagan bo'lsa ko'rinish ham qayta moslansin.
+        const ro = new ResizeObserver(() => {
+            map.invalidateSize();
+            const m = oxirgiMoslash.current;
+            if (m && !qolda.current && map.getSize().x > 0) moslab(m.bounds, m.maxZoom, false);
+        });
         ro.observe(boxRef.current);
         return () => { ro.disconnect(); map.remove(); mapRef.current = null; qatlam.current = null; };
         // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -245,7 +273,7 @@ export default function RejaXarita(p: Props) {
         if (moslandi.current === p.moslashKaliti) return;
         const nuqtalar = asosiyNuqtalar(p.markaz, p.bolalar.map(b => b.pos));
         moslandi.current = p.moslashKaliti;
-        if (nuqtalar.length > 1) map.fitBounds(L.latLngBounds(nuqtalar).pad(0.12), { maxZoom: 15, animate: true });
+        if (nuqtalar.length > 1) moslab(L.latLngBounds(nuqtalar).pad(0.12), 15, true);
         else map.setView(p.markaz, 13);
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [tayyor, p.moslashKaliti, p.bolalar.length]);
@@ -259,7 +287,7 @@ export default function RejaXarita(p: Props) {
         fokuslandi.current = p.fokus.kalit;
         const n = p.fokus.nuqtalar;
         if (n.length === 1) map.setView(n[0], Math.max(map.getZoom(), 15), { animate: true });
-        else if (n.length > 1) map.fitBounds(L.latLngBounds(n).pad(0.2), { maxZoom: 16, animate: true });
+        else if (n.length > 1) moslab(L.latLngBounds(n).pad(0.2), 16, true);
     }, [tayyor, p.fokus]);
 
     return (

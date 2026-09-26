@@ -8,9 +8,10 @@ import { useConfirm } from '../ConfirmDialog';
 import { toDateStr, toTimeStr } from '../../../lib/lessons.js';
 import { narxHisobla, uyMasofasi, somMatni, tarifMatni } from '../../../lib/transportNarx.js';
 import {
-    reysKorsatkichi, rejasizlarniJoylash, yangidanTaqsimlash, farqlar, kochir, keyingiNavbat, yangiKalit,
-    kalitlarniSaqla, ENG_KOP_NAVBAT,
+    reysKorsatkichi, tartibKorsatkichi, qoshishNarxi, oxirgiBolaDaqiqasi, rejasizlarniJoylash, yangidanTaqsimlash,
+    farqlar, kochir, keyingiNavbat, yangiKalit, kalitlarniSaqla, birXilmi, ENG_KOP_NAVBAT,
 } from '../../../lib/rejaTahrir.js';
+import { YolManbai, togriChiziq } from '../../../lib/yolMasofa.js';
 import { parseLatLng, ZAXIRA_MARKAZ } from '../../lib/mapMarkers';
 import { displayName } from '../../lib/displayName';
 import { jonlimi, qachon } from '../LogisticsMap';
@@ -33,10 +34,30 @@ import type { Car, CarHolati, DayDriver, DayPlan, Korinish, Kun, Qoralama } from
  * O'zgarishlar yuborilmaguncha brauzerda saqlanib turadi (sahifa yangilansa
  * ham yo'qolmaydi) va PUT /api/logistics/day bilan yoziladi. Haydovchi
  * "Qabul qildim" bosgan mashina o'zgarmaydi — bolalar allaqachon unda.
+ *
+ * 2026-09-27: masofa, vaqt, taqsimot va bekatlar tartibi haqiqiy yo'l
+ * bo'yicha (OSRM, lib/yolMasofa.js). Yo'l ma'lumoti kun ochilishi bilan
+ * fonda o'qiladi; olinmasa to'g'ri chiziq bahosi ishlatiladi va bu yozib
+ * qo'yiladi. Mashina kartasi bosilganda ochiladi va xaritada uning yo'li
+ * ko'chalar bo'ylab chiziladi.
  */
 
+/** Bitta sahifa uchun bitta: bir marta o'qilgan yo'l qayta so'ralmaydi (boshqa bo'limga o'tib qaytganda ham). */
+const yolManbai = new YolManbai();
+
+/** 38 → "38 daq", 95 → "1 soat 35 daq"; `toliq` — "1 soat 35 daqiqa". */
+function daqiqaMatni(d: number, toliq = false) {
+    const m = Math.max(0, Math.round(d));
+    const daq = toliq ? 'daqiqa' : 'daq';
+    if (m < 60) return `${m} ${daq}`;
+    const soat = Math.floor(m / 60);
+    const qol = m % 60;
+    return qol ? `${soat} soat ${qol} ${daq}` : `${soat} soat`;
+}
+
 /** Har reysning o'z rangi (haydovchi tartibi + reys raqami) — boshqa reys qo'shilsa ham o'zgarmaydi. */
-const PALITRA = ['#0f766e', '#e11d48', '#2563eb', '#d97706', '#7c3aed', '#16a34a', '#db2777', '#0891b2', '#65a30d', '#9333ea', '#ea580c', '#475569'];
+// Kulrang yo'q: kulrang — mashinasiz bola.
+const PALITRA = ['#0f766e', '#e11d48', '#2563eb', '#d97706', '#7c3aed', '#16a34a', '#db2777', '#0891b2', '#65a30d', '#9333ea', '#ea580c', '#92400e'];
 const reysRangi = (haydovchiTartibi: number, navbat: number) => PALITRA[(haydovchiTartibi + (navbat - 1) * 5) % PALITRA.length];
 /** "DEMO Alijon Norov" → "Alijon". */
 const qisqaIsm = (n: string) => (n || '').replace(/^DEMO\s+/i, '').trim().split(/\s+/)[0] || n;
@@ -276,12 +297,64 @@ export default function RejaTab({ onTarif }: { onTarif?: () => void }) {
     const jamiOrin = faolH.reduce((s, h) => s + (h.transport?.capacity || 0), 0);
     const sigim = useCallback((driverId: number) => haydovchi(driverId)?.transport?.capacity || 0, [haydovchi]);
 
+    // ===================== Yo'l ma'lumoti (OSRM) =====================
+    // Kun ochilishi bilan fonda: markaz va bugun ketadigan / mashinadagi hamma
+    // bolaning uyi orasidagi yo'l vaqtlari. "Haydovchilarga bo'lish" bosilganda
+    // odatda tayyor bo'ladi.
+    const [yolVer, setYolVer] = useState(0);
+    const [yolHolat, setYolHolat] = useState<'bosh' | 'yuklanmoqda' | 'tayyor' | 'xato'>('bosh');
+    const yolNuqtalari = useMemo(() => {
+        const n: [number, number][] = [markaz];
+        for (const id of new Set<number>([...ketadi, ...joylashgan.keys()])) {
+            const p = parseLatLng(joyOl(id));
+            if (p) n.push(p);
+        }
+        return n;
+    }, [ketadi, joylashgan, joyOl, markaz]);
+    const yolImzo = useMemo(() => yolNuqtalari.map(p => `${p[0].toFixed(5)},${p[1].toFixed(5)}`).sort().join(';'), [yolNuqtalari]);
+    const yolniOqi = useCallback(async () => {
+        setYolHolat('yuklanmoqda');
+        const r = await yolManbai.tayyorla(yolNuqtalari);
+        setYolVer(v => v + 1);
+        setYolHolat(r.ok ? 'tayyor' : 'xato');
+        return r.ok;
+    }, [yolNuqtalari]);
+    useEffect(() => {
+        if (yolNuqtalari.length < 2) return;
+        // Boshqa bo'limdan qaytganda — yo'llar keshda (sahifa uchun bitta manba).
+        if (yolManbai.toliqmi(yolNuqtalari)) { setYolHolat('tayyor'); setYolVer(v => v || 1); return; }
+        const t = setTimeout(() => { yolniOqi(); }, 400);
+        return () => clearTimeout(t);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [yolImzo]);
+    // Yangi juftlar kelganda yangi o'lchagich — tartib va km lar qayta hisoblanadi.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    const olchagich = useMemo(() => (yolVer ? yolManbai.olchagich() : togriChiziq), [yolVer]);
+    const yolBilan = yolVer > 0 && yolHolat !== 'xato';
+
+    /** Bekatlar tartibi (yo'l bo'yicha) — bir xil bolalar to'plami uchun qayta hisoblanmaydi. */
+    const tartibKesh = useRef(new Map<string, number[]>());
+    const yolTartibi = useCallback((ids: number[]) => {
+        const kalit = `${yolVer}|${markaz.join(',')}|` + [...ids].sort((a, b) => a - b).map(id => `${id}@${joyOl(id) || ''}`).join(',');
+        const kesh = tartibKesh.current;
+        let t = kesh.get(kalit);
+        if (!t) {
+            t = reysKorsatkichi(ids, joyOl, markaz, olchagich).tartib as number[];
+            if (kesh.size > 400) kesh.clear();
+            kesh.set(kalit, t);
+        }
+        return t;
+    }, [yolVer, markaz, joyOl, olchagich]);
+
     // ===================== Mashinalar ko'rinishi =====================
     const bolaNarxi = useCallback((id: number) => narxHisobla(tarif, uyMasofasi(markaz, joyOl(id))).narx, [tarif, markaz, joyOl]);
     const carlar = useMemo(() => cars.filter(c => c.studentIds.length || !c.routeId || qulf.has(c.key)).map(c => {
         const plan = c.routeId ? planMap.get(c.routeId) || null : null;
         const qulfli = qulf.has(c.key);
-        const tartib: number[] = qulfli && plan ? plan.stops.map(s => s.studentId) : reysKorsatkichi(c.studentIds, joyOl, markaz).tartib;
+        // Yuborilgan va o'zgarmagan reys — haydovchidagi tartib; aks holda yo'l bo'yicha yangi tartib.
+        const saqlangan = plan && (qulfli || birXilmi(plan.stops.map(s => s.studentId), c.studentIds));
+        const tartib: number[] = saqlangan ? plan!.stops.map(s => s.studentId) : yolTartibi(c.studentIds);
+        const yol = tartibKorsatkichi(tartib, joyOl, markaz, olchagich);
         const narx = (id: number) => {
             const st = plan?.stops.find(s => s.studentId === id);
             return st && st.narx !== undefined ? st.narx : bolaNarxi(id);
@@ -294,16 +367,19 @@ export default function RejaTab({ onTarif }: { onTarif?: () => void }) {
         else holat = 'yuborilgan';
         const h = haydovchi(c.driverId);
         return {
-            ...c, plan, qulfli, tartib, narx, holat,
+            ...c, plan, qulfli, tartib, narx, holat, km: yol.km, daqiqa: yol.daqiqa, qaytish: yol.qaytish,
             rang: reysRangi(hTartib.get(c.driverId) ?? 0, c.navbat), sigim: sigim(c.driverId),
             haydovchiNomi: h?.name || plan?.driver?.name || 'Haydovchi', telegram: h ? h.telegram : !!plan?.driver?.telegram,
             mashina: mashinaMatni(h?.transport || plan?.transport),
         };
-    }), [cars, planMap, qulf, joyOl, markaz, farq, bolaNarxi, hTartib, sigim, haydovchi]);
+    }), [cars, planMap, qulf, joyOl, markaz, farq, bolaNarxi, hTartib, sigim, haydovchi, yolTartibi, olchagich]);
     type CarV = typeof carlar[number];
     const carByKey = useMemo(() => new Map(carlar.map(c => [c.key, c])), [carlar]);
     const reysNomi = (c: CarV) => `${qisqaIsm(c.haydovchiNomi)}${c.navbat > 1 ? ` · ${c.navbat}-reys` : ''}`;
     const rejaBor = carlar.some(c => c.studentIds.length);
+    /** Hamma bola taxminan qachon uyda: har haydovchi reyslari ketma-ket (reja boshlanganidan). */
+    const hammasiUyda = useMemo(() => oxirgiBolaDaqiqasi(carlar.filter(c => c.studentIds.length)
+        .map(c => ({ driverId: c.driverId, navbat: c.navbat, daqiqa: c.daqiqa, qaytish: c.qaytish }))), [carlar]);
 
     // ===================== Xarita =====================
     const [tanlangan, setTanlangan] = useState<number | null>(null);
@@ -340,11 +416,25 @@ export default function RejaTab({ onTarif }: { onTarif?: () => void }) {
     }, [carlar, mashinasiz, bolaMap, fokusKey]);
 
     // Yo'l chizig'i — faqat tanlangan haydovchiniki (hammasiniki chalkash ko'rinardi).
-    const xYollar: XYol[] = useMemo(() => {
+    // Ko'chalar bo'ylab (OSRM); kelguncha yoki olinmasa — uzuq to'g'ri chiziq.
+    const fokusYoli = useMemo(() => {
         const c = fokusKey ? carByKey.get(fokusKey) : null;
-        if (!c || !c.studentIds.length) return [];
-        return [{ key: c.key, rang: c.rang, uzuq: false, xira: false, nuqtalar: [markaz, ...c.tartib.map(id => parseLatLng(joyOl(id))).filter(Boolean) as [number, number][]] }];
+        if (!c || !c.studentIds.length) return null;
+        const nuqtalar = [markaz, ...c.tartib.map(id => parseLatLng(joyOl(id))).filter(Boolean) as [number, number][]];
+        return { c, nuqtalar, kalit: nuqtalar.map(n => n.join(',')).join(';') };
     }, [fokusKey, carByKey, markaz, joyOl]);
+    const [chiziqlar, setChiziqlar] = useState<Record<string, [number, number][] | null>>({});
+    useEffect(() => {
+        if (!fokusYoli || fokusYoli.nuqtalar.length < 2 || fokusYoli.kalit in chiziqlar) return;
+        const { kalit, nuqtalar } = fokusYoli;
+        yolManbai.chiziq(nuqtalar).then(g => setChiziqlar(x => ({ ...x, [kalit]: g })));
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [fokusYoli?.kalit]);
+    const xYollar: XYol[] = useMemo(() => {
+        if (!fokusYoli || fokusYoli.nuqtalar.length < 2) return [];
+        const g = chiziqlar[fokusYoli.kalit];
+        return [{ key: fokusYoli.c.key, rang: fokusYoli.c.rang, uzuq: !g, xira: false, nuqtalar: g || fokusYoli.nuqtalar }];
+    }, [fokusYoli, chiziqlar]);
 
     const xHaydovchilar = useMemo(() => haydovchilar.map(h => ({ id: h.id, name: h.name, rang: reysRangi(hTartib.get(h.id) ?? 0, 1), location: h.location })), [haydovchilar, hTartib]);
 
@@ -360,10 +450,11 @@ export default function RejaTab({ onTarif }: { onTarif?: () => void }) {
     const haydovchiniKorsat = (key: string) => {
         if (fokusKey === key) { setFokusKey(null); return; }
         setFokusKey(key);
+        // Ochilgan karta ro'yxatda ko'rinsin (xaritadagi tugmadan ochilganda ham).
+        requestAnimationFrame(() => document.getElementById(`reja-karta-${key}`)?.scrollIntoView({ behavior: 'smooth', block: 'nearest' }));
         const c = carByKey.get(key);
         const n = (c?.studentIds || []).map(id => parseLatLng(joyOl(id))).filter(Boolean) as [number, number][];
         if (n.length) setFokus({ kalit: `c${key}-${Date.now()}`, nuqtalar: [markaz, ...n] });
-        xaritagaOt();
     };
 
     // ===================== Amallar =====================
@@ -416,14 +507,28 @@ export default function RejaTab({ onTarif }: { onTarif?: () => void }) {
         if (!faolH.length) { showNotification("Ishlaydigan haydovchi yo'q (yoki mashinasining sig'imi kiritilmagan)", 'error'); return; }
         const bor = ochiqCars.some(c => c.studentIds.length);
         if (qaytadan && !await confirm("Hamma bola haydovchilarga qaytadan bo'linadi (qo'lda qilgan o'zgarishlaringiz ham). Davom etasizmi?")) return;
-        const args = { markaz, cars, rejasiz: mashinasiz, joyOl, qulf, haydovchilar: faolH.map(h => ({ id: h.id, capacity: h.transport!.capacity })) };
-        const r = (qaytadan || !bor) ? yangidanTaqsimlash(args) : rejasizlarniJoylash(args);
-        let yangi: Car[] = r.cars.filter((c: Car) => !qulf.has(c.key));
-        yangi = kalitlarniSaqla(yangi, ochiqCars).filter(c => c.studentIds.length || c.routeId);
-        carsniSaqla(yangi);
-        setFokusKey(null);
-        setMoslash(m => m + 1);
-        if (r.sigmagan.length) showNotification(`${r.sigmagan.length} ta bolaga joy yetmadi — ular «Mashinasiz qoldi» ro'yxatida`, 'info');
+        setBand('bolish');
+        try {
+            // Yo'l ma'lumoti hali to'liq bo'lmasa — kutamiz (odatda fonda allaqachon o'qilgan).
+            // Yaqinda olinmagan bo'lsa qayta kutmaymiz — taxminiy bo'linadi, "qayta urinish" bor.
+            let o = olchagich;
+            if (!yolManbai.toliqmi(yolNuqtalari) && yolHolat !== 'xato') {
+                await yolniOqi();
+                o = yolManbai.olchagich();
+            }
+            // Tugma "Bo'linmoqda…" bo'lib chizilishiga ulgursin — hisob bir soniyagacha.
+            await new Promise(r => setTimeout(r, 40));
+            const args = { markaz, cars, rejasiz: mashinasiz, joyOl, qulf, olchagich: o, haydovchilar: faolH.map(h => ({ id: h.id, capacity: h.transport!.capacity })) };
+            const r = (qaytadan || !bor) ? yangidanTaqsimlash(args) : rejasizlarniJoylash(args);
+            let yangi: Car[] = r.cars.filter((c: Car) => !qulf.has(c.key));
+            yangi = kalitlarniSaqla(yangi, ochiqCars).filter(c => c.studentIds.length || c.routeId);
+            carsniSaqla(yangi);
+            setFokusKey(null);
+            setMoslash(m => m + 1);
+            if (r.sigmagan.length) showNotification(`${r.sigmagan.length} ta bolaga joy yetmadi — ular «Mashinasiz qoldi» ro'yxatida`, 'info');
+        } finally {
+            setBand('');
+        }
     };
 
     // ===================== Server amallari =====================
@@ -440,7 +545,9 @@ export default function RejaTab({ onTarif }: { onTarif?: () => void }) {
                 headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
                 body: JSON.stringify({
                     schoolId, date: sana,
-                    cars: ochiqCars.filter(c => c.studentIds.length).map(c => ({ routeId: c.routeId, driverId: c.driverId, studentIds: c.studentIds })),
+                    // Bekatlar admin ko'rgan tartibda (yo'l bo'yicha) — haydovchiga aynan shu boradi.
+                    cars: ochiqCars.filter(c => c.studentIds.length).map(c => ({ routeId: c.routeId, driverId: c.driverId, studentIds: carByKey.get(c.key)?.tartib || c.studentIds })),
+                    tartibli: true,
                 }),
             });
             const d = await r.json().catch(() => ({}));
@@ -582,7 +689,7 @@ export default function RejaTab({ onTarif }: { onTarif?: () => void }) {
 
                     {/* Kim qaysi rangda — bosilsa o'sha haydovchining bolalari va yo'li */}
                     {!joyRejim && rejaBor && (
-                        <div className="absolute bottom-3 left-3 right-14 z-30 pointer-events-none">
+                        <div className="absolute bottom-6 left-3 right-14 z-30 pointer-events-none">
                             <div className="pointer-events-auto flex items-center gap-1.5 overflow-x-auto pb-0.5 w-fit max-w-full">
                                 {carlar.filter(c => c.studentIds.length).map(c => {
                                     const faol = fokusKey === c.key;
@@ -723,22 +830,26 @@ export default function RejaTab({ onTarif }: { onTarif?: () => void }) {
                         )}
 
                         {faolH.length > 0 && ketadi.length > 0 && (
-                            <p className={`mt-2.5 text-[12px] font-bold ${ketadi.length <= jamiOrin ? 'text-emerald-600' : 'text-amber-600'}`}>
-                                {ketadi.length} bola · {jamiOrin} o'rin — {ketadi.length <= jamiOrin ? 'joy yetadi' : "joy yetmaydi, ba'zi haydovchi ikki marta qatnaydi"}
+                            <p className={`mt-2.5 text-[12px] font-bold ${ketadi.length <= jamiOrin ? 'text-emerald-600' : ketadi.length <= jamiOrin * ENG_KOP_NAVBAT ? 'text-matn-sokin' : 'text-amber-600'}`}>
+                                {ketadi.length} bola · {jamiOrin} o'rin — {ketadi.length <= jamiOrin
+                                    ? 'bitta reysda hammasi sig\'adi'
+                                    : ketadi.length <= jamiOrin * ENG_KOP_NAVBAT
+                                        ? `bir reysga sig'maydi, haydovchilar ${Math.ceil(ketadi.length / jamiOrin)} martagacha qatnaydi`
+                                        : `${ENG_KOP_NAVBAT} reysda ham ${ketadi.length - jamiOrin * ENG_KOP_NAVBAT} ta bolaga joy yetmaydi — haydovchi qo'shing`}
                             </p>
                         )}
 
                         {tahrir && (
                             <div className="mt-3 space-y-2">
                                 {!rejaBor && (
-                                    <button onClick={() => bolish(false)} disabled={!bolishMumkin}
+                                    <button onClick={() => bolish(false)} disabled={!bolishMumkin || !!band}
                                         className="w-full h-12 rounded-2xl bg-brand hover:bg-brand-dark disabled:opacity-40 text-white text-[14px] font-extrabold flex items-center justify-center gap-2 shadow-sm cursor-pointer">
-                                        <Users size={17} /> Haydovchilarga bo'lish
+                                        {band === 'bolish' ? <><Loader2 size={17} className="animate-spin" /> Yo'llar bo'yicha bo'linmoqda…</> : <><Users size={17} /> Haydovchilarga bo'lish</>}
                                     </button>
                                 )}
                                 {rejaBor && ochiqCars.some(c => c.studentIds.length) && (
-                                    <button onClick={() => bolish(true)} className="w-full text-center text-[12px] font-bold text-matn-xira hover:text-brand underline cursor-pointer">
-                                        Hammasini qaytadan bo'lish
+                                    <button onClick={() => bolish(true)} disabled={!!band} className="w-full text-center text-[12px] font-bold text-matn-xira hover:text-brand underline cursor-pointer disabled:opacity-60">
+                                        {band === 'bolish' ? "Bo'linmoqda…" : "Hammasini qaytadan bo'lish"}
                                     </button>
                                 )}
                             </div>
@@ -750,17 +861,29 @@ export default function RejaTab({ onTarif }: { onTarif?: () => void }) {
 
                     {/* ---------- 3. Taqsimot ---------- */}
                     {(rejaBor || carlar.length > 0) && (
-                        <Qadam n={3} sarlavha="Taqsimot" izoh="bolani bosing — boshqa mashinaga o'tkazish">
+                        <Qadam n={3} sarlavha="Taqsimot" izoh="mashinani bosing — bolalari va yo'li">
+                            {rejaBor && (
+                                <div className="-mt-1 mb-2.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-[12px] font-bold text-matn-sokin">
+                                    <span>{carlar.filter(c => c.studentIds.length).length} reys · {joylashgan.size} bola</span>
+                                    {hammasiUyda > 0 && <span>· hammasi uyda ≈ {daqiqaMatni(hammasiUyda, true)}da</span>}
+                                    {yolHolat === 'yuklanmoqda' && <span className="text-matn-xira flex items-center gap-1"><Loader2 size={12} className="animate-spin" /> yo'llar o'qilmoqda</span>}
+                                    {yolHolat === 'xato' && (
+                                        <button onClick={() => yolniOqi()} className="text-amber-600 hover:underline cursor-pointer text-left">
+                                            · yo'l ma'lumoti olinmadi, km va vaqt taxminiy — qayta urinish
+                                        </button>
+                                    )}
+                                </div>
+                            )}
                             <div className="space-y-2.5">
                                 {carlar.map(c => mashinaKarta(c))}
                                 {mashinasiz.length > 0 && (
                                     <div className="rounded-2xl border-2 border-dashed border-amber-300 dark:border-amber-900/60 p-3">
                                         <p className="text-[13px] font-black text-amber-700 dark:text-amber-400">Mashinasiz qoldi — {mashinasiz.length} ta</p>
-                                        <p className="text-[11.5px] font-bold text-matn-xira mt-0.5 mb-2">Joy yetmadi yoki keyin qo'shildi. Tizim o'zi joylasin yoki bolani bosib mashinani tanlang.</p>
+                                        <p className="text-[11.5px] font-bold text-matn-xira mt-0.5 mb-2">Joy yetmadi (markazga eng yaqinlari qoladi) yoki keyin qo'shildi. Tizim o'zi joylasin yoki bolani bosib mashinani tanlang.</p>
                                         {tahrir && faolH.length > 0 && (
-                                            <button onClick={() => bolish(false)}
-                                                className="w-full h-10 mb-2 rounded-xl bg-brand hover:bg-brand-dark text-white text-[13px] font-extrabold flex items-center justify-center gap-2 cursor-pointer">
-                                                <Users size={15} /> Bo'sh joyi bor mashinalarga joylash
+                                            <button onClick={() => bolish(false)} disabled={!!band}
+                                                className="w-full h-10 mb-2 rounded-xl bg-brand hover:bg-brand-dark disabled:opacity-60 text-white text-[13px] font-extrabold flex items-center justify-center gap-2 cursor-pointer">
+                                                {band === 'bolish' ? <Loader2 size={15} className="animate-spin" /> : <Users size={15} />} Bo'sh joyi bor mashinalarga joylash
                                             </button>
                                         )}
                                         <div className="-mx-1 max-h-[260px] overflow-y-auto">
@@ -842,13 +965,15 @@ export default function RejaTab({ onTarif }: { onTarif?: () => void }) {
                 : { matn: 'Botga ulanmagan', cls: 'bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-950/30 dark:text-amber-300 dark:border-amber-900/50' },
         };
         const hc = holatlar[c.holat];
-        const fokusda = fokusKey === c.key;
+        // Ochiq karta = xaritada tanlangan mashina: bolalari ro'yxati va yo'li ko'rinadi.
+        const ochiq = fokusKey === c.key;
         return (
-            <div key={c.key} className={`rounded-2xl border overflow-hidden ${fokusda ? 'shadow-md' : ''}`} style={{ borderColor: fokusda ? c.rang : undefined }}>
+            <div key={c.key} id={`reja-karta-${c.key}`} className={`rounded-2xl border overflow-hidden transition-shadow scroll-mt-3 ${ochiq ? 'shadow-md' : ''}`} style={{ borderColor: ochiq ? c.rang : undefined }}>
                 <div className="flex">
                     <div className="w-1.5 shrink-0" style={{ background: c.rang }} />
                     <div className="flex-1 min-w-0">
-                        <button onClick={() => haydovchiniKorsat(c.key)} className="w-full px-3 pt-2.5 pb-2 text-left cursor-pointer" title="Xaritada ko'rsatish">
+                        <button onClick={() => haydovchiniKorsat(c.key)} aria-expanded={ochiq}
+                            className="w-full px-3 pt-2.5 pb-2.5 text-left cursor-pointer hover:bg-ichki/60 transition-colors">
                             <span className="flex items-start gap-2">
                                 <span className="min-w-0 flex-1">
                                     <span className="block text-[14px] font-black text-matn truncate">{displayName(c.haydovchiNomi)}{c.navbat > 1 && <span className="text-matn-xira"> · {c.navbat}-reys</span>}</span>
@@ -862,25 +987,43 @@ export default function RejaTab({ onTarif }: { onTarif?: () => void }) {
                                 </span>
                                 <span className={`text-[12px] font-black shrink-0 ${toldi > 1 ? 'text-rose-600' : 'text-matn-2'}`}>{c.studentIds.length} / {c.sigim || '?'} o'rin</span>
                             </span>
+                            {c.studentIds.length > 0 && (
+                                <span className="mt-1.5 flex items-center gap-2 text-[11.5px] font-bold text-matn-sokin">
+                                    <span className="min-w-0 flex-1 truncate">
+                                        {c.km > 0 ? `${c.km} km · ${daqiqaMatni(c.daqiqa)}` : `${c.studentIds.length} ta bola`}
+                                        {c.km > 0 && !yolBilan && <span className="text-matn-xira"> · taxminan</span>}
+                                    </span>
+                                    <span className="shrink-0 flex items-center gap-0.5 text-brand font-extrabold">
+                                        {ochiq ? 'Yopish' : 'Bolalar'} <ChevronDown size={14} className={`transition-transform ${ochiq ? 'rotate-180' : ''}`} />
+                                    </span>
+                                </span>
+                            )}
                         </button>
-                        <div className="px-1 pb-1.5">
-                            {c.tartib.map(id => bolaQator(id, c))}
-                        </div>
-                        {tahrir && c.plan && !c.plan.run?.finishedAt && (c.holat === 'yuborilgan' || c.holat === 'yolda') && (
-                            <div className="px-3 pb-2.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-[11.5px] font-bold text-matn-xira">
-                                <span>Haydovchi o'rniga:</span>
-                                {!c.plan.run?.startedAt && (
-                                    <button onClick={() => rejaAmali(c, 'accept')} disabled={!!band} className="text-brand hover:underline cursor-pointer disabled:opacity-50">
-                                        {band === `accept-${c.key}` ? <Loader2 size={12} className="animate-spin inline" /> : 'Qabul qildim'}
-                                    </button>
-                                )}
-                                {c.plan.run?.startedAt && (
-                                    <button onClick={() => rejaAmali(c, 'deliver')} disabled={!!band} className="text-emerald-600 hover:underline cursor-pointer disabled:opacity-50">
-                                        {band === `deliver-${c.key}` ? <Loader2 size={12} className="animate-spin inline" /> : 'Yetkazdim'}
-                                    </button>
-                                )}
-                                {!c.telegram && <span className="text-amber-600 flex items-center gap-1"><Bot size={12} /> botga ulanmagan</span>}
-                            </div>
+                        {ochiq && (
+                            <>
+                                <div className="px-1 pb-1.5 border-t border-chiziq-mayin pt-1">
+                                    {c.tartib.map(id => bolaQator(id, c))}
+                                </div>
+                                <div className="px-3 pb-2.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-[11.5px] font-bold text-matn-xira">
+                                    <button onClick={xaritagaOt} className="lg:hidden text-brand hover:underline cursor-pointer">Xaritada ko'rish ↑</button>
+                                    {tahrir && c.plan && !c.plan.run?.finishedAt && (c.holat === 'yuborilgan' || c.holat === 'yolda') && (
+                                        <>
+                                            <span>Haydovchi o'rniga:</span>
+                                            {!c.plan.run?.startedAt && (
+                                                <button onClick={() => rejaAmali(c, 'accept')} disabled={!!band} className="text-brand hover:underline cursor-pointer disabled:opacity-50">
+                                                    {band === `accept-${c.key}` ? <Loader2 size={12} className="animate-spin inline" /> : 'Qabul qildim'}
+                                                </button>
+                                            )}
+                                            {c.plan.run?.startedAt && (
+                                                <button onClick={() => rejaAmali(c, 'deliver')} disabled={!!band} className="text-emerald-600 hover:underline cursor-pointer disabled:opacity-50">
+                                                    {band === `deliver-${c.key}` ? <Loader2 size={12} className="animate-spin inline" /> : 'Yetkazdim'}
+                                                </button>
+                                            )}
+                                            {!c.telegram && <span className="text-amber-600 flex items-center gap-1"><Bot size={12} /> botga ulanmagan</span>}
+                                        </>
+                                    )}
+                                </div>
+                            </>
                         )}
                     </div>
                 </div>
@@ -901,6 +1044,13 @@ export default function RejaTab({ onTarif }: { onTarif?: () => void }) {
         // Qaysi mashinalarga qo'yish mumkin: yo'lga chiqmaganlari + hali mashinasi yo'q ishlaydigan haydovchilar.
         const ochiqlar = carlar.filter(x => !x.qulfli);
         const yangiH = faolH.filter(hh => !ochiqlar.some(x => x.driverId === hh.id) && keyingiNavbat(cars, hh.id) <= ENG_KOP_NAVBAT);
+        // Qaysi mashinaga qo'shsak yo'l eng kam uzayadi — shu "eng mos" (joyi borlari orasida).
+        const qoshish = [
+            ...ochiqlar.filter(x => x.key !== c?.key && !(x.sigim > 0 && x.studentIds.length >= x.sigim)).map(x => [x.key, qoshishNarxi(id, x.tartib, joyOl, markaz, olchagich)] as const),
+            ...yangiH.map(hh => [`h:${hh.id}`, qoshishNarxi(id, [], joyOl, markaz, olchagich)] as const),
+        ].filter(([, d]) => d !== null) as [string, number][];
+        const engMos = qoshish.length > 1 ? qoshish.reduce((a, b2) => (b2[1] < a[1] ? b2 : a))[0] : null;
+        const mosBelgi = <span className="ml-1 px-1.5 py-px rounded-md bg-emerald-600 text-white text-[9.5px] font-black align-middle">eng mos</span>;
         return (
             <div className={`${karta} shadow-xl p-3.5 space-y-3`}>
                 <div className="flex items-start gap-3">
@@ -915,7 +1065,7 @@ export default function RejaTab({ onTarif }: { onTarif?: () => void }) {
                         </p>
                         <p className="text-[12px] font-bold text-matn-sokin mt-0.5">
                             {[b.address, km !== null ? `markazdan ${km} km` : null].filter(Boolean).join(' · ')}
-                            {narx !== null && narx !== undefined && <> · <b className="text-matn-2">{somMatni(narx)} so'm</b></>}
+                            {narx !== null && narx !== undefined && <> · <b className="text-matn-2 whitespace-nowrap">{somMatni(narx)} so'm</b></>}
                         </p>
                         {b.phone && (
                             <a href={`tel:${b.phone.replace(/\s/g, '')}`} className="inline-flex items-center gap-1 mt-1 text-[12px] font-extrabold text-brand hover:underline">
@@ -962,7 +1112,7 @@ export default function RejaTab({ onTarif }: { onTarif?: () => void }) {
                                                 style={bu ? { background: x.rang } : undefined}>
                                                 <span className="w-3.5 h-3.5 rounded-full border-2 border-white shrink-0" style={{ background: x.rang }} />
                                                 <span className="min-w-0 flex-1">
-                                                    <span className={`block text-[12.5px] font-extrabold truncate ${bu ? '' : 'text-matn'}`}>{reysNomi(x)}</span>
+                                                    <span className={`block text-[12.5px] font-extrabold truncate ${bu ? '' : 'text-matn'}`}>{reysNomi(x)}{engMos === x.key && mosBelgi}</span>
                                                     <span className={`block text-[11px] font-bold ${bu ? 'text-white/85' : toliq ? 'text-rose-600' : 'text-matn-xira'}`}>{bu ? 'hozir shu yerda' : `${x.studentIds.length}/${x.sigim || '?'}${toliq ? ' · to\'la' : ''}`}</span>
                                                 </span>
                                             </button>
@@ -973,7 +1123,7 @@ export default function RejaTab({ onTarif }: { onTarif?: () => void }) {
                                             className="min-h-[44px] px-2.5 py-1.5 rounded-xl border border-chiziq text-left flex items-center gap-2 hover:border-brand cursor-pointer">
                                             <span className="w-3.5 h-3.5 rounded-full border-2 border-white shrink-0" style={{ background: reysRangi(hTartib.get(hh.id) ?? 0, keyingiNavbat(cars, hh.id)) }} />
                                             <span className="min-w-0 flex-1">
-                                                <span className="block text-[12.5px] font-extrabold text-matn truncate">{qisqaIsm(hh.name)}</span>
+                                                <span className="block text-[12.5px] font-extrabold text-matn truncate">{qisqaIsm(hh.name)}{engMos === `h:${hh.id}` && mosBelgi}</span>
                                                 <span className="block text-[11px] font-bold text-matn-xira">bo'sh · {hh.transport?.capacity} o'rin</span>
                                             </span>
                                         </button>
