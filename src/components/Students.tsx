@@ -596,10 +596,10 @@ export default function Students() {
     // unda yo'q edi: tez filtr chipi bosilganda chip yonar, lekin useMemo eski
     // natijani qaytaraverardi va jadval o'zgarmasdi. "Kelmayotgan" chipi
     // davomatdan hisoblanadi, shuning uchun `attendances` ham kerak.
-    // Kurs → ustoz. Qidiruv qatoriga ustoz ismi yozilsa uning o'quvchilari
-    // chiqadi; "O'qituvchi" filtri ham shu xaritadan foydalanadi. Ilgari qidiruv
-    // faqat o'quvchining o'z ismi va telefonini ko'rardi, ustoz bo'yicha
-    // o'quvchini topishning umuman yo'li yo'q edi.
+    // Kurs → ustoz — faqat "O'qituvchi" filtri uchun. Qidiruv qatori ustoz
+    // ismiga QARAMAYDI (egasi, 2026-09-26: "o'quvchilarda qidirganda ustoz
+    // chiqmaydi"): "hasan" yozilganda Hasan ismli o'quvchi o'rniga ustozi
+    // Suvonqulov Hasan bo'lgan 216 ta o'quvchi chiqqan edi.
     const groupTeacher = useMemo(() => {
         const tName = new Map<number, string>();
         (teachers || []).forEach(tc => tName.set(tc.id, (tc.name || '').toLowerCase()));
@@ -622,8 +622,7 @@ export default function Students() {
         const lowerSearch = search.trim().toLowerCase();
         const matchesSearch = (s.name || '').toLowerCase().includes(lowerSearch) ||
                (s.phone || '').toLowerCase().includes(lowerSearch) ||
-               (s.studentSchool || '').toLowerCase().includes(lowerSearch) ||
-               (lowerSearch.length >= 2 && (s.groups || []).some(gid => (groupTeacher.get(gid)?.name || '').includes(lowerSearch)));
+               (s.studentSchool || '').toLowerCase().includes(lowerSearch);
         const matchesTeacher = !filters.teacherId
             || (s.groups || []).some(gid => groupTeacher.get(gid)?.id === Number(filters.teacherId));
 
@@ -695,34 +694,10 @@ export default function Students() {
 
     // Saralash filtrdan keyin: Excel eksporti ham ekrandagi tartibda chiqadi.
     const absences = useMemo(() => absenceCounts(attendances), [attendances]);
-    // Qidiruv so'zi o'quvchining o'zida (ismi, telefoni, maktabi) topilmay,
-    // faqat ustozining ismida topilganlar — ular ro'yxat oxirida, belgisi bilan.
-    // Egasi (2026-09-25) "hasan" deb qidirganda Hasan ismli o'quvchi o'rniga
-    // ustozi Suvonqulov Hasan bo'lgan 221 ta o'quvchi alifbo bo'yicha chiqdi.
-    const ustozOrqali = useMemo(() => {
-        const q = search.trim().toLowerCase();
-        const out = new Map<number, string>();
-        if (q.length < 2) return out;
-        const tNomi = new Map((teachers || []).map(tc => [tc.id, tc.name || '']));
-        for (const s of filteredStudents) {
-            const ozida = (s.name || '').toLowerCase().includes(q) || (s.phone || '').toLowerCase().includes(q)
-                || (s.studentSchool || '').toLowerCase().includes(q);
-            if (ozida) continue;
-            const g = (s.groups || []).map(gid => groupTeacher.get(gid)).find(v => v && v.name.includes(q));
-            if (g) out.set(s.id, displayName(tNomi.get(g.id) || ''));
-        }
-        return out;
-    }, [filteredStudents, search, groupTeacher, teachers]);
-
-    const sortedStudents = useMemo(() => {
-        const tartib = sortStudents(filteredStudents, sortBy, { absences, attRate });
-        if (!ustozOrqali.size) return tartib;
-        return [...tartib.filter(s => !ustozOrqali.has(s.id)), ...tartib.filter(s => ustozOrqali.has(s.id))];
-    }, [filteredStudents, sortBy, absences, attRate, ustozOrqali]);
-    const ozidaTopilgan = sortedStudents.length - ustozOrqali.size;
-    const ustozNomlari = [...new Set(ustozOrqali.values())].filter(Boolean);
-    /** Shu sahifada ustozi orqali topilganlarning birinchisi — oldidan ajratgich. */
-    const birinchiUstozOrqali = (list: typeof sortedStudents) => list.find(s => ustozOrqali.has(s.id))?.id;
+    const sortedStudents = useMemo(
+        () => sortStudents(filteredStudents, sortBy, { absences, attRate }),
+        [filteredStudents, sortBy, absences, attRate]
+    );
 
     // The table used to render every match at once — 266 rows, each with a photo.
     const PER_PAGE = 50;
@@ -825,7 +800,7 @@ export default function Students() {
                         <Search size={14} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-matn-xira" />
                         <input
                             type="text"
-                            placeholder={t('search_students_or_teacher')}
+                            placeholder={t('search_students_name_phone')}
                             value={search}
                             onChange={e => setSearch(e.target.value)}
                             className="w-full pl-9 pr-4 py-2.5 bg-ichki border border-chiziq rounded-xl text-[13px] text-matn outline-none focus:border-brand transition-colors"
@@ -1012,10 +987,7 @@ export default function Students() {
                 <div className="flex flex-wrap items-center justify-between gap-3 px-4 py-3 border-b border-chiziq-mayin">
                     <p className="text-[13px] text-matn-2">
                         {(activeFilterCount > 0 || search || quickFilter !== 'all') ? (
-                            <>Topildi: <span className="num font-bold text-brand">{ustozOrqali.size ? ozidaTopilgan : sortedStudents.length}</span> ta o'quvchi
-                                {ustozOrqali.size > 0 && (
-                                    <span className="text-matn-sokin"> · yana <span className="num">{ustozOrqali.size}</span> tasi ustozi {ustozNomlari.slice(0, 2).join(', ')} bo'yicha (pastda)</span>
-                                )}
+                            <>Topildi: <span className="num font-bold text-brand">{sortedStudents.length}</span> ta o'quvchi
                                 <span className="text-matn-xira"> · jami <span className="num">{students.length}</span></span></>
                         ) : (
                             <>Jami: <span className="num font-bold text-matn">{students.length}</span> ta o'quvchi</>
@@ -1037,11 +1009,7 @@ export default function Students() {
                     {visibleStudents.map(student => {
                         const balance = student.balance || 0;
                         return (
-                            <React.Fragment key={student.id}>
-                            {student.id === birinchiUstozOrqali(visibleStudents) && (
-                                <div className="px-4 py-2 bg-ichki text-[11px] font-bold text-matn-sokin">Ustozi bo'yicha topilganlar — {ustozNomlari.join(', ')}</div>
-                            )}
-                            <button onClick={() => navigate(`/students/${student.id}`)}
+                            <button key={student.id} onClick={() => navigate(`/students/${student.id}`)}
                                 className="w-full flex items-center gap-3 p-4 text-left hover:hover:bg-ichki transition-colors cursor-pointer">
                                 <div className="w-11 h-11 rounded-xl bg-ichki border border-chiziq flex items-center justify-center text-brand font-bold text-xs overflow-hidden shrink-0">
                                     {student.photo
@@ -1050,10 +1018,7 @@ export default function Students() {
                                 </div>
                                 <div className="flex-1 min-w-0">
                                     <p className="text-xs font-bold text-matn truncate">{student.name}</p>
-                                    <p className="text-[12px] text-matn-xira tabular-nums mt-0.5">
-                                        {student.phone || "telefon yo'q"}
-                                        {ustozOrqali.has(student.id) && <span className="ml-1.5 text-brand">· ustozi: {ustozOrqali.get(student.id)}</span>}
-                                    </p>
+                                    <p className="text-[12px] text-matn-xira tabular-nums mt-0.5">{student.phone || "telefon yo'q"}</p>
                                 </div>
                                 {balansKorinadi && (
                                 <div className="text-right shrink-0">
@@ -1066,7 +1031,6 @@ export default function Students() {
                                 </div>
                                 )}
                             </button>
-                            </React.Fragment>
                         );
                     })}
                     {visibleStudents.length === 0 && (
@@ -1100,15 +1064,7 @@ export default function Students() {
                         </thead>
                         <tbody className="divide-y divide-chiziq-mayin">
                             {visibleStudents.map((student) => (
-                                <React.Fragment key={student.id}>
-                                {student.id === birinchiUstozOrqali(visibleStudents) && (
-                                    <tr className="bg-ichki">
-                                        <td colSpan={balansKorinadi ? 7 : 6} className="px-4 py-2 text-[12px] font-bold text-matn-sokin">
-                                            Ustozi bo'yicha topilganlar — {ustozNomlari.join(', ')} kurslaridagi o'quvchilar
-                                        </td>
-                                    </tr>
-                                )}
-                                <tr className="hover:bg-ichki transition-colors cursor-pointer group"
+                                <tr key={student.id} className="hover:bg-ichki transition-colors cursor-pointer group"
                                     onClick={() => navigate(`/students/${student.id}`)}>
                                     <td className="px-4 py-2.5 num text-[12px] text-matn-xira">{student.id}</td>
                                     <td className="px-4 py-2.5">
@@ -1141,7 +1097,6 @@ export default function Students() {
                                                     o'quvchini aynan shu bilan farqlashadi. */}
                                                 <span className="text-[11px] text-matn-xira block truncate">
                                                     {[student.studentSchool, student.orgType].filter(Boolean).join(' · ') || student.joinedDate}
-                                                    {ustozOrqali.has(student.id) && <span className="text-brand"> · ustozi: {ustozOrqali.get(student.id)}</span>}
                                                 </span>
                                             </div>
                                         </div>
@@ -1207,7 +1162,6 @@ export default function Students() {
                                         </button>
                                     </td>
                                 </tr>
-                                </React.Fragment>
                             ))}
                             {visibleStudents.length === 0 && (
                                 <tr>
