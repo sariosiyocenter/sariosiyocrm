@@ -242,9 +242,6 @@ export default function StudentDetails() {
         district: '',
         studyGoal: '',
         directionId: '' as string | number,
-        telegramId: '',
-        fatherTelegramId: '',
-        motherTelegramId: '',
         certificates: [] as Array<{ category: 'Milliy' | 'Xalqaro'; subject?: string; type?: string; score?: string }>
     });
 
@@ -387,9 +384,6 @@ export default function StudentDetails() {
             district: student.district || '',
             studyGoal: student.studyGoal || '',
             directionId: student.directionId ?? '',
-            telegramId: student.telegramId || '',
-            fatherTelegramId: student.fatherTelegramId || '',
-            motherTelegramId: student.motherTelegramId || '',
             certificates: parsedCerts || []
         });
         setIsEditing(true);
@@ -449,10 +443,10 @@ export default function StudentDetails() {
         try {
             setIsSaving(true);
 
-            // Telegram ID lar formaga sahifa ochilganda yozilgan. Agar o'quvchi
-            // shundan keyin botga ulangan bo'lsa, o'zgarmagan bo'sh maydonni
-            // yuborish yangi ulanishni o'chirib yuborardi — shuning uchun
-            // tegilmagan maydonlar umuman yuborilmaydi.
+            // Telegram ID lar formada yo'q (egasi, 2026-09-26): ularni bot o'zi
+            // yozadi (ota-ona botga telefon raqamini yuboradi), uzish — profildagi
+            // "uzish" tugmasi. Qo'lda yozilgan xato ID bola haqidagi xabarlarni
+            // begona odamga yuborardi. Shuning uchun forma ularni yubormaydi ham.
             const payload: Record<string, any> = {
                 ...editForm,
                 routeIds: editForm.routeIds,
@@ -460,16 +454,6 @@ export default function StudentDetails() {
                 grade: editForm.grade || null,
                 directionId: editForm.directionId ? Number(editForm.directionId) : null
             };
-            const telegramFields = ['telegramId', 'fatherTelegramId', 'motherTelegramId'] as const;
-            for (const key of telegramFields) {
-                const typed = (editForm[key] || '').trim();
-                const loaded = (student[key] || '').trim();
-                if (typed === loaded) {
-                    delete payload[key];
-                } else {
-                    payload[key] = typed || null;
-                }
-            }
 
             await updateStudent(student.id, payload);
             setIsEditing(false);
@@ -978,15 +962,10 @@ export default function StudentDetails() {
                         <div className={isEditing ? "px-6 pb-6 pt-1" : "px-6 pb-5 space-y-1 border-t border-chiziq pt-3"}>
                             {isEditing ? (
                                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-4">
-                                    <div className="sm:col-span-2 grid grid-cols-2 gap-2">
-                                        <div>
-                                            <label className={labelCls}>{t('student_phone')}</label>
-                                            <input type="tel" value={editForm.phone} onChange={e => setEditForm({...editForm, phone: e.target.value})} className={inputCls} />
-                                        </div>
-                                        <div>
-                                            <label className={labelCls}>Telegram ID</label>
-                                            <input type="text" value={editForm.telegramId} onChange={e => setEditForm({...editForm, telegramId: e.target.value})} className={inputCls} placeholder="ID (masalan: 12345678)" />
-                                        </div>
+                                    <div className="sm:col-span-2">
+                                        <label className={labelCls}>{t('student_phone')}</label>
+                                        <input type="tel" value={editForm.phone} onChange={e => setEditForm({...editForm, phone: e.target.value})} className={inputCls} />
+                                        <TgHolat id={student.telegramId} />
                                     </div>
                                     <div>
                                         <label className={labelCls}>{t('birth_date')}</label>
@@ -1094,7 +1073,7 @@ export default function StudentDetails() {
                                             </select>
                                         </div>
                                     </div>
-                                    <div className="sm:col-span-2 grid grid-cols-3 gap-2">
+                                    <div className="sm:col-span-2 grid grid-cols-2 gap-2">
                                         <div>
                                             <label className={labelCls}>{t('father_name')}</label>
                                             <input type="text" value={editForm.fatherName} onChange={e => setEditForm({...editForm, fatherName: e.target.value})} className={inputCls} />
@@ -1102,13 +1081,10 @@ export default function StudentDetails() {
                                         <div>
                                             <label className={labelCls}>{t('father_phone')}</label>
                                             <input type="tel" value={editForm.fatherPhone} onChange={e => setEditForm({...editForm, fatherPhone: e.target.value})} className={inputCls} />
-                                        </div>
-                                        <div>
-                                            <label className={labelCls}>Otasi TG ID</label>
-                                            <input type="text" value={editForm.fatherTelegramId} onChange={e => setEditForm({...editForm, fatherTelegramId: e.target.value})} className={inputCls} placeholder="ID" />
+                                            <TgHolat id={student.fatherTelegramId} />
                                         </div>
                                     </div>
-                                    <div className="sm:col-span-2 grid grid-cols-3 gap-2">
+                                    <div className="sm:col-span-2 grid grid-cols-2 gap-2">
                                         <div>
                                             <label className={labelCls}>{t('mother_name')}</label>
                                             <input type="text" value={editForm.motherName} onChange={e => setEditForm({...editForm, motherName: e.target.value})} className={inputCls} />
@@ -1116,10 +1092,7 @@ export default function StudentDetails() {
                                         <div>
                                             <label className={labelCls}>{t('mother_phone')}</label>
                                             <input type="tel" value={editForm.motherPhone} onChange={e => setEditForm({...editForm, motherPhone: e.target.value})} className={inputCls} />
-                                        </div>
-                                        <div>
-                                            <label className={labelCls}>Onasi TG ID</label>
-                                            <input type="text" value={editForm.motherTelegramId} onChange={e => setEditForm({...editForm, motherTelegramId: e.target.value})} className={inputCls} placeholder="ID" />
+                                            <TgHolat id={student.motherTelegramId} />
                                         </div>
                                     </div>
                                     <div className="sm:col-span-2">
@@ -3217,4 +3190,15 @@ function TabButton({ label, icon, active, onClick }: any) {
             {label}
         </button>
     );
+}
+
+/**
+ * Tahrirlash formasida raqam ostida: shu odam Telegram botga ulanganmi.
+ * ID qo'lda yozilmaydi — ota-ona botga kirib telefon raqamini yuborsa, bot
+ * o'zi bog'laydi (raqam kartadagi bilan bir xil bo'lishi kerak).
+ */
+function TgHolat({ id }: { id?: string | null }) {
+    return id
+        ? <p className="mt-1 text-[10.5px] font-bold text-emerald-600">● Telegram botga ulangan</p>
+        : <p className="mt-1 text-[10.5px] font-bold text-matn-xira">Telegram botga ulanmagan — botga kirib shu raqamni yuborsa, o'zi ulanadi</p>;
 }
