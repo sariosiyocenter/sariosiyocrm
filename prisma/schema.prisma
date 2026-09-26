@@ -411,6 +411,12 @@ model Organization {
   // { kanal: 'BOTH'|'SMS'|'TELEGRAM', kimga: 'FATHER,MOTHER', shablon: { Kelmapdi: 9, … } }.
   // null — hali saqlanmagan: shablon nomidan taxmin qilinadi.
   davomatXabari Json?
+
+  // To'lov xabari (2026-09-26): to'lov qabul qilinganda ota-onaga ketadigan
+  // SMS. lib/tolovXabari.js shakli: { yoqilgan, shablonId, kanal, kimga }.
+  // null — hali saqlanmagan: eski PAYMENT_CONFIRM qoidasidan va shablon
+  // nomidan taxmin qilinadi.
+  tolovXabari Json?
 }
 
 model School {
@@ -1404,4 +1410,32 @@ model TolovTasdiq {
   @@index([schoolId, status])
   @@index([studentId])
   @@index([paidAt])
+}
+
+// Har bir to'lov uchun bitta xabar yozuvi (2026-09-26): ota-onaga "to'lov
+// qabul qilindi" SMS i yuborildimi, yetib bordimi, nega ketmadi. Bir to'lovga
+// ikki marta SMS ketmasligini `paymentId @unique` kafolatlaydi. Eskiz shablonni
+// tasdiqlamaguncha yoki tarmoq xatosida yozuv "kutmoqda" turadi va navbatdan
+// o'zi qayta yuboriladi (services/tolovXabari.js). Relation yo'q: to'lov
+// o'chirilsa ham tarix qoladi.
+model TolovXabari {
+  id             Int       @id @default(autoincrement())
+  paymentId      Int       @unique
+  schoolId       Int
+  studentId      Int
+  // kutmoqda | yuborilmoqda | yuborildi | yetkazildi | yetkazilmadi | xato | bekor
+  holat          String    @default("kutmoqda")
+  sabab          String?   // o'zbekcha izoh: nega kutyapti / nega ketmadi
+  kanal          String?   // amalda qaysi kanal ketdi: SMS | TELEGRAM
+  matn           String?   // yuborilgan (yoki yuboriladigan) matn
+  // [{ kimga: 'FATHER', kanal: 'SMS', manzil: '+998…', holat, eskizId, xato }]
+  raqamlar       Json?
+  urinish        Int       @default(0)
+  keyingiUrinish DateTime  @default(now())
+  createdAt      DateTime  @default(now())
+  yuborilganAt   DateTime?
+  yetkazilganAt  DateTime?
+
+  @@index([holat, keyingiUrinish])
+  @@index([schoolId, createdAt])
 }
