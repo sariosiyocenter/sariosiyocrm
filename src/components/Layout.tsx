@@ -68,14 +68,32 @@ export default function Layout({ children, onLogout }: LayoutProps) {
 
   const getSearchResults = () => {
     if (searchQuery.trim().length < 2) return null;
-    const lowerQ = searchQuery.toLowerCase();
+    const lowerQ = searchQuery.trim().toLowerCase();
     const s = (val: string | undefined | null) => (val || '').toLowerCase();
+    // Eng mosi tepada (egasi, 2026-09-26): "hasan" yozilganda ro'yxatdagi
+    // birinchi uchta "Hasanov ..." chiqib, ismi aynan "Hasan" bo'lgan o'quvchi
+    // umuman ko'rinmasdi. Tartib: ism aynan teng → ismdagi bir so'z teng →
+    // ism shu bilan boshlanadi → so'z shu bilan boshlanadi → ichida bor → telefon.
+    const daraja = (name?: string | null, phone?: string | null) => {
+      const n = s(name).trim();
+      const sozlar = n.split(/\s+/);
+      if (n === lowerQ) return 0;
+      if (sozlar.includes(lowerQ)) return 1;
+      if (n.startsWith(lowerQ)) return 2;
+      if (sozlar.some(w => w.startsWith(lowerQ))) return 3;
+      if (n.includes(lowerQ)) return 4;
+      if (s(phone).includes(lowerQ)) return 5;
+      return -1;
+    };
+    const eng = <T,>(list: T[] | undefined, nom: (x: T) => string | null | undefined, tel: (x: T) => string | null | undefined, n: number) =>
+      (list || []).map(x => ({ x, d: daraja(nom(x), tel(x)) })).filter(v => v.d >= 0)
+        .sort((p, q) => p.d - q.d).slice(0, n).map(v => v.x);
     return {
-      students: (students || []).filter(st => s(st.name).includes(lowerQ) || s(st.phone).includes(lowerQ)).slice(0, 3),
-      leads: (leads || []).filter(l => s(l.name).includes(lowerQ) || s(l.phone).includes(lowerQ)).slice(0, 3),
+      students: eng(students, st => st.name, st => st.phone, 5),
+      leads: eng(leads, l => l.name, l => l.phone, 3),
       groups: (groups || []).filter(g => s(g.name).includes(lowerQ) || s(courses.find(c => c.id === g.courseId)?.name).includes(lowerQ)).slice(0, 3),
       // Ustoz natijasi xodim kartasini ochadi — faqat Xodimlarni ko'radiganga.
-      teachers: kora('xodimlar.royxat') ? (teachers || []).filter(t => s(t.name).includes(lowerQ) || s(t.phone).includes(lowerQ)).slice(0, 3) : [],
+      teachers: kora('xodimlar.royxat') ? eng(teachers, t => t.name, t => t.phone, 3) : [],
     };
   };
 
