@@ -22,10 +22,15 @@ import {
   yetkazishHolati,
 } from './services/tolovXabari.js';
 import { smsMatni } from './lib/tolovXabari.js';
+import {
+  qarzXabariniUlash, qarzSozlamasi, qarzSozlamasiniSaqla, qarzdorlarRoyxati, qoldaYubor as qarzQoldaYubor,
+  qarzNavbati, qarzXabariniQaytaYubor, qarzXabarlariRoyxati, avtoQarzEslatma, javoblarRoyxati as qarzJavoblari,
+  javobniYop as qarzJavobiniYop, javobRasmi as qarzJavobRasmi, qarzSinovXabari, holatlarSoni as qarzHolatlari,
+} from './services/qarzXabari.js';
 import crypto from 'node:crypto';
 import { davomatYuboruvchiniUlash, davomatSozlamasi, davomatSozlamasiniSaqla, davomatXabariniYuborish, kursKuniYuborilganlar, bugunDavomatXabariOlganlar } from './services/davomatXabari.js';
 import { normalizePayShare } from './lib/allocation.js';
-import { KLIK_TASDIQ_TURLARI, TASDIQ_HOLATLARI, chekVaqtiniTozala, takroriyCheklar, takrorQatorlari, tasdiqniBajar, radniBajar, adminlargaYubor } from './services/klikTasdiq.js';
+import { KLIK_TASDIQ_TURLARI, TASDIQ_HOLATLARI, chekVaqtiniTozala, takroriyCheklar, takrorQatorlari, tasdiqniBajar, radniBajar, adminlargaYubor, adminChatlari } from './services/klikTasdiq.js';
 import { kodlarniTaminla } from './services/oquvchiKod.js';
 import jwt from 'jsonwebtoken';
 import bot, { startBot, notifyAdmins, getTelegramBot, rejaniHaydovchigaYuborish, rejaBekorXabari, getStudentMenu } from './src/bot/bot.js';
@@ -4948,6 +4953,176 @@ app.post('/api/tolov-xabari/:id/qayta', authenticate, async (req, res, next) => 
   } catch (error) { next(error); }
 });
 
+// ---------------------------------------------------------------------------
+// Qarz eslatmasi (services/qarzXabari.js): sozlama, qarzdorlar ro'yxati,
+// tanlab yuborish, navbat, ota-ona javoblari.
+// ---------------------------------------------------------------------------
+
+/** "To'liq o'quv markazi" (0) — foydalanuvchi ko'ra oladigan hamma filial. */
+async function qarzFiliallari(req, raw) {
+  const id = parseInt(raw);
+  if (Number.isInteger(id) && id > 0) return (await canAccessSchool(req.user, id)) ? [id] : null;
+  return allowedSchoolIds(req.user);
+}
+
+app.get('/api/qarz-xabari', authenticate, async (req, res, next) => {
+  try {
+    const schoolId = parseInt(req.query.schoolId) || req.user.schoolId;
+    if (!(await canAccessSchool(req.user, schoolId))) return res.status(403).json({ error: "Ruxsat yo'q" });
+    const boshlangich = await qarzSozlamasi(schoolId);
+    if (!boshlangich) return res.status(404).json({ error: 'Filial topilmadi' });
+    // Oyna ochilganda: Eskiz holati yangilanadi va navbatdagilar yuboriladi.
+    await Promise.race([
+      (async () => {
+        await eskizHolatlariniYangila(boshlangich.schoolIds, { majburiy: req.query.yangila === '1' });
+        await qarzNavbati({ cheklov: 10, byudjetMs: 5000 });
+      })().catch(e => console.error('[Qarz eslatmasi oynasi]', e.message)),
+      new Promise(r => setTimeout(r, 7000)),
+    ]);
+    const s = await qarzSozlamasi(schoolId);
+    const filiallar = (await allowedSchoolIds(req.user)).filter(id => s.schoolIds.includes(id));
+    const [r, javoblar] = await Promise.all([qarzXabarlariRoyxati(filiallar), qarzJavoblari(filiallar)]);
+    res.json({ sozlama: s.sozlama, saqlangan: s.saqlangan, shablonlar: s.shablonlar, ...r, javoblar });
+  } catch (error) { next(error); }
+});
+
+app.put('/api/qarz-xabari', authenticate, async (req, res, next) => {
+  try {
+    const schoolId = parseInt(req.body?.schoolId) || req.user.schoolId;
+    if (!(await canAccessSchool(req.user, schoolId))) return res.status(403).json({ error: "Ruxsat yo'q" });
+    const r = await qarzSozlamasiniSaqla(schoolId, req.body?.sozlama);
+    if (r.error) return res.status(400).json({ error: r.error });
+    res.json({ sozlama: r.sozlama });
+  } catch (error) { next(error); }
+});
+
+// Qarzdorlar ro'yxati: kurslar bo'yicha qarz, oxirgi to'lov, eslatmalar, javob.
+app.get('/api/qarz-xabari/qarzdorlar', authenticate, async (req, res, next) => {
+  try {
+    const filiallar = await qarzFiliallari(req, req.query.schoolId);
+    if (!filiallar) return res.status(403).json({ error: "Ruxsat yo'q" });
+    const statuslar = req.query.hammasi === '1' ? ['Faol', 'Passiv', 'Ketgan'] : ['Faol'];
+    const nomlar = new Map((await prisma.school.findMany({ where: { id: { in: filiallar } }, select: { id: true, name: true } })).map(x => [x.id, x.name]));
+    let sozlama = null, shablonlar = [];
+    const royxat = [];
+    for (const sid of filiallar) {
+      const r = await qarzdorlarRoyxati(sid, { statuslar });
+      if (!r) continue;
+      sozlama = sozlama || r.sozlama;
+      shablonlar = shablonlar.length ? shablonlar : r.shablonlar;
+      royxat.push(...r.royxat.map(q => ({ ...q, schoolId: sid, filial: nomlar.get(sid) || '' })));
+    }
+    res.json({ sozlama, shablonlar, royxat, filiallar: filiallar.length });
+  } catch (error) { next(error); }
+});
+
+// Tanlanganlarga yuborish: yozuvlar yaratiladi, birinchi partiya darhol ketadi,
+// qolgani — /navbat (brauzer idlar bilan chaqirib turadi, jarayon ko'rinadi).
+app.post('/api/qarz-xabari/yubor', authenticate, async (req, res, next) => {
+  try {
+    const ids = [...new Set((Array.isArray(req.body?.studentIds) ? req.body.studentIds : []).map(Number).filter(Number.isInteger))];
+    if (!ids.length) return res.status(400).json({ error: "O'quvchi tanlanmagan" });
+    const students = await prisma.student.findMany({ where: { id: { in: ids } }, select: { id: true, schoolId: true } });
+    const boyicha = new Map();
+    for (const st of students) {
+      if (!boyicha.has(st.schoolId)) boyicha.set(st.schoolId, []);
+      boyicha.get(st.schoolId).push(st.id);
+    }
+    const jami = { idlar: [], yaratildi: 0, takror: 0, ruxsatsiz: 0 };
+    for (const [sid, sids] of boyicha) {
+      if (!(await canAccessSchool(req.user, sid))) { jami.ruxsatsiz += sids.length; continue; }
+      const r = await qarzQoldaYubor(sid, sids, { id: req.user.id, name: req.user.name || req.user.email || null });
+      if (r.error) return res.status(r.status || 400).json({ error: r.error });
+      jami.idlar.push(...r.idlar);
+      jami.yaratildi += r.yaratildi;
+      jami.takror += r.takror;
+    }
+    // Birinchi partiya shu so'rovda. Byudjet kichik: boshlangan yuborishlar
+    // (Eskiz 12 s gacha) Vercel funksiyasi vaqti ichida tugashi kerak, aks holda
+    // "yuborilmoqda" qolib, navbat uni qayta yuborishi mumkin.
+    const n = jami.idlar.length ? await qarzNavbati({ idlar: jami.idlar, cheklov: 40, byudjetMs: 4000 }) : { yuborildi: 0, ...(await qarzHolatlari([])) };
+    res.json({ ...jami, ...n });
+  } catch (error) { next(error); }
+});
+
+app.post('/api/qarz-xabari/navbat', authenticate, async (req, res, next) => {
+  try {
+    const idlar = [...new Set((Array.isArray(req.body?.idlar) ? req.body.idlar : []).map(Number).filter(Number.isInteger))].slice(0, 3000);
+    if (!idlar.length) return res.json({ yuborildi: 0, holatlar: {}, qoldi: 0 });
+    const rows = await prisma.qarzXabari.findMany({ where: { id: { in: idlar } }, select: { id: true, schoolId: true } });
+    const ruxsat = new Map();
+    for (const sid of new Set(rows.map(r => r.schoolId))) ruxsat.set(sid, await canAccessSchool(req.user, sid));
+    const ozimniki = rows.filter(r => ruxsat.get(r.schoolId)).map(r => r.id);
+    res.json(await qarzNavbati({ idlar: ozimniki, cheklov: 40, byudjetMs: 5000 }));
+  } catch (error) { next(error); }
+});
+
+app.post('/api/qarz-xabari/sinov', authenticate, async (req, res, next) => {
+  try {
+    const schoolId = parseInt(req.body?.schoolId) || req.user.schoolId;
+    if (!(await canAccessSchool(req.user, schoolId))) return res.status(403).json({ error: "Ruxsat yo'q" });
+    const r = await qarzSinovXabari(schoolId, req.body?.telefon);
+    if (!r.ok) return res.status(r.status || 400).json({ error: r.error });
+    res.json({ ok: true, matn: r.matn, telefon: req.body?.telefon });
+  } catch (error) { next(error); }
+});
+
+app.post('/api/qarz-xabari/:id/qayta', authenticate, async (req, res, next) => {
+  try {
+    const id = parseInt(req.params.id);
+    if (!Number.isInteger(id)) return res.status(400).json({ error: "Noto'g'ri ID" });
+    const row = await prisma.qarzXabari.findUnique({ where: { id }, select: { schoolId: true } });
+    if (!row) return res.status(404).json({ error: 'Topilmadi' });
+    if (!(await canAccessSchool(req.user, row.schoolId))) return res.status(403).json({ error: "Ruxsat yo'q" });
+    const r = await qarzXabariniQaytaYubor(id);
+    if (r.error) return res.status(r.status || 400).json({ error: r.error });
+    res.json(r.row);
+  } catch (error) { next(error); }
+});
+
+// Ota-ona "to'laganman" degan javobni yopish: to'lov kiritildi / qarz to'g'ri.
+app.post('/api/qarz-javob/:id/yop', authenticate, async (req, res, next) => {
+  try {
+    const id = parseInt(req.params.id);
+    if (!Number.isInteger(id)) return res.status(400).json({ error: "Noto'g'ri ID" });
+    const row = await prisma.qarzJavob.findUnique({ where: { id }, select: { schoolId: true } });
+    if (!row) return res.status(404).json({ error: 'Javob topilmadi' });
+    if (!(await canAccessSchool(req.user, row.schoolId))) return res.status(403).json({ error: "Ruxsat yo'q" });
+    const r = await qarzJavobiniYop(id, { natija: req.body?.natija, izoh: req.body?.izoh, user: { id: req.user.id, name: req.user.name || req.user.email || null } });
+    if (r.error) return res.status(r.status || 400).json({ error: r.error });
+    res.json({ ok: true, xabar: r.xabar, studentId: r.row.studentId });
+  } catch (error) { next(error); }
+});
+
+// Tekshirilmagan "to'laganman" javoblari soni — Bosh sahifadagi ogohlantirish.
+app.get('/api/qarz-javob/soni', authenticate, async (req, res, next) => {
+  try {
+    const filiallar = await qarzFiliallari(req, req.query.schoolId);
+    if (!filiallar) return res.status(403).json({ error: "Ruxsat yo'q" });
+    res.json({ ochiq: await prisma.qarzJavob.count({ where: { schoolId: { in: filiallar }, holat: 'ochiq' } }) });
+  } catch (error) { next(error); }
+});
+
+// Javobdagi chek rasmi — Telegram'dan olib beriladi (bot tokeni brauzerga chiqmaydi).
+app.get('/api/qarz-javob/:id/rasm', authenticate, async (req, res, next) => {
+  try {
+    const id = parseInt(req.params.id);
+    const row = Number.isInteger(id) ? await qarzJavobRasmi(id) : null;
+    if (!row) return res.status(404).json({ error: 'Rasm topilmadi' });
+    if (!(await canAccessSchool(req.user, row.schoolId))) return res.status(403).json({ error: "Ruxsat yo'q" });
+    const bot = await getTelegramBot(row.schoolId);
+    if (!bot) return res.status(503).json({ error: 'Telegram bot ulanmagan' });
+    const havola = String(await withTimeout(bot.telegram.getFileLink(row.rasm), 8000, 'Telegram timeout'));
+    const f = await withTimeout(fetch(havola), 15000, 'Telegram timeout');
+    if (!f.ok) return res.status(502).json({ error: "Rasmni Telegram'dan olib bo'lmadi" });
+    const kengaytma = (havola.split('?')[0].split('.').pop() || '').toLowerCase();
+    const tur = { jpg: 'image/jpeg', jpeg: 'image/jpeg', png: 'image/png', webp: 'image/webp', gif: 'image/gif', pdf: 'application/pdf' }[kengaytma]
+      || f.headers.get('content-type') || 'application/octet-stream';
+    res.set('Content-Type', tur);
+    res.send(Buffer.from(await f.arrayBuffer()));
+  } catch (error) { next(error); }
+});
+
 // Eskiz SMS yetkazish natijasi (callback_url). Kirishsiz — manzildagi kalit
 // bilan himoyalangan. Xabar holati SmsLog va TolovXabari ga yoziladi.
 app.post('/api/sms/eskiz-callback/:kalit', async (req, res) => {
@@ -6914,6 +7089,61 @@ tolovXabariniUlash({
   },
 });
 
+/**
+ * Qarz eslatmasi (services/qarzXabari.js) uchun Eskiz va Telegram. Telegram
+ * xabari HTML va tugmali ("Payme", "✅ To'laganman"). Lokal serverda sendSms
+ * haqiqiy SMS yubormaydi (SMS_REAL/SMS_FAKE).
+ */
+qarzXabariniUlash({
+  sms: async (phone, text, { schoolId, studentId }) => {
+    const r = await sendSms(phone, text, 'BILLING_DEBT', studentId, schoolId);
+    return {
+      success: r.success,
+      eskizId: r.data?.id ? String(r.data.id) : null,
+      lokal: !!r.lokal,
+      xato: r.success ? null : String(r.data?.message || r.error || JSON.stringify(r.data || {})),
+    };
+  },
+  telegram: async (schoolId, chatId, html, { studentId, toName, tugmalar } = {}) => {
+    const log = (status, errorMsg) => prisma.smsLog.create({
+      data: { toPhone: String(chatId), toName: toName || null, message: String(html).replace(/<[^>]+>/g, ''), status, type: 'BILLING_DEBT', studentId: studentId || null, errorMsg, channel: 'TELEGRAM', schoolId },
+    }).catch(() => {});
+    const bot = await getTelegramBot(schoolId);
+    if (!bot) return { success: false, xato: 'Telegram bot ulanmagan' };
+    const extra = {
+      parse_mode: 'HTML',
+      ...(tugmalar?.length ? { reply_markup: { inline_keyboard: tugmalar.map(t => [{ text: t.text, callback_data: t.data }]) } } : {}),
+    };
+    try {
+      await withTimeout(bot.telegram.sendMessage(chatId, html, extra), 5000, 'Telegram timeout');
+      await log('SENT', null);
+      return { success: true };
+    } catch (e) {
+      await log('FAILED', e.message);
+      return { success: false, xato: /blocked/i.test(e.message) ? 'botni bloklagan' : e.message };
+    }
+  },
+  // Ota-ona "to'laganman" desa — tashkilot administratorlariga (chek rasmi bilan).
+  adminlarga: async (schoolId, html, rasm) => {
+    const bot = await getTelegramBot(schoolId);
+    if (!bot) return;
+    for (const chat of await adminChatlari(schoolId)) {
+      try {
+        if (!rasm) { await bot.telegram.sendMessage(chat, html, { parse_mode: 'HTML' }); continue; }
+        try {
+          await bot.telegram.sendPhoto(chat, rasm, { caption: html.slice(0, 1000), parse_mode: 'HTML' });
+        } catch {
+          // Chek fayl (PDF) bo'lib kelgan bo'lishi mumkin.
+          await bot.telegram.sendDocument(chat, rasm, { caption: html.slice(0, 1000), parse_mode: 'HTML' });
+        }
+      } catch (e) {
+        await bot.telegram.sendMessage(chat, html, { parse_mode: 'HTML' }).catch(() => {});
+        console.error('[Qarz javobi → admin]', chat, e.message);
+      }
+    }
+  },
+});
+
 // O'quvchining guruhlarini (StudentGroups relation) olish uchun yordamchi
 async function getStudentGroupsMap(schoolId) {
   const groups = await prisma.group.findMany({
@@ -7347,6 +7577,9 @@ app.delete('/api/messaging/auto-rules/:id', authenticate, async (req, res, next)
 async function runAutoProcessJobs() {
   // To'lov SMS lari navbati: Eskiz tasdig'ini kutayotganlar va qayta urinishlar.
   await tolovNavbati({ cheklov: 30 }).catch(e => console.error("[To'lov xabari navbati]", e.message));
+  // Qarz eslatmasi: jadval (markazga kuniga bir marta) va navbat (services/qarzXabari.js).
+  await avtoQarzEslatma().catch(e => console.error('[Qarz eslatmasi jadvali]', e.message));
+  await qarzNavbati({ cheklov: 40 }).catch(e => console.error('[Qarz eslatmasi navbati]', e.message));
   const nowUtc = new Date();
   // Uzbekistan offset is UTC+5
   const nowUz = new Date(nowUtc.getTime() + (5 * 60 * 60 * 1000));
@@ -7392,15 +7625,11 @@ async function runAutoProcessJobs() {
       const students = await prisma.student.findMany({ where: { schoolId, status: statusIn } });
       targets = students.filter(s => (s.birthDate || '').slice(5, 10) === mmdd);
     } else if (rule.type === 'DEBT_REMINDER') {
-      const cfg = (rule.config && typeof rule.config === 'object') ? rule.config : {};
-      const ruleDay = Number(cfg.dayOfMonth || 1);
-      if (dayOfMonth !== ruleDay) {
-        results.push({ ruleId: rule.id, name: rule.name, skipped: 'not-due-day', dayOfMonth, ruleDay });
-        continue;
-      }
-      const minDebt = Number(cfg.minDebt || 0);
-      const students = await prisma.student.findMany({ where: { schoolId, status: statusIn } });
-      targets = students.filter(s => Number(s.balance || 0) < -minDebt);
+      // Qarz eslatmasi endi alohida (Xabarlar → Avtomatik → "Qarzdorlik
+      // eslatmasi", services/qarzXabari.js): kurslar bo'yicha qarz, Telegram
+      // tugmalari, oyiga necha marta. Eski qoida ikkinchi marta yubormaydi.
+      results.push({ ruleId: rule.id, name: rule.name, skipped: 'qarz-eslatmasi-alohida' });
+      continue;
     } else if (rule.type === 'ABSENCE_REMINDER') {
       const attendances = await prisma.attendance.findMany({
         where: { schoolId, date: todayStr, status: 'Kelmapdi' },
@@ -7933,121 +8162,6 @@ app.get('/api/billing/status', authenticate, async (req, res, next) => {
     });
 
     res.json({ billingDone, billingDay: await billingDayOf(sid), students, groups: groupBreakdown, month });
-  } catch (err) { next(err); }
-});
-
-app.post('/api/billing/notify-debtors', authenticate, async (req, res, next) => {
-  try {
-    const { schoolId, month, messageTemplate, channel, statusFilter } = req.body;
-    if (!schoolId || !month || !messageTemplate || !channel) {
-      return res.status(400).json({ error: 'schoolId, month, messageTemplate, and channel are required' });
-    }
-    const sid = parseInt(schoolId);
-
-    const statusList = statusFilter === 'passive'
-      ? ['Passiv', 'Ketgan']
-      : statusFilter === 'all'
-        ? ['Faol', 'Sinov', 'Passiv', 'Ketgan']
-        : ['Faol'];
-
-    const groups = await prisma.group.findMany({
-      where: { schoolId: sid },
-      include: { course: true, students: { where: { status: { in: statusList } } } }
-    });
-
-    const studentMap = {};
-    for (const group of groups) {
-      for (const student of group.students) {
-        if (!studentMap[student.id]) studentMap[student.id] = { student, groupEntries: [] };
-        const cp = (student.customPrices && typeof student.customPrices === 'object') ? student.customPrices : {};
-        const price = cp[group.id] !== undefined ? cp[group.id] : group.course.price;
-        studentMap[student.id].groupEntries.push({
-          groupId: group.id, groupName: group.name, courseName: group.course.name, price
-        });
-      }
-    }
-
-    const coverage = await monthCoverage(Object.keys(studentMap).map(Number), month);
-    const debtors = Object.values(studentMap).map(({ student, groupEntries }) => {
-      const cov = coverage.get(student.id);
-      const expected = cov && cov.due > 0 ? cov.due : groupEntries.reduce((s, g) => s + g.price, 0);
-      const paid = cov ? Math.min(cov.covered, expected) : 0;
-      const status = expected > 0 && paid >= expected ? 'paid' : paid > 0 ? 'partial' : 'unpaid';
-      // Xabardagi qarz — o'quvchining umumiy yopilmagan hisobi (eski oylar ham).
-      const debt = cov ? cov.debt : expected - paid;
-      return { student, expected, paid, status, debt };
-    }).filter(d => d.status !== 'paid' && d.debt > 0);
-
-    const school = await prisma.school.findUnique({ where: { id: sid } });
-    // {markaz} — filial emas, markaz nomi (lib/markazBrendi.js).
-    const markaz = await markazNomi(sid);
-    const schoolBot = await getTelegramBot(sid);
-
-    let count = 0;
-    const monthsUz = {
-      '01': 'Yanvar', '02': 'Fevral', '03': 'Mart', '04': 'Aprel',
-      '05': 'May', '06': 'Iyun', '07': 'Iyul', '08': 'Avgust',
-      '09': 'Sentabr', '10': 'Oktabr', '11': 'Noyabr', '12': 'Dekabr'
-    };
-    const [y, m] = month.split('-');
-    const formattedMonth = `${monthsUz[m] || m} ${y}`;
-
-    for (const d of debtors) {
-      const student = d.student;
-      const formattedMessage = messageTemplate
-        .replace(/\{ism\}/gi, student.name)
-        .replace(/\{oylik\}/gi, formattedMonth)
-        .replace(/\{balans\}/gi, student.balance.toLocaleString())
-        .replace(/\{qarz\}/gi, d.debt.toLocaleString())
-        .replace(/\{markaz\}/gi, markaz);
-
-      let sent = false;
-
-      // Telegram
-      const tids = [];
-      if (student.telegramId) tids.push({ id: student.telegramId, name: student.name });
-      if (student.fatherTelegramId) tids.push({ id: student.fatherTelegramId, name: `${student.name} (Otasi)` });
-      if (student.motherTelegramId) tids.push({ id: student.motherTelegramId, name: `${student.name} (Onasi)` });
-
-      if ((channel === 'TELEGRAM' || channel === 'BOTH') && tids.length > 0 && schoolBot) {
-        for (const target of tids) {
-          try {
-            await schoolBot.telegram.sendMessage(target.id, formattedMessage);
-            sent = true;
-            await prisma.smsLog.create({
-              data: {
-                toPhone: String(target.id),
-                message: formattedMessage,
-                status: 'SENT',
-                type: 'BILLING_DEBT',
-                studentId: student.id,
-                channel: 'TELEGRAM',
-                schoolId: sid
-              }
-            });
-          } catch (tgErr) {
-            console.error(`[Debt Notify TG] Failed for ${student.name} (to ${target.name}):`, tgErr.message);
-          }
-        }
-      }
-
-      // SMS
-      if ((channel === 'SMS' || channel === 'BOTH') && !sent) {
-        const phone = resolveRecipientPhone(student);
-        if (phone) {
-          try {
-            await sendSms(phone, formattedMessage, 'BILLING_DEBT', student.id, sid);
-            sent = true;
-          } catch (smsErr) {
-            console.error(`[Debt Notify SMS] Failed for ${student.name}:`, smsErr.message);
-          }
-        }
-      }
-
-      if (sent) count++;
-    }
-
-    res.json({ success: true, count });
   } catch (err) { next(err); }
 });
 

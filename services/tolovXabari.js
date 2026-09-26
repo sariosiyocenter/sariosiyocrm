@@ -49,7 +49,7 @@ const DARHOL_KUT_MS = Number(process.env.TOLOV_XABAR_KUT_MS) || 8000;
  * "yuborilmadi" yoki soxta "yuborildi" deb belgilab qo'ymaydi. Faqat nomi
  * "ZZ " bilan boshlanadigan sinov filiallari. SMS_REAL=1 — cheklovsiz.
  */
-async function lokalTegmaydi(schoolId) {
+export async function lokalTegmaydi(schoolId) {
   if (process.env.VERCEL || process.env.SMS_REAL === '1') return false;
   const s = await prisma.school.findUnique({ where: { id: schoolId }, select: { name: true } });
   return !String(s?.name || '').startsWith('ZZ ');
@@ -120,7 +120,7 @@ export async function tolovSozlamasiniSaqla(schoolId, raw) {
 // ---------------------------------------------------------------------------
 
 /** Eskiz/xato matnidan sabab turi — qayta urinish kerakmi. */
-function xatoTuri(m) {
+export function xatoTuri(m) {
   const s = String(m || '');
   if (/lokal server/i.test(s)) return 'lokal';
   if (/модерац|moderat/i.test(s)) return 'shablon';
@@ -130,7 +130,7 @@ function xatoTuri(m) {
   return 'boshqa';
 }
 
-const XATO_SABABI = {
+export const XATO_SABABI = {
   shablon: "Matn Eskizdagi tasdiqlangan shablonga mos kelmadi — shablonni tekshiring",
   balans: "Eskiz balansida pul tugagan — to'ldirilgach o'zi qayta yuboriladi",
   sozlama: "Eskiz sozlamasi (email/parol) noto'g'ri yoki kiritilmagan — Sozlamalar → Integratsiyalar",
@@ -138,8 +138,8 @@ const XATO_SABABI = {
   lokal: "Lokal server: haqiqiy SMS yuborilmaydi (sinov)",
 };
 
-/** Qabul qiluvchilar: kimga ro'yxati bo'yicha telefon va Telegram. */
-function qabulQiluvchilar(student, kimga) {
+/** Qabul qiluvchilar: kimga ro'yxati bo'yicha telefon va Telegram (qarz eslatmasi ham shundan). */
+export function qabulQiluvchilar(student, kimga) {
   const out = [];
   const tur = kimga.split(',');
   const qosh = (k, tel, tg) => out.push({ kimga: k, tel: uzRaqam(tel), telXom: tel || null, tg: tg || null });
@@ -406,21 +406,35 @@ export async function tolovNavbati({ cheklov = 20, byudjetMs = 20000 } = {}) {
 const YETKAZILDI = ['DELIVRD', 'DELIVERED'];
 const YETMADI = ['UNDELIV', 'UNDELIVERABLE', 'EXPIRED', 'REJECTD', 'REJECTED', 'DELETED', 'FAILED'];
 
-/** Eskiz yuborgan holat bo'yicha to'lov xabarini yangilaydi. */
+// Eskiz callback'i SMS ni qaysi yozuvdan ekanini bilmaydi: to'lov xabari ham,
+// qarz eslatmasi ham (services/qarzXabari.js) shu yerda yangilanadi.
+const JADVALLAR = [
+  { nom: 'TolovXabari', model: () => prisma.tolovXabari },
+  { nom: 'QarzXabari', model: () => prisma.qarzXabari },
+];
+
+/** Eskiz yuborgan holat bo'yicha to'lov xabari va qarz eslatmasini yangilaydi. */
 export async function yetkazishHolati(eskizId, status) {
   const st = String(status || '').toUpperCase();
   const yetdi = YETKAZILDI.includes(st);
   const yetmadi = YETMADI.includes(st);
   if (!yetdi && !yetmadi) return 0;
-  const rows = await prisma.$queryRaw`SELECT id FROM "TolovXabari" WHERE raqamlar @> ${JSON.stringify([{ eskizId }])}::jsonb LIMIT 5`;
+  let jami = 0;
+  for (const j of JADVALLAR) jami += await jadvaldaYetkazish(j, eskizId, st, yetdi);
+  return jami;
+}
+
+async function jadvaldaYetkazish(jadval, eskizId, st, yetdi) {
+  const model = jadval.model();
+  const rows = await prisma.$queryRawUnsafe(`SELECT id FROM "${jadval.nom}" WHERE raqamlar @> $1::jsonb LIMIT 5`, JSON.stringify([{ eskizId }]));
   for (const { id } of rows) {
-    const row = await prisma.tolovXabari.findUnique({ where: { id } });
+    const row = await model.findUnique({ where: { id } });
     const raqamlar = (Array.isArray(row.raqamlar) ? row.raqamlar : []).map(q => q.eskizId === eskizId
       ? { ...q, holat: yetdi ? 'yetkazildi' : 'yetkazilmadi', operator: st, vaqt: new Date().toISOString() } : q);
     const sms = raqamlar.filter(q => q.kanal === 'SMS' && q.eskizId);
     const birortasi = raqamlar.some(q => q.holat === 'yetkazildi');
     const hammasiYetmadi = sms.length > 0 && sms.every(q => q.holat === 'yetkazilmadi') && !raqamlar.some(q => q.kanal === 'TELEGRAM' && q.holat === 'yuborildi');
-    await prisma.tolovXabari.update({
+    await model.update({
       where: { id },
       data: {
         raqamlar,

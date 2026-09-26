@@ -11,6 +11,7 @@ import { useLang } from '../context/LanguageContext';
 import { displayName as ismniKorsat } from '../lib/displayName';
 import { DavomatXabariSozlama } from './DavomatXabari';
 import { TolovXabariSozlama } from './TolovXabari';
+import { QarzXabariSozlama } from './QarzXabari';
 
 /**
  * Bir nechta qiymat tanlanadigan ro'yxat. Bo'sh tanlov "barchasi" degani.
@@ -262,7 +263,9 @@ export default function Messaging() {
     const confirm = useConfirm();
 
   const [activeTab, setActiveTab] = useState<'new' | 'templates' | 'auto' | 'history'>(
-    () => (yuborishOchiq ? 'new' : shablonKorinadi ? 'templates' : avtoKorinadi ? 'auto' : 'history')
+    // ?tab=auto — Bosh sahifadagi "to'laganman" ogohlantirishidan.
+    () => (new URLSearchParams(window.location.search).get('tab') === 'auto' && avtoKorinadi ? 'auto'
+      : yuborishOchiq ? 'new' : shablonKorinadi ? 'templates' : avtoKorinadi ? 'auto' : 'history')
   );
   const [loading, setLoading] = useState(false);
   const [logsLoading, setLogsLoading] = useState(false);
@@ -1792,8 +1795,13 @@ export default function Messaging() {
               tanlanadi; holatlar va "Qayta yuborish" ham shu kartada. */}
           <TolovXabariSozlama schoolId={selectedSchoolId || 0} />
 
+          {/* Qarz eslatmasi (egasi, 2026-09-26): kurslar bo'yicha qarz, oxirgi
+              to'lov, "To'laganman" tugmasi, qarzdorlar ro'yxatidan tekshirib
+              yuborish. Eski "Qarzdorlik eslatmasi" qoidasi o'rniga. */}
+          <QarzXabariSozlama schoolId={selectedSchoolId || 0} />
+
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {rules.map(rule => {
+            {rules.filter(rule => rule.type !== 'DEBT_REMINDER').map(rule => {
               const meta = getTriggerTypeMeta(rule.type);
               const isBirthday = rule.type === 'BIRTHDAY';
               const isDebt = rule.type === 'DEBT_REMINDER';
@@ -1864,7 +1872,7 @@ export default function Messaging() {
                 </div>
               );
             })}
-            {rules.length === 0 && (
+            {rules.filter(rule => rule.type !== 'DEBT_REMINDER').length === 0 && (
               <div className="col-span-full bg-white dark:bg-slate-900 rounded-2xl border border-slate-100 dark:border-slate-800 p-16 text-center">
                 <Zap className="w-8 h-8 text-slate-200 dark:text-slate-750 mx-auto mb-3" />
                 <p className="text-[11px] font-bold text-slate-400">Hozircha avtomatik qoidalar yaratilmagan</p>
@@ -2321,7 +2329,6 @@ export default function Messaging() {
                   className={inp}
                 >
                   <option value="BIRTHDAY">🎂 Tug'ilgan kun tabrigi</option>
-                  <option value="DEBT_REMINDER">💸 Qarzdorlik eslatmasi</option>
                   <option value="ABSENCE_REMINDER">🚫 Dars qoldirganlik eslatmasi</option>
                   <option value="LEAD_WELCOME">📞 Yangi lid tabrigi</option>
                   <option value="GROUP_WELCOME">🎉 Yangi guruhga qo'shilish tabrigi</option>

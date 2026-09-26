@@ -20,6 +20,7 @@ import {
     MIN_AMOUNT as PAYME_MIN, MAX_AMOUNT as PAYME_MAX, payIdFor as paymePayIdFor,
 } from '../../services/payme.js';
 import { registerKlikTasdiq } from './klikTasdiq.js';
+import { registerQarzJavob } from './qarzJavob.js';
 
 const somFmt = (n) => Number(n || 0).toLocaleString('ru-RU');
 
@@ -460,6 +461,10 @@ export const setupBotHandlers = (botInstance, botSchoolId) => {
     // Klik to'lovini administrator Telegram'da tasdiqlaydi / rad etadi va
     // ota-ona "🆔 ID raqam" bilan farzandining ID sini so'raydi.
     registerKlikTasdiq(botInstance, { findUser, filial });
+
+    // Qarz eslatmasidagi "✅ To'laganman": ota-ona izoh yoki chek rasmini
+    // yuboradi, xodim CRM da tekshiradi (src/bot/qarzJavob.js).
+    registerQarzJavob(botInstance, { findUser, filial });
 
     botInstance.start(async (ctx) => {
         const schoolId = await filial(ctx);

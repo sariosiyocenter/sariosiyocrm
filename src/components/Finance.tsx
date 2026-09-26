@@ -20,6 +20,7 @@ import KassaPanel from './KassaPanel';
 import PaymeLinkModal from './PaymeLinkModal';
 import PaymentEditModal, { canEditPayment } from './PaymentEditModal';
 import { TolovXabarQatori } from './TolovXabari';
+import { QarzdorlarModal } from './QarzXabari';
 import { KlikChekMaydonlari, klikniYuborish, yuborishNatijasi, TASDIQ_TURLARI, isAdminRole, chekVaqti } from './KlikChek';
 import TolovTasdiqPanel, { TASDIQ_HODISASI } from './TolovTasdiqPanel';
 import { amaldagiQoida, qoidaMatni } from '../lib/taqsimot';
@@ -94,43 +95,6 @@ export default function Finance() {
     const [billingFilter, setBillingFilter] = useState<'all' | 'paid' | 'partial' | 'unpaid'>('all');
 
     const [showDebtNotifyModal, setShowDebtNotifyModal] = useState(false);
-    const [debtNotifyTemplate, setDebtNotifyTemplate] = useState("Hurmatli {ism}, sizning {oylik} oyi uchun qarzingiz {qarz} UZS. Iltimos, to'lovni vaqtida amalga oshiring. Muassasa: {markaz}");
-    const [debtNotifyChannel, setDebtNotifyChannel] = useState<'SMS' | 'TELEGRAM' | 'BOTH'>('BOTH');
-    const [debtNotifyStatusFilter, setDebtNotifyStatusFilter] = useState<'active' | 'passive' | 'all'>('active');
-    const [isSendingDebtNotify, setIsSendingDebtNotify] = useState(false);
-
-    const handleSendDebtNotifications = async () => {
-        if (!selectedSchoolId || !token || isSendingDebtNotify) return;
-        setIsSendingDebtNotify(true);
-        try {
-            const res = await fetch('/api/billing/notify-debtors', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${token}`
-                },
-                body: JSON.stringify({
-                    schoolId: selectedSchoolId,
-                    month: billingMonth,
-                    messageTemplate: debtNotifyTemplate,
-                    channel: debtNotifyChannel,
-                    statusFilter: debtNotifyStatusFilter
-                })
-            });
-            const data = await res.json();
-            if (res.ok && data.success) {
-                showNotification(`${data.count} ta qarzdor o'quvchiga xabarlar muvaffaqiyatli yuborildi.`, 'success');
-                setShowDebtNotifyModal(false);
-            } else {
-                showNotification(data.error || 'Xabar yuborishda xatolik yuz berdi.', 'error');
-            }
-        } catch (err) {
-            showNotification('Server bilan ulanishda xatolik yuz berdi.', 'error');
-        } finally {
-            setIsSendingDebtNotify(false);
-        }
-    };
-
     const loadBillingStatus = useCallback(async () => {
         if (!selectedSchoolId || !token) return;
         setBillingLoading(true);
@@ -1334,7 +1298,7 @@ export default function Finance() {
                                     onClick={() => setShowDebtNotifyModal(true)}
                                 >
                                     <MessageSquare size={14} />
-                                    To'lamaganlar uchun xabar yuborish ({billingData.students.filter((st: any) => st.status !== 'paid').length} ta)
+                                    Qarzdorlarga eslatma yuborish
                                 </button>
                             </div>
                         )}
@@ -1895,89 +1859,10 @@ ${e.description || e.category} — ${Number(e.amount).toLocaleString()} so'm`)) 
                 </div>
             )}
 
-            {/* Debt Notify Modal */}
+            {/* Qarzdorlarga eslatma: kurslar bo'yicha qarz, oxirgi to'lov, tekshirib
+                yuborish (QarzXabari.tsx). Eski oynaning SMS i Eskizdan o'tmasdi. */}
             {showDebtNotifyModal && (
-                <div className="fixed inset-0 z-[200] flex items-start sm:items-center-safe justify-center overflow-y-auto p-4">
-                    <div className="fixed inset-0 bg-gray-900/60 backdrop-blur-sm" onClick={() => setShowDebtNotifyModal(false)} />
-                    <div className="relative bg-sirt rounded-[2rem] border border-chiziq shadow-2xl w-full max-w-lg p-8">
-                        <div className="flex items-center justify-between mb-6 pb-4 border-b border-chiziq-mayin/50">
-                            <div>
-                                <h3 className="text-sm font-black text-matn tracking-tight text-brand">Qarzdorlarga Xabar Yuborish</h3>
-                                <p className="text-[11px] font-bold text-matn-xira mt-0.5">Oylik hisob-kitob bo'yicha</p>
-                            </div>
-                            <button aria-label="Yopish" onClick={() => setShowDebtNotifyModal(false)} className="w-9 h-9 flex items-center justify-center text-matn-xira hover:bg-gray-50 dark:hover:bg-gray-700 rounded-xl cursor-pointer"><X size={18} /></button>
-                        </div>
-                        <div className="space-y-4">
-                            <div>
-                                <label className={lbl}>O'quvchilar Turi</label>
-                                <div className="flex gap-2">
-                                    {([
-                                        { value: 'active', label: "Faol o'quvchilar" },
-                                        { value: 'passive', label: "Ketgan o'quvchilar" },
-                                        { value: 'all', label: 'Hammasi' },
-                                    ] as const).map(opt => (
-                                        <button
-                                            key={opt.value}
-                                            type="button"
-                                            onClick={() => setDebtNotifyStatusFilter(opt.value)}
-                                            className={`flex-1 py-2 rounded-xl text-[11px] font-extrabold border transition-all cursor-pointer ${
-                                                debtNotifyStatusFilter === opt.value
-                                                    ? 'bg-brand text-brand-ust border-brand'
-                                                    : 'bg-gray-50 dark:bg-gray-700 text-matn-2 border-gray-200 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-600'
-                                            }`}
-                                        >
-                                            {opt.label}
-                                        </button>
-                                    ))}
-                                </div>
-                            </div>
-                            <div>
-                                <label className={lbl}>Xabar Yuborish Kanali</label>
-                                <select className={inp} value={debtNotifyChannel} onChange={e => setDebtNotifyChannel(e.target.value as any)}>
-                                    <option value="BOTH">Telegram Bot & SMS (Telegram yo'q bo'lsa SMS)</option>
-                                    <option value="TELEGRAM">Faqat Telegram Bot</option>
-                                    <option value="SMS">Faqat SMS</option>
-                                </select>
-                            </div>
-                            <div>
-                                <div className="flex justify-between items-center mb-1">
-                                    <label className={lbl}>Xabar Shablon Matni</label>
-                                    <span className="text-[11px] text-matn-xira font-bold">Placeholder: {"{ism}"}, {"{oylik}"}, {"{qarz}"}, {"{markaz}"}</span>
-                                </div>
-                                <textarea
-                                    className={`${inp} min-h-[120px] py-3 text-xs leading-relaxed`}
-                                    value={debtNotifyTemplate}
-                                    onChange={e => setDebtNotifyTemplate(e.target.value)}
-                                    placeholder="Masalan: Hurmatli {ism}, sizning {oylik} oyi uchun qarzingiz {qarz} UZS..."
-                                />
-                            </div>
-
-                            <div className="bg-amber-50 dark:bg-amber-950/20 border border-amber-100 dark:border-amber-900/40 rounded-2xl p-4 text-[11px] text-amber-700 dark:text-amber-400 font-bold space-y-1">
-                                <p>⚠️ DIQQAT: Xabar {debtNotifyStatusFilter === 'passive' ? "ketgan/passiv" : debtNotifyStatusFilter === 'all' ? "barcha" : "faol"} qarzdor o'quvchilarga yuboriladi.</p>
-                                <p>SMS orqali yuborilsa, Eskiz SMS balansingizdan haq yechiladi.</p>
-                            </div>
-
-                            <div className="flex gap-3 pt-2">
-                                <button type="button" onClick={() => setShowDebtNotifyModal(false)} disabled={isSendingDebtNotify}
-                                    className="flex-1 py-3 bg-chiziq text-gray-700 dark:text-white text-xs font-extrabold rounded-2xl transition-all cursor-pointer hover:bg-gray-200 dark:hover:bg-gray-600">
-                                    {t('cancel')}
-                                </button>
-                                <button type="button" onClick={handleSendDebtNotifications} disabled={isSendingDebtNotify}
-                                    className="flex-1 py-3 bg-brand hover:bg-brand-dark text-white text-xs font-extrabold rounded-2xl shadow-sm shadow-[#1b6b6b]/20 transition-all cursor-pointer flex items-center justify-center gap-2">
-                                    {isSendingDebtNotify ? (
-                                        <>
-                                            <RefreshCw size={12} className="animate-spin" /> Yuborilmoqda...
-                                        </>
-                                    ) : (
-                                        <>
-                                            <MessageSquare size={12} /> Xabarlarni yuborish
-                                        </>
-                                    )}
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-                </div>
+                <QarzdorlarModal schoolId={selectedSchoolId || 0} onClose={() => setShowDebtNotifyModal(false)} />
             )}
         </div>
     );

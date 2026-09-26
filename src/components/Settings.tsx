@@ -557,7 +557,7 @@ export default function Settings() {
                     <p className="text-center py-10 text-[11px] text-matn-xira font-bold">Yuklanmoqda…</p>
                 ) : autoRulesError ? (
                     <p className="text-center py-10 text-[11px] text-rose-500 font-bold">{autoRulesError}</p>
-                ) : autoRules.length === 0 ? (
+                ) : autoRules.filter((r: any) => r.type !== 'DEBT_REMINDER').length === 0 ? (
                     <div className="py-10 text-center">
                         <Zap size={28} className="mx-auto text-gray-200 dark:text-gray-700 mb-3" />
                         <p className="text-sm font-bold text-matn-2">Avtomatik qoidalar yo'q</p>
@@ -565,7 +565,8 @@ export default function Settings() {
                     </div>
                 ) : (
                     <div className="bg-sirt border border-chiziq rounded-2xl overflow-hidden shadow-sm divide-y divide-chiziq-mayin dark:divide-gray-700/50">
-                        {autoRules.map((rule: any) => (
+                        {/* Qarz eslatmasi endi alohida karta (Xabarlar → Avtomatik) — eski qoida ko'rsatilmaydi. */}
+                        {autoRules.filter((r: any) => r.type !== 'DEBT_REMINDER').map((rule: any) => (
                             <button key={rule.id} onClick={() => navigate('/messaging')}
                                 className="w-full flex items-center gap-4 px-5 py-4 text-left hover:bg-gray-55/60 dark:hover:bg-gray-900/30 transition-colors cursor-pointer">
                                 <div className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 border ${rule.enabled
