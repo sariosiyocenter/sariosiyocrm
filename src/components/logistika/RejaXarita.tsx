@@ -223,11 +223,13 @@ export default function RejaXarita(p: Props) {
         const q = qatlam.current;
         if (!L || !q) return;
         q.bola.clearLayers();
+        // Bola kam bo'lsa (60 tagacha) uzoqdan ham rasmli marker — nuqta faqat ko'p bolada.
+        const o: Olcham = olcham === 'kichik' && p.bolalar.length <= 60 ? 'orta' : olcham;
         // Rejasizlar pastda, tanlangani eng ustida.
         const tartib = [...p.bolalar].sort((a, b) => (a.holat === 'rejasiz' ? 0 : 1) - (b.holat === 'rejasiz' ? 0 : 1));
         for (const b of tartib) {
             const t = b.id === p.tanlangan;
-            L.marker(b.pos, { icon: bolaIcon(L, b, t, olcham), zIndexOffset: t ? 3000 : b.holat === 'rejasiz' ? 0 : 100, keyboard: false, riseOnHover: true })
+            L.marker(b.pos, { icon: bolaIcon(L, b, t, o), zIndexOffset: t ? 3000 : b.holat === 'rejasiz' ? 0 : 100, keyboard: false, riseOnHover: true })
                 .addTo(q.bola)
                 .bindTooltip(esc(b.name), { direction: 'top', offset: [0, t ? -24 : -18] })
                 .on('click', (e: any) => { L.DomEvent.stopPropagation(e); cb.current.onBola(b.id); });
