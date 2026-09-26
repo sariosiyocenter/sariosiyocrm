@@ -1714,8 +1714,6 @@ export default function Messaging() {
             )}
           </div>
 
-          <DavomatXabariSozlama schoolId={selectedSchoolId || 0} />
-
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {templates.map(t => (
               <div key={t.id} className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-100 dark:border-slate-800 shadow-sm p-4 flex flex-col justify-between space-y-4 hover:shadow-md transition-all group">
@@ -1794,6 +1792,10 @@ export default function Messaging() {
               "avtomatikka qo'ydingmi?"). Matni Shablonlar dagi shablondan
               tanlanadi; holatlar va "Qayta yuborish" ham shu kartada. */}
           <TolovXabariSozlama schoolId={selectedSchoolId || 0} />
+
+          {/* Davomat xabari ham avtomatik xabar — Shablonlar da turgani chalkashtirardi
+              (egasi: "bu nima? va nimaga xabarlarda?"). Shablonlar = faqat matnlar. */}
+          <DavomatXabariSozlama schoolId={selectedSchoolId || 0} />
 
           {/* Qarz eslatmasi (egasi, 2026-09-26): kurslar bo'yicha qarz, oxirgi
               to'lov, "To'laganman" tugmasi, qarzdorlar ro'yxatidan tekshirib

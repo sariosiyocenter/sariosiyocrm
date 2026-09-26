@@ -186,7 +186,8 @@ export function XabarNavbati({ schoolId, onAvtomatik }: { schoolId: number; onAv
 export function TolovXabariSozlama({ schoolId }: { schoolId: number }) {
     const { ozgartira, showNotification, settings } = useCRM();
     const navigate = useNavigate();
-    const tahrir = ozgartira('xabarlar.shablon');
+    // Karta Avtomatik tabida: avtomatik qoidalar ruxsati ham yetadi.
+    const tahrir = ozgartira('xabarlar.shablon') || ozgartira('xabarlar.avto');
     const yuborishMumkin = ozgartira('xabarlar.yuborish');
     const [d, setD] = useState<Javob | null>(null);
     const [xato, setXato] = useState('');
@@ -439,7 +440,7 @@ export function TolovXabariSozlama({ schoolId }: { schoolId: number }) {
                     </button>
                 )}
             </div>
-            {!tahrir && <p className="text-[10px] font-bold text-matn-xira">Sozlamani «Shablonlar» ruxsati bor xodim o'zgartiradi.</p>}
+            {!tahrir && <p className="text-[10px] font-bold text-matn-xira">Sozlamani «Avtomatik qoidalar» yoki «Shablonlar» ruxsati bor xodim o'zgartiradi.</p>}
         </div>
     );
 }

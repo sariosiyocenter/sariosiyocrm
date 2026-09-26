@@ -10,7 +10,8 @@ import { DAVOMAT_HOLATLARI, holatKaliti, eskizTasdiqlangan } from '../../lib/dav
  * holat uchun Xabarlar → Shablonlar dagi tanlangan shablon ketadi.
  *
  *  - DavomatXabariSozlama — qaysi holatga qaysi shablon, kanal va kimga
- *    (butun markazga bitta). Xabarlar → Shablonlar tabida va kurs oynasida.
+ *    (butun markazga bitta). Xabarlar → Avtomatik tabida (2026-09-27 gacha
+ *    Shablonlar da edi — egasi "bu nima?" dedi) va kurs oynasida.
  *  - DavomatXabarModal — kurs → Yo'qlama → "Xabar yuborish": shu kun
  *    kelmagan / kechikkan / … o'quvchilar holat bo'yicha guruhlangan, har
  *    birini belgilab yoki olib tashlab yuboriladi. Ilgari ikki tugma bor edi:
@@ -79,7 +80,8 @@ export function DavomatXabariSozlama({ schoolId, ixcham = false, onChange }: {
     onChange?: (s: Sozlama, shablonlar: Shablon[]) => void;
 }) {
     const { ozgartira, showNotification } = useCRM();
-    const tahrir = ozgartira('xabarlar.shablon');
+    // Karta Avtomatik tabida: avtomatik qoidalar ruxsati ham yetadi.
+    const tahrir = ozgartira('xabarlar.shablon') || ozgartira('xabarlar.avto');
     const [d, setD] = useState<Javob | null>(null);
     const [xato, setXato] = useState('');
     const [band, setBand] = useState(false);
@@ -114,10 +116,9 @@ export function DavomatXabariSozlama({ schoolId, ixcham = false, onChange }: {
         <div className={ixcham ? 'space-y-3' : 'bg-sirt rounded-2xl border border-chiziq p-4 space-y-4'}>
             {!ixcham && (
                 <div>
-                    <h3 className="text-xs font-black text-matn">Davomat xabarlari</h3>
+                    <h3 className="text-xs font-black text-matn">📋 Davomat qilinganda — ota-onaga xabar</h3>
                     <p className="text-[11px] font-medium text-matn-xira mt-0.5">
-                        Kurs sahifasidagi Yo'qlama → «Xabar yuborish» va ustozning Telegram botidagi «Saqlash» shu shablonlarni yuboradi.
-                        Butun markaz (hamma filial) uchun bitta.
+                        Ustoz yo'qlamani saqlaganda (Telegram botda «Saqlash» yoki kurs sahifasida Yo'qlama → «Xabar yuborish») darsga kelmagan, kechikkan yoki erta ketgan o'quvchining ota-onasiga shu matn ketadi. Har holat uchun matnni tanlang — matnlarning o'zi «Shablonlar» bo'limida. Butun markaz uchun bitta.
                     </p>
                 </div>
             )}
@@ -184,7 +185,7 @@ export function DavomatXabariSozlama({ schoolId, ixcham = false, onChange }: {
                     </div>
                 </div>
             </div>
-            {!tahrir && <p className="text-[10px] font-bold text-matn-xira">Sozlamani «Shablonlar» ruxsati bor xodim o'zgartiradi.</p>}
+            {!tahrir && <p className="text-[10px] font-bold text-matn-xira">Sozlamani «Avtomatik qoidalar» yoki «Shablonlar» ruxsati bor xodim o'zgartiradi.</p>}
         </div>
     );
 }
