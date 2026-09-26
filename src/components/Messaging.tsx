@@ -10,6 +10,7 @@ import { useConfirm } from './ConfirmDialog';
 import { useLang } from '../context/LanguageContext';
 import { displayName as ismniKorsat } from '../lib/displayName';
 import { DavomatXabariSozlama } from './DavomatXabari';
+import { TolovXabariSozlama } from './TolovXabari';
 
 /**
  * Bir nechta qiymat tanlanadigan ro'yxat. Bo'sh tanlov "barchasi" degani.
@@ -1710,6 +1711,11 @@ export default function Messaging() {
             )}
           </div>
 
+          {/* To'lov SMS i: shablon, kimga, holatlar (egasi, 2026-09-26: "jiddiyroq
+              ishlab chiqish kerak"). Avtomatik qoidalardagi "To'lov qilinganda"
+              o'rniga — matn shu yerdagi shablonlardan tanlanadi. */}
+          <TolovXabariSozlama schoolId={selectedSchoolId || 0} />
+
           <DavomatXabariSozlama schoolId={selectedSchoolId || 0} />
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -2321,7 +2327,7 @@ export default function Messaging() {
                   <option value="GROUP_WELCOME">🎉 Yangi guruhga qo'shilish tabrigi</option>
                   <option value="EXAM_RESULT">📝 Imtihon natijalari e'loni</option>
                   <option value="EXAM_MONTHLY">📈 Oylik imtihon hisoboti</option>
-                  <option value="PAYMENT_CONFIRM">💰 To'lov qilinganda</option>
+
                   <option value="DAILY_SCORE">⭐️ Kunlik baholash hisoboti</option>
                   <option value="TRANSPORT_NOTIFY">🚌 Transport xabarnomasi</option>
                   <option value="COURSE_GRADUATION">🎓 Kursni bitirganlik tabrigi</option>
@@ -2330,16 +2336,6 @@ export default function Messaging() {
                 </select>
               </div>
 
-              {/* To'lov xabari vaqtga bog'liq emas: to'lov kiritilishi bilan ketadi
-                  (egasi, 2026-09-24: "to'lov qilinganda sms borishi kerak avtomatik"). */}
-              {autoRuleForm.type === 'PAYMENT_CONFIRM' ? (
-                <div>
-                  <label className={lbl}>Jo'natish vaqti</label>
-                  <div className="px-3 py-2.5 rounded-xl border border-brand/30 bg-brand/5 text-xs font-bold text-brand">
-                    Darhol — to'lov kiritilishi bilan
-                  </div>
-                </div>
-              ) : (
               <div>
                 <label className={lbl}>Jo'natish vaqti *</label>
                 <select
@@ -2353,7 +2349,6 @@ export default function Messaging() {
                   })}
                 </select>
               </div>
-              )}
             </div>
 
             {/* O'quvchi holati: qoida faqat shu holatdagi o'quvchilarga yuboradi
@@ -2436,12 +2431,6 @@ export default function Messaging() {
               </div>
             </div>
 
-            {autoRuleForm.type === 'PAYMENT_CONFIRM' && (
-              <p className="text-[11px] font-bold text-slate-500 dark:text-slate-400 leading-relaxed bg-slate-50 dark:bg-slate-800/60 p-3 rounded-xl border border-slate-200/60 dark:border-slate-700/60">
-                Naqd, karta, o'tkazma, Payme va administrator tasdiqlagan Klik to'lovi kiritilishi bilan yuboriladi.
-                {" {oxirgi_tolov} — shu to'lov summasi. "}SMS matni saqlanganda Eskiz moderatsiyasiga ketadi — Eskiz tasdiqlaguncha SMS yetib bormaydi.
-              </p>
-            )}
 
             {autoRuleForm.type === 'EXAM_MONTHLY' && (
               <div className="grid grid-cols-2 gap-3 bg-slate-55 dark:bg-slate-850 p-3 rounded-xl border border-slate-200/50 dark:border-slate-700/50">

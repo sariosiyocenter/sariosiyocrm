@@ -16,7 +16,13 @@ import { yetadimi, sozlamaniTozala, rolRuxsati, SOZLANADIGAN_ROLLAR, bolimNomi, 
 import { encryptSecret, decryptSecret, secretsEncryptionEnabled } from './lib/secrets.js';
 import { claimBillingRun, releaseBillingRun, processMonthlyBilling, billingDayOf, billingDayReached, normalizeBillingDay } from './services/billing.js';
 import { fillTemplate, testNatijasiKerak, oxirgiTolovKerak, kirimmi } from './lib/xabarMatni.js';
-import { tolovXabariniUlash, tolovXabari } from './services/tolovXabari.js';
+import {
+  tolovXabariniUlash, tolovXabari, tolovXabariniBekorQil, tolovNavbati, tolovSozlamasi, tolovSozlamasiniSaqla,
+  tolovXabarlariRoyxati, qaytaYubor as tolovXabariniQaytaYubor, sinovXabari, eskizBalansi, eskizHolatlariniYangila,
+  yetkazishHolati,
+} from './services/tolovXabari.js';
+import { smsMatni } from './lib/tolovXabari.js';
+import crypto from 'node:crypto';
 import { davomatYuboruvchiniUlash, davomatSozlamasi, davomatSozlamasiniSaqla, davomatXabariniYuborish, kursKuniYuborilganlar, bugunDavomatXabariOlganlar } from './services/davomatXabari.js';
 import { normalizePayShare } from './lib/allocation.js';
 import { KLIK_TASDIQ_TURLARI, TASDIQ_HOLATLARI, chekVaqtiniTozala, takroriyCheklar, takrorQatorlari, tasdiqniBajar, radniBajar, adminlargaYubor } from './services/klikTasdiq.js';
@@ -139,7 +145,8 @@ app.use((req, res, next) => {
   // ishi unga kechikish qo'shmasin.
   // AUTO_JOBS=off — mahalliy sinov serveri production bazasidagi qoidalarni
   // ishga tushirib, ota-onalarga haqiqiy xabar yubormasin.
-  if (process.env.AUTO_JOBS !== 'off' && req.path.startsWith('/api/') && !req.path.startsWith('/api/payme/') && Date.now() - lastLazyCronRun > 10 * 60 * 1000) {
+  // Eskiz callback'i ham istisno — u tez-tez va javobni tez kutadi.
+  if (process.env.AUTO_JOBS !== 'off' && req.path.startsWith('/api/') && !req.path.startsWith('/api/payme/') && !req.path.startsWith('/api/sms/eskiz-callback/') && Date.now() - lastLazyCronRun > 10 * 60 * 1000) {
     lastLazyCronRun = Date.now();
     (async () => {
       try {
@@ -2924,6 +2931,8 @@ app.delete('/api/payments/:id', authenticate, async (req, res, next) => {
       // Klik tasdig'idan kelgan to'lov bo'lsa — tasdiq qatori ham buni bilsin.
       prisma.tolovTasdiq.updateMany({ where: { paymentId: id }, data: { status: "o'chirildi", paymentId: null } }),
     ]);
+    // Ota-onaga hali ketmagan "to'lov qabul qilindi" SMS i bekor.
+    await tolovXabariniBekorQil(id);
     res.json({ success: true, id, studentId: payment.studentId, amount: payment.amount });
   } catch (error) { next(error); }
 });
@@ -4879,6 +4888,86 @@ app.put('/api/davomat-xabari', authenticate, async (req, res, next) => {
   } catch (error) { next(error); }
 });
 
+// ---------------------------------------------------------------------------
+// To'lov xabari (services/tolovXabari.js): sozlama, holatlar, qayta yuborish.
+// ---------------------------------------------------------------------------
+app.get('/api/tolov-xabari', authenticate, async (req, res, next) => {
+  try {
+    const schoolId = parseInt(req.query.schoolId) || req.user.schoolId;
+    if (!(await canAccessSchool(req.user, schoolId))) return res.status(403).json({ error: "Ruxsat yo'q" });
+    const boshlangich = await tolovSozlamasi(schoolId);
+    if (!boshlangich) return res.status(404).json({ error: 'Filial topilmadi' });
+    // Oyna ochilganda: Eskiz holatlari yangilanadi va navbatdagilar yuboriladi —
+    // "shablon tasdiqlandimi, SMS ketdimi" darhol ko'rinsin.
+    await Promise.race([
+      (async () => {
+        await eskizHolatlariniYangila(boshlangich.schoolIds, { majburiy: req.query.yangila === '1' });
+        await tolovNavbati({ cheklov: 10, byudjetMs: 5000 });
+      })().catch(e => console.error("[To'lov xabari oynasi]", e.message)),
+      new Promise(r => setTimeout(r, 7000)),
+    ]);
+    const s = await tolovSozlamasi(schoolId);
+    const [r, eskizBalans] = await Promise.all([
+      tolovXabarlariRoyxati(s.schoolIds),
+      Promise.race([eskizBalansi(schoolId), new Promise(r2 => setTimeout(() => r2(null), 4000))]),
+    ]);
+    res.json({ sozlama: s.sozlama, saqlangan: s.saqlangan, shablonlar: s.shablonlar, ...r, eskizBalans });
+  } catch (error) { next(error); }
+});
+
+app.put('/api/tolov-xabari', authenticate, async (req, res, next) => {
+  try {
+    const schoolId = parseInt(req.body?.schoolId) || req.user.schoolId;
+    if (!(await canAccessSchool(req.user, schoolId))) return res.status(403).json({ error: "Ruxsat yo'q" });
+    const r = await tolovSozlamasiniSaqla(schoolId, req.body?.sozlama);
+    if (r.error) return res.status(400).json({ error: r.error });
+    res.json({ sozlama: r.sozlama });
+  } catch (error) { next(error); }
+});
+
+app.post('/api/tolov-xabari/sinov', authenticate, async (req, res, next) => {
+  try {
+    const schoolId = parseInt(req.body?.schoolId) || req.user.schoolId;
+    if (!(await canAccessSchool(req.user, schoolId))) return res.status(403).json({ error: "Ruxsat yo'q" });
+    const r = await sinovXabari(schoolId, req.body?.telefon);
+    if (!r.ok) return res.status(r.status || 400).json({ error: r.error });
+    res.json({ ok: true, matn: r.matn, telefon: req.body?.telefon });
+  } catch (error) { next(error); }
+});
+
+app.post('/api/tolov-xabari/:id/qayta', authenticate, async (req, res, next) => {
+  try {
+    const id = parseInt(req.params.id);
+    if (!Number.isInteger(id)) return res.status(400).json({ error: "Noto'g'ri ID" });
+    const row = await prisma.tolovXabari.findUnique({ where: { id }, select: { schoolId: true } });
+    if (!row) return res.status(404).json({ error: 'Topilmadi' });
+    if (!(await canAccessSchool(req.user, row.schoolId))) return res.status(403).json({ error: "Ruxsat yo'q" });
+    const r = await tolovXabariniQaytaYubor(id);
+    if (r.error) return res.status(r.status || 400).json({ error: r.error });
+    res.json(r.row);
+  } catch (error) { next(error); }
+});
+
+// Eskiz SMS yetkazish natijasi (callback_url). Kirishsiz — manzildagi kalit
+// bilan himoyalangan. Xabar holati SmsLog va TolovXabari ga yoziladi.
+app.post('/api/sms/eskiz-callback/:kalit', async (req, res) => {
+  if (req.params.kalit !== ESKIZ_CALLBACK_KALIT) return res.status(404).json({ error: 'Not found' });
+  try {
+    const b = req.body && typeof req.body === 'object' ? req.body : {};
+    const eskizId = String(b.request_id || b.id || '').trim().slice(0, 100);
+    const st = String(b.status || '').toUpperCase().slice(0, 30);
+    if (eskizId && st) {
+      if (['UNDELIV', 'UNDELIVERABLE', 'EXPIRED', 'REJECTD', 'REJECTED', 'DELETED', 'FAILED'].includes(st)) {
+        await prisma.smsLog.updateMany({ where: { eskizId }, data: { status: 'FAILED', errorMsg: `Operator yetkazmadi: ${st}` } });
+      }
+      await yetkazishHolati(eskizId, st);
+    }
+  } catch (e) {
+    console.error('[Eskiz callback]', e.message);
+  }
+  res.json({ ok: true });
+});
+
 app.delete('/api/attendances/batch', authenticate, async (req, res, next) => {
   try {
     const { schoolId, groupId, date } = req.query;
@@ -6348,20 +6437,37 @@ app.post('/api/public/remove-bg', publicRemoveBgLimiter, (req, res) => {
 
 const eskizTokensCache = new Map(); // email -> { token, expiry }
 
-async function getEskizToken(schoolId) {
-  let email = process.env.ESKIZ_EMAIL;
-  let password = process.env.ESKIZ_PASSWORD;
-
+/**
+ * Eskiz hisobi: filialning o'z sozlamasi, bo'lmasa shu tashkilotdagi boshqa
+ * filialniki. Langar filialida Eskiz umuman kiritilmagan edi — u yerdagi
+ * to'lov SMS lari "sozlamalar kiritilmagan" bilan yiqilardi. Hisob bitta:
+ * markaz bitta Eskiz akkauntidan yuboradi.
+ */
+async function eskizSozlamasi(schoolId) {
+  const ol = (s) => (s && s.eskizEmail && s.eskizPassword)
+    // Reads plaintext rows written before encryption existed, and encrypted ones after.
+    ? { email: s.eskizEmail.trim(), password: decryptSecret(s.eskizPassword).trim(), from: (s.eskizFrom || '').trim() || null }
+    : null;
   if (schoolId) {
-    const settings = await prisma.setting.findUnique({ where: { schoolId } });
-    if (settings && settings.eskizEmail && settings.eskizPassword) {
-      email = settings.eskizEmail.trim();
-      // Reads plaintext rows written before encryption existed, and encrypted ones after.
-      password = decryptSecret(settings.eskizPassword).trim();
+    const tanla = { eskizEmail: true, eskizPassword: true, eskizFrom: true };
+    const oz = ol(await prisma.setting.findUnique({ where: { schoolId }, select: tanla }));
+    if (oz) return oz;
+    const qardosh = (await organizationSchoolIds({ schoolId })).filter(id => id !== schoolId);
+    if (qardosh.length) {
+      const boshqa = await prisma.setting.findMany({ where: { schoolId: { in: qardosh }, eskizEmail: { not: null } }, select: tanla, orderBy: { schoolId: 'asc' } });
+      for (const s of boshqa) { const t = ol(s); if (t) return t; }
     }
   }
+  if (process.env.ESKIZ_EMAIL && process.env.ESKIZ_PASSWORD) {
+    return { email: process.env.ESKIZ_EMAIL, password: process.env.ESKIZ_PASSWORD, from: process.env.ESKIZ_FROM || null };
+  }
+  return null;
+}
 
-  if (!email || !password) throw new Error('Eskiz SMS sozlamalari (email/password) kiritilmagan');
+async function getEskizToken(schoolId) {
+  const sozlama = await eskizSozlamasi(schoolId);
+  if (!sozlama) throw new Error('Eskiz SMS sozlamalari (email/password) kiritilmagan');
+  const { email, password } = sozlama;
 
   const cached = eskizTokensCache.get(email);
   if (cached) {
@@ -6431,17 +6537,38 @@ function resolveRecipientPhone(student) {
 smsYuboruvchiniUlash((phone, message, type, studentId, schoolId) =>
   sendSms(phone, message, type, studentId, schoolId));
 
+// Eskiz har bir SMS ning yetib borgan-bormaganini shu manzilga yuboradi
+// (callback_url). Manzildagi kalit — JWT_SECRET dan olingan, tashqaridan
+// soxta "yetkazildi" yozib bo'lmasin.
+const ESKIZ_CALLBACK_KALIT = crypto.createHmac('sha256', String(JWT_SECRET || 'eskiz')).update('eskiz-callback').digest('hex').slice(0, 32);
+function eskizCallbackUrl() {
+  if (!process.env.VERCEL && !process.env.APP_URL) return '';
+  const base = String(process.env.APP_URL || 'https://sariosiyocrm.vercel.app').replace(/\/+$/, '');
+  return `${base}/api/sms/eskiz-callback/${ESKIZ_CALLBACK_KALIT}`;
+}
+
 async function sendSms(phone, message, type, studentId, schoolId, campaignId = null) {
-  let from = process.env.ESKIZ_FROM || '4546';
-  
-  if (schoolId) {
-    const settings = await prisma.setting.findUnique({ where: { schoolId } });
-    if (settings && settings.eskizFrom) {
-      from = settings.eskizFrom.trim();
+  // Tutuq belgilari va bo'shliqlar Eskizdagi shablon bilan bir xil ko'rinishda
+  // (lib/tolovXabari.js smsMatni) — shablon ham shu ko'rinishda yuboriladi.
+  message = smsMatni(message);
+
+  // Lokal server production bazasi bilan ishlaydi: sinovlar haqiqiy ota-onaga
+  // SMS yubormasin va Eskiz balansini yemasin. SMS_REAL=1 — haqiqatan yuborish,
+  // SMS_FAKE=1 — Eskizga bormay "yuborildi" deb qaytarish (sinov uchun).
+  if (!process.env.VERCEL && process.env.SMS_REAL !== '1') {
+    if (process.env.SMS_FAKE === '1') {
+      const id = 'fake-' + crypto.randomUUID();
+      await prisma.smsLog.create({
+        data: { toPhone: phone, message, status: 'SENT', type, studentId: studentId || null, eskizId: id, errorMsg: 'SMS_FAKE: haqiqatda yuborilmadi', channel: 'SMS', campaignId: campaignId || null, schoolId },
+      });
+      return { success: true, data: { id, status: 'waiting' }, fake: true };
     }
+    return { success: false, error: 'Lokal server: haqiqiy SMS yuborilmaydi (SMS_REAL=1 bilan yoqiladi)', lokal: true };
   }
 
   try {
+    const sozlama = await eskizSozlamasi(schoolId);
+    const from = sozlama?.from || process.env.ESKIZ_FROM || '4546';
     const token = await getEskizToken(schoolId);
     const cleanPhone = phone.replace(/\D/g, ''); // Faqat raqamlar
 
@@ -6449,7 +6576,7 @@ async function sendSms(phone, message, type, studentId, schoolId, campaignId = n
     params.append('mobile_phone', cleanPhone);
     params.append('message', message);
     params.append('from', from);
-    params.append('callback_url', '');
+    params.append('callback_url', eskizCallbackUrl());
 
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), 12000); // 12s timeout
@@ -6464,8 +6591,9 @@ async function sendSms(phone, message, type, studentId, schoolId, campaignId = n
       signal: controller.signal
     });
     clearTimeout(timeout);
-    const data = await res.json();
-    const success = data.status === 'wait' || data.status === 'success' || res.ok;
+    const data = await res.json().catch(() => ({}));
+    // 200 bo'lsa ham ichida xato kelishi mumkin — faqat qabul qilinganini "yuborildi" deymiz.
+    const success = ['wait', 'waiting', 'success'].includes(data.status) || (res.ok && !['error', 'fail'].includes(data.status));
 
     await prisma.smsLog.create({
       data: {
@@ -6739,63 +6867,52 @@ async function getLastPaymentMap(schoolId, studentIds) {
   return map;
 }
 
-/**
- * To'lov qabul qilinganda ota-onaga darhol xabar (egasi, 2026-09-24: "to'lov
- * qilinganda ham sms borishi kerak avtomatik"). Matn, kanal va kimga —
- * Xabarlar → Avtomatik qoidalar → "To'lov qabul qilinganda" (PAYMENT_CONFIRM).
- * Qoida yo'q yoki o'chiq bo'lsa hech narsa yuborilmaydi.
- * Naqd, karta, o'tkazma, tasdiqlangan Klik va Payme — hammasi shu yerdan.
- */
-async function tolovXabariniYuborish(payment, opts = {}) {
-  if (!kirimmi(payment) || payment.type === 'Qaytarish') return { yuborildi: false, sabab: 'kirim emas' };
-  // Qoidalar xodimning filialiga yoziladi (admin — Sariosiyo). Filialning o'z
-  // qoidasi bo'lmasa — shu tashkilotdagi boshqa filialniki (Langar alohida
-  // qoida yaratmasa ham xabar ketsin). O'z qoidasi o'chiq bo'lsa — yubormaydi.
-  let rules = await prisma.autoMessageRule.findMany({
-    where: { schoolId: payment.schoolId, type: 'PAYMENT_CONFIRM' },
-    orderBy: { id: 'asc' },
-  });
-  if (!rules.length) {
-    const qardosh = await organizationSchoolIds({ schoolId: payment.schoolId });
-    rules = await prisma.autoMessageRule.findMany({
-      where: { schoolId: { in: qardosh }, type: 'PAYMENT_CONFIRM' },
-      orderBy: { id: 'asc' },
-    });
-  }
-  rules = rules.filter(r => r.enabled);
-  if (!rules.length) return { yuborildi: false, sabab: "«To'lov qabul qilinganda» qoidasi yoqilmagan" };
-
-  const [student, school, kurslar, orgName] = await Promise.all([
-    prisma.student.findUnique({ where: { id: payment.studentId } }),
-    prisma.school.findUnique({ where: { id: payment.schoolId } }),
-    prisma.group.findMany({
-      where: { students: { some: { id: payment.studentId } } },
-      select: { id: true, name: true, course: { select: { name: true } }, teacher: { select: { name: true } } },
-    }),
-    // {markaz} — filial emas, markaz nomi (lib/markazBrendi.js).
-    markazNomi(payment.schoolId),
-  ]);
-  if (!student) return { yuborildi: false, sabab: "o'quvchi topilmadi" };
-  if (school) school.orgName = orgName;
-  const oqKurslari = kurslar.map(g => ({ id: g.id, name: g.name, courseName: g.course?.name || '', teacherName: g.teacher?.name || '' }));
-
-  let yuborildi = false;
-  for (const rule of rules) {
-    const cfg = (rule.config && typeof rule.config === 'object') ? rule.config : {};
-    const statuses = Array.isArray(cfg.statuses) && cfg.statuses.length ? cfg.statuses : null;
-    if (statuses && !statuses.includes(student.status)) continue;
-    const target = { ...student, customPaymentAmount: payment.amount, lastPaymentAmount: payment.amount };
-    if (testNatijasiKerak(rule.body)) target.lastExam = (await getLastExamMap(payment.schoolId, [student.id]))[student.id];
-    const message = fillTemplate(rule.body, target, oqKurslari, school);
-    // Payme ota-onaga Telegram xabarini o'zi yuboradi — bu yerda faqat SMS.
-    const channel = opts.kanal === 'SMS' ? (rule.channel === 'TELEGRAM' ? null : 'SMS') : rule.channel;
-    if (!channel) continue;
-    const r = await sendToOne({ student: target, message, channel, recipientTo: rule.recipientTo, type: 'PAYMENT', schoolId: payment.schoolId, campaignId: null });
-    if (r.success) yuborildi = true;
-  }
-  return { yuborildi };
+/** Eskiz kabinetidagi shablonlar holati: Map(eskizTemplateId → status). */
+async function eskizShablonHolatlari(schoolId) {
+  const token = await getEskizToken(schoolId);
+  const r = await withTimeout(fetch('https://notify.eskiz.uz/api/user/templates', { headers: { Authorization: 'Bearer ' + token } }), 8000, 'Eskiz timeout');
+  const d = await r.json().catch(() => ({}));
+  return new Map((d?.result || d?.data || []).map(x => [String(x.id), x.status]));
 }
-tolovXabariniUlash(tolovXabariniYuborish);
+
+/**
+ * To'lov xabari (services/tolovXabari.js) uchun Eskiz va Telegram. Lokal
+ * serverda sendSms haqiqiy SMS yubormaydi (SMS_REAL/SMS_FAKE).
+ */
+tolovXabariniUlash({
+  sms: async (phone, text, { schoolId, studentId }) => {
+    const r = await sendSms(phone, text, 'PAYMENT', studentId, schoolId);
+    return {
+      success: r.success,
+      eskizId: r.data?.id ? String(r.data.id) : null,
+      lokal: !!r.lokal,
+      xato: r.success ? null : String(r.data?.message || r.error || JSON.stringify(r.data || {})),
+    };
+  },
+  telegram: async (schoolId, chatId, text, { studentId, toName }) => {
+    const log = (status, errorMsg) => prisma.smsLog.create({
+      data: { toPhone: String(chatId), toName: toName || null, message: text, status, type: 'PAYMENT', studentId: studentId || null, errorMsg, channel: 'TELEGRAM', schoolId },
+    }).catch(() => {});
+    const bot = await getTelegramBot(schoolId);
+    if (!bot) return { success: false, xato: 'Telegram bot ulanmagan' };
+    try {
+      await withTimeout(bot.telegram.sendMessage(chatId, text), 4000, 'Telegram timeout');
+      await log('SENT', null);
+      return { success: true };
+    } catch (e) {
+      await log('FAILED', e.message);
+      return { success: false, xato: /blocked/i.test(e.message) ? 'botni bloklagan' : e.message };
+    }
+  },
+  eskizHolatlari: (schoolId) => eskizShablonHolatlari(schoolId),
+  eskizBalans: async (schoolId) => {
+    const token = await getEskizToken(schoolId);
+    const r = await withTimeout(fetch('https://notify.eskiz.uz/api/user/get-limit', { headers: { Authorization: 'Bearer ' + token } }), 6000, 'Eskiz timeout');
+    const d = await r.json().catch(() => ({}));
+    const b = Number(d?.data?.balance ?? d?.balance);
+    return Number.isFinite(b) ? b : null;
+  },
+});
 
 // O'quvchining guruhlarini (StudentGroups relation) olish uchun yordamchi
 async function getStudentGroupsMap(schoolId) {
@@ -6931,7 +7048,8 @@ const ESKIZ_RAQAMLI = ['qarz', 'balans', 'to_lov_summa', 'oxirgi_tolov', 'imtiho
  * {ism} kabi o'rinbosarlar Eskizda %w (so'z) yoki %d (son) bo'ladi.
  */
 function eskizMatniga(body) {
-  return String(body || '').replace(/\{([a-zA-Z_]+)\}/g, (_, nom) =>
+  // Yuboriladigan SMS bilan bir xil ko'rinishda (sendSms ham smsMatni dan o'tkazadi).
+  return smsMatni(body).replace(/\{([a-zA-Z_]+)\}/g, (_, nom) =>
     ESKIZ_RAQAMLI.includes(String(nom).toLowerCase()) ? '%d' : '%w{1,5}'
   ).trim();
 }
@@ -7227,6 +7345,8 @@ app.delete('/api/messaging/auto-rules/:id', authenticate, async (req, res, next)
 });
 
 async function runAutoProcessJobs() {
+  // To'lov SMS lari navbati: Eskiz tasdig'ini kutayotganlar va qayta urinishlar.
+  await tolovNavbati({ cheklov: 30 }).catch(e => console.error("[To'lov xabari navbati]", e.message));
   const nowUtc = new Date();
   // Uzbekistan offset is UTC+5
   const nowUz = new Date(nowUtc.getTime() + (5 * 60 * 60 * 1000));
@@ -7337,7 +7457,7 @@ async function runAutoProcessJobs() {
       targets = await oylikImtihonHisoboti(schoolId, todayStr);
     } else if (rule.type === 'PAYMENT_CONFIRM') {
       // To'lov xabari endi kun oxirida to'planmaydi — to'lov kiritilishi bilan
-      // darhol ketadi (tolovXabariniYuborish). Bu yerda ikkinchi marta yuborilmaydi.
+      // darhol ketadi (services/tolovXabari.js). Bu yerda ikkinchi marta yuborilmaydi.
       results.push({ ruleId: rule.id, name: rule.name, skipped: 'darhol-yuboriladi' });
       continue;
     } else if (rule.type === 'DAILY_SCORE') {

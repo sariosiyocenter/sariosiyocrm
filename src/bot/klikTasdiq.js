@@ -95,7 +95,11 @@ export function registerKlikTasdiq(bot, { findUser, filial }) {
         // Xabar matni va tugmalari qarorniTarqat da yangilangan; bu xabar
         // ro'yxatda bo'lmasa ham (eski xabar) tugmalar qolmasin.
         await ctx.editMessageReplyMarkup({ inline_keyboard: [] }).catch(() => {});
-        const sms = r.xabar?.yuborildi ? ' Ota-onaga xabar yuborildi.' : '';
+        // To'lov SMS i holati (services/tolovXabari.js): yuborildi / navbatda / ketmadi.
+        const h = r.xabar?.holat;
+        const sms = ['yuborildi', 'yetkazildi'].includes(h) ? ' Ota-onaga SMS yuborildi.'
+          : ['kutmoqda', 'yuborilmoqda'].includes(h) ? " SMS navbatda — o'zi yuboriladi."
+            : h === 'xato' ? ` SMS ketmadi: ${r.xabar.sabab || ''}` : '';
         await ctx.answerCbQuery(`✅ Tasdiqlandi — ${som(q.row.amount)} so'm balansga tushdi.${sms}`, { show_alert: true }).catch(() => {});
     });
 

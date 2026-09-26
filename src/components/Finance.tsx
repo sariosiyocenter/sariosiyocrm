@@ -19,6 +19,7 @@ import { isCashIncome, newestFirst } from '../lib/money';
 import KassaPanel from './KassaPanel';
 import PaymeLinkModal from './PaymeLinkModal';
 import PaymentEditModal, { canEditPayment } from './PaymentEditModal';
+import { TolovXabarQatori } from './TolovXabari';
 import { KlikChekMaydonlari, klikniYuborish, yuborishNatijasi, TASDIQ_TURLARI, isAdminRole, chekVaqti } from './KlikChek';
 import TolovTasdiqPanel, { TASDIQ_HODISASI } from './TolovTasdiqPanel';
 import { amaldagiQoida, qoidaMatni } from '../lib/taqsimot';
@@ -1523,6 +1524,8 @@ ${e.description || e.category} — ${Number(e.amount).toLocaleString()} so'm`)) 
                                         To'lovingiz uchun rahmat!
                                     </div>
                                 </div>
+                                {/* Ota-onaga SMS ketdimi — kassir darhol ko'radi. */}
+                                <TolovXabarQatori xabar={createdPaymentForReceipt.xabar} />
                                 <div className="flex gap-3">
                                     <button type="button" onClick={() => handlePrintReceipt(createdPaymentForReceipt, selectedStudent)}
                                         className="flex-1 py-3 bg-brand hover:bg-brand-dark text-white text-xs font-extrabold rounded-2xl transition-all cursor-pointer shadow-sm shadow-[#1b6b6b]/20 text-center">

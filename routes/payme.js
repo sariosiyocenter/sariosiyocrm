@@ -57,11 +57,12 @@ async function notify(fresh, schoolId) {
   // Lokal testlar production bazaga ulanadi va maktabning haqiqiy botini
   // ishlatadi — PAYME_NOTIFY=off bilan xabar yuborilmaydi.
   if (process.env.PAYME_NOTIFY === 'off') return;
-  // Ota-onaga SMS ("To'lov qabul qilinganda" qoidasi) — Telegram xabari bilan
-  // parallel, o'sha 4 soniya ichida: Payme javob kutib turibdi.
+  // Ota-onaga SMS (services/tolovXabari.js) — Telegram xabari bilan parallel,
+  // o'sha 4 soniya ichida: Payme javob kutib turibdi. Ulgurmasa navbatdan
+  // ketadi. Telegram xabarini pastda Payme o'zi yuboradi — `payme: true`.
   const sms = fresh.kind === 'performed' && !fresh.tx.test && fresh.paymentId
     ? prisma.payment.findUnique({ where: { id: fresh.paymentId } })
-      .then(p => tolovXabari(p, { kanal: 'SMS' }))
+      .then(p => tolovXabari(p, { payme: true }))
       .catch(e => console.error("[payme] to'lov SMS:", e.message))
     : null;
   try {

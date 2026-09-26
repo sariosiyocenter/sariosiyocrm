@@ -4,6 +4,7 @@ import { Receipt, Check, X, Loader2, ArrowRight, ExternalLink, AlertTriangle } f
 import { useCRM } from '../context/CRMContext';
 import { useConfirm } from './ConfirmDialog';
 import { chekVaqti, isAdminRole } from './KlikChek';
+import { xabarHolatiMatni } from './TolovXabari';
 
 /**
  * Tasdiqlanishi kerak bo'lgan Klik to'lovlari (egasi, 2026-09-24).
@@ -73,7 +74,7 @@ export default function TolovTasdiqPanel({ compact = false }: { compact?: boolea
             });
             const d = await r.json().catch(() => ({}));
             if (!r.ok) throw new Error(d.error || 'Tasdiqlanmadi');
-            showNotification(`Tasdiqlandi — ${q.amount.toLocaleString('ru-RU')} so'm balansga tushdi${d.xabar?.yuborildi ? ". Ota-onaga xabar yuborildi" : ''}`, 'success');
+            showNotification(`Tasdiqlandi — ${q.amount.toLocaleString('ru-RU')} so'm balansga tushdi${xabarHolatiMatni(d.xabar)}`, 'success');
             await yuklash();
             retryLoad();
         } catch (e: any) {

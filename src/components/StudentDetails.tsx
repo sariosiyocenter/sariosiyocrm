@@ -19,6 +19,7 @@ import { activeCourses } from '../lib/activeCourses';
 import PhotoViewer, { photoActionCls } from './PhotoViewer';
 import StudentMoveModal from './StudentMoveModal';
 import PaymentEditModal, { canEditPayment } from './PaymentEditModal';
+import { TolovXabarQatori } from './TolovXabari';
 import KursHisobModal from './KursHisobModal';
 import BirinchiOyInput from './BirinchiOyInput';
 import PaymeLinkModal from './PaymeLinkModal';
@@ -2691,6 +2692,9 @@ function PaymentAddModal({ studentId, onClose, onAdd }: { studentId: number; onC
                                 To'lovingiz uchun rahmat!
                             </div>
                         </div>
+
+                        {/* Ota-onaga SMS ketdimi — kassir darhol ko'radi. */}
+                        <TolovXabarQatori xabar={createdPaymentForReceipt.xabar} />
 
                         <div className="flex gap-3">
                             <button
