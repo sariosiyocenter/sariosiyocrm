@@ -417,6 +417,12 @@ model Organization {
   // null — hali saqlanmagan: eski PAYMENT_CONFIRM qoidasidan va shablon
   // nomidan taxmin qilinadi.
   tolovXabari Json?
+
+  // Qarz eslatmasi (2026-09-26): qarzdorlarning ota-onasiga eslatma.
+  // lib/qarzXabari.js shakli: { yoqilgan, shablonId, kanal, kimga, kun, soat,
+  // takror, maks, minQarz, aloqa }. null — hali saqlanmagan: eski
+  // DEBT_REMINDER qoidasidan va shablon nomidan taxmin qilinadi.
+  qarzXabari Json?
 }
 
 model School {
@@ -1438,4 +1444,61 @@ model TolovXabari {
 
   @@index([holat, keyingiUrinish])
   @@index([schoolId, createdAt])
+}
+
+// Qarz eslatmasi (2026-09-26): qarzdor o'quvchining ota-onasiga yuborilgan
+// har bir eslatma — qachon, qancha qarz (kurslar bo'yicha), kimga, yetib
+// bordimi. Avtomatik jadval (services/qarzXabari.js) shu yozuvlarga qarab
+// oyiga necha marta va qanday oraliqda yuborishni hisoblaydi. Relation yo'q:
+// o'quvchi o'chirilsa ham tarix qoladi.
+model QarzXabari {
+  id             Int       @id @default(autoincrement())
+  schoolId       Int
+  studentId      Int
+  manba          String    @default("qolda") // qolda (xodim ro'yxatdan) | avto (jadval)
+  // kutmoqda | yuborilmoqda | yuborildi | yetkazildi | yetkazilmadi | xato | bekor
+  holat          String    @default("kutmoqda")
+  sabab          String?
+  summa          Int?      // yuborilgan paytdagi jami qarz, so'm
+  tafsil         Json?     // lib/qarzXabari.js → qarzTafsiloti() natijasi
+  kanal          String?   // amalda qaysi kanal ketdi: SMS | TELEGRAM
+  matn           String?   // SMS matni
+  // [{ kimga: 'FATHER', kanal: 'SMS', manzil: '+998…', holat, eskizId, xato }]
+  raqamlar       Json?
+  urinish        Int       @default(0)
+  keyingiUrinish DateTime  @default(now())
+  yuboruvchiId   Int?      // qo'lda yuborgan xodim
+  yuboruvchi     String?
+  createdAt      DateTime  @default(now())
+  yuborilganAt   DateTime?
+  yetkazilganAt  DateTime?
+
+  @@index([holat, keyingiUrinish])
+  @@index([schoolId, createdAt])
+  @@index([studentId, createdAt])
+}
+
+// Ota-onaning qarz eslatmasiga javobi: Telegram'da "✅ To'laganman" → izoh
+// yoki chek rasmi. Ochiq javob turganda shu o'quvchiga eslatma ketmaydi;
+// xodim tekshirib "to'lov kiritildi" yoki "qarz to'g'ri" deb yopadi, natija
+// ota-onaga Telegram'da boradi.
+model QarzJavob {
+  id         Int       @id @default(autoincrement())
+  schoolId   Int
+  studentId  Int
+  kimdan     String?   // FATHER | MOTHER | STUDENT
+  tgChat     String?   // javob yozgan chat — natija shu yerga boradi
+  matn       String?
+  rasm       String?   // Telegram file_id
+  qarz       Int?      // javob paytidagi qarz, so'm
+  holat      String    @default("ochiq") // ochiq | hal
+  natija     String?   // kiritildi | togri
+  izoh       String?   // xodim izohi (ota-onaga ham boradi)
+  halQildi   String?
+  halQildiId Int?
+  createdAt  DateTime  @default(now())
+  halAt      DateTime?
+
+  @@index([schoolId, holat])
+  @@index([studentId])
 }
