@@ -34,8 +34,10 @@ function Kesim({ url, quti, pxMm = 5 }: { url?: string; quti: Quti; pxMm?: numbe
   if (!url) return <div className="flex items-center gap-1.5 text-[12px] text-matn-xira"><ImageIcon size={14} /> Rasm saqlanmagan</div>;
   return (
     <div className="relative overflow-hidden rounded-lg border border-chiziq bg-white w-full" style={{ maxWidth: quti.w * pxMm, aspectRatio: `${quti.w} / ${quti.h}` }}>
-      <img src={url} alt="" draggable={false} className="absolute max-w-none select-none"
-        style={{ width: `${(W / quti.w) * 100}%`, left: `${(-quti.x / quti.w) * 100}%`, top: `${(-quti.y / quti.h) * 100}%` }} />
+      {/* Siljish enga nisbatan (margin-top foizi ham enidan olinadi): `top` foizi ramkasiz
+          balandlikdan hisoblanadi va 6,8 mm li qatorda 2px ramka bitta qatorga surib qo'yardi. */}
+      <img src={url} alt="" draggable={false} className="absolute top-0 max-w-none select-none"
+        style={{ width: `${(W / quti.w) * 100}%`, left: `${(-quti.x / quti.w) * 100}%`, marginTop: `${(-quti.y / quti.w) * 100}%` }} />
     </div>
   );
 }
