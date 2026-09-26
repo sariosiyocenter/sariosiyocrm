@@ -99,6 +99,87 @@ export function xabarHolatiMatni(xabar?: XabarQisqa | null): string {
 }
 
 // ---------------------------------------------------------------------------
+// Tarix: navbatdagi (hali yuborilmagan) xabarlar va xato sababi
+// ---------------------------------------------------------------------------
+
+/**
+ * SMS xatosi odam tushunadigan so'z bilan (Tarix jadvalida). Eskiz javobi
+ * ruscha JSON bo'lib keladi: {"message":"Этот смс текст еще не прошёл модерацию…"}.
+ */
+export function xatoSababi(errorMsg?: string | null): string {
+    let m = String(errorMsg || '');
+    try { const j = JSON.parse(m); m = String(j?.message || j?.data?.message || j?.error || m); } catch { /* matn */ }
+    if (/модерац|moderat|tasdiqlanmagan/i.test(m)) return "Matn Eskizda tasdiqlangan shablonga mos emas";
+    if (/баланс|balance|недостаточно|limit/i.test(m)) return "Eskiz balansida pul yetmadi";
+    if (/sozlamalari|email|password|token|unauthor/i.test(m)) return "Eskiz sozlamasi (email/parol) xato";
+    if (/lokal server/i.test(m)) return 'Lokal server (sinov) — yuborilmagan';
+    if (/blocked|bloklagan/i.test(m)) return 'Telegram: botni bloklagan';
+    if (/chat not found|deactivated/i.test(m)) return "Telegram: chat topilmadi";
+    if (/timeout|abort|fetch failed|kutish vaqti/i.test(m)) return 'Eskiz javob bermadi';
+    if (/Operator yetkazmadi|UNDELIV|EXPIRED|REJECT/i.test(m)) return "Operator yetkazmadi (raqam o'chiq yoki noto'g'ri)";
+    return m.slice(0, 90) || 'Xatolik';
+}
+
+interface NavbatQatori { id: number; studentId: number; ism: string; summa: number | null; turi?: string | null; holat: string; sabab: string | null; createdAt: string }
+interface NavbatShablon { nom: string; holat: string | null; eskizId: string | null }
+interface Navbat { tolov: NavbatQatori[]; qarz: NavbatQatori[]; tolovShablon: NavbatShablon | null; qarzShablon: NavbatShablon | null }
+
+/**
+ * Tarix tepasida: yuborilishini kutayotgan to'lov SMS lari va qarz
+ * eslatmalari. SmsLog yozuvi faqat yuborilganda paydo bo'ladi — ilgari
+ * navbatdagi xabar Tarixda umuman ko'rinmas va "ketmayapti" deb o'ylanardi.
+ */
+export function XabarNavbati({ schoolId, onAvtomatik }: { schoolId: number; onAvtomatik?: () => void }) {
+    const [d, setD] = useState<Navbat | null>(null);
+    useEffect(() => {
+        let tirik = true;
+        fetch(`/api/sms/navbat?schoolId=${schoolId || 0}`, { headers: auth() })
+            .then(r => (r.ok ? r.json() : null))
+            .then(j => { if (tirik) setD(j); })
+            .catch(() => {});
+        return () => { tirik = false; };
+    }, [schoolId]);
+    if (!d) return null;
+    const soni = d.tolov.length + d.qarz.length;
+    if (!soni) return null;
+    const qatorlar = [
+        ...d.tolov.map(q => ({ ...q, tur: "to'lov SMS i" })),
+        ...d.qarz.map(q => ({ ...q, tur: 'qarz eslatmasi' })),
+    ].sort((a, b) => (a.createdAt < b.createdAt ? 1 : -1));
+    const tekshiruvda = (sh: NavbatShablon | null) => sh && !eskizYuboradi(sh.holat) && !eskizRadEtdi(sh.holat);
+    return (
+        <div className="rounded-2xl border border-amber-200 dark:border-amber-900/50 bg-amber-50/80 dark:bg-amber-950/20 p-4 space-y-2">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+                <p className="text-[12px] font-black text-ogoh flex items-center gap-1.5">
+                    <Clock size={14} /> Navbatda {soni} ta xabar — hali yuborilmagan
+                </p>
+                {onAvtomatik && (
+                    <button type="button" onClick={onAvtomatik} className="text-[11px] font-bold text-brand hover:underline cursor-pointer">Avtomatik →</button>
+                )}
+            </div>
+            {([
+                { k: 'tolov', sh: d.tolovShablon, n: d.tolov.length },
+                { k: 'qarz', sh: d.qarzShablon, n: d.qarz.length },
+            ]).map(({ k, sh, n }) => (n > 0 && sh && tekshiruvda(sh) ? (
+                <p key={k} className="text-[11px] font-bold text-matn-2">
+                    «{sh.nom}» matnini Eskiz hali tasdiqlamagan{sh.eskizId ? ` (Eskiz ID ${sh.eskizId})` : ''} — tasdiqlangach bu xabarlar o'zi ketadi. Dam olish kunlari Eskiz tekshirmasligi mumkin; tezlatish uchun Eskiz yordamiga yozing (Telegram: @eskizhelp).
+                </p>
+            ) : null))}
+            <div className="divide-y divide-amber-200/60 dark:divide-amber-900/40">
+                {qatorlar.slice(0, 6).map(q => (
+                    <p key={`${q.tur}-${q.id}`} className="py-1.5 text-[11px] font-medium text-matn break-words">
+                        <span className="font-bold">{displayName(q.ism)}</span>
+                        <span className="text-matn-xira"> · {q.tur}{q.summa !== null ? ` · ${pul(q.summa)} so'm` : ''} · {soat(q.createdAt)}</span>
+                        {q.sabab && <span className="text-ogoh"> · {q.sabab}</span>}
+                    </p>
+                ))}
+            </div>
+            {qatorlar.length > 6 && <p className="text-[10px] font-bold text-matn-xira">Yana {qatorlar.length - 6} ta — Xabarlar → Avtomatik.</p>}
+        </div>
+    );
+}
+
+// ---------------------------------------------------------------------------
 // Sozlama kartasi
 // ---------------------------------------------------------------------------
 
@@ -239,7 +320,7 @@ export function TolovXabariSozlama({ schoolId }: { schoolId: number }) {
                         {eskizYuboradi(shablon.eskizStatus) ? '✓ ' : eskizRadEtdi(shablon.eskizStatus) ? '✗ ' : '⏳ '}
                         {eskizHolatMatni(shablon.eskizStatus)}
                         {!eskizYuboradi(shablon.eskizStatus) && !eskizRadEtdi(shablon.eskizStatus)
-                            && " — shu vaqtgacha SMS'lar navbatda turadi va tasdiqlangach o'zi ketadi (48 soat ichidagilar)"}
+                            && " — shu vaqtgacha SMS'lar navbatda turadi va tasdiqlangach o'zi ketadi (3 kun ichidagilar)"}
                     </p>
                 )}
                 {!shablon && <p className="text-[11px] font-bold text-xato">Shablon tanlanmaguncha to'lov SMS'i ketmaydi.</p>}

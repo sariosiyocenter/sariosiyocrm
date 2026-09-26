@@ -10,7 +10,7 @@ import { useConfirm } from './ConfirmDialog';
 import { useLang } from '../context/LanguageContext';
 import { displayName as ismniKorsat } from '../lib/displayName';
 import { DavomatXabariSozlama } from './DavomatXabari';
-import { TolovXabariSozlama } from './TolovXabari';
+import { TolovXabariSozlama, XabarNavbati, xatoSababi } from './TolovXabari';
 import { QarzXabariSozlama } from './QarzXabari';
 
 /**
@@ -1885,6 +1885,10 @@ export default function Messaging() {
       {/* ===== TAB 4: HISTORY ===== */}
       {activeTab === 'history' && tarixKorinadi && (
         <div className="space-y-6">
+          {/* Navbatdagi (hali yuborilmagan) to'lov SMS lari va qarz eslatmalari —
+              Eskiz tasdig'ini kutayotgani shu yerda ko'rinsin (egasi: "nimaga ketmayapti?"). */}
+          <XabarNavbati schoolId={selectedSchoolId || 0} onAvtomatik={avtoKorinadi ? () => setActiveTab('auto') : undefined} />
+
           {/* Header statistics */}
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
             <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-100 dark:border-slate-800 p-5 shadow-sm">
@@ -2119,12 +2123,16 @@ export default function Messaging() {
                                 <span className="text-[10px] font-bold">OK</span>
                               </div>
                             ) : log.status === 'FAILED' ? (
-                              <div
-                                className="inline-flex items-center gap-1 text-rose-500 bg-rose-50 dark:bg-rose-955/20 px-2 py-0.5 rounded border border-rose-100 dark:border-rose-900/30 cursor-help"
-                                title={log.errorMsg || 'Xatolik'}
-                              >
-                                <XCircle size={10} />
-                                <span className="text-[10px] font-bold">XATO</span>
+                              <div className="flex flex-col items-center gap-1">
+                                <div
+                                  className="inline-flex items-center gap-1 text-rose-500 bg-rose-50 dark:bg-rose-955/20 px-2 py-0.5 rounded border border-rose-100 dark:border-rose-900/30 cursor-help"
+                                  title={log.errorMsg || 'Xatolik'}
+                                >
+                                  <XCircle size={10} />
+                                  <span className="text-[10px] font-bold">XATO</span>
+                                </div>
+                                {/* Sababi ko'rinib tursin (telefonda hover yo'q). */}
+                                <span className="text-[10px] font-bold text-rose-500 leading-snug max-w-[150px]">{xatoSababi(log.errorMsg)}</span>
                               </div>
                             ) : (
                               <div className="inline-flex items-center gap-1 text-amber-500 bg-amber-50 dark:bg-amber-955/20 px-2 py-0.5 rounded border border-amber-100 dark:border-amber-900/30">

@@ -6854,6 +6854,39 @@ app.get('/api/sms/logs', authenticate, async (req, res, next) => {
   } catch (err) { next(err); }
 });
 
+// Navbatda turgan, hali yuborilmagan xabarlar (to'lov SMS i, qarz eslatmasi) —
+// Tarix tabida: SmsLog yozuvi faqat yuborilganda paydo bo'ladi, shuning uchun
+// "ketmayapti" deb o'ylanardi, holbuki xabar Eskiz tasdig'ini kutib turibdi.
+app.get('/api/sms/navbat', authenticate, async (req, res, next) => {
+  try {
+    const schoolId = parseInt(req.query.schoolId) || req.user.schoolId;
+    if (!(await canAccessSchool(req.user, schoolId))) return res.status(403).json({ error: "Ruxsat yo'q" });
+    const [ts, qs] = await Promise.all([tolovSozlamasi(schoolId), qarzSozlamasi(schoolId)]);
+    const filiallar = (await allowedSchoolIds(req.user)).filter(id => (ts?.schoolIds || [schoolId]).includes(id));
+    const kutadi = { schoolId: { in: filiallar }, holat: { in: ['kutmoqda', 'yuborilmoqda'] } };
+    const [tolov, qarz] = await Promise.all([
+      prisma.tolovXabari.findMany({ where: kutadi, orderBy: { id: 'desc' }, take: 50 }),
+      prisma.qarzXabari.findMany({ where: kutadi, orderBy: { id: 'desc' }, take: 50 }),
+    ]);
+    const [students, payments] = await Promise.all([
+      prisma.student.findMany({ where: { id: { in: [...new Set([...tolov, ...qarz].map(r => r.studentId))] } }, select: { id: true, name: true } }),
+      prisma.payment.findMany({ where: { id: { in: tolov.map(r => r.paymentId) } }, select: { id: true, amount: true, type: true } }),
+    ]);
+    const ism = new Map(students.map(x => [x.id, x.name]));
+    const tolovMap = new Map(payments.map(x => [x.id, x]));
+    const shablon = (s) => {
+      const t = s?.shablonlar.find(x => x.id === s.sozlama.shablonId);
+      return t ? { nom: t.name, holat: t.eskizStatus, eskizId: t.eskizTemplateId } : null;
+    };
+    res.json({
+      tolov: tolov.map(r => ({ id: r.id, studentId: r.studentId, ism: ism.get(r.studentId) || '', summa: tolovMap.get(r.paymentId)?.amount ?? null, turi: tolovMap.get(r.paymentId)?.type ?? null, holat: r.holat, sabab: r.sabab, createdAt: r.createdAt })),
+      qarz: qarz.map(r => ({ id: r.id, studentId: r.studentId, ism: ism.get(r.studentId) || '', summa: r.summa, holat: r.holat, sabab: r.sabab, createdAt: r.createdAt })),
+      tolovShablon: shablon(ts),
+      qarzShablon: shablon(qs),
+    });
+  } catch (err) { next(err); }
+});
+
 app.get('/api/sms/check-status/:id', authenticate, async (req, res, next) => {
   try {
     const logId = parseInt(req.params.id);

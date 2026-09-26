@@ -7,7 +7,8 @@
 //  2. Matn — Xabarlar → Shablonlar dagi tanlangan shablon. Eskiz faqat
 //     tasdiqlangan shablonga mos matnni yuboradi, shuning uchun shablon hali
 //     tekshiruvda bo'lsa yozuv "kutmoqda" turadi va tasdiqlangach navbatdan
-//     o'zi ketadi (48 soat ichida).
+//     o'zi ketadi (3 kun ichida — juma kechqurun kiritilgan to'lov ham
+//     Eskiz dushanba kuni tasdiqlasa yetib borsin).
 //  3. Tarmoq yoki Eskiz xatosida — qayta urinish (2, 5, 15, 60, 180 daqiqa).
 //  4. Eskiz callback'i SMS haqiqatan yetib bordimi-yo'qligini yozadi.
 //  5. To'lov yuborilishidan oldin o'chirilsa — xabar bekor bo'ladi.
@@ -35,7 +36,7 @@ export function tolovXabariniUlash(transport) {
   tr = transport;
 }
 
-const MUDDAT_MS = 48 * 3600e3;              // shundan eski xabar endi yuborilmaydi
+const MUDDAT_MS = 72 * 3600e3;              // shundan eski xabar endi yuborilmaydi (dam olish kunlari ham)
 const QAYTA_MS = [2, 5, 15, 60, 180].map(m => m * 60e3);
 const ENG_KOP_URINISH = QAYTA_MS.length + 1;
 const QULF_MS = 2 * 60e3;                    // "yuborilmoqda" — shuncha vaqt boshqasi olmaydi
@@ -169,7 +170,7 @@ async function matnniTuz(payment, student, shablon) {
 /**
  * Bitta yozuvni yuborishga urinish. Natijani yozuvga yozadi va qaytaradi.
  * opts.payme — Telegram xabarini Payme o'zi yuborgan (routes/payme.js).
- * opts.qolda — xodim "Qayta yuborish"ni bosgan: 48 soatlik cheklov yo'q.
+ * opts.qolda — xodim "Qayta yuborish"ni bosgan: 3 kunlik cheklov yo'q.
  */
 async function yuborish(rowId, opts = {}) {
   const row = await prisma.tolovXabari.findUnique({ where: { id: rowId } });
@@ -179,7 +180,7 @@ async function yuborish(rowId, opts = {}) {
   const urinish = row.urinish + 1;
 
   if (!opts.qolda && Date.now() - new Date(row.createdAt).getTime() > MUDDAT_MS) {
-    return saqla({ holat: 'xato', sabab: "48 soat ichida yuborib bo'lmadi — endi yuborilmaydi" });
+    return saqla({ holat: 'xato', sabab: "3 kun ichida yuborib bo'lmadi — endi yuborilmaydi" });
   }
   // Parallel: to'lov javobi kutib turibdi (yangi to'lovda sozlama tayyor keladi).
   const [payment, student, s] = await Promise.all([
@@ -332,7 +333,7 @@ export async function qaytaYubor(rowId) {
     data: { holat: 'yuborilmoqda', urinish: 0, keyingiUrinish: new Date(Date.now() + QULF_MS) },
   });
   await eskizHolatlariniYangila([row.schoolId], { majburiy: true });
-  // 48 soatlik cheklov faqat avtomatik navbat uchun: xodim o'zi bossa — yuboriladi.
+  // 3 kunlik cheklov faqat avtomatik navbat uchun: xodim o'zi bossa — yuboriladi.
   return { row: qisqa(await yuborish(row.id, { qolda: true })) };
 }
 
@@ -373,10 +374,10 @@ export async function tolovNavbati({ cheklov = 20, byudjetMs = 20000 } = {}) {
     : null;
   if (lokal && !sinovFiliallari.length) return { korildi: 0, yuborildi: 0 };
   const filial = sinovFiliallari ? { schoolId: { in: sinovFiliallari } } : {};
-  // 48 soatdan eski, hali ketmaganlar — yakunlanadi.
+  // 3 kundan eski, hali ketmaganlar — yakunlanadi.
   await prisma.tolovXabari.updateMany({
     where: { ...filial, holat: { in: ['kutmoqda', 'yuborilmoqda'] }, createdAt: { lt: new Date(Date.now() - MUDDAT_MS) } },
-    data: { holat: 'xato', sabab: "48 soat ichida yuborib bo'lmadi — endi yuborilmaydi" },
+    data: { holat: 'xato', sabab: "3 kun ichida yuborib bo'lmadi — endi yuborilmaydi" },
   });
   const rows = await prisma.tolovXabari.findMany({
     where: { ...filial, holat: { in: ['kutmoqda', 'yuborilmoqda'] }, keyingiUrinish: { lte: new Date() } },
