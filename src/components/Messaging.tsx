@@ -1711,11 +1711,6 @@ export default function Messaging() {
             )}
           </div>
 
-          {/* To'lov SMS i: shablon, kimga, holatlar (egasi, 2026-09-26: "jiddiyroq
-              ishlab chiqish kerak"). Avtomatik qoidalardagi "To'lov qilinganda"
-              o'rniga — matn shu yerdagi shablonlardan tanlanadi. */}
-          <TolovXabariSozlama schoolId={selectedSchoolId || 0} />
-
           <DavomatXabariSozlama schoolId={selectedSchoolId || 0} />
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -1791,6 +1786,11 @@ export default function Messaging() {
             </button>
             )}
           </div>
+
+          {/* To'lov SMS i — avtomatik xabar, shuning uchun shu yerda (egasi:
+              "avtomatikka qo'ydingmi?"). Matni Shablonlar dagi shablondan
+              tanlanadi; holatlar va "Qayta yuborish" ham shu kartada. */}
+          <TolovXabariSozlama schoolId={selectedSchoolId || 0} />
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {rules.map(rule => {

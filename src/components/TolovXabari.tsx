@@ -12,7 +12,7 @@ import {
  * To'lov xabari: to'lov qabul qilinganda ota-onaga ketadigan SMS
  * (services/tolovXabari.js, lib/tolovXabari.js).
  *
- *  - TolovXabariSozlama — Xabarlar → Shablonlar: yoqish, shablon, kimga, kanal,
+ *  - TolovXabariSozlama — Xabarlar → Avtomatik: yoqish, shablon, kimga, kanal,
  *    namuna, sinov SMS, oxirgi to'lovlar xabari holati bilan (qayta yuborish).
  *  - TolovXabarQatori — chek ostida: "SMS yuborildi / navbatda / ketmadi".
  */
@@ -188,7 +188,7 @@ export function TolovXabariSozlama({ schoolId }: { schoolId: number }) {
         : '', [shablon, settings?.orgName]);
 
     if (xato) return <p className="text-[11px] font-bold text-xato">{xato}</p>;
-    if (!d) return <div className="bg-sirt rounded-2xl border border-chiziq p-4 text-[11px] font-bold text-matn-xira">To'lov xabari yuklanmoqda…</div>;
+    if (!d) return <div className="bg-sirt rounded-2xl border border-chiziq p-4 text-[11px] font-bold text-matn-xira">To'lov SMS sozlamasi yuklanmoqda…</div>;
 
     const s = d.sozlama;
     const kimga = s.kimga.split(',');
@@ -205,9 +205,9 @@ export function TolovXabariSozlama({ schoolId }: { schoolId: number }) {
             {/* Sarlavha va yoqish */}
             <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0">
-                    <h3 className="text-xs font-black text-matn">To'lov xabari (SMS)</h3>
+                    <h3 className="text-xs font-black text-matn">💰 To'lov qabul qilinganda — avtomatik SMS</h3>
                     <p className="text-[11px] font-medium text-matn-xira mt-0.5">
-                        To'lov kiritilishi bilan ota-onaga ketadi: naqd, karta, o'tkazma, Payme va tasdiqlangan Klik. Butun markaz uchun bitta.
+                        Har bir to'lov kiritilishi bilan ota-onaga o'zi ketadi — hech narsa bosish shart emas: naqd, karta, o'tkazma, Payme va tasdiqlangan Klik. Butun markaz uchun bitta.
                     </p>
                 </div>
                 <button type="button" disabled={!tahrir || !!band} onClick={() => ozgartir({ ...s, yoqilgan: !s.yoqilgan })}
@@ -227,7 +227,7 @@ export function TolovXabariSozlama({ schoolId }: { schoolId: number }) {
 
             {/* Shablon */}
             <div className="space-y-1.5">
-                <span className="block text-[11px] font-bold text-matn-xira">Shablon (Xabarlar → Shablonlar)</span>
+                <span className="block text-[11px] font-bold text-matn-xira">SMS matni — «Shablonlar» bo'limidagi shablondan (Eskiz faqat tasdiqlangan matnni yuboradi)</span>
                 <select value={s.shablonId || ''} disabled={!tahrir || !!band}
                     onChange={e => ozgartir({ ...s, shablonId: Number(e.target.value) || null })}
                     className="w-full px-3 py-2 bg-ichki border border-chiziq rounded-xl text-[11px] font-bold text-matn outline-none focus:border-brand cursor-pointer disabled:cursor-default disabled:opacity-80">
