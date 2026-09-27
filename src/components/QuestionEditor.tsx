@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
-import { ArrowLeft, Save, Trash2, Plus, X, ImagePlus, CheckCircle2, FileText, Sparkles, Copy, Languages } from 'lucide-react';
+import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
+import { ArrowLeft, Save, Trash2, Plus, X, ImagePlus, CheckCircle2, FileText, Sparkles, Copy, Languages, Check } from 'lucide-react';
 import { useCRM } from '../context/CRMContext';
 import { useConfirm } from './ConfirmDialog';
 import RichTextEditor from './RichTextEditor';
@@ -8,15 +8,18 @@ import { useImtihonApi } from './imtihon/useImtihonApi';
 import { Karta, Tugma, Maydon, INPUT, SELECT, Tanlov, Almashtirgich, Yorliq, Yuklanmoqda } from './imtihon/ui';
 import MatnlarOynasi from './imtihon/MatnlarOynasi';
 import { useAiHolat, AI_SOZLANMAGAN } from './imtihon/useAiHolat';
-import { SavolKorinishi } from './QuestionsList';
-import { HARFLAR, RAQAM_USTUNLARI, savolXatosi } from '../../lib/imtihon.js';
+import SavolKorinishi from './imtihon/bank/SavolKorinishi';
+import { QiyinlikTanlov } from './imtihon/bank/qiyinlik';
+import { useBankDaraxt, fanniTop, mavzuniTop, bolimlarga } from './imtihon/bank/useBankDaraxt';
+import { HARFLAR, RAQAM_USTUNLARI, savolXatosi, qiyinlikDarajasi } from '../../lib/imtihon.js';
 import type { Question, Passage, SavolTuri } from '../types';
 
-// Savol qo'shish va tahrirlash. Fan, mavzu va boshqa "umumiy" maydonlar
-// "Saqlash va keyingisi" dan keyin ham qoladi — bitta mavzuga 20 ta savol
-// ketma-ket kiritiladi. Formulalar $...$ ichida LaTeX bilan yoziladi.
+// Savol qo'shish va tahrirlash. Fan va mavzu bank tuzilmasidan tanlanadi (shu
+// yerning o'zida yangisini qo'shsa bo'ladi); fan, mavzu, qiyinlik va boshqa
+// "umumiy" maydonlar "Saqlash va keyingisi" dan keyin ham qoladi — bitta
+// mavzuga 20 ta savol ketma-ket kiritiladi. Formulalar $...$ ichida LaTeX bilan.
 
-type Umumiy = { subject: string; topic: string; section: string; grade: string; source: string; language: 'uz' | 'ru' | 'en'; difficulty: number; status: 'faol' | 'qoralama' | 'arxiv' };
+type Umumiy = { fanId: number | null; mavzuId: number | null; grade: string; source: string; language: 'uz' | 'ru' | 'en'; difficulty: number; status: 'faol' | 'qoralama' | 'arxiv' };
 type Shaxsiy = {
   type: SavolTuri; text: string; imageUrl: string | null; options: string[]; correctAnswer: string; answers: string;
   points: string; lockOptions: boolean; solution: string; solutionStatus: 'yoq' | 'qoralama' | 'tasdiqlangan'; passage: { id: number; title?: string | null } | null;
@@ -27,19 +30,26 @@ const BOSH_SHAXSIY: Shaxsiy = {
   lockOptions: false, solution: '', solutionStatus: 'yoq', passage: null,
 };
 
-interface Meta { fanlar: { nomi: string }[]; mavzular: { fan: string; mavzu: string }[]; manbalar: string[] }
+interface Meta { manbalar: string[] }
 
 export default function QuestionEditor() {
   const { id } = useParams();
   const tahrirRejimi = !!id;
   const navigate = useNavigate();
+  const [urlParams] = useSearchParams();
   const { showNotification, ozgartira, selectedSchoolId, user } = useCRM();
   const savolTahrir = ozgartira('imtihonlar.savollar');
   const savolOchirish = ozgartira('imtihonlar.ochirish');
   const { soro } = useImtihonApi();
   const confirm = useConfirm();
+  const { daraxt, yangila: daraxtniYangila } = useBankDaraxt();
 
-  const [umumiy, setUmumiy] = useState<Umumiy>({ subject: '', topic: '', section: '', grade: '', source: '', language: 'uz', difficulty: 2, status: 'faol' });
+  const [umumiy, setUmumiy] = useState<Umumiy>(() => ({
+    fanId: Number(urlParams.get('fan')) || null, mavzuId: Number(urlParams.get('mavzu')) || null,
+    grade: '', source: '', language: 'uz', difficulty: qiyinlikDarajasi(urlParams.get('qiyinlik') || 2), status: 'faol',
+  }));
+  // Shu yerning o'zida yangi fan yoki mavzu qo'shish.
+  const [yangiNom, setYangiNom] = useState<{ tur: 'fan' | 'mavzu'; nom: string } | null>(null);
   const [q, setQ] = useState<Shaxsiy>(BOSH_SHAXSIY);
   const [muharrirKaliti, setMuharrirKaliti] = useState(0);
   const [meta, setMeta] = useState<Meta | null>(null);
@@ -53,12 +63,19 @@ export default function QuestionEditor() {
 
   useEffect(() => { soro<Meta>('GET', 'questions/meta').then(setMeta).catch(() => {}); }, [soro]);
 
+  // URL da faqat mavzu kelsa — uning fani ham tanlanadi.
+  useEffect(() => {
+    if (!daraxt || umumiy.fanId || !umumiy.mavzuId) return;
+    const f = daraxt.fanlar.find(x => x.mavzular.some(m => m.id === umumiy.mavzuId));
+    if (f) setUmumiy(u => ({ ...u, fanId: f.id }));
+  }, [daraxt, umumiy.fanId, umumiy.mavzuId]);
+
   useEffect(() => {
     if (!id) return;
     soro<Question>('GET', `questions/${id}`).then(s => {
       setUmumiy({
-        subject: s.subject, topic: s.topic, section: s.section || '', grade: s.grade || '', source: s.source || '',
-        language: (s.language as any) || 'uz', difficulty: s.difficulty || 2, status: (s.status as any) || 'faol',
+        fanId: null, mavzuId: s.bankTopicId || null, grade: s.grade || '', source: s.source || '',
+        language: (s.language as any) || 'uz', difficulty: qiyinlikDarajasi(s.difficulty || 2), status: (s.status as any) || 'faol',
       });
       setQ({
         type: s.type, text: s.text || '', imageUrl: s.imageUrl || null,
@@ -73,14 +90,34 @@ export default function QuestionEditor() {
     }).catch(e => showNotification(e.message, 'error')).finally(() => setYuklanmoqda(false));
   }, [id, soro, showNotification]);
 
-  const mavzular = useMemo(
-    () => [...new Set((meta?.mavzular || []).filter(m => !umumiy.subject || m.fan.toLowerCase() === umumiy.subject.toLowerCase()).map(m => m.mavzu))],
-    [meta, umumiy.subject],
-  );
+  const fan = fanniTop(daraxt, umumiy.fanId);
+  const mavzu = mavzuniTop(fan, umumiy.mavzuId);
+
+  const yangiQosh = async () => {
+    if (!yangiNom?.nom.trim()) return;
+    try {
+      if (yangiNom.tur === 'fan') {
+        const f = await soro<{ id: number }>('POST', 'bank/fanlar', { name: yangiNom.nom });
+        await daraxtniYangila();
+        setUmumiy(u => ({ ...u, fanId: f.id, mavzuId: null }));
+      } else {
+        const m = await soro<{ id: number }>('POST', 'bank/mavzular', { subjectId: umumiy.fanId, name: yangiNom.nom });
+        await daraxtniYangila();
+        setUmumiy(u => ({ ...u, mavzuId: m.id }));
+      }
+      setYangiNom(null);
+    } catch (e: any) {
+      showNotification(e.message, 'error');
+    }
+  };
+
+  // Saqlagach — savol turgan mavzu sahifasiga (bank ichida).
+  const bankga = () => navigate(fan && mavzu ? `/exams?tab=savollar&fan=${fan.id}&mavzu=${mavzu.id}` : '/exams?tab=savollar');
 
   const yuk = (): Record<string, any> => ({
-    ...umumiy,
-    section: umumiy.section || null, grade: umumiy.grade || null, source: umumiy.source || null,
+    bankTopicId: mavzu?.id ?? null, subject: fan?.name || '', topic: mavzu?.name || '',
+    difficulty: umumiy.difficulty, status: umumiy.status, language: umumiy.language,
+    grade: umumiy.grade || null, source: umumiy.source || null,
     type: q.type, text: q.text, imageUrl: q.imageUrl,
     options: q.type === 'yopiq' ? q.options : null,
     correctAnswer: q.type === 'yozma' ? '' : q.correctAnswer.trim(),
@@ -100,7 +137,7 @@ export default function QuestionEditor() {
 
   const saqla = async (davom: boolean) => {
     if (!savolTahrir) return;
-    if (!umumiy.subject.trim() || !umumiy.topic.trim()) return showNotification('Fan va mavzuni kiriting', 'error');
+    if (!fan || !mavzu) return showNotification('Fan va mavzuni tanlang', 'error');
     if (xato) return showNotification(`${xato}. Tayyor bo'lmasa — holatini "Qoralama" qiling.`, 'error');
     setSaqlanmoqda(true);
     try {
@@ -108,7 +145,7 @@ export default function QuestionEditor() {
       if (tahrirRejimi) {
         await soro('PUT', `questions/${id}`, yuk());
         showNotification('Savol saqlandi', 'success');
-        navigate('/exams?tab=savollar');
+        bankga();
       } else {
         await soro('POST', 'questions', { ...yuk(), schoolId });
         setQoshildi(n => n + 1);
@@ -118,7 +155,7 @@ export default function QuestionEditor() {
           showNotification("Savol qo'shildi — keyingisini kiriting", 'success');
           window.scrollTo({ top: 0, behavior: 'smooth' });
         } else {
-          navigate('/exams?tab=savollar');
+          bankga();
         }
       }
     } catch (e: any) {
@@ -159,7 +196,7 @@ export default function QuestionEditor() {
     if (!(await confirm("Savol o'chirilsinmi?"))) return;
     try {
       await soro('DELETE', `questions/${id}`);
-      navigate('/exams?tab=savollar');
+      bankga();
     } catch (e: any) {
       showNotification(e.message, 'error');
     }
@@ -191,7 +228,7 @@ export default function QuestionEditor() {
     <div className="max-w-7xl mx-auto pb-20 space-y-4">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div className="flex items-center gap-3">
-          <button aria-label="Orqaga" onClick={() => navigate('/exams?tab=savollar')} className="w-10 h-10 bg-sirt border border-chiziq rounded-xl flex items-center justify-center text-matn-sokin hover:text-brand cursor-pointer"><ArrowLeft size={18} /></button>
+          <button aria-label="Orqaga" onClick={bankga} className="w-10 h-10 bg-sirt border border-chiziq rounded-xl flex items-center justify-center text-matn-sokin hover:text-brand cursor-pointer"><ArrowLeft size={18} /></button>
           <div>
             <h1 className="text-[15px] font-bold text-matn">{tahrirRejimi ? `Savol #${id}` : "Yangi savol"}</h1>
             <p className="text-[12px] text-matn-xira">{tahrirRejimi ? (ishlatilgan ? `${ishlatilgan} ta imtihonda ishlatilgan` : "Hali imtihonda ishlatilmagan") : "Fan va mavzu keyingi savolga ham o'tadi"}</p>
@@ -221,30 +258,47 @@ export default function QuestionEditor() {
 
       <div className="grid grid-cols-1 xl:grid-cols-3 gap-4">
         {/* Chap: umumiy maydonlar */}
-        <Karta sarlavha="Savol qayerga tegishli" izoh="Imtihon shablonidagi fan va mavzu bilan bir xil yozilsin" className="xl:col-span-1 h-fit">
+        <Karta sarlavha="Savol qayerga tegishli" izoh="Bank tuzilmasi: fan → mavzu → qiyinlik" className="xl:col-span-1 h-fit">
           <div className="space-y-3">
             <Maydon nom="Fan">
-              <input className={INPUT} list="fanlar-royxati" value={umumiy.subject} onChange={e => setUmumiy({ ...umumiy, subject: e.target.value })} placeholder="Matematika" />
-              <datalist id="fanlar-royxati">{(meta?.fanlar || []).map(f => <option key={f.nomi} value={f.nomi} />)}</datalist>
+              {yangiNom?.tur === 'fan' ? (
+                <YangiNom qiymat={yangiNom.nom} joy="Yangi fan nomi" onChange={nom => setYangiNom({ tur: 'fan', nom })} onSaqla={yangiQosh} onBekor={() => setYangiNom(null)} />
+              ) : (
+                <select className={SELECT} value={fan?.id ?? ''} aria-label="Fan"
+                  onChange={e => (e.target.value === 'yangi' ? setYangiNom({ tur: 'fan', nom: '' }) : setUmumiy({ ...umumiy, fanId: Number(e.target.value) || null, mavzuId: null }))}>
+                  <option value="">{daraxt ? 'Fanni tanlang' : 'Yuklanmoqda…'}</option>
+                  {(daraxt?.fanlar || []).map(f => <option key={f.id} value={f.id}>{f.name}</option>)}
+                  <option value="yangi">+ Yangi fan…</option>
+                </select>
+              )}
             </Maydon>
             <Maydon nom="Mavzu">
-              <input className={INPUT} list="mavzular-royxati" value={umumiy.topic} onChange={e => setUmumiy({ ...umumiy, topic: e.target.value })} placeholder="Kvadrat tenglama" />
-              <datalist id="mavzular-royxati">{mavzular.map(m => <option key={m} value={m} />)}</datalist>
-            </Maydon>
-            <div className="grid grid-cols-2 gap-3">
-              <Maydon nom="Bo'lim"><input className={INPUT} value={umumiy.section} onChange={e => setUmumiy({ ...umumiy, section: e.target.value })} placeholder="Algebra" /></Maydon>
-              <Maydon nom="Sinf"><input className={INPUT} value={umumiy.grade} onChange={e => setUmumiy({ ...umumiy, grade: e.target.value })} placeholder="11-sinf" /></Maydon>
-            </div>
-            <Maydon nom="Manba">
-              <input className={INPUT} list="manbalar-royxati" value={umumiy.source} onChange={e => setUmumiy({ ...umumiy, source: e.target.value })} placeholder="DTM 2025, Milliy sertifikat..." />
-              <datalist id="manbalar-royxati">{(meta?.manbalar || []).map(m => <option key={m} value={m} />)}</datalist>
-            </Maydon>
-            <div className="grid grid-cols-2 gap-3">
-              <Maydon nom="Qiyinlik">
-                <select className={SELECT} value={umumiy.difficulty} onChange={e => setUmumiy({ ...umumiy, difficulty: Number(e.target.value) })}>
-                  {[1, 2, 3, 4, 5].map(d => <option key={d} value={d}>{d} — {['juda oson', 'oson', "o'rta", 'qiyin', 'juda qiyin'][d - 1]}</option>)}
+              {yangiNom?.tur === 'mavzu' ? (
+                <YangiNom qiymat={yangiNom.nom} joy="Yangi mavzu nomi" onChange={nom => setYangiNom({ tur: 'mavzu', nom })} onSaqla={yangiQosh} onBekor={() => setYangiNom(null)} />
+              ) : (
+                <select className={SELECT} value={mavzu?.id ?? ''} disabled={!fan} aria-label="Mavzu"
+                  onChange={e => (e.target.value === 'yangi' ? setYangiNom({ tur: 'mavzu', nom: '' }) : setUmumiy({ ...umumiy, mavzuId: Number(e.target.value) || null }))}>
+                  <option value="">{fan ? 'Mavzuni tanlang' : 'Avval fanni tanlang'}</option>
+                  {fan && bolimlarga(fan.mavzular).map(g => (g.bolim
+                    ? <optgroup key={g.bolim + g.mavzular[0].id} label={g.bolim}>{g.mavzular.map(m => <option key={m.id} value={m.id}>{m.name}</option>)}</optgroup>
+                    : g.mavzular.map(m => <option key={m.id} value={m.id}>{m.name}</option>)))}
+                  {fan && <option value="yangi">+ Yangi mavzu…</option>}
                 </select>
+              )}
+            </Maydon>
+            {/* label emas: ichidagi tugmalar nomini buzmasin. */}
+            <div>
+              <span className="block text-[12px] font-semibold text-matn-sokin mb-1.5">Qiyinlik</span>
+              <QiyinlikTanlov qiymat={umumiy.difficulty} onChange={d => setUmumiy({ ...umumiy, difficulty: d })} />
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <Maydon nom="Sinf"><input className={INPUT} value={umumiy.grade} onChange={e => setUmumiy({ ...umumiy, grade: e.target.value })} placeholder="11-sinf" /></Maydon>
+              <Maydon nom="Manba">
+                <input className={INPUT} list="manbalar-royxati" value={umumiy.source} onChange={e => setUmumiy({ ...umumiy, source: e.target.value })} placeholder="DTM 2025…" />
+                <datalist id="manbalar-royxati">{(meta?.manbalar || []).map(m => <option key={m} value={m} />)}</datalist>
               </Maydon>
+            </div>
+            <div className="grid grid-cols-1 gap-3">
               <Maydon nom="Til">
                 <select className={SELECT} value={umumiy.language} onChange={e => setUmumiy({ ...umumiy, language: e.target.value as any })}>
                   <option value="uz">O'zbekcha</option><option value="ru">Ruscha</option><option value="en">Inglizcha</option>
@@ -334,6 +388,18 @@ export default function QuestionEditor() {
         </div>
       </div>
       {matnTanlash && <MatnlarOynasi onYop={() => setMatnTanlash(false)} tanlash={(p: Passage) => setQ(s => ({ ...s, passage: { id: p.id, title: p.title } }))} />}
+    </div>
+  );
+}
+
+/** Tanlov o'rniga — yangi fan yoki mavzu nomi (Enter — qo'shish, Esc — bekor). */
+function YangiNom({ qiymat, joy, onChange, onSaqla, onBekor }: { qiymat: string; joy: string; onChange: (v: string) => void; onSaqla: () => void; onBekor: () => void }) {
+  return (
+    <div className="flex items-center gap-1.5">
+      <input autoFocus className={INPUT} value={qiymat} placeholder={joy} aria-label={joy} onChange={e => onChange(e.target.value)}
+        onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); onSaqla(); } if (e.key === 'Escape') onBekor(); }} />
+      <Tugma kichik turi="asosiy" ikonka={<Check size={13} />} disabled={!qiymat.trim()} onClick={onSaqla} aria-label="Qo'shish" />
+      <Tugma kichik turi="oddiy" ikonka={<X size={13} />} onClick={onBekor} aria-label="Bekor" />
     </div>
   );
 }

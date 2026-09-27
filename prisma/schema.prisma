@@ -1014,8 +1014,42 @@ model Question {
   schoolId      Int
   school        School   @relation(fields: [schoolId], references: [id])
 
+  // Bank tuzilmasidagi mavzu (fan → mavzu). subject/topic — shu nomlarning nusxasi.
+  bankTopicId   Int?
+  bankTopic     QuestionTopic? @relation(fields: [bankTopicId], references: [id], onDelete: SetNull)
+
   @@index([schoolId, subject, topic])
   @@index([passageId])
+  @@index([bankTopicId])
+}
+
+// Savollar banki tuzilmasi: fan → mavzu (butun tashkilotga umumiy; schoolId —
+// yaratgan filial). Savolning subject/topic matnlari shu nomlarning nusxasi:
+// eski imtihon qoidalari nom bo'yicha ishlaydi, nom o'zgarsa savollarda ham
+// yangilanadi (routes/savolBanki.js).
+model QuestionSubject {
+  id        Int             @id @default(autoincrement())
+  name      String
+  order     Int             @default(0)
+  schoolId  Int
+  createdAt DateTime        @default(now())
+  topics    QuestionTopic[]
+
+  @@index([schoolId])
+}
+
+model QuestionTopic {
+  id        Int             @id @default(autoincrement())
+  subjectId Int
+  subject   QuestionSubject @relation(fields: [subjectId], references: [id], onDelete: Cascade)
+  name      String
+  // Bo'lim — o'quv rejadagi modul; mavzular ro'yxatida guruh sarlavhasi.
+  section   String?
+  order     Int             @default(0)
+  createdAt DateTime        @default(now())
+  questions Question[]
+
+  @@index([subjectId])
 }
 
 // Bir nechta savol bog'lanadigan matn yoki rasm ("matnni o'qing va 1–4

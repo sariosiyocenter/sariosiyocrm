@@ -1,0 +1,399 @@
+import React, { useEffect, useState } from 'react';
+import { Trash2, AlertTriangle, CheckCircle2, ListChecks, X } from 'lucide-react';
+import { useImtihonApi } from '../useImtihonApi';
+import { Tugma, INPUT, SELECT, Tanlov } from '../ui';
+import { formulaliHtml, SAVOL_MATNI } from '../../../lib/matn';
+import { QIYINLIK, QiyinlikYorligi } from '../bank/qiyinlik';
+import { fanniTop, mavzuniTop } from '../bank/useBankDaraxt';
+import SavolTanlash from '../bank/SavolTanlash';
+import { taqsimla, tengYoy, QIYINLIK_ARALASHMASI, qoidaQiyinligi, qoidaBali, tanlanganSavollar, vergul } from '../../../../lib/imtihon.js';
+import type { BankDaraxt, BankFan, BlokTaqsimot, ExamBlock, Question, SavolTuri, TopicRule } from '../../../types';
+
+// Imtihonning bitta fan bloki (bank rejimi). Odatiy yo'l: fan → savollar soni →
+// qiyinlik (oson ko'proq / muvozanatli / qiyin ko'proq) → mavzular — taqsimot
+// o'zi hisoblanadi va jadvalda ko'rinadi. Jadval katagini o'zgartirsa — "qo'lda".
+// Aniq savollar kerak bo'lsa — "Savollarni tanlash" (fan → mavzu → qiyinlik).
+
+type Aralash = BlokTaqsimot['aralash'];
+type Qator = { kalit: string; mavzuId: number | null; nom: string; sonlar: number[]; bor: number[] };
+
+const ARALASH_NOMI: { v: Exclude<Aralash, 'qolda'>; nom: string }[] = [
+  { v: 'oson', nom: "Oson ko'proq" },
+  { v: 'muvozanat', nom: 'Muvozanatli' },
+  { v: 'qiyin', nom: "Qiyin ko'proq" },
+];
+const yig = (a: number[]) => a.reduce((s, x) => s + x, 0);
+
+/** Eski (yoki qo'lda yozilgan) qoidalardan taqsimot holati. */
+function taqsimotQoidalardan(blok: ExamBlock, fan: BankFan | null): BlokTaqsimot {
+  const tasodifiy = blok.topicRules.filter(r => !tanlanganSavollar(r).length);
+  const mavzular = new Set<number>();
+  for (const r of tasodifiy) {
+    const m = mavzuniTop(fan, r.mavzuId, r.topic);
+    if (m) mavzular.add(m.id);
+  }
+  const sum = (t: SavolTuri) => tasodifiy.filter(r => (r.type || 'yopiq') === t).reduce((a, r) => a + (Number(r.count) || 0), 0);
+  return {
+    jami: sum('yopiq'), aralash: 'qolda', mavzular: [...mavzular], raqamli: sum('raqamli'), yozma: sum('yozma'),
+    yozmaBal: tasodifiy.find(r => r.type === 'yozma' && r.points != null)?.points ?? null,
+  };
+}
+
+/** Yopiq savollar jadvali (mavzu × oson / o'rta / qiyin / aralash) — qoidalardan. */
+function jadvalQoidalardan(blok: ExamBlock, fan: BankFan | null): Map<string, { mavzuId: number | null; nom: string; sonlar: number[] }> {
+  const out = new Map<string, { mavzuId: number | null; nom: string; sonlar: number[] }>();
+  for (const r of blok.topicRules) {
+    if (tanlanganSavollar(r).length || (r.type || 'yopiq') !== 'yopiq') continue;
+    const m = mavzuniTop(fan, r.mavzuId, r.topic);
+    const kalit = m ? `m${m.id}` : r.topic?.trim() ? `n:${r.topic.trim().toLowerCase()}` : 'x';
+    if (!out.has(kalit)) out.set(kalit, { mavzuId: m?.id ?? null, nom: m?.name || r.topic || '', sonlar: [0, 0, 0, 0] });
+    const d = qoidaQiyinligi(r);
+    out.get(kalit)!.sonlar[d ? d - 1 : 3] += Number(r.count) || 0;
+  }
+  return out;
+}
+
+export default function BlokMuharriri({ blok, index, daraxt, scoring, kopaytma, qulf, onChange, onOchir }: {
+  blok: ExamBlock; index: number; daraxt: BankDaraxt; scoring: 'blok' | 'foiz'; kopaytma: number; qulf: boolean;
+  onChange: (b: ExamBlock) => void; onOchir?: () => void;
+}) {
+  const fan = fanniTop(daraxt, blok.fanId, blok.subject);
+  const t = blok.taqsimot ?? taqsimotQoidalardan(blok, fan);
+  const [tanlashOchiq, setTanlashOchiq] = useState(false);
+  const qolda = blok.topicRules.filter(r => tanlanganSavollar(r).length);
+  const qoldaIds = qolda.flatMap(r => tanlanganSavollar(r));
+
+  // Yangi fan tanlanganda yoki eski imtihon ochilganda — fan id si bilan bog'lanadi.
+  useEffect(() => {
+    if (qulf || !fan || (blok.fanId === fan.id && blok.subject === fan.name)) return;
+    onChange({ ...blok, fanId: fan.id, subject: fan.name });
+  }, [fan?.id]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const tanlanganMavzular = (fan?.mavzular || []).filter(m => t.mavzular.includes(m.id));
+  const jadval = jadvalQoidalardan(blok, fan);
+
+  /** Taqsimot (va qo'lda jadval) dan qoidalar yasab, blokni yangilaydi. */
+  const qayta = (yangiT: BlokTaqsimot, qoldaJadval?: Map<string, { mavzuId: number | null; nom: string; sonlar: number[] }>, yangiQolda?: TopicRule[]) => {
+    if (!fan) return;
+    const mavzular = fan.mavzular.filter(m => yangiT.mavzular.includes(m.id));
+    const rules: TopicRule[] = [];
+    let jadvalYangi = qoldaJadval;
+    if (yangiT.aralash !== 'qolda') {
+      const r = taqsimla({ jami: yangiT.jami, ulush: QIYINLIK_ARALASHMASI[yangiT.aralash], mavzular: mavzular.map(m => ({ id: m.id, bor: m.bor.yopiq })) });
+      jadvalYangi = new Map(mavzular.map(m => [`m${m.id}`, { mavzuId: m.id, nom: m.name, sonlar: [...r.jadval[m.id], 0] }]));
+      // Tanlangan mavzularda yetmasa — qolgani fanning istalgan mavzusidan (tekshiruv yetmasligini ko'rsatadi).
+      if (r.yetmadi) jadvalYangi.set('x', { mavzuId: null, nom: '', sonlar: [0, 0, 0, r.yetmadi] });
+    }
+    for (const [, q] of jadvalYangi || new Map()) {
+      q.sonlar.forEach((n, i) => {
+        if (n > 0) rules.push({ topic: q.nom, ...(q.mavzuId ? { mavzuId: q.mavzuId } : {}), type: 'yopiq', count: n, ...(i < 3 ? { difficulty: i + 1 } : {}) });
+      });
+    }
+    for (const tur of ['raqamli', 'yozma'] as const) {
+      const kerak = yangiT[tur];
+      if (!kerak) continue;
+      const yoy = tengYoy(kerak, mavzular.map(m => ({ id: m.id, bor: yig(m.bor[tur]) })));
+      const points = tur === 'yozma' && yangiT.yozmaBal != null ? { points: yangiT.yozmaBal } : {};
+      for (const m of mavzular) if (yoy.jadval[m.id]) rules.push({ topic: m.name, mavzuId: m.id, type: tur, count: yoy.jadval[m.id], ...points });
+      if (yoy.yetmadi) rules.push({ topic: '', type: tur, count: yoy.yetmadi, ...points });
+    }
+    rules.push(...(yangiQolda ?? qolda));
+    onChange({ ...blok, fanId: fan.id, subject: fan.name, taqsimot: yangiT, topicRules: rules });
+  };
+
+  const fanTanla = (id: number) => {
+    const f = daraxt.fanlar.find(x => x.id === id);
+    if (!f) return;
+    const yangiT: BlokTaqsimot = { jami: t.jami || 10, aralash: 'muvozanat', mavzular: f.mavzular.filter(m => yig(m.bor.yopiq) > 0).map(m => m.id), raqamli: 0, yozma: 0, yozmaBal: null };
+    const mavzular = f.mavzular.filter(m => yangiT.mavzular.includes(m.id));
+    const r = taqsimla({ jami: yangiT.jami, ulush: QIYINLIK_ARALASHMASI.muvozanat, mavzular: mavzular.map(m => ({ id: m.id, bor: m.bor.yopiq })) });
+    const rules: TopicRule[] = [];
+    for (const m of mavzular) r.jadval[m.id].forEach((n, i) => { if (n) rules.push({ topic: m.name, mavzuId: m.id, type: 'yopiq', count: n, difficulty: i + 1 }); });
+    if (r.yetmadi) rules.push({ topic: '', type: 'yopiq', count: r.yetmadi });
+    onChange({ ...blok, fanId: f.id, subject: f.name, taqsimot: yangiT, topicRules: rules });
+  };
+
+  const mavzuAlmashtir = (id: number) => {
+    const bor = t.mavzular.includes(id);
+    const yangiT = { ...t, mavzular: bor ? t.mavzular.filter(x => x !== id) : [...t.mavzular, id] };
+    if (t.aralash !== 'qolda') return qayta(yangiT);
+    const j = new Map(jadval);
+    if (bor) j.delete(`m${id}`);
+    yangiT.jami = [...j.values()].reduce((a, q) => a + yig(q.sonlar), 0);
+    qayta(yangiT, j);
+  };
+
+  const katak = (kalit: string, qator: Qator, i: number, qiymat: number) => {
+    const j = new Map(jadval);
+    const eski = j.get(kalit) || { mavzuId: qator.mavzuId, nom: qator.nom, sonlar: [0, 0, 0, 0] };
+    const sonlar = [...eski.sonlar];
+    sonlar[i] = Math.max(0, Math.min(300, qiymat || 0));
+    j.set(kalit, { ...eski, sonlar });
+    const yangiT = { ...t, aralash: 'qolda' as const, jami: [...j.values()].reduce((a, q) => a + yig(q.sonlar), 0) };
+    if (qator.mavzuId && !yangiT.mavzular.includes(qator.mavzuId)) yangiT.mavzular = [...yangiT.mavzular, qator.mavzuId];
+    qayta(yangiT, j);
+  };
+
+  // Jadval qatorlari: tanlangan mavzular, eski qoidalardagi (bankda yo'q) mavzular va "istalgan mavzu".
+  const qatorlar: Qator[] = [];
+  for (const m of tanlanganMavzular) {
+    qatorlar.push({ kalit: `m${m.id}`, mavzuId: m.id, nom: m.name, sonlar: jadval.get(`m${m.id}`)?.sonlar || [0, 0, 0, 0], bor: [...m.bor.yopiq, yig(m.bor.yopiq)] });
+  }
+  for (const [kalit, q] of jadval) {
+    if (kalit.startsWith('n:')) qatorlar.push({ kalit, mavzuId: null, nom: q.nom, sonlar: q.sonlar, bor: [0, 0, 0, 0] });
+  }
+  const fanBor = [0, 1, 2].map(i => (fan?.mavzular || []).reduce((a, m) => a + m.bor.yopiq[i], 0));
+  qatorlar.push({ kalit: 'x', mavzuId: null, nom: '', sonlar: jadval.get('x')?.sonlar || [0, 0, 0, 0], bor: [...fanBor, yig(fanBor)] });
+
+  const ustunJami = [0, 1, 2, 3].map(i => qatorlar.reduce((a, q) => a + q.sonlar[i], 0));
+  const tasodifiyYopiq = yig(ustunJami);
+  const raqamliBor = (fan?.mavzular || []).filter(m => t.mavzular.includes(m.id)).reduce((a, m) => a + yig(m.bor.raqamli), 0);
+  const yozmaBor = (fan?.mavzular || []).filter(m => t.mavzular.includes(m.id)).reduce((a, m) => a + yig(m.bor.yozma), 0);
+  const fandaRaqamli = (fan?.mavzular || []).some(m => yig(m.bor.raqamli) > 0) || t.raqamli > 0;
+  const fandaYozma = (fan?.mavzular || []).some(m => yig(m.bor.yozma) > 0) || t.yozma > 0;
+  const jamiSavol = blok.topicRules.reduce((a, r) => a + (Number(r.count) || 0), 0);
+  const jamiBall = blok.topicRules.reduce((a, r) => a + (Number(r.count) || 0) * qoidaBali(r, blok, scoring), 0);
+  const kamchilik = qatorlar.some(q => q.sonlar.some((n, i) => n > 0 && n * kopaytma > q.bor[i]))
+    || (t.raqamli > 0 && t.raqamli * kopaytma > raqamliBor) || (t.yozma > 0 && t.yozma * kopaytma > yozmaBor);
+
+  const qoldaTanlandi = (ids: number[], turlar: Record<number, SavolTuri>) => {
+    // Turi: tanlash oynasida yuklanganidan, bo'lmasa oldingi qoidadan.
+    const eskiTur = new Map<number, SavolTuri>();
+    for (const r of qolda) for (const id of tanlanganSavollar(r) as number[]) eskiTur.set(id, (r.type || 'yopiq') as SavolTuri);
+    const guruh: Record<SavolTuri, number[]> = { yopiq: [], raqamli: [], yozma: [] };
+    for (const id of ids) guruh[turlar[id] || eskiTur.get(id) || 'yopiq'].push(id);
+    const yangi: TopicRule[] = (Object.keys(guruh) as SavolTuri[]).filter(k => guruh[k].length).map(k => ({
+      topic: '', type: k, count: guruh[k].length, questionIds: guruh[k], ...(k === 'yozma' && t.yozmaBal != null ? { points: t.yozmaBal } : {}),
+    }));
+    qayta(t, t.aralash === 'qolda' ? jadval : undefined, yangi);
+  };
+
+  return (
+    <div className="rounded-xl border border-chiziq bg-ichki/50 p-3 space-y-3">
+      <div className="flex flex-wrap items-end gap-2">
+        <label className="flex-1 min-w-52">
+          <span className="block text-[12px] font-semibold text-matn-sokin mb-1.5">{index + 1}-fan</span>
+          <select className={SELECT} disabled={qulf} value={fan?.id ?? ''} aria-label={`${index + 1}-blok fani`} onChange={e => fanTanla(Number(e.target.value))}>
+            <option value="">{blok.subject && !fan ? `«${blok.subject}» — bankda yo'q, fanni tanlang` : 'Fanni tanlang'}</option>
+            {daraxt.fanlar.map(f => <option key={f.id} value={f.id}>{f.name} ({f.faol} ta savol)</option>)}
+          </select>
+        </label>
+        {scoring === 'blok' && (
+          <label className="w-32">
+            <span className="block text-[12px] font-semibold text-matn-sokin mb-1.5">Bir savol bali</span>
+            <input className={INPUT} disabled={qulf} inputMode="decimal" value={blok.pointsPerQuestion} aria-label="Bir savol bali"
+              onChange={e => onChange({ ...blok, pointsPerQuestion: Number(e.target.value.replace(',', '.')) || 0 })} />
+          </label>
+        )}
+        {!qulf && onOchir && <button aria-label="Blokni o'chirish" onClick={onOchir} className="mb-1 p-2 rounded-lg text-matn-xira hover:text-xato cursor-pointer"><Trash2 size={15} /></button>}
+      </div>
+
+      {!fan ? (
+        <p className="text-[12.5px] text-matn-sokin rounded-lg bg-sirt border border-chiziq px-3 py-2">Fan tanlangach — savollar soni, qiyinlik va mavzular.</p>
+      ) : (
+        <>
+          <div className="flex flex-wrap items-end gap-x-4 gap-y-2">
+            <label className="w-28">
+              <span className="block text-[12px] font-semibold text-matn-sokin mb-1.5">Savollar soni</span>
+              <input className={INPUT} type="number" min={0} max={300} disabled={qulf || t.aralash === 'qolda'} value={t.aralash === 'qolda' ? tasodifiyYopiq : t.jami} aria-label="Savollar soni"
+                onChange={e => qayta({ ...t, jami: Math.max(0, Math.min(300, Number(e.target.value) || 0)) })} />
+            </label>
+            <div>
+              <span className="block text-[12px] font-semibold text-matn-sokin mb-1.5">Qiyinlik</span>
+              <div className="flex flex-wrap items-center gap-2">
+                <Tanlov kichik qiymat={t.aralash === 'qolda' ? ('' as any) : t.aralash} onChange={v => !qulf && qayta({ ...t, aralash: v, jami: t.aralash === 'qolda' ? tasodifiyYopiq : t.jami })}
+                  variantlar={ARALASH_NOMI.map(a => ({ v: a.v, nom: a.nom }))} />
+                {t.aralash === 'qolda' && <span className="text-[11.5px] font-semibold text-ogoh">qo'lda taqsimlangan</span>}
+              </div>
+            </div>
+          </div>
+
+          <div>
+            <div className="flex flex-wrap items-center justify-between gap-2 mb-1.5">
+              <span className="text-[12px] font-semibold text-matn-sokin">Mavzular <span className="font-normal text-matn-xira">— {tanlanganMavzular.length} / {fan.mavzular.length} tanlangan</span></span>
+              {!qulf && (
+                <span className="flex gap-3 text-[11.5px]">
+                  <button className="text-brand hover:underline cursor-pointer" onClick={() => qayta({ ...t, mavzular: fan.mavzular.filter(m => yig(m.bor.yopiq) > 0).map(m => m.id) })}>Hammasi</button>
+                  <button className="text-matn-sokin hover:underline cursor-pointer" onClick={() => qayta({ ...t, mavzular: [] }, t.aralash === 'qolda' ? new Map([...jadval].filter(([k]) => !k.startsWith('m'))) : undefined)}>Tozalash</button>
+                </span>
+              )}
+            </div>
+            <div className="flex flex-wrap gap-1.5">
+              {fan.mavzular.map(m => {
+                const bor = yig(m.bor.yopiq) + yig(m.bor.raqamli) + yig(m.bor.yozma);
+                const tanlangan = t.mavzular.includes(m.id);
+                return (
+                  <button key={m.id} type="button" disabled={qulf || (!bor && !tanlangan)} onClick={() => mavzuAlmashtir(m.id)} aria-pressed={tanlangan}
+                    className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg border text-[12px] cursor-pointer disabled:cursor-default disabled:opacity-40 ${tanlangan ? 'bg-brand text-brand-ust border-brand' : 'bg-sirt border-chiziq text-matn-sokin hover:text-matn'}`}>
+                    {m.name}<span className={`raqam text-[11px] ${tanlangan ? 'opacity-80' : 'text-matn-xira'}`}>{bor}</span>
+                  </button>
+                );
+              })}
+              {!fan.mavzular.length && <span className="text-[12px] text-matn-xira">Fanda mavzu yo'q — bankda qo'shing</span>}
+            </div>
+          </div>
+
+          {/* Telefonda — har mavzu alohida karta, to'rtta katak bir qatorda. */}
+          <div className="sm:hidden space-y-2">
+            {qatorlar.map(q => (
+              <div key={q.kalit} className={`rounded-xl border border-chiziq p-2.5 ${q.kalit === 'x' ? 'bg-ichki/60' : 'bg-sirt'}`}>
+                <div className="flex items-center justify-between gap-2 mb-2 text-[12.5px]">
+                  <span className={`font-semibold truncate ${q.kalit === 'x' ? 'text-matn-sokin' : 'text-matn'}`}>{q.kalit === 'x' ? 'Istalgan mavzu' : q.nom}</span>
+                  <span className="text-matn-xira shrink-0">jami <b className="text-matn raqam">{yig(q.sonlar)}</b></span>
+                </div>
+                <div className="grid grid-cols-4 gap-1">
+                  {q.sonlar.map((n, i) => (
+                    <div key={i} className="flex flex-col items-center gap-0.5">
+                      <span className={`text-[10.5px] font-semibold ${i < 3 ? QIYINLIK[i].matn : 'text-matn-sokin'}`}>{i < 3 ? QIYINLIK[i].nom : 'Aralash'}</span>
+                      <Katak qator={q} i={i} n={n} kopaytma={kopaytma} disabled={qulf || q.kalit.startsWith('n:')} onChange={v => katak(q.kalit, q, i, v)} />
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ))}
+            <p className="flex flex-wrap justify-between gap-2 px-1 text-[12.5px] font-semibold text-matn">
+              <span>Jami <span className="raqam">{tasodifiyYopiq}</span></span>
+              <span className="flex gap-2">{ustunJami.slice(0, 3).map((n, i) => <span key={i} className={`raqam ${QIYINLIK[i].matn}`}>{QIYINLIK[i].nom} {n}</span>)}{ustunJami[3] > 0 && <span className="raqam text-matn-sokin">aralash {ustunJami[3]}</span>}</span>
+            </p>
+          </div>
+          <div className="hidden sm:block overflow-x-auto rounded-xl border border-chiziq bg-sirt">
+            <table className="w-full min-w-[520px] text-[12.5px]">
+              <thead className="bg-ichki text-matn-sokin">
+                <tr>
+                  <th className="px-3 py-2 text-left font-semibold">Mavzu</th>
+                  {QIYINLIK.map(q => <th key={q.d} className={`px-1 py-2 text-center font-semibold w-[76px] ${q.matn}`}>{q.nom}</th>)}
+                  <th className="px-1 py-2 text-center font-semibold w-[76px]" title="Istalgan qiyinlikdan">Aralash</th>
+                  <th className="px-2 py-2 text-center font-semibold w-12">Jami</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-chiziq">
+                {qatorlar.map(q => {
+                  const bankdaYoq = q.kalit.startsWith('n:');
+                  return (
+                    <tr key={q.kalit} className={q.kalit === 'x' ? 'bg-ichki/40' : ''}>
+                      <td className="px-3 py-1.5 text-matn">
+                        {q.kalit === 'x' ? <span className="text-matn-sokin">Istalgan mavzu</span> : q.nom}
+                        {bankdaYoq && <span className="ml-1.5 text-[11px] text-xato">bankda yo'q</span>}
+                      </td>
+                      {q.sonlar.map((n, i) => (
+                        <td key={i} className="px-1 py-1.5 text-center">
+                          <Katak qator={q} i={i} n={n} kopaytma={kopaytma} disabled={qulf || bankdaYoq} onChange={v => katak(q.kalit, q, i, v)} />
+                        </td>
+                      ))}
+                      <td className="px-2 py-1.5 text-center font-bold text-matn raqam">{yig(q.sonlar) || ''}</td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+              <tfoot className="bg-ichki">
+                <tr>
+                  <td className="px-3 py-2 font-semibold text-matn-sokin">Jami</td>
+                  {ustunJami.map((n, i) => <td key={i} className={`px-1 py-2 text-center font-bold raqam ${i < 3 && n ? QIYINLIK[i].matn : 'text-matn'}`}>{n}</td>)}
+                  <td className="px-2 py-2 text-center font-bold text-matn raqam">{tasodifiyYopiq}</td>
+                </tr>
+              </tfoot>
+            </table>
+          </div>
+
+          {(fandaRaqamli || fandaYozma) && (
+            <div className="flex flex-wrap items-end gap-x-5 gap-y-2">
+              {fandaRaqamli && (
+                <label className="flex items-end gap-2">
+                  <span>
+                    <span className="block text-[12px] font-semibold text-matn-sokin mb-1.5">Raqamli javobli</span>
+                    <input className={`${INPUT} w-24`} type="number" min={0} disabled={qulf} value={t.raqamli} aria-label="Raqamli javobli savollar soni"
+                      onChange={e => qayta({ ...t, raqamli: Math.max(0, Number(e.target.value) || 0) }, t.aralash === 'qolda' ? jadval : undefined)} />
+                  </span>
+                  <span className={`pb-2.5 text-[11.5px] ${t.raqamli * kopaytma > raqamliBor ? 'text-xato font-semibold' : 'text-matn-xira'}`}>tanlangan mavzularda {raqamliBor}</span>
+                </label>
+              )}
+              {fandaYozma && (
+                <label className="flex items-end gap-2">
+                  <span>
+                    <span className="block text-[12px] font-semibold text-matn-sokin mb-1.5">Yozma</span>
+                    <input className={`${INPUT} w-20`} type="number" min={0} disabled={qulf} value={t.yozma} aria-label="Yozma savollar soni"
+                      onChange={e => qayta({ ...t, yozma: Math.max(0, Number(e.target.value) || 0) }, t.aralash === 'qolda' ? jadval : undefined)} />
+                  </span>
+                  <span>
+                    <span className="block text-[12px] font-semibold text-matn-sokin mb-1.5">har biri, ball</span>
+                    <input className={`${INPUT} w-20`} inputMode="decimal" disabled={qulf} value={t.yozmaBal ?? ''} placeholder={String(blok.pointsPerQuestion)} aria-label="Yozma savol bali"
+                      onChange={e => qayta({ ...t, yozmaBal: e.target.value === '' ? null : Number(e.target.value.replace(',', '.')) || 0 }, t.aralash === 'qolda' ? jadval : undefined)} />
+                  </span>
+                  <span className={`pb-2.5 text-[11.5px] ${t.yozma * kopaytma > yozmaBor ? 'text-xato font-semibold' : 'text-matn-xira'}`}>bankda {yozmaBor}</span>
+                </label>
+              )}
+            </div>
+          )}
+
+          <QoldaTanlangan ids={qoldaIds} qulf={qulf} onTanla={() => setTanlashOchiq(true)} onOlib={id => {
+            const qoldi = qolda.map(r => ({ ...r, questionIds: tanlanganSavollar(r).filter(x => x !== id) })).filter(r => r.questionIds.length).map(r => ({ ...r, count: r.questionIds.length }));
+            qayta(t, t.aralash === 'qolda' ? jadval : undefined, qoldi);
+          }} />
+
+          <div className="flex flex-wrap items-center justify-between gap-2 pt-1 border-t border-chiziq">
+            <p className="text-[12.5px] text-matn">
+              <b className="raqam">{jamiSavol}</b> ta savol
+              {qoldaIds.length > 0 && <span className="text-matn-xira"> ({jamiSavol - qoldaIds.length} tasodifiy + {qoldaIds.length} tanlangan)</span>}
+              {scoring === 'blok' && <> · <b className="raqam">{vergul(Math.round(jamiBall * 100) / 100)}</b> ball</>}
+            </p>
+            <span className={`inline-flex items-center gap-1 text-[12px] font-semibold ${kamchilik ? 'text-xato' : 'text-yaxshi'}`}>
+              {kamchilik ? <><AlertTriangle size={13} /> bankda yetmaydi — qizil kataklarni kamaytiring</> : <><CheckCircle2 size={13} /> bankda yetadi</>}
+            </span>
+          </div>
+        </>
+      )}
+      {tanlashOchiq && fan && (
+        <SavolTanlash fan={fan} daraxt={daraxt} tanlangan={qoldaIds} onYop={() => setTanlashOchiq(false)}
+          onTanla={(ids, turlar) => { setTanlashOchiq(false); qoldaTanlandi(ids, turlar); }} />
+      )}
+    </div>
+  );
+}
+
+/** Qo'lda tanlangan savollar ro'yxati (qisqa) va "tanlash" tugmasi. */
+function QoldaTanlangan({ ids, qulf, onTanla, onOlib }: { ids: number[]; qulf: boolean; onTanla: () => void; onOlib: (id: number) => void }) {
+  const { soro } = useImtihonApi();
+  const [savollar, setSavollar] = useState<Question[]>([]);
+  const kalit = ids.join(',');
+  useEffect(() => {
+    if (!ids.length) { setSavollar([]); return; }
+    soro<{ items: Question[] }>('GET', `questions?ids=${kalit}&soni=200`).then(r => {
+      setSavollar(ids.map(id => r.items.find(q => q.id === id)).filter(Boolean) as Question[]);
+    }).catch(() => {});
+  }, [kalit, soro]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  return (
+    <div className="space-y-1.5">
+      <div className="flex flex-wrap items-center gap-2">
+        <Tugma kichik disabled={qulf} ikonka={<ListChecks size={14} />} onClick={onTanla}>{ids.length ? `Tanlangan savollar (${ids.length})` : 'Aniq savollarni tanlash'}</Tugma>
+        {!ids.length && <span className="text-[11.5px] text-matn-xira">ixtiyoriy — bankdan fan → mavzu → qiyinlik bo'yicha</span>}
+      </div>
+      {savollar.length > 0 && (
+        <ul className="rounded-xl border border-chiziq bg-sirt divide-y divide-chiziq">
+          {savollar.map(q => (
+            <li key={q.id} className="flex items-center gap-2 px-3 py-1.5 text-[12.5px]">
+              <QiyinlikYorligi d={q.difficulty} />
+              <span className="text-matn-xira shrink-0 truncate max-w-[30%]">{q.bankTopic?.name || q.topic}</span>
+              <span className={`${SAVOL_MATNI} flex-1 min-w-0 line-clamp-1 text-matn [&_p]:inline [&_p]:my-0`} dangerouslySetInnerHTML={{ __html: formulaliHtml(q.text) }} />
+              {!qulf && <button aria-label="Olib tashlash" onClick={() => onOlib(q.id)} className="p-1 rounded text-matn-xira hover:text-xato cursor-pointer"><X size={14} /></button>}
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  );
+}
+
+/** Jadval katagi: savollar soni va bankdagisi (yetmasa — qizil). */
+function Katak({ qator, i, n, kopaytma, disabled, onChange }: { qator: Qator; i: number; n: number; kopaytma: number; disabled: boolean; onChange: (v: number) => void }) {
+  const oshdi = n > 0 && n * kopaytma > qator.bor[i];
+  const bankdaYoq = qator.kalit.startsWith('n:');
+  return (
+    <div className="inline-flex flex-col items-center">
+      <input aria-label={`${qator.kalit === 'x' ? 'Istalgan mavzu' : qator.nom}: ${i < 3 ? QIYINLIK[i].nom : 'aralash'}`} inputMode="numeric" disabled={disabled}
+        className={`w-12 rounded-lg border px-1 py-1 text-center text-[13px] raqam outline-none focus:border-brand ${n ? 'font-bold text-matn' : 'text-matn-xira'} ${oshdi ? 'border-xato bg-xato-fon' : 'border-chiziq bg-ichki'}`}
+        value={n || ''} placeholder="0" onChange={e => onChange(parseInt(e.target.value.replace(/\D/g, '')))} />
+      <span className={`text-[10px] raqam ${oshdi ? 'text-xato font-semibold' : 'text-matn-xira'}`}>{bankdaYoq ? '—' : `bankda ${qator.bor[i]}`}</span>
+    </div>
+  );
+}

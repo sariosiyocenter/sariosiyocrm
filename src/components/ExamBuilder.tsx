@@ -1,10 +1,12 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { ArrowLeft, Save, Plus, Trash2, Lock, Wand2, AlertTriangle, CheckCircle2 } from 'lucide-react';
+import { ArrowLeft, Save, Plus, Trash2, Lock, Wand2 } from 'lucide-react';
 import { useCRM } from '../context/CRMContext';
 import { useImtihonApi } from './imtihon/useImtihonApi';
 import { Karta, Tugma, Maydon, INPUT, SELECT, Tanlov, Almashtirgich, Yorliq, Yuklanmoqda } from './imtihon/ui';
-import { SOZLAMA_STANDART, STANDART_SHABLON, RUXSATNOMA_SHABLON, sozlamaniTozala, varaqTuzilmasi, natijaXabari, ruxsatnomaMatni, VARIANT_KODLARI, vergul, sanaMatni } from '../../lib/imtihon.js';
+import { useBankDaraxt, fanniTop } from './imtihon/bank/useBankDaraxt';
+import BlokMuharriri from './imtihon/tuzish/BlokMuharriri';
+import { SOZLAMA_STANDART, STANDART_SHABLON, RUXSATNOMA_SHABLON, sozlamaniTozala, varaqTuzilmasi, natijaXabari, ruxsatnomaMatni, VARIANT_KODLARI, vergul, sanaMatni, taqsimla, QIYINLIK_ARALASHMASI } from '../../lib/imtihon.js';
 import { toDateStr } from '../../lib/lessons.js';
 import type { Exam, ExamBlock, ExamSettings, TopicRule, SavolTuri } from '../types';
 
@@ -12,8 +14,6 @@ import type { Exam, ExamBlock, ExamSettings, TopicRule, SavolTuri } from '../typ
 // ball tizimi, smenalar, filiallar, til, reyting va xabar kanali imtihonning
 // o'z sozlamasi. Qulflangandan keyin tuzilma (bloklar, variantlar) o'zgarmaydi,
 // faqat e'lon va xabar sozlamalari.
-
-interface Meta { fanlar: { nomi: string; faol: number }[]; mavzular: { fan: string; mavzu: string; faol: Record<string, number> }[] }
 
 const yangiId = () => Math.random().toString(36).slice(2, 9);
 
@@ -35,7 +35,6 @@ export default function ExamBuilder() {
   const { schools, selectedSchoolId, user, addExam, updateExam, showNotification } = useCRM();
   const { soro } = useImtihonApi();
 
-  const [meta, setMeta] = useState<Meta | null>(null);
   const [yuklanmoqda, setYuklanmoqda] = useState(tahrir);
   const [saqlanmoqda, setSaqlanmoqda] = useState(false);
   const [qulf, setQulf] = useState(false);
@@ -49,8 +48,8 @@ export default function ExamBuilder() {
   // Imtihon yaratilgan filial doim qatnashadi; qolganlari — tanlov.
   const [egaFilial, setEgaFilial] = useState(joriyFilial);
   const [filiallar, setFiliallar] = useState<number[]>(joriyFilial ? [joriyFilial] : []);
-
-  useEffect(() => { soro<Meta>('GET', 'questions/meta').then(setMeta).catch(() => {}); }, [soro]);
+  // Bank tuzilmasi: fan → mavzu, har mavzuda imtihonga olsa bo'ladigan savollar (imtihon tilida).
+  const { daraxt } = useBankDaraxt(sozlama.language);
 
   useEffect(() => {
     if (!id) return;
@@ -67,14 +66,6 @@ export default function ExamBuilder() {
   const tuzilma = useMemo(() => varaqTuzilmasi(bloklar, scoring), [bloklar, scoring]);
   const s = (patch: Partial<ExamSettings>) => setSozlama(x => ({ ...x, ...patch }));
 
-  /** Bankda shu qoidaga mos faol savollar soni. */
-  const bor = (fan: string, rule: TopicRule) => {
-    const tur = rule.type || 'yopiq';
-    const f = fan.trim().toLowerCase();
-    return (meta?.mavzular || [])
-      .filter(m => m.fan.toLowerCase() === f && (!rule.topic.trim() || m.mavzu.toLowerCase() === rule.topic.trim().toLowerCase()))
-      .reduce((a, m) => a + (m.faol[tur] || 0), 0);
-  };
   const kopaytma = sozlama.sessionQuestions === 'alohida' ? sozlama.sessions.length : 1;
   // "Faqat kalit": markazning o'z kitobchasi — mavzu va qiyinlik kerak emas, bank ham.
   const kalitRejimi = sozlama.source === 'kalit';
@@ -85,8 +76,8 @@ export default function ExamBuilder() {
   const saqla = async () => {
     if (!nom.trim()) return showNotification('Imtihon nomini kiriting', 'error');
     if (!qulf) {
-      if (bloklar.some(b => !b.subject.trim())) return showNotification('Har blokning fanini kiriting', 'error');
-      if (!tuzilma.jami) return showNotification("Kamida bitta savol qoidasi kerak", 'error');
+      if (bloklar.some(b => !b.subject.trim())) return showNotification(kalitRejimi ? 'Har blokning fanini kiriting' : 'Har blokda fanni tanlang', 'error');
+      if (!tuzilma.jami) return showNotification(kalitRejimi ? "Kamida bitta savol qoidasi kerak" : 'Savollar soni kiritilmagan', 'error');
     }
     setSaqlanmoqda(true);
     try {
@@ -122,6 +113,24 @@ export default function ExamBuilder() {
   if (yuklanmoqda) return <Yuklanmoqda />;
 
   const qulfIzoh = qulf ? 'Savollar qulflangan — bu qism o\'zgarmaydi' : undefined;
+
+  // DTM andozasi: 5 blok; bank rejimida fanlar bankdagi nomi bo'yicha topiladi.
+  const dtmAndoza = () => {
+    setScoring('blok');
+    setBloklar(DTM_ANDOZA.map(b => {
+      const yangi = { ...b, id: yangiId() };
+      if (kalitRejimi || !daraxt) return yangi;
+      const f = fanniTop(daraxt, null, b.subject);
+      if (!f) return { ...yangi, subject: '', topicRules: [] };
+      const jami = b.topicRules.reduce((a, r) => a + r.count, 0);
+      const mavzular = f.mavzular.filter(m => m.bor.yopiq.some(n => n > 0));
+      const r = taqsimla({ jami, ulush: QIYINLIK_ARALASHMASI.muvozanat, mavzular: mavzular.map(m => ({ id: m.id, bor: m.bor.yopiq })) });
+      const topicRules: TopicRule[] = [];
+      for (const m of mavzular) r.jadval[m.id].forEach((n: number, i: number) => { if (n) topicRules.push({ topic: m.name, mavzuId: m.id, type: 'yopiq', count: n, difficulty: i + 1 }); });
+      if (r.yetmadi) topicRules.push({ topic: '', type: 'yopiq', count: r.yetmadi });
+      return { ...yangi, subject: f.name, fanId: f.id, topicRules, taqsimot: { jami, aralash: 'muvozanat' as const, mavzular: mavzular.map(m => m.id), raqamli: 0, yozma: 0, yozmaBal: null } };
+    }));
+  };
 
   return (
     <div className="max-w-6xl mx-auto pb-24 space-y-4">
@@ -181,10 +190,15 @@ export default function ExamBuilder() {
 
       <Karta sarlavha="Tuzilma" izoh={qulfIzoh || (kalitRejimi
         ? "Har fan — alohida blok, kitobchadagi tartibda. Varaqda har fanda avval yopiq, keyin raqamli, keyin yozma savollar turadi — kitobcha raqamlari shunga mos bo'lsin."
-        : "Har fan — alohida blok. Mavzu bo'sh bo'lsa — fanning istalgan mavzusidan.")}
-        amallar={!qulf && <Tugma kichik ikonka={<Wand2 size={14} />} onClick={() => { setBloklar(DTM_ANDOZA.map(b => ({ ...b, id: yangiId() }))); setScoring('blok'); }}>DTM andozasi</Tugma>}>
+        : "Har fan — alohida blok: savollar soni, qiyinlik va mavzular. Taqsimotni tizim o'zi hisoblaydi — jadvalda ko'rinadi, katagini qo'lda ham o'zgartirsa bo'ladi.")}
+        amallar={!qulf && <Tugma kichik ikonka={<Wand2 size={14} />} onClick={dtmAndoza}>DTM andozasi</Tugma>}>
         <div className="space-y-3">
-          {bloklar.map((b, bi) => {
+          {!kalitRejimi && (daraxt ? bloklar.map((b, bi) => (
+            <BlokMuharriri key={b.id} blok={b} index={bi} daraxt={daraxt} scoring={scoring} kopaytma={kopaytma} qulf={qulf}
+              onChange={nb => setBloklar(x => x.map((y, i) => (i === bi ? nb : y)))}
+              onOchir={bloklar.length > 1 ? () => setBloklar(x => x.filter((_, i) => i !== bi)) : undefined} />
+          )) : <Yuklanmoqda matn="Savollar banki yuklanmoqda…" />)}
+          {kalitRejimi && bloklar.map((b, bi) => {
             const blokSavollar = b.topicRules.reduce((a, r) => a + (Number(r.count) || 0), 0);
             return (
               <div key={b.id} className="rounded-xl border border-chiziq bg-ichki/50 p-3 space-y-2">
@@ -201,47 +215,26 @@ export default function ExamBuilder() {
                   {!qulf && bloklar.length > 1 && <button aria-label="Blokni o'chirish" onClick={() => setBloklar(x => x.filter((_, i) => i !== bi))} className="mb-1 p-2 rounded-lg text-matn-xira hover:text-xato cursor-pointer"><Trash2 size={15} /></button>}
                 </div>
                 <div className="space-y-1.5">
-                  {b.topicRules.map((r, ri) => {
-                    const mavjud = bor(b.subject, r);
-                    const kerak = (Number(r.count) || 0) * kopaytma;
-                    const yetadi = mavjud >= kerak;
-                    const mavzuRoyxati = (meta?.mavzular || []).filter(m => m.fan.toLowerCase() === b.subject.trim().toLowerCase());
-                    return (
-                      <div key={ri} className="grid grid-cols-12 gap-1.5 items-center">
-                        {!kalitRejimi && (
-                          <>
-                            <input className={`${INPUT} col-span-12 sm:col-span-4`} disabled={qulf} list={`imt-mavzu-${bi}`} value={r.topic} onChange={e => qoidaQoy(bi, ri, { topic: e.target.value })} placeholder="Istalgan mavzu" />
-                            <datalist id={`imt-mavzu-${bi}`}>{mavzuRoyxati.map(m => <option key={m.mavzu} value={m.mavzu} />)}</datalist>
-                          </>
-                        )}
-                        <select className={`${SELECT} ${kalitRejimi ? 'col-span-6 sm:col-span-4' : 'col-span-4 sm:col-span-2'}`} disabled={qulf} value={r.type || 'yopiq'} onChange={e => qoidaQoy(bi, ri, { type: e.target.value as SavolTuri })}>
-                          {(['yopiq', 'raqamli', 'yozma'] as SavolTuri[]).map(t => <option key={t} value={t}>{TUR_NOMI[t]}</option>)}
-                        </select>
-                        <input className={`${INPUT} ${kalitRejimi ? 'col-span-3 sm:col-span-2' : 'col-span-3 sm:col-span-1'}`} disabled={qulf} type="number" min={1} value={r.count} onChange={e => qoidaQoy(bi, ri, { count: Number(e.target.value) })} aria-label="Soni" title="Savollar soni" />
-                        {!kalitRejimi && (
-                          <select className={`${SELECT} col-span-5 sm:col-span-2`} disabled={qulf} value={r.difficulty || ''} onChange={e => qoidaQoy(bi, ri, { difficulty: Number(e.target.value) || undefined })}>
-                            <option value="">Har qanday qiyinlik</option>{[1, 2, 3, 4, 5].map(d => <option key={d} value={d}>Qiyinlik {d}</option>)}
-                          </select>
-                        )}
-                        <input className={`${INPUT} ${kalitRejimi ? 'col-span-3 sm:col-span-2' : 'col-span-4 sm:col-span-1'}`} disabled={qulf} inputMode="decimal" value={r.points ?? ''} onChange={e => qoidaQoy(bi, ri, { points: e.target.value === '' ? undefined : Number(e.target.value.replace(',', '.')) })} placeholder="Ball" title="Shu qatordagi har bir savol bali (bo'sh — blokning «bir savol bali»)" />
-                        {kalitRejimi ? (
-                          <div className="col-span-10 sm:col-span-3 text-[11.5px] text-matn-xira">{r.count || 0} ta savol{r.points != null ? ` · har biri ${r.points} ball` : ''}</div>
-                        ) : (
-                          <div className="col-span-6 sm:col-span-1 text-[11.5px]" title={`Bankda ${mavjud} ta faol savol${kopaytma > 1 ? `, kerak ${kerak} (smenalarga alohida)` : ''}`}>
-                            {meta && b.subject.trim() ? (yetadi ? <span className="text-yaxshi inline-flex items-center gap-1"><CheckCircle2 size={12} />{mavjud}</span> : <span className="text-xato inline-flex items-center gap-1"><AlertTriangle size={12} />{mavjud}/{kerak}</span>) : null}
-                          </div>
-                        )}
-                        {!qulf && <button aria-label="Qoidani o'chirish" onClick={() => blokQoy(bi, { topicRules: b.topicRules.filter((_, j) => j !== ri) })} className="col-span-2 sm:col-span-1 justify-self-end p-2 rounded-lg text-matn-xira hover:text-xato cursor-pointer"><Trash2 size={14} /></button>}
-                      </div>
-                    );
-                  })}
+                  {b.topicRules.map((r, ri) => (
+                    <div key={ri} className="grid grid-cols-12 gap-1.5 items-center">
+                      <select className={`${SELECT} col-span-6 sm:col-span-4`} disabled={qulf} value={r.type || 'yopiq'} onChange={e => qoidaQoy(bi, ri, { type: e.target.value as SavolTuri })}>
+                        {(['yopiq', 'raqamli', 'yozma'] as SavolTuri[]).map(t => <option key={t} value={t}>{TUR_NOMI[t]}</option>)}
+                      </select>
+                      <input className={`${INPUT} col-span-3 sm:col-span-2`} disabled={qulf} type="number" min={1} value={r.count} onChange={e => qoidaQoy(bi, ri, { count: Number(e.target.value) })} aria-label="Soni" title="Savollar soni" />
+                      <input className={`${INPUT} col-span-3 sm:col-span-2`} disabled={qulf} inputMode="decimal" value={r.points ?? ''} onChange={e => qoidaQoy(bi, ri, { points: e.target.value === '' ? undefined : Number(e.target.value.replace(',', '.')) })} placeholder="Ball" title="Shu qatordagi har bir savol bali (bo'sh — blokning «bir savol bali»)" />
+                      <div className="col-span-10 sm:col-span-3 text-[11.5px] text-matn-xira">{r.count || 0} ta savol{r.points != null ? ` · har biri ${r.points} ball` : ''}</div>
+                      {!qulf && <button aria-label="Qoidani o'chirish" onClick={() => blokQoy(bi, { topicRules: b.topicRules.filter((_, j) => j !== ri) })} className="col-span-2 sm:col-span-1 justify-self-end p-2 rounded-lg text-matn-xira hover:text-xato cursor-pointer"><Trash2 size={14} /></button>}
+                    </div>
+                  ))}
                   {!qulf && <Tugma kichik turi="oddiy" ikonka={<Plus size={13} />} onClick={() => blokQoy(bi, { topicRules: [...b.topicRules, { topic: '', count: 5, type: 'yopiq' }] })}>Qoida qo'shish</Tugma>}
                 </div>
               </div>
             );
           })}
-          <datalist id="imt-fanlar">{(meta?.fanlar || []).map(f => <option key={f.nomi} value={f.nomi} />)}</datalist>
-          {!qulf && <Tugma ikonka={<Plus size={14} />} onClick={() => setBloklar(x => [...x, { id: yangiId(), subject: '', pointsPerQuestion: scoring === 'blok' ? 1 : 1, topicRules: [{ topic: '', count: 10, type: 'yopiq' }] }])}>Blok (fan) qo'shish</Tugma>}
+          <datalist id="imt-fanlar">{(daraxt?.fanlar || []).map(f => <option key={f.id} value={f.name} />)}</datalist>
+          {!qulf && <Tugma ikonka={<Plus size={14} />} onClick={() => setBloklar(x => [...x, kalitRejimi
+            ? { id: yangiId(), subject: '', pointsPerQuestion: 1, topicRules: [{ topic: '', count: 10, type: 'yopiq' }] }
+            : { id: yangiId(), subject: '', pointsPerQuestion: 1, topicRules: [] }])}>Fan (blok) qo'shish</Tugma>}
           <div className="flex flex-wrap gap-2 pt-1 text-[12px] text-matn-sokin">
             <Yorliq>{tuzilma.yopiq} ta yopiq</Yorliq>{tuzilma.raqamli > 0 && <Yorliq>{tuzilma.raqamli} ta raqamli</Yorliq>}{tuzilma.yozma > 0 && <Yorliq>{tuzilma.yozma} ta yozma</Yorliq>}<Yorliq rang="brand">Eng yuqori ball: {tuzilma.maks}</Yorliq>
           </div>

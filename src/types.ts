@@ -512,8 +512,49 @@ export interface Question {
     discrimination?: number | null;
     /** Imtihonga yaramasa — sababi (server hisoblaydi). */
     xato?: string | null;
+    /** Bank tuzilmasidagi mavzu (fan → mavzu). */
+    bankTopicId?: number | null;
+    bankTopic?: { id: number; name: string; subjectId: number } | null;
     schoolId: number;
 }
+
+/** Savol qiyinligi: 1 — oson, 2 — o'rta, 3 — qiyin. */
+export type Qiyinlik = 1 | 2 | 3;
+/** [oson, o'rta, qiyin] sonlari. */
+export type QiyinlikSoni = [number, number, number];
+
+/** Savollar banki daraxtidagi mavzu (GET /api/bank/daraxt). */
+export interface BankMavzu {
+    id: number;
+    name: string;
+    /** Bo'lim (o'quv rejadagi modul) — ro'yxatda guruh sarlavhasi. */
+    section?: string | null;
+    order: number;
+    jami: number; faol: number; qoralama: number; arxiv: number; xatoli: number;
+    /** Arxivdan tashqari savollar qiyinlik bo'yicha. */
+    qiyinlik: QiyinlikSoni;
+    turlar: Record<SavolTuri, number>;
+    /** Imtihonga olsa bo'ladiganlari (faol, to'liq) — tur va qiyinlik bo'yicha. */
+    bor: Record<SavolTuri, QiyinlikSoni>;
+    /** Imtihonda ishlatilgan savollarni o'rtacha to'g'ri topganlar, %. */
+    natija: number | null;
+    /** Qiyinligi imtihon natijasiga mos kelmaydigan savollar. */
+    moslash: number;
+}
+
+export interface BankFan {
+    id: number;
+    name: string;
+    order: number;
+    jami: number; faol: number; qoralama: number; arxiv: number; xatoli: number;
+    qiyinlik: QiyinlikSoni;
+    turlar: Record<SavolTuri, number>;
+    natija: number | null;
+    moslash: number;
+    mavzular: BankMavzu[];
+}
+
+export interface BankDaraxt { jami: number; fanlar: BankFan[] }
 
 export interface Passage {
     id: number;
@@ -528,18 +569,38 @@ export interface Passage {
 export interface TopicRule {
     /** '' — fan ichidagi istalgan mavzu. */
     topic: string;
+    /** Bank tuzilmasidagi mavzu id si (nomi o'zgarsa ham qoida ishlaydi). */
+    mavzuId?: number | null;
     count: number;
     type?: SavolTuri;
+    /** 1 — oson, 2 — o'rta, 3 — qiyin; bo'lmasa — istalgan (aralash). */
     difficulty?: number;
     /** Shu qoidadagi savol bali (bo'lmasa blok bali). */
     points?: number;
+    /** Qo'lda tanlangan savollar — har variantga shular tushadi. */
+    questionIds?: number[];
+}
+
+/** Imtihon tuzishdagi "aqlli taqsimot" holati (qoidalar shundan yasaladi). */
+export interface BlokTaqsimot {
+    /** Tasodifiy yopiq savollar soni. */
+    jami: number;
+    aralash: 'oson' | 'muvozanat' | 'qiyin' | 'qolda';
+    /** Tanlangan mavzular id lari. */
+    mavzular: number[];
+    raqamli: number;
+    yozma: number;
+    yozmaBal?: number | null;
 }
 
 export interface ExamBlock {
     id: string;
     subject: string;
+    /** Bank tuzilmasidagi fan id si. */
+    fanId?: number | null;
     topicRules: TopicRule[];
     pointsPerQuestion: number;
+    taqsimot?: BlokTaqsimot;
 }
 
 export interface ExamSettings {

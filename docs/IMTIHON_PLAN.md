@@ -700,3 +700,58 @@ Kod: `src/components/ExamsList.tsx` (ish joyi, `ImtihonPaneli`, `ImtihonlarRoyxa
 `imtihon/turlar.ts` (`ImtihonTafsil`, `BosqichHolati`, `TabId`), `imtihon/QulfKerak.tsx`,
 `SkanerTab.tsx` (`SkanerHolati`), `TuzilmaTab.tsx` (`KeyingiQadam`), `KalitMuharriri.tsx`
 (mavzular), `routes/imtihon.js` (`bosqichHolati`). Sinov: `scratch/test_imtihon_ishjoy.mjs`.
+
+---
+
+## 14. Savollar banki: fan → mavzu → qiyinlik (2026-09-27)
+
+Egasi: "juda primitiv — tanlash uchun kategoriyada bo'lish kerak: fanlar → fan ichida
+mavzu → mavzuda savollar qiyinlik bo'yicha. Bu imtihonni alohida mahsulot qilib sotsa
+bo'ladi". Qaror — bank tuzilmali kutubxona, imtihon shu tuzilmadan yig'iladi.
+
+**Tuzilma (baza).** `QuestionSubject` (fan) → `QuestionTopic` (mavzu, `section` — bo'lim,
+`order`); savolda `bankTopicId`. Savoldagi `subject`/`topic` matnlari — nomlarning nusxasi
+(eski imtihon qoidalari nom bilan ishlaydi); nom o'zgarsa savollarda, matnlarda va
+qulflanmagan imtihonlarda ham yangilanadi. Excel, AI va eski savollar nomi bo'yicha
+o'zi bog'lanadi (`bankniSinxronla`, topilmasa fan/mavzu yaratiladi).
+
+**Qiyinlik — 3 daraja:** oson / o'rta / qiyin (rang: yashil / sariq / qizil, hamma
+joyda bir xil). Eski 1–5 → 4–5 qiyin; Excel da so'z ham bo'ladi ("oson", "o'rta"...).
+Natijaga ko'ra qiyinlik: ≥70% topilgan — oson, 40–70% — o'rta, <40% — qiyin; bankda
+"natijaga mos emas" faqat aniq farqda (±10% chegara atrofi hisobga olinmaydi),
+"Natijaga moslash" bir bosishda to'g'rilaydi (`POST /api/bank/kalibrla`).
+
+**Bank (1-tab), uch qavat, URL da `fan=`, `mavzu=`:**
+1. Fanlar — kartalar: savollar, mavzular, qiyinlik chizig'i, qoralama/chala, o'rtacha
+   natija; butun bankdan qidirish; "Fan qo'shish".
+2. Fan — mavzular jadvali (bo'limlar bo'yicha): oson / o'rta / qiyin / jami / natija;
+   "O'quv rejadan" — o'quv rejadagi mavzular bo'limi bilan bir bosishda; tartib.
+3. Mavzu — savollar uch ustunda (telefonda — uch tab), formulalar bilan; kompyuterda
+   kartani boshqa ustunga sudrab qiyinlik o'zgaradi; "Belgilash" — ko'p savolga birdan
+   qiyinlik, mavzu, holat. Savol oynasi: to'liq ko'rinish, qiyinlik, mavzu, holat.
+Savol muharriri: fan va mavzu — tanlov (shu yerda yangisini qo'shsa bo'ladi), qiyinlik —
+uch tugma; mavzu sahifasidan ochilsa fan, mavzu va qiyinlik tayyor turadi.
+
+**Imtihon tuzish (bank rejimi):** har fan bloki — fan → savollar soni → qiyinlik
+(oson ko'proq 50/35/15 · muvozanatli 30/40/30 · qiyin ko'proq 15/35/50) → mavzular
+(chiplar). Taqsimot o'zi hisoblanadi (`taqsimla`: navbatma-navbat eng kam olgan
+mavzuga, bankdan oshmaydi, yetmasa qo'shni qiyinlikdan) va jadvalda ko'rinadi:
+mavzu × oson / o'rta / qiyin / aralash, har katakda "bankda N" (yetmasa qizil).
+Katakni o'zgartirsa — "qo'lda". Raqamli va yozma savollar alohida son bilan. "Aniq
+savollarni tanlash" — bank oynasi (mavzu → qiyinlik, belgilab), tanlanganlar har
+variantga tushadi. Blokda `fanId`, `taqsimot`; qoidada `mavzuId`, `questionIds`.
+
+**Variant yasash:** qoidalar ustuvorlik bilan (tanlangan → mavzu+qiyinlik → mavzu →
+qiyinlik → istalgan) tanlaydi, variantga o'z tartibida tushadi; bank yetarliligi ham
+xuddi shunday "band" qiladi (umumiy qator aniqrog'i olgan savolni sanamaydi, sababi
+ko'rsatiladi). Matnli savollar birlik — qiyinligi o'rtachasi; butun matn sig'masa
+matnning bir qismi olinadi (savollar baribir birga).
+
+Kod: `routes/savolBanki.js` (daraxt, fan/mavzu, o'quv reja, ommaviy o'zgartirish,
+kalibrlash), `lib/imtihon.js` (qiyinlik, `taqsimla`, `tengYoy`, `mavzuMavjudligi`,
+qoidalar ustuvorligi), `src/components/QuestionsList.tsx` + `imtihon/bank/*`,
+`imtihon/tuzish/BlokMuharriri.tsx`, `QuestionEditor.tsx`. Ruxsat: daraxt —
+"savollar" yoki "imtihon" ko'rish; imtihon tuzuvchi bankdan savol tanlaydi, lekin
+to'g'ri javobni faqat "savollar" ruxsati bilan ko'radi. Sinov: `scratch/test_bank_mantiq.mjs`,
+`test_bank_api.mjs`, `test_bank_ui.mjs`.
+

@@ -13,11 +13,14 @@ import type { ImtihonTafsil, TabId } from './turlar';
 // serverda yasaladi) va kalit.
 
 interface Qoida {
-  mavzu: string; tur: string; qiyinlik: number; kerak: number; bor: number; yetadi: boolean;
-  sabab?: { qoralama?: number; xatoli?: number; boshqaQiyinlik?: number; boshqaTil?: number; fandaJami?: number };
+  mavzu: string; tur: string; qiyinlik: number; kerak: number; bor: number; yetadi: boolean; tanlangan?: boolean;
+  sabab?: { qoralama?: number; xatoli?: number; boshqaQiyinlik?: number; boshqaTil?: number; boshqaQoida?: number; fandaJami?: number; yoq?: number; faolEmas?: number };
 }
 interface KalitHolat { kalit: string; session: number; code: string; jami: number; toldirilgan: number; tayyor: boolean }
 const TUR: Record<string, string> = { yopiq: 'yopiq', raqamli: 'raqamli', yozma: 'yozma' };
+const QIYIN: Record<number, string> = { 1: 'oson', 2: "o'rta", 3: 'qiyin' };
+const qoidaNomi = (q: { mavzu: string; tur: string; qiyinlik: number; tanlangan?: boolean }) =>
+  q.tanlangan ? `Tanlangan savollar · ${TUR[q.tur]}` : `${q.mavzu || 'Istalgan mavzu'} · ${TUR[q.tur]}${q.qiyinlik ? ` · ${QIYIN[q.qiyinlik]}` : ''}`;
 
 export default function TuzilmaTab({ exam, yangila, otish }: { exam: ImtihonTafsil; yangila: () => Promise<any>; otish: (tab: TabId) => void }) {
   const { ozgartira, kora, showNotification } = useCRM();
@@ -86,25 +89,7 @@ export default function TuzilmaTab({ exam, yangila, otish }: { exam: ImtihonTafs
             amallar={<Tugma kichik turi="oddiy" ikonka={<RefreshCw size={13} />} onClick={tekshir}>Qayta tekshirish</Tugma>}>
             {!bank ? <Yuklanmoqda /> : (
               <div className="space-y-3">
-                {bank.map((b, i) => (
-                  <div key={i}>
-                    <p className="text-[12.5px] font-semibold text-matn mb-1.5">{b.blok}</p>
-                    <div className="rounded-xl border border-chiziq divide-y divide-chiziq">
-                      {b.qoidalar.map((q, j) => (
-                        <div key={j} className="px-3 py-2 text-[12.5px]">
-                          <div className="flex items-center justify-between gap-2">
-                            <span className="text-matn">{q.mavzu || 'Istalgan mavzu'} <span className="text-matn-xira">· {TUR[q.tur]}{q.qiyinlik ? ` · qiyinlik ${q.qiyinlik}` : ''}</span></span>
-                            <span className={`inline-flex items-center gap-1.5 font-semibold ${q.yetadi ? 'text-yaxshi' : 'text-xato'}`}>
-                              {q.yetadi ? <CheckCircle2 size={14} /> : <AlertTriangle size={14} />}
-                              bankda {q.bor} · kerak {q.kerak}
-                            </span>
-                          </div>
-                          {!q.yetadi && <Sabab q={q} fan={b.blok} />}
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                ))}
+                {bank.map((b, i) => <BlokTekshiruvi key={i} blok={b} />)}
                 {!hammasiYetadi && (
                   <div className="space-y-2 rounded-xl bg-ogoh-fon border border-ogoh/25 px-3 py-2.5 text-[12.5px] text-matn">
                     <div className="flex flex-wrap items-center gap-2">
@@ -154,11 +139,12 @@ export default function TuzilmaTab({ exam, yangila, otish }: { exam: ImtihonTafs
                   {exam.scoring === 'blok' && <Yorliq rang="brand">{b.pointsPerQuestion} ball/savol</Yorliq>}
                 </div>
                 <ul className="mt-1.5 text-[12.5px] text-matn-sokin space-y-0.5">
-                  {b.topicRules.map((r, j) => (
-                    <li key={j}>
-                      {kalitRejimi ? `${r.count} ta ${TUR[r.type || 'yopiq']}` : `${r.topic || 'Istalgan mavzu'} — ${r.count} ta ${TUR[r.type || 'yopiq']}`}
-                      {!kalitRejimi && r.difficulty ? `, qiyinlik ${r.difficulty}` : ''}
-                      {r.points != null ? `, har biri ${r.points} ball` : ''}
+                  {kalitRejimi ? b.topicRules.map((r, j) => (
+                    <li key={j}>{`${r.count} ta ${TUR[r.type || 'yopiq']}`}{r.points != null ? `, har biri ${r.points} ball` : ''}</li>
+                  )) : tuzilmaQatorlari(b.topicRules).map(q => (
+                    <li key={q.nom} className="flex flex-wrap gap-x-1.5">
+                      <span className="text-matn">{q.nom}</span>
+                      <span>— {q.jami} ta{q.tafsil ? ` (${q.tafsil})` : ''}</span>
                     </li>
                   ))}
                 </ul>
@@ -210,6 +196,53 @@ export default function TuzilmaTab({ exam, yangila, otish }: { exam: ImtihonTafs
 
 const HARF_ROYXAT = ['A', 'B', 'C', 'D', 'E', 'F'];
 
+/** Tuzilma kartasida qoidalar mavzu bo'yicha: "Kasrlar — 3 ta (oson 2, o'rta 1)". */
+function tuzilmaQatorlari(rules: ImtihonTafsil['blocks'][number]['topicRules']) {
+  const m = new Map<string, { nom: string; jami: number; qism: Map<string, number> }>();
+  for (const r of rules) {
+    const nom = r.questionIds?.length ? 'Tanlangan savollar' : r.topic || 'Istalgan mavzu';
+    if (!m.has(nom)) m.set(nom, { nom, jami: 0, qism: new Map() });
+    const x = m.get(nom)!;
+    x.jami += r.count;
+    const k = r.type && r.type !== 'yopiq' ? TUR[r.type] : r.difficulty ? QIYIN[Math.min(3, r.difficulty)] : 'aralash';
+    x.qism.set(k, (x.qism.get(k) || 0) + r.count);
+  }
+  return [...m.values()].map(x => ({ nom: x.nom, jami: x.jami, tafsil: x.qism.size > 1 || ![...x.qism.keys()].includes('aralash') ? [...x.qism].map(([k, n]) => `${k} ${n}`).join(', ') : '' }));
+}
+
+/** Bitta blok (fan) bo'yicha bank yetarliligi: hammasi yetsa — yig'ilgan, yetmasa — qaysi qator va nega. */
+function BlokTekshiruvi({ blok }: { blok: { blok: string; qoidalar: Qoida[] } }) {
+  const yetmaydi = blok.qoidalar.filter(q => !q.yetadi);
+  const [ochiq, setOchiq] = useState(yetmaydi.length > 0);
+  const kerak = blok.qoidalar.reduce((a, q) => a + q.kerak, 0);
+  return (
+    <div className="rounded-xl border border-chiziq">
+      <button type="button" onClick={() => setOchiq(v => !v)} aria-expanded={ochiq} className="w-full flex items-center justify-between gap-2 px-3 py-2.5 text-left cursor-pointer">
+        <span className="text-[13px] font-semibold text-matn">{blok.blok} <span className="font-normal text-matn-xira">· {kerak} ta savol, {blok.qoidalar.length} qator</span></span>
+        <span className={`inline-flex items-center gap-1.5 text-[12.5px] font-semibold ${yetmaydi.length ? 'text-xato' : 'text-yaxshi'}`}>
+          {yetmaydi.length ? <><AlertTriangle size={14} /> {yetmaydi.length} qatorda yetmaydi</> : <><CheckCircle2 size={14} /> hammasi yetadi</>}
+        </span>
+      </button>
+      {ochiq && (
+        <div className="border-t border-chiziq divide-y divide-chiziq">
+          {blok.qoidalar.map((q, j) => (
+            <div key={j} className="px-3 py-2 text-[12.5px]">
+              <div className="flex items-center justify-between gap-2">
+                <span className="text-matn">{qoidaNomi(q)}</span>
+                <span className={`inline-flex items-center gap-1.5 font-semibold shrink-0 ${q.yetadi ? 'text-yaxshi' : 'text-xato'}`}>
+                  {q.yetadi ? <CheckCircle2 size={14} /> : <AlertTriangle size={14} />}
+                  bankda {q.bor} · kerak {q.kerak}
+                </span>
+              </div>
+              {!q.yetadi && <Sabab q={q} fan={blok.blok} />}
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 /** Qulflangan imtihon qaysi bosqichda — shu bosqichga qarab keyingi ish va tugma. */
 function KeyingiQadam({ exam, otish }: { exam: ImtihonTafsil; otish: (tab: TabId) => void }) {
   const h = exam.holat;
@@ -233,8 +266,14 @@ function KeyingiQadam({ exam, otish }: { exam: ImtihonTafsil; otish: (tab: TabId
 function Sabab({ q, fan }: { q: Qoida; fan: string }) {
   const s = q.sabab || {};
   const qatorlar: string[] = [];
-  if (!s.fandaJami) qatorlar.push(`Bankda «${fan}» fanidan savol yo'q — savollardagi fan nomi imtihondagi bilan bir xil yozilganini tekshiring.`);
-  if (s.boshqaQiyinlik) qatorlar.push(`Qiyinlik ${q.qiyinlik} tanlangan — boshqa qiyinlikdagi ${s.boshqaQiyinlik} ta savol hisobga olinmadi («Har qanday qiyinlik» qiling).`);
+  if (q.tanlangan) {
+    if (s.yoq) qatorlar.push(`${s.yoq} ta tanlangan savol bankdan o'chirilgan — imtihon sozlamasida qayta tanlang.`);
+    if (s.faolEmas) qatorlar.push(`${s.faolEmas} ta tanlangan savol faol emas yoki chala — bankda to'ldiring yoki faol qiling.`);
+    return qatorlar.length ? <ul className="mt-1 space-y-0.5 text-[11.5px] text-matn-sokin list-disc pl-5">{qatorlar.map((x, i) => <li key={i}>{x}</li>)}</ul> : null;
+  }
+  if (!s.fandaJami) qatorlar.push(`Bankda «${fan}» fanidan savol yo'q — Savollar bankida shu fanga savol qo'shing.`);
+  if (s.boshqaQiyinlik) qatorlar.push(`Bu mavzuda boshqa qiyinlikdagi ${s.boshqaQiyinlik} ta savol bor — imtihon sozlamasida taqsimotni o'zgartiring.`);
+  if (s.boshqaQoida) qatorlar.push(`${s.boshqaQoida} ta mos savolni boshqa (aniqroq) qatorlar oldi.`);
   if (s.qoralama) qatorlar.push(`${s.qoralama} ta mos savol qoralamada — bankda «Faol» qiling.`);
   if (s.xatoli) qatorlar.push(`${s.xatoli} ta mos savol chala (kalit yoki variant yo'q).`);
   if (s.boshqaTil) qatorlar.push(`${s.boshqaTil} ta mos savol boshqa tilda (imtihon sozlamasidagi «Savollar tili»).`);
