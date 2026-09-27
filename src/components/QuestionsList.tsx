@@ -1,11 +1,10 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { Search, Plus, FileUp, FileDown, X, FileText, Sparkles, ChevronRight, ChevronDown, Upload, Camera } from 'lucide-react';
+import { Search, Plus, FileUp, FileDown, X, Sparkles, ChevronRight, ChevronDown, Upload, Camera } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useCRM } from '../context/CRMContext';
 import { useImtihonApi } from './imtihon/useImtihonApi';
 import { Tugma, INPUT, Yuklanmoqda, BoshHolat, Karta } from './imtihon/ui';
-import MatnlarOynasi from './imtihon/MatnlarOynasi';
 import AiImportOynasi from './imtihon/AiImportOynasi';
 import { useAiHolat, AI_SOZLANMAGAN } from './imtihon/useAiHolat';
 import { useBankDaraxt, fanniTop, mavzuniTop } from './imtihon/bank/useBankDaraxt';
@@ -80,7 +79,6 @@ export default function QuestionsList() {
   const [importMenyu, setImportMenyu] = useState(false);
   const [import_, setImport] = useState<{ yaroqli: any[]; xatolar: { qator: number; xato: string }[]; jami: number } | null>(null);
   const [importMoqda, setImportMoqda] = useState(false);
-  const [matnlarOchiq, setMatnlarOchiq] = useState(false);
   const [aiImport, setAiImport] = useState(false);
   const [oxshash, setOxshash] = useState(false);
   const ai = useAiHolat();
@@ -167,7 +165,6 @@ export default function QuestionsList() {
         </nav>
         {savolTahrir && (
           <div className="flex flex-wrap gap-2 shrink-0">
-            <Tugma kichik turi="oddiy" ikonka={<FileText size={14} />} onClick={() => setMatnlarOchiq(true)}>Matnlar</Tugma>
             <div className="relative" ref={menyuRef}>
               <Tugma kichik ikonka={<Upload size={14} />} onClick={() => setImportMenyu(v => !v)} aria-expanded={importMenyu}>Import <ChevronDown size={13} /></Tugma>
               {importMenyu && (
@@ -247,7 +244,6 @@ export default function QuestionsList() {
         </div>
       )}
       {ochiq && <SavolOynasi q={ochiq} daraxt={daraxt} onYop={() => setOchiq(null)} onOzgardi={() => { yangila(); setQayta(n => n + 1); }} />}
-      {matnlarOchiq && <MatnlarOynasi onYop={() => { setMatnlarOchiq(false); yangila(); }} />}
       {oxshash && <OxshashSavollar daraxt={daraxt} fanId={fan?.id ?? null} mavzuId={mavzu?.id ?? null} onYop={() => setOxshash(false)} onSaqlandi={() => { yangila(); setQayta(n => n + 1); }} />}
       {aiImport && <AiImportOynasi fanlar={daraxt.fanlar.map(f => f.name)} onYop={() => setAiImport(false)} onSaqlandi={() => yangila()} />}
     </div>

@@ -301,17 +301,22 @@ export default function QuestionEditor() {
                 </select>
               </Maydon>
             </div>
-            <Maydon nom="Holati" izoh="Imtihonga faqat faol savollar tushadi">
+            {/* label emas (Maydon label): bosilganda ichidagi birinchi tugma ishlab ketmasin. */}
+            <div>
+              <span className="block text-[12px] font-semibold text-matn-sokin mb-1.5">Holati</span>
               <Tanlov qiymat={umumiy.status} onChange={v => setUmumiy({ ...umumiy, status: v })} variantlar={[{ v: 'faol', nom: 'Faol' }, { v: 'qoralama', nom: 'Qoralama' }, { v: 'arxiv', nom: 'Arxiv' }]} />
-            </Maydon>
-            <Maydon nom="Umumiy matn" izoh="Bir nechta savol bitta matnga bog'lansa — variantda birga turadi">
+              <span className="block text-[11px] text-matn-xira mt-1">Imtihonga faqat faol savollar tushadi</span>
+            </div>
+            <div>
+              <span className="block text-[12px] font-semibold text-matn-sokin mb-1.5">Umumiy matn (ixtiyoriy)</span>
               {q.passage ? (
                 <div className="flex items-center justify-between gap-2 rounded-xl border border-chiziq bg-ichki px-3 py-2">
                   <span className="text-[13px] text-matn truncate"><FileText size={13} className="inline mr-1" />{q.passage.title || `Matn #${q.passage.id}`}</span>
-                  <button aria-label="Olib tashlash" onClick={() => setQ({ ...q, passage: null })} className="p-1 rounded hover:bg-sirt cursor-pointer"><X size={14} /></button>
+                  <button aria-label="Matnni olib tashlash" onClick={() => setQ({ ...q, passage: null })} className="p-1 rounded hover:bg-sirt cursor-pointer"><X size={14} /></button>
                 </div>
               ) : <Tugma kichik onClick={() => setMatnTanlash(true)}>Matn tanlash</Tugma>}
-            </Maydon>
+              <span className="block text-[11px] text-matn-xira mt-1">Masalan o'qish matni va unga bir nechta savol: variantda ular birga turadi, matn bir marta chiqadi</span>
+            </div>
           </div>
         </Karta>
 

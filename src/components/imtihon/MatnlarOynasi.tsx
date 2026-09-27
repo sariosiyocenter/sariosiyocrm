@@ -34,7 +34,11 @@ export default function MatnlarOynasi({ onYop, tanlash }: { onYop: () => void; t
       const schoolId = selectedSchoolId && selectedSchoolId > 0 ? selectedSchoolId : user?.schoolId;
       const body = { title: forma.title || null, subject: forma.subject, text: forma.text || '', imageUrl: forma.imageUrl || null, schoolId };
       if (forma.id) await soro('PUT', `passages/${forma.id}`, body);
-      else await soro('POST', 'passages', body);
+      else {
+        const yangi = await soro<Passage>('POST', 'passages', body);
+        // Savol muharriridan ochilgan bo'lsa — yangi matn shu savolga darhol bog'lanadi.
+        if (tanlash && yangi?.id) { tanlash(yangi); onYop(); return; }
+      }
       setForma(null);
       yukla();
     } catch (e: any) {
@@ -68,8 +72,8 @@ export default function MatnlarOynasi({ onYop, tanlash }: { onYop: () => void; t
       <div className="relative bg-sirt rounded-2xl shadow-2xl w-full max-w-2xl border border-chiziq max-h-[90vh] flex flex-col">
         <div className="flex items-center justify-between px-5 py-4 border-b border-chiziq">
           <div>
-            <h3 className="text-[14px] font-bold text-matn">Matnlar</h3>
-            <p className="text-[12px] text-matn-xira">Bir nechta savolga umumiy matn yoki rasm</p>
+            <h3 className="text-[14px] font-bold text-matn">Umumiy matnlar</h3>
+            <p className="text-[12px] text-matn-xira">Bir nechta savolga umumiy matn yoki rasm (masalan o'qish matni va unga 4 ta savol)</p>
           </div>
           <div className="flex items-center gap-2">
             {tahrir && !forma && <Tugma kichik turi="asosiy" ikonka={<Plus size={14} />} onClick={() => setForma({ subject: '', text: '' })}>Yangi matn</Tugma>}
@@ -83,9 +87,12 @@ export default function MatnlarOynasi({ onYop, tanlash }: { onYop: () => void; t
                 <Maydon nom="Fan"><input className={INPUT} value={forma.subject || ''} onChange={e => setForma({ ...forma, subject: e.target.value })} /></Maydon>
                 <Maydon nom="Sarlavha (ixtiyoriy)"><input className={INPUT} value={forma.title || ''} onChange={e => setForma({ ...forma, title: e.target.value })} placeholder="Masalan: Amir Temur haqida matn" /></Maydon>
               </div>
-              <Maydon nom="Matn" izoh="Formula: $x^2$ ko'rinishida yoziladi">
+              {/* label emas (Maydon label): matn ichiga bosish label orqali birinchi tugmani — "B" (qalin) ni bosib yuborardi. */}
+              <div>
+                <span className="block text-[12px] font-semibold text-matn-sokin mb-1.5">Matn</span>
                 <RichTextEditor key={forma.id ?? 'yangi'} content={forma.text || ''} onChange={text => setForma(f => ({ ...f, text }))} />
-              </Maydon>
+                <span className="block text-[11px] text-matn-xira mt-1">Formula: $x^2$ ko'rinishida yoziladi</span>
+              </div>
               <div className="flex items-center gap-3">
                 <label className="inline-flex items-center gap-1.5 rounded-xl border border-chiziq bg-sirt hover:bg-ichki px-2.5 py-1.5 text-[12px] font-semibold text-matn cursor-pointer">
                   Rasm qo'shish <input type="file" accept="image/*" className="hidden" onChange={rasmTanla} />
@@ -98,7 +105,7 @@ export default function MatnlarOynasi({ onYop, tanlash }: { onYop: () => void; t
               </div>
             </div>
           ) : royxat === null ? <Yuklanmoqda /> : !royxat.length ? (
-            <BoshHolat ikonka={<FileText size={20} />} sarlavha="Hali matn yo'q" izoh="Matn qo'shing, keyin savol tahririda shu matnni tanlang." />
+            <BoshHolat ikonka={<FileText size={20} />} sarlavha="Hali matn yo'q" izoh={tanlash ? "«Yangi matn» — yozib saqlasangiz, shu savolga bog'lanadi." : "Matn qo'shing, keyin savol tahririda shu matnni tanlang."} />
           ) : (
             <ul className="space-y-2">
               {royxat.map(p => (
