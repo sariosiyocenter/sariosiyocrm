@@ -1304,7 +1304,7 @@ export const setupBotHandlers = (botInstance, botSchoolId) => {
 
             let xabar = null;
             try {
-                xabar = await davomatXabariniYuborish({ groupId: group.id, date: sana, studentIds: group.students.map(s => s.id) });
+                xabar = await davomatXabariniYuborish({ groupId: group.id, date: sana, studentIds: group.students.map(s => s.id), avto: true });
             } catch (e) {
                 console.error('Davomat xabari (bot):', e.message);
             }
@@ -1314,7 +1314,9 @@ export const setupBotHandlers = (botInstance, botSchoolId) => {
             matn += sanoqMatni(group.students, holat) + '\n';
             const kelmaganlar = kelmaganlarMatni(group.students, holat);
             if (kelmaganlar) matn += `\n❌ <b>Kelmaganlar:</b> ${kelmaganlar}\n`;
-            if (xabar && !xabar.error) {
+            if (xabar?.ochirilgan) {
+                matn += `\n📨 Ota-onaga davomat xabari o'chirilgan (Xabarlar → Avtomatik)`;
+            } else if (xabar && !xabar.error) {
                 const yetmadi = (xabar.xato || 0) + (xabar.aloqasiz || 0);
                 matn += `\n📨 Ota-onalarga xabar: ${xabar.yuborildi} ta yuborildi${yetmadi ? `, ${yetmadi} tasiga yetib bormadi` : ''}`;
             } else {

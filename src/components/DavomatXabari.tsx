@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { X, Send, Check, AlertTriangle, Settings2 } from 'lucide-react';
 import { useCRM } from '../context/CRMContext';
+import { QoidaKartasi } from './QoidaKartasi';
 import { displayName } from '../lib/displayName';
 import { fillTemplate } from '../../lib/xabarMatni.js';
 import { DAVOMAT_HOLATLARI, holatKaliti, eskizTasdiqlangan } from '../../lib/davomatXabari.js';
@@ -20,7 +21,7 @@ import { DAVOMAT_HOLATLARI, holatKaliti, eskizTasdiqlangan } from '../../lib/dav
  */
 
 export interface Shablon { id: number; name: string; body: string; eskizStatus?: string | null }
-export interface Sozlama { kanal: 'BOTH' | 'SMS' | 'TELEGRAM'; kimga: string; shablon: Record<string, number> }
+export interface Sozlama { yoqilgan?: boolean; kanal: 'BOTH' | 'SMS' | 'TELEGRAM'; kimga: string; shablon: Record<string, number> }
 interface Javob { sozlama: Sozlama; saqlangan: boolean; shablonlar: Shablon[]; yuborilgan: Record<string, string> }
 
 const KANAL_NOMI: Record<Sozlama['kanal'], string> = {
@@ -187,6 +188,73 @@ export function DavomatXabariSozlama({ schoolId, ixcham = false, onChange }: {
             </div>
             {!tahrir && <p className="text-[10px] font-bold text-matn-xira">Sozlamani «Avtomatik qoidalar» yoki «Shablonlar» ruxsati bor xodim o'zgartiradi.</p>}
         </div>
+    );
+}
+
+// ---------------------------------------------------------------------------
+// Qoida kartasi — Xabarlar → Avtomatik ro'yxatida (2026-09-27): davomat xabari
+// ham oddiy qoida kabi ko'rinadi; sozlamasi "Yangi qoida" oynasida
+// (DavomatXabariSozlama ixcham).
+// ---------------------------------------------------------------------------
+
+const KANAL_QISQA: Record<Sozlama['kanal'], string> = { BOTH: "Telegram, bo'lmasa SMS", TELEGRAM: 'Telegram', SMS: 'SMS' };
+
+export function DavomatQoidaKartasi({ schoolId, yangilash = 0, onTahrir }: { schoolId: number; yangilash?: number; onTahrir: () => void }) {
+    const { ozgartira, showNotification } = useCRM();
+    const tahrir = ozgartira('xabarlar.shablon') || ozgartira('xabarlar.avto');
+    const [d, setD] = useState<Javob | null>(null);
+    const [xato, setXato] = useState('');
+    const [band, setBand] = useState(false);
+    useEffect(() => {
+        let off = false;
+        yuklash(schoolId).then(j => { if (!off) { setD(j); setXato(''); } }).catch(e => !off && setXato(e.message));
+        return () => { off = true; };
+    }, [schoolId, yangilash]);
+
+    if (!d) {
+        return (
+            <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-100 dark:border-slate-800 shadow-sm p-4 space-y-2">
+                <p className="text-xs font-black text-slate-700 dark:text-slate-300">📋 Davomat qilinganda</p>
+                <p className={`text-[11px] font-bold ${xato ? 'text-rose-500' : 'text-slate-400'}`}>{xato || 'Yuklanmoqda…'}</p>
+            </div>
+        );
+    }
+    const s = d.sozlama;
+    const yoqilgan = s.yoqilgan !== false;
+    const nomi = (id?: number) => d.shablonlar.find(t => t.id === id)?.name || '';
+    const tanlangan = DAVOMAT_HOLATLARI.filter(h => s.shablon[h.key]);
+    const tasdiqlanmagan = s.kanal !== 'TELEGRAM'
+        ? tanlangan.filter(h => !eskizTasdiqlangan(d.shablonlar.find(t => t.id === s.shablon[h.key])?.eskizStatus))
+        : [];
+    const almashtir = async () => {
+        setBand(true);
+        try {
+            const yangi = await saqlash(schoolId, { ...s, yoqilgan: !yoqilgan });
+            setD({ ...d, sozlama: yangi, saqlangan: true });
+            showNotification(yangi.yoqilgan !== false ? 'Davomat xabari yoqildi' : "Davomat xabari o'chirildi (ustoz botidagi «Saqlash» xabar yubormaydi)", 'success');
+        } catch (e: any) {
+            showNotification(e.message, 'error');
+        } finally {
+            setBand(false);
+        }
+    };
+    return (
+        <QoidaKartasi
+            icon="📋" label="Davomat qilinganda" color="bg-rose-100 dark:bg-rose-950/30 text-rose-500"
+            nom="Yo'qlama saqlanganda — ota-onaga xabar"
+            meta={[
+                { k: 'Kanal', v: KANAL_QISQA[s.kanal] },
+                { k: 'Vaqt', v: 'darhol' },
+                { k: 'Kimga', v: s.kimga.split(',').map(v => KIMGA.find(x => x.v === v)?.nom || v).join(', '), keng: true },
+            ]}
+            matn={tanlangan.length
+                ? tanlangan.map(h => `${h.nom}: ${nomi(s.shablon[h.key])}`).join('\n')
+                : 'Hech bir holatga matn tanlanmagan — xabar ketmaydi'}
+            holat={tasdiqlanmagan.length > 0 ? (
+                <p className="text-[11px] font-bold text-amber-500">⏳ SMS matni Eskizda tasdiqlanmagan: {tasdiqlanmagan.map(h => h.nom).join(', ')}</p>
+            ) : undefined}
+            yoqilgan={yoqilgan} onToggle={almashtir} onEdit={onTahrir} tahrir={tahrir} band={band}
+        />
     );
 }
 

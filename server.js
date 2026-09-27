@@ -5096,6 +5096,15 @@ app.post('/api/qarz-javob/:id/yop', authenticate, async (req, res, next) => {
   } catch (error) { next(error); }
 });
 
+// "To'laganman" javoblari — Qarzdorlar ro'yxati oynasida tekshirib yopiladi.
+app.get('/api/qarz-javob', authenticate, async (req, res, next) => {
+  try {
+    const filiallar = await qarzFiliallari(req, req.query.schoolId);
+    if (!filiallar) return res.status(403).json({ error: "Ruxsat yo'q" });
+    res.json(await qarzJavoblari(filiallar));
+  } catch (error) { next(error); }
+});
+
 // Tekshirilmagan "to'laganman" javoblari soni — Bosh sahifadagi ogohlantirish.
 app.get('/api/qarz-javob/soni', authenticate, async (req, res, next) => {
   try {

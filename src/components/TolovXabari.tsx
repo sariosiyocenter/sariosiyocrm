@@ -1,19 +1,20 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { Check, RefreshCw, Send, Loader2, CheckCheck, Clock, XCircle, MinusCircle } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
+import { Check, Send, Loader2, CheckCheck, Clock, XCircle, MinusCircle } from 'lucide-react';
 import { useCRM } from '../context/CRMContext';
+import { QoidaKartasi } from './QoidaKartasi';
 import { displayName } from '../lib/displayName';
 import { fillTemplate } from '../../lib/xabarMatni.js';
 import {
-    eskizYuboradi, eskizRadEtdi, eskizHolatMatni, smsMatni, smsSoni, raqamYashir, KIMGA_NOMI,
+    eskizYuboradi, eskizRadEtdi, eskizHolatMatni, smsMatni, smsSoni, KIMGA_NOMI,
 } from '../../lib/tolovXabari.js';
 
 /**
  * To'lov xabari: to'lov qabul qilinganda ota-onaga ketadigan SMS
  * (services/tolovXabari.js, lib/tolovXabari.js).
  *
- *  - TolovXabariSozlama — Xabarlar → Avtomatik: yoqish, shablon, kimga, kanal,
- *    namuna, sinov SMS, oxirgi to'lovlar xabari holati bilan (qayta yuborish).
+ *  - TolovQoidaKartasi / TolovQoidaFormasi — Xabarlar → Avtomatik ro'yxatidagi
+ *    qoida va uning oynasi: yoqish, shablon, kimga, kanal,
+ *    namuna, sinov SMS. Yuborilganlar — Tarix tabida (XabarNavbati, jurnal).
  *  - TolovXabarQatori — chek ostida: "SMS yuborildi / navbatda / ketmadi".
  */
 
@@ -180,72 +181,147 @@ export function XabarNavbati({ schoolId, onAvtomatik }: { schoolId: number; onAv
 }
 
 // ---------------------------------------------------------------------------
-// Sozlama kartasi
+// Qoida: "💰 To'lov qabul qilinganda" — Xabarlar → Avtomatik ro'yxatidagi
+// karta va "Yangi qoida yaratish" oynasidagi forma (egasi, 2026-09-27:
+// "nimaga alohida qilding, trigger qo'shsang bo'lmasmidi?"). Yuborilganlar
+// tarixi — Tarix tabida (XabarNavbati va jurnal).
 // ---------------------------------------------------------------------------
 
-export function TolovXabariSozlama({ schoolId }: { schoolId: number }) {
-    const { ozgartira, showNotification, settings } = useCRM();
-    const navigate = useNavigate();
-    // Karta Avtomatik tabida: avtomatik qoidalar ruxsati ham yetadi.
-    const tahrir = ozgartira('xabarlar.shablon') || ozgartira('xabarlar.avto');
-    const yuborishMumkin = ozgartira('xabarlar.yuborish');
+const KANAL_QISQA: Record<Kanal, string> = { SMS: 'SMS', BOTH: "Telegram, bo'lmasa SMS", TELEGRAM: 'Telegram' };
+const kimgaMatni = (k: string) => k.split(',').map(v => KIMGA.find(x => x.v === v)?.nom || v).join(', ');
+
+/** Qoida sozlamasi, shablonlar va 7 kunlik holat. */
+function useTolovQoidasi(schoolId: number, yangilash = 0) {
     const [d, setD] = useState<Javob | null>(null);
     const [xato, setXato] = useState('');
+    useEffect(() => {
+        let tirik = true;
+        fetch(`/api/tolov-xabari?schoolId=${schoolId || 0}`, { headers: auth() })
+            .then(async r => {
+                const j = await r.json().catch(() => ({}));
+                if (!r.ok) throw new Error(j.error || "Yuklab bo'lmadi");
+                if (tirik) { setD(j); setXato(''); }
+            })
+            .catch(e => { if (tirik) setXato(e.message); });
+        return () => { tirik = false; };
+    }, [schoolId, yangilash]);
+    return { d, setD, xato };
+}
+
+async function tolovSaqla(schoolId: number, sozlama: Sozlama): Promise<Sozlama> {
+    const r = await fetch('/api/tolov-xabari', {
+        method: 'PUT',
+        headers: { ...auth(), 'Content-Type': 'application/json' },
+        body: JSON.stringify({ schoolId, sozlama }),
+    });
+    const j = await r.json().catch(() => ({}));
+    if (!r.ok) throw new Error(j.error || "Saqlab bo'lmadi");
+    return j.sozlama;
+}
+
+/** SMS matnining Eskiz holati — qoida kartasida va formada. */
+export function EskizHolati({ shablon, navbatda = 0 }: { shablon: { name: string; eskizStatus?: string | null } | null; navbatda?: number }) {
+    if (!shablon) return <p className="text-[11px] font-bold text-rose-500">SMS matni tanlanmagan — SMS ketmaydi</p>;
+    const ok = eskizYuboradi(shablon.eskizStatus);
+    const rad = eskizRadEtdi(shablon.eskizStatus);
+    return (
+        <p className={`text-[11px] font-bold ${ok ? 'text-emerald-500' : rad ? 'text-rose-500' : 'text-amber-500'}`}>
+            {ok ? '✓ ' : rad ? '✗ ' : '⏳ '}{eskizHolatMatni(shablon.eskizStatus)}
+            {!ok && !rad && " — SMS'lar navbatda turadi, tasdiqlangach o'zi ketadi"}
+            {navbatda > 0 && ` · ${navbatda} ta navbatda`}
+        </p>
+    );
+}
+
+/** Yuklanayotgan yoki xato bo'lgan qoida kartasi o'rnida. */
+export function QoidaKartasiBosh({ nom, xato }: { nom: string; xato?: string }) {
+    return (
+        <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-100 dark:border-slate-800 shadow-sm p-4 space-y-2">
+            <p className="text-xs font-black text-slate-700 dark:text-slate-300">{nom}</p>
+            <p className={`text-[11px] font-bold ${xato ? 'text-rose-500' : 'text-slate-400'}`}>{xato || 'Yuklanmoqda…'}</p>
+        </div>
+    );
+}
+
+export function TolovQoidaKartasi({ schoolId, yangilash = 0, onTahrir }: { schoolId: number; yangilash?: number; onTahrir: () => void }) {
+    const { ozgartira, showNotification } = useCRM();
+    const tahrir = ozgartira('xabarlar.shablon') || ozgartira('xabarlar.avto');
+    const { d, setD, xato } = useTolovQoidasi(schoolId, yangilash);
+    const [band, setBand] = useState(false);
+    if (!d) return <QoidaKartasiBosh nom="💰 To'lov qabul qilinganda" xato={xato} />;
+    const s = d.sozlama;
+    const shablon = d.shablonlar.find(t => t.id === s.shablonId) || null;
+    const st = d.statistika || {};
+    const almashtir = async () => {
+        setBand(true);
+        try {
+            const yangi = await tolovSaqla(schoolId, { ...s, yoqilgan: !s.yoqilgan });
+            setD({ ...d, sozlama: yangi, saqlangan: true });
+            showNotification(yangi.yoqilgan ? "To'lov SMS i yoqildi" : "To'lov SMS i o'chirildi", 'success');
+        } catch (e: any) {
+            showNotification(e.message, 'error');
+        } finally {
+            setBand(false);
+        }
+    };
+    return (
+        <QoidaKartasi
+            icon="💰" label="To'lov qabul qilinganda" color="bg-teal-100 dark:bg-teal-950/30 text-teal-500"
+            nom="To'lov kiritilganda — ota-onaga xabar"
+            meta={[
+                { k: 'Kanal', v: KANAL_QISQA[s.kanal] },
+                { k: 'Vaqt', v: 'darhol' },
+                { k: 'Kimga', v: kimgaMatni(s.kimga), keng: true },
+            ]}
+            matn={shablon ? shablon.body : undefined}
+            holat={s.kanal !== 'TELEGRAM' ? <EskizHolati shablon={shablon} navbatda={(st.kutmoqda || 0) + (st.yuborilmoqda || 0)} /> : undefined}
+            yoqilgan={s.yoqilgan} onToggle={almashtir} onEdit={onTahrir} tahrir={tahrir} band={band}
+        />
+    );
+}
+
+/**
+ * "Yangi qoida yaratish" / tahrirlash oynasidagi forma. yangi — oyna
+ * "Yangi qoida" dan ochilgan: saqlanganda qoida yoqiladi.
+ */
+export function TolovQoidaFormasi({ schoolId, yangi = false, onClose, onSaqlandi }: {
+    schoolId: number; yangi?: boolean; onClose: () => void; onSaqlandi: () => void;
+}) {
+    const { ozgartira, showNotification, settings } = useCRM();
+    const tahrir = ozgartira('xabarlar.shablon') || ozgartira('xabarlar.avto');
+    const yuborishMumkin = ozgartira('xabarlar.yuborish');
+    const { d, xato } = useTolovQoidasi(schoolId);
+    const [q, setQ] = useState<Sozlama | null>(null);
     const [band, setBand] = useState('');
     const [sinovTel, setSinovTel] = useState('');
-    const [hammasi, setHammasi] = useState(false);
+    useEffect(() => { if (d && !q) setQ({ ...d.sozlama, ...(yangi ? { yoqilgan: true } : {}) }); }, [d]);
 
-    const yukla = async (yangila = false) => {
-        try {
-            const q = new URLSearchParams({ schoolId: String(schoolId) });
-            if (yangila) q.set('yangila', '1');
-            const r = await fetch(`/api/tolov-xabari?${q}`, { headers: auth() });
-            const j = await r.json().catch(() => ({}));
-            if (!r.ok) throw new Error(j.error || "Yuklab bo'lmadi");
-            setD(j);
-            setXato('');
-        } catch (e: any) {
-            setXato(e.message);
-        }
-    };
-    useEffect(() => { if (schoolId) yukla(); }, [schoolId]);
+    const shablon = d && q ? d.shablonlar.find(t => t.id === q.shablonId) || null : null;
+    const namuna = useMemo(() => shablon
+        ? smsMatni(fillTemplate(shablon.body, { name: 'Alimov Jasur', balance: 0, customPaymentAmount: 500000, lastPaymentAmount: 500000 }, [], { orgName: settings?.orgName }))
+        : '', [shablon, settings?.orgName]);
 
-    const ozgartir = async (yangi: Sozlama) => {
-        if (!d) return;
+    if (xato) return <p className="text-[11px] font-bold text-rose-500">{xato}</p>;
+    if (!d || !q) return <p className="text-[11px] font-bold text-slate-400">Yuklanmoqda…</p>;
+
+    const kimga = q.kimga.split(',');
+    const smsKerak = q.kanal !== 'TELEGRAM';
+    const soni = smsSoni(namuna);
+    const inp = 'w-full px-3.5 py-2 bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700/80 rounded-xl text-xs font-bold text-slate-800 dark:text-slate-200 outline-none focus:border-brand cursor-pointer disabled:opacity-80';
+    const lbl = 'block text-[11px] font-bold text-slate-400 mb-1.5';
+
+    const saqla = async () => {
         setBand('saqla');
         try {
-            const r = await fetch('/api/tolov-xabari', {
-                method: 'PUT',
-                headers: { ...auth(), 'Content-Type': 'application/json' },
-                body: JSON.stringify({ schoolId, sozlama: yangi }),
-            });
-            const j = await r.json().catch(() => ({}));
-            if (!r.ok) throw new Error(j.error || "Saqlab bo'lmadi");
-            setD({ ...d, sozlama: j.sozlama, saqlangan: true });
-            showNotification("To'lov xabari sozlamasi saqlandi", 'success');
+            await tolovSaqla(schoolId, q);
+            showNotification("To'lov qoidasi saqlandi", 'success');
+            onSaqlandi();
         } catch (e: any) {
             showNotification(e.message, 'error');
         } finally {
             setBand('');
         }
     };
-
-    const qayta = async (q: Qator) => {
-        setBand(`q-${q.id}`);
-        try {
-            const r = await fetch(`/api/tolov-xabari/${q.id}/qayta`, { method: 'POST', headers: auth() });
-            const j = await r.json().catch(() => ({}));
-            if (!r.ok) throw new Error(j.error || "Yuborib bo'lmadi");
-            const ok = ['yuborildi', 'yetkazildi'].includes(j.holat);
-            showNotification(ok ? 'SMS yuborildi' : `SMS ketmadi: ${j.sabab || ''}`, ok ? 'success' : 'error');
-            await yukla();
-        } catch (e: any) {
-            showNotification(e.message, 'error');
-        } finally {
-            setBand('');
-        }
-    };
-
     const sinov = async () => {
         setBand('sinov');
         try {
@@ -264,109 +340,54 @@ export function TolovXabariSozlama({ schoolId }: { schoolId: number }) {
         }
     };
 
-    const shablon = d?.shablonlar.find(t => t.id === d.sozlama.shablonId) || null;
-    const namuna = useMemo(() => shablon
-        ? smsMatni(fillTemplate(shablon.body, { name: 'Alimov Jasur', balance: 0, customPaymentAmount: 500000, lastPaymentAmount: 500000 }, [], { orgName: settings?.orgName }))
-        : '', [shablon, settings?.orgName]);
-
-    if (xato) return <p className="text-[11px] font-bold text-xato">{xato}</p>;
-    if (!d) return <div className="bg-sirt rounded-2xl border border-chiziq p-4 text-[11px] font-bold text-matn-xira">To'lov SMS sozlamasi yuklanmoqda…</div>;
-
-    const s = d.sozlama;
-    const kimga = s.kimga.split(',');
-    const smsKerak = s.kanal !== 'TELEGRAM';
-    const soni = smsSoni(namuna);
-    const st = d.statistika || {};
-    const yetdi = (st.yetkazildi || 0) + (st.yuborildi || 0);
-    const navbatda = (st.kutmoqda || 0) + (st.yuborilmoqda || 0);
-    const ketmadi = (st.xato || 0) + (st.yetkazilmadi || 0);
-    const royxat = hammasi ? d.royxat : d.royxat.slice(0, 8);
-
     return (
-        <div className="bg-sirt rounded-2xl border border-chiziq p-4 space-y-4">
-            {/* Sarlavha va yoqish */}
-            <div className="flex items-start justify-between gap-3">
-                <div className="min-w-0">
-                    <h3 className="text-xs font-black text-matn">💰 To'lov qabul qilinganda — avtomatik SMS</h3>
-                    <p className="text-[11px] font-medium text-matn-xira mt-0.5">
-                        Har bir to'lov kiritilishi bilan ota-onaga o'zi ketadi — hech narsa bosish shart emas: naqd, karta, o'tkazma, Payme va tasdiqlangan Klik. Butun markaz uchun bitta.
-                    </p>
-                </div>
-                <button type="button" disabled={!tahrir || !!band} onClick={() => ozgartir({ ...s, yoqilgan: !s.yoqilgan })}
-                    aria-pressed={s.yoqilgan}
-                    className={`shrink-0 flex items-center gap-2 px-3 py-2 rounded-xl text-[11px] font-black border transition-colors cursor-pointer disabled:cursor-default ${s.yoqilgan
-                        ? 'bg-brand border-brand text-white' : 'bg-ichki border-chiziq text-matn-xira'}`}>
-                    <span className={`w-2 h-2 rounded-full ${s.yoqilgan ? 'bg-white' : 'bg-matn-xira'}`} />
-                    {s.yoqilgan ? 'Yoqilgan' : "O'chirilgan"}
-                </button>
-            </div>
-
-            {!d.saqlangan && (
-                <p className="text-[11px] font-bold text-ogoh bg-amber-50 dark:bg-amber-950/20 border border-amber-100 dark:border-amber-900/40 rounded-xl px-3 py-2">
-                    Shablon nomiga qarab o'zi tanlandi. Tekshirib chiqing{tahrir ? " — biror narsani o'zgartirsangiz saqlanadi" : ''}.
-                </p>
-            )}
-
-            {/* Shablon */}
-            <div className="space-y-1.5">
-                <span className="block text-[11px] font-bold text-matn-xira">SMS matni — «Shablonlar» bo'limidagi shablondan (Eskiz faqat tasdiqlangan matnni yuboradi)</span>
-                <select value={s.shablonId || ''} disabled={!tahrir || !!band}
-                    onChange={e => ozgartir({ ...s, shablonId: Number(e.target.value) || null })}
-                    className="w-full px-3 py-2 bg-ichki border border-chiziq rounded-xl text-[11px] font-bold text-matn outline-none focus:border-brand cursor-pointer disabled:cursor-default disabled:opacity-80">
+        <div className="space-y-4">
+            <p className="text-[11px] font-medium text-slate-500 dark:text-slate-400">
+                To'lov kiritilishi bilan (naqd, karta, o'tkazma, Payme, tasdiqlangan Klik) ota-onaga darhol ketadi. Butun markaz uchun bitta qoida.
+            </p>
+            <div>
+                <label className={lbl}>SMS matni — «Shablonlar» bo'limidagi shablon</label>
+                <select value={q.shablonId || ''} disabled={!tahrir} onChange={e => setQ({ ...q, shablonId: Number(e.target.value) || null })} className={inp}>
                     <option value="">— tanlanmagan —</option>
                     {d.shablonlar.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
                 </select>
-                {shablon && smsKerak && (
-                    <p className={`text-[11px] font-bold ${eskizYuboradi(shablon.eskizStatus) ? 'text-yaxshi' : eskizRadEtdi(shablon.eskizStatus) ? 'text-xato' : 'text-ogoh'}`}>
-                        {eskizYuboradi(shablon.eskizStatus) ? '✓ ' : eskizRadEtdi(shablon.eskizStatus) ? '✗ ' : '⏳ '}
-                        {eskizHolatMatni(shablon.eskizStatus)}
-                        {!eskizYuboradi(shablon.eskizStatus) && !eskizRadEtdi(shablon.eskizStatus)
-                            && " — shu vaqtgacha SMS'lar navbatda turadi va tasdiqlangach o'zi ketadi (3 kun ichidagilar)"}
-                    </p>
-                )}
-                {!shablon && <p className="text-[11px] font-bold text-xato">Shablon tanlanmaguncha to'lov SMS'i ketmaydi.</p>}
+                {smsKerak && <div className="mt-1.5"><EskizHolati shablon={shablon} /></div>}
             </div>
-
-            {/* Kimga va kanal */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
-                    <span className="block text-[11px] font-bold text-matn-xira mb-1.5">Kimga</span>
+                    <label className={lbl}>Kimga</label>
                     <div className="flex flex-wrap gap-1.5">
                         {KIMGA.map(k => {
                             const on = kimga.includes(k.v);
                             return (
-                                <button key={k.v} type="button" disabled={!tahrir || !!band || (on && kimga.length === 1)}
-                                    onClick={() => ozgartir({ ...s, kimga: (on ? kimga.filter(x => x !== k.v) : [...kimga, k.v]).join(',') })}
-                                    className={`px-3 py-2 rounded-xl text-[11px] font-bold border transition-colors cursor-pointer disabled:cursor-default ${on ? 'bg-brand border-brand text-white' : 'bg-ichki border-chiziq text-matn-xira'}`}>
-                                    {on && <Check size={11} className="inline -mt-0.5 mr-1" />}{k.nom}
+                                <button key={k.v} type="button" disabled={!tahrir || (on && kimga.length === 1)}
+                                    onClick={() => setQ({ ...q, kimga: (on ? kimga.filter(x => x !== k.v) : [...kimga, k.v]).join(',') })}
+                                    className={`px-2.5 py-2 rounded-xl text-xs font-bold border transition-all cursor-pointer disabled:cursor-default ${on ? 'bg-brand/10 border-brand text-brand' : 'bg-slate-50 dark:bg-slate-800/80 border-slate-200 dark:border-slate-700/80 text-slate-500 dark:text-slate-400'}`}>
+                                    {k.nom}
                                 </button>
                             );
                         })}
                     </div>
-                    <p className="text-[10px] font-medium text-matn-xira mt-1">Raqami yo'q bo'lsa — o'quvchining o'z raqamiga.</p>
+                    <p className="text-[10px] font-medium text-slate-400 mt-1">Raqami yo'q bo'lsa — o'quvchining o'z raqamiga.</p>
                 </div>
                 <div>
-                    <span className="block text-[11px] font-bold text-matn-xira mb-1.5">Kanal</span>
-                    <select value={s.kanal} disabled={!tahrir || !!band}
-                        onChange={e => ozgartir({ ...s, kanal: e.target.value as Kanal })}
-                        className="w-full px-3 py-2 bg-ichki border border-chiziq rounded-xl text-[11px] font-bold text-matn outline-none focus:border-brand cursor-pointer disabled:cursor-default">
+                    <label className={lbl}>Kanal</label>
+                    <select value={q.kanal} disabled={!tahrir} onChange={e => setQ({ ...q, kanal: e.target.value as Kanal })} className={inp}>
                         {(Object.keys(KANAL_NOMI) as Kanal[]).map(k => <option key={k} value={k}>{KANAL_NOMI[k]}</option>)}
                     </select>
-                    {s.kanal === 'BOTH' && <p className="text-[10px] font-medium text-matn-xira mt-1">Telegram bepul — botga ulanmaganlarga SMS.</p>}
+                    {q.kanal === 'BOTH' && <p className="text-[10px] font-medium text-slate-400 mt-1">Telegram bepul — botga ulanmaganlarga SMS.</p>}
                 </div>
             </div>
-
-            {/* Namuna */}
             {namuna && (
                 <div className="space-y-1.5">
-                    <span className="block text-[11px] font-bold text-matn-xira">
-                        Namuna{smsKerak && <> · <span className={soni.soni > 1 ? 'text-ogoh' : ''}>{soni.soni} ta SMS</span> · {soni.belgi} belgi{soni.kodlash === 'UCS-2' ? ' (kirill/maxsus belgi — SMS qisqaroq)' : ''}</>}
+                    <span className="block text-[11px] font-bold text-slate-400">
+                        Namuna{smsKerak && <> · <span className={soni.soni > 1 ? 'text-amber-500' : ''}>{soni.soni} ta SMS</span> · {soni.belgi} belgi</>}
                     </span>
-                    <p className="px-3 py-2.5 rounded-xl bg-ichki border border-chiziq text-[12px] font-medium text-matn leading-relaxed">{namuna}</p>
+                    <p className="px-3 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700/60 text-[12px] font-medium text-slate-700 dark:text-slate-200 leading-relaxed">{namuna}</p>
                     {smsKerak && yuborishMumkin && shablon && eskizYuboradi(shablon.eskizStatus) && (
                         <div className="flex flex-wrap items-center gap-2 pt-1">
                             <input value={sinovTel} onChange={e => setSinovTel(e.target.value)} inputMode="tel" placeholder="+998 90 123 45 67"
-                                className="flex-1 min-w-[160px] px-3 py-2 bg-ichki border border-chiziq rounded-xl text-[12px] font-bold text-matn outline-none focus:border-brand" />
+                                className="flex-1 min-w-[160px] px-3 py-2 bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700/80 rounded-xl text-[12px] font-bold text-slate-800 dark:text-slate-200 outline-none focus:border-brand" />
                             <button type="button" onClick={sinov} disabled={!!band || sinovTel.replace(/\D/g, '').length < 9}
                                 className="px-3 py-2 rounded-xl border border-brand/40 text-brand hover:bg-brand/10 disabled:opacity-50 text-[11px] font-bold flex items-center gap-1.5 cursor-pointer">
                                 {band === 'sinov' ? <Loader2 size={12} className="animate-spin" /> : <Send size={12} />} Sinov SMS
@@ -375,72 +396,16 @@ export function TolovXabariSozlama({ schoolId }: { schoolId: number }) {
                     )}
                 </div>
             )}
-
-            {/* Holat va oxirgi to'lovlar */}
-            <div className="pt-3 border-t border-chiziq-mayin space-y-2">
-                <div className="flex flex-wrap items-center justify-between gap-2">
-                    <p className="text-[11px] font-bold text-matn-2">
-                        Oxirgi 7 kun: <span className="text-yaxshi">{yetdi} yuborildi</span>
-                        {navbatda > 0 && <> · <span className="text-ogoh">{navbatda} navbatda</span></>}
-                        {ketmadi > 0 && <> · <span className="text-xato">{ketmadi} ketmadi</span></>}
-                        {d.eskizBalans !== null && d.eskizBalans !== undefined && (
-                            <span className="text-matn-xira"> · Eskiz balansi: <span className={d.eskizBalans < 10000 ? 'text-xato' : 'text-matn-2'}>{pul(d.eskizBalans)} so'm</span></span>
-                        )}
-                    </p>
-                    <button type="button" onClick={async () => { setBand('yangila'); await yukla(true); setBand(''); }} disabled={!!band}
-                        className="flex items-center gap-1 text-[11px] font-bold text-brand hover:underline cursor-pointer disabled:opacity-50">
-                        <RefreshCw size={11} className={band === 'yangila' ? 'animate-spin' : ''} /> Yangilash
-                    </button>
-                </div>
-
-                {d.royxat.length === 0 ? (
-                    <p className="text-[11px] font-medium text-matn-xira">Hali to'lov xabari yo'q — birinchi to'lovdan keyin shu yerda ko'rinadi.</p>
-                ) : (
-                    <div className="divide-y divide-chiziq-mayin rounded-xl border border-chiziq overflow-hidden">
-                        {royxat.map(q => {
-                            const { Icon, rang, soz } = holatKorinishi(q.holat);
-                            const kimgaMatn = kimlar(q.qabul) || [...new Set(q.raqamlar.map(r => KIMGA_NOMI[r.kimga as keyof typeof KIMGA_NOMI] || r.kimga))].join(', ');
-                            const qaytaMumkin = yuborishMumkin && ['xato', 'yetkazilmadi', 'kutmoqda'].includes(q.holat);
-                            return (
-                                <div key={q.id} className="px-3 py-2.5 flex items-start gap-2.5">
-                                    <Icon size={15} className={`shrink-0 mt-0.5 ${rang}`} />
-                                    <div className="min-w-0 flex-1">
-                                        <p className="text-[12px] font-bold text-matn leading-snug break-words">
-                                            <button type="button" onClick={() => navigate(`/students/${q.studentId}`)} className="hover:text-brand cursor-pointer">{displayName(q.ism)}</button>
-                                            {q.summa !== null && <span className="text-matn-xira font-medium"> · {pul(q.summa)} so'm{q.turi ? ` · ${q.turi}` : ''}</span>}
-                                        </p>
-                                        <p className={`text-[11px] font-medium ${['xato', 'yetkazilmadi', 'kutmoqda', 'yuborilmoqda'].includes(q.holat) ? rang : 'text-matn-xira'}`}>
-                                            <span className="font-bold">{soz}</span>
-                                            {kimgaMatn && ['yuborildi', 'yetkazildi', 'yetkazilmadi'].includes(q.holat) && <> · {kimgaMatn}</>}
-                                            {q.sabab && ['xato', 'kutmoqda', 'yuborilmoqda', 'yetkazilmadi', 'bekor'].includes(q.holat) && <> · {q.sabab}</>}
-                                        </p>
-                                        {q.raqamlar.some(r => r.kanal === 'SMS') && ['yuborildi', 'yetkazildi', 'yetkazilmadi'].includes(q.holat) && (
-                                            <p className="text-[10px] font-medium text-matn-xira truncate">
-                                                {q.raqamlar.filter(r => r.kanal === 'SMS').map(r => `${raqamYashir(r.manzil)}${r.holat === 'yetkazildi' ? ' ✓✓' : r.holat === 'yetkazilmadi' ? ' ✗' : ''}`).join(' · ')}
-                                            </p>
-                                        )}
-                                    </div>
-                                    <div className="shrink-0 flex flex-col items-end gap-1">
-                                        <span className="text-[10px] font-bold text-matn-xira tabular-nums">{soat(q.yetkazilganAt || q.yuborilganAt || q.createdAt)}</span>
-                                        {qaytaMumkin && (
-                                            <button type="button" onClick={() => qayta(q)} disabled={!!band}
-                                                className="px-2 py-1 rounded-lg border border-chiziq text-[10px] font-bold text-matn-2 hover:border-brand hover:text-brand disabled:opacity-50 cursor-pointer">
-                                                {band === `q-${q.id}` ? <Loader2 size={10} className="animate-spin" /> : 'Qayta yuborish'}
-                                            </button>
-                                        )}
-                                    </div>
-                                </div>
-                            );
-                        })}
-                    </div>
-                )}
-                {d.royxat.length > 8 && (
-                    <button type="button" onClick={() => setHammasi(v => !v)} className="text-[11px] font-bold text-brand hover:underline cursor-pointer">
-                        {hammasi ? 'Kamroq' : `Yana ${d.royxat.length - 8} ta`}
-                    </button>
-                )}
+            <div className="flex items-center justify-end gap-3 pt-2">
+                <button type="button" onClick={onClose}
+                    className="flex items-center justify-center gap-1.5 px-4 py-2.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-350 hover:bg-slate-50 dark:hover:bg-slate-750 rounded-xl text-xs font-black cursor-pointer">
+                    Bekor qilish
+                </button>
+                <button type="button" onClick={saqla} disabled={!tahrir || !!band}
+                    className="flex items-center justify-center gap-1.5 px-4 py-2.5 bg-brand-dark text-white rounded-xl text-xs font-black shadow-sm cursor-pointer disabled:opacity-50">
+                    {band === 'saqla' ? <Loader2 size={12} className="animate-spin" /> : <Check size={12} />} Saqlash
+                </button>
             </div>
-            {!tahrir && <p className="text-[10px] font-bold text-matn-xira">Sozlamani «Avtomatik qoidalar» yoki «Shablonlar» ruxsati bor xodim o'zgartiradi.</p>}
         </div>
     );
 }

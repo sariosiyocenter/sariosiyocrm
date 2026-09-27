@@ -121,7 +121,7 @@ export async function bugunDavomatXabariOlganlar(studentIds) {
  * @param {number[]} [p.studentIds] faqat shular (berilmasa — hamma belgilangan)
  * @param {string} [p.kanal]       BOTH | SMS | TELEGRAM (berilmasa — sozlamadagi)
  */
-export async function davomatXabariniYuborish({ groupId, date, studentIds, kanal }) {
+export async function davomatXabariniYuborish({ groupId, date, studentIds, kanal, avto = false }) {
   if (!yuboruvchi) throw new Error('Xabar yuboruvchi ulanmagan');
   const group = await prisma.group.findUnique({
     where: { id: groupId },
@@ -130,6 +130,8 @@ export async function davomatXabariniYuborish({ groupId, date, studentIds, kanal
   if (!group) return { error: 'Kurs topilmadi' };
 
   const { sozlama, shablonlar } = await davomatSozlamasi(group.schoolId);
+  // Ustoz botidagi «Saqlash» (avto) — qoida o'chirilgan bo'lsa xabar ketmaydi.
+  if (avto && !sozlama.yoqilgan) return { jami: 0, yuborildi: 0, xato: 0, shablonsiz: 0, aloqasiz: 0, xatolar: [], ochirilgan: true };
   const kanalTanlov = KANALLAR.includes(kanal) ? kanal : sozlama.kanal;
 
   let yozuvlar = await prisma.attendance.findMany({

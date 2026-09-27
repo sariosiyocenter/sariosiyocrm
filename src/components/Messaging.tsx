@@ -9,9 +9,10 @@ import { oxirgiTolov } from '../../lib/xabarMatni.js';
 import { useConfirm } from './ConfirmDialog';
 import { useLang } from '../context/LanguageContext';
 import { displayName as ismniKorsat } from '../lib/displayName';
-import { DavomatXabariSozlama } from './DavomatXabari';
-import { TolovXabariSozlama, XabarNavbati, xatoSababi } from './TolovXabari';
-import { QarzXabariSozlama } from './QarzXabari';
+import { DavomatXabariSozlama, DavomatQoidaKartasi } from './DavomatXabari';
+import { TolovQoidaKartasi, TolovQoidaFormasi, XabarNavbati, xatoSababi } from './TolovXabari';
+import { QarzQoidaKartasi, QarzQoidaFormasi, QarzdorlarModal } from './QarzXabari';
+import { QoidaKartasi } from './QoidaKartasi';
 
 /**
  * Bir nechta qiymat tanlanadigan ro'yxat. Bo'sh tanlov "barchasi" degani.
@@ -112,6 +113,14 @@ const HOLATSIZ_QOIDALAR = ['LEAD_WELCOME', 'COURSE_GRADUATION'];
 const FAOL_SINOV_QOIDALAR = ['BIRTHDAY', 'DEBT_REMINDER', 'GROUP_WELCOME', 'TRANSPORT_NOTIFY'];
 const qoidaStandartHolatlari = (type: string) =>
   FAOL_SINOV_QOIDALAR.includes(type) ? ['Faol', 'Sinov'] : [...OQUVCHI_STATUSLARI];
+
+// To'lov, davomat va qarz qoidalari markazga bitta va o'z xizmati yuboradi
+// (darhol yoki o'z jadvali bilan). Ro'yxatda boshqa qoidalar qatorida
+// turadi, "Yangi qoida" oynasida esa o'z formasi ochiladi (egasi,
+// 2026-09-27: "nimaga alohida qilding, trigger qo'shsang bo'lmasmidi?").
+const MAXSUS_QOIDALAR = ['PAYMENT_CONFIRM', 'DAVOMAT', 'DEBT_REMINDER'];
+// BOTH: Telegram'ga yetsa — SMS ketmaydi (server sendToOne).
+const KANAL_NOMI_QISQA: Record<string, string> = { BOTH: "Telegram, bo'lmasa SMS", SMS: 'SMS', TELEGRAM: 'Telegram' };
 
 interface Student {
   id: number;
@@ -234,6 +243,8 @@ const getTriggerTypeMeta = (type: string) => {
       return { icon: '📈', label: 'Oylik imtihon hisoboti', color: 'bg-indigo-100 dark:bg-indigo-950/30 text-indigo-500' };
     case 'PAYMENT_CONFIRM':
       return { icon: '💰', label: "To'lov qabul qilinganda", color: 'bg-teal-100 dark:bg-teal-950/30 text-teal-500' };
+    case 'DAVOMAT':
+      return { icon: '📋', label: 'Davomat qilinganda', color: 'bg-rose-100 dark:bg-rose-950/30 text-rose-500' };
     case 'DAILY_SCORE':
       return { icon: '⭐️', label: 'Kunlik baho', color: 'bg-yellow-100 dark:bg-yellow-950/30 text-yellow-500' };
     case 'TRANSPORT_NOTIFY':
@@ -401,6 +412,11 @@ export default function Messaging() {
     dayOfMonth: 1,
     statuses: ['Faol'] as string[]
   });
+
+  // Maxsus qoidalar kartalari saqlangandan keyin qayta yuklansin.
+  const [qoidaYangilash, setQoidaYangilash] = useState(0);
+  // Bosh sahifadagi "to'laganman" ogohlantirishidan: ?qarzdorlar=1.
+  const [qarzdorlarOchiq, setQarzdorlarOchiq] = useState(() => new URLSearchParams(window.location.search).get('qarzdorlar') === '1');
 
   // Tab 4: History state
   const [campaigns, setCampaigns] = useState<MessageCampaign[]>([]);
@@ -973,6 +989,13 @@ export default function Messaging() {
   };
 
   // Auto Rule Modal Form actions
+
+  /** To'lov, davomat va qarz qoidasini tahrirlash — o'z formasi bilan. */
+  const maxsusQoidaniOch = (type: string) => {
+    setEditingAutoRule({ type } as unknown as AutoRule);
+    setAutoRuleForm(f => ({ ...f, type }));
+    setAutoRuleModalOpen(true);
+  };
   const openAutoRuleModal = (r: AutoRule | null = null) => {
     if (r) {
       setEditingAutoRule(r);
@@ -1778,7 +1801,7 @@ export default function Messaging() {
           <div className="flex justify-between items-center">
             <div>
               <h2 className="text-xs font-black text-slate-800 dark:text-slate-200">Avtomatik yuborish qoidalari</h2>
-              <p className="text-[11px] font-bold text-slate-400 mt-0.5">Tizim belgilangan kunlik qoidalar bo'yicha fonda SMS yoki Telegram tabriknoma va eslatmalarini jo'natadi</p>
+              <p className="text-[11px] font-bold text-slate-400 mt-0.5">Har bir qoida: qachon (trigger) → qaysi matn → kimga. To'lov va davomat xabari darhol, qolganlari belgilangan vaqtda ketadi</p>
             </div>
             {avtoTahrir && (
             <button onClick={() => openAutoRuleModal(null)} className={btnPrimary}>
@@ -1788,99 +1811,44 @@ export default function Messaging() {
             )}
           </div>
 
-          {/* To'lov SMS i — avtomatik xabar, shuning uchun shu yerda (egasi:
-              "avtomatikka qo'ydingmi?"). Matni Shablonlar dagi shablondan
-              tanlanadi; holatlar va "Qayta yuborish" ham shu kartada. */}
-          <TolovXabariSozlama schoolId={selectedSchoolId || 0} />
-
-          {/* Davomat xabari ham avtomatik xabar — Shablonlar da turgani chalkashtirardi
-              (egasi: "bu nima? va nimaga xabarlarda?"). Shablonlar = faqat matnlar. */}
-          <DavomatXabariSozlama schoolId={selectedSchoolId || 0} />
-
-          {/* Qarz eslatmasi (egasi, 2026-09-26): kurslar bo'yicha qarz, oxirgi
-              to'lov, "To'laganman" tugmasi, qarzdorlar ro'yxatidan tekshirib
-              yuborish. Eski "Qarzdorlik eslatmasi" qoidasi o'rniga. */}
-          <QarzXabariSozlama schoolId={selectedSchoolId || 0} />
-
+          {/* Hamma avtomatik xabar — bitta ro'yxat. To'lov, davomat va qarz
+              qoidalari markazga bitta, shuning uchun doim birinchi turadi. */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {rules.filter(rule => rule.type !== 'DEBT_REMINDER').map(rule => {
+            <TolovQoidaKartasi schoolId={selectedSchoolId || 0} yangilash={qoidaYangilash} onTahrir={() => maxsusQoidaniOch('PAYMENT_CONFIRM')} />
+            <DavomatQoidaKartasi schoolId={selectedSchoolId || 0} yangilash={qoidaYangilash} onTahrir={() => maxsusQoidaniOch('DAVOMAT')} />
+            <QarzQoidaKartasi schoolId={selectedSchoolId || 0} yangilash={qoidaYangilash}
+              onTahrir={() => maxsusQoidaniOch('DEBT_REMINDER')} onQarzdorlar={() => setQarzdorlarOchiq(true)} />
+            {/* Eski "To'lov qabul qilinganda" va "Qarzdorlik" yozuvlari (AutoMessageRule)
+                ishlamaydi — o'rniga yuqoridagi kartalar. */}
+            {rules.filter(rule => !MAXSUS_QOIDALAR.includes(rule.type)).map(rule => {
               const meta = getTriggerTypeMeta(rule.type);
-              const isBirthday = rule.type === 'BIRTHDAY';
-              const isDebt = rule.type === 'DEBT_REMINDER';
               return (
-                <div key={rule.id} className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-100 dark:border-slate-800 shadow-sm p-4 flex flex-col justify-between space-y-4 hover:shadow-md transition-all group">
-                  <div className="space-y-3">
-                    {/* Header */}
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        <div className={`w-6 h-6 rounded-lg flex items-center justify-center text-[11px] ${meta.color}`}>
-                          {meta.icon}
-                        </div>
-                        <span className="text-[11px] font-bold px-2 py-0.5 bg-slate-55 dark:bg-slate-800 text-slate-500 dark:text-slate-450 border border-slate-100 dark:border-slate-700">
-                          {meta.label}
-                        </span>
-                      </div>
-                      <div className="flex items-center gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity">
-                        {avtoTahrir && (
-                        <button onClick={() => openAutoRuleModal(rule)} className="p-1 text-slate-400 hover:text-brand transition-colors cursor-pointer">
-                          <Edit size={13} />
-                        </button>
-                        )}
-                        {avtoTahrir && (
-                        <button onClick={() => handleDeleteRule(rule.id!)} className="p-1 text-slate-400 hover:text-rose-500 transition-colors cursor-pointer">
-                          <Trash2 size={13} />
-                        </button>
-                        )}
-                      </div>
-                    </div>
-
-                    <h3 className="text-xs font-black text-slate-855 dark:text-white tracking-wide">{rule.name}</h3>
-
-                    {/* Meta info block */}
-                    <div className="grid grid-cols-2 gap-2 text-[11px] font-semibold text-slate-500 dark:text-slate-400 bg-slate-50 dark:bg-slate-950/20 p-2.5 rounded-xl border border-slate-100 dark:border-slate-800">
-                      <div>Kanal: <span className="font-bold text-slate-700 dark:text-slate-300">{rule.channel}</span></div>
-                      <div>Vaqt: <span className="font-bold text-slate-700 dark:text-slate-300">{rule.type === 'PAYMENT_CONFIRM' ? 'darhol' : (rule.time || '09:00')}</span></div>
-                      <div className="col-span-2">Kimga: <span className="font-bold text-slate-700 dark:text-slate-300">{qabulQiluvchilarMatni(rule.recipientTo)}</span></div>
-                      {rule.type === 'EXAM_MONTHLY' && (
-                        <div>Kun: <span className="font-bold text-slate-700 dark:text-slate-300">{rule.config?.dayOfMonth || 1}</span></div>
-                      )}
-                      {isDebt && rule.config && (
-                        <>
-                          <div>Kun: <span className="font-bold text-slate-700 dark:text-slate-300">{rule.config.dayOfMonth || 1}</span></div>
-                          <div>Min qarz: <span className="font-bold text-rose-500">{(rule.config.minDebt || 0).toLocaleString()} UZS</span></div>
-                        </>
-                      )}
-                    </div>
-
-                    {/* Body text */}
-                    <p className="text-[12px] text-slate-500 dark:text-slate-400 whitespace-pre-wrap leading-relaxed line-clamp-3">
-                      {rule.body}
-                    </p>
-                  </div>
-
-                  {/* Switch toggle at the bottom */}
-                  <div className="flex items-center justify-between pt-2 border-t border-dashed border-slate-100 dark:border-slate-800">
-                    <span className="text-[11px] font-bold text-slate-400 dark:text-slate-500">
-                      Holati: {rule.enabled ? <span className="text-emerald-500">Faol</span> : <span className="text-slate-400">O'chirilgan</span>}
-                    </span>
-                    <button
-                      disabled={!avtoTahrir}
-                      onClick={() => handleToggleRuleEnabled(rule)}
-                      className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out outline-none ${rule.enabled ? 'bg-brand-dark' : 'bg-slate-200 dark:bg-slate-700'}`}
-                    >
-                      <span className={`pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${rule.enabled ? 'translate-x-4' : 'translate-x-0'}`} />
-                    </button>
-                  </div>
-                </div>
+                <QoidaKartasi
+                  key={rule.id}
+                  icon={meta.icon}
+                  label={meta.label}
+                  color={meta.color}
+                  nom={rule.name}
+                  meta={[
+                    { k: 'Kanal', v: KANAL_NOMI_QISQA[rule.channel] || rule.channel },
+                    { k: 'Vaqt', v: rule.time || '09:00' },
+                    { k: 'Kimga', v: qabulQiluvchilarMatni(rule.recipientTo), keng: true },
+                    ...(rule.type === 'EXAM_MONTHLY' ? [{ k: 'Kun', v: String(rule.config?.dayOfMonth || 1) }] : []),
+                  ]}
+                  matn={rule.body}
+                  yoqilgan={!!rule.enabled}
+                  onToggle={() => handleToggleRuleEnabled(rule)}
+                  onEdit={() => openAutoRuleModal(rule)}
+                  onDelete={() => handleDeleteRule(rule.id!)}
+                  tahrir={avtoTahrir}
+                />
               );
             })}
-            {rules.filter(rule => rule.type !== 'DEBT_REMINDER').length === 0 && (
-              <div className="col-span-full bg-white dark:bg-slate-900 rounded-2xl border border-slate-100 dark:border-slate-800 p-16 text-center">
-                <Zap className="w-8 h-8 text-slate-200 dark:text-slate-750 mx-auto mb-3" />
-                <p className="text-[11px] font-bold text-slate-400">Hozircha avtomatik qoidalar yaratilmagan</p>
-              </div>
-            )}
           </div>
+
+          {qarzdorlarOchiq && (
+            <QarzdorlarModal schoolId={selectedSchoolId || 0} onClose={() => { setQarzdorlarOchiq(false); setQoidaYangilash(n => n + 1); }} />
+          )}
         </div>
       )}
 
@@ -2303,54 +2271,86 @@ export default function Messaging() {
         </div>
       )}
 
-      {/* ===== MODAL: CREATE/EDIT AUTO RULE ===== */}
+      {/* ===== MODAL: CREATE/EDIT AUTO RULE =====
+          Hamma avtomatik xabar bitta trigger ro'yxatida (egasi, 2026-09-27:
+          "trigger qo'shsang bo'lmasmidi?"). To'lov, davomat va qarz — o'z
+          formasi bilan: markazga bitta, o'z xizmati yuboradi (darhol yoki o'z
+          jadvali bilan); qolganlari — oddiy qoida (belgilangan soatda). */}
       {autoRuleModalOpen && (
         <div className="fixed inset-0 z-[1000] flex items-start sm:items-center-safe justify-center overflow-y-auto p-4">
           <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm" onClick={() => setAutoRuleModalOpen(false)} />
-          <form onSubmit={handleSaveAutoRule} className="relative bg-white dark:bg-slate-900 rounded-2xl max-w-md w-full p-4 space-y-4 shadow-2xl border border-slate-100 dark:border-slate-800 animate-in zoom-in-95 duration-200">
+          <div className={`relative bg-white dark:bg-slate-900 rounded-2xl w-full p-4 space-y-4 shadow-2xl border border-slate-100 dark:border-slate-800 animate-in zoom-in-95 duration-200 ${MAXSUS_QOIDALAR.includes(autoRuleForm.type) ? 'max-w-2xl' : 'max-w-md'}`}>
             <h3 className="text-sm font-black tracking-wide text-slate-900 dark:text-white">
               {editingAutoRule ? 'Avtomatik qoidani tahrirlash' : 'Yangi avtomatik qoida yaratish'}
             </h3>
 
             <div>
-              <label className={lbl}>Qoida nomi *</label>
-              <input
-                type="text"
-                required
-                placeholder="Masalan: 15-kunlik qarz eslatmasi"
-                value={autoRuleForm.name}
-                onChange={e => setAutoRuleForm({ ...autoRuleForm, name: e.target.value })}
-                className={inp}
-              />
-            </div>
-
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <label className={lbl}>Trigger turi *</label>
-                <select
-                  value={autoRuleForm.type}
-                  onChange={e => setAutoRuleForm({
-                    ...autoRuleForm, type: e.target.value,
-                    // Oylik hisobotga tayyor matn (bo'sh bo'lsa) — {imtihon_oylik} ro'yxatni o'zi yozadi.
-                    ...(e.target.value === 'EXAM_MONTHLY' && !autoRuleForm.body.trim()
-                      ? { body: "Hurmatli ota-ona! {ism}ning imtihon natijalari:\n{imtihon_oylik}\n\n{markaz}", name: autoRuleForm.name || 'Oylik imtihon hisoboti' }
-                      : {}),
-                  })}
-                  className={inp}
-                >
+              <label className={lbl}>Trigger — qachon yuboriladi *</label>
+              <select
+                value={autoRuleForm.type}
+                // Maxsus qoida tahrirlanayotganda trigger o'zgarmaydi; oddiy qoidani
+                // maxsusga aylantirib bo'lmaydi (u markazga bitta, alohida sozlanadi).
+                disabled={!!editingAutoRule && MAXSUS_QOIDALAR.includes(editingAutoRule.type)}
+                onChange={e => setAutoRuleForm({
+                  ...autoRuleForm, type: e.target.value,
+                  // Oylik hisobotga tayyor matn (bo'sh bo'lsa) — {imtihon_oylik} ro'yxatni o'zi yozadi.
+                  ...(e.target.value === 'EXAM_MONTHLY' && !autoRuleForm.body.trim()
+                    ? { body: "Hurmatli ota-ona! {ism}ning imtihon natijalari:\n{imtihon_oylik}\n\n{markaz}", name: autoRuleForm.name || 'Oylik imtihon hisoboti' }
+                    : {}),
+                })}
+                className={`${inp} disabled:opacity-80`}
+              >
+                <optgroup label="Hodisa bo'lganda — darhol">
+                  <option value="PAYMENT_CONFIRM" disabled={!!editingAutoRule && !MAXSUS_QOIDALAR.includes(editingAutoRule.type)}>💰 To'lov qabul qilinganda</option>
+                  <option value="DAVOMAT" disabled={!!editingAutoRule && !MAXSUS_QOIDALAR.includes(editingAutoRule.type)}>📋 Davomat qilinganda (yo'qlama saqlanganda)</option>
+                </optgroup>
+                <optgroup label="Belgilangan vaqtda">
+                  <option value="DEBT_REMINDER" disabled={!!editingAutoRule && !MAXSUS_QOIDALAR.includes(editingAutoRule.type)}>💸 Qarzdorlik eslatmasi (har oy)</option>
                   <option value="BIRTHDAY">🎂 Tug'ilgan kun tabrigi</option>
-                  <option value="ABSENCE_REMINDER">🚫 Dars qoldirganlik eslatmasi</option>
+                  <option value="ABSENCE_REMINDER">🚫 Kun oxirida: dars qoldirganlar</option>
+                  <option value="LATE_ARRIVAL">⏰ Kun oxirida: kechikkanlar</option>
+                  <option value="EARLY_LEAVE">🚪 Kun oxirida: erta ketganlar</option>
                   <option value="LEAD_WELCOME">📞 Yangi lid tabrigi</option>
-                  <option value="GROUP_WELCOME">🎉 Yangi guruhga qo'shilish tabrigi</option>
+                  <option value="GROUP_WELCOME">🎉 Kursga yangi qo'shilganlar tabrigi</option>
                   <option value="EXAM_RESULT">📝 Imtihon natijalari e'loni</option>
                   <option value="EXAM_MONTHLY">📈 Oylik imtihon hisoboti</option>
-
                   <option value="DAILY_SCORE">⭐️ Kunlik baholash hisoboti</option>
                   <option value="TRANSPORT_NOTIFY">🚌 Transport xabarnomasi</option>
                   <option value="COURSE_GRADUATION">🎓 Kursni bitirganlik tabrigi</option>
-                  <option value="LATE_ARRIVAL">⏰ Darsga kechikkanlik eslatmasi</option>
-                  <option value="EARLY_LEAVE">🚪 Darsdan erta ketganlik eslatmasi</option>
-                </select>
+                </optgroup>
+              </select>
+            </div>
+
+            {autoRuleForm.type === 'PAYMENT_CONFIRM' ? (
+              <TolovQoidaFormasi schoolId={selectedSchoolId || 0} yangi={!editingAutoRule}
+                onClose={() => setAutoRuleModalOpen(false)}
+                onSaqlandi={() => { setAutoRuleModalOpen(false); setQoidaYangilash(n => n + 1); }} />
+            ) : autoRuleForm.type === 'DAVOMAT' ? (
+              <div className="space-y-4">
+                <p className="text-[11px] font-medium text-slate-500 dark:text-slate-400">
+                  Ustoz yo'qlamani saqlaganda (Telegram botda «Saqlash» yoki kurs sahifasida «Xabar yuborish») har holat uchun tanlangan matn ota-onaga ketadi. O'zgarish darhol saqlanadi.
+                </p>
+                <DavomatXabariSozlama schoolId={selectedSchoolId || 0} ixcham onChange={() => setQoidaYangilash(n => n + 1)} />
+                <div className="flex items-center justify-end pt-2">
+                  <button type="button" onClick={() => setAutoRuleModalOpen(false)} className={btnPrimary}>Tayyor</button>
+                </div>
+              </div>
+            ) : autoRuleForm.type === 'DEBT_REMINDER' ? (
+              <QarzQoidaFormasi schoolId={selectedSchoolId || 0}
+                onClose={() => setAutoRuleModalOpen(false)}
+                onSaqlandi={() => { setAutoRuleModalOpen(false); setQoidaYangilash(n => n + 1); }} />
+            ) : (
+            <form onSubmit={handleSaveAutoRule} className="space-y-4">
+              <div>
+                <label className={lbl}>Qoida nomi *</label>
+                <input
+                  type="text"
+                  required
+                  placeholder="Masalan: Tug'ilgan kun tabrigi"
+                  value={autoRuleForm.name}
+                  onChange={e => setAutoRuleForm({ ...autoRuleForm, name: e.target.value })}
+                  className={inp}
+                />
               </div>
 
               <div>
@@ -2366,178 +2366,154 @@ export default function Messaging() {
                   })}
                 </select>
               </div>
-            </div>
 
-            {/* O'quvchi holati: qoida faqat shu holatdagi o'quvchilarga yuboradi
-                (egasi, 2026-09-23: "Faol / Passiv" — o'quvchilar filtri).
-                Qoidani yoqib-o'chirish ro'yxatdagi tugma orqali. */}
-            {!HOLATSIZ_QOIDALAR.includes(autoRuleForm.type) && (
-              <div>
-                <label className={lbl}>Qaysi o'quvchilarga * <span className="font-semibold text-slate-500">(holati, bir nechta)</span></label>
-                <div className="flex flex-wrap gap-1.5">
-                  {OQUVCHI_STATUSLARI.map(h => {
-                    const tanlangan = autoRuleForm.statuses.includes(h);
-                    return (
-                      <button
-                        key={h}
-                        type="button"
-                        aria-pressed={tanlangan}
-                        onClick={() => {
-                          const yangi = tanlangan ? autoRuleForm.statuses.filter(x => x !== h) : [...autoRuleForm.statuses, h];
-                          // Kamida bittasi tanlangan turishi kerak.
-                          if (!yangi.length) return;
-                          setAutoRuleForm({ ...autoRuleForm, statuses: yangi });
-                        }}
-                        className={`px-2.5 py-2 rounded-xl text-xs font-bold border transition-all cursor-pointer ${
-                          tanlangan
-                            ? 'bg-brand/10 border-brand text-brand'
-                            : 'bg-slate-50 dark:bg-slate-800/80 border-slate-200 dark:border-slate-700/80 text-slate-500 dark:text-slate-400 hover:border-slate-300 dark:hover:border-slate-600'
-                        }`}
-                      >
-                        {h}
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-            )}
-
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <label className={lbl}>Jo'natish kanali *</label>
-                <select
-                  value={autoRuleForm.channel}
-                  onChange={e => setAutoRuleForm({ ...autoRuleForm, channel: e.target.value as any })}
-                  className={inp}
-                >
-                  <option value="BOTH">Telegram va SMS</option>
-                  <option value="SMS">Faqat SMS</option>
-                  <option value="TELEGRAM">Faqat Telegram</option>
-                </select>
-              </div>
-
-              <div>
-                <label className={lbl}>Qabul qiluvchi * <span className="font-semibold text-slate-500">(bir nechta)</span></label>
-                <div className="flex flex-wrap gap-1.5">
-                  {QABUL_QILUVCHILAR.map(q => {
-                    const tanlangan = qabulQiluvchilarniOqish(autoRuleForm.recipientTo).includes(q.value);
-                    return (
-                      <button
-                        key={q.value}
-                        type="button"
-                        aria-pressed={tanlangan}
-                        onClick={() => {
-                          const hozir = qabulQiluvchilarniOqish(autoRuleForm.recipientTo);
-                          const yangi = tanlangan ? hozir.filter(v => v !== q.value) : [...hozir, q.value];
-                          // Kamida bittasi tanlangan turishi kerak — aks holda
-                          // qoida hech kimga yubormaydi.
-                          if (!yangi.length) return;
-                          setAutoRuleForm({ ...autoRuleForm, recipientTo: yangi.join(',') });
-                        }}
-                        className={`px-2.5 py-2 rounded-xl text-xs font-bold border transition-all cursor-pointer ${
-                          tanlangan
-                            ? 'bg-brand/10 border-brand text-brand'
-                            : 'bg-slate-50 dark:bg-slate-800/80 border-slate-200 dark:border-slate-700/80 text-slate-500 dark:text-slate-400 hover:border-slate-300 dark:hover:border-slate-600'
-                        }`}
-                      >
-                        {q.label}
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-            </div>
-
-
-            {autoRuleForm.type === 'EXAM_MONTHLY' && (
-              <div className="grid grid-cols-2 gap-3 bg-slate-55 dark:bg-slate-850 p-3 rounded-xl border border-slate-200/50 dark:border-slate-700/50">
+              {/* O'quvchi holati: qoida faqat shu holatdagi o'quvchilarga yuboradi
+                  (egasi, 2026-09-23: "Faol / Passiv" — o'quvchilar filtri).
+                  Qoidani yoqib-o'chirish ro'yxatdagi tugma orqali. */}
+              {!HOLATSIZ_QOIDALAR.includes(autoRuleForm.type) && (
                 <div>
-                  <label className={lbl}>Oyning qaysi kuni (1-28)</label>
-                  <input
-                    type="number"
-                    min={1}
-                    max={28}
-                    value={autoRuleForm.dayOfMonth}
-                    onChange={e => setAutoRuleForm({ ...autoRuleForm, dayOfMonth: Number(e.target.value) })}
-                    className={inp}
-                  />
+                  <label className={lbl}>Qaysi o'quvchilarga * <span className="font-semibold text-slate-500">(holati, bir nechta)</span></label>
+                  <div className="flex flex-wrap gap-1.5">
+                    {OQUVCHI_STATUSLARI.map(h => {
+                      const tanlangan = autoRuleForm.statuses.includes(h);
+                      return (
+                        <button
+                          key={h}
+                          type="button"
+                          aria-pressed={tanlangan}
+                          onClick={() => {
+                            const yangi = tanlangan ? autoRuleForm.statuses.filter(x => x !== h) : [...autoRuleForm.statuses, h];
+                            // Kamida bittasi tanlangan turishi kerak.
+                            if (!yangi.length) return;
+                            setAutoRuleForm({ ...autoRuleForm, statuses: yangi });
+                          }}
+                          className={`px-2.5 py-2 rounded-xl text-xs font-bold border transition-all cursor-pointer ${
+                            tanlangan
+                              ? 'bg-brand/10 border-brand text-brand'
+                              : 'bg-slate-50 dark:bg-slate-800/80 border-slate-200 dark:border-slate-700/80 text-slate-500 dark:text-slate-400 hover:border-slate-300 dark:hover:border-slate-600'
+                          }`}
+                        >
+                          {h}
+                        </button>
+                      );
+                    })}
+                  </div>
                 </div>
-                <p className="text-[11px] font-bold text-slate-500 dark:text-slate-400 leading-relaxed self-center">
-                  O'tgan oyda e'lon qilingan imtihonlar natijasi: {"{imtihon_oylik}"} — har imtihon balli, foizi va o'rni, o'rtacha foiz.
-                  Imtihon bo'lmagan o'quvchiga yuborilmaydi.
-                </p>
-              </div>
-            )}
+              )}
 
-            {autoRuleForm.type === 'DEBT_REMINDER' && (
-              <div className="grid grid-cols-2 gap-3 bg-slate-55 dark:bg-slate-850 p-3 rounded-xl border border-slate-200/50 dark:border-slate-700/50">
+              <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className={lbl}>Oylik jo'natish kuni (1-31)</label>
-                  <input
-                    type="number"
-                    min={1}
-                    max={31}
-                    value={autoRuleForm.dayOfMonth}
-                    onChange={e => setAutoRuleForm({ ...autoRuleForm, dayOfMonth: Number(e.target.value) })}
-                    className={inp}
-                  />
-                </div>
-                <div>
-                  <label className={lbl}>Minimal qarz summasi</label>
-                  <input
-                    type="number"
-                    value={autoRuleForm.minDebt}
-                    onChange={e => setAutoRuleForm({ ...autoRuleForm, minDebt: Number(e.target.value) })}
-                    className={inp}
-                  />
-                </div>
-              </div>
-            )}
-
-            <div>
-              <div className="flex justify-between items-center mb-1">
-                <label className={lbl}>Qoida xabari matni *</label>
-                {templates.length > 0 && (
+                  <label className={lbl}>Jo'natish kanali *</label>
                   <select
-                    onChange={e => {
-                      if (!e.target.value) return;
-                      const selected = templates.find(t => String(t.id) === e.target.value);
-                      if (selected) {
-                        setAutoRuleForm(prev => ({ ...prev, body: selected.body }));
-                      }
-                      e.target.value = "";
-                    }}
-                    className="text-[11px] font-bold bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-350 border border-slate-200 dark:border-slate-750 px-2 py-0.5 rounded outline-none cursor-pointer animate-in fade-in"
+                    value={autoRuleForm.channel}
+                    onChange={e => setAutoRuleForm({ ...autoRuleForm, channel: e.target.value as any })}
+                    className={inp}
                   >
-                    <option value="">Shablondan nusxalash...</option>
-                    {templates.map(t => (
-                      <option key={t.id} value={t.id}>{t.name}</option>
-                    ))}
+                    <option value="BOTH">Telegram, bo'lmasa SMS</option>
+                    <option value="SMS">Faqat SMS</option>
+                    <option value="TELEGRAM">Faqat Telegram</option>
                   </select>
-                )}
-              </div>
-              <textarea
-                required
-                rows={4}
-                placeholder="Hurmatli {ism}, ..."
-                value={autoRuleForm.body}
-                onChange={e => setAutoRuleForm({ ...autoRuleForm, body: e.target.value })}
-                className="w-full px-3 py-2 bg-slate-55 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-semibold text-slate-800 dark:text-slate-200 outline-none focus:border-brand transition-all resize-none"
-              />
-              <div className="text-[11px] font-bold text-slate-400 dark:text-slate-500 mt-1">
-                O'zgaruvchilar: {"{ism}"}, {"{qarz}"}, {"{balans}"}, {"{oxirgi_tolov}"}, {"{kurs}"}, {"{fan}"}, {"{ustoz}"}, {"{testnatijasi}"}, {"{markaz}"}, {"{imtihon_nomi}"}, {"{imtihon_ball}"}, {"{imtihon_foiz}"}, {"{to_lov_summa}"}, {"{bahosi}"}, {"{imtihon_oylik}"}
-              </div>
-            </div>
+                </div>
 
-            <div className="flex items-center justify-end gap-3 pt-2">
-              <button type="button" onClick={() => setAutoRuleModalOpen(false)} className={btnSecondary}>
-                Bekor qilish
-              </button>
-              <button type="submit" className={btnPrimary}>
-                Saqlash
-              </button>
-            </div>
-          </form>
+                <div>
+                  <label className={lbl}>Qabul qiluvchi * <span className="font-semibold text-slate-500">(bir nechta)</span></label>
+                  <div className="flex flex-wrap gap-1.5">
+                    {QABUL_QILUVCHILAR.map(q => {
+                      const tanlangan = qabulQiluvchilarniOqish(autoRuleForm.recipientTo).includes(q.value);
+                      return (
+                        <button
+                          key={q.value}
+                          type="button"
+                          aria-pressed={tanlangan}
+                          onClick={() => {
+                            const hozir = qabulQiluvchilarniOqish(autoRuleForm.recipientTo);
+                            const yangi = tanlangan ? hozir.filter(v => v !== q.value) : [...hozir, q.value];
+                            // Kamida bittasi tanlangan turishi kerak — aks holda
+                            // qoida hech kimga yubormaydi.
+                            if (!yangi.length) return;
+                            setAutoRuleForm({ ...autoRuleForm, recipientTo: yangi.join(',') });
+                          }}
+                          className={`px-2.5 py-2 rounded-xl text-xs font-bold border transition-all cursor-pointer ${
+                            tanlangan
+                              ? 'bg-brand/10 border-brand text-brand'
+                              : 'bg-slate-50 dark:bg-slate-800/80 border-slate-200 dark:border-slate-700/80 text-slate-500 dark:text-slate-400 hover:border-slate-300 dark:hover:border-slate-600'
+                          }`}
+                        >
+                          {q.label}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              </div>
+
+
+              {autoRuleForm.type === 'EXAM_MONTHLY' && (
+                <div className="grid grid-cols-2 gap-3 bg-slate-55 dark:bg-slate-850 p-3 rounded-xl border border-slate-200/50 dark:border-slate-700/50">
+                  <div>
+                    <label className={lbl}>Oyning qaysi kuni (1-28)</label>
+                    <input
+                      type="number"
+                      min={1}
+                      max={28}
+                      value={autoRuleForm.dayOfMonth}
+                      onChange={e => setAutoRuleForm({ ...autoRuleForm, dayOfMonth: Number(e.target.value) })}
+                      className={inp}
+                    />
+                  </div>
+                  <p className="text-[11px] font-bold text-slate-500 dark:text-slate-400 leading-relaxed self-center">
+                    O'tgan oyda e'lon qilingan imtihonlar natijasi: {"{imtihon_oylik}"} — har imtihon balli, foizi va o'rni, o'rtacha foiz.
+                    Imtihon bo'lmagan o'quvchiga yuborilmaydi.
+                  </p>
+                </div>
+              )}
+
+              <div>
+                <div className="flex justify-between items-center mb-1">
+                  <label className={lbl}>Qoida xabari matni *</label>
+                  {templates.length > 0 && (
+                    <select
+                      onChange={e => {
+                        if (!e.target.value) return;
+                        const selected = templates.find(t => String(t.id) === e.target.value);
+                        if (selected) {
+                          setAutoRuleForm(prev => ({ ...prev, body: selected.body }));
+                        }
+                        e.target.value = "";
+                      }}
+                      className="text-[11px] font-bold bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-350 border border-slate-200 dark:border-slate-750 px-2 py-0.5 rounded outline-none cursor-pointer animate-in fade-in"
+                    >
+                      <option value="">Shablondan nusxalash...</option>
+                      {templates.map(t => (
+                        <option key={t.id} value={t.id}>{t.name}</option>
+                      ))}
+                    </select>
+                  )}
+                </div>
+                <textarea
+                  required
+                  rows={4}
+                  placeholder="Hurmatli {ism}, ..."
+                  value={autoRuleForm.body}
+                  onChange={e => setAutoRuleForm({ ...autoRuleForm, body: e.target.value })}
+                  className="w-full px-3 py-2 bg-slate-55 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-semibold text-slate-800 dark:text-slate-200 outline-none focus:border-brand transition-all resize-none"
+                />
+                <div className="text-[11px] font-bold text-slate-400 dark:text-slate-500 mt-1">
+                  O'zgaruvchilar: {"{ism}"}, {"{qarz}"}, {"{balans}"}, {"{oxirgi_tolov}"}, {"{kurs}"}, {"{fan}"}, {"{ustoz}"}, {"{testnatijasi}"}, {"{markaz}"}, {"{imtihon_nomi}"}, {"{imtihon_ball}"}, {"{imtihon_foiz}"}, {"{to_lov_summa}"}, {"{bahosi}"}, {"{imtihon_oylik}"}
+                </div>
+              </div>
+
+              <div className="flex items-center justify-end gap-3 pt-2">
+                <button type="button" onClick={() => setAutoRuleModalOpen(false)} className={btnSecondary}>
+                  Bekor qilish
+                </button>
+                <button type="submit" className={btnPrimary}>
+                  Saqlash
+                </button>
+              </div>
+            </form>
+            )}
+          </div>
         </div>
       )}
     </div>
