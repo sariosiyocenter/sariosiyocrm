@@ -1,11 +1,12 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { Plus, Pencil, Search, TrendingUp, CheckSquare, X, Trash2 } from 'lucide-react';
+import { Plus, Pencil, Search, TrendingUp, CheckSquare, X, Trash2, Camera } from 'lucide-react';
 import { useCRM } from '../../../context/CRMContext';
 import { useConfirm } from '../../ConfirmDialog';
 import { useImtihonApi } from '../useImtihonApi';
 import { Karta, Tugma, Tanlov, INPUT, SELECT, Yuklanmoqda, Maydon } from '../ui';
 import { oddiyMatn } from '../../../lib/matn';
 import { SavolKartasi, SavolOynasi } from './SavolKartasi';
+import OxshashSavollar from './OxshashSavollar';
 import { QIYINLIK, QiyinlikTanlov, qiyinlikDaraja } from './qiyinlik';
 import type { BankDaraxt, BankFan, BankMavzu, Question, SavolTuri } from '../../../types';
 
@@ -33,6 +34,7 @@ export default function MavzuKorinishi({ fan, mavzu, daraxt, yangila, onFan, onY
   const [tahrirOyna, setTahrirOyna] = useState(false);
   const [ustida, setUstida] = useState<number | null>(null);
   const [band, setBand] = useState(false);
+  const [oxshash, setOxshash] = useState(false);
 
   const yukla = useCallback(() => soro<{ items: Question[] }>('GET', `questions?mavzuId=${mavzu.id}&soni=200`)
     .then(r => setSavollar(r.items)).catch(e => showNotification(e.message, 'error')), [mavzu.id, soro, showNotification]);
@@ -117,6 +119,7 @@ export default function MavzuKorinishi({ fan, mavzu, daraxt, yangila, onFan, onY
           {tahrir && (
             <div className="flex flex-wrap gap-2 lg:justify-end">
               <Tugma kichik turi="asosiy" ikonka={<Plus size={14} />} onClick={() => onYangiSavol()}>Savol qo'shish</Tugma>
+              <Tugma kichik ikonka={<Camera size={14} />} onClick={() => setOxshash(true)} title="AI masala rasmini o'qib, sonlari va javobi boshqa yangilarini tuzadi">Rasmdan o'xshash</Tugma>
               {!!savollar?.length && <Tugma kichik turi={belgilash ? 'ikkinchi' : 'oddiy'} ikonka={belgilash ? <X size={14} /> : <CheckSquare size={14} />}
                 onClick={() => { setBelgilash(v => !v); setTanlangan(new Set()); }}>{belgilash ? 'Belgilashni tugatish' : 'Belgilash'}</Tugma>}
             </div>
@@ -197,6 +200,7 @@ export default function MavzuKorinishi({ fan, mavzu, daraxt, yangila, onFan, onY
       )}
 
       {ochiq && <SavolOynasi q={ochiq} daraxt={daraxt} onYop={() => setOchiq(null)} onOzgardi={ozgardi} />}
+      {oxshash && <OxshashSavollar daraxt={daraxt} fanId={fan.id} mavzuId={mavzu.id} onYop={() => setOxshash(false)} onSaqlandi={ozgardi} />}
       {tahrirOyna && <MavzuTahriri fan={fan} mavzu={mavzu} daraxt={daraxt} onYop={() => setTahrirOyna(false)} onSaqlandi={async (ochdi) => { setTahrirOyna(false); await yangila(); if (ochdi) onFan(); }} />}
     </div>
   );

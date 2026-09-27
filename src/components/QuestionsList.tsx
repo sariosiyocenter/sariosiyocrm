@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { Search, Plus, FileUp, FileDown, X, FileText, Sparkles, ChevronRight, ChevronDown, Upload } from 'lucide-react';
+import { Search, Plus, FileUp, FileDown, X, FileText, Sparkles, ChevronRight, ChevronDown, Upload, Camera } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useCRM } from '../context/CRMContext';
@@ -12,6 +12,7 @@ import { useBankDaraxt, fanniTop, mavzuniTop } from './imtihon/bank/useBankDarax
 import FanlarKorinishi from './imtihon/bank/FanlarKorinishi';
 import FanKorinishi from './imtihon/bank/FanKorinishi';
 import MavzuKorinishi from './imtihon/bank/MavzuKorinishi';
+import OxshashSavollar from './imtihon/bank/OxshashSavollar';
 import { SavolKartasi, SavolOynasi } from './imtihon/bank/SavolKartasi';
 import { HARFLAR, savolXatosi, qiyinlikDarajasi } from '../../lib/imtihon.js';
 import type { Question } from '../types';
@@ -81,6 +82,7 @@ export default function QuestionsList() {
   const [importMoqda, setImportMoqda] = useState(false);
   const [matnlarOchiq, setMatnlarOchiq] = useState(false);
   const [aiImport, setAiImport] = useState(false);
+  const [oxshash, setOxshash] = useState(false);
   const ai = useAiHolat();
   const menyuRef = useRef<HTMLDivElement>(null);
   const faylRef = useRef<HTMLInputElement>(null);
@@ -172,6 +174,7 @@ export default function QuestionsList() {
                 <div className="absolute right-0 z-30 mt-1 w-64 rounded-xl border border-chiziq bg-sirt shadow-lg p-1">
                   <MenyuBandi ikonka={<FileUp size={14} />} nom="Excel fayldan" izoh="Fan, mavzu va qiyinlik ustunlari bilan" onClick={() => { setImportMenyu(false); faylRef.current?.click(); }} />
                   <MenyuBandi ikonka={<FileDown size={14} />} nom="Excel shablon" izoh="To'ldirish uchun namuna" onClick={() => { setImportMenyu(false); shablonniYukla(); }} />
+                  <MenyuBandi ikonka={<Camera size={14} />} nom="Rasmdan o'xshash savollar" izoh="AI masalani o'qib, sonlari va javobi boshqa yangilarini tuzadi" onClick={() => { setImportMenyu(false); setOxshash(true); }} />
                   {ai && <MenyuBandi ikonka={<Sparkles size={14} />} nom="AI import" izoh={ai.yoqilgan ? 'PDF, rasm yoki matndan' : AI_SOZLANMAGAN} disabled={!ai.yoqilgan} onClick={() => { setImportMenyu(false); setAiImport(true); }} />}
                 </div>
               )}
@@ -208,7 +211,7 @@ export default function QuestionsList() {
       ) : !mavzu ? (
         <FanKorinishi fan={fan} onMavzu={id => ot({ mavzu: id })} onOrqaga={() => ot({ fan: null, mavzu: null })} yangila={yangila} onYangiSavol={() => yangiSavol({ fanId: fan.id })} />
       ) : (
-        <MavzuKorinishi key={mavzu.id} fan={fan} mavzu={mavzu} daraxt={daraxt} yangila={yangila} onFan={() => ot({ mavzu: null })}
+        <MavzuKorinishi key={`${mavzu.id}-${qayta}`} fan={fan} mavzu={mavzu} daraxt={daraxt} yangila={yangila} onFan={() => ot({ mavzu: null })}
           onYangiSavol={qiyinlik => yangiSavol({ mavzuId: mavzu.id, qiyinlik })} />
       )}
 
@@ -245,6 +248,7 @@ export default function QuestionsList() {
       )}
       {ochiq && <SavolOynasi q={ochiq} daraxt={daraxt} onYop={() => setOchiq(null)} onOzgardi={() => { yangila(); setQayta(n => n + 1); }} />}
       {matnlarOchiq && <MatnlarOynasi onYop={() => { setMatnlarOchiq(false); yangila(); }} />}
+      {oxshash && <OxshashSavollar daraxt={daraxt} fanId={fan?.id ?? null} mavzuId={mavzu?.id ?? null} onYop={() => setOxshash(false)} onSaqlandi={() => { yangila(); setQayta(n => n + 1); }} />}
       {aiImport && <AiImportOynasi fanlar={daraxt.fanlar.map(f => f.name)} onYop={() => setAiImport(false)} onSaqlandi={() => yangila()} />}
     </div>
   );

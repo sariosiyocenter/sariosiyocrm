@@ -10,6 +10,7 @@ import MatnlarOynasi from './imtihon/MatnlarOynasi';
 import { useAiHolat, AI_SOZLANMAGAN } from './imtihon/useAiHolat';
 import SavolKorinishi from './imtihon/bank/SavolKorinishi';
 import { QiyinlikTanlov } from './imtihon/bank/qiyinlik';
+import OxshashSavollar from './imtihon/bank/OxshashSavollar';
 import { useBankDaraxt, fanniTop, mavzuniTop, bolimlarga } from './imtihon/bank/useBankDaraxt';
 import { HARFLAR, RAQAM_USTUNLARI, savolXatosi, qiyinlikDarajasi } from '../../lib/imtihon.js';
 import type { Question, Passage, SavolTuri } from '../types';
@@ -60,6 +61,7 @@ export default function QuestionEditor() {
   const [ishlatilgan, setIshlatilgan] = useState(0);
   const ai = useAiHolat();
   const [aiBand, setAiBand] = useState<string | null>(null);
+  const [oxshash, setOxshash] = useState(false);
 
   useEffect(() => { soro<Meta>('GET', 'questions/meta').then(setMeta).catch(() => {}); }, [soro]);
 
@@ -166,7 +168,8 @@ export default function QuestionEditor() {
   };
 
   // AI: yechim — qoralama sifatida muharrirga tushadi (ustoz tekshirib saqlaydi);
-  // klon va tarjima — bankka qoralama savol bo'lib yoziladi.
+  // tarjima — bankka qoralama savol bo'lib yoziladi; o'xshash savollar — oynada
+  // ko'rib, tanlab qo'shiladi (OxshashSavollar).
   const aiIsh = async (nom: string, f: () => Promise<void>) => {
     setAiBand(nom);
     try { await f(); } catch (e: any) { showNotification(e.message, 'error'); } finally { setAiBand(null); }
@@ -178,13 +181,6 @@ export default function QuestionEditor() {
     setMuharrirKaliti(k => k + 1);
     if (r.mos === false) showNotification(`AI boshqa javob chiqardi (${r.aiJavobi}) — kalitni yoki yechimni tekshiring`, 'error');
     else showNotification(r.mos ? `Yechim qoralamasi tayyor — AI javobi kalit bilan mos (${r.aiJavobi})` : 'Yechim qoralamasi tayyor — tekshirib saqlang', 'success');
-  });
-  const aiKlon = () => aiIsh('klon', async () => {
-    const r = await soro<{ yaratildi: { id: number; tekshirildi: boolean | null }[] }>('POST', `questions/${id}/ai/klon`, { soni: 3 });
-    const otdi = r.yaratildi.filter(k => k.tekshirildi).length;
-    showNotification(r.yaratildi.length
-      ? `${r.yaratildi.length} ta klon qoralama bo'lib bankka qo'shildi${q.type !== 'yozma' ? ` (${otdi} tasi AI tekshiruvidan o'tdi)` : ''} — manbasi «AI klon»`
-      : "AI yaroqli klon bermadi — qayta urinib ko'ring", r.yaratildi.length ? 'success' : 'error');
   });
   const aiTarjima = (til: string) => aiIsh('tarjima', async () => {
     const r = await soro<{ id: number }>('POST', `questions/${id}/ai/tarjima`, { til });
@@ -239,7 +235,7 @@ export default function QuestionEditor() {
           <div className="flex flex-wrap gap-2">
             {tahrirRejimi && ai && (
               <>
-                <Tugma ikonka={<Copy size={14} />} disabled={!ai.yoqilgan} title={ai.yoqilgan ? "Shu ko'nikmaga 3 ta yangi savol (qoralama)" : AI_SOZLANMAGAN} yuklanmoqda={aiBand === 'klon'} onClick={aiKlon}>AI klon</Tugma>
+                <Tugma ikonka={<Copy size={14} />} disabled={!daraxt} title="AI shu savolga o'xshash, sonlari va javobi boshqa savollar tuzadi — ko'rib, tanlab qo'shasiz" onClick={() => setOxshash(true)}>O'xshash savollar</Tugma>
                 <label className={`relative inline-flex items-center gap-1.5 rounded-xl border border-chiziq bg-sirt px-3 text-[13px] font-semibold text-matn ${ai.yoqilgan && !aiBand ? 'cursor-pointer hover:bg-ichki' : 'opacity-50'}`} title={ai.yoqilgan ? 'Boshqa tilga (qoralama nusxa)' : AI_SOZLANMAGAN}>
                   <Languages size={14} /> {aiBand === 'tarjima' ? 'Tarjima…' : 'Tarjima'}
                   <select aria-label="Tarjima tili" disabled={!ai.yoqilgan || !!aiBand} value="" onChange={e => e.target.value && aiTarjima(e.target.value)} className="absolute inset-0 opacity-0 cursor-pointer disabled:cursor-default">
@@ -387,6 +383,9 @@ export default function QuestionEditor() {
           </Karta>
         </div>
       </div>
+      {oxshash && daraxt && tahrirRejimi && (
+        <OxshashSavollar daraxt={daraxt} asl={{ ...(oldindanKorish as Question), id: Number(id) }} onYop={() => setOxshash(false)} onSaqlandi={() => daraxtniYangila()} />
+      )}
       {matnTanlash && <MatnlarOynasi onYop={() => setMatnTanlash(false)} tanlash={(p: Passage) => setQ(s => ({ ...s, passage: { id: p.id, title: p.title } }))} />}
     </div>
   );

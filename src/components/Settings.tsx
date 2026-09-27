@@ -12,6 +12,7 @@ import { compressAndUpload } from '../lib/image';
 import MapPicker from './MapPicker';
 import PaymeSettings from './PaymeSettings';
 import RuxsatlarJadvali from './RuxsatlarJadvali';
+import AiKalitKartasi from './imtihon/AiKalitKartasi';
 import { ROL_NOMLARI } from '../../lib/ruxsatlar.js';
 
 type SectionId = 'profil' | 'xonalar' | 'filiallar' | 'ruxsatlar' | 'dizayn'
@@ -423,6 +424,9 @@ export default function Settings() {
                         </div>
                     </div>
                 </div>
+
+                {/* AI (Gemini) kaliti — o'z tugmasi bilan saqlanadi (sinab ko'riladi), profil formasi bilan emas. */}
+                {isAdmin && <AiKalitKartasi />}
 
                 {/* Instagram */}
                 <div className="p-5 bg-ichki/30 border border-chiziq rounded-2xl space-y-4">

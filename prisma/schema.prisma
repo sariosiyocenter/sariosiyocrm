@@ -430,6 +430,11 @@ model Organization {
   // { sorash: bool, sorashOldin: daqiqa, rejalash: bool, rejalashOldin: daqiqa }.
   // null — standart qiymatlar.
   logistikaAvto Json?
+
+  // AI (Gemini) kaliti — markaz o'zi CRM ichida kiritadi (2026-09-27; bepul
+  // olinadi: aistudio.google.com/apikey). Faqat serverda o'qiladi, brauzerga
+  // qaytmaydi (faqat oxirgi 4 belgisi). null — serverdagi GEMINI_API_KEY ishlaydi.
+  aiKaliti String?
 }
 
 model School {

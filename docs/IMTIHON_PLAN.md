@@ -755,3 +755,38 @@ qoidalar ustuvorligi), `src/components/QuestionsList.tsx` + `imtihon/bank/*`,
 to'g'ri javobni faqat "savollar" ruxsati bilan ko'radi. Sinov: `scratch/test_bank_mantiq.mjs`,
 `test_bank_api.mjs`, `test_bank_ui.mjs`.
 
+
+## 15. Rasmdan o'xshash savollar va AI kaliti CRM da (2026-09-27)
+
+Egasi: "savol beriladi — misol rasmi, AI uni oladi, o'sha bilan bir xil, sonlar va
+javob boshqa bo'lgan masala tuzib beradi. Savollar bankini yig'ib ketamiz."
+
+**Oqim (bitta oyna — `imtihon/bank/OxshashSavollar.tsx`):** rasm (telefonda — kamera,
+kompyuterda — tashlash yoki Ctrl+V; PDF bo'lsa 1-sahifa) yoki matn → fan, mavzu,
+nechta (3 / 5 / 10), nima o'zgarsin ("Faqat sonlar" — matn va usul o'sha, sonlar va
+javob boshqa; "Vaziyat ham"), javob shakli (asl masaladek / variantli / son), til →
+**Tuzish**. AI rasmni o'qiydi (rasmda bir nechta masala bo'lsa — qaysi biri so'raladi),
+o'xshashlarini tuzadi, keyin hammasini (asl masalani ham) kalitni ko'rmay qayta yechib
+tekshiradi. Kartada belgi: ✓ javob to'g'ri / ⚠ AI boshqa javob chiqardi / ⚠ javobi asl
+masaladagidek. Belgilanganlari bankka: tekshiruvdan o'tgan yoki ustoz tuzatgani — faol,
+qolgani qoralama; asl masala ham (xohlasa), o'xshashlari unga `parentId` bilan
+bog'lanadi; manba "Rasmdan (AI)" / "AI o'xshash", yechim — qoralama. Kirish: mavzu
+sahifasi ("Rasmdan o'xshash"), bank → Import, savol oynasi va savol muharriri
+("O'xshash" — rasm bosqichisiz).
+
+**Har bosqich — alohida qisqa so'rov** (Vercel vaqt chegarasi): `POST
+/api/questions/ai/import` (o'qish), `POST /api/ai/oxshash` (tuzish, saqlamaydi),
+`POST /api/ai/tekshir` (12 tagacha savolni mustaqil yechish). Takror va aslidagi bilan
+bir xil matnlar tashlanadi.
+
+**AI kaliti:** administrator Sozlamalar → Integratsiyalar → "AI yordamchi" kartasida
+kiritadi (bepul: aistudio.google.com/apikey → Create API key). `PUT /api/ai/kalit`
+kalitni saqlashdan oldin kichik so'rov bilan sinaydi; `Organization.aiKaliti` — faqat
+serverda (lib/prisma.js da global `omit`, jurnalda qiymati yozilmaydi), brauzerga oxirgi
+4 belgisi. Har AI so'rovi markaz kaliti bilan (`aiBilan` — AsyncLocalStorage), yo'q bo'lsa
+serverdagi `GEMINI_API_KEY`. Model nomi eskirsa — zaxira nomlar (`gemini-flash-latest`,
+`gemini-2.5-flash`, `gemini-2.0-flash`).
+
+Sinov: `scratch/test_ai_oxshash.mjs` (mantiq, yo'llar, global omit, haqiqiy Google soxta
+kalit bilan), `test_oxshash_ui.mjs` va `test_ai_kalit_ui.mjs` (brauzer; soxta AI server —
+`scratch/ai_soxta_server.mjs`).

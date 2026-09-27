@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { AlertTriangle, X, Pencil, Trash2, Check, FileText, TrendingUp } from 'lucide-react';
+import { AlertTriangle, X, Pencil, Trash2, Check, FileText, TrendingUp, Sparkles } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useCRM } from '../../../context/CRMContext';
 import { useConfirm } from '../../ConfirmDialog';
@@ -8,6 +8,7 @@ import { Tugma, Yorliq, Tanlov, SELECT } from '../ui';
 import { formulaliHtml, SAVOL_MATNI } from '../../../lib/matn';
 import { natijaQiyinligi, qiyinlikMosEmas } from '../../../../lib/imtihon.js';
 import SavolKorinishi from './SavolKorinishi';
+import OxshashSavollar from './OxshashSavollar';
 import { QiyinlikTanlov, QiyinlikYorligi, qiyinlikDaraja } from './qiyinlik';
 import type { BankDaraxt, Question } from '../../../types';
 
@@ -73,6 +74,7 @@ export function SavolOynasi({ q: boshQ, daraxt, onYop, onOzgardi }: {
   const navigate = useNavigate();
   const [q, setQ] = useState(boshQ);
   const [band, setBand] = useState(false);
+  const [oxshash, setOxshash] = useState(false);
   const natija = natijaQiyinligi(q.pCorrect);
   const fan = daraxt?.fanlar.find(f => f.mavzular.some(m => m.id === q.bankTopicId));
   const mavzu = fan?.mavzular.find(m => m.id === q.bankTopicId);
@@ -154,10 +156,14 @@ export function SavolOynasi({ q: boshQ, daraxt, onYop, onOzgardi }: {
         {tahrir && (
           <div className="flex items-center justify-between gap-2 px-5 py-4 border-t border-chiziq">
             {ochiradi ? <Tugma turi="xavfli" kichik ikonka={<Trash2 size={14} />} onClick={ochir}>O'chirish</Tugma> : <span />}
-            <Tugma turi="asosiy" ikonka={<Pencil size={14} />} onClick={() => navigate(`/questions/${q.id}/edit`)}>Tahrirlash</Tugma>
+            <div className="flex flex-wrap justify-end gap-2">
+              {daraxt && <Tugma ikonka={<Sparkles size={14} />} onClick={() => setOxshash(true)} title="AI shu savolga o'xshash, sonlari va javobi boshqa savollar tuzadi">O'xshash</Tugma>}
+              <Tugma turi="asosiy" ikonka={<Pencil size={14} />} onClick={() => navigate(`/questions/${q.id}/edit`)}>Tahrirlash</Tugma>
+            </div>
           </div>
         )}
       </div>
+      {oxshash && daraxt && <OxshashSavollar daraxt={daraxt} asl={q} onYop={() => setOxshash(false)} onSaqlandi={onOzgardi} />}
     </div>
   );
 }
