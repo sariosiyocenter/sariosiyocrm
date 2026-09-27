@@ -325,6 +325,11 @@ export async function rejalarniYozish({ schoolId, date, rejalar }) {
   return { routeIds };
 }
 
+/** Reja nomi haydovchi botda sarlavha bo'ladi: "Alijon Norov · 18:00 · 2-reys". */
+export function reysNomi(ism, navbat = 1, tolqin = null) {
+  return [ism, tolqin, navbat > 1 ? `${navbat}-reys` : null].filter(Boolean).join(' · ');
+}
+
 /**
  * Kunning rejasini sahifadagi qoralama holatiga keltiradi (egasi, 2026-09-26:
  * "xarita, xohlaguncha o'zgartirish mumkin bo'lsin"). Reja sahifasi hamma
@@ -345,12 +350,16 @@ export async function rejalarniYozish({ schoolId, date, rejalar }) {
  * ko'rgan ketma-ketlik haydovchiga boradi. Bo'lmasa (eski sahifa) server
  * to'g'ri chiziq bo'yicha tartiblaydi.
  *
+ * `tolqin` (2026-09-27): reja dars tugash vaqtiga bog'langan ("18:00") —
+ * faqat shu to'lqinning reyslari o'zgaradi, boshqa to'lqinlarga tegilmaydi.
+ * null — to'lqinsiz ("qo'lda", butun kun) reja.
+ *
  * @returns {Promise<{ xato?: string, natijalar?: { tur: 'yangi'|'ozgardi'|'bekor', routeId: number,
  *   driverId: number, qoshilganlar: number[], telegramId?: string|null, nomi?: string }[] }>}
  */
-export async function kunniSaqlash({ schoolId, date, cars, tartibli = false }) {
+export async function kunniSaqlash({ schoolId, date, cars, tartibli = false, tolqin = null }) {
   const bor = await prisma.route.findMany({
-    where: { schoolId, date },
+    where: { schoolId, date, tolqin: tolqin || null },
     include: {
       stops: { select: { studentId: true } },
       runs: { where: { date }, select: { id: true, startedAt: true } },
@@ -463,9 +472,9 @@ export async function kunniSaqlash({ schoolId, date, cars, tartibli = false }) {
     navbatlar.set(h.id, navbat);
     const route = await prisma.route.create({
       data: {
-        name: navbat > 1 ? `${h.name} — ${navbat}-reys` : h.name,
-        startTime: toTimeStr(), days: 'HAR_KUNI', direction: 'QAYTISH',
-        autoPlanned: true, autoOrder: true, navbat, date,
+        name: reysNomi(h.name, navbat, tolqin),
+        startTime: tolqin || toTimeStr(), days: 'HAR_KUNI', direction: 'QAYTISH',
+        autoPlanned: true, autoOrder: true, navbat, date, tolqin: tolqin || null,
         driverId: h.id, transportId: h.driverTransport?.id || null, schoolId,
       },
     });

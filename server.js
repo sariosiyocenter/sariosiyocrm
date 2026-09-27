@@ -41,6 +41,7 @@ import { tarifniTozalash } from './lib/transportNarx.js';
 import { OSRM_MANZIL } from './lib/yolMasofa.js';
 import { Prisma } from '@prisma/client';
 import { kunlikTolqinlar, haydovchilardanSorash, kunlikRejaniTuzish, avtoJarayon } from './services/kunlikReja.js';
+import { tolqinlarHolati, tolqinniSorash, javobniBelgilash, avtoniSaqlash, kerakEmaslargaAyt, logistikaAvtoJarayon } from './services/logistikaAvto.js';
 import { toDateStr } from './lib/lessons.js';
 import { smsYuboruvchiniUlash, rejaNarxXabari } from './services/transportNotify.js';
 import bcrypt from 'bcryptjs';
@@ -170,6 +171,7 @@ function fondaTugat(promise) {
 
 // Lazy Cron background execution for automatic message rules (throttled to once every 10 minutes)
 let lastLazyCronRun = 0;
+let lastLogistikaTekshiruv = 0;
 app.use((req, res, next) => {
   // Payme webhook'i istisno: u tez va bir xil javob berishi kerak, orqa fon
   // ishi unga kechikish qo'shmasin.
@@ -187,6 +189,14 @@ app.use((req, res, next) => {
       }
     })();
     fondaTugat(ish);
+  }
+  // Logistika avtomatikasi (services/logistikaAvto.js): dars tugashidan oldin
+  // haydovchilardan so'rash va rejani tuzib yuborish. Vaqti kun davomida
+  // istalgan payt keladi (Vercel cron kuniga bir marta), shuning uchun har
+  // API so'rovida — 2 daqiqada bir marta, javobdan keyin ham oxirigacha.
+  if (process.env.AUTO_JOBS !== 'off' && req.path.startsWith('/api/') && !req.path.startsWith('/api/payme/') && !req.path.startsWith('/api/sms/eskiz-callback/') && Date.now() - lastLogistikaTekshiruv > 2 * 60 * 1000) {
+    lastLogistikaTekshiruv = Date.now();
+    fondaTugat(logistikaAvtoJarayon({ majburiy: true }).catch(err => console.error('[Logistika avto]', err.message)));
   }
   next();
 });
@@ -5935,6 +5945,8 @@ async function rejaJavobi(route) {
     name: route.name,
     date: sana,
     navbat: route.navbat,
+    // Dars tugash vaqti (to'lqin); null — qo'lda tuzilgan reja.
+    tolqin: route.tolqin || null,
     createdAt: route.createdAt,
     driver: route.driver ? { id: route.driver.id, name: route.driver.name, phone: route.driver.phone, telegram: !!route.driver.telegramId } : null,
     transport: route.transport || null,
@@ -5971,7 +5983,7 @@ app.get('/api/logistics/day', authenticate, async (req, res, next) => {
     if (!(await canAccessSchool(req.user, schoolId))) return res.status(403).json({ error: "Ruxsat yo'q" });
     const date = /^\d{4}-\d{2}-\d{2}$/.test(String(req.query.date || '')) ? String(req.query.date) : toDateStr();
 
-    const [routes, haydovchilar, tarif] = await Promise.all([
+    const [routes, haydovchilar, tarif, tolqin] = await Promise.all([
       prisma.route.findMany({ where: { schoolId, date }, include: REJA_INCLUDE, orderBy: { id: 'asc' } }),
       prisma.user.findMany({
         where: { role: 'DRIVER', status: { not: 'Arxiv' }, ...filialXodimlariWhere([schoolId]) },
@@ -5983,11 +5995,16 @@ app.get('/api/logistics/day', authenticate, async (req, res, next) => {
         orderBy: { name: 'asc' },
       }),
       markazTarifi(schoolId),
+      // To'lqinlar (dars tugash vaqtlari), haydovchilar javobi, avtomatika (2026-09-27).
+      tolqinlarHolati({ schoolId, date }),
     ]);
     res.json({
       date,
       // Yo'l haqi — hamma haydovchi uchun bitta tarif (Organization.transportTarif).
       tarif,
+      tolqinlar: tolqin.tolqinlar,
+      avto: tolqin.sozlama,
+      hozir: tolqin.hozir,
       plans: await Promise.all(routes.map(rejaJavobi)),
       drivers: haydovchilar.map(h => ({
         id: h.id, name: h.name, phone: h.phone, telegram: !!h.telegramId,
@@ -6138,7 +6155,9 @@ app.put('/api/logistics/day', authenticate, async (req, res, next) => {
     if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return res.status(400).json({ error: "Sana noto'g'ri" });
 
     // tartibli — sahifa bekatlarni yo'l bo'yicha o'zi tartiblab yuboradi (2026-09-27).
-    const natija = await kunniSaqlash({ schoolId, date, cars: req.body?.cars, tartibli: req.body?.tartibli === true });
+    // tolqin — reja qaysi dars tugash vaqtiga ("18:00"); yo'q — qo'lda (butun kun) reja.
+    const tolqin = /^\d{2}:\d{2}$/.test(String(req.body?.tolqin || '')) ? String(req.body.tolqin) : null;
+    const natija = await kunniSaqlash({ schoolId, date, cars: req.body?.cars, tartibli: req.body?.tartibli === true, tolqin });
     if (natija.xato) return res.status(400).json({ error: natija.xato });
 
     const yuborish = [];
@@ -6174,11 +6193,76 @@ app.put('/api/logistics/day', authenticate, async (req, res, next) => {
       }
     }
 
+    // To'lqin rejasi: avtomatika endi bu to'lqinni qayta tuzmaydi, "Ha" deb
+    // rejaga kirmaganlarga "rahmat, bugun kerak emas" boradi.
+    let kerakEmas = 0;
+    if (tolqin) {
+      const tolqinRejasi = await prisma.route.count({ where: { schoolId, date, tolqin } });
+      if (tolqinRejasi) {
+        await prisma.transportTolqin.upsert({
+          where: { schoolId_date_endTime: { schoolId, date, endTime: tolqin } },
+          create: { schoolId, date, endTime: tolqin, rejaAt: new Date() },
+          update: { rejaAt: new Date(), izoh: null },
+        });
+        kerakEmas = await kerakEmaslargaAyt({ schoolId, date, endTime: tolqin });
+      }
+    }
+
     const routes = await prisma.route.findMany({ where: { schoolId, date }, include: REJA_INCLUDE, orderBy: { id: 'asc' } });
     res.json({
       plans: await Promise.all(routes.map(rejaJavobi)),
-      yuborish, otaOnagaYuborildi, otaOnaXabarlari: !!sozlama?.transportNotify,
+      yuborish, otaOnagaYuborildi, otaOnaXabarlari: !!sozlama?.transportNotify, kerakEmas,
     });
+  } catch (error) { next(error); }
+});
+
+// ===================== To'lqinlar: haydovchilardan so'rash (2026-09-27) =====================
+//
+// Egasi: "dars tugashidan oldin hamma haydovchiga xabar, kim javob bersa —
+// o'sha keladi". Avtomatik qismi services/logistikaAvto.js da (fon
+// tekshiruvi); bu yerda — sahifadagi qo'lda amallar.
+
+/** Sana va to'lqin vaqtini so'rovdan olish; noto'g'ri bo'lsa javob yuborib null. */
+async function tolqinSorovi(req, res) {
+  const schoolId = parseInt(req.body?.schoolId);
+  if (!schoolId) { res.status(400).json({ error: 'schoolId required' }); return null; }
+  if (!(await canAccessSchool(req.user, schoolId))) { res.status(403).json({ error: "Ruxsat yo'q" }); return null; }
+  const date = String(req.body?.date || '');
+  const endTime = String(req.body?.endTime || '');
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) { res.status(400).json({ error: "Sana noto'g'ri" }); return null; }
+  if (!/^\d{2}:\d{2}$/.test(endTime)) { res.status(400).json({ error: "Vaqt noto'g'ri" }); return null; }
+  return { schoolId, date, endTime };
+}
+
+/** Haydovchilardan hozir so'rash; body.qayta — javob bermaganlarga yana bir bor. */
+app.post('/api/logistics/tolqin/sorash', authenticate, async (req, res, next) => {
+  try {
+    const s = await tolqinSorovi(req, res);
+    if (!s) return;
+    res.json(await tolqinniSorash({ ...s, qayta: req.body?.qayta === true }));
+  } catch (error) { next(error); }
+});
+
+/** Admin haydovchi o'rniga javob belgilaydi: HA | YOQ | KUTILMOQDA. */
+app.post('/api/logistics/tolqin/javob', authenticate, async (req, res, next) => {
+  try {
+    const s = await tolqinSorovi(req, res);
+    if (!s) return;
+    const natija = await javobniBelgilash({ ...s, driverId: parseInt(req.body?.driverId), status: String(req.body?.status || '') });
+    if (natija.xato) return res.status(400).json({ error: natija.xato });
+    res.json({ ok: true, status: natija.javob.status });
+  } catch (error) { next(error); }
+});
+
+/** Logistika avtomatikasi sozlamasi — butun markazga bitta (Organization.logistikaAvto). */
+app.put('/api/logistics/avto', authenticate, async (req, res, next) => {
+  try {
+    const schoolId = parseInt(req.body?.schoolId);
+    if (!schoolId) return res.status(400).json({ error: 'schoolId required' });
+    if (!(await canAccessSchool(req.user, schoolId))) return res.status(403).json({ error: "Ruxsat yo'q" });
+    const natija = await avtoniSaqlash(schoolId, req.body?.sozlama);
+    if (natija.xato) return res.status(400).json({ error: natija.xato });
+    res.json(natija);
   } catch (error) { next(error); }
 });
 
@@ -7784,9 +7868,11 @@ async function runAutoProcessJobs() {
       }
       targets = Object.values(uniqueStudentsMap);
     } else if (rule.type === 'TRANSPORT_NOTIFY') {
-      targets = await prisma.student.findMany({
-        where: { schoolId, transportId: { not: null }, status: statusIn }
-      });
+      // Transport xabari endi darhol — haydovchi botda "Qabul qildim" /
+      // "Yetkazdim" bosganda (Xabarlar → Avtomatik → Transport,
+      // Setting.transportNotify). Eski kunlik qoida hech narsa yubormaydi.
+      results.push({ ruleId: rule.id, name: rule.name, skipped: 'transport-darhol' });
+      continue;
     } else if (rule.type === 'COURSE_GRADUATION') {
       targets = await prisma.student.findMany({
         where: { schoolId, status: 'Bitirgan' }

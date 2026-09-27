@@ -6,7 +6,8 @@
  *   2. O'sha guruhlarda transportga yozilgan o'quvchilar
  *      (`Student.needsTransport`), bugun "Kelmapdi" deb belgilanganlar
  *      hisobga olinmaydi.
- *   3. Dars tugashidan ~2 soat oldin so'ralgan va "HA" degan haydovchilar.
+ *   3. Dars tugashidan oldin so'ralgan va "HA" degan haydovchilar
+ *      (qachon — services/logistikaAvto.js sozlamasi).
  *
  * Yaqin tugash vaqtlari bitta to'lqinga birlashadi: 20:55 va 21:00 uchun
  * alohida mashina chiqarish ma'nosiz.
@@ -17,10 +18,6 @@ import { darsTugashi, daqiqaga, vaqtga, tolqinlarniBirlashtirish } from '../lib/
 import { reyalarniTuzish } from '../lib/rejalash.js';
 import { markazNuqtasi } from './logistics.js';
 
-/** Haydovchidan necha daqiqa oldin so'raladi. */
-export const SORASH_OLDIN_DAQIQA = 120;
-/** Haydovchilardan avtomatik so'rash (kron). Hozir o'chiq — avtoJarayon ga qarang. */
-const AVTO_SORASH = false;
 
 /**
  * Dars oxirida bola markazda YO'Q degan davomat holatlari — ularga mashina
@@ -143,67 +140,92 @@ export async function haydovchiJavoblari({ schoolId, date, endTime }) {
 }
 
 /**
- * Haydovchilardan so'raydi: bugun shu to'lqinda qatnasha oladimi.
- *
- * Bir marta so'ralgan haydovchiga ikkinchi marta yozilmaydi. Telegramga
- * ulanmagan haydovchi ham yozuvga tushadi — admin ro'yxatda ko'radi va
- * qo'ng'iroq qiladi.
+ * Filialning ishlaydigan haydovchilari: shu filialdagi va HR da shu filial
+ * belgilangan, arxivda emas, mashinasi (o'rni bilan) kiritilgan.
  */
-export async function haydovchilardanSorash({ schoolId, date, endTime, oquvchiSoni = 0 }) {
-  const haydovchilar = await prisma.user.findMany({
-    where: { schoolId, role: 'DRIVER', status: { not: 'Arxiv' } },
+export async function filialHaydovchilari(schoolId) {
+  const royxat = await prisma.user.findMany({
+    where: { role: 'DRIVER', status: { not: 'Arxiv' }, OR: [{ schoolId }, { branches: { some: { id: schoolId } } }] },
     select: {
       id: true, name: true, telegramId: true,
-      driverTransport: { select: { name: true, capacity: true, status: true } },
+      driverTransport: { select: { id: true, name: true, model: true, number: true, capacity: true, status: true } },
     },
+    orderBy: { name: 'asc' },
   });
+  return royxat.filter(h => (h.driverTransport?.capacity || 0) > 0 && h.driverTransport.status !== 'Arxiv');
+}
 
+/**
+ * Haydovchilardan so'raydi: bugun shu to'lqinda qatnasha oladimi (2026-09-27:
+ * egasi "dars tugashidan oldin hamma haydovchiga yuborilsin, kim javob bersa —
+ * o'sha keladi").
+ *
+ * Bir marta so'ralgan haydovchiga ikkinchi marta yozilmaydi; `qayta` —
+ * javob bermaganlarga (KUTILMOQDA) yana bir bor. Telegramga ulanmagan
+ * haydovchi ham yozuvga tushadi — admin ro'yxatda ko'radi va qo'ng'iroq qiladi.
+ * Xabarlar 5 tadan parallel: 30 haydovchi fon tekshiruviga sig'sin.
+ *
+ * @param {{ schoolId:number, date:string, endTime:string, oquvchiSoni?:number, rejaVaqti?:string|null, qayta?:boolean }} p
+ */
+export async function haydovchilardanSorash({ schoolId, date, endTime, oquvchiSoni = 0, rejaVaqti = null, qayta = false }) {
+  const haydovchilar = await filialHaydovchilari(schoolId);
   const bor = await prisma.driverAvailability.findMany({
-    where: { schoolId, date, endTime },
-    select: { driverId: true },
+    where: { date, endTime, driverId: { in: haydovchilar.map(h => h.id) } },
+    select: { driverId: true, status: true },
   });
-  const soralgan = new Set(bor.map(x => x.driverId));
+  const holat = new Map(bor.map(x => [x.driverId, x.status]));
 
-  const yangilar = haydovchilar.filter(h => !soralgan.has(h.id));
-  if (yangilar.length === 0) return { sorandi: 0, yuborildi: 0 };
+  const yangilar = haydovchilar.filter(h => !holat.has(h.id));
+  if (yangilar.length) {
+    await prisma.driverAvailability.createMany({
+      data: yangilar.map(h => ({ driverId: h.id, date, endTime, schoolId, status: 'KUTILMOQDA' })),
+      skipDuplicates: true,
+    });
+  }
+  // Kimga yoziladi: yangilar va (qayta so'ralsa) hali javob bermaganlar.
+  const kimga = qayta ? haydovchilar.filter(h => !holat.has(h.id) || holat.get(h.id) === 'KUTILMOQDA') : yangilar;
+  const ulangan = kimga.filter(h => h.telegramId);
 
-  await prisma.driverAvailability.createMany({
-    data: yangilar.map(h => ({ driverId: h.id, date, endTime, schoolId, status: 'KUTILMOQDA' })),
-    skipDuplicates: true,
-  });
-
-  // Telegramga xabar — botga ulanganlariga.
   let yuborildi = 0;
-  const ulangan = yangilar.filter(h => h.telegramId);
   if (ulangan.length) {
     try {
       const { getTelegramBot } = await import('../src/bot/bot.js');
       const bot = await getTelegramBot(schoolId);
       if (bot) {
         const { Markup } = await import('telegraf');
-        for (const h of ulangan) {
-          const sigim = h.driverTransport?.capacity;
+        const yubor = async (h) => {
+          const t = h.driverTransport;
+          const mashina = [t?.model || t?.name, t?.number].filter(Boolean).join(' · ');
           let matn = `🚌 <b>Bugun ${endTime} da</b> dars tugaydi\n`;
-          matn += `👥 ${oquvchiSoni} ta o'quvchini uyiga yetkazish kerak\n`;
-          if (h.driverTransport) matn += `🚍 Sizning mashinangiz: ${h.driverTransport.name}${sigim ? ` (${sigim} o'rin)` : ''}\n`;
-          matn += `\nQatnasha olasizmi?`;
-          try {
-            await bot.telegram.sendMessage(h.telegramId, matn, {
-              parse_mode: 'HTML',
-              ...Markup.inlineKeyboard([[
-                Markup.button.callback('✅ Ha, qatnashaman', `hd_ha_${date}_${endTime}`),
-                Markup.button.callback('❌ Yo\'q', `hd_yoq_${date}_${endTime}`),
-              ]]),
-            });
-            yuborildi++;
-          } catch (_) { /* ulanish uzilgan bo'lsa admin ro'yxatda ko'radi */ }
+          if (oquvchiSoni) matn += `👥 ${oquvchiSoni} ta o'quvchini uyiga olib borish kerak\n`;
+          if (mashina) matn += `🚍 Sizning mashinangiz: ${mashina}${t?.capacity ? ` (${t.capacity} o'rin)` : ''}\n`;
+          if (rejaVaqti) matn += `🗺 Reja ${rejaVaqti} da shu yerga keladi\n`;
+          matn += `\n<b>Qatnasha olasizmi?</b>`;
+          await bot.telegram.sendMessage(h.telegramId, matn, {
+            parse_mode: 'HTML',
+            ...Markup.inlineKeyboard([[
+              Markup.button.callback('✅ Ha, kelaman', `hd_ha_${date}_${endTime}`),
+              Markup.button.callback("❌ Yo'q", `hd_yoq_${date}_${endTime}`),
+            ]]),
+          });
+        };
+        for (let i = 0; i < ulangan.length; i += 5) {
+          const natija = await Promise.allSettled(ulangan.slice(i, i + 5).map(yubor));
+          yuborildi += natija.filter(x => x.status === 'fulfilled').length;
         }
       }
     } catch (err) {
-      console.error('[Haydovchidan so\'rash]', err.message);
+      console.error("[Haydovchidan so'rash]", err.message);
     }
   }
-  return { sorandi: yangilar.length, yuborildi };
+  if (!qayta && yangilar.length) {
+    // Qayta so'ralganda "so'rov vaqti" o'zgarmaydi — birinchi so'rov asos.
+    await prisma.driverAvailability.updateMany({
+      where: { date, endTime, driverId: { in: yangilar.map(h => h.id) } },
+      data: { askedAt: new Date() },
+    });
+  }
+  return { sorandi: kimga.length, yuborildi, ulanmagan: kimga.length - ulangan.length };
 }
 
 /** Haydovchining javobini yozadi. */
@@ -356,43 +378,11 @@ export async function kunlikRejaniTuzish({ schoolId, date = toDateStr(), endTime
 }
 
 /**
- * Avtomatik jarayon (cron): yaqinlashib kelayotgan to'lqinlar uchun
- * haydovchilardan so'raydi.
- *
- * Bir necha marta chaqirilsa ham xavfsiz: allaqachon so'ralganiga qayta
- * yozilmaydi.
+ * Avtomatik jarayon (fon tekshiruvi / cron). 2026-09-27 dan buni
+ * services/logistikaAvto.js qiladi: so'rash va rejani tuzib yuborish,
+ * sozlamalari Logistika → Reja sahifasida.
  */
-export async function avtoJarayon({ schoolId = null } = {}) {
-  // O'chirilgan (2026-09-19): egasi "haydovchilarga avtomatik" dedi — reja
-  // Logistika sahifasida tuziladi va haydovchiga o'zi yuboriladi. Haydovchidan
-  // "bugun qatnasha olasizmi?" deb so'rash endi hech narsaga ta'sir qilmaydi,
-  // shuning uchun har kuni ularga ortiqcha xabar yubormaymiz. Kron manzili
-  // ishlashda davom etadi (xato bermasin), faqat hech narsa qilmaydi.
-  if (!AVTO_SORASH) return [];
-  const natijalar = [];
-  const filiallar = schoolId
-    ? [{ id: schoolId }]
-    : await prisma.school.findMany({ select: { id: true } });
-
-  for (const f of filiallar) {
-    const date = toDateStr();
-    const hozir = daqiqaga(toTimeStr());
-    const { tolqinlar } = await kunlikTolqinlar({ schoolId: f.id, date });
-
-    for (const t of tolqinlar) {
-      if (t.oquvchilar.length === 0) continue;
-      const tugash = daqiqaga(t.endTime);
-      const qolgan = tugash - hozir;
-      // Faqat oldindagi va 2 soatdan yaqin to'lqinlar.
-      if (qolgan < 0 || qolgan > SORASH_OLDIN_DAQIQA) continue;
-
-      const r = await haydovchilardanSorash({
-        schoolId: f.id, date, endTime: t.endTime, oquvchiSoni: t.oquvchilar.length,
-      });
-      if (r.sorandi) {
-        natijalar.push({ schoolId: f.id, endTime: t.endTime, ...r, oquvchi: t.oquvchilar.length });
-      }
-    }
-  }
-  return natijalar;
+export async function avtoJarayon(p = {}) {
+  const { logistikaAvtoJarayon } = await import('./logistikaAvto.js');
+  return logistikaAvtoJarayon(p);
 }

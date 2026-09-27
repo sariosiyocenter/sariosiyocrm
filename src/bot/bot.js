@@ -1525,9 +1525,27 @@ export const setupBotHandlers = (botInstance, botSchoolId) => {
         await javobniYozish({ driverId: user.data.id, date: sana, endTime: vaqt, status, schoolId });
         await ctx.answerCbQuery(status === 'HA' ? 'Yozib oldik, rahmat' : 'Yozib oldik');
 
+        // Reja allaqachon tuzilgan bo'lsa (avtomatik yoki admin) — haydovchi
+        // kutib o'tirmasin; "Yo'q" degan haydovchida reja bo'lsa — adminga.
+        const tolqinHolati = await prisma.transportTolqin.findUnique({
+            where: { schoolId_date_endTime: { schoolId, date: sana, endTime: vaqt } },
+            select: { rejaAt: true },
+        }).catch(() => null);
+        const unikiReja = await prisma.route.findFirst({
+            where: { schoolId, date: sana, tolqin: vaqt, driverId: user.data.id },
+            select: { id: true, name: true },
+        });
+        if (status === 'YOQ' && unikiReja) {
+            notifyAdmins(`⚠️ ${user.data.name} ${vaqt} ga kela olmasligini aytdi, lekin «${unikiReja.name}» rejasi unda.\nLogistika → Reja: bolalarni boshqa mashinaga o'tkazing.`, schoolId).catch(() => {});
+        }
+
         const belgi = status === 'HA' ? '✅' : '❌';
         const izoh = status === 'HA'
-            ? `Rahmat! ${vaqt} ga yaqin marshrutingiz shu yerda chiqadi.`
+            ? (unikiReja
+                ? 'Rahmat! Rejangiz tepada — yuqoridagi xabarga qarang.'
+                : tolqinHolati?.rejaAt
+                    ? "Rahmat! Reja allaqachon tuzilgan — kerak bo'lsa admin sizni qo'shadi va reja shu yerga keladi."
+                    : `Rahmat! ${vaqt} dan oldin reja shu yerga keladi.`)
             : 'Yaxshi, bugun bu vaqtda hisobga olmaymiz.';
         try {
             await ctx.editMessageText(

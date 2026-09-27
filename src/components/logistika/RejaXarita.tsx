@@ -99,8 +99,8 @@ function bolaIcon(L: any, b: XBola, tanlangan: boolean, olcham: Olcham) {
         iconAnchor: [size / 2, size / 2],
         html: `
           <div style="position:relative;width:${size}px;height:${size}px;opacity:${b.xira ? 0.3 : 1};transition:opacity .15s">
-            <div style="width:${size}px;height:${size}px;border-radius:50%;overflow:hidden;background:${nuqta ? (rejasiz ? '#e2e8f0' : ring) : rejasiz ? '#f1f5f9' : '#fff'};
-                        border:${tanlangan ? 4 : nuqta ? 2 : 3}px ${rejasiz ? 'dashed' : 'solid'} ${nuqta && !rejasiz ? '#fff' : ring};${halqa}
+            <div style="width:${size}px;height:${size}px;border-radius:50%;overflow:hidden;background:${nuqta ? (rejasiz ? '#cbd5e1' : ring) : rejasiz ? '#f1f5f9' : '#fff'};
+                        border:${tanlangan ? 4 : nuqta ? 2 : 3}px ${rejasiz && !nuqta ? 'dashed' : 'solid'} ${nuqta ? '#fff' : ring};${halqa}
                         display:flex;align-items:center;justify-content:center;${rejasiz && b.photo ? 'filter:grayscale(.6);' : ''}">
               ${inner}
             </div>

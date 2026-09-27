@@ -12,6 +12,7 @@ import { displayName as ismniKorsat } from '../lib/displayName';
 import { DavomatXabariSozlama, DavomatQoidaKartasi } from './DavomatXabari';
 import { TolovQoidaKartasi, TolovQoidaFormasi, XabarNavbati, xatoSababi } from './TolovXabari';
 import { QarzQoidaKartasi, QarzQoidaFormasi, QarzdorlarModal } from './QarzXabari';
+import { TransportQoidaKartasi, TransportQoidaFormasi } from './TransportXabari';
 import { QoidaKartasi } from './QoidaKartasi';
 
 /**
@@ -118,7 +119,8 @@ const qoidaStandartHolatlari = (type: string) =>
 // (darhol yoki o'z jadvali bilan). Ro'yxatda boshqa qoidalar qatorida
 // turadi, "Yangi qoida" oynasida esa o'z formasi ochiladi (egasi,
 // 2026-09-27: "nimaga alohida qilding, trigger qo'shsang bo'lmasmidi?").
-const MAXSUS_QOIDALAR = ['PAYMENT_CONFIRM', 'DAVOMAT', 'DEBT_REMINDER'];
+// TRANSPORT_NOTIFY (2026-09-27): haydovchi botdagi "Qabul qildim / Yetkazdim" — Setting.transportNotify.
+const MAXSUS_QOIDALAR = ['PAYMENT_CONFIRM', 'DAVOMAT', 'DEBT_REMINDER', 'TRANSPORT_NOTIFY'];
 // BOTH: Telegram'ga yetsa — SMS ketmaydi (server sendToOne).
 const KANAL_NOMI_QISQA: Record<string, string> = { BOTH: "Telegram, bo'lmasa SMS", SMS: 'SMS', TELEGRAM: 'Telegram' };
 
@@ -1818,8 +1820,9 @@ export default function Messaging() {
             <DavomatQoidaKartasi schoolId={selectedSchoolId || 0} yangilash={qoidaYangilash} onTahrir={() => maxsusQoidaniOch('DAVOMAT')} />
             <QarzQoidaKartasi schoolId={selectedSchoolId || 0} yangilash={qoidaYangilash}
               onTahrir={() => maxsusQoidaniOch('DEBT_REMINDER')} onQarzdorlar={() => setQarzdorlarOchiq(true)} />
-            {/* Eski "To'lov qabul qilinganda" va "Qarzdorlik" yozuvlari (AutoMessageRule)
-                ishlamaydi — o'rniga yuqoridagi kartalar. */}
+            <TransportQoidaKartasi onTahrir={() => maxsusQoidaniOch('TRANSPORT_NOTIFY')} />
+            {/* Eski "To'lov qabul qilinganda", "Qarzdorlik" va "Transport" yozuvlari
+                (AutoMessageRule) ishlamaydi — o'rniga yuqoridagi kartalar. */}
             {rules.filter(rule => !MAXSUS_QOIDALAR.includes(rule.type)).map(rule => {
               const meta = getTriggerTypeMeta(rule.type);
               return (
@@ -2303,6 +2306,7 @@ export default function Messaging() {
                 <optgroup label="Hodisa bo'lganda — darhol">
                   <option value="PAYMENT_CONFIRM" disabled={!!editingAutoRule && !MAXSUS_QOIDALAR.includes(editingAutoRule.type)}>💰 To'lov qabul qilinganda</option>
                   <option value="DAVOMAT" disabled={!!editingAutoRule && !MAXSUS_QOIDALAR.includes(editingAutoRule.type)}>📋 Davomat qilinganda (yo'qlama saqlanganda)</option>
+                  <option value="TRANSPORT_NOTIFY" disabled={!!editingAutoRule && !MAXSUS_QOIDALAR.includes(editingAutoRule.type)}>🚌 Transport: bola olindi / uyiga yetkazildi</option>
                 </optgroup>
                 <optgroup label="Belgilangan vaqtda">
                   <option value="DEBT_REMINDER" disabled={!!editingAutoRule && !MAXSUS_QOIDALAR.includes(editingAutoRule.type)}>💸 Qarzdorlik eslatmasi (har oy)</option>
@@ -2315,7 +2319,6 @@ export default function Messaging() {
                   <option value="EXAM_RESULT">📝 Imtihon natijalari e'loni</option>
                   <option value="EXAM_MONTHLY">📈 Oylik imtihon hisoboti</option>
                   <option value="DAILY_SCORE">⭐️ Kunlik baholash hisoboti</option>
-                  <option value="TRANSPORT_NOTIFY">🚌 Transport xabarnomasi</option>
                   <option value="COURSE_GRADUATION">🎓 Kursni bitirganlik tabrigi</option>
                 </optgroup>
               </select>
@@ -2335,6 +2338,10 @@ export default function Messaging() {
                   <button type="button" onClick={() => setAutoRuleModalOpen(false)} className={btnPrimary}>Tayyor</button>
                 </div>
               </div>
+            ) : autoRuleForm.type === 'TRANSPORT_NOTIFY' ? (
+              <TransportQoidaFormasi
+                onClose={() => setAutoRuleModalOpen(false)}
+                onSaqlandi={() => { setAutoRuleModalOpen(false); setQoidaYangilash(n => n + 1); }} />
             ) : autoRuleForm.type === 'DEBT_REMINDER' ? (
               <QarzQoidaFormasi schoolId={selectedSchoolId || 0}
                 onClose={() => setAutoRuleModalOpen(false)}
